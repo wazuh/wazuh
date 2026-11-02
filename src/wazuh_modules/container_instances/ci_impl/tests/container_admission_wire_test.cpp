@@ -344,3 +344,54 @@ TEST(ContainerAdmissionWireTest, AServerTooOldToDecideIsNotMistakenForOneStillSe
     EXPECT_FALSE(read.admittedKnown);
     EXPECT_TRUE(read.complete) << "the default every consumer already relies on";
 }
+
+// Settlement and permission to DELETE are different questions, and the
+// grace separates them.
+//
+// The verdict settles on the grace whether or not every source has spoken --
+// withholding it for ever would mean the cap never applies at all. So after a
+// grace settle with one runtime still silent, `admission_pending` is gone and
+// the reply looks authoritative about a node whose Kubernetes containers are
+// entirely absent from it. `withheld` and `known_unkeyed` cannot catch that:
+// they describe the resolver's backlog, and a source that never enumerated
+// contributes no records to have a backlog about.
+TEST(ContainerAdmissionWireTest, ASettledVerdictStillSaysWhenASourceHasNotEnumerated)
+{
+    QueryResponse response;
+    response.status = QueryResponse::Status::ok;
+    response.listReply = true;
+    response.admissionKnown = true; // the grace decided it
+    response.admitted = {"docker-one"};
+    response.sourcesEnumerated = false; // ...but Kubernetes never listed
+    response.containers = {std::make_shared<const ContainerRecord>(MakeRecord("docker-one"))};
+
+    const auto parsed = nlohmann::json::parse(wire::serializeResponse(response));
+
+    EXPECT_FALSE(parsed.contains("admission_pending")) << "the verdict really is settled";
+    ASSERT_TRUE(parsed.contains("sources_pending"));
+    ASSERT_EQ(0U, parsed["withheld"].get<std::uint64_t>()) << "nothing is waiting on a key, either";
+
+    const auto read = wazuh::container_instances_client::ContainerInstancesClient::parseListReply(parsed);
+
+    EXPECT_TRUE(read.admittedKnown) << "the cap applies; this is not a reason to stop enforcing it";
+    EXPECT_FALSE(read.admissionPending) << "and consumers must NOT freeze their sync flags for it";
+    EXPECT_FALSE(read.complete) << "but the node is not fully described, so nothing may be deleted";
+    EXPECT_FALSE(read.unkeyedKnown);
+}
+
+TEST(ContainerAdmissionWireTest, AFullyEnumeratedNodeCarriesNoSourcesPendingKey)
+{
+    QueryResponse response;
+    response.status = QueryResponse::Status::ok;
+    response.listReply = true;
+    response.admissionKnown = true;
+    response.admitted = {"a"};
+    response.containers = {std::make_shared<const ContainerRecord>(MakeRecord("a"))};
+
+    const auto parsed = nlohmann::json::parse(wire::serializeResponse(response));
+
+    EXPECT_FALSE(parsed.contains("sources_pending")) << "emitted only when true, like every additive key here";
+
+    const auto read = wazuh::container_instances_client::ContainerInstancesClient::parseListReply(parsed);
+    EXPECT_TRUE(read.complete) << "a whole node, authoritative about what exists";
+}

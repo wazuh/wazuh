@@ -42,8 +42,16 @@ namespace wazuh::container_instances
     /// Counted and timed from the moment the container became running and
     /// unkeyed, and reset the instant it publishes. A written-off container is
     /// still listed, still monitored and still admitted when a slot is going
-    /// spare -- see admitContainers(); all the write-off does is stop it
-    /// outranking a container that can publish.
+    /// spare -- see admitContainers(); all the write-off does is rank it below
+    /// every container nobody has given up on.
+    ///
+    /// The count is per SOURCE SNAPSHOT, not per wall-clock round, and a
+    /// container reported by two sources is therefore counted by both. That is
+    /// deliberate: cri-dockerd publishes one container through the Docker and
+    /// CRI APIs, each connector runs its own ICgroupResolver::scan(), so each
+    /// snapshot really is another attempt to key it. Such a container reaches
+    /// the count roughly twice as fast; the grace below still has to pass, so
+    /// it cannot be written off early in wall-clock terms.
     inline constexpr std::size_t UNKEYED_WRITE_OFF_SNAPSHOTS {3};
     inline constexpr auto UNKEYED_WRITE_OFF_GRACE = std::chrono::seconds {120};
 
@@ -286,6 +294,16 @@ namespace wazuh::container_instances
         /// setExpectedSources() has run: nothing unsettles a settled store.
         std::atomic<bool> m_admissionSettled {true};
         std::size_t m_expectedSources {0};
+
+        /// A source arrived after the verdict was already settled, so the next
+        /// settlement must rank the whole node from scratch rather than
+        /// re-confirm one made without that source.
+        ///
+        /// Deferred rather than acted on at arrival because a source that has
+        /// only just enumerated has had no resolver pass: its containers exist
+        /// but cannot publish, so ranking against them immediately evicts the
+        /// other source's incumbents without admitting any of the newcomers.
+        bool m_rerankOnSettle {false};
         std::set<SourceId> m_enumeratedSources;
         std::optional<TimePoint> m_settleDeadline;
 

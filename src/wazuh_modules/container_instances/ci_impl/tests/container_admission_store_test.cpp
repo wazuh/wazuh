@@ -572,7 +572,74 @@ TEST(ContainerAdmissionStoreTest, ARestartingContainerNeverEntersTheUnkeyedTally
     EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"b"})) << "so no amount of restarting can write it off";
 }
 
-// V4: a source slower than the grace must not lose the node for ever.
+// A late source brings containers the resolver has not keyed YET, and that
+// is the ordinary case: a connector enumerates before its first resolver pass.
+//
+// Re-ranking the instant it arrives therefore ranks against a `visible` that
+// still excludes everything it brought. The newcomers lose anyway -- they
+// cannot publish -- while the other source's incumbents lose the provenance
+// that was protecting their documents. Worst of both, and it is the failure the
+// barrier exists to prevent a cold start committing.
+//
+// So the arrival RE-OPENS the barrier and the ranking waits. The node is ranked
+// once it is actually in view, exactly as a cold start would rank it.
+TEST(ContainerAdmissionStoreTest, ALateSourceWithUnkeyedContainersDoesNotRankAgainstThemYet)
+{
+    auto store = MakeStore();
+    store.setExpectedSources(2);
+    store.setSyncLimit(1);
+
+    const auto start = Now();
+
+    // Only Docker is up; the grace expires and the node is ranked over what
+    // there is, which is the right call on an incomplete picture.
+    store.applySnapshot(kDocker, Snapshot({"m"}), {}, start);
+    store.applySnapshot(kDocker, Snapshot({"m"}), {}, start + ADMISSION_SETTLE_GRACE + std::chrono::seconds {1});
+    ASSERT_TRUE(AdmissionKnown(store));
+    ASSERT_EQ(store.admittedIds(), (std::set<std::string> {"m"}));
+
+    // Kubernetes lists at last, but its container has no key yet.
+    store.applySnapshot(kCri, {MakeRecord("a", 0)}, {}, start + ADMISSION_SETTLE_GRACE + std::chrono::seconds {2});
+
+    EXPECT_FALSE(AdmissionKnown(store))
+        << "the node just got bigger, so the verdict about it is withheld again rather than re-made blind";
+
+    // "a" keys. Now the whole node is in view and it is ranked as a cold start
+    // would: "a" sorts below "m".
+    store.applySnapshot(kCri, Snapshot({"a"}), {}, start + ADMISSION_SETTLE_GRACE + std::chrono::seconds {3});
+
+    EXPECT_TRUE(AdmissionKnown(store));
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"a"}))
+        << "ranking the whole node is the point; incumbency from the half-node verdict must not survive it";
+}
+
+// ...and the re-opened barrier is still bounded by the grace, so a late source
+// whose containers NEVER key cannot suspend the cap for the life of the agent.
+TEST(ContainerAdmissionStoreTest, AReopenedBarrierStillSettlesOnTheGrace)
+{
+    auto store = MakeStore();
+    store.setExpectedSources(2);
+    store.setSyncLimit(1);
+
+    const auto start = Now();
+    store.applySnapshot(kDocker, Snapshot({"m"}), {}, start);
+    store.applySnapshot(kDocker, Snapshot({"m"}), {}, start + ADMISSION_SETTLE_GRACE + std::chrono::seconds {1});
+    ASSERT_TRUE(AdmissionKnown(store));
+
+    const auto reopened = start + ADMISSION_SETTLE_GRACE + std::chrono::seconds {2};
+    store.applySnapshot(kCri, {MakeRecord("a", 0)}, {}, reopened);
+    ASSERT_FALSE(AdmissionKnown(store));
+
+    // "a" never keys. The second grace runs out and the node is decided on what
+    // there is, like the first.
+    store.applySnapshot(kCri, {MakeRecord("a", 0)}, {}, reopened + ADMISSION_SETTLE_GRACE + std::chrono::seconds {1});
+
+    EXPECT_TRUE(AdmissionKnown(store)) << "a re-opened barrier is a barrier, not a suspension";
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"m"}))
+        << "and the slot goes to the only container that can use it";
+}
+
+// A source slower than the grace must not lose the node for ever.
 //
 // The deadline is armed by the first call that carries a clock, so a Kubernetes
 // list slower than ADMISSION_SETTLE_GRACE settles admission over Docker alone.
@@ -615,7 +682,7 @@ TEST(ContainerAdmissionStoreTest, ASourceEnumeratingAfterTheGraceReopensTheRanki
     EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"a"})) << "a re-rank every pass would be churn, not a fix";
 }
 
-// V2: the leftover slot, and the fact that resolving the container that wants
+// The leftover slot, and the fact that resolving the container that wants
 // it used to make no difference.
 //
 // "b" is running and unkeyed when the limit is applied, so it takes the only

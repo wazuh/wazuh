@@ -71,9 +71,11 @@ namespace wazuh::container_instances
      * manager is told to delete one container's rows and create another's. At
      * N=10, M=50 that is one container creation in five.
      *
-     * DETERMINISTIC, FOR THE INPUTS IT IS GIVEN. Free slots fill by lowest id,
-     * so the same four arguments always yield the same answer, on any agent and
-     * in any order of arrival. Nothing on this path can be ranked by age: there
+     * DETERMINISTIC, FOR THE INPUTS IT IS GIVEN. Within each priority class
+     * below, slots fill by lowest id -- NOT across the classes, which is what
+     * decides who competes with whom in the first place. So the same six
+     * arguments always yield the same answer, on any agent and in any order of
+     * arrival. Nothing on this path can be ranked by age: there
      * is no container creation time anywhere in the record -- `startedAt` is the
      * start of the CURRENT run, it resets on restart, and it is absent entirely
      * for a stopped Kubernetes container. Lowest-id is arbitrary, but it is
@@ -85,7 +87,11 @@ namespace wazuh::container_instances
      * makes the FIRST verdict after a restart reproducible is not this function
      * but its caller: MetadataStore withholds the verdict until every source has
      * enumerated and the resolver has keyed what it can, so the cold start ranks
-     * the whole node rather than whoever happened to be keyed first.
+     * the whole node rather than whoever happened to be keyed first. That is a
+     * narrower guarantee than it sounds: the store settles on a grace as well,
+     * so a node where something never resolves is still ranked on an incomplete
+     * picture -- deliberately, because withholding for ever would mean the cap
+     * never applies at all.
      *
      * VISIBLE FIRST, THEN ANYTHING THAT EXISTS. Incumbents are held from `known`;
      * free slots are offered to `visible` before the rest of `known`. The two
@@ -219,11 +225,24 @@ namespace wazuh::container_instances
         // One priority order, applied once. Each set is ordered, so each pass
         // takes the lowest ids it has left, and a container already held is
         // re-inserted into a set that has it -- a no-op that costs a lookup.
+        // Everything that exists and has NOT been written off, so a container
+        // the caller has given up on does not beat one it has never tried
+        // merely by sorting lower. Without this pass the two shared the final
+        // tier and were ordered by id alone, which is not what "ranked last"
+        // means.
+        std::set<std::string> stillExpected;
+        std::set_difference(known.begin(),
+                            known.end(),
+                            writtenOff.begin(),
+                            writtenOff.end(),
+                            std::inserter(stillExpected, stillExpected.end()));
+
         take(publishingIncumbents); // holding a slot and using it
         take(provenIncumbents);     // has published before; a restart looks like this
         take(visible);              // keyed now, and wants a slot
         take(livingIncumbents);     // holding a slot it took for free
-        take(known);                // anything else that exists, written off included
+        take(stillExpected);        // new, unkeyed, but not given up on
+        take(known);                // written off: last, and only if a slot is going spare
 
         return result;
     }

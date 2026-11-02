@@ -513,6 +513,24 @@ namespace wazuh::container_instances::wire
                     body["admission_pending"] = true;
                 }
 
+                // A DIFFERENT claim from `admission_pending`, and it outlives
+                // it. The verdict settles on the grace whether or not every
+                // source has spoken -- withholding it for ever would mean the
+                // cap never applies at all -- so after a grace settle with one
+                // runtime still silent, `admission_pending` is gone and the
+                // reply looks authoritative about a node whose Kubernetes
+                // containers are entirely absent from it. A consumer that
+                // deletes on absence then deletes their rows and re-creates
+                // them when that source finally lists.
+                //
+                // `withheld` and `known_unkeyed` cannot carry this: they
+                // describe the RESOLVER's backlog, and a source that has never
+                // enumerated contributes no records to have a backlog about.
+                if ((response.listReply || response.delta) && !response.sourcesEnumerated)
+                {
+                    body["sources_pending"] = true;
+                }
+
                 if (response.listReply)
                 {
                     auto containers = nlohmann::json::array();

@@ -404,7 +404,7 @@ namespace
         // enumerated nothing is not, and before this the two looked alike.
         const bool firstFromThisSource = m_enumeratedSources.insert(source).second;
 
-        // V4: a source that first enumerates AFTER the grace has settled
+        // A source that first enumerates AFTER the grace has settled
         // admission was not in the picture the ranking was made from. The
         // verdict it produced is a verdict about half a node, and incumbency is
         // sticky, so without this it stands for the life of the process -- a
@@ -429,9 +429,30 @@ namespace
         // which is the other way to fix this: the deadline exists for a source
         // that never starts at all, and that is what
         // AdmissionSettlesOnTheGraceWhenSnapshotsStop pins.
+        //
+        // RE-OPEN THE BARRIER rather than empty the incumbency, and these are
+        // not the same thing. Emptying it re-ranked instantly, against whatever
+        // happened to be keyed at that instant -- and a source that has only
+        // just enumerated has had no resolver pass, so its containers are in
+        // `known` and not in `visible`. The newcomers lost anyway, while the
+        // other source's incumbents lost the provenance that was protecting
+        // their documents. Worst of both, and it is exactly what the barrier
+        // exists to stop a cold start doing.
+        //
+        // Re-opening alone is not enough either: incumbency survives it, so the
+        // half-a-node verdict would simply be re-confirmed when the barrier
+        // settles. The incumbency is dropped THEN, not now -- see
+        // m_rerankOnSettle.
         if (firstFromThisSource && m_admissionSettled && m_expectedSources != 0)
         {
-            m_admitted.clear();
+            m_admissionSettled = false;
+            m_settleDeadline.reset(); // re-armed by the call below, from this `now`
+            m_rerankOnSettle = true;
+
+            // The verdict has gone from known back to withheld, and that is a
+            // transition consumers must hear about: the reply stops carrying
+            // the admitted set, and they go back to holding what they have.
+            m_lifecycleDirty = true;
         }
 
         armOrExpireSettleDeadlineLocked(now);
@@ -694,8 +715,12 @@ namespace
         // container that is merely restarting.
         std::shared_lock lock(m_mutex);
 
-        ListSnapshot snapshot {
-            listContainersLocked(), m_admitted, unkeyedContainerIdsLocked(), m_admissionSettled, std::nullopt};
+        ListSnapshot snapshot {listContainersLocked(),
+                               m_admitted,
+                               unkeyedContainerIdsLocked(),
+                               m_admissionSettled,
+                               m_enumeratedSources.size() >= m_expectedSources,
+                               std::nullopt};
 
         if (since)
         {
@@ -968,6 +993,20 @@ namespace
             // leaves the contents unchanged while flipping every consumer from
             // "report everything" to "report nothing".
             m_lifecycleDirty = true;
+        }
+
+        // The deferred re-rank, consumed however the barrier settled -- through
+        // the condition above or through the grace in
+        // armOrExpireSettleDeadlineLocked(), which runs before this and leaves
+        // the branch above skipped.
+        //
+        // Dropping the incumbents HERE is what makes the next line rank the
+        // whole node as a cold start would, instead of re-confirming a verdict
+        // made when half of it was invisible.
+        if (m_admissionSettled && m_rerankOnSettle)
+        {
+            m_rerankOnSettle = false;
+            m_admitted.clear();
         }
 
         auto admitted =

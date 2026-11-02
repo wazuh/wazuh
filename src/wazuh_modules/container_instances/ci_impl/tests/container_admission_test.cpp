@@ -235,6 +235,23 @@ TEST(ContainerAdmissionTest, AWrittenOffIncumbentYieldsEvenThoughItPublishedBefo
 // Written off means LAST, not banned. Nothing else wants the second slot, and
 // refusing "b" there would buy nothing while costing a retract-and-recreate
 // cycle the moment its key finally arrives.
+// "Ranked last" has to mean last, not "shares the last tier and wins on id".
+//
+// W is written off: the caller has stopped expecting a key for it. N is simply
+// new and unkeyed -- nobody has given up on it. Both are in `known` and neither
+// is visible, and W sorts lower. Ordering the final tier by id alone handed the
+// slot to the one we had given up on.
+TEST(ContainerAdmissionTest, AWrittenOffContainerYieldsToOneNobodyHasGivenUpOn)
+{
+    const auto known = ids({"aaa-written-off", "zzz-new"});
+
+    EXPECT_EQ(admitContainers(known, NONE, NONE, 1, NONE, /*writtenOff=*/ids({"aaa-written-off"})),
+              ids({"zzz-new"}));
+
+    // With room for both, the written-off one still gets the spare slot.
+    EXPECT_EQ(admitContainers(known, NONE, NONE, 2, NONE, ids({"aaa-written-off"})), known);
+}
+
 TEST(ContainerAdmissionTest, AWrittenOffContainerStillTakesASlotNobodyElseWants)
 {
     const auto known = ids({"a", "b"});

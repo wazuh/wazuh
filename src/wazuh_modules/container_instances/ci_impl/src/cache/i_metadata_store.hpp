@@ -72,6 +72,22 @@ namespace wazuh::container_instances
         /// decision already produces, so no consumer needs a new branch.
         bool admissionKnown {true};
 
+        /// Whether every source the facade declared has enumerated at least
+        /// once.
+        ///
+        /// A DIFFERENT question from `admissionKnown`, and the two must not be
+        /// conflated. The verdict settles on the grace whether or not every
+        /// source has spoken -- withholding it for ever would mean the cap
+        /// never applies at all. But a reply sent while a runtime has never
+        /// enumerated does not describe the node: that runtime's containers are
+        /// absent, and `withheld`/`known_unkeyed` cannot say so because they
+        /// describe the RESOLVER's backlog, not a silent source.
+        ///
+        /// A consumer that deletes rows on absence must wait for this. Left
+        /// true when no barrier is configured, which is what every caller that
+        /// declares no source already relied on.
+        bool sourcesEnumerated {true};
+
         /// Set only when a cursor was supplied. On resync it carries the whole
         /// current set, which is `containers` -- the same vector, from the same
         /// instant, rather than a second list built a moment later.

@@ -110,6 +110,12 @@ namespace wazuh::container_instances
         /// means. See MetadataStore::m_admissionSettled.
         bool admissionKnown {true};
 
+        /// Whether every declared source has enumerated. Independent of
+        /// `admissionKnown`: the verdict settles on the grace regardless, but a
+        /// reply sent while a runtime has never listed is no basis for deleting
+        /// anything. See ListSnapshot::sourcesEnumerated.
+        bool sourcesEnumerated {true};
+
         /// Which running containers `containers` omits because the resolver has
         /// not keyed them yet. Empty means the list is the whole node.
         ///

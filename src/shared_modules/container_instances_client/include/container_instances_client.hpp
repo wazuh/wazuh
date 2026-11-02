@@ -405,9 +405,7 @@ namespace wazuh::container_instances_client
             }
 
             // After the three keys above, because it overrides two of them.
-            const auto pendingIt = parsed.find("admission_pending");
-
-            if (pendingIt != parsed.end() && pendingIt->is_boolean() && pendingIt->get<bool>())
+            if (flagIsSet(parsed, "admission_pending"))
             {
                 if (admissionPending != nullptr)
                 {
@@ -431,6 +429,29 @@ namespace wazuh::container_instances_client
                 }
             }
 
+            // A source that has never enumerated is not a resolver backlog, so
+            // neither `withheld` nor `known_unkeyed` can describe it. Without
+            // this, a reply sent after the verdict settled on its grace -- with
+            // one runtime still entirely silent -- read as a complete node and
+            // a consumer deleted that runtime's containers' rows.
+            //
+            // Deliberately NOT treated as `admission_pending`: the verdict IS
+            // settled, and withholding it would mean the cap never applies on a
+            // node one of whose sources never starts.
+
+            if (flagIsSet(parsed, "sources_pending"))
+            {
+                if (complete != nullptr)
+                {
+                    *complete = false;
+                }
+
+                if (unkeyedKnown != nullptr)
+                {
+                    *unkeyedKnown = false;
+                }
+            }
+
             for (const auto& item : *containersIt)
             {
                 auto ref = parseContainerRef(item);
@@ -441,6 +462,20 @@ namespace wazuh::container_instances_client
             }
 
             return result;
+        }
+
+        /// Is this additive boolean key present and true?
+        ///
+        /// `admission_pending` and `sources_pending` are both read on two paths
+        /// -- the out-param listContainers() and the ContainerDelta one -- and
+        /// both are emitted only when true, so absence is the common case and
+        /// means false. One reader rather than four copies of the same three
+        /// tests.
+        [[nodiscard]] static bool flagIsSet(const nlohmann::json& parsed, const char* key)
+        {
+            const auto it = parsed.find(key);
+
+            return it != parsed.end() && it->is_boolean() && it->get<bool>();
         }
 
         /// @brief Read forward from `from`, instead of fetching the whole set.
@@ -537,9 +572,7 @@ namespace wazuh::container_instances_client
             }
 
             // After the three keys above, because it overrides two of them.
-            const auto pendingIt = parsed.find("admission_pending");
-
-            if (pendingIt != parsed.end() && pendingIt->is_boolean() && pendingIt->get<bool>())
+            if (flagIsSet(parsed, "admission_pending"))
             {
                 delta.admissionPending = true;
 
@@ -549,6 +582,22 @@ namespace wazuh::container_instances_client
                 // that has not enumerated at all -- so without this a reply
                 // sent while only Docker had listed read as a complete node,
                 // and a consumer swept the rows of live Kubernetes containers.
+                delta.complete = false;
+                delta.unkeyedKnown = false;
+            }
+
+            // A source that has never enumerated is not a resolver backlog, so
+            // neither `withheld` nor `known_unkeyed` can describe it. Without
+            // this, a reply sent after the verdict settled on its grace -- with
+            // one runtime still entirely silent -- read as a complete node and
+            // a consumer deleted that runtime's containers' rows.
+            //
+            // Deliberately NOT treated as `admission_pending`: the verdict IS
+            // settled, and withholding it would mean the cap never applies on a
+            // node one of whose sources never starts.
+
+            if (flagIsSet(parsed, "sources_pending"))
+            {
                 delta.complete = false;
                 delta.unkeyedKnown = false;
             }

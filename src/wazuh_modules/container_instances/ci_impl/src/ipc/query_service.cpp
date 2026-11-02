@@ -102,6 +102,7 @@ namespace wazuh::container_instances
                 auto snapshot = m_store.listSnapshot(request.since);
                 response.admitted = std::move(snapshot.admitted);
                 response.admissionKnown = snapshot.admissionKnown;
+                response.sourcesEnumerated = snapshot.sourcesEnumerated;
                 response.unkeyedIds = std::move(snapshot.unkeyed);
 
                 if (!snapshot.delta)
