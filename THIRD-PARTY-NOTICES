@@ -526,7 +526,7 @@ cpp-httplib 0.25.0
 ==============================================================================
 License:     MIT
 Homepage:    https://github.com/yhirose/cpp-httplib
-Included in: manager, standalone
+Included in: manager
 
 ------------------------------------------------------------------------------
 [ cpp-httplib/LICENSE ]

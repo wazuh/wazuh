@@ -69,8 +69,7 @@
       "name": "cpp-httplib",
       "dependency": "cpp-httplib",
       "artefacts": [
-        "manager",
-        "standalone"
+        "manager"
       ],
       "readme_license": "MIT License",
       "dir": "cpp-httplib",
