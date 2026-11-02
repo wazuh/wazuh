@@ -1152,11 +1152,25 @@ static void test_fim_registry_update_wildcards_keeps_explicit_entry(void **state
 
 static void test_fim_registry_update_wildcards_invalid_root(void **state) {
     syscheck.registry = create_registry_array(0);
-    add_registry_pattern("HKEY_CURRENT_USER\\Software\\*");
+    // arch="both" stores one pattern per view
+    syscheck.registry_wildcards = create_registry_array(2);
+    syscheck.registry_wildcards[0].entry = strdup("HKEY_CURRENT_USER\\Software\\*");
+    syscheck.registry_wildcards[0].arch = ARCH_32BIT;
+    syscheck.registry_wildcards[1].entry = strdup("HKEY_CURRENT_USER\\Software\\*");
+    syscheck.registry_wildcards[1].arch = ARCH_64BIT;
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(6964): Registry wildcard 'HKEY_CURRENT_USER\\Software\\*' does not start with a supported root "
+                  "key. It is not monitored.");
 
     // No expectation for expand_wildcard_registers: the pattern must not be expanded
+    expect_registry_index_created();
+    fim_registry_update_wildcards();
+
+    assert_null(syscheck.registry[0].entry);
+
+    // The next scan does not warn again
     expect_registry_index_created();
     fim_registry_update_wildcards();
 

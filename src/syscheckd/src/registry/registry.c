@@ -1319,6 +1319,16 @@ static void fim_registry_update_wildcards() {
 
         // The scan would discard its keys and they would be added again on every scan
         if (fim_set_root_key(&root_key_handle, pattern->entry, &sub_key) != 0) {
+            if (*pattern->entry != '\0') {
+                mwarn(FIM_WARN_REG_WILDCARD_ROOT, pattern->entry);
+                // Emptied so the warning is logged only once, also for the other view of arch="both"
+                for (i = 0; i < count; i++) {
+                    if (i != w && strcmp(syscheck.registry_wildcards[i].entry, pattern->entry) == 0) {
+                        *syscheck.registry_wildcards[i].entry = '\0';
+                    }
+                }
+                *pattern->entry = '\0';
+            }
             continue;
         }
 
