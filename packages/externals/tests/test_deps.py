@@ -1642,7 +1642,8 @@ def test_builder_images_macos_runners():
 
 @pytest.mark.parametrize("path,value", [(("linux", "agent", "amd64"), "ghcr.io/wazuh/x:5.0.0"),
                                         (("windows", "agent"), "ghcr.io/wazuh/x@sha256:" + "a" * 64),
-                                        (("windows", "agent"), None), (("darwin", "runners"), [])])
+                                        (("windows", "agent"), None), (("darwin", "runners"), []),
+                                        (("darwin", "deployment_target"), "14")])
 def test_builder_images_format(path, value):
     images = copy.deepcopy(deps.load(deps.BUILDER_IMAGES))
     node = images
@@ -2175,7 +2176,7 @@ def test_smoke_build_macos_entries():
     _, matrix = smoke_build_matrix()
     macos = [e for e in matrix if e.get("system") == "macos"]
     assert [(e["architecture"], e["runner"], e["target"], e["platform"]) for e in macos] == [
-        ("macos-intel64", "macos-14-large", "agent", "darwin/amd64"), ("macos-arm64", "macos-14", "agent", "darwin/aarch64")]
+        ("macos-intel64", "macos-15-large", "agent", "darwin/amd64"), ("macos-arm64", "macos-15", "agent", "darwin/aarch64")]
     legs = jobs(EXTERNALS_WORKFLOW.read_text(encoding="utf-8"))["build-externals"]
     leg_runners = {leg: runner for runner, leg in re.findall(r"system: macos, .*runner: ([\w-]+), +leg: ([\w-]+),", legs)}
     assert {e["architecture"]: e["runner"] for e in macos} == leg_runners
@@ -2967,7 +2968,7 @@ def test_builder_image_cli():
     assert (result.returncode, result.stdout) == (0, images["linux"]["manager"]["amd64"] + "\n"), result.stderr
     assert re.fullmatch(r"ghcr\.io/wazuh/[a-z0-9_]+\n", result.stdout)
     result = run("builder-image", "darwin", "xcode")
-    assert (result.returncode, result.stdout) == (0, "15.4\n"), result.stderr
+    assert (result.returncode, result.stdout) == (0, "16.4\n"), result.stderr
     for path in (("darwin",), ("darwin", "runners"), ("linux", "nosuch")):
         result = run("builder-image", *path)
         assert result.returncode == 1 and result.stdout == "" and "ERROR:" in result.stderr, path

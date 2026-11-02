@@ -3,8 +3,8 @@ name: 5.X - Package - Build external dependencies
 # Builds the pool refs of src/deps.lock.mk that packages.wazuh.com/deps/pool/ does
 # not have yet, tests them and publishes them. A ref is <name>/<version>-<key>,
 # where the key hashes everything that decides its bytes (`deps.py key` prints
-# it), so a change to the inventory, a patch, the build recipe, the macOS runners or
-# Xcode gives new refs, and only those are built:
+# it), so a change to the inventory, a patch, the build recipe, the macOS runners,
+# Xcode or deployment target gives new refs, and only those are built:
 #
 #   check        the lock is the one the inventory generates; `deps.py plan` lists the
 #                entries whose ref is not published
@@ -26,7 +26,7 @@ name: 5.X - Package - Build external dependencies
 # Builder images are the ones packages/externals/builder-images.json names, with the
 # tag of the VERSION.json version; each leg records the digest it ran. They stay
 # out of the keys, so a rebuilt image does not rebuild the pool. macOS builds use
-# the Xcode pinned there, which is part of the keys.
+# the Xcode and deployment target pinned there, which are part of the keys.
 #
 # Build legs: rpm amd64/arm64 with the agent image (centos:6, glibc 2.12, whose
 # binaries run everywhere) and with the manager image (centos:7, for what the
@@ -107,8 +107,8 @@ jobs:
         include:
           - { system: rpm,     architecture: amd64,   runner: wz-linux-amd64, leg: rpm-amd64,     target: agent }
           - { system: rpm,     architecture: arm64,   runner: wz-linux-arm64, leg: rpm-arm64,     target: agent }
-          - { system: macos,   architecture: intel64, runner: macos-14-large, leg: macos-intel64, target: agent }
-          - { system: macos,   architecture: arm64,   runner: macos-14,       leg: macos-arm64,   target: agent }
+          - { system: macos,   architecture: intel64, runner: macos-15-large, leg: macos-intel64, target: agent }
+          - { system: macos,   architecture: arm64,   runner: macos-15,       leg: macos-arm64,   target: agent }
           - { system: windows, architecture: i686,    runner: wz-linux-amd64, leg: windows-i686,  target: agent }
           - { system: rpm,     architecture: amd64,   runner: wz-linux-amd64, leg: rpm-amd64,     target: manager }
           - { system: rpm,     architecture: arm64,   runner: wz-linux-arm64, leg: rpm-arm64,     target: manager }
@@ -141,6 +141,9 @@ jobs:
           xcode="$(python3 packages/externals/deps.py builder-image darwin xcode)"
           sudo xcode-select -s "/Applications/Xcode_${xcode}.app"
           xcodebuild -version
+          # The oldest macOS the pool's libraries and flatc run on; unset, they take the runner's version.
+          target="$(python3 packages/externals/deps.py builder-image darwin deployment_target)"
+          echo "MACOSX_DEPLOYMENT_TARGET=${target}" >> "$GITHUB_ENV"
 
       - name: Build externals
         timeout-minutes: 60
@@ -463,8 +466,8 @@ jobs:
           - { architecture: arm64, runner: wz-linux-arm64, target: agent,    image: pkg_rpm_agent_builder_arm64,   platform: linux/aarch64 }
           - { architecture: arm64, runner: wz-linux-arm64, target: manager,  image: pkg_rpm_manager_builder_arm64, platform: linux/aarch64 }
           - { architecture: i686,  runner: wz-linux-amd64, target: winagent, image: compile_windows_agent,         platform: windows }
-          - { architecture: macos-intel64, runner: macos-14-large, target: agent, system: macos, platform: darwin/amd64 }
-          - { architecture: macos-arm64,   runner: macos-14,       target: agent, system: macos, platform: darwin/aarch64 }
+          - { architecture: macos-intel64, runner: macos-15-large, target: agent, system: macos, platform: darwin/amd64 }
+          - { architecture: macos-arm64,   runner: macos-15,       target: agent, system: macos, platform: darwin/aarch64 }
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     name: Smoke build (${{ matrix.target }}-${{ matrix.architecture }})

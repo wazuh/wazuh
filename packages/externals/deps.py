@@ -344,7 +344,8 @@ IMAGE_RE = re.compile(r"^ghcr\.io/wazuh/[a-z0-9_]+$")
 
 
 def check_builder_images(images):
-    """Errors in builder-images.json: one image per linux target/arch and for windows, runners and Xcode for darwin."""
+    """Errors in builder-images.json: one image per linux target/arch and for windows, runners, Xcode and deployment
+    target for darwin."""
     errors = []
     expected = [("linux", t, a) for t in ("agent", "manager") for a in ("amd64", "arm64")] + [("windows", "agent")]
     for path in expected:
@@ -356,8 +357,10 @@ def check_builder_images(images):
     darwin = images.get("darwin") if isinstance(images, dict) else None
     if not (isinstance(darwin, dict) and isinstance(darwin.get("runners"), list) and darwin["runners"]
             and all(isinstance(r, str) for r in darwin["runners"]) and isinstance(darwin.get("xcode"), str)
-            and re.fullmatch(r"\d+\.\d+(\.\d+)?", darwin["xcode"])):
-        errors.append("<builder-images>: darwin needs `runners` (list) and `xcode` (a version such as 15.4)")
+            and re.fullmatch(r"\d+\.\d+(\.\d+)?", darwin["xcode"])
+            and isinstance(darwin.get("deployment_target"), str) and re.fullmatch(r"\d+\.\d+", darwin["deployment_target"])):
+        errors.append("<builder-images>: darwin needs `runners` (list), `xcode` (a version such as 16.4) and "
+                      "`deployment_target` (a macOS version such as 14.0)")
     return errors
 
 

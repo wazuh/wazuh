@@ -13,7 +13,8 @@
     "agent": "ghcr.io/wazuh/compile_windows_agent"
   },
   "darwin": {
-    "runners": ["macos-14", "macos-14-large"],
-    "xcode": "15.4"
+    "runners": ["macos-15", "macos-15-large"],
+    "xcode": "16.4",
+    "deployment_target": "14.0"
   }
 }
