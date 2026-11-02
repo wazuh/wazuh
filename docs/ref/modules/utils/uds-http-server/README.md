@@ -62,7 +62,7 @@ suppress another kind's first line):
 | `404` | No route for that path | Routes are `method + exact path` — no patterns |
 | `405` + `Allow` | Path exists, wrong method | The `Allow` header lists what the route accepts |
 | `411` | `Transfer-Encoding: chunked` | Chunked bodies are refused by design. The byte budget must know the size at headers-complete, so send `Content-Length` |
-| `413` | Declared body over a cap | The server-wide cap (by default, what the byte budget could ever admit), the route class's cap, or a per-route override. The peer is wrong; raising limits is a consumer setting |
+| `413` | Declared body over a cap | The server-wide cap (by default, what the byte budget could ever admit), the route class's cap, or a per-route override. The peer is wrong; raising limits is a consumer setting. A route may answer its own cap's `413` with its own body (`payloadTooLargeBody`); the server-wide cap always answers the JSON body |
 | `414` / `431` | URI / headers too large | Parser limits |
 | `500` | The consumer's handler threw | Check the consumer's log (lines carry the consumer's own name) |
 | `503` | Load shed | Byte budget exhausted, connection cap, per-class or per-route session cap, a dropped responder, or shutdown in progress |

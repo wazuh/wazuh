@@ -71,7 +71,12 @@ never to Control, so a probe registered without it is shed under load and an adm
 registered with `false` hits the Liveness caps. `RouteOptions` also carries per-route
 overrides — `maxBodyBytes`, `maxSessions` (enforced in addition to the class cap) and
 `responseTimeoutSec` — each `0` meaning "the class or server default"; set
-`responseTimeoutSec` on a route whose peer waits longer than the server-wide backstop. A
+`responseTimeoutSec` on a route whose peer waits longer than the server-wide backstop.
+`payloadTooLargeBody` (with `payloadTooLargeContentType`, default `text/plain`) gives the
+route its own `413` body when its body cap refuses the declared length — for peers that
+parse a documented text; empty keeps the JSON body. It cannot apply to the server-wide cap
+(`maxBodySize`, or the limit derived from the byte budget): that `413` is decided before the
+route is known and always carries the generic body. A
 Control route that does real work still sheds its own capacity module-side (bounded
 queue → 503). Routes are exact `method + path` matches (the path before `?`; carry
 identity in a header, not in the path) and must be registered before `start()`;
