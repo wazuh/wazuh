@@ -2,147 +2,121 @@
 
 ## Overview
 
-The **httpsrv** module provides an HTTP server over Unix Domain Sockets (UDS) for the Wazuh engine's internal API. Built on top of [cpp-httplib](https://github.com/yhirose/cpp-httplib), it handles route registration, request dispatching, payload size enforcement, and lifecycle management (start/stop with optional background thread). The engine runs up to two server instances, both on `UdsServer` (see below), which runs on the manager's shared HTTP-over-UDS transport: the API server (management, metrics, geo, etc.) and, when event processing is enabled, the event ingest server. The cpp-httplib `Server` is no longer used by the engine and is removed in a follow-up change.
+The **httpsrv** module is the engine's HTTP server over Unix Domain Sockets (UDS). `httpsrv::Server` serves one
+socket on the manager's shared HTTP-over-UDS transport (`src/shared_modules/uds_http_server`) and adds what the
+engine needs on top of it: transport-neutral request/response types, a bounded executor that keeps handlers off
+the I/O threads, a three-step shutdown with a deadline, a log bridge and metrics. The engine runs up to two
+instances: the API server (management, metrics, geo, content, …) and, when event processing is enabled, the
+event ingest server.
 
 ## Architecture
 
 ```
-                      Unix Domain Socket
-                    (AF_UNIX, .sock file)
-                            │
-                ┌───────────▼───────────────────────────────────────────┐
-                │            httpsrv::Server                            │
-                │                                                       │
-                │   httplib::Server (thread pool: 2–16 workers)         │
-                │                                                       │
-                │   ┌───────────────────────────────────────────────┐   │
-                │   │  Route Table                                   │   │
-                │   │                                                │   │
-                │   │  POST /events/enriched       → pushEvent        │   │
-                │   │  POST /_internal/router/*    → router handlers  │   │
-                │   │  POST /_internal/geo/db/*    → geo handlers     │   │
-                │   │  POST /metrics/*             → metrics handlers │   │
-                │   │  POST /_internal/event-dumper/* → dumper        │   │
-                │   │  GET  /status                → status handler   │   │
-                │   │  ...                                            │   │
-                │   └───────────────────────────────────────────────┘   │
-                │                                                       │
-                │   Features:                                           │
-                │   • Payload size limit (413 response)                 │
-                │   • Exception handler (500 on uncaught exceptions)    │
-                │   • Request/response logging (TRACE level)            │
-                │   • Socket permission set to 0660 after bind          │
-                └───────────────────────────────────────────────────────┘
-                            │
-                    addRoute(Method, path, handler)
-                            │
-                ┌───────────▼───────────────────────────────────────────┐
-                │         api::adapter (separate module)                 │
-                │                                                       │
-                │   httpsrv::Request/Response ←→ Protobuf domain types   │
-                │                                                       │
-                │   parseRequest<Req,Res>() → deserialize proto from JSON│
-                │   userResponse<Res>()     → serialize proto + 200 OK   │
-                │   userErrorResponse<Res>()→ serialize error + 400      │
-                │   internalErrorResponse() → serialize error + 500      │
-                └───────────────────────────────────────────────────────┘
-                            │
-                     RouteHandler = std::function<void(
-                         const httpsrv::Request&,
-                         httpsrv::Response&)>
-                            │
-                ┌───────────▼───────────────────────────────────────────┐
-                │           API Sub-modules                              │
-                │                                                       │
-                │   api/metrics    api/geo      api/router               │
-                │   api/tester     api/dumper   api/rawevtindexer         │
-                │   api/cmcrud     api/ioccrud  api/status                │
-                │   api/event (event server)                              │
-                └───────────────────────────────────────────────────────┘
+            engine-api-http.sock                        engine-ingest-http.sock
+                    │                                              │
+     ┌──────────────▼───────────────┐              ┌───────────────▼──────────────┐
+     │ uds_http_server (I/O threads)│              │ uds_http_server (I/O threads)│
+     │ parse, route, 404/405/411/   │              │ parse, route, 413 at the cap,│
+     │ 413/431/503 before handlers  │              │ connection cap, byte budget  │
+     └──────────────┬───────────────┘              └───────────────┬──────────────┘
+                    │                                              │
+     ┌──────────────▼───────────────┐              ┌───────────────▼──────────────┐
+     │ httpsrv::Server "API services"│             │ httpsrv::Server "Event ingest"│
+     │ inline: GET /status,         │              │ BoundedExecutor max(2,nproc/4)│
+     │         POST /metrics/*      │              │ queue = max connections       │
+     │ BoundedExecutor 4, queue 64  │              └───────────────┬──────────────┘
+     └──────────────┬───────────────┘                              │
+                    │ RouteHandler(const Request&, Response&)       │
+     ┌──────────────▼───────────────┐              ┌───────────────▼──────────────┐
+     │ api::adapter + api/<module>  │              │ api::event::pushEvent        │
+     │ (protobuf ↔ JSON)            │              │ (NDJSON batch → router)      │
+     └──────────────────────────────┘              └──────────────────────────────┘
 ```
 
 ## Key Concepts
 
-### Interface (`IServer<ServerImpl>`)
+### Neutral types (`interface/httpsrv/types.hpp`)
 
-CRTP interface in `interface/httpsrv/iserver.hpp`:
-
-| Method | Description |
-|--------|-------------|
-| `start(socketPath, useThread)` | Bind to UDS and start listening. If `useThread=true`, runs in a background thread |
-| `stop()` | Stop the server, join thread, remove socket file |
-| `addRoute<Request, Response>(method, route, handler)` | Register an HTTP handler for a method+path combination (forwards to the implementation's `addRoute`) |
-| `isRunning()` | Check if the server is currently listening |
+- `Method` — `GET`, `POST`, `PUT`, `DELETE` (and `ERROR_METHOD`).
+- `Request` — method, raw target (query string included), lower-cased headers with `header()` and
+  `headerCount()` (2 means "more than once"), and a zero-copy `body` view kept alive by `owner`.
+  `Request::fromOwned()` builds one that owns its body (tests and tools).
+- `Response` — `status`, `body`, `contentType`, set together with `setContent()`.
+- `RouteHandler = std::function<void(const Request&, Response&)>` — synchronous; `api::adapter` re-exports it.
+- `RouteOptions` — route class (`Data`, `Control`, `Liveness`), `maxBodyBytes` (0 = the class default,
+  `UNLIMITED_BODY` = none), `runInline`, and an optional `payloadTooLargeBody`/`payloadTooLargeContentType`
+  that replaces the transport's JSON `413` for that route's cap.
 
 ### Route registrar (`IRouteRegistrar`)
 
 `interface/httpsrv/irouteregistrar.hpp` holds the one call an API module needs from a server:
 `addRoute(method, path, RouteHandler, RouteOptions = {})`. Every `api::<module>::handlers::registerHandlers()`
-takes a `std::shared_ptr<IRouteRegistrar>`, so the modules depend on neither server class. Both `Server` and
-`UdsServer` implement it; `Server` ignores `RouteOptions` (it has only its server-wide payload limit).
+takes a `std::shared_ptr<IRouteRegistrar>`, so the modules do not depend on the server class. `Server`
+implements it; the API modules register through `ApiRouteRegistrar` (below).
 
-### HTTP Methods
+### Server (`include/httpsrv/server.hpp`)
 
-```cpp
-enum class Method { GET, POST, PUT, DELETE, ERROR_METHOD };
-```
+`httpsrv::Server` owns one transport (linked PRIVATE: no transport type appears in an httpsrv header) and one
+`BoundedExecutor`.
 
-Utility functions `methodToStr()` and `strToMethod()` convert between enum and string. `addRoute()` throws
-`std::runtime_error` for `ERROR_METHOD`.
+- **I/O pool**: `ioThreads` sizes the transport pool independently of the handler executor.
+  The event ingest server fixes it at two threads; zero keeps the transport default of one per available CPU.
+- **Executor** (`BoundedExecutor`): except for inline routes, the transport's I/O threads never run a handler.
+  Each admitted request becomes a job of a fixed pool with a bounded queue (`executorThreads`, `executorQueue`).
+- **Inline routes** (`RouteOptions::runInline`): the handler runs on the transport's I/O thread instead of the
+  executor, so the route answers even when every worker is busy. Only for handlers that never block; the API's
+  `GET /status` and `POST /metrics/*` use it.
+- **Answers the server writes itself**: executor queue full ⇒ `503 {"error":"Server busy","code":503}`;
+  stopping ⇒ `503 {"error":"Server shutting down","code":503}`; handler threw ⇒ `500` `Internal server error`
+  (`text/plain`). The transport adds its own `404/405/411/413/414/431/503/504` (see
+  `docs/ref/modules/utils/uds-http-server/`).
+- **Shutdown** (`shutdown()` for one server, `shutdownAll()` for several, default deadline 10 s). The
+  deadline is the grace admitted requests get, counted from the call: steps 1 and 2 run within it (step 1
+  can block while the transport answers requests not yet dispatched) and the executor keeps working
+  meanwhile; there is no second window after them. Steps 4 and 5 come after the deadline, so a whole
+  shutdown can take longer than it:
+  1. `stopAccepting()` on every server — no new request reaches a handler, replies still go out;
+  2. `closeAdmission()` on every executor — nothing new is queued, queued requests keep running;
+  3. `drainUntil(deadline)` in parallel — at the deadline, unstarted requests get the shutdown `503`
+     and running ones are reported as abandoned;
+  4. `stop()` on every transport;
+  5. `waitForHandlers()` on every server — a handler still running past the deadline is waited for (with a WARN
+     naming how many), never left running; its late reply is dropped.
+  `shutdown()` and `shutdownAll()` return only after step 5, so the caller can destroy what the handlers use (the
+  engine shuts protobuf down right after) without a handler running into it. `shutdownAll()` logs one
+  `HTTP servers stopped: …` line with the counts.
+- **Stats** (`stats()`): in-flight bytes/requests and sessions from the transport, queue depth, running
+  handlers, `503`/`500` counters by cause and the transport's `413`s.
+- **Metrics** (`registerMetrics(weakServer, instance)`): publishes `stats()` as eleven fastmetrics pull metrics
+  named `server.<instance>.<suffix>` (`metric_names.hpp`: `server_metric()` and the `SERVER_*` suffixes). They
+  hold a weak reference and read 0 once the server is gone. fastmetrics keeps the first registration of a
+  name, so register each instance name once per process. The ingest server registers `"ingest"`, the API server
+  `"api"`; the operator catalog is in the engine book's [Metrics](../../../../docs/ref/modules/engine/README.md#metrics).
+- `ServerOptions`: name and log tag, `maxConnections`, `maxInFlightBytes` (0 = transport default), `byteBudget`
+  (false = no in-flight byte budget, and so no parser limit derived from it), `maxBodySize`, `ioThreads` (0 = one
+  per available CPU), executor size, `expectContinue` (answer `Expect: 100-continue` once admitted), `detailedLogging` (one TRACE line per request,
+  no bodies), and `budgetOptionHint` / `connectionCapOptionHint` (the settings named, as "consider raising",
+  in the transport's budget and connection-limit `503` log lines; ingest sets
+  `analysisd.server_enriched_events_max_inflight_bytes` and `…_max_connections`). Timeouts and the `0660`
+  socket mode are the transport's.
 
-### Server Implementation
+### API server (`include/httpsrv/apiServer.hpp`)
 
-`Server` wraps `httplib::Server` and adds:
-
-| Feature | Implementation |
-|---------|----------------|
-| **Unix Domain Socket** | `set_address_family(AF_UNIX)`, binds to file path |
-| **Thread pool** | `CPPHTTPLIB_THREAD_POOL_COUNT` (unless predefined) = `cpp_get_nproc() - 1` clamped to `[2, 16]` (`include/httpsrv/server.hpp`) |
-| **Payload limit** | `set_payload_max_length()` — `413` with `Payload too large. Max allowed: <n> bytes (<n/1024> KiB).` (or `Payload too large.` when unlimited); a 413 body set by a handler is kept. httplib's separate 8 KiB cap on `application/x-www-form-urlencoded` bodies is lifted (`CPPHTTPLIB_FORM_URL_ENCODED_PAYLOAD_MAX_LENGTH` in `server.hpp`), so the content type never changes the limit |
-| **Body without a length** | A request with neither `Content-Length` nor `Transfer-Encoding` has an empty body (RFC 9112 §6.3): a pre-routing hook declares `Content-Length: 0`, so it reaches its handler at once instead of httplib reading until the peer closes (a client waiting for its answer used to get a bare `400` after the 5 s read timeout). Any other `400` httplib answers before a handler gets the body `Bad request: the request could not be read.` |
-| **404 / 405** | `addRoute()` records each literal path's methods. A `404` httplib answers for an unmatched request gets the body `Not found: no such route.`, or, when the path is registered under other methods only, becomes `405` with an `Allow` header and `Method not allowed. Allowed: <methods>.` (`HEAD` is listed with `GET`, which httplib also uses to answer it) A `404` set by a route's own handler is left as it is |
-| **One request per connection** | `set_keep_alive_max_count(1)`: every answer carries `Connection: close` (no `Keep-Alive`) and the connection is closed after it. httplib reads each request through a fresh stream, so a pipelined second request read together with the first was discarded unanswered and the connection hung for the 5 s keep-alive timeout; now the client sees the close at once and must send it on a new connection. In-tree clients do not pipeline: remoted's ingest client already sends `Connection: close`, and the framework's `httpx` client and the vulnerability scanner's curl client open a new connection after a close |
-| **Exception safety** | `set_exception_handler()` logs the exception at ERROR and answers `500` with `Internal server error` |
-| **Logging** | Detailed mode: TRACE before the handler (method, path, body) and after it (request body truncated to 1024 chars, response status and body); minimal mode: one TRACE line per request |
-| **Socket path** | `start()` throws if the path is empty, the server is running or the parent directory is missing; an existing socket file is removed first |
-| **Socket permissions** | `chmod(0660)` after bind (a failure is only a WARNING) |
-| **Threaded start** | Polls `is_running()` for up to 10 s; throws if bind/listen fails in that time (a slow start alone does not throw) |
-| **Clean shutdown** | `stop()` is noexcept and a no-op when not running; otherwise stops, joins the thread and removes the socket file. The destructor calls it |
-
-### Constructor Parameters
-
-```cpp
-Server(const std::string& id, size_t payloadMaxBytes = 0, bool enableDetailedLogging = true);
-```
-
-| Parameter | Description |
-|-----------|-------------|
-| `id` | String identifier for log messages and the server thread name (e.g., `"API services"`) |
-| `payloadMaxBytes` | Maximum request body size in bytes. `0` = unlimited (`getPayloadMaxBytes()` returns it) |
-| `enableDetailedLogging` | If `true`, logs full request method/path/body and response status. If `false`, logs only that a request was received |
-
-### Route Handler Signature
-
-Handlers on both servers use the transport-neutral types of `interface/httpsrv/types.hpp`:
-
-```cpp
-using RouteHandler = std::function<void(const httpsrv::Request&, httpsrv::Response&)>;
-```
-
-`Server` bridges each call: it builds a `Request` from the cpp-httplib request (the target with its query
-string, header names lower-cased and repeated names recorded, the body viewed in place, since the cpp-httplib
-request outlives the call) and copies the handler's `Response` status, body and content type back. The
-`api::adapter` module (separate from httpsrv) re-exports the type as `adapter::RouteHandler` and provides
-protobuf serialization/deserialization helpers.
+`makeApiServer()` builds the API instance: 4 workers, queue 64, no byte budget (no API route charges it, so
+the body is bounded only by the route caps), `100 Continue`, detailed TRACE, metrics `"api"`.
+`ApiRouteRegistrar` is the `IRouteRegistrar` the API modules register on: a Control route without its own cap
+gets `analysisd.server_api_payload_max_bytes` (0 = unlimited), a Liveness route 4 KiB
+(`API_LIVENESS_BODY_CAP`), each with the documented `413` text from `payloadTooLargeText()`
+(`Payload too large. Max allowed: <n> bytes (<n/1024> KiB).`).
 
 ## Server Instances
 
 The engine creates up to two server instances in `main.cpp`:
 
-| Instance | ID | Socket key | Payload Limit | Logging | Purpose |
-|----------|-----|--------|---------------|---------|---------|
-| `apiServer` (`httpsrv::UdsServer`) | `"API services"` | `conf::key::SERVER_API_SOCKET` (`engine-api-http.sock`) | `analysisd.server_api_payload_max_bytes` per route, `0` unlimited (a negative value is logged and treated as `0`); `GET /status` and `POST /metrics/*` 4 KiB; no byte budget | Detailed | Management API (routes, metrics, geo, content, etc.), built by `makeApiServer()`; routes registered through `ApiRouteRegistrar` |
-| `engineRemoteServer` (`httpsrv::UdsServer`) | `"Event ingest"` | `conf::key::SERVER_ENRICHED_EVENTS_SOCKET` (`engine-ingest-http.sock`) | `analysisd.server_enriched_events_max_body_bytes` (64 MiB), plus a connection cap and an in-flight byte budget | Minimal | Event ingestion (`/events/enriched`), built by `api::event::makeIngestServer()`; created only when `analysisd.server_enable_event_processing` is true |
+| Instance | Name | Socket key | Body limit | Logging | Purpose |
+|----------|------|------------|------------|---------|---------|
+| `apiServer` | `"API services"` | `conf::key::SERVER_API_SOCKET` (`engine-api-http.sock`) | `analysisd.server_api_payload_max_bytes` per route, `0` unlimited (a negative value is logged and treated as `0`); `GET /status` and `POST /metrics/*` 4 KiB; no byte budget | Detailed | Management API, built by `makeApiServer()`; routes registered through `ApiRouteRegistrar` |
+| `engineRemoteServer` | `"Event ingest"` | `conf::key::SERVER_ENRICHED_EVENTS_SOCKET` (`engine-ingest-http.sock`) | `analysisd.server_enriched_events_max_body_bytes` (64 MiB), plus a connection cap and an in-flight byte budget | Minimal | Event ingestion (`/events/enriched`), built by `api::event::makeIngestServer()`; created only when `analysisd.server_enable_event_processing` is true |
 
 ## API Route Registration
 
@@ -164,78 +138,17 @@ and [private](../../../../docs/ref/modules/engine/private-api-reference.md) API 
 | `api::status` | `GET /status` | API (Liveness, inline) |
 | `api::event` | `POST /events/enriched` | Event |
 
-## UdsServer (shared `uds_http_server` transport)
-
-`httpsrv::UdsServer` serves a socket on the manager's shared HTTP-over-UDS transport
-(`src/shared_modules/uds_http_server`, linked PRIVATE: no transport type appears in an httpsrv
-header). Both engine servers run on it; the cpp-httplib `httpsrv::Server` remains only until its removal.
-
-- **Neutral types** (`interface/httpsrv/types.hpp`): `Request` (method, raw target, lower-cased
-  headers, `header()`, `headerCount()` — 2 means "more than once" — and a zero-copy `body` view
-  kept alive by `owner`), `Response` (status, body, content type) and the synchronous
-  `RouteHandler = void(const Request&, Response&)`. `Request::fromOwned()` builds one outside a
-  transport (tests).
-- **I/O pool**: `ioThreads` sizes the transport pool independently of the handler executor.
-  The event ingest server fixes it at two threads; zero keeps the transport default of one per available CPU.
-- **Executor** (`BoundedExecutor`): except for inline routes (below), the transport's I/O threads never run a handler. Each admitted
-  request becomes a job of a fixed pool with a bounded queue (`executorThreads`, `executorQueue`).
-- **Answers the server writes itself**: executor queue full ⇒ `503 {"error":"Server busy","code":503}`;
-  stopping ⇒ `503 {"error":"Server shutting down","code":503}`; handler threw ⇒ `500` `Internal server error`
-  (`text/plain`). The transport adds its own `404/405/411/413/431/503/504` (see
-  `docs/ref/modules/utils/uds-http-server/`).
-- **Shutdown** (`shutdown()` for one server, `shutdownAll()` for several, default deadline 10 s). The
-  deadline is the grace admitted requests get, counted from the call: steps 1 and 2 run within it (step 1
-  can block while the transport answers requests not yet dispatched) and the executor keeps working
-  meanwhile; there is no second window after them. Steps 4 and 5 come after the deadline, so a whole
-  shutdown can take longer than it:
-  1. `stopAccepting()` on every server — no new request reaches a handler, replies still go out;
-  2. `closeAdmission()` on every executor — nothing new is queued, queued requests keep running;
-  3. `drainUntil(deadline)` in parallel — at the deadline, unstarted requests get the shutdown `503`
-     and running ones are reported as abandoned;
-  4. `stop()` on every transport;
-  5. `waitForHandlers()` on every server — a handler still running past the deadline is waited
-     for (with a WARN naming how many), never left running; its late reply is dropped.
-  `shutdown()` and `shutdownAll()` return only after step 5, so the caller can destroy what the
-  handlers use (the engine shuts protobuf down right after) without a handler running into it.
-- **Stats** (`stats()`): in-flight bytes/requests and sessions from the transport, queue depth,
-  running handlers, `503`/`500` counters by cause and the transport's `413`s.
-- **API server** (`apiServer.hpp`): `makeApiServer()` builds the API instance (4 workers, queue 64, no byte
-  budget, `100 Continue`, metrics `"api"`); `ApiRouteRegistrar` is the `IRouteRegistrar` the API modules
-  register on: a Control route without its own cap gets `analysisd.server_api_payload_max_bytes` (0 =
-  unlimited), a Liveness route 4 KiB (`API_LIVENESS_BODY_CAP`), each with the documented `413` text from
-  `payloadTooLargeText()`.
-- **Metrics** (`registerMetrics(weakServer, instance)`): publishes `stats()` as eleven fastmetrics pull
-  metrics named `server.<instance>.<suffix>` (`metric_names.hpp`: `server_metric()` and the
-  `SERVER_*` suffixes). They hold a weak reference and read 0 once the server is gone. fastmetrics keeps
-  the first registration of a name, so register each instance name once per process. The ingest
-  server registers `"ingest"`, the API server `"api"`; the operator catalog is in the engine book's
-  [Metrics](../../../../docs/ref/modules/engine/README.md#metrics).
-- **Inline routes** (`RouteOptions::runInline`): the handler runs on the transport's I/O thread instead of
-  the executor, so the route answers even when every worker is busy. Only for handlers that never block;
-  the API's `GET /status` and `POST /metrics/*` use it.
-- **Route body caps** (`RouteOptions`): `maxBodyBytes` (0 = the class default, `UNLIMITED_BODY` = none) and
-  an optional `payloadTooLargeBody`/`payloadTooLargeContentType` that replaces the transport's JSON `413`
-  for that route's cap.
-- `Options`: name and log tag, `maxConnections`, `maxInFlightBytes` (0 = transport default),
-  `byteBudget` (false = no in-flight byte budget, and so no parser limit derived from it), `maxBodySize`,
-  `ioThreads` (0 = one per available CPU), executor size, `expectContinue` (answer `Expect: 100-continue`
-  once admitted),
-  `detailedLogging` (one TRACE line per request, no bodies), and `budgetOptionHint` / `connectionCapOptionHint`
-  (the settings named, as "consider raising", in the transport's budget and connection-limit `503` log lines; the
-  ingest server sets `analysisd.server_enriched_events_max_inflight_bytes` and `…_max_connections`).
-  Timeouts and the `0660` socket mode are the transport's.
-
 ## Dependencies
 
 | Dependency | CMake Target | Role |
 |------------|-------------|------|
 | `base` | `base` (via `httpsrv::ihttpsrv` and directly) | Logging, process utilities, `cpp_get_nproc()` |
-| `httplib` | header-only (`httplib.h`), reached through the `eMessages` link | HTTP server implementation |
-| `eMessages` | `eMessages` (public) | Protobuf definitions (transitive) |
-| `uds_http_server` | `wazuh_uds_http_server` (**private**, registered by an `if(NOT TARGET)` guard) | Transport of `UdsServer` |
+| `eMessages` | `eMessages` (public) | Protobuf definitions (transitive, for the API modules) |
+| `uds_http_server` | `wazuh_uds_http_server` (**private**, registered by an `if(NOT TARGET)` guard; the instrumented `wazuh_uds_http_server_tsan` under `ENGINE_ENABLE_TSAN`) | Transport |
 | `fastmetrics` | `fastmetrics::fastmetrics` (**private**) | `registerMetrics()` |
 
-`api::adapter` links `httpsrv`; the engine executable links it directly (`src/engine/CMakeLists.txt`).
+`api::adapter` links only the interface target `httpsrv::ihttpsrv`; `api::event` and the engine executable link
+`httpsrv` (`src/engine/CMakeLists.txt`).
 
 ## Configuration
 
@@ -267,9 +180,8 @@ api::router::handlers::registerHandlers(orchestrator, cmStore, apiRoutes);
 // 3. Start the API server
 apiServer->start(confManager.get<std::string>(conf::key::SERVER_API_SOCKET));
 
-// 4. Only when analysisd.server_enable_event_processing is true: the event ingest server on the
-//    shared transport (route /events/enriched, its executor and its server.ingest.* metrics),
-//    and its exit hook
+// 4. Only when analysisd.server_enable_event_processing is true: the event ingest server
+//    (route /events/enriched, its executor and its server.ingest.* metrics), and its exit hook
 engineRemoteServer = api::event::makeIngestServer(orchestrator, dumper, agentMetadataCache, ingestLimits);
 exitHandler.add([engineRemoteServer]() { if (engineRemoteServer->isRunning()) engineRemoteServer->shutdown(); });
 
@@ -284,41 +196,34 @@ hook runs.
 
 ## Thread Safety
 
-- Register routes (`addRoute`) **before** `start()`, as `main.cpp` does. Adding a route to a running server does not throw (`AddRouteStarted`), but `httplib::Server` does not synchronize its handler tables with in-flight dispatch.
-- Registering the same method and path twice does not throw, and the **first** handler keeps serving (`ServeIgnoredOverride`).
-- Request handling: `httplib` dispatches requests across its thread pool (2–16 workers); handlers run concurrently and must be thread-safe themselves.
-- `stop()` is noexcept and safe to call from any thread. It signals the server, joins the background thread, and cleans up the socket file.
+- Register every route before `start()`: the transport's route table is immutable once started, and a later
+  `addRoute` throws `std::logic_error`.
+- Handlers run concurrently on the executor's workers (inline ones on the transport's I/O threads) and must be
+  thread-safe themselves; a response is sent exactly once.
+- `shutdown()`, `shutdownAll()` and the destructor are safe from the thread that owns the server; `stats()` can
+  be read from any thread at any time (the metrics do).
 
 ## File Structure
 
 ```
 httpsrv/
-├── CMakeLists.txt                                   # Build: ihttpsrv (INTERFACE), httpsrv (STATIC)
+├── CMakeLists.txt                     # Build: ihttpsrv (INTERFACE), httpsrv (STATIC), httpsrv_utest
 ├── interface/httpsrv/
-│   ├── iserver.hpp                                  # IServer<> CRTP interface (start, stop, addRoute, isRunning)
-│   └── types.hpp                                    # Method, Request/Response, RouteHandler, RouteOptions
+│   ├── types.hpp                      # Method, Request/Response, RouteHandler, RouteOptions, UNLIMITED_BODY
+│   └── irouteregistrar.hpp            # IRouteRegistrar
 ├── include/httpsrv/
-│   ├── server.hpp                                   # Server class declaration (httplib wrapper)
-│   ├── boundedExecutor.hpp                          # Fixed worker pool with a bounded queue
-│   ├── udsServer.hpp                                # UdsServer, shutdownAll(), registerMetrics()
-│   └── apiServer.hpp                                # makeApiServer(), ApiRouteRegistrar, payloadTooLargeText()
+│   ├── server.hpp                     # Server, ServerOptions, ServerStats, shutdownAll(), registerMetrics()
+│   ├── apiServer.hpp                  # makeApiServer(), ApiRouteRegistrar, payloadTooLargeText()
+│   └── boundedExecutor.hpp            # Fixed worker pool with a bounded queue
 ├── src/
-│   ├── server.cpp                                   # Server implementation (bind, listen, route dispatch, logging)
-│   ├── boundedExecutor.cpp
-│   ├── udsServer.cpp
-│   └── apiServer.cpp
-└── test/src/
-    ├── generic_request.proto                        # Test protobuf definition
-    ├── generic_request.pb.h                         # Generated protobuf header
-    ├── generic_request.pb.cc                        # Generated protobuf source
-    ├── unit/
-    │   ├── server_test.cpp                          # Unit tests (create, start/stop, socket paths, addRoute)
-    │   ├── boundedExecutor_test.cpp                 # Queue bound, admission, drain deadline, join
-    │   ├── udsServer_test.cpp                       # UdsServer over a real socket
-    │   ├── udsServerMetrics_test.cpp                # registerMetrics(): names, values, server gone
-    │   └── apiServer_test.cpp                       # API limits and documented 413 text, server.api.* metrics
-    └── component/
-        └── server_test.cpp                          # Component tests over a real UDS client (routes, payload limits)
+│   ├── server.cpp
+│   ├── apiServer.cpp
+│   └── boundedExecutor.cpp
+└── test/src/unit/
+    ├── server_test.cpp                # Server over a real socket
+    ├── serverMetrics_test.cpp         # registerMetrics(): names, values, server gone
+    ├── apiServer_test.cpp             # API limits and documented 413 text, server.api.* metrics
+    └── boundedExecutor_test.cpp       # Queue bound, admission, drain deadline, join
 ```
 
 ## Testing
@@ -327,38 +232,18 @@ httpsrv/
 
 | Test | Verifies |
 |------|----------|
-| `Create` | Server construction succeeds |
-| `StartEmptySocketPath` | Empty path throws `std::runtime_error` |
-| `StartInvalidSocketPath` | Non-existent parent directory throws |
-| `StartStop` | Normal start/stop lifecycle |
-| `StartStopCurrentThread` | Blocking start mode (no background thread) |
-| `StopNotStarted` | `stop()` on a server never started |
-| `StartAlreadyStarted` | A second `start()` throws |
-| `AddRoute`, `AddOverrideRoute` | Route registration, including the same route twice |
-| `IsRunning` | `isRunning()` before and after start |
 | `BoundedExecutorTest.*` | Every job runs once; full queue and closed admission refuse; the drain runs queued jobs, rejects the unstarted ones at the deadline and reports running ones; `join()` and the destructor wait for a job that outlived the deadline, and `join()` can be called twice |
-| `UdsServerTest.*` | Neutral request/response round trip; a repeated header counted as 2; executor full ⇒ `503` busy; handler throw ⇒ `500` text; a running reply delivered within the deadline; unstarted requests ⇒ shutdown `503`; `shutdownAll()` stops every server; socket mode `0660`; a path that is not a socket refused (and kept); `expectContinue` reaches the wire; an inline route answers while the executor is full, and a throw there is a `500`; without a byte budget the parser has no limit; the connection-limit and budget `503` log lines name the settings given as `connectionCapOptionHint` / `budgetOptionHint` |
-| `UdsServerOutlivingHandlerTest.*` | Parameterized over `shutdown()` and `shutdownAll()`: each returns only after a handler that outlived the deadline (and the transport's 2 s reply drain) ended |
+| `ServerTest.*` | Neutral request/response round trip; a repeated header counted as 2; executor full ⇒ `503` busy; handler throw ⇒ `500` text; a running reply delivered within the deadline; unstarted requests ⇒ shutdown `503`; `shutdownAll()` stops every server; socket mode `0660`; a path that is not a socket refused (and kept); `expectContinue` reaches the wire; an inline route answers while the executor is full, and a throw there is a `500`; without a byte budget the parser has no limit; registering through `IRouteRegistrar`; the connection-limit `503` counted as a connection shed; the connection-limit and budget `503` log lines name the settings given as `connectionCapOptionHint` / `budgetOptionHint` |
+| `ServerOutlivingHandlerTest.*` | Parameterized over `shutdown()` and `shutdownAll()`: each returns only after a handler that outlived the deadline (and the transport's 2 s reply drain) ended |
 | `ApiServerTest.*` | The documented `413` text (`payloadTooLargeText()`), a Control route over the limit refused before its body, `0` meaning unlimited, Liveness routes capped at 4 KiB, the eleven `server.api.*` metrics |
-| `UdsServerMetricsTest.*` | The eleven `server.<instance>.*` names registered; the values follow `stats()` (running, queue depth, executor-full `503`, `413`); every metric reads 0 once the server is destroyed |
+| `ServerMetricsTest.*` | The eleven `server.<instance>.*` names registered; the values follow `stats()` (running, queue depth, executor-full `503`, `413`); every metric reads 0 once the server is destroyed |
 
-### Component Tests (`httpsrv_ctest`)
-
-| Test | Verifies |
-|------|----------|
-| `ServerStart` | Server starts and listens on UDS |
-| `ServerStartTwice` | Double start throws |
-| `ServerStop` | Clean shutdown |
-| `RouteTest.*` (GET/POST/PUT/DELETE) | Adding routes before/after start and twice, serving, not serving when stopped, the ignored override, `500` on an uncaught handler exception |
-| `BodyRouteTest.*` | Payload at the limit accepted, over the limit `413`, unlimited accepts a large body (also form-urlencoded), a handler's own `413` body preserved |
-| `NoContentLengthTest.*` (POST/PUT/DELETE), `ServerTest.BodyWithExplicitLengthIsStillRead` | A request without `Content-Length` reaches its handler at once with an empty body; an explicit length is still read |
-| `ServerTest.WrongMethodOnExistingRouteIs405WithAllow`, `WrongMethodOnGetRouteAllowsHead`, `UnknownRouteIs404WithReason`, `HandlerOwn404IsKept` | `405` with `Allow` (`HEAD` beside `GET`), `404` with a reason, a handler's own `404` kept |
-| `ServerTest.AnswerClosesTheConnection`, `PipelinedRequestIsNotLeftHanging` | Every answer carries `Connection: close`; sequential requests on one client still work; a pipelined pair gets the first answer and an immediate close instead of a 5 s hang |
+The API's routes end to end — every handler on the real socket — are covered by the engine integration tests
+(`src/engine/test/integration_tests`, `engine-it`).
 
 Build and run:
 
 ```bash
 make -C src -j TARGET=manager ENGINE_TEST=y      # from the repository root; ENGINE_TEST sticks in the cache
 src/build/engine/source/httpsrv/httpsrv_utest
-src/build/engine/source/httpsrv/httpsrv_ctest
 ```
