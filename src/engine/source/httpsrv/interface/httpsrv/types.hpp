@@ -130,7 +130,9 @@ struct Request
         return request;
     }
 
-private:
+    /**
+     * @brief ASCII lower-casing, the form header names are stored in.
+     */
     static std::string lowerCase(std::string_view text)
     {
         std::string lowered {text};

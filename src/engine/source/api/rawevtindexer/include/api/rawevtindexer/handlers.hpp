@@ -4,6 +4,7 @@
 
 #include <api/adapter/adapter.hpp>
 #include <base/baseTypes.hpp>
+#include <httpsrv/irouteregistrar.hpp>
 
 #include <rawevtindexer/iraweventindexer.hpp>
 
@@ -12,7 +13,7 @@ namespace api::rawevtindexer::handlers
 adapter::RouteHandler getRawEventIndexerStatus(const std::shared_ptr<::raweventindexer::IRawEventIndexer>& rawIndexer);
 
 inline void registerHandlers(const std::shared_ptr<::raweventindexer::IRawEventIndexer>& rawIndexer,
-                             const std::shared_ptr<httpsrv::Server>& server)
+                             const std::shared_ptr<httpsrv::IRouteRegistrar>& server)
 {
     server->addRoute(httpsrv::Method::POST, "/_internal/raweventindexer/status", getRawEventIndexerStatus(rawIndexer));
 }

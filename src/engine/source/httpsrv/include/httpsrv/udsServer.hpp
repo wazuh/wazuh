@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <httpsrv/irouteregistrar.hpp>
 #include <httpsrv/types.hpp>
 
 namespace httpsrv
@@ -82,11 +83,11 @@ struct ShutdownReport
  *
  * Routes are registered before start(). The object is one-shot: start() once, stop once.
  */
-class UdsServer
+class UdsServer : public IRouteRegistrar
 {
 public:
     explicit UdsServer(UdsServerOptions options);
-    ~UdsServer();
+    ~UdsServer() override;
 
     UdsServer(const UdsServer&) = delete;
     UdsServer& operator=(const UdsServer&) = delete;
@@ -94,7 +95,7 @@ public:
     /**
      * @brief Registers a route. Must be called before start().
      */
-    void addRoute(Method method, const std::string& path, RouteHandler handler, RouteOptions options = {});
+    void addRoute(Method method, const std::string& path, RouteHandler handler, RouteOptions options = {}) override;
 
     /**
      * @brief Binds the socket (mode 0660) and starts serving. Throws on failure.

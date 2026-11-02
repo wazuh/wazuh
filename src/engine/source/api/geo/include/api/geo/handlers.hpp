@@ -4,6 +4,7 @@
 
 #include <api/adapter/adapter.hpp>
 #include <geo/imanager.hpp>
+#include <httpsrv/irouteregistrar.hpp>
 
 namespace api::geo::handlers
 {
@@ -12,7 +13,7 @@ adapter::RouteHandler getDb(const std::shared_ptr<::geo::IManager>& geoManager);
 adapter::RouteHandler listDb(const std::shared_ptr<::geo::IManager>& geoManager);
 
 inline void registerHandlers(const std::shared_ptr<::geo::IManager>& geoManager,
-                             const std::shared_ptr<httpsrv::Server>& server)
+                             const std::shared_ptr<httpsrv::IRouteRegistrar>& server)
 {
     server->addRoute(httpsrv::Method::POST, "/_internal/geo/db/get", getDb(geoManager));
     server->addRoute(httpsrv::Method::POST, "/_internal/geo/db/list", listDb(geoManager));

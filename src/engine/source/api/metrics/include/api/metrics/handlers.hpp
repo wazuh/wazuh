@@ -4,6 +4,7 @@
 
 #include <api/adapter/adapter.hpp>
 #include <fastmetrics/iManager.hpp>
+#include <httpsrv/irouteregistrar.hpp>
 
 #include <string>
 
@@ -48,7 +49,7 @@ adapter::RouteHandler dumpMetrics(const std::shared_ptr<fastmetrics::IManager>& 
  * @brief Register all metrics API handlers
  */
 inline void registerHandlers(const std::shared_ptr<fastmetrics::IManager>& metricsManager,
-                             const std::shared_ptr<httpsrv::Server>& server,
+                             const std::shared_ptr<httpsrv::IRouteRegistrar>& server,
                              const std::string& daemonName,
                              const std::string& uptimeISO)
 {
