@@ -16,6 +16,7 @@
 
 #include "curlHandle.hpp"
 #include "contentCodingGuard.hpp"
+#include "headerField.hpp"
 #include "moduleLog.hpp"
 #include "responseSinks.hpp"
 #include "tlsCertDiagnostics.hpp"
@@ -29,8 +30,6 @@
 #include <mutex>
 #include <string_view>
 #include <vector>
-
-#include <strings.h>
 
 namespace
 {
@@ -143,34 +142,31 @@ namespace
     size_t headerTrampoline(char* data, size_t size, size_t nmemb, void* userData)
     {
         const size_t total = size * nmemb;
+        const std::string_view line {data, total};
         auto* capture = static_cast<HeaderCapture*>(userData);
-        constexpr size_t retryAfterPrefixLength = 12; // "Retry-After:"
-        constexpr size_t datePrefixLength = 5;        // "Date:"
-
-        constexpr size_t caGenerationPrefixLength = 20; // "Wazuh-CA-Generation:"
 
         // curl has built a line's decoders by the time it hands the line over, but a decoder only
         // takes its window from the body, which comes after the headers: refusing the reply here
         // costs nothing. (Chunked trailers come after the body; the guard lets them through.)
-        if (capture->contentCoding != nullptr && !capture->contentCoding->admitHeader(std::string_view {data, total}))
+        if (capture->contentCoding != nullptr && !capture->contentCoding->admitHeader(line))
         {
             return 0;
         }
 
-        if (total > retryAfterPrefixLength && strncasecmp(data, "Retry-After:", retryAfterPrefixLength) == 0)
+        // strtol/strtoll stop at the first non-digit, so the line's trailing CRLF needs no trimming.
+        if (const auto retryAfter = headerValue(line, "Retry-After"))
         {
-            *capture->retryAfter = std::strtol(data + retryAfterPrefixLength, nullptr, 10);
+            *capture->retryAfter = std::strtol(retryAfter->data(), nullptr, 10);
         }
-        else if (capture->caGeneration != nullptr && total > caGenerationPrefixLength &&
-                 strncasecmp(data, "Wazuh-CA-Generation:", caGenerationPrefixLength) == 0)
+        else if (const auto caGeneration = headerValue(line, "Wazuh-CA-Generation");
+                 caGeneration && capture->caGeneration != nullptr)
         {
-            // strtoll stops at the first non-digit, so the header's trailing CRLF needs no
-            // trimming. A value that is not a positive integer stays 0 and is refused by the
-            // caller exactly as an absent header is -- there is no reading of a malformed
-            // publication that is safer than declining to adopt.
-            *capture->caGeneration = std::strtoll(data + caGenerationPrefixLength, nullptr, 10);
+            // A value that is not a positive integer stays 0 and is refused by the caller exactly
+            // as an absent header is -- there is no reading of a malformed publication that is
+            // safer than declining to adopt.
+            *capture->caGeneration = std::strtoll(caGeneration->data(), nullptr, 10);
         }
-        else if (total > datePrefixLength && strncasecmp(data, "Date:", datePrefixLength) == 0)
+        else if (const auto date = headerValue(line, "Date"))
         {
             // curl callbacks are C: nothing may throw across them (see
             // writeToBodySink(), responseSinks.cpp) -- std::string construction from
@@ -181,7 +177,7 @@ namespace
                 // curl_getdate() parses RFC 1123/850 and asctime formats and
                 // returns -1 on failure; a null-terminated copy is required
                 // since the header line is not itself nul-terminated by libcurl.
-                const std::string value(data + datePrefixLength, total - datePrefixLength);
+                const std::string value(*date);
                 const time_t parsed = curl_getdate(value.c_str(), nullptr);
 
                 if (parsed != -1)

@@ -9,6 +9,7 @@
  */
 
 #include "contentCodingGuard.hpp"
+#include "headerField.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -18,7 +19,7 @@ namespace
     constexpr std::string_view SPACE {" \t\r\n"};
     constexpr std::string_view BLANK {" \t"};
     constexpr std::string_view HTTP_PREFIX {"HTTP/"};
-    constexpr std::string_view CONTENT_ENCODING_PREFIX {"Content-Encoding:"};
+    constexpr std::string_view CONTENT_ENCODING {"Content-Encoding"};
     /// A coding is a short token: past this, a refused value is the peer's noise, not information.
     constexpr size_t REFUSAL_EXCERPT {64};
 
@@ -43,20 +44,6 @@ namespace
         const auto end = std::find_if_not(token.rbegin(), token.rend(), outside).base();
         return begin < end ? token.substr(static_cast<size_t>(begin - token.begin()), static_cast<size_t>(end - begin)) :
                std::string_view {};
-    }
-
-    /// Header names and codings are case-insensitive tokens (RFC 9110 5.1, 8.4.1).
-    bool sameToken(std::string_view left, std::string_view right)
-    {
-        return std::equal(left.begin(), left.end(), right.begin(), right.end(), [](char a, char b)
-        {
-            return std::tolower(static_cast<unsigned char>(a)) == std::tolower(static_cast<unsigned char>(b));
-        });
-    }
-
-    bool startsWithIgnoringCase(std::string_view line, std::string_view prefix)
-    {
-        return line.size() > prefix.size() && sameToken(line.substr(0, prefix.size()), prefix);
     }
 
     bool blankAt(std::string_view text, size_t at)
@@ -190,8 +177,8 @@ bool ContentCodingGuard::admitHeader(std::string_view line) noexcept
         return true;
     }
 
-    return !startsWithIgnoringCase(line, CONTENT_ENCODING_PREFIX) ||
-           admitCodings(line.substr(CONTENT_ENCODING_PREFIX.size()));
+    const auto codings = headerValue(line, CONTENT_ENCODING);
+    return !codings || admitCodings(*codings);
 }
 
 bool ContentCodingGuard::refused() const noexcept
