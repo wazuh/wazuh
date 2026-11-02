@@ -188,6 +188,20 @@ namespace wazuh::container_instances_client
         bool unkeyedKnown {false};
         std::set<std::string> unkeyed;
 
+        /// The server WILL decide admission, but has not yet.
+        ///
+        /// `admittedKnown == false` cannot say this on its own: it is also what
+        /// a connector too old to decide produces, and the two call for
+        /// opposite behaviour. Against the old connector, reporting everything
+        /// is right and permanent. Against this one it is right for a moment
+        /// only, and acting on it writes default-true sync flags over refusals
+        /// the server is about to re-issue.
+        ///
+        /// While it is set, `complete` and `unkeyedKnown` are both forced
+        /// false: a server that cannot yet see the whole node is not describing
+        /// the whole node, so this reply is no basis for deleting anything.
+        bool admissionPending {false};
+
         std::uint64_t epoch {0};
         std::uint64_t seq {0};
 
@@ -272,18 +286,31 @@ namespace wazuh::container_instances_client
         ///        this is the only place its decision appears. @param
         ///        admittedKnown says whether the server sent the set at all; when
         ///        it did not, the set is empty and means nothing.
+        /// @param admissionPending Optional out-param, true when the server WILL
+        ///        decide admission but has not yet -- which @param admittedKnown
+        ///        cannot distinguish from a server too old to decide at all, and
+        ///        the two call for opposite behaviour. While it is true, @param
+        ///        complete and @param unkeyedKnown are both forced false,
+        ///        because a server that cannot yet see the whole node is not
+        ///        describing the whole node.
         [[nodiscard]] std::vector<ContainerRef> listContainers(bool* reachable = nullptr,
                                                                bool* complete = nullptr,
                                                                std::set<std::string>* unkeyed = nullptr,
                                                                bool* unkeyedKnown = nullptr,
                                                                std::set<std::string>* admitted = nullptr,
-                                                               bool* admittedKnown = nullptr) const
+                                                               bool* admittedKnown = nullptr,
+                                                               bool* admissionPending = nullptr) const
         {
             std::vector<ContainerRef> result;
 
             if (admittedKnown != nullptr)
             {
                 *admittedKnown = false;
+            }
+
+            if (admissionPending != nullptr)
+            {
+                *admissionPending = false;
             }
 
             if (reachable != nullptr)
@@ -374,6 +401,33 @@ namespace wazuh::container_instances_client
                             admitted->insert(id.get<std::string>());
                         }
                     }
+                }
+            }
+
+            // After the three keys above, because it overrides two of them.
+            const auto pendingIt = parsed.find("admission_pending");
+
+            if (pendingIt != parsed.end() && pendingIt->is_boolean() && pendingIt->get<bool>())
+            {
+                if (admissionPending != nullptr)
+                {
+                    *admissionPending = true;
+                }
+
+                // The server has not seen the whole node, so this reply does
+                // not describe the whole node. `withheld` and `known_unkeyed`
+                // report the RESOLVER's backlog and say nothing about a source
+                // that has not enumerated at all -- so without this a reply
+                // sent while only Docker had listed read as a complete node,
+                // and a consumer swept the rows of live Kubernetes containers.
+                if (complete != nullptr)
+                {
+                    *complete = false;
+                }
+
+                if (unkeyedKnown != nullptr)
+                {
+                    *unkeyedKnown = false;
                 }
             }
 
@@ -480,6 +534,23 @@ namespace wazuh::container_instances_client
                         delta.admitted.insert(id.get<std::string>());
                     }
                 }
+            }
+
+            // After the three keys above, because it overrides two of them.
+            const auto pendingIt = parsed.find("admission_pending");
+
+            if (pendingIt != parsed.end() && pendingIt->is_boolean() && pendingIt->get<bool>())
+            {
+                delta.admissionPending = true;
+
+                // The server has not seen the whole node, so this reply does
+                // not describe the whole node. `withheld` and `known_unkeyed`
+                // report the RESOLVER's backlog and say nothing about a source
+                // that has not enumerated at all -- so without this a reply
+                // sent while only Docker had listed read as a complete node,
+                // and a consumer swept the rows of live Kubernetes containers.
+                delta.complete = false;
+                delta.unkeyedKnown = false;
             }
 
             for (const auto& item : *containersIt)

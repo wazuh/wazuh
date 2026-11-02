@@ -484,6 +484,35 @@ namespace wazuh::container_instances::wire
                 // it; an empty set would instead read as "refuse everything".
                 const std::set<std::string>* admittedOrNone = response.admissionKnown ? &response.admitted : nullptr;
 
+                // The difference between "this connector never decides" and
+                // "this connector has not decided YET", which omission alone
+                // cannot express.
+                //
+                // Both look identical on the wire -- no `admitted` key, no
+                // per-record `synced` -- and a consumer must treat them
+                // oppositely. Against a connector too old to decide, reporting
+                // everything is right and permanent. Against this one it is
+                // right only for a moment, and acting on it writes default-true
+                // sync flags over refusals the store is about to re-issue: on a
+                // modulesd restart the FIM drain re-admitted containers it had
+                // correctly refused, and the rows were created on the manager
+                // and deleted again a few seconds later.
+                //
+                // It also says the list is not authoritative about WHAT EXISTS.
+                // A reply sent while only one source has enumerated omits the
+                // other source's containers entirely, and `withheld`/
+                // `known_unkeyed` describe only the resolver's backlog, so a
+                // consumer reads such a reply as a complete node and sweeps
+                // live containers' rows. See the client, which forces
+                // `complete` and `unkeyedKnown` false on this key.
+                //
+                // Additive and emitted only when true, so an older client
+                // ignores it and behaves exactly as before.
+                if ((response.listReply || response.delta) && !response.admissionKnown)
+                {
+                    body["admission_pending"] = true;
+                }
+
                 if (response.listReply)
                 {
                     auto containers = nlohmann::json::array();

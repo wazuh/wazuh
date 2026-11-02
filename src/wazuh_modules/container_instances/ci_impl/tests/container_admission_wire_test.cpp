@@ -264,3 +264,83 @@ TEST(ContainerAdmissionWireTest, AReplyWithNoVerdictOmitsTheSetAndEveryRecordFla
         EXPECT_TRUE(ref.synced) << "and the client keeps reporting, as against a server too old to decide";
     }
 }
+
+// V1/V8. Omission alone cannot tell a consumer WHY there is no verdict, and the
+// two reasons call for opposite behaviour: a connector too old to decide never
+// will, so reporting everything is right and permanent; this one decides in a
+// moment, so reporting everything writes default-true sync flags over refusals
+// it is about to re-issue.
+TEST(ContainerAdmissionWireTest, AWithheldVerdictSaysItIsPendingRatherThanMerelyAbsent)
+{
+    QueryResponse response;
+    response.status = QueryResponse::Status::ok;
+    response.listReply = true;
+    response.admissionKnown = false;
+    response.containers = {std::make_shared<const ContainerRecord>(MakeRecord("a"))};
+
+    const auto parsed = nlohmann::json::parse(wire::serializeResponse(response));
+
+    ASSERT_TRUE(parsed.contains("admission_pending"));
+    EXPECT_TRUE(parsed["admission_pending"].get<bool>());
+
+    const auto read = wazuh::container_instances_client::ContainerInstancesClient::parseListReply(parsed);
+    EXPECT_TRUE(read.admissionPending);
+    EXPECT_FALSE(read.admittedKnown) << "still no verdict; pending says why, it does not supply one";
+}
+
+TEST(ContainerAdmissionWireTest, ASettledReplyDoesNotCarryThePendingKeyAtAll)
+{
+    QueryResponse response;
+    response.status = QueryResponse::Status::ok;
+    response.listReply = true;
+    response.admissionKnown = true;
+    response.admitted = {"a"};
+    response.containers = {std::make_shared<const ContainerRecord>(MakeRecord("a"))};
+
+    const auto parsed = nlohmann::json::parse(wire::serializeResponse(response));
+
+    EXPECT_FALSE(parsed.contains("admission_pending")) << "emitted only when true, so an older client sees nothing new";
+
+    const auto read = wazuh::container_instances_client::ContainerInstancesClient::parseListReply(parsed);
+    EXPECT_FALSE(read.admissionPending);
+    EXPECT_TRUE(read.complete);
+}
+
+// V8, which no finding in the round named. The barrier gates the ADMISSION
+// verdict, but `withheld` and `known_unkeyed` describe only the resolver's
+// backlog -- they say nothing about a source that has not enumerated at all.
+// So a reply sent while only Docker had listed looked like a complete node, and
+// a consumer that deletes rows on absence deleted live Kubernetes containers'.
+TEST(ContainerAdmissionWireTest, APendingReplyIsNotAuthoritativeAboutWhatExists)
+{
+    QueryResponse response;
+    response.status = QueryResponse::Status::ok;
+    response.listReply = true;
+    response.admissionKnown = false;
+    // Everything this source can see IS keyed, so the resolver's own backlog is
+    // empty and the reply would otherwise claim to be the whole node.
+    response.containers = {std::make_shared<const ContainerRecord>(MakeRecord("docker-one"))};
+
+    const auto parsed = nlohmann::json::parse(wire::serializeResponse(response));
+    ASSERT_EQ(0U, parsed["withheld"].get<std::uint64_t>()) << "nothing is waiting on a key";
+
+    const auto read = wazuh::container_instances_client::ContainerInstancesClient::parseListReply(parsed);
+
+    EXPECT_FALSE(read.complete) << "a node half of whose sources have not spoken is not a complete node";
+    EXPECT_FALSE(read.unkeyedKnown) << "and its unkeyed ids are not the node's unkeyed ids either";
+}
+
+// The compatibility half, pulling the other way. A server from before any of
+// this sends no `admitted` and no `admission_pending`, and must keep being read
+// as "decides nothing, ever" -- not as a node that is still settling, which
+// would stop the agent reporting and never resume.
+TEST(ContainerAdmissionWireTest, AServerTooOldToDecideIsNotMistakenForOneStillSettling)
+{
+    const auto parsed = nlohmann::json::parse(R"({"status":"ok","containers":[]})");
+
+    const auto read = wazuh::container_instances_client::ContainerInstancesClient::parseListReply(parsed);
+
+    EXPECT_FALSE(read.admissionPending);
+    EXPECT_FALSE(read.admittedKnown);
+    EXPECT_TRUE(read.complete) << "the default every consumer already relies on";
+}
