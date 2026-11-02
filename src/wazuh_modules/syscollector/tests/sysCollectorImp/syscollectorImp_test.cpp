@@ -200,6 +200,25 @@ void logFunction(const modules_log_level_t /*level*/, const std::string& /*log*/
     // std::cout << s_logStringMap.at(level) << ": " << log << std::endl;
 }
 
+// destroy() interrupts a running scan, so tests that expect a full scan must wait for it instead of sleeping.
+template <typename Predicate>
+static bool waitUntil(Predicate&& predicate, const std::chrono::seconds timeout = std::chrono::seconds{120})
+{
+    const auto deadline{std::chrono::steady_clock::now() + timeout};
+
+    while (!predicate())
+    {
+        if (std::chrono::steady_clock::now() >= deadline)
+        {
+            return false;
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds{50});
+    }
+
+    return true;
+}
+
 TEST_F(SyscollectorImpTest, defaultCtor)
 {
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
@@ -225,22 +244,25 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
     EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
 
+    std::atomic<int> dataEvents{0};
+    std::atomic<int> deltaEvents{0};
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
     {
-        [&wrapper](const std::string & data)
+        [&wrapper, &dataEvents](const std::string & data)
         {
             auto delta = nlohmann::json::parse(data);
             delta["data"].erase("checksum");
             delta["data"].erase("id");
             wrapper.callbackMock(delta.dump());
+            ++dataEvents;
         }
     };
 
     CallbackMock wrapperDelta;
     std::function<void(const std::string&)> callbackDataDelta
     {
-        [&wrapperDelta](const std::string & data)
+        [&wrapperDelta, &deltaEvents](const std::string & data)
         {
             auto delta = nlohmann::json::parse(data);
 
@@ -251,6 +273,7 @@ TEST_F(SyscollectorImpTest, defaultCtor)
 
             delta["data"].erase("scan_time");
             wrapperDelta.callbackMock(delta.dump());
+            ++deltaEvents;
         }
     };
 
@@ -299,7 +322,11 @@ TEST_F(SyscollectorImpTest, defaultCtor)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    // A full scan emits every expected event; stopping earlier makes destroy() abort it.
+    EXPECT_TRUE(waitUntil([&]()
+    {
+        return dataEvents >= 13 && deltaEvents >= 15;
+    }));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -316,12 +343,24 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_PORTS_JSON)));
     EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"},{"hotfix":"KB87654321"}])"_json));
-    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(::testing::AtLeast(2)).WillRepeatedly(testing::InvokeArgument<0>(nlohmann::json::parse(EXPECT_CALL_PROCESSES_JSON)));
+    std::atomic<int> processScans{0};
+    std::atomic<int> packageScans{0};
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(::testing::AtLeast(2)).WillRepeatedly([&processScans](const std::function<void(nlohmann::json&)>& cb)
+    {
+        auto data = nlohmann::json::parse(EXPECT_CALL_PROCESSES_JSON);
+        cb(data);
+        ++processScans;
+    });
 
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(2))
-    .WillRepeatedly(::testing::InvokeArgument<0>
-                    (R"({"name":"TEXT", "scan_time":"2020/12/28 21:49:50", "version":"TEXT", "vendor":"TEXT", "install_time":"TEXT", "location":"TEXT", "architecture":"TEXT", "groups":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json));
+    .WillRepeatedly([&packageScans](const std::function<void(nlohmann::json&)>& cb)
+    {
+        auto data =
+            R"({"name":"TEXT", "scan_time":"2020/12/28 21:49:50", "version":"TEXT", "vendor":"TEXT", "install_time":"TEXT", "location":"TEXT", "architecture":"TEXT", "groups":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json;
+        cb(data);
+        ++packageScans;
+    });
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
@@ -344,7 +383,10 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds{10});
+    EXPECT_TRUE(waitUntil([&]()
+    {
+        return processScans >= 2 && packageScans >= 2;
+    }));
     Syscollector::instance().destroy();
 
     if (t.joinable())
