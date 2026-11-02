@@ -255,6 +255,8 @@ typedef struct _registry_s {
     OSMatch *restrict_key;
     OSMatch *restrict_value;
     char *tag;
+    unsigned int is_wildcard:1; // 1 if the entry comes from a wildcard expansion
+    unsigned int is_expanded:1; // Indicates if the entry has been expanded in this scan
 } registry_t;
 
 typedef struct registry_ignore {
@@ -427,6 +429,8 @@ typedef struct _config {
     registry_ignore *value_ignore;                     /* List of registry values to ignore*/
     registry_ignore_regex *value_ignore_regex;         /* Regex of registry values to ignore */
     registry_t *registry;                              /* array of registry entries to be scanned */
+    registry_t *registry_wildcards;                    /* array of registry wildcard patterns */
+    pthread_rwlock_t registry_lock;                    /* Protects the registry array while wildcards are expanded */
     unsigned int max_fd_win_rt;                        /* Maximum number of descriptors in realtime */
     whodata wdata;                                     /* Whodata struct */
     registry_t *registry_nodiff;                       /* list of values/registries to never output diff */
@@ -545,16 +549,24 @@ char **expand_wildcards(const char *path);
  * @param tag The tag to be set
  * @param arch Indicates whether to monitor the 64 or 32 version of the registry
  * @param diff_size Maximum size to calculate diff for files in the directory
+ * @return Pointer to the added entry, valid until the registry array is modified again
  */
-void dump_syscheck_registry(syscheck_config *syscheck,
-                            char *entry,
-                            int opts,
-                            const char *restrict_key,
-                            const char *restrict_value,
-                            int recursion_level,
-                            const char *tag,
-                            int arch,
-                            int diff_size);
+registry_t *dump_syscheck_registry(syscheck_config *syscheck,
+                                   char *entry,
+                                   int opts,
+                                   const char *restrict_key,
+                                   const char *restrict_value,
+                                   int recursion_level,
+                                   const char *tag,
+                                   int arch,
+                                   int diff_size);
+
+/**
+ * @brief Frees the members of a registry_t structure
+ *
+ * @param entry The registry entry whose members will be free'd
+ */
+void free_registry_entry(registry_t *entry);
 #endif
 
 /**

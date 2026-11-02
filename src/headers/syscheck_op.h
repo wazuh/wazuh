@@ -467,8 +467,10 @@ char** w_list_all_keys(HKEY root_key, char* str_subkey);
  *
  * @param [in] array_struct Array of all possible paths.
  * @param [out] array_struct Array of paths with tag checked in 1 and has_wildcard in 0.
+ * @param [in] max_items Number of slots of array_struct that can be filled.
+ * @retval 1 if some matches were discarded because the array was full, 0 otherwise.
  */
-void w_expand_by_wildcard(reg_path_struct **array_struct, char wildcard_chr);
+int w_expand_by_wildcard(reg_path_struct **array_struct, char wildcard_chr, int max_items);
 
 
 /**

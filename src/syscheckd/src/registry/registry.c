@@ -1201,6 +1201,107 @@ void fim_open_key(HKEY root_key_handle,
     RegCloseKey(current_key_handle);
 }
 
+/**
+ * @brief Finds the registry entry configured with exactly this key and arch.
+ *
+ * @param key Full path of the key
+ * @param arch Arch of the entry
+ * @return Pointer to the entry, NULL if there is none
+ */
+static registry_t *fim_registry_find_entry(const char *key, int arch) {
+    for (int i = 0; syscheck.registry[i].entry; i++) {
+        if (syscheck.registry[i].arch == arch && strcasecmp(syscheck.registry[i].entry, key) == 0) {
+            return &syscheck.registry[i];
+        }
+    }
+    return NULL;
+}
+
+/**
+ * @brief Expands the registry wildcards again, adding the keys created since the last scan.
+ *
+ * The entries that no longer match are only marked, so the scan reports their deletion
+ * before fim_registry_remove_unexpanded() drops them.
+ */
+static void fim_registry_update_wildcards() {
+    char optstr[1024];
+
+    if (syscheck.registry_wildcards == NULL) {
+        return;
+    }
+
+    mdebug2(FIM_WILDCARDS_UPDATE_START);
+
+    for (int i = 0; syscheck.registry[i].entry; i++) {
+        syscheck.registry[i].is_expanded = 0;
+    }
+
+    int count = 0;
+    while (syscheck.registry_wildcards[count].entry) {
+        count++;
+    }
+
+    // Backwards, so the last pattern wins when several match a key, as when the configuration is read
+    for (int w = count - 1; w >= 0; w--) {
+        const registry_t *pattern = &syscheck.registry_wildcards[w];
+        char **paths = NULL;
+
+        os_calloc(OS_SIZE_8192, sizeof(char *), paths);
+        expand_wildcard_registers(pattern->entry, paths);
+
+        for (int p = 0; paths[p]; p++) {
+            registry_t *entry = fim_registry_find_entry(paths[p], pattern->arch);
+
+            if (entry != NULL) {
+                entry->is_expanded = 1;
+                continue;
+            }
+
+            w_rwlock_wrlock(&syscheck.registry_lock);
+            entry = dump_syscheck_registry(&syscheck, paths[p], pattern->opts,
+                                           pattern->restrict_key ? pattern->restrict_key->raw : NULL,
+                                           pattern->restrict_value ? pattern->restrict_value->raw : NULL,
+                                           pattern->recursion_level, pattern->tag, pattern->arch,
+                                           pattern->diff_size_limit);
+            entry->is_wildcard = 1;
+            entry->is_expanded = 1;
+            w_rwlock_unlock(&syscheck.registry_lock);
+
+            minfo(FIM_MONITORING_REGISTRY, paths[p], pattern->arch == ARCH_64BIT ? " [x64]" : "",
+                  syscheck_opts2str(optstr, sizeof(optstr), pattern->opts));
+        }
+        free_strarray(paths);
+    }
+
+    mdebug2(FIM_WILDCARDS_UPDATE_FINALIZE);
+}
+
+/**
+ * @brief Drops the wildcard entries that were not expanded in this scan.
+ */
+static void fim_registry_remove_unexpanded() {
+    int i;
+    int last = 0;
+
+    if (syscheck.registry_wildcards == NULL) {
+        return;
+    }
+
+    w_rwlock_wrlock(&syscheck.registry_lock);
+    for (i = 0; syscheck.registry[i].entry; i++) {
+        if (syscheck.registry[i].is_wildcard && !syscheck.registry[i].is_expanded) {
+            mdebug2(FIM_WILDCARDS_REMOVE_REGISTER, syscheck.registry[i].entry,
+                    syscheck.registry[i].arch == ARCH_64BIT ? "[x64]" : "[x32]");
+            free_registry_entry(&syscheck.registry[i]);
+            continue;
+        }
+        syscheck.registry[last++] = syscheck.registry[i];
+    }
+    // Move the terminator too
+    syscheck.registry[last] = syscheck.registry[i];
+    w_rwlock_unlock(&syscheck.registry_lock);
+}
+
 void fim_registry_scan() {
     HKEY root_key_handle = NULL;
     const char *sub_key = NULL;
@@ -1215,10 +1316,16 @@ void fim_registry_scan() {
 
     /* Debug entries */
     mdebug1(FIM_WINREGISTRY_START);
+    fim_registry_update_wildcards();
     /* Get sub class and a valid registry entry */
     for (i = 0; syscheck.registry[i].entry; i++) {
         /* Ignored entries are zeroed */
         if (*syscheck.registry[i].entry == '\0') {
+            continue;
+        }
+
+        /* The key no longer matches its wildcard: let the transaction report it as deleted */
+        if (syscheck.registry[i].is_wildcard && !syscheck.registry[i].is_expanded) {
             continue;
         }
 
@@ -1241,6 +1348,9 @@ void fim_registry_scan() {
     fim_db_transaction_deleted_rows(regkey_txn_handler, registry_key_transaction_callback, &txn_ctx_reg);
     regkey_txn_handler = NULL;
     regval_txn_handler = NULL;
+
+    // Done after the deleted rows, as their events need the configuration of the removed entries
+    fim_registry_remove_unexpanded();
 
     mdebug1(FIM_WINREGISTRY_ENDED);
 
