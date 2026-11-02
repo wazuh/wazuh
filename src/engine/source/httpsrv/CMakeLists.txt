@@ -62,6 +62,7 @@ add_executable(httpsrv_utest
     ${UNIT_SRC_DIR}/boundedExecutor_test.cpp
     ${UNIT_SRC_DIR}/udsServer_test.cpp
     ${UNIT_SRC_DIR}/udsServerMetrics_test.cpp
+    ${UNIT_SRC_DIR}/apiServer_test.cpp
 )
 target_include_directories(httpsrv_utest
     PRIVATE
