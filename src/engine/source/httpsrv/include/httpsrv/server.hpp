@@ -21,6 +21,7 @@
 #undef DELETE
 #endif
 
+#include <httpsrv/irouteregistrar.hpp>
 #include <httpsrv/iserver.hpp>
 
 namespace httpsrv
@@ -30,7 +31,9 @@ namespace httpsrv
  * @brief Implementation of the server using httplib.
  *
  */
-class Server : public IServer<Server>
+class Server
+    : public IServer<Server>
+    , public IRouteRegistrar
 {
 private:
     std::shared_ptr<httplib::Server> m_srv; ///< Httplib Server instance
@@ -91,13 +94,15 @@ public:
     /**
      * @brief Add a route to the server.
      *
+     * The handler sees the transport-neutral request: header names lower-cased, repeated names recorded,
+     * the body viewed in place for the duration of the call.
+     *
      * @param method Method of the route
      * @param route Route path
      * @param handler Handler function
+     * @param options Ignored: this server has only its server-wide payload limit
      */
-    void addRoute(Method method,
-                  const std::string& route,
-                  const std::function<void(const httplib::Request&, httplib::Response&)>& handler);
+    void addRoute(Method method, const std::string& route, RouteHandler handler, RouteOptions options = {}) override;
 
     /**
      * @brief Check if the server is running.

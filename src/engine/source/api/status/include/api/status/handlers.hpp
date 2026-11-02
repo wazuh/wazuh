@@ -5,6 +5,7 @@
 #include <api/adapter/adapter.hpp>
 #include <cmsync/icmsync.hpp>
 #include <geo/imanager.hpp>
+#include <httpsrv/irouteregistrar.hpp>
 #include <iocsync/iiocsync.hpp>
 
 namespace api::status::handlers
@@ -30,7 +31,7 @@ adapter::RouteHandler getStatus(const std::shared_ptr<cm::sync::ICMSync>& cmSync
 inline void registerHandlers(const std::shared_ptr<cm::sync::ICMSync>& cmSync,
                              const std::shared_ptr<ioc::sync::IIocSync>& iocSync,
                              const std::shared_ptr<::geo::IManager>& geoManager,
-                             const std::shared_ptr<httpsrv::Server>& server)
+                             const std::shared_ptr<httpsrv::IRouteRegistrar>& server)
 {
     server->addRoute(httpsrv::Method::GET, "/status", getStatus(cmSync, iocSync, geoManager));
 }

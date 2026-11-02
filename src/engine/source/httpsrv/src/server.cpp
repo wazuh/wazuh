@@ -107,24 +107,40 @@ Server::Server(const std::string& id, size_t payloadMaxBytes, bool enableDetaile
     }
 }
 
-void Server::addRoute(Method method,
-                      const std::string& route,
-                      const std::function<void(const httplib::Request&, httplib::Response&)>& handler)
+void Server::addRoute(Method method, const std::string& route, RouteHandler handler, RouteOptions /*options*/)
 {
-    std::function<void(const httplib::Request&, httplib::Response&)> wrapped;
+    // The handler sees the transport-neutral request; the httplib request outlives the call, so the body is
+    // viewed in place and the request needs no owner.
+    std::function<void(const httplib::Request&, httplib::Response&)> wrapped =
+        [method, handler = std::move(handler)](const httplib::Request& req, httplib::Response& res)
+    {
+        Request request;
+        request.method = method;
+        request.target = req.target;
+        request.body = req.body;
+        for (const auto& [name, value] : req.headers)
+        {
+            auto lowered = Request::lowerCase(name);
+            if (!request.headers.insert_or_assign(lowered, value).second)
+            {
+                request.repeatedHeaders.insert(std::move(lowered));
+            }
+        }
+
+        Response response;
+        handler(request, response);
+        res.status = response.status;
+        res.set_content(std::move(response.body), response.contentType);
+    };
 
     if (m_enableDetailedLogging)
     {
         auto beforeFnName = fmt::format("Server::Server({})::before_processing", m_id);
-        wrapped = [this, handler, beforeFnName](const httplib::Request& req, httplib::Response& res)
+        wrapped = [inner = std::move(wrapped), beforeFnName](const httplib::Request& req, httplib::Response& res)
         {
             LOG_TRACE_L(beforeFnName.c_str(), fmt::format("Request: {} {} '{}'", req.method, req.path, req.body));
-            handler(req, res);
+            inner(req, res);
         };
-    }
-    else
-    {
-        wrapped = handler;
     }
 
     try
