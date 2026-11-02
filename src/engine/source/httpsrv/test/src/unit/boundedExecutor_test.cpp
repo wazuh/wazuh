@@ -168,3 +168,33 @@ TEST_F(BoundedExecutorTest, DrainReportsAbandonedJobsAndTheDestructorJoinsThem)
     executor.reset();
     EXPECT_TRUE(finished.load()) << "the destructor returned before the job ended";
 }
+
+// join() is how a caller waits for jobs that outlived the drain without destroying the executor; it must not
+// return while one still runs, and calling it again (the destructor does) is harmless.
+TEST_F(BoundedExecutorTest, JoinWaitsForAJobThatOutlivedTheDrain)
+{
+    std::atomic<bool> started {false};
+    std::atomic<bool> finished {false};
+    BoundedExecutor executor {"test", 1, 8};
+    ASSERT_EQ(BoundedExecutor::Submit::Accepted,
+              executor.trySubmit(job(
+                  [&]
+                  {
+                      started = true;
+                      std::this_thread::sleep_for(300ms);
+                      finished = true;
+                  })));
+    while (!started)
+    {
+        std::this_thread::sleep_for(1ms);
+    }
+
+    const auto report = executor.drainUntil(std::chrono::steady_clock::now() + 20ms);
+    EXPECT_EQ(1U, report.abandoned);
+
+    executor.join();
+    EXPECT_TRUE(finished.load()) << "join() returned before the job ended";
+    EXPECT_EQ(0U, executor.running());
+    EXPECT_EQ(BoundedExecutor::Submit::Closed, executor.trySubmit(job([] {})));
+    executor.join();
+}

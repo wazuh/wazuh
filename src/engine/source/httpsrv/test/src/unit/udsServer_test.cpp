@@ -348,6 +348,72 @@ TEST_F(UdsServerTest, ShutdownAnswersUnstartedRequests503AtTheDeadline)
     EXPECT_EQ(1U, report.abandoned);
 }
 
+// A handler still running at the deadline is reported as abandoned, and the stop still waits for it: the caller
+// tears down what the handler uses (the engine shuts protobuf down) as soon as shutdown() or shutdownAll() returns.
+// The handler runs past the transport's own 2 s wait for outstanding replies too, so only the executor join can make
+// it finish first.
+constexpr auto OUTLIVING_HANDLER_TIME {2600ms};
+
+enum class StopVia
+{
+    Shutdown,
+    ShutdownAll
+};
+
+class UdsServerOutlivingHandlerTest
+    : public UdsServerTest
+    , public ::testing::WithParamInterface<StopVia>
+{
+};
+
+TEST_P(UdsServerOutlivingHandlerTest, StopReturnsOnlyAfterAHandlerThatOutlivedTheDeadline)
+{
+    const auto slowPath = socketPath("outlived");
+    const auto idlePath = socketPath("outlived_idle");
+    std::atomic<bool> started {false};
+    std::atomic<bool> finished {false};
+
+    UdsServer slow {options(1, 4)};
+    slow.addRoute(Method::POST,
+                  "/slow",
+                  [&](const Request&, Response&)
+                  {
+                      started = true;
+                      std::this_thread::sleep_for(OUTLIVING_HANDLER_TIME);
+                      finished = true;
+                  });
+    UdsServer idle {options()};
+    idle.addRoute(Method::POST, "/x", [](const Request&, Response&) {});
+    slow.start(slowPath);
+    idle.start(idlePath);
+
+    auto pending = std::async(std::launch::async, [&] { return roundTrip(slowPath, post(slowPath, "/slow", "a")); });
+    while (!started)
+    {
+        std::this_thread::sleep_for(1ms);
+    }
+
+    if (GetParam() == StopVia::Shutdown)
+    {
+        const auto report = slow.shutdown(50ms);
+        EXPECT_EQ(1U, report.abandoned);
+        idle.shutdown(50ms);
+    }
+    else
+    {
+        httpsrv::shutdownAll({&slow, &idle}, 50ms);
+    }
+    EXPECT_TRUE(finished.load()) << "the stop returned while a handler still ran";
+    EXPECT_EQ(0U, slow.stats().running);
+    pending.get();
+}
+
+INSTANTIATE_TEST_SUITE_P(StopPaths,
+                         UdsServerOutlivingHandlerTest,
+                         ::testing::Values(StopVia::Shutdown, StopVia::ShutdownAll),
+                         [](const ::testing::TestParamInfo<StopVia>& info)
+                         { return info.param == StopVia::Shutdown ? "Shutdown" : "ShutdownAll"; });
+
 TEST_F(UdsServerTest, ShutdownAllStopsAcceptingOnEveryServerFirst)
 {
     const auto pathA = socketPath("allA");
