@@ -8,7 +8,9 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include <atomic>
 #include <cstdio>
+#include <future>
 #include "syscollectorImp_test.h"
 #include "syscollector.hpp"
 
@@ -2662,4 +2664,175 @@ TEST_F(SyscollectorImpTest, destroyWaitsForSyncLoopCompletion)
     {
         t.join();
     }
+}
+
+class ScanGate
+{
+    public:
+        void block()
+        {
+            m_entered.set_value();
+            m_released.get_future().wait();
+        }
+        void waitEntered()
+        {
+            m_enteredFuture.wait();
+        }
+        void release()
+        {
+            m_released.set_value();
+        }
+    private:
+        std::promise<void> m_entered;
+        std::shared_future<void> m_enteredFuture{m_entered.get_future().share()};
+        std::promise<void> m_released;
+};
+
+TEST_F(SyscollectorImpTest, destroyDuringScanSkipsRemainingTasks)
+{
+    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    ScanGate gate;
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillOnce(testing::Invoke([&gate]()
+    {
+        gate.block();
+        return nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON);
+    }));
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    std::thread t
+    {
+        [&]()
+        {
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, logFunction,
+                                          SYSCOLLECTOR_DB_PATH, "", "", 3600, true, true, true,
+                                          false, false, false, false, false, false, false, false, false, false);
+        }
+    };
+
+    gate.waitEntered();
+    // Scan holds the syscollector mutex now; destroy must neither need it nor hang.
+    auto destroyed{std::async(std::launch::async, []()
+    {
+        Syscollector::instance().destroy();
+    })};
+    std::this_thread::sleep_for(std::chrono::milliseconds{1500});
+    EXPECT_EQ(std::future_status::timeout, destroyed.wait_for(std::chrono::seconds{0}));
+    gate.release();
+    ASSERT_EQ(std::future_status::ready, destroyed.wait_for(std::chrono::seconds{10}));
+    t.join();
+}
+
+TEST_F(SyscollectorImpTest, destroyDuringScanReturnsAfterBoundedWait)
+{
+    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    ScanGate gate;
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillOnce(testing::Invoke([&gate]()
+    {
+        gate.block();
+        return nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON);
+    }));
+
+    std::thread t
+    {
+        [&]()
+        {
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, logFunction,
+                                          SYSCOLLECTOR_DB_PATH, "", "", 3600, true, true, false,
+                                          false, false, false, false, false, false, false, false, false, false);
+        }
+    };
+
+    gate.waitEntered();
+    const auto start{std::chrono::steady_clock::now()};
+    Syscollector::instance().destroy();
+    const auto elapsed{std::chrono::steady_clock::now() - start};
+    // Bounds bracket destroy()'s STOP_WAIT_SLICES budget (20 x 1 s).
+    EXPECT_GE(elapsed, std::chrono::seconds{15});
+    EXPECT_LT(elapsed, std::chrono::seconds{30});
+    gate.release();
+    t.join();
+}
+
+TEST_F(SyscollectorImpTest, destroyDuringSyncDoesNotHang)
+{
+    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    ScanGate gate;
+    std::atomic<bool> blocked{false};
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
+    EXPECT_CALL(*spInfoWrapper, os()).Times(testing::AtMost(1)).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
+
+    const auto blockingSync
+    {
+        [&](const std::string&)
+        {
+            if (!blocked.exchange(true))
+            {
+                gate.block();
+            }
+        }
+    };
+
+    std::thread t
+    {
+        [&]()
+        {
+            Syscollector::instance().init(spInfoWrapper, reportFunction, blockingSync, logFunction,
+                                          SYSCOLLECTOR_DB_PATH, "", "", 3600, true, true, true,
+                                          false, false, false, false, false, false, false, false, false, false);
+        }
+    };
+
+    gate.waitEntered();
+    auto destroyed{std::async(std::launch::async, []()
+    {
+        Syscollector::instance().destroy();
+    })};
+    std::this_thread::sleep_for(std::chrono::milliseconds{1500});
+    gate.release();
+    ASSERT_EQ(std::future_status::ready, destroyed.wait_for(std::chrono::seconds{10}));
+    t.join();
+}
+
+TEST_F(SyscollectorImpTest, notifyChangeNotDroppedWhileStopping)
+{
+    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    ScanGate gate;
+    std::atomic<int> hardwareEvents{0};
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillOnce(testing::Invoke([&gate]()
+    {
+        gate.block();
+        return nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON);
+    }));
+
+    const auto countDiff
+    {
+        [&](const std::string & payload)
+        {
+            if (payload.find("dbsync_hwinfo") != std::string::npos)
+            {
+                ++hardwareEvents;
+            }
+        }
+    };
+
+    std::thread t
+    {
+        [&]()
+        {
+            Syscollector::instance().init(spInfoWrapper, countDiff, reportFunction, logFunction,
+                                          SYSCOLLECTOR_DB_PATH, "", "", 3600, true, true, false,
+                                          false, false, false, false, false, false, false, false, false, false, true);
+        }
+    };
+
+    gate.waitEntered();
+    auto destroyed{std::async(std::launch::async, []()
+    {
+        Syscollector::instance().destroy();
+    })};
+    std::this_thread::sleep_for(std::chrono::milliseconds{500});
+    gate.release();
+    ASSERT_EQ(std::future_status::ready, destroyed.wait_for(std::chrono::seconds{10}));
+    t.join();
+    EXPECT_EQ(1, hardwareEvents.load());
 }

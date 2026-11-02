@@ -174,7 +174,7 @@ void Syscollector::notifyChange(ReturnTypeCallback result, const nlohmann::json&
     {
         m_logFunction(LOG_ERROR, data.dump());
     }
-    else if (m_notify && !m_stopping)
+    else if (m_notify)
     {
         if (data.is_array())
         {
@@ -245,6 +245,7 @@ Syscollector::Syscollector()
     , m_processes { false }
     , m_hotfixes { false }
     , m_stopping { true }
+    , m_syncLoopFinished { true }
     , m_notify { false }
     , m_groups { false }
     , m_users { false }
@@ -460,6 +461,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
 
     std::unique_lock<std::mutex> lock{m_mutex};
     m_stopping = false;
+    m_syncLoopFinished = false;
 
     m_spDBSync      = std::move(dbSync);
     m_spRsync       = std::move(remoteSync);
@@ -469,13 +471,33 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     syncLoop(lock);
 }
 
+static constexpr int STOP_WAIT_SLICES { 20 };
+
 void Syscollector::destroy()
 {
-    std::unique_lock<std::mutex> lock{m_mutex};
+    // m_mutex is held by syncLoop() during scan()/sync(), so it is not taken here.
+    // notify_all() is repeated each slice because a wakeup is lost if syncLoop() is between its predicate check and wait.
     m_stopping = true;
-    m_cv.notify_all();
 
-    lock.unlock();
+    std::unique_lock<std::mutex> lock{m_finishedMutex};
+
+    for (int slice = 0; slice < STOP_WAIT_SLICES && !m_syncLoopFinished; ++slice)
+    {
+        m_cv.notify_all();
+        m_finishedCv.wait_for(lock, std::chrono::seconds{1}, [this]()
+        {
+            return m_syncLoopFinished.load();
+        });
+    }
+
+    if (!m_syncLoopFinished)
+    {
+        // The singleton outlives syncLoop(), which stops by itself at the next task boundary.
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_WARNING, "Syscollector scan did not stop in time, continuing shutdown.");
+        }
+    }
 }
 
 nlohmann::json Syscollector::getHardwareData()
@@ -1091,7 +1113,7 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
 
     while (!m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&]()
 {
-    return m_stopping;
+    return m_stopping.load();
 }))
     {
         scan();
@@ -1099,7 +1121,12 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
     }
     m_spRsync.reset(nullptr);
     m_spDBSync.reset(nullptr);
-    m_cv.notify_all();
+
+    {
+        std::lock_guard<std::mutex> finishedLock{m_finishedMutex};
+        m_syncLoopFinished = true;
+    }
+    m_finishedCv.notify_all();
 }
 
 void Syscollector::push(const std::string& data)
