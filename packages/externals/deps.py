@@ -636,8 +636,8 @@ def _recipe(specs, repo):
 
 
 def _platform_recipe(entry, images):
-    """Runners and Xcode of the darwin build. The Linux and Windows images are pulled by the tag of the branch
-    version, which moves on every rebuild of an unchanged image, so they stay out of the key."""
+    """Runners, Xcode and deployment target of the darwin build. The Linux and Windows images are pulled by the tag
+    of the branch version, which moves on every rebuild of an unchanged image, so they stay out of the key."""
     if "darwin" not in entry["platforms"]:
         return {}
     if "darwin" not in images:

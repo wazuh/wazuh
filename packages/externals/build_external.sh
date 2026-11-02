@@ -132,9 +132,9 @@ elif command -v yum >/dev/null 2>&1; then
 elif command -v brew >/dev/null 2>&1; then
     # macOS: zip/unzip in base system. pkg-config is the one reliably absent.
     # libtool/autoconf/automake are needed by libplist's autoreconf step. On
-    # macos-13 (Intel) brew lives under /usr/local and aclocal already searches
-    # there; on macos-14 (arm64) brew is /opt/homebrew so AC_PROG_LIBTOOL goes
-    # missing without ACLOCAL_PATH pointing at the brew aclocal dir.
+    # Intel brew lives under /usr/local and aclocal already searches there; on
+    # arm64 brew is /opt/homebrew so AC_PROG_LIBTOOL goes missing without
+    # ACLOCAL_PATH pointing at the brew aclocal dir.
     log "installing tooling via brew"
     for _pkg in ${BREW_TOOLS}; do
         brew install "${_pkg}" >/dev/null 2>&1 || brew install "${_pkg}" || \
@@ -156,6 +156,7 @@ fi
 {
     echo "leg: ${SYSTEM:-}-${ARCHITECTURE_TARGET:-}-${BUILD_TARGET:-}"
     [ -z "${ImageOS:-}" ] || echo "runner image: ${ImageOS} ${ImageVersion:-}"
+    [ -z "${MACOSX_DEPLOYMENT_TARGET:-}" ] || echo "macOS deployment target: ${MACOSX_DEPLOYMENT_TARGET}"
     # CC/CXX: the rpm agent images point them at their own gcc, not at the system cc.
     for _tool in "${CC:-cc}" "${CXX:-c++}" cmake i686-w64-mingw32-gcc-posix i686-w64-mingw32-g++-posix xcodebuild; do
         command -v "${_tool}" >/dev/null 2>&1 || continue

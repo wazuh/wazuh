@@ -160,6 +160,42 @@ jobs:
             --jobs "${jobs}" \
             --verbose
 
+      - name: Check the minimum macOS of the built binaries (macOS leg)
+        if: matrix.system == 'macos'
+        # A dependency whose build ignores MACOSX_DEPLOYMENT_TARGET takes the runner's macOS as its minimum, and a
+        # published ref cannot be replaced: a failed leg keeps it out of consolidate and publish.
+        run: |
+          set -euo pipefail
+          target="${MACOSX_DEPLOYMENT_TARGET:?set by the Xcode step from builder-images.json}"
+          work="$(mktemp -d)"
+          archives=0
+          while IFS= read -r archive; do
+            archives=$((archives + 1))
+            mkdir -p "${work}/${archives}"
+            tar -xzf "${archive}" -C "${work}/${archives}"
+          done < <(find packages/output_externals/pool -path '*/darwin/*' -name '*.tar.gz' 2>/dev/null)
+          if [ "${archives}" -eq 0 ]; then
+            echo "no darwin refs built by this leg"
+            exit 0
+          fi
+          checked=0
+          failed=0
+          while IFS= read -r file; do
+            case "$(file -b "${file}")" in *Mach-O*|*"ar archive"*) ;; *) continue ;; esac
+            checked=$((checked + 1))
+            # LC_BUILD_VERSION of every object; "none" when there is none, else the first minos above the target.
+            above="$(otool -l "${file}" | awk -v t="${target}" '
+              $1 == "minos" { n++; split($2, v, "."); split(t, w, ".")
+                              if (v[1] + 0 > w[1] + 0 || (v[1] + 0 == w[1] + 0 && v[2] + 0 > w[2] + 0)) { bad = $2 } }
+              END { if (!n) print "none"; else if (bad != "") print bad }')"
+            if [ -n "${above}" ]; then
+              echo "::error::${file#"${work}"/}: minimum macOS ${above} (target ${target})"
+              failed=$((failed + 1))
+            fi
+          done < <(find "${work}" -type f)
+          echo "checked ${checked} Mach-O files of ${archives} darwin refs against macOS ${target}: ${failed} failed"
+          [ "${checked}" -gt 0 ] && [ "${failed}" -eq 0 ]
+
       - name: List produced artifacts
         if: always()
         run: |
@@ -539,9 +575,13 @@ jobs:
           python3 packages/externals/deps.py mirror --local consolidated-deps/pool \
             --target agent --platform "${{ matrix.platform }}" --dest smoke-deps/pool
 
+          # The agent targets the macOS the pool is built for, as on the macOS 14
+          # package builders, so a pool library above it shows up as a
+          # "built for newer macOS" warning.
+          target="$(python3 packages/externals/deps.py builder-image darwin deployment_target)"
           # Only for the build, as packages/macos/package_files/build.sh passes it
           # to make; brew and python3 above must not inherit it.
-          DYLD_FORCE_FLAT_NAMESPACE=1 BUILD_TARGET=agent ARCHITECTURE_TARGET="${{ matrix.architecture }}" WAZUH_SRC="${GITHUB_WORKSPACE}" \
+          DYLD_FORCE_FLAT_NAMESPACE=1 BUILD_TARGET=agent MACOSX_DEPLOYMENT_TARGET="${target}" ARCHITECTURE_TARGET="${{ matrix.architecture }}" WAZUH_SRC="${GITHUB_WORKSPACE}" \
             DEPS_DIR="${GITHUB_WORKSPACE}/smoke-deps" JOBS="$(sysctl -n hw.ncpu)" WAZUH_VERBOSE="yes" \
             bash packages/externals/smoke_build.sh 2>&1 | tee "${log}"
 
