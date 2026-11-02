@@ -209,6 +209,7 @@ void test_buffer_space_invalid_context(void ** state) {
     free(input_str);
 }
 
+/* The line limit is reached inside a group: the group is read to its end and sent whole */
 void test_maximum_lines(void ** state) {
     logreader lf = { .file = "test", .linecount = 3 };
     int rc;
@@ -247,17 +248,136 @@ void test_maximum_lines(void ** state) {
     expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
     expect_any(__wrap_OS_SHA1_Stream_Bytes, len);
 
+    // Past the line limit, only to complete the group
     will_return(__wrap_can_read, 1);
 
-    // Stopped by the line limit inside a group: the stored offset covers the lines read
-    expect_any(__wrap_w_ftell, x);
-    will_return(__wrap_w_ftell, (int64_t) strlen(line1) + strlen(line2));
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, line3);
 
-    expect_value(__wrap_w_update_file_status, pos, (int64_t) (strlen(line1) + strlen(line2)));
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) strlen(line1) + strlen(line2) + strlen(line3));
+
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_any(__wrap_OS_SHA1_Stream_Bytes, len);
+
+    expect_string(__wrap_w_msg_hash_queues_push, str, "Line 1 Line 2 Line 3");
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) strlen(line1) + strlen(line2) + strlen(line3));
+
+    will_return(__wrap_can_read, 1);
+
+    expect_value(__wrap_w_update_file_status, pos, (int64_t) (strlen(line1) + strlen(line2) + strlen(line3)));
     will_return(__wrap_w_update_file_status, true);
     will_return(__wrap_w_update_file_status, 0);
 
-    read_multiline(&lf, &rc, 1);
+    read_multiline(&lf, &rc, 0);
+}
+
+/* The line limit is reached inside a group that the file does not complete yet: the group is rolled back */
+void test_maximum_lines_group_open_at_eof(void ** state) {
+    logreader lf = { .file = "test", .linecount = 3, .fp = (FILE *) 1 };
+    int rc;
+    char line1[] = "Line 1\n";
+    char line2[] = "Line 2\n";
+    maximum_lines = 2;
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 0);
+
+    will_return(__wrap_w_get_hash_context, true);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 0);
+
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, line1);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) strlen(line1));
+
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_any(__wrap_OS_SHA1_Stream_Bytes, len);
+
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, line2);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) strlen(line1) + strlen(line2));
+
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_any(__wrap_OS_SHA1_Stream_Bytes, len);
+
+    // Past the line limit, the end of the file comes before the third line
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, NULL);
+
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 0);
+    will_return(__wrap_w_fseek, 0);
+
+    expect_value(__wrap_w_update_file_status, pos, 0);
+    will_return(__wrap_w_update_file_status, true);
+    will_return(__wrap_w_update_file_status, 0);
+
+    read_multiline(&lf, &rc, 0);
+}
+
+/* Reading is stopped while a group past the line limit is still open: the group is rolled back */
+void test_maximum_lines_group_open_stopped(void ** state) {
+    logreader lf = { .file = "test", .linecount = 3, .fp = (FILE *) 1 };
+    int rc;
+    char line1[] = "Line 1\n";
+    char line2[] = "Line 2\n";
+    maximum_lines = 2;
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 0);
+
+    will_return(__wrap_w_get_hash_context, true);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 0);
+
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, line1);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) strlen(line1));
+
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_any(__wrap_OS_SHA1_Stream_Bytes, len);
+
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, line2);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) strlen(line1) + strlen(line2));
+
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_any(__wrap_OS_SHA1_Stream_Bytes, len);
+
+    will_return(__wrap_can_read, 0);
+
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 0);
+    will_return(__wrap_w_fseek, 0);
+
+    expect_value(__wrap_w_update_file_status, pos, 0);
+    will_return(__wrap_w_update_file_status, true);
+    will_return(__wrap_w_update_file_status, 0);
+
+    read_multiline(&lf, &rc, 0);
 }
 
 void test_maximum_lines_disabled(void ** state) {
@@ -655,18 +775,224 @@ void test_group_overflow_keeps_next_group(void ** state) {
     read_multiline(&lf, &rc, 0);
 }
 
+/* Lines with NUL bytes are read from a real stream: the fgets wrapper copies only up to the first NUL */
+static int setup_real_stream(void ** state) {
+    test_mode = 0;
+    return 0;
+}
+
+static int teardown_real_stream(void ** state) {
+    if (*state != NULL) {
+        fclose(*state);
+    }
+    test_mode = 1;
+    return 0;
+}
+
+/* A dropped line that completes its group closes it: the next group is not shifted */
+void test_dropped_line_closes_group(void ** state) {
+    static char content[] = "A1\nA2\nA\0B\n";
+    logreader lf = { .file = "test", .linecount = 3 };
+    int rc;
+    maximum_lines = 0;
+
+    lf.fp = fmemopen(content, sizeof(content) - 1, "r");
+    assert_non_null(lf.fp);
+    *state = lf.fp;
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 0);
+
+    will_return(__wrap_w_get_hash_context, true);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 0);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 3);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_value(__wrap_OS_SHA1_Stream_Bytes, len, 3);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 6);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_value(__wrap_OS_SHA1_Stream_Bytes, len, 3);
+
+    // Third line of the group, dropped
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 10);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_value(__wrap_OS_SHA1_Stream_Bytes, len, 4);
+
+    expect_string(__wrap_w_msg_hash_queues_push, str, "A1 A2");
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 10);
+
+    // End of the file
+    will_return(__wrap_can_read, 1);
+
+    expect_value(__wrap_w_update_file_status, pos, (int64_t) 10);
+    will_return(__wrap_w_update_file_status, true);
+    will_return(__wrap_w_update_file_status, 0);
+
+    read_multiline(&lf, &rc, 0);
+}
+
+/* A dropped first line belongs to its group: a group cut at the end of the file is read again from that line */
+void test_dropped_first_line_keeps_rewind_point(void ** state) {
+    static char content[] = "L1\nL2\nA\0B\nL4";
+    logreader lf = { .file = "test", .linecount = 2 };
+    int rc;
+    maximum_lines = 0;
+
+    lf.fp = fmemopen(content, sizeof(content) - 1, "r");
+    assert_non_null(lf.fp);
+    *state = lf.fp;
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 0);
+
+    will_return(__wrap_w_get_hash_context, true);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 0);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 3);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_value(__wrap_OS_SHA1_Stream_Bytes, len, 3);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 6);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_value(__wrap_OS_SHA1_Stream_Bytes, len, 3);
+
+    expect_string(__wrap_w_msg_hash_queues_push, str, "L1 L2");
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 6);
+
+    // First line of the next group, dropped
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 10);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_value(__wrap_OS_SHA1_Stream_Bytes, len, 4);
+
+    // Second line, not complete yet
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 12);
+
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 6);
+    will_return(__wrap_w_fseek, 0);
+
+    expect_value(__wrap_w_update_file_status, pos, (int64_t) 6);
+    will_return(__wrap_w_update_file_status, true);
+    will_return(__wrap_w_update_file_status, 0);
+
+    read_multiline(&lf, &rc, 0);
+}
+
+/* A group whose lines were all dropped sends nothing, and the next group is not shifted */
+void test_dropped_group_not_sent(void ** state) {
+    static char content[] = "L1\nL2\nA\0B\nA\0B\nL5\nL6\n";
+    logreader lf = { .file = "test", .linecount = 2 };
+    int rc;
+    maximum_lines = 0;
+
+    lf.fp = fmemopen(content, sizeof(content) - 1, "r");
+    assert_non_null(lf.fp);
+    *state = lf.fp;
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 0);
+
+    will_return(__wrap_w_get_hash_context, true);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 0);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 3);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_value(__wrap_OS_SHA1_Stream_Bytes, len, 3);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 6);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_value(__wrap_OS_SHA1_Stream_Bytes, len, 3);
+
+    expect_string(__wrap_w_msg_hash_queues_push, str, "L1 L2");
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 6);
+
+    // Both lines of the second group, dropped
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 10);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_value(__wrap_OS_SHA1_Stream_Bytes, len, 4);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 14);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_value(__wrap_OS_SHA1_Stream_Bytes, len, 4);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 14);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 17);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_value(__wrap_OS_SHA1_Stream_Bytes, len, 3);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 20);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_value(__wrap_OS_SHA1_Stream_Bytes, len, 3);
+
+    expect_string(__wrap_w_msg_hash_queues_push, str, "L5 L6");
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 20);
+
+    // End of the file
+    will_return(__wrap_can_read, 1);
+
+    expect_value(__wrap_w_update_file_status, pos, (int64_t) 20);
+    will_return(__wrap_w_update_file_status, true);
+    will_return(__wrap_w_update_file_status, 0);
+
+    read_multiline(&lf, &rc, 0);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_buffer_space),
         cmocka_unit_test(test_buffer_space_invalid_context),
         cmocka_unit_test(test_maximum_lines),
+        cmocka_unit_test(test_maximum_lines_group_open_at_eof),
+        cmocka_unit_test(test_maximum_lines_group_open_stopped),
         cmocka_unit_test(test_maximum_lines_disabled),
         cmocka_unit_test(test_partial_group_at_eof),
         cmocka_unit_test(test_partial_group_at_eof_maximum_lines),
         cmocka_unit_test(test_long_line_rest_discarded),
         cmocka_unit_test(test_long_line_incomplete_rewinds_group),
         cmocka_unit_test(test_long_line_group_incomplete_not_reported),
-        cmocka_unit_test(test_group_overflow_keeps_next_group)
+        cmocka_unit_test(test_group_overflow_keeps_next_group),
+        cmocka_unit_test_setup_teardown(test_dropped_line_closes_group, setup_real_stream, teardown_real_stream),
+        cmocka_unit_test_setup_teardown(test_dropped_first_line_keeps_rewind_point, setup_real_stream, teardown_real_stream),
+        cmocka_unit_test_setup_teardown(test_dropped_group_not_sent, setup_real_stream, teardown_real_stream)
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
