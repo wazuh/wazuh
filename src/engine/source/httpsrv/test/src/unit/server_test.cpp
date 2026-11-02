@@ -107,7 +107,7 @@ TEST_F(ServerTest, AddRoute)
     httpsrv::Server srv("test");
     auto fn = [&]()
     {
-        srv.addRoute(httpsrv::Method::GET, "/test", [](const httplib::Request&, httplib::Response&) {});
+        srv.addRoute(httpsrv::Method::GET, "/test", [](const httpsrv::Request&, httpsrv::Response&) {});
     };
     EXPECT_NO_THROW(fn());
 }
@@ -117,7 +117,7 @@ TEST_F(ServerTest, AddOverrideRoute)
     httpsrv::Server srv("test");
     auto fn = [&]()
     {
-        srv.addRoute(httpsrv::Method::GET, "/test", [](const httplib::Request&, httplib::Response&) {});
+        srv.addRoute(httpsrv::Method::GET, "/test", [](const httpsrv::Request&, httpsrv::Response&) {});
     };
 
     EXPECT_NO_THROW(fn());

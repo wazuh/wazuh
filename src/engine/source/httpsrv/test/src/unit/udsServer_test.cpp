@@ -179,6 +179,22 @@ TEST_F(UdsServerTest, RoundTripCarriesNeutralRequestAndResponse)
     EXPECT_EQ("Value", seenHeader) << "header lookup is case-insensitive";
 }
 
+TEST_F(UdsServerTest, RegistersThroughTheRouteRegistrarInterface)
+{
+    const auto path = socketPath("registrar");
+    auto server = std::make_shared<UdsServer>(options());
+    const std::shared_ptr<httpsrv::IRouteRegistrar> registrar = server;
+    registrar->addRoute(
+        Method::POST, "/events", [](const Request&, Response& res) { res.setContent("registered", "text/plain"); });
+    server->start(path);
+
+    const auto response = roundTrip(path, post(path, "/events", "x"));
+    server->shutdown(1s);
+
+    EXPECT_EQ(200, statusOf(response));
+    EXPECT_EQ("registered", bodyOf(response));
+}
+
 TEST_F(UdsServerTest, HeaderCountSeesARepeatedHeader)
 {
     const auto path = socketPath("dup");

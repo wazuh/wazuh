@@ -33,11 +33,11 @@ protected:
         m_mockGeo = std::make_shared<MockManager>();
     }
 
-    httplib::Response callHandler()
+    httpsrv::Response callHandler()
     {
         auto handler = api::status::handlers::getStatus(m_mockCmSync, m_mockIocSync, m_mockGeo);
-        httplib::Request req;
-        httplib::Response res;
+        httpsrv::Request req;
+        httpsrv::Response res;
         handler(req, res);
         return res;
     }
@@ -71,7 +71,7 @@ TEST_F(StatusHandlerTest, AllReady)
         }));
 
     auto res = callHandler();
-    EXPECT_EQ(res.status, httplib::StatusCode::OK_200);
+    EXPECT_EQ(res.status, 200);
 
     auto parsed = eMessage::eMessageFromJson<eStatus::StatusGet_Response>(res.body);
     ASSERT_FALSE(std::holds_alternative<base::Error>(parsed));
@@ -107,7 +107,7 @@ TEST_F(StatusHandlerTest, EnabledSpaceUnavailable)
         }));
 
     auto res = callHandler();
-    EXPECT_EQ(res.status, httplib::StatusCode::OK_200);
+    EXPECT_EQ(res.status, 200);
 
     auto parsed = eMessage::eMessageFromJson<eStatus::StatusGet_Response>(res.body);
     ASSERT_FALSE(std::holds_alternative<base::Error>(parsed));
@@ -309,11 +309,11 @@ TEST_F(StatusHandlerTest, ProviderUnavailableReturns500)
 
     m_mockGeo.reset(); // geo provider gone
 
-    httplib::Request req;
-    httplib::Response res;
+    httpsrv::Request req;
+    httpsrv::Response res;
     handler(req, res);
 
-    EXPECT_EQ(res.status, httplib::StatusCode::InternalServerError_500);
+    EXPECT_EQ(res.status, 500);
 }
 
 // Event processing disabled: cmSync and iocSync are null → 200, spaces/ioc absent, ready = false
@@ -328,11 +328,11 @@ TEST_F(StatusHandlerTest, EventProcessingDisabledAnswers)
         }));
 
     auto handler = api::status::handlers::getStatus(nullptr, nullptr, m_mockGeo);
-    httplib::Request req;
-    httplib::Response res;
+    httpsrv::Request req;
+    httpsrv::Response res;
     handler(req, res);
 
-    EXPECT_EQ(res.status, httplib::StatusCode::OK_200);
+    EXPECT_EQ(res.status, 200);
 
     auto parsed = eMessage::eMessageFromJson<eStatus::StatusGet_Response>(res.body);
     ASSERT_FALSE(std::holds_alternative<base::Error>(parsed));
@@ -351,11 +351,11 @@ TEST_F(StatusHandlerTest, CmSyncDestroyedReturns500)
 
     m_mockCmSync.reset();
 
-    httplib::Request req;
-    httplib::Response res;
+    httpsrv::Request req;
+    httpsrv::Response res;
     handler(req, res);
 
-    EXPECT_EQ(res.status, httplib::StatusCode::InternalServerError_500);
+    EXPECT_EQ(res.status, 500);
 }
 
 // No IOC databases configured at all (empty vector) → readiness is NOT lowered.
@@ -440,7 +440,7 @@ TEST_F(StatusHandlerTest, MultipleUnavailableStillReportsAll)
         }));
 
     auto res = callHandler();
-    EXPECT_EQ(res.status, httplib::StatusCode::OK_200);
+    EXPECT_EQ(res.status, 200);
     auto parsed = eMessage::eMessageFromJson<eStatus::StatusGet_Response>(res.body);
     ASSERT_FALSE(std::holds_alternative<base::Error>(parsed));
     const auto& response = std::get<eStatus::StatusGet_Response>(parsed);
