@@ -17,9 +17,9 @@ std::string payloadTooLargeText(std::size_t maxBytes)
     return fmt::format("Payload too large. Max allowed: {} bytes ({} KiB).", maxBytes, maxBytes / 1024);
 }
 
-std::shared_ptr<UdsServer> makeApiServer()
+std::shared_ptr<Server> makeApiServer()
 {
-    UdsServerOptions options;
+    ServerOptions options;
     options.name = "API services";
     options.logTag = "wazuh-manager-analysisd:api-server";
     options.byteBudget = false;
@@ -28,12 +28,12 @@ std::shared_ptr<UdsServer> makeApiServer()
     options.expectContinue = true;
     options.detailedLogging = true;
 
-    auto server = std::make_shared<UdsServer>(std::move(options));
+    auto server = std::make_shared<Server>(std::move(options));
     registerMetrics(server, "api");
     return server;
 }
 
-ApiRouteRegistrar::ApiRouteRegistrar(std::shared_ptr<UdsServer> server, std::size_t payloadMaxBytes)
+ApiRouteRegistrar::ApiRouteRegistrar(std::shared_ptr<Server> server, std::size_t payloadMaxBytes)
     : m_server {std::move(server)}
     , m_payloadMaxBytes {payloadMaxBytes}
 {
