@@ -8008,7 +8008,13 @@ TEST_F(SyscollectorImpTest, LoweringTheCapRetractsOnADeltaTickThatRewalksNothing
     module.m_containerBaseline = true;
     module.m_containerRowsPurged = false;
     module.m_containerDocumentCounts.clear();
-    module.m_containerDocumentLimits.clear();
+
+    // Populated the way init() does, and NOT left to it: Syscollector is a
+    // singleton and the neighbouring tests empty this map in their teardown, so
+    // whether it survives here depends on run order. Promotion iterates it, so
+    // an empty one silently means "nothing is ever promoted" -- which would make
+    // the sync=1 assertion below pass or fail on the order of the suite.
+    module.m_containerDocumentLimits[SYSCOLLECTOR_SYNC_INDEX_PROCESSES] = 0;
     module.m_knownContainerIds.clear();
     module.m_admittedContainers.clear();
     module.m_pendingRetractions.clear();
@@ -8086,6 +8092,8 @@ TEST_F(SyscollectorImpTest, LoweringTheCapRetractsOnADeltaTickThatRewalksNothing
 
     EXPECT_EQ(module.m_admittedContainers.count("b"), 1u)
             << "a removal-only delta re-walks nothing either, so it has to read the verdict too";
+    EXPECT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"b", 1}}))
+            << "readmission has to put the rows back on the wire, not just back in the set";
 
     module.destroy();
     module.m_containerDocumentCounts.clear();
