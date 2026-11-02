@@ -904,8 +904,6 @@ namespace
             return listed;
         }
 
-        fim_container_set_admission_pending(0);
-
         listing.complete = (listStatus.complete != 0);
         listing.unkeyedKnown = (listStatus.unkeyed_known != 0);
 
@@ -929,6 +927,16 @@ namespace
             // snapshot: before the first listing there is none and the bridge
             // is fail-open, which is the same safe direction. A container that
             // appears meanwhile waits one cycle to be admitted.
+            //
+            // This is the ONLY path that clears the hold without installing
+            // anything, and it is why the clear is not done once above the
+            // branch. Clearing there left the hold off while nothing was
+            // installed yet, so a reader on another thread -- the event drain,
+            // or a row batch through the second refresh path -- fell through to
+            // fail-open and reported a container this call was two statements
+            // away from refusing. fim_container_set_admission() clears it under
+            // the same lock as the install, so the normal path has no such gap.
+            fim_container_set_admission_pending(0);
             return listed;
         }
 

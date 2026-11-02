@@ -8319,6 +8319,23 @@ TEST_F(SyscollectorImpTest, APendingVerdictLeavesTheStoredAdmissionAlone)
             << "a verdict is expected, so an unheard one is not a licence to promote";
     EXPECT_EQ(std::count(events.begin(), events.end(), OPERATION_CREATE), 0);
 
+    // The hold has to be BOUNDED. A connector that said `pending` and then went
+    // away has withdrawn the claim, and holding the node's rows on the strength
+    // of it would silence container inventory for as long as the connector
+    // stayed down -- the failure the fail-open above exists to prevent.
+    containerAdmissionPending = true;
+    module.runContainerBaselinePass();
+    ASSERT_TRUE(module.m_admissionPending);
+
+    containerListHook = [](cb_container_id_sink_t, void*)
+    {
+        return -1; // unreachable
+    };
+    module.runContainerBaselinePass();
+
+    EXPECT_FALSE(module.m_admissionPending)
+            << "an unreachable connector is not asserting anything, so the hold must not outlive it";
+
     module.destroy();
     module.m_containerDocumentCounts.clear();
     module.m_containerDocumentLimits.clear();

@@ -1575,3 +1575,26 @@ TEST_F(ContainerReportingTest, AnUnreachableConnectorDoesNotLeaveTheNodeHeldForE
 
     EXPECT_NE(fim_container_is_admitted("a"), 0) << "back to fail-open, not stuck withholding";
 }
+
+// The hold must end AT the install, not before it.
+//
+// Clearing it a few statements earlier left a window in which nothing was
+// installed and the hold was already off, so a reader on another thread -- the
+// event drain, or a row batch through the second refresh path -- fell through
+// to fail-open and reported a container the caller was about to refuse. On a
+// cold start nothing has ever been installed, so the fallback is wrong for the
+// whole of that window.
+TEST_F(ContainerReportingTest, TheHoldEndsAtomicallyWithTheVerdictItWaitedFor)
+{
+    fim_container_set_admission_pending(1);
+    ASSERT_EQ(fim_container_is_admitted("refused"), 0);
+
+    // The verdict arrives and refuses "refused". There must be no observable
+    // state in which the hold is off and this container reads as admitted.
+    const char* known[] = {"kept", "refused"};
+    const char* admitted[] = {"kept"};
+    fim_container_set_admission(known, 2, admitted, 1);
+
+    EXPECT_EQ(fim_container_is_admitted("refused"), 0) << "held before, refused after; never admitted in between";
+    EXPECT_NE(fim_container_is_admitted("kept"), 0);
+}

@@ -745,6 +745,14 @@ void fim_container_set_admission(const char** known_ids,
         if (admitted_set != NULL) {
             OSHash_Free(admitted_set);
         }
+        /* Release the hold too, or this fails CLOSED rather than open and
+         * contradicts the policy three lines above. The caller only reaches
+         * here with a real verdict in hand, so the wait is over whether or not
+         * the sets could be built; keeping it set would silence every container
+         * for as long as the allocations kept failing. */
+        synced_docs_lock();
+        container_admission_pending = 0;
+        synced_docs_unlock();
         return;
     }
 

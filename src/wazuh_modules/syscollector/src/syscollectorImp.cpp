@@ -5158,10 +5158,15 @@ int Syscollector::pollContainerAdmission(std::map<std::string, bool>& discovered
     // Leaving the stored admission alone is the whole fix. A container already
     // refused stays refused; one first seen inside the window is absent from
     // m_admittedContainers and so is held back by isContainerAdmittedLocked()
-    // until a real verdict arrives. At a cold start m_admissionKnown is still
-    // false and everything reports, which is the accepted cost already
-    // documented on MetadataStore::m_admissionSettled -- this does not widen
-    // it.
+    // until a real verdict arrives.
+    //
+    // At a cold start nothing is promoted either, which is the part that used
+    // to be wrong: this module and the connector are both wmodules and restart
+    // together, so "the connector is settling" and "this module has heard
+    // nothing" are the same moment, and the rows a previous run left at sync=0
+    // are still in the database. promoteItemsAfterScanLocked() holds container
+    // scope until a verdict arrives; see the guard there for why it is not in
+    // isContainerAdmittedLocked().
     //
     // Distinct from a connector too old to decide, which never sets the flag
     // and must keep being handled as before: that one never decides, so
