@@ -28,6 +28,7 @@ add_library(httpsrv STATIC
     ${SRC_DIR}/server.cpp
     ${SRC_DIR}/boundedExecutor.cpp
     ${SRC_DIR}/udsServer.cpp
+    ${SRC_DIR}/apiServer.cpp
 )
 target_include_directories(httpsrv
     PUBLIC

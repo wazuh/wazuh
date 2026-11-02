@@ -40,7 +40,7 @@
 #include <fastqueue/stdqueue.hpp>
 #include <geo/downloader.hpp>
 #include <geo/manager.hpp>
-#include <httpsrv/server.hpp>
+#include <httpsrv/apiServer.hpp>
 #include <httpsrv/udsServer.hpp>
 #include <iockvdb/helpers.hpp>
 #include <iockvdb/manager.hpp>
@@ -283,7 +283,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<scheduler::Scheduler> scheduler;
     std::shared_ptr<streamlog::LogManager> streamLogger;
     std::shared_ptr<wiconnector::WIndexerConnector> indexerConnector;
-    std::shared_ptr<httpsrv::Server> apiServer;
+    std::shared_ptr<httpsrv::UdsServer> apiServer;
     std::shared_ptr<dumper::Dumper> dumper;
     std::shared_ptr<raweventindexer::RawEventIndexer> rawEventIndexer;
     std::shared_ptr<confremote::ConfRemoteManager> remoteConf;
@@ -848,14 +848,18 @@ int main(int argc, char* argv[])
                             serverApiPayloadMaxBytes);
                 serverApiPayloadMaxBytes = 0;
             }
-            apiServer =
-                std::make_shared<httpsrv::Server>("API services", static_cast<size_t>(serverApiPayloadMaxBytes), true);
+            apiServer = httpsrv::makeApiServer();
+            const auto apiRoutes =
+                std::make_shared<httpsrv::ApiRouteRegistrar>(apiServer, static_cast<size_t>(serverApiPayloadMaxBytes));
 
-            // API
+            // API. On a clean stop the shutdown below has already stopped it; this covers the error paths.
             exitHandler.add(
                 [apiServer]()
                 {
-                    apiServer->stop();
+                    if (apiServer->isRunning())
+                    {
+                        apiServer->shutdown();
+                    }
                     eMessage::ShutdownEMessageLibrary();
                 });
 
@@ -863,30 +867,30 @@ int main(int argc, char* argv[])
             metricsManager =
                 std::shared_ptr<fastmetrics::IManager>(&fastmetrics::manager(), [](fastmetrics::IManager*) {});
             api::metrics::handlers::registerHandlers(
-                metricsManager, apiServer, "wazuh-manager-analysisd", engineUptimeISO);
+                metricsManager, apiRoutes, "wazuh-manager-analysisd", engineUptimeISO);
             LOG_DEBUG("Metrics API registered");
 
             // Geo
-            api::geo::handlers::registerHandlers(geoManager, apiServer);
+            api::geo::handlers::registerHandlers(geoManager, apiRoutes);
             LOG_DEBUG("Geo API registered");
 
             // Router
-            api::router::handlers::registerHandlers(orchestrator, cmStore, apiServer);
+            api::router::handlers::registerHandlers(orchestrator, cmStore, apiRoutes);
             LOG_DEBUG("Router API registered");
 
             // Tester
             api::tester::handlers::registerHandlers(
-                orchestrator, cmStore, std::static_pointer_cast<schemf::IValidator>(schemaValidator), apiServer);
+                orchestrator, cmStore, std::static_pointer_cast<schemf::IValidator>(schemaValidator), apiRoutes);
             LOG_DEBUG("Tester API registered");
 
             // Dumper Events
-            api::dumper::handlers::registerHandlers(dumper, apiServer);
+            api::dumper::handlers::registerHandlers(dumper, apiRoutes);
             LOG_DEBUG("Dumper Events API registered");
 
             // Raw Event Indexer
             if (rawEventIndexer)
             {
-                api::rawevtindexer::handlers::registerHandlers(rawEventIndexer, apiServer);
+                api::rawevtindexer::handlers::registerHandlers(rawEventIndexer, apiRoutes);
                 LOG_DEBUG("Raw Event Indexer API registered");
             }
 
@@ -895,16 +899,16 @@ int main(int argc, char* argv[])
             const auto apiResourceKvdbPayloadMaxBytes =
                 confManager.get<int64_t>(conf::key::API_RESOURCE_KVDB_PAYLOAD_MAX_BYTES);
             api::cmcrud::handlers::registerHandlers(
-                cmCrudService, orchestrator, apiServer, apiResourcePayloadMaxBytes, apiResourceKvdbPayloadMaxBytes);
+                cmCrudService, orchestrator, apiRoutes, apiResourcePayloadMaxBytes, apiResourceKvdbPayloadMaxBytes);
             LOG_DEBUG("Content Manager CRUD API registered");
 
             // IOC CRUD
             const std::filesystem::path iocInputPath(confManager.get<std::string>(conf::key::KVDB_IOC_INPUT_PATH));
-            api::ioccrud::handlers::registerHandlers(IOCkvdb, scheduler, store, apiServer, iocInputPath);
+            api::ioccrud::handlers::registerHandlers(IOCkvdb, scheduler, store, apiRoutes, iocInputPath);
             LOG_DEBUG("IOC CRUD API registered");
 
             // Status
-            api::status::handlers::registerHandlers(cmSyncService, iocSyncService, geoManager, apiServer);
+            api::status::handlers::registerHandlers(cmSyncService, iocSyncService, geoManager, apiRoutes);
             LOG_DEBUG("Status API registered.");
 
             // Finally start the API server
@@ -1069,7 +1073,9 @@ int main(int argc, char* argv[])
                 if (g_shutdown_requested)
                 {
                     LOG_INFO("Shutdown requested (signal: {}), stopping the engine", g_shutdown_requested);
-                    engineRemoteServer->shutdown(httpsrv::DEFAULT_SHUTDOWN_DEADLINE);
+                    // Both servers stop accepting first and drain together, before any dependency's exit
+                    // handler runs.
+                    httpsrv::shutdownAll({engineRemoteServer.get(), apiServer.get()});
                 }
             }
             engineRemoteServer.reset();
@@ -1085,6 +1091,7 @@ int main(int argc, char* argv[])
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
             LOG_INFO("Shutdown requested (signal: {}), stopping the engine", g_shutdown_requested);
+            httpsrv::shutdownAll({apiServer.get()});
         }
     }
     catch (const std::exception& e)

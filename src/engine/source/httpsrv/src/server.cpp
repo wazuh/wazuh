@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "server.hpp"
 
+#include <httpsrv/apiServer.hpp>
+
 #include <sstream>
 #include <stdexcept>
 
@@ -60,17 +62,7 @@ Server::Server(const std::string& id, size_t payloadMaxBytes, bool enableDetaile
                     return httplib::Server::HandlerResponse::Unhandled;
                 }
 
-                const auto maxBytes = m_payloadMaxBytes;
-                if (maxBytes == 0)
-                {
-                    res.set_content("Payload too large.", "text/plain");
-                }
-                else
-                {
-                    res.set_content(
-                        fmt::format("Payload too large. Max allowed: {} bytes ({} KiB).", maxBytes, maxBytes / 1024),
-                        "text/plain");
-                }
+                res.set_content(payloadTooLargeText(m_payloadMaxBytes), "text/plain");
                 return httplib::Server::HandlerResponse::Handled;
             }
             return httplib::Server::HandlerResponse::Unhandled;

@@ -33,7 +33,12 @@ inline void registerHandlers(const std::shared_ptr<cm::sync::ICMSync>& cmSync,
                              const std::shared_ptr<::geo::IManager>& geoManager,
                              const std::shared_ptr<httpsrv::IRouteRegistrar>& server)
 {
-    server->addRoute(httpsrv::Method::GET, "/status", getStatus(cmSync, iocSync, geoManager));
+    // The readiness probe: a liveness route answered on the I/O thread (it only reads published snapshots), so
+    // long imports or tester runs holding every API worker never delay it.
+    httpsrv::RouteOptions liveness;
+    liveness.cls = httpsrv::RouteClass::Liveness;
+    liveness.runInline = true;
+    server->addRoute(httpsrv::Method::GET, "/status", getStatus(cmSync, iocSync, geoManager), liveness);
 }
 
 } // namespace api::status::handlers
