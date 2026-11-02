@@ -59,6 +59,12 @@ namespace
     std::set<std::string> containerUnkeyedIds;
     bool containerUnkeyedKnown {true};
 
+    /// The connector has a verdict coming but has not reached it. The real
+    /// server forces `complete` and `unkeyed_known` to 0 alongside it, which
+    /// the wrap below reproduces -- a test that set them independently would
+    /// model a reply the connector cannot send.
+    bool containerAdmissionPending {false};
+
     // Which of those the cap refused. Empty means it admitted them all, which is
     // the ordinary case and what every test that predates the cap expects.
     std::set<std::string> containerUnkeyedRefused;
@@ -126,8 +132,10 @@ extern "C" int __wrap_cbaseline_list_containers_ex(const char* socket,
         // the containers I could not identify are: none" -- which is a shape
         // the consumers are entitled to find contradictory.
         const bool complete = containerUnkeyedKnown ? containerUnkeyedIds.empty() : containerListComplete;
-        outStatus->complete = (listed >= 0 && complete) ? 1 : 0;
-        outStatus->unkeyed_known = (listed >= 0 && containerUnkeyedKnown) ? 1 : 0;
+        const bool pending = listed >= 0 && containerAdmissionPending;
+        outStatus->complete = (listed >= 0 && complete && !pending) ? 1 : 0;
+        outStatus->unkeyed_known = (listed >= 0 && containerUnkeyedKnown && !pending) ? 1 : 0;
+        outStatus->admission_pending = pending ? 1 : 0;
     }
 
     return listed;
@@ -8094,6 +8102,160 @@ TEST_F(SyscollectorImpTest, LoweringTheCapRetractsOnADeltaTickThatRewalksNothing
             << "a removal-only delta re-walks nothing either, so it has to read the verdict too";
     EXPECT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"b", 1}}))
             << "readmission has to put the rows back on the wire, not just back in the set";
+
+    module.destroy();
+    module.m_containerDocumentCounts.clear();
+    module.m_containerDocumentLimits.clear();
+    module.m_admittedContainers.clear();
+    module.m_knownContainerIds.clear();
+    module.m_pendingRetractions.clear();
+    module.m_globalReconcilePending = false;
+    module.m_admissionKnown = false;
+    module.m_admissionReconciled = false;
+    module.m_containerAdmissionWithholding = false;
+    module.m_containerRowsPurged = false;
+#else
+    GTEST_SKIP() << "Container baseline transport is Linux-only";
+#endif
+}
+
+// V1, syscollector half. The window after the connector restarts, in which it
+// has a verdict coming but has not reached it.
+//
+// The reply then carries no per-container decision at all, and the `synced`
+// flag the id sink receives is the default that stands in for one -- which is
+// "admitted", deliberately, so a connector too old to decide keeps everything
+// reporting. Recording that default set m_admissionKnown against a verdict
+// nobody made: the containers the cap had pushed out were promoted, their
+// documents created on the manager, and settlement retracted them seconds
+// later.
+TEST_F(SyscollectorImpTest, APendingVerdictLeavesTheStoredAdmissionAlone)
+{
+#if defined(__linux__)
+    struct ResetHooks
+    {
+        ~ResetHooks()
+        {
+            containerScanHook = {};
+            containerListHook = {};
+            containerLifecycleHook = {};
+            containerListComplete = true;
+            containerUnkeyedIds.clear();
+            containerUnkeyedRefused.clear();
+            containerUnkeyedKnown = true;
+            containerAdmissionPending = false;
+        }
+    } resetHooks;
+    const auto info = std::make_shared<MockSysInfo>();
+    EXPECT_CALL(*info, releaseThreadResources()).Times(testing::AnyNumber());
+    auto& module = Syscollector::instance();
+    std::vector<Operation_t> events;
+    module.init(
+        info,
+        reportFunction,
+        [&events](const std::string&, Operation_t op, const std::string&, const std::string&, uint64_t)
+    {
+        events.push_back(op);
+    },
+    logFunction,
+    SYSCOLLECTOR_DB_PATH,
+    "",
+    "",
+    3600,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false);
+    module.m_containerBaseline = true;
+    module.m_containerRowsPurged = false;
+    module.m_containerDocumentCounts.clear();
+
+    // See LoweringTheCapRetractsOnADeltaTickThatRewalksNothing: the singleton's
+    // neighbours empty this map in their teardown and promotion iterates it, so
+    // leaving it to init() makes the sync assertions depend on run order.
+    module.m_containerDocumentLimits[SYSCOLLECTOR_SYNC_INDEX_PROCESSES] = 0;
+    module.m_knownContainerIds.clear();
+    module.m_admittedContainers.clear();
+    module.m_pendingRetractions.clear();
+    module.m_globalReconcilePending = false;
+    module.m_admissionKnown = false;
+    module.m_admissionReconciled = false;
+
+    std::map<std::string, bool> admitted = {{"a", true}, {"b", true}};
+    const std::set<std::string> scanned = {"a", "b"};
+    containerListHook = [&](cb_container_id_sink_t sink, void* ctx)
+    {
+        for (const auto& [id, allowed] : admitted) sink(id.c_str(), allowed, ctx);
+
+        return static_cast<int>(admitted.size());
+    };
+    containerScanHook = [&](cb_dbsync_row_sink_t sink, cb_container_status_sink_t status, void* ctx)
+    {
+        for (const auto& id : scanned)
+        {
+            const nlohmann::json row = {{"container_id", id}, {"pid", "123"}, {"name", "worker"}};
+            sink(id.c_str(), PROCESSES_TABLE, row.dump().c_str(), ctx);
+            cb_container_status_t outcome {};
+            outcome.container_id = id.c_str();
+            status(&outcome, ctx);
+        }
+
+        return static_cast<int>(scanned.size());
+    };
+    auto flags = [&]()
+    {
+        std::map<std::string, int> rows;
+        auto query = SelectQuery::builder().table(PROCESSES_TABLE).columnList({"container_id", "sync"}).build();
+        module.m_spDBSync->selectRows(query.query(),
+                                      [&](ReturnTypeCallback, const nlohmann::json & row)
+        {
+            rows[row.at("container_id").get<std::string>()] = row.at("sync").get<int>();
+        });
+        return rows;
+    };
+
+    module.runContainerBaselinePass();
+    ASSERT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"b", 1}}));
+
+    // The operator lowers containers.synced_limit and b is pushed out.
+    admitted["b"] = false;
+    module.runContainerBaselinePass();
+    ASSERT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"b", 0}}));
+    ASSERT_EQ(module.m_admittedContainers.count("b"), 0u);
+
+    // Now the connector restarts. Its store has not settled, so it sends no
+    // verdict -- and every container arrives carrying the default that stands
+    // in for one. Without the pending flag this reads as "b is admitted again".
+    containerAdmissionPending = true;
+    admitted["b"] = true;
+    events.clear();
+
+    module.runContainerBaselinePass();
+
+    EXPECT_EQ(module.m_admittedContainers.count("b"), 0u)
+            << "a default is not a decision; the stored refusal stands";
+    EXPECT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"b", 0}}))
+            << "so b's documents are never re-created, and never retracted again a moment later";
+    EXPECT_EQ(std::count(events.begin(), events.end(), OPERATION_CREATE), 0)
+            << "nothing moves on the manager while the verdict is pending";
+
+    // ...and when the connector settles, the real verdict is applied in full.
+    // Freezing is for the window, not a new policy.
+    containerAdmissionPending = false;
+    module.runContainerBaselinePass();
+
+    EXPECT_EQ(module.m_admittedContainers.count("b"), 1u);
+    EXPECT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"b", 1}}));
 
     module.destroy();
     module.m_containerDocumentCounts.clear();

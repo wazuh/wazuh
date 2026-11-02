@@ -365,6 +365,22 @@ typedef struct
     /* The connector reported WHICH containers it could not key. 0 means one too
      * old to, and then `complete` is the only guard a caller has. */
     int unkeyed_known;
+
+    /* The connector WILL decide admission but has not yet, so the `synced`
+     * argument `sink` receives is not a decision -- it is the default that
+     * stands in for one, and that default is "admitted".
+     *
+     * Distinct from a connector too old to decide, which also sends no
+     * verdict and which this is 0 for. The two need opposite handling: against
+     * the old one, reporting everything is right and permanent; against this
+     * one it is right for a moment only, and recording it overwrites refusals
+     * the connector is about to re-issue. A caller must leave its stored
+     * admission alone while this is set.
+     *
+     * `complete` and `unkeyed_known` are both 0 whenever this is 1: a
+     * connector that cannot yet see the whole node is not describing the whole
+     * node, so the reply is no basis for deleting anything either. */
+    int admission_pending;
 } cb_list_status_t;
 
 /* As cbaseline_list_containers(), and additionally reports the reply's coverage.

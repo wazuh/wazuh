@@ -39,6 +39,7 @@
     FRIEND_TEST(SyscollectorImpTest, RetractionSeesRowsReportedInTheSamePass);                                         \
     FRIEND_TEST(SyscollectorImpTest, RetractionIsScopedToTheContainersThatLostAdmission);                              \
     FRIEND_TEST(SyscollectorImpTest, LoweringTheCapRetractsOnADeltaTickThatRewalksNothing);                            \
+    FRIEND_TEST(SyscollectorImpTest, APendingVerdictLeavesTheStoredAdmissionAlone);                                    \
     FRIEND_TEST(SyscollectorImpTest, APartialListingNeitherSweepsNorDeAdmits);                                         \
     FRIEND_TEST(SyscollectorImpTest, APartialListingAtStartupDoesNotArmTheGlobalReconcile);                            \
     FRIEND_TEST(SyscollectorImpTest, AnUnkeyableContainerKeepsItsRowsWithoutBlockingCleanup);                          \

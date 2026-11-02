@@ -282,6 +282,15 @@ struct ContainerListStatus
     /// The connector reported which containers it could not key. False means a
     /// connector too old to, and then `complete` is the only guard a caller has.
     bool unkeyedKnown {false};
+
+    /// The connector WILL decide admission but has not yet.
+    ///
+    /// Distinct from `!admittedKnown`, which is also what a connector too old
+    /// to decide produces -- and the two call for opposite handling. A caller
+    /// must not take this reply's verdict as an answer: while this is set the
+    /// reply carries no per-container decision at all, and the flags that
+    /// stand in for one all default to "admitted".
+    bool admissionPending {false};
 };
 
 /// @param status Optional out-param describing the reply's coverage.
@@ -336,6 +345,7 @@ struct PolledListing
 
     bool complete {false};
     bool unkeyedKnown {false};
+    bool admissionPending {false};
 
     /// Whether the connector sent `admitted` at all. False means one too old to,
     /// and then `admitted` is empty and says nothing: fall back to admitting the

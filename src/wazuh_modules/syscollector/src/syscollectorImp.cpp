@@ -5148,7 +5148,25 @@ int Syscollector::pollContainerAdmission(std::map<std::string, bool>& discovered
     listComplete = (listStatus.complete != 0);
     unkeyedKnown = (listStatus.unkeyed_known != 0);
 
-    if (listed >= 0)
+    // Not while the connector's verdict is PENDING. The `synced` flag the sink
+    // received is then not a decision at all -- the reply carries none, and
+    // what arrives is the default that stands in for one, which is "admitted".
+    // Recording it sets m_admissionKnown against a verdict nobody made, so the
+    // containers the cap had pushed out are promoted, their documents are
+    // created on the manager, and settlement retracts them seconds later.
+    //
+    // Leaving the stored admission alone is the whole fix. A container already
+    // refused stays refused; one first seen inside the window is absent from
+    // m_admittedContainers and so is held back by isContainerAdmittedLocked()
+    // until a real verdict arrives. At a cold start m_admissionKnown is still
+    // false and everything reports, which is the accepted cost already
+    // documented on MetadataStore::m_admissionSettled -- this does not widen
+    // it.
+    //
+    // Distinct from a connector too old to decide, which never sets the flag
+    // and must keep being handled as before: that one never decides, so
+    // waiting for it would stop the agent reporting for good.
+    if (listed >= 0 && listStatus.admission_pending == 0)
     {
         // Complete OR able to say what it could not key: either way the reply
         // names every container that exists, which is all admission needs.
