@@ -183,7 +183,7 @@ HttpResponse CurlPerformer::attemptOnce(const HttpRequestSpec& spec, bool useFal
 
     ContentCodingGuard contentCoding;
 
-    if (!configureRequest(*handle, spec, response, contentCoding))
+    if (!configureRequest(*handle, spec, response, offersEncoding(*handle, spec) ? &contentCoding : nullptr))
     {
         return response;
     }
@@ -515,8 +515,24 @@ bool CurlPerformer::configureResponseSink(ICurlHandle& handle, const HttpRequest
     return true;
 }
 
+bool CurlPerformer::offersEncoding(ICurlHandle& handle, const HttpRequestSpec& spec)
+{
+    if (spec.acceptEncoding.empty() || handle.decodes(spec.acceptEncoding))
+    {
+        return !spec.acceptEncoding.empty();
+    }
+
+    if (!m_undecodableOfferWarned.exchange(true, std::memory_order_relaxed))
+    {
+        LOGFN_WARN(m_logFn, "https_client: this agent's libcurl was built without '%s' decoding, so "
+                   "requests don't offer it and replies come uncompressed.", spec.acceptEncoding.c_str());
+    }
+
+    return false;
+}
+
 bool CurlPerformer::configureRequest(ICurlHandle& handle, const HttpRequestSpec& spec,
-                                     HttpResponse& response, ContentCodingGuard& contentCoding) const
+                                     HttpResponse& response, ContentCodingGuard* contentCoding) const
 {
     handle.setOptionString(CurlOption::Url, m_config.baseUrl() + spec.target);
 
@@ -534,7 +550,7 @@ bool CurlPerformer::configureRequest(ICurlHandle& handle, const HttpRequestSpec&
 
     // Not fail-closed like the TLS options: if curl rejects it, no Accept-Encoding goes out and
     // the manager answers plain, which the caller handles anyway.
-    if (!spec.acceptEncoding.empty())
+    if (contentCoding != nullptr)
     {
         handle.setOptionString(CurlOption::AcceptEncoding, spec.acceptEncoding);
     }
@@ -544,7 +560,7 @@ bool CurlPerformer::configureRequest(ICurlHandle& handle, const HttpRequestSpec&
     capture.retryAfter = &response.retryAfterSeconds;
     capture.serverDate = &response.serverDateSeconds;
     capture.caGeneration = &response.caGeneration;
-    capture.contentCoding = spec.acceptEncoding.empty() ? nullptr : &contentCoding;
+    capture.contentCoding = contentCoding;
 
     if (!handle.captureResponseHeaders(capture))
     {

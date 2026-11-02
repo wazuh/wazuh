@@ -210,6 +210,16 @@ TEST(ConfigDownloadComponentTest, TheAgentsLibcurlDecodesZstd)
             "--with-zstd, run `make clean-deps` and `make deps` again";
 }
 
+// What the performer asks before it offers a coding: it has to match what this libcurl reports.
+TEST(ConfigDownloadComponentTest, TheCurlHandleKnowsWhatItsLibcurlDecodes)
+{
+    const auto handle = defaultCurlHandleFactory()();
+    ASSERT_NE(nullptr, handle);
+
+    EXPECT_TRUE(handle->decodes("zstd"));
+    EXPECT_FALSE(handle->decodes("compress"));
+}
+
 // ContentCodingGuard reads the status lines curl writes over HTTP/2 and HTTP/3 ("HTTP/2 200 "),
 // but only its unit tests show it them: no test here runs a reply over either. A curl built with
 // one has to fail here until one does.

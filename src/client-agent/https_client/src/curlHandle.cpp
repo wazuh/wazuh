@@ -125,6 +125,17 @@ namespace
         return index;
     }
 
+    /// Whether this libcurl was built with curl's decoder for `coding` (content_encoding.c).
+    bool libcurlDecodes(const std::string& coding)
+    {
+        static const std::map<std::string, int> featureOf
+        {
+            {"zstd", CURL_VERSION_ZSTD}, {"br", CURL_VERSION_BROTLI}, {"gzip", CURL_VERSION_LIBZ}, {"deflate", CURL_VERSION_LIBZ}
+        };
+        const auto feature = featureOf.find(coding);
+        return feature != featureOf.end() && (curl_version_info(CURLVERSION_NOW)->features & feature->second) != 0;
+    }
+
     size_t headerTrampoline(char* data, size_t size, size_t nmemb, void* userData)
     {
         const size_t total = size * nmemb;
@@ -573,6 +584,11 @@ namespace
             bool contentDecodingFailed() override
             {
                 return m_contentDecodingFailed;
+            }
+
+            bool decodes(const std::string& coding) override
+            {
+                return libcurlDecodes(coding);
             }
 
         private:

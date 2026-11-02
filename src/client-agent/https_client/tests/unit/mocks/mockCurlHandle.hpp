@@ -44,6 +44,9 @@ class MockCurlHandle : public ICurlHandle
             .WillByDefault(::testing::Return(true));
             ON_CALL(*this, wireAbort(::testing::_))
             .WillByDefault(::testing::Return(true));
+            // The agent's libcurl is built with zstd: tests of a build without it say so.
+            ON_CALL(*this, decodes(::testing::_))
+            .WillByDefault(::testing::Return(true));
         }
 
         MOCK_METHOD(bool, setOptionLong, (CurlOption option, long value), (override));
@@ -63,6 +66,7 @@ class MockCurlHandle : public ICurlHandle
         MOCK_METHOD(TlsFailureDetail, tlsFailureDetail, (), (override));
         MOCK_METHOD(bool, caFileLoadFailed, (), (override));
         MOCK_METHOD(bool, contentDecodingFailed, (), (override));
+        MOCK_METHOD(bool, decodes, (const std::string& coding), (override));
 };
 
 #endif // _HC_MOCK_CURL_HANDLE_HPP

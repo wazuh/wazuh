@@ -60,9 +60,14 @@ class CurlPerformer final : public IHttpPerformer
         /// @return false if capturing Retry-After or wiring the abort flag was
         ///         rejected by the handle; the caller must not proceed to
         ///         perform() in that case.
-        /// @param contentCoding Holds the reply to spec.acceptEncoding; wired only when that is set.
+        /// @param contentCoding Holds the reply to spec.acceptEncoding, which goes out only with
+        ///        one; nullptr when nothing is offered (see offersEncoding()).
         bool configureRequest(ICurlHandle& handle, const HttpRequestSpec& spec,
-                              HttpResponse& response, ContentCodingGuard& contentCoding) const;
+                              HttpResponse& response, ContentCodingGuard* contentCoding) const;
+
+        /// Whether to offer spec.acceptEncoding: only a coding the handle's libcurl decodes, since
+        /// curl would fail every reply in any other (#38514). Warns once when it can't.
+        bool offersEncoding(ICurlHandle& handle, const HttpRequestSpec& spec);
 
         /// @return false as soon as one option is rejected; the caller must not
         ///         perform the request, because a TLS option that did not apply
@@ -145,6 +150,9 @@ class CurlPerformer final : public IHttpPerformer
         /// source verifies the peer", for the same reason; rearmWarnings() clears both.
         std::atomic<bool> m_fallbackWarned {false};
         std::atomic<bool> m_noTrustSourceWarned {false};
+
+        /// Warn-once latch: a libcurl built without the offered coding stays that way.
+        std::atomic<bool> m_undecodableOfferWarned {false};
 };
 
 #endif // _HC_CURL_PERFORMER_HPP

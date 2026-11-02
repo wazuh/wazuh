@@ -19,6 +19,7 @@
 #include "fakeSysSeams.hpp"
 #include "mockCurlHandle.hpp"
 #include "mockFsProbe.hpp"
+#include "moduleLogCapture.hpp"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -378,6 +379,51 @@ TEST(CurlPerformerTest, ACodingCurlCouldNotDecodeIsADecodingFailure)
 
     auto performer = makePerformer(makeConfig(HC_VERIFY_NONE), std::move(mock));
     EXPECT_TRUE(performer.perform(spec).contentDecodingFailed);
+}
+
+// curl sends an offer for any coding, then fails every reply in one it can't decode: a libcurl built
+// without the coding doesn't offer it, so the reply comes plain and there is no coding to hold.
+TEST(CurlPerformerTest, ACodingLibcurlCannotDecodeIsNotOffered)
+{
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+
+    HttpRequestSpec spec;
+    spec.target = "/download";
+    spec.acceptEncoding = "zstd";
+
+    HeaderCapture capture;
+    EXPECT_CALL(*handle, decodes("zstd")).WillOnce(Return(false));
+    EXPECT_CALL(*handle, setOptionString(CurlOption::AcceptEncoding, _)).Times(0);
+    EXPECT_CALL(*handle, captureResponseHeaders(_)).WillOnce(DoAll(SaveArg<0>(&capture), Return(true)));
+    EXPECT_CALL(*handle, perform()).WillOnce(Return(TransportStatus::Ok));
+
+    auto performer = makePerformer(makeConfig(HC_VERIFY_NONE), std::move(mock));
+    performer.perform(spec);
+    EXPECT_EQ(nullptr, capture.contentCoding);
+}
+
+// The build doesn't change between requests, so one warning covers all of them.
+TEST(CurlPerformerTest, AnOfferLibcurlCannotDecodeIsWarnedAboutOnce)
+{
+    captureTheModuleLog();
+    CurlPerformer performer {makeConfig(HC_VERIFY_NONE), []() -> std::unique_ptr<ICurlHandle>
+        {
+            auto handle = std::make_unique<NiceMock<MockCurlHandle>>();
+            ON_CALL(*handle, decodes(_)).WillByDefault(Return(false));
+            ON_CALL(*handle, perform()).WillByDefault(Return(TransportStatus::Ok));
+            return handle;
+        }};
+
+    HttpRequestSpec spec;
+    spec.target = "/download";
+    spec.acceptEncoding = "zstd";
+    performer.perform(spec);
+    performer.perform(spec);
+
+    EXPECT_EQ(1u, loggedAt(WARNING_LEVEL, "built without 'zstd' decoding").size());
+    stopCapturingTheModuleLog();
 }
 
 // A curl that rejects the option still sends the request: without the offer the manager answers

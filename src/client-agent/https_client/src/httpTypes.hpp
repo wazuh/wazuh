@@ -186,8 +186,9 @@ struct HttpRequestSpec
     std::string contentType;           ///< Emitted as Content-Type when non-empty; empty
     ///< leaves libcurl's default (non-JSON endpoints).
     std::vector<std::string> headers;  ///< Extra headers (auth headers included).
-    std::string acceptEncoding;        ///< When non-empty: sent as Accept-Encoding, and libcurl
-    ///< decodes a reply in one coding, any it was built with; one
+    std::string acceptEncoding;        ///< One coding to offer. Sent as Accept-Encoding only when
+    ///< the agent's libcurl decodes it, and libcurl then decodes a
+    ///< reply in one coding, any it was built with; one
     ///< naming more is refused (contentDecodingFailed). A reply cut
     ///< short in a properly ended body decodes to a prefix without
     ///< error, so the caller verifies what it got. Empty sends no

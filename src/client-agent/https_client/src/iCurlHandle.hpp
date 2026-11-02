@@ -157,6 +157,11 @@ class ICurlHandle
         /// Content-Encoding (CURLE_BAD_CONTENT_ENCODING): a corrupt frame, or a coding it wasn't
         /// built with. False after a success and after any other failure.
         virtual bool contentDecodingFailed() = 0;
+
+        /// Whether the libcurl behind this handle was built to decode `coding` ("zstd", "br", "gzip"
+        /// or "deflate"). curl sends an Accept-Encoding offer for any coding, then fails every
+        /// reply in one it can't decode.
+        virtual bool decodes(const std::string& coding) = 0;
 };
 
 using CurlHandleFactory = std::function<std::unique_ptr<ICurlHandle>()>;
