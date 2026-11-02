@@ -1199,7 +1199,7 @@ HKEY w_switch_root_key(char* str_rootkey) {
     }
 }
 
-void expand_wildcard_registers(char* entry, char** paths) {
+int expand_wildcard_registers(char* entry, char** paths, int arch) {
     reg_path_struct** aux_vector;
     reg_path_struct** current_position;
     os_calloc(OS_SIZE_8192, sizeof(reg_path_struct*), aux_vector);
@@ -1212,7 +1212,7 @@ void expand_wildcard_registers(char* entry, char** paths) {
     first_e->checked        = 0;
     *aux_vector             = first_e;
     current_position        = aux_vector; //Save the current pointer for future iteration
-    int truncated           = 0;
+    int status              = 0;
 
     // ----- Begin expansion path section -----
     // New algorithm form proposal
@@ -1224,20 +1224,16 @@ void expand_wildcard_registers(char* entry, char** paths) {
         int max_items = OS_SIZE_8192 - 1 - (int)(current_position - aux_vector);
         if (pos_qk != NULL && pos_sr != NULL) {
             if (pos_qk < pos_sr) {
-                truncated |= w_expand_by_wildcard(current_position, '?', max_items);
+                status |= w_expand_by_wildcard(current_position, '?', max_items, arch);
             } else {
-                truncated |= w_expand_by_wildcard(current_position, '*', max_items);
+                status |= w_expand_by_wildcard(current_position, '*', max_items, arch);
             }
         } else if (pos_sr != NULL) {
-            truncated |= w_expand_by_wildcard(current_position, '*', max_items);
+            status |= w_expand_by_wildcard(current_position, '*', max_items, arch);
         } else if (pos_qk != NULL) {
-            truncated |= w_expand_by_wildcard(current_position, '?', max_items);
+            status |= w_expand_by_wildcard(current_position, '?', max_items, arch);
         }
         current_position++;
-    }
-
-    if (truncated) {
-        mwarn(FIM_WARN_REG_WILDCARD_LIMIT, entry, OS_SIZE_8192 - 1);
     }
 
     // ----- End expansion path section -----
@@ -1259,6 +1255,8 @@ void expand_wildcard_registers(char* entry, char** paths) {
     //Release memory before leaves function
     os_free(*current_position);
     os_free(aux_vector);
+
+    return status;
 }
 
 char* get_subkey(char* key) {
@@ -1308,42 +1306,53 @@ int w_is_still_a_wildcard(reg_path_struct **array_struct) {
     return 0;
 }
 
-char** w_list_all_keys(HKEY root_key, char* str_subkey) {
+char** w_list_all_keys(HKEY root_key, char* str_subkey, int arch, int *failed) {
     HKEY keyhandle;
     char** key_list = NULL;
-    if (RegOpenKeyEx(root_key, str_subkey, 0, KEY_READ | KEY_WOW64_64KEY, &keyhandle) == ERROR_SUCCESS) {
-        TCHAR    achKey[OS_SIZE_256];
-        DWORD    cbName;
-        TCHAR    achClass[OS_SIZE_256] = TEXT("");
-        DWORD    cchClassName = OS_SIZE_256;
-        DWORD    cSubKeys = 0;
-        DWORD    cbMaxSubKey;
-        DWORD    cchMaxClass;
-        DWORD    cValues;
-        DWORD    cchMaxValue;
-        DWORD    cbMaxValueData;
-        DWORD    cbSecurityDescriptor;
-        FILETIME ftLastWriteTime;
+    REGSAM view = arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY;
+    LONG open_result = RegOpenKeyEx(root_key, str_subkey, 0, KEY_READ | view, &keyhandle);
 
-        DWORD i, retCode;
+    if (open_result != ERROR_SUCCESS) {
+        // A missing key just has no subkeys
+        if (open_result != ERROR_FILE_NOT_FOUND) {
+            *failed = 1;
+        }
+        return NULL;
+    }
 
-        // Get the class name and the value count.
-        retCode = RegQueryInfoKey(
-            keyhandle,               // key handle
-            achClass,                // buffer for class name
-            &cchClassName,           // size of class string
-            NULL,                    // reserved
-            &cSubKeys,               // number of subkeys
-            &cbMaxSubKey,            // longest subkey size
-            &cchMaxClass,            // longest class string
-            &cValues,                // number of values for this key
-            &cchMaxValue,            // longest value name
-            &cbMaxValueData,         // longest value data
-            &cbSecurityDescriptor,   // security descriptor
-            &ftLastWriteTime);       // last write time
+    TCHAR    achKey[OS_SIZE_256];
+    DWORD    cbName;
+    TCHAR    achClass[OS_SIZE_256] = TEXT("");
+    DWORD    cchClassName = OS_SIZE_256;
+    DWORD    cSubKeys = 0;
+    DWORD    cbMaxSubKey;
+    DWORD    cchMaxClass;
+    DWORD    cValues;
+    DWORD    cchMaxValue;
+    DWORD    cbMaxValueData;
+    DWORD    cbSecurityDescriptor;
+    FILETIME ftLastWriteTime;
 
-        if (retCode == ERROR_SUCCESS) {
-            if (cSubKeys) {
+    DWORD i, retCode;
+
+    // Get the class name and the value count.
+    retCode = RegQueryInfoKey(
+        keyhandle,               // key handle
+        achClass,                // buffer for class name
+        &cchClassName,           // size of class string
+        NULL,                    // reserved
+        &cSubKeys,               // number of subkeys
+        &cbMaxSubKey,            // longest subkey size
+        &cchMaxClass,            // longest class string
+        &cValues,                // number of values for this key
+        &cchMaxValue,            // longest value name
+        &cbMaxValueData,         // longest value data
+        &cbSecurityDescriptor,   // security descriptor
+        &ftLastWriteTime);       // last write time
+
+    if (retCode == ERROR_SUCCESS) {
+        if (cSubKeys) {
+            DWORD found = 0;
             os_calloc(cSubKeys + 1, sizeof(char*), key_list);
             for (i = 0; i < cSubKeys; i++) {
                 cbName = OS_SIZE_256;
@@ -1355,19 +1364,27 @@ char** w_list_all_keys(HKEY root_key, char* str_subkey) {
                     NULL,
                     &ftLastWriteTime);
                 if (retCode == ERROR_SUCCESS) {
-                    os_strdup(achKey, *(key_list + i));
-                    }
+                    os_strdup(achKey, key_list[found]);
+                    found++;
                 }
-                *(key_list + i) = NULL;
+            }
+            key_list[found] = NULL;
+
+            // Subkeys removed while listing shift the indexes, so others may have been skipped
+            if (found < cSubKeys) {
+                *failed = 1;
             }
         }
+    } else {
+        *failed = 1;
     }
     RegCloseKey(keyhandle);
     return key_list;
 }
 
-int w_expand_by_wildcard(reg_path_struct **array_struct, char wildcard_chr, int max_items) {
+int w_expand_by_wildcard(reg_path_struct **array_struct, char wildcard_chr, int max_items, int arch) {
     int truncated = 0;
+    int failed = 0;
     // ----- Begin setup variables section -----
     char* wildcard_str          = NULL;
     os_calloc(2, sizeof(char), wildcard_str);
@@ -1442,7 +1459,7 @@ int w_expand_by_wildcard(reg_path_struct **array_struct, char wildcard_chr, int 
     if (wildcard_chr=='?') {
         if (root_key != NULL && matcher != NULL) {
             //Get all keys from Windows API.
-            char** query_keys = w_list_all_keys(root_key, subkey);
+            char** query_keys = w_list_all_keys(root_key, subkey, arch, &failed);
             first_position = query_keys;
             if (query_keys) {
                 //Itarate over string vector.
@@ -1494,7 +1511,7 @@ int w_expand_by_wildcard(reg_path_struct **array_struct, char wildcard_chr, int 
     } else {
         if (root_key != NULL) {
             //Get all keys from Windows API.
-            char** query_keys = w_list_all_keys(root_key, subkey);
+            char** query_keys = w_list_all_keys(root_key, subkey, arch, &failed);
             first_position    = query_keys;
             if (query_keys) {
                 //Itarate over string vector.
@@ -1547,7 +1564,7 @@ int w_expand_by_wildcard(reg_path_struct **array_struct, char wildcard_chr, int 
     free_strarray(first_position);
     os_free(matcher);
 
-    return truncated;
+    return (truncated ? FIM_REG_EXPAND_TRUNCATED : 0) | (failed ? FIM_REG_EXPAND_FAILED : 0);
 }
 
 #endif /* # else (ifndef WIN32) */

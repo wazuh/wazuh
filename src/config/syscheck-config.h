@@ -255,8 +255,9 @@ typedef struct _registry_s {
     OSMatch *restrict_key;
     OSMatch *restrict_value;
     char *tag;
-    unsigned int is_wildcard:1; // 1 if the entry comes from a wildcard expansion
-    unsigned int is_expanded:1; // Indicates if the entry has been expanded in this scan
+    unsigned int wildcard;          // 1-based position in registry_wildcards of the pattern that added it, 0 if explicit
+    unsigned int is_expanded:1;     // Indicates if the entry has been expanded in this scan
+    unsigned int expand_status:2;   // Patterns only: FIM_REG_EXPAND_* flags of their last expansion
 } registry_t;
 
 typedef struct registry_ignore {
@@ -562,11 +563,31 @@ registry_t *dump_syscheck_registry(syscheck_config *syscheck,
                                    int diff_size);
 
 /**
+ * @brief Appends the keys matched by a registry wildcard to the syscheck configuration, with the pattern's options
+ *
+ * The caller checks that none of the keys is already configured.
+ *
+ * @param syscheck Syscheck configuration structure
+ * @param pattern The wildcard pattern the keys come from
+ * @param keys Full paths of the keys
+ * @param count Number of keys
+ * @return Pointer to the first added entry, valid until the registry array is modified again
+ */
+registry_t *append_syscheck_registry(syscheck_config *syscheck, const registry_t *pattern, char **keys, int count);
+
+/**
  * @brief Frees the members of a registry_t structure
  *
  * @param entry The registry entry whose members will be free'd
  */
 void free_registry_entry(registry_t *entry);
+
+/**
+ * @brief Frees a NULL-entry terminated array of registry_t structures
+ *
+ * @param registry The array to be free'd, it can be NULL
+ */
+void free_registry_array(registry_t *registry);
 #endif
 
 /**

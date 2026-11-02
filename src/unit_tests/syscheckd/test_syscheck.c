@@ -385,6 +385,19 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
     OSList_DeleteThisNode(syscheck.directories, syscheck.directories->first_node);
 }
 
+void test_initialize_syscheck_configuration_registry(void **state) {
+    syscheck_config config;
+
+    // Test_Syscheck() uses a stack configuration, so nothing can be left from the caller
+    memset(&config, 0xA5, sizeof(config));
+
+    assert_int_equal(initialize_syscheck_configuration(&config), OS_SUCCESS);
+    assert_null(config.registry);
+    assert_null(config.registry_wildcards);
+
+    OSList_Destroy(config.directories);
+}
+
 #endif
 
 int main(void) {
@@ -397,6 +410,7 @@ int main(void) {
         /* Windows specific tests */
 #ifdef TEST_WINAGENT
     const struct CMUnitTest tests_win[] = {
+            cmocka_unit_test(test_initialize_syscheck_configuration_registry),
             cmocka_unit_test(test_Start_win32_Syscheck_no_config_file),
             cmocka_unit_test_setup_teardown(test_Start_win32_Syscheck_corrupted_config_file, setup_syscheck_config, teardown_syscheck_config),
             cmocka_unit_test(test_Start_win32_Syscheck_dirs_and_registry),

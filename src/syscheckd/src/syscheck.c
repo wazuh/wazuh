@@ -214,6 +214,14 @@ int Start_win32_Syscheck() {
             r++;
         }
 
+        /* The keys matching each wildcard are listed when every scan expands it */
+        for (r = 0; syscheck.registry_wildcards && syscheck.registry_wildcards[r].entry; r++) {
+            char optstr[1024];
+            minfo(FIM_MONITORING_REGISTRY, syscheck.registry_wildcards[r].entry,
+                  syscheck.registry_wildcards[r].arch == ARCH_64BIT ? " [x64]" : "",
+                  syscheck_opts2str(optstr, sizeof(optstr), syscheck.registry_wildcards[r].opts));
+        }
+
         /* Print directories to be monitored */
         OSList_foreach(node_it, syscheck.directories) {
             dir_it = node_it->data;

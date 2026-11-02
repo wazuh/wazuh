@@ -71,12 +71,12 @@ void expect_get_registry_permissions(cJSON *permissions, DWORD retval);
 /**
  * @brief Mock calls to expand_wildcard_registers, copying a NULL terminated list of matches into paths
  */
-void __wrap_expand_wildcard_registers(char *entry, char **paths);
+int __wrap_expand_wildcard_registers(char *entry, char **paths, int arch);
 
 /**
  * @brief This function loads the expect and will return of the function expand_wildcard_registers
  */
-void expect_expand_wildcard_registers(const char *entry, char **matches);
+void expect_expand_wildcard_registers(const char *entry, int arch, char **matches, int status);
 
 #else
 /**

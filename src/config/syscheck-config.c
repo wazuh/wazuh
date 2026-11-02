@@ -107,6 +107,7 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->db_entry_registry_limit         = 100000;
     syscheck->realtime_change                 = 0;
     syscheck->registry                        = NULL;
+    syscheck->registry_wildcards              = NULL;
     syscheck->key_ignore                      = NULL;
     syscheck->key_ignore_regex                = NULL;
     syscheck->value_ignore                    = NULL;
@@ -192,6 +193,43 @@ directory_t *fim_copy_directory(const directory_t *_dir) {
 }
 
 #ifdef WIN32
+static void fill_registry_entry(registry_t *new_entry,
+                                const char *entry,
+                                int opts,
+                                const char *restrict_key,
+                                const char *restrict_value,
+                                int recursion_level,
+                                const char *tag,
+                                int arch,
+                                int diff_size) {
+    os_strdup(entry, new_entry->entry);
+    new_entry->recursion_level = recursion_level;
+    new_entry->arch = arch;
+    new_entry->opts = opts;
+    new_entry->diff_size_limit = diff_size;
+    new_entry->wildcard = 0;
+    new_entry->is_expanded = 0;
+    new_entry->expand_status = 0;
+
+    if (tag) {
+        os_strdup(tag, new_entry->tag);
+    }
+    if (restrict_key) {
+        os_calloc(1, sizeof(OSMatch), new_entry->restrict_key);
+        if (!OSMatch_Compile(restrict_key, new_entry->restrict_key, 0)) {
+            merror(REGEX_COMPILE, restrict_key, new_entry->restrict_key->error);
+            os_free(new_entry->restrict_key);
+        }
+    }
+    if (restrict_value) {
+        os_calloc(1, sizeof(OSMatch), new_entry->restrict_value);
+        if (!OSMatch_Compile(restrict_value, new_entry->restrict_value, 0)) {
+            merror(REGEX_COMPILE, restrict_value, new_entry->restrict_value->error);
+            os_free(new_entry->restrict_value);
+        }
+    }
+}
+
 static registry_t *dump_registry_entry(registry_t **registry,
                                        char *entry,
                                        int opts,
@@ -206,12 +244,6 @@ static registry_t *dump_registry_entry(registry_t **registry,
 
     if (*registry == NULL) {
         os_calloc(2, sizeof(registry_t), *registry);
-        (*registry)[pl + 1].entry = NULL;
-        (*registry)[pl].tag = NULL;
-        (*registry)[pl + 1].tag = NULL;
-        (*registry)[pl + 1].recursion_level = 0;
-        (*registry)[pl + 1].restrict_key = NULL;
-        (*registry)[pl + 1].restrict_value = NULL;
         (*registry)[pl + 1].diff_size_limit = -1;
     } else {
         while ((*registry)[pl].entry != NULL) {
@@ -232,35 +264,9 @@ static registry_t *dump_registry_entry(registry_t **registry,
         }
     }
 
-    registry_t *new_entry = &(*registry)[pl];
-
-    os_strdup(entry, new_entry->entry);
-    new_entry->recursion_level = recursion_level;
-    new_entry->arch = arch;
-    new_entry->opts = opts;
-    new_entry->diff_size_limit = diff_size;
-    new_entry->is_wildcard = 0;
-    new_entry->is_expanded = 0;
-
-    if (tag) {
-        os_strdup(tag, new_entry->tag);
-    }
-    if (restrict_key) {
-        os_calloc(1, sizeof(OSMatch), new_entry->restrict_key);
-        if (!OSMatch_Compile(restrict_key, new_entry->restrict_key, 0)) {
-            merror(REGEX_COMPILE, restrict_key, new_entry->restrict_key->error);
-            os_free(new_entry->restrict_key);
-        }
-    }
-    if (restrict_value) {
-        os_calloc(1, sizeof(OSMatch), new_entry->restrict_value);
-        if (!OSMatch_Compile(restrict_value, new_entry->restrict_value, 0)) {
-            merror(REGEX_COMPILE, restrict_value, new_entry->restrict_value->error);
-            os_free(new_entry->restrict_value);
-        }
-    }
-
-    return new_entry;
+    fill_registry_entry(&(*registry)[pl], entry, opts, restrict_key, restrict_value, recursion_level, tag, arch,
+                        diff_size);
+    return &(*registry)[pl];
 }
 
 registry_t *dump_syscheck_registry(syscheck_config *syscheck,
@@ -274,6 +280,38 @@ registry_t *dump_syscheck_registry(syscheck_config *syscheck,
                                    int diff_size) {
     return dump_registry_entry(&syscheck->registry, entry, opts, restrict_key, restrict_value, recursion_level, tag,
                                arch, diff_size);
+}
+
+registry_t *append_syscheck_registry(syscheck_config *syscheck, const registry_t *pattern, char **keys, int count) {
+    int size = 0;
+
+    while (syscheck->registry && syscheck->registry[size].entry) {
+        size++;
+    }
+
+    os_realloc(syscheck->registry, (size + count + 1) * sizeof(registry_t), syscheck->registry);
+    memset(&syscheck->registry[size], 0, (count + 1) * sizeof(registry_t));
+    syscheck->registry[size + count].diff_size_limit = -1;
+
+    for (int i = 0; i < count; i++) {
+        fill_registry_entry(&syscheck->registry[size + i], keys[i], pattern->opts,
+                            pattern->restrict_key ? pattern->restrict_key->raw : NULL,
+                            pattern->restrict_value ? pattern->restrict_value->raw : NULL,
+                            pattern->recursion_level, pattern->tag, pattern->arch, pattern->diff_size_limit);
+    }
+
+    return &syscheck->registry[size];
+}
+
+void free_registry_array(registry_t *registry) {
+    if (registry == NULL) {
+        return;
+    }
+
+    for (int i = 0; registry[i].entry != NULL; i++) {
+        free_registry_entry(&registry[i]);
+    }
+    free(registry);
 }
 
 void free_registry_entry(registry_t *entry) {
@@ -641,7 +679,7 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
         }
 
         if (strchr(tmp_entry, '*') || strchr(tmp_entry, '?')) {
-            /* Keep the pattern so every scheduled scan expands it again */
+            /* Keep the pattern: every scheduled scan expands it */
             if (arch == ARCH_BOTH) {
                 dump_registry_entry(&syscheck->registry_wildcards, tmp_entry, opts, restrict_key, restrict_value,
                                     recursion_level, tag, ARCH_64BIT, tmp_diff_size);
@@ -651,27 +689,6 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
                 dump_registry_entry(&syscheck->registry_wildcards, tmp_entry, opts, restrict_key, restrict_value,
                                     recursion_level, tag, arch, tmp_diff_size);
             }
-
-            /* Expand any wildcard */
-            char** paths_wildcard = NULL;
-            os_calloc(OS_SIZE_8192, sizeof(char*), paths_wildcard);
-            expand_wildcard_registers(tmp_entry, paths_wildcard);
-
-            mdebug1(FIM_WILDCARDS_REGISTERS_START);
-            char** current_path = paths_wildcard;
-            while(*current_path != NULL){
-                mdebug2(FIM_WILDCARDS_ADD_REGISTER, tmp_entry, *current_path);
-                /* Add new entry */
-                if (arch == ARCH_BOTH) {
-                    dump_syscheck_registry(syscheck, *current_path, opts, restrict_key, restrict_value, recursion_level, tag, ARCH_64BIT, tmp_diff_size)->is_wildcard = 1;
-                    dump_syscheck_registry(syscheck, *current_path, opts, restrict_key, restrict_value, recursion_level, tag, ARCH_32BIT, tmp_diff_size)->is_wildcard = 1;
-                } else {
-                    dump_syscheck_registry(syscheck, *current_path, opts, restrict_key, restrict_value, recursion_level, tag, arch, tmp_diff_size)->is_wildcard = 1;
-                }
-                current_path++;
-            }
-            mdebug1(FIM_WILDCARDS_REGISTERS_FINALIZE);
-            free_strarray(paths_wildcard);
         } else {
             /* Add new entry */
             if (arch == ARCH_BOTH) {
@@ -2503,18 +2520,8 @@ void Free_Syscheck(syscheck_config * config) {
             }
             free(config->registry_nodiff_regex);
         }
-        if (config->registry) {
-            for (i=0; config->registry[i].entry != NULL; i++) {
-                free_registry_entry(&config->registry[i]);
-            }
-            free(config->registry);
-        }
-        if (config->registry_wildcards) {
-            for (i=0; config->registry_wildcards[i].entry != NULL; i++) {
-                free_registry_entry(&config->registry_wildcards[i]);
-            }
-            os_free(config->registry_wildcards);
-        }
+        free_registry_array(config->registry);
+        free_registry_array(config->registry_wildcards);
     #endif
 
         if (config->realtime) {
