@@ -23,6 +23,9 @@
 // fim_scan_mutex is initialized here: the shutdown handler can use it before fim_initialize() runs
 syscheck_config syscheck = {
     .fim_scan_mutex = PTHREAD_MUTEX_INITIALIZER,
+#ifdef WIN32
+    .registry_lock = PTHREAD_RWLOCK_INITIALIZER,
+#endif
 };
 int sys_debug_level;
 int audit_queue_full_reported = 0;
@@ -209,6 +212,14 @@ int Start_win32_Syscheck() {
                 mdebug1(FIM_DIFF_FILE_SIZE_LIMIT, syscheck.registry[r].diff_size_limit, syscheck.registry[r].entry);
             }
             r++;
+        }
+
+        /* The keys matching each wildcard are listed when every scan expands it */
+        for (r = 0; syscheck.registry_wildcards && syscheck.registry_wildcards[r].entry; r++) {
+            char optstr[1024];
+            minfo(FIM_MONITORING_REGISTRY, syscheck.registry_wildcards[r].entry,
+                  syscheck.registry_wildcards[r].arch == ARCH_64BIT ? " [x64]" : "",
+                  syscheck_opts2str(optstr, sizeof(optstr), syscheck.registry_wildcards[r].opts));
         }
 
         /* Print directories to be monitored */
