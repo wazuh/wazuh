@@ -692,6 +692,10 @@ static OSHash* container_admitted = NULL;
 static OSHash* container_known = NULL;
 static int container_admission_known = 0;
 
+/* See fim_container_set_admission_pending(). Guarded by synced_docs_mutex like
+ * the two sets above. */
+static int container_admission_pending = 0;
+
 /* A set of container ids, or NULL when it could not be built. */
 static OSHash* container_id_set(const char** container_ids, size_t count)
 {
@@ -750,6 +754,8 @@ void fim_container_set_admission(const char** known_ids,
     container_known = known_set;
     container_admitted = admitted_set;
     container_admission_known = 1;
+    /* A real verdict ends the wait, whatever the last reply claimed. */
+    container_admission_pending = 0;
     synced_docs_unlock();
 
     if (previous_known != NULL) {
@@ -760,6 +766,16 @@ void fim_container_set_admission(const char** known_ids,
     }
 
     fim_container_reconcile_admission();
+}
+
+void fim_container_set_admission_pending(int pending)
+{
+    synced_docs_lock();
+    container_admission_pending = (pending != 0);
+    synced_docs_unlock();
+
+    /* No reconcile. There is nothing to reconcile TO: a pending reply carries
+     * no verdict, and the rows must stay exactly as they are. */
 }
 
 void fim_container_set_admitted(const char** container_ids, size_t count)
@@ -804,9 +820,15 @@ int fim_container_is_admitted(const char* container_id)
      *
      * The not-told-yet case above remains fail-open: no decision has arrived at
      * all there, which is a different thing from one that says no. */
-    const int admitted = (container_admission_known == 0 || container_admitted == NULL)
-                         ? 1
-                         : (OSHash_Get(container_admitted, container_id) != NULL);
+    /* Pending is tested FIRST, and that order is the whole point: at a cold
+     * start nothing has been installed either, so the fail-open below would
+     * otherwise win -- and syscheckd reads this connector while it is still
+     * settling on every agent restart. */
+    const int admitted = container_admission_pending
+                         ? 0
+                         : ((container_admission_known == 0 || container_admitted == NULL)
+                            ? 1
+                            : (OSHash_Get(container_admitted, container_id) != NULL));
     synced_docs_unlock();
 
     return admitted;

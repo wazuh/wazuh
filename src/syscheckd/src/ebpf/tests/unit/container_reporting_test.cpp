@@ -1526,3 +1526,52 @@ TEST_F(ContainerReportingTest, AFailedListingLeavesTheAdmissionSnapshotAlone)
     EXPECT_NE(fim_container_is_admitted("a"), 0) << "the previous answer stands";
     EXPECT_EQ(fim_container_admission_is_stale("b"), 0) << "the previous answer stands";
 }
+
+// W1/W2. The connector and both consumers share a process, so the agent
+// restart that opens the connector's settling window starts the consumers from
+// scratch too -- with nothing installed, and with the rows the cap refused last
+// run still at sync=0 in the database.
+//
+// "Not told yet" fails open, deliberately, so an agent that has not reached the
+// connector does not look like one whose every container was capped. That is
+// right for a connector too old to decide and wrong for one that is merely
+// settling, and before this they were the same state: the bridge reported
+// everything for the whole window, re-created the refused rows on the manager,
+// and deleted them again when the verdict landed. Every restart.
+TEST_F(ContainerReportingTest, APendingVerdictHoldsRatherThanFailingOpenAtAColdStart)
+{
+    // Nothing installed, exactly as a fresh process finds it.
+    EXPECT_NE(fim_container_is_admitted("a"), 0) << "nothing heard at all still fails open";
+
+    fim_container_set_admission_pending(1);
+
+    EXPECT_EQ(fim_container_is_admitted("a"), 0)
+            << "a connector that says it is settling is not a connector that cannot decide";
+    EXPECT_EQ(fim_container_is_admitted("never-seen"), 0) << "including a container nothing has mentioned";
+
+    // The host is not a container and never waits on a container verdict.
+    EXPECT_NE(fim_container_is_admitted(""), 0);
+
+    // A real verdict ends the wait and is applied in full, without needing the
+    // flag cleared separately.
+    const char* known[] = {"a", "b"};
+    const char* admitted[] = {"a"};
+    fim_container_set_admission(known, 2, admitted, 1);
+
+    EXPECT_NE(fim_container_is_admitted("a"), 0);
+    EXPECT_EQ(fim_container_is_admitted("b"), 0) << "and now absence IS a refusal";
+}
+
+// The mirror, and the reason the hold must be bounded: an unreachable connector
+// has withdrawn the claim that a verdict is coming. Holding the node's rows on
+// the strength of it would be unbounded, so the state falls back to what this
+// path did before the flag existed.
+TEST_F(ContainerReportingTest, AnUnreachableConnectorDoesNotLeaveTheNodeHeldForEver)
+{
+    fim_container_set_admission_pending(1);
+    ASSERT_EQ(fim_container_is_admitted("a"), 0);
+
+    fim_container_set_admission_pending(0);
+
+    EXPECT_NE(fim_container_is_admitted("a"), 0) << "back to fail-open, not stuck withholding";
+}

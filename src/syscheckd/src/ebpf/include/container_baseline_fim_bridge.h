@@ -215,6 +215,24 @@ void fim_container_set_admission(const char** known_ids,
  */
 int fim_container_is_admitted(const char* container_id);
 
+/* The connector WILL decide admission but has not yet.
+ *
+ * A third state, and it has to be one. "Not told yet" fails OPEN, so that an
+ * agent that has not reached the connector does not look like one whose every
+ * container was capped -- right for a connector too old to decide, wrong for
+ * one that is merely settling, and the same state without this.
+ *
+ * While set, fim_container_is_admitted() answers 0, which holds a row at the
+ * flag the previous run left it at: a reported row is never demoted (see the
+ * gate in container_budget_decide()), nothing is promoted, and no reconcile
+ * runs because fim_container_reconcile_admission() is reached only by
+ * fim_container_set_admission(), which a pending reply never calls.
+ *
+ * Deliberately does NOT replace the admitted sets or reconcile: there is no
+ * verdict to install, and installing an empty one would read as "refuse
+ * everything". */
+void fim_container_set_admission_pending(int pending);
+
 /**
  * @brief Whether the admission snapshot predates this container. Non-zero when it does.
  *

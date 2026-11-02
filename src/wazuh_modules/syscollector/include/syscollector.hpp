@@ -944,6 +944,24 @@ class EXPORTED Syscollector final
         std::set<std::string>                                                    m_admittedContainers;
         bool                                                                     m_admissionKnown {false};
 
+        /// The connector has told us it WILL decide admission but has not yet.
+        ///
+        /// A third state, and it has to be one. m_admissionKnown false means
+        /// "nothing heard", which fails OPEN so that an agent that has not
+        /// reached the connector does not look like one whose every container
+        /// was capped. That is right for a connector too old to decide, and
+        /// wrong for one that is merely settling -- and the two are the same
+        /// state without this flag.
+        ///
+        /// It matters because syscollector and container_instances are both
+        /// wmodules and share wazuh-modulesd: every restart that opens the
+        /// connector's settling window ALSO resets m_admissionKnown here, while
+        /// the rows the cap refused last run are still sitting at sync=0 in the
+        /// local database. Failing open there promotes them, sends a CREATE for
+        /// each, and retracts them with a DELETE once the verdict lands -- on
+        /// every single agent restart.
+        bool                                                                     m_admissionPending {false};
+
         // True when at least one known container is being withheld, i.e. the
         // cap is actually biting. Kept separately because the re-send paths
         // need to know that SOMETHING can hold a row at sync=0 without having

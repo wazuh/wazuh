@@ -8257,6 +8257,68 @@ TEST_F(SyscollectorImpTest, APendingVerdictLeavesTheStoredAdmissionAlone)
     EXPECT_EQ(module.m_admittedContainers.count("b"), 1u);
     EXPECT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"b", 1}}));
 
+    // THE CASE THAT ACTUALLY HAPPENS. Everything above restarts the connector
+    // while this module keeps running, which cannot occur: syscollector and
+    // container_instances are both wmodules and share wazuh-modulesd, so the
+    // restart that makes the connector settle restarts this module too.
+    //
+    // Model that: the latch and the admitted set go back to their fresh-process
+    // values while the ROWS stay exactly as the previous run left them, which
+    // is what the local database does across a restart. Push "b" out first so
+    // there is a refusal worth preserving.
+    admitted["b"] = false;
+    module.runContainerBaselinePass();
+    ASSERT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"b", 0}}));
+
+    module.m_admissionKnown = false;
+    module.m_admittedContainers.clear();
+    module.m_admissionPending = false;
+    module.m_pendingRetractions.clear();
+    module.m_globalReconcilePending = false;
+    module.m_admissionReconciled = false;
+
+    // The connector is settling, and says so. Every container arrives carrying
+    // the default that stands in for a verdict, which is "admitted".
+    containerAdmissionPending = true;
+    admitted["b"] = true;
+    events.clear();
+
+    module.runContainerBaselinePass();
+
+    EXPECT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"b", 0}}))
+            << "b's refusal was recorded in the rows, and a fresh process must not undo it on a default";
+    EXPECT_EQ(std::count(events.begin(), events.end(), OPERATION_CREATE), 0)
+            << "nothing may be re-created on the manager only to be deleted again when the verdict lands";
+    EXPECT_FALSE(module.m_admissionKnown) << "pending is not a verdict and must not set the latch";
+
+    // And the settling connector reaching its verdict applies it normally.
+    containerAdmissionPending = false;
+    module.runContainerBaselinePass();
+    EXPECT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"b", 1}}));
+
+    // The window BEFORE the first poll, which is wider than the pending one and
+    // was open for the same reason. The host scan's tail promotes container
+    // scope too, so a host scan landing before the first container pass used to
+    // promote last run's refused rows while this module had heard nothing at
+    // all. Nothing has been heard here: no latch, no pending flag.
+    admitted["b"] = false;
+    module.runContainerBaselinePass();
+    ASSERT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"b", 0}}));
+
+    module.m_admissionKnown = false;
+    module.m_admittedContainers.clear();
+    module.m_admissionPending = false;
+    module.m_pendingRetractions.clear();
+    module.m_globalReconcilePending = false;
+    module.m_admissionReconciled = false;
+    events.clear();
+
+    module.promoteItemsAfterScan();
+
+    EXPECT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"b", 0}}))
+            << "a verdict is expected, so an unheard one is not a licence to promote";
+    EXPECT_EQ(std::count(events.begin(), events.end(), OPERATION_CREATE), 0);
+
     module.destroy();
     module.m_containerDocumentCounts.clear();
     module.m_containerDocumentLimits.clear();

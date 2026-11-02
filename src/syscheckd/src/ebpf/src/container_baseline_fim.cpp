@@ -881,7 +881,30 @@ namespace
         const int listed =
             cbaseline_list_containers_ex(CB_DEFAULT_CONNECTOR_SOCKET_PATH, container_id_sink, &listing, &listStatus);
 
-        if (listed < 0) return listed;
+        if (listed < 0)
+        {
+            // Unreachable withdraws the claim. Holding the node's rows on the
+            // strength of a `pending` nobody is asserting any more would be
+            // unbounded; clearing it restores exactly what this path did before
+            // the flag existed, and a connector that comes back says `pending`
+            // again and settles within its own grace.
+            fim_container_set_admission_pending(0);
+            return listed;
+        }
+
+        // Before the early return below, which a pending reply would otherwise
+        // take as "an older connector" -- pending forces both of these to 0.
+        // That branch keeps the previous snapshot, and at a cold start there is
+        // none, so the bridge stayed FAIL-OPEN for the whole settling window on
+        // every agent restart. Holding instead is what leaves each row at the
+        // flag the previous run gave it.
+        if (listStatus.admission_pending != 0)
+        {
+            fim_container_set_admission_pending(1);
+            return listed;
+        }
+
+        fim_container_set_admission_pending(0);
 
         listing.complete = (listStatus.complete != 0);
         listing.unkeyedKnown = (listStatus.unkeyed_known != 0);

@@ -5166,6 +5166,21 @@ int Syscollector::pollContainerAdmission(std::map<std::string, bool>& discovered
     // Distinct from a connector too old to decide, which never sets the flag
     // and must keep being handled as before: that one never decides, so
     // waiting for it would stop the agent reporting for good.
+    {
+        // Recorded whether or not a verdict follows, because the whole point is
+        // to tell "the connector is settling" from "nothing heard yet" -- see
+        // m_admissionPending.
+        //
+        // Cleared when the connector could not be reached. The pending state is
+        // a claim the connector made, and an unreachable one has withdrawn it:
+        // holding the node's rows on the strength of a claim nobody is making
+        // any more would be unbounded, while falling back restores exactly what
+        // this path did before the flag existed. A connector that comes back
+        // says `pending` again and settles within its own grace.
+        std::lock_guard<std::mutex> lock(m_limitsMutex);
+        m_admissionPending = (listed >= 0 && listStatus.admission_pending != 0);
+    }
+
     if (listed >= 0 && listStatus.admission_pending == 0)
     {
         // Complete OR able to say what it could not key: either way the reply
@@ -5401,9 +5416,36 @@ bool Syscollector::isContainerAdmittedLocked(const std::string& containerId) con
         return true;
     }
 
+    // Told the verdict is coming: hold, and hold BEFORE the fail-open below.
+    //
+    // Holding here is what keeps a row's stored flag exactly as the previous
+    // run left it. Nothing promotes (checkDocumentLimit() and both promotion
+    // paths ask this first), and nothing retracts either, because the
+    // retraction pass is armed only by setAdmittedContainers() and that call is
+    // skipped for the whole of this window. A DELETE is never gated on this, so
+    // a row the manager holds can still be withdrawn.
+    //
+    // The order is the fix. At a cold start m_admissionKnown is false AND this
+    // is true, and without this test the fail-open below wins -- which is the
+    // case that actually happens, because this module and the connector share
+    // wazuh-modulesd and restart together.
+    if (m_admissionPending)
+    {
+        return false;
+    }
+
     // Nothing heard yet: report, do not withhold. The alternative makes an
     // agent that has not yet reached the connector look exactly like one whose
-    // every container was capped.
+    // every container was capped. Reached only when the connector has NOT said
+    // it is settling -- one too old to say so, or one not yet reached at all.
+    //
+    // This must stay fail-open even when a verdict IS expected, because a
+    // container pass writes each row's flag from inside the scan and only
+    // establishes admission afterwards. Holding here left every row of the
+    // first pass at sync=0 with nothing to lift them, since promotion needs a
+    // configured budget. The narrower thing that actually needed guarding --
+    // promoting rows a PREVIOUS process left withheld, before this one has
+    // heard any verdict -- is handled in promoteItemsAfterScanLocked().
     if (!m_admissionKnown)
     {
         return true;
@@ -6238,6 +6280,26 @@ void Syscollector::promoteItemsAfterScan()
 
 void Syscollector::promoteItemsAfterScanLocked(LimitScope scope)
 {
+    // A container verdict is expected and none has arrived yet, so promote
+    // nothing.
+    //
+    // The rows this would lift are precisely the ones whose verdict is unknown:
+    // a previous process left them at sync=0 because the cap refused them, and
+    // they survive in the database across a restart. This module and the
+    // connector are both wmodules and restart together, so "the connector is
+    // still settling" and "this module has heard nothing yet" are the same
+    // moment -- and the HOST scan's tail promotes container scope too, so a
+    // host scan landing before the first container pass would lift them all.
+    //
+    // Only here. The in-scan decision stays fail-open: a container pass writes
+    // each row's flag before it polls, so holding there leaves the whole first
+    // pass at sync=0 with nothing to lift it. By the time THIS runs from a
+    // container pass, that pass has already polled and m_admissionKnown is set.
+    if (scope == LimitScope::container && m_containerBaseline && !m_admissionKnown)
+    {
+        return;
+    }
+
     // For each index with a limit, promote items to fill available slots
     for (const auto& [index, limit] : limitsFor(scope))
     {
