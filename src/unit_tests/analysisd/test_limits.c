@@ -242,6 +242,23 @@ void test_update_limits_current_cell_timeframe_limit(void ** state)
     assert_int_equal(limits.circ_buf[limits.current_cell], 0);
 }
 
+// get_eps_consumed_credits
+void test_get_eps_consumed_credits_disabled(void ** state)
+{
+    limits.enabled = false;
+
+    assert_int_equal(0, get_eps_consumed_credits());
+}
+
+void test_get_eps_consumed_credits_current_cell(void ** state)
+{
+    limits.current_cell = 3;
+    limits.circ_buf[2] = 7;
+    limits.circ_buf[3] = 42;
+
+    assert_int_equal(42, get_eps_consumed_credits());
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -266,6 +283,9 @@ int main(void)
         // // Test update_limits
         cmocka_unit_test_setup_teardown(test_update_limits_current_cell_less_than_timeframe, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_update_limits_current_cell_timeframe_limit, test_setup, test_teardown),
+        // Test get_eps_consumed_credits
+        cmocka_unit_test_setup_teardown(test_get_eps_consumed_credits_disabled, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_get_eps_consumed_credits_current_cell, test_setup, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
