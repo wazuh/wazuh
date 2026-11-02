@@ -205,16 +205,16 @@ TEST(ConfigDownloadComponentTest, TheAgentsLibcurlDecodesZstd)
             "--with-zstd, run `make clean-deps` and `make deps` again";
 }
 
-// ContentCodingGuard reads status lines as curl prints them over HTTP/1.x. Over HTTP/2 or HTTP/3
-// curl writes its own ("HTTP/2 200"), which the guard can't read, so a curl built with either has
-// to fail here before it can let a reply stack decoders.
+// ContentCodingGuard reads the status lines curl writes over HTTP/2 and HTTP/3 ("HTTP/2 200 "),
+// but only its unit tests show it them: no test here runs a reply over either. A curl built with
+// one has to fail here until one does.
 TEST(ConfigDownloadComponentTest, TheAgentsLibcurlSpeaksOnlyHttp1)
 {
     const curl_version_info_data* info = curl_version_info(CURLVERSION_NOW);
 
     EXPECT_EQ(0, info->features & (CURL_VERSION_HTTP2 | CURL_VERSION_HTTP3))
-            << "libcurl " << info->version << " was built with HTTP/2 or HTTP/3: the coding guard needs curl's own "
-            "response code first";
+            << "libcurl " << info->version << " was built with HTTP/2 or HTTP/3: add a component test that "
+            "runs a stacked reply over it";
 }
 
 TEST(ConfigDownloadComponentTest, AZstdReplyIsDecodedAndDeliveredByteForByte)

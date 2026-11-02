@@ -114,7 +114,25 @@ TEST(ContentCodingGuardTest, ReadsTheStatusCodeWhereCurlDoes)
     EXPECT_TRUE(admitReply(tabbedNoContent, {"HTTP/1.1\t204 No Content", "Content-Encoding: zstd, zstd"}));
 }
 
-// Anything curl doesn't read as HTTP/1.x it reports as a 200, which has a body: so does the guard.
+// Over HTTP/2 and HTTP/3 curl writes the status line itself, with a space before the CRLF, and reads
+// it back like any other: a 103 there is informational too, and a 204 has no body.
+TEST(ContentCodingGuardTest, ReadsTheStatusLinesCurlWritesForHttp2AndHttp3)
+{
+    for (const std::string version :
+            {"HTTP/2", "HTTP/3"
+            })
+    {
+        ContentCodingGuard afterHints;
+        EXPECT_FALSE(admitReply(afterHints, {version + " 103 ", "", version + " 200 ", "Content-Encoding: zstd, zstd"}))
+                << version;
+
+        ContentCodingGuard noContent;
+        EXPECT_TRUE(admitReply(noContent, {version + " 204 ", "Content-Encoding: zstd, zstd"})) << version;
+    }
+}
+
+// What curl doesn't read as a status line it reports as a 200 (an "HTTP/2 204" needs the space
+// after the code), which has a body: so does the guard.
 TEST(ContentCodingGuardTest, AStatusLineItCannotReadHasABody)
 {
     for (const auto* status :

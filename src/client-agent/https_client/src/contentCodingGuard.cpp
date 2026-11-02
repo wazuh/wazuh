@@ -17,7 +17,7 @@ namespace
 {
     constexpr std::string_view SPACE {" \t\r\n"};
     constexpr std::string_view BLANK {" \t"};
-    constexpr std::string_view HTTP1_PREFIX {"HTTP/1."};
+    constexpr std::string_view HTTP_PREFIX {"HTTP/"};
     constexpr std::string_view CONTENT_ENCODING_PREFIX {"Content-Encoding:"};
     /// A coding is a short token: past this, a refused value is the peer's noise, not information.
     constexpr size_t REFUSAL_EXCERPT {64};
@@ -59,20 +59,22 @@ namespace
         return line.size() > prefix.size() && sameToken(line.substr(0, prefix.size()), prefix);
     }
 
-    /// The status code of a status line read the way curl 8.20 reads it (http.c, http_rw_hd):
-    /// "HTTP/1.0" or "HTTP/1.1", one space or tab, three digits. 0 for anything else, which curl
-    /// either refuses or reports as a 200: a response with a body either way.
-    long statusCode(std::string_view line)
+    bool blankAt(std::string_view text, size_t at)
     {
-        if (line.size() < 12 || line.substr(0, HTTP1_PREFIX.size()) != HTTP1_PREFIX || (line[7] != '0' && line[7] != '1') ||
-                BLANK.find(line[8]) == std::string_view::npos)
+        return at < text.size() && BLANK.find(text[at]) != std::string_view::npos;
+    }
+
+    /// The three digits `text` starts with, as a number; 0 if it doesn't start with three.
+    long threeDigitCode(std::string_view text)
+    {
+        if (text.size() < 3)
         {
             return 0;
         }
 
         long code = 0;
 
-        for (const char digit : line.substr(9, 3))
+        for (const char digit : text.substr(0, 3))
         {
             if (!std::isdigit(static_cast<unsigned char>(digit)))
             {
@@ -83,6 +85,37 @@ namespace
         }
 
         return code;
+    }
+
+    /// After "HTTP/": "1.0" or "1.1", one space or tab, three digits.
+    long http1Code(std::string_view version)
+    {
+        const bool known = version.size() > 3 && version[0] == '1' && version[1] == '.' &&
+                           (version[2] == '0' || version[2] == '1') && blankAt(version, 3);
+        return known ? threeDigitCode(version.substr(4)) : 0;
+    }
+
+    /// After "HTTP/": "2" or "3", one space or tab, three digits and a space or tab. Over HTTP/2 and
+    /// HTTP/3 curl writes the status line itself, as "HTTP/2 200 \r\n" (http2.c, vquic/curl_ngtcp2.c).
+    long http2Or3Code(std::string_view version)
+    {
+        const bool known = !version.empty() && (version[0] == '2' || version[0] == '3') && blankAt(version, 1) &&
+                           blankAt(version, 5);
+        return known ? threeDigitCode(version.substr(2)) : 0;
+    }
+
+    /// The status code of a status line read the way curl 8.20 reads it (http.c, http_rw_hd). 0 for
+    /// anything else, which curl either refuses or reports as a 200: a response with a body either way.
+    long statusCode(std::string_view line)
+    {
+        if (line.substr(0, HTTP_PREFIX.size()) != HTTP_PREFIX)
+        {
+            return 0;
+        }
+
+        const auto version = line.substr(HTTP_PREFIX.size());
+        const long http1 = http1Code(version);
+        return http1 != 0 ? http1 : http2Or3Code(version);
     }
 
     /// The empty line that ends a header block, as curl tells it apart (http.c, http_rw_hd).
