@@ -14,7 +14,8 @@ linking the archive into its own binary:
 | vulnerability_scanner (modulesd) | `vd-http.sock` | `wazuh_modules/vulnerability_scanner/src/vulnerabilityScanner.cpp` |
 | wazuh-manager-db | `wdb-http.sock` | `wazuh_db/src/http/wdb_http.cpp` |
 | remoted_module (remoted's local admin socket) | `remote-admin-http.sock` | `remoted/remoted_module/src/remotedModuleFacade.hpp` |
-| engine event ingest (wazuh-manager-analysisd) | `engine-ingest-http.sock` | `engine/source/api/event/src/ingestServer.cpp` (through the engine's `httpsrv::UdsServer`) |
+| engine event ingest (wazuh-manager-analysisd) | `engine-ingest-http.sock` | `engine/source/api/event/src/ingestServer.cpp` (through the engine's `httpsrv::Server`) |
+| engine API (wazuh-manager-analysisd) | `engine-api-http.sock` | `engine/source/httpsrv/src/apiServer.cpp` (`makeApiServer()`, through the engine's `httpsrv::Server`) |
 
 What it deliberately is NOT: remoted's agent-facing TCP/TLS server (a protocol PEER of this
 library, not a layer of it), and not a general web framework — one request per connection,
@@ -23,10 +24,11 @@ answered only by a server that opts in (`expectContinue`).
 
 Operator/integrator docs: `docs/ref/modules/utils/uds-http-server/` (library defaults, status
 semantics, log lines, architecture, integration guide). This library has no configuration of its own. Each consumer
-fills `UdsHttpServerConfig` in code. Only inventory sync (`wazuh_modules.inventory_sync_server_*`)
-and task_manager (`wazuh_modules.manager_task_io_threads`, plus the `task-manager`
-`max_payload_bytes` option sizing one route's body cap) expose any of
-the knobs, and those are documented on the consumer's own pages.
+fills `UdsHttpServerConfig` in code. Only inventory sync (`wazuh_modules.inventory_sync_server_*`),
+task_manager (`wazuh_modules.manager_task_io_threads`, plus the `task-manager`
+`max_payload_bytes` option sizing one route's body cap) and the engine
+(`analysisd.server_enriched_events_max_*` for its event ingest, `analysisd.server_api_payload_max_bytes` for its
+API) expose any of the knobs, and those are documented on the consumer's own pages.
 
 ## Requirements
 
