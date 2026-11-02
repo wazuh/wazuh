@@ -44,6 +44,9 @@ namespace
     static_assert(TLS_MIN_VERSION_1_3 == CURL_SSLVERSION_TLSv1_3,
                   "TLS_MIN_VERSION_1_3 must stay equal to libcurl's CURL_SSLVERSION_TLSv1_3");
 
+    static_assert(HTTP_VERSION_1_1 == CURL_HTTP_VERSION_1_1,
+                  "HTTP_VERSION_1_1 must stay equal to libcurl's CURL_HTTP_VERSION_1_1");
+
     static_assert(TLS_NATIVE_CA_STORE == CURLSSLOPT_NATIVE_CA,
                   "TLS_NATIVE_CA_STORE must stay equal to libcurl's CURLSSLOPT_NATIVE_CA");
 
@@ -85,7 +88,8 @@ namespace
             {CurlOption::FollowLocation, CURLOPT_FOLLOWLOCATION},
             {CurlOption::NoSignal, CURLOPT_NOSIGNAL},
             {CurlOption::SuppressConnectHeaders, CURLOPT_SUPPRESS_CONNECT_HEADERS},
-            {CurlOption::AcceptEncoding, CURLOPT_ACCEPT_ENCODING}
+            {CurlOption::AcceptEncoding, CURLOPT_ACCEPT_ENCODING},
+            {CurlOption::HttpVersion, CURLOPT_HTTP_VERSION}
         };
         return *map;
     }

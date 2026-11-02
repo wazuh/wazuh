@@ -220,9 +220,9 @@ TEST(ConfigDownloadComponentTest, TheCurlHandleKnowsWhatItsLibcurlDecodes)
     EXPECT_FALSE(handle->decodes("compress"));
 }
 
-// ContentCodingGuard reads the status lines curl writes over HTTP/2 and HTTP/3 ("HTTP/2 200 "),
-// but only its unit tests show it them: no test here runs a reply over either. A curl built with
-// one has to fail here until one does.
+// The agent pins HTTP/1.1 (CurlPerformer::applyTls()), and ContentCodingGuard also reads the
+// status lines curl writes over HTTP/2 and HTTP/3 ("HTTP/2 200 "), but no test here runs a reply
+// over either. A curl built with one fails here, so that comes as a decision, with its test.
 TEST(ConfigDownloadComponentTest, TheAgentsLibcurlSpeaksOnlyHttp1)
 {
     const curl_version_info_data* info = curl_version_info(CURLVERSION_NOW);

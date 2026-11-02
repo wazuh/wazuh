@@ -524,6 +524,7 @@ TEST(CurlPerformerTest, TlsFullMode)
     EXPECT_CALL(*handle, setOptionLong(CurlOption::FollowLocation, 0L));
     EXPECT_CALL(*handle, setOptionLong(CurlOption::NoSignal, 1L));
     EXPECT_CALL(*handle, setOptionLong(CurlOption::SuppressConnectHeaders, 1L));
+    EXPECT_CALL(*handle, setOptionLong(CurlOption::HttpVersion, HTTP_VERSION_1_1));
 
     auto performer = makePerformer(config, std::move(mock));
     performer.perform(HttpRequestSpec {});
@@ -544,6 +545,21 @@ TEST(CurlPerformerTest, RejectedSuppressConnectHeadersOptionAbortsBeforePerformi
     auto performer = makePerformer(makeConfig(HC_VERIFY_FULL), std::move(mock));
     const auto response = performer.perform(HttpRequestSpec {});
     EXPECT_EQ(TransportStatus::TlsFail, response.status);
+}
+
+// A curl that can't be held to HTTP/1.1 could negotiate a protocol the coding guard was never run
+// against, so the request isn't sent.
+TEST(CurlPerformerTest, RejectedHttpVersionOptionAbortsBeforePerforming)
+{
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+
+    EXPECT_CALL(*handle, setOptionLong(CurlOption::HttpVersion, HTTP_VERSION_1_1)).WillOnce(Return(false));
+    EXPECT_CALL(*handle, perform()).Times(0);
+
+    auto performer = makePerformer(makeConfig(HC_VERIFY_FULL), std::move(mock));
+    EXPECT_EQ(TransportStatus::TlsFail, performer.perform(HttpRequestSpec {}).status);
 }
 
 TEST(CurlPerformerTest, TlsCertModeDisablesHostnameOnly)

@@ -599,7 +599,11 @@ bool CurlPerformer::applyTls(ICurlHandle& handle, bool useFallbackAnchor) const
            // Never let a forward-proxy's CONNECT-tunnel response headers reach
            // headerTrampoline: without this, a proxy's own Date could be
            // captured as if it were the manager's (#38439 clock-skew fix).
-           && setMandatoryOption(handle, CurlOption::SuppressConnectHeaders, 1L);
+           && setMandatoryOption(handle, CurlOption::SuppressConnectHeaders, 1L)
+           // HTTP/1.1 on every build, the only protocol the manager's listener speaks: the
+           // Windows curl isn't built --without-nghttp2, and ContentCodingGuard is checked
+           // against real curl replies over HTTP/1.1 only (#38514).
+           && setMandatoryOption(handle, CurlOption::HttpVersion, HTTP_VERSION_1_1);
 }
 
 bool CurlPerformer::applyTrustAnchors(ICurlHandle& handle, bool useFallbackAnchor) const

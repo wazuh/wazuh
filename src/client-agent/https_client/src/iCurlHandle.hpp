@@ -51,7 +51,8 @@ enum class CurlOption
     /// from), undermining the clock-skew correction's premise of trusting
     /// only whoever completed the TLS handshake to the manager.
     SuppressConnectHeaders,
-    AcceptEncoding  ///< string, offered codings; libcurl then decodes the reply body
+    AcceptEncoding, ///< string, offered codings; libcurl then decodes the reply body
+    HttpVersion     ///< long, always HTTP_VERSION_1_1
 };
 
 /// Value for CurlOption::SslVersion: refuse to negotiate below TLS 1.3.
@@ -60,6 +61,12 @@ enum class CurlOption
 /// stays curl-agnostic like the ids above. curlHandle.cpp static_asserts the two
 /// against each other, so the literal cannot drift from what curl expects.
 inline constexpr long TLS_MIN_VERSION_1_3 {7};
+
+/// Value for CurlOption::HttpVersion: HTTP/1.1 only, whatever protocols curl was built with.
+///
+/// Numerically libcurl's CURL_HTTP_VERSION_1_1, static_asserted in curlHandle.cpp
+/// like the TLS version below.
+inline constexpr long HTTP_VERSION_1_1 {2};
 
 /// Value for CurlOption::SslOptions: trust the platform's own certificate store.
 ///
