@@ -500,7 +500,7 @@ Route → proto mapping, from the `registerHandlers()` functions. The operator c
 |------|--------|------|---------|
 | `/events/enriched` | POST | NDJSON (parsed by `api::event::protocol::parseNDJson`, `event/include/api/event/ndJsonParser.hpp`) | `api::event::handlers::pushEvent(orchestrator, dumper, agentMetadataCache)` |
 
-This route is the exception to the conventions above: it is not protobuf-based (errors are `{"error": "...", "code": 400|500}`), it has no `registerHandlers()` (`main.cpp` adds it directly with `addRoute`), and it lives on the second `httpsrv::Server` ("Event services", socket setting `analysisd.server_enriched_events_socket`, default `engine-ingest-http.sock`), created only when `analysisd.server_enable_event_processing` is true. Its contract is `docs/ref/modules/engine/spec-events.yaml`.
+This route is the exception to the conventions above: it is not protobuf-based (errors are `{"error": "...", "code": 400|500}`), it has no `registerHandlers()` (`api::event::makeIngestServer()` adds it), and it lives on the second `httpsrv::Server` ("Event ingest", socket setting `analysisd.server_enriched_events_socket`, default `engine-ingest-http.sock`), created only when `analysisd.server_enable_event_processing` is true. Its contract is `docs/ref/modules/engine/spec-events.yaml`.
 
 ---
 
