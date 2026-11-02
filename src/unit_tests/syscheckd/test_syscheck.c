@@ -395,6 +395,12 @@ void test_initialize_syscheck_configuration_registry(void **state) {
     assert_null(config.registry);
     assert_null(config.registry_wildcards);
 
+    // OSList_Destroy() cleans the nodes of the list
+    expect_function_call(__wrap_pthread_rwlock_wrlock);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
     OSList_Destroy(config.directories);
 }
 

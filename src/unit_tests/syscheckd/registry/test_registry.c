@@ -1049,6 +1049,12 @@ static registry_t *add_registry_pattern(const char *pattern) {
     return &syscheck.registry_wildcards[0];
 }
 
+// fim_registry_update_wildcards() indexes the entries in a hash, whose creation calls os_random() twice
+static void expect_registry_index_created() {
+    will_return(__wrap_os_random, 12345);
+    will_return(__wrap_os_random, 12345);
+}
+
 static int teardown_registry_wildcards(void **state) {
     free_registry_array(syscheck.registry);
     free_registry_array(syscheck.registry_wildcards);
@@ -1101,6 +1107,7 @@ static void test_fim_registry_update_wildcards_adds_new_keys(void **state) {
     expect_expand_wildcard_registers(pattern->entry, ARCH_64BIT, matches, 0);
     expect_string(__wrap__minfo, formatted_msg, expected_msg);
 
+    expect_registry_index_created();
     fim_registry_update_wildcards();
 
     assert_string_equal(syscheck.registry[0].entry, matches[0]);
@@ -1132,6 +1139,7 @@ static void test_fim_registry_update_wildcards_keeps_explicit_entry(void **state
     expect_any_always(__wrap__mdebug2, formatted_msg);
     expect_expand_wildcard_registers(pattern->entry, ARCH_64BIT, matches, 0);
 
+    expect_registry_index_created();
     fim_registry_update_wildcards();
     fim_registry_remove_unexpanded();
 
@@ -1149,6 +1157,7 @@ static void test_fim_registry_update_wildcards_invalid_root(void **state) {
     expect_any_always(__wrap__mdebug1, formatted_msg);
 
     // No expectation for expand_wildcard_registers: the pattern must not be expanded
+    expect_registry_index_created();
     fim_registry_update_wildcards();
 
     assert_null(syscheck.registry[0].entry);
@@ -1180,6 +1189,7 @@ static void test_fim_registry_update_wildcards_failed_expansion(void **state) {
                   "(6963): Could not list every key matching the registry wildcard "
                   "'HKEY_LOCAL_MACHINE\\Software\\fim17-w?ld\\*'. Its monitored keys are kept until they are removed.");
 
+    expect_registry_index_created();
     fim_registry_update_wildcards();
 
     assert_int_equal(syscheck.registry[0].is_expanded, 1);
@@ -1195,6 +1205,7 @@ static void test_fim_registry_update_wildcards_failed_expansion(void **state) {
     expect_RegOpenKeyExW_call(HKEY_LOCAL_MACHINE, L"Software\\fim17-wild\\kept", 0, KEY_READ | KEY_WOW64_64KEY, NULL,
                               ERROR_SUCCESS);
 
+    expect_registry_index_created();
     fim_registry_update_wildcards();
 
     assert_int_equal(syscheck.registry[0].is_expanded, 1);
@@ -1220,6 +1231,7 @@ static void test_fim_registry_update_wildcards_truncated_expansion(void **state)
                   "(6962): Registry wildcard 'HKEY_LOCAL_MACHINE\\Software\\fim17-w?ld\\*' matches more than 8191 "
                   "keys. New keys over the limit are not monitored.");
 
+    expect_registry_index_created();
     fim_registry_update_wildcards();
 
     // The matches found are added and the existing key over the limit is kept
@@ -1244,6 +1256,7 @@ static void test_fim_registry_update_wildcards_32bit_view(void **state) {
     expect_any(__wrap__minfo, formatted_msg);
     expect_expand_wildcard_registers(pattern->entry, ARCH_32BIT, matches, 0);
 
+    expect_registry_index_created();
     fim_registry_update_wildcards();
 
     assert_int_equal(syscheck.registry[0].arch, ARCH_64BIT);
@@ -1267,6 +1280,7 @@ static void test_fim_registry_update_wildcards_duplicate_match(void **state) {
     expect_any(__wrap__minfo, formatted_msg);
     expect_expand_wildcard_registers(pattern->entry, ARCH_64BIT, matches, 0);
 
+    expect_registry_index_created();
     fim_registry_update_wildcards();
 
     assert_string_equal(syscheck.registry[0].entry, matches[0]);
@@ -1326,6 +1340,7 @@ static void test_fim_registry_scan_wildcard_key_removed(void **state) {
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
     expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
 
+    expect_registry_index_created();
     fim_registry_scan();
 
     assert_null(syscheck.registry[0].entry);

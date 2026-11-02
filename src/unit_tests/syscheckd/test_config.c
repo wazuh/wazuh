@@ -358,10 +358,11 @@ void test_Test_Syscheck_registry_wildcards(void **state)
 {
     (void) state;
 
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    // Free_Syscheck() cleans the directories list
+    expect_function_call(__wrap_pthread_rwlock_wrlock);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
     expect_any_always(__wrap__mdebug1, formatted_msg);
 
     // Initializes and frees a configuration on the stack, as for a shared configuration pushed by the manager
