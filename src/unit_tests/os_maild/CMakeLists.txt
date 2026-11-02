@@ -27,6 +27,11 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 list(APPEND os_maild_names "test_printtable")
 list(APPEND os_maild_flags "${DEBUG_OP_WRAPPERS}")
 
+list(APPEND os_maild_names "test_mailcom")
+list(APPEND os_maild_flags "-Wl,--wrap,close -Wl,--wrap,accept -Wl,--wrap,select -Wl,--wrap,FOREVER \
+                            -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,OS_RecvSecureTCP \
+                            -Wl,--wrap,OS_SendSecureTCP ${DEBUG_OP_WRAPPERS}")
+
 list(LENGTH os_maild_names count)
 math(EXPR count "${count} - 1")
 foreach(counter RANGE ${count})

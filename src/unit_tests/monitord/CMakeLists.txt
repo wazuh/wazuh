@@ -56,6 +56,11 @@ list(APPEND monitord_tests_names "test_manage_files")
 list(APPEND monitord_tests_flags "-Wl,--wrap,OS_SignLog -Wl,--wrap,OS_CompressLog -Wl,--wrap,IsFile -Wl,--wrap,FileSize\
                                   -Wl,--wrap,wfopen")
 
+list(APPEND monitord_tests_names "test_moncom")
+list(APPEND monitord_tests_flags "-Wl,--wrap,close -Wl,--wrap,accept -Wl,--wrap,select -Wl,--wrap,FOREVER \
+                                  -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,OS_RecvSecureTCP \
+                                  -Wl,--wrap,OS_SendSecureTCP ${DEBUG_OP_WRAPPERS}")
+
 # Add extra compiling flags
 add_compile_options(-Wall)
 
