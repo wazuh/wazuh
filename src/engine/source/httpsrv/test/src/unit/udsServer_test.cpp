@@ -35,8 +35,11 @@ using namespace std::chrono_literals;
 using httpsrv::Method;
 using httpsrv::Request;
 using httpsrv::Response;
+using httpsrv::RouteClass;
+using httpsrv::RouteOptions;
 using httpsrv::UdsServer;
 using httpsrv::UdsServerOptions;
+using httpsrv::UNLIMITED_BODY;
 
 namespace
 {
@@ -256,6 +259,107 @@ TEST_F(UdsServerTest, ExecutorFullAnswers503Busy)
     EXPECT_EQ(200, statusOf(first.get()));
     EXPECT_EQ(200, statusOf(second.get()));
     server.shutdown(1s);
+}
+
+TEST_F(UdsServerTest, InlineRouteAnswersWhileTheExecutorIsSaturated)
+{
+    const auto path = socketPath("inline");
+    std::promise<void> release;
+    auto released = release.get_future().share();
+    std::atomic<int> started {0};
+
+    UdsServer server {options(1, 1)};
+    server.addRoute(Method::POST,
+                    "/slow",
+                    [&](const Request&, Response&)
+                    {
+                        ++started;
+                        released.wait();
+                    });
+    RouteOptions inlineRoute;
+    inlineRoute.cls = RouteClass::Liveness;
+    inlineRoute.runInline = true;
+    server.addRoute(
+        Method::GET, "/status", [](const Request&, Response& res) { res.setContent("up", "text/plain"); }, inlineRoute);
+    server.start(path);
+
+    // The only worker is held and the only queue slot taken: an executor route is refused.
+    auto running = std::async(std::launch::async, [&] { return roundTrip(path, post(path, "/slow", "a")); });
+    while (started.load() == 0)
+    {
+        std::this_thread::sleep_for(1ms);
+    }
+    auto queued = std::async(std::launch::async, [&] { return roundTrip(path, post(path, "/slow", "b")); });
+    while (server.stats().queueDepth == 0)
+    {
+        std::this_thread::sleep_for(1ms);
+    }
+    EXPECT_EQ(503, statusOf(roundTrip(path, post(path, "/slow", "c"))));
+
+    const auto status = roundTrip(path, "GET /status HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+    EXPECT_EQ(200, statusOf(status)) << status;
+    EXPECT_EQ("up", bodyOf(status));
+
+    release.set_value();
+    EXPECT_EQ(200, statusOf(running.get()));
+    EXPECT_EQ(200, statusOf(queued.get()));
+    server.shutdown(1s);
+}
+
+TEST_F(UdsServerTest, InlineRouteThrowGives500)
+{
+    const auto path = socketPath("inline500");
+    UdsServer server {options()};
+    RouteOptions inlineRoute;
+    inlineRoute.runInline = true;
+    server.addRoute(
+        Method::POST, "/x", [](const Request&, Response&) { throw std::runtime_error {"boom"}; }, inlineRoute);
+    server.start(path);
+
+    const auto response = roundTrip(path, post(path, "/x", "a"));
+    server.shutdown(1s);
+
+    EXPECT_EQ(500, statusOf(response));
+    EXPECT_EQ("Internal server error", bodyOf(response));
+    EXPECT_EQ(1U, server.stats().handlerErrors);
+}
+
+// The transport turns its byte budget into a parser limit when no server-wide cap is set; a server without a
+// budget has no such limit, so only the route caps bound the body.
+TEST_F(UdsServerTest, WithoutAByteBudgetTheParserHasNoLimit)
+{
+    constexpr std::size_t BUDGET {2U * 1024U * 1024U};
+    const std::string body(3U * 1024U * 1024U, 'x');
+    RouteOptions unlimited;
+    unlimited.maxBodyBytes = UNLIMITED_BODY;
+
+    {
+        const auto path = socketPath("budget");
+        auto opts = options();
+        opts.maxInFlightBytes = BUDGET;
+        UdsServer server {opts};
+        server.addRoute(Method::POST, "/import", [](const Request&, Response&) {}, unlimited);
+        server.start(path);
+        const auto head = "POST /import HTTP/1.1\r\nHost: localhost\r\nContent-Length: " + std::to_string(body.size())
+                          + "\r\nConnection: close\r\n\r\n";
+        EXPECT_EQ(413, statusOf(roundTrip(path, head))) << "the budget-derived limit applies";
+        server.shutdown(1s);
+    }
+    {
+        const auto path = socketPath("nobudget");
+        auto opts = options();
+        opts.maxInFlightBytes = BUDGET;
+        opts.byteBudget = false;
+        UdsServer server {opts};
+        std::atomic<std::size_t> seen {0};
+        server.addRoute(
+            Method::POST, "/import", [&](const Request& req, Response&) { seen = req.body.size(); }, unlimited);
+        server.start(path);
+        EXPECT_EQ(200, statusOf(roundTrip(path, post(path, "/import", body))));
+        EXPECT_EQ(body.size(), seen.load());
+        EXPECT_EQ(0U, server.stats().inFlightBytes);
+        server.shutdown(1s);
+    }
 }
 
 // Connections that never send their request fill the server-wide limit; the next one is refused at
