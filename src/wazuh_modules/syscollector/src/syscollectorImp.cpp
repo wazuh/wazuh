@@ -1113,7 +1113,7 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
 
     while (!m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&]()
 {
-    return m_stopping.load();
+    return m_stopping;
 }))
     {
         scan();
