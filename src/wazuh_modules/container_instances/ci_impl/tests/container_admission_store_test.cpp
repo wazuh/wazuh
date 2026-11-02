@@ -538,6 +538,40 @@ TEST(ContainerAdmissionStoreTest, AResolveBetweenSnapshotsEndsTheUnkeyedSpell)
         << "the old spell's clock and count must not carry into the new one";
 }
 
+// A container the runtime reports as RESTARTING must never enter the tally, so
+// the write-off can never reach it.
+//
+// It has no key -- the cgroup is gone with the old process -- but the state
+// mapping sends "restarting" (and the Kubernetes "waiting"/"terminated") to
+// ContainerState::stopped, isRunning() is `state != stopped`, and the
+// withholding predicate is `hostKey == 0 && isRunning(state)`. So a restarting
+// container is VISIBLE, never in `known` minus `visible`, and never unkeyed in
+// the sense this tally counts. Asserted rather than assumed, because the whole
+// write-off rests on it: a restart is the one thing it must not punish, and
+// every restart would otherwise feed it.
+TEST(ContainerAdmissionStoreTest, ARestartingContainerNeverEntersTheUnkeyedTally)
+{
+    auto store = MakeStore();
+    store.setSyncLimit(1);
+
+    const auto start = Now();
+    store.applySnapshot(kDocker, Snapshot({"b"}), {}, start);
+    ASSERT_EQ(store.admittedIds(), (std::set<std::string> {"b"}));
+
+    ContainerRecord restarting = MakeRecord("b", 0);
+    restarting.state = ContainerState::stopped; // what "restarting" parses to
+
+    // Hours of it, with "a" able to publish and waiting for the slot.
+    for (int i = 1; i <= 10; ++i)
+    {
+        store.applySnapshot(
+            kDocker, {MakeRecord("a", InodeFor("a")), restarting}, {}, start + std::chrono::seconds {600 * i});
+    }
+
+    EXPECT_TRUE(store.unkeyedContainerIds().empty()) << "a restarting container is published, not withheld";
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"b"})) << "so no amount of restarting can write it off";
+}
+
 // V2: the leftover slot, and the fact that resolving the container that wants
 // it used to make no difference.
 //
