@@ -30,7 +30,10 @@ struct UdsServerOptions
     std::string logTag; ///< Tag of the transport's own log lines.
     std::size_t maxConnections {1024};
     std::size_t maxInFlightBytes {0}; ///< 0 keeps the transport's default byte budget.
-    std::size_t maxBodySize {0};      ///< Server-wide declared-length cap; 0 = none of its own.
+    /// false: no in-flight byte budget at all, and so no parser limit derived from it; bodies are then
+    /// bounded only by the route caps (and maxBodySize). For servers whose routes never charge the budget.
+    bool byteBudget {true};
+    std::size_t maxBodySize {0}; ///< Server-wide declared-length cap; 0 = none of its own.
     std::size_t executorThreads {2};
     std::size_t executorQueue {64};
     bool expectContinue {false};  ///< Answer "Expect: 100-continue" once a request is admitted.

@@ -198,11 +198,19 @@ struct UdsServer::Impl
         responder->send(toTransport(std::move(response)));
     }
 
-    uds::RouteHandler adapt(RouteHandler handler)
+    uds::RouteHandler adapt(RouteHandler handler, bool runInline)
     {
         // Shared, not referenced: the transport (and this route lambda with it) is destroyed before
         // the executor joins its workers, so a job must own its handler.
         auto shared = std::make_shared<const RouteHandler>(std::move(handler));
+        if (runInline)
+        {
+            return [this, shared](std::shared_ptr<const uds::HttpRequest> request,
+                                  std::shared_ptr<uds::IHttpResponder> responder)
+            {
+                runHandler(*shared, request, responder);
+            };
+        }
         return [this, shared](std::shared_ptr<const uds::HttpRequest> request,
                               std::shared_ptr<uds::IHttpResponder> responder)
         {
@@ -255,8 +263,12 @@ void UdsServer::addRoute(Method method, const std::string& path, RouteHandler ha
 {
     uds::RouteOptions routeOptions;
     routeOptions.cls = toTransport(options.cls);
-    routeOptions.maxBodyBytes = options.maxBodyBytes;
-    m_impl->transport->addRoute(toTransport(method), path, m_impl->adapt(std::move(handler)), routeOptions);
+    routeOptions.maxBodyBytes =
+        options.maxBodyBytes == UNLIMITED_BODY ? uds::UdsHttpServerConfig::UNLIMITED_BODY_SIZE : options.maxBodyBytes;
+    routeOptions.payloadTooLargeBody = std::move(options.payloadTooLargeBody);
+    routeOptions.payloadTooLargeContentType = std::move(options.payloadTooLargeContentType);
+    m_impl->transport->addRoute(
+        toTransport(method), path, m_impl->adapt(std::move(handler), options.runInline), routeOptions);
 }
 
 void UdsServer::start(const std::filesystem::path& socketPath)
@@ -265,7 +277,11 @@ void UdsServer::start(const std::filesystem::path& socketPath)
     uds::UdsHttpServerConfig config;
     config.socketPath = socketPath.string();
     config.maxConnections = options.maxConnections;
-    if (options.maxInFlightBytes != 0)
+    if (!options.byteBudget)
+    {
+        config.maxInFlightBytes = 0;
+    }
+    else if (options.maxInFlightBytes != 0)
     {
         config.maxInFlightBytes = options.maxInFlightBytes;
     }

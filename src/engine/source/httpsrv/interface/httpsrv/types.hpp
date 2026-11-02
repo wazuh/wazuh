@@ -51,11 +51,23 @@ enum class RouteClass
 /**
  * @brief Per-route options.
  */
+/// RouteOptions::maxBodyBytes value that lifts the class cap: the route takes a body of any size.
+constexpr std::size_t UNLIMITED_BODY {static_cast<std::size_t>(-1)};
+
 struct RouteOptions
 {
     RouteClass cls {RouteClass::Control};
-    /// Declared-length cap answered with 413 before the body is read; 0 means the class default.
+    /// Declared-length cap answered with 413 before the body is read; 0 means the class default,
+    /// UNLIMITED_BODY means none.
     std::size_t maxBodyBytes {0};
+    /// Run the handler on the transport's I/O thread instead of the executor, so the route answers even when
+    /// every worker is busy. Only for handlers that never block (they read state already in memory).
+    bool runInline {false};
+    /// Body of the 413 this route answers when maxBodyBytes (or the class cap) refuses the declared length;
+    /// empty keeps the transport's JSON body.
+    std::string payloadTooLargeBody {};
+    /// Content-Type of payloadTooLargeBody; ignored while that body is empty.
+    std::string payloadTooLargeContentType {"text/plain"};
 };
 
 /**
