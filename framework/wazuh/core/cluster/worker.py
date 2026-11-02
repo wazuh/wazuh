@@ -942,11 +942,12 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                 raise e
                     except Exception as e:
                         errors['extra'] += 1
-                        result_logs["debug2"][file_to_remove].append(f"Error removing file "
-                                                                     f"'{file_to_remove}': {e}")
+                        result_logs['error']['extra'].append(f"Error removing file '{file_to_remove}': {e}")
                         continue
 
         # Once files are deleted, check and remove subdirectories which are now empty, as specified in cluster.json.
+        # A directory may already be gone (the worker's remoted removes stale multigroup directories on its own) or
+        # hold a file again by the time it is removed: neither leaves the worker out of sync, so neither is an error.
         directories_to_check = set(os.path.dirname(f) for f, data in validated_extra.items()
                                    if cluster_items['files'][data['cluster_item_key']]['remove_subdirs_if_empty'])
         for directory in directories_to_check:
@@ -954,10 +955,17 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 full_path = local_path(directory)
                 if not os.listdir(full_path):
                     os.rmdir(full_path)
+            except OSError as e:
+                if e.errno == errno.ENOENT:
+                    result_logs['debug2'][directory].append(f"Directory {directory} doesn't exist.")
+                elif e.errno in (errno.ENOTEMPTY, errno.EEXIST):
+                    result_logs['debug2'][directory].append(f"Directory {directory} is not empty.")
+                else:
+                    errors['extra'] += 1
+                    result_logs['error']['extra'].append(f"Error removing directory '{directory}': {e}")
             except Exception as e:
                 errors['extra'] += 1
-                result_logs["debug2"][directory].append(f"Error removing directory '{directory}': {e}")
-                continue
+                result_logs['error']['extra'].append(f"Error removing directory '{directory}': {e}")
 
         if sum(errors.values()) > 0:
             result_logs['generic_errors'].append(f"Found errors: {errors['shared']} overwriting, "
