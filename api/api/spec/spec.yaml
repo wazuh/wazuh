@@ -2720,6 +2720,26 @@ components:
               format: int32
               description: "Current active TCP sessions not yet associated with an agent (subset of tcp_sessions)"
 
+    AnalysisdEPSPeak:
+      type: object
+      properties:
+        timestamp:
+          type: integer
+          format: int64
+          description: "Unix time of the second with the highest value, 0 if the value is 0"
+        value:
+          type: integer
+          format: int32
+          description: "Highest value in one second"
+    AnalysisdEPSPeaks:
+      type: object
+      properties:
+        admitted:
+          $ref: '#/components/schemas/AnalysisdEPSPeak'
+        dropped:
+          $ref: '#/components/schemas/AnalysisdEPSPeak'
+        received:
+          $ref: '#/components/schemas/AnalysisdEPSPeak'
     WazuhAnalysisdStatsItem:
       type: object
       properties:
@@ -2757,6 +2777,32 @@ components:
                   type: integer
                   format: int32
                   description: "Available credits to process events in the previous timeframe"
+                episodes:
+                  type: array
+                  description: "Last 10 closed episodes of consecutive seconds with dropped events, oldest first. An episode closes after 5 seconds without drops"
+                  items:
+                    type: object
+                    properties:
+                      dropped:
+                        type: integer
+                        format: int64
+                        description: "Events dropped during the episode"
+                      end:
+                        type: integer
+                        format: int64
+                        description: "Unix time of the last second with drops"
+                      peak_received:
+                        type: integer
+                        format: int32
+                        description: "Highest events received in one second while the episode was open"
+                      seconds:
+                        type: integer
+                        format: int32
+                        description: "Seconds from the first to the last second with drops"
+                      start:
+                        type: integer
+                        format: int64
+                        description: "Unix time of the first second with drops"
                 events_dropped:
                   type: integer
                   format: int32
@@ -2765,10 +2811,32 @@ components:
                   type: integer
                   format: int32
                   description: "Events discarded due to causes unrelated to EPS limit"
+                maximum:
+                  type: integer
+                  format: int32
+                  description: "Configured EPS maximum"
+                peaks:
+                  type: object
+                  description: "Highest one-second values in the last minute, 5 minutes and hour, kept for the last hour"
+                  properties:
+                    1m:
+                      $ref: '#/components/schemas/AnalysisdEPSPeaks'
+                    5m:
+                      $ref: '#/components/schemas/AnalysisdEPSPeaks'
+                    1h:
+                      $ref: '#/components/schemas/AnalysisdEPSPeaks'
                 seconds_over_limit:
                   type: integer
                   format: int32
                   description: "Time in seconds the EPS limit was exceeded"
+                seconds_with_drops:
+                  type: integer
+                  format: int32
+                  description: "Seconds in which at least one event was dropped"
+                timeframe:
+                  type: integer
+                  format: int32
+                  description: "Configured EPS timeframe in seconds"
             events:
               type: object
               properties:
