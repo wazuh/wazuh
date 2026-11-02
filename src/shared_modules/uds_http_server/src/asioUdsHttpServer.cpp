@@ -711,6 +711,21 @@ namespace wazuh::uds_http
                 return errorResponse(413, "Request body exceeds the class limit"); // LCOV_EXCL_LINE
             }
 
+            /// The 413 for a declared length over the route's body cap: the route's own body when it
+            /// set one, else the class-keyed JSON.
+            wazuh::uds_http::HttpResponse bodyCapResponse(const Route& route) const
+            {
+                if (route.options.payloadTooLargeBody.empty())
+                {
+                    return classBodyCapResponse(route.options.cls);
+                }
+                wazuh::uds_http::HttpResponse response;
+                response.status = 413;
+                response.body = route.options.payloadTooLargeBody;
+                response.headers.emplace_back("Content-Type", route.options.payloadTooLargeContentType);
+                return response;
+            }
+
             wazuh::uds_http::HttpResponse classSessionCapResponse(RouteClass cls) const
             {
                 switch (cls)
@@ -778,7 +793,7 @@ namespace wazuh::uds_http
                                    route->path.c_str());
                     }
                     m_state->tooLargeRejected.fetch_add(1, std::memory_order_relaxed);
-                    deliver(classBodyCapResponse(cls));
+                    deliver(bodyCapResponse(*route));
                     return RequestParser::Feed::Incomplete;
                 }
 

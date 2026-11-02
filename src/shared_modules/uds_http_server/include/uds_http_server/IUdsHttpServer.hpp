@@ -204,6 +204,14 @@ namespace wazuh::uds_http
         /// on completes just after the connection was torn down. Setting this per route is what
         /// keeps that from being fixed by weakening the backstop for every other route.
         std::size_t responseTimeoutSec {0};
+        /// Body of the 413 this route answers when its body cap (the class cap or maxBodyBytes)
+        /// refuses the declared Content-Length; empty -> the class-keyed JSON. For a consumer whose
+        /// peers already parse a documented 413 text. The parser's server-wide cap
+        /// (UdsHttpServerConfig::maxBodySize, or the limit derived from the byte budget) is decided
+        /// before routing, so its 413 keeps the generic body whatever is set here.
+        std::string payloadTooLargeBody {};
+        /// Content-Type of payloadTooLargeBody; ignored while that body is empty.
+        std::string payloadTooLargeContentType {"text/plain"};
     };
 
     /**
