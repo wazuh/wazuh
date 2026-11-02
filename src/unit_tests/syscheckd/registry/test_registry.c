@@ -1135,8 +1135,8 @@ static void test_fim_registry_update_wildcards_keeps_explicit_entry(void **state
 
     registry_t *pattern = add_registry_pattern("HKEY_LOCAL_MACHINE\\Software\\*");
 
+    // Nothing is added or removed, so there is no mdebug2 message
     expect_any_always(__wrap__mdebug1, formatted_msg);
-    expect_any_always(__wrap__mdebug2, formatted_msg);
     expect_expand_wildcard_registers(pattern->entry, ARCH_64BIT, matches, 0);
 
     expect_registry_index_created();

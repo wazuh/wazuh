@@ -54,6 +54,13 @@ static int restart_syscheck(void **state)
 
 /* setup and teardown */
 
+// For tests that do not load the global syscheck configuration
+static int teardown_test_mode(void **state) {
+    test_mode = 1;
+
+    return 0;
+}
+
 static int setup_group(void **state) {
     test_mode = 1;
 
@@ -363,7 +370,6 @@ void test_Test_Syscheck_registry_wildcards(void **state)
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
     expect_function_call(__wrap_pthread_rwlock_unlock);
-    expect_any_always(__wrap__mdebug1, formatted_msg);
 
     // Initializes and frees a configuration on the stack, as for a shared configuration pushed by the manager
     assert_int_equal(Test_Syscheck("test_syscheck_registry_wildcards.conf"), 0);
@@ -1011,7 +1017,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_diff_nodiff_mixed, setup_read_config, restart_syscheck),
 #ifdef TEST_WINAGENT
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_registry_wildcards, setup_read_config, restart_syscheck),
-        cmocka_unit_test_setup_teardown(test_Test_Syscheck_registry_wildcards, setup_read_config, restart_syscheck),
+        cmocka_unit_test_setup_teardown(test_Test_Syscheck_registry_wildcards, setup_read_config, teardown_test_mode),
 #endif
         cmocka_unit_test(test_read_data_unit_short_values),
         cmocka_unit_test_setup_teardown(test_getSyscheckConfig, setup_read_config, restart_syscheck),
