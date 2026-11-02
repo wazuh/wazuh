@@ -23,23 +23,19 @@
 #include "keyProvider.hpp"
 #include "mockCallbackSink.hpp"
 #include "mockHttpPerformer.hpp"
+#include "moduleLogCapture.hpp"
 #include "wpkFetcher.hpp"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <algorithm>
-#include <atomic>
 #include <chrono>
-#include <cstdarg>
-#include <cstdio>
 #include <cstring>
 #include <fstream>
 #include <functional>
-#include <mutex>
 #include <string>
 #include <utility>
-#include <vector>
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -133,76 +129,6 @@ TEST_F(DownloadFetchersTest, TheWpkDownloadOffersNoEncoding)
 
 namespace
 {
-    // LOGLEVEL_WARNING / LOGLEVEL_DEBUG as the agent defines them (loggerHelper.h).
-    constexpr int WARNING_LEVEL {2};
-    constexpr int DEBUG_LEVEL {0};
-
-    /// The module's log lines while captureModuleLog() is the agent's log callback and a
-    /// ConfigDownloadLogTest runs. A C log callback carries no user data, so they live here.
-    struct ModuleLog
-    {
-        std::mutex mutex;
-        std::vector<std::pair<int, std::string>> lines;
-        std::atomic<bool> recording {false}; ///< The callback outlives the test: off between tests.
-    };
-
-    ModuleLog g_moduleLog;
-
-    void captureModuleLog(const int level, const char*, const char*, const int, const char*, const char* message,
-                          va_list args)
-    {
-        if (!g_moduleLog.recording.load())
-        {
-            return;
-        }
-
-        char line[1024];
-        std::vsnprintf(line, sizeof(line), message, args);
-        const std::lock_guard<std::mutex> lock(g_moduleLog.mutex);
-        g_moduleLog.lines.emplace_back(level, line);
-    }
-
-    /// Points the module's log at captureModuleLog() through an hc_enroll() its transport check
-    /// rejects before any network I/O: the one entry point that installs a callback without a
-    /// running handle. The module keeps forwarding to it until another call installs another,
-    /// which is why recording is switched on only for the test.
-    void captureTheModuleLog()
-    {
-        hc_config_t config {};
-        std::strncpy(config.server_host, "127.0.0.1", sizeof(config.server_host) - 1);
-        config.server_port = 9;
-        config.verify_mode = HC_VERIFY_FULL;
-        hc_enroll_request_t request {};
-        request.log = captureModuleLog;
-        hc_enroll_result_t result {};
-        hc_enroll(&config, &request, &result);
-
-        g_moduleLog.recording.store(true); // After the enrollment's own rejection.
-    }
-
-    void stopCapturingTheModuleLog()
-    {
-        g_moduleLog.recording.store(false);
-        const std::lock_guard<std::mutex> lock(g_moduleLog.mutex);
-        g_moduleLog.lines.clear();
-    }
-
-    std::vector<std::string> loggedAt(int level, const std::string& needle)
-    {
-        const std::lock_guard<std::mutex> lock(g_moduleLog.mutex);
-        std::vector<std::string> found;
-
-        for (const auto& [lineLevel, text] : g_moduleLog.lines)
-        {
-            if (lineLevel == level && text.find(needle) != std::string::npos)
-            {
-                found.push_back(text);
-            }
-        }
-
-        return found;
-    }
-
     HttpResponse failedAttempt(TransportStatus status, std::string curlError, bool decodingFailed)
     {
         HttpResponse response;
