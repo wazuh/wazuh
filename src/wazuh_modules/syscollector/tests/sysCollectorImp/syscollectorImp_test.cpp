@@ -348,8 +348,8 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
     EXPECT_CALL(*spInfoWrapper, processes(_)).Times(::testing::AtLeast(2)).WillRepeatedly([&processScans](const std::function<void(nlohmann::json&)>& cb)
     {
         auto data = nlohmann::json::parse(EXPECT_CALL_PROCESSES_JSON);
-        cb(data);
         ++processScans;
+        cb(data);
     });
 
     EXPECT_CALL(*spInfoWrapper, packages(_))
@@ -358,8 +358,8 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
     {
         auto data =
             R"({"name":"TEXT", "scan_time":"2020/12/28 21:49:50", "version":"TEXT", "vendor":"TEXT", "install_time":"TEXT", "location":"TEXT", "architecture":"TEXT", "groups":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json;
-        cb(data);
         ++packageScans;
+        cb(data);
     });
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
