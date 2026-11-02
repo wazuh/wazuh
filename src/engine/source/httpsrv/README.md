@@ -175,9 +175,11 @@ header). It coexists with the cpp-httplib `httpsrv::Server` while the engine mov
   2. `closeAdmission()` on every executor — nothing new is queued, queued requests keep running;
   3. `drainUntil(deadline)` in parallel — at the deadline, unstarted requests get the shutdown `503`
      and running ones are reported as abandoned;
-  4. `stop()` on every transport, before the caller destroys what the handlers use.
-  An executor always **joins** its workers, even past the deadline (with a WARN), so a slow
-  handler can never run into a destroyed dependency.
+  4. `stop()` on every transport;
+  5. `waitForHandlers()` on every server — a handler still running past the deadline is waited
+     for (with a WARN naming how many), never left running; its late reply is dropped.
+  `shutdown()` and `shutdownAll()` return only after step 5, so the caller can destroy what the
+  handlers use (the engine shuts protobuf down right after) without a handler running into it.
 - **Stats** (`stats()`): in-flight bytes/requests and sessions from the transport, queue depth,
   running handlers, `503`/`500` counters by cause and the transport's `413`s.
 - **Metrics** (`registerMetrics(weakServer, instance)`): publishes `stats()` as eleven fastmetrics pull
@@ -296,8 +298,9 @@ httpsrv/
 | `StartAlreadyStarted` | A second `start()` throws |
 | `AddRoute`, `AddOverrideRoute` | Route registration, including the same route twice |
 | `IsRunning` | `isRunning()` before and after start |
-| `BoundedExecutorTest.*` | Every job runs once; full queue and closed admission refuse; the drain runs queued jobs, rejects the unstarted ones at the deadline and reports running ones; the destructor joins a job that outlived the deadline |
+| `BoundedExecutorTest.*` | Every job runs once; full queue and closed admission refuse; the drain runs queued jobs, rejects the unstarted ones at the deadline and reports running ones; `join()` and the destructor wait for a job that outlived the deadline, and `join()` can be called twice |
 | `UdsServerTest.*` | Neutral request/response round trip; a repeated header counted as 2; executor full ⇒ `503` busy; handler throw ⇒ `500` text; a running reply delivered within the deadline; unstarted requests ⇒ shutdown `503`; `shutdownAll()` stops every server; socket mode `0660`; a path that is not a socket refused (and kept); `expectContinue` reaches the wire |
+| `UdsServerOutlivingHandlerTest.*` | Parameterized over `shutdown()` and `shutdownAll()`: each returns only after a handler that outlived the deadline (and the transport's 2 s reply drain) ended |
 | `UdsServerMetricsTest.*` | The eleven `server.<instance>.*` names registered; the values follow `stats()` (running, queue depth, executor-full `503`, `413`); every metric reads 0 once the server is destroyed |
 
 ### Component Tests (`httpsrv_ctest`)
