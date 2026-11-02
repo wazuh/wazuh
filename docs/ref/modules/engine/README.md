@@ -2617,6 +2617,24 @@ Cumulative `413` answers: the request declared (or sent) a body larger than `ana
 
 ---
 
+The `server.api.*` metrics describe the engine API server (`engine-api-http.sock`), with the same meaning as their `server.ingest.*` namesakes. The API server has 4 request workers and a 64-request queue; `GET /status` and `POST /metrics/*` are answered outside them, so they never wait behind other API calls. It has no in-flight byte budget: `server.api.inflight.bytes`, `server.api.inflight.requests` and `server.api.shed.budget` always read `0`.
+
+| Metric | Meaning |
+|---|---|
+| `server.api.sessions` | Open connections |
+| `server.api.queue.depth` | Requests admitted but not started (limit 64) |
+| `server.api.running` | Requests being handled (at most 4, plus the `/status` and `/metrics/*` ones) |
+| `server.api.shed.connections` | Cumulative `503`: no connection slot was free |
+| `server.api.shed.executor_full` | Cumulative `503 {"error":"Server busy","code":503}`: every worker busy and the queue full |
+| `server.api.shed.shutdown` | Cumulative `503`: the request arrived or was still queued while the engine was stopping |
+| `server.api.handler_errors` | Cumulative `500 Internal server error`: a handler raised an unexpected error |
+| `server.api.rejected.too_large` | Cumulative `413`: the request declared a body over `analysisd.server_api_payload_max_bytes` (4 KiB on `/status` and `/metrics/*`) |
+| `server.api.inflight.bytes`, `server.api.inflight.requests`, `server.api.shed.budget` | Always `0` (no byte budget) |
+
+**Used for:** telling a busy or misused API (`shed.*`, `rejected.too_large`) apart from failing handlers (`handler_errors`).
+
+---
+
 #### Agent cache metrics
 
 These metrics track the agent metadata cache, which deduplicates the per-batch agent header JSON and reuses previously validated (trusted id, exact header bytes) pairs.

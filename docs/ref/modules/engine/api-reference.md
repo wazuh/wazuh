@@ -27,8 +27,14 @@ These apply to every route on `engine-api-http.sock`:
 - Validation failures are 400. A handler whose backing component is gone answers 500 with
   `Error: Handler is not initialized`; an exception escaping a handler is answered 500 with the plain-text
   body `Internal server error`.
-- A body larger than `analysisd.server_api_payload_max_bytes` (default `0`, unlimited) is answered with 413 and a
-  plain-text message.
+- A body larger than `analysisd.server_api_payload_max_bytes` (default `0`, unlimited) is answered with 413 and the
+  plain-text message `Payload too large. Max allowed: <n> bytes (<n/1024> KiB).`, decided from the declared
+  `Content-Length` before the body is read. `GET /status` and `POST /metrics/*` are capped at 4096 bytes.
+- The server closes the connection after each response, and answers `Expect: 100-continue` with `100 Continue`.
+  Statuses decided before a handler runs carry a JSON body `{"error":"<message>","code":<status>}`: 404 (unknown
+  path), 405 with an `Allow` header (known path, other method), 411 (chunked body), 431 (headers too large),
+  503 (`Server busy`: every request worker busy and the queue full; or the engine is stopping) and 504 (no answer
+  within 300 s).
 
 The internal options named here are described in [Engine Configuration Reference](configuration.md).
 
