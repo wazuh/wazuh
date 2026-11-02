@@ -117,11 +117,12 @@ list(APPEND client-agent_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_Se
 
 # POSIX-only: the Windows branch queries agent-info in-process, with no socket or receive timeout.
 # The socket boundary is wrapped locally in the test, because it has to set errno on a failed
-# receive, which the shared OS_RecvSecureTCP wrapper does not.
+# connect, send or receive, which the shared os_net wrappers do not. usleep is wrapped so the connect
+# retries take no time.
 list(APPEND client-agent_names "test_vd_offset_client")
 list(APPEND client-agent_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SetRecvTimeout \
                                 -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP \
-                                -Wl,--wrap,w_get_monotonic_time ${DEBUG_OP_WRAPPERS}")
+                                -Wl,--wrap,w_get_monotonic_time -Wl,--wrap,usleep ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND client-agent_names "test_ca_publication")
 # Real temporary files, so no filesystem wrappers -- but the install path logs, and the

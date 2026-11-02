@@ -64,57 +64,110 @@
 #define VD_OFFSET_WIN_LOOKUP_RETRY_DELAY_US 300000
 #endif
 
+#ifdef WAZUH_UNIT_TESTING
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 #ifndef WIN32
-/* A query that gets no answer is not an error by itself: agent-info answers from a single thread,
- * and a query that has to wait for syscollector can take longer than VD_OFFSET_RECV_TIMEOUT_S. The
- * work still completes on its side, and the next notify picks up its result. Each failure is
- * therefore logged at debug level, and only an agent-info that stays silent is reported: one
- * warning every VD_OFFSET_WARN_INTERVAL_S without a valid answer. */
+/* A query that gets no valid answer is not an error by itself: agent-info answers from a single
+ * thread, and a query that has to wait for syscollector can take longer than
+ * VD_OFFSET_RECV_TIMEOUT_S. The work still completes on its side, and the next notify picks up its
+ * result. Each failed query (no connection, failed send, no or invalid answer, or an answer that
+ * carries an error) is therefore logged at debug level, and only an agent-info that keeps failing is
+ * reported: one warning every VD_OFFSET_WARN_INTERVAL_S of consecutive failed queries. Only an answer
+ * with error 0 ends the streak.
+ *
+ * A gap of more than VD_OFFSET_WARN_INTERVAL_S since the previous failed query (the agent was
+ * disconnected, or the manager sent no offset) says nothing about agent-info, so the query after it
+ * starts a new streak instead of reporting the whole gap as time without an answer. */
 #define VD_OFFSET_WARN_INTERVAL_S 300
+#define VD_OFFSET_REASON_SIZE OS_SIZE_512
 
 /* Only touched from the HTTPS client's control thread, the one caller of both entry points. */
-static bool vd_offset_failing = false;
+static unsigned int vd_offset_failures;
 static time_t vd_offset_failing_since;
+static time_t vd_offset_last_failure;
 static time_t vd_offset_last_warned;
+static char vd_offset_last_reason[VD_OFFSET_REASON_SIZE];
 
-static void vd_offset_report_no_response(ssize_t recv_len, int recv_errno) {
+STATIC void vd_offset_streak_reset(void) {
+    vd_offset_failures = 0;
+    vd_offset_failing_since = 0;
+    vd_offset_last_failure = 0;
+    vd_offset_last_warned = 0;
+    vd_offset_last_reason[0] = '\0';
+}
+
+/* Records one failed query. is_error is reserved for failures that cannot be transient, which are
+ * logged as errors right away; everything else is logged at debug level. Both count toward the
+ * streak. */
+static void vd_offset_report_failure(bool is_error, const char *reason) {
     const time_t now = w_get_monotonic_time();
 
-    if (recv_len == -1 && (recv_errno == EAGAIN || recv_errno == EWOULDBLOCK)) {
-        mdebug1("vd_offset_client: agent-info did not answer within %d seconds; will retry next notify.",
-                VD_OFFSET_RECV_TIMEOUT_S);
-    } else if (recv_len == -1) {
-        mdebug1("vd_offset_client: no response from agent-info: %s (%d); will retry next notify.",
-                strerror(recv_errno), recv_errno);
+    if (is_error) {
+        merror("vd_offset_client: %s.", reason);
     } else {
-        mdebug1("vd_offset_client: no/invalid response from agent-info (recv_len=%zd); will retry next notify.",
-                recv_len);
+        mdebug1("vd_offset_client: %s; will retry next notify.", reason);
     }
 
-    if (!vd_offset_failing) {
-        vd_offset_failing = true;
+    if (vd_offset_failures == 0 || now - vd_offset_last_failure > VD_OFFSET_WARN_INTERVAL_S) {
+        vd_offset_failures = 0;
         vd_offset_failing_since = now;
         vd_offset_last_warned = now;
-    } else if (now - vd_offset_last_warned >= VD_OFFSET_WARN_INTERVAL_S) {
-        mwarn("vd_offset_client: no valid response from agent-info for %ld seconds; "
-              "vulnerability rescan requests wait until it answers.",
-              (long)(now - vd_offset_failing_since));
+    }
+
+    vd_offset_failures++;
+    vd_offset_last_failure = now;
+    snprintf(vd_offset_last_reason, sizeof(vd_offset_last_reason), "%s", reason);
+
+    if (now - vd_offset_last_warned >= VD_OFFSET_WARN_INTERVAL_S) {
+        mwarn("vd_offset_client: no valid response from agent-info for %ld seconds "
+              "(%u failed queries; last: %s); vulnerability rescan requests wait until it answers.",
+              (long)(now - vd_offset_failing_since), vd_offset_failures, vd_offset_last_reason);
         vd_offset_last_warned = now;
     }
 }
 
-static void vd_offset_report_response(void) {
-    if (vd_offset_failing) {
-        mdebug1("vd_offset_client: agent-info answered again after %ld seconds.",
-                (long)(w_get_monotonic_time() - vd_offset_failing_since));
-        vd_offset_failing = false;
+/* Records an answer with error 0, which ends any streak. */
+static void vd_offset_report_answer(void) {
+    if (vd_offset_failures > 0) {
+        mdebug1("vd_offset_client: agent-info answered again after %ld seconds (%u failed queries).",
+                (long)(w_get_monotonic_time() - vd_offset_failing_since), vd_offset_failures);
+        vd_offset_streak_reset();
     }
+}
+
+static void vd_offset_report_no_response(ssize_t recv_len, int recv_errno, size_t response_cap) {
+    char reason[VD_OFFSET_REASON_SIZE];
+
+    if (recv_len == OS_SOCKTERR) {
+        /* The size header announced more than the buffer holds: a protocol fault, never slowness. */
+        snprintf(reason, sizeof(reason), "agent-info response is longer than %zu bytes (recv_len=%zd)",
+                 response_cap - 1, recv_len);
+        vd_offset_report_failure(true, reason);
+        return;
+    }
+
+    if (recv_len == -1 && (recv_errno == EAGAIN || recv_errno == EWOULDBLOCK)) {
+        snprintf(reason, sizeof(reason), "agent-info did not answer within %d seconds",
+                 VD_OFFSET_RECV_TIMEOUT_S);
+    } else if (recv_len == -1) {
+        snprintf(reason, sizeof(reason), "no response from agent-info: %s (%d)",
+                 strerror(recv_errno), recv_errno);
+    } else {
+        snprintf(reason, sizeof(reason), "no/invalid response from agent-info (recv_len=%zd)", recv_len);
+    }
+
+    vd_offset_report_failure(false, reason);
 }
 
 static bool vd_offset_send_query(const char *query, char *response, size_t response_cap) {
+    char reason[VD_OFFSET_REASON_SIZE];
     int sock = -1;
     ssize_t recv_len;
-    int recv_errno;
+    int saved_errno;
     int attempt;
 
     for (attempt = 0; attempt < VD_OFFSET_CONNECT_RETRIES; attempt++) {
@@ -129,8 +182,10 @@ static bool vd_offset_send_query(const char *query, char *response, size_t respo
     }
 
     if (sock < 0) {
-        mdebug1("vd_offset_client: could not connect to '%s' after %d attempt(s): %s (%d).",
-                WM_LOCAL_SOCK, VD_OFFSET_CONNECT_RETRIES, strerror(errno), errno);
+        saved_errno = errno;
+        snprintf(reason, sizeof(reason), "could not connect to '%s' after %d attempt(s): %s (%d)",
+                 WM_LOCAL_SOCK, VD_OFFSET_CONNECT_RETRIES, strerror(saved_errno), saved_errno);
+        vd_offset_report_failure(false, reason);
         return false;
     }
 
@@ -139,22 +194,25 @@ static bool vd_offset_send_query(const char *query, char *response, size_t respo
     }
 
     if (OS_SendSecureTCP(sock, strlen(query), query) < 0) {
-        merror("vd_offset_client: OS_SendSecureTCP failed: %s (%d).", strerror(errno), errno);
+        /* Taken before close(), which may overwrite it. */
+        saved_errno = errno;
         close(sock);
+        snprintf(reason, sizeof(reason), "could not send the query to agent-info: %s (%d)",
+                 strerror(saved_errno), saved_errno);
+        vd_offset_report_failure(false, reason);
         return false;
     }
 
     recv_len = OS_RecvSecureTCP(sock, response, response_cap - 1);
     /* Taken before close(), which may overwrite it. */
-    recv_errno = errno;
+    saved_errno = errno;
     close(sock);
 
     if (recv_len <= 0) {
-        vd_offset_report_no_response(recv_len, recv_errno);
+        vd_offset_report_no_response(recv_len, saved_errno, response_cap);
         return false;
     }
 
-    vd_offset_report_response();
     response[(size_t)recv_len < response_cap - 1 ? (size_t)recv_len : response_cap - 1] = '\0';
     return true;
 }
@@ -214,7 +272,46 @@ static bool vd_offset_send_query(const char *command, char *response, size_t res
     os_free(output);
     return true;
 }
+
+/* No streak here: the in-process query has no timeout, so a failed answer is logged as it was. */
+static void vd_offset_report_failure(bool is_error, const char *reason) {
+    if (is_error) {
+        merror("vd_offset_client: %s.", reason);
+    } else {
+        mdebug1("vd_offset_client: %s; will retry next notify.", reason);
+    }
+}
+
+static void vd_offset_report_answer(void) {
+}
 #endif
+
+/* Parses an answer and checks its error field. Only an answer with error 0 counts as one from a
+ * working agent-info: anything else is a failed query, so an agent-info that keeps answering with an
+ * error is reported the same way as one that does not answer. Returns the parsed answer, or NULL. */
+static cJSON *vd_offset_parse_answer(const char *response) {
+    char reason[OS_SIZE_512];
+    cJSON *root = cJSON_Parse(response);
+
+    if (!root) {
+        snprintf(reason, sizeof(reason), "malformed response from agent-info: '%.256s'", response);
+        vd_offset_report_failure(false, reason);
+        return NULL;
+    }
+
+    int error_code = -1;
+    if (!mq_parse_error_field(root, &error_code) || error_code != 0) {
+        const cJSON *message = cJSON_GetObjectItem(root, "message");
+        snprintf(reason, sizeof(reason), "agent-info reported an error (%d): %.256s", error_code,
+                 (message && cJSON_IsString(message) && message->valuestring) ? message->valuestring : "?");
+        cJSON_Delete(root);
+        vd_offset_report_failure(false, reason);
+        return NULL;
+    }
+
+    vd_offset_report_answer();
+    return root;
+}
 
 bool vd_offset_client_observe(uint64_t offset, bool *out_changed, bool *out_pending,
                               uint64_t *out_pending_offset) {
@@ -246,18 +343,8 @@ bool vd_offset_client_observe(uint64_t offset, bool *out_changed, bool *out_pend
         return false;
     }
 
-    cJSON *root = cJSON_Parse(response);
+    cJSON *root = vd_offset_parse_answer(response);
     if (!root) {
-        mdebug1("vd_offset_client: malformed response from agent-info: '%s'.", response);
-        return false;
-    }
-
-    int error_code = -1;
-    if (!mq_parse_error_field(root, &error_code) || error_code != 0) {
-        const cJSON *message = cJSON_GetObjectItem(root, "message");
-        mdebug1("vd_offset_client: agent-info reported an error (%d): %s", error_code,
-                (message && cJSON_IsString(message) && message->valuestring) ? message->valuestring : "?");
-        cJSON_Delete(root);
         return false;
     }
 
@@ -302,15 +389,8 @@ bool vd_offset_client_clear_pending(uint64_t offset) {
         return false;
     }
 
-    cJSON *root = cJSON_Parse(response);
+    cJSON *root = vd_offset_parse_answer(response);
     if (!root) {
-        mdebug1("vd_offset_client: malformed response from agent-info: '%s'.", response);
-        return false;
-    }
-
-    int error_code = -1;
-    if (!mq_parse_error_field(root, &error_code) || error_code != 0) {
-        cJSON_Delete(root);
         return false;
     }
 
