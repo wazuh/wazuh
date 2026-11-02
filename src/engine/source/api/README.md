@@ -21,7 +21,7 @@ The API system spans five tightly-coupled locations in the repository:
 │  Python CLI tools    │  ─────────────────────────► │  wazuh-manager-analysisd  │
 │  (engine-suite)      │  ◄───────────────────────── │  (httpsrv::Server)        │
 │                      │                             │                           │
-│  Uses APIClient      │   Unix socket path          │  httplib server on UDS,   │
+│  Uses APIClient      │   Unix socket path          │  HTTP server on UDS,      │
 │  from                │                             │  routes to handler        │
 │  api-communication   │                             │  functions                │
 └──────────────────────┘                             └───────────────────────────┘
@@ -124,10 +124,14 @@ api/
 All handlers share a single type alias defined in `adapter/include/api/adapter/adapter.hpp`:
 
 ```cpp
-using RouteHandler = std::function<void(const httplib::Request&, httplib::Response&)>;
+using RouteHandler = httpsrv::RouteHandler; // std::function<void(const httpsrv::Request&, httpsrv::Response&)>
 ```
 
-This is a standard `httplib` request/response callback.
+`httpsrv::Request` and `httpsrv::Response` (`httpsrv/interface/httpsrv/types.hpp`) are transport-neutral:
+the handler never sees the HTTP library that serves it. The request carries `method`, `target` (query string
+included), `body` (a `std::string_view`, valid for the duration of the call) and the headers, looked up with
+`header(name)` in any case. The response is `status` (an `int`), `body` and `contentType`, set together with
+`setContent(body, type)`.
 
 ### 2. Adapter Utilities
 
@@ -140,9 +144,9 @@ The `adapter` module (header-only) provides template helpers for the proto↔HTT
 | `userErrorResponse<Res>(msg)` | 400 error with protobuf error envelope |
 | `internalErrorResponse<Res>(msg)` | 500 error with protobuf error envelope |
 | `getReqAndHandler<Req, Res, IHandler>(req, weakPtr)` | Combines `weak_ptr` lock + request parse (most common entry point). Returns `ResOrErrorResp<std::tuple<std::shared_ptr<IHandler>, Req>>` |
-| `isError` / `getErrorResp` / `getRes` | Inspect a `ResOrErrorResp<T>`: test for error, build the error `httplib::Response`, take the value |
-| `createRequest<Req>(req)` | Protobuf → `httplib::Request` (for testing) |
-| `parseResponse<Res>(res)` | `httplib::Response` → protobuf (for testing) |
+| `isError` / `getErrorResp` / `getRes` | Inspect a `ResOrErrorResp<T>`: test for error, build the error `httpsrv::Response`, take the value |
+| `createRequest<Req>(req)` | Protobuf → `httpsrv::Request` owning its JSON body (for testing) |
+| `parseResponse<Res>(res)` | `httpsrv::Response` → protobuf (for testing) |
 
 ### 3. Handler Pattern (Convention-Based)
 
@@ -155,9 +159,13 @@ adapter::RouteHandler activateDumper(const std::shared_ptr<::dumper::IDumper>& d
 ```
 
 **b) Inline `registerHandlers()` function wiring routes to the server**
+
+It takes an `httpsrv::IRouteRegistrar` (`httpsrv/interface/httpsrv/irouteregistrar.hpp`), not a concrete
+server, so a module does not depend on the transport that serves it. `addRoute` takes an optional
+`httpsrv::RouteOptions` (route class and body cap) after the handler.
 ```cpp
 inline void registerHandlers(const std::shared_ptr<::dumper::IDumper>& dumper,
-                             const std::shared_ptr<httpsrv::Server>& server)
+                             const std::shared_ptr<httpsrv::IRouteRegistrar>& server)
 {
     server->addRoute(httpsrv::Method::POST, "/_internal/event-dumper/activate", activateDumper(dumper));
     server->addRoute(httpsrv::Method::POST, "/_internal/event-dumper/deactivate", deactivateDumper(dumper));
@@ -557,7 +565,7 @@ namespace api::example::handlers
 adapter::RouteHandler exampleAction(const std::shared_ptr<::example::IExample>& example);
 
 inline void registerHandlers(const std::shared_ptr<::example::IExample>& example,
-                             const std::shared_ptr<httpsrv::Server>& server)
+                             const std::shared_ptr<httpsrv::IRouteRegistrar>& server)
 {
     server->addRoute(httpsrv::Method::POST, "/_internal/example/action", exampleAction(example));
 }
@@ -970,10 +978,9 @@ INSTANTIATE_TEST_SUITE_P(
         // Bad request case
         ExampleHandlerT(
             []() {
-                httplib::Request req;
-                req.body = "not json";
-                req.set_header("Content-Type", "text/plain");
-                return req;
+                // The body is a view: build test requests with fromOwned, never by assigning a temporary.
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", "not json", {{"Content-Type", "text/plain"}});
             },
             [](const std::shared_ptr<::example::IExample>& h) {
                 return exampleAction(h);

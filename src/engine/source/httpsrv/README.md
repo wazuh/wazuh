@@ -39,7 +39,7 @@ The **httpsrv** module provides an HTTP server over Unix Domain Sockets (UDS) fo
                 ┌───────────▼───────────────────────────────────────────┐
                 │         api::adapter (separate module)                 │
                 │                                                       │
-                │   httplib::Request/Response ←→ Protobuf domain types   │
+                │   httpsrv::Request/Response ←→ Protobuf domain types   │
                 │                                                       │
                 │   parseRequest<Req,Res>() → deserialize proto from JSON│
                 │   userResponse<Res>()     → serialize proto + 200 OK   │
@@ -48,8 +48,8 @@ The **httpsrv** module provides an HTTP server over Unix Domain Sockets (UDS) fo
                 └───────────────────────────────────────────────────────┘
                             │
                      RouteHandler = std::function<void(
-                         const httplib::Request&,
-                         httplib::Response&)>
+                         const httpsrv::Request&,
+                         httpsrv::Response&)>
                             │
                 ┌───────────▼───────────────────────────────────────────┐
                 │           API Sub-modules                              │
@@ -71,8 +71,15 @@ CRTP interface in `interface/httpsrv/iserver.hpp`:
 |--------|-------------|
 | `start(socketPath, useThread)` | Bind to UDS and start listening. If `useThread=true`, runs in a background thread |
 | `stop()` | Stop the server, join thread, remove socket file |
-| `addRoute(method, route, handler)` | Register an HTTP handler for a method+path combination |
+| `addRoute<Request, Response>(method, route, handler)` | Register an HTTP handler for a method+path combination (forwards to the implementation's `addRoute`) |
 | `isRunning()` | Check if the server is currently listening |
+
+### Route registrar (`IRouteRegistrar`)
+
+`interface/httpsrv/irouteregistrar.hpp` holds the one call an API module needs from a server:
+`addRoute(method, path, RouteHandler, RouteOptions = {})`. Every `api::<module>::handlers::registerHandlers()`
+takes a `std::shared_ptr<IRouteRegistrar>`, so the modules depend on neither server class. Both `Server` and
+`UdsServer` implement it; `Server` ignores `RouteOptions` (it has only its server-wide payload limit).
 
 ### HTTP Methods
 
@@ -113,13 +120,17 @@ Server(const std::string& id, size_t payloadMaxBytes = 0, bool enableDetailedLog
 
 ### Route Handler Signature
 
-All handlers must match the `httplib` callback signature:
+Handlers on both servers use the transport-neutral types of `interface/httpsrv/types.hpp`:
 
 ```cpp
-std::function<void(const httplib::Request&, httplib::Response&)>
+using RouteHandler = std::function<void(const httpsrv::Request&, httpsrv::Response&)>;
 ```
 
-The `api::adapter` module (separate from httpsrv) wraps this into `adapter::RouteHandler` and provides protobuf serialization/deserialization helpers.
+`Server` bridges each call: it builds a `Request` from the cpp-httplib request (the target with its query
+string, header names lower-cased and repeated names recorded, the body viewed in place, since the cpp-httplib
+request outlives the call) and copies the handler's `Response` status, body and content type back. The
+`api::adapter` module (separate from httpsrv) re-exports the type as `adapter::RouteHandler` and provides
+protobuf serialization/deserialization helpers.
 
 ## Server Instances
 
