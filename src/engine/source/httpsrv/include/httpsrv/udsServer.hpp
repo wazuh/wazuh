@@ -101,10 +101,13 @@ public:
     void closeAdmission(); ///< The executor takes nothing new; queued requests keep running.
     ShutdownReport drainUntil(std::chrono::steady_clock::time_point deadline);
     void stop(); ///< Drains the replies and closes the transport.
+    /// Waits until no handler runs: one that outlived the deadline is waited for, never left running.
+    void waitForHandlers();
     /// @}
 
     /**
-     * @brief All the shutdown steps for this server alone.
+     * @brief All the shutdown steps for this server alone. Returns only once no handler runs, so the caller can
+     * destroy what the handlers use.
      */
     ShutdownReport shutdown(std::chrono::milliseconds deadline = DEFAULT_SHUTDOWN_DEADLINE);
 

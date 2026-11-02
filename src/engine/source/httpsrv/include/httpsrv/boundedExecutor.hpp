@@ -83,6 +83,14 @@ public:
      */
     DrainReport drainUntil(std::chrono::steady_clock::time_point deadline);
 
+    /**
+     * @brief Stops the workers and waits for them: jobs still running finish first, however long they take.
+     *
+     * Admission is closed; jobs still queued are not run, their reject() runs on the calling thread. Safe to
+     * call more than once (the destructor calls it too). Never call it from a job: it would wait for itself.
+     */
+    void join();
+
     std::size_t depth() const;   ///< Queued jobs.
     std::size_t running() const; ///< Jobs being executed.
 

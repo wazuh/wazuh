@@ -303,6 +303,11 @@ ShutdownReport UdsServer::drainUntil(std::chrono::steady_clock::time_point deadl
     return ShutdownReport {drained.completed, drained.rejected, drained.abandoned};
 }
 
+void UdsServer::waitForHandlers()
+{
+    m_impl->executor->join();
+}
+
 void UdsServer::stop()
 {
     m_impl->transport->stop();
@@ -322,6 +327,7 @@ ShutdownReport UdsServer::shutdown(std::chrono::milliseconds deadline)
              report.completed,
              report.rejected,
              report.abandoned);
+    waitForHandlers();
     return report;
 }
 
@@ -420,6 +426,15 @@ void shutdownAll(const std::vector<UdsServer*>& servers, std::chrono::millisecon
              total.completed,
              total.rejected,
              total.abandoned);
+    // 5. A handler that outlived the deadline is waited for: returning while one runs would let the caller tear down
+    //    what it uses.
+    for (auto* server : servers)
+    {
+        if (server != nullptr)
+        {
+            server->waitForHandlers();
+        }
+    }
 }
 
 } // namespace httpsrv

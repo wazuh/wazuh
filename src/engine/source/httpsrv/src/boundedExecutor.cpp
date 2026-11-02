@@ -23,6 +23,11 @@ BoundedExecutor::BoundedExecutor(std::string name, std::size_t threads, std::siz
 
 BoundedExecutor::~BoundedExecutor()
 {
+    join();
+}
+
+void BoundedExecutor::join()
+{
     std::size_t stillRunning {0};
     {
         std::lock_guard lock {m_mutex};
@@ -39,7 +44,10 @@ BoundedExecutor::~BoundedExecutor()
     }
     for (auto& worker : m_workers)
     {
-        worker.join();
+        if (worker.joinable())
+        {
+            worker.join();
+        }
     }
 
     // Jobs that were never run must still be answered.
