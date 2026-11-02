@@ -280,7 +280,11 @@ namespace wazuh::container_instances
         /// refused last run and retract them again once the verdict lands --
         /// one CREATE+DELETE pair per over-cap container. That is the price of
         /// not freezing the wrong set for ever.
-        bool m_admissionSettled {true};
+        /// Atomic only so settleAdmissionIfDue() can pre-check it without the
+        /// exclusive lock. Every other read and write of it is under m_mutex,
+        /// and the pre-check is sound because the flag is monotonic once
+        /// setExpectedSources() has run: nothing unsettles a settled store.
+        std::atomic<bool> m_admissionSettled {true};
         std::size_t m_expectedSources {0};
         std::set<SourceId> m_enumeratedSources;
         std::optional<TimePoint> m_settleDeadline;

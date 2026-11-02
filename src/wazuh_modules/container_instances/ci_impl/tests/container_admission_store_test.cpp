@@ -572,6 +572,49 @@ TEST(ContainerAdmissionStoreTest, ARestartingContainerNeverEntersTheUnkeyedTally
     EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"b"})) << "so no amount of restarting can write it off";
 }
 
+// V4: a source slower than the grace must not lose the node for ever.
+//
+// The deadline is armed by the first call that carries a clock, so a Kubernetes
+// list slower than ADMISSION_SETTLE_GRACE settles admission over Docker alone.
+// Incumbency is sticky, so that half-a-node verdict then stood for the life of
+// the process: the Kubernetes containers arrive to find every slot taken and
+// never get one, however long they run.
+//
+// Arming the deadline on source readiness instead is the fix NOT taken -- the
+// deadline exists precisely for a source that never starts, which is what
+// AdmissionSettlesOnTheGraceWhenSnapshotsStop pins.
+TEST(ContainerAdmissionStoreTest, ASourceEnumeratingAfterTheGraceReopensTheRanking)
+{
+    auto store = MakeStore();
+    store.setExpectedSources(2);
+    store.setSyncLimit(1);
+
+    const auto start = Now();
+
+    // Only Docker is up. The grace expires and the node is ranked over what
+    // there is, which is the right call -- withholding for ever would mean the
+    // cap never applies at all.
+    store.applySnapshot(kDocker, Snapshot({"m"}), {}, start);
+    ASSERT_FALSE(AdmissionKnown(store)) << "one source of two: nothing to rank yet";
+
+    store.applySnapshot(kDocker, Snapshot({"m"}), {}, start + ADMISSION_SETTLE_GRACE + std::chrono::seconds {1});
+    ASSERT_TRUE(AdmissionKnown(store));
+    ASSERT_EQ(store.admittedIds(), (std::set<std::string> {"m"}));
+
+    // Kubernetes finally lists, and it holds the lower id. Without the re-open
+    // "m" keeps the only slot by incumbency and "a" never reports at all.
+    store.applySnapshot(kCri, Snapshot({"a"}), {}, start + ADMISSION_SETTLE_GRACE + std::chrono::seconds {2});
+
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"a"}))
+        << "the whole node is ranked once the whole node is in view";
+
+    // Once. From here incumbency is back in force, so a later snapshot from
+    // either source does not re-open anything.
+    store.applySnapshot(kDocker, Snapshot({"m"}), {}, start + ADMISSION_SETTLE_GRACE + std::chrono::seconds {3});
+    store.applySnapshot(kCri, Snapshot({"a"}), {}, start + ADMISSION_SETTLE_GRACE + std::chrono::seconds {4});
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"a"})) << "a re-rank every pass would be churn, not a fix";
+}
+
 // V2: the leftover slot, and the fact that resolving the container that wants
 // it used to make no difference.
 //

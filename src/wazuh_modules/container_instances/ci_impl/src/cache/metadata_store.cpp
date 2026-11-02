@@ -402,7 +402,38 @@ namespace
         // This source has now said what it holds, even if that is nothing. An
         // authoritative empty enumeration is an answer; an empty store that has
         // enumerated nothing is not, and before this the two looked alike.
-        m_enumeratedSources.insert(source);
+        const bool firstFromThisSource = m_enumeratedSources.insert(source).second;
+
+        // V4: a source that first enumerates AFTER the grace has settled
+        // admission was not in the picture the ranking was made from. The
+        // verdict it produced is a verdict about half a node, and incumbency is
+        // sticky, so without this it stands for the life of the process -- a
+        // Kubernetes list slower than the grace loses to Docker permanently.
+        //
+        // Dropping the incumbents re-ranks from scratch, exactly as a cold
+        // start on the now-complete node would. ONCE per source:
+        // m_enumeratedSources never shrinks, so insert() reports a first
+        // arrival exactly once. The churn is the correction, and it is bounded
+        // to a node that already missed the grace.
+        //
+        // Gated on m_expectedSources != 0 -- the barrier being configured at
+        // all -- rather than on the arrival count being within it. Comparing
+        // sizes reads as the tighter test and is the more fragile one: it is
+        // correct only while the facade's count is exact, and it would fail
+        // SILENTLY, by never re-ranking, if a third source were ever added
+        // without updating it. A source arriving beyond the declared count
+        // still enlarges the node, so re-ranking is the right answer there
+        // too.
+        //
+        // Deliberately NOT arming the deadline on source readiness instead,
+        // which is the other way to fix this: the deadline exists for a source
+        // that never starts at all, and that is what
+        // AdmissionSettlesOnTheGraceWhenSnapshotsStop pins.
+        if (firstFromThisSource && m_admissionSettled && m_expectedSources != 0)
+        {
+            m_admitted.clear();
+        }
+
         armOrExpireSettleDeadlineLocked(now);
 
         // Before the recompute and after the sweeps, for the same reason the
@@ -818,6 +849,19 @@ namespace
 
     void MetadataStore::settleAdmissionIfDue(TimePoint now)
     {
+        // Pre-checked without the lock, because this is called at the top of
+        // EVERY list request and a settled store is the overwhelmingly common
+        // case. Taking the exclusive lock there serialised readers that had no
+        // writing to do -- the whole point of m_mutex being a shared_mutex.
+        //
+        // Sound because the flag only ever goes false -> true after
+        // setExpectedSources(): a stale `false` costs one needless lock, and a
+        // `true` cannot be stale.
+        if (m_admissionSettled.load(std::memory_order_acquire))
+        {
+            return;
+        }
+
         {
             std::unique_lock lock(m_mutex);
 
