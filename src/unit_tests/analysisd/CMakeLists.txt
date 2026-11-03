@@ -201,6 +201,9 @@ list(APPEND analysisd_flags "${DEBUG_OP_WRAPPERS}")
 list(APPEND analysisd_names "test_json_decoder")
 list(APPEND analysisd_flags "-Wl,--wrap,strdup -Wl,--wrap,free")
 
+list(APPEND analysisd_names "test_decoder")
+list(APPEND analysisd_flags "-Wl,--wrap,malloc -Wl,--wrap,free")
+
 list(APPEND analysisd_names "test_analysisd_upgrade_module")
 list(APPEND analysisd_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP ${DEBUG_OP_WRAPPERS}")
 
