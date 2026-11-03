@@ -50,6 +50,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the `buckets` and `security_hub` AWS subscribers and the `waf` AWS bucket taking a time that grew with the square of the size of the concatenated JSON events of an S3 object, or of a line of it in the `waf` bucket, to parse them. ([#41059](https://github.com/wazuh/wazuh/pull/41059))
 - Fixed the AWS module reading S3 objects of any size, in the buckets and in the `buckets`, `security_hub` and `security_lake` subscribers, and the decompressed content of any size of the `.gz` and `.zip` objects, not of the Parquet objects of `security_lake`. An object larger than 512 MiB, or whose decompressed content is, is now handled as a file that cannot be decompressed: the buckets exit with code 8, or skip it with `skip_on_error`, and the subscribers keep its message in the queue and end with exit code 7, or delete it with `skip_on_error`. ([#41059](https://github.com/wazuh/wazuh/pull/41059))
 - Fixed `PUT /active-response` rejecting with error 1652 the name of a command defined in the configuration. The name is now accepted when it maps to a single name in `ar.conf`, and error 1653 lists the accepted names when the command is used with different timeouts. ([#40570](https://github.com/wazuh/wazuh/issues/40570))
+- Fixed `wazuh-analysisd` not releasing the previous value when more than one decoder sets the same static field of an event, such as sibling decoders that extract `srcip` from different parts of the same log. ([#41080](https://github.com/wazuh/wazuh/pull/41080))
 
 ### Agent
 
