@@ -142,10 +142,14 @@ namespace fim_container_events
                           bool complete);
 
     /// @brief Whether an admission snapshot may be installed now, held, or ignored.
+    /// A silent source permits named verdicts to be installed without making
+    /// absence authoritative. Pass sourcesPending only for a settled verdict;
+    /// admission itself being pending must still defer installation.
     [[nodiscard]] AdmissionPublish decideAdmissionPublish(bool changed,
                                                           bool unpublished,
                                                           bool released,
-                                                          bool enumerated);
+                                                          bool enumerated,
+                                                          bool sourcesPending = false);
 
 } // namespace fim_container_events
 

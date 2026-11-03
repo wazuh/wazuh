@@ -65,6 +65,7 @@ namespace
     /// the wrap below reproduces -- a test that set them independently would
     /// model a reply the connector cannot send.
     bool containerAdmissionPending {false};
+    bool containerSourcesPending {false};
 
     // Which of those the cap refused. Empty means it admitted them all, which is
     // the ordinary case and what every test that predates the cap expects.
@@ -134,9 +135,11 @@ extern "C" int __wrap_cbaseline_list_containers_ex(const char* socket,
         // the consumers are entitled to find contradictory.
         const bool complete = containerUnkeyedKnown ? containerUnkeyedIds.empty() : containerListComplete;
         const bool pending = listed >= 0 && containerAdmissionPending;
-        outStatus->complete = (listed >= 0 && complete && !pending) ? 1 : 0;
-        outStatus->unkeyed_known = (listed >= 0 && containerUnkeyedKnown && !pending) ? 1 : 0;
+        const bool sourcesPending = listed >= 0 && containerSourcesPending;
+        outStatus->complete = (listed >= 0 && complete && !pending && !sourcesPending) ? 1 : 0;
+        outStatus->unkeyed_known = (listed >= 0 && containerUnkeyedKnown && !pending && !sourcesPending) ? 1 : 0;
         outStatus->admission_pending = pending ? 1 : 0;
+        outStatus->sources_pending = sourcesPending ? 1 : 0;
     }
 
     return listed;
@@ -8480,6 +8483,7 @@ TEST_F(SyscollectorImpTest, APendingVerdictLeavesTheStoredAdmissionAlone)
             containerUnkeyedRefused.clear();
             containerUnkeyedKnown = true;
             containerAdmissionPending = false;
+            containerSourcesPending = false;
         }
     } resetHooks;
     const auto info = std::make_shared<MockSysInfo>();
@@ -8683,6 +8687,28 @@ TEST_F(SyscollectorImpTest, APendingVerdictLeavesTheStoredAdmissionAlone)
 
     EXPECT_FALSE(module.m_admissionPending)
             << "an unreachable connector is not asserting anything, so the hold must not outlive it";
+
+    containerAdmissionPending = false;
+    containerSourcesPending = true;
+    containerListHook = [&](cb_container_id_sink_t sink, void* ctx)
+    {
+        for (const auto& [id, allowed] : admitted) sink(id.c_str(), allowed, ctx);
+        return static_cast<int>(admitted.size());
+    };
+    logCapture.clear();
+    module.runContainerBaselinePass();
+    EXPECT_FALSE(logCapture.contains(LOG_WARNING, "could not identify"));
+    EXPECT_TRUE(logCapture.contains(LOG_DEBUG, "source has not enumerated"));
+    EXPECT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"b", 0}}))
+            << "a settled reply from the available source still applies its named refusals";
+
+    containerSourcesPending = false;
+    containerUnkeyedKnown = false;
+    containerListComplete = false;
+    logCapture.clear();
+    module.runContainerBaselinePass();
+    EXPECT_TRUE(logCapture.contains(LOG_WARNING, "could not identify"))
+            << "a genuine compatibility failure must still warn";
 
     module.destroy();
     module.m_containerDocumentCounts.clear();

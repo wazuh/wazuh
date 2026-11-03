@@ -266,13 +266,11 @@ namespace fim_container_events
      *               file_entry, and the baseline walk's scoped transaction is
      *               open until release. Same hazard
      *               fim_container_events_release() exists for.
-     * not enumerated  the reply does not name every container that exists --
-     *                 an older connector that reports neither the unkeyed ids
-     *                 nor a complete list. Installing it marks the containers
-     *                 it omits "known and refused" rather than "not heard of",
-     *                 which retracts live rows, and at a cold start the view it
-     *                 merges into is EMPTY, so there is no previous answer to
-     *                 protect them either.
+     * not enumerated  an older connector cannot describe what it left out.
+     *                 A current connector can instead say a source is silent:
+     *                 its named verdicts may be installed with that coverage
+     *                 flag, so the bridge keeps omitted ids unknown rather
+     *                 than retracting documents it has no verdict against.
      *
      * What this deliberately does NOT wait for is every container to be KEYED.
      * It used to, and a container whose cgroup no process reports never is, so
@@ -286,14 +284,15 @@ namespace fim_container_events
      * the change has already been absorbed. `unpublished` is what remembers
      * that the installed snapshot is behind the view, so the next call that can
      * install does, with or without a further change. */
-    AdmissionPublish decideAdmissionPublish(bool changed, bool unpublished, bool released, bool enumerated)
+    AdmissionPublish decideAdmissionPublish(bool changed, bool unpublished, bool released, bool enumerated,
+                                             bool sourcesPending)
     {
         if (!changed && !unpublished)
         {
             return AdmissionPublish::nothing;
         }
 
-        if (!released || !enumerated)
+        if (!released || (!enumerated && !sourcesPending))
         {
             return AdmissionPublish::defer;
         }
@@ -903,7 +902,7 @@ namespace fim_container_events
 
             syncAllowlist(plan.installWholeList ? router.applyContainerList(plan.containers)
                           : router.applyContainerDelta(plan.events));
-            publishAdmission(plan.admissionView, plan.enumerated, delta.admissionPending);
+            publishAdmission(plan.admissionView, plan.enumerated, delta.admissionPending, delta.sourcesPending);
 
             /* Advanced only after the plan has been applied. A crash in between
              * replays it, which is harmless — the map converges to the same place
@@ -948,6 +947,11 @@ namespace fim_container_events
          * loses the update that was deferred. */
         bool admission_unpublished {false};
 
+        /* Coverage is part of the installed answer too. A source can finish
+         * enumerating without changing any verdict; that still has to clear
+         * the bridge's exception for ids the snapshot does not name. */
+        bool admission_sources_pending {false};
+
         /* So the deferral is said once, not every resolver cycle. */
         bool admission_deferral_logged {false};
 
@@ -968,15 +972,24 @@ namespace fim_container_events
          * installs admission from it, so nothing is lost by waiting: the view is
          * still tracked meanwhile, and the first change AFTER release publishes
          * it. */
-        void publishAdmission(const std::map<std::string, bool>& updated, bool enumerated, bool settling)
+        void publishAdmission(const std::map<std::string, bool>& updated, bool enumerated, bool settling,
+                              bool sourcesPending)
         {
-            const bool changed = (updated != admission_view);
+            const bool changed = (updated != admission_view || sourcesPending != admission_sources_pending);
             admission_view = updated;
+            admission_sources_pending = sourcesPending;
 
             const auto decision =
-                decideAdmissionPublish(changed, admission_unpublished, staging.released(), enumerated);
+                decideAdmissionPublish(changed, admission_unpublished, staging.released(), enumerated,
+                                       sourcesPending && !settling);
 
             if (decision == AdmissionPublish::nothing) return;
+
+            if (sourcesPending && !settling)
+            {
+                LogDebug("Container FIM: a configured container source has not enumerated; omitted containers "
+                         "retain their reporting state.");
+            }
 
             if (decision == AdmissionPublish::defer)
             {
@@ -988,14 +1001,14 @@ namespace fim_container_events
                  * install admission in the meantime, and no longer can -- it
                  * refuses the same reply for the same reason this does.
                  *
-                 * Reaching this means a connector too old to say what it could
-                 * not key, so it is a version mismatch rather than something
-                 * that clears on its own -- which is exactly why `settling` is
-                 * excluded. A connector that reports `admission_pending` is
-                 * current and IS about to clear on its own, and warning about a
-                 * version mismatch on every agent restart taught operators to
-                 * ignore the one message that means a real one. */
-                if (!enumerated && !settling && staging.released() && !admission_deferral_logged)
+                 * Neither a settling verdict nor a silent source is a version
+                 * mismatch: both are current connectors describing why the
+                 * reply is incomplete. A source may stay silent indefinitely,
+                 * but its flag still permits the available source's verdicts.
+                 * Warn only when the connector cannot describe what it left
+                 * out, or normal startup would teach operators to ignore the
+                 * one message that means a compatibility failure. */
+                if (!enumerated && !settling && !sourcesPending && staging.released() && !admission_deferral_logged)
                 {
                     admission_deferral_logged = true;
                     LogWarn("Container FIM: holding the admission snapshot because the container connector does "
@@ -1030,7 +1043,7 @@ namespace fim_container_events
                 }
             }
 
-            fim_container_set_admission(known.data(), known.size(), admitted.data(), admitted.size());
+            fim_container_set_admission_ex(known.data(), known.size(), admitted.data(), admitted.size(), sourcesPending);
         }
 
         /* Mirror a list refresh into the kernel filter.

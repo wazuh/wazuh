@@ -291,6 +291,9 @@ struct ContainerListStatus
     /// reply carries no per-container decision at all, and the flags that
     /// stand in for one all default to "admitted".
     bool admissionPending {false};
+    /// A source has not enumerated. Named verdicts may still be applied, but
+    /// absent ids remain unknown and neither coverage flag authorises deletion.
+    bool sourcesPending {false};
 };
 
 /// @param status Optional out-param describing the reply's coverage.
@@ -346,6 +349,7 @@ struct PolledListing
     bool complete {false};
     bool unkeyedKnown {false};
     bool admissionPending {false};
+    bool sourcesPending {false};
 
     /// Whether the connector sent `admitted` at all. False means one too old to,
     /// and then `admitted` is empty and says nothing: fall back to admitting the

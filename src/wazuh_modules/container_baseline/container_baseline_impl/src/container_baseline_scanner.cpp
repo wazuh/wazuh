@@ -158,7 +158,8 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
                                                   bool* unkeyedKnown = nullptr,
                                                   std::set<std::string>* admitted = nullptr,
                                                   bool* admittedKnown = nullptr,
-                                                  bool* admissionPending = nullptr)
+                                                  bool* admissionPending = nullptr,
+                                                  bool* sourcesPending = nullptr)
 {
     wazuh::container_instances_client::ContainerInstancesClient client(socket_path);
     std::vector<ContainerIdentity> out;
@@ -194,7 +195,8 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
                                                &answer.unkeyedKnown,
                                                &answer.admitted,
                                                &answer.admittedKnown,
-                                               &answer.admissionPending);
+                                               &answer.admissionPending,
+                                               &answer.sourcesPending);
 
         if (!polled)
         {
@@ -298,6 +300,11 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
     if (admissionPending != nullptr)
     {
         *admissionPending = listing.admissionPending;
+    }
+
+    if (sourcesPending != nullptr)
+    {
+        *sourcesPending = listing.sourcesPending;
     }
 
     out.reserve(listing.payload.size());
@@ -725,6 +732,7 @@ int ListContainers(const std::string& connector_socket_path, const ContainerIdSi
     bool reportedUnkeyed = false;
     bool reportedAdmitted = false;
     bool admissionPending = false;
+    bool sourcesPending = false;
     std::set<std::string> unkeyed;
     std::set<std::string> admitted;
     const auto identities = DiscoverContainers(connector_socket_path,
@@ -734,13 +742,15 @@ int ListContainers(const std::string& connector_socket_path, const ContainerIdSi
                                                &reportedUnkeyed,
                                                &admitted,
                                                &reportedAdmitted,
-                                               &admissionPending);
+                                               &admissionPending,
+                                               &sourcesPending);
 
     if (status != nullptr)
     {
         status->complete = listIsComplete;
         status->unkeyedKnown = reportedUnkeyed;
         status->admissionPending = admissionPending;
+        status->sourcesPending = sourcesPending;
     }
 
     // -1, not 0. Callers use this list as the authority on what still exists

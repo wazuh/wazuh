@@ -696,6 +696,11 @@ static int container_admission_known = 0;
  * the two sets above. */
 static int container_admission_pending = 0;
 
+/* A settled verdict can still omit a runtime that has never enumerated. The
+ * sets describe only the ids it named; keeping that coverage beside them is
+ * what stops a silent source being read as a refusal of all its containers. */
+static int container_sources_pending = 0;
+
 /* A set of container ids, or NULL when it could not be built. */
 static OSHash* container_id_set(const char** container_ids, size_t count)
 {
@@ -725,6 +730,15 @@ void fim_container_set_admission(const char** known_ids,
                                  size_t known_count,
                                  const char** admitted_ids,
                                  size_t admitted_count)
+{
+    fim_container_set_admission_ex(known_ids, known_count, admitted_ids, admitted_count, 0);
+}
+
+void fim_container_set_admission_ex(const char** known_ids,
+                                    size_t known_count,
+                                    const char** admitted_ids,
+                                    size_t admitted_count,
+                                    int sources_pending)
 {
     if ((known_ids == NULL && known_count > 0) || (admitted_ids == NULL && admitted_count > 0)) {
         return;
@@ -762,6 +776,7 @@ void fim_container_set_admission(const char** known_ids,
     container_known = known_set;
     container_admitted = admitted_set;
     container_admission_known = 1;
+    container_sources_pending = (sources_pending != 0);
     /* A real verdict ends the wait, whatever the last reply claimed. */
     container_admission_pending = 0;
     synced_docs_unlock();
@@ -823,7 +838,7 @@ int fim_container_is_admitted(const char* container_id)
     }
 
     synced_docs_lock();
-    /* Membership, nothing else.
+    /* Membership for every container this reply actually names.
      *
      * `admitted` is the connector's decision over every container it knows of,
      * keyed or not, so absence from it is a refusal and not a gap. This used to
@@ -835,14 +850,18 @@ int fim_container_is_admitted(const char* container_id)
      * manager only to delete them again when its key came back.
      *
      * The not-told-yet case above remains fail-open: no decision has arrived at
-     * all there, which is a different thing from one that says no. */
+     * all there, which is a different thing from one that says no. A silent
+     * source leaves the same gap for ids outside `known`, even after the grace
+     * has settled admission for the available source. Those ids remain unknown
+     * rather than refused; the reporting paths keep their stored flags. */
     /* Pending is tested FIRST, and that order is the whole point: at a cold
      * start nothing has been installed either, so the fail-open below would
      * otherwise win -- and syscheckd reads this connector while it is still
      * settling on every agent restart. */
     const int admitted = container_admission_pending
                          ? 0
-                         : ((container_admission_known == 0 || container_admitted == NULL)
+                         : ((container_admission_known == 0 || container_admitted == NULL ||
+                             (container_sources_pending && OSHash_Get(container_known, container_id) == NULL))
                             ? 1
                             : (OSHash_Get(container_admitted, container_id) != NULL));
     synced_docs_unlock();
@@ -873,7 +892,11 @@ static int container_row_sync_flag(const cJSON* row, int operation)
     const int stored_sync = cJSON_IsNumber(sync_json) ? sync_json->valueint : 0;
 
     if (has_container && operation != OPERATION_DELETE
-            && !fim_container_is_admitted(id_json->valuestring)) {
+            && (!fim_container_is_admitted(id_json->valuestring)
+                || fim_container_admission_is_stale(id_json->valuestring))) {
+        /* A reply from only the available source permits no promotion of an
+         * unknown id either. Its fail-open admission answer protects reported
+         * rows from retraction; it is not permission to spend a new slot. */
         /* Withhold the document -- but a row the manager ALREADY holds may not
          * be demoted on the strength of this check.
          *

@@ -203,15 +203,36 @@ void fim_container_set_admission(const char** known_ids,
                                  size_t admitted_count);
 
 /**
+ * @brief Install admission together with whether a source is still silent.
+ *
+ * As fim_container_set_admission(), but an incomplete source enumeration is
+ * installed atomically with the sets. Named containers have a real verdict;
+ * an id outside known_ids has not been judged by this reply and must retain
+ * its stored reporting flag. The four-argument entry point remains the form
+ * for an authoritative enumeration and clears this exception on every install.
+ *
+ * @param sources_pending Non-zero while a configured source has not enumerated.
+ *                        This does not mean admission itself is pending.
+ */
+void fim_container_set_admission_ex(const char** known_ids,
+                                    size_t known_count,
+                                    const char** admitted_ids,
+                                    size_t admitted_count,
+                                    int sources_pending);
+
+/**
  * @brief Whether a container may report. Non-zero when it may.
  *
  * True for every container until fim_container_set_admitted() has been called,
  * so an agent that has not reached the connector keeps reporting rather than
  * going silently quiet.
  *
- * After that it is membership of the admitted set and nothing else. A container
- * the connector could not key is ranked like any other, so it reads false when
- * the cap turned it down -- see fim_container_set_admission().
+ * After that named containers follow membership of the admitted set. While a
+ * source is silent, an id outside the known set remains unknown and reads true,
+ * as before any verdict. That permits no promotion of its withheld rows: the
+ * storage and reconciliation paths preserve their flags until the id is known.
+ * A container the connector could not key is named and ranked like any other,
+ * so it reads false when the cap turned it down.
  */
 int fim_container_is_admitted(const char* container_id);
 

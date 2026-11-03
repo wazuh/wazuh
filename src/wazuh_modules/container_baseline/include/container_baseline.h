@@ -362,8 +362,9 @@ typedef struct
      * still resolving, and always 0 on failure. */
     int complete;
 
-    /* The connector reported WHICH containers it could not key. 0 means one too
-     * old to, and then `complete` is the only guard a caller has. */
+    /* The connector reported WHICH containers it could not key. When neither
+     * pending flag below is set, 0 means one too old to, and then `complete`
+     * is the only guard a caller has. */
     int unkeyed_known;
 
     /* The connector WILL decide admission but has not yet, so the `synced`
@@ -381,6 +382,18 @@ typedef struct
      * connector that cannot yet see the whole node is not describing the whole
      * node, so the reply is no basis for deleting anything either. */
     int admission_pending;
+
+    /* A configured source has not enumerated. This can outlive the admission
+     * grace: unlike admission_pending, it does not say the verdict is missing.
+     * Apply the decision for the containers this reply names, while retaining
+     * the stored reporting flags of containers it does not name. Those ids are
+     * unknown to this reply, not refused or removed; installing the known set
+     * must preserve that distinction rather than retracting their documents.
+     *
+     * `complete` and `unkeyed_known` are both 0 while this is set. Absence-based
+     * cleanup must still wait, even after the cap has been applied to the
+     * available source. Always 0 on failure, like the other status fields. */
+    int sources_pending;
 } cb_list_status_t;
 
 /* As cbaseline_list_containers(), and additionally reports the reply's coverage.

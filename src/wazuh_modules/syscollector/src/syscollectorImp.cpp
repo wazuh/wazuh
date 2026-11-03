@@ -2570,7 +2570,8 @@ bool Syscollector::scanContainerBaselineDelta()
         std::map<std::string, bool> discovered;
         bool listComplete = false;
         bool unkeyedKnown = false;
-        pollContainerAdmission(discovered, listComplete, unkeyedKnown);
+        bool sourcesPending = false;
+        pollContainerAdmission(discovered, listComplete, unkeyedKnown, sourcesPending);
     }
 
     if (collected.rescan.empty() && collected.removed.empty())
@@ -2942,7 +2943,8 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
     std::map<std::string, bool> discovered;
     bool listComplete = false;
     bool unkeyedKnown = false;
-    const int listed = pollContainerAdmission(discovered, listComplete, unkeyedKnown);
+    bool sourcesPending = false;
+    const int listed = pollContainerAdmission(discovered, listComplete, unkeyedKnown, sourcesPending);
 
     // EVERY known container, admitted or not, keyed or not. The sweep below
     // deletes what is absent from this set, and a container whose rows are
@@ -3004,6 +3006,15 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
         m_logFunction(LOG_DEBUG,
                       "Container connector is still settling; deferring stale-container cleanup until it has "
                       "a verdict.");
+    }
+    else if (!unkeyedKnown && !listComplete && sourcesPending)
+    {
+        // The verdict applies to the named containers, but the missing source
+        // can still account for rows absent from this reply. This is a current
+        // connector with incomplete enumeration, not a compatibility failure.
+        m_logFunction(LOG_DEBUG,
+                      "A configured container source has not enumerated; applying named admission verdicts "
+                      "and deferring stale-container cleanup.");
     }
     else if (!unkeyedKnown && !listComplete)
     {
@@ -5133,10 +5144,12 @@ std::string Syscollector::scopeFilter(LimitScope scope, const std::string& conta
 
 int Syscollector::pollContainerAdmission(std::map<std::string, bool>& discovered,
                                          bool& listComplete,
-                                         bool& unkeyedKnown)
+                                         bool& unkeyedKnown,
+                                         bool& sourcesPending)
 {
     listComplete = false;
     unkeyedKnown = false;
+    sourcesPending = false;
 
 #ifdef __linux__
     const auto idSink = [](const char* containerId, int synced, void* userData)
@@ -5163,6 +5176,7 @@ int Syscollector::pollContainerAdmission(std::map<std::string, bool>& discovered
 
     listComplete = (listStatus.complete != 0);
     unkeyedKnown = (listStatus.unkeyed_known != 0);
+    sourcesPending = (listStatus.sources_pending != 0);
 
     // Not while the connector's verdict is PENDING. The `synced` flag the sink
     // received is then not a decision at all -- the reply carries none, and

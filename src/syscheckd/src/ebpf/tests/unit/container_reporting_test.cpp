@@ -31,6 +31,7 @@ namespace
     /* Whether the hooked listing claims to be the whole node. True is the
      * ordinary case; false models container_instances still resolving. */
     bool list_complete = true;
+    bool sources_pending = false;
 
     /* Containers the hooked connector knows of but cannot key. */
     std::set<std::string> unkeyed;
@@ -72,6 +73,7 @@ namespace
                 listed = false;
                 connector_available = true;
                 list_complete = true;
+                sources_pending = false;
                 unkeyed.clear();
                 unkeyed_known = true;
                 unkeyed_refused.clear();
@@ -198,6 +200,8 @@ extern "C" int __wrap_cbaseline_list_containers_ex(const char*,
     {
         out_status->complete = 0;
         out_status->unkeyed_known = 0;
+        out_status->admission_pending = 0;
+        out_status->sources_pending = 0;
     }
 
     if (!connector_available)
@@ -222,8 +226,9 @@ extern "C" int __wrap_cbaseline_list_containers_ex(const char*,
          * `withheld` from that very set. Derived here too, so no test can model
          * a server that cannot exist. */
         const bool complete = unkeyed_known ? unkeyed.empty() : list_complete;
-        out_status->complete = complete ? 1 : 0;
-        out_status->unkeyed_known = unkeyed_known ? 1 : 0;
+        out_status->complete = complete && !sources_pending ? 1 : 0;
+        out_status->unkeyed_known = unkeyed_known && !sources_pending ? 1 : 0;
+        out_status->sources_pending = sources_pending ? 1 : 0;
     }
 
     return static_cast<int>(admission.size());
@@ -253,6 +258,66 @@ extern "C" int __wrap_cbaseline_run_fim_dbsync(const char*,
     }
 
     return static_cast<int>(files.size());
+}
+
+TEST_F(ContainerReportingTest, ASettledVerdictAppliesTheCapWhileAnotherSourceIsSilent)
+{
+    container_reporting_test_host(0);
+    sources_pending = true;
+    admission = {{"a", true}, {"b", false}};
+    files = {{"a", {"/etc/one"}}, {"b", {"/etc/two"}}};
+    fim_container_set_admission_pending(1);
+    fim_run_container_baseline();
+
+    EXPECT_EQ(fim_container_admission_pending(), 0);
+    EXPECT_NE(fim_container_is_admitted("a"), 0);
+    EXPECT_EQ(fim_container_is_admitted("b"), 0);
+    EXPECT_EQ(syncFlag("a", "/etc/one"), 1);
+    EXPECT_EQ(syncFlag("b", "/etc/two"), 0);
+    EXPECT_EQ(persisted, (std::vector<std::pair<std::string, int>> {{"a:/etc/one", OPERATION_CREATE}}));
+    EXPECT_TRUE(warnings.empty()) << "a silent source is not an old connector";
+}
+
+TEST_F(ContainerReportingTest, ASilentSourcesOmittedContainersKeepTheirStoredReportingFlags)
+{
+    container_reporting_test_host(0);
+    admission = {{"a", true}, {"b", true}, {"c", false}};
+    files = {{"a", {"/etc/one"}}, {"b", {"/etc/two"}}, {"c", {"/etc/three"}}};
+    fim_run_container_baseline();
+    ASSERT_EQ(syncFlag("b", "/etc/two"), 1);
+    ASSERT_EQ(syncFlag("c", "/etc/three"), 0);
+
+    // The available source refuses its named container. Neither stored flag
+    // from the silent source may move just because that reply omits its ids.
+    admission = {{"a", false}};
+    files.clear();
+    sources_pending = true;
+    listed = false;
+    persisted.clear();
+    warnings.clear();
+    fim_run_container_baseline();
+
+    EXPECT_EQ(syncFlag("a", "/etc/one"), 0);
+    EXPECT_EQ(syncFlag("b", "/etc/two"), 1);
+    EXPECT_EQ(syncFlag("c", "/etc/three"), 0);
+    EXPECT_NE(fim_container_is_admitted("b"), 0);
+    EXPECT_NE(fim_container_is_admitted("c"), 0);
+    EXPECT_EQ(persisted, (std::vector<std::pair<std::string, int>> {{"a:/etc/one", OPERATION_DELETE}}));
+    EXPECT_TRUE(warnings.empty());
+
+    const nlohmann::json withheld = {{"container_id", "c"}, {"path", "/etc/three"},
+        {"version", 1}, {"sync", 0}, {"size", 1}};
+    EXPECT_EQ(fim_persist_baseline_row("c:/etc/three", OPERATION_MODIFY, "wazuh-states-fim-files",
+                                      withheld.dump().c_str(), 1), 0)
+            << "unknown admission must not promote an event-driven update either";
+    EXPECT_EQ(persisted.size(), 1u);
+
+    // Once enumeration is authoritative again, omission becomes a real
+    // refusal. Installing that answer must release the temporary exception.
+    const char* known[] = {"a"};
+    fim_container_set_admission(known, 1, nullptr, 0);
+    EXPECT_EQ(fim_container_is_admitted("b"), 0);
+    EXPECT_EQ(syncFlag("b", "/etc/two"), 0);
 }
 
 TEST_F(ContainerReportingTest, GrantedRowsSurviveModifyAndSendStatefulDeletes)
@@ -1626,4 +1691,41 @@ TEST_F(ContainerReportingTest, ASupersededReconcileLeavesReportingFlagsAloneWhil
     EXPECT_EQ(syncFlag("a", "/etc/one"), 1);
     EXPECT_EQ(syncFlag("b", "/etc/two"), 1);
     EXPECT_EQ(persisted, (std::vector<std::pair<std::string, int>> {{"b:/etc/two", OPERATION_CREATE}}));
+}
+
+TEST(ContainerListRefresh, ASilentSourceAllowsNamedVerdictsWithoutAuthorisingAbsence)
+{
+    using wazuh::container_instances_client::ContainerDelta;
+    using wazuh::container_instances_client::ContainerRef;
+    using fim_container_events::AdmissionPublish;
+    using fim_container_events::decideAdmissionPublish;
+    using fim_container_events::planListRefresh;
+
+    ContainerRef named;
+    named.containerId = "a";
+    named.cgroupId = 11;
+    named.synced = false;
+    ContainerDelta delta;
+    delta.available = true;
+    delta.complete = false;
+    delta.sourcesPending = true;
+    delta.admittedKnown = true;
+    delta.containers = {named};
+    const auto plan = planListRefresh(delta, {{"a", true}, {"silent", true}, {"withheld", false}},
+                                     {"a", "silent", "withheld"});
+
+    EXPECT_FALSE(plan.enumerated);
+    EXPECT_FALSE(plan.installWholeList);
+    EXPECT_EQ(plan.admissionView, (std::map<std::string, bool>
+                                  {{"a", false}, {"silent", true}, {"withheld", false}}));
+    ASSERT_EQ(plan.events.size(), 1u);
+    EXPECT_NE(plan.events[0].kind, fim_container_events::CgroupDeltaEvent::Kind::removed);
+    EXPECT_EQ(decideAdmissionPublish(true, false, true, plan.enumerated, delta.sourcesPending),
+              AdmissionPublish::install);
+    EXPECT_EQ(decideAdmissionPublish(false, true, true, plan.enumerated, delta.sourcesPending),
+              AdmissionPublish::install) << "a deferred verdict must install even when the view is unchanged";
+    EXPECT_EQ(decideAdmissionPublish(true, false, false, plan.enumerated, delta.sourcesPending),
+              AdmissionPublish::defer) << "source readiness does not release the startup walk";
+    EXPECT_EQ(decideAdmissionPublish(true, false, true, plan.enumerated), AdmissionPublish::defer)
+            << "an old connector still cannot authorise installation";
 }

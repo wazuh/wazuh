@@ -519,11 +519,14 @@ class EXPORTED Syscollector final
          * @param unkeyedKnown Set to whether the connector named the ones it could not
          *                     key. Both are what a stale sweep has to wait on; this
          *                     call does no sweeping of its own.
+         * @param sourcesPending Set while a source has not enumerated, so a
+         *                       current partial reply is not mistaken for an old connector.
          * @return The connector's return value: the number of containers it keyed, or
          *         -1 when it could not be reached. Callers MUST check for -1 before
          *         treating absence from `discovered` as removal.
          */
-        int pollContainerAdmission(std::map<std::string, bool>& discovered, bool& listComplete, bool& unkeyedKnown);
+        int pollContainerAdmission(std::map<std::string, bool>& discovered, bool& listComplete, bool& unkeyedKnown,
+                                   bool& sourcesPending);
 
         /// Discharges the retraction that setAdmittedContainers() recorded, once the
         /// pass has written its sync flags. Separate from it because the scan reports

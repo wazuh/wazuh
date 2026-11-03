@@ -70,6 +70,22 @@ TEST(LifecycleDeltaApiTest, AnUnreachableConnectorIsUnavailableNotEmpty)
     EXPECT_TRUE(collected.ids.empty());
 }
 
+TEST(LifecycleDeltaApiTest, AFailedListingClearsEveryCoverageClaim)
+{
+    cb_list_status_t status;
+    status.complete = 1;
+    status.unkeyed_known = 1;
+    status.admission_pending = 1;
+    status.sources_pending = 1;
+
+    EXPECT_EQ(cbaseline_list_containers_ex(nullptr, nullptr, nullptr, &status), -1);
+    EXPECT_EQ(status.complete, 0);
+    EXPECT_EQ(status.unkeyed_known, 0);
+    EXPECT_EQ(status.admission_pending, 0);
+    EXPECT_EQ(status.sources_pending, 0)
+        << "a failed query must not repeat a previous reply's source-readiness claim";
+}
+
 TEST(LifecycleDeltaApiTest, TheCursorDoesNotMoveWhenNothingWasLearned)
 {
     // If it advanced on failure, the transitions that happened while the

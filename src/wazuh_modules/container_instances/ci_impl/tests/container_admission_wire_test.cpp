@@ -375,6 +375,7 @@ TEST(ContainerAdmissionWireTest, ASettledVerdictStillSaysWhenASourceHasNotEnumer
 
     EXPECT_TRUE(read.admittedKnown) << "the cap applies; this is not a reason to stop enforcing it";
     EXPECT_FALSE(read.admissionPending) << "and consumers must NOT freeze their sync flags for it";
+    EXPECT_TRUE(read.sourcesPending) << "the consumer must distinguish a silent source from an old connector";
     EXPECT_FALSE(read.complete) << "but the node is not fully described, so nothing may be deleted";
     EXPECT_FALSE(read.unkeyedKnown);
 }
@@ -393,5 +394,35 @@ TEST(ContainerAdmissionWireTest, AFullyEnumeratedNodeCarriesNoSourcesPendingKey)
     EXPECT_FALSE(parsed.contains("sources_pending")) << "emitted only when true, like every additive key here";
 
     const auto read = wazuh::container_instances_client::ContainerInstancesClient::parseListReply(parsed);
+    EXPECT_FALSE(read.sourcesPending);
     EXPECT_TRUE(read.complete) << "a whole node, authoritative about what exists";
+}
+
+TEST(ContainerAdmissionWireTest, ASilentSourcePreservesTheNamedVerdictsOnADeltaReply)
+{
+    QueryResponse response;
+    response.status = QueryResponse::Status::ok;
+    response.listReply = true;
+    response.admissionKnown = true;
+    response.sourcesEnumerated = false;
+    response.admitted = {"kept"};
+    response.delta.emplace();
+    LifecycleEvent event;
+    event.kind = LifecycleKind::added;
+    event.containerId = "refused";
+    event.hostKey = 4242;
+    event.record = std::make_shared<const ContainerRecord>(MakeRecord("refused"));
+    response.delta->events.push_back(event);
+
+    const auto parsed = nlohmann::json::parse(wire::serializeResponse(response));
+    const auto read = wazuh::container_instances_client::ContainerInstancesClient::parseListReply(parsed);
+
+    EXPECT_TRUE(read.sourcesPending);
+    EXPECT_TRUE(read.admittedKnown);
+    EXPECT_FALSE(read.admissionPending);
+    EXPECT_FALSE(read.complete);
+    EXPECT_FALSE(read.unkeyedKnown);
+    EXPECT_EQ(read.admitted, (std::set<std::string> {"kept"}));
+    ASSERT_EQ(read.events.size(), 1u);
+    EXPECT_FALSE(read.events[0].synced) << "a named refusal is still a real verdict";
 }

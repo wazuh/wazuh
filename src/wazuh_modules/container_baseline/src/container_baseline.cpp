@@ -293,6 +293,7 @@ extern "C" int cbaseline_list_containers_ex(const char*            connector_soc
         out_status->complete = 0;
         out_status->unkeyed_known = 0;
         out_status->admission_pending = 0;
+        out_status->sources_pending = 0;
     }
 
     // -1, not 0: "no socket configured" is no more an authorisation to delete
@@ -313,6 +314,7 @@ extern "C" int cbaseline_list_containers_ex(const char*            connector_soc
         out_status->complete = status.complete ? 1 : 0;
         out_status->unkeyed_known = status.unkeyedKnown ? 1 : 0;
         out_status->admission_pending = status.admissionPending ? 1 : 0;
+        out_status->sources_pending = status.sourcesPending ? 1 : 0;
     }
 
     return listed;

@@ -834,9 +834,9 @@ namespace
         /// not keyed.
         bool complete {false};
 
-        /// Whether the connector named the containers it could not key. False
-        /// means one too old to, and then `complete` is the only guard the sweep
-        /// has.
+        /// Whether the connector named the containers it could not key. The
+        /// pending flags below override this coverage claim; without either,
+        /// false means an old connector and only `complete` can permit a sweep.
         ///
         /// The ids themselves are not kept. They arrive through the SAME sink as
         /// every other container, with the cap's verdict for each, so `known`
@@ -851,6 +851,9 @@ namespace
         /// than read back from the bridge: this is a property of THIS reply,
         /// and asking afterwards would answer about whatever reply came last.
         bool settling {false};
+        /// Named verdicts are usable, but ids omitted by a silent source keep
+        /// their stored reporting state and authorise no absence-based cleanup.
+        bool sourcesPending {false};
     };
 
     /// Called for every container the connector knows of, keyed or not --
@@ -904,6 +907,7 @@ namespace
         // none, so the bridge stayed FAIL-OPEN for the whole settling window on
         // every agent restart. Holding instead is what leaves each row at the
         // flag the previous run gave it.
+        listing.sourcesPending = (listStatus.sources_pending != 0);
         if (listStatus.admission_pending != 0)
         {
             listing.settling = true;
@@ -926,8 +930,10 @@ namespace
         // refused -- silent for the life of the process.
         //
         // So install as soon as the connector has named what it could not key,
-        // and let the unkeyed ids ride along as their own category.
-        if (!listing.complete && !listing.unkeyedKnown)
+        // and let the unkeyed ids ride along as their own category. A silent
+        // source can instead carry a settled verdict for only the ids named;
+        // the bridge keeps the rest unknown until that source enumerates.
+        if (!listing.complete && !listing.unkeyedKnown && !listing.sourcesPending)
         {
             // An older connector that reports neither. Nothing distinguishes a
             // container it omitted from one that is gone, so keep the previous
@@ -962,7 +968,8 @@ namespace
             admitted.push_back(id.c_str());
         }
 
-        fim_container_set_admission(known.data(), known.size(), admitted.data(), admitted.size());
+        fim_container_set_admission_ex(known.data(), known.size(), admitted.data(), admitted.size(),
+                                       listing.sourcesPending);
 
         return listed;
     }
@@ -1258,6 +1265,12 @@ namespace
             if (admitted != promote)
                 continue;
 
+            // An omitted container is unknown while a source is silent. Its
+            // fail-open answer prevents retraction, but must not lift rows a
+            // previous verdict left withheld. Wait until a reply names the id.
+            if (promote && fim_container_admission_is_stale(container_id))
+                continue;
+
             fim_container_doc_budget_initialize(container_id);
 
             // Nothing to gain from re-offering withheld rows to a budget that
@@ -1480,6 +1493,11 @@ extern "C" void fim_run_container_baseline(void)
             // one.
             LogDebug("Container FIM baseline: the container connector is still settling; deferring "
                      "stale-container cleanup until it has a verdict.");
+        }
+        else if (!listing.complete && !listing.unkeyedKnown && listing.sourcesPending)
+        {
+            LogDebug("Container FIM baseline: a configured container source has not enumerated; applying named "
+                     "admission verdicts and deferring stale-container cleanup.");
         }
         else if (!listing.complete && !listing.unkeyedKnown)
         {

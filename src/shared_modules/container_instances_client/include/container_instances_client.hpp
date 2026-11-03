@@ -202,6 +202,12 @@ namespace wazuh::container_instances_client
         /// the whole node, so this reply is no basis for deleting anything.
         bool admissionPending {false};
 
+        /// A configured source has not enumerated, even if admission has settled
+        /// on its grace. Apply the verdict for named containers, but do not
+        /// interpret an omitted id as removed or refused. Both coverage flags
+        /// remain false because this reply cannot describe the silent source.
+        bool sourcesPending {false};
+
         std::uint64_t epoch {0};
         std::uint64_t seq {0};
 
@@ -293,13 +299,18 @@ namespace wazuh::container_instances_client
         ///        complete and @param unkeyedKnown are both forced false,
         ///        because a server that cannot yet see the whole node is not
         ///        describing the whole node.
+        /// @param sourcesPending Optional out-param, true while a source has not
+        ///        enumerated. Unlike admissionPending this does not withhold a
+        ///        settled verdict: named containers have a decision, but absence
+        ///        still authorises neither removal nor refusal.
         [[nodiscard]] std::vector<ContainerRef> listContainers(bool* reachable = nullptr,
                                                                bool* complete = nullptr,
                                                                std::set<std::string>* unkeyed = nullptr,
                                                                bool* unkeyedKnown = nullptr,
                                                                std::set<std::string>* admitted = nullptr,
                                                                bool* admittedKnown = nullptr,
-                                                               bool* admissionPending = nullptr) const
+                                                               bool* admissionPending = nullptr,
+                                                               bool* sourcesPending = nullptr) const
         {
             std::vector<ContainerRef> result;
 
@@ -311,6 +322,11 @@ namespace wazuh::container_instances_client
             if (admissionPending != nullptr)
             {
                 *admissionPending = false;
+            }
+
+            if (sourcesPending != nullptr)
+            {
+                *sourcesPending = false;
             }
 
             if (reachable != nullptr)
@@ -441,6 +457,11 @@ namespace wazuh::container_instances_client
 
             if (flagIsSet(parsed, "sources_pending"))
             {
+                if (sourcesPending != nullptr)
+                {
+                    *sourcesPending = true;
+                }
+
                 if (complete != nullptr)
                 {
                     *complete = false;
@@ -598,6 +619,7 @@ namespace wazuh::container_instances_client
 
             if (flagIsSet(parsed, "sources_pending"))
             {
+                delta.sourcesPending = true;
                 delta.complete = false;
                 delta.unkeyedKnown = false;
             }
