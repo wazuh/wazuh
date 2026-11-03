@@ -786,6 +786,14 @@ void fim_container_set_admission_pending(int pending)
      * no verdict, and the rows must stay exactly as they are. */
 }
 
+int fim_container_admission_pending(void)
+{
+    synced_docs_lock();
+    const int pending = container_admission_pending;
+    synced_docs_unlock();
+    return pending;
+}
+
 void fim_container_set_admitted(const char** container_ids, size_t count)
 {
     /* Everything this caller knows of, it admits. */

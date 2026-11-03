@@ -224,14 +224,24 @@ int fim_container_is_admitted(const char* container_id);
  *
  * While set, fim_container_is_admitted() answers 0, which holds a row at the
  * flag the previous run left it at: a reported row is never demoted (see the
- * gate in container_budget_decide()), nothing is promoted, and no reconcile
- * runs because fim_container_reconcile_admission() is reached only by
- * fim_container_set_admission(), which a pending reply never calls.
+ * gate in container_budget_decide()), nothing is promoted, and a reconcile
+ * queued by an earlier verdict returns without applying that superseded answer.
  *
  * Deliberately does NOT replace the admitted sets or reconcile: there is no
  * verdict to install, and installing an empty one would read as "refuse
  * everything". */
 void fim_container_set_admission_pending(int pending);
+
+/**
+ * @brief Whether the connector's admission verdict is still pending.
+ *
+ * Read under the same lock as the hold itself. A reconcile may have waited for
+ * the container state mutex while the baseline learned that the verdict was
+ * pending again; treating that hold as a refusal would withdraw every reported
+ * container. Check after acquiring the state mutex and leave the stored flags
+ * alone while waiting. Installing the next real verdict runs the reconcile again.
+ */
+int fim_container_admission_pending(void);
 
 /**
  * @brief Whether the admission snapshot predates this container. Non-zero when it does.

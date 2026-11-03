@@ -1378,6 +1378,15 @@ extern "C" void fim_container_reconcile_admission(void)
 {
     std::lock_guard<std::recursive_mutex> lock(container_state_mutex);
 
+    // The verdict that queued this work may have been superseded while we
+    // waited for the baseline's state mutex. Pending makes every admission
+    // check answer no, but it is not a decision to withdraw the node's rows.
+    // The next real verdict calls us again, so nothing is owed against this one.
+    if (fim_container_admission_pending())
+    {
+        return;
+    }
+
     // BOTH directions, because admission moves both ways and this is the only
     // place that sees it move at run time.
     //

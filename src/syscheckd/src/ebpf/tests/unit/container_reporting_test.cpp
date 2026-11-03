@@ -1598,3 +1598,32 @@ TEST_F(ContainerReportingTest, TheHoldEndsAtomicallyWithTheVerdictItWaitedFor)
     EXPECT_EQ(fim_container_is_admitted("refused"), 0) << "held before, refused after; never admitted in between";
     EXPECT_NE(fim_container_is_admitted("kept"), 0);
 }
+
+TEST_F(ContainerReportingTest, ASupersededReconcileLeavesReportingFlagsAloneWhileAdmissionIsPending)
+{
+    admission = {{"a", true}, {"b", false}};
+    files["a"] = {"/etc/one"};
+    files["b"] = {"/etc/two"};
+    fim_run_container_baseline();
+    ASSERT_EQ(syncFlag("a", "/etc/one"), 1);
+    ASSERT_EQ(syncFlag("b", "/etc/two"), 0);
+    persisted.clear();
+    const auto queries = distinct_id_queries;
+
+    // A reconcile queued by an earlier verdict may acquire the state mutex
+    // after the baseline has learned that the connector is settling again.
+    // Pending is a reason to wait, never a decision to withdraw everything.
+    fim_container_set_admission_pending(1);
+    fim_container_reconcile_admission();
+
+    EXPECT_TRUE(persisted.empty());
+    EXPECT_EQ(distinct_id_queries, queries);
+    EXPECT_EQ(syncFlag("a", "/etc/one"), 1);
+    EXPECT_EQ(syncFlag("b", "/etc/two"), 0);
+
+    const char* known[] = {"a", "b"};
+    fim_container_set_admission(known, 2, known, 2);
+    EXPECT_EQ(syncFlag("a", "/etc/one"), 1);
+    EXPECT_EQ(syncFlag("b", "/etc/two"), 1);
+    EXPECT_EQ(persisted, (std::vector<std::pair<std::string, int>> {{"b:/etc/two", OPERATION_CREATE}}));
+}
