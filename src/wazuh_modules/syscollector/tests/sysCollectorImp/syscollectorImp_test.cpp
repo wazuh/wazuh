@@ -7225,12 +7225,16 @@ TEST_F(SyscollectorImpTest, StartupLimitsLeaveWithheldRowsUntilAdmissionIsKnown)
     module.m_containerBaseline = true;
     const std::string index = SYSCOLLECTOR_SYNC_INDEX_PROCESSES;
     const nlohmann::json row = {{"container_id", "a"}, {"pid", "123"}, {"name", "worker"},
-        {"checksum", "sum"}, {"version", 1}, {"sync", 0}};
+        {"checksum", "sum"}, {"version", 1}, {"sync", 0}
+    };
 
     // The previous process left a refusal in the database. Applying both a
     // finite budget and an unlimited one must preserve it until this process
     // has actually heard which containers may report.
-    for (const size_t limit : {size_t {2}, size_t {0}})
+    for (const size_t limit :
+            {
+                size_t {2}, size_t {0}
+            })
     {
         module.m_admissionKnown = false;
         auto query = SyncRowQuery::builder().table(PROCESSES_TABLE).data(row).build();
@@ -7304,7 +7308,8 @@ TEST_F(SyscollectorImpTest, AnUnheardContainerVerdictFiltersSyncAndContextRows)
     module.m_containerDocumentLimits[index] = 0;
     module.m_containerBaseline = true;
     const nlohmann::json row = {{"container_id", "a"}, {"pid", "123"}, {"name", "worker"},
-        {"checksum", "sum"}, {"version", 1}, {"sync", 0}};
+        {"checksum", "sum"}, {"version", 1}, {"sync", 0}
+    };
     auto query = SyncRowQuery::builder().table(PROCESSES_TABLE).data(row).build();
     module.m_spDBSync->syncRow(query.query(), [](ReturnTypeCallback, const nlohmann::json&) {});
 
@@ -7374,10 +7379,14 @@ TEST_F(SyscollectorImpTest, APendingVerdictDefersOwedRetractions)
     module.m_admittedContainers.clear();
     module.m_containerAdmissionWithholding = false;
     module.setAdmittedContainers({{"a", true}, {"b", true}});
-    for (const std::string id : {"a", "b"})
+
+    for (const std::string id :
+            {"a", "b"
+            })
     {
         const nlohmann::json row = {{"container_id", id}, {"pid", "123"}, {"name", "worker"},
-            {"checksum", "sum"}, {"version", 1}, {"sync", 1}};
+            {"checksum", "sum"}, {"version", 1}, {"sync", 1}
+        };
         auto query = SyncRowQuery::builder().table(PROCESSES_TABLE).data(row).build();
         module.m_spDBSync->syncRow(query.query(), [](ReturnTypeCallback, const nlohmann::json&) {});
     }
@@ -7423,12 +7432,14 @@ TEST_F(SyscollectorImpTest, FailedRetractionsRemainOwedUntilTheirFlagsAreWritten
             void deleteRows(const nlohmann::json& input) override
             {
                 if (rejectWrites) throw std::runtime_error("reporting flag delete failed");
+
                 DBSync::deleteRows(input);
             }
 
             void insertData(const nlohmann::json& input) override
             {
                 if (rejectWrites) throw std::runtime_error("reporting flag insert failed");
+
                 DBSync::insertData(input);
             }
     };
@@ -7470,14 +7481,18 @@ TEST_F(SyscollectorImpTest, FailedRetractionsRemainOwedUntilTheirFlagsAreWritten
     module.m_admittedContainers.clear();
     module.m_containerAdmissionWithholding = false;
     auto db = std::make_unique<FailingFlagDBSync>(HostType::AGENT, DbEngineType::SQLITE3,
-                                                SYSCOLLECTOR_DB_PATH, module.getCreateStatement(),
-                                                DbManagement::PERSISTENT, UPGRADE_SQL_STATEMENTS);
+                                                  SYSCOLLECTOR_DB_PATH, module.getCreateStatement(),
+                                                  DbManagement::PERSISTENT, UPGRADE_SQL_STATEMENTS);
     auto* failingDb = db.get();
     module.m_spDBSync = std::move(db);
     const nlohmann::json row = {{"container_id", "b"}, {"pid", "123"}, {"name", "worker"},
-        {"checksum", "sum"}, {"version", 1}, {"sync", 1}};
+        {"checksum", "sum"}, {"version", 1}, {"sync", 1}
+    };
 
-    for (const bool globalPass : {false, true})
+    for (const bool globalPass :
+            {
+                false, true
+            })
     {
         auto query = SyncRowQuery::builder().table(PROCESSES_TABLE).data(row).build();
         module.m_spDBSync->syncRow(query.query(), [](ReturnTypeCallback, const nlohmann::json&) {});
@@ -7486,7 +7501,8 @@ TEST_F(SyscollectorImpTest, FailedRetractionsRemainOwedUntilTheirFlagsAreWritten
         failingDb->rejectWrites = true;
         module.m_admissionKnown = true;
         module.m_admissionReconciled = false;
-        module.m_pendingRetractions = globalPass ? std::set<std::string> {} : std::set<std::string> {"b"};
+        module.m_pendingRetractions = globalPass ? std::set<std::string> {} :
+                                      std::set<std::string> {"b"};
         module.m_globalReconcilePending = globalPass;
         events.clear();
 
@@ -8693,6 +8709,7 @@ TEST_F(SyscollectorImpTest, APendingVerdictLeavesTheStoredAdmissionAlone)
     containerListHook = [&](cb_container_id_sink_t sink, void* ctx)
     {
         for (const auto& [id, allowed] : admitted) sink(id.c_str(), allowed, ctx);
+
         return static_cast<int>(admitted.size());
     };
     logCapture.clear();

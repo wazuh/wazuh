@@ -5381,6 +5381,7 @@ void Syscollector::retractDeAdmittedContainers()
     }
 
     bool reconciled = true;
+
     try
     {
         for (const auto& [table, index] : INDEX_MAP)
@@ -5402,7 +5403,7 @@ void Syscollector::retractDeAdmittedContainers()
                         reconciled = false;
                     }
                     else if (type == SELECTED &&
-                            !isContainerAdmittedLocked(row.at(CONTAINER_ID_COLUMN).get<std::string>()))
+                             !isContainerAdmittedLocked(row.at(CONTAINER_ID_COLUMN).get<std::string>()))
                     {
                         records.push_back(row);
                     }
@@ -5433,6 +5434,7 @@ void Syscollector::retractDeAdmittedContainers()
         {
             m_logFunction(LOG_ERROR, "Failed to retract container inventory: " + std::string(ex.what()));
         }
+
         return;
     }
 
@@ -5443,6 +5445,7 @@ void Syscollector::retractDeAdmittedContainers()
 
     m_pendingRetractions.clear();
     m_globalReconcilePending = false;
+
     // A successful per-container pass checked only those ids. Only the global
     // pass can acknowledge that every stored reporting flag has been reconciled
     // in this process, and a failed global pass must remain reachable.
@@ -7790,12 +7793,14 @@ bool Syscollector::updateSyncFlagInDB(const std::vector<std::pair<std::string, n
     {
         return true;
     }
+
     if (!m_spDBSync)
     {
         return false;
     }
 
     bool success = true;
+
     try
     {
         // Strategy: Delete rows, then re-insert with new sync value
@@ -7824,6 +7829,7 @@ bool Syscollector::updateSyncFlagInDB(const std::vector<std::pair<std::string, n
                 catch (const std::exception& e)
                 {
                     success = false;
+
                     if (m_logFunction)
                     {
                         m_logFunction(LOG_ERROR, "Failed to delete row: " + std::string(e.what()));
@@ -7858,6 +7864,7 @@ bool Syscollector::updateSyncFlagInDB(const std::vector<std::pair<std::string, n
                 catch (const std::exception& e)
                 {
                     success = false;
+
                     if (m_logFunction)
                     {
                         m_logFunction(LOG_ERROR, "Failed to insert row for table " + tableName + ": " + std::string(e.what()));
@@ -7878,11 +7885,13 @@ bool Syscollector::updateSyncFlagInDB(const std::vector<std::pair<std::string, n
     catch (const std::exception& e)
     {
         success = false;
+
         if (m_logFunction)
         {
             m_logFunction(LOG_ERROR, "Failed to update sync flag: " + std::string(e.what()));
         }
     }
+
     return success;
 }
 
