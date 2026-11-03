@@ -158,7 +158,7 @@ class WazuhIntegration:
                                       )
 
         self.discard_field = discard_field
-        self.discard_regex = re.compile(fr'{discard_regex}')
+        self.discard_regex = re.compile(discard_regex) if discard_regex is not None else None
         # to fetch logs using this date if no only_logs_after value was provided on the first execution
         self.default_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
 
@@ -372,6 +372,21 @@ class WazuhIntegration:
 
         return self.discard_field and self.discard_regex \
             and _check_recursive(event_, nested_field=self.discard_field, regex=self.discard_regex)
+
+    def text_event_should_be_skipped(self, text: str) -> bool:
+        """Check whether a plain-text event matches the configured discard regex.
+
+        Parameters
+        ----------
+        text : str
+            The plain-text event.
+
+        Returns
+        -------
+        bool
+            True only when a discard regex is configured and it matches the event.
+        """
+        return self.discard_regex is not None and self.discard_regex.match(text) is not None
 
     def send_msg(self, msg, dump_json=True):
         """

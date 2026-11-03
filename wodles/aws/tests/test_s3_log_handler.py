@@ -242,6 +242,28 @@ def test_process_file_sends_expected_messages(mock_debug):
         processor.send_msg.assert_called_once()
 
 
+@pytest.mark.parametrize('discard_regex, expected_sent', [
+    (None, ['None', 'drop this line', 'keep this line']),
+    ('^drop', ['None', 'keep this line']),
+], ids=['no-regex-all-sent', 'regex-match-skipped'])
+@patch('s3_log_handler.aws_tools.debug')
+def test_process_file_plain_text_discard(mock_debug, discard_regex, expected_sent):
+    """Test 'process_file' only discards plain-text logs when a configured discard regex matches them."""
+    with patch('s3_log_handler.wazuh_integration.WazuhIntegration.__init__'):
+        processor = s3_log_handler.AWSSubscriberBucket()
+        processor.discard_regex = re.compile(discard_regex) if discard_regex else None
+        processor.discard_field = None
+
+        logs = [{'full_log': 'None'}, {'full_log': 'drop this line'}, {'full_log': 'keep this line'}]
+        processor.obtain_logs = MagicMock(return_value=logs)
+        processor.send_msg = MagicMock()
+
+        processor.process_file({'log_path': 'log.txt', 'bucket_path': 'bucket'})
+
+        sent = [c.args[0]['aws']['full_log'] for c in processor.send_msg.call_args_list]
+        assert sent == expected_sent
+
+
 @patch('s3_log_handler.aws_tools.debug')
 def test_process_file_sends_multiple_messages(mock_debug):
     """Test that 'process_file' sends one message per log event."""

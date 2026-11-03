@@ -289,19 +289,19 @@ class AWSSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler):
             self._remove_none_fields(log)
             if 'full_log' in log:
                 # The processed logs origin is a plain text log file
-                if re.match(self.discard_regex, log['full_log']):
+                if self.text_event_should_be_skipped(log['full_log']):
                     aws_tools.debug(f'+++ The "{self.discard_regex.pattern}" regex found a match. '
                                     f'The event will be skipped.', 2)
                     continue
-                else:
-                    print(f'WARNING: The "{self.discard_regex.pattern}" regex did not find a match. '
-                          f'The event will be processed.')
+                elif self.discard_regex:
+                    aws_tools.debug(f'+++ The "{self.discard_regex.pattern}" regex did not find a match. '
+                                    f'The event will be processed.', 3)
             elif self.event_should_be_skipped(log):
                 aws_tools.debug(f'+++ The "{self.discard_regex.pattern}" regex found a match '
                                 f'in the "{self.discard_field}" '
                       f'field. The event will be skipped.', 2)
                 continue
-            else:
+            elif self.discard_field and self.discard_regex:
                 aws_tools.debug(
                                 f'+++ The "{self.discard_regex.pattern}" regex did not find a match in the '
                                 f'"{self.discard_field}" field. The event will be processed.', 3)
@@ -458,7 +458,7 @@ class AWSSecurityHubSubscriberBucket(AWSSubscriberBucket):
                 aws_tools.debug(f'+++ The "{self.discard_regex.pattern}" regex found a match '
                                 f'in the "{self.discard_field}" field. The event will be skipped.', 2)
                 continue
-            else:
+            elif self.discard_field and self.discard_regex:
                 aws_tools.debug(
                     f'+++ The "{self.discard_regex.pattern}" regex did not find a match in the '
                     f'"{self.discard_field}" field. The event will be processed.', 3)

@@ -63,6 +63,23 @@ def test_wazuh_integration_initializes_properly(mock_version, mock_path, mock_cl
                                                                  tzinfo=timezone.utc)
 
 
+@pytest.mark.parametrize('discard_regex, text, expected', [
+    (None, 'None', False),
+    (None, 'any event', False),
+    ('^drop', 'drop this event', True),
+    ('^drop', 'keep this event', False),
+], ids=['no-regex-none-text', 'no-regex-any-text', 'regex-match', 'regex-no-match'])
+def test_wazuh_integration_text_event_should_be_skipped(discard_regex, text, expected):
+    """Test 'text_event_should_be_skipped' only discards plain-text events when a discard regex is configured."""
+    integration = utils.get_mocked_wazuh_integration(discard_regex=discard_regex)
+
+    if discard_regex is None:
+        assert integration.discard_regex is None
+    else:
+        assert integration.discard_regex.pattern == discard_regex
+    assert integration.text_event_should_be_skipped(text) is expected
+
+
 @patch('wazuh_integration.config')
 @pytest.mark.parametrize('file_exists, options, retry_attempts, retry_mode',
                          [(True, [aws_tools.RETRY_ATTEMPTS_KEY, aws_tools.RETRY_MODE_BOTO_KEY], 5, 'standard'),
