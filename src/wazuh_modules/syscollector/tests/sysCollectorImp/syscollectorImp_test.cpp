@@ -7213,8 +7213,8 @@ TEST_F(SyscollectorImpTest, DocumentLimits_EndToEnd_Summary)
 
 // Container admission is a Linux-only feature -- scanContainerBaseline() and
 // pollContainerAdmission() are both compiled out elsewhere, so m_containerBaseline
-// can never be set on another platform and these four have nothing to observe
-// there. The last of them also stands up a second DBSync over the module's own
+// can never be set on another platform and these have nothing to observe
+// there. One of them also stands up a second DBSync over the module's own
 // database to make a flag write fail, and that aborted the whole suite under
 // wine rather than failing a case.
 
@@ -7813,6 +7813,126 @@ TEST_F(SyscollectorImpTest, FailedRetractionsRemainOwedUntilTheirFlagsAreWritten
     module.m_admittedContainers.clear();
     module.m_containerAdmissionWithholding = false;
     module.m_containerDocumentCounts.clear();
+}
+
+TEST_F(SyscollectorImpTest, ForgettingContainerContextsRestoresFirstSync)
+{
+    auto& module = Syscollector::instance();
+    module.m_knownContainerIds.clear();
+    EXPECT_TRUE(module.m_knownContainerIds.insert("seen").second);
+    EXPECT_FALSE(module.m_knownContainerIds.insert("seen").second);
+
+    module.forgetContainerContexts();
+
+    // The baseline uses insertion's result to force a first sync quiet.
+    EXPECT_TRUE(module.m_knownContainerIds.insert("seen").second);
+    EXPECT_FALSE(module.m_knownContainerIds.insert("seen").second);
+}
+
+TEST_F(SyscollectorImpTest, FailedSweepsKeepContextAndBudgetUntilRetrySucceeds)
+{
+    const auto info = std::make_shared<MockSysInfo>();
+    EXPECT_CALL(*info, releaseThreadResources()).Times(testing::AnyNumber());
+    auto& module = Syscollector::instance();
+    std::vector<std::string> persisted;
+    std::vector<std::string> logs;
+    const std::string index = "wazuh-states-inventory-processes";
+    const std::string context = R"({"container":{"id":"gone","name":"web"}})";
+
+    const auto start = [&]()
+    {
+        module.init(info, reportFunction,
+                    [&persisted](const std::string&, Operation_t, const std::string&, const std::string & data, uint64_t)
+        {
+            persisted.push_back(data);
+        },
+        [&logs](modules_log_level_t, const std::string & message)
+        {
+            logs.push_back(message);
+        },
+        SYSCOLLECTOR_TEST_DB_PATH, "", "", 3600,
+        false, false, false, false, false, false, false,
+        false, false, false, false, false, false, false);
+    };
+
+    start();
+    module.destroy();
+    sqlite3* rawDb = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &rawDb, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+    std::unique_ptr<sqlite3, decltype(&sqlite3_close)> db(rawDb, sqlite3_close);
+    // Fail the real DELETE in closeTransaction(), whose exception Pipeline swallows.
+    // The name condition lets a normal DBSync write remove the fault without a restart.
+    ASSERT_EQ(sqlite3_exec(db.get(),
+                           "CREATE TRIGGER fail_container_delete BEFORE DELETE ON dbsync_processes "
+                           "WHEN OLD.container_id='gone' AND OLD.name='fail-delete' "
+                           "BEGIN SELECT RAISE(ABORT, 'container delete failed'); END;",
+                           nullptr, nullptr, nullptr), SQLITE_OK);
+    start();
+    module.m_containerDocumentLimits[index] = 1;
+
+    for (const bool wholeList :
+            {
+                false, true
+            })
+    {
+        SCOPED_TRACE(wholeList ? "whole-list sweep" : "delta sweep");
+        ASSERT_TRUE(module.storeContainerContext("gone", context));
+        ASSERT_TRUE(module.storeContainerContext("alive", R"({"container":{"id":"alive"}})"));
+        nlohmann::json row = {{"container_id", "gone"}, {"pid", "123"}, {"name", "fail-delete"},
+            {"checksum", "fail"}, {"version", 1}, {"sync", 1}
+        };
+        auto query = SyncRowQuery::builder().table(PROCESSES_TABLE).data(row).build();
+        module.m_spDBSync->syncRow(query.query(), [](ReturnTypeCallback, const nlohmann::json&) {});
+        module.m_containerDocumentCounts["gone"][index] = 1;
+        module.m_limitReported.insert({"gone", index});
+        persisted.clear();
+        logs.clear();
+
+        const auto sweep = [&]()
+        {
+            return wholeList ? module.sweepContainerRowsNotIn({"alive"}) : module.sweepContainerRows({"gone"});
+        };
+        const auto storedRows = [&](const std::string & table)
+        {
+            std::vector<nlohmann::json> rows;
+            auto select = SelectQuery::builder().table(table).columnList({"*"}).rowFilter("").build();
+            module.m_spDBSync->selectRows(select.query(),
+                                          [&rows](ReturnTypeCallback result, const nlohmann::json & data)
+            {
+                if (result == SELECTED) rows.push_back(data);
+            });
+            return rows;
+        };
+
+        EXPECT_EQ(sweep(), 0u);
+        EXPECT_EQ(storedRows(PROCESSES_TABLE).size(), 1u);
+        EXPECT_EQ(storedRows("container_context").size(), 2u);
+        EXPECT_EQ(module.m_containerDocumentCounts.count("gone"), 1u);
+        EXPECT_EQ(module.m_containerDocumentCounts.at("gone").at(index), 0u);
+        EXPECT_EQ(module.m_limitReported.count({"gone", index}), 1u);
+        EXPECT_TRUE(std::any_of(logs.begin(), logs.end(), [](const std::string & message)
+        {
+            return message.find("could not confirm the rows of removed container 'gone'") != std::string::npos;
+        }));
+
+        row["name"] = "retry";
+        row["checksum"] = "retry";
+        query = SyncRowQuery::builder().table(PROCESSES_TABLE).data(row).build();
+        module.m_spDBSync->syncRow(query.query(), [](ReturnTypeCallback, const nlohmann::json&) {});
+        persisted.clear();
+        EXPECT_EQ(sweep(), 1u);
+        EXPECT_TRUE(storedRows(PROCESSES_TABLE).empty());
+        const auto contexts = storedRows("container_context");
+        ASSERT_EQ(contexts.size(), 1u);
+        EXPECT_EQ(contexts.front().at("container_id"), "alive");
+        EXPECT_EQ(module.m_containerDocumentCounts.count("gone"), 0u);
+        EXPECT_EQ(module.m_limitReported.count({"gone", index}), 0u);
+        ASSERT_EQ(persisted.size(), 1u);
+        EXPECT_EQ(nlohmann::json::parse(persisted.front()).at("container").at("name"), "web");
+    }
+
+    module.m_containerDocumentLimits[index] = 0;
+    module.destroy();
 }
 
 #endif

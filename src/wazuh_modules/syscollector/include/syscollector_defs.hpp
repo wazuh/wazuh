@@ -42,6 +42,8 @@
     FRIEND_TEST(SyscollectorImpTest, DocumentBudgetsShrinkPromoteAndReleasePerContainer);                              \
     FRIEND_TEST(SyscollectorImpTest, PostScanPromotionVisitsOnlyContainersWithBacklog);                                \
     FRIEND_TEST(SyscollectorImpTest, ContainerBaselineAdmissionAndCleanup);                                            \
+    FRIEND_TEST(SyscollectorImpTest, ForgettingContainerContextsRestoresFirstSync);                                    \
+    FRIEND_TEST(SyscollectorImpTest, FailedSweepsKeepContextAndBudgetUntilRetrySucceeds);                              \
     FRIEND_TEST(SyscollectorImpTest, RetractionSeesRowsReportedInTheSamePass);                                         \
     FRIEND_TEST(SyscollectorImpTest, RetractionIsScopedToTheContainersThatLostAdmission);                              \
     FRIEND_TEST(SyscollectorImpTest, LoweringTheCapRetractsOnADeltaTickThatRewalksNothing);                            \

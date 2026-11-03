@@ -2859,6 +2859,39 @@ namespace
         OS_TABLE, NET_IFACE_TABLE, NET_ADDRESS_TABLE, NET_PROTOCOL_TABLE,
         SERVICES_TABLE, HW_TABLE, HOTFIXES_TABLE, BROWSER_EXTENSIONS_TABLE
     };
+
+    std::set<std::string> storedContainerIds(DBSync& db)
+    {
+        std::set<std::string> ids;
+
+        for (const auto& table : CONTAINER_SCOPED_TABLES)
+        {
+            const auto selectCallback = [&ids](ReturnTypeCallback result, const nlohmann::json & data)
+            {
+                if (result == SELECTED && data.contains(CONTAINER_ID_COLUMN) && data.at(CONTAINER_ID_COLUMN).is_string())
+                {
+                    const auto& id = data.at(CONTAINER_ID_COLUMN).get_ref<const std::string&>();
+
+                    if (!id.empty())
+                    {
+                        ids.insert(id);
+                    }
+                }
+            };
+
+            // DISTINCT so the engine returns at most one row per container instead
+            // of one row per stored inventory row.
+            auto selectQuery = SelectQuery::builder()
+                               .table(table)
+                               .columnList({CONTAINER_ID_COLUMN})
+                               .rowFilter("WHERE container_id != ''")
+                               .distinctOpt(true)
+                               .build();
+            db.selectRows(selectQuery.query(), selectCallback);
+        }
+
+        return ids;
+    }
 }
 #endif
 
@@ -2997,14 +3030,16 @@ void Syscollector::dropContainerContext(const std::string& containerId)
 
 /// Forgets what this process remembers about stored contexts.
 ///
-/// Both memos describe one particular database: m_containerContexts says what
+/// These memos describe one particular database: m_containerContexts says what
 /// it already holds, so an unchanged context is not rewritten. Once that
 /// database is closed, deleted or replaced, keeping them would skip writing a
 /// context the new database does not have, and its rows would be emitted
-/// without one.
+/// without one. The first-sync memo must also be forgotten so re-seeding that
+/// database stays quiet.
 void Syscollector::forgetContainerContexts()
 {
     std::lock_guard<std::mutex> lock {m_containerContextMutex};
+    m_knownContainerIds.clear();
     m_containerContexts.clear();
     m_lastContainerId.clear();
     m_lastContainerBlock = nlohmann::json {};
@@ -3079,31 +3114,15 @@ std::size_t Syscollector::sweepContainerRowsNotIn(const std::set<std::string>& k
 #if defined(__linux__)
     std::set<std::string> staleIds;
 
-    for (const auto& table : CONTAINER_SCOPED_TABLES)
+    for (const auto& id : storedContainerIds(*m_spDBSync))
     {
-        const auto selectCallback = [&staleIds, &keep](ReturnTypeCallback result, const nlohmann::json & data)
+        if (keep.find(id) == keep.end())
         {
-            if (result == SELECTED && data.contains(CONTAINER_ID_COLUMN) && data.at(CONTAINER_ID_COLUMN).is_string())
-            {
-                const auto& id = data.at(CONTAINER_ID_COLUMN).get_ref<const std::string&>();
-
-                if (!id.empty() && keep.find(id) == keep.end())
-                {
-                    staleIds.insert(id);
-                }
-            }
-        };
-
-        // DISTINCT so the engine returns at most one row per container instead
-        // of one row per stored inventory row.
-        auto selectQuery = SelectQuery::builder()
-                           .table(table)
-                           .columnList({CONTAINER_ID_COLUMN})
-                           .rowFilter("WHERE container_id != ''")
-                           .distinctOpt(true)
-                           .build();
-        m_spDBSync->selectRows(selectQuery.query(), selectCallback);
+            staleIds.insert(id);
+        }
     }
+
+    std::set<std::string> unswept;
 
     for (const auto& staleId : staleIds)
     {
@@ -3111,12 +3130,34 @@ std::size_t Syscollector::sweepContainerRowsNotIn(const std::set<std::string>& k
         {
             updateChanges(table, nlohmann::json::array(), staleId);
         }
+    }
+
+    const auto survivingIds = storedContainerIds(*m_spDBSync);
+
+    for (const auto& staleId : staleIds)
+    {
+        if (survivingIds.count(staleId) != 0)
+        {
+            m_logFunction(LOG_DEBUG, "Container baseline: could not confirm the rows of removed container '" + staleId +
+                          "' were deleted; keeping its context and document budget until a later sweep succeeds.");
+            // Shortcut: an unswept container's count is left understated by the DELETEs
+            // already emitted for rows that survived. Its cap is per-container and it
+            // is departing, so no new rows compete for its slots; a successful retry
+            // removes the entry. Upgrade to a recount if budgets ever become shared
+            // across containers.
+            unswept.insert(staleId);
+            continue;
+        }
 
         // After the DELETEs above, never before: those events are built from
         // this context.
         dropContainerContext(staleId);
 
-        m_knownContainerIds.erase(staleId);
+        {
+            std::lock_guard<std::mutex> lock {m_containerContextMutex};
+            m_knownContainerIds.erase(staleId);
+        }
+
         releaseContainerCounts(staleId);
     }
 
@@ -3124,9 +3165,11 @@ std::size_t Syscollector::sweepContainerRowsNotIn(const std::set<std::string>& k
     // answered, so it is authoritative and the prune is safe. It recovers
     // contexts orphaned by a crash between the two steps above, which nothing
     // else can find once the rows are gone.
-    pruneContainerContexts(keep);
+    auto liveIds = keep;
+    liveIds.insert(unswept.begin(), unswept.end());
+    pruneContainerContexts(liveIds);
 
-    return staleIds.size();
+    return staleIds.size() - unswept.size();
 #else
     (void)keep;
     return 0;
@@ -3152,11 +3195,36 @@ std::size_t Syscollector::sweepContainerRows(const std::vector<std::string>& con
         {
             updateChanges(table, nlohmann::json::array(), containerId);
         }
+    }
+
+    const auto survivingIds = storedContainerIds(*m_spDBSync);
+
+    for (const auto& containerId : container_ids)
+    {
+        if (containerId.empty())
+        {
+            continue;
+        }
+
+        if (survivingIds.count(containerId) != 0)
+        {
+            m_logFunction(LOG_DEBUG, "Container baseline: could not confirm the rows of removed container '" + containerId +
+                          "' were deleted; keeping its context and document budget until a later sweep succeeds.");
+            // Shortcut: an unswept container's count is left understated by the DELETEs
+            // already emitted for rows that survived. Its cap is per-container and it
+            // is departing, so no new rows compete for its slots; a successful retry
+            // removes the entry. Upgrade to a recount if budgets ever become shared
+            // across containers.
+            continue;
+        }
 
         // After the DELETEs above, for the same reason as the whole-list sweep.
         dropContainerContext(containerId);
 
-        m_knownContainerIds.erase(containerId);
+        {
+            std::lock_guard<std::mutex> lock {m_containerContextMutex};
+            m_knownContainerIds.erase(containerId);
+        }
 
         // Deliberately no prune pass here: this path is told which containers
         // went and has no authoritative view of which still exist, so it
@@ -3502,7 +3570,12 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
             // A container's very first sync is forced quiet (no stateless
             // alert), matching the original one-shot baseline's seed
             // behaviour; every sync after that follows m_notify normally.
-            const bool isFirstSync = self->m_knownContainerIds.insert(current).second;
+            bool isFirstSync {false};
+            {
+                std::lock_guard<std::mutex> lock {self->m_containerContextMutex};
+                isFirstSync = self->m_knownContainerIds.insert(current).second;
+            }
+
             const std::optional<bool> notifyOverride =
                 isFirstSync ? std::optional<bool> {false} :
                 std::nullopt;

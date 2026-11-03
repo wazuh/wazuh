@@ -1052,12 +1052,12 @@ class EXPORTED Syscollector final
         mutable std::shared_mutex                                                m_resourcesMutex;
 
         // Container ids whose baseline has already been synced at least once
-        // (in this process's lifetime). A container_id not in this set is
+        // in this database. A container_id not in this set is
         // treated as a first-ever sync and kept quiet regardless of m_notify,
         // mirroring the one-shot baseline's original "no alert per row on
         // first seed" behavior now that scanContainerBaseline() runs every
-        // interval instead of once. Reset only implicitly, by process
-        // restart — same durability as m_notify itself.
+        // interval instead of once. Like the sibling memos below, forgotten
+        // whenever the database they describe is closed, deleted or replaced.
         std::set<std::string>                                                    m_knownContainerIds;
 
         // Memo for containerContextBlock(), so a container's context is read
@@ -1073,10 +1073,10 @@ class EXPORTED Syscollector final
         // entry rather than a map: a flush visits one container at a time, so
         // a second entry would never be hit before being replaced.
         //
-        // Both memos are guarded by m_containerContextMutex: the baseline runs
-        // on the scan thread, the sweeps that erase entries can run from the
+        // All three memos are guarded by m_containerContextMutex: the baseline
+        // runs on the scan thread, the sweeps that erase entries can run from the
         // container-cadence path, and deleteDatabase() forgets them without
-        // holding m_scan_mutex. Both are forgotten whenever the database they
+        // holding m_scan_mutex. All are forgotten whenever the database they
         // describe is closed, deleted or replaced.
         std::string                                                              m_lastContainerId;
         nlohmann::json                                                           m_lastContainerBlock;
