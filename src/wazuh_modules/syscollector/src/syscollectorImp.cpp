@@ -6136,6 +6136,19 @@ bool Syscollector::checkDocumentLimit(const std::string& table,
         isAlreadySynced = (data["sync"].get<int>() == 1);
     }
 
+    // A hold may withhold new documents, but cannot lose changes to one the
+    // manager already holds. DBSync has written the new values before calling
+    // us, and promotion only reads sync=0, so suppressing this MODIFY leaves
+    // nothing that could replay it. Keep its stored flag exactly as it was:
+    // only the retraction pass may withdraw a reported row.
+    //
+    // Only during the hold. A settled refusal still suppresses the MODIFY,
+    // because that document is about to be retracted, not reported again.
+    if (isContainerRow && result == MODIFIED && isAlreadySynced && (!m_admissionKnown || m_admissionPending))
+    {
+        return true;
+    }
+
     // Whether this container may report AT ALL -- a question the per-dimension
     // budget above never asks. A container that is not admitted withholds every
     // row in every dimension, and spends no budget doing it: counting a row

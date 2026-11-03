@@ -7348,6 +7348,90 @@ TEST_F(SyscollectorImpTest, AnUnheardContainerVerdictFiltersSyncAndContextRows)
     module.m_containerDocumentCounts.clear();
 }
 
+// A MODIFY during admission's hold must reach the manager if it already
+// holds the document. The database has moved on, and sync=1 excludes the row
+// from promotion: there is no later pass that can replay a suppressed change.
+TEST_F(SyscollectorImpTest, AdmissionHoldReportsChangesToSyncedRowsOnly)
+{
+    const auto info = std::make_shared<MockSysInfo>();
+    EXPECT_CALL(*info, releaseThreadResources()).Times(testing::AnyNumber());
+    auto& module = Syscollector::instance();
+    std::vector<Operation_t> events;
+    module.init(
+        info,
+        reportFunction,
+        [&events](const std::string&, Operation_t op, const std::string&, const std::string&, uint64_t)
+    {
+        events.push_back(op);
+    },
+    logFunction,
+    SYSCOLLECTOR_DB_PATH,
+    "",
+    "",
+    3600,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false);
+    module.m_admittedContainers.clear();
+    module.m_containerDocumentLimits[SYSCOLLECTOR_SYNC_INDEX_PROCESSES] = 0;
+    std::vector<std::pair<std::string, nlohmann::json>> flagUpdates;
+    module.m_itemsToUpdateSync = &flagUpdates;
+
+    for (const bool known :
+            {
+                false, true
+            })
+    {
+        module.m_admissionKnown = known;
+        module.m_admissionPending = true;
+
+        for (const int sync :
+                {
+                    0, 1
+                })
+        {
+            const nlohmann::json row = {{"container_id", "b"}, {"pid", "123"}, {"name", "changed"},
+                {"checksum", "sum"}, {"version", 1}, {"sync", sync}
+            };
+            events.clear();
+            module.processEvent(MODIFIED, {{"new", row}}, PROCESSES_TABLE, false);
+            EXPECT_EQ(events, sync == 1 ? std::vector<Operation_t> {OPERATION_MODIFY} : std::vector<Operation_t> {});
+            EXPECT_TRUE(flagUpdates.empty()) << "a hold must leave both stored flags untouched";
+
+            events.clear();
+            module.processEvent(INSERTED, row, PROCESSES_TABLE, false);
+            EXPECT_TRUE(events.empty()) << "the allowance is for an existing document's MODIFY only";
+        }
+    }
+
+    // Once the connector decides, a refusal suppresses even sync=1 changes.
+    module.m_admissionKnown = true;
+    module.m_admissionPending = false;
+    const nlohmann::json row = {{"container_id", "b"}, {"pid", "123"}, {"name", "changed again"},
+        {"checksum", "sum"}, {"version", 1}, {"sync", 1}
+    };
+    events.clear();
+    module.processEvent(MODIFIED, {{"new", row}}, PROCESSES_TABLE, false);
+    EXPECT_TRUE(events.empty());
+    EXPECT_TRUE(flagUpdates.empty());
+    module.m_itemsToUpdateSync = nullptr;
+    module.m_admissionKnown = false;
+    module.m_admissionPending = false;
+    module.m_containerDocumentLimits.clear();
+    module.destroy();
+}
+
 TEST_F(SyscollectorImpTest, APendingVerdictDefersOwedRetractions)
 {
     const auto info = std::make_shared<MockSysInfo>();

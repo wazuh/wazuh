@@ -35,6 +35,7 @@
     FRIEND_TEST(SyscollectorImpTest, AdmissionRetractsAndRestoresRetainedRows);                                        \
     FRIEND_TEST(SyscollectorImpTest, StartupLimitsLeaveWithheldRowsUntilAdmissionIsKnown);                             \
     FRIEND_TEST(SyscollectorImpTest, AnUnheardContainerVerdictFiltersSyncAndContextRows);                              \
+    FRIEND_TEST(SyscollectorImpTest, AdmissionHoldReportsChangesToSyncedRowsOnly);                                     \
     FRIEND_TEST(SyscollectorImpTest, APendingVerdictDefersOwedRetractions);                                             \
     FRIEND_TEST(SyscollectorImpTest, FailedRetractionsRemainOwedUntilTheirFlagsAreWritten);                            \
     FRIEND_TEST(SyscollectorImpTest, DocumentBudgetsShrinkPromoteAndReleasePerContainer);                              \
