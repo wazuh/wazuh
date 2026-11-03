@@ -7,6 +7,8 @@ integration QA suite itself.
 
 ## `send_sync.py` — UDS smoke sender
 
+> **Not shipped:** `send_sync.py` and `send_delete_agent.py` exist only in the source tree under `src/wazuh_modules/inventory_sync_server/tools/`; the DEB/RPM manager packages do not install them. Copy them to the manager host from a checkout to use them.
+
 `src/wazuh_modules/inventory_sync_server/tools/send_sync.py` is a standard-library-only Python
 script (it runs on the manager's embedded interpreter without installing anything) that speaks the same bytes remoted puts on the wire: HTTP/1.1 over an
 `AF_UNIX` stream, `Content-Length` delimited, `Connection: close`. Useful to probe a live module

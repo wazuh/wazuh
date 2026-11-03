@@ -214,15 +214,16 @@ path no route matches, the `403` of `verification_mode` `full`, and a `503` shed
 budget; every other answer leaves it open. Keep the proxy's idle time for reusable backend connections below 10 s (NGINX:
 `keepalive_timeout 5s;` in the `upstream`; HAProxy: `http-reuse never`, see
 [HAProxy 3.7](haproxy.md#37-backend-connection-reuse-http-reuse-never)), or a request sent on a connection remoted has already
-closed fails with `502`.
+closed can fail with `502` (a race; not reproduced in testing).
 
 ### 4.6. Health checks
 
 remoted answers its health probe — `GET` on the global prefix itself, `GET /wazuh-manager/` by
 default (with or without the trailing slash) — with `200`, unauthenticated, with a small JSON body
 (`{"status":"ok","module":"remoted"}`). Use it as the health check (on AWS: path `/wazuh-manager/`,
-matcher `200`). A bare `GET /` answers `404` unless `global_prefix` is `/`. A plain TCP check also
-works, since the port only opens once the listener is ready.
+matcher `200`). A bare `GET /` answers `404` unless `global_prefix` is `/`. A plain TCP check only proves that
+the port is open: a hung (frozen) remoted keeps accepting connections and never answers them, so a TCP check keeps
+sending it traffic. Under TLS passthrough, probe over TLS (HAProxy `check-ssl`, see [HAProxy](haproxy.md#36-active-health-checks-and-their-limitation)).
 
 > **Limitation to be aware of:** the health probe reports that the process is alive, not that the whole
 > pipeline is working. A manager whose analysis engine is down still answers `200` here while

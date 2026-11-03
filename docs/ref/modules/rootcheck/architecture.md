@@ -171,18 +171,18 @@ for port in 0..65535 {
 **Target:** `/dev` directory
 
 **Method:**
-1. Enumerate all files in `/dev`
-2. For each file:
-   - Check if it's a character or block device (expected)
-   - Check if it's a regular file or directory (suspicious)
-   - Verify naming patterns
-3. Trigger alert for non-device files
+1. Walk `/dev` (under `base_dir`) recursively; directories are descended into, not reported
+2. Skip known benign names (for example `MAKEDEV`, `.udev`, `fd`, `cgroup`, `oprofile`) and the paths `shm`, `shm/sysconfig`, `bus/usb/.usbfs` and `gpmctl` directly under `/dev`, so nothing below `/dev/shm` is reported
+3. Skip paths matched by a configured `<ignore>`
+4. Report every remaining **regular file**; device nodes, sockets, symlinks and other special files are not reported
 
 **Detection Logic:**
 ```
-for file in /dev/* {
-    if NOT (is_character_device OR is_block_device) {
-        Alert: Suspicious file in /dev
+for entry in walk(/dev) {
+    if ignored(entry) { continue }
+    if is_directory(entry) { recurse }
+    else if is_regular_file(entry) {
+        Alert: File '<path>' present on /dev. Possible hidden file.
     }
 }
 ```

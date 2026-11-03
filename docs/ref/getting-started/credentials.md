@@ -189,7 +189,7 @@ as master.
   CA, inside its validity window, a key of its own) but never replaced; each defect is a `WARNING`, and none refuses
   the start while client certificates are not required:
   `WARNING: /etc/wazuh-manager/export/dashboard-client.pem: expired on …; provided by the operator, kept as it is (nothing uses it yet: …)`.
-  An unsafe entry (a key readable by others, a link, another owner) is `UNSAFE`, like any other.
+  On a master, an unsafe entry (a key readable by others, a link, another owner) is `UNSAFE`, like any other; a worker does not check the pair at all.
 - **A CA without its key.** With only an external CA's certificate in `ca/`, the manager cannot issue the pair:
   `WARNING: dashboard client pair not generated: /etc/wazuh-manager/ca has no key; provision it externally in /etc/wazuh-manager/export`.
   Issue it from that CA and put it in `export/` as above.
@@ -320,7 +320,7 @@ calls `systemctl`: run from a shell it prints them there, and under `systemctl s
 | `--prestart` fails | `Unresolved credentials. Exiting` | `{"error":21,"message":"Unresolved credentials."}` | `wazuh-manager-control: ERROR: unresolved credentials` |
 
 When `--check` reports several kinds, the first of `UNSAFE`, `INVALID`, `MISSING` names the refusal. "The check
-itself cannot run" covers a caller that is not root and an internal error of the resolver (its exit `2`).
+itself cannot run" covers a caller that is not root, when the resolver runs (through `wazuh-manager-control` as a non-root user the command itself never starts: `wazuh-manager-control` is `root:root 0750`, so the shell answers `Permission denied`, exit `126`, before any check), and an internal error of the resolver (its exit `2`).
 
 On `start`, `restart` and `reload`, `wazuh-manager-control` checks in this order, and refuses on the first failure:
 

@@ -212,7 +212,7 @@ Remove unsupported elements:
 
 All agent component namespaces remain valid in 5.0:
 
-`agent`, `execd`, `logcollector`, `monitord`, `rootcheck`, `sca`, `syscheck`, `wazuh`, `wazuh_command`, `wazuh_modules`, `windows`.
+`agent`, `agent_info` (new in 5.0), `execd`, `logcollector`, `monitord`, `rootcheck`, `sca`, `syscheck`, `wazuh`, `wazuh_command`, `wazuh_modules`, `windows`.
 
 Every other key the 4.x file carried belongs to a **manager-side** component (for example `analysisd.*`, `remoted.*`, `wazuh_db.*`, `vulnerability-detection.*`, and `monitord.*` other than the six rotation keys below); the 5.0 agent file no longer lists them. They never took effect on an agent, so they do not require any migration action on agent hosts.
 
@@ -289,7 +289,7 @@ A 4.X agent never verified the manager's certificate at all. A 5.0 agent decides
 | `<verification_mode>` is set | either | honours it, `none` included |
 | only `<certificate_authorities>` is set | either | `certificate`, against that file |
 | nothing | present | `full`, with the anchor as the CA |
-| nothing | absent | `none`: it connects, and verifies nothing |
+| nothing | absent | `none`: it connects, and verifies nothing — unless the agent has held an anchor before (`etc/certs/.anchor-committed` exists), in which case it refuses to start with `(4125)` |
 
 An explicit `none` with an anchor present is still honoured, and logged as `(4122)` at warning level for giving up a verification the host was equipped to perform.
 

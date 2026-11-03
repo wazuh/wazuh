@@ -311,6 +311,8 @@ protocols are in use:
 | `control.sock` | wazuh-manager-modulesd (control module) | Manager restart and reload (`core/cluster/utils.py`) |
 | `cluster-internal.sock` | wazuh-manager-clusterd | The API's requests to the local cluster daemon (`core/cluster/local_client.py`) |
 
+`queue/sockets/` also holds `engine-ingest-http.sock` (the engine's event-ingest endpoint, used by remoted), `inventory-sync-http.sock` (modulesd's inventory-sync server) and `wmodules.sock` (modulesd's active configuration, read by `core/configuration.py` for the `wmodules` component). The API uses only the last; the full table is in the [architecture overview](../../architecture.md).
+
 ---
 
 ## Logging Architecture

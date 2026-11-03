@@ -179,7 +179,11 @@ sqlite3 "$d/tasks.db" "SELECT STATUS, COUNT(*) FROM TASKS GROUP BY STATUS;"
 rm -rf "$d"
 ```
 
-The copy is a snapshot taken while the module writes, so a count may be off by the rows in flight.
+The copy is a snapshot taken while the module writes, so a count may be off by the rows in flight. `sqlite3` is not installed with the manager (install it from the distribution); without it, query the copy with the bundled interpreter:
+
+```bash
+/var/wazuh-manager/framework/python/bin/python3 -I -c 'import sqlite3,sys; print(sqlite3.connect(sys.argv[1]).execute("SELECT STATUS, COUNT(*) FROM TASKS GROUP BY STATUS").fetchall())' "$d/tasks.db"
+```
 
 ### Monitor Logs
 

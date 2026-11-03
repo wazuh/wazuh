@@ -44,7 +44,7 @@ Run a security assessment scan immediately when the agent starts.
 
 Time interval between security configuration assessment scans.
 
-- **Default value:** `1d`
+- **Default value:** `12h` as shipped in the generated agent configuration (the built-in fallback when the option is absent is `1d`)
 - **Allowed values:** Time format strings (`s` for seconds, `m` for minutes, `h` for hours, `d` for days)
 - **Note:** Any positive value up to `4294967294` seconds. `0`, larger values and any suffix other than `s`, `m`, `h` or `d` are rejected. Examples: `12h`, `30m`, `1d`
 
@@ -276,6 +276,7 @@ When no policies are explicitly configured, SCA automatically loads policies bas
 - **Debian/Ubuntu:** `cis_debian*.yml`, `cis_ubuntu*.yml`
 - **RHEL/CentOS:** `cis_rhel*.yml`, `cis_centos*.yml`
 - **Amazon Linux:** `cis_amazon*.yml`
+- **AlmaLinux:** `cis_alma_linux_*.yml`
 
 **Windows Systems:**
 - **Windows Server:** `cis_win2016.yml`, `cis_win2019.yml`

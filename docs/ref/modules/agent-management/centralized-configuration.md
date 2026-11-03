@@ -187,7 +187,7 @@ keeps offering that configuration; it is not downloaded again until it changes).
 
 ## Applying changes
 
-Changes are picked up within `remoted.shared_reload` seconds plus the agent's polling interval. To
+Changes are picked up within `remoted.shared_reload` seconds plus the agent's polling interval. A change of the agent's group **membership** (moving it to another group, or a new agent joining one) additionally waits for the cached group listing to refresh, `remoted.control_groups_refresh_interval` (default 60 s), so in practice it took 40 to 65 s to reach an agent in testing. To
 confirm an agent applied them, check the agent's log for `Agent is reloading due to shared
 configuration changes.`
 

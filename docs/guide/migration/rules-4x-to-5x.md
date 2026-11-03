@@ -17,7 +17,7 @@ There is no automatic conversion tool. Rules must be manually rewritten followin
 | **Alert** | **Finding** | In 5.x, when an event matches a detection rule, a finding is generated and the event is enriched. |
 | **Rule (XML)** | **Rule (YAML)** | Detection rules are now written in the Sigma format with Wazuh extensions. |
 | **Decoder (XML)** | **Decoder (Engine format)** | Decoders still exist but use a new YAML format run by the Wazuh Engine — see [Migrating decoders from XML to YAML](xml-decoders-migration.md). |
-| **Ruleset files on disk** | **Threat intelligence indices** | Rules, KVDBs, decoders, filters, integrations, and IOC enrichments are stored in Wazuh Indexer indices (`wazuh-threatintel-*`). The Engine pulls its share (everything but the rules) from there; the rules stay in the Indexer. |
+| **Ruleset files on disk** | **Threat intelligence indices** | Rules, KVDBs, decoders, filters, integrations, and IOC enrichments are stored in Wazuh Indexer indices (`wazuh-threatintel-*`; the physical index names on a live indexer carry a suffix, for example `wazuh-threatintel-rules-a`, which the pattern still matches). The Engine pulls its share (everything but the rules) from there; the rules stay in the Indexer. |
 
 ### Content architecture
 
@@ -254,8 +254,8 @@ curl -sk -u "admin:${INDEXER_ADMIN_PASSWORD}" -X POST \
 
 `space` is where the integration lives: `test` for one you promoted there from your draft (see
 [Step 11](#step-11-deploy-and-test)), `standard` for a Wazuh-curated one — an integration that is not in
-the named space is refused with 400 (`... not found in the 'test' space`). Always send `trace_level` (`NONE`,
-`ASSET_ONLY` or `ALL`): this logtest runs on the engine bundled with the Wazuh Indexer, which requires it.
+the named space is refused with 400 (`... not found in the 'test' space`). Send `trace_level` (`NONE`,
+`ASSET_ONLY` or `ALL`) explicitly: it defaults to `NONE` in the engine API, but this logtest runs on the engine bundled with the Wazuh Indexer, whose contract can differ from this tree's, so do not rely on the default.
 A standard integration must also be
 **enabled** to decode anything: most ship disabled (see
 [Enable the integration's ruleset first](../../ref/modules/integrations/README.md#enable-the-integrations-ruleset-first)).

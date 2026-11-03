@@ -271,12 +271,12 @@ the CLI and the API (issue #39133):
 | `--ttl` at most **3650 days** (315360000 s) | A token's expiry is stored as an absolute time in a signed `time_t`. A longer lifetime does not produce a distant expiry, it produces a **negative** one, which the store's own loader refuses — and a record like that is one every node carries, because the cluster replicates the file |
 | `--description` and `--prefix` at most **256 characters** | Both are persisted in `/etc/wazuh-manager/enrollment_tokens.json`, re-serialized on every consumed use and shipped to every worker |
 | `--address` at most **253 characters** | The longest DNS name, and the API's `maxLength`. Refused up front, before the certificate is read: `adr_is_dns_name()` would refuse it too, but only after the SAN match, and the CLI applies no format of its own |
-| `max_uses` at most **4294967295** (`UINT_MAX`) on the socket and the API | The use counter is stored as an `unsigned int`; anything above wraps. The socket answers `9002` rather than `9025` for this one, and the CLI's `--max-uses` accepts at most 1000000000 |
+| `max_uses` at most **4294967295** (`UINT_MAX`) on the socket and the API | The use counter is stored as an `unsigned int`; anything above wraps. The socket answers `9002` rather than `9025` for this one, and the CLI's `--max-uses` accepts at most **1000000000** (`0` or omitted = unlimited) |
 | No control character (`\n`, `\r`, `\t`, DEL, terminal escapes) in `--address`, `--description` or `--prefix` | The description is written into the INFO line that records who minted which token, and the address into the WARN line that records a refused mint, so a newline in either forges a second record. The refusal of such an address is logged without it. Spaces and ordinary punctuation are free text as before |
 
 A refusal is `9025` with the reason (`Enrollment token refused: ttl must be between 1 and 315360000
 seconds (3650 days); 0 takes the default`). The CLI refuses an out-of-range `--ttl` locally, without
-reaching the socket.
+reaching the socket; it also refuses `--ttl 0` (the `0` = default form is the socket's and the API's: omit `--ttl` on the CLI to get the 30 days), and a `--max-uses` above 1000000000.
 
 An entry of the store that cannot be read — a negative `expires` written by a version that still
 accepted one, or any other malformed field — is **dropped with a warning** and the rest of the file is

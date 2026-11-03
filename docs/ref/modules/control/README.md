@@ -39,7 +39,7 @@ group. The paths are `CONTROL_SOCK` in `src/shared/include/defs.h`; the framewor
 | `restart` / `reload` | `err Service control rejected action` | The helper refused the request, or did not confirm it within 5 seconds |
 | `restart` / `reload` | `err Cannot create service control pipe`, `err Cannot fork` | modulesd could not start the helper |
 | `<command> <args>` | `err Unexpected arguments` | Any argument after the command is rejected (logged as a warning, `Unexpected arguments for command: '<command>'`) |
-| anything else | `Err` | Unknown command (logged as `Unknown command: '<command>'`) |
+| anything else | `Err` | Unknown command, including a message too long to be a command (logged as `Unknown command: '<command>'` at `ERROR` level) |
 
 A `<command>` is logged as the client sent it, made safe for a one-line log: `\n`, `\r`, `\t` and `\\` stand
 for a newline, carriage return, tab and backslash, any other control or non-ASCII byte is written `\xHH`, and only

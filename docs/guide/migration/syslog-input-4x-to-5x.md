@@ -294,8 +294,10 @@ sudo grep "logcollector" /var/ossec/logs/ossec.log | grep "remote"
 Expected output:
 
 ```
-2026/06/03 08:16:01 wazuh-logcollector: INFO: (1950): Analyzing file: '<log_file_configured>'.
+2026/06/03 08:16:01 wazuh-logcollector: INFO: (1957): New file that matches the '/var/log/remote/*.log' pattern: '/var/log/remote/<host>.log'.
 ```
+
+The `(1950): Analyzing file` message is logged at debug level only, so it does not appear at the default log level.
 
 ### 3. Verify events appear in the dashboard
 

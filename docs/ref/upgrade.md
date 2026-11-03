@@ -114,9 +114,9 @@ sudo tail -50 /var/wazuh-manager/logs/wazuh-manager.log
 
 # Check database integrity. Guarded: an unguarded sqlite3 would create the very
 # database it is checking, and an integrity check passes on an empty one.
-sudo sh -c '[ -f /var/wazuh-manager/queue/db/global.db ] \
-  && sqlite3 /var/wazuh-manager/queue/db/global.db "PRAGMA integrity_check" \
-  || echo "MISSING: /var/wazuh-manager/queue/db/global.db"'
+sudo sh -c 'if [ ! -f /var/wazuh-manager/queue/db/global.db ]; then echo "MISSING: /var/wazuh-manager/queue/db/global.db"; \
+  elif ! command -v sqlite3 > /dev/null; then echo "sqlite3 is not installed - install it (apt install sqlite3 / dnf install sqlite) to run this check"; \
+  else sqlite3 /var/wazuh-manager/queue/db/global.db "PRAGMA integrity_check"; fi'
 ```
 
 ### Cluster upgrade
@@ -238,9 +238,9 @@ sudo /var/wazuh-manager/bin/cluster_control -i
 
 # Check database integrity. Guarded: an unguarded sqlite3 would create the very
 # database it is checking, and an integrity check passes on an empty one.
-sudo sh -c '[ -f /var/wazuh-manager/queue/db/global.db ] \
-  && sqlite3 /var/wazuh-manager/queue/db/global.db "PRAGMA integrity_check" \
-  || echo "MISSING: /var/wazuh-manager/queue/db/global.db"'
+sudo sh -c 'if [ ! -f /var/wazuh-manager/queue/db/global.db ]; then echo "MISSING: /var/wazuh-manager/queue/db/global.db"; \
+  elif ! command -v sqlite3 > /dev/null; then echo "sqlite3 is not installed - install it (apt install sqlite3 / dnf install sqlite) to run this check"; \
+  else sqlite3 /var/wazuh-manager/queue/db/global.db "PRAGMA integrity_check"; fi'
 
 # Monitor logs for errors
 sudo tail -100 /var/wazuh-manager/logs/wazuh-manager.log | grep -i error
@@ -449,9 +449,9 @@ sudo ls -l /etc/wazuh-manager /etc/wazuh-manager/certs
 
 # Check database integrity. Guarded: an unguarded sqlite3 would create the very
 # database it is checking, and an integrity check passes on an empty one.
-sudo sh -c '[ -f /var/wazuh-manager/queue/db/global.db ] \
-  && sqlite3 /var/wazuh-manager/queue/db/global.db "PRAGMA integrity_check" \
-  || echo "MISSING: /var/wazuh-manager/queue/db/global.db"'
+sudo sh -c 'if [ ! -f /var/wazuh-manager/queue/db/global.db ]; then echo "MISSING: /var/wazuh-manager/queue/db/global.db"; \
+  elif ! command -v sqlite3 > /dev/null; then echo "sqlite3 is not installed - install it (apt install sqlite3 / dnf install sqlite) to run this check"; \
+  else sqlite3 /var/wazuh-manager/queue/db/global.db "PRAGMA integrity_check"; fi'
 ```
 
 **Issue: Agents not reconnecting after manager upgrade**
@@ -479,7 +479,7 @@ sudo grep -A10 "<cluster>" /etc/wazuh-manager/wazuh-manager.conf
 
 # Verify network connectivity
 ping <master_node_ip>
-telnet <master_node_ip> 1516
+bash -c '</dev/tcp/<master_node_ip>/1516' && echo open   # telnet and nc are not installed by default
 
 # Check the cluster daemon (a Python process, listed by status)
 sudo /var/wazuh-manager/bin/wazuh-manager-control status
@@ -549,7 +549,7 @@ sudo grep -E "<endpoint>|<address>" /var/ossec/etc/ossec.conf
 
 # Check network connectivity to the manager. The agent channel is 1517; 1514 is the
 # legacy listener and an upgraded agent no longer uses it.
-nc -vz <manager_ip> 1517
+bash -c '</dev/tcp/<manager_ip>/1517' && echo open   # nc is not installed by default
 
 # Has the agent a trust anchor? A remote upgrade delivers one; a local package
 # upgrade does not. Without it the agent connects but verifies nothing, until

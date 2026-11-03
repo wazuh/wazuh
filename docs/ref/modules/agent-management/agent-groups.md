@@ -36,7 +36,8 @@ groups at once, up to 128.
 
 A group name may contain `a-z`, `A-Z`, `0-9`, `_`, `-` and `.`, up to 128 characters when the API
 creates it and up to 255 when `agent_groups` does (the API still lists, assigns and deletes a longer
-group made with `agent_groups`);
+group made with `agent_groups`; the agents' `POST /download` accepts a wider set when it looks a group up,
+adding `:` `;` `=` `+` `!` `@` `(` `)`, but the API and `agent_groups` never create such a name);
 `.`, `..` and `all` are refused, and so is `default`, which always exists
 and cannot be deleted. Names are case-sensitive: `Web` and `web` are two groups, with their own directories
 and configurations, and looking up a group's agents (`GET /groups/{group_id}/agents`, `GET /agents?group=`,
@@ -78,7 +79,7 @@ curl -k -X PUT "https://<MANAGER_IP>:55000/agents/001/group/web-servers" \
 ```
 
 Errors you may meet: `1710` the group does not exist, `1711` it already exists, `1712` `default`
-cannot be deleted, `1713` the name is taken by a file in `/etc/wazuh-manager/shared/` (such as
+cannot be deleted, `1713` (*Invalid group ID. Some IDs are restricted for internal purposes*) the name is taken by a file in `/etc/wazuh-manager/shared/` (such as
 `agent-template.conf`), `1734` the agent is not in that
 group, `1737` the agent already has 128 groups, `1745` the agent's only group is `default`, `1751` the
 agent already belongs to the group, `1752` `force_single_group=true` was asked but the caller lacks

@@ -375,7 +375,7 @@ These can be returned on any route, by the transport rather than by a handler:
 | `400` | Malformed HTTP, a missing/invalid agent id header, or a body that does not match the route's shape (for `/stats` and `/config`: a non-empty `modules`-keyed object whose every module value is an object — an empty `modules` is rejected on purpose, since indexing a report with nothing to store would replace the agent's last good document, and no nesting deeper than 256 levels; for the two `_internal` routes: an object carrying a usable `agent_id`). Of these, only malformed HTTP is answered by the transport; the shape checks are the handlers' |
 | `404` | Unknown path |
 | `405` | Known path, wrong verb. Carries an `Allow` header listing that path's verbs |
-| `411` | Chunked transfer encoding, which is not supported |
+| `400` (chunked) | Chunked transfer encoding is not supported; on an installed manager a chunked request is answered `400`, not `411` |
 | `413` | A body declaring more bytes than the total in-flight budget (or over `max_body_size`, when one is explicitly configured), or, on the two `_internal` routes, more than `control_max_body_bytes` |
 | `414` | Request target over `max_url_size` |
 | `431` | A header name or value over its cap, or more than 32 header lines |
@@ -388,7 +388,7 @@ purpose, so a malformed document is never masked as a transient failure the agen
 
 ## Manual testing
 
-`src/wazuh_modules/inventory_sync_server/tools/send_sync.py` drives any route over the socket at the
+`src/wazuh_modules/inventory_sync_server/tools/send_sync.py` (a source-tree tool: it is **not shipped** in the installed manager) drives any route over the socket at the
 transport level (health check, oversized bodies, unknown routes and verbs) but does not build a
 route-specific payload — see [Test Tools](test-tools.md). The liveness probe with curl:
 

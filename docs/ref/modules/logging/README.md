@@ -16,6 +16,8 @@ produces the same line formats in the same files.
 | JSON log | `/var/wazuh-manager/logs/wazuh-manager.json` | `/var/ossec/logs/ossec.json` |
 | Default | `plain` | `plain` |
 
+With the default `plain` the JSON log is not written: on the manager `wazuh-manager.json` may exist, but it stays empty (0 bytes) until `json` is added to `<log_format>`.
+
 On the manager the setting covers every C/C++ daemon, the engine (`wazuh-manager-analysisd`)
 included. The two Python daemons keep their own logs and are not affected by it:
 `wazuh-manager-apid` writes `logs/api.log` (its format is set in `api.yaml`) and

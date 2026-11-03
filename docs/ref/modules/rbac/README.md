@@ -86,7 +86,12 @@ The 34 actions of `x-rbac-catalog` in `api/api/spec/spec.yaml`, with the endpoin
 | `group:modify_assignments` | `group:id` | The same five group-assignment endpoints as `agent:modify_group` |
 
 Changing an agent's group needs **both** `agent:modify_group` over the agent and
-`group:modify_assignments` over the group.
+`group:modify_assignments` over the group. The group-assignment calls that name the group and the agent
+answer `403` without either. `DELETE /agents/{agent_id}/group`, which names no group, instead filters the
+group set by `group:modify_assignments`: with only `agent:modify_group` it answers `200` ("Specified agent
+was not removed from any group") and removes nothing. Reading calls filter the same way: a user with no
+role gets `200` with empty results from the list endpoints (`/agents`, `/groups`, `/security/users`,
+`/cluster/nodes`, `/overview/agents`), and `403` (`4000`) only from single-resource and mutating calls.
 
 ### Cluster
 
@@ -170,14 +175,21 @@ re-seeded with new defaults unless `CURRENT_ORM_VERSION` in `framework/wazuh/rba
 | `cluster_readonly` | `cluster_read` | — |
 | `cluster_admin` | `cluster_all` | — |
 
-| Policy | Allows |
-|--------|--------|
+Each name in the table below is a group of stored policies: the database holds one policy per
+sub-block of `default/policies.yaml`, named `<group>_<block>` (`agents_all_resourceless`,
+`agents_all_agents`, `agents_all_groups`, `security_all_security`, `users_all_users`,
+`cluster_all_nodes`, `secrets_read_nodes`, `secrets_read_agents`, `mitre_read_mitre`,
+`users_modify_run_as_flag`, and so on). A role links every policy of its groups, and
+`GET /security/policies` lists the stored names.
+
+| Policy group | Allows |
+|--------------|--------|
 | `agents_all` | `agent:create`, `group:create`, `agent:uninstall`, `enrollment_token:create`/`read`/`delete` on `*:*:*`; `agent:read`, `delete`, `modify_group`, `restart`, `reload`, `upgrade`, `scan_vulnerability` on every agent; `group:read`, `delete`, `update_config`, `modify_assignments` on every group |
 | `agents_read` | `enrollment_token:read`; `agent:read` on every agent; `group:read` on every group |
 | `security_all` | `security:create`, `create_user`, `read_config`, `update_config`, `revoke`, `edit_run_as`; `security:read`, `update`, `delete` on every role, policy, user and rule |
 | `security_read` | `security:read_config`; `security:read` on every role, policy, user and rule |
 | `users_all` | `security:create_user`, `revoke`, `edit_run_as`; `security:read`, `update`, `delete` on every user |
-| `users_modify_run_as` | `security:edit_run_as` (linked to no default role) |
+| `users_modify_run_as` (stored as `users_modify_run_as_flag`) | `security:edit_run_as` (linked to no default role) |
 | `cluster_all` | `cluster:status`, `update_config`, `restart` on `*:*:*`; `cluster:read_api_config`, `read`, `restart`, `update_config` on every node |
 | `cluster_read` | `cluster:status`, `read`, `read_api_config` on `*:*:*`; `cluster:read_api_config`, `read` on every node |
 | `secrets_read` | `cluster:read_secrets` on every node; `agent:read_secrets` on every agent (`agent:id:*`) |

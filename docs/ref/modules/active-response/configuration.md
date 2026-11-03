@@ -68,6 +68,9 @@ An address or network that no active response may target. Repeat the element for
   response whose `source.ip` matches is not executed and execd logs
   `Active response '<executable>' not executed: source.ip '<ip>' is the manager or in the allowlist.`
   at warning level
+- **Note:** the manager is protected only by the name or address configured in `<endpoint>`. Behind a load
+  balancer that is the balancer's name only: the addresses of the individual manager nodes are not
+  protected unless listed here
 
 ### ca_store, ca_verification
 

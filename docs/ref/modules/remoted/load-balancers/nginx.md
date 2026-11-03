@@ -269,7 +269,8 @@ the event can be ingested twice.
 In the other direction, remoted closes an idle connection after 10 s (`remoted.http_read_timeout`),
 and right after a `404` for an unknown path, the `403` of `verification_mode` `full` and a `503` shed
 by its in-flight byte budget. With `keepalive` in the upstream, keep `keepalive_timeout` below that,
-or a request sent on a connection remoted has just closed fails with `502`.
+or a request sent on a connection remoted has just closed may fail with `502` (a race: not reproduced with
+`keepalive_timeout 60s`, where nginx detected the close, but the rule is safe).
 
 ## 4. Health checks
 

@@ -2,6 +2,8 @@
 
 The FIM module uses multiple database schemas to store and manage file integrity monitoring data. The architecture includes both local FIMDB databases for state comparison and sync protocol databases for reliable message persistence.
 
+> **`db_status_field_dm`:** every table synchronized through DBSync also has the column `db_status_field_dm INTEGER DEFAULT 1` in the live database. DBSync adds it at start for change detection; it is internal and not part of the DDL shown here.
+
 ## Wazuh Common Schema (WCS)
 
 The schemas according to the Wazuh Common Schema (WCS) are available in `src/external/indexer-plugins` and are downloaded during the agent build process as part of external dependencies (`make deps`):

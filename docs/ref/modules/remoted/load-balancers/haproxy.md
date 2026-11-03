@@ -94,8 +94,17 @@ backend remoted_nodes_tcp
     # The default is round-robin over connections. A 5.x agent opens one connection per
     # request, so its requests alternate between managers just as under termination.
     # 'balance source' pins each agent address to one manager instead (optional).
-    server node1 10.0.0.11:1517 check
-    server node2 10.0.0.12:1517 check
+    #
+    # Health check: an HTTPS probe, not a bare TCP connect. A plain 'check' only proves the kernel accepts
+    # connections, which a frozen (SIGSTOP, deadlocked) remoted still does: its share of the agents would time
+    # out. 'check-ssl' makes the probe speak TLS to the backend and 'option httpchk' asks the unauthenticated
+    # health route. Agent traffic stays layer 4; only the probe is HTTP. 'verify none' is limited to the
+    # probe, which carries no secret.
+    option httpchk
+    http-check send meth GET uri /wazuh-manager/
+    http-check expect status 200
+    server node1 10.0.0.11:1517 check check-ssl verify none
+    server node2 10.0.0.12:1517 check check-ssl verify none
 
     # [!] DO NOT add 'send-proxy' or 'send-proxy-v2' to those server lines -- see 3.3.
 
@@ -112,8 +121,9 @@ frontend termination_in
     # [!] 'crt' takes ONE file with the certificate AND its key concatenated -- see 3.1.
     # The SAN of that certificate must contain the name agents connect to.
     #
-    # Add 'alpn h2,http/1.1' to also offer HTTP/2 to agents; the bearer token survives the
-    # conversion to HTTP/1.1 towards the manager (it lives in a header).
+    # HAProxy 3.x already offers HTTP/2 here without 'alpn' (observed with 3.4: requests logged as
+    # HTTP/2.0); the bearer token survives the conversion to HTTP/1.1 towards the manager (it lives
+    # in a header). Add 'alpn http/1.1' to keep agents on HTTP/1.1, or 'alpn h2,http/1.1' to be explicit.
     bind :8443 ssl crt /etc/haproxy/certs/load_balancer.pem ssl-min-ver TLSv1.2
 
     default_backend remoted_nodes_http
@@ -233,13 +243,18 @@ flowchart LR
     H -.->|"no answer → out of rotation"| N2["manager 2"]
 ```
 
+Under passthrough, a plain `check` (TCP connect) is **not** enough: a frozen remoted keeps its listener socket, so the
+connect succeeds and the balancer keeps sending it agent connections that time out. Use the `check-ssl` HTTPS probe shown
+in the passthrough backend of [§2](#2-complete-configuration).
+
 The limitation is remoted's, not HAProxy's: the health probe reports that the process is alive, not that the
 pipeline works. A manager whose analysis engine is down still answers `200` and stays in rotation.
 
 ### 3.7. Backend connection reuse: `http-reuse never`
 
 remoted closes a backend connection left idle for 10 s (`remoted.http_read_timeout`). A request HAProxy sends
-over a pooled connection remoted is closing at that moment fails with `502`. HAProxy purges its pool of idle
+over a pooled connection remoted is closing at that moment can fail with `502` (a race, not reproduced in testing: the
+proxy usually notices the close). HAProxy purges its pool of idle
 backend connections gradually (`pool-purge-delay`, 5 s by default, closes half of them at each pass), not at a
 fixed idle age, so a pooled connection can outlive remoted's 10 s. Set `http-reuse never` in the termination
 backend: every request opens its own
@@ -266,7 +281,7 @@ It does not apply to passthrough (`mode tcp`), where HAProxy keeps no pool.
 | Active health checks | NGINX Plus only | `check` + `option httpchk` |
 | Real client IP header | `proxy_set_header X-Forwarded-For` | `option forwardfor` |
 | PROXY protocol (⚠️ never enable) | `proxy_protocol on` | `send-proxy` / `send-proxy-v2` |
-| Offer HTTP/2 | `http2 on` | `alpn h2,http/1.1` on `bind` |
+| Offer HTTP/2 | `http2 on` (off by default) | on by default in HAProxy 3.x; `alpn h2,http/1.1` on `bind` makes it explicit |
 | Validate the configuration | `nginx -t` | `haproxy -c -f <file>` |
 
 Two differences worth knowing when choosing: HAProxy will not rewrite the request target by
