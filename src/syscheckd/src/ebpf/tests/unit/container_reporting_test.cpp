@@ -1082,6 +1082,37 @@ TEST_F(ContainerReportingTest, AnUnadmittedContainersModificationNeverDemotesARe
     EXPECT_TRUE(persisted.empty());
 }
 
+TEST_F(ContainerReportingTest, APendingHoldReportsChangesToDocumentsTheManagerAlreadyHas)
+{
+    files["a"] = {"/etc/one"};
+    fim_run_container_baseline();
+    ASSERT_EQ(syncFlag("a", "/etc/one"), 1);
+    persisted.clear();
+
+    // The next pass sees a changed reported document and a new document while
+    // the connector is settling. Only the former belongs on the manager yet,
+    // even with its per-container document budget already full.
+    file_size = 2;
+    files["a"].push_back("/etc/two");
+    listed = false;
+    pending_replies = 1;
+    fim_run_container_baseline();
+
+    ASSERT_EQ(fim_container_admission_pending(), 1);
+    EXPECT_EQ(syncFlag("a", "/etc/one"), 1);
+    EXPECT_EQ(syncFlag("a", "/etc/two"), 0);
+    EXPECT_EQ(persisted, (std::vector<std::pair<std::string, int>> {{"a:/etc/one", OPERATION_MODIFY}}));
+
+    // Settlement has no replay for the sync=1 modification. It must already
+    // have reached the manager; the unchanged row needs no further event.
+    persisted.clear();
+    const char* known[] = {"a"};
+    fim_container_set_admission(known, 1, known, 1);
+    EXPECT_TRUE(persisted.empty());
+    EXPECT_EQ(syncFlag("a", "/etc/one"), 1);
+    EXPECT_EQ(syncFlag("a", "/etc/two"), 0);
+}
+
 TEST_F(ContainerReportingTest, AnUnkeyableContainerKeepsItsFimStateWithoutBlockingCleanup)
 {
     files = {{"a", {"/etc/one"}}, {"ghost", {"/etc/one"}}, {"unkeyed", {"/etc/one"}}};

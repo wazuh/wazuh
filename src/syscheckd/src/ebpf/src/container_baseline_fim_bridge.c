@@ -897,6 +897,16 @@ static int container_row_sync_flag(const cJSON* row, int operation)
         /* A reply from only the available source permits no promotion of an
          * unknown id either. Its fail-open admission answer protects reported
          * rows from retraction; it is not permission to spend a new slot. */
+        /* Pending is a hold on PROMOTION, not on updates to documents the
+         * manager already has. Dropping a modification here writes the new
+         * content locally but sends nothing, and promotion selects sync=0 only,
+         * so settlement cannot replay it. Keep a reported row reporting through
+         * the hold. A settled refusal must still leave it for retraction below,
+         * rather than sending content for a document about to be withdrawn. */
+        if (stored_sync == 1 && fim_container_admission_pending()) {
+            return 1;
+        }
+
         /* Withhold the document -- but a row the manager ALREADY holds may not
          * be demoted on the strength of this check.
          *
@@ -913,7 +923,7 @@ static int container_row_sync_flag(const cJSON* row, int operation)
          * de-admission still sees sync=1 and retracts the row properly, which
          * is the DELETE that pairs the demotion.
          *
-         * What this leaves behind, deliberately: between here and that
+         * For a settled refusal, between here and that
          * retraction the stored row carries the new content while the manager
          * still holds the old document, so the agent's integrity checksum
          * covers something the manager does not have. The window is one
