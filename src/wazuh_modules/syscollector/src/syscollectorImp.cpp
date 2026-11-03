@@ -6178,6 +6178,16 @@ size_t Syscollector::promoteUnsyncedItems(const std::string& index,
                                           LimitScope scope,
                                           const std::string& containerId)
 {
+    // Startup applies the document limits before the first container pass can
+    // poll admission. The previous process's withheld rows are still stored,
+    // and the ordinary unknown-admission predicate deliberately fails open for
+    // in-scan decisions. Promotion must wait here instead: the first pass's
+    // tail visits every index, including unlimited ones, after it has polled.
+    if (scope == LimitScope::container && m_containerBaseline && !m_admissionKnown)
+    {
+        return 0;
+    }
+
     if (maxToPromote == 0 || !m_spDBSync || (scope == LimitScope::container && !isContainerAdmittedLocked(containerId)))
     {
         return 0;
@@ -6784,6 +6794,15 @@ void Syscollector::clearTablesForIndices(const std::vector<std::string>& indices
 bool Syscollector::syncFilterRequired(const std::string& index)
 {
     std::lock_guard<std::mutex> limitsLock(m_limitsMutex);
+
+    // Until the first answer, the flags stored by the previous process are the
+    // only record of which container rows the manager holds. Recovery, checksum
+    // and VD context reads must respect them even with no document budget;
+    // otherwise those paths publish the very backlog promotion is waiting on.
+    if (m_containerBaseline && !m_admissionKnown)
+    {
+        return true;
+    }
 
     if (m_documentLimits[index] > 0 || m_containerDocumentLimits[index] > 0)
     {

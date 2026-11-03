@@ -33,6 +33,8 @@
 #define SYSCOLLECTOR_FRIEND_TEST_DECLARATIONS                                                                          \
     friend class SyscollectorIdentityTest;                                                                             \
     FRIEND_TEST(SyscollectorImpTest, AdmissionRetractsAndRestoresRetainedRows);                                        \
+    FRIEND_TEST(SyscollectorImpTest, StartupLimitsLeaveWithheldRowsUntilAdmissionIsKnown);                             \
+    FRIEND_TEST(SyscollectorImpTest, AnUnheardContainerVerdictFiltersSyncAndContextRows);                              \
     FRIEND_TEST(SyscollectorImpTest, DocumentBudgetsShrinkPromoteAndReleasePerContainer);                              \
     FRIEND_TEST(SyscollectorImpTest, PostScanPromotionVisitsOnlyContainersWithBacklog);                                \
     FRIEND_TEST(SyscollectorImpTest, ContainerBaselineAdmissionAndCleanup);                                            \

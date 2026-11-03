@@ -17,6 +17,7 @@
 #include <memory>
 #include <mutex>
 #include <sqlite3.h>
+#include <stdexcept>
 #include <thread>
 #include <cstring>
 #if defined(__linux__)
@@ -7177,6 +7178,157 @@ TEST_F(SyscollectorImpTest, DocumentLimits_EndToEnd_Summary)
 
     EXPECT_TRUE(logCapture->contains(LOG_DEBUG_VERBOSE, "Document limit increased from 0 to 10"))
             << "Expected hotfixes limit to be set to 10";
+}
+
+TEST_F(SyscollectorImpTest, StartupLimitsLeaveWithheldRowsUntilAdmissionIsKnown)
+{
+    const auto info = std::make_shared<MockSysInfo>();
+    EXPECT_CALL(*info, releaseThreadResources()).Times(testing::AnyNumber());
+    auto& module = Syscollector::instance();
+    std::vector<Operation_t> events;
+    module.init(
+        info,
+        reportFunction,
+        [&events](const std::string&, Operation_t op, const std::string&, const std::string&, uint64_t)
+    {
+        events.push_back(op);
+    },
+    logFunction,
+    SYSCOLLECTOR_DB_PATH,
+    "",
+    "",
+    3600,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false);
+    module.m_admissionKnown = false;
+    module.m_admissionPending = false;
+    module.m_admissionReconciled = false;
+    module.m_globalReconcilePending = false;
+    module.m_pendingRetractions.clear();
+    module.m_admittedContainers.clear();
+    module.m_containerAdmissionWithholding = false;
+    module.m_containerBaseline = true;
+    const std::string index = SYSCOLLECTOR_SYNC_INDEX_PROCESSES;
+    const nlohmann::json row = {{"container_id", "a"}, {"pid", "123"}, {"name", "worker"},
+        {"checksum", "sum"}, {"version", 1}, {"sync", 0}};
+
+    // The previous process left a refusal in the database. Applying both a
+    // finite budget and an unlimited one must preserve it until this process
+    // has actually heard which containers may report.
+    for (const size_t limit : {size_t {2}, size_t {0}})
+    {
+        module.m_admissionKnown = false;
+        auto query = SyncRowQuery::builder().table(PROCESSES_TABLE).data(row).build();
+        module.m_spDBSync->syncRow(query.query(), [](ReturnTypeCallback, const nlohmann::json&) {});
+        module.updateSyncFlagInDB({{PROCESSES_TABLE, row}}, 0);
+        events.clear();
+
+        EXPECT_TRUE(module.setDocumentLimits({{"container_processes", limit}}));
+        EXPECT_TRUE(events.empty());
+        EXPECT_EQ(module.unsyncedCountFor(PROCESSES_TABLE, Syscollector::LimitScope::container, "a"), 1u);
+        EXPECT_EQ(module.m_containerDocumentLimits.at(index), limit);
+
+        module.setAdmittedContainers({{"a", true}});
+        module.promoteItemsAfterScan();
+        EXPECT_EQ(events, (std::vector<Operation_t> {OPERATION_CREATE}));
+        EXPECT_EQ(module.unsyncedCountFor(PROCESSES_TABLE, Syscollector::LimitScope::container, "a"), 0u);
+    }
+    module.destroy();
+    module.m_containerBaseline = false;
+    module.m_admissionKnown = false;
+    module.m_admissionPending = false;
+    module.m_admissionReconciled = false;
+    module.m_globalReconcilePending = false;
+    module.m_pendingRetractions.clear();
+    module.m_admittedContainers.clear();
+    module.m_containerAdmissionWithholding = false;
+    module.m_containerDocumentCounts.clear();
+}
+
+TEST_F(SyscollectorImpTest, AnUnheardContainerVerdictFiltersSyncAndContextRows)
+{
+    const auto info = std::make_shared<MockSysInfo>();
+    EXPECT_CALL(*info, releaseThreadResources()).Times(testing::AnyNumber());
+    auto& module = Syscollector::instance();
+    std::vector<Operation_t> events;
+    module.init(
+        info,
+        reportFunction,
+        [&events](const std::string&, Operation_t op, const std::string&, const std::string&, uint64_t)
+    {
+        events.push_back(op);
+    },
+    logFunction,
+    SYSCOLLECTOR_DB_PATH,
+    "",
+    "",
+    3600,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false);
+    module.m_admissionKnown = false;
+    module.m_admissionPending = false;
+    module.m_admissionReconciled = false;
+    module.m_globalReconcilePending = false;
+    module.m_pendingRetractions.clear();
+    module.m_admittedContainers.clear();
+    module.m_containerAdmissionWithholding = false;
+    const std::string index = SYSCOLLECTOR_SYNC_INDEX_PROCESSES;
+    module.m_documentLimits[index] = 0;
+    module.m_containerDocumentLimits[index] = 0;
+    module.m_containerBaseline = true;
+    const nlohmann::json row = {{"container_id", "a"}, {"pid", "123"}, {"name", "worker"},
+        {"checksum", "sum"}, {"version", 1}, {"sync", 0}};
+    auto query = SyncRowQuery::builder().table(PROCESSES_TABLE).data(row).build();
+    module.m_spDBSync->syncRow(query.query(), [](ReturnTypeCallback, const nlohmann::json&) {});
+
+    EXPECT_TRUE(module.syncFilterRequired(index));
+    EXPECT_TRUE(module.fetchAllFromTable(PROCESSES_TABLE, {}).empty())
+            << "a host scan's VD context must not publish a previous run's withheld row";
+    module.m_admissionPending = true;
+    EXPECT_TRUE(module.syncFilterRequired(index));
+
+    // A successful reply from an older connector still ends the unknown state.
+    // Its lack of a container cap must not turn this startup hold into a ban.
+    module.m_admissionPending = false;
+    module.setAdmittedContainers({{"a", true}});
+    EXPECT_FALSE(module.syncFilterRequired(index));
+    module.m_admissionKnown = false;
+    module.m_containerBaseline = false;
+    EXPECT_FALSE(module.syncFilterRequired(index));
+    module.destroy();
+    module.m_containerBaseline = false;
+    module.m_admissionKnown = false;
+    module.m_admissionPending = false;
+    module.m_admissionReconciled = false;
+    module.m_globalReconcilePending = false;
+    module.m_pendingRetractions.clear();
+    module.m_admittedContainers.clear();
+    module.m_containerAdmissionWithholding = false;
+    module.m_containerDocumentCounts.clear();
 }
 
 TEST_F(SyscollectorImpTest, AdmissionRetractsAndRestoresRetainedRows)
