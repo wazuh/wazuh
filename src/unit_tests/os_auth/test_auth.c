@@ -139,12 +139,12 @@ static void test_w_generate_random_pass_csprng_failure(void **state) {
 static void test_w_authd_load_password_from_file(void **state) {
     bool generated = true;
 
-    expect_pass_file_read("MyS3cret\n");
+    expect_pass_file_read("MyS3cretEnrollPass\n");
 
     char *result = w_authd_load_password(AUTHD_PASS, &generated);
 
     assert_non_null(result);
-    assert_string_equal(result, "MyS3cret");
+    assert_string_equal(result, "MyS3cretEnrollPass");
     assert_false(generated);
     os_free(result);
 }
@@ -153,12 +153,12 @@ static void test_w_authd_load_password_from_file(void **state) {
 static void test_w_authd_load_password_strips_crlf(void **state) {
     bool generated = true;
 
-    expect_pass_file_read("MyS3cret\r\n");
+    expect_pass_file_read("MyS3cretEnrollPass\r\n");
 
     char *result = w_authd_load_password(AUTHD_PASS, &generated);
 
     assert_non_null(result);
-    assert_string_equal(result, "MyS3cret");
+    assert_string_equal(result, "MyS3cretEnrollPass");
     assert_false(generated);
     os_free(result);
 }
@@ -250,15 +250,42 @@ static void test_w_authd_load_password_persist_failure_is_fatal(void **state) {
     expect_assert_failure(w_authd_load_password(AUTHD_PASS, &generated));
 }
 
+#define TOO_SHORT_MSG "Authentication password in '" AUTHD_PASS "' is too short: it must be at least 16 " \
+                      "characters. Write a longer one, or delete the file to have a random one generated."
+
 /* An existing file whose first line is too short must fail closed (never return NULL,
  * which would silently disable password enrollment). */
 static void test_w_authd_load_password_short_line_is_fatal(void **state) {
     bool generated = false;
 
-    expect_pass_file_read("x\n");   /* first line too short (strlen 2, not > 2) */
-    expect_string(__wrap__merror_exit, formatted_msg, "Invalid password provided in '" AUTHD_PASS "'.");
+    expect_pass_file_read("x\n");
+    expect_string(__wrap__merror_exit, formatted_msg, TOO_SHORT_MSG);
 
     expect_assert_failure(w_authd_load_password(AUTHD_PASS, &generated));
+}
+
+/* One character under the minimum is refused, with the message naming the minimum. */
+static void test_w_authd_load_password_below_minimum_is_fatal(void **state) {
+    bool generated = false;
+
+    expect_pass_file_read("0123456789abcde\n");   /* 15 chars */
+    expect_string(__wrap__merror_exit, formatted_msg, TOO_SHORT_MSG);
+
+    expect_assert_failure(w_authd_load_password(AUTHD_PASS, &generated));
+}
+
+/* Exactly the minimum is accepted; the trailing CR/LF does not count towards it. */
+static void test_w_authd_load_password_minimum_is_accepted(void **state) {
+    bool generated = true;
+
+    expect_pass_file_read("0123456789abcdef\r\n");   /* 16 chars */
+
+    char *result = w_authd_load_password(AUTHD_PASS, &generated);
+
+    assert_non_null(result);
+    assert_string_equal(result, "0123456789abcdef");
+    assert_false(generated);
+    os_free(result);
 }
 
 /* An all-whitespace line passes the length check but must still fail closed: it would
@@ -282,15 +309,53 @@ static void test_w_authd_load_password_unreadable_is_fatal(void **state) {
     expect_assert_failure(w_authd_load_password(AUTHD_PASS, &generated));
 }
 
+/* w_authd_check_password_file (the -t check of the master's start) */
+
+static void test_w_authd_check_password_file_valid(void **state) {
+    expect_pass_file_read("0123456789abcdef\n");
+
+    assert_int_equal(w_authd_check_password_file(AUTHD_PASS), 0);
+}
+
+/* Absent: the start generates it, so -t has nothing to refuse. */
+static void test_w_authd_check_password_file_absent(void **state) {
+    expect_pass_file_open_fail();
+    errno = ENOENT;   /* the wfopen() wrapper leaves errno alone */
+
+    assert_int_equal(w_authd_check_password_file(AUTHD_PASS), 0);
+}
+
+static void test_w_authd_check_password_file_unreadable(void **state) {
+    expect_pass_file_open_fail();
+    errno = EACCES;
+    expect_string(__wrap__merror, formatted_msg, "Invalid password provided in '" AUTHD_PASS "'.");
+
+    assert_int_equal(w_authd_check_password_file(AUTHD_PASS), -1);
+}
+
+static void test_w_authd_check_password_file_too_short(void **state) {
+    expect_pass_file_read("0123456789abcde\n");   /* 15 chars */
+    expect_string(__wrap__merror, formatted_msg, TOO_SHORT_MSG);
+
+    assert_int_equal(w_authd_check_password_file(AUTHD_PASS), -1);
+}
+
+static void test_w_authd_check_password_file_blank(void **state) {
+    expect_pass_file_read("      \n");
+    expect_string(__wrap__merror, formatted_msg, "Invalid password provided in '" AUTHD_PASS "'.");
+
+    assert_int_equal(w_authd_check_password_file(AUTHD_PASS), -1);
+}
+
 /* w_authd_read_password (read-only loader used by cluster workers) */
 
 static void test_w_authd_read_password_from_file(void **state) {
-    expect_pass_file_read("SyncedPass\n");
+    expect_pass_file_read("SyncedEnrollPassword\n");
 
     char *result = w_authd_read_password(AUTHD_PASS);
 
     assert_non_null(result);
-    assert_string_equal(result, "SyncedPass");
+    assert_string_equal(result, "SyncedEnrollPassword");
     os_free(result);
 }
 
@@ -303,8 +368,9 @@ static void test_w_authd_read_password_missing_returns_null(void **state) {
 
 /* An existing file whose first line is too short yields NULL (the caller rejects, never bypasses). */
 static void test_w_authd_read_password_short_returns_null(void **state) {
-    expect_pass_file_read("x\n");
-    expect_string(__wrap__mwarn, formatted_msg, "Authentication password in '" AUTHD_PASS "' is invalid or empty; ignoring.");
+    expect_pass_file_read("0123456789abcde\n");   /* 15 chars */
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Authentication password in '" AUTHD_PASS "' is shorter than 16 characters; ignoring.");
 
     assert_null(w_authd_read_password(AUTHD_PASS));
 }
@@ -319,12 +385,12 @@ static void test_w_authd_read_password_spaces_only_returns_null(void **state) {
 
 /* CRLF-authored file: the worker reader must trim \r too, matching the master. */
 static void test_w_authd_read_password_strips_crlf(void **state) {
-    expect_pass_file_read("SyncedPass\r\n");
+    expect_pass_file_read("SyncedEnrollPassword\r\n");
 
     char *result = w_authd_read_password(AUTHD_PASS);
 
     assert_non_null(result);
-    assert_string_equal(result, "SyncedPass");
+    assert_string_equal(result, "SyncedEnrollPassword");
     os_free(result);
 }
 
@@ -441,8 +507,15 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_authd_load_password_csprng_failure_is_fatal, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_authd_load_password_persist_failure_is_fatal, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_authd_load_password_short_line_is_fatal, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_w_authd_load_password_below_minimum_is_fatal, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_w_authd_load_password_minimum_is_accepted, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_authd_load_password_spaces_only_is_fatal, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_authd_load_password_unreadable_is_fatal, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_w_authd_check_password_file_valid, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_w_authd_check_password_file_absent, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_w_authd_check_password_file_unreadable, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_w_authd_check_password_file_too_short, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_w_authd_check_password_file_blank, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_authd_read_password_from_file, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_authd_read_password_strips_crlf, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_authd_read_password_too_long_returns_null, test_setup, test_teardown),

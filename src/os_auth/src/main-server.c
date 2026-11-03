@@ -466,6 +466,14 @@ int main(int argc, char **argv)
         if (authd_test_tls_material(home_path) < 0) {
             merror_exit(CONFIG_ERROR, WAZUHCONF);
         }
+        /* The enrollment password the master's start would load (and refuse when invalid), judged here
+         * because the start reads it only after daemonizing, where a refusal no longer reaches
+         * wazuh-manager-control. A worker only ever reads the master's copy, so it never refuses.
+         * The check's own error is the last line on purpose: wazuh-manager-control logs only that one. */
+        if (!config.flags.disabled && config.flags.remote_enrollment && config.flags.use_password &&
+            w_is_worker() == 0 && w_authd_check_password_file(AUTHD_PASS) < 0) {
+            exit(1);
+        }
         exit(0);
     }
 

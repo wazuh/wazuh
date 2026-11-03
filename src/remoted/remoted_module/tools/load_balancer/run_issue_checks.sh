@@ -155,7 +155,7 @@ rm -f "$STORE_TMP"
 # that the token works, not how fast it propagates (measure_propagation.py does that).
 MODES=""
 for _ in $(seq 1 12); do
-    MODES="$(probe /probe/enroll_modes.py --password labpassword)"
+    MODES="$(probe /probe/enroll_modes.py --password labenrollpassword)"
     grep -qE '^  enrollment token *-> 200' <<<"$MODES" && break
     sleep 3
 done
@@ -173,7 +173,7 @@ echo "=== 8. every route answers through every front end ==="
 # authenticated rows exercise the routes instead of the propagation window. Reusing an agent
 # whose credentials re-enrollment rotated turns every authenticated row into a 401 that still
 # "answers" -- which reads as a pass and proves nothing.
-MATRIX="$(probe /probe/route_matrix.py --password labpassword 2>&1)"
+MATRIX="$(probe /probe/route_matrix.py --password labenrollpassword 2>&1)"
 if [[ -n "$MATRIX" ]]; then
     sed "s/^/  /" <<<"$MATRIX"
     ERRS="$(grep -c "ERR:" <<<"$MATRIX" || true)"

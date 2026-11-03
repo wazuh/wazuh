@@ -89,6 +89,19 @@ class MigrationError(Exception):
     """A condition the operator has to resolve; reported without a traceback."""
 
 
+# The shortest authd.pass the 5.0 manager accepts: AUTHD_PASS_MIN_CHARS in src/os_auth/include/auth.h. A
+# shorter one stops wazuh-manager-authd at start, so it is refused here before it reaches the manager.
+AUTHD_PASS_MIN_CHARS = 16
+
+
+def authd_pass_too_short(path):
+    """True when the first line of the password file, CR/LF trimmed, is shorter than the 5.0 minimum.
+    Empty and blank lines are left to authd's own error: they were never valid."""
+    with open(path, "rb") as handle:
+        line = handle.readline().rstrip(b"\r\n")
+    return bool(line.strip()) and len(line) < AUTHD_PASS_MIN_CHARS
+
+
 def log(message):
     print(message)
 
@@ -424,6 +437,10 @@ def command_export(args):
         elif not os.path.isfile(path):
             log("  skip     %s (not present on the source)" % name)
         else:
+            if name == "authd.pass" and authd_pass_too_short(path):
+                warn("the 4.x enrollment password is shorter than %d characters, the minimum the 5.0"
+                     " manager accepts: 'import' will refuse it. Set a longer one on the 4.x manager"
+                     " and on the agents that still enroll, and export again." % AUTHD_PASS_MIN_CHARS)
             secrets.append((name, path))
 
     manifest = {
@@ -714,6 +731,12 @@ def command_import(args):
             log("  skip     %-20s (--with-%s not given)"
                 % (name, "password" if name == "authd.pass" else "rbac"))
             continue
+        if name == "authd.pass" and authd_pass_too_short(os.path.join(args.bundle, name)):
+            raise MigrationError(
+                "the enrollment password in the bundle is shorter than %d characters, and the 5.0"
+                " wazuh-manager-authd refuses to start with it. Set a longer password on the 4.x"
+                " manager and on the agents that still enroll, then export again; or re-run without"
+                " --with-password to let the manager generate a new one." % AUTHD_PASS_MIN_CHARS)
         install_secret(args.bundle, name, target, args.target_conf_dir, args.dry_run)
         if name == "rbac.db":
             stage_rbac(target, args.dry_run)

@@ -389,6 +389,14 @@ class MigrationToolTest(unittest.TestCase):
         self.assertFalse(os.path.exists(os.path.join(self.target, "etc", "authd.pass")),
                          "a 5.0 manager reads authd.pass from its configuration directory only")
 
+    def test_a_password_under_the_5x_minimum_is_refused_at_import(self):
+        with open(os.path.join(self.source, "etc", "authd.pass"), "w") as handle:
+            handle.write("Lab2026Short15c\r\n")   # 15 chars once CR/LF are trimmed
+        self.assertEqual(0, self.export("--with-password"), "export only warns: the 4.x side is still fine")
+        self.assertEqual(2, self.do_import("--with-password"),
+                         "the 5.0 authd would refuse to start with it, so the import refuses it first")
+        self.assertFalse(os.path.exists(os.path.join(self.target_conf, "authd.pass")))
+
     def test_a_missing_configuration_directory_is_refused(self):
         self.assertEqual(0, self.export("--with-password"))
         os.rmdir(self.target_conf)

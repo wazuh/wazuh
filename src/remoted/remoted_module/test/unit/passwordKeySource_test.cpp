@@ -190,23 +190,32 @@ namespace
         std::remove(otherPath.c_str());
     }
 
-    TEST_F(PasswordKeySourceTest, LengthTwoOrLessIsRejected)
+    TEST_F(PasswordKeySourceTest, VeryShortIsRejected)
     {
         writeFile("ab\n");
         PasswordKeySource source(m_path);
         EXPECT_FALSE(source.currentKey().has_value());
     }
 
-    TEST_F(PasswordKeySourceTest, LengthThreeIsAccepted)
+    // The minimum is authd's AUTHD_PASS_MIN_CHARS (16): both readers judge the same file.
+    TEST_F(PasswordKeySourceTest, OneUnderTheMinimumIsRejected)
     {
-        writeFile("abc\n");
+        writeFile("0123456789abcde\n");
+        PasswordKeySource source(m_path);
+        EXPECT_FALSE(source.currentKey().has_value());
+    }
+
+    TEST_F(PasswordKeySourceTest, ExactlyTheMinimumIsAccepted)
+    {
+        writeFile("0123456789abcdef\r\n");
         PasswordKeySource source(m_path);
         EXPECT_TRUE(source.currentKey().has_value());
     }
 
+    // Longer than the minimum, so the whitespace rule (not the length one) is what rejects it.
     TEST_F(PasswordKeySourceTest, AllWhitespaceIsRejected)
     {
-        writeFile("      \n");
+        writeFile(std::string(32, ' ') + "\n");
         PasswordKeySource source(m_path);
         EXPECT_FALSE(source.currentKey().has_value());
     }
@@ -254,7 +263,7 @@ namespace
         PasswordKeySource source(m_path);
         ASSERT_TRUE(source.currentKey().has_value());
 
-        writeFile("  \n"); // now invalid (all-whitespace)
+        writeFile(std::string(32, ' ') + "\n"); // now invalid (all-whitespace, longer than the minimum)
         EXPECT_FALSE(source.reload());
         EXPECT_FALSE(source.currentKey().has_value());
     }

@@ -627,7 +627,7 @@ Two more, about a registered address that no longer matches:
   column or re-enroll the agent. Not throttled: logged once per offending line each time
   `client.keys` is (re)loaded.
 
-Four more that are not about tuning:
+Six more that are not about tuning:
 
 - **`Loaded N agent key(s) from '<path>'.`** at startup, and **`Reloaded N agent key(s) from
   '<path>'.`** after every hot-reload. `N` counts keys
@@ -639,6 +639,20 @@ Four more that are not about tuning:
   there, the file not having synced down from the master yet is expected, so it logs at **DEBUG1**
   instead ("Waiting for the enrollment password to be synchronized from the master node …"). A worker
   still missing the file past that window, or a master hitting this path at all, still warns.
+- **`Rejected N /enroll request(s) with an invalid or missing credential <period> (latest from <address>:
+  <class>).`** (WARNING) counts `POST /enroll` requests refused for their credential: no or a malformed
+  bearer, a wrong enrollment password, an unknown agent, or an unknown, expired or revoked enrollment
+  token. Not counted: a malformed request (`protocol-version`, body size, `Content-Encoding`), a
+  manager-side fault, and a bearer whose signature verified but whose time or identity claims were
+  refused (that peer holds the credential; clock skew has its own warning). The line is throttled: it is
+  logged on the first such rejection, then on the first one after at least 90 seconds. `N` counts every
+  rejection since the previous line, and the address is the one of the rejection that triggered this
+  line, not of every peer in `N`; a burst is reported in full only when a later rejection arrives.
+  Behind a load balancer the address is the balancer's own. It points at a problem; it is not a
+  per-source record (the manager keeps none). `wazuh-manager-authd` logs `Invalid password provided by
+  <address>` for each failure on `1515`.
+- A short hand-written `/etc/wazuh-manager/authd.pass` (fewer than 16 characters) is treated as invalid
+  here too, as authd does: see [`use_password`](../authd/configuration.md#use_password).
 - **`Could not derive the enrollment key from '/etc/wazuh-manager/authd.pass' (HKDF unavailable)`** (ERROR) means the
   OpenSSL KDF provider is broken: every Password-mode enrollment fails closed until it is fixed,
   distinct from an unreadable or invalid password file (see above).
@@ -656,7 +670,8 @@ Four more that are not about tuning:
 
 Rejections of unauthenticated requests (no bearer, an unknown agent, a bad signature) are logged at
 debug level only — visible with `remoted.debug=2` — because an unauthenticated peer controls how many
-it can trigger. A malformed request from an agent that **did** authenticate (an invalid `/control` or
+it can trigger. `POST /enroll` is the exception: its credential rejections are also summarised by the
+throttled WARNING above. A malformed request from an agent that **did** authenticate (an invalid `/control` or
 `/scan/vd` body, an unknown `/control` type, a payload naming another agent) and the rejections that
 point at a manager-side setting (a token outside the clock-skew window, a body over the
 authenticated-body cap, an unusable key in `client.keys`) are logged as throttled `WARNING`s instead:

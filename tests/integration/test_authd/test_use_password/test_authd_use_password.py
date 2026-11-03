@@ -59,7 +59,7 @@ test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cas
 test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 
 # Variables
-DEFAULT_TEST_PASSWORD = 'TopSecret'
+DEFAULT_TEST_PASSWORD = 'TopSecretEnrollPass'
 AGENT_INPUT = "OSSEC A:'{}'"
 AGENT_INPUT_WITH_PASS = "OSSEC PASS: {} OSSEC A:'{}'"
 INVALID_REQUEST_MESSAGE = 'ERROR: Invalid request for new agent'

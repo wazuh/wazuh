@@ -150,7 +150,7 @@ the reason (`MISSING|INVALID|UNSAFE <path>: …`) is in the manager log it tails
 
 ```bash
 docker exec lab-probe python3 /probe/route_matrix.py \
-  --agent-id <id> --key <key> --password labpassword
+  --agent-id <id> --key <key> --password labenrollpassword
 ```
 
 All ten routes through all four front ends. `/control` is one route: `startup`, `notify` and
@@ -165,7 +165,7 @@ docker exec lab-probe python3 /probe/measure_propagation.py \
   --node master=https://wazuh-master:1517 \
   --node worker1=https://wazuh-worker1:1517 \
   --node worker2=https://wazuh-worker2:1517 \
-  --password labpassword --json-out /results/propagation.json
+  --password labenrollpassword --json-out /results/propagation.json
 ```
 
 Enrolls, then asks every node every 250 ms until it accepts the key. `POST /stateless` is the
@@ -181,7 +181,7 @@ docker exec lab-probe python3 /probe/cross_node_download.py \
   --node worker1=https://wazuh-worker1:1517 \
   --node worker2=https://wazuh-worker2:1517
 
-docker exec lab-probe python3 /probe/download_convergence.py --password labpassword
+docker exec lab-probe python3 /probe/download_convergence.py --password labenrollpassword
 ```
 
 The first sends `/control` to one node and then the same download to all three. The second
@@ -192,7 +192,7 @@ the part that scales with cluster size.
 
 ```bash
 docker exec wazuh-master cat /etc/wazuh-manager/enrollment_tokens.json > probe/store.json
-docker exec lab-probe python3 /probe/enroll_modes.py --password labpassword
+docker exec lab-probe python3 /probe/enroll_modes.py --password labenrollpassword
 ```
 
 No credential, shared password, enrollment token, an unknown token id, and re-enrollment.
@@ -202,7 +202,7 @@ No credential, shared password, enrollment token, an unknown token id, and re-en
 ```bash
 docker stop wazuh-worker2      # or wazuh-master
 docker exec lab-probe python3 /probe/availability.py \
-  --agent-id <id> --key <key> --password labpassword --label "worker2 down"
+  --agent-id <id> --key <key> --password labenrollpassword --label "worker2 down"
 ```
 
 Reports four capabilities separately — liveness, reporting, control and enrollment — because
