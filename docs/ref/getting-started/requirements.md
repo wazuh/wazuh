@@ -35,9 +35,9 @@ heap must be large enough for the content the manager downloads from it. On a ho
 RAM, the indexer's default 1 GB heap was observed to trip its circuit breaker: the indexer answers `429`
 to the manager's content requests, some indicator-of-compromise types never finish loading into the engine, and
 the engine and the node keep reporting `ready: false`. Give the indexer a larger heap and the host the
-memory for it, following the indexer's own sizing guidance. When the breaker trips, the manager log shows the WARNING
-`Indexer node '<host>' reports a PERMANENT circuit breaker (…): heap usage is above the breaker limit; check the
-indexer heap sizing.`, after the INFO line `Indexer node '<host>' is throttling requests (…); it stays in rotation
+memory for it, following the indexer's own sizing guidance. When the breaker stays tripped, the manager log shows the WARNING
+`Indexer node '<host>' has reported a PERMANENT circuit breaker on 3 consecutive health checks (…): heap usage stays above
+the breaker limit; check the indexer heap sizing.`, after the INFO line `Indexer node '<host>' is throttling requests (…); it stays in rotation
 and requests back off.` (see the [indexer connector](../modules/indexer_connector/configuration.md)).
 
 The manager does not monitor its own host. To monitor it, install an agent on it (see [Monitoring the server host](installation.md#monitoring-the-server-host)) and add the agent usage below.

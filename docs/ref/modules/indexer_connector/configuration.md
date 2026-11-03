@@ -233,7 +233,7 @@ grep -E "Indexer node|Health check failed|indexer credentials" /var/wazuh-manage
 | `Indexer node '<host>' is available again.` | The node recovered |
 | `Indexer node '<host>' is throttling requests (<reason>); it stays in rotation and requests back off.` | The node answered `429` (for example a tripped circuit breaker) |
 | `Indexer node '<host>' accepts requests again.` | A throttled node answered `green`/`yellow` without `429` again |
-| `Indexer node '<host>' reports a PERMANENT circuit breaker (<reason>): heap usage is above the breaker limit; check the indexer heap sizing.` | WARNING: the node's `429` names a `PERMANENT` circuit breaker, which backing off does not clear; logged once per episode **per connector health monitor** (see below), while the node stays throttled |
+| `Indexer node '<host>' has reported a PERMANENT circuit breaker on 3 consecutive health checks (<reason>): heap usage stays above the breaker limit; check the indexer heap sizing.` | WARNING: three health checks in a row (about 20 s at the default interval) got a `429` naming a `PERMANENT` circuit breaker; logged once per episode **per connector health monitor** (see below). A single `PERMANENT` trip logs only the throttling line above: OpenSearch labels a parent-breaker trip `PERMANENT` whenever fielddata outweighs the transient breakers, even when most of the heap is garbage its next forced GC frees |
 | `No indexer credentials found in the keystore. ...` | The keystore has no `username` or `password` |
 
 Every node-state line above is written by a connector's health monitor, once per state change, and a

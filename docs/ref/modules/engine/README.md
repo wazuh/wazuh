@@ -2698,7 +2698,7 @@ marks its lines on the component tag instead, as `wazuh-manager-analysisd(monito
 2026/09/28 19:42:00 wazuh-manager-analysisd: WARNING: [CMSync] Check 'custom' space in wazuh-indexer - Attempt 3/3: No available server. Unavailable nodes: https://127.0.0.1:9200: Could not connect to server
 2026/09/28 19:42:00 wazuh-manager-analysisd: WARNING: [CM::Sync] Failed to synchronize namespace for space 'custom': Check 'custom' space in wazuh-indexer::CMSync failed after 3 attempts: No available server. Unavailable nodes: https://127.0.0.1:9200: Could not connect to server
 2026/04/14 20:09:46 wazuh-manager-analysisd: WARNING: [IOC::Sync] Synchronization cycle failed: No available server
-2026/10/27 23:25:29 wazuh-manager-analysisd(monitoring): WARNING: Indexer node 'https://127.0.0.1:9200' reports a PERMANENT circuit breaker (HTTP 429 circuit_breaking_exception: [parent] Data too large, ...)
+2026/10/27 23:25:29 wazuh-manager-analysisd(monitoring): WARNING: Indexer node 'https://127.0.0.1:9200' has reported a PERMANENT circuit breaker on 3 consecutive health checks (HTTP 429 circuit_breaking_exception: [parent] Data too large, ...)
 ```
 
 When debug level is active, additional diagnostic messages appear and **every** line (not only the
