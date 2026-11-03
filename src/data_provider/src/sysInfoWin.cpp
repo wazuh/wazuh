@@ -1662,7 +1662,7 @@ nlohmann::json SysInfo::getUsers() const
         std::string username = (user.contains("username") && !user["username"].get<std::string>().empty()) ? user["username"] : UNKNOWN_VALUE;
 
         userItem["user_id"] = user["uid"];
-        userItem["user_full_name"] = user["description"];
+        userItem["user_full_name"] = user["full_name"];
         userItem["user_home"] = user["directory"];
         userItem["user_name"] = username;
         userItem["user_shell"] = user["shell"];
@@ -1774,7 +1774,7 @@ nlohmann::json SysInfo::getUsers() const
         userItem["user_password_expiration_date"] = UNKNOWN_VALUE;
         userItem["user_password_hash_algorithm"] = UNKNOWN_VALUE;
         userItem["user_password_inactive_days"] = 0;
-        userItem["user_password_last_change"] = 0;
+        userItem["user_password_last_change"] = user["password_last_change"];
         userItem["user_password_max_days_between_changes"] = 0;
         userItem["user_password_min_days_between_changes"] = 0;
         userItem["user_password_status"] = UNKNOWN_VALUE;
