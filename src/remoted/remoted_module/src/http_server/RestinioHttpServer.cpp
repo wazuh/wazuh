@@ -13,9 +13,11 @@
 #include "caPublicationRecord.hpp"
 #include "caRecordEvents.hpp"
 #include "common/logThrottle.hpp"
+#include "compressingResponder.hpp"
 #include "connectionIdSource.hpp"
 #include "guardedTlsSocket.hpp"
 #include "handshakeLedger.hpp"
+#include "headerUtils.hpp"
 #include "httpServerConfig.hpp"
 #include "httpServerFactory.hpp"
 #include "inFlightBudget.hpp"
@@ -1591,6 +1593,14 @@ namespace remoted::http
                 const auto responseMode = route.mode;
                 const auto streamChunkSize = m_config.streamChunkSize;
                 auto streams = m_streams;
+                const auto contentEncodingEnabled = m_config.contentEncodingEnabled;
+                // A compressor never takes the budget below what one maximum request needs to be
+                // admitted (the minimum start() enforces).
+                const auto compressionFloor = m_config.maxBodySize + PER_REQUEST_OVERHEAD;
+                CompressingResponder::ReserveFn compressionReserve = [budget, compressionFloor](std::size_t bytes)
+                {
+                    return budget->tryReserveUncountedKeeping(bytes, compressionFloor);
+                };
 
                 // The pattern actually handed to the router is the route's logical path served
                 // under the global prefix. The "/" route (the health probe) is registered as the
@@ -1625,6 +1635,8 @@ namespace remoted::http
                      responseMode,
                      streamChunkSize,
                      streams,
+                     contentEncodingEnabled,
+                     compressionReserve,
                      rejectedConnections](auto request, auto) -> restinio::request_handling_status_t
                     {
                         // Transport-level exception barrier, covering every registered route at
@@ -1708,6 +1720,18 @@ namespace remoted::http
                                 // only routes whose requests are tiny should ever stream.
                                 responder = std::make_shared<RestinioStreamableResponder>(
                                     request, streamGate, streamChunkSize, streams);
+                                if (contentEncodingEnabled &&
+                                    acceptsZstd(headerValue(context->request.headers, "accept-encoding")))
+                                {
+                                    // Wraps a copy: if this throws, the barrier below still holds
+                                    // the transport responder to answer 500.
+                                    responder = std::make_shared<CompressingResponder>(
+                                        responder,
+                                        compressionReserve,
+                                        CompressingResponder::SourceFactory {},
+                                        [](const char* reason)
+                                        { LOGFN_DEBUG1(logFn(), "Serving a response uncompressed: %s.", reason); });
+                                }
                             }
                             else
                             {
