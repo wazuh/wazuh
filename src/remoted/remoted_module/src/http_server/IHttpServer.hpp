@@ -140,6 +140,10 @@ namespace remoted::http
         /// Bytes pulled per chunk. 0 (the default) means "use the server's configured
         /// streamChunkSize", so an endpoint does not have to know about the tunable at all.
         std::size_t chunkSize {0};
+        /// Whether the body benefits from compression; false for already-compressed content.
+        bool compressible {true};
+        /// Exact total body size in bytes, when known.
+        std::optional<std::uint64_t> sizeHint {};
     };
 
     /**
@@ -298,6 +302,9 @@ namespace remoted::http
         std::size_t streamChunkSize {64U * 1024U};
         /// Max in-flight (unprocessed) request payload bytes before new requests get 503. 0 disables the limit.
         std::size_t maxInFlightBytes {256U * 1024U * 1024U};
+        /// Whether a streamed response may be zstd-compressed for a client that offers it
+        /// (remoted.http_content_encoding_enabled).
+        bool contentEncodingEnabled {true};
         /// Max simultaneous TCP connections (bounds the read-phase peak: maxParallelConnections * maxBodySize).
         std::size_t maxParallelConnections {256};
         /// Max connections from one address still in the TLS handshake; one more is closed at once

@@ -196,6 +196,8 @@ namespace remoted::http
         result.maxInFlightBytes = config.max_inflight_bytes > 0 ? static_cast<std::size_t>(config.max_inflight_bytes)
                                                                 : DEFAULT_MAX_INFLIGHT_BYTES;
 
+        result.contentEncodingEnabled = config.http_content_encoding_enabled;
+
         result.maxParallelConnections = config.max_parallel_connections > 0
                                             ? static_cast<std::size_t>(config.max_parallel_connections)
                                             : DEFAULT_MAX_PARALLEL_CONNECTIONS;

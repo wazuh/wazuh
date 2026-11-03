@@ -304,6 +304,22 @@ TEST(HttpServerConfigTest, InFlightBytesStructWinsElseDefault)
     EXPECT_EQ(buildHttpServerConfig(raw).maxInFlightBytes, 256U * 1024U * 1024U);
 }
 
+TEST(HttpServerConfigTest, ContentEncodingFlagFollowsTheCAbiField)
+{
+    // The C field has no sentinel: zero means off, not "module default".
+    auto raw = zeroedConfig();
+    raw.http_content_encoding_enabled = false;
+    EXPECT_FALSE(buildHttpServerConfig(raw).contentEncodingEnabled);
+
+    raw.http_content_encoding_enabled = true;
+    EXPECT_TRUE(buildHttpServerConfig(raw).contentEncodingEnabled);
+}
+
+TEST(HttpServerConfigTest, ContentEncodingDefaultsToEnabled)
+{
+    EXPECT_TRUE(HttpServerConfig {}.contentEncodingEnabled);
+}
+
 TEST(HttpServerConfigTest, MaxConnectionsStructWinsElseDefault)
 {
     auto raw = zeroedConfig();

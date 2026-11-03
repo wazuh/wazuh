@@ -170,6 +170,8 @@ namespace
             streamed = true;
             status = response.status;
             headers = response.headers;
+            compressible = response.compressible;
+            sizeHint = response.sizeHint;
             // chunkSize 0 means "use the server's configured size" (see StreamResponse); the real
             // transport substitutes HttpServerConfig::streamChunkSize there, so a double that
             // passed the 0 straight through would read nothing at all.
@@ -183,6 +185,8 @@ namespace
         int status {0};
         std::string body;
         std::vector<std::pair<std::string, std::string>> headers;
+        bool compressible {false};
+        std::optional<std::uint64_t> sizeHint;
     };
 
     /// Builds a verified request whose payload views a buffer the caller keeps alive.
@@ -969,6 +973,46 @@ TEST(DownloadHandlerTest, StreamsAStagedWpk)
     EXPECT_EQ(responder->status, 200);
     EXPECT_TRUE(responder->streamed);
     EXPECT_EQ(responder->body, contents);
+}
+
+TEST(DownloadHandlerTest, AConfigIsCompressibleAndCarriesItsSize)
+{
+    TempDir dir;
+    dir.makeDir("shared/web-servers");
+    dir.writeFile("shared/web-servers/merged.mg", std::string(31, 'c'));
+
+    ResourcePaths paths;
+    paths.sharedDir = dir.path() + "/shared";
+
+    const auto responder = runHandler(VALID_CONFIG_BODY, paths);
+
+    ASSERT_TRUE(responder->streamed);
+    EXPECT_TRUE(responder->compressible);
+    EXPECT_EQ(responder->sizeHint, 31U);
+}
+
+TEST(DownloadHandlerTest, AWpkIsNotCompressibleButCarriesItsSize)
+{
+    TempDir dir;
+    dir.makeDir("upgrade");
+    dir.writeFile("upgrade/pkg.wpk", std::string(200000, '\x7f'));
+
+    ResourcePaths paths;
+    paths.wpkDir = dir.path() + "/upgrade";
+
+    const auto responder = runHandler(R"({"resource_type":"wpk","resource_id":"pkg.wpk"})", paths);
+
+    ASSERT_TRUE(responder->streamed);
+    EXPECT_FALSE(responder->compressible);
+    EXPECT_EQ(responder->sizeHint, 200000U);
+}
+
+TEST(StreamResponseTest, DefaultsToCompressibleWithoutASizeHint)
+{
+    const remoted::http::StreamResponse response {};
+
+    EXPECT_TRUE(response.compressible);
+    EXPECT_FALSE(response.sizeHint);
 }
 
 TEST(DownloadHandlerTest, AnswersFourHundredAndFourWhenTheResolvedFileIsMissing)
