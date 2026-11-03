@@ -19,10 +19,17 @@ What it verifies beyond "did it return 200":
     size"; CPU is read as a /proc counter delta rather than sampled as a percentage, so
     it cannot miss time between samples; the fd count catches a descriptor leak.
 
-Requires: pip install requests
+With --zstd the request offers `Accept-Encoding: zstd` and a `config` answer must come back
+zstd-compressed; the body is decompressed once and the SHA-256 is that of the decompressed bytes.
+Under load (--simulate) a plain answer is accepted and counted apart: the manager serves plain
+when the in-flight budget cannot spare the compressor's memory.
+Without --zstd the request sends `Accept-Encoding: identity` and no content encoding is accepted.
+
+Requires: pip install requests zstandard
 
 Examples:
   python3 send_download.py                            # config download for agent 001's group
+  python3 send_download.py --zstd                     # the same, offering zstd compression
   python3 send_download.py --all                      # every success/failure scenario
   python3 send_download.py --resource-type wpk --resource-id pkg.wpk
   python3 send_download.py --simulate 20 --repeat 5   # 20 concurrent simulated agents
@@ -40,6 +47,7 @@ import time
 
 import requests
 import urllib3
+import zstandard
 
 from wire_jwt import auth_headers, read_agent_key  # the shared wazuh-agent+jwt signer (same directory)
 
@@ -76,6 +84,9 @@ class ManagerPaths:
 DEFAULT_MANAGER_CONF = "/etc/wazuh-manager/wazuh-manager.conf"
 
 GLOBAL_PREFIX = ""
+
+# Whether requests offer `Accept-Encoding: zstd` (--zstd); set once by main() like GLOBAL_PREFIX.
+OFFER_ZSTD = False
 
 
 def normalize_global_prefix(raw: str) -> str:
@@ -157,18 +168,22 @@ class DownloadResult:
         self.status = None
         self.chunked = False
         self.content_length = None
-        self.bytes_received = 0
+        self.content_encoding = ""
+        self.wire_bytes = 0       # bytes read off the socket (compressed when content_encoding is zstd)
+        self.bytes_received = 0   # bytes after decompression
         self.sha256 = None
         self.error = None
         self.text = ""
 
 
-def post_download(base_url, agent_id, agent_key, body: bytes, timeout=120) -> DownloadResult:
+def post_download(base_url, agent_id, agent_key, body: bytes, timeout=120, accept_zstd=False) -> DownloadResult:
     """Sends one bearer-authenticated /download request, consuming the body as a stream so the
-    client never holds the whole file either."""
+    client never holds the whole file either. A zstd answer is decompressed once; `sha256` and
+    `bytes_received` describe the decompressed bytes and `wire_bytes` what crossed the socket."""
     result = DownloadResult()
     url = base_url.rstrip("/") + prefixed(TARGET)
     headers = auth_headers(agent_id, agent_key)
+    headers["Accept-Encoding"] = "zstd" if accept_zstd else "identity"
 
     try:
         response = requests.post(url, headers=headers, data=body, verify=False, stream=True, timeout=timeout)
@@ -179,32 +194,72 @@ def post_download(base_url, agent_id, agent_key, body: bytes, timeout=120) -> Do
     result.status = response.status_code
     result.chunked = response.headers.get("Transfer-Encoding", "").lower() == "chunked"
     result.content_length = response.headers.get("Content-Length")
+    result.content_encoding = response.headers.get("Content-Encoding", "").strip().lower()
+
+    if result.content_encoding not in ("", "identity", "zstd"):
+        result.error = f"unsupported content-encoding '{result.content_encoding}'"
+        response.close()
+        return result
+    if result.content_encoding == "zstd" and not accept_zstd:
+        result.error = "content-encoding zstd without having offered it"
+        response.close()
+        return result
+    decoder = zstandard.ZstdDecompressor().decompressobj() if result.content_encoding == "zstd" else None
 
     digest = hashlib.sha256()
     # Keep the first few KiB only when the status says this is an error body: those are the
     # small JSON payloads worth printing, and a 2 GiB WPK must never be buffered. It has to be
-    # captured HERE, while streaming -- once iter_content() has drained the response,
-    # `response.content` is gone, so reading it afterwards yields nothing.
+    # captured HERE, while streaming -- once the response has been drained, `response.content`
+    # is gone, so reading it afterwards yields nothing.
     error_body = bytearray() if response.status_code != 200 else None
 
     try:
-        for chunk in response.iter_content(64 * 1024):
+        # Raw bytes: requests' own decoding would hide how much crossed the wire.
+        for chunk in response.raw.stream(64 * 1024, decode_content=False):
             if not chunk:
                 continue
-            digest.update(chunk)
-            result.bytes_received += len(chunk)
+            result.wire_bytes += len(chunk)
+            data = decoder.decompress(chunk) if decoder else chunk
+            digest.update(data)
+            result.bytes_received += len(data)
             if error_body is not None and len(error_body) < 4096:
-                error_body.extend(chunk)
-    except requests.exceptions.RequestException as error:
-        # An interrupted chunked transfer must surface as a failure, never as a short
+                error_body.extend(data)
+    except (requests.exceptions.RequestException, urllib3.exceptions.HTTPError, zstandard.ZstdError) as error:
+        # An interrupted chunked transfer (urllib3 raises ProtocolError, which is not a
+        # RequestException) or a corrupt frame must surface as a failure, never as a short
         # but successful download.
         result.error = f"transfer interrupted: {type(error).__name__}: {error}"
+        return result
+    finally:
+        response.close()
+
+    if decoder is not None and not decoder.eof:
+        result.error = "transfer interrupted: truncated zstd frame"
         return result
 
     result.sha256 = digest.hexdigest()
     if error_body is not None:
         result.text = bytes(error_body).decode(errors="replace")[:200]
     return result
+
+
+def encoding_problem(result, offered_zstd, resource_type, allow_plain=False):
+    """What is wrong with the Content-Encoding of an answer, or None.
+
+    A 200 `config` answer to a zstd offer must be zstd (or plain when `allow_plain`, the budget
+    case); every other answer (a `wpk`, a `config` nobody offered compression for, any non-200)
+    must carry no encoding at all."""
+    encoding = "" if result.content_encoding == "identity" else result.content_encoding
+    if result.status == 200 and resource_type == "config" and offered_zstd:
+        if encoding == "zstd" or (allow_plain and not encoding):
+            return None
+        return f"expected content-encoding zstd, got '{encoding or 'none'}'"
+    return f"unexpected content-encoding '{encoding}'" if encoding else None
+
+
+def resource_type_of(body: bytes) -> str:
+    match = re.search(rb'"resource_type"\s*:\s*"([^"]*)"', body)
+    return match.group(1).decode() if match else ""
 
 
 # --- RSS sampling ----------------------------------------------------------
@@ -388,7 +443,7 @@ def run_scenarios(base_url, agent_id, agent_key, scenarios):
     print(f"Running {len(scenarios)} scenarios against {base_url} (agent {agent_id})\n")
     passed = 0
     for name, expected, body in scenarios:
-        result = post_download(base_url, agent_id, agent_key, body)
+        result = post_download(base_url, agent_id, agent_key, body, accept_zstd=OFFER_ZSTD)
         if result.error:
             print(f"[FAIL] {name}: expected {expected}, request failed: {result.error}")
             continue
@@ -396,11 +451,18 @@ def run_scenarios(base_url, agent_id, agent_key, scenarios):
         passed += ok
         extra = ""
         if result.status == 200:
-            extra = f", {result.bytes_received} bytes, chunked={result.chunked}"
+            extra = (f", {result.wire_bytes} wire bytes, {result.bytes_received} bytes, "
+                     f"chunked={result.chunked}, content-encoding={result.content_encoding or 'none'}")
             if not result.chunked:
                 ok = False
                 extra += " <-- NOT CHUNKED"
                 passed -= 1
+        problem = encoding_problem(result, OFFER_ZSTD, resource_type_of(body))
+        if problem:
+            if ok:
+                passed -= 1
+            ok = False
+            extra += f" <-- {problem}"
         print(f"[{'PASS' if ok else 'FAIL'}] {name}: expected {expected}, got {result.status}"
               f"{extra}{(' -- ' + result.text) if result.text else ''}")
     print(f"\n{passed}/{len(scenarios)} scenarios passed.")
@@ -439,7 +501,8 @@ def simulate(base_url, agents, repeat, expected):
     def one(job):
         agent_id, key, _ = job
         want = expected.get(agent_id)
-        result = post_download(base_url, agent_id, key, request_body("config", want["selector"]))
+        result = post_download(base_url, agent_id, key, request_body("config", want["selector"]),
+                               accept_zstd=OFFER_ZSTD)
         return agent_id, result, want
 
     started = time.time()
@@ -449,21 +512,32 @@ def simulate(base_url, agents, repeat, expected):
 
     failures = []
     total_bytes = 0
+    wire_total = 0
+    plain_count = 0
     for agent_id, result, want in results:
         total_bytes += result.bytes_received
+        wire_total += result.wire_bytes
+        problem = None if result.error else encoding_problem(result, OFFER_ZSTD, "config", allow_plain=True)
+        if not result.error and result.status == 200:
+            plain_count += result.content_encoding in ("", "identity")
         if result.error:
             failures.append(f"agent {agent_id}: {result.error}")
         elif result.status != 200:
             failures.append(f"agent {agent_id}: status {result.status} ({result.text})")
         elif not result.chunked:
             failures.append(f"agent {agent_id}: response was not chunked")
+        elif problem:
+            failures.append(f"agent {agent_id}: {problem}")
         elif want["sha256"] and result.sha256 != want["sha256"]:
             failures.append(f"agent {agent_id}: body mismatch -- got {result.sha256[:16]}, "
                             f"expected {want['sha256'][:16]} ({want['path']})")
 
     rate = (total_bytes / (1024 * 1024) / elapsed) if elapsed > 0 else 0
     print(f"  {len(results) - len(failures)}/{len(results)} succeeded in {elapsed:.2f}s "
-          f"({total_bytes / (1024 * 1024):.1f} MiB, {rate:.1f} MiB/s)")
+          f"({total_bytes / (1024 * 1024):.1f} MiB, {wire_total / (1024 * 1024):.1f} MiB on the wire, "
+          f"{rate:.1f} MiB/s)")
+    if OFFER_ZSTD:
+        print(f"  {len(results) - len(failures) - plain_count} compressed, {plain_count} plain (budget)")
     for failure in failures[:20]:
         print(f"  [FAIL] {failure}")
     return not failures
@@ -512,6 +586,9 @@ def main():
     parser.add_argument("--resource-id", default=None,
                         help="Group name or WPK filename. Defaults to 'default' for --resource-type config; "
                              "required for wpk.")
+    parser.add_argument("--zstd", action="store_true",
+                        help="Offer Accept-Encoding: zstd (default: identity). A config answer must then "
+                             "be zstd-compressed and is decompressed once before hashing.")
     parser.add_argument("--all", action="store_true", help="Run every success/failure scenario.")
     parser.add_argument("--simulate", type=int, metavar="N",
                         help="Simulate N enrolled agents downloading concurrently.")
@@ -535,7 +612,8 @@ def main():
                              "skipped with a warning rather than passing for the wrong reason.")
     parser.add_argument("--wpk", default=None, help="WPK filename staged under var/upgrade.")
     args = parser.parse_args()
-    global GLOBAL_PREFIX
+    global GLOBAL_PREFIX, OFFER_ZSTD
+    OFFER_ZSTD = args.zstd
     GLOBAL_PREFIX = resolve_global_prefix(args.global_prefix)
     if args.global_prefix is None and GLOBAL_PREFIX:
         print(f"Global prefix not given; using '{GLOBAL_PREFIX}' from {DEFAULT_MANAGER_CONF}")
@@ -593,14 +671,19 @@ def main():
 
     watcher = ProcWatcher(remoted_pid() if args.watch_rss else None)
     with watcher:
-        result = post_download(args.url, args.agent_id, agent_key, body)
+        result = post_download(args.url, args.agent_id, agent_key, body, accept_zstd=OFFER_ZSTD)
 
     if result.error:
         print(f"<-- FAILED: {result.error}")
         return 1
 
-    print(f"<-- {result.status}  chunked={result.chunked}  content-length={result.content_length}")
-    print(f"    {result.bytes_received} bytes, sha256={result.sha256}")
+    print(f"<-- {result.status}  chunked={result.chunked}  content-length={result.content_length}  "
+          f"content-encoding={result.content_encoding or 'none'}")
+    print(f"    {result.wire_bytes} wire bytes, {result.bytes_received} bytes, sha256={result.sha256}")
+    problem = encoding_problem(result, OFFER_ZSTD, args.resource_type)
+    if problem:
+        print(f"    [FAIL] {problem}")
+        return 1
     if result.text:
         print(f"    {result.text}")
     if args.watch_rss:
