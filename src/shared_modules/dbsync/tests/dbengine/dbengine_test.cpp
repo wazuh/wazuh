@@ -1009,6 +1009,33 @@ TEST_F(DBEngineTest, UpgradeRejectedBySQLiteRecreatesTheDatabase)
     EXPECT_NE(std::string::npos, engine->recreateReason().find("no such column: os_distribution_release"));
 }
 
+TEST_F(DBEngineTest, UpgradeConstraintViolationRecreatesTheDatabase)
+{
+    const auto& mockFactory { std::make_shared<MockSQLiteFactory>() };
+    const auto& mockConnection { std::make_shared<MockConnection>() };
+
+    EXPECT_CALL(*mockFactory, createConnection(_)).Times(2).WillRepeatedly(Return(mockConnection));
+    expectStoredVersion(*mockFactory, 1);
+
+    EXPECT_CALL(*mockConnection, execute("UPGRADE_1"))
+    .WillOnce(Throw(SQLite::sqlite_error {std::make_pair(SQLITE_CONSTRAINT_PRIMARYKEY, "UNIQUE constraint failed: rebuilt.id")}));
+
+    EXPECT_CALL(*mockFactory, createTransaction(_))
+    .WillOnce(Return(ByMove(std::make_unique<MockTransaction>())))
+    .WillOnce(Return(ByMove(std::make_unique<MockTransaction>())));
+
+    expectRecreatedAtVersion2(*mockFactory, *mockConnection);
+
+    std::unique_ptr<SQLiteDBEngine> engine;
+    ASSERT_NO_THROW(engine = std::make_unique<SQLiteDBEngine>(mockFactory,
+                                                              "1",
+                                                              "NNN",
+                                                              DbManagement::PERSISTENT,
+                                                              std::vector<std::string> {"UPGRADE_1"}));
+    EXPECT_NE(std::string::npos, engine->recreateReason().find("could not be upgraded from version 1"));
+    EXPECT_NE(std::string::npos, engine->recreateReason().find("UNIQUE constraint failed: rebuilt.id"));
+}
+
 // A busy database is transient: the error reaches the owner and the database is kept for the
 // next start to upgrade.
 TEST_F(DBEngineTest, TransientUpgradeErrorKeepsTheDatabase)

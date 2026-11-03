@@ -708,11 +708,13 @@ void SQLiteDBEngine::initialize(const std::string&              path,
             }
             catch (const SQLite::sqlite_error& e)
             {
-                // Only a statement SQLite rejects (SQLITE_ERROR: no such column, no such table) means
-                // the schema is not the one the upgrade expects. A busy or locked database, a full
-                // disk or an I/O error is transient: rethrow it instead of deleting a database the
-                // next start can still upgrade. Masked, in case extended result codes are enabled.
-                if (SQLITE_ERROR != (e.id() & 0xff))
+                // A statement SQLite rejects (SQLITE_ERROR: no such column, no such table) means
+                // the schema is not the one the upgrade expects. A constraint failure also means
+                // the stored rows cannot fit the upgraded schema and will fail on every start.
+                // A busy or locked database, a full disk or an I/O error is transient: rethrow it
+                // instead of deleting a database the next start can still upgrade. Masked, in case
+                // extended result codes are enabled.
+                if (SQLITE_ERROR != (e.id() & 0xff) && SQLITE_CONSTRAINT != (e.id() & 0xff))
                 {
                     throw;
                 }
