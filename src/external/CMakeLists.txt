@@ -282,7 +282,9 @@ add_dependencies(ext_libyaml libyaml_external)
 # ------------------------------------------------------------------------------
 # Static, PIC, installed inside its own tree so the pool tarball carries the
 # include/ and lib/ layout curl's --with-brotli=DIR expects. CMAKE_INSTALL_LIBDIR
-# is pinned to lib: GNUInstallDirs would pick lib64 on the x86_64 builders.
+# is pinned to lib and must stay so: curl 8.20's configure looks only in DIR/lib
+# (its $libsuff is never set) and stops with "BROTLI libs and/or directories were
+# not found", while GNUInstallDirs would pick lib64 on the x86_64 builders.
 # Other platforms keep a no-op target so curl's DEPENDS resolves everywhere.
 
 if(IS_LINUX)
@@ -1688,7 +1690,11 @@ if(IS_LINUX
   list(APPEND WAZUHEXT_CURL_DEPS ext_zstd)
 endif()
 
-# curl's Brotli decoder (Linux only); dec before common for the static link order
+# curl's Brotli decoder (Linux only); dec before common for the static link order.
+# Unlike zstd it is linked whole and exported: no other module carries its own
+# brotli (the engine and wazuh-manager-certs link this same pool archive), so an
+# exported BrotliDecoder* cannot bind to a different copy, and the MinGW clash
+# that keeps zstd hidden does not apply to a Linux-only dependency.
 if(IS_LINUX)
   list(APPEND WAZUHEXT_WHOLE_LIBS ext_brotlidec ext_brotlicommon)
 endif()
