@@ -480,13 +480,13 @@ int main()
         std::atomic<bool> stop {false};
         std::thread writer(
             [&stop]()
+        {
+            while (!stop.load())
             {
-                while (!stop.load())
-                {
-                    fim_db_clear_container_contexts();
-                    fim_db_set_container_context("cid-race", "{\"container\":{\"id\":\"cid-race\"}}");
-                }
-            });
+                fim_db_clear_container_contexts();
+                fim_db_set_container_context("cid-race", "{\"container\":{\"id\":\"cid-race\"}}");
+            }
+        });
 
         int malformed = 0;
 

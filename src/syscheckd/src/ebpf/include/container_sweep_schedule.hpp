@@ -47,66 +47,67 @@
 namespace fim_container_events
 {
 
-class SweepSchedule
-{
-    public:
-        using Clock = std::chrono::steady_clock;
-        using TimePoint = Clock::time_point;
+    class SweepSchedule
+    {
+        public:
+            using Clock = std::chrono::steady_clock;
+            using TimePoint = Clock::time_point;
 
-        /* Zero or less means no periodic deadline — see the header. */
-        explicit SweepSchedule(int interval_ms) noexcept
-            : m_interval_ms(interval_ms)
-        {
-        }
+            /* Zero or less means no periodic deadline — see the header. */
+            explicit SweepSchedule(int interval_ms) noexcept
+                : m_interval_ms(interval_ms)
+            {
+            }
 
-        /* Begin a period. Called when the resolver loop starts, and again after
-         * every sweep however it was triggered, so the interval measures time
-         * since the last sweep rather than since the last scheduled one. An
-         * out-of-band sweep is a sweep; following it with another one an
-         * instant later would be a whole-node pass for nothing.
-         *
-         * Until the first call there is no deadline and due() is false, which
-         * is why the loop restarts it before its first iteration rather than
-         * relying on the constructor: a deadline measured from whenever the
-         * Impl happened to be built would be wrong by however long start()
-         * took to open the engine. */
-        void restart(TimePoint now)
-        {
-            m_next = periodic() ? std::optional<TimePoint> {now + std::chrono::milliseconds {m_interval_ms}}
-                                : std::nullopt;
-        }
+            /* Begin a period. Called when the resolver loop starts, and again after
+             * every sweep however it was triggered, so the interval measures time
+             * since the last sweep rather than since the last scheduled one. An
+             * out-of-band sweep is a sweep; following it with another one an
+             * instant later would be a whole-node pass for nothing.
+             *
+             * Until the first call there is no deadline and due() is false, which
+             * is why the loop restarts it before its first iteration rather than
+             * relying on the constructor: a deadline measured from whenever the
+             * Impl happened to be built would be wrong by however long start()
+             * took to open the engine. */
+            void restart(TimePoint now)
+            {
+                m_next = periodic() ? std::optional<TimePoint> {now + std::chrono::milliseconds {m_interval_ms}}
+                         :
+                         std::nullopt;
+            }
 
-        /* Whether the floor is due. Deliberately const: it does not consume
-         * anything, so a sweep that is due and not performed stays due. The
-         * failure that buys is a repeated sweep — visible, and cheap — rather
-         * than a skipped one, which is invisible and leaves a removed
-         * container's rows in place indefinitely. */
-        [[nodiscard]] bool due(TimePoint now) const
-        {
-            return m_next.has_value() && now >= *m_next;
-        }
+            /* Whether the floor is due. Deliberately const: it does not consume
+             * anything, so a sweep that is due and not performed stays due. The
+             * failure that buys is a repeated sweep — visible, and cheap — rather
+             * than a skipped one, which is invisible and leaves a removed
+             * container's rows in place indefinitely. */
+            [[nodiscard]] bool due(TimePoint now) const
+            {
+                return m_next.has_value() && now >= *m_next;
+            }
 
-        /* The earlier of `other` and the next sweep, for bounding a poll().
-         * Returns `other` unchanged when there is no periodic deadline.
-         *
-         * Needed because the resolver blocks until its container list refresh
-         * is due, and nothing guarantees that deadline is the sooner of the
-         * two: a resolver_interval_ms longer than this interval would
-         * otherwise let the sweep run late by however much it overshot. */
-        [[nodiscard]] TimePoint soonerOf(TimePoint other) const
-        {
-            return (m_next.has_value() && *m_next < other) ? *m_next : other;
-        }
+            /* The earlier of `other` and the next sweep, for bounding a poll().
+             * Returns `other` unchanged when there is no periodic deadline.
+             *
+             * Needed because the resolver blocks until its container list refresh
+             * is due, and nothing guarantees that deadline is the sooner of the
+             * two: a resolver_interval_ms longer than this interval would
+             * otherwise let the sweep run late by however much it overshot. */
+            [[nodiscard]] TimePoint soonerOf(TimePoint other) const
+            {
+                return (m_next.has_value() && *m_next < other) ? *m_next : other;
+            }
 
-        [[nodiscard]] bool periodic() const noexcept
-        {
-            return m_interval_ms > 0;
-        }
+            [[nodiscard]] bool periodic() const noexcept
+            {
+                return m_interval_ms > 0;
+            }
 
-    private:
-        int m_interval_ms;
-        std::optional<TimePoint> m_next;
-};
+        private:
+            int m_interval_ms;
+            std::optional<TimePoint> m_next;
+    };
 
 } // namespace fim_container_events
 

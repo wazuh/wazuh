@@ -525,7 +525,7 @@ TEST(ContainerEventStaging, TheFloorIsNotStarvedByUnendingPathWork)
     Batch batch;
     ASSERT_TRUE(staging.nextBatch(batch, kShortWait));
     EXPECT_EQ(Batch::Lifecycle::sweepAbsent, batch.lifecycle)
-        << "path work was served ahead of the reconciliation floor";
+            << "path work was served ahead of the reconciliation floor";
 }
 
 TEST(ContainerEventStaging, LifecycleWorkIsHeldUntilRelease)

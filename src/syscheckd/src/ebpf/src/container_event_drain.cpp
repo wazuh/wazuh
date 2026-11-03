@@ -125,7 +125,9 @@ namespace fim_container_events
         AdmissionClock::time_point admissionNow()
         {
 #ifdef WAZUH_UNIT_TESTING
+
             if (admission_test_now) return *admission_test_now;
+
 #endif
             return AdmissionClock::now();
         }
@@ -143,7 +145,9 @@ namespace fim_container_events
         }
 
         const auto now = admissionNow();
+
         if (!unavailable_since) unavailable_since = now;
+
         if (!fim_container_admission_snapshot_known() && now - *unavailable_since <= kConsumerOutageBudget)
         {
             return false;
@@ -327,7 +331,7 @@ namespace fim_container_events
      * that the installed snapshot is behind the view, so the next call that can
      * install does, with or without a further change. */
     AdmissionPublish decideAdmissionPublish(bool changed, bool unpublished, bool released, bool enumerated,
-                                             bool sourcesPending)
+                                            bool sourcesPending)
     {
         if (!changed && !unpublished)
         {
@@ -847,6 +851,7 @@ namespace fim_container_events
                          "container discovery falls back to polling every " +
                          std::to_string(config.resolver_interval_ms) + " ms.");
             }
+
             stop_event_fd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
             resolver_thread = std::thread([this] { resolverLoop(); });
         }
@@ -872,7 +877,9 @@ namespace fim_container_events
                 if (now >= next_list)
                 {
                     refreshContainerList();
+
                     if (admission_stop.load(std::memory_order_relaxed)) return;
+
                     reportShedWork();
                     next_list = now + std::chrono::milliseconds(config.resolver_interval_ms);
                 }
@@ -996,6 +1003,7 @@ namespace fim_container_events
         {
             const auto admissionGeneration = fim_container_admission_generation();
             const auto delta = client.listContainersSince(cursor_epoch, cursor_seq);
+
             // Fetch above, apply below. Publication synchronously reconciles
             // file_entry, so the state lock must cover the install as well as
             // reconciliation, but must never cover connector I/O. Keep THIS
@@ -1005,12 +1013,18 @@ namespace fim_container_events
             while (!fim_container_state_trylock())
             {
                 if (admission_stop.load(std::memory_order_relaxed)) return;
+
                 std::this_thread::sleep_for(std::chrono::milliseconds {10});
             }
+
             struct StateUnlock
             {
-                ~StateUnlock() { fim_container_state_unlock(); }
+                ~StateUnlock()
+                {
+                    fim_container_state_unlock();
+                }
             } stateUnlock;
+
             if (admission_stop.load(std::memory_order_relaxed)) return;
 
             const bool releasedHold = noteAdmissionListing(delta.available);
@@ -1479,7 +1493,9 @@ namespace fim_container_events
     bool ContainerEventDrain::start(const DrainConfig& config, ReconcileHandler handler)
     {
         std::lock_guard<std::mutex> lock(m_lifecycle_mutex);
+
         if (m_admission_stopped) return false;
+
         if (m_impl != nullptr) return m_impl->handle != nullptr;
 
         auto impl = new Impl(config);
@@ -1789,6 +1805,7 @@ namespace fim_container_events
     void ContainerEventDrain::release()
     {
         std::lock_guard<std::mutex> lock(m_lifecycle_mutex);
+
         if (m_admission_stopped || m_impl == nullptr) return;
 
         m_impl->staging.release();
@@ -1803,15 +1820,19 @@ namespace fim_container_events
         // stopping whichever thread happens to exist right now.
         std::lock_guard<std::mutex> lock(m_lifecycle_mutex);
         m_admission_stopped = true;
+
         if (m_impl == nullptr) return;
+
         m_impl->admission_stop.store(true, std::memory_order_relaxed);
         m_impl->wakeResolver();
+
         if (m_impl->resolver_thread.joinable()) m_impl->resolver_thread.join();
     }
 
     void ContainerEventDrain::stop()
     {
         std::lock_guard<std::mutex> lock(m_lifecycle_mutex);
+
         if (m_impl == nullptr) return;
 
         Impl* impl = m_impl;
@@ -1835,6 +1856,7 @@ namespace fim_container_events
         /* After the threads, never before: rt_close() detaches and frees everything
          * the handle owns, and the drain thread is inside rt_poll() on it. */
         if (impl->handle != nullptr) rt_close(impl->handle);
+
         impl->handle = nullptr;
 
         if (impl->stop_event_fd >= 0)
@@ -1860,7 +1882,9 @@ namespace fim_container_events
     void ContainerEventDrainTestPeer::advanceAdmissionTime(std::chrono::milliseconds elapsed)
     {
         fim_container_state_lock();
+
         if (!admission_test_now) admission_test_now = AdmissionClock::now();
+
         *admission_test_now += elapsed;
         fim_container_state_unlock();
     }

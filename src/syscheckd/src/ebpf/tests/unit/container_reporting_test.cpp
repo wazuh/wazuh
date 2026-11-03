@@ -58,11 +58,14 @@ namespace
     bool waitFor(const std::function<bool()>& ready, std::chrono::milliseconds timeout)
     {
         const auto deadline = std::chrono::steady_clock::now() + timeout;
+
         while (!ready())
         {
             if (std::chrono::steady_clock::now() >= deadline) return false;
+
             std::this_thread::sleep_for(std::chrono::milliseconds {10});
         }
+
         return true;
     }
 
@@ -245,23 +248,27 @@ extern "C" ssize_t __real_recv(int fd, void* buffer, size_t length, int flags);
 extern "C" int __wrap_connect(int fd, const sockaddr* address, socklen_t length)
 {
     drain_reply_fd = -1;
+
     if (address->sa_family == AF_UNIX && drain_reply_provider
-        && drain_socket_path == reinterpret_cast<const sockaddr_un*>(address)->sun_path)
+            && drain_socket_path == reinterpret_cast<const sockaddr_un*>(address)->sun_path)
     {
         drain_list_reply = drain_reply_provider();
         ++resolver_list_requests;
+
         if (drain_list_reply.empty())
         {
             errno = ECONNREFUSED;
             return -1;
         }
     }
+
     if (address->sa_family == AF_UNIX && !drain_list_reply.empty()
-        && drain_socket_path == reinterpret_cast<const sockaddr_un*>(address)->sun_path)
+            && drain_socket_path == reinterpret_cast<const sockaddr_un*>(address)->sun_path)
     {
         drain_reply_fd = fd;
         return 0;
     }
+
     return __real_connect(fd, address, length);
 }
 
@@ -273,19 +280,25 @@ extern "C" ssize_t __wrap_send(int fd, const void* buffer, size_t length, int fl
 extern "C" ssize_t __wrap_recv(int fd, void* buffer, size_t length, int flags)
 {
     if (fd != drain_reply_fd) return __real_recv(fd, buffer, length, flags);
+
     const auto count = std::min(length, drain_list_reply.size());
     std::memcpy(buffer, drain_list_reply.data(), count);
     drain_list_reply.erase(0, count);
+
     if (on_listing_reply)
     {
         auto callback = std::move(on_listing_reply);
         callback();
     }
+
     return static_cast<ssize_t>(count);
 }
 
 // Deterministic degraded startup, independent of the host's BPF installation.
-extern "C" rt_handle_t __wrap_rt_open(const struct rt_filter*) { return nullptr; }
+extern "C" rt_handle_t __wrap_rt_open(const struct rt_filter*)
+{
+    return nullptr;
+}
 
 extern "C" void __wrap__mdebug1(const char*, int, const char*, const char*, ...) {}
 extern "C" void __wrap__minfo(const char*, int, const char*, const char*, ...) {}
@@ -332,7 +345,7 @@ extern "C" int __wrap_cbaseline_list_containers_ex(const char*,
 {
     ++admission_list_requests;
     EXPECT_TRUE(!listed || fim_container_admission_pending())
-        << "reuse the warm-up-guarded listing outside admission retries";
+            << "reuse the warm-up-guarded listing outside admission retries";
     listed = true;
 
     /* A listing that failed says nothing about its own coverage, matching the
@@ -385,6 +398,7 @@ extern "C" int __wrap_cbaseline_list_containers_ex(const char*,
         auto callback = std::move(on_listing_reply);
         callback();
     }
+
     return static_cast<int>(admission.size());
 }
 
@@ -478,9 +492,10 @@ TEST_F(ContainerReportingTest, ASilentSourcesOmittedContainersKeepTheirStoredRep
     EXPECT_NE(warnings[0].find("stale-container cleanup is not running"), std::string::npos);
 
     const nlohmann::json withheld = {{"container_id", "c"}, {"path", "/etc/three"},
-        {"version", 1}, {"sync", 0}, {"size", 1}};
+        {"version", 1}, {"sync", 0}, {"size", 1}
+    };
     EXPECT_EQ(fim_persist_baseline_row("c:/etc/three", OPERATION_MODIFY, "wazuh-states-fim-files",
-                                      cJSON_Parse(withheld.dump().c_str()), 1), 0)
+                                       cJSON_Parse(withheld.dump().c_str()), 1), 0)
             << "unknown admission must not promote an event-driven update either";
     EXPECT_EQ(persisted.size(), 1u);
 
@@ -839,7 +854,7 @@ TEST(ContainerListRefresh, AnUnkeyedContainerThatDisappearsLeavesTheAdmissionVie
     delta.admitted = {"a", "stuck"};
 
     const auto plan = planListRefresh(
-        delta, {{"a", true}, {"gone", true}, {"stuck", true}}, {}, /*previousUnkeyed=*/{"gone", "stuck"});
+    delta, {{"a", true}, {"gone", true}, {"stuck", true}}, {}, /*previousUnkeyed=*/ {"gone", "stuck"});
 
     ASSERT_TRUE(plan.act);
     EXPECT_EQ(plan.admissionView, (std::map<std::string, bool> {{"a", true}, {"stuck", true}}));
@@ -874,7 +889,7 @@ TEST(ContainerListRefresh, AnUnkeyedContainerThatGetsAKeyStaysInTheView)
     delta.admitted = {"late"};
     delta.events = {keyed};
 
-    const auto plan = planListRefresh(delta, {{"late", true}}, {}, /*previousUnkeyed=*/{"late"});
+    const auto plan = planListRefresh(delta, {{"late", true}}, {}, /*previousUnkeyed=*/ {"late"});
 
     ASSERT_TRUE(plan.act);
     EXPECT_EQ(plan.admissionView.count("late"), 1U) << "keyed, not gone -- and the reply says which";
@@ -896,7 +911,7 @@ TEST(ContainerListRefresh, AReplyThatCannotEnumerateRetiresNothingAndKeepsTheUnk
     delta.complete = false;
     delta.unkeyedKnown = false; // an older container_instances
 
-    const auto plan = planListRefresh(delta, {{"stuck", true}}, {}, /*previousUnkeyed=*/{"stuck"});
+    const auto plan = planListRefresh(delta, {{"stuck", true}}, {}, /*previousUnkeyed=*/ {"stuck"});
 
     ASSERT_TRUE(plan.act);
     ASSERT_FALSE(plan.enumerated);
@@ -979,7 +994,7 @@ TEST(ContainerListRefresh, AnIncompleteResyncStillWithdrawsContainersThatHaveGon
 
     EXPECT_EQ(kinds.count("stuck"), 0U)
             << "a container the resolver cannot key has not gone anywhere; withdrawing it "
-               "turns its next event into an escalation";
+            "turns its next event into an escalation";
     ASSERT_EQ(kinds.count("alive"), 1U);
     EXPECT_EQ(kinds["alive"], CgroupDeltaEvent::Kind::changed);
 }
@@ -1243,7 +1258,7 @@ TEST_F(ContainerReportingTest, AnUnadmittedContainersModificationNeverDemotesARe
     // would drop out of the only query that could ever withdraw it.
     const char* reported = R"({"container_id":"b","path":"/etc/one","version":1,"size":1,"sync":1})";
     EXPECT_EQ(fim_persist_baseline_row("b:/etc/one", OPERATION_MODIFY, "wazuh-states-fim-files",
-                                      cJSON_Parse(reported), 2),
+                                       cJSON_Parse(reported), 2),
               FIM_CONTAINER_SYNC_UNCHANGED)
             << "the stored column must be left for the retraction to find";
     EXPECT_TRUE(persisted.empty()) << "a withheld container still reports nothing";
@@ -1666,7 +1681,9 @@ TEST_F(ContainerReportingTest, AFullBudgetIsNotOfferedItsWithheldRowsAgain)
     // Two reported, one over the ceiling.
     int reported = 0;
 
-    for (const char* path : {"/etc/one", "/etc/two", "/etc/three"})
+    for (const char* path :
+            {"/etc/one", "/etc/two", "/etc/three"
+            })
     {
         reported += (syncFlag("a", path) == 1) ? 1 : 0;
     }
@@ -1847,7 +1864,8 @@ TEST_F(ContainerReportingTest, AnUnreachableConnectorDoesNotLeaveTheNodeHeldForE
     config.connector_socket_path = std::string(directory) + "/connector";
     ContainerEventDrainTestPeer::initialize(config);
     drain_socket_path = config.connector_socket_path;
-    const std::string reply = R"({"status":"ok","containers":[{"container_id":"a","cgroup_id":"11","synced":true},{"container_id":"b","cgroup_id":"12","synced":false}],"admitted":["a"],"known_unkeyed":[]})";
+    const std::string reply =
+        R"({"status":"ok","containers":[{"container_id":"a","cgroup_id":"11","synced":true},{"container_id":"b","cgroup_id":"12","synced":false}],"admitted":["a"],"known_unkeyed":[]})";
     ContainerEventDrain::instance().release();
     drain_list_reply = reply + "\n";
     ContainerEventDrainTestPeer::refresh();
@@ -1927,7 +1945,9 @@ TEST_F(ContainerReportingTest, TheAdmissionListingDoesNotHoldTheRecoveryTransact
     entered.get_future().wait();
     const bool acquired = fim_container_state_trylock();
     EXPECT_TRUE(acquired) << "recovery must not wait behind the listing RPC";
+
     if (acquired) fim_container_state_unlock();
+
     reply.set_value();
     baseline.get();
 }
@@ -1936,7 +1956,7 @@ TEST_F(ContainerReportingTest, AnEngineFailureStillWarnsThatChangesWillNotBeDete
 {
     fim_container_events_start();
     fim_container_events_stop();
-    EXPECT_EQ(std::count_if(warnings.begin(), warnings.end(), [](const auto& warning)
+    EXPECT_EQ(std::count_if(warnings.begin(), warnings.end(), [](const auto & warning)
     {
         return warning.find("changes will NOT be detected after the initial baseline") != std::string::npos;
     }), 1);
@@ -2035,7 +2055,7 @@ TEST_F(ContainerReportingTest, AdmissionPollingContinuesBeyondTheOldDeadlineAndT
     ASSERT_TRUE(waitFor([&] { return resolver_list_requests.load() > beforeOutage + 1; }, std::chrono::seconds {2}));
     EXPECT_EQ(fim_container_admission_pending(), 1);
     ContainerEventDrainTestPeer::advanceAdmissionTime(fim_container_events::kConsumerOutageBudget
-                                                    + std::chrono::milliseconds {1});
+                                                      + std::chrono::milliseconds {1});
     ASSERT_TRUE(waitFor([] { return !fim_container_admission_pending(); }, std::chrono::seconds {2}));
     fim_container_events_stop_admission();
     EXPECT_EQ(syncFlag("a", "/etc/one"), 1);
@@ -2331,12 +2351,12 @@ TEST(ContainerListRefresh, ASilentSourceAllowsNamedVerdictsWithoutAuthorisingAbs
     delta.admittedKnown = true;
     delta.containers = {named};
     const auto plan = planListRefresh(delta, {{"a", true}, {"silent", true}, {"withheld", false}},
-                                     {"a", "silent", "withheld"});
+    {"a", "silent", "withheld"});
 
     EXPECT_FALSE(plan.enumerated);
     EXPECT_FALSE(plan.installWholeList);
     EXPECT_EQ(plan.admissionView, (std::map<std::string, bool>
-                                  {{"a", false}, {"silent", true}, {"withheld", false}}));
+    {{"a", false}, {"silent", true}, {"withheld", false}}));
     ASSERT_EQ(plan.events.size(), 1u);
     EXPECT_NE(plan.events[0].kind, fim_container_events::CgroupDeltaEvent::Kind::removed);
     EXPECT_EQ(decideAdmissionPublish(true, false, true, plan.enumerated, delta.sourcesPending),

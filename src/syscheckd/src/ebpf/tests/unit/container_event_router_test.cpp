@@ -704,7 +704,7 @@ TEST(ContainerEventRouterTest, ARemovedContainerIsStagedForCleanupNotAWalk)
     EXPECT_EQ("container-a", batches[0].container_id);
     EXPECT_EQ(Batch::Lifecycle::containerGone, batches[0].lifecycle);
     EXPECT_FALSE(batches[0].suspect)
-        << "a removal became a walk; a walk may infer deletions from absence and would return 0 anyway";
+            << "a removal became a walk; a walk may infer deletions from absence and would return 0 anyway";
 
     EXPECT_EQ(1ull, f.router.stats().removals);
 }
@@ -768,7 +768,8 @@ TEST(ContainerEventRouterTest, ASnapshotRefreshNeverStagesACleanup)
     for (const auto& batch : DrainBatches(f.staging))
     {
         EXPECT_NE(Batch::Lifecycle::containerGone, batch.lifecycle)
-            << "absence from a snapshot was treated as a removal";
+                << "absence from a snapshot was treated as a removal";
     }
+
     EXPECT_EQ(0ull, f.router.stats().removals);
 }

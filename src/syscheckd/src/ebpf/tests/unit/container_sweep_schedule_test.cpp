@@ -25,9 +25,9 @@ using Ms = std::chrono::milliseconds;
 
 namespace
 {
-/* A fixed origin rather than Clock::now(), so nothing here depends on how long
- * the test itself takes to run. */
-const Clock::time_point T0 {};
+    /* A fixed origin rather than Clock::now(), so nothing here depends on how long
+     * the test itself takes to run. */
+    const Clock::time_point T0 {};
 } // namespace
 
 TEST(SweepScheduleTest, NothingIsDueBeforeTheIntervalHasElapsed)

@@ -54,6 +54,7 @@ bool FIMDB::updateItemIfNeeded(const nlohmann::json& item,
         {
             m_dbsyncHandler->syncRow(item, callbackData);
         }
+
         return true;
     }
 

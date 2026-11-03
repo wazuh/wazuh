@@ -43,20 +43,20 @@ namespace
         return batch;
     }
 
-Batch GoneBatch(const std::string& container_id)
-{
-    Batch batch;
-    batch.container_id = container_id;
-    batch.lifecycle = Batch::Lifecycle::containerGone;
-    return batch;
-}
+    Batch GoneBatch(const std::string& container_id)
+    {
+        Batch batch;
+        batch.container_id = container_id;
+        batch.lifecycle = Batch::Lifecycle::containerGone;
+        return batch;
+    }
 
-Batch SweepBatch()
-{
-    Batch batch;
-    batch.lifecycle = Batch::Lifecycle::sweepAbsent;
-    return batch;
-}
+    Batch SweepBatch()
+    {
+        Batch batch;
+        batch.lifecycle = Batch::Lifecycle::sweepAbsent;
+        return batch;
+    }
 
 } // namespace
 
@@ -197,7 +197,10 @@ TEST(ContainerReconcilePlanTest, ARemovalIsNeverPromotedToAWalk)
     // Walking a container the connector no longer lists returns 0 and achieves
     // nothing. More importantly a walk may authorise deletion by absence, and
     // the removal path must delete only what it was told about.
-    for (const auto& id : {std::string("container-a"), std::string("")})
+    for (const auto& id :
+            {
+                std::string("container-a"), std::string("")
+            })
     {
         const auto request = PlanFor(GoneBatch(id));
         EXPECT_NE(ReconcileMode::rewalkContainer, request.mode);

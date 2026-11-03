@@ -17,13 +17,13 @@
 namespace fim_container_events
 {
 
-using ContainerIdentitySet = std::set<std::string>;
+    using ContainerIdentitySet = std::set<std::string>;
 
-inline bool ContainerIdentitySetChanged(const ContainerIdentitySet& previous,
-                                       const ContainerIdentitySet& current)
-{
-    return previous != current;
-}
+    inline bool ContainerIdentitySetChanged(const ContainerIdentitySet& previous,
+                                            const ContainerIdentitySet& current)
+    {
+        return previous != current;
+    }
 
 } // namespace fim_container_events
 

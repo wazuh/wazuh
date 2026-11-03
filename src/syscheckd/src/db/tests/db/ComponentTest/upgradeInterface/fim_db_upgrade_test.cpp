@@ -295,7 +295,7 @@ TEST_F(FimDbUpgradeTest, AContainerScopedTransactionWorksOnAMigratedDatabase)
     EXPECT_NO_THROW(
     {
         DBSyncTxn txn(dbSync.handle(), txnJson, 0, 100,
-                      [](ReturnTypeCallback, const nlohmann::json&) {});
+        [](ReturnTypeCallback, const nlohmann::json&) {});
     }) << "a container-scoped transaction must be possible once container_id exists";
 }
 
@@ -357,7 +357,8 @@ TEST_F(FimDbUpgradeTest, ADevelopmentDatabaseWithCollidingKeysIsRecreatedInstead
     {
         openThroughDbSync(FRESH_DB_PATH);
         return schemaFingerprint(FRESH_DB_PATH);
-    }());
+    }
+    ());
 }
 
 TEST_F(FimDbUpgradeTest, ADevelopmentContainerRowIsNeverTurnedIntoAHostRow)

@@ -1021,6 +1021,7 @@ namespace
         const auto admissionGeneration = reply.generation;
         const int listed = reply.listed;
         fim_container_events::noteAdmissionListing(listed >= 0);
+
         if (listed < 0) return listed;
 
         // Before the early return below, which a pending reply would otherwise
@@ -1030,6 +1031,7 @@ namespace
         // every agent restart. Holding instead is what leaves each row at the
         // flag the previous run gave it.
         listing.sourcesPending = (listStatus.sources_pending != 0);
+
         if (listStatus.admission_pending != 0)
         {
             listing.settling = true;
@@ -1372,11 +1374,13 @@ namespace
         // behind a connector timeout. A pending reply still carries the sampled
         // generation, so a newer install cannot be overwritten while we wait.
         std::optional<AdmissionReply> admissionReply;
+
         if (request.mode != ReconcileMode::deletePaths
-            && fim_container_admission_is_stale(request.container_id.c_str()))
+                && fim_container_admission_is_stale(request.container_id.c_str()))
         {
             admissionReply = fetchContainerAdmission();
         }
+
         std::lock_guard<std::recursive_mutex> lock(container_state_mutex);
 
         cb_monitored_path_t* paths      = nullptr;

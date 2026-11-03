@@ -59,7 +59,10 @@ namespace fim_container_events
     /* CONSUMER OUTAGE policy: tolerate brief connector failures before the first
      * verdict, but never hold a node indefinitely when the connector is down.
      * This is independent of the producer's admission settlement bound. */
-    constexpr auto kConsumerOutageBudget = std::chrono::seconds {60};
+    constexpr auto kConsumerOutageBudget = std::chrono::seconds
+    {
+        60
+    };
 
     /* Both listing writers call this under the container state lock, including
      * successful pending replies. Returns true only when it releases a hold. */
