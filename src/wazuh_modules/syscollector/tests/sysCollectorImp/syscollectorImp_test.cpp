@@ -8150,27 +8150,32 @@ TEST_F(SyscollectorImpTest, RetractionSeesRowsReportedInTheSamePass)
     module.m_admissionKnown = false;
     module.m_admissionReconciled = false;
 
-    // Unlimited is the whole precondition. With a per-container cap set, a new
-    // row is withheld as it is scanned and only promoted after the listing, so
-    // promotion already sees the admission this pass settled on and a withdrawn
-    // container is simply never promoted. At 0 the row is reported as it is
-    // scanned and its sync=1 is deferred to the end of the pass -- which is the
-    // only way a row the manager already holds can still read sync=0 when the
-    // retraction goes looking for it.
-    module.m_containerDocumentLimits["wazuh-states-inventory-processes"] = 0;
+    // Unlimited rows can report inside the walk, with their sync=1 queued
+    // for the tail. Admission must be installed before that walk starts.
+    module.m_containerDocumentLimits[SYSCOLLECTOR_SYNC_INDEX_PROCESSES] = 0;
+    const nlohmann::json retained = {{"container_id", "b"}, {"pid", "123"}, {"name", "old worker"},
+        {"checksum", "old"}, {"version", 1}, {"sync", 0}
+    };
+    auto seed = SyncRowQuery::builder().table(PROCESSES_TABLE).data(retained).build();
+    module.m_spDBSync->syncRow(seed.query(), [](ReturnTypeCallback, const nlohmann::json&) {});
 
-    // b is withdrawn by the very listing that follows the scan reporting it.
-    // Nothing was known about admission beforehand, so the scan reports it:
-    // "not heard from the connector yet" means report, not withhold.
+    // A previous process refused b. Its stored row changes on the first walk,
+    // but this process must read the refusal before seeing that change.
+    int polls = 0;
+    bool changeAdmissionDuringWalk = false;
     std::map<std::string, bool> admitted = {{"a", true}, {"b", false}};
     containerListHook = [&](cb_container_id_sink_t sink, void* ctx)
     {
+        ++polls;
+
         for (const auto& [id, allowed] : admitted) sink(id.c_str(), allowed, ctx);
 
         return static_cast<int>(admitted.size());
     };
     containerScanHook = [&](cb_dbsync_row_sink_t sink, cb_container_status_sink_t status, void* ctx)
     {
+        EXPECT_EQ(polls, 1) << "one admission poll must precede the walk";
+
         for (const auto& id :
                 {
                     std::string {"a"}, std::string {"b"}
@@ -8181,6 +8186,13 @@ TEST_F(SyscollectorImpTest, RetractionSeesRowsReportedInTheSamePass)
             cb_container_status_t outcome {};
             outcome.container_id = id.c_str();
             status(&outcome, ctx);
+        }
+
+        if (changeAdmissionDuringWalk)
+        {
+            // A verdict may still change after rows have reported. The tail
+            // must write their flags before discharging this new obligation.
+            module.setAdmittedContainers({{"a", true}, {"b", false}});
         }
 
         return 2;
@@ -8199,12 +8211,24 @@ TEST_F(SyscollectorImpTest, RetractionSeesRowsReportedInTheSamePass)
 
     module.runContainerBaselinePass();
 
-    // The DELETE is owed in THIS pass. Retracting from inside the scan read
-    // `WHERE sync=1` before the line that sets it, found nothing for b, and
-    // cleared the latch -- so b's document stayed on the manager with nothing
-    // left that could ever remove it.
-    EXPECT_EQ(std::count(events.begin(), events.end(), OPERATION_DELETE), 1)
-            << "a container withdrawn in the pass that reported it must be retracted in that pass";
+    EXPECT_EQ(events, (std::vector<Operation_t> {OPERATION_CREATE}))
+            << "only a may report; b must produce neither a MODIFY nor a compensating DELETE";
+    EXPECT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"b", 0}}));
+
+    // Keep the post-pass retraction guarantee as well. b is admitted before
+    // the next walk, reports its retained sync=0 row, then loses admission
+    // after the callback but before the queued sync=1 has been written.
+    admitted["b"] = true;
+    changeAdmissionDuringWalk = true;
+    polls = 0;
+    events.clear();
+    auto changed = retained;
+    changed["name"] = "changed again";
+    auto reseed = SyncRowQuery::builder().table(PROCESSES_TABLE).data(changed).build();
+    module.m_spDBSync->syncRow(reseed.query(), [](ReturnTypeCallback, const nlohmann::json&) {});
+    module.runContainerBaselinePass();
+    EXPECT_EQ(events, (std::vector<Operation_t> {OPERATION_MODIFY, OPERATION_DELETE}))
+            << "a row reported before a mid-pass refusal must be retracted after its flag is written";
     EXPECT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"b", 0}}));
     EXPECT_TRUE(module.m_pendingRetractions.empty() && !module.m_globalReconcilePending)
             << "the obligation was discharged, so nothing is owed";
@@ -8645,6 +8669,7 @@ TEST_F(SyscollectorImpTest, APendingVerdictLeavesTheStoredAdmissionAlone)
     module.m_globalReconcilePending = false;
     module.m_admissionKnown = false;
     module.m_admissionReconciled = false;
+    module.m_containerCleanupDeferralLogged = false;
 
     std::map<std::string, bool> admitted = {{"a", true}, {"b", true}};
     const std::set<std::string> scanned = {"a", "b"};
@@ -8799,6 +8824,26 @@ TEST_F(SyscollectorImpTest, APendingVerdictLeavesTheStoredAdmissionAlone)
     EXPECT_FALSE(module.m_admissionPending)
             << "an unreachable connector is not asserting anything, so the hold must not outlive it";
 
+    // A fresh process has no admitted set to compare against. A named
+    // refusal must still retract a previous run's sync=1 document, even when
+    // a permanently silent source keeps the absence sweep deferred for ever.
+    module.m_admittedContainers.clear();
+    module.m_admissionKnown = false;
+    module.m_admissionReconciled = false;
+    module.m_pendingRetractions.clear();
+    module.m_globalReconcilePending = false;
+
+    for (const std::string id :
+            {"b", "absent"
+            })
+    {
+        const nlohmann::json row = {{"container_id", id}, {"pid", "123"}, {"name", "worker"},
+            {"checksum", "sum"}, {"version", 1}, {"sync", 1}
+        };
+        auto seed = SyncRowQuery::builder().table(PROCESSES_TABLE).data(row).build();
+        module.m_spDBSync->syncRow(seed.query(), [](ReturnTypeCallback, const nlohmann::json&) {});
+        ASSERT_TRUE(module.updateSyncFlagInDB({{PROCESSES_TABLE, row}}, 1));
+    }
     containerAdmissionPending = false;
     containerSourcesPending = true;
     containerListHook = [&](cb_container_id_sink_t sink, void* ctx)
@@ -8808,11 +8853,54 @@ TEST_F(SyscollectorImpTest, APendingVerdictLeavesTheStoredAdmissionAlone)
         return static_cast<int>(admitted.size());
     };
     logCapture.clear();
+    events.clear();
     module.runContainerBaselinePass();
     EXPECT_FALSE(logCapture.contains(LOG_WARNING, "could not identify"));
-    EXPECT_TRUE(logCapture.contains(LOG_DEBUG, "source has not enumerated"));
-    EXPECT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"b", 0}}))
-            << "a settled reply from the available source still applies its named refusals";
+    EXPECT_TRUE(logCapture.contains(LOG_WARNING, "stale-container cleanup is not running"));
+    EXPECT_EQ(logCapture.count(LOG_WARNING), 1u);
+    EXPECT_EQ(events, (std::vector<Operation_t> {OPERATION_DELETE}));
+    EXPECT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"absent", 1}, {"b", 0}}))
+            << "the named refusal is retracted; absence from an incomplete reply must leave sync=1 alone";
+    EXPECT_FALSE(module.m_admissionReconciled) << "a scoped pass must leave the global restart reconcile owed";
+    EXPECT_FALSE(module.m_globalReconcilePending);
+    EXPECT_TRUE(module.m_pendingRetractions.empty());
+
+    // The global reconcile remains incomplete while the source is silent, but
+    // the first poll already handled the previous process's named refusals.
+    // An unchanged verdict must not queue another thirteen scoped reads for b.
+    module.setAdmittedContainers(admitted, /*listEnumerates=*/false);
+    EXPECT_TRUE(module.m_pendingRetractions.empty())
+            << "steady refusals must not re-arm scoped checks while global reconciliation is deferred";
+
+    // An unchanged reply must neither repeat the warning nor send another
+    // DELETE. Include the delta path with nothing to walk: it installs named
+    // verdicts without reaching the absence sweep's logging branches at all.
+    containerLifecycleHook = [](cb_lifecycle_sink_t, void*)
+    {
+        return 0;
+    };
+    logCapture.clear();
+    events.clear();
+    module.runContainerBaselinePass(/*delta_only=*/true);
+    module.runContainerBaselinePass();
+    EXPECT_EQ(logCapture.count(LOG_WARNING), 0u);
+    EXPECT_TRUE(events.empty());
+    EXPECT_EQ(flags().at("absent"), 1);
+
+    // Match FIM's once-per-episode warning: enumeration ending the episode
+    // lets a later source outage warn again, including on a delta-only tick.
+    // The complete enumeration names absent too; otherwise that intervening
+    // authoritative reply would legitimately retract it before the next outage.
+    containerSourcesPending = false;
+    admitted["absent"] = true;
+    module.runContainerBaselinePass(/*delta_only=*/true);
+    containerSourcesPending = true;
+    admitted.erase("absent");
+    logCapture.clear();
+    module.runContainerBaselinePass(/*delta_only=*/true);
+    EXPECT_EQ(logCapture.count(LOG_WARNING), 1u);
+    EXPECT_TRUE(logCapture.contains(LOG_WARNING, "stale-container cleanup is not running"));
+    EXPECT_EQ(flags().at("absent"), 1);
 
     containerSourcesPending = false;
     containerUnkeyedKnown = false;
@@ -8833,6 +8921,7 @@ TEST_F(SyscollectorImpTest, APendingVerdictLeavesTheStoredAdmissionAlone)
     module.m_admissionReconciled = false;
     module.m_containerAdmissionWithholding = false;
     module.m_containerRowsPurged = false;
+    module.m_containerCleanupDeferralLogged = false;
 #else
     GTEST_SKIP() << "Container baseline transport is Linux-only";
 #endif
@@ -8883,7 +8972,8 @@ TEST_F(SyscollectorImpTest, APartialListingAtStartupDoesNotArmTheGlobalReconcile
     module.setAdmittedContainers({{"a", true}, {"b", false}}, /*listEnumerates=*/false);
     EXPECT_FALSE(module.m_globalReconcilePending)
             << "a listing that cannot say what it omitted must not authorise the global reconcile";
-    EXPECT_TRUE(module.m_pendingRetractions.empty());
+    EXPECT_EQ(module.m_pendingRetractions, (std::set<std::string> {"b"}))
+            << "an explicit refusal is actionable even without prior in-memory admission";
 
     // A listing that names what it could not key arms it, complete or not: the
     // pass needs to know which containers exist, not which ones are keyed.

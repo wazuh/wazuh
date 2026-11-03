@@ -2647,9 +2647,8 @@ void Syscollector::runContainerBaselinePass(bool delta_only)
     // drop the pointers, then delete the rows that failed validation.
     updateSyncFlagInDB(itemsToUpdateSync, 1);
 
-    // After the flags, and before the promotion that fills freed slots: the scan
-    // above reported this pass's rows against the admission the listing then
-    // replaced, so a container that lost admission mid-pass has rows that only
+    // After the flags, and before the promotion that fills freed slots: a
+    // container that lost admission during this pass can have rows that only
     // became sync=1 on the line above. Retracting from inside the scan would not
     // see them.
     retractDeAdmittedContainers();
@@ -2693,6 +2692,27 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
     }
 
     m_logFunction(LOG_DEBUG_VERBOSE, "Starting container baseline scan");
+
+    // Every container currently known to container_instances, independent of
+    // whether it has a resolvable live PID right now. A container that's
+    // merely stopped is still reported here even though it produces no rows
+    // in the walk — this is what lets the stale sweep below tell "stopped" apart
+    // from "gone" instead of conflating them.
+    // id -> may this container report to the manager. Both answers come from
+    // the same reply on purpose: listing the containers and then asking about
+    // admission separately could straddle a reconcile and attribute one
+    // container's verdict to another.
+    std::map<std::string, bool> discovered;
+    bool listComplete = false;
+    bool unkeyedKnown = false;
+    bool sourcesPending = false;
+    const int listed = pollContainerAdmission(discovered, listComplete, unkeyedKnown, sourcesPending);
+
+    // Apply the verdict BEFORE walking rows. A fresh process has no admission
+    // in memory, so walking first would fail open for a container the previous
+    // run refused, report its changed rows, and retract them at the tail of the
+    // same pass. The one reply also supplies the absence sweep below; polling
+    // again there could give it a different view from the one used by the walk.
 
     // Rows for one container arrive contiguously and are followed by that
     // container's status callback, so a container can be flushed to the DB as
@@ -2931,21 +2951,6 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
                       "were attributed to them.");
     }
 
-    // Every container currently known to container_instances, independent of
-    // whether it has a resolvable live PID right now. A container that's
-    // merely stopped is still reported here even though it produced no rows
-    // above — this is what lets the stale sweep below tell "stopped" apart
-    // from "gone" instead of conflating them.
-    // id -> may this container report to the manager. Both answers come from
-    // the same reply on purpose: listing the containers and then asking about
-    // admission separately could straddle a reconcile and attribute one
-    // container's verdict to another.
-    std::map<std::string, bool> discovered;
-    bool listComplete = false;
-    bool unkeyedKnown = false;
-    bool sourcesPending = false;
-    const int listed = pollContainerAdmission(discovered, listComplete, unkeyedKnown, sourcesPending);
-
     // EVERY known container, admitted or not, keyed or not. The sweep below
     // deletes what is absent from this set, and a container whose rows are
     // merely withheld has not been removed -- leaving it out here would delete
@@ -3012,9 +3017,8 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
         // The verdict applies to the named containers, but the missing source
         // can still account for rows absent from this reply. This is a current
         // connector with incomplete enumeration, not a compatibility failure.
-        m_logFunction(LOG_DEBUG,
-                      "A configured container source has not enumerated; applying named admission verdicts "
-                      "and deferring stale-container cleanup.");
+        // pollContainerAdmission() warns once when it installs that verdict,
+        // including on delta ticks that never reach this absence sweep.
     }
     else if (!unkeyedKnown && !listComplete)
     {
@@ -5218,9 +5222,24 @@ int Syscollector::pollContainerAdmission(std::map<std::string, bool>& discovered
 
     if (listed >= 0 && listStatus.admission_pending == 0)
     {
-        // Complete OR able to say what it could not key: either way the reply
-        // names every container that exists, which is all admission needs.
+        // Named verdicts apply even when a source has not enumerated. Only an
+        // enumerating reply authorises the global, absence-based reconcile.
         setAdmittedContainers(discovered, listComplete || unkeyedKnown);
+
+        bool warnCleanupDeferred = false;
+        {
+            std::lock_guard<std::mutex> lock(m_limitsMutex);
+            warnCleanupDeferred = sourcesPending && !m_containerCleanupDeferralLogged;
+            m_containerCleanupDeferralLogged = sourcesPending;
+        }
+
+        if (warnCleanupDeferred)
+        {
+            m_logFunction(LOG_WARNING,
+                          "Container inventory: admission has settled but a configured container source has not enumerated; "
+                          "stale-container cleanup is not running. Inventory for containers that no longer exist is "
+                          "retained until all configured sources enumerate.");
+        }
     }
 
     return listed;
@@ -5264,6 +5283,28 @@ void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& disc
         }
     }
 
+    // The first settled poll must also account for sync=1 rows a previous
+    // process reported: the admitted set is empty at startup, so the transition
+    // loop below cannot see those losses. A named refusal is a decision even
+    // when another source has not enumerated, and the global reconcile may stay
+    // deferred for ever. Queue only those explicitly refused ids, never absences.
+    //
+    // After this first poll the transition loop owns every later refusal. A
+    // withheld container cannot gain sync=1 rows, so re-queuing it on every poll
+    // would only repeat empty scoped reads across all thirteen tables. Use
+    // m_admissionKnown, not m_admissionReconciled: a silent source can keep the
+    // global reconciliation incomplete for the life of the process.
+    if (!m_admissionKnown)
+    {
+        for (const auto& [containerId, isAdmitted] : discovered)
+        {
+            if (!isAdmitted)
+            {
+                m_pendingRetractions.insert(containerId);
+            }
+        }
+    }
+
     // WHICH containers lost admission, not merely that one did. Recording the ids
     // is what lets the discharge below read only their rows: the alternative is a
     // `WHERE sync=1 AND container_id<>''` over all thirteen tables, which on a node
@@ -5289,20 +5330,20 @@ void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& disc
     m_admittedContainers = std::move(admitted);
     m_admissionKnown = true;
 
-    // A container that just lost admission always needs retracting. A cap that is
-    // merely still biting does not: once the stored flags have been reconciled,
-    // nothing can have reported a withheld row since -- every path that sets sync=1
-    // asks isContainerAdmittedLocked() first. Without that latch a biting cap would
-    // re-read every container row of all thirteen tables on every single scan, under
-    // m_limitsMutex, to find the nothing it found last time.
+    // The first poll and later admission losses queue scoped checks above. The
+    // GLOBAL check is owed only until the stored flags have been reconciled:
+    // nothing can have reported a withheld row since -- every path that sets
+    // sync=1 asks isContainerAdmittedLocked() first. Without that latch a biting
+    // cap would re-read every container row of all thirteen tables on every scan,
+    // under m_limitsMutex, to find the nothing it found last time.
     //
     // The obligation is remembered rather than acted on here, and the caller
     // discharges it once the pass has written its sync flags.
     //
-    // This runs from inside the scan, BEFORE those flags are written: the scan
-    // reports a container's rows against the admission this call is about to
-    // replace, and queues their sync=1 for the end of the pass. Retracting from
-    // here would therefore read `WHERE sync=1` while this pass's rows are still
+    // This may run before the pass's flags are written: a row reported under
+    // an earlier verdict can still have its sync=1 queued for the tail of the
+    // pass when admission changes. Retracting from here would therefore read
+    // `WHERE sync=1` while this pass's rows are still
     // 0 and miss exactly the rows that were just reported under an admission
     // that no longer holds -- and then clear the latch, so nothing would retry.
     // The manager would keep documents for a container the agent has stopped
@@ -5362,8 +5403,8 @@ void Syscollector::retractDeAdmittedContainers()
     const auto owed = m_pendingRetractions;
 
     // One scoped read per container that actually owes something. The global form
-    // survives for the restart case alone: there the stored flags, not the admitted
-    // set, are the only record of what was reported, so there is no id to scope by.
+    // survives for the restart case alone: the stored flags are the only record of
+    // what an absent container reported, so no named verdict supplies its scope.
     std::vector<std::string> rowFilters;
 
     if (globalPass)
@@ -5496,13 +5537,12 @@ bool Syscollector::isContainerAdmittedLocked(const std::string& containerId) con
     // every container was capped. Reached only when the connector has NOT said
     // it is settling -- one too old to say so, or one not yet reached at all.
     //
-    // This must stay fail-open even when a verdict IS expected, because a
-    // container pass writes each row's flag from inside the scan and only
-    // establishes admission afterwards. Holding here left every row of the
-    // first pass at sync=0 with nothing to lift them, since promotion needs a
-    // configured budget. The narrower thing that actually needed guarding --
-    // promoting rows a PREVIOUS process left withheld, before this one has
-    // heard any verdict -- is handled in promoteItemsAfterScanLocked().
+    // Keep the unheard case fail-open here even when a verdict IS expected.
+    // The container pass polls before walking, but an unavailable connector
+    // still leaves no decision to apply. Holding at this per-row gate would
+    // withhold the whole first pass. The narrower hold -- promoting rows a
+    // PREVIOUS process left withheld before this one has heard a verdict --
+    // belongs in promoteItemsAfterScanLocked() and syncFilterRequired().
     if (!m_admissionKnown)
     {
         return true;

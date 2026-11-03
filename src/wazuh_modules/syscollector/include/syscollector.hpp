@@ -968,6 +968,11 @@ class EXPORTED Syscollector final
         /// every single agent restart.
         bool                                                                     m_admissionPending {false};
 
+        // Warn once per continuous sources_pending episode, after admission
+        // settles. A named verdict can be applied while absence still says
+        // nothing about containers owned by a source that has not enumerated.
+        bool m_containerCleanupDeferralLogged {false};
+
         // True when at least one known container is being withheld, i.e. the
         // cap is actually biting. Kept separately because the re-send paths
         // need to know that SOMETHING can hold a row at sync=0 without having
@@ -1003,11 +1008,10 @@ class EXPORTED Syscollector final
         // walked the whole node to find nothing at all.
         std::set<std::string> m_pendingRetractions;
 
-        // The one obligation the set above cannot express. After a restart the stored
-        // sync=1 flags have never been checked against admission in THIS process, and
-        // the containers that need taking back are exactly the ones the set never saw
-        // lose admission, because it was empty when they did. That case, and only that
-        // case, still needs the global pass -- once per process.
+        // After a restart the stored sync=1 flags have never been checked against
+        // admission in THIS process. Named refusals can be retracted individually,
+        // but only an enumerating listing can also account for absent containers.
+        // That remaining obligation needs the global pass -- once per process.
         bool m_globalReconcilePending {false};
 
         // Mutex for thread-safe access to limits and counts
