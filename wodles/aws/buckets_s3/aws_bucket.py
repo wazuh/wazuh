@@ -771,7 +771,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                         f'+++ The "{self.discard_regex.pattern}" regex found a match in the "{self.discard_field}" '
                         f'field. The event will be skipped.', 2)
                     continue
-                else:
+                elif self.discard_field and self.discard_regex:
                     aws_tools.debug(
                         f'+++ The "{self.discard_regex.pattern}" regex did not find a match in the '
                         f'"{self.discard_field}" field. The event will be processed.', 3)
