@@ -52,10 +52,9 @@ void fim_run_container_baseline(void);
  *
  * The consumer does NOT act on anything until fim_container_events_release().
  *
- * No-op, with a debug line, when the eBPF engine is unavailable, its ABI does
- * not match, or the host is cgroup v1 — none of which are startup failures.
- * Container FIM then relies on scheduled baselines alone, exactly as it does
- * today.
+ * Warns when the eBPF engine is unavailable, its ABI does not match, or the
+ * host is cgroup v1 — none of which are startup failures. Container FIM then
+ * keeps a startup snapshot; release retries admission without another walk.
  */
 void fim_container_events_start(void);
 
@@ -67,11 +66,18 @@ void fim_container_events_start(void);
  * container's open scoped transaction silently lost 502 of 504 rows on a real
  * node, which is why the gate exists rather than relying on the two rarely
  * overlapping. Safe to call when fim_container_events_start() did nothing.
+ * Returns promptly after a failed engine start too: a temporary worker retries
+ * admission for at most 35 seconds and reconciles stored rows without re-walking.
+ * The worker is stopped and joined by fim_container_events_stop().
  */
 void fim_container_events_release(void);
 
 /**
- * @brief Stop the drain and close the engine. Idempotent.
+ * @brief Stop and join the admission retry and drain, then close the engine.
+ *
+ * Idempotent. Interrupts the retry's poll wait and joins any in-flight admission
+ * refresh/reconciliation before returning; call before tearing down the database
+ * or the bridge's borrowed host state.
  */
 void fim_container_events_stop(void);
 

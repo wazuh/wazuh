@@ -8,7 +8,15 @@
 #include "container_baseline_fim.h"
 #include "container_baseline_fim_bridge.h"
 #include "db.h"
+#include "container_event_drain.hpp"
+#include "rt_engine.h"
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
+#include <atomic>
+#include <chrono>
 #include <cstdarg>
+#include <thread>
 #include <json.hpp>
 #include <map>
 #include <string>
@@ -27,6 +35,26 @@ namespace
     std::vector<std::string> warnings;
     bool listed = false;
     bool connector_available = true;
+    int pending_replies = 0;
+    std::size_t baseline_walks = 0;
+    std::atomic<std::size_t> admission_list_requests {0};
+    std::atomic<bool> admission_retry_expired {false};
+
+    bool waitFor(const std::function<bool()>& ready, std::chrono::milliseconds timeout)
+    {
+        const auto deadline = std::chrono::steady_clock::now() + timeout;
+        while (!ready())
+        {
+            if (std::chrono::steady_clock::now() >= deadline) return false;
+            std::this_thread::sleep_for(std::chrono::milliseconds {10});
+        }
+        return true;
+    }
+
+    std::string drain_socket_path;
+    std::string drain_list_reply;
+    int drain_reply_fd = -1;
+    std::function<void()> on_listing_reply;
 
     /* Whether the hooked listing claims to be the whole node. True is the
      * ordinary case; false models container_instances still resolving. */
@@ -72,6 +100,14 @@ namespace
                 warnings.clear();
                 listed = false;
                 connector_available = true;
+                pending_replies = 0;
+                baseline_walks = 0;
+                admission_list_requests = 0;
+                admission_retry_expired = false;
+                drain_socket_path.clear();
+                drain_list_reply.clear();
+                drain_reply_fd = -1;
+                on_listing_reply = {};
                 list_complete = true;
                 sources_pending = false;
                 unkeyed.clear();
@@ -92,6 +128,7 @@ namespace
 
             void TearDown() override
             {
+                fim_container_events_stop();
                 fim_db_teardown();
             }
 
@@ -158,6 +195,43 @@ extern "C" int __wrap_fim_db_set_sync_flag(char* table_name, pending_sync_item_t
     return __real_fim_db_set_sync_flag(table_name, item, sync_value);
 }
 
+// Successful list replies use the socket boundary so the real client parses
+// them. With no scripted reply, connect reaches the real missing socket and
+// exercises unavailability without requiring a listening socket or eBPF.
+extern "C" int __real_connect(int fd, const sockaddr* address, socklen_t length);
+extern "C" ssize_t __real_send(int fd, const void* buffer, size_t length, int flags);
+extern "C" ssize_t __real_recv(int fd, void* buffer, size_t length, int flags);
+
+extern "C" int __wrap_connect(int fd, const sockaddr* address, socklen_t length)
+{
+    drain_reply_fd = -1;
+    if (address->sa_family == AF_UNIX && !drain_list_reply.empty()
+        && drain_socket_path == reinterpret_cast<const sockaddr_un*>(address)->sun_path)
+    {
+        drain_reply_fd = fd;
+        return 0;
+    }
+    return __real_connect(fd, address, length);
+}
+
+extern "C" ssize_t __wrap_send(int fd, const void* buffer, size_t length, int flags)
+{
+    return fd == drain_reply_fd ? static_cast<ssize_t>(length) : __real_send(fd, buffer, length, flags);
+}
+
+extern "C" ssize_t __wrap_recv(int fd, void* buffer, size_t length, int flags)
+{
+    if (fd != drain_reply_fd) return __real_recv(fd, buffer, length, flags);
+    const auto count = std::min(length, drain_list_reply.size());
+    std::memcpy(buffer, drain_list_reply.data(), count);
+    drain_list_reply.erase(0, count);
+    if (auto callback = std::move(on_listing_reply)) callback();
+    return static_cast<ssize_t>(count);
+}
+
+// Deterministic degraded startup, independent of the host's BPF installation.
+extern "C" rt_handle_t __wrap_rt_open(const struct rt_filter*) { return nullptr; }
+
 extern "C" void __wrap__mdebug1(const char*, int, const char*, const char*, ...) {}
 extern "C" void __wrap__minfo(const char*, int, const char*, const char*, ...) {}
 extern "C" void __wrap__merror(const char*, int, const char*, const char*, ...) {}
@@ -169,6 +243,10 @@ extern "C" void __wrap__mwarn(const char*, int, const char*, const char* format,
     vsnprintf(message, sizeof(message), format, args);
     va_end(args);
     warnings.emplace_back(message);
+    if (warnings.back().find("stopping the degraded-start admission retry") != std::string::npos)
+    {
+        admission_retry_expired = true;
+    }
 }
 
 extern "C" int __wrap_fim_collect_container_monitored_paths(cb_monitored_path_t** paths, size_t* count)
@@ -191,7 +269,9 @@ extern "C" int __wrap_cbaseline_list_containers_ex(const char*,
                                                    void* ctx,
                                                    cb_list_status_t* out_status)
 {
-    EXPECT_FALSE(listed) << "reuse the warm-up-guarded listing";
+    ++admission_list_requests;
+    EXPECT_TRUE(!listed || fim_container_admission_pending())
+        << "reuse the warm-up-guarded listing outside admission retries";
     listed = true;
 
     /* A listing that failed says nothing about its own coverage, matching the
@@ -229,8 +309,17 @@ extern "C" int __wrap_cbaseline_list_containers_ex(const char*,
         out_status->complete = complete && !sources_pending ? 1 : 0;
         out_status->unkeyed_known = unkeyed_known && !sources_pending ? 1 : 0;
         out_status->sources_pending = sources_pending ? 1 : 0;
+
+        if (pending_replies > 0)
+        {
+            --pending_replies;
+            out_status->admission_pending = 1;
+            out_status->complete = 0;
+            out_status->unkeyed_known = 0;
+        }
     }
 
+    if (auto callback = std::move(on_listing_reply)) callback();
     return static_cast<int>(admission.size());
 }
 
@@ -242,6 +331,7 @@ extern "C" int __wrap_cbaseline_run_fim_dbsync(const char*,
                                                cb_rate_limit_fn,
                                                void* ctx)
 {
+    ++baseline_walks;
     EXPECT_TRUE(listed) << "admission must precede the first stored row";
 
     for (const auto& [id, paths] : files)
@@ -266,7 +356,11 @@ TEST_F(ContainerReportingTest, ASettledVerdictAppliesTheCapWhileAnotherSourceIsS
     sources_pending = true;
     admission = {{"a", true}, {"b", false}};
     files = {{"a", {"/etc/one"}}, {"b", {"/etc/two"}}};
-    fim_container_set_admission_pending(1);
+    pending_replies = 1;
+    fim_run_container_baseline();
+    ASSERT_EQ(fim_container_admission_pending(), 1);
+    EXPECT_TRUE(warnings.empty()) << "normal startup settlement is quiet";
+    listed = false;
     fim_run_container_baseline();
 
     EXPECT_EQ(fim_container_admission_pending(), 0);
@@ -275,7 +369,13 @@ TEST_F(ContainerReportingTest, ASettledVerdictAppliesTheCapWhileAnotherSourceIsS
     EXPECT_EQ(syncFlag("a", "/etc/one"), 1);
     EXPECT_EQ(syncFlag("b", "/etc/two"), 0);
     EXPECT_EQ(persisted, (std::vector<std::pair<std::string, int>> {{"a:/etc/one", OPERATION_CREATE}}));
-    EXPECT_TRUE(warnings.empty()) << "a silent source is not an old connector";
+    ASSERT_EQ(warnings.size(), 1u);
+    EXPECT_NE(warnings[0].find("stale-container cleanup is not running"), std::string::npos);
+    EXPECT_EQ(warnings[0].find("does not report"), std::string::npos) << "not an old connector";
+
+    listed = false;
+    fim_run_container_baseline();
+    EXPECT_EQ(warnings.size(), 1u) << "a silent source must not warn on every pass";
 }
 
 TEST_F(ContainerReportingTest, ASilentSourcesOmittedContainersKeepTheirStoredReportingFlags)
@@ -303,7 +403,8 @@ TEST_F(ContainerReportingTest, ASilentSourcesOmittedContainersKeepTheirStoredRep
     EXPECT_NE(fim_container_is_admitted("b"), 0);
     EXPECT_NE(fim_container_is_admitted("c"), 0);
     EXPECT_EQ(persisted, (std::vector<std::pair<std::string, int>> {{"a:/etc/one", OPERATION_DELETE}}));
-    EXPECT_TRUE(warnings.empty());
+    ASSERT_EQ(warnings.size(), 1u);
+    EXPECT_NE(warnings[0].find("stale-container cleanup is not running"), std::string::npos);
 
     const nlohmann::json withheld = {{"container_id", "c"}, {"path", "/etc/three"},
         {"version", 1}, {"sync", 0}, {"size", 1}};
@@ -1664,12 +1765,225 @@ TEST_F(ContainerReportingTest, APendingVerdictHoldsRatherThanFailingOpenAtAColdS
 // path did before the flag existed.
 TEST_F(ContainerReportingTest, AnUnreachableConnectorDoesNotLeaveTheNodeHeldForEver)
 {
-    fim_container_set_admission_pending(1);
+    using fim_container_events::ContainerEventDrain;
+    using fim_container_events::ContainerEventDrainTestPeer;
+    char directory[] = "/tmp/fim-admission-XXXXXX";
+    ASSERT_NE(::mkdtemp(directory), nullptr);
+    fim_container_events::DrainConfig config;
+    config.connector_socket_path = std::string(directory) + "/connector";
+    ContainerEventDrainTestPeer::initialize(config);
+    drain_socket_path = config.connector_socket_path;
+    const std::string reply = R"({"status":"ok","containers":[{"container_id":"a","cgroup_id":"11","synced":true},{"container_id":"b","cgroup_id":"12","synced":false}],"admitted":["a"],"known_unkeyed":[]})";
+    ContainerEventDrain::instance().release();
+    drain_list_reply = reply + "\n";
+    ContainerEventDrainTestPeer::refresh();
+    ASSERT_EQ(fim_container_is_admitted("b"), 0);
+    ASSERT_EQ(ContainerEventDrainTestPeer::mappedContainers(), (std::set<std::string> {"a", "b"}));
+
+    // The baseline stores a row while held; an unavailable drain poll must
+    // promote it once released, using the installed answer rather than an
+    // empty replacement. No filesystem re-walk is involved.
+    files["a"] = {"/etc/one"};
+    pending_replies = 1;
+    fim_run_container_baseline();
+    ASSERT_EQ(syncFlag("a", "/etc/one"), 0);
+    ASSERT_EQ(fim_container_admission_pending(), 1);
+    persisted.clear();
+    ContainerEventDrainTestPeer::refresh();
+
+    EXPECT_EQ(fim_container_admission_pending(), 0);
+    EXPECT_NE(fim_container_is_admitted("a"), 0);
+    EXPECT_EQ(fim_container_is_admitted("b"), 0) << "the installed refusal survives";
+    EXPECT_EQ(fim_container_admission_is_stale("b"), 0);
+    EXPECT_EQ(syncFlag("a", "/etc/one"), 1);
+    EXPECT_EQ(ContainerEventDrainTestPeer::mappedContainers(), (std::set<std::string> {"a", "b"}));
+
+    // Another writer replaced the bridge while the resolver was unreachable.
+    // Its own view has not changed, but the reachable answer must still land.
+    const char* known[] = {"a", "b"};
+    fim_container_set_admission(known, 2, nullptr, 0);
     ASSERT_EQ(fim_container_is_admitted("a"), 0);
+    drain_list_reply = reply + "\n";
+    ContainerEventDrainTestPeer::refresh();
+    EXPECT_NE(fim_container_is_admitted("a"), 0);
+    EXPECT_EQ(fim_container_is_admitted("b"), 0);
+    EXPECT_EQ(syncFlag("a", "/etc/one"), 1);
+    EXPECT_EQ(baseline_walks, 1u);
+    ContainerEventDrain::instance().stop();
+    EXPECT_EQ(::rmdir(directory), 0);
+}
 
-    fim_container_set_admission_pending(0);
+TEST_F(ContainerReportingTest, AnUnavailablePollWaitsForReleaseBeforeReconcilingStoredRows)
+{
+    using fim_container_events::ContainerEventDrain;
+    using fim_container_events::ContainerEventDrainTestPeer;
+    fim_container_events::DrainConfig config;
+    config.connector_socket_path = "/tmp/fim-admission-no-such-connector";
+    ContainerEventDrainTestPeer::initialize(config);
+    files["a"] = {"/etc/one"};
+    pending_replies = 1;
+    fim_run_container_baseline();
+    ASSERT_EQ(syncFlag("a", "/etc/one"), 0);
+    const auto queries = distinct_id_queries;
 
-    EXPECT_NE(fim_container_is_admitted("a"), 0) << "back to fail-open, not stuck withholding";
+    ContainerEventDrainTestPeer::refresh();
+
+    EXPECT_EQ(fim_container_admission_pending(), 0);
+    EXPECT_EQ(distinct_id_queries, queries) << "the walk has not released reconciliation";
+    EXPECT_EQ(syncFlag("a", "/etc/one"), 0);
+    ContainerEventDrain::instance().release();
+    ContainerEventDrainTestPeer::refresh();
+    EXPECT_EQ(syncFlag("a", "/etc/one"), 1);
+    EXPECT_EQ(baseline_walks, 1u);
+}
+
+TEST_F(ContainerReportingTest, AFailedDrainRetriesOnlyAdmissionAfterTheStartupWalk)
+{
+    admission = {{"a", true}, {"b", false}};
+    files = {{"a", {"/etc/one"}}, {"b", {"/etc/two"}}};
+    pending_replies = 2;
+    sources_pending = true;
+    fim_container_events_start();
+    ASSERT_FALSE(fim_container_events::ContainerEventDrain::instance().running());
+    fim_run_container_baseline();
+    ASSERT_EQ(syncFlag("a", "/etc/one"), 0);
+    ASSERT_EQ(syncFlag("b", "/etc/two"), 0);
+    ASSERT_TRUE(persisted.empty());
+    listed = false;
+
+    const auto released = std::chrono::steady_clock::now();
+    fim_container_events_release();
+    EXPECT_LT(std::chrono::steady_clock::now() - released, std::chrono::milliseconds {250})
+        << "main must return to starting realtime, whodata and audit";
+    fim_container_events_release(); // A repeated release must not spawn another worker.
+    ASSERT_TRUE(waitFor([] { return !fim_container_admission_pending(); }, std::chrono::seconds {3}));
+    fim_container_events_stop(); // Join before reading the rows or callback collections.
+
+    EXPECT_EQ(admission_list_requests.load(), 3u);
+    EXPECT_EQ(fim_container_admission_pending(), 0);
+    EXPECT_EQ(syncFlag("a", "/etc/one"), 1);
+    EXPECT_EQ(syncFlag("b", "/etc/two"), 0);
+    EXPECT_EQ(persisted, (std::vector<std::pair<std::string, int>> {{"a:/etc/one", OPERATION_CREATE}}));
+    EXPECT_EQ(baseline_walks, 1u) << "settlement must never trigger another filesystem walk";
+    EXPECT_EQ(std::count_if(warnings.begin(), warnings.end(), [](const auto& warning)
+    {
+        return warning.find("stale-container cleanup is not running") != std::string::npos;
+    }), 1) << "the admission-only retry also makes persistent cleanup deferral visible";
+}
+
+TEST_F(ContainerReportingTest, AFailedDrainReleasesTheHoldWhenItsRetryFindsTheConnectorUnavailable)
+{
+    const char* known[] = {"a", "b"};
+    const char* admitted[] = {"a"};
+    fim_container_set_admission(known, 2, admitted, 1);
+    files = {{"a", {"/etc/one"}}, {"b", {"/etc/two"}}};
+    pending_replies = 1;
+    fim_container_events_start();
+    fim_run_container_baseline();
+    ASSERT_EQ(syncFlag("a", "/etc/one"), 0);
+    ASSERT_EQ(syncFlag("b", "/etc/two"), 0);
+    connector_available = false;
+
+    fim_container_events_release();
+    ASSERT_TRUE(waitFor([] { return !fim_container_admission_pending(); }, std::chrono::seconds {3}));
+    fim_container_events_stop();
+
+    EXPECT_EQ(admission_list_requests.load(), 2u);
+    EXPECT_EQ(syncFlag("a", "/etc/one"), 1);
+    EXPECT_EQ(syncFlag("b", "/etc/two"), 0);
+    EXPECT_EQ(fim_container_admission_is_stale("b"), 0) << "the installed snapshot survives";
+    EXPECT_EQ(baseline_walks, 1u);
+}
+
+TEST_F(ContainerReportingTest, StoppingAFailedDrainInterruptsItsRetryWithoutWaitingForTheStateLock)
+{
+    pending_replies = 1000;
+    fim_container_events_start();
+    fim_run_container_baseline();
+    const auto requests = admission_list_requests.load();
+
+    // A concurrent recovery may hold the state lock. The worker must neither
+    // block main on release nor queue behind that recovery during shutdown.
+    fim_container_state_lock();
+    fim_container_events_release();
+    std::this_thread::sleep_for(std::chrono::milliseconds {600});
+    const auto stopped = std::chrono::steady_clock::now();
+    fim_container_events_stop();
+    const auto elapsed = std::chrono::steady_clock::now() - stopped;
+    fim_container_state_unlock();
+
+    EXPECT_LT(elapsed, std::chrono::milliseconds {250});
+    EXPECT_EQ(admission_list_requests.load(), requests);
+    std::this_thread::sleep_for(std::chrono::milliseconds {600});
+    EXPECT_EQ(admission_list_requests.load(), requests) << "stop has joined all admission work";
+    EXPECT_EQ(fim_container_admission_pending(), 1) << "shutdown invents no admission verdict";
+}
+
+TEST_F(ContainerReportingTest, ADegradedAdmissionRetryStopsAtItsOwnDeadline)
+{
+    pending_replies = 1000; // The connector never settles, even beyond its own grace.
+    fim_container_events_start();
+    fim_run_container_baseline();
+    const auto released = std::chrono::steady_clock::now();
+    fim_container_events_release();
+    ASSERT_TRUE(waitFor([] { return admission_retry_expired.load(); }, std::chrono::seconds {38}));
+    fim_container_events_stop();
+    const auto elapsed = std::chrono::steady_clock::now() - released;
+
+    EXPECT_GE(elapsed, std::chrono::seconds {35});
+    EXPECT_LT(elapsed, std::chrono::seconds {38});
+    EXPECT_EQ(fim_container_admission_pending(), 1) << "expiry is not a settled verdict";
+    EXPECT_EQ(baseline_walks, 1u);
+    const auto requests = admission_list_requests.load();
+    EXPECT_GT(requests, 1u);
+    std::this_thread::sleep_for(std::chrono::milliseconds {600});
+    EXPECT_EQ(admission_list_requests.load(), requests) << "the wall-clock deadline stops polling";
+    EXPECT_EQ(std::count_if(warnings.begin(), warnings.end(), [](const auto& warning)
+    {
+        return warning.find("stopping the degraded-start admission retry") != std::string::npos;
+    }), 1);
+}
+
+TEST_F(ContainerReportingTest, ReleaseDoesNotCreateAnAdmissionWorkerWithoutAFailedEngineStart)
+{
+    fim_container_set_admission_pending(1);
+    fim_container_events_release();
+    std::this_thread::sleep_for(std::chrono::milliseconds {600});
+    fim_container_events_stop();
+    EXPECT_EQ(admission_list_requests.load(), 0u);
+    EXPECT_EQ(fim_container_admission_pending(), 1);
+}
+
+TEST_F(ContainerReportingTest, TheDrainWarnsOnceWhenSettlementStillLeavesASourceSilent)
+{
+    using fim_container_events::ContainerEventDrain;
+    using fim_container_events::ContainerEventDrainTestPeer;
+    fim_container_events::DrainConfig config;
+    config.connector_socket_path = "/tmp/fim-admission-silent-source-test";
+    drain_socket_path = config.connector_socket_path;
+    ContainerEventDrainTestPeer::initialize(config);
+    ContainerEventDrain::instance().release();
+    fim_container_set_admission(nullptr, 0, nullptr, 0);
+    warnings.clear();
+
+    drain_list_reply = "{\"status\":\"ok\",\"containers\":[],\"admission_pending\":true,\"sources_pending\":true}\n";
+    ContainerEventDrainTestPeer::refresh();
+    EXPECT_TRUE(warnings.empty());
+
+    const std::string settled = "{\"status\":\"ok\",\"containers\":[],\"sources_pending\":true}\n";
+    drain_list_reply = settled;
+    ContainerEventDrainTestPeer::refresh();
+    ASSERT_EQ(warnings.size(), 1u);
+    EXPECT_NE(warnings[0].find("stale-container cleanup is not running"), std::string::npos);
+    drain_list_reply = settled;
+    ContainerEventDrainTestPeer::refresh();
+    EXPECT_EQ(warnings.size(), 1u);
+
+    // A baseline that sees the same still-silent source shares the warning;
+    // it must not add a second one after the resolver already said it.
+    sources_pending = true;
+    fim_run_container_baseline();
+    EXPECT_EQ(warnings.size(), 1u);
 }
 
 // The hold must end AT the install, not before it.
@@ -1693,6 +2007,65 @@ TEST_F(ContainerReportingTest, TheHoldEndsAtomicallyWithTheVerdictItWaitedFor)
 
     EXPECT_EQ(fim_container_is_admitted("refused"), 0) << "held before, refused after; never admitted in between";
     EXPECT_NE(fim_container_is_admitted("kept"), 0);
+}
+
+// The request starts under one generation, a newer verdict arrives, and only
+// then does the older pending reply return. The hook models that interleaving
+// without relying on thread scheduling; the real bridge install advances the
+// generation that the listing writer sampled before issuing its request.
+TEST_F(ContainerReportingTest, AnOlderBaselinePendingReplyCannotRearmANewerVerdict)
+{
+    pending_replies = 1;
+    on_listing_reply = []
+    {
+        const char* known[] = {"a", "b"};
+        const char* admitted[] = {"a"};
+        fim_container_set_admission(known, 2, admitted, 1);
+    };
+    const auto generation = fim_container_admission_generation();
+    fim_run_container_baseline();
+
+    EXPECT_GT(fim_container_admission_generation(), generation);
+    EXPECT_EQ(fim_container_admission_pending(), 0);
+    EXPECT_NE(fim_container_is_admitted("a"), 0);
+    EXPECT_EQ(fim_container_is_admitted("b"), 0);
+
+    // Knowing a verdict is not permission to ignore a later source's barrier.
+    listed = false;
+    pending_replies = 1;
+    fim_run_container_baseline();
+    EXPECT_EQ(fim_container_admission_pending(), 1);
+    fim_container_set_admission_pending(0);
+}
+
+TEST_F(ContainerReportingTest, AnOlderDrainPendingReplyCannotRearmANewerVerdict)
+{
+    using fim_container_events::ContainerEventDrain;
+    using fim_container_events::ContainerEventDrainTestPeer;
+    fim_container_events::DrainConfig config;
+    config.connector_socket_path = "/tmp/fim-admission-generation-test";
+    drain_socket_path = config.connector_socket_path;
+    ContainerEventDrainTestPeer::initialize(config);
+    ContainerEventDrain::instance().release();
+    const std::string pending = R"({"status":"ok","containers":[],"admission_pending":true})";
+    drain_list_reply = pending + "\n";
+    on_listing_reply = []
+    {
+        const char* known[] = {"a", "b"};
+        const char* admitted[] = {"a"};
+        fim_container_set_admission(known, 2, admitted, 1);
+    };
+    ContainerEventDrainTestPeer::refresh();
+    EXPECT_EQ(fim_container_admission_pending(), 0);
+    EXPECT_NE(fim_container_is_admitted("a"), 0);
+    EXPECT_EQ(fim_container_is_admitted("b"), 0);
+
+    drain_list_reply = pending + "\n";
+    ContainerEventDrainTestPeer::refresh();
+    EXPECT_EQ(fim_container_admission_pending(), 1) << "a fresh late-source barrier still holds";
+    drain_list_reply = "{\"status\":\"ok\",\"containers\":[],\"known_unkeyed\":[]}\n";
+    ContainerEventDrainTestPeer::refresh();
+    EXPECT_EQ(fim_container_admission_pending(), 0) << "an unchanged empty view still publishes settlement";
 }
 
 TEST_F(ContainerReportingTest, ASupersededReconcileLeavesReportingFlagsAloneWhileAdmissionIsPending)

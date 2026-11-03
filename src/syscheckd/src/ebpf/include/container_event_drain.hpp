@@ -48,6 +48,7 @@
 
 #include <cstddef>
 #include <functional>
+#include <set>
 #include <string>
 
 namespace fim_container_events
@@ -150,9 +151,22 @@ namespace fim_container_events
             ContainerEventDrain(const ContainerEventDrain&) = delete;
             ContainerEventDrain& operator=(const ContainerEventDrain&) = delete;
 
+            friend struct ContainerEventDrainTestPeer;
             struct Impl;
             Impl* m_impl{nullptr};
     };
+
+#ifdef WAZUH_UNIT_TESTING
+    /* Exercise the resolver's real request and refresh without loading eBPF or
+     * starting threads. The map and admission state live across refreshes just
+     * as they do in the resolver loop. */
+    struct ContainerEventDrainTestPeer
+    {
+        static void initialize(const DrainConfig& config);
+        static void refresh();
+        static std::set<std::string> mappedContainers();
+    };
+#endif
 
 } // namespace fim_container_events
 

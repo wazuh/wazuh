@@ -150,6 +150,7 @@ add_executable(container_reporting_test
     ../../src/container_baseline_fim.cpp
     ../../src/container_baseline_fim_bridge.c
     ../../src/container_event_drain.cpp)
+target_compile_definitions(container_reporting_test PRIVATE WAZUH_UNIT_TESTING)
 target_link_libraries(container_reporting_test
     debug gtestd debug gtest_maind
     optimized gtest optimized gtest_main
@@ -159,6 +160,10 @@ target_link_options(container_reporting_test PRIVATE
     -Wl,--wrap=fim_free_container_monitored_paths
     -Wl,--wrap=fim_container_baseline_available
     -Wl,--wrap=cbaseline_list_containers_ex
+    -Wl,--wrap=connect
+    -Wl,--wrap=send
+    -Wl,--wrap=recv
+    -Wl,--wrap=rt_open
     -Wl,--wrap=cbaseline_run_fim_dbsync
     -Wl,--wrap=fim_db_set_sync_flag
     -Wl,--wrap=fim_db_get_distinct_container_ids

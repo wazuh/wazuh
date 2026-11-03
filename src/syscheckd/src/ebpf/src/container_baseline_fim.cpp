@@ -42,7 +42,10 @@
 
 #include <json.hpp>
 
+#include <algorithm>
+#include <chrono>
 #include <climits>
+#include <condition_variable>
 #include <cstdio>
 #include <cstdlib>
 #include <map>
@@ -51,6 +54,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <thread>
 #include <unordered_set>
 #include <vector>
 
@@ -887,6 +891,7 @@ namespace
     int refreshContainerAdmission(ContainerListing& listing)
     {
         cb_list_status_t listStatus {};
+        const auto admissionGeneration = fim_container_admission_generation();
         const int listed =
             cbaseline_list_containers_ex(CB_DEFAULT_CONNECTOR_SOCKET_PATH, container_id_sink, &listing, &listStatus);
 
@@ -911,7 +916,7 @@ namespace
         if (listStatus.admission_pending != 0)
         {
             listing.settling = true;
-            fim_container_set_admission_pending(1);
+            fim_container_set_admission_pending_if_current(admissionGeneration);
             return listed;
         }
 
@@ -973,6 +978,131 @@ namespace
 
         return listed;
     }
+
+    /* No resolver survives a failed engine start. After the baseline closes
+     * its transaction, one temporary worker owns the admission-only retry; the
+     * main thread must return to starting realtime, whodata and audit promptly.
+     *
+     * The connector normally settles on ADMISSION_SETTLE_GRACE: 30 seconds,
+     * declared in container_instances/ci_impl/src/cache/metadata_store.hpp and
+     * applied by metadata_store.cpp's armOrExpireSettleDeadlineLocked(). Allow
+     * five seconds for startup/polling skew, then stop even if pending persists.
+     * Expiry is not a verdict: keep the hold and snapshot rather than promoting
+     * refused rows or making an incomplete list authority for stale cleanup. */
+    class AdmissionRetry
+    {
+        public:
+            ~AdmissionRetry()
+            {
+                stop();
+            }
+
+            void arm()
+            {
+                std::lock_guard<std::mutex> lock(m_lifecycle_mutex);
+                m_required = true;
+            }
+
+            void start()
+            {
+                std::lock_guard<std::mutex> lock(m_lifecycle_mutex);
+                if (!m_required || m_thread.joinable()) return;
+                m_required = false;
+
+                {
+                    std::lock_guard<std::mutex> wait_lock(m_wait_mutex);
+                    m_stopped = false;
+                }
+
+                const auto deadline = Clock::now() + std::chrono::seconds {35};
+                m_thread = std::thread([this, deadline] { run(deadline); });
+            }
+
+            void stop()
+            {
+                // Serialize lifecycle calls, but never join with the worker's
+                // wait mutex or container_state_mutex held: it needs those to
+                // notice shutdown or finish an already-started reconciliation.
+                std::lock_guard<std::mutex> lock(m_lifecycle_mutex);
+                m_required = false;
+                {
+                    std::lock_guard<std::mutex> wait_lock(m_wait_mutex);
+                    m_stopped = true;
+                }
+                m_wakeup.notify_all();
+                if (m_thread.joinable()) m_thread.join();
+            }
+
+        private:
+            using Clock = std::chrono::steady_clock;
+
+            void run(Clock::time_point deadline)
+            {
+                try
+                {
+                    std::unique_lock<std::mutex> wait_lock(m_wait_mutex);
+                    while (!m_stopped)
+                    {
+                        if (Clock::now() >= deadline)
+                        {
+                            LogWarn("Container FIM: admission is still pending after 35 seconds; stopping the "
+                                    "degraded-start admission retry and retaining the admission hold and snapshot.");
+                            return;
+                        }
+
+                        // The condition variable lets stop() interrupt the wait;
+                        // a sleep would delay shutdown on every pending reply.
+                        const auto next_poll = std::min(deadline, Clock::now() + std::chrono::milliseconds {500});
+                        if (m_wakeup.wait_until(wait_lock, next_poll, [this] { return m_stopped; })) return;
+                        if (Clock::now() >= deadline) continue;
+
+                        // Recovery or another baseline can own this mutex. Do
+                        // not queue behind it beyond the deadline or shutdown;
+                        // try again at the next interruptible polling interval.
+                        std::unique_lock<std::recursive_mutex> state_lock(container_state_mutex, std::try_to_lock);
+                        if (!state_lock.owns_lock()) continue;
+                        wait_lock.unlock();
+
+                        if (!fim_container_admission_pending()) return;
+
+                        ContainerListing listing;
+                        refreshContainerAdmission(listing);
+                        if (!fim_container_admission_pending())
+                        {
+                            // A real install already reconciles synchronously.
+                            // Unavailability/legacy coverage instead releases
+                            // only the hold, so those paths still owe the stored
+                            // rows a reconciliation against the retained answer.
+                            if (!listing.complete && !listing.unkeyedKnown && !listing.sourcesPending)
+                            {
+                                fim_container_reconcile_admission();
+                            }
+                            return;
+                        }
+
+                        state_lock.unlock();
+                        wait_lock.lock();
+                    }
+                }
+                catch (const std::exception& err)
+                {
+                    LogError("Container FIM admission retry failed: %s", err.what());
+                }
+                catch (...)
+                {
+                    LogError("Container FIM admission retry failed with an unknown error.");
+                }
+            }
+
+            std::mutex m_lifecycle_mutex;
+            std::mutex m_wait_mutex;
+            std::condition_variable m_wakeup;
+            std::thread m_thread;
+            bool m_required {false};
+            bool m_stopped {true};
+    };
+
+    AdmissionRetry admission_retry;
 
     /// Is `path` inside the configured monitored path `root`?
     ///
@@ -1496,6 +1626,9 @@ extern "C" void fim_run_container_baseline(void)
         }
         else if (!listing.complete && !listing.unkeyedKnown && listing.sourcesPending)
         {
+            // The admission install warns once for this deferral, shared with
+            // the resolver and the admission-only degraded-start retry. Keep
+            // the per-pass detail here at DEBUG; no timeout makes absence safe.
             LogDebug("Container FIM baseline: a configured container source has not enumerated; applying named "
                      "admission verdicts and deferring stale-container cleanup.");
         }
@@ -1613,6 +1746,7 @@ extern "C" void fim_container_events_start(void)
     {
         if (!fim_container_events::ContainerEventDrain::instance().start(config, ReconcileBatch))
         {
+            admission_retry.arm();
             // A WARNING, not a debug line, and only reachable once we know the
             // operator asked for container FIM. Without the drain there is no
             // change detection at all: fim_run_container_baseline() is called
@@ -1629,13 +1763,16 @@ extern "C" void fim_container_events_start(void)
                     "directories are configured, so this is a degradation, not a no-op.");
             return;
         }
+
     }
     catch (const std::exception& err)
     {
+        admission_retry.arm();
         LogError("Container eBPF drain failed to start: %s", err.what());
     }
     catch (...)
     {
+        admission_retry.arm();
         LogError("Container eBPF drain failed to start with an unknown error.");
     }
 }
@@ -1655,9 +1792,26 @@ extern "C" void fim_container_events_release(void)
     fim_container_baseline_first_scan_done();
 
     fim_container_events::ContainerEventDrain::instance().release();
+
+    // Only an actual failed engine start arms this worker. Thread creation is
+    // the only work on main(); all admission I/O and reconciliation run after
+    // the walk, with an independent deadline and an interruptible stop.
+    try
+    {
+        admission_retry.start();
+    }
+    catch (const std::exception& err)
+    {
+        LogError("Container FIM admission retry failed to start: %s", err.what());
+    }
+    catch (...)
+    {
+        LogError("Container FIM admission retry failed to start with an unknown error.");
+    }
 }
 
 extern "C" void fim_container_events_stop(void)
 {
+    admission_retry.stop();
     fim_container_events::ContainerEventDrain::instance().stop();
 }

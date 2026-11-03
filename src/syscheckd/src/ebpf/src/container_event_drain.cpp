@@ -326,7 +326,7 @@ namespace fim_container_events
             plan.unkeyed = previousUnkeyed;
         }
 
-        /* unreachable: nothing was obtained. Change NOTHING -- install()
+        /* unreachable: nothing was obtained. Keep the map -- install()
          * replaces the positive map, so applying an empty list from a connector
          * that simply did not answer would un-attribute every container at once
          * and turn the next event from each into an escalation. */
@@ -893,10 +893,44 @@ namespace fim_container_events
          *                      reply, so this costs no extra round trip. */
         void refreshContainerList()
         {
+            const auto admissionGeneration = fim_container_admission_generation();
             const auto delta = client.listContainersSince(cursor_epoch, cursor_seq);
             auto plan = planListRefresh(delta, admission_view, router.mappedContainerIds(), admission_unkeyed);
 
-            if (!plan.act) return;
+            if (!plan.act)
+            {
+                /* Unavailability withdraws the promise of a verdict, not the
+                 * last verdict itself. Keep the snapshot, map and cursor, but
+                 * release a hold the baseline may have armed. Reconciliation
+                 * still owes the rows stored during that hold a promotion pass;
+                 * before release it must wait for the walk's transaction.
+                 *
+                 * The next reachable reply must publish even if its view is
+                 * unchanged: the baseline may have installed a different answer
+                 * while this resolver could not reach the connector. */
+                admission_reconcile_pending = admission_reconcile_pending || fim_container_admission_pending();
+                fim_container_set_admission_pending(0);
+                admission_unpublished = true;
+
+                if (staging.released() && admission_reconcile_pending)
+                {
+                    fim_container_reconcile_admission();
+                    admission_reconcile_pending = false;
+                }
+
+                return;
+            }
+
+            if (delta.admissionPending)
+            {
+                /* A late source may reopen settlement after a verdict. Only
+                 * reject pending when THIS request predates a newer install,
+                 * rather than ignoring every pending reply once we know one.
+                 * Remember the wait even if the view does not change, so its
+                 * settled answer is still published on a quiet node. */
+                fim_container_set_admission_pending_if_current(admissionGeneration);
+                admission_unpublished = true;
+            }
 
             admission_unkeyed = std::move(plan.unkeyed);
 
@@ -947,6 +981,9 @@ namespace fim_container_events
          * loses the update that was deferred. */
         bool admission_unpublished {false};
 
+        /* An unavailable poll released a hold while the walk was still open. */
+        bool admission_reconcile_pending {false};
+
         /* Coverage is part of the installed answer too. A source can finish
          * enumerating without changing any verdict; that still has to clear
          * the bridge's exception for ids the snapshot does not name. */
@@ -975,7 +1012,8 @@ namespace fim_container_events
         void publishAdmission(const std::map<std::string, bool>& updated, bool enumerated, bool settling,
                               bool sourcesPending)
         {
-            const bool changed = (updated != admission_view || sourcesPending != admission_sources_pending);
+            const bool changed = (updated != admission_view || sourcesPending != admission_sources_pending
+                                  || (!settling && fim_container_admission_pending()));
             admission_view = updated;
             admission_sources_pending = sourcesPending;
 
@@ -1021,6 +1059,7 @@ namespace fim_container_events
             }
 
             admission_unpublished = false;
+            admission_reconcile_pending = false;
             admission_deferral_logged = false;
 
             std::vector<const char*> known;
@@ -1592,5 +1631,24 @@ namespace fim_container_events
 
         delete impl;
     }
+
+#ifdef WAZUH_UNIT_TESTING
+    void ContainerEventDrainTestPeer::initialize(const DrainConfig& config)
+    {
+        auto& drain = ContainerEventDrain::instance();
+        drain.stop();
+        drain.m_impl = new ContainerEventDrain::Impl(config);
+    }
+
+    void ContainerEventDrainTestPeer::refresh()
+    {
+        ContainerEventDrain::instance().m_impl->refreshContainerList();
+    }
+
+    std::set<std::string> ContainerEventDrainTestPeer::mappedContainers()
+    {
+        return ContainerEventDrain::instance().m_impl->router.mappedContainerIds();
+    }
+#endif
 
 } // namespace fim_container_events

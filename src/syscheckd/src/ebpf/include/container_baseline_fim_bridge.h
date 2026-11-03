@@ -253,6 +253,15 @@ int fim_container_is_admitted(const char* container_id);
  * everything". */
 void fim_container_set_admission_pending(int pending);
 
+/* Sample before issuing a listing, then apply its pending reply only if no
+ * verdict has landed in the meantime. An unconditional pending write would
+ * re-arm the hold behind that newer verdict and make its queued reconcile
+ * return without doing the work. This still permits a fresh listing to reopen
+ * the barrier for a source that enumerates late. Both writers share the counter
+ * advanced by fim_container_set_admission_ex(), including allocation failure. */
+uint64_t fim_container_admission_generation(void);
+void fim_container_set_admission_pending_if_current(uint64_t generation);
+
 /**
  * @brief Whether the connector's admission verdict is still pending.
  *

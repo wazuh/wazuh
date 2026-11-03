@@ -696,10 +696,24 @@ static int container_admission_known = 0;
  * the two sets above. */
 static int container_admission_pending = 0;
 
+/* The baseline and resolver issue listings independently. A pending reply that
+ * was already in flight when either writer installed a verdict cannot reopen
+ * its hold. Guarded by synced_docs_mutex, sampled before the request and tested
+ * under that same lock when pending is applied; a later request may still open
+ * the barrier again when a late source enumerates. */
+static uint64_t container_admission_generation = 0;
+
 /* A settled verdict can still omit a runtime that has never enumerated. The
  * sets describe only the ids it named; keeping that coverage beside them is
  * what stops a silent source being read as a refusal of all its containers. */
 static int container_sources_pending = 0;
+
+/* Both the baseline and the resolver install settled verdicts here. Share the
+ * warning with the snapshot rather than logging independently from each caller:
+ * a silent source may last for the life of the agent, and every resolver poll
+ * must not repeat its consequence. Pending replies never install a verdict, so
+ * ordinary startup settlement stays quiet. Guarded by synced_docs_mutex. */
+static int container_cleanup_deferral_logged = 0;
 
 /* A set of container ids, or NULL when it could not be built. */
 static OSHash* container_id_set(const char** container_ids, size_t count)
@@ -766,6 +780,7 @@ void fim_container_set_admission_ex(const char** known_ids,
          * for as long as the allocations kept failing. */
         synced_docs_lock();
         container_admission_pending = 0;
+        ++container_admission_generation;
         synced_docs_unlock();
         return;
     }
@@ -777,9 +792,19 @@ void fim_container_set_admission_ex(const char** known_ids,
     container_admitted = admitted_set;
     container_admission_known = 1;
     container_sources_pending = (sources_pending != 0);
-    /* A real verdict ends the wait, whatever the last reply claimed. */
+    const int warn_cleanup_deferred = container_sources_pending && !container_cleanup_deferral_logged;
+    container_cleanup_deferral_logged = container_sources_pending;
+    /* A real verdict ends the wait, whatever the last reply claimed. Both
+     * listing writers reach this install, so they advance the same generation. */
     container_admission_pending = 0;
+    ++container_admission_generation;
     synced_docs_unlock();
+
+    if (warn_cleanup_deferred) {
+        mwarn("Container FIM: admission has settled but a configured container source has not enumerated; "
+              "stale-container cleanup is not running. FIM state for containers that no longer exist is "
+              "retained until all configured sources enumerate.");
+    }
 
     if (previous_known != NULL) {
         OSHash_Free(previous_known);
@@ -799,6 +824,23 @@ void fim_container_set_admission_pending(int pending)
 
     /* No reconcile. There is nothing to reconcile TO: a pending reply carries
      * no verdict, and the rows must stay exactly as they are. */
+}
+
+uint64_t fim_container_admission_generation(void)
+{
+    synced_docs_lock();
+    const uint64_t generation = container_admission_generation;
+    synced_docs_unlock();
+    return generation;
+}
+
+void fim_container_set_admission_pending_if_current(uint64_t generation)
+{
+    synced_docs_lock();
+    if (container_admission_generation == generation) {
+        container_admission_pending = 1;
+    }
+    synced_docs_unlock();
 }
 
 int fim_container_admission_pending(void)
