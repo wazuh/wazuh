@@ -30,6 +30,8 @@ import botocore
 import urllib3
 
 UNAVAILABLE_OBJECT_ERROR_CODES = ('NoSuchKey', 'NoSuchBucket', 'InvalidBucketName', 'KeyTooLongError')
+# Same characters as str.lstrip() removes
+WHITESPACE_REGEX = re.compile(r'\s*')
 
 
 def is_object_unavailable(error: Exception) -> bool:
@@ -175,9 +177,11 @@ class AWSSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler):
             Extracted JSON event.
         """
         decoder = json.JSONDecoder()
-        while data:
-            json_data, json_index = decoder.raw_decode(data)
-            data = data[json_index:].lstrip()
+        # Move a position forward instead of slicing the data, which copied the rest of it for every event
+        position = 0
+        while position < len(data):
+            json_data, position = decoder.raw_decode(data, position)
+            position = WHITESPACE_REGEX.match(data, position).end()
             yield json_data
 
     @staticmethod

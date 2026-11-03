@@ -4,6 +4,7 @@
 
 import copy
 import gzip
+import io
 import os
 import socket
 import sqlite3
@@ -534,94 +535,198 @@ def _mock_context_manager(mock_obj):
     return mock_obj
 
 
-@patch('io.BytesIO')
-def test_wazuh_integration_decompress_file(mock_io):
-    """Test 'decompress_file' method calls the expected function for a determined file type, and
-    that it does not eagerly read/discard the decompressed content itself -- the content is
-    read exactly once, by the caller, inside the 'with' block."""
+TEST_OBJECT_TEXT = '{"event": "data1"}\n{"event": "data2"}\n'
+
+
+def _zip_content(text: str, compress_type: int = zipfile.ZIP_DEFLATED) -> bytes:
+    """Return a zip archive with a single member holding the given text."""
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w') as zip_file:
+        zip_file.writestr('name', text, compress_type=compress_type)
+    return buffer.getvalue()
+
+
+def _corrupt_gzip_content() -> bytes:
+    """Return a gzip stream whose corruption (a wrong CRC) is only detected once it is read."""
+    content = bytearray(gzip.compress(b'content'))
+    content[-8] ^= 0xFF
+    return bytes(content)
+
+
+def _corrupt_zip_content() -> bytes:
+    """Return a zip archive whose corruption (a wrong CRC) is only detected once its member is read."""
+    return _zip_content('content', zipfile.ZIP_STORED).replace(b'content', b'CONTENT')
+
+
+def _mocked_integration_with_object(content: bytes):
+    """Return a WazuhIntegration whose client returns an object with the given content."""
     integration = utils.get_mocked_wazuh_integration()
     integration.client = MagicMock()
+    integration.client.get_object.return_value = {'Body': io.BytesIO(content)}
     # Instance that inherits from WazuhIntegration sets the attribute bucket in its constructor
     integration.bucket = utils.TEST_BUCKET
+    return integration
+
+
+@pytest.mark.parametrize('log_key, content', [
+    ('test.gz', gzip.compress(TEST_OBJECT_TEXT.encode())),
+    ('test.zip', _zip_content(TEST_OBJECT_TEXT)),
+    ('test.tar', TEST_OBJECT_TEXT.encode()),
+])
+def test_wazuh_integration_decompress_file(log_key, content):
+    """Test 'decompress_file' method yields the decompressed text of the object for a determined file type."""
+    integration = _mocked_integration_with_object(content)
+
+    with integration.decompress_file(integration.bucket, log_key) as f:
+        assert f.read() == TEST_OBJECT_TEXT
+
+    integration.client.get_object.assert_called_once_with(Bucket=utils.TEST_BUCKET, Key=log_key)
+
+
+def test_wazuh_integration_decompress_file_reads_the_content_only_when_the_caller_does():
+    """Test 'decompress_file' does not eagerly read/discard the decompressed content itself -- the content is
+    read once, by the caller, inside the 'with' block."""
+    integration = _mocked_integration_with_object(b'')
 
     with patch('gzip.open') as mock_gzip_open:
         gzip_mock = _mock_context_manager(mock_gzip_open.return_value)
+        gzip_mock.seekable.return_value = True
+        gzip_mock.read1.side_effect = [b'content', b'']
         with integration.decompress_file(integration.bucket, 'test.gz') as f:
-            assert f is gzip_mock
             gzip_mock.read.assert_not_called()  # nothing read yet before the caller's own read
-            f.read()
+            gzip_mock.read1.assert_not_called()
+            assert f.read() == 'content'
 
-    integration.client.get_object.assert_called_once()
     mock_gzip_open.assert_called_once()
-    gzip_mock.read.assert_called_once()  # read exactly once -- no discarded pre-read, no re-read
+    assert gzip_mock.read1.call_count == 2  # the content, then the end of the stream -- no re-read
     gzip_mock.seek.assert_not_called()  # no rewind-after-discard needed anymore
 
-    with patch('zipfile.ZipFile') as mock_zip, patch('io.TextIOWrapper') as mock_io_text:
-        zip_mock = _mock_context_manager(mock_zip.return_value)
-        zip_mock.namelist.return_value = ['name']
-        zip_mock.open.return_value = "file contents"
-        text_mock = _mock_context_manager(mock_io_text.return_value)
-        with integration.decompress_file(integration.bucket, 'test.zip') as f:
-            assert f is text_mock
-    zip_mock.namelist.assert_called_once()
-    zip_mock.open.assert_called_with('name')
-    mock_io_text.assert_called_with("file contents")
 
-    with patch('io.TextIOWrapper') as mock_io_text:
-        text_mock = _mock_context_manager(mock_io_text.return_value)
-        with integration.decompress_file(integration.bucket, 'test.tar') as f:
-            assert f is text_mock
-        mock_io_text.assert_called_once()
-
-
-@patch('io.BytesIO')
-def test_wazuh_integration_decompress_file_catches_corruption_raised_by_the_caller(mock_io):
+@pytest.mark.parametrize('log_key, content', [
+    ('test.gz', _corrupt_gzip_content()),
+    ('test.zip', _corrupt_zip_content()),
+])
+def test_wazuh_integration_decompress_file_catches_corruption_raised_by_the_caller(log_key, content):
     """Test decompress_file() catches gzip.BadGzipFile/zipfile.BadZipFile raised by the CALLER's
     own read inside the 'with' block, not only failures from opening the stream. The corruption
     check used to be a discarded pre-read done by decompress_file() itself; it is now the
     caller's real read, and this proves that corruption is still handled gracefully instead of
     crashing the wodle with an uncaught exception three call frames away.
     """
-    integration = utils.get_mocked_wazuh_integration()
-    integration.client = MagicMock()
-    integration.bucket = utils.TEST_BUCKET
+    integration = _mocked_integration_with_object(content)
 
-    with patch('gzip.open') as mock_gzip_open, pytest.raises(SystemExit) as e:
-        gzip_mock = _mock_context_manager(mock_gzip_open.return_value)
-        gzip_mock.read.side_effect = gzip.BadGzipFile('CRC check failed')
-        with integration.decompress_file(integration.bucket, 'test.gz') as f:
+    with pytest.raises(SystemExit) as e:
+        with integration.decompress_file(integration.bucket, log_key) as f:
             f.read()  # mirrors e.g. json.load(f) in a real caller, far from decompress_file()
     assert e.value.code == utils.DECOMPRESS_FILE_ERROR_CODE
 
-    with patch('zipfile.ZipFile') as mock_zip, patch('io.TextIOWrapper') as mock_io_text, \
-            pytest.raises(SystemExit) as e:
-        zip_mock = _mock_context_manager(mock_zip.return_value)
-        zip_mock.namelist.return_value = ['name']
-        zip_mock.open.return_value = "file contents"
-        text_mock = _mock_context_manager(mock_io_text.return_value)
-        text_mock.read.side_effect = zipfile.BadZipFile('Bad magic number for file header')
-        with integration.decompress_file(integration.bucket, 'test.zip') as f:
-            f.read()
-    assert e.value.code == utils.DECOMPRESS_FILE_ERROR_CODE
 
-
-@patch('io.BytesIO')
-def test_wazuh_integration_decompress_file_reraises_corruption_when_skip_on_error(mock_io):
+@pytest.mark.parametrize('log_key, content, error', [
+    ('test.gz', _corrupt_gzip_content(), gzip.BadGzipFile),
+    ('test.zip', _corrupt_zip_content(), zipfile.BadZipFile),
+])
+def test_wazuh_integration_decompress_file_reraises_corruption_when_skip_on_error(log_key, content, error):
     """Test decompress_file() lets a corruption error raised while the caller reads propagate when
     skip_on_error is set, so get_log_file() can still send the error event for the corrupt file."""
-    integration = utils.get_mocked_wazuh_integration()
-    integration.client = MagicMock()
-    integration.bucket = utils.TEST_BUCKET
+    integration = _mocked_integration_with_object(content)
     integration.skip_on_error = True
 
-    with patch('gzip.open') as mock_gzip_open, pytest.raises(gzip.BadGzipFile):
-        gzip_mock = _mock_context_manager(mock_gzip_open.return_value)
-        gzip_mock.read.side_effect = gzip.BadGzipFile('CRC check failed')
-        with integration.decompress_file(integration.bucket, 'test.gz') as f:
+    with pytest.raises(error):
+        with integration.decompress_file(integration.bucket, log_key) as f:
             f.read()
 
-    with patch('zipfile.ZipFile', side_effect=zipfile.BadZipFile), pytest.raises(zipfile.BadZipFile):
-        with integration.decompress_file(integration.bucket, 'test.zip'):
+
+@pytest.mark.parametrize('log_key, content, reason', [
+    ('test.gz', gzip.compress(b'{}' * 1000), 'its decompressed content is larger than 1024 bytes'),
+    ('test.zip', _zip_content('{}' * 1000), 'its decompressed content is larger than 1024 bytes'),
+    ('test.json', b'{}' * 1000, 'its size is larger than 1024 bytes'),
+])
+def test_wazuh_integration_decompress_file_raises_for_objects_larger_than_the_limit(log_key, content, reason):
+    """Test decompress_file() raises ObjectTooLargeError for an object, or a decompressed content, larger than
+    MAX_OBJECT_SIZE, so the caller handles it as a file that cannot be decompressed."""
+    integration = _mocked_integration_with_object(content)
+
+    with patch('wazuh_integration.MAX_OBJECT_SIZE', 1024), \
+            pytest.raises(wazuh_integration.ObjectTooLargeError, match=f'^{reason}$'):
+        with integration.decompress_file(integration.bucket, log_key) as f:
+            f.read()
+
+
+@pytest.mark.parametrize('log_key, content', [
+    ('test.gz', gzip.compress(b'x' * 1024)),
+    ('test.zip', _zip_content('x' * 1024)),
+    ('test.json', b'x' * 1024),
+])
+def test_wazuh_integration_decompress_file_processes_objects_of_the_limit_size(log_key, content):
+    """Test decompress_file() processes an object, and a decompressed content, of exactly MAX_OBJECT_SIZE bytes."""
+    integration = _mocked_integration_with_object(content)
+
+    with patch('wazuh_integration.MAX_OBJECT_SIZE', 1024):
+        with integration.decompress_file(integration.bucket, log_key) as f:
+            assert f.read() == 'x' * 1024
+
+
+def test_wazuh_integration_decompress_file_counts_a_rewound_content_once():
+    """Test a caller that rewinds the decompressed content to read it again (e.g. to try another format) is not
+    stopped by the limit."""
+    integration = _mocked_integration_with_object(gzip.compress(b'x' * 1024))
+
+    with patch('wazuh_integration.MAX_OBJECT_SIZE', 1024):
+        with integration.decompress_file(integration.bucket, 'test.gz') as f:
+            assert f.read() == 'x' * 1024
+            f.seek(0)
+            assert f.readline() == 'x' * 1024
+
+
+def test_wazuh_integration_get_object_content_does_not_download_an_object_larger_than_the_limit():
+    """Test get_object_content() refuses an object whose size is larger than MAX_OBJECT_SIZE without reading it."""
+    integration = utils.get_mocked_wazuh_integration()
+    integration.client = MagicMock()
+    body = MagicMock()
+    integration.client.get_object.return_value = {'Body': body,
+                                                  'ContentLength': wazuh_integration.MAX_OBJECT_SIZE + 1}
+
+    with pytest.raises(wazuh_integration.ObjectTooLargeError):
+        integration.get_object_content(utils.TEST_BUCKET, utils.TEST_LOG_KEY)
+
+    body.read.assert_not_called()
+    body.close.assert_called_once()
+
+
+def test_wazuh_integration_get_object_content_stops_reading_past_the_limit():
+    """Test get_object_content() stops downloading an object as soon as it has read more than MAX_OBJECT_SIZE
+    bytes, even if its size is not known beforehand."""
+    integration = utils.get_mocked_wazuh_integration()
+    integration.client = MagicMock()
+    body = MagicMock()
+    body.read.return_value = b'x' * 4  # endless object
+    integration.client.get_object.return_value = {'Body': body}
+
+    with patch('wazuh_integration.MAX_OBJECT_SIZE', 10), patch('wazuh_integration.OBJECT_READ_CHUNK_SIZE', 4), \
+            pytest.raises(wazuh_integration.ObjectTooLargeError):
+        integration.get_object_content(utils.TEST_BUCKET, utils.TEST_LOG_KEY)
+
+    assert body.read.call_args_list == [call(4)] * 3
+    body.close.assert_called_once()
+
+
+def test_size_limited_reader_never_requests_more_than_one_byte_past_the_limit():
+    """Test SizeLimitedReader does not ask the stream for more than one byte past the limit, so a single read of
+    a decompression bomb does not hold more than that."""
+    stream = MagicMock(wraps=io.BytesIO(b'x' * 100))
+    reader = wazuh_integration.SizeLimitedReader(stream, 10)
+
+    assert reader.read(4) == b'x' * 4
+    with pytest.raises(wazuh_integration.ObjectTooLargeError):
+        reader.read(1000)
+    assert stream.read.call_args_list == [call(4), call(7)]
+
+
+def test_size_limited_reader_stops_a_line_by_line_read_past_the_limit():
+    """Test SizeLimitedReader also stops a caller reading the text line by line (e.g. csv.DictReader)."""
+    with io.TextIOWrapper(wazuh_integration.SizeLimitedReader(io.BytesIO(b'line\n' * 100), 50)) as f, \
+            pytest.raises(wazuh_integration.ObjectTooLargeError):
+        for _ in f:
             pass
 
 

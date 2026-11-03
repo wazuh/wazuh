@@ -262,7 +262,8 @@ def test_aws_sqs_queue_process_message_deletes_message_when_object_is_unavailabl
 
 CONTENT_ERRORS = [ValueError('invalid content'), KeyError('detail'), IndexError('list index out of range'),
                   EOFError('Compressed file ended before the end-of-stream marker was reached'), MemoryError(),
-                  gzip.BadGzipFile('Not a gzipped file'), RuntimeError("generator didn't yield")]
+                  gzip.BadGzipFile('Not a gzipped file'), RuntimeError("generator didn't yield"),
+                  wazuh_integration.ObjectTooLargeError('its decompressed content is larger than 536870912 bytes')]
 RETRYABLE_ERRORS = [client_error('AccessDenied'), client_error('SlowDown'),
                     botocore.exceptions.EndpointConnectionError(endpoint_url='https://s3'),
                     urllib3.exceptions.ProtocolError('Connection broken'), ConnectionResetError(104, 'reset'),

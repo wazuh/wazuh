@@ -13,6 +13,7 @@ import json
 import datetime
 import gzip
 import socket
+import time
 
 import botocore
 import urllib3
@@ -158,6 +159,45 @@ def test_json_event_generator():
     generator = s3_log_handler.AWSSubscriberBucket._json_event_generator(data)
     events = list(generator)
     assert events == [{"event": "data1"}, {"event": "data2"}]
+
+
+@pytest.mark.parametrize('data, expected', [
+    ('', []),
+    ('{"event": "data1"} \n\t{"event": "data2"}\n', [{"event": "data1"}, {"event": "data2"}]),
+    ('{"event": "data1"}　\x1c{"event": "data2"}', [{"event": "data1"}, {"event": "data2"}]),
+    ('[1]2"text"', [[1], 2, 'text']),
+])
+def test_json_event_generator_skips_whitespace_between_events(data, expected):
+    """Test the _json_event_generator function skips the same whitespace between events as str.lstrip()."""
+    assert list(s3_log_handler.AWSSubscriberBucket._json_event_generator(data)) == expected
+
+
+@pytest.mark.parametrize('data', [' {"event": "data1"}', '{"event": "data1"} text', '{"event": "data1"}{'])
+def test_json_event_generator_raises_on_invalid_json(data):
+    """Test the _json_event_generator function raises a JSONDecodeError for data that is not a sequence of JSON
+    values, so obtain_logs() can try other formats."""
+    with pytest.raises(json.JSONDecodeError):
+        list(s3_log_handler.AWSSubscriberBucket._json_event_generator(data))
+
+
+def test_obtain_logs_is_not_quadratic():
+    """Test 'obtain_logs' processes a large number of concatenated JSON objects in time roughly proportional to
+    the file size, not to its square. The previous `data = data[json_index:].lstrip()` pattern took ~25s for this
+    exact input; the fix takes ~0.1s -- 2s is a decisive, non-flaky threshold between the two.
+    """
+    n_objects = 20000
+    pad = "x" * 800
+    data = f'{{"source":"custom","detail":{{"note":"{pad}"}}}}\n' * n_objects
+    with patch('s3_log_handler.wazuh_integration.WazuhIntegration.__init__'):
+        handler = s3_log_handler.AWSSubscriberBucket()
+
+    with patch('s3_log_handler.AWSSubscriberBucket.decompress_file', return_value=io.StringIO(data)):
+        start = time.perf_counter()
+        logs = handler.obtain_logs(bucket=utils.TEST_BUCKET, log_path='file.json')
+        elapsed = time.perf_counter() - start
+
+    assert len(logs) == n_objects
+    assert elapsed < 2, f"took {elapsed:.3f}s -- quadratic rescan likely reintroduced"
 
 
 @pytest.mark.parametrize("content, expected", [
@@ -494,6 +534,7 @@ def test_obtain_logs_raises_parse_errors(error):
     (KeyError('detail'), False),
     (EOFError('truncated'), False),
     (gzip.BadGzipFile('Not a gzipped file'), False),
+    (wazuh_integration.ObjectTooLargeError('its size is larger than 536870912 bytes'), False),
     (MemoryError(), False),
 ])
 def test_is_retryable_error(error, expected):
@@ -543,6 +584,7 @@ def test_aws_subscriber_bucket_obtain_logs_raises_for_snappy_files():
     (botocore.exceptions.ParamValidationError(report='Invalid bucket name'), False),
     (botocore.exceptions.NoCredentialsError(), False),
     (ValueError('invalid content'), False),
+    (wazuh_integration.ObjectTooLargeError('its size is larger than 536870912 bytes'), False),
 ])
 def test_is_unanswered_error(error, expected):
     """Test 'is_unanswered_error' matches the requests that were sent and got no answer from AWS, and not the answers

@@ -4,6 +4,7 @@
 
 import copy
 import gzip
+import io
 import os
 import sqlite3
 import sys
@@ -635,6 +636,8 @@ def test_aws_bucket_get_log_file(mock_load_from_file, expected_result):
     (zipfile.LargeZipFile, f'Failed to decompress file {utils.TEST_LOG_KEY}: LargeZipFile()',
      utils.DECOMPRESS_FILE_ERROR_CODE),
     (IOError, f'Failed to decompress file {utils.TEST_LOG_KEY}: OSError()', utils.DECOMPRESS_FILE_ERROR_CODE),
+    (wazuh_integration.ObjectTooLargeError, f'Failed to decompress file {utils.TEST_LOG_KEY}: ObjectTooLargeError()',
+     utils.DECOMPRESS_FILE_ERROR_CODE),
     (ValueError, f'Failed to parse file {utils.TEST_LOG_KEY}: ValueError()', utils.PARSE_FILE_ERROR_CODE),
     (csv.Error, f'Failed to parse file {utils.TEST_LOG_KEY}: Error()', utils.PARSE_FILE_ERROR_CODE),
     (Exception, f'Unknown error reading/parsing file {utils.TEST_LOG_KEY}: Exception()', utils.UNKNOWN_ERROR_CODE)
@@ -680,6 +683,33 @@ def test_aws_bucket_get_log_file_handles_exceptions_when_information_cannot_be_l
         with pytest.raises(SystemExit) as e:
             bucket.get_log_file(utils.TEST_ACCOUNT_ID, utils.TEST_LOG_KEY)
         assert e.value.code == exit_code
+
+
+@pytest.mark.parametrize('skip_on_error', [True, False])
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+def test_aws_custom_bucket_get_log_file_handles_a_decompressed_content_larger_than_the_limit(mock_wazuh_aws_database,
+                                                                                         mock_sts,
+                                                                                         skip_on_error: bool):
+    """Test 'get_log_file' handles a small object whose decompressed content is larger than MAX_OBJECT_SIZE as a
+    corrupt file: it skips it sending an error event, or exits with the decompression error code."""
+    instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket)
+    instance.skip_on_error = skip_on_error
+    instance.client = MagicMock()
+    event = b'{"source":"aws.custom","detail":{"field":"value"}}'
+    instance.client.get_object.return_value = {'Body': io.BytesIO(gzip.compress(event * 1000))}
+
+    with patch('wazuh_integration.MAX_OBJECT_SIZE', 1024), patch('aws_bucket.AWSBucket.send_msg') as mock_send_msg:
+        if skip_on_error:
+            assert instance.get_log_file(utils.TEST_ACCOUNT_ID, utils.TEST_LOG_KEY) is None
+            mock_send_msg.assert_called_once()
+            assert f'Failed to decompress file {utils.TEST_LOG_KEY}: ObjectTooLargeError(' in \
+                   str(mock_send_msg.call_args)
+        else:
+            with pytest.raises(SystemExit) as e:
+                instance.get_log_file(utils.TEST_ACCOUNT_ID, utils.TEST_LOG_KEY)
+            assert e.value.code == utils.DECOMPRESS_FILE_ERROR_CODE
+            mock_send_msg.assert_not_called()
 
 
 @patch('aws_bucket.AWSBucket.iter_regions_and_accounts')
