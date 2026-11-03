@@ -20,7 +20,7 @@ MCONF="${DIR}/bin/wazuh-manager-conf -H ${DIR} -f ${CONF_DIR}/${WAZUH_CONF}"
 
 # Installation info
 VERSION="v5.0.0"
-REVISION="rc2"
+REVISION="rc3"
 TYPE="manager"
 
 ###  Do not modify below here ###
