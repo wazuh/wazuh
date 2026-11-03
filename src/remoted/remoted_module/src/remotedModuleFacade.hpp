@@ -1732,7 +1732,7 @@ private:
         m_metricsManager->registerPullMetric(
             "remoted.server.budget.inflight.bytes",
             [snapshot] { return static_cast<uint64_t>(snapshot().budgetInFlightBytes); },
-            "Bytes currently reserved by admitted public requests (payloads plus zstd decode scratch)",
+            "Bytes currently reserved by admitted public requests (payloads, zstd decode scratch, response compressor)",
             "bytes");
         m_metricsManager->registerPullMetric(
             "remoted.server.budget.inflight.requests",

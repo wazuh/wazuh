@@ -1019,6 +1019,11 @@ Maximum in-flight (unprocessed) request payload bytes before the HTTPS server sh
   value cannot reject everything. This is NOT `legacy.queue_size` (that is an event COUNT, not bytes).
   Live occupancy and the cumulative shed count are visible as `remoted.server.budget.*` in
   [`GET /metrics`](metrics.md#public-transport-backpressure--remotedserverbudget).
+- **Compressed downloads:** a zstd-compressed `POST /download` response reserves the compressor's
+  memory from this same budget for the whole transfer (about 0.65 MiB for a 20 KiB file and about
+  3.7 MiB from 10 MiB up, with the compressor's two buffers included). The compressor is used only if,
+  after reserving, at least one maximum request (`https.max_body_size` plus 4 KiB) is still free;
+  otherwise the response is sent uncompressed. There is no option for this floor.
 
 #### remoted.max_parallel_connections
 
@@ -1153,10 +1158,17 @@ Bytes per chunk when streaming a response body (`POST /download`).
 
 #### remoted.http_content_encoding_enabled
 
-Whether the HTTPS listener accepts request bodies compressed with `Content-Encoding: zstd`. When
-disabled, a request carrying that header is rejected with `415 Unsupported Content-Encoding`, the
-same as any unrecognized encoding. Bodies sent without a `Content-Encoding` header are unaffected
-either way.
+Whether the HTTPS listener uses `zstd` content encoding, in both directions. For **request bodies**,
+when disabled, a request carrying `Content-Encoding: zstd` is rejected with
+`415 Unsupported Content-Encoding`, the same as any unrecognized encoding; bodies sent without a
+`Content-Encoding` header are unaffected either way. For **responses**, when disabled, `POST /download`
+is always answered uncompressed, whatever `Accept-Encoding` the agent sends (see
+[Compressed download responses](https-events-api.md#compressed-download-responses)).
+
+> **Turning this off stops request compression on every agent.** An agent that gets a `415` to a
+> compressed request switches request compression off for all its send paths until it restarts, and
+> retries that request uncompressed. The option has no response-only setting, so disabling it to stop
+> response compression also ends that agent's request compression.
 
 Unlike the numeric options above, this is a boolean: it has no "unset" sentinel, so a value absent
 from the configuration file resolves to the default (enabled) on the C side before it reaches the

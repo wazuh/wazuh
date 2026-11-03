@@ -321,6 +321,28 @@ reserved, are design records kept in the developer README
   unreadable header) is rejected with `400`. Note the distinction from `413` above: `400` means the
   frame itself is bad, `413` means the frame is fine but there isn't capacity for it right now.
 
+#### Compressed download responses
+
+`POST /download` can answer a `config` request with a zstd-compressed body. It does so when
+`remoted.http_content_encoding_enabled` is enabled and the request's `Accept-Encoding` offers `zstd`.
+See [Download endpoint](#download-endpoint-post-download) for the headers and integrity rules.
+
+- The offer is a comma-separated list; the `zstd` token is case-insensitive and its `q` weight
+  follows RFC 9110 section 12.4.2. `zstd;q=0`, a malformed weight, any parameter other than `q`, or
+  an invalid `zstd` element next to a valid one is not an offer. `gzip`, `identity` and `*` do not
+  offer `zstd`.
+- Only the centralized configuration (`merged.mg`) is compressed. A WPK is never compressed, and
+  error responses are never compressed.
+- The compressor reserves its memory from the in-flight byte budget for the whole transfer. If the
+  reservation is refused, or would leave less than `https.max_body_size` plus 4 KiB free, or the
+  compressor cannot be prepared, the response is sent uncompressed, exactly as if `zstd` had not been
+  offered.
+- With `remoted.http_content_encoding_enabled` disabled the response is always uncompressed. The same
+  option rejects `Content-Encoding: zstd` request bodies with `415`, and an agent that receives that
+  `415` stops compressing requests until it restarts.
+- No agent offers `zstd` in `Accept-Encoding` yet (agent side: #38514), so a deployment is unaffected
+  until agents do.
+
 ### Error responses
 
 On rejection the body is `{"error":"<message>","code":<status>}`, except for a `401`, whose `code`
@@ -1356,6 +1378,21 @@ instead.
 **`200 OK`** — `Content-Type: application/octet-stream`, body sent with chunked transfer encoding in
 `remoted.http_stream_chunk_size` slices (default 64 KiB, see [Configuration](configuration.md)).
 
+**Compressed `config` response.** When the request sends `Accept-Encoding` offering `zstd` and
+`remoted.http_content_encoding_enabled` is enabled (rules in
+[Compressed download responses](#compressed-download-responses)), a `config` answer carries
+`Content-Encoding: zstd`, still with `Transfer-Encoding: chunked` and without `Content-Length`. The
+body is one zstd frame (level 3) that decompresses to the `merged.mg` file. There is no minimum file
+size, and no `Vary` header is sent. A WPK, an error, a request without the offer, or a response the
+manager could not compress (reservation refused or under the floor, compressor setup failure) is
+byte-identical to an uncompressed response. The fallback is logged at debug level as
+`Serving a response uncompressed: <reason>.`
+
+The chunk size (`remoted.http_stream_chunk_size`) bounds what the transport asks of the compressed
+source, which returns at most what is left in its output buffer, so the compressed chunks can be
+smaller than the configured size. The check that the file did not change mid-transfer runs for each
+read of the encoder's input buffer (up to 128 KiB), not for each chunk sent.
+
 ### Error handling
 
 | Condition | HTTP | `error` message |
@@ -1386,6 +1423,10 @@ response builder is dropped *without* being finished, so the terminating `0\r\n\
 sent and the agent sees an incomplete body it will retry. Ending the stream cleanly instead would
 emit the terminator and hand over a truncated file that looks complete.
 
+**Integrity of a compressed transfer.** `config_hash` (reported by `/control`) is computed over the
+plain file, so it does not change with compression. The
+frame decompresses to exactly the file the plain response would have carried.
+
 **A file rewritten mid-transfer aborts the transfer.** After **every** chunk — not only at
 end-of-stream — the descriptor is re-`fstat`ed and its size and mtime compared against what they were
 at `open()`. A mismatch means what has been streamed so far is a mix of two versions: shorter is a
@@ -1396,7 +1437,8 @@ gigabyte before the transfer was abandoned.
 
 This *detects* the modification, it does not prevent it: a rewrite with an identical length inside
 the same mtime granularity still slips through. Closing that needs writers to publish atomically by
-rename, not a tighter check here.
+rename, not a tighter check here. On abort the terminating chunk is not sent, so a compressed transfer
+also ends with a truncated zstd frame.
 
 ### Coupling with `/control`
 
@@ -1672,14 +1714,24 @@ python3 send_download.py --url https://127.0.0.1:1517 --agent-id 001
 # a staged WPK package
 python3 send_download.py --url https://127.0.0.1:1517 --resource-type wpk --resource-id wazuh_agent_v5.0.0_linux_x86_64.wpk
 
+# offer Accept-Encoding: zstd; a config 200 must come back compressed (and a WPK must not)
+python3 send_download.py --url https://127.0.0.1:1517 --zstd
+
 # run every success/failure scenario (bad type, rejected identifier, unknown group -> 403, ...)
 python3 send_download.py --url https://127.0.0.1:1517 --all
 
 # concurrency + memory check: N agents downloading at once, sampling remoted's RSS
 python3 send_download.py --url https://127.0.0.1:1517 --simulate 50 --repeat 4 --selectors 'default;web,prod' --watch-rss
 # options: --url (default https://127.0.0.1:9443), --manager-home, --resource-id, --unknown-group,
-#          --other-group (default databases), --selectors, --simulate N, --repeat, --watch-rss
+#          --other-group (default databases), --selectors, --simulate N, --repeat, --watch-rss, --zstd
 ```
+
+By default the tool sends `Accept-Encoding: identity`. With `--zstd` it offers `zstd`, reads the raw
+bytes, decompresses once (the `zstandard` package from `src/remoted/remoted_module/tools/requirements.txt`) and prints the
+SHA-256 of the decompressed bytes, `content-encoding`, and the wire and decompressed byte counts. An
+unexpected `Content-Encoding` or a truncated frame is an error. Under `--simulate` a plain `config`
+response is accepted and counted separately, because the manager serves plain when the in-flight
+budget cannot fit the compressor.
 
 Use the `agent.config_token` from `/control` as `--resource-id` when the selector is not `default`.
 Simulated agents must already exist and have matching `/control` registry groups. For `--all`,

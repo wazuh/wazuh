@@ -22,7 +22,7 @@ namespace remoted::decoding
     /**
      * @brief The `Content-Encoding` decoder for authenticated request bodies.
      *
-     * The only place in the module that knows compression exists. AuthGateway holds one of these as
+     * The only place in the module that decodes compressed request bodies. AuthGateway holds one of these as
      * an IBodyDecoder and runs it on the verified body, so the auth layer stays free of zstd, of the
      * in-flight byte budget, and of the reservation lifetimes below.
      *
