@@ -95,8 +95,8 @@ int del_plist(OSList *p_list);
 /* Used to report messages */
 int notify_rk(int rk_type, const char *msg);
 
-/* Start the rootcheck externally */
-int rootcheck_init(int test_config);
+/* Start the rootcheck externally, reading its configuration from cfg */
+int rootcheck_init(int test_config, const char *cfg);
 
 /* Connect Rootcheck queue */
 void rootcheck_connect();

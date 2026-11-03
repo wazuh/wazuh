@@ -257,6 +257,49 @@ static void test_syscheck_top_level_restart_audit_is_info(void **state) {
     assert_int_equal(read_syscheck(), 0);
 }
 
+/* An element <syscheck> does not know is rejected, as the other agent modules
+ * reject theirs, so wazuh-syscheckd -t fails instead of the agent starting with
+ * a setting that silently does nothing. */
+static void test_syscheck_unknown_element_is_error(void **state) {
+    if (write_conf("<syscheck><not_a_syscheck_option>1</not_a_syscheck_option></syscheck>") != 0) {
+        fail();
+    }
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1230): Invalid element in the configuration: 'not_a_syscheck_option'.");
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(1230): Invalid element in the configuration: 'test_config-elements.conf'.");
+
+    assert_int_equal(read_syscheck(), OS_INVALID);
+}
+
+/* Every top-level <syscheck> option 4.14.9 accepted and 5.0 dropped is still
+ * recognized, so a configuration kept by an upgrade loads as before. */
+static void test_syscheck_removed_4x_options_still_load(void **state) {
+    if (write_conf("<syscheck>"
+                   "<alert_new_files>yes</alert_new_files>"
+                   "<auto_ignore frequency=\"10\" timeframe=\"3600\">no</auto_ignore>"
+                   "<database>disk</database>"
+                   "<prefilter_cmd>/usr/sbin/prelink -y</prefilter_cmd>"
+                   "<allow_remote_prefilter_cmd>no</allow_remote_prefilter_cmd>"
+                   "<remove_old_diff>yes</remove_old_diff>"
+                   "<scan_on_start>yes</scan_on_start>"
+                   "</syscheck>") != 0) {
+        fail();
+    }
+
+    expect_string(__wrap__mwarn, formatted_msg, "The <alert_new_files> option is deprecated and no longer has any effect.");
+    expect_string(__wrap__mwarn, formatted_msg, "The <auto_ignore> option is deprecated and no longer has any effect.");
+    expect_string(__wrap__mwarn, formatted_msg, "The <database> option is deprecated and no longer has any effect.");
+    expect_string(__wrap__mwarn, formatted_msg, "The <prefilter_cmd> option is deprecated and no longer has any effect.");
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "The <allow_remote_prefilter_cmd> option is deprecated and no longer has any effect.");
+    expect_string(__wrap__mwarn, formatted_msg, "The <remove_old_diff> option is deprecated and no longer has any effect.");
+    expect_string(__wrap__minfo, formatted_msg, "The <scan_on_start> option is deprecated and no longer has any effect.");
+
+    assert_int_equal(read_syscheck(), 0);
+}
+
 static void test_syscollector_deprecated_default_is_info(void **state) {
     if (write_conf("<wodle name=\"syscollector\">"
                    "<synchronization><max_eps>10</max_eps></synchronization>"
@@ -400,6 +443,8 @@ int main(void) {
         cmocka_unit_test_teardown(test_syscheck_deprecated_defaults_are_info, teardown_conf_file),
         cmocka_unit_test_teardown(test_syscheck_deprecated_user_options_are_warning, teardown_conf_file),
         cmocka_unit_test_teardown(test_syscheck_top_level_restart_audit_is_info, teardown_conf_file),
+        cmocka_unit_test_teardown(test_syscheck_unknown_element_is_error, teardown_conf_file),
+        cmocka_unit_test_teardown(test_syscheck_removed_4x_options_still_load, teardown_conf_file),
         cmocka_unit_test_teardown(test_syscollector_deprecated_default_is_info, teardown_conf_file),
         cmocka_unit_test_teardown(test_sca_deprecated_default_is_info, teardown_conf_file),
         cmocka_unit_test_teardown(test_sca_deprecated_schedule_is_warning, teardown_conf_file),
