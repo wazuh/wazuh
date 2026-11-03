@@ -47,6 +47,8 @@ All notable changes to this project will be documented in this file.
 - Fixed the `buckets` and `security_hub` AWS subscribers not finding the objects whose key has a space or other characters that S3 encodes in its notifications. ([#40937](https://github.com/wazuh/wazuh/pull/40937))
 - Fixed the Windows Eventchannel decoder leaving spaces in the `win.eventdata` field names, such as `threat Name` or `severity Name` in Windows Defender events, which left the Defender rules without their fields in the alert description. Spaces are now removed and the next letter is capitalized (`threatName`), so custom rules and queries that used the old names with spaces must be updated. Windows Defender error events now trigger the level 12 rule among 62162 to 62212 that matches their error code, instead of rule 62102. ([#36459](https://github.com/wazuh/wazuh/issues/36459))
 - Fixed the AWS module applying a discard filter to plain-text CloudWatch Logs events and `buckets` subscriber logs when no `discard_regex` is configured. ([#41071](https://github.com/wazuh/wazuh/pull/41071))
+- Fixed the `buckets` and `security_hub` AWS subscribers taking a time that grew with the square of the size of an S3 object of concatenated JSON events to parse it. ([#41059](https://github.com/wazuh/wazuh/pull/41059))
+- Fixed the AWS module reading S3 objects, and their decompressed content, of any size. An object larger than 512 MiB, or whose content is, is now handled as a file that cannot be decompressed: the buckets exit with code 8, or skip it with `skip_on_error`, and the subscribers keep its message in the queue and end with exit code 7, or delete it with `skip_on_error`. ([#41059](https://github.com/wazuh/wazuh/pull/41059))
 
 ### Agent
 
