@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module (C++ worker bridge)
- * Copyright (C) 2015, Wazuh Inc.
- * July 21, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -11,6 +10,7 @@
 
 #include "httpServerConfig.hpp"
 
+#include "managerConfDir.hpp"
 #include "proc.hpp"
 
 #include <algorithm>
@@ -28,10 +28,14 @@ namespace
     // Floor applied to the nproc-derived fallback only (an explicit config value is never
     // floored): a single-vCPU host/cgroup must not regress below the old fixed default of 2.
     constexpr std::size_t MIN_CONCURRENT_ACCEPTS {2};
-    // Transport hard cap. Kept above the auth middleware's body limit (AuthConfig::maxBodySize,
-    // 10 MiB) so an oversized batch reaches the middleware and gets a clean 413 there, while this
-    // still bounds memory as a backstop.
-    constexpr std::size_t DEFAULT_MAX_BODY_SIZE {20U * 1024U * 1024U};
+    // Transport hard cap. MUST stay above the auth middleware's body limit
+    // (AuthConfig::maxBodySize, 5 MiB) so an oversized batch reaches the middleware and gets a clean
+    // 413 there, while this still bounds memory as a backstop. Breaching THIS one is not a 413: the
+    // parser fails on Content-Length and the connection is closed with no response at all, which an
+    // agent cannot tell apart from a network failure -- so it never splits its batch and retries the
+    // same bytes forever. Setting the two equal would make that the only outcome, because the
+    // Content-Length pre-check always fires first.
+    constexpr std::size_t DEFAULT_MAX_BODY_SIZE {10U * 1024U * 1024U};
     constexpr std::size_t DEFAULT_READ_TIMEOUT_SEC {10};
     constexpr std::size_t DEFAULT_WRITE_TIMEOUT_SEC {10};
     constexpr std::size_t DEFAULT_REQUEST_TIMEOUT_SEC {30};
@@ -52,15 +56,26 @@ namespace
 
     // Max simultaneous TCP connections. With DEFAULT_MAX_BODY_SIZE it bounds the read-phase
     // peak (bodies being received before they reach the budget) to conns * http_max_body_size.
-    constexpr std::size_t DEFAULT_MAX_PARALLEL_CONNECTIONS {512};
+    constexpr std::size_t DEFAULT_MAX_PARALLEL_CONNECTIONS {256};
 
-    // Relative to remoted's cwd, which is the chroot root ("/") by the time these paths are
-    // opened (Privsep_Chroot() chdir()s there before the HTTPS module starts), so these resolve
-    // identically to an equivalent leading-"/" path -- written without one here to avoid reading
-    // as a real host-absolute path.
-    constexpr auto DEFAULT_CERTIFICATE_PATH {"etc/certs/remoted.pem"};
-    constexpr auto DEFAULT_PRIVATE_KEY_PATH {"etc/certs/remoted-key.pem"};
-    constexpr auto DEFAULT_CA_PATH {"etc/certs/root-ca.pem"};
+    // Max connections from one address still in the TLS handshake (issue #6883). An honest one leaves
+    // the handshake in milliseconds, so even a large fleet behind one NAT address rarely has more
+    // than a few there at once; one host stalling handshakes gets an eighth of the default slots.
+    constexpr std::size_t DEFAULT_MAX_HANDSHAKES_PER_SOURCE {32};
+
+    // Absolute, under the manager's fixed configuration directory (Utils::MANAGER_CONF_DIR), like the schema
+    // defaults of remote.https.{certificate,key,ca_certificate}. The two CA defaults come from remoted_module.h,
+    // shared with src/remoted/src/secure.c, which probes the same files before the module starts. Literals rather
+    // than strings built from the constant so the ternaries below keep their std::string type; the static_asserts
+    // keep them from drifting.
+    constexpr auto DEFAULT_CERTIFICATE_PATH {"/etc/wazuh-manager/certs/remoted.pem"};
+    constexpr auto DEFAULT_PRIVATE_KEY_PATH {"/etc/wazuh-manager/certs/remoted-key.pem"};
+    constexpr auto DEFAULT_CA_PATH {REMOTED_MODULE_DEFAULT_CA_PATH};
+    constexpr auto DEFAULT_CA_CERTIFICATE_PATH {REMOTED_MODULE_DEFAULT_CA_CERTIFICATE_PATH};
+    static_assert(Utils::isInManagerConfDir(DEFAULT_CERTIFICATE_PATH));
+    static_assert(Utils::isInManagerConfDir(DEFAULT_PRIVATE_KEY_PATH));
+    static_assert(Utils::isInManagerConfDir(DEFAULT_CA_PATH));
+    static_assert(Utils::isInManagerConfDir(DEFAULT_CA_CERTIFICATE_PATH));
     constexpr auto DEFAULT_CIPHERS {"TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"};
 
     // A positive caller value wins; otherwise the built-in default. remoted is expected to
@@ -185,6 +200,13 @@ namespace remoted::http
                                             ? static_cast<std::size_t>(config.max_parallel_connections)
                                             : DEFAULT_MAX_PARALLEL_CONNECTIONS;
 
+        // 0 means "no cap" here, so it is read only when flagged as set (a zeroed struct keeps
+        // meaning "module defaults"); a negative value cannot come from remoted and is ignored.
+        result.maxHandshakesPerSource =
+            config.max_handshakes_per_source_set != 0 && config.max_handshakes_per_source >= 0
+                ? static_cast<std::size_t>(config.max_handshakes_per_source)
+                : DEFAULT_MAX_HANDSHAKES_PER_SOURCE;
+
         result.certificatePath =
             config.certificate_path[0] != '\0' ? std::string {config.certificate_path} : DEFAULT_CERTIFICATE_PATH;
 
@@ -192,6 +214,8 @@ namespace remoted::http
             config.private_key_path[0] != '\0' ? std::string {config.private_key_path} : DEFAULT_PRIVATE_KEY_PATH;
 
         result.caPath = config.ca_path[0] != '\0' ? std::string {config.ca_path} : DEFAULT_CA_PATH;
+        result.caCertificatePath = config.ca_certificate_path[0] != '\0' ? std::string {config.ca_certificate_path}
+                                                                         : DEFAULT_CA_CERTIFICATE_PATH;
         result.ciphers = config.ciphers[0] != '\0' ? std::string {config.ciphers} : DEFAULT_CIPHERS;
         result.verificationMode = resolveVerificationMode(config.verification_mode);
         result.dualStackMode = resolveDualStackMode(config.dual_stack);

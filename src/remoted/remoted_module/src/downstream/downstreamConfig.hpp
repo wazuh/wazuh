@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module (C++ worker bridge)
- * Copyright (C) 2015, Wazuh Inc.
- * July 25, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -23,10 +22,10 @@ namespace remoted::downstream
     /**
      * @brief Tunables for the deferred-forwarding subsystem.
      *
-     * The socket paths mirror the services they reach (relative to the chroot) and are not C-ABI
-     * driven -- they are installation details, not ops tuning knobs. Every other field is populated
-     * from the C-ABI struct by buildDownstreamConfig() below; the in-struct defaults here only apply
-     * to a default-constructed DownstreamConfig (e.g. in tests).
+     * The socket paths mirror the services they reach (relative to the installation directory, remoted's cwd) and are
+     * not C-ABI driven -- they are installation details, not ops tuning knobs. Every other field is populated from the
+     * C-ABI struct by buildDownstreamConfig() below; the in-struct defaults here only apply to a default-constructed
+     * DownstreamConfig (e.g. in tests).
      */
     struct DownstreamConfig
     {
@@ -43,12 +42,15 @@ namespace remoted::downstream
         /// responseTimeoutMs override). Longer than responseTimeoutMs because a sync session is
         /// indexed and flushed within the request (see remoted.downstream_stateful_response_timeout).
         int statefulResponseTimeoutMs {20000};
+        /// `Retry-After` (seconds) of the 503 answered when statefulResponseTimeoutMs elapses: the
+        /// sync server is still applying the session, so the agent's re-send has to land after it
+        /// (see remoted.downstream_stateful_retry_after). 0 sends no header.
+        int statefulRetryAfterSec {20};
         std::size_t ioThreads {1};          ///< Threads running the client's io_context.
         std::size_t postProcessThreads {4}; ///< Threads running the per-endpoint post-processors.
-        /// Cap on a downstream response body. Strictly larger than the 10 MiB agent-request cap:
-        /// /stats and /config echo the agent's document back ENRICHED, so a cap equal to the
-        /// request cap would turn a near-cap document into ResponseTooLarge -> 503.
-        std::size_t maxResponseBodySize {11U * 1024U * 1024U};
+        /// Cap on a downstream response body (see remoted.downstream_max_response_body_size, whose
+        /// 10 MiB default this mirrors).
+        std::size_t maxResponseBodySize {10U * 1024U * 1024U};
     };
 
     /**

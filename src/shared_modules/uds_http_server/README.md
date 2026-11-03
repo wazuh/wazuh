@@ -4,17 +4,27 @@ The manager's shared HTTP-over-Unix-domain-socket **server** transport: asynchro
 end, with deferred responses, an in-flight byte budget with real load shedding, and a
 two-phase shutdown with named guarantees. Extracted verbatim from
 `wazuh_modules/inventory_sync_server` (where it was designed and hardened); that module is its
-first consumer. Intended consumers: manager daemons that serve local peers over
-`queue/sockets/*` — inventory sync, the vulnerability scanner's `vd-http.sock`, remoted_module's
-local admin socket.
+first consumer. Consumers — manager daemons serving local peers over `queue/sockets/*`, each
+linking the archive into its own binary:
+
+| Consumer | Socket | Server set up in |
+|---|---|---|
+| inventory_sync_server (modulesd) | `inventory-sync-http.sock` | `wazuh_modules/inventory_sync_server/src/inventorySyncServerFacade.hpp` |
+| task_manager (modulesd) | `task-http.sock` | `wazuh_modules/task_manager/src/http/httpServer.cpp` |
+| vulnerability_scanner (modulesd) | `vd-http.sock` | `wazuh_modules/vulnerability_scanner/src/vulnerabilityScanner.cpp` |
+| wazuh-manager-db | `wdb-http.sock` | `wazuh_db/src/http/wdb_http.cpp` |
+| remoted_module (remoted's local admin socket) | `remote-admin-http.sock` | `remoted/remoted_module/src/remotedModuleFacade.hpp` |
 
 What it deliberately is NOT: remoted's agent-facing TCP/TLS server (a protocol PEER of this
 library, not a layer of it), and not a general web framework — one request per connection,
 exact-match routing, no TLS, no keep-alive, no chunked encoding.
 
-Operator/integrator docs: `docs/ref/modules/utils/uds-http-server/` (status semantics,
-architecture, integration guide). This library has no standalone configuration — the
-transport knobs are documented in each consumer's `configuration.md`.
+Operator/integrator docs: `docs/ref/modules/utils/uds-http-server/` (library defaults, status
+semantics, log lines, architecture, integration guide). This library has no configuration of its own. Each consumer
+fills `UdsHttpServerConfig` in code. Only inventory sync (`wazuh_modules.inventory_sync_server_*`)
+and task_manager (`wazuh_modules.manager_task_io_threads`, plus the `task-manager`
+`max_payload_bytes` option sizing one route's body cap) expose any of
+the knobs, and those are documented on the consumer's own pages.
 
 ## Requirements
 
@@ -28,7 +38,7 @@ transport knobs are documented in each consumer's `configuration.md`.
 | RF-4 | Connection cap with an explicit 503-and-close at accept |
 | RF-5 | Two-phase shutdown with guarantees S1/S2/S3 (below), budgeted to fit a daemon's 30 s stop window |
 | RF-6 | **Injected identity**: `logTag`, `serverName` (rendered as "`<name>` server / connection(s) / request(s)" in every diagnostic), `serverHeader` (the `Server:` response header), and optional internal-option hints for the two capacity diagnostics — so each consumer's lines read in its own vocabulary, and the extraction changed no log line of its first consumer |
-| RF-7 | **Diagnostics snapshot** (`diagnostics()`): budget available/in-flight bytes, in-flight request count, live sessions — relaxed atomic loads, callable at any point between construction and destruction. Consumers publish these as `wazuh_metrics` pull metrics; the library itself does not depend on wazuh_metrics |
+| RF-7 | **Diagnostics snapshot** (`diagnostics()`): budget available/in-flight bytes, in-flight request count, live sessions, classified sessions per `RouteClass`, and cumulative transport-level 503s by cause (`rejectedBudgetExhausted`, `rejectedSessionCap`, `rejectedShutdown`, `rejectedNoResponse` — answered before any handler, so invisible to endpoint metrics) — relaxed atomic loads, callable at any point between construction and destruction. Consumers publish these as `wazuh_metrics` pull metrics; the library itself does not depend on wazuh_metrics |
 | RF-8 | Fixed status semantics: 400/404/405+`Allow`/411/413/414/431/500/503/504, with throttled per-condition diagnostics (one storm cannot suppress another kind's first line) |
 | RF-9 | Safe socket ownership: pre-flight check (`socketPathIsUsable`), refusal to unlink a non-socket, explicit chmod (0660 default), no parent-directory creation, inode-guarded unlink at teardown |
 
@@ -39,7 +49,7 @@ transport knobs are documented in each consumer's `configuration.md`.
 | RNF-1 | **C++17 floor**: consumers include a strict-C++17 module (remoted_module). `target_compile_features(PUBLIC cxx_std_17)` is the consumer-facing floor; the archive's own TUs and the whole test target are PINNED to 17 so the floor is enforced by every build |
 | RNF-2 | **STATIC + PIC, never SHARED**: `Log::GLOBAL_LOG_FUNCTION` is per-DSO (hidden visibility); archived into each consumer `.so`, every copy logs through its own module's sink with no injection mechanism |
 | RNF-3 | Transport deps (standalone asio 1.38.x, llhttp) stay PRIVATE behind the PImpl; no public header names them. `makeUdsHttpServer()` is the single transport swap point |
-| RNF-4 | Manager-only (its `ext_asio`/`ext_llhttp` deps are gated `IS_LINUX AND NOT IS_AGENT`) |
+| RNF-4 | Manager-only (its `ext_asio`/`ext_llhttp` deps are gated `IS_LINUX AND NOT IS_AGENT` in `src/external/CMakeLists.txt`). The matching gate around `add_subdirectory(shared_modules/uds_http_server)` in `src/CMakeLists.txt` never fires, because `IS_LINUX` is undefined there: the library is registered `EXCLUDE_FROM_ALL` by whichever of the `if(NOT TARGET wazuh_uds_http_server)` guards in the inventory_sync_server, vulnerability_scanner and wazuh_db CMake files runs first (task_manager and remoted_module rely on one of them), so `uds_http_server_utest` is not part of `all` and must be built by name |
 | RNF-5 | Handlers run inline on I/O threads and MUST NOT BLOCK; blocking work goes to a consumer-owned executor and answers through the responder |
 | RNF-6 | One-shot lifecycle: `start()` once per instance; a consumer that cycles builds a new instance per cycle |
 
@@ -70,8 +80,8 @@ sequenceDiagram
     A->>S: accept (liveSessions++, over maxConnections ⇒ 503+close)
     S->>S: header timer armed, doRead
     P->>S: request head
-    Note over S: parser PAUSES at headers-complete
-    S->>S: match route (404/405) → reserve budget (503 / 413)
+    Note over S: parser PAUSES at headers-complete<br/>(411 chunked, 413 server-wide cap, 414, 431 decided here)
+    S->>S: match route (404/405) → class/route body cap (413)<br/>→ class/route session cap (503) → reserve budget, Data only (503)
     S->>S: resume, read body (chunks of bufferSize)
     S->>H: dispatch(request, responder)
     H->>W: enqueue work, return immediately
@@ -115,30 +125,13 @@ flowchart LR
     G --> D[read body → dispatch]
 ```
 
-The decisive mechanism is `reservedControlConnections`: Data's session cap resolves to
-`maxConnections − reserved`, so the data plane ALONE can never drive occupancy up to the
-accept-time cap — Control and Liveness always find a slot. The honest residual: class
-membership is unknowable before the head is read, so connections racing BETWEEN accept and
-classification occupy global slots class-blind; the hard "control always answers" guarantee
-holds while the concurrency of new data connects stays below the reserve (rejections beyond
-that are transient accept races). A Control route that does real work still sheds its own
-capacity module-side (bounded queue → 503); the class only guarantees the data plane cannot
-starve it.
-
-`RouteOptions` overrides the class policy per route: `maxBodyBytes`, `maxSessions` and
-`responseTimeoutSec`, each `0` meaning "defer to the policy". The last one is the response backstop
-(dispatch → `send()`), and it exists because that backstop is written around the peer's own deadline
-being the SHORTER one. A route whose peer waits longer than the server-wide value inverts that: the
-504 fires while the work is still succeeding, so the peer retries and hits the same wall every time.
-Raising the server-wide value to suit one such route would weaken the leak backstop for every other
-one, so it is raised per route instead.
-
-Threading: one shared `asio::io_context` wrapped in a `Runtime` co-owned by the server, every
-session and every responder (that shared ownership is what makes a posthumous `send()` defined);
-N I/O threads (`ioThreads`, default nproc) in a resume-on-exception loop; the acceptor on its
-own strand with `concurrentAccepts` chains; **every session on its own strand** with handlers
-explicitly re-bound — an accepted socket inherits the acceptor's strand, so without re-binding
-all connections would serialize (this comment is load-bearing; see `Session` in the source).
+The narrative behind these diagrams — admission order, the peer-gone watch, per-connection
+strands and the self-re-arming accept loop, the bounded shutdown waits, the reserved
+headroom and its residual, and the per-route `RouteOptions` overrides — is published in
+[architecture.md](../../../docs/ref/modules/utils/uds-http-server/architecture.md); it is
+not repeated here. The two load-bearing implementation comments behind it are `Session`'s
+(every socket handler re-bound to the session's strand) and `doAccept()`'s (every accept
+chain must re-arm itself), both in `src/asioUdsHttpServer.cpp`.
 
 ## Layout
 
@@ -154,22 +147,12 @@ all connections would serialize (this comment is load-bearing; see `Session` in 
 
 ## Consumer contract
 
-- **Link**: `target_link_libraries(<your_module> PRIVATE wazuh_uds_http_server)`. STATIC +
-  PIC; your `.so` must define its own `Log::GLOBAL_LOG_FUNCTION` (every module already does).
-- **Identity**: fill `logTag`, `serverName`, `serverHeader` and — if your capacity knobs are
-  internal options — the two hint fields, so diagnostics name YOUR module and YOUR options.
-- **Socket path**: no default; empty makes `start()` throw. Use a relative path (daemons
-  `chdir()`/`chroot()` into the install dir).
-- **Handlers never block** (RNF-5): enqueue to your executor, reply via the responder. The
-  request `shared_ptr` carries the byte reservation — keep it alive exactly as long as you
-  need the payload, drop it before replying if you are done with the bytes.
-- **Shutdown order**: `stopAccepting()` FIRST, then tear down whatever handlers reach, then
-  `stop()`. That ordering is what S1/S2 exist for.
-- **Diagnostics as metrics**: publish `diagnostics()` fields as `wazuh_metrics` pull metrics.
-  Mind the pull lifetime rule (pulls cannot be unregistered): capture a `weak_ptr` resolved
-  under your own lock, register once, and let an expired target read as zeros — see
-  `registerTransportDiagnostics()` in inventory sync's facade for the reference wiring.
-- **Restarting**: build a fresh instance per start cycle; `start()` throws if reused.
+The contract a consuming module must obey — linking (and the `Log::assignLogFunction()` call
+the per-DSO log sink needs), identity, socket path, non-blocking handlers, route classes and
+the `RouteOptions` overrides, shutdown order, diagnostics as pull metrics, restarting — is
+published as the
+[integration guide](../../../docs/ref/modules/utils/uds-http-server/integration-guide.md).
+It is the single copy; the requirements above say why each rule exists.
 
 ## Test suite map
 
@@ -190,7 +173,14 @@ with its own `main()` (`testMain.cpp`) that owns the binary's log sink; no modul
 Plain `add_test` on purpose: the suite has process-wide state (single log sink, static
 throttle windows); one process per case would change the behaviour under test.
 
+From `src/`, in a tree configured with `UNIT_TEST=ON` (the target is not part of `all`, see
+RNF-4):
+
 ```bash
 cmake --build build -j --target uds_http_server_utest
 build/shared_modules/uds_http_server/test/uds_http_server_utest
+ctest --test-dir build -L uds_http_server_utest
 ```
+
+CI: `.github/workflows/5_testunit_uds_http_server.yml` runs it with coverage and under ASAN
+(Valgrind off: the timing-sensitive shutdown cases miss their deadlines under it).

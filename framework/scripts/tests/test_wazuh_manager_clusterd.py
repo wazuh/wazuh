@@ -1,4 +1,4 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -20,6 +20,46 @@ def test_set_logging():
         clusterlogger_mock.assert_called_once_with(
             foreground_mode=False, log_path='logs/cluster.log', debug_level=0,
             tag='%(asctime)s %(levelname)s: [%(tag)s] [%(subtag)s] %(message)s')
+
+
+@pytest.mark.parametrize('option_value, cmd_level, expected', [
+    (None, None, 0),
+    (None, 1, 1),
+    (None, 2, 2),
+    (0, 2, 2),
+    (0, None, 0),
+    (1, None, 1),
+    (2, 1, 2),
+])
+def test_get_debug_level(option_value, cmd_level, expected):
+    """Check that an absent or zero internal option leaves the command-line level in effect."""
+    from wazuh.core.exception import WazuhInternalError
+
+    side_effect = WazuhInternalError(1108) if option_value is None else None
+    with patch('wazuh.core.configuration.get_internal_options_value', return_value=option_value,
+               side_effect=side_effect) as get_option_mock:
+        assert wazuh_manager_clusterd.get_debug_level(cmd_level) == expected
+        get_option_mock.assert_called_once_with('wazuh_clusterd', 'debug', 2, 0)
+
+
+def test_get_debug_level_missing_file():
+    """Check that a missing internal options file leaves the command-line level in effect."""
+    from wazuh.core.exception import WazuhInternalError
+
+    with patch('wazuh.core.configuration.get_internal_options_value', side_effect=WazuhInternalError(1107)):
+        assert wazuh_manager_clusterd.get_debug_level(2) == 2
+
+
+@pytest.mark.parametrize('error_code', [1109, 1110])
+def test_get_debug_level_invalid_value(error_code, capsys):
+    """Check that a non-digit or out-of-range internal option is reported and stops the daemon."""
+    from wazuh.core.exception import WazuhError
+
+    with patch('wazuh.core.configuration.get_internal_options_value', side_effect=WazuhError(error_code)):
+        with pytest.raises(SystemExit) as exit_info:
+            wazuh_manager_clusterd.get_debug_level(1)
+    assert exit_info.value.code == 1
+    assert 'wazuh_clusterd.debug' in capsys.readouterr().err
 
 
 @patch('builtins.print')
@@ -267,13 +307,15 @@ def test_get_script_arguments(argument_parser_mock):
 
 @patch('scripts.wazuh_manager_clusterd.sys.exit', side_effect=sys.exit)
 @patch('scripts.wazuh_manager_clusterd.os.getpid', return_value=543)
+@patch('scripts.wazuh_manager_clusterd.os.setgroups')
 @patch('scripts.wazuh_manager_clusterd.os.setgid')
 @patch('scripts.wazuh_manager_clusterd.os.setuid')
 @patch('scripts.wazuh_manager_clusterd.os.chmod')
 @patch('scripts.wazuh_manager_clusterd.os.chown')
 @patch('scripts.wazuh_manager_clusterd.os.path.exists', return_value=True)
 @patch('builtins.print')
-def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock, setgid_mock, getpid_mock, exit_mock):
+def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock, setgid_mock, setgroups_mock,
+              getpid_mock, exit_mock):
     """Check and set the behavior of wazuh_manager_clusterd main function."""
     import wazuh.core.cluster.utils as cluster_utils
     from wazuh.core import common, pyDaemonModule
@@ -351,6 +393,7 @@ def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock,
                                                     clean_up_mock.assert_called_once()
                                                     clean_pid_files_mock.assert_called_once_with('wazuh-manager-clusterd')
                                                     pyDaemon_mock.assert_called_once()
+                                                    setgroups_mock.assert_called_once_with([])
                                                     setuid_mock.assert_called_once_with('uid_test')
                                                     setgid_mock.assert_called_once_with('gid_test')
                                                     getpid_mock.assert_called()

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 import argparse
 from shared.default_settings import Constants as DefaultSettings
 from engine_test.cmds.session_list import configure as configure_list

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -52,6 +52,13 @@ _Static_assert(REMOTED_HTTPS_DUAL_STACK_YES == REMOTED_MODULE_HTTPS_DUAL_STACK_Y
 _Static_assert(REMOTED_HTTPS_DUAL_STACK_NO == REMOTED_MODULE_HTTPS_DUAL_STACK_NO,
                "REMOTED_HTTPS_DUAL_STACK_NO must match REMOTED_MODULE_HTTPS_DUAL_STACK_NO");
 
+// Same reasoning again, for the rate-limit "not configured" sentinel: w_remoted_build_module_config()
+// copies the two rate fields across with no translation, and a mismatch would turn "the operator
+// never configured this" into a negative rate the module would have to guess about.
+_Static_assert(REMOTED_HTTPS_RATE_LIMIT_UNSET == REMOTED_MODULE_RATE_LIMIT_UNSET,
+               "REMOTED_HTTPS_RATE_LIMIT_UNSET must match REMOTED_MODULE_RATE_LIMIT_UNSET");
+
+
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
 #define STATIC
@@ -61,6 +68,19 @@ _Static_assert(REMOTED_HTTPS_DUAL_STACK_NO == REMOTED_MODULE_HTTPS_DUAL_STACK_NO
 
 static _Atomic time_t s_last_events_drop_warn = 0;
 static _Atomic size_t s_pending_events_drop = 0;
+static _Atomic time_t s_last_invalid_id_warn = 0;
+static _Atomic time_t s_last_identity_header_warn = 0;
+
+/**
+ * @brief Whether a throttled warning may be printed now: at most one per 90-second window per slot,
+ *        decided with a CAS so concurrent dispatchers print it once.
+ */
+static bool throttled_warning_allowed(_Atomic time_t *slot) {
+    time_t now = time(NULL);
+    time_t last = atomic_load_explicit(slot, memory_order_relaxed);
+    return (last == 0 || now - last >= 90) &&
+           atomic_compare_exchange_strong_explicit(slot, &last, now, memory_order_relaxed, memory_order_relaxed);
+}
 
 /**
  * @brief Increment the pending-drop counter and emit a rate-limited warning.
@@ -86,7 +106,8 @@ static void maybe_log_events_queue_drop(void) {
 w_indexed_queue_t *control_msg_queue = NULL;
 w_rr_queue_t *events_queue = NULL;
 
-netbuffer_t netbuffer_recv;
+/* Authentication is only ever marked on the receive side, so only that buffer counts it. */
+netbuffer_t netbuffer_recv = {.tracks_authentication = true};
 netbuffer_t netbuffer_send;
 
 wnotify_t * notify = NULL;
@@ -100,6 +121,16 @@ STATIC void handle_outgoing_data_to_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_storage * peer_info);
 STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storage * peer_info);
+STATIC void reap_unauthenticated_connections(time_t now);
+STATIC void report_refused_connections(time_t now);
+
+/* Connections refused at remoted.unauthenticated_max since the last warning, and when that was. */
+static size_t unauthenticated_refused = 0;
+static time_t unauthenticated_refused_warned = 0;
+
+/* Upper bound on how long the event loop waits, so the unauthenticated-connection sweep runs on an
+ * otherwise idle listener too. */
+#define SECURE_EVENT_WAIT_MILLIS 1000
 
 // Read the remoted.http_* internal options into the C++ module's config struct
 STATIC void remoted_module_https_config(remoted_module_config_t *rm_config);
@@ -109,6 +140,9 @@ STATIC char* build_limits_json(const module_limits_t *limits);
 
 // Read control endpoint internal options into the C++ module's config struct
 STATIC void remoted_module_control_config(remoted_module_config_t *rm_config);
+
+// Fail closed when the HTTPS listener's certificate or private key is missing or unreadable
+STATIC void w_remoted_check_tls_files(const remoted_module_config_t *rm_config);
 
 // Headers for messages
 #define UPGRADE_ACK_HEADER "u:upgrade_module:"
@@ -146,6 +180,9 @@ STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_co
 
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
+
+/* ACK a control message. Call with no lock held: closes the connection of an agent that does not read. */
+STATIC void send_control_ack(const char * agent_id);
 
 /* Get current timestamp */
 STATIC void *current_timestamp(void *none);
@@ -237,6 +274,9 @@ typedef struct {
 typedef struct {
     const char *agent_id;
     int   header_added;
+    int   drop;              // 1 when the batch cannot be built or identified: never send it
+    char  canonical_id[16];  // canonical spelling of agent_id ("001"), set by append_header()
+    size_t events;           // events appended to the bulk, counted as failed if the batch is dropped
     bulk_t bulk;             // body to send (header + events)
 } dispatch_ctx_t;
 
@@ -301,10 +341,27 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
     // per chunk, so a client that keeps reading slowly can hold a transfer open indefinitely.
     // A mass upgrade (the whole fleet fetching a WPK at once, many over slow links) is therefore
     // bounded only by this value, which is why it is settable rather than fixed.
-    rm_config->max_parallel_connections = getDefine_Int_default("remoted", "max_parallel_connections", 1, 65536, 512);
+    rm_config->max_parallel_connections = getDefine_Int_default("remoted", "max_parallel_connections", 1, 65536, 256);
+    // max_handshakes_per_source caps the connections ONE address may have in the TLS handshake at
+    // once; one more is closed at accept. A connection takes its max_parallel_connections slot before
+    // the handshake, so without it one host could hold every slot by connecting and never speaking
+    // TLS. Established connections are not counted, so a fleet behind one NAT or load-balancer
+    // address is not limited by it. 0 disables the cap.
+    rm_config->max_handshakes_per_source = getDefine_Int_default("remoted", "max_handshakes_per_source", 0, 65536, 32);
+    rm_config->max_handshakes_per_source_set = 1;
     // max_deferred_requests caps requests parked awaiting a downstream service (503 over it).
     // No Retry-After is sent: the agent runs its own retry/backoff on a 503.
-    rm_config->max_deferred_requests = getDefine_Int_default("remoted", "max_deferred_requests", 1, 65536, 256);
+    rm_config->max_deferred_requests = getDefine_Int_default("remoted", "max_deferred_requests", 1, 65536, 128);
+    // max_requests_per_agent caps the requests ONE authenticated agent may have open, so a single
+    // agent cannot hold every slot of the fleet-wide limits above (503 over it). An honest agent
+    // peaks at 5 (four client threads plus a WPK download), hence the default of 6.
+    rm_config->max_requests_per_agent = getDefine_Int_default("remoted", "max_requests_per_agent", 1, 65536, 6);
+    // max_inflight_bytes_per_agent caps the decoded-body bytes ONE agent may hold across its open
+    // requests. 0 (the default) lets the module use half of max_inflight_bytes: room for a whole
+    // vulnerability-detection first sync, which the agent cannot split, with the other half left to
+    // the rest of the fleet.
+    rm_config->max_inflight_bytes_per_agent =
+        getDefine_Int_default("remoted", "max_inflight_bytes_per_agent", 0, 1073741824, 0);
 
     // Downstream (async UDS client to the engine's event ingress) tunables.
     rm_config->downstream_connect_timeout = getDefine_Int_default("remoted", "downstream_connect_timeout", 1, 60, 2);
@@ -316,6 +373,10 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
     // (the module warns at startup otherwise).
     rm_config->downstream_stateful_response_timeout =
         getDefine_Int_default("remoted", "downstream_stateful_response_timeout", 1, 3600, 20);
+    // The sync server keeps applying the session after that deadline; the header keeps the
+    // agent's re-send from overlapping it. 0 disables the header.
+    rm_config->downstream_stateful_retry_after =
+        getDefine_Int_default("remoted", "downstream_stateful_retry_after", 0, 3600, 20);
     rm_config->downstream_io_threads = getDefine_Int_default("remoted", "downstream_io_threads", 0, 256, 0);
     rm_config->downstream_post_process_threads = getDefine_Int_default("remoted", "downstream_post_process_threads", 0, 256, 0);
     rm_config->downstream_max_response_body_size =
@@ -331,7 +392,20 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
     rm_config->jwt_max_age = getDefine_Int_default("remoted", "jwt_max_age", 1, 43200, 60);
     rm_config->jwt_clock_skew = getDefine_Int_default("remoted", "jwt_clock_skew", 0, 43200, 30);
     rm_config->jwt_clock_skew_set = 1;
-    rm_config->auth_max_body_size = getDefine_Int_default("remoted", "auth_max_body_size", 1048576, 67108864, 10485760);
+    rm_config->auth_max_body_size = getDefine_Int_default("remoted", "auth_max_body_size", 1048576, 67108864, 5242880);
+    // The cap on a zstd body once decoded. Larger than the wire cap on purpose: the agent sizes its
+    // batches BEFORE compressing them, and a VD-first session carries a whole package list.
+    rm_config->auth_max_decoded_body_size =
+        getDefine_Int_default("remoted", "auth_max_decoded_body_size", 1048576, 1073741824, 33554432);
+    // Below the wire cap, a body legal on the wire would be refused once decoded.
+    if (rm_config->auth_max_decoded_body_size < rm_config->auth_max_body_size) {
+        mwarn("'remoted.auth_max_decoded_body_size' (%lld) is below 'remoted.auth_max_body_size' (%lld); "
+              "using %lld.",
+              rm_config->auth_max_decoded_body_size,
+              rm_config->auth_max_body_size,
+              rm_config->auth_max_body_size);
+        rm_config->auth_max_decoded_body_size = rm_config->auth_max_body_size;
+    }
 }
 
 /**
@@ -412,6 +486,16 @@ STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_co
     rm_config->http_max_body_size = logr->https.max_body_size;
     rm_config->dual_stack = logr->https.dual_stack;
 
+    // Copied verbatim, sentinel included: RemotedConfig() starts them at
+    // REMOTED_HTTPS_RATE_LIMIT_UNSET and Read_Remote_JSON() only overwrites what the document
+    // carries, so "the operator set 0" and "nobody configured this" stay distinguishable all the
+    // way into the module. The flag says the two carry real values at all, which is what keeps a
+    // zeroed struct (or remoted_module_start(NULL)) meaning "module defaults" rather than
+    // "unlimited". The bucket depth is not configurable: the module derives it from the rate.
+    rm_config->rate_limit_set = 1;
+    rm_config->enroll_rate_limit = logr->https.enroll_rate_limit;
+    rm_config->cacerts_rate_limit = logr->https.cacerts_rate_limit;
+
     if (logr->https.bind_addr) {
         snprintf(rm_config->bind_address, sizeof(rm_config->bind_address), "%s", logr->https.bind_addr);
     }
@@ -430,6 +514,10 @@ STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_co
 
     if (logr->https.ca) {
         snprintf(rm_config->ca_path, sizeof(rm_config->ca_path), "%s", logr->https.ca);
+    }
+
+    if (logr->https.ca_certificate) {
+        snprintf(rm_config->ca_certificate_path, sizeof(rm_config->ca_certificate_path), "%s", logr->https.ca_certificate);
     }
 
     if (logr->https.ciphers) {
@@ -495,6 +583,7 @@ STATIC void remoted_module_control_config(remoted_module_config_t *rm_config) {
     rm_config->groups_refresh_interval_sec = getDefine_Int_default("remoted", "control_groups_refresh_interval", 1, 3600, 60);
     rm_config->wdb_request_connections = getDefine_Int_default("remoted", "control_wdb_request_connections", 1, 64, 4);
     rm_config->wdb_roundtrip_deadline_ms = getDefine_Int_default("remoted", "control_wdb_roundtrip_deadline", 100, 30000, 2000);
+    rm_config->wdb_request_deadline_ms = getDefine_Int_default("remoted", "control_wdb_request_deadline", 100, 30000, 5000);
     rm_config->wdb_max_queue_size = getDefine_Int_default("remoted", "control_wdb_max_queue_size", 100, 1000000, 10000);
     rm_config->tm_concurrency = getDefine_Int_default("remoted", "control_tm_concurrency", 1, 64, 4);
     rm_config->tm_deadline_ms = getDefine_Int_default("remoted", "control_tm_deadline", 100, 30000, 2000);
@@ -510,8 +599,9 @@ STATIC void remoted_module_control_config(remoted_module_config_t *rm_config) {
     // sweep marks any agent whose last_keepalive is older than <agents_disconnection_time>. The
     // staleness the threshold sees is the throttle PLUS the agent's notify interval, which remoted
     // does not know, so the guard fires from half: anything at or above it can cross once the
-    // agent's cadence is added, and half is also the safe setting for detection latency, because
-    // the sweep's period is the threshold itself and detection lands anywhere in [1x, 2x].
+    // agent's cadence is added. The sweep itself runs every quarter of the threshold, bounded to
+    // [60, 300] s and never longer than the threshold (task_manager's sweepPeriod()), so detection
+    // lands within one such period after the threshold is crossed.
     if (rm_config->keepalive_throttle_sec >= logr.global.agents_disconnection_time / 2) {
         mwarn("'remoted.control_keepalive_throttle' (%d s) is at or above half of <agents_disconnection_time> "
               "(%ld s): once the throttle plus the agent's notify interval crosses the threshold, agents that "
@@ -539,6 +629,71 @@ STATIC void remoted_module_control_config(remoted_module_config_t *rm_config) {
     } else {
         snprintf(rm_config->limits_json, sizeof(rm_config->limits_json), "{}");
     }
+}
+
+/**
+ * @brief Refuse to start when a TLS file the HTTPS agent listener will open cannot be read: its
+ *        certificate and private key always, the CA bundle that verifies agent client certificates
+ *        when verification is enabled, and the CA certificate it publishes on GET /cacerts always
+ *        (5.x agents bootstrap their trust in the manager from it at enrollment; without it the
+ *        listener would run and answer 404). The manager does not generate these files: the
+ *        operator provisions them. The configuration validator wazuh-manager-control runs first
+ *        (wazuh-manager-conf validate) only checks that they exist, as root; this runs after remoted
+ *        has dropped privileges and before the PID file is written, so `wazuh-manager-control status`
+ *        never reports as running a remoted that is about to exit (w_remoted_preflight_tls_files(), called from
+ *        HandleRemote() in remoted.c), with the installation directory as its working directory, so
+ *        access(R_OK) answers the question the C++ module would otherwise die on: can the service
+ *        user open them? Exactly one deterministic message is logged (the paths as configured:
+ *        relative to the installation directory, or absolute) and the daemon exits;
+ *        the module's own exception (RestinioHttpServer) stays as the last resort for files that
+ *        exist but fail to load. certificate_path/private_key_path are always populated: the schema
+ *        gives both options a non-empty default and w_remoted_build_module_config() copies them
+ *        verbatim. The CA is probed only in the modes where the module loads it (UNSET and NONE both
+ *        mean no verification, httpServerConfig.cpp), and an empty ca_path stands for the module's
+ *        default, REMOTED_MODULE_DEFAULT_CA_PATH (remoted_module.h), so access("") is never asked;
+ *        likewise, an empty ca_certificate_path stands for REMOTED_MODULE_DEFAULT_CA_CERTIFICATE_PATH.
+ */
+STATIC void w_remoted_check_tls_files(const remoted_module_config_t *rm_config) {
+    const char *certificate = rm_config->certificate_path;
+    const char *key = rm_config->private_key_path;
+    const bool certificate_ok = access(certificate, R_OK) == 0;
+    const bool key_ok = access(key, R_OK) == 0;
+
+    if (!certificate_ok && !key_ok) {
+        merror_exit(REMOTED_TLS_FILES_MISSING_BOTH, certificate, key);
+    } else if (!certificate_ok) {
+        merror_exit(REMOTED_TLS_FILES_MISSING_CERT, certificate);
+    } else if (!key_ok) {
+        merror_exit(REMOTED_TLS_FILES_MISSING_KEY, key);
+    }
+
+    if (rm_config->verification_mode != REMOTED_HTTPS_VERIFY_UNSET &&
+        rm_config->verification_mode != REMOTED_HTTPS_VERIFY_NONE) {
+        const char *ca = rm_config->ca_path[0] != '\0' ? rm_config->ca_path : REMOTED_MODULE_DEFAULT_CA_PATH;
+
+        if (access(ca, R_OK) != 0) {
+            merror_exit(REMOTED_TLS_FILES_MISSING_CA, ca);
+        }
+    }
+
+    const char *ca_certificate = rm_config->ca_certificate_path[0] != '\0' ? rm_config->ca_certificate_path
+                                                                           : REMOTED_MODULE_DEFAULT_CA_CERTIFICATE_PATH;
+
+    if (access(ca_certificate, R_OK) != 0) {
+        merror_exit(REMOTED_TLS_FILES_MISSING_CA_CERTIFICATE, ca_certificate);
+    }
+}
+
+/* The module config the preflight built, reused by HandleSecure(): building it again would repeat the
+ * builder's warnings (remoted_module_https_config()) at every start. Everything the builder reads (logr,
+ * the internal options, keyupdate_interval) is already final when the preflight runs. */
+static remoted_module_config_t preflight_module_config;
+static bool preflight_module_config_built = false;
+
+void w_remoted_preflight_tls_files(void) {
+    w_remoted_build_module_config(&logr, &preflight_module_config);
+    preflight_module_config_built = true;
+    w_remoted_check_tls_files(&preflight_module_config);
 }
 
 void w_remoted_validate_module_config(void) {
@@ -582,8 +737,13 @@ void HandleSecure()
 
     // Launch the remoted C++ module in its own thread, seeded with a config struct.
     {
-        remoted_module_config_t rm_config;
-        w_remoted_build_module_config(&logr, &rm_config);
+        // Built, and its TLS files probed, by w_remoted_preflight_tls_files(), which HandleRemote() calls
+        // before CreatePID(). Should HandleSecure() ever be reached without it, run it here: the module
+        // must never start without that check.
+        if (!preflight_module_config_built) {
+            w_remoted_preflight_tls_files();
+        }
+        remoted_module_config_t rm_config = preflight_module_config;
         remoted_module_control_config(&rm_config);
 
         char *rm_cluster_name = get_cluster_name();
@@ -630,7 +790,13 @@ void HandleSecure()
     while (1) {
 
         /* It waits for a socket event */
-        if (n_events = wnotify_wait(notify, EPOLL_MILLIS), n_events < 0) {
+        n_events = wnotify_wait(notify, (protocol & REMOTED_NET_PROTOCOL_TCP) ? SECURE_EVENT_WAIT_MILLIS : EPOLL_MILLIS);
+
+        if (protocol & REMOTED_NET_PROTOCOL_TCP) {
+            reap_unauthenticated_connections(time(NULL));
+        }
+
+        if (n_events < 0) {
             if (errno != EINTR) {
                 merror("Waiting for connection: %s (%d)", strerror(errno), errno);
                 sleep(1);
@@ -781,6 +947,15 @@ STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storag
     int sock_client = accept(logr.tcp_sock, (struct sockaddr *) peer_info, &logr.peer_size);
 
     if (sock_client >= 0) {
+        // Connections that have not authenticated yet are capped, so peers without a key cannot
+        // take the descriptors the registered agents need. Refused before nb_open(): nothing to undo.
+        if (nb_unauthenticated_count(&netbuffer_recv) >= (size_t)unauthenticated_max) {
+            close(sock_client);
+            unauthenticated_refused++;
+            report_refused_connections(time(NULL));
+            return;
+        }
+
         nb_open(&netbuffer_recv, sock_client, peer_info);
         nb_open(&netbuffer_send, sock_client, peer_info);
 
@@ -801,6 +976,62 @@ STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storag
             merror(ACCEPT_ERROR, strerror(errno), errno);
         }
     }
+}
+
+void rem_check_unauthenticated_cap(void)
+{
+    if ((rlim_t)unauthenticated_max > nofile_effective / 2) {
+        mwarn("remoted.unauthenticated_max (%d) is above half the file descriptor limit (%lu): connections "
+              "that never authenticate could take the descriptors registered agents need.",
+              unauthenticated_max,
+              (unsigned long)nofile_effective);
+    }
+}
+
+/* Warn about the connections refused at remoted.unauthenticated_max, at most once a minute. Called on
+ * every refusal and by the once-per-second sweep, so refusals that stop after a warning are still
+ * reported once the minute is up. Event-loop thread only. */
+STATIC void report_refused_connections(time_t now)
+{
+    if (unauthenticated_refused == 0 || now - unauthenticated_refused_warned < 60) {
+        return;
+    }
+
+    mwarn("Refused %zu legacy TCP connection(s): %d connections are already waiting to "
+          "authenticate (remoted.unauthenticated_max).",
+          unauthenticated_refused,
+          unauthenticated_max);
+    unauthenticated_refused = 0;
+    unauthenticated_refused_warned = now;
+}
+
+/* Close the legacy TCP connections that have not sent a message decrypting with a registered key
+ * within remoted.unauthenticated_timeout. Runs on the event-loop thread, at most once per second. */
+STATIC void reap_unauthenticated_connections(time_t now)
+{
+    static time_t last_sweep = 0;
+    size_t count = 0;
+
+    if (now == last_sweep) {
+        return;
+    }
+
+    last_sweep = now;
+
+    report_refused_connections(now);
+
+    // Collected under the netbuffer mutex and closed after it is released: _close_sock() takes the
+    // key lock, which is ordered before that mutex (send_msg() holds it around nb_queue()).
+    int * socks = nb_collect_unauthenticated(&netbuffer_recv, now - unauthenticated_timeout, &count);
+
+    for (size_t i = 0; i < count; i++) {
+        mdebug1("TCP peer [%d] sent no authenticated message within %d seconds. Closing.",
+                socks[i],
+                unauthenticated_timeout);
+        _close_sock(&keys, socks[i]);
+    }
+
+    os_free(socks);
 }
 
 STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_storage * peer_info)
@@ -1083,18 +1314,28 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
             w_mutex_unlock(&keys.keyentries[agentid]->mutex);
         }
     } else if (strncmp(buffer, "#ping", 5) == 0) {
-            int retval = 0;
-            char *msg = "#pong";
+            const char *msg = "#pong";
             ssize_t msg_size = strlen(msg);
 
+            // Any peer can ping, before authenticating: the reply must never block this worker, and
+            // its failures are logged at debug level only, since the peer controls how many occur.
             if (protocol == REMOTED_NET_PROTOCOL_UDP) {
-                retval = sendto(logr.udp_sock, msg, msg_size, 0, (struct sockaddr *)&message->addr, logr.peer_size) == msg_size ? 0 : -1;
+                if (sendto(logr.udp_sock, msg, msg_size, MSG_DONTWAIT, (struct sockaddr *)&message->addr, logr.peer_size) != msg_size) {
+                    mdebug1("Ping reply to '%s' could not be sent: %s (%d)", srcip, strerror(errno), errno);
+                }
             } else {
-                retval = OS_SendSecureTCP(message->sock, msg_size, msg);
-            }
-
-            if (retval < 0) {
-                mwarn("Ping operation could not be delivered completely (%d)", retval);
+                switch (nb_queue_nowait(&netbuffer_send, message->sock, msg, (size_t)msg_size)) {
+                case 0:
+                    break;
+                case -1:
+                    // The send buffer only fills when the peer does not read its replies.
+                    mdebug1("TCP peer [%d] from '%s' is not reading its ping replies. Closing.", message->sock, srcip);
+                    _close_sock(&keys, message->sock);
+                    break;
+                default:
+                    // The connection was already closed.
+                    break;
+                }
             }
 
             rem_inc_recv_ping();
@@ -1209,6 +1450,11 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         return;
     }
 
+    /* The connection proved it holds a registered key: exempt it from the unauthenticated timeout and cap. */
+    if (message->sock >= 0) {
+        nb_set_authenticated(&netbuffer_recv, message->sock, message->counter);
+    }
+
     /* Recieved valid message timestamp updated. */
     keys.keyentries[agentid]->rcvd = current_ts;
 
@@ -1257,8 +1503,9 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
             // Validate control message before unlocking to update startup status safely
             char *cleaned_msg = NULL;
             int is_startup = 0, is_shutdown = 0;
+            bool send_ack = false;
             size_t tmp_msg_length = msg_length - 3; // Exclude the header length (3 characters)
-            int validation_result = validate_control_msg(key, tmp_msg, tmp_msg_length, &cleaned_msg, &is_startup, &is_shutdown);
+            int validation_result = validate_control_msg(key, tmp_msg, tmp_msg_length, &cleaned_msg, &is_startup, &is_shutdown, &send_ack);
 
             // Update keystore startup status immediately after validation
             if (is_startup) {
@@ -1269,6 +1516,10 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
             bool post_startup = keys.keyentries[agentid]->post_startup;
 
             key_unlock();
+
+            if (send_ack) {
+                send_control_ack(key->id);
+            }
 
             if (sock_idle >= 0) {
                 _close_sock(&keys, sock_idle);
@@ -1433,6 +1684,26 @@ STATIC bool discard_legacy_agent_message(const char* msg, const char* agent_id) 
     return false;
 }
 
+STATIC void send_control_ack(const char * agent_id) {
+    int full_sock = -1;
+
+    // The agent sets the pace of these ACKs with its own messages, so they never wait for buffer space:
+    // a worker waiting on an agent that does not read would delay every other agent's messages.
+    switch (send_msg_nowait(agent_id, CONTROL_HEADER HC_ACK, -1, &full_sock)) {
+    case OS_SUCCESS:
+        rem_inc_send_ack();
+        break;
+    case SEND_MSG_QUEUE_FULL:
+        rem_inc_send_discarded();
+        mdebug1("Agent '%s' is not reading the messages sent to it on TCP peer [%d]. Closing.", agent_id, full_sock);
+        _close_sock(&keys, full_sock);
+        break;
+    default:
+        // send_msg_nowait() already logged why
+        break;
+    }
+}
+
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock) {
     int retval = 0;
@@ -1443,9 +1714,10 @@ int _close_sock(keystore * keys, int sock) {
     retval = OS_DeleteSocket(keys, sock);
     key_unlock();
 
-    if (!close(sock)) {
-        nb_close(&netbuffer_recv, sock);
-        nb_close(&netbuffer_send, sock);
+    // Closes the descriptor and releases both slots in one critical section. They are released even when
+    // close() fails (Linux frees the descriptor anyway), except on EBADF: another _close_sock() already
+    // closed it, and its number may already belong to a newly accepted connection.
+    if (nb_close_socket(&netbuffer_recv, &netbuffer_send, sock)) {
         rem_dec_tcp();
     }
 
@@ -1519,10 +1791,68 @@ const char* infer_os_type(const char *os_platform) {
     return "linux";
 }
 
-// Encode the header ONLY once above the body
-static int append_header(dispatch_ctx_t *ctx) {
+/**
+ * @brief Write the canonical spelling of an agent id: its value zero-padded to at least three digits.
+ *
+ * The same rule the manager applies to every agent id it issues or verifies: 1 to 10 ASCII digits
+ * whose value fits in 32 bits, so "1", "01" and "0001" are all "001", and "1000" stays "1000".
+ *
+ * @param id   Agent id as stored (client.keys).
+ * @param out  Destination buffer.
+ * @param size Size of @p out.
+ * @return 0 on success; -1 if @p id is not a valid agent id or @p out is too small.
+ */
+STATIC int canonical_agent_id(const char *id, char *out, size_t size) {
+    if (!id || !out || size == 0) return -1;
+
+    const size_t len = strlen(id);
+    if (len == 0 || len > 10) return -1;
+
+    unsigned long long value = 0;
+    for (size_t i = 0; i < len; i++) {
+        if (id[i] < '0' || id[i] > '9') return -1;
+        value = value * 10 + (unsigned long long)(id[i] - '0');
+    }
+    if (value > UINT32_MAX) return -1;
+
+    const int written = snprintf(out, size, "%03llu", value);
+    return (written > 0 && (size_t)written < size) ? 0 : -1;
+}
+
+/**
+ * @brief Name the batch's agent to the engine: the client's headers are reset to the ones it was
+ *        built with, then X-Wazuh-Agent-Id is added.
+ *
+ * The client is reused for every agent, so without the reset the previous agent's header would
+ * also be sent.
+ *
+ * @return 0 on success; -1 if the headers could not be set (the batch must not be sent).
+ */
+STATIC int set_batch_identity(uhttp_client_t *cli, const char *canonical_id) {
+    char line[64];
+
+    if (!cli || !canonical_id || !canonical_id[0]) return -1;
+    if (uhttp_client_reset_headers(cli) != 0) return -1;
+
+    const int written = snprintf(line, sizeof(line), "X-Wazuh-Agent-Id: %s", canonical_id);
+    if (written <= 0 || (size_t)written >= sizeof(line)) return -1;
+
+    return uhttp_client_add_header(cli, line) == 0 ? 0 : -1;
+}
+
+// Encode the header ONLY once above the body. The agent id written into it is the canonical one, the
+// same string set_batch_identity() sends as X-Wazuh-Agent-Id, so both name the agent identically.
+STATIC int append_header(dispatch_ctx_t *ctx) {
     if (!ctx || !ctx->agent_id) return -1;
     if (ctx->header_added) return 0;
+
+    if (canonical_agent_id(ctx->agent_id, ctx->canonical_id, sizeof(ctx->canonical_id)) != 0) {
+        if (throttled_warning_allowed(&s_last_invalid_id_warn)) {
+            mwarn("Discarding events of agent '%s': its id is not a valid agent id.", ctx->agent_id);
+        }
+        ctx->drop = 1;
+        return -1;
+    }
 
     // Snapshot metadata for this agent (copies strings into 'snap')
     agent_meta_t snap = {0};
@@ -1544,7 +1874,7 @@ static int append_header(dispatch_ctx_t *ctx) {
     cJSON_AddItemToObject(host, "os",    os);
 
     // agent.*
-    cJSON_AddStringToObject(agent, "id", ctx->agent_id);
+    cJSON_AddStringToObject(agent, "id", ctx->canonical_id);
     if (have_meta && snap.agent_name) {
         cJSON_AddStringToObject(agent, "name", snap.agent_name);
     }
@@ -1680,10 +2010,19 @@ static void rr_collect_one(void *data, void *user) {
     dispatch_ctx_t *ctx = (dispatch_ctx_t*)user;
 
     // Ensure header at the top of the body
-    if (!ctx->header_added) {
+    if (!ctx->header_added && !ctx->drop) {
         if (append_header(ctx) < 0) {
-            mwarn("Unable to append header for agent '%s'", ctx->agent_id ?: "?");
+            if (!ctx->drop) {
+                mwarn("Unable to append header for agent '%s'", ctx->agent_id ?: "?");
+            }
+            ctx->drop = 1;
         }
+    }
+
+    if (ctx->drop) {
+        rem_inc_recv_events_failed();
+        dispose_evt_item(e);
+        return;
     }
 
     // Event Framing: "E <indented_payload>\n"
@@ -1693,9 +2032,37 @@ static void rr_collect_one(void *data, void *user) {
         bulk_append_indented(&ctx->bulk, e->raw, e->len) < 0 ||
         bulk_append(&ctx->bulk, "\n", 1) < 0) {
         mwarn("Unable to append event for agent '%s'", ctx->agent_id ?: "?");
+    } else {
+        ctx->events++;
     }
 
     dispose_evt_item(e);
+}
+
+/**
+ * @brief Send one agent's batch, named to the engine by its identity header.
+ *
+ * Nothing is sent for an empty or dropped batch. If the identity header cannot be set, the batch is
+ * discarded rather than sent without it: its events are counted as failed and a throttled warning is
+ * printed.
+ *
+ * @return 0 when nothing had to be sent (or it was discarded); otherwise uhttp_post()'s return value.
+ */
+STATIC int flush_batch(uhttp_client_t *cli, dispatch_ctx_t *ctx, uhttp_result_t *res) {
+    if (!ctx || ctx->bulk.len == 0 || ctx->drop) return 0;
+
+    if (set_batch_identity(cli, ctx->canonical_id) != 0) {
+        for (size_t i = 0; i < ctx->events; i++) {
+            rem_inc_recv_events_failed();
+        }
+        if (throttled_warning_allowed(&s_last_identity_header_warn)) {
+            mwarn("Discarding a batch of agent '%s': unable to set its identity header.", ctx->agent_id ?: "?");
+        }
+        ctx->drop = 1;
+        return 0;
+    }
+
+    return uhttp_post(cli, ctx->bulk.buf, ctx->bulk.len, res);
 }
 
 // Thread that dispatches each ring turn as a single POST
@@ -1757,16 +2124,18 @@ void *dispach_events_thread(void *arg) {
         // Online path: build one agent batch and POST it
         dispatch_ctx_t ctx = {
             .agent_id     = NULL,
-            .header_added = 0
+            .header_added = 0,
+            .drop         = 0,
+            .events       = 0
         };
         bulk_init(&ctx.bulk, 8192);
 
         size_t drained = batch_queue_drain_next_ex(q, /*abstime=*/NULL,
                                                    rr_collect_one, &ctx, &ctx.agent_id);
 
-        if (drained > 0 && ctx.bulk.len > 0) {
+        if (drained > 0) {
             uhttp_result_t res = {0};
-            int rc = uhttp_post(cli, ctx.bulk.buf, ctx.bulk.len, &res);
+            int rc = flush_batch(cli, &ctx, &res);
             if (rc != 0) {
                 // POST failed: discard this batch (already in ctx.bulk) and go offline
                 mwarn("analysisd offline? POST failed (rc=%d, http=%ld, curl=%d). "

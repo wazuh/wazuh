@@ -1,6 +1,11 @@
 /*
- * Copyright (C) 2015, Wazuh Inc.
- * This program is free software; you can redistribute it and/or modify it under the terms of GPLv2.
+ * Copyright (C) Wazuh Inc.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 #include "semantics.hpp"
 
@@ -45,7 +50,10 @@ namespace manager_config::detail
             std::error_code ec;
             if (!std::filesystem::is_regular_file(resolved, ec))
             {
-                return Error {pointer, "file not found: " + resolved.string()};
+                return Error {pointer,
+                              "file not found: " + resolved.string() +
+                                  " (issued by the credential resolver at installation, or provisioned "
+                                  "externally, e.g. with wazuh-certs-tool)"};
             }
             return std::nullopt;
         }
@@ -102,9 +110,16 @@ namespace manager_config::detail
                 ports.emplace_back(pointer, value->GetInt());
             }
         };
-        port("/remote/legacy/port", boolean(get(doc, "/remote/legacy/enabled"), false));
+        const bool legacyEnabled = boolean(get(doc, "/remote/legacy/enabled"), false);
+        // authd binds auth.port only for legacy enrollment: authd running, remote_enrollment on, and
+        // legacy_enrollment on -- which has no schema default and follows remote.legacy.enabled when unset
+        // (w_authd_resolve_legacy_enrollment()).
+        const bool legacyEnrollment = !boolean(get(doc, "/auth/disabled"), false) &&
+                                      boolean(get(doc, "/auth/remote_enrollment"), true) &&
+                                      boolean(get(doc, "/auth/legacy_enrollment"), legacyEnabled);
+        port("/remote/legacy/port", legacyEnabled);
         port("/remote/https/port", true);
-        port("/auth/port", !boolean(get(doc, "/auth/disabled"), false));
+        port("/auth/port", legacyEnrollment);
         port("/cluster/port", true);
         for (std::size_t i = 0; i < ports.size(); ++i)
         {
@@ -118,14 +133,17 @@ namespace manager_config::detail
             }
         }
 
-        // Only the files the manager itself owns: the installer generates the HTTPS/authd certificate and the
-        // operator provides the rest. indexer.ssl.* is deliberately not checked (the installer never creates
-        // those files and the indexer connector reports them at runtime), otherwise a fresh install could not start.
+        // Nothing recreates these files at start: the credential resolver issues them once, at installation,
+        // and the operator provisions or rotates them out of band thereafter (e.g. with wazuh-certs-tool). So a
+        // missing file is a fail-closed verdict here, before any daemon starts. indexer.ssl.* is not checked
+        // here: the credential resolver owns those files (imported from the indexer's export or staged by the
+        // operator) and refuses the start itself when they are missing or invalid.
         if (options.checkFiles)
         {
             for (const char* pointer : {"/remote/https/certificate",
                                         "/remote/https/key",
                                         "/remote/https/ca",
+                                        "/remote/https/ca_certificate",
                                         "/auth/ssl_agent_ca",
                                         "/auth/ssl_manager_cert",
                                         "/auth/ssl_manager_key"})

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include "builders/baseBuilders_test.hpp"
 #include "builders/stage/outputs.hpp"
 
@@ -85,8 +86,7 @@ INSTANTIATE_TEST_SUITE_P(
                        const auto& innerRegistry = mocks.registry->template getRegistry<StageBuilder>();
                        EXPECT_CALL(*mocks.ctx, registry()).WillOnce(testing::ReturnRef(*mocks.registry));
                        EXPECT_CALL(innerRegistry, get("wazuh-indexer")).WillOnce(testing::Return(dummyStageBuilder()));
-                       return base::Broadcast::create("outputs",
-                                                      {base::And::create("dummy", {})});
+                       return base::Broadcast::create("outputs", {base::And::create("dummy", {})});
                    })),
         StageT(R"([{"output1": "ingnored", "output2": "ingnored"}])", outputsBuilder, FAILURE())),
     testNameFormatter<StageBuilderTest>("Outputs"));

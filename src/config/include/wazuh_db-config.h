@@ -1,7 +1,6 @@
 /*
  * Wazuh-DB settings manager
- * Copyright (C) 2015, Wazuh Inc.
- * Dec 17, 2021.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -17,7 +16,8 @@
 #ifndef CLIENT
 struct cJSON;
 /**
- * @brief Reader of the `wdb` section of the effective document (etc/wazuh-manager.conf, see mconf-config.h).
+ * @brief Reader of the `wdb` section of the effective document (/etc/wazuh-manager/wazuh-manager.conf,
+ *        see mconf-config.h).
  *
  * @param wdb The section returned by w_mconf_section("wdb"); NULL or an absent backup block keeps the defaults.
  * @return OS_SUCCESS, or OS_INVALID when a value breaks the rules the schema cannot express.

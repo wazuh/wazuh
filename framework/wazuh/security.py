@@ -1,4 +1,4 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -12,15 +12,76 @@ from wazuh.core.decorators import dapi_allower
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.security import invalid_users_tokens, invalid_roles_tokens, invalid_run_as_tokens, revoke_tokens, \
-    load_spec, sanitize_rbac_policy, update_security_conf, REQUIRED_FIELDS, SORT_FIELDS, SORT_FIELDS_GET_USERS
+    invalid_run_as_context_tokens, load_spec, sanitize_rbac_policy, update_security_conf, REQUIRED_FIELDS, \
+    SORT_FIELDS, SORT_FIELDS_GET_USERS
 from wazuh.core.utils import process_array
-from wazuh.rbac.decorators import expose_resources
+from wazuh.rbac.decorators import expose_resources, require_every_role_update, require_role_update
 from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager
 from wazuh.rbac.orm import SecurityError, MAX_ID_RESERVED
 from wazuh.rbac.orm import UserRolesManager, RolesRulesManager, RulesManager
 
-# Minimum twelve characters, at least one uppercase letter, one lowercase letter, one number and one special character:
-_user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}$')
+# At least one letter and one digit, PCI DSS v4.0 requirement 8.3.6, in printable ASCII without spaces.
+# Basic auth is decoded as latin1, so a non-ASCII password could be stored but never used to log in.
+# The credential resolver's narrower alphabet is a subset of this one; it is not applied here because
+# rotation tools and API clients send symbols outside it. \Z rather than $, which would also match
+# before a trailing newline.
+#
+# This REPLACES the previous rule, which additionally demanded an uppercase letter, a lowercase
+# letter and a symbol. Relaxing a password rule deserves its reasoning stated, so:
+#
+#   * Every value the installation accepts must be one the API accepts. The credential resolver
+#     validates a value at install time that this function validates again at rotation; a value
+#     the installation accepts and the API later refuses is a deployment that comes up and cannot
+#     be administered. The resolver's rule (src/init/credentials/wazuh-manager-resolve-credentials.py)
+#     is deliberately STRICTER than this one -- the generator's alphabet and all four character
+#     classes -- because the value it accepts is written to credentials.env and parsed without
+#     escaping by every component. The converse does not hold and is not meant to: a password this
+#     function accepts may be one the resolver, and so the installation assistant's passwords tool,
+#     rejects.
+#   * Composition rules are not what makes a password strong, and NIST SP 800-63B 5.1.1.2 says so
+#     explicitly ("verifiers SHOULD NOT impose other composition rules"): they push operators toward
+#     predictable substitutions while barely moving the search space. The 12-character floor -- the
+#     control that does move it -- is unchanged, and the 64-character ceiling still exists only
+#     because bcrypt truncates past 72 bytes.
+#   * The weakness that actually mattered was not the shape of a chosen password: it was that every
+#     4.x installation shipped `wazuh`/`wazuh` and `wazuh-wui`/`wazuh-wui`. That is what #39554 removes.
+#     Where nothing is supplied the seeding generates 32 characters from a 73-character alphabet
+#     (~198 bits), which no composition rule would have improved on.
+#
+# So the floor moved down for an operator who insists on choosing their own value, and the default
+# moved from "known to everyone" to "unique per installation".
+_user_password = re.compile(r'^(?=.*[A-Za-z])(?=.*\d)[\x21-\x7e]*\Z')
+
+PASSWORD_MIN_LENGTH = 12
+PASSWORD_MAX_LENGTH = 64
+
+
+def validate_password(password: str):
+    """Check a password against the Server API password policy.
+
+    This is the rule the API applies to every user. The credential resolver
+    (src/init/credentials/wazuh-manager-resolve-credentials.py) runs before the framework is
+    importable and applies a stricter one at install time (see the comment above), so a value it
+    accepts or generates is never one this function would reject later; its test suite checks that
+    against this file. The reverse is not guaranteed.
+
+    Parameters
+    ----------
+    password : str
+        Password to check.
+
+    Raises
+    ------
+    WazuhError(5009)
+        Insecure user password provided (length).
+    WazuhError(5007)
+        Insecure user password provided (variety of characters).
+    """
+    if len(password) > PASSWORD_MAX_LENGTH or len(password) < PASSWORD_MIN_LENGTH:
+        raise WazuhError(5009)
+    if not _user_password.match(password):
+        raise WazuhError(5007)
+
 
 @dapi_allower()
 def get_user_me(token: dict) -> AffectedItemsWazuhResult:
@@ -123,8 +184,90 @@ def get_users(user_ids: list = None, offset: int = 0, limit: int = common.DATABA
     return result
 
 
+def _check_reserved_target(user_id: int, current_user: str = None, run_as: bool = False):
+    """Refuse a modification of a reserved user unless a reserved user requested it.
+
+    Parameters
+    ----------
+    user_id : int
+        ID of the user to be modified.
+    current_user : str
+        Name of the user that made the request.
+    run_as : bool
+        Whether the request was made with a run_as token. The `sub` of such a token is the account that
+        logged in (e.g. `wazuh-internal-client`), not the end user whose roles the token carries, so it is never
+        treated as a reserved caller.
+
+    Raises
+    ------
+    WazuhError(5011)
+        If the target is a reserved user and the caller is unknown, is not a reserved user, or used a
+        run_as token.
+    """
+    if user_id > MAX_ID_RESERVED:
+        return
+
+    if current_user is None or run_as:
+        raise WazuhError(5011)
+
+    with AuthenticationManager() as auth_manager:
+        caller = auth_manager.get_user(current_user)
+
+    if not caller or caller['id'] > MAX_ID_RESERVED:
+        raise WazuhError(5011)
+
+
+def _check_role_escalation(user_id: int, current_user: str = None, run_as_roles: bool = False,
+                           static_roles: bool = False):
+    """Refuse an operation over a user that would put roles the caller cannot assign within its reach.
+
+    Linking a role to a user needs 'security:update' over the role (`set_user_role`). Enabling the
+    run_as flag of an account, or resetting the password of an account held by someone else, reaches
+    the same roles by another road, so it asks for the same permission.
+
+    A run_as login resolves its roles from the rules linked when it logs in, so the roles it reaches
+    cannot be listed when the flag is enabled: a rule linked afterwards to any role, administrator
+    included, would land on an account the caller pre-positioned while nothing was reachable. A run_as
+    account therefore counts as reaching every role, those not created yet included.
+
+    Parameters
+    ----------
+    user_id : int
+        ID of the user to be modified.
+    current_user : str
+        Name of the user that made the request.
+    run_as_roles : bool
+        Count every role, as a run_as login of the target can resolve to any of them. Checked against
+        the flag the target will have, not the one it has, so the caller passes True when enabling it.
+    static_roles : bool
+        Count the roles linked to the target, and every role when its run_as flag is already on. A
+        caller modifying its own account is exempt: it already holds all of them.
+
+    Raises
+    ------
+    WazuhPermissionError(4000)
+        If the caller lacks 'security:update' over at least one of the counted roles.
+    """
+    roles = set()
+
+    if static_roles:
+        with AuthenticationManager() as auth_manager:
+            target = auth_manager.get_user_id(user_id)
+            caller = auth_manager.get_user(current_user) if current_user is not None else None
+        if not target or (caller and caller['id'] == user_id):
+            return
+        roles.update(target['roles'])
+        run_as_roles = run_as_roles or target['allow_run_as']
+
+    if run_as_roles:
+        require_every_role_update()
+    else:
+        require_role_update(roles)
+
+
 @expose_resources(actions=['security:edit_run_as'], resources=['*:*:*'])
-def edit_run_as(user_id: str = None, allow_run_as: bool = False) -> AffectedItemsWazuhResult:
+def edit_run_as(user_id: str = None, allow_run_as: bool = False, current_user: str = None,
+                run_as: bool = False) -> AffectedItemsWazuhResult:
     """Enable/Disable the user's allow_run_as flag.
 
     Parameters
@@ -133,18 +276,34 @@ def edit_run_as(user_id: str = None, allow_run_as: bool = False) -> AffectedItem
         User ID.
     allow_run_as : bool
         Enable or disable authorization context login method for the specified user.
+    current_user : str
+        Name of the user that made the request.
+    run_as : bool
+        Whether the request was made with a run_as token.
+
+    Raises
+    ------
+    WazuhError(5011)
+        If the target is a reserved user and the caller is not a reserved user logged in without run_as.
+    WazuhPermissionError(4000)
+        If the flag is being enabled and the caller lacks 'security:update' over every role, those not
+        created yet included: a run_as login of the target can resolve to any of them.
 
     Returns
     -------
     AffectedItemsWazuhResult
         Status message.
     """
+    user_id = int(user_id)
+    _check_reserved_target(user_id, current_user, run_as)
+    if allow_run_as:
+        _check_role_escalation(user_id, current_user, run_as_roles=True)
+
     result = AffectedItemsWazuhResult(none_msg=f"The parameter allow_run_as could not be "
                                                f"{'enabled' if allow_run_as else 'disabled'} for the user",
                                       all_msg=f"Parameter allow_run_as has been "
                                               f"{'enabled' if allow_run_as else 'disabled'} for the user")
     with AuthenticationManager() as auth:
-        user_id = int(user_id)
         query = auth.edit_run_as(user_id, allow_run_as)
         if query is False:
             result.add_failed_item(id_=user_id, error=WazuhError(5001))
@@ -174,10 +333,7 @@ def create_user(username: str = None, password: str = None) -> AffectedItemsWazu
     AffectedItemsWazuhResult
         Status message.
     """
-    if len(password) > 64 or len(password) < 12:
-        raise WazuhError(5009)
-    elif not _user_password.match(password):
-        raise WazuhError(5007)
+    validate_password(password)
 
     result = AffectedItemsWazuhResult(none_msg='User could not be created',
                                       all_msg='User was successfully created')
@@ -196,7 +352,8 @@ def create_user(username: str = None, password: str = None) -> AffectedItemsWazu
 
 
 @expose_resources(actions=['security:update'], resources=['user:id:{user_id}'])
-def update_user(user_id: str = None, password: str = None, current_user: str = None) -> AffectedItemsWazuhResult:
+def update_user(user_id: str = None, password: str = None, current_user: str = None,
+                run_as: bool = False) -> AffectedItemsWazuhResult:
     """Update a specified user
 
     Parameters
@@ -207,6 +364,9 @@ def update_user(user_id: str = None, password: str = None, current_user: str = N
         Password for the new user.
     current_user : str
         Name of the user that made the request.
+    run_as : bool
+        Whether the request was made with a run_as token.
+
     Raises
     ------
     WazuhError(4001)
@@ -215,6 +375,11 @@ def update_user(user_id: str = None, password: str = None, current_user: str = N
         Insecure user password provided (length).
     WazuhError(5007)
         Insecure user password provided (variety of characters).
+    WazuhError(5011)
+        If the target is a reserved user and the caller is not a reserved user logged in without run_as.
+    WazuhPermissionError(4000)
+        If the target is not the caller and the caller lacks 'security:update' over one of the target's
+        roles, or, when its run_as flag is on, over every role, those not created yet included.
 
     Returns
     -------
@@ -224,20 +389,9 @@ def update_user(user_id: str = None, password: str = None, current_user: str = N
     if password is None:
         raise WazuhError(4001)
     if password is not None:
-        if len(password) > 64 or len(password) < 12:
-            raise WazuhError(5009)
-        elif not _user_password.match(password):
-            raise WazuhError(5007)
-
-        if int(user_id[0]) <= MAX_ID_RESERVED:
-            if current_user is None:
-                raise WazuhError(5011)
-
-            with AuthenticationManager() as auth_manager:
-                current_user_id = auth_manager.get_user(current_user)['id']
-
-            if current_user_id > MAX_ID_RESERVED:
-                raise WazuhError(5011)
+        validate_password(password)
+        _check_reserved_target(int(user_id[0]), current_user, run_as)
+        _check_role_escalation(int(user_id[0]), current_user, static_roles=True)
 
     result = AffectedItemsWazuhResult(all_msg='User was successfully updated',
                                       none_msg='User could not be updated')
@@ -794,6 +948,8 @@ def update_rule(rule_id: str = None, name: str = None, rule: dict = None) -> Aff
     ------
     WazuhError(4001)
         If no name nor rule are provided.
+    WazuhPermissionError(4000)
+        If a new rule body is given and the caller lacks 'security:update' over any role the rule is linked to.
 
     Returns
     -------
@@ -805,6 +961,12 @@ def update_rule(rule_id: str = None, name: str = None, rule: dict = None) -> Aff
     result = AffectedItemsWazuhResult(none_msg='Security rule was not updated',
                                       all_msg='Security rule was successfully updated')
     with RulesManager() as rum:
+        # A new body changes which authorization contexts every linked role maps to, so it asks for what
+        # `set_role_rule` asks to link a rule to a role: 'security:update' over each of those roles.
+        # Otherwise update over the rule alone is enough to map oneself to administrator through run_as.
+        current = rum.get_rule(rule_id[0])
+        if rule is not None and isinstance(current, dict):
+            require_role_update(current['roles'])
         status = rum.update_rule(rule_id=rule_id[0], name=name, rule=rule)
         if status == SecurityError.ALREADY_EXIST:
             result.add_failed_item(id_=int(rule_id[0]), error=WazuhError(4005))
@@ -1189,14 +1351,32 @@ def remove_role_policy(role_id: str, policy_ids: list) -> AffectedItemsWazuhResu
     return result
 
 @dapi_allower()
-def revoke_current_user_tokens() -> WazuhResult:
+def revoke_current_user_tokens(run_as: bool = False, hash_auth_context: str = None) -> WazuhResult:
     """Revoke all current user's tokens.
+
+    For a run_as token the current user is the end user its authorization context describes, not the
+    account that called the run_as login: that account is shared by every end user it logs in, so
+    revoking by it would end all their sessions. Only the tokens granted for the same authorization
+    context are revoked then.
+
+    Parameters
+    ----------
+    run_as : bool
+        Whether the calling token was granted through the run_as login endpoint.
+    hash_auth_context : str
+        Hash of the authorization context the calling run_as token was granted for. Every run_as
+        token carries one: `api.authentication.decode_token` refuses those that do not.
 
     Returns
     -------
     WazuhResult
          Result of operation.
     """
+    if run_as:
+        invalid_run_as_context_tokens(contexts=[hash_auth_context])
+        return WazuhResult({'message': f'User {common.current_user.get()} ({hash_auth_context}) was '
+                                       f'successfully logged out'})
+
     with AuthenticationManager() as am:
         invalid_users_tokens(users=[am.get_user(common.current_user.get())['id']])
 
@@ -1325,8 +1505,9 @@ def get_security_config() -> WazuhResult:
 def update_security_config(updated_config: dict = None) -> str:
     """Update or restore current security configuration.
 
-    Update the shared configuration object "security_conf" with
-    "updated_config" and then overwrite the content of security.yaml.
+    Overwrite the content of security.yaml with "updated_config". The in-memory "security_conf"
+    object of this process is not updated: every consumer that needs the current values reads the
+    file (`get_security_conf`, `wazuh.rbac.orm.token_exp_timeout_ms`).
 
     Parameters
     ----------

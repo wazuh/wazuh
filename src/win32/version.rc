@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -46,7 +46,7 @@ BEGIN
 		VALUE "CompanyName",        "Wazuh Inc."
 		VALUE "FileDescription",    "Wazuh Agent"
 		VALUE "FileVersion",        QUOTE(VER_PRODUCTVERSION_STR)
-		VALUE "LegalCopyright",     "Copyright (C) Wazuh, Inc."
+		VALUE "LegalCopyright",     "Copyright (C) Wazuh Inc."
 		VALUE "ProductName",        "Wazuh Windows Agent"
 		VALUE "ProductVersion",     QUOTE(VER_PRODUCTVERSION_STR)
          VALUE "Info",               "https://www.wazuh.com"

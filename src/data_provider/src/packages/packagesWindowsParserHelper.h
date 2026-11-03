@@ -1,7 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015, Wazuh Inc.
- * February 25, 2021.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -26,6 +25,12 @@ namespace PackageWindowsHelper
     constexpr auto VISTA_REG_HOTFIX {"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\HotFix"};
     constexpr auto WIN_REG_PRODUCT_HOTFIX {"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Installer\\UserData\\S-1-5-18\\Products"};
     constexpr auto WIN_REG_WOW_HOTFIX {"SOFTWARE\\WOW6432Node\\Microsoft\\Updates"};
+
+    static int64_t estimatedSizeToBytes(const uint32_t sizeKb)
+    {
+        constexpr int64_t BYTES_PER_KIB { 1024 };
+        return static_cast<int64_t>(sizeKb) * BYTES_PER_KIB;
+    }
 
     static std::string extractHFValue(std::string input)
     {
@@ -252,7 +257,7 @@ namespace PackageWindowsHelper
 
                     if (VerQueryValueA(buffer.data(), subBlock, reinterpret_cast<LPVOID*>(&value), &valueLength) && value && valueLength)
                     {
-                        version = Utils::trim(std::string(value), " \t");
+                        version = Utils::trim(std::string(value, strnlen(value, valueLength)), " \t");
                     }
                 }
             }

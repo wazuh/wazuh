@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -30,6 +30,8 @@
 #define MAX_ASCII_LINES 10
 #define MAX_UTF8_CHARS 1400
 #define OFFSET_SIZE     21  ///< Maximum 64-bit integer is 20-char long, plus 1 because of the '\0'
+#define RELOAD_EAGAIN_RETRIES 3     ///< Times a reload that hits a transient change is retried before the file is forgotten
+#define RELOAD_EAGAIN_DELAY_MS 50   ///< Wait between those retries
 
 /* Prototypes */
 static int update_fname(int i, int j);
@@ -43,6 +45,9 @@ static void check_text_only();
 static int check_pattern_expand(int do_seek);
 static void check_pattern_expand_excluded();
 static void set_can_read(int value);
+#ifndef WIN32
+static int remove_expanded_file_if_gone(int i, int j);
+#endif
 
 /**
  * @brief Releases the data structure stored in the hash table 'files_status'.
@@ -143,6 +148,7 @@ STATIC atomic_int_t _startup_completed = ATOMIC_INT_INITIALIZER(0);
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 
 STATIC w_macos_log_procceses_t * macos_processes = NULL;
+volatile sig_atomic_t macos_log_shutdown = 0;
 
 #endif
 
@@ -571,7 +577,21 @@ void LogCollectorStart()
                     }
 
                     if (current->file && current->exists) {
-                        if (reload_file(current) == -1) {
+                        int reloaded = reload_file(current);
+                        int retries;
+
+                        // A transient change (e.g. a rotation in progress) is retried here: a file left unopened
+                        // would not be reopened later, as only date-named entries are. The wait is short and only
+                        // paid by a file that is changing at that moment.
+                        for (retries = 0; reloaded == -1 && errno == EAGAIN && retries < RELOAD_EAGAIN_RETRIES; retries++) {
+                            struct timespec retry_delay = { 0, RELOAD_EAGAIN_DELAY_MS * 1000000L };
+
+                            mdebug1("File '%s' changed while being reopened. Trying again.", current->file);
+                            nanosleep(&retry_delay, NULL);
+                            reloaded = reload_file(current);
+                        }
+
+                        if (reloaded == -1) {
                             minfo(FORGET_FILE, current->file);
                             os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
                             free_files_status_data(old_file_status);
@@ -643,7 +663,7 @@ void LogCollectorStart()
                      * ensure it's fresh when hardlinks are used on rotated log files.
                      */
                     FILE *tf;
-                    tf = wfopen(current->file, "r");
+                    tf = w_fopen_vetted_follow(current->file, "r");
                     if(tf == NULL) {
                         if (errno == ENOENT) {
                             if(current->exists==1){
@@ -669,6 +689,23 @@ void LogCollectorStart()
                             } else {
                                 mdebug1(OPEN_UNABLE, current->file);
                             }
+                        } else if (errno == EAGAIN) {
+                            // Transient race, not a rejection: keep the open fp and re-check next pass.
+                            mdebug1("File '%s' changed while being checked. Trying again later.", current->file);
+                        } else if (errno == EPERM || errno == EINVAL) {
+                            // Rejected by the file-type or trust check: warn once, and stop reading the file
+                            // previously opened, retrying the path next time like one that cannot be opened.
+                            if (current->exists == 1) {
+                                mwarn(FOPEN_ERROR, current->file, errno, strerror(errno));
+                                os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
+                                free_files_status_data(old_file_status);
+                                w_logcollector_state_delete_file(current->file);
+                                current->exists = 0;
+                            }
+                            fclose(current->fp);
+                            current->fp = NULL;
+                            current->ign++;
+                            continue;
                         } else {
                             merror(FOPEN_ERROR, current->file, errno, strerror(errno));
                         }
@@ -854,6 +891,11 @@ void LogCollectorStart()
                 if (current->ign >= open_file_attempts) {
                     /* 999 Maximum ignore */
                     if (current->ign == 999) {
+#ifndef WIN32
+                        if (j >= 0 && remove_expanded_file_if_gone(i, j) > 0) {
+                            i--;
+                        }
+#endif
                         continue;
                     }
 
@@ -872,11 +914,15 @@ void LogCollectorStart()
 
                     if (j >= 0) {
 #ifndef WIN32
-                        struct stat stat_fd;
-                        if (w_stat(current->file, &stat_fd) == -1 && ENOENT == errno) {
+                        int gone = remove_expanded_file_if_gone(i, j);
+
+                        if (gone > 0) {
+                            i--;
+                        } else if (gone < 0) {
+                            merror(FSTAT_ERROR, current->file, errno, strerror(errno));
+                        }
 #else
                         if (!PathFileExists(current->file)) {
-#endif
                             os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
                             free_files_status_data(old_file_status);
                             w_logcollector_state_delete_file(current->file);
@@ -887,11 +933,8 @@ void LogCollectorStart()
                                 mdebug1(CURRENT_FILES, current_files, maximum_files);
                                 i--;
                             }
-                        } else {
-#ifndef WIN32
-                            merror(FSTAT_ERROR, current->file, errno, strerror(errno));
-#endif
                         }
+#endif
                     }
                     continue;
                 }
@@ -902,7 +945,14 @@ void LogCollectorStart()
                         continue;
                     } else {
                         /* Try for a few times to open the file */
+#ifndef WIN32
+                        // Free the glob slot of an unopenable file whose path is gone; otherwise it holds the slot until restart.
+                        if (handle_file(i, j, 1, 1) < 0 && j >= 0 && remove_expanded_file_if_gone(i, j) > 0) {
+                            i--;
+                        }
+#else
                         handle_file(i, j, 1, 1);
+#endif
                         continue;
                     }
                 }
@@ -1002,6 +1052,38 @@ int update_fname(int i, int j)
     return (0);
 }
 
+#ifndef WIN32
+/**
+ * Forgets expanded file i of glob j if its path no longer exists, freeing its slot for the next expansion.
+ *
+ * @return 1 if it was removed, 0 if it was kept, or -1 if its path could not be checked (sets errno).
+ */
+static int remove_expanded_file_if_gone(int i, int j) {
+    logreader * lf = &globs[j].gfiles[i];
+    struct stat stat_fd;
+
+    if (w_stat(lf->file, &stat_fd) == 0) {
+        return 0;
+    }
+
+    if (errno != ENOENT) {
+        return -1;
+    }
+
+    os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, lf->file);
+    free_files_status_data(old_file_status);
+    w_logcollector_state_delete_file(lf->file);
+
+    if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0, &globs[j])) {
+        merror(REM_ERROR, lf->file);
+        return 0;
+    }
+
+    mdebug1(CURRENT_FILES, current_files, maximum_files);
+    return 1;
+}
+#endif
+
 /* Open, get the fileno, seek to the end and update mtime */
 int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
 {
@@ -1018,10 +1100,17 @@ int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
      */
 
     /* TODO: Support text mode on Windows */
-    lf->fp = wfopen(lf->file, "rb");
+    lf->fp = w_fopen_vetted_follow(lf->file, "rb");
     if (!lf->fp) {
-        if (do_log == 1 && lf->exists == 1) {
-            merror(FOPEN_ERROR, lf->file, errno, strerror(errno));
+        if (errno == EAGAIN) {
+            mdebug1("File '%s' changed while being checked. Trying again later.", lf->file);
+        } else if (do_log == 1 && lf->exists == 1) {
+            // Rejected by the file-type or trust check: a warning, as in the rollover check.
+            if (errno == EPERM || errno == EINVAL) {
+                mwarn(FOPEN_ERROR, lf->file, errno, strerror(errno));
+            } else {
+                merror(FOPEN_ERROR, lf->file, errno, strerror(errno));
+            }
             lf->exists = 0;
         }
         goto error;
@@ -1107,7 +1196,7 @@ error:
 int reload_file(logreader * lf) {
 
     /* TODO: Support text mode on Windows */
-    lf->fp = wfopen(lf->file, "rb");
+    lf->fp = w_fopen_vetted_follow(lf->file, "rb");
 
     if (!lf->fp) {
         return -1;
@@ -1236,7 +1325,7 @@ void set_read(logreader *current, int i, int j) {
         current->read = read_snortfull;
     }
 #ifndef WIN32
-    if (strcmp("wazuhalert", current->logformat) == 0) {
+    else if (strcmp("wazuhalert", current->logformat) == 0) {
         current->read = read_wazuhalert;
     }
 #endif
@@ -1852,9 +1941,12 @@ int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logt
     return 0;
 }
 
+/* Minimum time between repeated "queue is full" warnings for the same target, so a
+ * sustained outage stays visible in the log instead of going quiet after the first drop. */
+#define W_MSG_QUEUE_FULL_WARN_INTERVAL 60
+
 int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsigned long size, logtarget * log_target, char queue_mq) {
     w_message_t *message;
-    static int reported = 0;
     int result;
 
     w_mutex_lock(&msg->mutex);
@@ -1872,13 +1964,23 @@ int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsig
         w_cond_signal(&msg->available);
     }
 
-    if ((result < 0) && !reported) {
-        #ifndef WIN32
-            mwarn("Target '%s' message queue is full (%zu). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
-        #else
-            mwarn("Target '%s' message queue is full (%u). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
-        #endif
-            reported = 1;
+    if (result < 0) {
+        /* Per-target, guarded by msg->mutex above (held for the whole function) --
+         * not a process-wide static, since each target has its own w_msg_queue_t. */
+        msg->dropped_since_warning++;
+
+        time_t now = time(NULL);
+        if (now - msg->last_warned >= W_MSG_QUEUE_FULL_WARN_INTERVAL) {
+            #ifndef WIN32
+                mwarn("Target '%s' message queue is full (%zu). %lu log line(s) lost since the last warning.",
+                      log_target->log_socket->name, msg->msg_queue->size, msg->dropped_since_warning);
+            #else
+                mwarn("Target '%s' message queue is full (%u). %lu log line(s) lost since the last warning.",
+                      log_target->log_socket->name, msg->msg_queue->size, msg->dropped_since_warning);
+            #endif
+            msg->last_warned = now;
+            msg->dropped_since_warning = 0;
+        }
     }
 
     w_mutex_unlock(&msg->mutex);
@@ -2585,25 +2687,44 @@ STATIC void w_initialize_file_status() {
 
     OSHash_SetFreeDataPointer(files_status, (void (*)(void *))free_files_status_data);
 
-    /* Read json file to load last read positions */
+    /* Read json file to load last read positions, whole: it can be larger than OS_MAXSTR */
     FILE * fd = NULL;
 
-    if (fd = wfopen(LOCALFILE_STATUS, "r"), fd != NULL) {
-        char str[OS_MAXSTR] = {0};
+    if (fd = wfopen(LOCALFILE_STATUS, "r"), fd == NULL) {
+        if (errno != ENOENT) {
+            merror(FOPEN_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
+        }
+        return;
+    }
 
-        if (fread(str, 1, OS_MAXSTR - 1, fd) < 1) {
-            merror(FREAD_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
-            clearerr(fd);
+    struct stat stat_fd;
+
+    if (fstat(fileno(fd), &stat_fd) == -1) {
+        merror(FSTAT_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
+        fclose(fd);
+        return;
+    }
+
+    size_t size = (size_t) stat_fd.st_size;
+    char * str = NULL;
+    os_calloc(size + 1, sizeof(char), str);
+
+    if (fread(str, 1, size, fd) < 1) {
+        merror(FREAD_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
+        clearerr(fd);
+    } else {
+        cJSON * global_json = cJSON_Parse(str);
+
+        if (global_json == NULL) {
+            mwarn(LOGCOLLECTOR_STATUS_PARSE_FAIL, LOCALFILE_STATUS);
         } else {
-            cJSON * global_json = cJSON_Parse(str);
             w_load_files_status(global_json);
             cJSON_Delete(global_json);
         }
-
-        fclose(fd);
-    } else if (errno != ENOENT) {
-        merror(FOPEN_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
     }
+
+    os_free(str);
+    fclose(fd);
 }
 
 STATIC void w_save_file_status() {
@@ -2725,7 +2846,7 @@ STATIC void w_load_files_status(cJSON * global_json) {
             mdebug1(LOGCOLLECTOR_FILE_NOT_EXIST, path_str);
             EVP_MD_CTX_free(context);
             os_free(data);
-            return;
+            continue;
         }
         data->context = context;
 
@@ -2948,6 +3069,19 @@ bool w_get_hash_context(logreader *lf, EVP_MD_CTX ** context, int64_t position) 
     return true;
 }
 
+void w_hash_read_line(logreader *lf, EVP_MD_CTX *context, const char *line, int64_t *position) {
+
+    int64_t line_end = w_ftell(lf->fp);
+    size_t line_len = strlen(line);
+
+    if (*position >= 0 && line_end > *position) {
+        line_len = (size_t) (line_end - *position);
+    }
+
+    OS_SHA1_Stream_Bytes(context, line, line_len);
+    *position = line_end;
+}
+
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 void w_macos_release_log_show(void) {
 
@@ -2983,6 +3117,7 @@ void w_macos_release_log_stream(void) {
 
 void w_macos_release_log_execution(void) {
 
+    macos_log_shutdown = 1;
     w_macos_release_log_show();
     w_macos_release_log_stream();
 }

@@ -390,6 +390,11 @@ stages:
                 - "008"
                 - "009"
                 - "010"
+            # 011 and 012 have never connected, so no node holds a version for them: the answer is
+            # that no node has information about them, not that their version is too old.
+            - error:
+                code: 1774
+              id:
                 - "011"
                 - "012"
           total_affected_items: 4
@@ -405,6 +410,219 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       <<: *resource_not_found_group
+---
+test_name: PUT /agents/group/{group_id}/reload
+
+stages:
+
+  # Same state as PUT /agents/group/{group_id}/restart: group1 is empty, group2 holds every agent
+  - name: Reload all agents from group1
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group/group1/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          total_affected_items: 0
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Reload all agents from group2
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group/group2/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 2
+        data:
+          affected_items:
+            - "001"
+            - "002"
+            - "003"
+            - "004"
+          failed_items:
+            - error:
+                code: 1761
+              id:
+                - "005"
+                - "006"
+                - "007"
+                - "008"
+                - "009"
+                - "010"
+            - error:
+                code: 1774
+              id:
+                - "011"
+                - "012"
+          total_affected_items: 4
+          total_failed_items: 8
+
+  - name: Reload all agents from a group which does not exist
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group/not_exists/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *resource_not_found_group
+
+  - name: Reload a group with an invalid name
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group/wrong!group/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+  - name: Restart a group with an invalid name
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group/wrong!group/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+---
+test_name: PUT /agents/reload
+
+stages:
+
+  - name: Try to reload agent with wrong_id
+    request: &agent_reload_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "wrong_id"
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+  - name: Try to reload non existing agents
+    request:
+      verify: False
+      <<: *agent_reload_request
+      params:
+        agents_list: "998,999"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - "998"
+                - "999"
+          total_affected_items: 0
+          total_failed_items: 2
+
+  - name: Reload agents 001, 002 and 999
+    request:
+      verify: False
+      <<: *agent_reload_request
+      params:
+        agents_list: "001,002,999"
+    response:
+      status_code: 200
+      json:
+        error: 2
+        data:
+          affected_items:
+            - "001"
+            - "002"
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - "999"
+          total_affected_items: 2
+          total_failed_items: 1
+
+  - name: Reload a pre-5.0 agent and a never connected one
+    request:
+      verify: False
+      <<: *agent_reload_request
+      params:
+        agents_list: "005,011"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1761
+              id:
+                - "005"
+            - error:
+                code: 1774
+              id:
+                - "011"
+          total_affected_items: 0
+          total_failed_items: 2
+
+  - name: Reload all agents
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 2
+        data:
+          affected_items:
+            - "001"
+            - "002"
+            - "003"
+            - "004"
+          failed_items:
+            - error:
+                code: 1761
+              id:
+                - "005"
+                - "006"
+                - "007"
+                - "008"
+                - "009"
+                - "010"
+            - error:
+                code: 1774
+              id:
+                - "011"
+                - "012"
+          total_affected_items: 4
+          total_failed_items: 8
+
 ---
 test_name: PUT /agents/restart
 
@@ -435,12 +653,17 @@ stages:
     response:
       status_code: 200
       json:
-        error: 0
+        error: 1
         data:
           affected_items: []
-          failed_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - "998"
+                - "999"
           total_affected_items: 0
-          total_failed_items: 0
+          total_failed_items: 2
 
 
     # PUT /agents/restart?agents_list=999
@@ -453,12 +676,16 @@ stages:
     response:
       status_code: 200
       json:
-        error: 0
+        error: 1
         data:
           affected_items: []
-          failed_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - "999"
           total_affected_items: 0
-          total_failed_items: 0
+          total_failed_items: 1
 
     # PUT /agents/restart?agents_list=001,002,999
   - name: Try to restart agents 001,002 and 999
@@ -471,14 +698,18 @@ stages:
       # HTTPS Task Manager: Agent restart validation disabled (agents poll asynchronously)
       status_code: 200
       json:
-        error: 0
+        error: 2
         data:
           affected_items:
             - "001"
             - "002"
-          failed_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - "999"
           total_affected_items: 2
-          total_failed_items: 0
+          total_failed_items: 1
 
     # PUT /agents/restart (HTTPS: All agents processed regardless of connection)
   - name: Try to restart all agents
@@ -509,6 +740,11 @@ stages:
                 - "008"
                 - "009"
                 - "010"
+            # 011 and 012 have never connected, so no node holds a version for them: the answer is
+            # that no node has information about them, not that their version is too old.
+            - error:
+                code: 1774
+              id:
                 - "011"
                 - "012"
           total_affected_items: 4
@@ -542,6 +778,16 @@ stages:
           total_failed_items: 1
 
     # PUT /agents/wrong_id/group/group1
+  - name: Try to assign an agent to a non existing group
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/group/wrong_group"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *resource_not_found_group
+
   - name: Try to assign an agent with an invalid id
     request:
       verify: False
@@ -659,6 +905,81 @@ stages:
           total_affected_items: 1
 
 ---
+test_name: PUT /agents/{agent_id}/reload
+
+stages:
+
+  - name: Try to reload a not existing agent
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/999/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - "999"
+          total_affected_items: 0
+          total_failed_items: 1
+
+  - name: Try to reload an agent with an invalid id
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/wrong_id/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+  - name: Reload a pre-5.0 agent
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/005/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1761
+              id:
+                - "005"
+          total_affected_items: 0
+          total_failed_items: 1
+
+  - name: Reload an agent
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/003/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - "003"
+          total_affected_items: 1
+
+---
 test_name: PUT /agents/upgrade
 
 stages:
@@ -673,15 +994,19 @@ stages:
       params:
         agents_list: '999'
     response: &resource_not_found
-      # Agent 999 doesn't exist, error 1701 filtered by exclude_codes
+      # Agent 999 doesn't exist: an explicit id is answered with 1701, broadcast or not
       status_code: 200
       json:
-        error: 0
+        error: 1
         data:
           affected_items: []
           total_affected_items: 0
-          total_failed_items: 0
-          failed_items: []
+          total_failed_items: 1
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - "999"
 
   - name: Try to upgrade a list of agents with an invalid agents_list
     request:
@@ -838,16 +1163,20 @@ stages:
         upgrade_version: '4.0.0'
         os.platform: 'random_platform'
     response: &filters_not_matching_response
-      # WPK file doesn't exist in test environment, no upgrade task created
-      # (Would return error 1731 if WPK existed and filter didn't match, but 1731 in exclude_codes)
+      # The filter excludes both explicit ids, which are answered with 1731
       status_code: 200
       json:
-        error: 0
+        error: 1
         data:
           affected_items: []
           total_affected_items: 0
-          total_failed_items: 0
-          failed_items: []
+          total_failed_items: 2
+          failed_items:
+            - error:
+                code: 1731
+              id:
+                - "001"
+                - "002"
         message: !anystr
 
   - name: Try to upgrade agents with an invalid package_type value
@@ -885,16 +1214,8 @@ stages:
       # not matching them" above: the os.platform filter matches no agent, so
       # upgrade task creation (and therefore package_type) is never reached --
       # this only confirms package_type is accepted by request validation and
-      # passed through without altering that filter-mismatch code path.
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: []
-          total_affected_items: 0
-          total_failed_items: 0
-          failed_items: []
-        message: !anystr
+      # passed through without altering that filter-mismatch code path (1731 for both).
+      <<: *filters_not_matching_response
 
   - name: Upgrade agents with a custom wpk_repo and filters not matching them
     request:
@@ -909,18 +1230,10 @@ stages:
         wpk_repo: 'http://packages.wazuh.com/wpk-test/'
         os.platform: 'random_platform'
     response:
-      # Same reasoning as above: the non-matching filter keeps this deterministic
+      # Same reasoning as above: the non-matching filter keeps this deterministic (1731 for both)
       # regardless of the (non-existent, test environment) wpk_repo host, since
       # no agent is eligible for task creation.
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: []
-          total_affected_items: 0
-          total_failed_items: 0
-          failed_items: []
-        message: !anystr
+      <<: *filters_not_matching_response
 
   - name: Upgrade all agents in group group1 (only 001 is in group1)
     request:
@@ -991,7 +1304,7 @@ stages:
         file_path: "{custom_wpk_path:s}"
         agents_list: 999
     response:
-      # Agent 999 doesn't exist, error 1701 filtered by exclude_codes
+      # Agent 999 doesn't exist: answered with 1701
       <<: *resource_not_found
 
   - name: Try to customly upgrade an agent without parameters
@@ -1020,11 +1333,22 @@ stages:
         file_path: "{custom_wpk_path:s}"
     response:
       # WPK file doesn't exist in test environment, Task Manager returns error 1824
-      status_code: 400
+      # A per-agent outcome, so it is reported as a failed item rather than as a request-wide
+      # error: the Task Manager answers per agent, and other agents in the same call may have
+      # had their task created.
+      status_code: 200
       json:
-        error: 1824
-        title: !anystr
-        detail: !anystr
+        error: 1
+        data:
+          affected_items: []
+          total_affected_items: 0
+          total_failed_items: 1
+          failed_items:
+            - error:
+                code: 1824
+                message: !anystr
+              id:
+                - '008'
 
   - name: Try to customly upgrade an agent selecting installer (WPK does not exist)
     request:
@@ -1039,11 +1363,22 @@ stages:
         file_path: "{custom_wpk_path:s}"
     response:
       # WPK file doesn't exist in test environment, Task Manager returns error 1824
-      status_code: 400
+      # A per-agent outcome, so it is reported as a failed item rather than as a request-wide
+      # error: the Task Manager answers per agent, and other agents in the same call may have
+      # had their task created.
+      status_code: 200
       json:
-        error: 1824
-        title: !anystr
-        detail: !anystr
+        error: 1
+        data:
+          affected_items: []
+          total_affected_items: 0
+          total_failed_items: 1
+          failed_items:
+            - error:
+                code: 1824
+                message: !anystr
+              id:
+                - '005'
 
   - name: Try to customly upgrade a list of agents with an invalid agents_list
     request:
@@ -1071,12 +1406,22 @@ stages:
         agents_list: '009,010'
         file_path: "{custom_wpk_path:s}"
     response:
-      # WPK file doesn't exist, error 1824 returned
-      status_code: 400
+      # WPK file doesn't exist. Reported per agent -- both of these fail, but each on its own
+      # entry, because the Task Manager evaluates them individually.
+      status_code: 200
       json:
-        error: 1824
-        title: 'Bad Request'
-        detail: 'The WPK file does not exist'
+        error: 1
+        data:
+          affected_items: []
+          total_affected_items: 0
+          total_failed_items: 2
+          failed_items:
+            - error:
+                code: 1824
+                message: 'The WPK file does not exist'
+              id:
+                - '009'
+                - '010'
 
   - name: Try to customly upgrade a list of agents with filters not matching them
     request:
@@ -1090,14 +1435,88 @@ stages:
         file_path: "{custom_wpk_path:s}"
         version: 'v999.999.999'
     response:
-      # WPK file doesn't exist in test environment, no upgrade task created
-      # (Would return error 1731 if WPK existed and version filter didn't match, but 1731 in exclude_codes)
+      # The version filter excludes both explicit ids, which are answered with 1731
       status_code: 200
       json:
-        error: 0
+        error: 1
         data:
           affected_items: []
           total_affected_items: 0
-          total_failed_items: 0
-          failed_items: []
+          total_failed_items: 2
+          failed_items:
+            - error:
+                code: 1731
+              id:
+                - "001"
+                - "002"
         message: !anystr
+
+---
+test_name: PUT /agents/scan/vulnerability
+
+stages:
+
+  - name: Try to scan an agent with an invalid id
+    request: &agent_scan_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/scan/vulnerability"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "wrong_id"
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+  - name: Scan a non existing agent
+    request:
+      verify: False
+      <<: *agent_scan_request
+      params:
+        agents_list: "999"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          total_affected_items: 0
+
+  - name: Scan pre-5.0 agents
+    request:
+      verify: False
+      <<: *agent_scan_request
+      params:
+        agents_list: "005,006"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1764
+              id:
+                - "005"
+                - "006"
+          total_affected_items: 0
+          total_failed_items: 2
+
+  # Whether the vulnerability detector accepts the request for a 5.x agent depends on the module,
+  # which runs without an indexer here: only that every agent is answered for is asserted.
+  - name: Scan 5.x and pre-5.0 agents
+    request:
+      verify: False
+      <<: *agent_scan_request
+      params:
+        agents_list: "001,002,005"
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_every_agent_answered
+          extra_kwargs:
+            agents_list: ["001", "002", "005"]
+            failed_codes:
+              "005": 1764

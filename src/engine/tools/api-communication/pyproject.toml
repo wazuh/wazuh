@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "api-communication"
 version = "1.0.0.dev0"
 authors = [{ name = "Wazuh, Inc." }]
+license = { text = "AGPL-3.0-or-later" }
 description = "A library to communicate with the Wazuh Engine API."
 requires-python = ">=3.8"
 classifiers = ["Programming Language :: Python :: 3"]

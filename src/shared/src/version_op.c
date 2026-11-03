@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -14,6 +14,7 @@
 
 #include "shared.h"
 #include "version_op.h"
+#include <limits.h>
 
 #ifdef __linux__
 #include <sched.h>
@@ -311,10 +312,10 @@ os_info *get_win_version()
         if (dwRet != ERROR_SUCCESS) {
             merror("Error reading 'Architecture' from Windows registry. (Error %u)",(unsigned int)dwRet);
         } else {
-            if (!strncmp(arch, "AMD64", 5) || !strncmp(arch, "IA64", 4) || !strncmp(arch, "ARM64", 5)) {
-                info->machine = strdup("x86_64");
-            } else if (!strncmp(arch, "x86", 3)) {
-                info->machine = strdup("i686");
+            const char *machine = win_processor_arch_to_machine(arch);
+
+            if (machine) {
+                info->machine = strdup(machine);
             }
         }
         RegCloseKey(RegistryKey);
@@ -362,6 +363,8 @@ char *get_release_from_build(char *os_build) {
         } else if (!strcmp(os_build, "14393")) {
             os_strdup("1607", retval);
         } else if (!strcmp(os_build, "15063")) {
+            os_strdup("1703", retval);
+        } else if (!strcmp(os_build, "16299")) {
             os_strdup("1709", retval);
         } else if (!strcmp(os_build, "17134")) {
             os_strdup("1803", retval);
@@ -399,7 +402,8 @@ const char *OSX_ReleaseName(int version) {
     /* 23 */ "Sonoma",
     /* 24 */ "Sequoia",
     /* 25 */ "Tahoe",
-    /* 26 */ "Golden Gate",
+    /* 26 */ OSX_UNKNOWN_RELEASE_NAME, /* No macOS release uses Darwin 26 */
+    /* 27 */ "Golden Gate",
     };
 
     version -= 10;
@@ -422,6 +426,7 @@ os_info *get_unix_version()
     char *version = NULL;
     char *version_id = NULL;
     char *codename = NULL;
+    char *rhel_version = NULL;
     char *save_ptr = NULL;
     regmatch_t match[2];
     int match_size;
@@ -474,6 +479,16 @@ os_info *get_unix_version()
                         }
                         info->os_platform = strdup(id);
                     }
+                } else if (strcmp (tag,"RHEL_VERSION") == 0) {
+                    if (!rhel_version) {
+                        char *value = strtok_r(NULL, "\n", &save_ptr);
+                        if (value) {
+                            if (value[0] == '\"' && (end = strchr(++value, '\"'), end)) {
+                                *end = '\0';
+                            }
+                            os_strdup(value, rhel_version);
+                        }
+                    }
                 }
             }
         }
@@ -507,8 +522,35 @@ os_info *get_unix_version()
                           strcmp(info->os_platform, "arch") == 0) {
                 os_free(info->os_version);
                 os_strdup("", info->os_version);
+            } else if (strcmp(info->os_platform, "sles") == 0 ||
+                          strcmp(info->os_platform, "sled") == 0) {
+                // SUSE Linux Enterprise (Server/Desktop) reports VERSION as
+                // "<major>-SP<minor>" (e.g. "15-SP6") instead of the host-readable
+                // "<major>.<minor>" (e.g. "15.6") used by VERSION_ID.
+                if (info->os_version) {
+                    regmatch_t match[3];
+                    if (w_regexec("^([0-9]+)-[Ss][Pp]([0-9]+)$", info->os_version, 3, match)) {
+                        int major_size = match[1].rm_eo - match[1].rm_so;
+                        int minor_size = match[2].rm_eo - match[2].rm_so;
+                        char *new_version;
+                        os_malloc(major_size + minor_size + 2, new_version);
+                        snprintf(new_version, major_size + minor_size + 2, "%.*s.%.*s",
+                                 major_size, info->os_version + match[1].rm_so,
+                                 minor_size, info->os_version + match[2].rm_so);
+                        os_free(info->os_version);
+                        info->os_version = new_version;
+                    }
+                }
+            } else if (strcmp(info->os_platform, "rhcos") == 0) {
+                // RHCOS up to OpenShift 4.19 reports the OpenShift release in VERSION/VERSION_ID;
+                // the RHEL base is only in RHEL_VERSION.
+                if (rhel_version && w_regexec("^[0-9]+", rhel_version, 0, NULL)) {
+                    os_free(info->os_version);
+                    os_strdup(rhel_version, info->os_version);
+                }
             }
         }
+        os_free(rhel_version);
     }
 
     if (!info->os_name || (!info->os_version && !info->os_build) || !info->os_platform) {
@@ -918,6 +960,23 @@ free_os_info:
 #endif /* WIN32 */
 
 
+const char *win_processor_arch_to_machine(const char *processor_arch) {
+    if (!processor_arch) {
+        return NULL;
+    }
+
+    if (!strcmp(processor_arch, "AMD64") || !strcmp(processor_arch, "IA64")) {
+        return "x86_64";
+    } else if (!strcmp(processor_arch, "ARM64")) {
+        return "arm64";
+    } else if (!strcmp(processor_arch, "x86")) {
+        return "i686";
+    }
+
+    return NULL;
+}
+
+
 void free_osinfo(os_info * osinfo) {
     if (osinfo) {
         free(osinfo->os_name);
@@ -1048,65 +1107,52 @@ int get_nproc() {
 #endif
 }
 
+/* Read a version as up to three dot-separated numbers, starting after the first 'v' when there is one.
+ * Missing or non-numeric parts are 0, empty parts are skipped, a suffix such as "-rc1" is ignored and a
+ * number that does not fit an int saturates. The input is read in place: no copy, no strtok(). */
+static void parse_wazuh_version(const char *version, int parts[3]) {
+    const char *cursor;
+    int index;
+
+    parts[0] = parts[1] = parts[2] = 0;
+
+    if (!version) {
+        return;
+    }
+
+    cursor = strchr(version, 'v');
+    cursor = cursor ? cursor + 1 : version;
+
+    for (index = 0; index < 3; index++) {
+        long value;
+
+        while (*cursor == '.') {
+            cursor++;
+        }
+
+        if (*cursor == '\0') {
+            return;
+        }
+
+        value = strtol(cursor, NULL, 10);
+        parts[index] = value > INT_MAX ? INT_MAX : value < 0 ? 0 : (int)value;
+
+        if (cursor = strchr(cursor, '.'), !cursor) {
+            return;
+        }
+    }
+}
+
 int compare_wazuh_versions(const char *version1, const char *version2, bool compare_patch) {
-    char ver1[10];
-    char ver2[10];
-    char *tmp_v1 = NULL;
-    char *tmp_v2 = NULL;
-    char *token = NULL;
-    int patch1 = 0;
-    int major1 = 0;
-    int minor1 = 0;
-    int patch2 = 0;
-    int major2 = 0;
-    int minor2 = 0;
+    int ver1[3];
+    int ver2[3];
     int result = 0;
 
-    if (version1) {
-        strncpy(ver1, version1, sizeof(ver1) - 1);
-        ver1[sizeof(ver1) - 1] = '\0';
+    parse_wazuh_version(version1, ver1);
+    parse_wazuh_version(version2, ver2);
 
-        if (tmp_v1 = strchr(ver1, 'v'), tmp_v1) {
-            tmp_v1++;
-        } else {
-            tmp_v1 = ver1;
-        }
-
-        if (token = strtok(tmp_v1, "."), token) {
-            major1 = atoi(token);
-
-            if (token = strtok(NULL, "."), token) {
-                minor1 = atoi(token);
-
-                if (token = strtok(NULL, "."), token) {
-                    patch1 = atoi(token);
-                }
-            }
-        }
-    }
-
-    if (version2) {
-        strncpy(ver2, version2, sizeof(ver2) - 1);
-        ver2[sizeof(ver2) - 1] = '\0';
-
-        if (tmp_v2 = strchr(ver2, 'v'), tmp_v2) {
-            tmp_v2++;
-        } else {
-            tmp_v2 = ver2;
-        }
-
-        if (token = strtok(tmp_v2, "."), token) {
-            major2 = atoi(token);
-
-            if (token = strtok(NULL, "."), token) {
-                minor2 = atoi(token);
-
-                if (token = strtok(NULL, "."), token) {
-                    patch2 = atoi(token);
-                }
-            }
-        }
-    }
+    const int major1 = ver1[0], minor1 = ver1[1], patch1 = ver1[2];
+    const int major2 = ver2[0], minor2 = ver2[1], patch2 = ver2[2];
 
     if (major1 > major2) {
         result = 1;

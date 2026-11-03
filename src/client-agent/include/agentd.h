@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -17,9 +17,30 @@
 #include "client-config.h"
 #include "state.h"
 #include "module_limits.h"
+#include "enrollment_status.h" /* w_enroll_status_t; NOT enrollment.h -- see that header */
+
+/* Decode an enrollment token from @p in and print what it carries, without its credential.
+ * Shared by every entry point that answers --show-token, so they cannot drift over which tokens
+ * are acceptable. Streams are parameters because wazuh-agent-auth also reads from --token-file.
+ * Returns 0, 2 when the token itself was rejected, or 1 when it could not be read. */
+int w_agent_show_token(FILE *in, FILE *out, FILE *err, const char *progname);
+
+/* The stdin form the two agent entry points use. */
+int w_agent_show_enrollment_token(void);
+
+/* Overwrite the compiled default enrollment password (AUTHD_PASS) in its own allocation and
+ * unlink it. Shared by both agent entry points so the MSI has the same primitive the POSIX
+ * package scripts get from `dd conv=notrunc`. Returns 0 when the password is gone -- including
+ * when there was none -- and 1 when any part of that failed. */
+int w_agent_shred_enrollment_password(void);
 
 /* Client configuration */
 int ClientConf(const char *cfgfile);
+
+/* Resolve the effective <ssl> posture once ossec.conf has been parsed: settle an unset
+ * <verification_mode>, apply the trust-anchor latch, and default <certificate_authorities>
+ * to the anchor. Called by ClientConf(); exposed for the unit tests. */
+void w_agent_resolve_ssl_posture(agent *cfg);
 
 /* Check <ssl><certificate_authorities> against the configured verification mode.
  * Returns false when the agent must not start. */
@@ -30,6 +51,11 @@ cJSON *getAgentConfig(void);
 cJSON *getAgentInternalOptions(void);
 #ifndef WIN32
 cJSON *getAntiTamperingConfig(void);
+#endif
+
+#ifndef WIN32
+/* Termination signal handler (SIGINT/SIGQUIT/SIGTERM/SIGALRM) */
+void agentd_shutdown(int sig);
 #endif
 
 /* Agentd init function */
@@ -56,9 +82,11 @@ void w_agentd_populate_metadata(void);
  *        endpoint uses (agt->server[0], agt->ssl -- there is no per-attempt
  *        server selection any more), and parse the response. On success,
  *        reloads the in-memory `keys` and sets the crypto method.
- * @return 0 on success, -1 on error (the caller retries with backoff).
+ * @return W_ENROLL_OK on success, otherwise the reason it failed (#39064). The caller must feed
+ *         that status to w_enrollment_apply_policy() rather than assume every failure is worth
+ *         another attempt -- a credential the manager judged and refused never becomes valid.
  * */
-int try_enroll_to_server(void);
+w_enroll_status_t try_enroll_to_server(void);
 
 /**
  * Function that makes the request to the API for the request of uninstallation permissions.
@@ -95,6 +123,10 @@ DWORD WINAPI w_rotate_log_thread(LPVOID arg);
 void * w_rotate_log_thread(void * arg);
 #endif
 
+// Max connect() retries in controlAgent() (reload_agent.c); defined here so the
+// unit test asserts against the same value instead of duplicating it.
+#define CONTROL_AGENT_MAX_RETRIES 30
+
 // Reload agent
 /* Trigger the reload chain via modulesd's control socket.
  * Returns true if the "reload" command was dispatched successfully
@@ -118,7 +150,9 @@ void startup_gate_initialize(void);
 
 // Release the startup gate from the HTTPS /control apply chain
 // (bridge_on_config_downloaded, once a downloaded config has been verified
-// and applied).
+// and applied). Opens the gate only while such an apply is pending (see
+// startup_gate_mark_download_pending()): agentd's SIGUSR1 handler calls this
+// on every reload, including ones no validated download asked for.
 void startup_gate_release_from_https_apply(void);
 
 // Release the startup gate from the manager's per-Notify config_hash (SHA-256
@@ -129,14 +163,19 @@ void startup_gate_release_from_https_apply(void);
 // apply's own release.
 void startup_gate_check_manager_config_hash(const char *manager_sha256);
 
-// Mark that bridge_on_config_downloaded() is about to write a downloaded
-// config to SHAREDCFG_FILE and (on success) drive a reload. Call before that
-// write: from this point until startup_gate_release_from_https_apply() (or
-// the next startup_gate_initialize()) runs, startup_gate_check_manager_config_hash()
+// Mark that bridge_on_config_downloaded() has validated a downloaded config
+// in place and is about to write SHAREDCFG_FILE and drive a reload. Call
+// before that write: from this point until
+// startup_gate_release_from_https_apply() (or the next
+// startup_gate_initialize()) runs, startup_gate_check_manager_config_hash()
 // will not release the gate on its own, even though the just-written file's
 // hash already matches the manager's -- that match is a side effect of this
 // same download, not proof the reload it is driving has actually completed.
 void startup_gate_mark_download_pending(void);
+
+// Undo startup_gate_mark_download_pending() when the write it announced
+// failed, so no reload will follow to clear it.
+void startup_gate_clear_download_pending(void);
 
 // Read current startup gate state.
 void startup_gate_get_status(bool *ready, char *reason, size_t reason_size);

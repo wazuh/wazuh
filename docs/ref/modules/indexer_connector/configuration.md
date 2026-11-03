@@ -1,111 +1,24 @@
 # Indexer Connector Configuration Reference
 
-Complete configuration reference for the Indexer Connector module.
+Configuration reference for the connection between the Wazuh manager and the Wazuh Indexer. The
+`indexer` section is read by every manager component that talks to the Indexer: the Indexer Connector
+library (Vulnerability Scanner, Inventory Sync Server, engine) and the Python framework.
 
-The Indexer Connector manages the connection between the Wazuh manager and the Wazuh Indexer (OpenSearch), providing secure communication for indexing alerts, vulnerabilities, and agent inventory data.
-
-For module overview and architecture, see [Indexer Connector Module](index.html).
+For module overview and architecture, see [Indexer Connector Module](README.md).
 
 ---
 
 ## Manager Configuration
 
-**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager.conf`
+**Configuration file:** `/etc/wazuh-manager/wazuh-manager.conf`
 
 **XML Section:** `<indexer>`
 
-**Internal Options:** None
+The section is **required**, and so is `<hosts>` with at least one `<host>`: without them the
+configuration is rejected and the manager does not start. `<ssl>` is optional; omitted, it takes the
+defaults below (no CA, no client certificate).
 
-The Indexer Connector configuration establishes TLS-secured connections to one or more Indexer nodes for data indexing and feed synchronization.
-
-**Required fields:** Both `<hosts>` and `<ssl>` are required. The parser returns an error if either is absent or empty.
-
-### hosts
-
-List of Indexer node URLs. Each node is specified with a `<host>` child element.
-
-- **Default value:** None (required configuration)
-- **Allowed values:** URL in the form `http://<address>:<port>` or `https://<address>:<port>`
-- **Note:** At least one host must be defined. Must start with `http://` or `https://` and include a port number. The connector load-balances across all listed hosts and fails over if a node is unavailable
-
-Example:
-```xml
-<hosts>
-  <host>https://127.0.0.1:9200</host>
-</hosts>
-```
-
-### ssl
-
-TLS/SSL configuration block.
-
-- **Default value:** None (required configuration block, even if empty)
-- **Allowed values:** Contains sub-options: `certificate_authorities`, `certificate`, `key`
-- **Note:** This block is required by the parser even if no TLS verification is configured
-
-#### certificate_authorities
-
-Path to one or more CA certificates used to verify the Indexer's TLS certificate. Each CA is listed with a `<ca>` child element.
-
-- **Default value:** None
-- **Allowed values:** Path to a PEM-encoded CA certificate (relative or absolute)
-- **Note:** Omitting this disables server certificate verification (not recommended for production). Path must exist on disk at startup time
-
-Example:
-```xml
-<ssl>
-  <certificate_authorities>
-    <ca>/var/wazuh-manager/etc/certs/root-ca.pem</ca>
-  </certificate_authorities>
-</ssl>
-```
-
-#### certificate
-
-Path to the manager's client TLS certificate for mutual authentication with the Indexer.
-
-- **Default value:** None
-- **Allowed values:** Path to a PEM-encoded certificate (relative or absolute)
-- **Note:** Required if Indexer requires client certificate authentication. Path must exist on disk at startup time
-
-#### key
-
-Path to the private key corresponding to the client certificate.
-
-- **Default value:** None
-- **Allowed values:** Path to a PEM-encoded private key (relative or absolute)
-- **Note:** Required if `certificate` is specified. Path must exist on disk at startup time
-
----
-
-## Indexer Credentials
-
-If the Wazuh Indexer requires username/password authentication (e.g. the built-in `admin` user), store the credentials in the Wazuh Keystore rather than embedding them in the configuration file:
-
-```bash
-wazuh-manager-keystore -f indexer -k username -v admin
-wazuh-manager-keystore -f indexer -k password -v <password>
-```
-
-The Indexer Connector reads these values automatically at startup from the `indexer` column family in the keystore.
-
-For full keystore usage, see [Keystore Module](../keystore/index.html).
-
----
-
-## Internal Options
-
-**Configuration file:** `/var/wazuh-manager/etc/local_internal_options.conf`
-
-The Indexer Connector does not have dedicated internal options. Connection and bulk indexing behavior is controlled through the XML configuration and module-specific settings.
-
----
-
-## Manager Configuration Examples
-
-### Single Node with TLS
-
-Basic configuration with one Indexer node:
+The installer writes this section:
 
 ```xml
 <indexer>
@@ -114,17 +27,110 @@ Basic configuration with one Indexer node:
   </hosts>
   <ssl>
     <certificate_authorities>
-      <ca>/var/wazuh-manager/etc/certs/root-ca.pem</ca>
+      <ca>/etc/wazuh-manager/certs/indexer-ca.pem</ca>
     </certificate_authorities>
-    <certificate>/var/wazuh-manager/etc/certs/indexer-connector.pem</certificate>
-    <key>/var/wazuh-manager/etc/certs/indexer-connector-key.pem</key>
+    <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
+    <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
   </ssl>
 </indexer>
 ```
 
-### Multi-Node Cluster
+### hosts
 
-High availability configuration with multiple Indexer nodes:
+List of Indexer node URLs, one per `<host>` child element.
+
+- **Default value:** None (required)
+- **Allowed values:** URLs starting with `http://` or `https://` (e.g. `https://10.0.0.1:9200`); at
+  least one, no duplicates
+- **Note:** The connector load-balances requests round-robin across the hosts its health monitor
+  sees as available, and skips the ones that are not.
+
+### ssl
+
+TLS material of the connection. The schema's defaults are empty (no CA file, no client
+certificate); the installer writes the `/etc/wazuh-manager/certs/` names shown above.
+
+**Every file must sit directly in `/etc/wazuh-manager/certs`.** The schema accepts any path (a
+relative one resolves against the manager home, `/var/wazuh-manager`), but the
+[credential resolver](../../getting-started/credentials.md#configured-file-names) checks these files
+before every start and refuses any other location, a relative path included:
+`INVALID indexer.ssl.certificate: /var/wazuh-manager/client.pem is outside /etc/wazuh-manager/certs, the only place the resolver checks (set in /etc/wazuh-manager/wazuh-manager.conf)`,
+and `wazuh-manager-control` stops with `Invalid credentials. Exiting` (error 22 in `-j` output).
+`wazuh-manager-conf validate` does not look at these files: the resolver owns them. A listed file that
+is absent, and that the resolver cannot import from a co-located indexer, refuses the start with
+`MISSING <path>` and `Unresolved credentials. Exiting` (error 21).
+
+#### certificate_authorities
+
+CA certificates used to verify the Indexer's certificate, one per `<ca>` child element.
+
+- **Default value:** empty list
+- **Allowed values:** paths of PEM files holding only CA certificates, directly in
+  `/etc/wazuh-manager/certs`
+- **Note:** With a single CA, the connector refuses to start when the file does not exist
+  (`The CA root certificate file: '<path>' does not exist.`). With several, it concatenates them into
+  `/var/wazuh-manager/tmp/root-ca-merged.pem`. Only `indexer-ca.pem` is imported from a co-located
+  indexer, and only while this list names it; any other listed file is yours to stage.
+
+#### certificate
+
+Client certificate the manager presents to the Indexer.
+
+- **Default value:** empty (no client certificate)
+- **Allowed values:** path of a PEM-encoded certificate directly in `/etc/wazuh-manager/certs`; set
+  together with `key` (one without the other is refused:
+  `INVALID indexer.ssl.key: must be set together with indexer.ssl.certificate …`)
+
+#### key
+
+Private key of `certificate`.
+
+- **Default value:** empty
+- **Allowed values:** path of a PEM-encoded private key directly in `/etc/wazuh-manager/certs`; set
+  together with `certificate`
+
+---
+
+## Indexer Credentials
+
+The connector always authenticates with HTTP basic authentication. The user and password are not
+part of `wazuh-manager.conf`: they are read from the `indexer` column family of the
+[keystore](../keystore/README.md), keys `username` and `password`.
+
+The credential resolver fills in what is missing at installation and before every start: `username` is
+set to `wazuh-manager` when it is not set, and, while the keystore holds no password, `password` is taken from
+`WAZUH_INDEXER_MANAGER_PASSWORD` (see [Credentials](../../getting-started/credentials.md#the-keys) for where it
+is looked up). There is no default password: when the keystore holds none and no source supplies one, the start
+is refused with `MISSING WAZUH_INDEXER_MANAGER_PASSWORD`. A password already in the keystore is never replaced
+from those sources, so changing `local.env` afterwards changes nothing.
+
+To change them by hand (as root):
+
+```bash
+printf '%s' 'wazuh-manager' | /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username
+printf '%s' '<password>' | /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password
+```
+
+Each process reads the credentials once, so restart the manager after changing them.
+
+---
+
+## Internal Options
+
+The `indexer` section has no internal options of its own. The connectors' buffering, flushing and
+retry settings belong to each consumer:
+
+- engine: `analysisd.indexer_*` — see [Indexer Connector Settings](../engine/configuration.md#indexer-connector-settings)
+- Vulnerability Scanner: `wazuh_modules.indexer_*` — see [Internal Options](../vulnerability-scanner/configuration.md#internal-options)
+- Inventory Sync Server: `wazuh_modules.inventory_sync_server_indexer_*` — see its [configuration reference](../inventory-sync-server/configuration.md)
+
+All of them are set in `/etc/wazuh-manager/wazuh-manager-internal-options.conf`.
+
+---
+
+## Manager Configuration Examples
+
+### Multi-Node Cluster
 
 ```xml
 <indexer>
@@ -135,17 +141,20 @@ High availability configuration with multiple Indexer nodes:
   </hosts>
   <ssl>
     <certificate_authorities>
-      <ca>/var/wazuh-manager/etc/certs/root-ca.pem</ca>
+      <ca>/etc/wazuh-manager/certs/indexer-ca.pem</ca>
     </certificate_authorities>
-    <certificate>/var/wazuh-manager/etc/certs/indexer-connector.pem</certificate>
-    <key>/var/wazuh-manager/etc/certs/indexer-connector-key.pem</key>
+    <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
+    <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
   </ssl>
 </indexer>
 ```
 
 ### Multiple CA Certificates
 
-If using certificates from different CAs:
+If the Indexer nodes' certificates come from different CAs, either put them all in `indexer-ca.pem`
+or list several files. Files other than `indexer-ca.pem` are never imported: stage them in
+`/etc/wazuh-manager/certs` (`root:wazuh-manager 0640`) before the start. The client pair may chain to
+any of the listed CAs.
 
 ```xml
 <indexer>
@@ -155,167 +164,97 @@ If using certificates from different CAs:
   </hosts>
   <ssl>
     <certificate_authorities>
-      <ca>/var/wazuh-manager/etc/certs/root-ca-1.pem</ca>
-      <ca>/var/wazuh-manager/etc/certs/root-ca-2.pem</ca>
+      <ca>/etc/wazuh-manager/certs/indexer-ca.pem</ca>
+      <ca>/etc/wazuh-manager/certs/indexer-ca-2.pem</ca>
     </certificate_authorities>
-    <certificate>/var/wazuh-manager/etc/certs/indexer-connector.pem</certificate>
-    <key>/var/wazuh-manager/etc/certs/indexer-connector-key.pem</key>
+    <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
+    <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
   </ssl>
 </indexer>
 ```
 
-### Development/Testing (No TLS Verification)
+### Plain HTTP (development only)
 
-**WARNING:** Not recommended for production. Only for isolated development environments.
+**WARNING:** Not for production: credentials and data travel unencrypted.
 
 ```xml
 <indexer>
   <hosts>
     <host>http://127.0.0.1:9200</host>
   </hosts>
-  <ssl>
-    <!-- Empty SSL block required but no verification -->
-  </ssl>
 </indexer>
 ```
+
+Without `<ssl>` no CA file or client pair is required or imported, but the indexer password is still
+required in the keystore.
 
 ---
 
 ## Verifying Connectivity
 
-Test connectivity to the Indexer manually:
+Validate the configuration, then the TLS files and their modes (as root):
 
 ```bash
-curl --cacert /var/wazuh-manager/etc/certs/root-ca.pem \
-     --cert   /var/wazuh-manager/etc/certs/indexer-connector.pem \
-     --key    /var/wazuh-manager/etc/certs/indexer-connector-key.pem \
+/var/wazuh-manager/bin/wazuh-manager-conf validate
+/var/wazuh-manager/bin/wazuh-manager-resolve-credentials --check
+```
+
+Check that the Indexer accepts the manager's certificate and credentials, using the same files and
+account the connector uses:
+
+```bash
+curl --cacert /etc/wazuh-manager/certs/indexer-ca.pem \
+     --cert   /etc/wazuh-manager/certs/indexer-connector.pem \
+     --key    /etc/wazuh-manager/certs/indexer-connector-key.pem \
+     -u "wazuh-manager:$(/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -g)" \
      https://127.0.0.1:9200/_cluster/health
 ```
 
-Expected response includes `"status": "green"` or `"yellow"`.
+The connector treats a node as available when its health is `green` or `yellow`.
 
-With authentication:
+Then check the manager log for the connector's verdict on each node:
 
 ```bash
-curl --cacert /var/wazuh-manager/etc/certs/root-ca.pem \
-     --cert   /var/wazuh-manager/etc/certs/indexer-connector.pem \
-     --key    /var/wazuh-manager/etc/certs/indexer-connector-key.pem \
-     -u admin:password \
-     https://127.0.0.1:9200/_cluster/health
+grep -E "Indexer node|Health check failed|indexer credentials" /var/wazuh-manager/logs/wazuh-manager.log
 ```
+
+| Message | Meaning |
+|---|---|
+| `Health check failed for '<host>' - Unauthorized - Check indexer credentials` | The Indexer answered `401`: wrong user or password in the keystore (logged only at debug level 2) |
+| `Health check failed for '<host>' - Forbidden - Check user permissions` | The Indexer answered `403` (logged only at debug level 2) |
+| `Indexer node '<host>' is no longer available. Reason: <reason>` | The node stopped answering `green`/`yellow`; `<reason>` carries the cause above (for example `Unauthorized - Check indexer credentials`) |
+| `Indexer node '<host>' is available again.` | The node recovered |
+| `Indexer node '<host>' is throttling requests (<reason>); it stays in rotation and requests back off.` | The node answered `429` (for example a tripped circuit breaker) |
+| `No indexer credentials found in the keystore. ...` | The keystore has no `username` or `password` |
 
 ---
 
-## Certificate Management
+## Certificates
 
-### Generate Self-Signed Certificates
+The connector trusts the indexer's CA and presents a client pair the indexer issued for this manager. Neither
+comes from the manager's own CA:
 
-For testing purposes only:
+| File | Owner:group | Mode |
+|---|---|---|
+| `/etc/wazuh-manager/certs/indexer-ca.pem` | root:wazuh-manager | 0640 |
+| `/etc/wazuh-manager/certs/indexer-connector.pem` | root:wazuh-manager | 0640 |
+| `/etc/wazuh-manager/certs/indexer-connector-key.pem` | root:wazuh-manager | 0640 |
 
-```bash
-# Generate CA
-openssl req -x509 -new -nodes -newkey rsa:4096 \
-  -keyout root-ca-key.pem -out root-ca.pem -days 3650
+When the indexer runs on the same host, the credential resolver imports them from `/etc/wazuh-indexer/export/`;
+otherwise stage them yourself under these names. The owner and mode above are checked exactly before every start:
+a replacement file with any other is refused as `UNSAFE` (`Unsafe credentials. Exiting`). How imports, staged
+files, validity checks and rotation work is described once, in
+[Indexer trust](../../getting-started/credentials.md#indexer-trust).
 
-# Generate manager certificate
-openssl req -new -nodes -newkey rsa:4096 \
-  -keyout manager-key.pem -out manager.csr
-
-# Sign with CA
-openssl x509 -req -in manager.csr -CA root-ca.pem \
-  -CAkey root-ca-key.pem -CAcreateserial \
-  -out manager.pem -days 365
-```
-
-### Certificate Permissions
-
-Ensure proper ownership and permissions:
-
-```bash
-chown root:wazuh-manager /var/wazuh-manager/etc/certs/*.pem
-chmod 640 /var/wazuh-manager/etc/certs/*-key.pem
-chmod 644 /var/wazuh-manager/etc/certs/*.pem
-```
-
----
-
-## Troubleshooting
-
-### Connection Failures
-
-Check connectivity:
-
-```bash
-# Test network connectivity
-telnet 127.0.0.1 9200
-
-# Test TLS handshake
-openssl s_client -connect 127.0.0.1:9200 -CAfile /var/wazuh-manager/etc/certs/root-ca.pem
-```
-
-Check manager logs:
-
-```bash
-tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep -i indexer
-```
-
-### Certificate Errors
-
-Verify certificate validity:
-
-```bash
-# Check certificate dates
-openssl x509 -in /var/wazuh-manager/etc/certs/indexer-connector.pem -noout -dates
-
-# Verify certificate against CA
-openssl verify -CAfile /var/wazuh-manager/etc/certs/root-ca.pem \
-  /var/wazuh-manager/etc/certs/indexer-connector.pem
-```
-
-### Authentication Errors
-
-Verify keystore credentials:
-
-```bash
-# List keystore entries
-wazuh-manager-keystore -l
-
-# Test with curl
-curl -u admin:password https://127.0.0.1:9200/_cat/health
-```
-
-### Configuration Validation
-
-Validate configuration before restarting:
-
-```bash
-/var/wazuh-manager/bin/wazuh-logtest-config
-```
-
----
-
-## Performance Considerations
-
-### Connection Pooling
-
-The Indexer Connector maintains persistent connections to configured hosts. For large deployments:
-
-- Use multiple Indexer nodes for load distribution
-- Monitor connection pool usage in logs
-- Adjust Indexer thread pool settings if needed
-
-### Load Balancing
-
-The connector uses round-robin load balancing across configured hosts. For optimal performance:
-
-- Use at least 3 Indexer nodes in production
-- Ensure network latency is similar to all nodes
-- Monitor individual node health
+`/etc/wazuh-manager/certs/root-ca.pem` is not the connector's: it is the manager's own CA bundle, the default
+[`remote.https.ca_certificate`](../remoted/configuration.md#httpsca_certificate) that remoted serves to agents on
+`GET /cacerts`.
 
 ---
 
 ## See Also
 
-- [Indexer Connector Module](index.html) - Module overview and architecture
-- [Vulnerability Scanner Configuration](../vulnerability-scanner/configuration.md) - Uses Indexer connection for feeds
+- [Indexer Connector Module](README.md) - Module overview and architecture
+- [Keystore](../keystore/README.md) - Where the Indexer credentials are stored
+- [Vulnerability Scanner Configuration](../vulnerability-scanner/configuration.md) - Uses the Indexer connection for feeds and results
 - [Manager Configuration Reference](../../configuration/manager/README.md) - All manager configuration options

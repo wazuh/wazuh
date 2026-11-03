@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef IOCKVDB_MOCK_MANAGER_HPP
 #define IOCKVDB_MOCK_MANAGER_HPP
 
@@ -13,6 +14,8 @@ public:
     MOCK_METHOD(void, add, (std::string_view name), (override));
 
     MOCK_METHOD(bool, exists, (std::string_view name), (const, noexcept, override));
+
+    MOCK_METHOD(bool, isRegistered, (std::string_view name), (const, noexcept, override));
 
     MOCK_METHOD(void, put, (std::string_view name, std::string_view key, std::string_view value), (override));
 

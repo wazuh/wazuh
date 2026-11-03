@@ -1,7 +1,6 @@
 /*
  * Cryptography windows helper.
- * Copyright (C) 2015, Wazuh Inc.
- * November 16, 2022.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -59,6 +58,9 @@ w_err_t verify_hash_and_pe_signature(wchar_t *file_path);
 
 /**
  * @brief Check if the CA is available.
+ *
+ * If CA_NAME is not in the ROOT store, the running executable's signature is verified first, which lets Windows
+ * install a trusted root on demand, and the store is checked again.
  *
  * @return DWORD ERROR_SUCCESS if the CA is available, otherwise error code.
  */

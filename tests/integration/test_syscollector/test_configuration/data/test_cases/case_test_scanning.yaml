@@ -16,6 +16,5 @@
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
     BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: 50
   metadata:
     dummy_metadata: ''

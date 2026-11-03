@@ -128,7 +128,7 @@ Collects events from the macOS Unified Logging System (ULS) using the `log` CLI.
 </localfile>
 ```
 
-The `<query>` attribute `type` accepts a comma-separated list of `activity`, `log`, and `trace`. The `level` attribute sets the minimum log level (`default`, `info`, `debug`). See [Configuration](configuration.md#macos) for predicate syntax and filtering examples.
+The `<query>` attribute `type` accepts a comma-separated list of `activity`, `log`, and `trace`. The `level` attribute sets the minimum log level (`default`, `info`, `debug`). See [Configuration](configuration.md#macos-unified-logging-system) for predicate syntax and filtering examples.
 
 ---
 

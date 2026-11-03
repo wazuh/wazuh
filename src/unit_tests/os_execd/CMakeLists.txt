@@ -51,6 +51,13 @@ else()
                              -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fread -Wl,--wrap,fseek \
                              -Wl,--wrap,remove -Wl,--wrap,fgetpos -Wl,--wrap=fgetc -Wl,--wrap,fwrite \
                              -Wl,--wrap,fprintf -Wl,--wrap,popen ${DEBUG_OP_WRAPPERS}")
+
+    # The local request listener, in its own binary so that wrapping close and accept does not
+    # reach the other execd tests.
+    list(APPEND execd_names "test_wcom")
+    list(APPEND execd_flags "-Wl,--wrap,close -Wl,--wrap,accept -Wl,--wrap,select -Wl,--wrap,FOREVER \
+                             -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,OS_RecvSecureTCP \
+                             -Wl,--wrap,OS_SendSecureTCP ${DEBUG_OP_WRAPPERS}")
 endif()
 
 list(LENGTH execd_names count)

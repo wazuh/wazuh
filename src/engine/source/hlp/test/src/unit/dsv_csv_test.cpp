@@ -1,9 +1,26 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <gtest/gtest.h>
 
 #include "hlp_test.hpp"
 
 auto constexpr NAME = "dsvcsvParser";
 static const std::string TARGET = "/TargetField";
+
+namespace
+{
+
+// Header of `segments` names k0..k{segments-1} joined by '.': the parser writes it to a path of `segments` tokens.
+std::string deepHeader(std::size_t segments)
+{
+    std::string header;
+    for (std::size_t i = 0; i < segments; ++i)
+    {
+        header += fmt::format("{}k{}", i == 0 ? "" : ".", i);
+    }
+    return header;
+}
+
+} // namespace
 
 /************************************
  *  CSV Parser
@@ -16,7 +33,11 @@ INSTANTIATE_TEST_SUITE_P(
                       BuildT(FAILURE, getCSVParser, {NAME, TARGET, {""}, {"out1"}}),
                       BuildT(SUCCESS, getCSVParser, {NAME, TARGET, {""}, {"out1", "out2"}}),
                       BuildT(SUCCESS, getCSVParser, {NAME, TARGET, {""}, {"out1", "out2", "out3"}}),
-                      BuildT(FAILURE, getCSVParser, {NAME, TARGET, {}, {"out1", "out2"}})));
+                      BuildT(FAILURE, getCSVParser, {NAME, TARGET, {}, {"out1", "out2"}}),
+                      // Headers are JSON Pointer tokens: ~0 and ~1 are the only valid escapes
+                      BuildT(SUCCESS, getCSVParser, {NAME, TARGET, {""}, {"out1", "a~0b"}}),
+                      BuildT(FAILURE, getCSVParser, {NAME, TARGET, {""}, {"out1", "a~2"}}),
+                      BuildT(FAILURE, getCSVParser, {NAME, TARGET, {""}, {"out1", "a~"}})));
 
 INSTANTIATE_TEST_SUITE_P(
     CSVParse,
@@ -237,7 +258,43 @@ INSTANTIATE_TEST_SUITE_P(
                              TARGET.substr(1))),
                14,
                getCSVParser,
-               {NAME, TARGET, {""}, {"f1.key", "f2/key", "f3.key/subkey"}})));
+               {NAME, TARGET, {""}, {"f1.key", "f2/key", "f3.key/subkey"}}),
+
+        // Depth limit: a header written to a path of 257 tokens fails at its field.
+        ParseT(FAILURE, "hi,hi2", {}, 3, getCSVParser, {NAME, TARGET, {""}, {"field_1", deepHeader(257)}})));
+
+// The depth failure is a syntax-stage failure whose trace names the limit and whose remaining input starts at the
+// offending field (a mutation that fell back to the plain parser name would survive the ParseT row alone).
+TEST(CsvParserDepth, TraceNamesLimit)
+{
+    const auto parser = getCSVParser({NAME, TARGET, {""}, {"field_1", deepHeader(257)}});
+    const auto result = parser("hi,hi2");
+    ASSERT_TRUE(result.failure());
+    EXPECT_EQ(result.trace(), "dsvcsvParser: field path nesting depth exceeds the limit (256)");
+    EXPECT_EQ(result.remaining(), "hi2");
+}
+
+// A numeric header is a member name, not an array index
+TEST(CsvNumericHeader, HeadersAreMembers)
+{
+    const auto parser = getCSVParser({NAME, TARGET, {""}, {"1", "2"}});
+    json::Json event;
+    event.setObject();
+    const auto error = hlp::parser::run(parser, "x,y", event, true);
+    ASSERT_FALSE(error.has_value()) << error->message;
+    EXPECT_EQ(event, json::Json {R"({"TargetField":{"1":"x","2":"y"}})"});
+}
+
+// A dotted header nests its field also when the field is empty
+TEST(CsvDottedHeader, EmptyFieldNests)
+{
+    const auto parser = getCSVParser({NAME, TARGET, {""}, {"x.y", "z"}});
+    json::Json event;
+    event.setObject();
+    const auto error = hlp::parser::run(parser, ",v", event, true);
+    ASSERT_FALSE(error.has_value()) << error->message;
+    EXPECT_EQ(event, json::Json {R"({"TargetField":{"x":{"y":null},"z":"v"}})"});
+}
 
 /************************************
  *  DSV Parser
@@ -248,7 +305,8 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(BuildT(SUCCESS, getDSVParser, {NAME, TARGET, {""}, {"d", "q", "e", "out1", "out2"}}),
                       BuildT(FAILURE, getDSVParser, {NAME, TARGET, {}, {"d", "q", "e", "out1", "out2"}}),
                       BuildT(SUCCESS, getDSVParser, {NAME, TARGET, {""}, {"d", "q", "e", "out1", "out2", "out3"}}),
-                      BuildT(FAILURE, getDSVParser, {NAME, TARGET, {""}, {"d", "q", "e", "out1"}})));
+                      BuildT(FAILURE, getDSVParser, {NAME, TARGET, {""}, {"d", "q", "e", "out1"}}),
+                      BuildT(FAILURE, getDSVParser, {NAME, TARGET, {""}, {"d", "q", "e", "out1", "a~2"}})));
 
 INSTANTIATE_TEST_SUITE_P(
     DSVParse,

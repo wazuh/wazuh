@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * All right reserved.
  *
  * This program is free software; you can redistribute it
@@ -8,7 +8,7 @@
  */
 
 /*
- * Manager configuration (etc/wazuh-manager.conf) for the C daemons.
+ * Manager configuration (/etc/wazuh-manager/wazuh-manager.conf) for the C daemons.
  *
  * Thin C layer over the manager_config library (src/shared_modules/manager_config): the XML file is
  * loaded, validated against the embedded schema and completed with its defaults once per process; the

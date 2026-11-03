@@ -16,13 +16,6 @@ The module is configured in the `ossec.conf` file within an `<agent-info>` block
 <agent-info>
   <interval>60</interval>
   <integrity_interval>86400</integrity_interval>
-  <synchronization>
-    <enabled>yes</enabled>
-    <sync_end_delay>1s</sync_end_delay>
-    <response_timeout>30s</response_timeout>
-    <retries>5</retries>
-    <max_eps>50</max_eps>
-  </synchronization>
 </agent-info>
 ```
 

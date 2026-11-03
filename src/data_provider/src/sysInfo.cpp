@@ -1,7 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015, Wazuh Inc.
- * October 7, 2020.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -11,6 +10,7 @@
 #include "sysInfo.hpp"
 #include "sysInfo.h"
 #include "cjsonSmartDeleter.hpp"
+#include "osinfo/sysOsParsers.h"
 
 nlohmann::json SysInfo::hardware()
 {
@@ -24,7 +24,10 @@ nlohmann::json SysInfo::packages()
 
 nlohmann::json SysInfo::os()
 {
-    return getOsInfo();
+    // Not brace-initialized: a json built from a braced json is an array holding it.
+    auto osInfo = getOsInfo();
+    setOsFull(osInfo);
+    return osInfo;
 }
 
 nlohmann::json SysInfo::processes()

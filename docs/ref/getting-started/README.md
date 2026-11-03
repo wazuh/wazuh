@@ -6,6 +6,8 @@ a running installation:
 - [Requirements](requirements.md) — supported operating systems and minimum hardware.
 - [Packages](packages.md) — available packages per platform and where to download them.
 - [Installation](installation.md) — step-by-step installation for DEB and RPM platforms.
+- [Credentials](credentials.md) — how the manager provisions its passwords, the indexer
+  credential and its TLS certificates, and what to do when it refuses to start.
 
 After installing, continue with the [Configuration](../configuration/README.md)
 section, and review the [Upgrade](../upgrade.md) page for version migration

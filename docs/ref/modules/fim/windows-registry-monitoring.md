@@ -12,15 +12,9 @@ The FIM module runs periodic scans of monitored Windows Registry entries and sto
 
 Upon a scan, the Wazuh agent reports any changes the FIM module finds in the monitored registry entries to the Wazuh server. The FIM module looks for file modifications by comparing the checksums of a registry entry to its stored checksums and attribute values. It generates an alert if it finds discrepancies.
 
-The Wazuh FIM module uses two databases to collect FIM event data, such as registry entry creation, modification, and deletion data:
+The FIM module keeps the state of the monitored registry entries in a local SQLite database on the endpoint, under `C:\Program Files (x86)\ossec-agent\queue\fim\db`.
 
-- Local SQLite database on the endpoint:  
-  `C:\Program Files (x86)\ossec-agent\queue\fim\db`
-- Agent database on the Wazuh server:  
-  `/var/ossec/queue/db`
-
-
-The FIM module synchronization mechanism ensures synchronization between the Wazuh agent and the Wazuh server databases. It always updates the file inventory in the Wazuh server with the data available to the Wazuh agent. This allows servicing FIM-related API queries regarding the Wazuh agents.
+The FIM synchronization mechanism keeps the indexer up to date with that state: registry keys go to the `wazuh-states-fim-registry-keys` index and registry values to `wazuh-states-fim-registry-values`.
 
 ## Configuration
 
@@ -80,7 +74,7 @@ The `windows_registry` option supports several attributes:
 Restart the agent:
 
 ```console
-Restart-Service -Name wazuh
+Restart-Service -Name WazuhSvc
 ```
 
 ---
@@ -103,7 +97,7 @@ The `recursion_level` attribute defines the maximum depth to monitor.
 Restart the agent:
 
 ```console
-Restart-Service -Name wazuh
+Restart-Service -Name WazuhSvc
 ```
 
 Example structure with `recursion_level="3"`:
@@ -131,9 +125,11 @@ The `report_changes` attribute allows reporting the exact content changed.
 - Allowed values: `yes`, `no`
 - Supported types:
   - `REG_SZ`
+  - `REG_EXPAND_SZ`
   - `REG_MULTI_SZ`
   - `REG_DWORD`
   - `REG_DWORD_BIG_ENDIAN`
+  - `REG_QWORD`
 
 > **Warning**  
 > This option increases disk usage because registry data is stored under  
@@ -151,7 +147,7 @@ The `report_changes` attribute allows reporting the exact content changed.
 Restart the agent:
 
 ```console
-Restart-Service -Name wazuh
+Restart-Service -Name WazuhSvc
 ```
 
 ---
@@ -166,13 +162,18 @@ You can ignore registry entries using `registry_ignore`.
 <syscheck>
   <registry_ignore>HKEY_LOCAL_MACHINE\Security\Policy\Secrets</registry_ignore>
   <registry_ignore type="sregex">\Enum$</registry_ignore>
+  <registry_ignore>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\bam\State</registry_ignore>
 </syscheck>
 ```
+
+A plain entry is a case-insensitive prefix, so `…\Services\bam\State` also covers every key below
+it, and the subtree is skipped before it is opened. An `sregex` entry applies to every monitored
+registry entry, so `\Enum$` matches any key whose path ends in `\Enum`, wherever it is.
 
 Restart the agent:
 
 ```console
-Restart-Service -Name wazuh
+Restart-Service -Name WazuhSvc
 ```
 
 ---

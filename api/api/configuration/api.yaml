@@ -11,14 +11,14 @@
 #  cert: "apid.pem"
 #  use_ca: False
 #  ca: "root-ca.pem"
-#  ssl_ciphers: ""
+#  ssl_ciphers: ""  # Passed to OpenSSL as written (case-sensitive); empty = ECDHE+AESGCM:ECDHE+CHACHA20
 
 # Modify API's intervals (time in seconds)
 # intervals:
 #   request_timeout: 10
 
 # Logging configuration
-# Values for API log level: disabled, info, warning, error, debug, debug2 (each level includes the previous level).
+# Values for API log level: critical, error, warning, info, debug, debug2 (each level includes the previous levels).
 # Values for API log max_size: <value><unit>. Valid units: K (kilobytes), M (megabytes)
 # Enabling the API log max_size will disable the time based rotation (on midnight)
 # logs:
@@ -48,6 +48,12 @@
 
 # Maximum body size that the API can accept, in bytes (0 -> limitless)
 # max_upload_size: 10485760
+
+# Maximum size, in bytes, of the run_as authentication context payload
+# (POST /security/user/authenticate/run_as). AD/LDAP/SSO logins with large
+# group memberships may need to raise this. Independent of max_upload_size,
+# which still bounds the overall request body for every endpoint.
+# auth_context_max_payload_size: 65536
 
 # Number of processes dedicated to processing authentication requests.
 # authentication_pool_size: 2

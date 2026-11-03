@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -13,6 +13,7 @@
 #include <cmocka.h>
 #include <stdio.h>
 #include <string.h>
+#include <pthread.h>
 
 #include "shared.h"
 #include "../wrappers/common.h"
@@ -309,6 +310,552 @@ void test_get_unix_version_opensuse_tumbleweed(void **state)
     assert_string_equal(ret->os_version, "");
     assert_string_equal(ret->os_platform, "opensuse-tumbleweed");
     assert_string_equal(ret->sysname, "Linux");
+}
+
+void test_get_unix_version_sles_service_pack(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"SLES\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"15-SP6\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION_ID=\"15.6\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"sles\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "SLES");
+    assert_string_equal(ret->os_version, "15.6");
+    assert_string_equal(ret->os_major, "15");
+    assert_string_equal(ret->os_minor, "6");
+    assert_string_equal(ret->os_platform, "sles");
+    assert_string_equal(ret->sysname, "Linux");
+}
+
+void test_get_unix_version_sles_service_pack_sp7(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"SLES\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"15-SP7\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION_ID=\"15.7\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"sles\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "SLES");
+    assert_string_equal(ret->os_version, "15.7");
+    assert_string_equal(ret->os_major, "15");
+    assert_string_equal(ret->os_minor, "7");
+    assert_string_equal(ret->os_platform, "sles");
+    assert_string_equal(ret->sysname, "Linux");
+}
+
+void test_get_unix_version_sles_service_pack_12_sp5(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"SLES\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"12-SP5\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION_ID=\"12.5\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"sles\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "SLES");
+    assert_string_equal(ret->os_version, "12.5");
+    assert_string_equal(ret->os_major, "12");
+    assert_string_equal(ret->os_minor, "5");
+    assert_string_equal(ret->os_platform, "sles");
+    assert_string_equal(ret->sysname, "Linux");
+}
+
+void test_get_unix_version_sled_service_pack(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"SLED\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"15-SP6\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION_ID=\"15.6\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"sled\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "SLED");
+    assert_string_equal(ret->os_version, "15.6");
+    assert_string_equal(ret->os_major, "15");
+    assert_string_equal(ret->os_minor, "6");
+    assert_string_equal(ret->os_platform, "sled");
+    assert_string_equal(ret->sysname, "Linux");
+}
+
+void test_get_unix_version_sles_service_pack_lowercase(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"SLES\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"15-sp6\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"sles\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "SLES");
+    assert_string_equal(ret->os_version, "15.6");
+    assert_string_equal(ret->os_major, "15");
+    assert_string_equal(ret->os_minor, "6");
+    assert_string_equal(ret->os_platform, "sles");
+    assert_string_equal(ret->sysname, "Linux");
+}
+
+void test_get_unix_version_sles_service_pack_extra_suffix(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"SLES\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"15-SP6-extra\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"sles\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "SLES");
+    assert_string_equal(ret->os_version, "15-SP6-extra");
+    assert_string_equal(ret->os_platform, "sles");
+    assert_string_equal(ret->sysname, "Linux");
+}
+
+void test_get_unix_version_sles_no_service_pack(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"SLES\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"15\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"sles\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "SLES");
+    assert_string_equal(ret->os_version, "15");
+    assert_string_equal(ret->os_major, "15");
+    assert_null(ret->os_minor);
+    assert_string_equal(ret->os_platform, "sles");
+    assert_string_equal(ret->sysname, "Linux");
+}
+
+void test_get_unix_version_opensuse_leap_unaffected(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"openSUSE Leap\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"15.6\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION_ID=\"15.6\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"opensuse-leap\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "openSUSE Leap");
+    assert_string_equal(ret->os_version, "15.6");
+    assert_string_equal(ret->os_major, "15");
+    assert_string_equal(ret->os_minor, "6");
+    assert_string_equal(ret->os_platform, "opensuse-leap");
+    assert_string_equal(ret->sysname, "Linux");
+}
+
+void test_get_unix_version_rhcos_rhel_version(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"Red Hat Enterprise Linux CoreOS\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"rhcos\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID_LIKE=\"rhel fedora\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"418.94.202602022246-0\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION_ID=\"4.18\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "PLATFORM_ID=\"platform:el9\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "OPENSHIFT_VERSION=\"4.18\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "RHEL_VERSION=9.4");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "OSTREE_VERSION=\"418.94.202602022246-0\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "Red Hat Enterprise Linux CoreOS");
+    assert_string_equal(ret->os_version, "9.4");
+    assert_string_equal(ret->os_major, "9");
+    assert_string_equal(ret->os_minor, "4");
+    assert_null(ret->os_patch);
+    assert_string_equal(ret->os_platform, "rhcos");
+    assert_string_equal(ret->sysname, "Linux");
+}
+
+void test_get_unix_version_rhcos_rhel_version_quoted(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"Red Hat Enterprise Linux CoreOS\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "RHEL_VERSION=\"8.6\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"rhcos\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"412.86.202308081039-0\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION_ID=\"4.12\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "Red Hat Enterprise Linux CoreOS");
+    assert_string_equal(ret->os_version, "8.6");
+    assert_string_equal(ret->os_major, "8");
+    assert_string_equal(ret->os_minor, "6");
+    assert_null(ret->os_patch);
+    assert_string_equal(ret->os_platform, "rhcos");
+    assert_string_equal(ret->sysname, "Linux");
+}
+
+void test_get_unix_version_rhcos_rhel_version_major_only(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"Red Hat Enterprise Linux CoreOS\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"rhcos\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"418.94.202602022246-0\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION_ID=\"4.18\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "RHEL_VERSION=9");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_version, "9");
+    assert_string_equal(ret->os_major, "9");
+    assert_null(ret->os_minor);
+    assert_null(ret->os_patch);
+    assert_string_equal(ret->os_platform, "rhcos");
+}
+
+void test_get_unix_version_rhcos_no_rhel_version(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"Red Hat Enterprise Linux CoreOS\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"rhcos\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"418.94.202602022246-0\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION_ID=\"4.18\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_version, "418.94.202602022246-0");
+    assert_string_equal(ret->os_major, "418");
+    assert_string_equal(ret->os_minor, "94");
+    assert_string_equal(ret->os_patch, "202602022246");
+    assert_string_equal(ret->os_platform, "rhcos");
+}
+
+void test_get_unix_version_rhcos_empty_rhel_version(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"Red Hat Enterprise Linux CoreOS\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"rhcos\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"418.94.202602022246-0\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "RHEL_VERSION=");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_version, "418.94.202602022246-0");
+    assert_string_equal(ret->os_major, "418");
+    assert_string_equal(ret->os_minor, "94");
+    assert_string_equal(ret->os_patch, "202602022246");
+    assert_string_equal(ret->os_platform, "rhcos");
+}
+
+void test_get_unix_version_rhcos_invalid_rhel_version(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"Red Hat Enterprise Linux CoreOS\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"rhcos\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"418.94.202602022246-0\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "RHEL_VERSION=\"unknown\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_version, "418.94.202602022246-0");
+    assert_string_equal(ret->os_major, "418");
+    assert_string_equal(ret->os_minor, "94");
+    assert_string_equal(ret->os_patch, "202602022246");
+    assert_string_equal(ret->os_platform, "rhcos");
+}
+
+void test_get_unix_version_rhel_version_ignored_other_platform(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"Red Hat Enterprise Linux\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"9.6 (Plow)\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"rhel\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION_ID=\"9.6\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "RHEL_VERSION=8.10");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "Red Hat Enterprise Linux");
+    assert_string_equal(ret->os_version, "9.6 (Plow)");
+    assert_string_equal(ret->os_major, "9");
+    assert_string_equal(ret->os_minor, "6");
+    assert_string_equal(ret->os_codename, "Plow");
+    assert_string_equal(ret->os_platform, "rhel");
 }
 
 void test_get_unix_version_alpine(void **state)
@@ -1373,13 +1920,30 @@ void test_get_unix_version_darwin_mapped_codename(void **state)
     assert_string_equal(ret->os_version, "26.5.1 (Tahoe)");
 }
 
+void test_get_unix_version_darwin_golden_gate_codename(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // macOS 27 Golden Gate runs Darwin 27
+    expect_darwin_version_calls("27.0.1\n", "27.0.0\n");
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_platform, "darwin");
+    assert_string_equal(ret->os_codename, "Golden Gate");
+    assert_string_equal(ret->os_version, "27.0.1 (Golden Gate)");
+}
+
 void test_get_unix_version_darwin_unmapped_codename(void **state)
 {
     (void) state;
     os_info *ret;
 
     // Darwin version newer than the release name table: no codename, and no "(Unknown)" suffix
-    expect_darwin_version_calls("28.0\n", "27.0.0\n");
+    expect_darwin_version_calls("29.0\n", "28.0.0\n");
 
     ret = get_unix_version();
     *state = ret;
@@ -1387,7 +1951,7 @@ void test_get_unix_version_darwin_unmapped_codename(void **state)
     assert_non_null(ret);
     assert_string_equal(ret->os_platform, "darwin");
     assert_null(ret->os_codename);
-    assert_string_equal(ret->os_version, "28.0");
+    assert_string_equal(ret->os_version, "29.0");
 }
 
 void test_get_unix_version_fail_os_release_uname_darwin_no_key(void **state)
@@ -1776,11 +2340,26 @@ void test_OSX_ReleaseName(void **state) {
     assert_string_equal(OSX_ReleaseName(23), "Sonoma");
     assert_string_equal(OSX_ReleaseName(24), "Sequoia");
     assert_string_equal(OSX_ReleaseName(25), "Tahoe");
-    assert_string_equal(OSX_ReleaseName(26), "Golden Gate");
-    assert_string_equal(OSX_ReleaseName(27), "Unknown");
+    assert_string_equal(OSX_ReleaseName(26), "Unknown");
+    assert_string_equal(OSX_ReleaseName(27), "Golden Gate");
+    assert_string_equal(OSX_ReleaseName(28), "Unknown");
 }
 
 #endif
+
+void test_win_processor_arch_to_machine(void **state)
+{
+    (void) state;
+
+    assert_string_equal(win_processor_arch_to_machine("AMD64"), "x86_64");
+    assert_string_equal(win_processor_arch_to_machine("IA64"), "x86_64");
+    assert_string_equal(win_processor_arch_to_machine("ARM64"), "arm64");
+    assert_string_equal(win_processor_arch_to_machine("x86"), "i686");
+    assert_null(win_processor_arch_to_machine("ARM"));
+    assert_null(win_processor_arch_to_machine("ARM64EC"));
+    assert_null(win_processor_arch_to_machine(""));
+    assert_null(win_processor_arch_to_machine(NULL));
+}
 
 void test_compare_wazuh_versions_equal_patch(void **state)
 {
@@ -1947,6 +2526,106 @@ void test_compare_wazuh_versions_truncated_version(void **state)
     assert_int_equal(ret, 1);
 }
 
+// The gates call compare_wazuh_versions(manager, agent, false) and refuse the agent when it is < 0, so a
+// zero-padded agent version that the old nine-byte copy cut short must still compare greater.
+void test_compare_wazuh_versions_zero_padded_major(void **state)
+{
+    (void) state;
+
+    assert_int_equal(compare_wazuh_versions("v5.0.0", "v000000006.0.0", false), -1);
+    assert_int_equal(compare_wazuh_versions("v000000006.0.0", "v6.0.0", true), 0);
+}
+
+void test_compare_wazuh_versions_zero_padded_minor(void **state)
+{
+    (void) state;
+
+    assert_int_equal(compare_wazuh_versions("v5.0.0", "v5.0000001", false), -1);
+    assert_int_equal(compare_wazuh_versions("v5.0000001", "v5.1", true), 0);
+}
+
+void test_compare_wazuh_versions_zero_padded_major_only(void **state)
+{
+    (void) state;
+
+    assert_int_equal(compare_wazuh_versions("v5.0.0", "v0000000099", false), -1);
+    assert_int_equal(compare_wazuh_versions("v0000000099", "v99.0.0", true), 0);
+}
+
+void test_compare_wazuh_versions_long_patch_not_truncated(void **state)
+{
+    (void) state;
+
+    assert_int_equal(compare_wazuh_versions("v10.14.100", "v10.14.10", true), 1);
+    assert_int_equal(compare_wazuh_versions("v10.14.10", "v10.14.100", true), -1);
+    assert_int_equal(compare_wazuh_versions("v123.456.789", "v123.456.789", true), 0);
+}
+
+void test_compare_wazuh_versions_huge_part_saturates(void **state)
+{
+    (void) state;
+
+    assert_int_equal(compare_wazuh_versions("v99999999999999999999.0.0", "v5.0.0", true), 1);
+    assert_int_equal(compare_wazuh_versions("v5.0.0", "v99999999999999999999.0.0", true), -1);
+    assert_int_equal(compare_wazuh_versions("v99999999999999999999.0.0", "v99999999999999999999.0.0", true), 0);
+}
+
+void test_compare_wazuh_versions_suffix_and_empty_parts(void **state)
+{
+    (void) state;
+
+    assert_int_equal(compare_wazuh_versions("v4.14.0-rc1", "v4.14.0", true), 0);
+    assert_int_equal(compare_wazuh_versions("v5..1", "v5.1.0", true), 0);
+    assert_int_equal(compare_wazuh_versions("v4.14", "v4.14.0", true), 0);
+    assert_int_equal(compare_wazuh_versions("4.14.0", "v4.14.0", true), 0);
+    assert_int_equal(compare_wazuh_versions("v-5.0.0", "v0.0.0", true), 0);
+}
+
+#define VERSION_THREADS 8
+#define VERSION_ITERATIONS 5000
+
+static void *compare_wazuh_versions_thread(void *arg)
+{
+    const int index = *(int *) arg;
+    char lower[16];
+    char higher[16];
+    int mismatches = 0;
+    int iteration;
+
+    // Each thread compares a different pair, so any cross-thread state would change an answer.
+    snprintf(lower, sizeof(lower), "v4.%d.0", index);
+    snprintf(higher, sizeof(higher), "v4.%d.1", index);
+
+    for (iteration = 0; iteration < VERSION_ITERATIONS; iteration++) {
+        mismatches += compare_wazuh_versions(lower, higher, true) != -1;
+        mismatches += compare_wazuh_versions(higher, lower, true) != 1;
+        mismatches += compare_wazuh_versions(lower, higher, false) != 0;
+    }
+
+    *(int *) arg = mismatches;
+    return NULL;
+}
+
+// The old implementation split with strtok(), whose cursor is process-global; remoted calls this
+// function from its worker threads.
+void test_compare_wazuh_versions_reentrant_across_threads(void **state)
+{
+    (void) state;
+    pthread_t threads[VERSION_THREADS];
+    int results[VERSION_THREADS];
+    int index;
+
+    for (index = 0; index < VERSION_THREADS; index++) {
+        results[index] = index;
+        assert_int_equal(pthread_create(&threads[index], NULL, compare_wazuh_versions_thread, &results[index]), 0);
+    }
+
+    for (index = 0; index < VERSION_THREADS; index++) {
+        assert_int_equal(pthread_join(threads[index], NULL), 0);
+        assert_int_equal(results[index], 0);
+    }
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
 #ifdef __linux__
@@ -1957,6 +2636,21 @@ int main(void) {
             cmocka_unit_test_teardown(test_get_unix_version_archlinux, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_opensuse_tumbleweed_no_version_id, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_opensuse_tumbleweed, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_sles_service_pack, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_sles_service_pack_sp7, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_sles_service_pack_12_sp5, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_sled_service_pack, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_sles_service_pack_lowercase, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_sles_service_pack_extra_suffix, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_sles_no_service_pack, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_opensuse_leap_unaffected, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_rhcos_rhel_version, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_rhcos_rhel_version_quoted, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_rhcos_rhel_version_major_only, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_rhcos_no_rhel_version, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_rhcos_empty_rhel_version, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_rhcos_invalid_rhel_version, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_rhel_version_ignored_other_platform, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_alpine, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_centos, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_fedora, delete_os_info),
@@ -1974,11 +2668,13 @@ int main(void) {
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_darwin, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_darwin_no_key, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_darwin_mapped_codename, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_darwin_golden_gate_codename, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_darwin_unmapped_codename, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_bsd, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_zscaler, delete_os_info),
             cmocka_unit_test(test_OSX_ReleaseName),
 #endif
+            cmocka_unit_test(test_win_processor_arch_to_machine),
             // compare_wazuh_versions
             cmocka_unit_test(test_compare_wazuh_versions_equal_patch),
             cmocka_unit_test(test_compare_wazuh_versions_equal_minor),
@@ -1994,7 +2690,14 @@ int main(void) {
             cmocka_unit_test(test_compare_wazuh_versions_long_string_v1),
             cmocka_unit_test(test_compare_wazuh_versions_long_string_v2),
             cmocka_unit_test(test_compare_wazuh_versions_long_string_both),
-            cmocka_unit_test(test_compare_wazuh_versions_truncated_version)
+            cmocka_unit_test(test_compare_wazuh_versions_truncated_version),
+            cmocka_unit_test(test_compare_wazuh_versions_zero_padded_major),
+            cmocka_unit_test(test_compare_wazuh_versions_zero_padded_minor),
+            cmocka_unit_test(test_compare_wazuh_versions_zero_padded_major_only),
+            cmocka_unit_test(test_compare_wazuh_versions_long_patch_not_truncated),
+            cmocka_unit_test(test_compare_wazuh_versions_huge_part_saturates),
+            cmocka_unit_test(test_compare_wazuh_versions_suffix_and_empty_parts),
+            cmocka_unit_test(test_compare_wazuh_versions_reentrant_across_threads)
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

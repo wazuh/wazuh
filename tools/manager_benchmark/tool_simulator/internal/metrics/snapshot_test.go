@@ -54,3 +54,36 @@ func TestRecordScanVDClassifiesStatuses(t *testing.T) {
 		t.Errorf("by_lane scan_sent = %d, want 6", lane.ScanSent)
 	}
 }
+
+// TestRecordControlKeepsEveryKindsLatency pins that each control kind has a
+// histogram: observe silently drops a kind newBucket does not list, which is
+// how the shutdown latency used to vanish while its counters were kept.
+func TestRecordControlKeepsEveryKindsLatency(t *testing.T) {
+	r := NewRegistry([]string{"linux"}, []string{"vd"})
+	r.RecordControl("linux", "startup", true, 1000)
+	r.RecordControl("linux", "notify", true, 2000)
+	r.RecordControl("linux", "notify", false, 3000)
+	r.RecordControl("linux", "shutdown", true, 4000)
+	r.RecordControl("linux", "shutdown", false, 5000)
+
+	g := r.GlobalSnapshot()
+	for kind, want := range map[string]uint64{"startup": 1, "notify": 2, "shutdown": 2} {
+		if h := g.Hists[kind]; h.Count != want {
+			t.Errorf("%s latency histogram got %d observations, want %d", kind, h.Count, want)
+		}
+	}
+	if g.C.ShutdownOK != 1 || g.C.ShutdownErr != 1 {
+		t.Errorf("shutdown counters ok=%d err=%d, want 1 and 1", g.C.ShutdownOK, g.C.ShutdownErr)
+	}
+	// Control traffic is per fleet, never per lane.
+	if h := r.FleetSnapshots()["linux"].Hists["shutdown"]; h.Count != 2 {
+		t.Errorf("by_fleet shutdown latency got %d observations, want 2", h.Count)
+	}
+	if h := r.LaneSnapshots()["vd"].Hists["shutdown"]; h.Count != 0 {
+		t.Errorf("by_lane shutdown latency got %d observations, want 0", h.Count)
+	}
+	// And it reaches the summary's latency_ms block.
+	if _, ok := latencyJSON(g)["shutdown"]; !ok {
+		t.Errorf("latency_ms has no shutdown entry")
+	}
+}

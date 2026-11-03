@@ -1,7 +1,6 @@
 /*
  * Wazuh inventory sync server module
- * Copyright (C) 2015, Wazuh Inc.
- * July 28, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -15,6 +14,7 @@
 #include "common/clusterIdentity.hpp"
 #include "common/metricNames.hpp"
 #include "indexer/IIndexerConnectorSync.hpp"
+#include "sync/agentSessionLimiter.hpp"
 #include "sync/syncPipeline.hpp"
 #include "vd/IVdScanner.hpp"
 #include "vd/vdScanLane.hpp"
@@ -69,7 +69,7 @@ namespace invsync::endpoints::sync
         std::weak_ptr<invsync::indexer::IIndexerConnectorSync> indexer;
         invsync::common::ClusterIdentity cluster;
         /// Retry-After seconds attached to the 503 for vulnerability-detection sessions (D17).
-        int vdRetryAfterSeconds {60};
+        int vdRetryAfterSeconds {10};
         /// The D22 scan lane for VD data sessions and its feed gate. Both weak, like the rest;
         /// either expiring means the module is stopping (503).
         std::weak_ptr<invsync::vd::VdScanLane> scanLane;
@@ -81,6 +81,11 @@ namespace invsync::endpoints::sync
         invsync::metrics::RequestCounters requestCounters;
         /// D18: 503-with-Retry-After responses (the strand-side feed gate).
         std::shared_ptr<wazuh::metrics::ICounter> retryAfterTotal;
+        /// D28: per-agent cap on sessions admitted and not yet answered. Owned by the route; null
+        /// means no cap.
+        std::shared_ptr<invsync::sync::AgentSessionLimiter> agentSessions;
+        /// D28: sessions refused by that cap (sync.agent_busy.total).
+        std::shared_ptr<wazuh::metrics::ICounter> agentBusyTotal;
     };
 
     /**

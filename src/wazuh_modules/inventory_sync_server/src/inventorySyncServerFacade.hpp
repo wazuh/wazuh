@@ -1,7 +1,6 @@
 /*
  * Wazuh inventory sync server module
- * Copyright (C) 2015, Wazuh Inc.
- * July 28, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -96,6 +95,9 @@ namespace invsync
     constexpr std::size_t DEFAULT_SYNC_QUEUE_BYTES {64U * 1024U * 1024U};
     /// Group-commit flush threshold fallback; mirrors the sync connector's own max_bulk_size default.
     constexpr std::size_t DEFAULT_BULK_FLUSH_BYTES {10U * 1024U * 1024U};
+    /// Sessions one agent may have pending when 'inventory_sync_server_max_sessions_per_agent' has no
+    /// opinion (D28): the session being applied plus one re-send after remoted gave up waiting.
+    constexpr std::size_t DEFAULT_MAX_SESSIONS_PER_AGENT {2};
     /// Retry-After fallback for rejected vulnerability-detection sessions (D17).
     constexpr int DEFAULT_VD_RETRY_AFTER_SECS {10};
     /// 0 = no background flush timer: the pipeline workers and the VD scan lane own every flush,
@@ -322,8 +324,10 @@ namespace invsync
         using IndexerConnectorAsyncFactory = std::function<std::unique_ptr<invsync::indexer::IIndexerConnectorAsync>(
             const nlohmann::json&, const invsync::indexer::IIndexerSession&, LoggingContext)>;
         /// Builds the scan lane's seam over the vulnerability scanner; tests substitute a fake so
-        /// the D22 gating can be pinned without a CVE feed.
-        using VdScannerFactory = std::function<std::shared_ptr<invsync::vd::IVdScanner>()>;
+        /// the D22 gating can be pinned without a CVE feed. Takes whether THIS node's own config
+        /// has VD enabled (m_config.vd_configured_enabled), known before the scanner's own
+        /// start() has necessarily run -- see feedGateOpen().
+        using VdScannerFactory = std::function<std::shared_ptr<invsync::vd::IVdScanner>(bool)>;
 
         /**
          * @brief TEST-ONLY. Override how the shared indexer session is constructed.
@@ -410,6 +414,16 @@ namespace invsync
                            "manager configuration.");
             }
 
+            // D28: the per-agent cap on sessions admitted and not yet answered. Owned by the route.
+            const auto agentSessions = std::make_shared<invsync::sync::AgentSessionLimiter>(
+                m_config.max_sessions_per_agent > 0 ? static_cast<std::size_t>(m_config.max_sessions_per_agent)
+                                                    : DEFAULT_MAX_SESSIONS_PER_AGENT);
+            const auto agentBusyTotal =
+                m_metricsManager->getOrCreateCounter(invsync::metrics::AGENT_BUSY_TOTAL,
+                                                     "Sessions refused with 503 because their agent already had "
+                                                     "'inventory_sync_server_max_sessions_per_agent' sessions pending",
+                                                     "count");
+
             // The ingestion route: everything past the strand-side validation runs on the
             // pipeline, or on the VD scan lane for vulnerability-detection data sessions.
             m_httpServer->addRoute(invsync::endpoints::sync::method(),
@@ -427,7 +441,9 @@ namespace invsync
                                        // registers this counter too, and getOrCreate keeps only the first
                                        // registration's metadata -- a second copy of the strings here would be dead
                                        // text that silently drifts.
-                                       invsync::metrics::makeVdRetryAfterCounter(*m_metricsManager)}),
+                                       invsync::metrics::makeVdRetryAfterCounter(*m_metricsManager),
+                                       agentSessions,
+                                       agentBusyTotal}),
                                    wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Data});
 
             // Reached through remoted's authenticated /stats and /config routes. Registered separately
@@ -773,7 +789,8 @@ namespace invsync
                 case FailureStage::Configuration:
                     return {"module configuration", "the 'wazuh_modules.inventory_sync_server_*' settings"};
                 case FailureStage::IndexerSession:
-                    return {"indexer session", "indexer.hosts and indexer.ssl.* in etc/wazuh-manager.conf"};
+                    return {"indexer session",
+                            "indexer.hosts and indexer.ssl.* in /etc/wazuh-manager/wazuh-manager.conf"};
                 case FailureStage::SyncIndexerConnector:
                     return {"sync indexer connector", "the 'inventory_sync_server_indexer_sync_*' settings"};
                 case FailureStage::AsyncIndexerConnector:
@@ -877,6 +894,7 @@ namespace invsync
             invsync::vd::VdScanLaneConfig laneConfig;
             std::size_t laneWorkers {1};
             VdScannerFactory scannerFactory;
+            bool vdConfiguredEnabled {false};
             std::uint64_t generation {0};
             bool needSession {false};
             bool needSync {false};
@@ -929,6 +947,7 @@ namespace invsync
                                                    ? m_config.vd_feed_retry_after_seconds
                                                    : DEFAULT_VD_RETRY_AFTER_SECS;
                 scannerFactory = m_vdScannerFactory;
+                vdConfiguredEnabled = m_config.vd_configured_enabled;
 
                 sessionFactory = m_indexerSessionFactory;
                 syncFactory = m_indexerConnectorSyncFactory;
@@ -942,6 +961,10 @@ namespace invsync
                                                     ? static_cast<std::size_t>(m_config.indexer_sync_max_bulk_size)
                                                     : DEFAULT_BULK_FLUSH_BYTES;
                 pipelineConfig.sessionQueryBatchSize = m_config.session_query_batch_size;
+                if (m_config.indexer_sync_max_retry_duration_seconds > 0)
+                {
+                    pipelineConfig.conflictRetryAfterSeconds = m_config.indexer_sync_max_retry_duration_seconds;
+                }
                 pipelineClusterName = invsync::common::buildClusterIdentity(m_config).clusterName;
 
                 if (needSession || needSync || needAsync || needPipeline || needLane)
@@ -1101,7 +1124,7 @@ namespace invsync
                         generation,
                         [&]
                         {
-                            builtScanner = scannerFactory();
+                            builtScanner = scannerFactory(vdConfiguredEnabled);
                             std::vector<std::shared_ptr<invsync::indexer::IIndexerConnectorSync>> connectors;
                             connectors.reserve(laneWorkers);
                             for (std::size_t i = 0; i < laneWorkers; ++i)
@@ -1384,7 +1407,8 @@ namespace invsync
                     config, adapter.session(), std::move(logging));
             }};
 
-        VdScannerFactory m_vdScannerFactory {[]() { return invsync::vd::makeProductionVdScanner(); }};
+        VdScannerFactory m_vdScannerFactory {[](bool vdConfiguredEnabled)
+                                             { return invsync::vd::makeProductionVdScanner(vdConfiguredEnabled); }};
 
         IndexerConnectorAsyncFactory m_indexerConnectorAsyncFactory {
             [](const nlohmann::json& config, const invsync::indexer::IIndexerSession& session, LoggingContext logging)

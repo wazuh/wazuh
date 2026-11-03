@@ -1,12 +1,13 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015, Wazuh Inc.
- * Jun 4, 2023.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #include "rocksDBSafeQueue_test.hpp"
@@ -400,6 +401,19 @@ TEST_F(RocksDBSafeQueueTest, PopBulkWithDeletedIndexAndPendingElementsEmpty)
         EXPECT_NO_THROW(queue->popBulk(queueElements.size()));
     }
     EXPECT_TRUE(queue->empty());
+}
+
+TEST_F(RocksDBSafeQueueTest, GetBulkPropagatesUnreadableKeys)
+{
+    queue = nullptr;
+    {
+        auto db = std::make_unique<Utils::RocksDBWrapper>("test.db");
+        db->put("5a", "value");
+    }
+    queue = std::make_unique<Utils::SafeQueue<std::string, RocksDBQueue<std::string>>>(
+        RocksDBQueue<std::string>("test.db"));
+
+    EXPECT_THROW(queue->getBulk(1, std::chrono::seconds(1)), std::runtime_error);
 }
 
 namespace

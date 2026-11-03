@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -64,6 +64,18 @@ class UsersProvider
         /// @param uid The numeric user ID (UID) for which to retrieve account policy data.
         /// @return A JSON object containing account policy information for the given UID.
         nlohmann::json collectAccountPolicyData(const uid_t uid);
+
+        /// @brief Resolves the password data of a single user from the collected directory data.
+        /// @param username The name of the user; OpenDirectory indexes its records under
+        ///                 every name they hold, so either the passwd or the primary name matches.
+        /// @param disabledUsers Names of the accounts macOS reports as disabled.
+        /// @param disabledUsersResolved Whether the disabled accounts could be read at all.
+        /// @param passwordData Password data of every user, keyed by record name.
+        /// @return A JSON object containing the password data for the given user.
+        nlohmann::json collectPasswordData(const std::string& username,
+                                           const std::set<std::string>& disabledUsers,
+                                           const bool disabledUsersResolved,
+                                           const std::map<std::string, nlohmann::json>& passwordData);
 
         /// @brief Passwd utility wrapper.
         std::shared_ptr<IPasswdWrapperDarwin> m_passwdWrapper;

@@ -56,7 +56,7 @@ test:
       number_to_convert: -1
     should_pass: true
     expected: true
-    description: Converts integer -1 to true (non-positives are true).
+    description: Converts integer -1 to true (any non-zero number is true).
   - arguments:
       number_to_convert: 0.5
     should_pass: true

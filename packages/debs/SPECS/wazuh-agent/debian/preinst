@@ -10,6 +10,24 @@ WAZUH_TMP_DIR="${DIR}/packages_files/agent_config_files"
 # environment configuration
 mkdir -p ${WAZUH_TMP_DIR}
 
+# in_dir DIR COMMAND...: runs COMMAND in a subshell whose working directory is DIR, only when no
+# link leads there. A name COMMAND resolves relative to it then stays in that directory, whatever
+# happens to DIR's path afterwards. etc/ is writable by the wazuh group, which could otherwise turn
+# a directory in it into a link to anywhere.
+REAL_DIR=$(cd -P ${DIR} 2> /dev/null && pwd -P)
+in_dir() {
+    (cd -P -- "$1" 2> /dev/null && [ "$(pwd -P)" = "${REAL_DIR}${1#"${DIR}"}" ] && shift && "$@")
+}
+
+# Copies the working directory's entries (etc/shared/, through in_dir) to ${WAZUH_TMP_DIR}/group.
+backup_shared_files() {
+    set -- ./*
+    if [ -e "$1" ] || [ -L "$1" ]; then
+        mkdir -p ${WAZUH_TMP_DIR}/group
+        cp -a "$@" ${WAZUH_TMP_DIR}/group/
+    fi
+}
+
 case "$1" in
     install|upgrade)
 
@@ -123,26 +141,20 @@ EOF
             rm /etc/init.d/ossec
         fi
 
-        # back up the current user rules
-        if [ -f ${DIR}/etc/client.keys ]; then
-            cp ${DIR}/etc/client.keys ${WAZUH_TMP_DIR}/client.keys
-        fi
-        if [ -f ${DIR}/etc/local_internal_options.conf ]; then
-            cp -p ${DIR}/etc/local_internal_options.conf ${WAZUH_TMP_DIR}/local_internal_options.conf
-        fi
-        if [ -f ${DIR}/etc/ossec.conf ]; then
-            cp -p ${DIR}/etc/ossec.conf ${WAZUH_TMP_DIR}/ossec.conf
-        fi
-
-        if [ -d "${DIR}/etc/shared" ]; then
-            if [ "$(ls -A "${DIR}/etc/shared")" ]; then
-                files="$(ls -A ${DIR}/etc/shared/*)"
+        # Back up the configuration files postinst restores. etc/ is writable by the wazuh group: a
+        # link there is not ours to back up, and cp would carry its target's content into the
+        # restored file. -P keeps one swapped in after the check a link, which postinst skips.
+        for CONF_FILE in client.keys local_internal_options.conf ossec.conf; do
+            if [ -f ${DIR}/etc/${CONF_FILE} ] && [ ! -L ${DIR}/etc/${CONF_FILE} ]; then
+                cp -fpP ${DIR}/etc/${CONF_FILE} ${WAZUH_TMP_DIR}/${CONF_FILE}
             fi
-        fi
+        done
 
-        if [ ! -z "$files" ]; then
-            mkdir -p ${WAZUH_TMP_DIR}/group
-            cp -rp ${DIR}/etc/shared/* ${WAZUH_TMP_DIR}/group/
+        # etc/shared/ sits in etc/, so it may be a link to another directory: its files are copied
+        # from inside it, once no link led there. cp -a keeps a link found among them a link.
+        if [ -d ${DIR}/etc/shared ]; then
+            in_dir ${DIR}/etc/shared backup_shared_files \
+                || echo "WARNING: ${DIR}/etc/shared was not backed up: it is a link, or it could not be copied." >&2
         fi
     ;;
 

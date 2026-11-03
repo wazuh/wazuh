@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # postinst script for wazuh-internal-tools
 # Wazuh, Inc.
 

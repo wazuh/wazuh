@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _DUMPER_MOCKDUMPER_HPP
 #define _DUMPER_MOCKDUMPER_HPP
 

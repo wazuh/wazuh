@@ -13,7 +13,8 @@ target_include_directories(wazuh_metrics PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/incl
 # under the tree-wide 20.
 target_compile_features(wazuh_metrics PUBLIC cxx_std_17)
 
-# Static lib linked into shared libs (inventory_sync_server, remoted_module).
+# Static lib linked into shared libs (inventory_sync_server, task_manager,
+# vulnerability_scanner, remoted_module).
 set_target_properties(wazuh_metrics PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 # rapidjson stays PRIVATE and confined to jsonDump.cpp: no public header names

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 import pathlib
 import sys
 from engine_test.conf.store import ConfigDatabase

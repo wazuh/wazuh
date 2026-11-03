@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module (C++ worker bridge)
- * Copyright (C) 2015, Wazuh Inc.
- * August 5, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -52,10 +51,15 @@ namespace remoted::endpoints::stateful
      * downstream headers only `Retry-After` is forwarded (on 503, digits-only), because it is the
      * one header in the contract; reflecting arbitrary downstream headers stays off the table.
      * Transport failures (send error / timeout / bad HTTP) and any status outside the contract
-     * collapse to a neutral 503 (the agent retries).
+     * collapse to a neutral 503 (the agent retries). The response-timeout 503 alone carries its own
+     * `Retry-After` (@p retryAfterSec, 0 for none): the sync server is still applying the session
+     * after remoted stopped waiting, and without the delay the agent's re-send runs the same
+     * session a second time against the first copy. Every other failure means nothing is running
+     * downstream, so an immediate re-send is right.
      */
     remoted::http::HttpResponse postProcess(remoted::downstream::DownstreamError error,
-                                            const remoted::downstream::DownstreamResponse& response);
+                                            const remoted::downstream::DownstreamResponse& response,
+                                            int retryAfterSec = 0);
 
     /**
      * @brief Builds the `/stateful` AuthenticatedHandler: reject empty bodies, then forward.
@@ -71,6 +75,8 @@ namespace remoted::endpoints::stateful
      * table holding this handler) must be stopped/destroyed before forwarder is destroyed.
      * RemotedModuleFacade::stop() already orders teardown this way.
      *
+     * @param retryAfterSec `Retry-After` of the 503 answered on the response timeout
+     * (remoted.downstream_stateful_retry_after); 0 sends none.
      * @param metrics This endpoint's remoted.http.stateful.* metric set, or null for none. Must
      * point at storage that outlives the handler (a facade value member -- see
      * DownstreamTarget::httpMetrics). The handler counts its own empty-body 400 and hands the
@@ -80,6 +86,7 @@ namespace remoted::endpoints::stateful
     makeHandler(remoted::downstream::DeferredForwarder& forwarder,
                 std::string socketPath,
                 int responseTimeoutMs,
+                int retryAfterSec,
                 const remoted::metrics::EndpointHttpMetrics* metrics = nullptr);
 
 } // namespace remoted::endpoints::stateful

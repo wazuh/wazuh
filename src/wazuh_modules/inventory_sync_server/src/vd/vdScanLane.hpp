@@ -1,7 +1,6 @@
 /*
  * Wazuh inventory sync server module
- * Copyright (C) 2015, Wazuh Inc.
- * August 5, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -44,7 +43,7 @@ namespace invsync::vd
         std::size_t queueSlots {0};
         /// Retry-After attached to the 503 a lane worker answers when the feed became unready
         /// between admission and dispatch (D17 re-check).
-        int retryAfterSeconds {60};
+        int retryAfterSeconds {10};
     };
 
     /**

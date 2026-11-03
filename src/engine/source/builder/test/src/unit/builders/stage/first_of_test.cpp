@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include "builders/baseBuilders_test.hpp"
 #include "builders/stage/first_of.hpp"
 
@@ -108,10 +109,11 @@ INSTANTIATE_TEST_SUITE_P(
                        EXPECT_CALL(stageRegistry, get("check")).WillOnce(testing::Return(dummyCheckBuilder()));
                        EXPECT_CALL(stageRegistry, get("file")).WillOnce(testing::Return(dummyOutputBuilder()));
                        return base::Or::create("first_of",
-                                               {base::Implication::create("first_of.item-0",
-                                                                          base::And::create("dummy-check", {}),
-                                                                          base::Broadcast::create("first_of.item-0.then",
-                                                                          {base::And::create("dummy-output", {})}))});
+                                               {base::Implication::create(
+                                                   "first_of.item-0",
+                                                   base::And::create("dummy-check", {}),
+                                                   base::Broadcast::create("first_of.item-0.then",
+                                                                           {base::And::create("dummy-output", {})}))});
                    })),
         // Single valid item with wazuh-indexer
         StageT(R"([{"check": [], "then": [{"wazuh-indexer": []}]}])",

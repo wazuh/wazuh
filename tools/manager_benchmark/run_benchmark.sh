@@ -21,14 +21,31 @@ set -euo pipefail
 # must pass it explicitly. There is no node knob: a session declares no cluster node.
 #
 # --global-prefix (agent mode only): the manager's <remote><https><global_prefix>. It is
-# part of the request target, so it is SIGNED as well as sent and must match the manager
-# exactly. Against a prefixed manager without it, every request answers 404 and the run
+# part of the request target (sent, not signed: the JWT does not cover the target), so it
+# must match the manager exactly. Against a prefixed manager without it, every request answers 404 and the run
 # reads as a broken manager. Read from the LOCAL manager's config exactly like the
 # cluster name, so a default installation needs no flag; a REMOTE --manager must pass
 # it. "/" forces the unprefixed paths against a manager that does have one configured.
 #
-# Agent mode needs the manager configured for open enrollment first:
+# Agent mode needs the manager prepared once, which also mints the fleet's enrollment
+# token (it does NOT weaken <use_password>; see prepare_manager.sh):
 #   sudo ./prepare_manager.sh
+#
+# --bootstrap enroll-token|1515 (agent mode only): how the fleet obtains its identities.
+# The default, enroll-token, is POST /enroll on 1517 with the enrollment token -- what a
+# 5.x agent handed a token does, and the only path that works against a manager whose
+# <use_password> is the installed default. 1515 is authd's legacy TCP listener, kept for
+# comparing the two first-contact paths; it needs `prepare_manager.sh --open-1515`.
+#
+# --enroll-token-file FILE (agent mode only): the enrollment token the enroll-token
+# bootstrap and any `enroll_https` step (scenarios/enroll_https.json) present, as minted
+# on the manager under test with `wazuh-manager-authd --create-enrollment-token --address
+# <manager>` and saved to FILE. Not needed after prepare_manager.sh: its .enrollment_token
+# next to this script is picked up automatically. WAZUH_ENROLLMENT_TOKEN also works.
+#
+# --export-csv: after collection, export the latest run's daemon metrics to
+# results_<label>/stats-api-*.csv using bench_samples.py (requires pandas).
+# Disabled by default. Export failures are reported without changing the sender's exit code.
 #
 # --keep-agents (agent mode only): skip the pre-run cleanup of bench-* agents, so a
 # previous run's agents AND their indexed documents survive -- e.g. to inspect a
@@ -53,17 +70,23 @@ REG_PORT=1515
 SEED=""
 CLUSTER=""
 GLOBAL_PREFIX=""
-MANAGER_CONF="/var/wazuh-manager/etc/wazuh-manager.conf"
+ENROLL_TOKEN_FILE=""
+BOOTSTRAP="enroll-token"
+# Where prepare_manager.sh leaves the token it minted (gitignored).
+DEFAULT_TOKEN_FILE="$SCRIPT_DIR/.enrollment_token"
+MANAGER_CONF="/etc/wazuh-manager/wazuh-manager.conf"   # fixed: a custom home never moves it
 ENROLL_SETTLE=""
 DO_METRICS=true
 DO_MONITOR=true
 DO_CHARTS=true
+DO_EXPORT_CSV=false
 CLEANUP_AFTER=false
 KEEP_AGENTS=false
 METRICS_INTERVAL=1
 
-MONITOR_PY="$SCRIPT_DIR/../../src/engine/tools/devContainer/scripts/monitor.py"
-GRAPHICS_PY="$SCRIPT_DIR/../../src/engine/tools/devContainer/scripts/monitor_graphics_generator.py"
+MONITOR_PY="$SCRIPT_DIR/../devContainer/scripts/monitor.py"
+GRAPHICS_PY="$SCRIPT_DIR/../devContainer/scripts/monitor_graphics_generator.py"
+BENCH_SAMPLES_PY="$SCRIPT_DIR/../devContainer/scripts/bench_samples.py"
 
 PYTHON="${PYTHON:-python3}"
 if [[ -n "${VIRTUAL_ENV:-}" && -x "$VIRTUAL_ENV/bin/python3" ]]; then
@@ -83,8 +106,9 @@ cluster_name_from_conf() {
 }
 
 # Same idea for <remote><https><global_prefix>, scoped to the <https> block. An absent tag
-# prints nothing, which is not an error here: it is exactly what "no prefix" means to the
-# manager too.
+# prints nothing and the run then sends no prefix -- but that is NOT what an absent tag means
+# to the manager, which then serves under its default '/wazuh-manager/'. Against such a
+# manager pass --global-prefix /wazuh-manager/ explicitly.
 global_prefix_from_conf() {
     [[ -r "$MANAGER_CONF" ]] || return 0
     sed -n '/<https>/,/<\/https>/p' "$MANAGER_CONF" 2>/dev/null \
@@ -103,12 +127,15 @@ while [[ $# -gt 0 ]]; do
         --seed)         SEED="$2"; shift 2 ;;
         --cluster)      CLUSTER="$2"; shift 2 ;;
         --global-prefix) GLOBAL_PREFIX="$2"; shift 2 ;;
+        --enroll-token-file) ENROLL_TOKEN_FILE="$2"; shift 2 ;;
+        --bootstrap)    BOOTSTRAP="$2"; shift 2 ;;
         --conf)         MANAGER_CONF="$2"; shift 2 ;;
         --enroll-settle) ENROLL_SETTLE="$2"; shift 2 ;;
         --metrics-interval) METRICS_INTERVAL="$2"; shift 2 ;;
         --no-metrics)   DO_METRICS=false; shift ;;
         --no-monitor)   DO_MONITOR=false; shift ;;
         --no-charts)    DO_CHARTS=false; shift ;;
+        --export-csv)   DO_EXPORT_CSV=true; shift ;;
         --cleanup-after) CLEANUP_AFTER=true; shift ;;
         --keep-agents)  KEEP_AGENTS=true; shift ;;
         -h|--help)      usage; exit 0 ;;
@@ -132,6 +159,36 @@ fi
     echo "Error: mode must be uds or agent (got '$EFFECTIVE_MODE'). Set it in the scenario or pass --mode." >&2
     exit 1
 }
+
+[[ "$BOOTSTRAP" == "enroll-token" || "$BOOTSTRAP" == "1515" ]] || {
+    echo "Error: --bootstrap must be enroll-token or 1515 (got '$BOOTSTRAP')." >&2
+    exit 1
+}
+
+# A uds run enrolls nothing, so it records no bootstrap -- matching what the
+# sender writes into sender_summary.json's meta.
+PARAMS_BOOTSTRAP=""
+[[ "$EFFECTIVE_MODE" == "agent" ]] && PARAMS_BOOTSTRAP="$BOOTSTRAP"
+
+# The enrollment token. Handed over for ANY agent-mode run that has one available:
+# the bootstrap is not its only consumer -- an `enroll_https` step needs it too, and
+# that step exists under --bootstrap 1515 as well.
+if [[ "$EFFECTIVE_MODE" == "agent" && -z "$ENROLL_TOKEN_FILE" && -z "${WAZUH_ENROLLMENT_TOKEN:-}" ]]; then
+    if [[ -r "$DEFAULT_TOKEN_FILE" ]]; then
+        ENROLL_TOKEN_FILE="$DEFAULT_TOKEN_FILE"
+        echo "Enrollment token not given; using $ENROLL_TOKEN_FILE"
+    elif [[ "$BOOTSTRAP" == "enroll-token" ]]; then
+        # Only the bootstrap makes it a CERTAIN failure, so only the bootstrap stops
+        # here -- before the monitor starts and the previous run's agents are deleted.
+        # A scenario that needs one for its steps is refused by the sender itself.
+        echo "Error: the enroll-token bootstrap needs an enrollment token." >&2
+        echo "  Mint one and write it out with:  sudo ./prepare_manager.sh" >&2
+        echo "  Or pass --enroll-token-file <file>, set WAZUH_ENROLLMENT_TOKEN, or" >&2
+        echo "  bootstrap over the legacy listener with --bootstrap 1515" >&2
+        echo "  (which needs sudo ./prepare_manager.sh --open-1515)." >&2
+        exit 1
+    fi
+fi
 
 SC_NAME=$("$PYTHON" -c 'import json,sys; print(json.load(open(sys.argv[1])).get("name",""))' "$SCENARIO")
 [[ -z "$LABEL" ]] && LABEL="${SC_NAME:-$(date +%Y%m%d_%H%M%S)}_${EFFECTIVE_MODE}"
@@ -161,7 +218,8 @@ if [[ -z "$CLUSTER" ]]; then
 fi
 
 # Same resolution for the global endpoint prefix, with one deliberate difference: not
-# finding it is a valid outcome (no prefix), so it never aborts the run. Only agent mode
+# finding it never aborts the run, which then sends no prefix (see global_prefix_from_conf()
+# for why that 404s against a manager relying on the default). Only agent mode
 # speaks HTTP to the manager; the UDS path never sees a URL.
 if [[ -z "$GLOBAL_PREFIX" ]] && $IS_LOCAL_MANAGER && [[ "$EFFECTIVE_MODE" == "agent" ]]; then
     GLOBAL_PREFIX="$(global_prefix_from_conf)"
@@ -178,8 +236,11 @@ RESULTS_DIR="$SCRIPT_DIR/results_${LABEL}"
 mkdir -p "$RESULTS_DIR"
 BENCH_CSV="$RESULTS_DIR/bench.csv"
 SENDER_JSON="$RESULTS_DIR/sender_summary.json"
-SERVER_METRICS_CSV="$RESULTS_DIR/server_metrics.csv"
 MONITOR_DIR="$RESULTS_DIR/monitor"
+# The run's lossless server-side artifact: every daemon's statistics, one JSON object
+# per scrape. Per-daemon CSVs can be exported on demand with bench_samples.py.
+SAMPLES_DIR="$RESULTS_DIR/samples"
+SAMPLES_NDJSON="$SAMPLES_DIR/metrics.ndjson"
 SUMMARY_JSON="$RESULTS_DIR/summary.json"
 cp "$SCENARIO" "$RESULTS_DIR/scenario.json"
 
@@ -191,7 +252,13 @@ echo "  scenario:   $SCENARIO ($SC_NAME)"
 echo "  mode:       $EFFECTIVE_MODE"
 echo "  results:    $RESULTS_DIR/"
 [[ "$EFFECTIVE_MODE" == "uds" ]] && echo "  socket:     $SOCKET"
-[[ "$EFFECTIVE_MODE" == "agent" ]] && echo "  manager:    $MANAGER:$PORT (reg $REG_PORT)"
+if [[ "$EFFECTIVE_MODE" == "agent" ]]; then
+    if [[ "$BOOTSTRAP" == "1515" ]]; then
+        echo "  manager:    $MANAGER:$PORT (bootstrap: 1515 on $REG_PORT)"
+    else
+        echo "  manager:    $MANAGER:$PORT (bootstrap: POST /enroll with an enrollment token)"
+    fi
+fi
 echo ""
 
 cat > "$RESULTS_DIR/params.json" <<PARAMS
@@ -200,6 +267,7 @@ cat > "$RESULTS_DIR/params.json" <<PARAMS
     "scenario_path": "$SCENARIO",
     "scenario_name": "$SC_NAME",
     "mode": "$EFFECTIVE_MODE",
+    "bootstrap": "$PARAMS_BOOTSTRAP",
     "manager": "$MANAGER",
     "port": $PORT,
     "socket": "$SOCKET",
@@ -220,7 +288,12 @@ if [[ "$EFFECTIVE_MODE" == "agent" ]]; then
              "previous kept run will fail enrollment with 'Duplicate agent name'."
     else
         echo "Cleaning up stale bench-* agents..."
-        "$SCRIPT_DIR/cleanup_agents.sh" 2>/dev/null || echo "  (skipped — API not reachable)"
+        # Its error says why (no password, wrong password, API down); a skipped cleanup leaves the
+        # previous fleet registered, so this run's enrollment fails with "Duplicate agent name".
+        if ! "$SCRIPT_DIR/cleanup_agents.sh"; then
+            echo "  WARNING: pre-run cleanup FAILED (see the error above); stale bench-* agents" \
+                 "from a previous run will fail this run's enrollment with 'Duplicate agent name'." >&2
+        fi
     fi
 fi
 
@@ -230,9 +303,10 @@ fi
 MONITOR_PID=""
 MONITOR_RUNNING=false
 if $DO_MONITOR && [[ -f "$MONITOR_PY" ]] && "$PYTHON" -c 'import psutil' 2>/dev/null; then
-    mkdir -p "$MONITOR_DIR"
+    mkdir -p "$MONITOR_DIR" "$SAMPLES_DIR"
     echo "Starting process + API monitor..."
     "$PYTHON" "$MONITOR_PY" --output-dir "$MONITOR_DIR" -s 1.0 \
+        --ndjson "$SAMPLES_NDJSON" --run-label "$LABEL" \
         --pidfile "$MONITOR_DIR/monitor.pid" --timeout 30 &
     MONITOR_PID=$!
     MONITOR_RUNNING=true
@@ -247,8 +321,9 @@ fi
 SCRAPER_PID=""
 if $DO_METRICS && ! $MONITOR_RUNNING && [[ -S "$SOCKET" ]]; then
     echo "Monitor unavailable; falling back to scrape_metrics.sh for GET /metrics..."
-    PYTHON="$PYTHON" "$SCRIPT_DIR/scrape_metrics.sh" \
-        --socket "$SOCKET" --out "$SERVER_METRICS_CSV" --interval "$METRICS_INTERVAL" &
+    mkdir -p "$SAMPLES_DIR"
+    PYTHON="$PYTHON" RUN_LABEL="$LABEL" "$SCRIPT_DIR/scrape_metrics.sh" \
+        --socket "$SOCKET" --out "$SAMPLES_NDJSON" --interval "$METRICS_INTERVAL" &
     SCRAPER_PID=$!
 elif $DO_METRICS && ! $MONITOR_RUNNING; then
     echo "Note: metrics socket $SOCKET not present; no server metrics for this run."
@@ -273,12 +348,14 @@ GO_ARGS=(
     --manager "$MANAGER"
     --port "$PORT"
     --reg-port "$REG_PORT"
+    --bootstrap "$BOOTSTRAP"
     --output "$BENCH_CSV"
     --summary-json "$SENDER_JSON"
 )
 [[ -n "$SEED" ]] && GO_ARGS+=( --seed "$SEED" )
 [[ -n "$CLUSTER" ]] && GO_ARGS+=( --cluster "$CLUSTER" )
 [[ -n "$GLOBAL_PREFIX" ]] && GO_ARGS+=( --global-prefix "$GLOBAL_PREFIX" )
+[[ -n "$ENROLL_TOKEN_FILE" ]] && GO_ARGS+=( --enroll-token-file "$ENROLL_TOKEN_FILE" )
 [[ -n "$ENROLL_SETTLE" ]] && GO_ARGS+=( --enroll-settle "$ENROLL_SETTLE" )
 SENDER_RC=0
 "$GO_BIN" "${GO_ARGS[@]}" || SENDER_RC=$?
@@ -291,20 +368,32 @@ trap - EXIT
 echo ""
 echo "Generating summary.json..."
 SUMMARY_ARGS=( --bench "$BENCH_CSV" --out "$SUMMARY_JSON" )
-[[ -f "$SENDER_JSON" ]]         && SUMMARY_ARGS+=( --sender-json "$SENDER_JSON" )
-# The monitor's wide CSV is preferred; the fallback scraper's long-format file is
-# used only when the monitor could not run. result_summary.py detects which is which.
-MONITOR_INVSYNC_CSV="$MONITOR_DIR/stats-api-inventory-sync.csv"
-if [[ -f "$MONITOR_INVSYNC_CSV" ]]; then
-    SUMMARY_ARGS+=( --server-metrics "$MONITOR_INVSYNC_CSV" )
-elif [[ -f "$SERVER_METRICS_CSV" ]]; then
-    SUMMARY_ARGS+=( --server-metrics "$SERVER_METRICS_CSV" )
-fi
-[[ -f "$MONITOR_DIR/wazuh-manager-modulesd.csv" ]] && SUMMARY_ARGS+=( --monitor "$MONITOR_DIR/wazuh-manager-modulesd.csv" )
+[[ -f "$SENDER_JSON" ]] && SUMMARY_ARGS+=( --sender-json "$SENDER_JSON" )
+# One artifact for every daemon's statistics, so there is nothing to choose between.
+[[ -f "$SAMPLES_NDJSON" ]] && SUMMARY_ARGS+=( --samples "$SAMPLES_NDJSON" )
+# Every process the monitor sampled, not just modulesd.
+[[ -d "$MONITOR_DIR" ]] && SUMMARY_ARGS+=( --monitor-dir "$MONITOR_DIR" )
 [[ -f "$RESULTS_DIR/params.json" ]] && SUMMARY_ARGS+=( --params "$RESULTS_DIR/params.json" )
 "$PYTHON" "$SCRIPT_DIR/result_summary.py" "${SUMMARY_ARGS[@]}" || echo "  (summary generation had a warning)"
 
-# 6. Optional charts (best-effort; needs matplotlib).
+# 6. Optional CSV export from the completed samples file (best-effort; needs pandas).
+CSV_EXPORTED=false
+if $DO_EXPORT_CSV; then
+    echo ""
+    echo "Exporting daemon metrics to CSV..."
+    if [[ ! -f "$SAMPLES_NDJSON" ]]; then
+        echo "  (CSV export skipped — no samples file for this run)"
+    elif ! "$PYTHON" -c 'import pandas' 2>/dev/null; then
+        echo "  WARNING: CSV export skipped — pandas is not installed." >&2
+    elif "$PYTHON" "$BENCH_SAMPLES_PY" "$RESULTS_DIR"; then
+        CSV_EXPORTED=true
+    else
+        echo "  WARNING: CSV export failed (see the error above)." >&2
+        echo "  The samples file is available for a later export: $SAMPLES_NDJSON" >&2
+    fi
+fi
+
+# 7. Optional charts (best-effort; needs matplotlib).
 if $DO_CHARTS && [[ -f "$GRAPHICS_PY" && -d "$MONITOR_DIR" ]]; then
     echo ""
     echo "Generating charts..."
@@ -319,11 +408,14 @@ if $DO_CHARTS && [[ -f "$GRAPHICS_PY" && -d "$MONITOR_DIR" ]]; then
     fi
 fi
 
-# 7. Optional post-run cleanup.
+# 8. Optional post-run cleanup.
 if $CLEANUP_AFTER && [[ "$EFFECTIVE_MODE" == "agent" ]]; then
     echo ""
     echo "Deleting bench-* agents (--cleanup-after)..."
-    "$SCRIPT_DIR/cleanup_agents.sh" 2>/dev/null || true
+    if ! "$SCRIPT_DIR/cleanup_agents.sh"; then
+        echo "  WARNING: post-run cleanup FAILED (see the error above); this run's bench-* agents" \
+             "are still registered. Run ./cleanup_agents.sh by hand." >&2
+    fi
 elif $KEEP_AGENTS && [[ "$EFFECTIVE_MODE" == "agent" ]]; then
     echo ""
     echo "--keep-agents: this run's bench-* agents (and their indexed documents) were left" \
@@ -335,8 +427,13 @@ echo ""
 echo "======================================================="
 echo "  Done — artifacts in $RESULTS_DIR/"
 echo "    bench.csv, sender_summary.json, summary.json"
-[[ -f "$SERVER_METRICS_CSV" ]] && echo "    server_metrics.csv"
-[[ -d "$MONITOR_DIR" ]] && echo "    monitor/"
+[[ -f "$SAMPLES_NDJSON" ]] && echo "    samples/metrics.ndjson  (every daemon's statistics, lossless)"
+[[ -d "$MONITOR_DIR" ]] && echo "    monitor/  (process, disk and log samples)"
+if $CSV_EXPORTED; then
+    echo "    stats-api-*.csv  (daemon metrics exported from the latest run)"
+else
+    echo "    (CSV of any daemon's metrics: python3 \$WAZUH_DEV_SCRIPTS/bench_samples.py $RESULTS_DIR)"
+fi
 # Sender exit contract: 0 ok, 1 measurement invalid, 2 setup failure,
 # 3 measurement VALID but the scenario's expected block failed.
 case "$SENDER_RC" in

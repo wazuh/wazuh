@@ -15,7 +15,7 @@ Size-based log rotation is the exception. It is not a task; see
 
 | Schedule | Task type | Window it applies | How often it runs | Node scope |
 | --- | --- | --- | --- | --- |
-| `agent_disconnect_sweep` | `agent_disconnect_sweep` | `<global><agents_disconnection_time>` — 900 s | window ÷ 4, in [60 s, 300 s] — **225 s** at the default | master |
+| `agent_disconnect_sweep` | `agent_disconnect_sweep` | [`<global><agents_disconnection_time>`](configuration.md#agents_disconnection_time) — 15 m | window ÷ 4, in [60 s, 300 s] — **225 s** at the default | master |
 | `agent_delete_old` | `agent_delete_old` | `agents_disconnection_time` + `wazuh_modules.manager_task_delete_old_agents` × 60 — **disabled** at 0 | the retention minutes ÷ 4, in [60 s, 3600 s] | master |
 | `log_rotate_daily` | `log_rotate_daily` | — | daily, at `00:00` + `wazuh_modules.manager_task_log_day_wait` — 00:00:10 local | any node |
 
@@ -28,9 +28,9 @@ purposes, so it is shared configuration rather than something this module owns.
 The window is an *age* — how long an agent must have been silent. The interval is how often that age
 is applied. Keeping them apart is what bounds the detection SLA.
 
-They used to be one value, and the cost was a detection window of `[T, 2T]`: an agent that went
-silent just after a run waited out a whole second one, so a configured fifteen minutes delivered
-anywhere from fifteen to thirty. The interval is now derived from the window instead of being it:
+Were the interval equal to the window `T`, detection would land anywhere in `[T, 2T]`: an agent
+that went silent just after a run would wait out a whole second one. The interval is derived from
+the window instead:
 
 ```
 interval = clamp(window / 4, 60 s, ceiling)   # then never coarser than the window itself
@@ -38,7 +38,9 @@ interval = clamp(window / 4, 60 s, ceiling)   # then never coarser than the wind
 
 with a ceiling of 300 s for the disconnection sweep and 3600 s for retention deletion — the sweep is
 one `UPDATE` whose latency is visible in the API, while retention deletion re-reads the whole
-disconnected list per run to delete agents that have already been silent for hours.
+disconnected list per run to delete agents that have already been silent for hours. For
+`agent_delete_old` the `window` in this formula is the retention minutes alone
+(`delete_old_agents × 60`), not the full age it applies.
 
 | `agents_disconnection_time` | Interval | An agent is marked `disconnected` within |
 | --- | --- | --- |
@@ -48,18 +50,16 @@ disconnected list per run to delete agents that have already been silent for hou
 
 The quarter bounds the overshoot at 25 %; the ceiling bounds it in absolute terms instead, so raising
 the threshold to quieten the log costs five minutes of imprecision rather than fifteen. Below the
-floor the interval collapses back to the window, which is the old behaviour and no worse than it.
+floor the interval collapses back to the window itself.
 
 **The window itself is unchanged by any of this.** Which agents cross the threshold is decided by
-`agents_disconnection_time` alone; the interval decides only how promptly crossing it is noticed. The
-same derivation applies to `agent_delete_old`, whose window remains
+`agents_disconnection_time` alone; the interval decides only how promptly crossing it is noticed.
+`agent_delete_old` likewise applies the full age
 `agents_disconnection_time + delete_old_agents × 60`.
 
-The internal options are not shipped in any file: the manager reads only an empty overrides file, so
-the defaults above are the whole of their contract. Every option, including the ones that bound the
-retention sweep, is listed in the
+Every option, including the ones that bound the two sweeps, is listed in the
 [Task Manager Configuration Reference](configuration.md#recurring-manager-tasks) — which also covers
-how to read back what a running manager actually resolved.
+how to read back what `wazuh-manager-modulesd` read.
 
 ---
 
@@ -134,16 +134,20 @@ transition can straddle a restart.
 ### `agent_disconnect_sweep`
 
 Transitions every agent whose last keepalive is older than `agents_disconnection_time` to
-`disconnected`, and logs each transition at DEBUG as
-`wazuh: Agent disconnected: [NNN] (name).`
+`disconnected`, logs `Agent disconnection sweep transitioned <n> agent(s) to disconnected.` at INFO
+when there were any, and names each one at DEBUG as `Agent '<id>' (<name>) is disconnected.` (the id
+without zero padding). Agents past the naming bound are reported as `<n> of them were not logged
+individually; the per-agent lookup is bounded to <max> per sweep.`
 
 The database transition and the log line are one job, not two: the transition already returns the ids
 it just changed, so the set is in hand and no second pass — nor the in-memory queue one would need —
 is required. The only remaining lookup is one name per *newly disconnected* agent, once per sweep.
 
-`wazuh_modules.manager_task_monitor_agents = 0` silences the log line and nothing else: the
-transition still happens, because an agent that stopped answering has to reach the `disconnected`
-state whatever else is configured.
+`wazuh_modules.manager_task_monitor_agents = 0` disables this schedule: no sweep is spawned, so
+the Task Manager marks no agent `disconnected`. A run already spawned before the change still
+executes; it transitions agents and logs the INFO total but names none of them.
+`wazuh_modules.manager_task_disconnect_log_max = 0` keeps the sweep and silences only the per-agent
+names.
 
 **The sweep runs on the master only**, and the scope is enforced rather than assumed — running it on
 two nodes at once would have both writing the same transitions.
@@ -160,10 +164,13 @@ retention period after it is marked disconnected, not the moment it is marked.
 protected is how long the handler holds its executor slot, measured in seconds, while the batch is
 counted in agents.
 
-If `wazuh-authd` refuses a removal because its own deletion backlog is full, the sweep stops there
+If `wazuh-manager-authd` refuses a removal because its own deletion backlog is full, the sweep stops there
 and retries on the queue's backoff ladder rather than reporting success — the agent is still there.
-An agent that is already gone, or one whose deletion `wazuh-authd` has already journaled, counts as
-done.
+An agent that is already gone, or one whose deletion `wazuh-manager-authd` has already journaled, counts as
+done. If `wazuh-manager-authd` answers that this node is not the master, the run is retired as
+`failed`: the node was demoted after spawning it, and the new master's own schedule takes over.
+Each run that removes agents logs `Agent retention sweep removed <n> agent(s).` at INFO, and each
+removal `Agent '<id>' (<name>) removed.` at DEBUG.
 
 **Deletion is by agent id**, which is in hand from the candidate query. Nothing round-trips through
 an agent name, which would be ambiguous for duplicate names.
@@ -177,7 +184,9 @@ honouring `wazuh_modules.manager_task_log_compress`, `wazuh_modules.manager_task
 **The offset is a slot, not a sleep.** `day_wait` is the schedule's next-run time rather than a delay
 the handler blocks on. That matters because the handler shares its concurrency group with
 size-based rotation,
-which a blocking sleep of up to 600 seconds would suspend for its whole duration.
+which a blocking sleep of up to 600 seconds would suspend for its whole duration. The offset is 1–600
+seconds: `0` is refused at start like any other out-of-range internal option, because the module reads
+a zero as "not set" and would otherwise run the slot at the 10 s default.
 
 **Daily rotation survives a same-day restart**, because its baseline is the persisted next run rather
 than a day-change comparison re-seeded from *now* at every start.
@@ -194,8 +203,8 @@ It runs on an *executor* thread rather than on the scheduler that signals it, be
 compression enabled gzips the file inline and the scheduler is also the work poller and the ownership
 sweeper. It joins the `rotation` concurrency group, which is what keeps it from ever overlapping the
 daily rotation, and repeated signals before it runs coalesce
-into one run — so with `agent_delete_old` bounded at its own budget, worst-case size-rotation latency
-is one bounded task in that group, not one minute.
+into one run — so worst-case size-rotation latency is one daily rotation already running in that
+group, not one minute.
 
 ---
 
@@ -205,11 +214,8 @@ All three run on the module's shared executor, each with a concurrency cap of on
 ever have two runs in flight at once. Only `log_rotate_daily` shares a group with anything: it joins
 `rotation` alongside the size-triggered rotation, because those two rewrite the same files. The
 disconnection sweep and the retention deletion have groups of their own and can therefore run at the
-same time as each other and as a rotation.
-
-That is a change from the retired implementation, where all three shared one thread purely to avoid
-keeping three alive. Nothing about the work required it. The executor picks types round-robin so a
-busy one cannot starve its siblings.
+same time as each other and as a rotation. The executor picks types round-robin so a busy one
+cannot starve its siblings.
 
 Each instance is stamped with its `SCHEDULE_ID` and `SCHEDULED_RUN_AT`, which is what makes a
 schedule's run history queryable and what the per-schedule retention cap counts on. A run that fails
@@ -218,7 +224,7 @@ spawning regardless, because a failed run is not a broken schedule.
 
 ### If a run overruns
 
-A handler that runs inside `wazuh-modulesd` cannot be interrupted — there is no cancellation
+A handler that runs inside `wazuh-manager-modulesd` cannot be interrupted — there is no cancellation
 primitive available — so an overrun is **observed, not stopped**. Each of the three types carries a
 budget past which the watchdog logs a warning naming the task type and the task id:
 
@@ -228,9 +234,15 @@ budget past which the watchdog logs a warning naming the task type and the task 
 | `agent_disconnect_sweep` | 300 s | a judgement: one sweep plus one name lookup per transitioned agent |
 | `log_rotate_daily` | 900 s | two files gzipped inline at up to the rotation threshold each |
 
-The warning is a post-hoc record rather than a live signal: it is emitted at most once per
-`task-manager` `cleanup_interval` (300 s by default). A run that overruns still finishes, and still
-records its outcome.
+The watchdog runs on the ownership sweep's cadence, `wazuh_modules.manager_task_sweep_interval`
+(60 s), and warns once the run is more than 30 s past its budget — on every sweep until the run ends:
+
+```
+Executor work '<task_id>' of type '<type>' has been running for <n> s, past its <budget> s budget. It cannot be interrupted; this is a report, not a recovery.
+```
+
+The size-triggered rotation is watched the same way, with a 900 s budget; having no row, it is named
+`log_rotate_size` in both places. A run that overruns still finishes, and still records its outcome.
 
 ---
 

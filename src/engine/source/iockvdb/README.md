@@ -43,11 +43,12 @@ The module is purpose-built for the IOC enrichment pipeline: each IOC type (conn
 
 | Operation | Lock Acquired | Contention |
 |-----------|---------------|------------|
-| `get()` / `multiGet()` | None (atomic load) | Lock-free |
+| `KVDBManager::get()` / `multiGet()` | Registry shared_lock (handle lookup only), then atomic load | Readers-only |
+| `DbHandle::get()` / `multiGet()` (`IReadOnlyKVDBHandler`) | None (atomic load) | Lock-free |
 | `exists()` | Registry shared_lock | Readers-only |
-| `add()` | Registry unique_lock + structural mutex | Serialized per-DB |
+| `add()` | Registry shared_lock check, unique_lock insert, then structural mutex | Serialized per-DB |
 | `put()` | Registry shared_lock + structural mutex | Serialized per-DB |
-| `hotSwap()` | Registry shared_lock + both structural mutexes | Serialized per-DB pair |
+| `hotSwap()` | Registry shared_lock + both structural mutexes; unique_lock to drop the source | Serialized per-DB pair |
 | `remove()` | Registry unique_lock + structural mutex | Serialized per-DB |
 
 ## Key Concepts
@@ -60,7 +61,7 @@ The core design enables zero-downtime database replacement:
 2. `DbHandle::exchange()` atomically publishes the new instance
 3. Readers holding the old `shared_ptr<DbInstance>` continue reading safely
 4. The old instance is enqueued in the **retired queue**
-5. Opportunistic cleanup destroys retired instances when `use_count == 1`
+5. Opportunistic cleanup (at the end of `add()`, `hotSwap()` and `remove()`) destroys retired instances whose `use_count == 1`
 
 ### IOC Type Routing
 
@@ -79,7 +80,9 @@ Helper functions extract `/name` (used as the KVDB key) and `/type` (used for ro
 
 ### Persistence
 
-`KVDBManager` persists its state (database names, instance paths, timestamps) to the engine's internal `store::IStore` under the document `kvdb-ioc/status/0`. On construction, if persisted state exists, it reopens every RocksDB instance from disk.
+`KVDBManager` persists its state (database names, instance paths relative to the root directory, and a `created` timestamp that every save refreshes) to the engine's internal `store::IStore` under the document `kvdb-ioc/status/0`. On construction, if that document exists, it reopens every RocksDB instance still on disk; an instance that fails to open is logged as a warning and its database is registered without an instance.
+
+The root directory is the `analysisd.kvdb_ioc_path` setting (default `/var/wazuh-manager/data/kvdb-ioc`, `WAZUH_KVDB_IOC_PATH`), passed by `main.cpp`; see the engine [configuration](../../../../docs/ref/modules/engine/configuration.md) page.
 
 ### Retired Instance Queue
 
@@ -87,8 +90,8 @@ When a `hotSwap()` or `remove()` replaces an active instance, the old one is:
 
 1. Marked for deletion (`markForDeletion()`)
 2. Enqueued in the retired queue
-3. Cleaned up opportunistically during subsequent structural operations
-4. On destroy: flushes WAL, cancels background work, syncs, closes, and deletes the RocksDB directory
+3. Cleaned up opportunistically at the end of `add()`, `hotSwap()` and `remove()`, once no reader holds it
+4. On destroy: flushes the memtable, cancels background work, flushes again, closes, deletes the instance directory, and removes the parent directory if it is now empty
 
 ## Directory Structure
 
@@ -129,14 +132,14 @@ Full lifecycle manager for IOC databases.
 ```cpp
 namespace ioc::kvdb {
 class IKVDBManager {
-    virtual void add(std::string_view name) = 0;
+    virtual void add(std::string_view dbName) = 0;
     virtual bool exists(std::string_view dbName) const noexcept = 0;
-    virtual void put(std::string_view name, std::string_view key, std::string_view value) = 0;
+    virtual void put(std::string_view dbName, std::string_view key, std::string_view value) = 0;
     virtual void hotSwap(std::string_view sourceDb, std::string_view targetDb) = 0;
     virtual std::optional<json::Json> get(std::string_view dbName, std::string_view key) const = 0;
     virtual std::vector<std::optional<json::Json>> multiGet(
         std::string_view dbName, const std::vector<std::string_view>& keys) const = 0;
-    virtual void remove(std::string_view name) = 0;
+    virtual void remove(std::string_view dbName) = 0;
 };
 }
 ```
@@ -163,14 +166,15 @@ Namespace `ioc::kvdb::details`:
 
 | Function | Description |
 |----------|-------------|
-| `getKeyFromIOC(json)` | Extracts `/name` field as KVDB key |
-| `getTypeFromIOC(json)` | Extracts `/type` field for routing |
-| `getDbAndKeyFromIOC(json)` | Returns `(dbName, key)` pair from an IOC document |
-| `getDbNameFromType(typeStr)` | Maps a type string to its database name |
-| `initializeDBs(manager, suffix)` | Creates all 6 IOC databases if they don't exist |
+| `getKeyFromIOC(json)` | Extracts `/name` field as KVDB key (throws if missing or empty) |
+| `getTypeFromIOC(json)` | Extracts `/type` field for routing (throws if missing or empty) |
+| `getDbAndKeyFromIOC(json)` | Returns `(dbName, key)` pair from an IOC document (throws on an unknown type) |
+| `getDbNameFromType(typeStr)` | Maps a type string to its database name (throws on an unknown type) |
+| `initializeDBs(manager, suffix = "")` | Creates all 6 IOC databases (name + `suffix`) if they don't exist |
 | `updateValueInDB(manager, db, key, value)` | Upserts a value, appending to arrays if key exists |
 | `getSupportedIocTypes()` | Returns all supported IOC type strings |
 | `findIOCTypeInfo(key)` | Looks up `IOCTypeInfo` for a type string |
+| `parseIOCType(key)` | Maps a type string to `IOCType` (`UNKNOWN` if unsupported) |
 
 ### Types (types.hpp)
 
@@ -184,8 +188,9 @@ Namespace `ioc::kvdb::details`:
 - **Constructor**: Takes `filesystem::path rootDir` + `shared_ptr<store::IStore>`. Creates root directory, loads persisted state from store if available.
 - **Registry**: `unordered_map<string, shared_ptr<DbHandle>>` protected by `shared_mutex`. Read operations use shared locks; structural operations use unique locks.
 - **`add()`**: Creates a new `DbHandle` and `DbInstance` with a fresh RocksDB at a timestamped path. RAII rollback guard removes the handle if creation fails.
-- **`hotSwap(source, target)`**: Locks both structural mutexes atomically (deadlock-free via `std::lock`). Transfers the instance pointer from source to target, enqueues old target instance for retirement, removes source from registry.
-- **Path generation**: `makeNextInstancePath()` creates `rootDir/dbName/XXXX` using a 4-char hex hash from nanosecond timestamp.
+- **`hotSwap(source, target)`**: Rejects a swap onto itself or from a source without an instance. Locks both structural mutexes atomically (deadlock-free via `std::lock`). Transfers the instance pointer from source to target (zero-copy: the target now serves from the source's directory), enqueues the old target instance for retirement, removes source from registry.
+- **Path generation**: `makeNextInstancePath()` creates `rootDir/dbName/<8 random hex chars>` (`base::utils::generators::randomHexString(8)`; a timestamp-derived suffix collided under rapid `add()`/`hotSwap()` cycles).
+- **RocksDB tuning**: `applyIocStoreTuning()` sets `write_buffer_size` to 8 MiB and `manifest_preallocation_size` to 64 KiB for every instance, so each store does not preallocate a ~70 MB WAL and a 4 MiB manifest.
 - **Persistence**: `saveStateToStore()` / `loadStateFromStore()` serialize the registry to a JSON array in the store.
 
 ### `DbHandle` (dbHandle.hpp / dbHandle.cpp)
@@ -201,7 +206,7 @@ Namespace `ioc::kvdb::details`:
 - **`get(key)`**: Reads from RocksDB, parses result as JSON. Returns `std::nullopt` if not found.
 - **`multiGet(keys)`**: Batch-reads via `rocksdb::DB::MultiGet()`, returns vector of optional JSON values.
 - **`put(key, value)`**: Writes directly to RocksDB.
-- **Destruction**: Custom `DbDeleter` cancels background work, flushes WAL, syncs, and closes. If `markForDeletion()` was called, also removes the directory from disk.
+- **Destruction**: `~DbInstance` flushes the memtable; the custom `DbDeleter` then cancels background work, flushes again and closes. If `markForDeletion()` was called, the directory (and its parent, if empty) is removed from disk.
 
 ## CMake Targets
 

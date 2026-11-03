@@ -60,7 +60,7 @@ list(APPEND upgrade_names "test_wm_agent_upgrade_com")
 list(
   APPEND
   upgrade_flags
-  "-Wl,--wrap,w_ref_parent_folder -Wl,--wrap,w_wpk_unsign -Wl,--wrap,unlink -Wl,--wrap,getpid -Wl,--wrap,gzopen \
+  "-Wl,--wrap,w_wpk_unsign -Wl,--wrap,unlink -Wl,--wrap,getpid -Wl,--wrap,gzopen \
                              -Wl,--wrap,fopen -Wl,--wrap,fdopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove \
                              -Wl,--wrap,gzclose -Wl,--wrap,gzread -Wl,--wrap,mkstemp -Wl,--wrap,atexit -Wl,--wrap,chmod -Wl,--wrap,fchmod -Wl,--wrap,stat -Wl,--wrap,wfopen \
                              -Wl,--wrap,w_fopen_nofollow -Wl,--wrap,w_gzopen_nofollow \

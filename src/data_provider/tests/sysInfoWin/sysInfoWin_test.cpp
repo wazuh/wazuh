@@ -1,7 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015, Wazuh Inc.
- * February 25, 2021.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -12,13 +11,41 @@
 
 #include <set>
 #include <stdio.h>
+#include <cstring>
 #include "packages/packagesWindowsParserHelper.h"
+#include "osinfo/sysOsInfoWin.h"
 #include "sysInfoWin_test.h"
 #include <iostream>
 
 
 void SysInfoWinTest::SetUp() {};
 void SysInfoWinTest::TearDown() {};
+
+TEST_F(SysInfoWinTest, test_estimated_size_to_bytes)
+{
+    // A published value of 0. The caller also stores 0 when an installer publishes nothing,
+    // and either way that 0 is reported as null when the document is built.
+    EXPECT_EQ(0, PackageWindowsHelper::estimatedSizeToBytes(0));
+
+    // The registry publishes KiB; the field is in bytes, as it is for Debian packages.
+    EXPECT_EQ(1024, PackageWindowsHelper::estimatedSizeToBytes(1));
+    EXPECT_EQ(1048576, PackageWindowsHelper::estimatedSizeToBytes(1024));
+    EXPECT_EQ(157286400, PackageWindowsHelper::estimatedSizeToBytes(153600));
+}
+
+TEST_F(SysInfoWinTest, test_estimated_size_does_not_overflow)
+{
+    // EstimatedSize is a REG_DWORD, so the widest value it can carry is 0xFFFFFFFF KiB.
+    // Multiplying in 32 bits would wrap; the result has to stay positive and exact.
+    const int64_t widest { PackageWindowsHelper::estimatedSizeToBytes(0xFFFFFFFF) };
+    EXPECT_EQ(4398046510080LL, widest);
+    EXPECT_GT(widest, 0);
+
+    // 4 GiB exactly, where an unsigned 32-bit multiply wraps to 0. A signed one would
+    // already have overflowed at half of it.
+    EXPECT_EQ(4294967296LL, PackageWindowsHelper::estimatedSizeToBytes(4194304));
+    EXPECT_EQ(2147483648LL, PackageWindowsHelper::estimatedSizeToBytes(2097152));
+}
 
 TEST_F(SysInfoWinTest, test_extract_HFValue_7618)
 {
@@ -347,6 +374,7 @@ TEST_F(SysInfoWinTest, ParseCmdLineEmptyInput)
     const auto result = parseProcessCommandLine(L"");
     EXPECT_TRUE(result.cmd.empty());
     EXPECT_TRUE(result.argvs.empty());
+    EXPECT_EQ(result.argsCount, 0u);
 }
 
 // Simple executable path with no arguments.
@@ -355,6 +383,7 @@ TEST_F(SysInfoWinTest, ParseCmdLineNoArguments)
     const auto result = parseProcessCommandLine(L"C:\\Windows\\notepad.exe");
     EXPECT_EQ(result.cmd, "C:\\Windows\\notepad.exe");
     EXPECT_TRUE(result.argvs.empty());
+    EXPECT_EQ(result.argsCount, 0u);
 }
 
 // Executable with a single argument.
@@ -363,6 +392,7 @@ TEST_F(SysInfoWinTest, ParseCmdLineSingleArgument)
     const auto result = parseProcessCommandLine(L"app.exe --help");
     EXPECT_EQ(result.cmd, "app.exe --help");
     EXPECT_EQ(result.argvs, "--help");
+    EXPECT_EQ(result.argsCount, 1u);
 }
 
 // Executable with multiple arguments (svchost-style).
@@ -372,6 +402,7 @@ TEST_F(SysInfoWinTest, ParseCmdLineMultipleArguments)
                             L"C:\\Windows\\system32\\svchost.exe -k netsvcs -p");
     EXPECT_EQ(result.cmd, "C:\\Windows\\system32\\svchost.exe -k netsvcs -p");
     EXPECT_EQ(result.argvs, "-k netsvcs -p");
+    EXPECT_EQ(result.argsCount, 3u);
 }
 
 // Quoted executable path with spaces in the path.
@@ -381,6 +412,7 @@ TEST_F(SysInfoWinTest, ParseCmdLineQuotedPathWithSpaces)
                             L"\"C:\\Program Files\\My App\\app.exe\" --flag value");
     EXPECT_EQ(result.cmd, "\"C:\\Program Files\\My App\\app.exe\" --flag value");
     EXPECT_EQ(result.argvs, "--flag value");
+    EXPECT_EQ(result.argsCount, 2u);
 }
 
 // Quoted argument values are unquoted by CommandLineToArgvW.
@@ -390,6 +422,8 @@ TEST_F(SysInfoWinTest, ParseCmdLineQuotedArguments)
                             L"app.exe --name \"hello world\" --verbose");
     EXPECT_EQ(result.cmd, "app.exe --name \"hello world\" --verbose");
     EXPECT_EQ(result.argvs, "--name hello world --verbose");
+    // "hello world" is one argument even though argvs joins it with spaces.
+    EXPECT_EQ(result.argsCount, 3u);
 }
 
 // Unicode characters in the command line are properly converted to UTF-8.
@@ -399,6 +433,7 @@ TEST_F(SysInfoWinTest, ParseCmdLineUnicodeCharacters)
     const auto result = parseProcessCommandLine(L"app.exe caf\u00E9");
     EXPECT_EQ(result.cmd, "app.exe caf\xC3\xA9");
     EXPECT_EQ(result.argvs, "caf\xC3\xA9");
+    EXPECT_EQ(result.argsCount, 1u);
 }
 
 // Command with many arguments preserves order and spacing.
@@ -407,6 +442,7 @@ TEST_F(SysInfoWinTest, ParseCmdLineManyArguments)
     const auto result = parseProcessCommandLine(L"cmd.exe /c dir /s /b /a-d");
     EXPECT_EQ(result.cmd, "cmd.exe /c dir /s /b /a-d");
     EXPECT_EQ(result.argvs, "/c dir /s /b /a-d");
+    EXPECT_EQ(result.argsCount, 5u);
 }
 
 // Calling the function twice with the same input produces the same result.
@@ -417,4 +453,174 @@ TEST_F(SysInfoWinTest, ParseCmdLineDeterministic)
     const auto result2 = parseProcessCommandLine(input);
     EXPECT_EQ(result1.cmd, result2.cmd);
     EXPECT_EQ(result1.argvs, result2.argvs);
+    EXPECT_EQ(result1.argsCount, result2.argsCount);
+}
+
+// argsCount counts arguments, not the characters in argvs.
+TEST_F(SysInfoWinTest, ParseCmdLineArgsCountIsNotArgvsLength)
+{
+    const auto result = parseProcessCommandLine(
+                            L"\"C:\\Program Files\\App\\app.exe\" -Embedding \"C:\\Users\\Some User\\file.txt\"");
+    EXPECT_EQ(result.argvs, "-Embedding C:\\Users\\Some User\\file.txt");
+    EXPECT_EQ(result.argsCount, 2u);
+}
+
+// Empty quoted arguments are skipped, so they add nothing to argvs or argsCount.
+TEST_F(SysInfoWinTest, ParseCmdLineEmptyArgumentsSkipped)
+{
+    const auto result = parseProcessCommandLine(L"cmd.exe /c start \"\" notepad.exe");
+    EXPECT_EQ(result.argvs, "/c start notepad.exe");
+    EXPECT_EQ(result.argsCount, 3u);
+
+    const auto leading = parseProcessCommandLine(L"app.exe \"\" foo");
+    EXPECT_EQ(leading.argvs, "foo");
+    EXPECT_EQ(leading.argsCount, 1u);
+}
+
+
+// Tests for buildProcessSnapshotRecord() — the record the Windows process inventory
+// emits from the snapshot entry alone, with no handle on the process.
+
+namespace
+{
+    PROCESSENTRY32 makeProcessEntry(const DWORD pid, const DWORD parentPid, const char* exeFile)
+    {
+        PROCESSENTRY32 entry{};
+        entry.dwSize = sizeof(PROCESSENTRY32);
+        entry.th32ProcessID = pid;
+        entry.th32ParentProcessID = parentPid;
+        std::strncpy(entry.szExeFile, exeFile, sizeof(entry.szExeFile) - 1);
+        return entry;
+    }
+}
+
+// A regular entry yields the snapshot fields and nothing that needs a handle.
+TEST_F(SysInfoWinTest, BuildProcessSnapshotRecordNormalEntry)
+{
+    const auto record = buildProcessSnapshotRecord(makeProcessEntry(1234, 5678, "notepad.exe"));
+
+    EXPECT_EQ(record.at("name").get<std::string>(), "notepad.exe");
+    EXPECT_EQ(record.at("pid").get<std::string>(), "1234");
+    EXPECT_EQ(record.at("parent_pid").get<DWORD>(), static_cast<DWORD>(5678));
+    EXPECT_FALSE(record.contains("command_line"));
+    EXPECT_FALSE(record.contains("args"));
+    EXPECT_FALSE(record.contains("args_count"));
+    EXPECT_FALSE(record.contains("stime"));
+    EXPECT_FALSE(record.contains("utime"));
+    EXPECT_FALSE(record.contains("start"));
+}
+
+// Pid 0 is named from the snapshot path and must not carry the self-referential parent.
+TEST_F(SysInfoWinTest, BuildProcessSnapshotRecordSystemIdleProcess)
+{
+    const auto record = buildProcessSnapshotRecord(makeProcessEntry(0, 0, "[System Process]"));
+
+    EXPECT_EQ(record.at("name").get<std::string>(), "System Idle Process");
+    EXPECT_EQ(record.at("pid").get<std::string>(), "0");
+    EXPECT_FALSE(record.contains("parent_pid"));
+}
+
+// Pid 4 is the kernel process, named from the snapshot path as well, and keeps its parent.
+TEST_F(SysInfoWinTest, BuildProcessSnapshotRecordSystemProcess)
+{
+    const auto record = buildProcessSnapshotRecord(makeProcessEntry(4, 0, "System"));
+
+    EXPECT_EQ(record.at("name").get<std::string>(), "System");
+    EXPECT_EQ(record.at("pid").get<std::string>(), "4");
+    EXPECT_EQ(record.at("parent_pid").get<DWORD>(), static_cast<DWORD>(0));
+}
+
+// szExeFile arrives in the ANSI code page and has to come out as UTF-8. Skipped where the
+// active code page cannot represent the name, which would make the expectation unreachable.
+TEST_F(SysInfoWinTest, BuildProcessSnapshotRecordNonAsciiName)
+{
+    // L"café.exe" — é is U+00E9
+    char ansiName[MAX_PATH] {};
+    BOOL usedDefaultChar = FALSE;
+    const int converted = WideCharToMultiByte(CP_ACP, 0, L"caf\u00E9.exe", -1,
+                                              ansiName, MAX_PATH, nullptr, &usedDefaultChar);
+
+    if (0 == converted || usedDefaultChar)
+    {
+        GTEST_SKIP() << "The active ANSI code page cannot represent the test name.";
+    }
+
+    const auto record = buildProcessSnapshotRecord(makeProcessEntry(1111, 1, ansiName));
+
+    EXPECT_EQ(record.at("name").get<std::string>(), "caf\xC3\xA9.exe");
+}
+
+
+// Tests for buildProcessRecord() — the merge of the snapshot fields with the fields that
+// need a process handle, which is where the reported defect lived.
+
+// No handle fields is the case where OpenProcess failed. Producing an empty record here is
+// what removed protected processes such as lsass.exe from the inventory.
+TEST_F(SysInfoWinTest, BuildProcessRecordWithoutHandleFieldsKeepsSnapshotFields)
+{
+    const auto record = buildProcessRecord(makeProcessEntry(660, 552, "lsass.exe"), nlohmann::json::object());
+
+    EXPECT_FALSE(record.empty());
+    EXPECT_EQ(record.at("name").get<std::string>(), "lsass.exe");
+    EXPECT_EQ(record.at("pid").get<std::string>(), "660");
+    EXPECT_EQ(record.at("parent_pid").get<DWORD>(), static_cast<DWORD>(552));
+    EXPECT_FALSE(record.contains("start"));
+    EXPECT_FALSE(record.contains("command_line"));
+}
+
+// The handle-derived fields are overlaid on the snapshot ones: both survive.
+TEST_F(SysInfoWinTest, BuildProcessRecordOverlaysHandleFields)
+{
+    const nlohmann::json handleFields
+    {
+        {"start", "2026-09-11T00:00:00Z"},
+        {"stime", 12},
+        {"utime", 34},
+        {"command_line", "C:\\Windows\\system32\\svchost.exe -k netsvcs"}
+    };
+    const auto record = buildProcessRecord(makeProcessEntry(1000, 660, "svchost.exe"), handleFields);
+
+    EXPECT_EQ(record.at("name").get<std::string>(), "svchost.exe");
+    EXPECT_EQ(record.at("pid").get<std::string>(), "1000");
+    EXPECT_EQ(record.at("parent_pid").get<DWORD>(), static_cast<DWORD>(660));
+    EXPECT_EQ(record.at("start").get<std::string>(), "2026-09-11T00:00:00Z");
+    EXPECT_EQ(record.at("stime").get<int>(), 12);
+    EXPECT_EQ(record.at("utime").get<int>(), 34);
+    EXPECT_EQ(record.at("command_line").get<std::string>(), "C:\\Windows\\system32\\svchost.exe -k netsvcs");
+}
+
+// A default-constructed nlohmann::json is a null, not an empty object, and it is what the
+// production caller hands over when no handle opened. Overlaying it must not throw.
+TEST_F(SysInfoWinTest, BuildProcessRecordWithDefaultConstructedHandleFields)
+{
+    const auto record = buildProcessRecord(makeProcessEntry(0, 0, "[System Process]"), nlohmann::json {});
+
+    EXPECT_EQ(record.at("name").get<std::string>(), "System Idle Process");
+    EXPECT_EQ(record.at("pid").get<std::string>(), "0");
+    EXPECT_FALSE(record.contains("parent_pid"));
+    EXPECT_FALSE(record.contains("start"));
+}
+
+// The GetProcessTimes-failed path: a command line but no times.
+TEST_F(SysInfoWinTest, BuildProcessRecordWithPartialHandleFields)
+{
+    const nlohmann::json partialHandleFields {{"command_line", "none"}, {"args", ""}, {"args_count", 0}};
+    const auto record = buildProcessRecord(makeProcessEntry(4, 0, "System"), partialHandleFields);
+
+    EXPECT_EQ(record.at("name").get<std::string>(), "System");
+    EXPECT_EQ(record.at("command_line").get<std::string>(), "none");
+    EXPECT_FALSE(record.contains("start"));
+    EXPECT_FALSE(record.contains("stime"));
+    EXPECT_FALSE(record.contains("utime"));
+}
+
+TEST_F(SysInfoWinTest, MachineFromProcessorArchitecture)
+{
+    EXPECT_EQ("x86_64", SysOsInfoProviderWindows::machineFromProcessorArchitecture("AMD64"));
+    EXPECT_EQ("x86_64", SysOsInfoProviderWindows::machineFromProcessorArchitecture("IA64"));
+    EXPECT_EQ("arm64", SysOsInfoProviderWindows::machineFromProcessorArchitecture("ARM64"));
+    EXPECT_EQ("i686", SysOsInfoProviderWindows::machineFromProcessorArchitecture("x86"));
+    EXPECT_EQ(UNKNOWN_VALUE, SysOsInfoProviderWindows::machineFromProcessorArchitecture("ARM"));
+    EXPECT_EQ(UNKNOWN_VALUE, SysOsInfoProviderWindows::machineFromProcessorArchitecture("ARM64EC"));
+    EXPECT_EQ(UNKNOWN_VALUE, SysOsInfoProviderWindows::machineFromProcessorArchitecture(""));
 }

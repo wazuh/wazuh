@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -30,10 +29,12 @@ class MockCurlHandle : public ICurlHandle
             .WillByDefault(::testing::Return(true));
             ON_CALL(*this, setOptionPtr(::testing::_, ::testing::_))
             .WillByDefault(::testing::Return(true));
+            ON_CALL(*this, trustSelfSignedRoot())
+            .WillByDefault(::testing::Return(true));
             // Same rationale as above, now that these five report success/failure
             // too: a real handle accepts them, so default to true and let tests
             // that want to exercise the failure path override it explicitly.
-            ON_CALL(*this, captureResponseBody(::testing::_))
+            ON_CALL(*this, captureResponseBody(::testing::_, ::testing::_))
             .WillByDefault(::testing::Return(true));
             ON_CALL(*this, captureResponseToFile(::testing::_, ::testing::_))
             .WillByDefault(::testing::Return(true));
@@ -48,8 +49,9 @@ class MockCurlHandle : public ICurlHandle
         MOCK_METHOD(bool, setOptionLong, (CurlOption option, long value), (override));
         MOCK_METHOD(bool, setOptionString, (CurlOption option, const std::string& value), (override));
         MOCK_METHOD(bool, setOptionPtr, (CurlOption option, const void* value), (override));
+        MOCK_METHOD(bool, trustSelfSignedRoot, (), (override));
         MOCK_METHOD(void, appendHeader, (const std::string& header), (override));
-        MOCK_METHOD(bool, captureResponseBody, (std::string* output), (override));
+        MOCK_METHOD(bool, captureResponseBody, (std::string* output, uint64_t maxBytes), (override));
         MOCK_METHOD(bool, captureResponseToFile, (std::FILE* file, uint64_t maxBytes), (override));
         MOCK_METHOD(bool, captureResponseHeaders, (HeaderCapture capture), (override));
         MOCK_METHOD(bool, streamBodyFromFile, (std::FILE* file, uint64_t size), (override));
@@ -58,6 +60,8 @@ class MockCurlHandle : public ICurlHandle
         MOCK_METHOD(long, responseCode, (), (override));
         MOCK_METHOD(std::string, localIp, (), (override));
         MOCK_METHOD(std::string, curlError, (), (override));
+        MOCK_METHOD(TlsFailureDetail, tlsFailureDetail, (), (override));
+        MOCK_METHOD(bool, caFileLoadFailed, (), (override));
 };
 
 #endif // _HC_MOCK_CURL_HANDLE_HPP

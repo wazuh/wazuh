@@ -1,7 +1,6 @@
 /*
  * Cluster identity of this manager node, read from the effective etc/wazuh-manager.conf.
- * Copyright (C) 2015, Wazuh Inc.
- * October 26, 2018.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -16,7 +15,7 @@
 #include "mconf_hook.h"
 
 /* The `cluster` section of the effective document through the hook libconfig registers
- * (mconf_hook.h). NULL without provider or document: libwazuhshared.so as the engine loads it, or a
+ * (mconf_hook.h). NULL without provider or document: unit tests, or a
  * process that never loaded its configuration -- the getters then answer as they always did when the
  * configuration file could not be read. */
 static cJSON *cluster_section(void) {
@@ -57,6 +56,8 @@ int w_is_single_node(int* is_worker) {
             is_single_node = 0;
             _is_worker = strcmp(node_type, "worker") == 0 ? 1 : 0;
         } else {
+            // Unreachable from a validated document: the schema defaults cluster.node_type to "master",
+            // so every 5.x manager answers 0 here. Kept for a hand-built document without the key.
             is_single_node = 1;
         }
     }

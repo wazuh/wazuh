@@ -10,6 +10,7 @@ on:
       - "src/wazuh_modules/agent_info/**"
       - "src/config/src/wmodules-agent_info.c"
       - "src/Makefile"
+      - "src/deps.lock.mk"
       - ".github/workflows/5_testcomponent_agent_info-rtr.yml"
       - ".github/actions/**"
 

@@ -1,7 +1,6 @@
 /*
  * Wazuh data provider.
- * Copyright (C) 2015, Wazuh Inc.
- * July 11, 2023.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -15,9 +14,9 @@
 #include <ifilesystem_wrapper.hpp>
 #include <filesystem_wrapper.hpp>
 
-#include "stdFileSystemHelper.hpp"
+#include <filesystem_utils.hpp>
 #include "json.hpp"
-#include "jsonIO.hpp"
+#include "packageMetadataFile.hpp"
 #include "sharedDefs.h"
 #include <filesystem>
 #include <fstream>
@@ -25,12 +24,25 @@
 #include <set>
 #include <memory>
 
-template<typename TJsonReader = JsonIO<nlohmann::json>>
+template<typename TJsonReader = PackageMetadataJsonReader>
 class NPM final
     : public TJsonReader
 {
     private:
         std::unique_ptr<IFileSystemWrapper> m_fileSystemWrapper;
+
+        // A folder that cannot be inspected is treated as a link, so it is still reported, unsized
+        bool isLink(const std::filesystem::path& folderPath) const
+        {
+            try
+            {
+                return m_fileSystemWrapper->is_symlink(folderPath);
+            }
+            catch (const std::exception&)
+            {
+                return true;
+            }
+        }
 
         void parsePackage(const std::filesystem::path& folderPath, std::function<void(nlohmann::json&)>& callback)
         {
@@ -46,7 +58,13 @@ class NPM final
 
             try
             {
-                if (m_fileSystemWrapper->exists(path))
+                // Only read regular files; the reader also enforces the size limit on the opened file
+                if (m_fileSystemWrapper->exists(path) && !m_fileSystemWrapper->is_regular_file(path))
+                {
+                    std::cerr << "Skipping NPM package metadata: " << path.string()
+                              << ", not a regular file" << std::endl;
+                }
+                else if (m_fileSystemWrapper->is_regular_file(path))
                 {
                     // Read json from filesystem path.
                     const auto packageJson = TJsonReader::readJson(path);
@@ -59,7 +77,6 @@ class NPM final
                     packageInfo["source"] = UNKNOWN_VALUE;
                     packageInfo["path"] = path.string();
                     packageInfo["priority"] = UNKNOWN_VALUE;
-                    packageInfo["size"] = 0;
                     packageInfo["vendor"] = UNKNOWN_VALUE;
                     packageInfo["installed"] = UNKNOWN_VALUE;
                     // The multiarch field won't have a default value
@@ -75,6 +92,20 @@ class NPM final
 
                     if (packageInfo.contains("name") && packageInfo.contains("version_"))
                     {
+                        // The package folder includes its bundled dependencies. A linked package (npm
+                        // link) points at a whole checkout, so its size stays unknown. An unknown size
+                        // leaves the key out, so the size a previous scan stored is kept.
+                        if (!isLink(folderPath))
+                        {
+                            const auto size {m_fileSystemWrapper->directory_size(
+                                                 folderPath, PACKAGE_SIZE_MAX_ENTRIES, PACKAGE_SIZE_DEADLINE)};
+
+                            if (size.has_value() && *size > 0)
+                            {
+                                packageInfo["size"] = static_cast<int64_t>(*size);
+                            }
+                        }
+
                         callback(packageInfo);
                     }
                 }
@@ -131,7 +162,7 @@ class NPM final
                     std::deque<std::string> expandedPaths;
 
                     // Expand paths
-                    Utils::expandAbsolutePath(osRootFolder, expandedPaths);
+                    file_system::FileSystemUtils().expand_absolute_path(osRootFolder, expandedPaths);
                     // Explore expanded paths
                     exploreExpandedPaths(expandedPaths, callback);
                 }

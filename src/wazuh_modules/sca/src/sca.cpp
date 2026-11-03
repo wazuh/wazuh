@@ -287,9 +287,9 @@ void SCA::setup(const struct wm_sca_t* sca_config)
         const int commandsTimeout = sca_config->commands_timeout;
         const bool remoteEnabled = sca_config->remote_commands != 0;
 
-        // Extract scan interval from scan_config (default to 3600 seconds if not set)
-        const auto scanIntervalInSeconds = sca_config->scan_config.interval > 0
-                                           ? std::chrono::seconds(sca_config->scan_config.interval)
+        // Extract scan interval (default to 3600 seconds if not set)
+        const auto scanIntervalInSeconds = sca_config->interval > 0
+                                           ? std::chrono::seconds(sca_config->interval)
                                            : std::chrono::seconds(3600);
 
         // Extract policy paths if available

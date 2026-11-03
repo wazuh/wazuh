@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _HTTPSRV_ISERVER_HPP
 #define _HTTPSRV_ISERVER_HPP
 

@@ -1,3 +1,15 @@
+/*
+ * Wazuh keystore
+ * Copyright (C) Wazuh Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
+ */
+
 #include "keyStore.hpp"
 #include "evpHelper.hpp"
 #include "loggerHelper.h"
@@ -64,13 +76,11 @@ void Keystore::get(const std::string& columnFamily, const std::string& key, std:
 
     auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
 
+    // A read never creates a family: it would let any reader add families that are never removed.
     if (!keystoreDB.columnExists(columnFamily))
     {
-        keystoreDB.createColumn(columnFamily);
+        return;
     }
-
-    // Ensure the keystore version field is stamped before reading.
-    upgrade(keystoreDB, columnFamily);
 
     // Get the key-value pair using AES decryption.
     if (keystoreDB.get(key, encryptedValue, columnFamily))
@@ -90,23 +100,6 @@ void Keystore::get(const std::string& columnFamily, const std::string& key, std:
 std::string Keystore::get(const std::string& columnFamily, const std::string& key)
 {
     std::string value;
-    std::string encryptedValue;
-
-    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
-
-    if (!keystoreDB.columnExists(columnFamily))
-    {
-        keystoreDB.createColumn(columnFamily);
-    }
-
-    // Ensure the keystore version field is stamped before reading.
-    upgrade(keystoreDB, columnFamily);
-
-    // Get the key-value pair using AES decryption.
-    if (keystoreDB.get(key, encryptedValue, columnFamily))
-    {
-        std::vector<char> encryptedValueVec(encryptedValue.begin(), encryptedValue.end());
-        EVPHelper().decryptAES256(encryptedValueVec, value);
-    }
+    get(columnFamily, key, value);
     return value;
 }

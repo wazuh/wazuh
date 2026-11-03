@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -307,6 +308,48 @@ TEST_F(StatusHandlerTest, ProviderUnavailableReturns500)
     auto handler = api::status::handlers::getStatus(m_mockCmSync, m_mockIocSync, m_mockGeo);
 
     m_mockGeo.reset(); // geo provider gone
+
+    httplib::Request req;
+    httplib::Response res;
+    handler(req, res);
+
+    EXPECT_EQ(res.status, httplib::StatusCode::InternalServerError_500);
+}
+
+// Event processing disabled: cmSync and iocSync are null → 200, spaces/ioc absent, ready = false
+TEST_F(StatusHandlerTest, EventProcessingDisabledAnswers)
+{
+    using namespace geo;
+
+    EXPECT_CALL(*m_mockGeo, getGeoStatus())
+        .WillOnce(::testing::Return(std::vector<GeoDbStatus> {
+            {"city", true, base::SyncStatus::READY, "g1", 1759190400},
+            {"asn", true, base::SyncStatus::READY, "g2", 1759190400},
+        }));
+
+    auto handler = api::status::handlers::getStatus(nullptr, nullptr, m_mockGeo);
+    httplib::Request req;
+    httplib::Response res;
+    handler(req, res);
+
+    EXPECT_EQ(res.status, httplib::StatusCode::OK_200);
+
+    auto parsed = eMessage::eMessageFromJson<eStatus::StatusGet_Response>(res.body);
+    ASSERT_FALSE(std::holds_alternative<base::Error>(parsed));
+    const auto& response = std::get<eStatus::StatusGet_Response>(parsed);
+
+    EXPECT_FALSE(response.ready());
+    EXPECT_TRUE(response.spaces().empty());
+    EXPECT_TRUE(response.ioc().empty());
+    EXPECT_EQ(response.geo().size(), 2);
+}
+
+// A provider that was given but has since been destroyed still answers 500
+TEST_F(StatusHandlerTest, CmSyncDestroyedReturns500)
+{
+    auto handler = api::status::handlers::getStatus(m_mockCmSync, m_mockIocSync, m_mockGeo);
+
+    m_mockCmSync.reset();
 
     httplib::Request req;
     httplib::Response res;

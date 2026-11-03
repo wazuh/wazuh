@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module - Control endpoint configuration
- * Copyright (C) 2015, Wazuh Inc.
- * July 30, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -36,6 +35,11 @@ namespace remoted::control
         if (c.wdb_roundtrip_deadline_ms > 0)
         {
             cfg.wdbRoundtripDeadlineMs = c.wdb_roundtrip_deadline_ms;
+        }
+
+        if (c.wdb_request_deadline_ms > 0)
+        {
+            cfg.wdbRequestDeadlineMs = static_cast<uint32_t>(c.wdb_request_deadline_ms);
         }
 
         if (c.wdb_max_queue_size > 0)

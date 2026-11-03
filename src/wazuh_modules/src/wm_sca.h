@@ -1,7 +1,6 @@
 /*
  * Wazuh Module for Security Configuration Assessment
- * Copyright (C) 2015, Wazuh Inc.
- * November 25, 2018.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -14,7 +13,6 @@
 
 #include "os_xml.h"
 #include "wmodules_def.h"
-#include "schedule_scan.h"
 
 #define WM_SCA_LOGTAG ARGV0 ":sca"
 
@@ -29,9 +27,7 @@ typedef struct wm_sca_policy_t {
 typedef struct wm_sca_db_sync_flags_t {
     unsigned int enable_synchronization:1;  // Enable database synchronization
     uint32_t sync_interval;                 // Synchronization interval
-    uint32_t sync_end_delay;                // Delay for synchronization end message
-    long sync_max_eps;                      // Maximum events per second for synchronization messages.
-    uint32_t integrity_interval;            // Integrity check interval (0 = disabled)
+    uint32_t integrity_interval;            // Integrity check interval (0 = every sync)
 } wm_sca_db_sync_flags_t;
 
 typedef struct wm_sca_t {
@@ -41,7 +37,7 @@ typedef struct wm_sca_t {
     wm_sca_policy_t** policies;
     int remote_commands:1;
     int commands_timeout;
-    sched_scan_config scan_config;
+    unsigned int interval;                  // Scan interval in seconds
     wm_sca_db_sync_flags_t sync;
 } wm_sca_t;
 

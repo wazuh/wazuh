@@ -1,4 +1,4 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -280,6 +280,25 @@ async def test_agent_added_model_force_disabled_by_default():
     f_kwargs = await AgentAddedModel.get_kwargs({'name': 'test_agent', 'ip': 'any'})
 
     assert f_kwargs['force']['enabled'] is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('force,expected', [
+    ({}, {'enabled': False,
+          'disconnected_time': {'enabled': True, 'value': '1h'},
+          'after_registration_time': '1h'}),
+    ({'after_registration_time': '2h'}, {'enabled': False,
+                                         'disconnected_time': {'enabled': True, 'value': '1h'},
+                                         'after_registration_time': '2h'}),
+    ({'disconnected_time': {'value': '5m'}}, {'enabled': False,
+                                              'disconnected_time': {'enabled': True, 'value': '5m'},
+                                              'after_registration_time': '1h'}),
+])
+async def test_agent_added_model_force_without_enabled(force, expected):
+    """Check that a `force` object without `enabled` keeps replacement disabled on `POST /agents`."""
+    f_kwargs = await AgentAddedModel.get_kwargs({'name': 'test_agent', 'ip': 'any', 'force': force})
+
+    assert f_kwargs['force'] == expected
 
 
 @pytest.mark.asyncio

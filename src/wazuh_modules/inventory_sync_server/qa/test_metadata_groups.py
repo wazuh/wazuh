@@ -74,6 +74,44 @@ def test_groups_delta_updates_groups(client, cluster, indexer, agent_id):
         assert document["_source"]["state"]["document_version"] == 7
 
 
+def test_metadata_delta_is_a_noop_when_nothing_changed(client, cluster, indexer, agent_id):
+    """Re-running a delta must not rewrite what the previous one already applied: the script
+    compares before it writes, which is what makes retrying a version conflict cheap. Asserted
+    on _seq_no, because a rewrite bumps it whatever the content ends up being."""
+    _seed(client, cluster, agent_id)
+    indexer.refresh()
+    _ok(client.post_stateful(_metadata_session(cluster, agent_id, 100, hostname="settled"),
+                             agent_id=agent_id))
+    indexer.refresh()
+    before = {document["_index"]: indexer.get(document["_index"], document["_id"])["_seq_no"]
+              for document in indexer.wait_for_docs(agent_id, 2)}
+
+    _ok(client.post_stateful(_metadata_session(cluster, agent_id, 100, hostname="settled"),
+                             agent_id=agent_id))
+    indexer.refresh()
+
+    for document in indexer.wait_for_docs(agent_id, 2):
+        assert indexer.get(document["_index"], document["_id"])["_seq_no"] == before[document["_index"]], \
+            f"{document['_index']} was rewritten by a delta that changed nothing"
+
+
+def test_metadata_delta_repairs_drifted_content_at_its_own_version(client, cluster, indexer, agent_id):
+    """`lte`, not `lt`: a document already stamped with this version whose content drifted is
+    still reconciled, which an exclusive range would skip and leave wrong."""
+    _seed(client, cluster, agent_id)
+    indexer.refresh()
+    _ok(client.post_stateful(_metadata_session(cluster, agent_id, 100, hostname="stale"),
+                             agent_id=agent_id))
+    indexer.refresh()
+
+    _ok(client.post_stateful(_metadata_session(cluster, agent_id, 100, hostname="repaired"),
+                             agent_id=agent_id))
+
+    for document in indexer.wait_for_docs(agent_id, 2):
+        assert document["_source"]["wazuh"]["agent"]["host"]["hostname"] == "repaired", document["_index"]
+        assert document["_source"]["state"]["document_version"] == 100
+
+
 def test_metadata_check_repairs_only_on_mismatch(client, cluster, indexer, agent_id):
     """The check variants are 'repair if needed': same metadata -> untouched
     (document_version keeps its value); different -> reconciled."""

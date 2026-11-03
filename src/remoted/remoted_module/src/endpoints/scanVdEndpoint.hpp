@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module - VD Scan endpoint
- * Copyright (C) 2015, Wazuh Inc.
- * August 6, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -35,8 +34,9 @@ namespace remoted::endpoints::scanvd
         ScanVdOutcome outcome;
         uint64_t currentOffset; ///< Meaningful only when outcome == VersionMismatch.
         std::string errorCode;  ///< Meaningful only when outcome == VdRejected: VD's own error code
-                                ///< passed through (scan_queue_full, feed_not_ready, shutting_down,
-                                ///< ...) or vd_unreachable when the POST itself failed.
+                                ///< passed through (scan_queue_full, feed_not_ready,
+                                ///< scanner_not_ready, ...) or vd_unreachable when the POST
+                                ///< itself failed.
     };
 
     using ScanVdCallback = std::function<void(const ScanVdResponse&)>;

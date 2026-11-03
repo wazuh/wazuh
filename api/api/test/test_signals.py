@@ -45,10 +45,12 @@ async def test_register_background_tasks(clean_auth_keys_cache_mock, clean_gener
 
 
 @pytest.mark.asyncio
+@patch('api.signals.cleanup_login_attempt_stats', new_callable=AsyncMock)
 @patch('api.signals.cleanup_general_request_stats', new_callable=AsyncMock)
-async def test_clean_general_request_stats(cleanup_mock):
-    """Test that `clean_general_request_stats` sleeps then sweeps on each iteration, and stops
-       cleanly (via `cancel_signal_handler`) once cancelled."""
+async def test_clean_general_request_stats(cleanup_mock, cleanup_login_mock):
+    """Test that `clean_general_request_stats` sleeps then sweeps both the rate limiter and the
+       login-attempt stats on each iteration, and stops cleanly (via `cancel_signal_handler`) once
+       cancelled."""
     with patch('api.signals.asyncio.sleep', new_callable=AsyncMock) as sleep_mock:
         sleep_mock.side_effect = [None, asyncio.CancelledError]
 
@@ -56,6 +58,7 @@ async def test_clean_general_request_stats(cleanup_mock):
 
         assert sleep_mock.await_count == 2
         cleanup_mock.assert_awaited_once()
+        cleanup_login_mock.assert_awaited_once()
 
 
 @pytest.mark.asyncio

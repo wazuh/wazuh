@@ -1,7 +1,6 @@
 /*
  * Wazuh inventory sync server module
- * Copyright (C) 2015, Wazuh Inc.
- * August 4, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -35,6 +34,8 @@ namespace
     constexpr auto SHUTTING_DOWN_BODY {R"({"error":"Service unavailable","code":503})"};
     constexpr auto INDEXER_UNAVAILABLE_BODY {R"({"error":"Service unavailable","code":503})"};
     constexpr auto INTERNAL_ERROR_BODY {R"({"error":"Internal error","code":500})"};
+    constexpr auto INDEXER_CONTENTION_BODY {
+        R"({"error":"indexer contention","code":503,"reason":"version_conflicts"})"};
 } // namespace
 
 namespace invsync::sync
@@ -78,6 +79,17 @@ namespace invsync::sync
                                           "count");
         m_indexerBulkBytes = m_metrics->getOrCreateCounter(
             invsync::metrics::INDEXER_BULK_BYTES, "NDJSON payload bytes those _bulk requests carried", "bytes");
+        m_indexerConflictRetries =
+            m_metrics->getOrCreateCounter(invsync::metrics::INDEXER_CONFLICT_RETRIES,
+                                          "By-query version conflicts waited out and retried; a conflict that "
+                                          "clears never reaches sync.bulk.flush.failures.documents",
+                                          "count");
+        m_indexerConflictExhausted =
+            m_metrics->getOrCreateCounter(invsync::metrics::INDEXER_CONFLICT_EXHAUSTED,
+                                          "By-query operations whose version-conflict allowance ran out, "
+                                          "answered 503 + Retry-After: a competing writer of the same "
+                                          "agent's documents was still running",
+                                          "count");
         const auto failureCounter = [this](const char* cause, const char* description)
         {
             return m_metrics->getOrCreateCounter(
@@ -233,7 +245,10 @@ namespace invsync::sync
         }
     }
 
-    void SyncPipeline::respond(Item& item, int status, const std::string& body)
+    void SyncPipeline::respond(Item& item,
+                               int status,
+                               const std::string& body,
+                               const std::vector<std::pair<std::string, std::string>>& headers)
     {
         if (item.responder)
         {
@@ -247,7 +262,9 @@ namespace invsync::sync
                     (classify(item.session) == SessionKind::BulkData) ? m_durationBulk : m_durationImmediate;
                 histogram->observe(static_cast<uint64_t>(elapsed));
             }
-            item.responder->send(wazuh::uds_http::HttpResponse::json(status, body));
+            auto response = wazuh::uds_http::HttpResponse::json(status, body);
+            response.headers.insert(response.headers.end(), headers.begin(), headers.end());
+            item.responder->send(std::move(response));
         }
         if (m_registry)
         {
@@ -288,10 +305,15 @@ namespace invsync::sync
         return false;
     }
 
-    void SyncPipeline::respondConnectorFailure(std::vector<Item>& items, indexer::IIndexerConnectorSync& connector)
+    void SyncPipeline::respondConnectorFailure(std::vector<Item>& items,
+                                               indexer::IIndexerConnectorSync& connector,
+                                               indexer::ConnectorError::Cause cause)
     {
         // 503 when the indexer is the problem (the agent retries next cycle, like Offline today);
-        // 500 when it is not (the agent also retries, but the log line is operator-actionable).
+        // 503 + Retry-After when a by-query lost its race against a competing writer of the same
+        // agent's documents (the documents are consistent; the header keeps the re-send from
+        // racing it again); 500 when it is neither (the agent also retries, but the log line is
+        // operator-actionable).
         bool available {false};
         try
         {
@@ -299,6 +321,18 @@ namespace invsync::sync
         }
         catch (...) // LCOV_EXCL_LINE -- isAvailable() does not throw in the real connector
         {
+        }
+
+        if (available && cause == indexer::ConnectorError::Cause::ConflictsExhausted)
+        {
+            m_indexerConflictExhausted->add();
+            const std::vector<std::pair<std::string, std::string>> headers {
+                {"Retry-After", std::to_string(m_config.conflictRetryAfterSeconds)}};
+            for (auto& item : items)
+            {
+                respond(item, 503, INDEXER_CONTENTION_BODY, headers);
+            }
+            return;
         }
 
         const auto status = available ? 500 : 503;
@@ -340,22 +374,29 @@ namespace invsync::sync
             const auto cause = typed ? typed->cause() : indexer::ConnectorError::Cause::Other;
             switch (cause)
             {
-                case indexer::ConnectorError::Cause::DocumentRejected: m_flushFailuresDocuments->add(); break;
+                case indexer::ConnectorError::Cause::DocumentRejected:
+                case indexer::ConnectorError::Cause::ConflictsExhausted: m_flushFailuresDocuments->add(); break;
                 case indexer::ConnectorError::Cause::RetryExhausted: m_flushFailuresExhausted->add(); break;
                 case indexer::ConnectorError::Cause::Other: m_flushFailuresOther->add(); break;
             }
             m_bulkSessionsFailed->add(batch.size());
-            respondConnectorFailure(batch, connector);
+            respondConnectorFailure(batch, connector, cause);
         }
 
         // Drained here, once per flush attempt, so auto-flushes fired during staging are also
         // picked up by the next group commit's drain.
-        const auto requestStats = connector.takeBulkRequestStats();
-        m_indexerBulkRequests->add(requestStats.requests);
-        m_indexerBulkBytes->add(requestStats.bytes);
+        drainConnectorStats(connector);
 
         batch.clear();
         batchBytes = 0;
+    }
+
+    void SyncPipeline::drainConnectorStats(indexer::IIndexerConnectorSync& connector)
+    {
+        const auto requestStats = connector.takeBulkRequestStats();
+        m_indexerBulkRequests->add(requestStats.requests);
+        m_indexerBulkBytes->add(requestStats.bytes);
+        m_indexerConflictRetries->add(requestStats.conflictRetries);
     }
 
     void SyncPipeline::workerLoop(std::size_t index)
@@ -455,10 +496,9 @@ namespace invsync::sync
 
             if (item.kind == Item::Kind::DeleteAgent)
             {
-                // Nobody is waiting on this one: the endpoint answered at admission, so the item
-                // carries no responder and respond() below only releases the agent from the
-                // registry. The purge's outcome reaches the operator through the log lines here,
-                // which is why the failure paths log before responding.
+                // The caller is waiting: the endpoint enqueued this item WITH its responder and
+                // answered nothing, so respond() below carries the purge's outcome and releases the
+                // agent from the registry.
                 //
                 // Same batch-cut rule as an Immediate session: the deletion executes its own I/O
                 // now, and staged writes of an EARLIER session of this agent must reach the indexer
@@ -476,9 +516,11 @@ namespace invsync::sync
                                "Deleting the state documents of agent %s failed: %s. The caller may retry.",
                                item.session.agentId.c_str(),
                                e.what());
+                    const auto* typed = dynamic_cast<const indexer::ConnectorError*>(&e);
                     std::vector<Item> just;
                     just.push_back(std::move(item));
-                    respondConnectorFailure(just, connector);
+                    respondConnectorFailure(
+                        just, connector, typed ? typed->cause() : indexer::ConnectorError::Cause::Other);
                 }
                 continue;
             }
@@ -501,9 +543,15 @@ namespace invsync::sync
                                "A session from agent %s failed against the indexer: %s. The agent will retry.",
                                item.session.agentId.c_str(),
                                e.what());
+                    const auto* typed = dynamic_cast<const indexer::ConnectorError*>(&e);
                     std::vector<Item> just {std::move(item)};
-                    respondConnectorFailure(just, connector);
+                    respondConnectorFailure(
+                        just, connector, typed ? typed->cause() : indexer::ConnectorError::Cause::Other);
                 }
+
+                // flushAndRespond above returns without draining when the batch is empty, and the
+                // session's own I/O happened after it either way.
+                drainConnectorStats(connector);
                 continue;
             }
 

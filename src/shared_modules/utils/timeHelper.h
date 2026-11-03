@@ -1,12 +1,13 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015, Wazuh Inc.
- * December 28, 2020.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #ifndef _TIME_HELPER_H
@@ -17,16 +18,16 @@
 #include <cmath>
 #include <ctime>
 #include <iomanip>
+#include <regex>
 #include <sstream>
 #include <string>
-#include <regex>
 #if __cplusplus >= 201703L
 #include <charconv>
 #include <string_view>
 #endif
 
 #define ISO8601_LENGTH_WITH_MS 24
-#define ISO8601_LENGTH_NO_MS 20
+#define ISO8601_LENGTH_NO_MS   20
 
 #ifdef WIN32
 
@@ -59,9 +60,7 @@ namespace Utils
     static std::string getTimestamp(const std::time_t& time, const bool utc = true)
     {
         std::stringstream ss;
-        struct tm buf
-        {
-        };
+        struct tm buf {};
 
         // gmtime: result expressed as a UTC time
         tm const* localTime {utc ? gmtime_r(&time, &buf) : localtime_r(&time, &buf)};
@@ -106,9 +105,7 @@ namespace Utils
     static std::string getCompactTimestamp(const std::time_t& time, const bool utc = true)
     {
         std::stringstream ss;
-        struct tm buf
-        {
-        };
+        struct tm buf {};
 
         // gmtime: result expressed as a UTC time
         tm const* localTime {utc ? gmtime_r(&time, &buf) : localtime_r(&time, &buf)};
@@ -139,9 +136,7 @@ namespace Utils
         auto itt = std::chrono::system_clock::to_time_t(now);
 
         std::ostringstream ss;
-        struct tm buf
-        {
-        };
+        struct tm buf {};
         tm const* localTime = gmtime_r(&itt, &buf);
 
         if (localTime == nullptr)
@@ -161,31 +156,24 @@ namespace Utils
         return ss.str();
     }
 
+    static std::string normalizeTimestampISO8601(const std::string& timestamp);
+
     /**
      * @brief Convert a timestamp to ISO8601 format.
      *
-     * @param timestamp Timestamp to convert. Format: "YYYY/MM/DD hh:mm:ss".
-     * @return std::string ISO8601 timestamp.
+     * @param timestamp Timestamp to convert. Format: "YYYY/MM/DD hh:mm:ss", or ISO8601, which is returned normalized.
+     * @return std::string ISO8601 timestamp or empty string.
      */
     static std::string timestampToISO8601(const std::string& timestamp)
     {
-        // Accepts: YYYY-MM-DDTHH:MM:SS(.mmm)?Z
-        static const std::regex iso8601_regex(R"(^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$")");
-        if (std::regex_match(timestamp, iso8601_regex))
-        {
-            return timestamp;
-        }
-
         std::tm tm {};
         std::istringstream ss(timestamp);
         ss >> std::get_time(&tm, "%Y/%m/%d %H:%M:%S");
         if (ss.fail())
         {
-            return "";
+            return normalizeTimestampISO8601(timestamp);
         }
         std::time_t time = std::mktime(&tm);
-
-        auto itt = std::chrono::system_clock::from_time_t(time);
 
         std::ostringstream output;
         struct tm const* localTime = gmtime_r(&time, &tm);
@@ -195,14 +183,8 @@ namespace Utils
             return "";
         }
 
-        output << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S");
-
-        // Get milliseconds from the current time
-        auto milliseconds =
-            std::chrono::duration_cast<std::chrono::milliseconds>(itt.time_since_epoch()).count() % 1000;
-
-        // ISO 8601
-        output << '.' << std::setfill('0') << std::setw(3) << milliseconds << 'Z';
+        // ISO 8601. "YYYY/MM/DD hh:mm:ss" carries no sub-second part.
+        output << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S") << ".000Z";
 
         return output.str();
     }
@@ -300,89 +282,61 @@ namespace Utils
         if constexpr (std::is_same_v<std::decay_t<T>, uint32_t>)
         {
             std::time_t time = timestamp;
-            auto itt = std::chrono::system_clock::from_time_t(time);
             std::ostringstream output;
-            struct tm buf
-            {
-            };
+            struct tm buf {};
             tm const* localTime = gmtime_r(&time, &buf);
             if (localTime == nullptr)
             {
                 return "";
             }
-            output << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S");
-            // Get milliseconds from the current time
-            auto milliseconds =
-                std::chrono::duration_cast<std::chrono::milliseconds>(itt.time_since_epoch()).count() % 1000;
-            // ISO 8601
-            output << '.' << std::setfill('0') << std::setw(3) << milliseconds << 'Z';
+            // ISO 8601. A whole-second timestamp carries no sub-second part.
+            output << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S") << ".000Z";
             return output.str();
         }
         else if constexpr (std::is_same_v<std::decay_t<T>, double>)
         {
             std::time_t time = timestamp;
-            auto itt = std::chrono::system_clock::from_time_t(time);
-            std::ostringstream output;
-            struct tm buf
+            auto milliseconds = static_cast<int>(std::round((timestamp - static_cast<int>(timestamp)) * 1000));
+            // A fraction of .9995 or more rounds to 1000 ms and carries over to the next second.
+            if (milliseconds >= 1000)
             {
-            };
+                ++time;
+                milliseconds -= 1000;
+            }
+            std::ostringstream output;
+            struct tm buf {};
             tm const* localTime = gmtime_r(&time, &buf);
             if (localTime == nullptr)
             {
                 return "";
             }
             output << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S");
-            if (std::abs(timestamp - static_cast<int>(timestamp)) < 1e-9)
-            {
-                // Get milliseconds from the current time
-                auto milliseconds =
-                    std::chrono::duration_cast<std::chrono::milliseconds>(itt.time_since_epoch()).count() % 1000;
-                // ISO 8601
-                output << '.' << std::setfill('0') << std::setw(3) << milliseconds << 'Z';
-            }
-            else
-            {
-                output << '.' << std::setfill('0') << std::setw(3)
-                       << static_cast<int>(std::round((timestamp - static_cast<int>(timestamp)) * 1000)) << 'Z';
-            }
+            output << '.' << std::setfill('0') << std::setw(3) << milliseconds << 'Z';
             return output.str();
         }
         else if constexpr (std::is_same_v<std::decay_t<T>, std::string>)
         {
             if (timestamp.empty() || !Utils::isNumber(timestamp))
             {
-                // Check if timestamp has the format "YYYY/MM/DD hh:mm:ss"
-                // if not, check if it is already ISO8601.
-                auto ISO8601Timestamp = timestampToISO8601(timestamp);
-                return ISO8601Timestamp.empty() ? normalizeTimestampISO8601(timestamp) : std::move(ISO8601Timestamp);
+                return timestampToISO8601(timestamp);
             }
             std::time_t time = std::stoi(timestamp);
-            auto itt = std::chrono::system_clock::from_time_t(time);
             std::ostringstream output;
-            struct tm buf
-            {
-            };
+            struct tm buf {};
             tm const* localTime = gmtime_r(&time, &buf);
             if (localTime == nullptr)
             {
                 return "";
             }
-            output << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S");
-            // Get milliseconds from the current time
-            auto milliseconds =
-                std::chrono::duration_cast<std::chrono::milliseconds>(itt.time_since_epoch()).count() % 1000;
-            // ISO 8601
-            output << '.' << std::setfill('0') << std::setw(3) << milliseconds << 'Z';
+            // ISO 8601. A whole-second timestamp carries no sub-second part.
+            output << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S") << ".000Z";
             return output.str();
         }
         else if constexpr (std::is_same_v<std::decay_t<T>, std::string_view>)
         {
             if (timestamp.empty() || !Utils::isNumber(timestamp))
             {
-                // Check if timestamp has the format "YYYY/MM/DD hh:mm:ss"
-                // if not, check if it is already ISO8601.
-                auto ISO8601Timestamp = timestampToISO8601(std::string(timestamp));
-                return ISO8601Timestamp.empty() ? normalizeTimestampISO8601(std::string(timestamp)) : std::move(ISO8601Timestamp);
+                return timestampToISO8601(std::string(timestamp));
             }
             std::time_t time;
             auto [ptr, ec] = std::from_chars(timestamp.data(), timestamp.data() + timestamp.size(), time);
@@ -390,22 +344,15 @@ namespace Utils
             {
                 return "";
             }
-            auto itt = std::chrono::system_clock::from_time_t(time);
             std::ostringstream output;
-            struct tm buf
-            {
-            };
+            struct tm buf {};
             tm const* localTime = gmtime_r(&time, &buf);
             if (localTime == nullptr)
             {
                 return "";
             }
-            output << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S");
-            // Get milliseconds from the current time
-            auto milliseconds =
-                std::chrono::duration_cast<std::chrono::milliseconds>(itt.time_since_epoch()).count() % 1000;
-            // ISO 8601
-            output << '.' << std::setfill('0') << std::setw(3) << milliseconds << 'Z';
+            // ISO 8601. A whole-second timestamp carries no sub-second part.
+            output << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S") << ".000Z";
             return output.str();
         }
         else

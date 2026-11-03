@@ -64,32 +64,32 @@ Below are the typical Wazuh 4.x wodle blocks you may have in your `ossec.conf`. 
 Before proceeding, make sure you have:
 
 - Wazuh 5.0 or later deployed (indexer, manager, dashboard) and the agents upgraded.
-- Access to each agent's local `ossec.conf`, and to the Wazuh manager, where shared `agent.conf` files are edited (one per agent group, under `etc/shared/<group>/`) before being pushed to agents.
+- Access to each agent's local `ossec.conf`, and to the Wazuh manager, where shared `agent.conf` files are edited (one per agent group, under `/etc/wazuh-manager/shared/<group>/`) before being pushed to agents.
 - A list of the benchmarks and profiles you previously assessed with CIS-CAT and OpenSCAP, so you can match them to the equivalent SCA policies.
 
 > These steps remove the deprecated wodles and replace them with SCA. Apply them wherever the wodles were configured: in each agent's local `ossec.conf`, and in any shared `agent.conf` on the manager.
 
 ## 1. Inventory your CIS-CAT and OpenSCAP configuration
 
-Locate every `<wodle name="cis-cat">` and `<wodle name="open-scap">` block. Check the local `ossec.conf` on each agent **and** the shared `agent.conf` of each agent group on the manager (under `etc/shared/<group>/agent.conf`), since a single shared configuration is distributed to every agent in the group and can carry the deprecated wodles to many agents at once.
+Locate every `<wodle name="cis-cat">` and `<wodle name="open-scap">` block. Check the local `ossec.conf` on each agent **and** the shared `agent.conf` of each agent group on the manager (under `/etc/wazuh-manager/shared/<group>/agent.conf`), since a single shared configuration is distributed to every agent in the group and can carry the deprecated wodles to many agents at once.
 
 For each block, note the benchmark content and profile it referenced (the `<content>` `path` and `<profile>` values). You will use this to select the matching SCA policy in [Step 3](#3-map-your-benchmarks-to-sca-policies). For OpenSCAP, record any `<content type="oval">` entries separately — those map to Vulnerability Detection ([Step 6](#6-move-ovalcve-scanning-to-vulnerability-detection-openscap-only)), not SCA.
 
 ## 2. Remove the cis-cat and open-scap wodle blocks
 
-Delete the `<wodle name="cis-cat">` and `<wodle name="open-scap">` blocks. Edit the local `ossec.conf` directly on each agent, and edit any shared `agent.conf` on the manager (in the group's `etc/shared/<group>/` directory) — not on the agents, which receive that file from the manager.
+Delete the `<wodle name="cis-cat">` and `<wodle name="open-scap">` blocks. Edit the local `ossec.conf` directly on each agent, and edit any shared `agent.conf` on the manager (in the group's `/etc/wazuh-manager/shared/<group>/` directory) — not on the agents, which receive that file from the manager.
 
 Wazuh 5.0 no longer registers a runnable module under either name: leftover blocks are ignored with an INFO deprecation message and provide no assessment, so remove them to keep the configuration clean.
 
 ## 3. Map your benchmarks to SCA policies
 
-Wazuh ships SCA policies for common CIS benchmarks under `ruleset/sca`, organized by distribution and version — for example `ruleset/sca/centos/7/cis_centos7_linux.yml`, `ruleset/sca/rhel/7/cis_rhel7_linux.yml`, or `ruleset/sca/ubuntu/cis_ubuntu24-04.yml`. In most cases the CIS benchmark you assessed with CIS-CAT or the SSG XCCDF profile you assessed with OpenSCAP already has a bundled SCA policy equivalent.
+Wazuh ships SCA policies for common CIS benchmarks. In the source repository they are organized under `ruleset/sca` by distribution and version — for example `ruleset/sca/centos/7/cis_centos7_linux.yml`, `ruleset/sca/rhel/7/cis_rhel7_linux.yml`, or `ruleset/sca/ubuntu/cis_ubuntu24-04.yml`. The agent installer copies only the policies for the detected platform, flat, into the agent's own `ruleset/sca/` directory (for example `/var/ossec/ruleset/sca/cis_centos7_linux.yml`), after removing whatever that directory held. In most cases the CIS benchmark you assessed with CIS-CAT or the SSG XCCDF profile you assessed with OpenSCAP already has a bundled SCA policy equivalent.
 
-Identify the SCA policy that corresponds to each benchmark you recorded in [Step 1](#1-inventory-your-cis-cat-and-openscap-configuration). SCA auto-loads the policies bundled for the detected platform; you can also enable specific policies explicitly in the next step. See the [SCA module overview](../../ref/modules/sca/README.md) and the [SCA configuration reference](../../ref/modules/sca/configuration.md) for the available options.
+Identify the SCA policy that corresponds to each benchmark you recorded in [Step 1](#1-inventory-your-cis-cat-and-openscap-configuration). SCA loads every `.yml`/`.yaml` file in the agent's `ruleset/sca/` directory by default; you can also list policies explicitly, or disable one, in the next step. See the [SCA module overview](../../ref/modules/sca/README.md) and the [SCA configuration reference](../../ref/modules/sca/configuration.md) for the available options.
 
 ## 4. Enable and configure SCA
 
-Add or update the `<sca>` block in `ossec.conf`. SCA is enabled by default and auto-loads the bundled policies for the platform; the `<policies>` section lets you enable specific policies explicitly or disable ones you do not need.
+Add or update the `<sca>` block in `ossec.conf`. SCA is enabled by default and loads the bundled policies installed on the agent; the `<policies>` section lets you add policies (for example a custom one) or disable bundled ones you do not need with `<policy enabled="no">`. A relative `<policy>` path is resolved from the agent's installation directory, and a path that does not exist is skipped with the warning `File '<path>' not found.`
 
 ```xml
 <sca>
@@ -97,7 +97,7 @@ Add or update the `<sca>` block in `ossec.conf`. SCA is enabled by default and a
   <scan_on_start>yes</scan_on_start>
   <interval>1d</interval>
   <policies>
-    <policy>ruleset/sca/centos/7/cis_centos7_linux.yml</policy>
+    <policy>ruleset/sca/cis_centos7_linux.yml</policy>
   </policies>
 </sca>
 ```
@@ -140,7 +140,7 @@ Confirm that the migration succeeded on a representative agent:
    INFO: Scan ended.
    ```
 
-3. Review the results in the Wazuh dashboard SCA inventory, or query them through the API. See the [SCA output samples](../../ref/modules/sca/output-samples.md) and the [SCA database schema](../../ref/modules/sca/database-schema.md) for the data SCA produces.
+3. Review the results in the Wazuh dashboard SCA inventory, or query the `wazuh-states-sca` index in the indexer (the 5.x Server API has no SCA endpoint). See the [SCA output samples](../../ref/modules/sca/output-samples.md) and the [SCA database schema](../../ref/modules/sca/database-schema.md) for the data SCA produces.
 
 <details>
 <summary>Example A: rewriting a single OpenSCAP XCCDF rule as an SCA check</summary>
@@ -170,10 +170,10 @@ In SCA, the rule's metadata and its test live together in one self-contained YAM
   name: "Ensure AIDE is installed."
   description: "AIDE takes a snapshot of filesystem state including modification times, permissions, and file hashes which can then be used to compare against the current state of the filesystem to detect modifications to the system."
   rationale: "By monitoring the filesystem state compromised files can be detected to prevent or limit the exposure of accidental or malicious misconfigurations or modified binaries."
-  remediation: "Install AIDE using the appropriate package manager or manual installation: # apt install aide aide-common"
+  remediation: "Install AIDE using the appropriate package manager or manual installation: # apt install aide aide-common Configure AIDE as appropriate for your environment. Consult the AIDE documentation for options. Run the following commands to initialize AIDE: # aideinit # mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db."
   compliance:
     nist_800_53: ["AC-6"]
-    pci_dss: ["10.2", "11.5"]
+    pci_dss: ["10.2.1", "10.2.1.1"]
     # ... additional compliance keys omitted for brevity
   condition: all
   rules:
@@ -206,11 +206,11 @@ Wazuh's bundled SCA CIS policies already implement these recommendations and pre
   - id: 28626
     name: "Ensure permissions on /etc/crontab are configured."
     description: "The /etc/crontab file is used by cron to control its own jobs. The commands in this item make sure that root is the user and group owner of the file and that only the owner can access the file."
-    rationale: "This file contains information on what system jobs are run by cron. Write access to these files could provide unprivileged users with the ability to elevate their privileges."
-    remediation: "Run the following commands to set ownership and permissions on /etc/crontab: # chown root:root /etc/crontab # chmod og-rwx /etc/crontab."
+    rationale: "This file contains information on what system jobs are run by cron. Write access to these files could provide unprivileged users with the ability to elevate their privileges. Read access to these files could provide users with the ability to gain insight on system jobs that run on the system and could provide them a way to gain unauthorized privileged access."
+    remediation: "- IF - cron is installed on the system: Run the following commands to set ownership and permissions on /etc/crontab: # chown root:root /etc/crontab # chmod og-rwx /etc/crontab."
     compliance:
       nist_800_53: ["AC-5", "AC-6"]
-      pci_dss: ["7.1", "1.3"]
+      pci_dss: ["1.3.1", "7.1"]
       # ... additional compliance keys omitted for brevity
     condition: all
     rules:

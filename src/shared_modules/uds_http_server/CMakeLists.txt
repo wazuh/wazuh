@@ -16,8 +16,8 @@ add_library(wazuh_uds_http_server STATIC src/asioUdsHttpServer.cpp src/requestPa
 target_compile_features(wazuh_uds_http_server PUBLIC cxx_std_17)
 set_target_properties(wazuh_uds_http_server PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
 
-# Static lib archived into shared libs (inventory_sync_server, vulnerability_scanner,
-# remoted_module). NEVER make this SHARED: Log::GLOBAL_LOG_FUNCTION has hidden per-DSO
+# Static lib archived into each consumer (inventory_sync_server, remoted_module, wazuh_db,
+# task_manager, vulnerability_scanner). NEVER make this SHARED: Log::GLOBAL_LOG_FUNCTION has hidden per-DSO
 # visibility (see loggerHelper.h), so the archive must resolve it inside each consumer .so for
 # every copy to log through its own module's sink.
 set_target_properties(wazuh_uds_http_server PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -36,7 +36,7 @@ set_target_properties(wazuh_uds_http_server PROPERTIES POSITION_INDEPENDENT_CODE
 # Deliberately NOT hidden: the vague-linkage (weak) instantiations consumer TUs create from
 # these headers. Hiding those (a header-wide visibility pragma) clamps every module function
 # whose SIGNATURE mentions a lib type -- including sanctioned cross-boundary calls like
-# content_manager::dispatchOnDemand and the module APIs the unit-test binaries link against --
+# the vulnerability scanner's own routes and the module APIs the unit-test binaries link against --
 # and identical weak template code collapsing across DSOs is ABI-normal C++, not a leak.
 # LogThrottle marks itself hidden in its own header (its inline statics would export as
 # GNU-unique from every consumer otherwise).

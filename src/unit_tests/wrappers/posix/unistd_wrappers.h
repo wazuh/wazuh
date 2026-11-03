@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -44,7 +44,7 @@ ssize_t __wrap_read(int fildes, void *buf, size_t nbyte);
 
 int __wrap_gethostname(char *name, int len);
 
-int __wrap_readlink(void **state);
+ssize_t __wrap_readlink(const char *path, char *buf, size_t bufsiz);
 
 int __wrap_symlink(const char *path1, const char *path2);
 

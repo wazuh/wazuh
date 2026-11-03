@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module - Hash cache unit tests
- * Copyright (C) 2015, Wazuh Inc.
- * July 31, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -97,7 +96,7 @@ TEST(HashCacheTest, GetMergedMgPathSingleGroup)
 }
 
 // -----------------------------------------------------------------------------
-// getMergedMgPath: multi-group hits the multi root with sha256[:8] hash.
+// getMergedMgPath: multi-group hits the multi root with sha256[:32] hash.
 // The hash is deterministic (raw CSV, no encoding), so we can pin the value.
 // -----------------------------------------------------------------------------
 TEST(HashCacheTest, GetMergedMgPathMultiGroup)
@@ -107,18 +106,18 @@ TEST(HashCacheTest, GetMergedMgPathMultiGroup)
 
     const auto path = cache.getMergedMgPath("g1,g2");
 
-    // Layout is <multi>/<sha256(csv)[:8]>/merged.mg. We only assert the shape:
-    // the first-eight-hex-chars is easier to eyeball as a regex here than to
+    // Layout is <multi>/<sha256(csv)[:32]>/merged.mg. We only assert the shape:
+    // the first-32-hex-chars is easier to eyeball as a regex here than to
     // hardcode -- and any change to hashing would break the test on purpose.
     ASSERT_FALSE(path.empty());
     EXPECT_EQ(path.rfind(dirs.multi() + "/", 0), 0U);
     const std::string suffix = "/merged.mg";
     ASSERT_GE(path.size(), suffix.size());
     EXPECT_EQ(path.compare(path.size() - suffix.size(), suffix.size(), suffix), 0);
-    // Between the root and /merged.mg there should be exactly 8 hex chars.
+    // Between the root and /merged.mg there should be exactly 32 hex chars.
     const auto stem = path.substr(dirs.multi().size() + 1);
-    ASSERT_EQ(stem.size(), std::string("XXXXXXXX/merged.mg").size());
-    for (size_t i = 0; i < 8; ++i)
+    ASSERT_EQ(stem.size(), std::string(32, 'X').size() + std::string("/merged.mg").size());
+    for (size_t i = 0; i < 32; ++i)
     {
         EXPECT_TRUE((stem[i] >= '0' && stem[i] <= '9') || (stem[i] >= 'a' && stem[i] <= 'f'))
             << "non-hex char at " << i << ": " << stem[i];
@@ -137,11 +136,18 @@ TEST(HashCacheTest, GetMergedMgPathMultiGroupIsStableForSameCsv)
 // getMergedMgPath: whitelist + safety rejections.
 // -----------------------------------------------------------------------------
 
-TEST(HashCacheTest, GetMergedMgPathRejectsEmpty)
+TEST(HashCacheTest, GetMergedMgPathEmptyIsDefault)
 {
     TempDirs dirs;
     HashCache cache(makeConfig(dirs));
-    EXPECT_EQ(cache.getMergedMgPath(""), "");
+    EXPECT_EQ(cache.getMergedMgPath(""), dirs.shared() + "/default/merged.mg");
+}
+
+TEST(HashCacheTest, GetMergedMgPathRejectsATrailingEmptyEntry)
+{
+    TempDirs dirs;
+    HashCache cache(makeConfig(dirs));
+    EXPECT_EQ(cache.getMergedMgPath("a,"), "");
 }
 
 TEST(HashCacheTest, GetMergedMgPathRejectsDotOrDotDot)

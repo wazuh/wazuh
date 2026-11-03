@@ -1,6 +1,6 @@
 # Syscollector
 
-The **Syscollector** module collects system inventory information from Wazuh agents and detects changes in system state over time. It module has been enhanced with a reliable synchronization mechanism that ensures system inventory changes are persisted and synchronized with the manager even during network interruptions or agent restarts.
+The **Syscollector** module collects system inventory information from Wazuh agents and detects changes in system state over time. The module has been enhanced with a reliable synchronization mechanism that ensures system inventory changes are persisted and synchronized with the manager even during network interruptions or agent restarts.
 
 The module implements a **dual event system** that provides both real-time alerts and reliable state synchronization. It leverages the **Agent Sync Protocol** to persist differences in a local SQLite database and synchronizes them periodically with the manager through a session-based protocol.
 

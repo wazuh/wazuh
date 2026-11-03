@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include "locator.hpp"
 
 #include <cinttypes>
@@ -10,7 +11,6 @@
 #include "dbHandle.hpp"
 #include "dbInstance.hpp"
 #include "manager.hpp"
-
 
 namespace
 {

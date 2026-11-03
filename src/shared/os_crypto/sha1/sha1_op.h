@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -89,5 +89,17 @@ int OS_SHA1_File_Nbytes_with_fp_check(const char * fname, EVP_MD_CTX ** c, os_sh
  * @param buf[in] String to update the SHA1 context
  */
 void OS_SHA1_Stream(EVP_MD_CTX *c, os_sha1 output, char * buf);
+
+/**
+ * @brief Update the context with the first `len` bytes of a buffer, NUL bytes included.
+ *
+ * Unlike OS_SHA1_Stream(), the buffer is not read as a string, so the bytes after an
+ * embedded NUL are hashed too, as OS_SHA1_File_Nbytes() does in binary mode.
+ *
+ * @param c[out] EVP_MD_CTX context.
+ * @param buf[in] Bytes to update the SHA1 context. Nothing is hashed if NULL.
+ * @param len[in] Number of bytes of `buf` to hash.
+ */
+void OS_SHA1_Stream_Bytes(EVP_MD_CTX *c, const char * buf, size_t len);
 
 #endif /* SHA1_OP_H */

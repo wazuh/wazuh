@@ -1,0 +1,53 @@
+- name: 'socket_mint'
+  description: 'token_create over auth.sock mints a token and persists it with the store 0640 wazuh-manager:wazuh-manager'
+  configuration_parameters:
+  metadata:
+    action: 'socket_mint'
+
+- name: 'cli_mint'
+  description: 'The CLI prints the token on stdout and its metadata (id, endpoint, expiry, pin, credential) on stderr'
+  configuration_parameters:
+  metadata:
+    action: 'cli_mint'
+
+- name: 'cli_list_hides_secret'
+  description: 'The listing names every token by id and never echoes a secret'
+  configuration_parameters:
+  metadata:
+    action: 'cli_list_hides_secret'
+
+- name: 'cli_show_token'
+  description: '--show-token describes a token read from stdin without its credential, and refuses garbage'
+  configuration_parameters:
+  metadata:
+    action: 'cli_show_token'
+
+- name: 'add_consumes_then_revoke_blocks'
+  description: 'An enrollment with a token counts a use, and once the token is revoked the next one is refused'
+  configuration_parameters:
+  metadata:
+    action: 'add_consumes_then_revoke_blocks'
+
+- name: 'refusals'
+  description: 'An address outside the listener certificate SAN is refused on both doors and persists nothing'
+  configuration_parameters:
+  metadata:
+    action: 'refusals'
+
+- name: 'ip_address_warns'
+  description: 'An IP address is accepted but warns that agents will not be able to verify the manager by name'
+  configuration_parameters:
+  metadata:
+    action: 'ip_address_warns'
+
+- name: 'purge_drops_the_unusable'
+  description: 'A purge removes the revoked token and leaves the live one in the store'
+  configuration_parameters:
+  metadata:
+    action: 'purge_drops_the_unusable'
+
+- name: 'purge_all_empties_the_store'
+  description: 'Purging with --all --force leaves a valid, empty store the manager still reads'
+  configuration_parameters:
+  metadata:
+    action: 'purge_all_empties_the_store'

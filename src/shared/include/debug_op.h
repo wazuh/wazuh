@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -108,16 +108,13 @@ cJSON *getLoggingConfig(void);
 char * win_strerror(unsigned long error);
 #endif
 
-/* Use these three functions to set when you
- * enter in debug, chroot or daemon mode
+/* Use these functions to set when you
+ * enter in debug or daemon mode
  */
 void nowDebug(void);
 int isDebug(void);
 
-void nowChroot(void);
 void nowDaemon(void);
-
-int isChroot(void);
 
 
 /**

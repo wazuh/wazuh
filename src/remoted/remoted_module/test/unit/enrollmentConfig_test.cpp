@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module - Enrollment config unit tests
- * Copyright (C) 2015, Wazuh Inc.
- * August 19, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -170,5 +169,5 @@ TEST(EnrollmentConfigTest, NonPositiveMaxBodySizeFallsBackToTenMebibytes)
     c.auth_max_body_size = 0;
 
     const auto cfg = buildEnrollmentConfig(c);
-    EXPECT_EQ(cfg.maxBodySize, 10u * 1024u * 1024u);
+    EXPECT_EQ(cfg.maxBodySize, 5u * 1024u * 1024u);
 }

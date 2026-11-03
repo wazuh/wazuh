@@ -1,0 +1,112 @@
+run-name: Validate SCA remediation Markdown on PR ${{ github.event.pull_request.number }}
+name: 5.X - Validate SCA remediation Markdown
+
+on:
+  # Scoped to ruleset/sca content and the validator itself — this never runs on unrelated PRs.
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "ruleset/sca/**/*.yml"
+      - ".github/scripts/sca-remediation-markdown/**"
+      - ".github/workflows/5_codequality_sca-remediation-markdown.yml"
+  # A change on the dashboard side (its renderer, or a markdown-it/dompurify bump) can't show up
+  # as a path change here, so a PR-only trigger would never notice it drifting. This re-runs a
+  # full sweep weekly against whatever dashboard-ref.js currently resolves to.
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      full-sweep:
+        description: "Validate every ruleset/sca/**/*.yml file, not just ones changed in a PR"
+        type: boolean
+        default: false
+      dashboard-ref:
+        description: "Override the wazuh-dashboard-plugins ref to check against (branch, tag or commit)"
+        type: string
+        default: ""
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: .github/scripts/sca-remediation-markdown
+    env:
+      DASHBOARD_REF: ${{ inputs.dashboard-ref }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install validator dependencies
+        run: npm ci
+
+      - name: Check dependency versions against the dashboard
+        run: node check-dependency-versions.js
+
+      - name: Self-test the renderer against known fixtures
+        run: node self-test.js
+
+      - name: Determine changed SCA ruleset files
+        if: github.event_name == 'pull_request' && inputs.full-sweep != true
+        id: changed
+        working-directory: .
+        run: |
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          files=$(git diff --name-only --diff-filter=ACMR "$base" "$head" -- 'ruleset/sca/**/*.yml')
+          echo "files<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$files" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+          if [ -z "$files" ]; then
+            echo "count=0" >> "$GITHUB_OUTPUT"
+          else
+            echo "count=$(echo "$files" | wc -l)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Full sweep file list
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.full-sweep == true)
+        id: full
+        working-directory: .
+        run: |
+          files=$(find ruleset/sca -name '*.yml' | sort)
+          { echo "files<<EOF"; echo "$files"; echo "EOF"; } >> "$GITHUB_OUTPUT"
+
+      - name: Validate changed files
+        if: github.event_name == 'pull_request' && inputs.full-sweep != true && steps.changed.outputs.count != '0'
+        working-directory: .
+        env:
+          CHANGED_FILES: ${{ steps.changed.outputs.files }}
+        run: |
+          cd .github/scripts/sca-remediation-markdown
+          mapfile -t files < <(printf '%s\n' "$CHANGED_FILES" | sed 's|^|../../../|')
+          node validate.js "${files[@]}"
+
+      - name: Validate full ruleset
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.full-sweep == true)
+        working-directory: .
+        env:
+          SWEEP_FILES: ${{ steps.full.outputs.files }}
+        run: |
+          cd .github/scripts/sca-remediation-markdown
+          mapfile -t files < <(printf '%s\n' "$SWEEP_FILES" | sed 's|^|../../../|')
+          node validate.js "${files[@]}"
+
+      - name: No SCA files changed
+        if: github.event_name == 'pull_request' && inputs.full-sweep != true && steps.changed.outputs.count == '0'
+        run: echo "No ruleset/sca/**/*.yml files changed in this PR — nothing to validate."

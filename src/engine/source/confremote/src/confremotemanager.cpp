@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <exception>
 #include <utility>
 
@@ -60,7 +61,8 @@ void ConfRemoteManager::synchronize()
             return;
         }
 
-        LOG_WARNING("[{}] Failed to synchronize remote settings: {}. Keeping current state.", LOG_MODULE_NAME, e.what());
+        LOG_WARNING(
+            "[{}] Failed to synchronize remote settings: {}. Keeping current state.", LOG_MODULE_NAME, e.what());
         return;
     }
 

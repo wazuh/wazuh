@@ -72,6 +72,7 @@
 #define FIM_EBPF_LSM_DPATH_FALLBACK         "(6053): BPF LSM load failed with the bpf_d_path-based variants; retrying with the manual path walker (some kernels, e.g. Amazon Linux 2/2023, disallow bpf_d_path for these hooks)."
 #define FIM_AUDIT_FALLBACK_CONFIGURATION    "(6054): The audisp plugin configuration expected for the installed audit version did not create the socket '%s'. Who-data started with an alternative plugin configuration."
 #define FIM_EBPF_LSM_KPROBE_FALLBACK        "(6055): BPF LSM hooks failed to load or attach on this kernel; falling back to kprobe hooks."
+#define FIM_AUDIT_PLUGIN_REMOVED            "(6056): Removed the Audit plugin configuration file '%s': who-data via Audit is not enabled. Auditd will apply it on its next restart."
 
 /* wazuh-logtest information messages */
 #define LOGTEST_INITIALIZED                 "(7200): Logtest started"
@@ -93,5 +94,6 @@
 #define AG_UNINSTALL_VALIDATION_START       "(9500): Starting user validation to uninstall the Wazuh agent package."
 #define AG_UNINSTALL_VALIDATION_GRANTED     "(9501): Validation of the uninstallation of the Wazuh agent package granted."
 #define AG_UNINSTALL_VALIDATION_DENIED      "(9502): Validation of the uninstallation of the Wazuh agent package denied."
+#define AG_SSL_CA_BUNDLE_LOADED             "(9503): <certificate_authorities> '%s' holds %zu certificates: the agent will verify the manager against any of them."
 
 #endif /* INFO_MESSAGES_H */

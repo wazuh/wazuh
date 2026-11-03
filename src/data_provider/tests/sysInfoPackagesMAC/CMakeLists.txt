@@ -20,6 +20,7 @@ target_link_libraries(
   sysInfoMacPackage_unit_test
   FilesystemWrapper
   FileIO
+  sqlite3
   debug
   gtestd
   debug

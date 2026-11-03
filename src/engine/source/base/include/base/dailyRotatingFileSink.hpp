@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef DAILY_ROTATING_FILE_SINK_HPP
 #define DAILY_ROTATING_FILE_SINK_HPP
 

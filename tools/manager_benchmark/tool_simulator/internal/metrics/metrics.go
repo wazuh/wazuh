@@ -16,11 +16,38 @@ type Counters struct {
 
 	StatelessSent, St202, StBad400, StBad413, St503, StOther, EventsSent uint64
 
+	// StatelessRetries counts /stateless re-sends of the same batch by an
+	// "agent"-batching engine step; StatelessRetriesExhausted the flushes whose
+	// try budget ran out (the batch stays buffered for the next flush, as the
+	// agent keeps it); EventsDropped the events refused because the step's buffer
+	// was at its cap (the agent's drop-newest). Summary JSON only, not bench.csv.
+	StatelessRetries, StatelessRetriesExhausted, EventsDropped uint64
+
 	// Scan* are the POST /scan/vd (feed-update re-scan) counters. Scan200 is
-	// "queued", not "scanned" -- the manager answers at admission into VD's
-	// dispatch lane and the scan runs afterward (docu/14-scan-vd.md). ScanOther
+	// "queued", not "scanned" -- the manager answers once VD has recorded a
+	// durable vd_scan task and the scan runs afterward (docu/14-scan-vd.md). ScanOther
 	// collects the 400/401 that also invalidate the run.
 	ScanSent, Scan200, Scan409, Scan503, ScanOther uint64
+
+	// Cacerts* are the GET /cacerts (CA distribution) counters. Cacerts200 is
+	// a PEM handed out; Cacerts404 the CA file missing on the manager;
+	// Cacerts503 the manager refusing a CA the served certificate does
+	// not chain to; Cacerts429 the route's own rate limit refusing it before the
+	// CA was read (docu/15-cacerts.md). CacertsOther collects what invalidates
+	// the run (a 200 without a PEM body, an unexpected status) -- 429 has a
+	// counter of its own precisely so it is not conflated with that.
+	CacertsSent, Cacerts200, Cacerts404, Cacerts503, Cacerts429, CacertsOther uint64
+
+	// EnrollHTTPS* are the POST /enroll (enrollment-token self-enrollment)
+	// counters (docu/16-enroll-https.md). EnrollHTTPS200 is an agent created;
+	// EnrollHTTPS401 the manager refusing the bearer (unknown, expired or revoked
+	// token, or a clock/key problem); EnrollHTTPS403 authd refusing the use of a
+	// bearer remoted had verified (no uses left, or revoked/expired between the
+	// two checks); EnrollHTTPS409 a duplicate name; EnrollHTTPS429 the route's rate
+	// limit refusing it before authd was contacted at all. EnrollHTTPSOther collects
+	// what invalidates the run (a 200 without the agent record, an unexpected
+	// status) -- 429 has a counter of its own so it is not conflated with that.
+	EnrollHTTPSSent, EnrollHTTPS200, EnrollHTTPS401, EnrollHTTPS403, EnrollHTTPS409, EnrollHTTPS429, EnrollHTTPSOther uint64
 
 	// RetriesFeed counts feed-not-ready (503+Retry-After) re-sends; Retries503
 	// counts bare-503 (backpressure) re-sends; RetriesExhausted counts sessions
@@ -37,16 +64,19 @@ type Counters struct {
 // bucket is the counters plus latency histograms for one granularity.
 type bucket struct {
 	c     Counters
-	hists map[string]*Histogram // "session","stateless","notify","startup"
+	hists map[string]*Histogram // one per request kind, keyed as newBucket lists them
 }
 
 func newBucket() *bucket {
 	return &bucket{hists: map[string]*Histogram{
-		"session":   NewHistogram(),
-		"stateless": NewHistogram(),
-		"notify":    NewHistogram(),
-		"startup":   NewHistogram(),
-		"scan":      NewHistogram(),
+		"session":      NewHistogram(),
+		"stateless":    NewHistogram(),
+		"notify":       NewHistogram(),
+		"startup":      NewHistogram(),
+		"shutdown":     NewHistogram(),
+		"scan":         NewHistogram(),
+		"cacerts":      NewHistogram(),
+		"enroll_https": NewHistogram(),
 	}}
 }
 
@@ -144,6 +174,21 @@ func (r *Registry) RecordRetryExhausted(fleet, lane string) {
 	r.add(fleet, lane, func(c *Counters) *uint64 { return &c.RetriesExhausted }, 1)
 }
 
+// RecordStatelessRetry counts one re-send of a /stateless batch.
+func (r *Registry) RecordStatelessRetry(fleet, lane string) {
+	r.add(fleet, lane, func(c *Counters) *uint64 { return &c.StatelessRetries }, 1)
+}
+
+// RecordStatelessRetryExhausted counts a flush whose try budget ran out.
+func (r *Registry) RecordStatelessRetryExhausted(fleet, lane string) {
+	r.add(fleet, lane, func(c *Counters) *uint64 { return &c.StatelessRetriesExhausted }, 1)
+}
+
+// RecordEventsDropped counts events refused by a full agent-batching buffer.
+func (r *Registry) RecordEventsDropped(fleet, lane string, events uint64) {
+	r.add(fleet, lane, func(c *Counters) *uint64 { return &c.EventsDropped }, events)
+}
+
 // RecordStateless classifies a /stateless outcome and records its latency.
 func (r *Registry) RecordStateless(fleet, lane string, status int, events uint64, latencyUS uint64) {
 	r.add(fleet, lane, func(c *Counters) *uint64 { return &c.StatelessSent }, 1)
@@ -166,9 +211,10 @@ func (r *Registry) RecordStateless(fleet, lane string, status int, events uint64
 // RecordScanVD classifies a POST /scan/vd outcome and records its latency.
 //
 // The latency is the ADMISSION time (offset check plus one local UDS round
-// trip), never a scan duration: 200 means VD queued the request in its
-// dispatch lane, and the scan runs afterward on VD's single worker, one agent
-// at a time. 409 (version_mismatch) and 503 (VD did not queue it; the body
+// trip), never a scan duration: 200 means VD recorded the request as a
+// durable vd_scan task (or coalesced it into one already pending), and the
+// scan runs afterward, when task-manager dispatches that task to
+// inventory-sync's VD scan lane. 409 (version_mismatch) and 503 (VD did not queue it; the body
 // names the cause) are contract outcomes of real fleet traffic; anything else
 // lands in ScanOther, which for a 400/401 comes with the run being invalidated
 // by the caller.
@@ -187,7 +233,71 @@ func (r *Registry) RecordScanVD(fleet, lane string, status int, latencyUS uint64
 	}
 }
 
-// RecordControl records a startup/notify/shutdown outcome and latency.
+// RecordCacerts classifies a GET /cacerts outcome and records its latency.
+//
+// 200 (the CA PEM served), 404 (no CA file on the manager), 503 (the manager
+// refuses to hand out a CA the served certificate does not chain to) and 429 (the
+// route's rate limit) are the contract outcomes; anything else lands in
+// CacertsOther, which the caller pairs with invalidating the run (a status the
+// contract does not name, or a 200 that did not carry a PEM).
+func (r *Registry) RecordCacerts(fleet, lane string, status int, latencyUS uint64) {
+	r.add(fleet, lane, func(c *Counters) *uint64 { return &c.CacertsSent }, 1)
+	// A 429 is refused before the handler runs, so its latency is the limiter's and not the
+	// route's: it stays out of the percentiles for the same reason remoted keeps it out of its
+	// own histogram (endpoints/rateLimitGate.hpp) -- during the very burst the limit exists for,
+	// those near-zero samples would dominate p50/p99 and hide what the served requests cost.
+	if status != 429 {
+		r.observe(fleet, lane, "cacerts", latencyUS)
+	}
+	switch status {
+	case 200:
+		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.Cacerts200 }, 1)
+	case 404:
+		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.Cacerts404 }, 1)
+	case 503:
+		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.Cacerts503 }, 1)
+	case 429:
+		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.Cacerts429 }, 1)
+	default:
+		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.CacertsOther }, 1)
+	}
+}
+
+// RecordEnrollHTTPS classifies a POST /enroll (enrollment token) outcome and
+// records its latency.
+//
+// 200 (agent created), 401 (bearer refused), 403 (authd refused the use of a
+// verified token), 409 (duplicate name) and 429 (the route's rate limit, refused
+// before authd was contacted) are the contract outcomes; anything else lands in
+// EnrollHTTPSOther, which the caller pairs with invalidating the run
+// (docu/16-enroll-https.md).
+func (r *Registry) RecordEnrollHTTPS(fleet, lane string, status int, latencyUS uint64) {
+	r.add(fleet, lane, func(c *Counters) *uint64 { return &c.EnrollHTTPSSent }, 1)
+	// A 429 is refused before the handler runs, so its latency is the limiter's and not the
+	// route's: it stays out of the percentiles for the same reason remoted keeps it out of its
+	// own histogram (endpoints/rateLimitGate.hpp) -- during the very burst the limit exists for,
+	// those near-zero samples would dominate p50/p99 and hide what the served requests cost.
+	if status != 429 {
+		r.observe(fleet, lane, "enroll_https", latencyUS)
+	}
+	switch status {
+	case 200:
+		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.EnrollHTTPS200 }, 1)
+	case 401:
+		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.EnrollHTTPS401 }, 1)
+	case 403:
+		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.EnrollHTTPS403 }, 1)
+	case 409:
+		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.EnrollHTTPS409 }, 1)
+	case 429:
+		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.EnrollHTTPS429 }, 1)
+	default:
+		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.EnrollHTTPSOther }, 1)
+	}
+}
+
+// RecordControl records a startup/notify/shutdown outcome and latency. Each
+// kind has its own histogram in newBucket: observe drops a kind without one.
 func (r *Registry) RecordControl(fleet, kind string, ok bool, latencyUS uint64) {
 	r.observe(fleet, "", kind, latencyUS)
 	pick := map[[2]string]func(*Counters) *uint64{

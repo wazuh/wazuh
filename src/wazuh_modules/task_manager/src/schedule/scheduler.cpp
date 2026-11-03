@@ -1,7 +1,6 @@
 /*
  * Wazuh task manager module
- * Copyright (C) 2015, Wazuh Inc.
- * September 1, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -39,6 +38,12 @@ namespace
     ///        `now >= it` stays false and computeNextWake()'s future-only filter ignores it,
     ///        without either place needing to know which timers are optional.
     constexpr Timestamp NEVER_DUE {std::numeric_limits<Timestamp>::max()};
+
+    /// @brief Pages handed back per compaction step: 1 MiB at the 4 KiB page size. The store
+    ///        mutex is held for one step and released between them, so a request waits behind at
+    ///        most one -- measured at no more than ~100 ms with synchronous=FULL. A pass keeps
+    ///        stepping until less than one step's worth is free.
+    constexpr int COMPACT_STEP_PAGES {256};
 } // namespace
 
 namespace task_manager::schedule
@@ -73,24 +78,6 @@ namespace task_manager::schedule
         m_nextSweep = now + m_options.sweepInterval.count();
         m_nextCleanup = now + m_options.cleanupInterval.count();
         m_nextSizeRotate = m_options.sizeRotationEnabled ? now + m_options.sizeRotateInterval.count() : NEVER_DUE;
-
-        // The vacuum interval survives a restart, so a manager that is restarted daily still
-        // compacts. Without this it would vacuum on every boot, or never.
-        if (const auto last {m_store.getMetadata("last_vacuum_time")}; last.has_value())
-        {
-            try
-            {
-                m_nextVacuum = std::stoll(*last) + m_options.vacuumInterval.count();
-            }
-            catch (const std::exception&)
-            {
-                m_nextVacuum = now + m_options.vacuumInterval.count();
-            }
-        }
-        else
-        {
-            m_nextVacuum = now + m_options.vacuumInterval.count();
-        }
 
         m_thread = std::thread(&Scheduler::loop, this);
     }
@@ -173,9 +160,9 @@ namespace task_manager::schedule
 
     void Scheduler::spawnDueRuns(const Timestamp now)
     {
-        // Cached for this pass. The cluster role is read through a host call that re-parses
-        // ossec.conf, so it must not be asked once per schedule -- and it must never reach the
-        // wake path, which runs far more often than this.
+        // Cached for this pass. The cluster role is read through a host call that reads the
+        // effective cluster section of the manager configuration, so it must not be asked once
+        // per schedule -- and it must never reach the wake path, which runs far more often than this.
         int workerState {-1};
         bool workerStateRead {false};
 
@@ -298,8 +285,32 @@ namespace task_manager::schedule
     {
         // Agent tasks DO age out while pending, and manager tasks deliberately do not. Both live
         // in this database and nothing else prunes either.
-        m_store.expireAgentTasks(now - m_options.agentTaskTtl.count());
-        m_store.deleteOldAgentTasks(now - m_options.agentTaskGrace.count());
+        const auto expired {m_store.expireAgentTasks(now - m_options.agentTaskTtl.count())};
+        const auto removed {m_store.deleteOldAgentTasks(now - m_options.agentTaskGrace.count())};
+
+        if (expired > 0)
+        {
+            // A pending agent task expires because its agent never polled THIS node inside the
+            // TTL. That is routine rather than wrong: a restart is broadcast to every node, the
+            // agent polls one of them over load-balanced HTTPS, and the copies nobody fetched
+            // expire here. Debug, then, not a warning -- but said out loud, because otherwise a
+            // command that was never delivered leaves no trace anywhere. Counts only: the
+            // statement behind this is one bulk UPDATE, and naming each row would cost a separate
+            // query over an unbounded result set on every cleanup pass.
+            LOGFN_DEBUG1(schedulerLogFn(),
+                         "Expired %lld pending agent task(s) created more than %llds ago (task_ttl): their "
+                         "agent never fetched them from this node",
+                         static_cast<long long>(expired),
+                         static_cast<long long>(m_options.agentTaskTtl.count()));
+        }
+
+        if (removed > 0)
+        {
+            LOGFN_DEBUG1(schedulerLogFn(),
+                         "Removed %lld expired or delivered agent task(s) older than %llds",
+                         static_cast<long long>(removed),
+                         static_cast<long long>(m_options.agentTaskGrace.count()));
+        }
 
         storage::RetentionRules rules;
         rules.terminalBefore = now - static_cast<Timestamp>(m_options.retentionDays) * 86400;
@@ -311,17 +322,55 @@ namespace task_manager::schedule
 
         if (m_options.maxRows != storage::UNBOUNDED && stats.remaining > m_options.maxRows)
         {
-            // The ceiling could not be met, which means the excess is pending, claimed or
-            // dead-lettered rows that no rule may remove. Worth saying out loud: reaching this
-            // state with only dead letters left is a real problem, and silence would hide it.
+            // The ceiling could not be met. It evicts every terminal status, dead letters last, so
+            // the excess is pending or claimed work that no rule may remove. Worth saying out loud:
+            // a queue that outgrows the ceiling is a real problem, and silence would hide it.
             LOGFN_WARN(schedulerLogFn(),
                        "MANAGER_TASKS still holds %lld rows after retention, above the %d ceiling. The "
-                       "excess is pending, claimed or dead-lettered work that retention may not remove.",
+                       "excess is pending or claimed work, which retention never removes.",
                        static_cast<long long>(stats.remaining),
                        m_options.maxRows);
         }
 
+        // Before the checkpoint, which is what moves the compacted pages into the file and lets it
+        // shrink -- and truncates the WAL the compaction itself wrote.
+        compact();
         checkpointWal();
+    }
+
+    void Scheduler::compact()
+    {
+        // Every cleanup pass, and only what that pass freed. The retired daily VACUUM rebuilt the
+        // whole database in heap instead -- a day of Active Response, hundreds of MB at once -- and
+        // held the store for the seconds it took.
+        std::int64_t steps {0};
+        storage::CompactStats stats;
+
+        do
+        {
+            stats = m_store.compactStep(COMPACT_STEP_PAGES);
+
+            if (!stats.supported)
+            {
+                if (!m_compactUnsupportedLogged)
+                {
+                    m_compactUnsupportedLogged = true;
+                    LOGFN_INFO(schedulerLogFn(),
+                               "The tasks database was created without incremental auto-vacuum: freed space is "
+                               "reused, but queue/tasks/tasks.db will not shrink. To enable it, stop the manager "
+                               "and run: sqlite3 /var/wazuh-manager/queue/tasks/tasks.db 'PRAGMA "
+                               "auto_vacuum=INCREMENTAL; VACUUM;'");
+                }
+                return;
+            }
+
+            ++steps;
+        } while (stats.freePages >= COMPACT_STEP_PAGES && !m_stopping.load(std::memory_order_acquire));
+
+        LOGFN_DEBUG2(schedulerLogFn(),
+                     "Compacted the tasks database in %lld step(s); %lld free page(s) left",
+                     static_cast<long long>(steps),
+                     static_cast<long long>(stats.freePages));
     }
 
     void Scheduler::checkpointWal()
@@ -352,7 +401,7 @@ namespace task_manager::schedule
         // function rather than a detail.
         //
         // Every candidate below that is already due has, by this point, either been handled by the
-        // pass that just ran (the four timers advance themselves) or belongs to somebody else --
+        // pass that just ran (the three timers advance themselves) or belongs to somebody else --
         // and minPendingNextAttemptAt() is routinely in the PAST for a reason that is normal rather
         // than exceptional: a type whose concurrency group is saturated leaves its remaining rows
         // pending and eligible. Deleting 5000 agents leaves ~4996 of them in exactly that state for
@@ -377,7 +426,6 @@ namespace task_manager::schedule
         consider(m_store.minScheduleNextRun());
         consider(m_nextSweep);
         consider(m_nextCleanup);
-        consider(m_nextVacuum);
         consider(m_nextSizeRotate);
 
         // Never the past, and never `now` either: a zero-length wait is the spin this guards
@@ -414,13 +462,6 @@ namespace task_manager::schedule
                     // inline, and this thread is also the sweeper and the retention pass.
                     m_executor.signalPeriodicAction("log_rotate_size");
                     m_nextSizeRotate = now + m_options.sizeRotateInterval.count();
-                }
-
-                if (now >= m_nextVacuum)
-                {
-                    m_store.vacuum();
-                    m_store.setMetadata("last_vacuum_time", std::to_string(now));
-                    m_nextVacuum = now + m_options.vacuumInterval.count();
                 }
 
                 // Rows whose backoff has just elapsed.

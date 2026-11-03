@@ -115,7 +115,7 @@ jobs:
 
     steps:
       - name: Cancel previous runs
-        uses: fkirc/skip-duplicate-actions@master
+        uses: fkirc/skip-duplicate-actions@v5.3.2
         with:
           cancel_others: "true"
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -231,7 +231,7 @@ jobs:
           TESTS_PATH=$GITHUB_WORKSPACE/.github/actions/test-install-components/
           if [ -z "${{ env.PACKAGE_NAME }}" ]; then echo "No package found matching the pattern!"; exit 1; fi
 
-          CONTAINER_ID=$(sudo docker run -d -v $TESTS_PATH/:/tests -v /tmp/:/packages -v /var/wazuh-manager:/var/wazuh-manager \
+          CONTAINER_ID=$(sudo docker run -d -v $TESTS_PATH/:/tests -v /tmp/:/packages -v /var/wazuh-manager:/var/wazuh-manager -v /etc/wazuh-manager:/etc/wazuh-manager \
             --entrypoint '/bin/sh' $CONTAINER_NAME:${{ env.TAG }} -c "tail -f /dev/null")
 
           sudo docker exec $CONTAINER_ID /tests/install_component.sh $PACKAGE_NAME manager
@@ -260,7 +260,7 @@ jobs:
           wazuh_group_name: wazuh-manager
           size_check: "false"
           ignore: "site-packages,/var/wazuh-manager/framework/python"
-          installation_directory: "/var/wazuh-manager"
+          installation_directory: "/var/wazuh-manager,/etc/wazuh-manager"
 
       - name: Check embedded Python version
         run: |
@@ -446,12 +446,11 @@ jobs:
           name: ${{ env.PACKAGE_SYMBOLS_NAME }}
           path: /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}
 
-      - name: Set up AWS CLI
+      - name: Configure AWS credentials via OIDC
         if: ${{ env.SHOULD_UPLOAD == 'true' }}
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
-          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
-          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
+          role-to-assume: ${{ secrets.CI_OIDC_ROLE_ARN }}
           aws-region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Upload package to S3

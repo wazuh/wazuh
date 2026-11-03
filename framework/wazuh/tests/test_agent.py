@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -12,6 +12,7 @@ import pytest
 from grp import getgrnam
 from json import dumps
 from pwd import getpwnam
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch, call
 from typing import Any
 
@@ -26,15 +27,16 @@ with patch('wazuh.core.common.wazuh_uid'):
         del sys.modules['wazuh.rbac.orm']
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
-        from wazuh.agent import add_agent, assign_agents_to_group, create_group, delete_agents, delete_groups, \
+        from wazuh.agent import add_agent, assign_agents_to_group, create_group, create_enrollment_token, \
+            delete_agents, delete_enrollment_token, delete_enrollment_tokens, delete_groups, get_enrollment_tokens, \
             get_agent_conf, get_agent_groups, get_agents, get_agents_in_group, get_agents_keys, \
             get_agents_summary, get_agents_summary_os, get_agents_summary_status, \
             get_distinct_agents, get_file_conf, get_full_overview, get_group_files, get_outdated_agents, \
             remove_agent_from_group, remove_agent_from_groups, remove_agents_from_group, \
             restart_agents, upgrade_agents, upload_group_file, \
             reload_agents, \
-            check_uninstall_permission, ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST, ERROR_CODES_UPGRADE_SOCKET
-        from wazuh.core.agent import Agent
+            check_uninstall_permission, ERROR_CODES_UPGRADE_SOCKET
+        from wazuh.core.agent import Agent, WazuhDBQueryGroup
         from wazuh import WazuhError, WazuhException, WazuhInternalError
         from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
         from wazuh.core.tests.test_agent import InitAgent
@@ -158,19 +160,25 @@ def test_agent_sort_order(socket_mock, send_mock, fields, order, expected_items)
                                                            f'"{expected_items}". '
 
 
+@pytest.mark.parametrize('agent_list, expected_ids', [
+    ([], []),
+    (['002', '001'], ['001', '002']),
+    (['001', '999'], ['001']),
+    (['001', '5\n', '١'], ['001']),
+])
+@patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.core.wdb_http.WazuhDBHTTPClient')
-async def test_get_agents_summary(wdb_http_client_mock: AsyncMock):
-    """Test if get_agent_groups() asks for agent's groups correctly."""
-    agent_ids = []
+async def test_get_agents_summary(wdb_http_client_mock: AsyncMock, agent_list: list, expected_ids: list):
+    """Test that get_agents_summary() sends wazuh-db only the ids of agents in the system."""
     summary = AgentsSummary(agents_by_status={'active': 10, 'disconnected': 2})
     wdb_http_client_mock.return_value.close = AsyncMock()
     get_agents_summary_mock = AsyncMock(return_value=summary)
     wdb_http_client_mock.return_value.get_agents_summary = get_agents_summary_mock
 
-    agents_summary = await get_agents_summary(agent_ids)
+    agents_summary = await get_agents_summary.__wrapped__(agent_list)
     assert agents_summary['data'] == summary.to_dict()
 
-    get_agents_summary_mock.assert_called_once_with(agent_ids)
+    get_agents_summary_mock.assert_called_once_with(expected_ids)
 
 
 @patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
@@ -198,12 +206,76 @@ def test_agent_get_agents_summary_os(connect_mock, send_mock):
     assert summary.affected_items == ['ubuntu'], f"Expected ['ubuntu'] OS but received '{summary['items']} instead."
 
 
+@pytest.mark.parametrize('agent_list, failed_ids', [
+    (['003', '004'], ['003', '004']),
+    (['000', '003'], ['003']),
+    (['000'], []),
+    ([], []),
+    (['999'], []),
+    (['003', '999'], ['003']),
+    (['001', '003'], [])
+])
+@patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_agent_get_agents_summary_os_unknown_os(connect_mock, send_mock, agents_info_mock, agent_list, failed_ids):
+    """Test `get_agents_summary_os` when some of the agents have not reported their OS.
+
+    Parameters
+    ----------
+    agent_list : list
+        List of agent IDs.
+    failed_ids : list
+        Agent IDs expected in `failed_items`.
+    """
+    summary = get_agents_summary_os(agent_list)
+
+    assert summary.total_failed_items == len(failed_ids)
+    rendered = summary.render()
+    if failed_ids:
+        assert summary.affected_items == []
+        assert rendered['data']['failed_items'][0]['error']['code'] == 1776
+        assert rendered['data']['failed_items'][0]['id'] == failed_ids
+        assert rendered['error'] == 1
+    else:
+        assert rendered['data']['failed_items'] == []
+        assert rendered['error'] == 0
+
+
+@pytest.mark.parametrize('system_agents, agent_list, message', [
+    (set(), [], 'No agents are registered'),
+    (set(short_agent_list), ['999'], 'Could not get the operative system of the agents')
+])
+@patch('wazuh.agent.WazuhDBQueryAgents.run', return_value={'items': [], 'totalItems': 0})
+@patch('socket.socket.connect')
+def test_agent_get_agents_summary_os_no_agents(connect_mock, run_mock, system_agents, agent_list, message):
+    """Test the message of `get_agents_summary_os` when no registered agent is in scope.
+
+    Parameters
+    ----------
+    system_agents : set
+        IDs of the agents registered in the system.
+    agent_list : list
+        Agent IDs in scope.
+    message : str
+        Expected message.
+    """
+    with patch('wazuh.agent.get_agents_info', return_value=system_agents):
+        rendered = get_agents_summary_os(agent_list).render()
+
+    assert rendered['message'] == message
+    assert rendered['data']['failed_items'] == []
+    assert rendered['error'] == 0
+
+
 @pytest.mark.parametrize('agent_list, expected_items, error_code', [
     (['010'],        ['010'], None),   # v5.0.0 - succeeds
     (['001', '002'], [],      1761),   # v4.x agents - version guard rejects both
     (['001', '010'], ['010'], 1761),   # mixed - v4.x fails, v5.0 succeeds
     (['010', '500'], ['010'], 1701),   # v5.0 ok, 500 not found
     (['003'],        [],      1761),   # 'N/A' version (rejected startup) - must not raise, must be rejected
+    (['004'],        [],      1774),  # no version in this node's DB - task created, answered with 1774
+    (['004', '010'], ['010'], 1774),  # ditto, next to an agent this node does know
 ])
 @patch('wazuh.agent.create_restart_tasks')
 @patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
@@ -231,13 +303,19 @@ async def test_agent_restart_agents(exit_mock, enter_mock, init_mock, run_mock, 
             {'id': '001', 'version': 'v4.2.0'},
             {'id': '002', 'version': 'v4.0.0'},
             {'id': '010', 'version': 'v5.0.0'},
-            {'id': '003', 'version': 'N/A'}
+            {'id': '003', 'version': 'N/A'},
+            # wazuh-db omits NULL columns, so an agent that has never connected to this node comes
+            # back with no 'version' key at all -- which is not the same as the 'N/A' sentinel
+            # above, and must not be read as a pre-5.0 agent.
+            {'id': '004'}
         ]
     }
     enter_mock.return_value = mock_query
 
-    # Mock task creation response
-    create_restart_mock.return_value = [{"data": [{"agent": agent_id, "error": 0} for agent_id in expected_items]}]
+    # Mock task creation response. Keyed on the agents the function actually asks to queue, so the
+    # result reflects the function's own reporting decisions and not the mock's.
+    create_restart_mock.side_effect = \
+        lambda agents, chunk_size, request_time: [{"data": [{"agent": agent_id, "error": 0} for agent_id in agents]}]
 
     result = await restart_agents(agent_list)
     assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
@@ -246,6 +324,15 @@ async def test_agent_restart_agents(exit_mock, enter_mock, init_mock, run_mock, 
         code = next(iter(result.failed_items.keys())).code
         assert code == error_code, f'"{error_code}" code was expected but "{code}" was received.'
 
+    if '004' in agent_list:
+        # This node holds no version for 004: the task is still created, because the agent may poll
+        # here next, but the answer is 1774 and never an affected item -- claiming success would
+        # override, on a merge, the verdict of the node that does know the agent.
+        assert '004' in create_restart_mock.call_args[0][0], 'The task must be created for the agent anyway.'
+        assert '004' not in result.affected_items, '004 must not be reported as affected by this node.'
+        assert any(error.code == 1774 and '004' in ids for error, ids in result.failed_items.items()), \
+            '004 must be reported with 1774 by a node that has no information about it.'
+
 
 @pytest.mark.parametrize('agent_list, expected_items, error_code', [
     (['010'],        ['010'], None),   # v5.0.0 - succeeds
@@ -253,6 +340,8 @@ async def test_agent_restart_agents(exit_mock, enter_mock, init_mock, run_mock, 
     (['001', '010'], ['010'], 1761),   # mixed - v4.x fails, v5.0 succeeds
     (['010', '500'], ['010'], 1701),   # v5.0 ok, 500 not found
     (['003'],        [],      1761),   # 'N/A' version (rejected startup) - must not raise, must be rejected
+    (['004'],        [],      1774),  # no version in this node's DB - task created, answered with 1774
+    (['004', '010'], ['010'], 1774),  # ditto, next to an agent this node does know
 ])
 @patch('wazuh.agent.create_reload_tasks')
 @patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
@@ -280,13 +369,19 @@ async def test_agent_reload_agents(exit_mock, enter_mock, init_mock, run_mock, a
             {'id': '001', 'version': 'v4.2.0'},
             {'id': '002', 'version': 'v4.0.0'},
             {'id': '010', 'version': 'v5.0.0'},
-            {'id': '003', 'version': 'N/A'}
+            {'id': '003', 'version': 'N/A'},
+            # wazuh-db omits NULL columns, so an agent that has never connected to this node comes
+            # back with no 'version' key at all -- which is not the same as the 'N/A' sentinel
+            # above, and must not be read as a pre-5.0 agent.
+            {'id': '004'}
         ]
     }
     enter_mock.return_value = mock_query
 
-    # Mock task creation response
-    create_reload_mock.return_value = [{"data": [{"agent": agent_id, "error": 0} for agent_id in expected_items]}]
+    # Mock task creation response. Keyed on the agents the function actually asks to queue, so the
+    # result reflects the function's own reporting decisions and not the mock's.
+    create_reload_mock.side_effect = \
+        lambda agents, chunk_size, request_time: [{"data": [{"agent": agent_id, "error": 0} for agent_id in agents]}]
 
     result = await reload_agents(agent_list)
     assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
@@ -294,6 +389,83 @@ async def test_agent_reload_agents(exit_mock, enter_mock, init_mock, run_mock, a
     if result.failed_items:
         code = next(iter(result.failed_items.keys())).code
         assert code == error_code, f'"{error_code}" code was expected but "{code}" was received.'
+
+    if '004' in agent_list:
+        # This node holds no version for 004: the task is still created, because the agent may poll
+        # here next, but the answer is 1774 and never an affected item -- claiming success would
+        # override, on a merge, the verdict of the node that does know the agent.
+        assert '004' in create_reload_mock.call_args[0][0], 'The task must be created for the agent anyway.'
+        assert '004' not in result.affected_items, '004 must not be reported as affected by this node.'
+        assert any(error.code == 1774 and '004' in ids for error, ids in result.failed_items.items()), \
+            '004 must be reported with 1774 by a node that has no information about it.'
+
+
+@pytest.mark.parametrize('func, task_mock_name', [
+    (restart_agents, 'wazuh.agent.create_restart_tasks'),
+    (reload_agents, 'wazuh.agent.create_reload_tasks'),
+])
+@patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
+@patch('wazuh.agent.WazuhDBQueryAgents.run')
+@patch('wazuh.agent.WazuhDBQueryAgents.__init__', return_value=None)
+@patch('wazuh.agent.WazuhDBQueryAgents.__enter__')
+@patch('wazuh.agent.WazuhDBQueryAgents.__exit__')
+async def test_agent_restart_reload_agents_request_time(exit_mock, enter_mock, init_mock, run_mock, agents_info_mock,
+                                                        func, task_mock_name):
+    """Test that the API's timestamp reaches task creation untouched.
+
+    The task id is derived from it, so every cluster node serving the same broadcast request has to
+    stamp the identical one: with a per-node timestamp the same logical restart gets a different id
+    on each node, and an agent that polls two of them runs it twice -- the agent only skips a task
+    id it has already run.
+    """
+    mock_query = MagicMock()
+    mock_query.run.return_value = {'items': [{'id': '010', 'version': 'v5.0.0'}]}
+    enter_mock.return_value = mock_query
+
+    with patch(task_mock_name) as create_mock:
+        create_mock.return_value = [{'data': [{'agent': '010', 'error': 0}]}]
+
+        await func(['010'], request_time=1700000000)
+        assert create_mock.call_args[0][2] == 1700000000, "The caller's timestamp must be the one used."
+
+        # A caller of its own (not the API) still gets a task: the timestamp is only defaulted.
+        create_mock.reset_mock()
+        await func(['010'])
+        assert isinstance(create_mock.call_args[0][2], int)
+
+
+@pytest.mark.parametrize('func, task_mock_name', [
+    (restart_agents, 'wazuh.agent.create_restart_tasks'),
+    (reload_agents, 'wazuh.agent.create_reload_tasks'),
+])
+@patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
+@patch('wazuh.agent.WazuhDBQueryAgents.run')
+@patch('wazuh.agent.WazuhDBQueryAgents.__init__', return_value=None)
+@patch('wazuh.agent.WazuhDBQueryAgents.__enter__')
+@patch('wazuh.agent.WazuhDBQueryAgents.__exit__')
+async def test_agent_restart_reload_agents_task_not_stored(exit_mock, enter_mock, init_mock, run_mock,
+                                                           agents_info_mock, func, task_mock_name):
+    """A task the manager could not store is answered with 1775, even for an agent this node cannot judge.
+
+    1774 tells the operator the command is queued on this node and will run when the agent connects
+    there. With nothing written that is a promise about a row that does not exist, so the creation
+    failure is what gets reported -- for an agent with no version here exactly as for any other.
+    """
+    mock_query = MagicMock()
+    mock_query.run.return_value = {'items': [{'id': '004'}, {'id': '010', 'version': 'v5.0.0'}]}
+    enter_mock.return_value = mock_query
+
+    with patch(task_mock_name) as create_mock:
+        create_mock.return_value = [{'data': [
+            {'agent': '004', 'error': 4, 'message': 'The task manager did not store the task'},
+            {'agent': '010', 'error': 0},
+        ]}]
+
+        result = await func(['004', '010'])
+
+    assert result.affected_items == ['010']
+    reported = {error.code: ids for error, ids in result.failed_items.items()}
+    assert reported == {1775: {'004'}}, 'A task that was never written must not be answered with 1774.'
 
 
 @pytest.mark.parametrize('agent_list, expected_items', [
@@ -385,6 +557,17 @@ def test_agent_get_agents_in_group_q_formats(socket_mock, send_mock, mock_get_gr
     kwargs = mock_get_agents.call_args.kwargs
 
     assert kwargs['q'] == expected_q
+
+
+@pytest.mark.parametrize('q', ['name=a),(id>0', '(name=a'])
+@patch('wazuh.agent.get_agents')
+@patch('wazuh.agent.get_groups', return_value=['default'])
+def test_agent_get_agents_in_group_unbalanced_q(mock_get_groups, mock_get_agents, q):
+    """A q closing the `group=X;(q)` wrapper from inside would escape the group condition, so it is rejected."""
+    with pytest.raises(WazuhError, match='.* 1407 .*'):
+        get_agents_in_group(group_list=['default'], q=q)
+
+    mock_get_agents.assert_not_called()
 
 
 @pytest.mark.parametrize('agent_list, expected_items', [
@@ -522,6 +705,25 @@ def test_agent_get_agent_groups(socket_mock, send_mock, group_list, q, expected_
         assert item['name'] == group_name
         assert item['mergedSum']
         assert item['configSum']
+
+
+@patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
+@patch('wazuh.agent.get_groups', return_value={'default', 'group-1', 'group-2', '007'})
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_agent_get_agent_groups_leading_zeros(socket_mock, send_mock, mock_get_groups):
+    """Test the RBAC group filter matches the group named 007 and not the group named 7."""
+    test_data.cur.execute("INSERT INTO `group` (name) VALUES ('7'), ('007')")
+    try:
+        # `get_agent_groups` drops names outside the allowed list, so the query result is checked directly.
+        with WazuhDBQueryGroup(filters={'rbac_ids': ['007']}, rbac_negate=False, limit=None) as group_query:
+            queried_names = [group['name'] for group in group_query.run()['items']]
+        group_result = get_agent_groups(['007'])
+    finally:
+        test_data.cur.execute("DELETE FROM `group` WHERE name IN ('7', '007')")
+
+    assert queried_names == ['007']
+    assert [item['name'] for item in group_result.affected_items] == ['007']
 
 
 @pytest.mark.parametrize('db_global, system_groups, error_code', [
@@ -682,7 +884,7 @@ def _remove_group_and_tmp_dirs(group_id):
     shutil.rmtree(os.path.join(test_shared_path, group_id), ignore_errors=True)
     tmp_parent = os.path.dirname(test_shared_path)
     for entry in os.listdir(tmp_parent):
-        if entry.startswith(f'.{group_id}.tmp-'):
+        if entry.startswith('.group.tmp-'):
             shutil.rmtree(os.path.join(tmp_parent, entry), ignore_errors=True)
 
 
@@ -704,7 +906,7 @@ def test_create_group_final_ownership_and_mode(chown_mock, uid_mock, gid_mock):
         chown_mock.assert_called_once()
         chowned_path, chowned_uid, chowned_gid = chown_mock.call_args[0]
         assert chowned_path != path_to_group
-        assert chowned_path.startswith(os.path.join(os.path.dirname(test_shared_path), f'.{group_id}.tmp-'))
+        assert chowned_path.startswith(os.path.join(os.path.dirname(test_shared_path), '.group.tmp-'))
         assert chowned_uid == 1000
         assert chowned_gid == 1234
 
@@ -713,6 +915,25 @@ def test_create_group_final_ownership_and_mode(chown_mock, uid_mock, gid_mock):
         file_mode = stat.S_IMODE(os.stat(os.path.join(path_to_group, 'agent.conf')).st_mode)
         assert dir_mode == 0o700, f'Expected group directory mode 0o700, got {oct(dir_mode)}.'
         assert file_mode == 0o660, f'Expected group file mode 0o660, got {oct(file_mode)}.'
+    finally:
+        _remove_group_and_tmp_dirs(group_id)
+
+
+@patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
+@patch('wazuh.core.common.wazuh_gid', return_value=getgrnam('root'))
+@patch('wazuh.core.common.wazuh_uid', return_value=getpwnam('root'))
+@patch('wazuh.agent.chown_r')
+def test_create_group_longest_valid_name(chown_mock, uid_mock, gid_mock):
+    """Test that `create_group` accepts a group name of the maximum length the validator allows: the
+    temporary build directory's name does not grow with the group name.
+    """
+    group_id = 'g' * 255
+    try:
+        create_group(group_id)
+        assert os.path.isdir(os.path.join(test_shared_path, group_id))
+        chowned_path = chown_mock.call_args[0][0]
+        assert group_id not in os.path.basename(chowned_path)
+        assert len(os.path.basename(chowned_path)) == len('.group.tmp-') + 32
     finally:
         _remove_group_and_tmp_dirs(group_id)
 
@@ -732,7 +953,7 @@ def test_create_group_cleans_up_tmp_dir_when_full_copy_fails(full_copy_mock):
         assert not os.path.exists(path_to_group), \
             f'"{path_to_group}" should not exist after a failed `create_group` call.'
         leftover_tmp_dirs = [entry for entry in os.listdir(os.path.dirname(test_shared_path))
-                             if entry.startswith(f'.{group_id}.tmp-')]
+                             if entry.startswith('.group.tmp-')]
         assert not leftover_tmp_dirs, f'Temporary build directories were not cleaned up: {leftover_tmp_dirs}'
     finally:
         _remove_group_and_tmp_dirs(group_id)
@@ -753,7 +974,7 @@ def test_create_group_cleans_up_tmp_dir_when_chown_fails(chown_mock):
         assert not os.path.exists(path_to_group), \
             f'"{path_to_group}" should not exist after a failed `create_group` call.'
         leftover_tmp_dirs = [entry for entry in os.listdir(os.path.dirname(test_shared_path))
-                             if entry.startswith(f'.{group_id}.tmp-')]
+                             if entry.startswith('.group.tmp-')]
         assert not leftover_tmp_dirs, f'Temporary build directories were not cleaned up: {leftover_tmp_dirs}'
     finally:
         _remove_group_and_tmp_dirs(group_id)
@@ -885,6 +1106,41 @@ async def test_assign_agents_to_group(socket_mock, group_exists_mock, send_mock,
     assert len(result.affected_items) == add_group_mock.call_count
     # Check failed items
     assert result.total_failed_items == num_failed
+
+
+@patch('wazuh.core.agent.async_invalidate_registry_memberships', new_callable=AsyncMock)
+@patch('wazuh.core.agent.invalidate_registry_memberships')
+@patch('wazuh.core.agent.WazuhDBConnection')
+@patch('wazuh.core.agent.Agent.get_agent_groups', new_callable=AsyncMock, return_value=[])
+@patch('wazuh.core.agent.Agent.group_exists', return_value=True)
+async def test_assign_agents_to_group_tells_remoted_once(group_exists_mock, agent_groups_mock, wdb_mock,
+                                                        invalidate_mock, async_invalidate_mock):
+    """Test that one API call that writes several memberships tells the local remoted once, after every write, with
+    all the agents it wrote, without blocking the API's event loop."""
+    result = await assign_agents_to_group(['group-1'], ['001', '002', '003'])
+
+    assert result.total_affected_items == 3
+    assert wdb_mock.return_value.send.call_count == 3
+    async_invalidate_mock.assert_awaited_once_with({1, 2, 3})
+    invalidate_mock.assert_not_called()
+
+
+@patch('wazuh.core.agent.invalidate_registry_memberships')
+@patch('wazuh.core.agent.WazuhDBConnection')
+@patch('wazuh.core.agent.get_group_agent_ids', side_effect=lambda group: {'group-1': [1, 2], 'group-2': [2, 9]}[group])
+@patch('wazuh.core.agent.rmtree')
+@patch('wazuh.core.agent.path.exists', return_value=True)
+@patch('wazuh.agent.get_groups', return_value={'group-1', 'group-2'})
+def test_delete_groups_tells_remoted_once(get_groups_mock, exists_mock, rmtree_mock, group_agents_mock, wdb_mock,
+                                          invalidate_mock):
+    """Test that deleting several groups in one call tells the local remoted once, after every group left
+    wazuh-manager-db, about all the agents those groups had."""
+    result = delete_groups(['group-1', 'group-2'])
+
+    assert sorted(result.affected_items) == ['group-1', 'group-2']
+    assert [c.args[0] for c in wdb_mock.return_value.send.call_args_list] == [
+        'global delete-group group-1', 'global delete-group group-2']
+    invalidate_mock.assert_called_once_with({1, 2, 9})
 
 
 @pytest.mark.parametrize('group_list, agent_list, expected_error, catch_exception', [
@@ -1164,6 +1420,14 @@ def test_agent_get_outdated_agents(socket_mock, send_mock, mock_wazuh, mock_get_
     assert result.total_failed_items == 0
 
 
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_agent_get_outdated_agents_unbalanced_q(socket_mock, send_mock):
+    """A q closing the `version!=X;(q)` wrapper from inside would escape the version condition, so it is rejected."""
+    with pytest.raises(WazuhError, match='.* 1407 .*'):
+        get_outdated_agents(agent_list=short_agent_list, q='id=001),(id>0')
+
+
 @pytest.mark.parametrize('agent_set, expected_errors_and_items, result_from_socket, filters, raise_error', [
     (
             {'001', '002', '003', '004', '999'},
@@ -1248,10 +1512,7 @@ def test_agent_upgrade_agents(mock_socket, mock_wdb, mock_client_keys, agent_set
         if raise_error:
             # Upgrade expecting a Wazuh Exception
             for error in expected_errors_and_items.keys():
-                if int(error) in ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST:
-                    with pytest.raises(WazuhError, match=f".* {error} .*"):
-                        upgrade_agents(agent_list=list(agent_set), filters=filters)
-                elif int(error) not in (ERROR_CODES_UPGRADE_SOCKET + [1701, 1703, 1731]):
+                if int(error) not in (ERROR_CODES_UPGRADE_SOCKET + [1701, 1703, 1731]):
                     with pytest.raises(WazuhInternalError, match=f".* {error} .*"):
                         upgrade_agents(agent_list=list(agent_set), filters=filters)
         else:
@@ -1282,18 +1543,86 @@ def test_agent_upgrade_agents(mock_socket, mock_wdb, mock_client_keys, agent_set
             assert expected_errors_and_items == errors_and_items
 
 
+
+@pytest.mark.parametrize('socket_error, error_code', [
+    (7, 1817), (8, 1818), (9, 1819), (10, 1820), (11, 1821), (12, 1822), (13, 1823), (14, 1824), (15, 1825),
+    (16, 1826), (18, 1828)
+])
 @patch('wazuh.agent.get_agents_info', return_value=set(full_agent_list))
 @patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_upgrade_agents_skips_agent_not_in_local_db(mock_socket, mock_wdb, mock_client_keys):
-    """Test `upgrade_agents` silently skips an agent this node has no info for (error 1816).
+def test_agent_upgrade_agents_reports_mixed_outcomes_per_agent(mock_socket, mock_wdb, mock_client_keys,
+                                                               socket_error, error_code):
+    """One socket answer carrying a success AND a failure must keep both, attributed per agent.
 
-    Regression test: when a request is broadcast to a node that doesn't have this agent's info
-    (e.g. because agents connect over stateless, load-balanced HTTPS with no fixed owning node),
-    the upgrade socket returns error 1816 (WM_UPGRADE_GLOBAL_DB_FAILURE). That must not raise and
-    kill the whole request -- it should be skipped so the node that actually has the agent's info
-    can report the real outcome.
+    This is the case the fix exists for. The Task Manager evaluates each agent and answers per
+    agent -- `/agents/upgrade` resolves a WPK per package group, so a Linux agent's task is created
+    while a Windows one answers 1824 in the SAME response. These two codes used to abort the whole
+    loop, which threw the success away.
+
+    Asserting the RESULT rather than an exception is what makes this a test of the fix: dropping
+    1824/1826 from the per-agent branch makes affected_items or failed_items wrong here, where it
+    left every other test in this file passing.
+    """
+    result_from_socket = {
+        'error': 0,
+        'data': [{'error': 0, 'message': 'Success', 'agent': 1},
+                 {'error': socket_error, 'message': 'The WPK file does not exist', 'agent': 2}],
+        'message': 'Success'}
+
+    with patch('wazuh.core.agent.core_upgrade_agents') as core_upgrade_agents_mock:
+        core_upgrade_agents_mock.return_value = result_from_socket
+        result = upgrade_agents(agent_list=['001', '002'])
+
+    assert isinstance(result, AffectedItemsWazuhResult), 'these codes must no longer raise'
+    assert result.affected_items == ['001'], \
+        f'001 had its task created and must survive; got {result.affected_items}'
+    assert result.total_affected_items == 1
+
+    failed = {error.code: ids for error, ids in result.failed_items.items()}
+    assert failed == {error_code: {'002'}}, \
+        f'only 002 failed, and with {error_code}; got {failed}'
+
+
+def test_agent_upgrade_error_codes_match_task_manager_per_agent_verdicts():
+    """The per-agent list is exactly the Task Manager's per-agent and per-package-group verdicts (socket errors
+    7 to 16, and 18), each as 1810 + the socket error; request- and node-level errors stay out of it."""
+    from wazuh.agent import ERROR_CODES_UPGRADE_SOCKET
+
+    assert sorted(ERROR_CODES_UPGRADE_SOCKET) == [1810 + error for error in (7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18)]
+
+
+@pytest.mark.parametrize('socket_error', [17])
+@patch('wazuh.agent.get_agents_info', return_value=set(full_agent_list))
+@patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_agent_upgrade_agents_node_level_error_raises(mock_socket, mock_wdb, mock_client_keys, socket_error):
+    """A node-level answer (upgrades disabled on the node) is still raised for the whole request."""
+    result_from_socket = {
+        'error': 0,
+        'data': [{'error': socket_error, 'message': 'Upgrade procedure could not start', 'agent': 1}],
+        'message': 'Success'}
+
+    with patch('wazuh.core.agent.core_upgrade_agents', return_value=result_from_socket):
+        with pytest.raises(WazuhInternalError) as exc_info:
+            upgrade_agents(agent_list=['001'])
+
+    assert exc_info.value.code == 1810 + socket_error
+
+
+@patch('wazuh.agent.get_agents_info', return_value=set(full_agent_list))
+@patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_agent_upgrade_agents_reports_agent_not_in_local_db(mock_socket, mock_wdb, mock_client_keys):
+    """Test `upgrade_agents` reports socket error 6 as a 1816 failed item, without raising.
+
+    It must not kill the whole request, and it must not be skipped either: the Task Manager also
+    answers it for an agent whose OS information is incomplete, identically on every node, so a node
+    that skips it leaves the agent out of the response everywhere and the refusal invisible. A
+    cluster merge drops it for an agent another node reported on.
     """
     result_from_socket = {
         'error': 0,
@@ -1308,8 +1637,11 @@ def test_agent_upgrade_agents_skips_agent_not_in_local_db(mock_socket, mock_wdb,
 
     assert result.affected_items == ['001']
     assert result.total_affected_items == 1
-    assert not result.failed_items
-    assert result.total_failed_items == 0
+    failed = {error.code: ids for error, ids in result.failed_items.items()}
+    assert failed == {1816: {'002'}}
+    assert result.total_failed_items == 1
+    error = next(iter(result.failed_items))
+    assert error.message == 'Agent information not found in database', 'the Task Manager\'s reason must reach the user'
 
 
 @pytest.mark.parametrize('filename, group_list', [
@@ -1552,3 +1884,98 @@ def test_check_uninstall_permission():
     expected = WazuhResult({'message': 'User has permission to uninstall agents'})
 
     assert result == expected
+
+
+# Enrollment tokens (issue #38993): the API's view of authd's token verbs. The core module is mocked
+# here (framework/wazuh/core/tests/test_enrollment_token.py drives the socket protocol).
+
+TOKEN_ID = 'AAECAwQFBgcICQoLDA0ODw'
+
+
+@patch('wazuh.agent.enrollment_token.create_token',
+       return_value={'token': 'eyJ2ZXIiOjF9', 'id': TOKEN_ID, 'address': 'wazuh-master'})
+def test_create_enrollment_token(mock_create):
+    """create_enrollment_token() forwards every option to the core and returns its data (token included, once)."""
+    result = create_enrollment_token(address='wazuh-master', ttl='2h', max_uses=2)
+
+    mock_create.assert_called_once_with(address='wazuh-master', port=None, prefix=None, ttl='2h', max_uses=2,
+                                        description=None, embed_ca=False, no_credential=False)
+    assert isinstance(result, WazuhResult)
+    assert result.dikt['data'] == mock_create.return_value
+
+
+def _token(letter, hours, **overrides):
+    created = datetime(2023, 11, 14, 12 + hours, 0, tzinfo=timezone.utc)
+    token = {'id': letter * 22, 'address': 'wazuh-master', 'created': created,
+             'expires': datetime(2023, 12, 14, 12 + hours, 0, tzinfo=timezone.utc), 'max_uses': 0, 'uses': 1,
+             'revoked': False, 'credential': True, 'description': f'token {letter}'}
+    token.update(overrides)
+    return token
+
+
+ENROLLMENT_TOKENS = [_token('A', 0), _token('B', 1, revoked=True, description='second one'),
+                     _token('C', 2, credential=False, description=None)]
+
+
+@pytest.mark.parametrize('kwargs, expected_ids, expected_total', [
+    ({}, ['A' * 22, 'B' * 22, 'C' * 22], 3),                                       # created ascending by default
+    ({'sort_by': ['created'], 'sort_ascending': False, 'limit': 1}, ['C' * 22], 3),  # total counts before the limit
+    ({'q': 'description=second one'}, ['B' * 22], 1),
+    ({'search_text': 'second'}, ['B' * 22], 1),
+    ({'select': ['id'], 'offset': 2}, ['C' * 22], 3),
+])
+@patch('wazuh.agent.enrollment_token.list_tokens')
+def test_get_enrollment_tokens(mock_list, kwargs, expected_ids, expected_total):
+    """get_enrollment_tokens() pages, sorts, searches, filters and selects over the core's list."""
+    mock_list.return_value = [dict(t) for t in ENROLLMENT_TOKENS]
+
+    result = get_enrollment_tokens(**kwargs)
+
+    assert isinstance(result, AffectedItemsWazuhResult)
+    assert [t['id'] for t in result.affected_items] == expected_ids
+    assert result.total_affected_items == expected_total
+    if 'select' in kwargs:
+        assert set(result.affected_items[0]) == {'id'}
+    else:
+        assert 'token' not in result.affected_items[0]
+
+
+@patch('wazuh.agent.enrollment_token.revoke_token')
+def test_delete_enrollment_token(mock_revoke):
+    """delete_enrollment_token() revokes through the core and reports the id."""
+    result = delete_enrollment_token(token_id=TOKEN_ID)
+
+    mock_revoke.assert_called_once_with(TOKEN_ID)
+    assert isinstance(result, AffectedItemsWazuhResult)
+    assert result.affected_items == [TOKEN_ID]
+    assert result.total_affected_items == 1
+    assert result.total_failed_items == 0
+
+
+@patch('wazuh.agent.enrollment_token.revoke_token', side_effect=WazuhResourceNotFound(1767))
+def test_delete_enrollment_token_not_found(mock_revoke):
+    """An unknown id is a 1767 (the API answers 404), not a failed item."""
+    with pytest.raises(WazuhResourceNotFound, match='.* 1767 .*'):
+        delete_enrollment_token(token_id='AAAAAAAAAAAAAAAAAAAAAA')
+
+
+@patch('wazuh.agent.enrollment_token.purge_tokens', return_value=[TOKEN_ID, 'B' * 22])
+def test_delete_enrollment_tokens(mock_purge):
+    """delete_enrollment_tokens() purges through the core and reports every id removed."""
+    result = delete_enrollment_tokens(scope='all')
+
+    mock_purge.assert_called_once_with('all')
+    assert isinstance(result, AffectedItemsWazuhResult)
+    assert result.affected_items == [TOKEN_ID, 'B' * 22]
+    assert result.total_affected_items == 2
+    assert result.total_failed_items == 0
+
+
+@patch('wazuh.agent.enrollment_token.purge_tokens', return_value=[])
+def test_delete_enrollment_tokens_defaults_to_dead(mock_purge):
+    """Without a scope the purge only removes what can no longer authorise an enrollment."""
+    result = delete_enrollment_tokens()
+
+    mock_purge.assert_called_once_with('dead')
+    assert result.affected_items == []
+    assert result.total_affected_items == 0

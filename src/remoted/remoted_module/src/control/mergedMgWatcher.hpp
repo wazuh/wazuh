@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module - Merged.mg file watcher
- * Copyright (C) 2015, Wazuh Inc.
- * July 31, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -20,7 +19,8 @@ namespace remoted::control
 {
     /**
      * Watches every `merged.mg` under sharedGroupsRoot and multiGroupsRoot and
-     * invokes the callback with the absolute path of the merged.mg that changed.
+     * invokes the callback with the path of the merged.mg that changed (relative to remoted's cwd,
+     * the installation directory, like the roots).
      * The watcher also watches the roots themselves so directories created after
      * startup (new groups / new multigroups) are picked up automatically.
      */

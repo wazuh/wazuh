@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Init functions for Wazuh
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
 UN=${NUNAME};
@@ -38,9 +38,13 @@ ReadServiceInstallDir()
         _rsid_dir=$(sed -n 's|^[[:space:]]*\(/.*\)/bin/[^[:space:]]*control start$|\1|p' "${1}" 2>/dev/null | head -1)
     fi
 
-    # macOS LaunchDaemon
+    # macOS LaunchDaemon: packages older than 4.14.9 launch from StartupItems, whose WAZUH script holds the home.
     if [ "X${_rsid_dir}" = "X" ]; then
-        _rsid_dir=$(sed -n 's|^[[:space:]]*<string>\(/.*\)/Wazuh-launcher</string>[[:space:]]*$|\1|p' "${1}" 2>/dev/null | head -1)
+        if grep -q '<string>/Library/StartupItems/WAZUH/' "${1}" 2>/dev/null; then
+            _rsid_dir=$(ReadServiceInstallDir /Library/StartupItems/WAZUH/WAZUH)
+        else
+            _rsid_dir=$(sed -n 's|^[[:space:]]*<string>\(/.*\)/Wazuh-launcher</string>[[:space:]]*$|\1|p' "${1}" 2>/dev/null | head -1)
+        fi
     fi
 
     echo "${_rsid_dir}"
@@ -100,12 +104,14 @@ runInit()
     echo ""
     echo ""
     control_script="wazuh-control"
+    init_template="wazuh"
 
     if [ -n "$1" ]; then
         if [ "X$1" = "Xmanager" ]; then
             service="$service-manager"
             file_permissions="wazuh-manager"
             control_script="wazuh-manager-control"
+            init_template="wazuh-manager"
         else
             service="$service-$1"
             file_permissions="wazuh"
@@ -113,6 +119,21 @@ runInit()
     fi
 
     update_only=$2
+
+    # Whether to register the service for boot, decided once and honoured by every init system
+    # below rather than by the systemd branch alone.
+    #
+    # The manager is deliberately NOT enabled. The unit or init script is installed and left neither
+    # enabled nor started, matching what the DEB and RPM packages already do and what the
+    # documentation tells operators to run (`systemctl enable --now wazuh-manager`). The manager
+    # needs credentials it cannot always resolve at install time -- the indexer's password commonly
+    # arrives later -- and enabling without starting would only produce a failed unit at the next
+    # reboot, when nobody is watching. The agent needs none of that and is still enabled.
+    if [ "X${update_only}" = "X" ] && [ "X$1" != "Xmanager" ] && [ "X$1" != "Xlocal" ]; then
+        boot_enable="yes"
+    else
+        boot_enable="no"
+    fi
 
     # Checking for Systemd
     if hash ps 2>&1 > /dev/null && hash grep 2>&1 > /dev/null && [ -n "$(ps -e | egrep ^\ *1\ .*systemd$)" ]; then
@@ -150,7 +171,7 @@ runInit()
 
         rm -f /etc/rc.d/init.d/${service}
 
-        if [ "X${update_only}" = "X" ]
+        if [ "X${boot_enable}" = "Xyes" ]
         then
             systemctl enable "wazuh-"$type
         fi
@@ -166,11 +187,11 @@ runInit()
             fi
             echo " - ${systemis} Redhat Linux."
             echo " - ${modifiedinit}"
-            GenerateService wazuh-rh.init > /etc/rc.d/init.d/${service}
+            GenerateService ${init_template}-rh.init > /etc/rc.d/init.d/${service}
             chmod 755 /etc/rc.d/init.d/${service}
             chown root:$file_permissions /etc/rc.d/init.d/${service}
 
-            if [ "X${update_only}" = "X" ]
+            if [ "X${boot_enable}" = "Xyes" ]
             then
                 /sbin/chkconfig --add ${service} > /dev/null 2>&1
             fi
@@ -189,7 +210,7 @@ runInit()
         chmod 755 /etc/init.d/${service}
         chown root:$file_permissions /etc/init.d/${service}
 
-        if [ "X${update_only}" = "X" ]
+        if [ "X${boot_enable}" = "Xyes" ]
         then
             rc-update add ${service} default
         fi
@@ -204,11 +225,11 @@ runInit()
         fi
         echo " - ${systemis} Suse Linux."
         echo " - ${modifiedinit}"
-        GenerateService wazuh-suse.init > /etc/init.d/${service}
+        GenerateService ${init_template}-suse.init > /etc/init.d/${service}
         chmod 755 /etc/init.d/${service}
         chown root:$file_permissions /etc/init.d/${service}
 
-        if [ "X${update_only}" = "X" ]
+        if [ "X${boot_enable}" = "Xyes" ]
         then
             /sbin/chkconfig --add ${service} > /dev/null 2>&1
         fi
@@ -294,12 +315,12 @@ runInit()
             fi
             echo " - ${systemis} Debian (Ubuntu or derivative)."
             echo " - ${modifiedinit}"
-            GenerateService wazuh-debian.init > /etc/init.d/${service}
+            GenerateService ${init_template}-debian.init > /etc/init.d/${service}
             chmod +x /etc/init.d/${service}
             chmod go-w /etc/init.d/${service}
             chown root:$file_permissions /etc/init.d/${service}
 
-            if [ "X${update_only}" = "X" ]
+            if [ "X${boot_enable}" = "Xyes" ]
             then
                 update-rc.d ${service} defaults > /dev/null 2>&1
             fi

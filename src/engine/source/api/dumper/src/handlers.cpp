@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <api/dumper/handlers.hpp>
 #include <base/logging.hpp>
 #include <eMessages/event_dumper.pb.h>

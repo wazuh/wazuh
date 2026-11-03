@@ -1,7 +1,6 @@
 /*
  * Wazuh inventory sync server module
- * Copyright (C) 2015, Wazuh Inc.
- * July 30, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -11,6 +10,9 @@
 
 #include "statsEndpoint.hpp"
 
+#include "common/agentId.hpp"
+#include "common/jsonNestingDepth.hpp"
+#include "endpoints/reportedAgentMetadata.hpp"
 #include "loggerHelper.h"
 #include "timeHelper.h"
 #include <uds_http_server/logThrottle.hpp>
@@ -105,6 +107,7 @@ namespace invsync::endpoints::stats
             static wazuh::uds_http::LogThrottle indexedThrottle;
             static wazuh::uds_http::LogThrottle goneThrottle;
             static wazuh::uds_http::LogThrottle unavailableThrottle;
+            static wazuh::uds_http::LogThrottle metadataThrottle;
 
             if (!request)
             {
@@ -119,6 +122,22 @@ namespace invsync::endpoints::stats
             if (agentIdIt == request->headers.end() || agentIdIt->second.empty())
             {
                 responder->send(badRequest("Missing agent id header"));
+                return;
+            }
+            // It is also the document id and `wazuh.agent.id`, so it must be the one canonical spelling
+            // the whole-agent deletion matches: anything else would index a document no deletion
+            // reaches. remoted only ever sends that form, so this rejects a bypassing caller.
+            if (!invsync::common::isCanonicalAgentId(agentIdIt->second))
+            {
+                responder->send(badRequest("Agent id header must be a canonical agent id"));
+                return;
+            }
+
+            // Before the parse, on the raw bytes: dump() below recurses once per level, so a deep
+            // enough body would overflow this thread's stack and take the whole of modulesd down.
+            if (invsync::common::exceedsNestingDepth(request->body))
+            {
+                responder->send(badRequest("Body nests deeper than the allowed limit"));
                 return;
             }
 
@@ -180,11 +199,14 @@ namespace invsync::endpoints::stats
             }
 
             std::string serializedDocument;
+            std::size_t droppedMetadata {0};
             try
             {
                 // JSON pointers so `wazuh.agent.id` reads the way it is spelled everywhere else in
                 // the schema.
                 nlohmann::json document;
+                // Groups and host come from the agent; the id and the cluster below are this side's.
+                droppedMetadata = invsync::endpoints::stampReportedAgentMetadata(payload, document);
                 document["/state/modified_at"_json_pointer] = Utils::getCurrentISO8601();
                 document["/state/document_version"_json_pointer] = STATS_DOCUMENT_VERSION;
                 document["/wazuh/schema/version"_json_pointer] = STATS_SCHEMA_VERSION;
@@ -204,6 +226,19 @@ namespace invsync::endpoints::stats
                 LOGFN_DEBUG1(logFn(), "Could not serialize an agent stats document: %s.", e.what());
                 responder->send(badRequest("Report holds bytes that are not valid UTF-8"));
                 return;
+            }
+
+            if (droppedMetadata > 0)
+            {
+                if (const auto decision = metadataThrottle.record())
+                {
+                    LOGFN_DEBUG1(logFn(),
+                                 "Accepted %llu agent stats report(s) in the last %d s with reported groups or "
+                                 "host fields left empty because they failed validation (last from agent '%s').",
+                                 static_cast<unsigned long long>(decision.total),
+                                 wazuh::uds_http::LogThrottle::kDefaultWindowSeconds,
+                                 agentIdIt->second.c_str());
+                }
             }
 
             try

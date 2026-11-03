@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -14,6 +14,7 @@
 #include "os_net.h"
 #include "agentd.h"
 #include "module_limits.h"
+#include "x509_op.h"
 
 /* Global variables */
 int run_foreground;
@@ -53,14 +54,11 @@ int ClientConf(const char *cfgfile)
     agt->flags.auto_restart = 1;
     agt->notify_time = 0;
     agt->max_time_reconnect_try = 0;
-    agt->main_ip_update_interval = 0;
     agt->server_count = 0;
 
-    /* Resolved after parsing, once we know whether <certificate_authorities> was set:
-     * SYSTEM by default (verifies without requiring any <ssl> block, e.g. against
-     * cloud.wazuh.com's publicly-trusted certificate), or CERT when a CA was pinned
-     * without an explicit <verification_mode>. Never left UNSET past this function
-     * returning -- see the resolution below, after both ReadConfig() calls. */
+    /* Left UNSET so w_agent_resolve_ssl_posture() can tell "the operator said nothing" from
+     * "the operator said none", which decide different things. Never left UNSET past this
+     * function returning -- see the call at the end. */
     agt->ssl.verification_mode = AGENT_VERIFY_UNSET;
 
     /* <config_report> ships enabled: the manager needs the periodic /config snapshot
@@ -96,6 +94,7 @@ int ClientConf(const char *cfgfile)
     agt->enrollment.use_source_ip = false;
     os_strdup(AUTHD_PASS, agt->enrollment.authorization_pass_path);
     agt->enrollment.delay_after_enrollment = 20;
+    agt->enrollment.set_under_agent = false;
 
     if (ReadConfig(modules, cfgfile, agt, NULL) < 0) {
         return (OS_INVALID);
@@ -122,28 +121,116 @@ int ClientConf(const char *cfgfile)
     }
 #endif
 
-    /* verification_mode is still UNSET whenever ossec.conf didn't set it explicitly --
-     * the shared remote config never reaches this point at all: Read_Agent_Shared()
-     * (dispatched above for AGENTCONFIG) only recognizes <batch>/force_reconnect_interval
-     * under <agent> and rejects everything else, <ssl> included, so a centrally-managed
-     * fleet cannot set verification_mode/certificate_authorities via shared config today.
-     * Mirrors the manager's own inference (remote-config.c): a pinned CA without an
-     * explicit mode means the operator wants it verified, not silently unused. */
-    if (agt->ssl.verification_mode == AGENT_VERIFY_UNSET) {
-        /* A present-but-empty <certificate_authorities/> (or <certificate_authorities>
-         * </certificate_authorities>) is not a real CA -- w_agent_validate_ssl_ca() will
-         * still fail closed on it either way, but resolving to 'certificate' here would
-         * warn that a CA is "configured" when none actually was. */
-        if (agt->ssl.certificate_authorities != NULL && *agt->ssl.certificate_authorities != '\0') {
-            mwarn("The '<ssl><certificate_authorities>' option is configured but "
-                  "'<verification_mode>' is not; defaulting '<verification_mode>' to 'certificate'.");
-            agt->ssl.verification_mode = AGENT_VERIFY_CERT;
-        } else {
-            agt->ssl.verification_mode = AGENT_VERIFY_SYSTEM;
-        }
-    }
+    /* Last, so it sees everything ossec.conf had to say about <ssl>. Deliberately below the
+     * ATAMPERING read above rather than beside the CCLIENT one: a resolver that ran before a
+     * path which can still return OS_INVALID would leave "resolved" and "ClientConf
+     * succeeded" as separate facts, and the only net under that mistake is
+     * bridge_map_verify_mode()'s UNSET guard. */
+    w_agent_resolve_ssl_posture(agt);
 
     return (1);
+}
+
+/* Settles what the agent will actually do about TLS, from two inputs: what <ssl> said, and
+ * whether a usable trust anchor is on disk (#38940 requirements 4 and 13). There is no
+ * single default any more -- it is a ladder, and 'none' is only its last rung:
+ *
+ *     explicit <verification_mode>                 -> honoured
+ *     explicit <certificate_authorities>, no mode  -> certificate (mirrors remote-config.c)
+ *     anchor file present, no mode                 -> full, the anchor is the CA
+ *     nothing at all                               -> none, nothing to verify against
+ *
+ * That last rung is 'none' rather than 'system' because on a stock install there is nothing
+ * for the OS trust store to succeed against: the manager's certificate is signed by its own
+ * root-ca.pem, which is in no OS store, so 'system' could only ever refuse to connect -- and
+ * on a Linux host with no OS bundle at all it refuses to even start, (4121). An install that
+ * has been given no trust material verifies nothing and says so, per #38940 requirement 5
+ * and section 3.1 of the solution document; an install that has been given the anchor takes
+ * the rung above and verifies. 'system' stays available, as an explicit choice for a fleet
+ * whose manager is fronted by a publicly trusted certificate.
+ *
+ * An explicit <verification_mode> is honoured without exception, 'none' included. The anchor
+ * decides only what <ssl> left unsaid: it is the default for an unset mode and the default
+ * <certificate_authorities>, never an override. So turning verification off is one edit to
+ * ossec.conf and does not also require deleting a file on disk -- the file staying put is
+ * what lets the same host verify again by removing that one line. An agent that reaches
+ * 'none' with an anchor present logs (4122) at warning level, because it is giving up a
+ * verification it was equipped to perform; the transport's own "TLS verification is
+ * DISABLED" warning still follows it.
+ *
+ * Shared configuration cannot reach any of this: Read_Agent_Shared() recognizes only
+ * <batch>/force_reconnect_interval under <agent> and rejects <ssl> outright, so the manager
+ * cannot push a verification posture. That restriction is intentional and is preserved.
+ *
+ * Runs once, here. An anchor written afterwards -- by a bootstrap that fetched it from the
+ * manager, say -- is invisible until reloadAgent() re-runs ClientConf() from scratch, so a
+ * future caller must either sequence its write before this point or call this again
+ * (#39026, #39027). Idempotent, so calling it twice is safe. */
+void w_agent_resolve_ssl_posture(agent *cfg)
+{
+    /* Probed once, up front, and reused: every branch below needs the same answer, and one
+     * discarded open on the 'system' path is cheaper than reasoning about how many times
+     * this ran. w_is_file() is an openability check -- the same probe
+     * w_agent_validate_ssl_ca() already applies to a configured CA -- so "usable" here means
+     * no more than "present and readable by whoever is running". A malformed, truncated or
+     * expired anchor still counts as present and is caught later, by the transport module's
+     * own validation and then by the handshake; detecting it here is #38949 question 10.
+     * Note the euid difference that comes with that: this runs as root, before the privilege
+     * drop, while the module opens the same file as the wazuh user on every request, so an
+     * anchor readable here is not necessarily readable there (#38949 questions 4 and 8). */
+    const bool anchor = w_is_file(AGENT_ANCHOR_CA) != 0;
+
+    /* A present-but-empty <certificate_authorities/> (or <certificate_authorities>
+     * </certificate_authorities>) is not a real CA -- w_agent_validate_ssl_ca() will still
+     * fail closed on it either way, but treating it as configured here would warn that a CA
+     * is set when none actually was, and would block the anchor from filling the gap. */
+    bool ca_set = cfg->ssl.certificate_authorities != NULL && *cfg->ssl.certificate_authorities != '\0';
+
+    if (cfg->ssl.verification_mode == AGENT_VERIFY_UNSET) {
+        if (ca_set) {
+            mwarn("The '<ssl><certificate_authorities>' option is configured but "
+                  "'<verification_mode>' is not; defaulting '<verification_mode>' to 'certificate'.");
+            cfg->ssl.verification_mode = AGENT_VERIFY_CERT;
+        } else if (anchor) {
+            cfg->ssl.verification_mode = AGENT_VERIFY_FULL;
+        } else {
+            cfg->ssl.verification_mode = AGENT_VERIFY_NONE;
+        }
+    } else if (cfg->ssl.verification_mode == AGENT_VERIFY_NONE && anchor
+               && !cfg->ssl.verification_mode_explicit) {
+        /* A 'none' nobody asked for: this function resolved it that way on an earlier pass,
+         * when there was no trust material to work with, and an anchor has appeared since --
+         * written by the enrollment-token bootstrap, which runs after ClientConf() has already
+         * resolved once. Treated exactly as an unset mode with an anchor would be on a later
+         * boot, so the first boot verifies from here on instead of waiting for a restart to
+         * notice the file. */
+        cfg->ssl.verification_mode = AGENT_VERIFY_FULL;
+    } else if (cfg->ssl.verification_mode == AGENT_VERIFY_NONE && anchor) {
+        /* Nothing to change: 'none' is what the operator asked for and it stands. Worth a
+         * warning all the same -- an anchor on disk means this host could verify and has been
+         * told not to, which is the one combination an operator is most likely to have
+         * arrived at by accident. Any <certificate_authorities> alongside it is left exactly
+         * as configured: under 'none' it is never read, and the validator does not probe it
+         * either, so an inert value stays silent instead of producing a warning about
+         * something that has no effect. */
+        mwarn(AG_SSL_NONE_IGNORES_ANCHOR, AGENT_ANCHOR_CA);
+    }
+
+    /* The anchor is the default <certificate_authorities>: one rule, rather than a special
+     * case per mode, and an explicit path always wins. Only the two modes that verify against
+     * a file are eligible. 'system' is excluded on purpose -- it trusts the OS store instead
+     * of a file, and a CA set alongside it is a hard (4120) refusal, so injecting here would
+     * refuse to start every agent that holds an anchor. 'none' is excluded because it reads
+     * no CA at all: injecting one would put a path the agent never opens into the config
+     * report, and would turn a later switch to 'full' into a silent change of trust. */
+    if ((cfg->ssl.verification_mode == AGENT_VERIFY_FULL || cfg->ssl.verification_mode == AGENT_VERIFY_CERT)
+            && !ca_set && anchor) {
+        /* os_free() first: os_strdup() overwrites the pointer without releasing it, and an
+         * empty <certificate_authorities/> left a real allocation behind. Heap, never the
+         * constant itself -- Free_Agent() frees this field. */
+        os_free(cfg->ssl.certificate_authorities);
+        os_strdup(AGENT_ANCHOR_CA, cfg->ssl.certificate_authorities);
+    }
 }
 
 /* Both agentd and the Windows agent gate startup on this, at the point where each can
@@ -153,12 +240,40 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
 {
     const char *ca = cfg->ssl.certificate_authorities;
 
-    /* Under 'none' the CA is never read, so a wrong path stays invisible until someone
-     * enables verification -- and then the agent refuses to start. Warn while it is
-     * still harmless rather than accepting it in silence. */
+    /* 'none' reads no CA at all, so <certificate_authorities> is inert here and is not even
+     * probed: warning that an ignored value is unreadable is noise about something that has
+     * no effect, and it invited the reading that the path was doing something. A wrong path
+     * surfaces the moment verification is actually turned on, as (4118), which is the point
+     * at which it starts to matter. */
     if (cfg->ssl.verification_mode == AGENT_VERIFY_NONE) {
-        if (ca && !w_is_file(ca)) {
-            mwarn(AG_UNUSED_SSL_CA, ca);
+        /* ...unless this install has verified before. Since #39321 the agent owns its anchor so
+         * it can replace it on a CA rotation, and anything that can replace a file can delete
+         * one -- at which point w_agent_resolve_ssl_posture() sees no anchor, no configured CA
+         * and no explicit mode, and resolves to 'none' exactly as it would on a stock install
+         * that never had an anchor. Losing one file would then quietly turn manager verification
+         * off, which is the one way this agent can stop verifying without anyone saying so.
+         *
+         * The marker distinguishes the two, because it is root-owned in a sticky directory and
+         * the runtime user cannot remove it. Only an inferred 'none' is refused: an operator who
+         * writes <verification_mode>none</verification_mode> has said what they want, and 4122
+         * already warns them about the anchor they are ignoring.
+         *
+         * This is not a defence against that user REPLACING the anchor with a CA of its own --
+         * nothing here could be, once the agent adopts rotations unaided. It closes the cheaper
+         * attack and the commoner accident: ending up with no verification at all. */
+        if (!cfg->ssl.verification_mode_explicit && w_is_file(AGENT_ANCHOR_CA) == 0) {
+            if (w_is_file(AGENT_ANCHOR_MARKER) != 0) {
+                merror(AG_SSL_ANCHOR_VANISHED, AGENT_ANCHOR_CA, AGENT_ANCHOR_MARKER);
+                return false;
+            }
+
+#ifndef WIN32
+            /* A CA the upgrade could not validate. Only stats, so a planted FIFO can't block, and a
+             * symlink is skipped the way the installer skips it. */
+            if (IsFile(AGENT_DELIVERED_CA) == 0 && IsLink(AGENT_DELIVERED_CA) != 0) {
+                mwarn(AG_SSL_DELIVERED_CA_PENDING, AGENT_ANCHOR_CA, AGENT_DELIVERED_CA);
+            }
+#endif
         }
 
         return true;
@@ -167,21 +282,61 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
     /* 'system' trusts the OS store instead of an operator-supplied file: a configured CA
      * would be silently unused, which is worth failing closed on rather than guessing which
      * one the operator actually meant. On Windows/macOS the OS store is asked for natively
-     * (no file to probe for); on Linux the https_client module itself fails closed if no
-     * known OS bundle is found (moduleConfig.cpp's validateTls), mirroring this same check
-     * one layer up so a bad config is caught before the module ever spins up threads. */
+     * (no file to probe for); on Linux, an OS bundle file must exist for the agent to start
+     * at all, mirrored one layer up from moduleConfig.cpp's validateTls so a bad config is
+     * caught before the module ever spins up threads -- unless AGENT_ANCHOR_CA is present,
+     * in which case there is still a way to verify and startup proceeds: the https_client
+     * module tries the OS store first regardless, and only falls back to that anchor if the
+     * store turns out not to vouch for this specific manager (curlPerformer.cpp, #39123). */
     if (cfg->ssl.verification_mode == AGENT_VERIFY_SYSTEM) {
-        /* A present-but-empty <certificate_authorities/> is not a real CA -- ClientConf()'s
-         * own UNSET-resolution above already treats it that way (resolving to 'system'
-         * instead of 'certificate'), so this check has to agree, or that exact shape
-         * resolves to 'system' and then refuses to start over a CA that isn't really set. */
+        /* A present-but-empty <certificate_authorities/> is not a real CA --
+         * w_agent_resolve_ssl_posture() already treats it that way (it does not infer
+         * 'certificate' from it), so this check has to agree, or an operator who reaches
+         * 'system' with that exact shape is refused a start over a CA that isn't really
+         * set. */
         if (ca && *ca != '\0') {
             merror(AG_SSL_CA_FORBIDDEN_SYSTEM, ca);
             return false;
         }
 
+        /* w_is_file() above (and w_agent_resolve_ssl_posture()'s own probe) only answers
+         * "present and readable", not "usable" -- the same gap #38949 question 10 already
+         * flagged for an operator's own <certificate_authorities>, and fixed below for it at
+         * the w_x509_load_all_pem() call. The fallback anchor (curlPerformer.cpp, #39123) is used
+         * whenever it is present, regardless of whether an OS bundle also exists (an OS bundle
+         * can be found yet simply not vouch for this manager's certificate, which is exactly
+         * when the fallback engages) -- so a corrupt or truncated anchor is worth catching here
+         * too, at the same named-refusal-at-startup point, rather than surfacing as an opaque
+         * libcurl CAINFO error at the first handshake that reaches it. Checked on every
+         * platform: the anchor is a plain PEM file wherever it exists, not the native-store
+         * probe below, which is Linux-only. */
+        const bool anchor_present = w_is_file(AGENT_ANCHOR_CA) != 0;
+
+        if (anchor_present) {
+            /* load_ALL_pem, not w_x509_load_pem(): since #39321 this anchor is a BUNDLE -- the
+             * agent adopts up to ca_bundle::kMaxCertificates from a manager publication, and
+             * during a rotation's overlap it legitimately holds two or more roots. The singular
+             * loader stops at the first block, so it would pronounce a rotated store "parses"
+             * on the strength of one certificate and leave the rest unchecked, which is the
+             * exact gap the <certificate_authorities> check below was changed to close. */
+            size_t anchor_count = 0;
+            X509 **anchor = w_x509_load_all_pem(AGENT_ANCHOR_CA, &anchor_count);
+
+            if (anchor == NULL) {
+                merror(AG_SSL_ANCHOR_UNPARSEABLE, AGENT_ANCHOR_CA);
+                return false;
+            }
+
+            w_x509_free_all(anchor, anchor_count);
+        }
+
 #if !defined(WIN32) && !defined(__APPLE__)
-        if (os_find_ca_bundle(NULL) == NULL) {
+        /* An absent OS bundle no longer refuses to start on its own (#39123): the
+         * https_client module falls back to AGENT_ANCHOR_CA at the first handshake that
+         * actually fails to verify (curlPerformer.cpp), and refusing here would never give
+         * that fallback a chance to run. Both being absent is the one combination this
+         * process can already tell has no way to verify at all. */
+        if (os_find_ca_bundle(NULL) == NULL && !anchor_present) {
             merror(AG_SSL_SYSTEM_NO_BUNDLE);
             return false;
         }
@@ -196,6 +351,41 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
         merror(AG_INV_SSL_CA, ca ? ca : "");
         return false;
     }
+
+    /* Readable is not the same as usable, and w_is_file() above only answers the first. The
+     * gap matters most for the trust anchor the enrollment-token bootstrap writes, which
+     * w_agent_resolve_ssl_posture() treats as present on the same openability test: a
+     * truncated or corrupt one would resolve to a verifying mode and then fail at the first
+     * handshake, far from the cause. Parsing it here turns that into a named refusal at
+     * startup. An operator's own <certificate_authorities> gets the same check, since a file
+     * nothing can parse is no more usable for them.
+     *
+     * Every certificate, not just the first: a CA rotation hands this file more than one
+     * anchor, and w_x509_load_pem() stops at the first block -- so a bundle whose second
+     * certificate is truncated used to start, and then failed at a handshake against
+     * whichever anchor the manager had rotated to. w_x509_load_all_pem() reads the file to
+     * its end and yields nothing when any block fails to decode, which is the check this
+     * was always meant to be (issue #39321).
+     *
+     * Text before the first -----BEGIN CERTIFICATE----- is still fine: the reader skips it,
+     * so the publication block the agent records alongside its anchor (RFC 7468 section 2)
+     * parses here exactly as a bare bundle does. */
+    size_t ca_count = 0;
+    X509 **parsed = w_x509_load_all_pem(ca, &ca_count);
+
+    if (parsed == NULL) {
+        merror(AG_SSL_CA_UNPARSEABLE, ca);
+        return false;
+    }
+
+    /* Only worth a line when there is more than one: a single anchor is the ordinary case and
+     * saying so on every start is noise, while two or more means a rotation is in flight and
+     * an operator reading the log wants to know the agent picked both up. */
+    if (ca_count > 1) {
+        minfo(AG_SSL_CA_BUNDLE_LOADED, ca, ca_count);
+    }
+
+    w_x509_free_all(parsed, ca_count);
 
     return true;
 }
@@ -230,7 +420,6 @@ cJSON *getAgentConfig(void) {
     if (agt->profile) cJSON_AddStringToObject(agent_config,"config-profile",agt->profile);
     cJSON_AddNumberToObject(agent_config,"notify_time",agt->notify_time);
     cJSON_AddNumberToObject(agent_config,"time-reconnect",agt->max_time_reconnect_try);
-    cJSON_AddNumberToObject(agent_config,"ip_update_interval",agt->main_ip_update_interval);
     if (agt->flags.auto_restart) cJSON_AddStringToObject(agent_config,"auto_restart","yes"); else cJSON_AddStringToObject(agent_config,"auto_restart","no");
     if (agt->flags.remote_conf) cJSON_AddStringToObject(agent_config,"remote_conf","yes"); else cJSON_AddStringToObject(agent_config,"remote_conf","no");
     if (agt->server) {

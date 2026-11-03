@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 set(INC_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
 
 add_library(api_adapter INTERFACE)

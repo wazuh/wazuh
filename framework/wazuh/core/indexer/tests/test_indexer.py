@@ -1,8 +1,10 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from unittest.mock import AsyncMock, MagicMock, patch, call
+import json
+import os
 import ssl
 from datetime import datetime, timedelta
 
@@ -17,9 +19,23 @@ from wazuh.core.indexer.indexer import (
 )
 from wazuh.core.exception import IndexerUnavailableError
 
+# The frozen effective document test_configuration.py's test_get_manager_conf() checks
+# against: schema defaults applied to a <indexer> with no <ssl> block at all. Reading
+# indexer.ssl from here instead of hand-typing it keeps this test tied to whatever the
+# config loader actually produces, so a shape change here fails visibly instead of
+# silently matching a stale literal.
+EFFECTIVE_CONFIG_FIXTURE = os.path.join(
+    os.path.dirname(__file__), "..", "..", "tests", "data", "configuration", "wazuh-manager.effective.json"
+)
+
+
+def _load_effective_indexer_ssl():
+    with open(EFFECTIVE_CONFIG_FIXTURE) as f:
+        return json.load(f)["indexer"]["ssl"]
+
 
 def test_resolve_wazuh_path_keeps_absolute_paths():
-    path = "/tmp/root-ca.pem"
+    path = "/tmp/indexer-ca.pem"
 
     assert resolve_wazuh_path(path) == path
 
@@ -27,8 +43,8 @@ def test_resolve_wazuh_path_keeps_absolute_paths():
 def test_resolve_wazuh_path_uses_wazuh_path_for_relative_paths():
     with patch("wazuh.core.indexer.indexer.common.WAZUH_PATH", "/var/wazuh-manager"):
         assert (
-            resolve_wazuh_path("etc/certs/root-ca.pem")
-            == "/var/wazuh-manager/etc/certs/root-ca.pem"
+            resolve_wazuh_path("etc/certs/indexer-ca.pem")
+            == "/var/wazuh-manager/etc/certs/indexer-ca.pem"
         )
 
 
@@ -46,9 +62,9 @@ async def test_get_indexer_client_resolves_relative_certificate_paths():
         "indexer": {
             "hosts": ["https://localhost:9200"],
             "ssl": {
-                "certificate_authorities": [{"ca": ["etc/certs/root-ca.pem"]}],
-                "certificate": ["etc/certs/indexer-connector.pem"],
-                "key": ["etc/certs/indexer-connector-key.pem"],
+                "certificate_authorities": ["etc/certs/indexer-ca.pem"],
+                "certificate": "etc/certs/indexer-connector.pem",
+                "key": "etc/certs/indexer-connector-key.pem",
             },
         }
     }
@@ -85,7 +101,7 @@ async def test_get_indexer_client_resolves_relative_certificate_paths():
     create_ssl_context.assert_called_once_with(
         "/var/wazuh-manager/etc/certs/indexer-connector.pem",
         "/var/wazuh-manager/etc/certs/indexer-connector-key.pem",
-        "/var/wazuh-manager/etc/certs/root-ca.pem",
+        ["/var/wazuh-manager/etc/certs/indexer-ca.pem"],
     )
 
     # Verify indexer was created with SSL context instead of cert paths
@@ -98,6 +114,237 @@ async def test_get_indexer_client_resolves_relative_certificate_paths():
         ssl_context=mock_ssl_context,
     )
     client.close.assert_awaited_once()
+
+
+async def _run_get_indexer_client(indexer_extra, hosts=("https://localhost:9200",), with_create_indexer=False):
+    """Run get_indexer_client() with a given indexer config and return the
+    _create_ssl_context mock, so callers can assert what it was called with (and the
+    create_indexer mock too when with_create_indexer is set)."""
+    client = AsyncMock()
+    client.close = AsyncMock()
+    keystore_client = MagicMock()
+    keystore_client.__enter__.return_value.get.side_effect = [
+        {"value": "wazuh-manager"},
+        {"value": "wazuh-manager"},
+    ]
+
+    wazuh_config = {"indexer": {"hosts": list(hosts), **indexer_extra}}
+    mock_ssl_context = MagicMock(spec=ssl.SSLContext)
+
+    with patch("wazuh.core.indexer.indexer.common.WAZUH_PATH", "/var/wazuh-manager"), \
+            patch(
+                "wazuh.core.indexer.indexer._get_cached_indexer_config",
+                new_callable=AsyncMock,
+                return_value=wazuh_config,
+            ), \
+            patch(
+                "wazuh.core.indexer.indexer.KeystoreClient",
+                return_value=keystore_client,
+            ), \
+            patch(
+                "wazuh.core.indexer.indexer._create_ssl_context",
+                return_value=mock_ssl_context,
+            ) as create_ssl_context, \
+            patch(
+                "wazuh.core.indexer.indexer.create_indexer",
+                new_callable=AsyncMock,
+                return_value=client,
+            ) as create_indexer, \
+            patch(
+                "wazuh.core.indexer.indexer._IndexerCircuitBreaker.check",
+                new_callable=AsyncMock,
+            ):
+        async with get_indexer_client():
+            pass
+
+    if with_create_indexer:
+        return create_ssl_context, create_indexer
+    return create_ssl_context
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("ssl_section", [
+    {},
+    {"certificate_authorities": ["etc/certs/indexer-ca.pem"]},
+    # Invalid for TLS (certificate without key), irrelevant without it.
+    {"certificate": "etc/certs/indexer-connector.pem"},
+], ids=["no-ssl", "ca-only", "certificate-without-key"])
+async def test_get_indexer_client_http_hosts_connect_without_tls(ssl_section):
+    """An http:// host means plain HTTP, as for the C++ indexer connector: no TLS context is built
+    and indexer.ssl is neither required nor validated."""
+    create_ssl_context, create_indexer = await _run_get_indexer_client(
+        {"ssl": ssl_section}, hosts=("http://wazuh.indexer:9200",), with_create_indexer=True
+    )
+
+    create_ssl_context.assert_not_called()
+    create_indexer.assert_awaited_once_with(
+        hosts=["wazuh.indexer"],
+        ports=[9200],
+        user="wazuh-manager",
+        password="wazuh-manager",
+        use_ssl=False,
+        ssl_context=None,
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_indexer_client_https_hosts_use_tls():
+    create_ssl_context, create_indexer = await _run_get_indexer_client(
+        {}, hosts=("https://node1:9200", "HTTPS://node2:9201"), with_create_indexer=True
+    )
+
+    create_ssl_context.assert_called_once_with(None, None, [])
+    kwargs = create_indexer.await_args.kwargs
+    assert kwargs["use_ssl"] is True
+    assert kwargs["ssl_context"] is create_ssl_context.return_value
+    assert (kwargs["hosts"], kwargs["ports"]) == (["node1", "node2"], [9200, 9201])
+
+
+@pytest.mark.asyncio
+async def test_get_indexer_client_refuses_mixed_schemes():
+    """The client has one TLS setting for every node: a mixed list is refused, naming the cause."""
+    with pytest.raises(IndexerUnavailableError, match="mixes http:// and https://"):
+        await _run_get_indexer_client({}, hosts=("https://node1:9200", "http://node2:9200"))
+
+
+@pytest.mark.asyncio
+async def test_get_indexer_client_refuses_an_unknown_scheme():
+    with pytest.raises(IndexerUnavailableError, match="Unsupported indexer host scheme: ftp"):
+        await _run_get_indexer_client({}, hosts=("ftp://node1:9200",))
+
+
+@pytest.mark.asyncio
+async def test_get_indexer_client_without_ssl_section_has_no_client_cert():
+    create_ssl_context = await _run_get_indexer_client({})
+
+    create_ssl_context.assert_called_once_with(None, None, [])
+
+
+@pytest.mark.asyncio
+async def test_get_indexer_client_with_empty_ssl_section_has_no_client_cert():
+    create_ssl_context = await _run_get_indexer_client({"ssl": {}})
+
+    create_ssl_context.assert_called_once_with(None, None, [])
+
+
+@pytest.mark.asyncio
+async def test_get_indexer_client_with_schema_default_ssl_has_no_client_cert():
+    """Same as the empty-<ssl> case above, but sourced from the frozen effective-config
+    fixture instead of a hand-typed literal (see EFFECTIVE_CONFIG_FIXTURE)."""
+    create_ssl_context = await _run_get_indexer_client({"ssl": _load_effective_indexer_ssl()})
+
+    create_ssl_context.assert_called_once_with(None, None, [])
+
+
+@pytest.mark.asyncio
+async def test_get_indexer_client_with_only_certificate_authorities_has_no_client_cert():
+    create_ssl_context = await _run_get_indexer_client(
+        {"ssl": {"certificate_authorities": ["etc/certs/indexer-ca.pem"]}}
+    )
+
+    create_ssl_context.assert_called_once_with(
+        None, None, ["/var/wazuh-manager/etc/certs/indexer-ca.pem"]
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_indexer_client_resolves_every_configured_certificate_authority():
+    create_ssl_context = await _run_get_indexer_client(
+        {
+            "ssl": {
+                "certificate_authorities": [
+                    "etc/certs/old-ca.pem",
+                    "etc/certs/new-ca.pem",
+                ]
+            }
+        }
+    )
+
+    create_ssl_context.assert_called_once_with(
+        None,
+        None,
+        [
+            "/var/wazuh-manager/etc/certs/old-ca.pem",
+            "/var/wazuh-manager/etc/certs/new-ca.pem",
+        ],
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_indexer_client_raises_when_certificate_set_without_key():
+    with pytest.raises(IndexerUnavailableError, match="must be set together"):
+        await _run_get_indexer_client(
+            {"ssl": {"certificate": "etc/certs/indexer-connector.pem"}}
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_indexer_client_raises_on_a_lone_empty_certificate_authority():
+    """A single blank <ca></ca> entry can never resolve to a usable file, so it is
+    rejected instead of silently treated as "no CA configured" (that case is an empty
+    list, not a list holding one empty string)."""
+    with pytest.raises(IndexerUnavailableError, match="must not contain empty entries"):
+        await _run_get_indexer_client({"ssl": {"certificate_authorities": [""]}})
+
+
+@pytest.mark.asyncio
+async def test_get_indexer_client_raises_on_a_mixed_empty_certificate_authority():
+    """Same as above, but mixed in with an otherwise valid CA -- the valid entry must
+    not mask the blank one."""
+    with pytest.raises(IndexerUnavailableError, match="must not contain empty entries"):
+        await _run_get_indexer_client(
+            {"ssl": {"certificate_authorities": ["etc/certs/indexer-ca.pem", ""]}}
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_indexer_client_wraps_ssl_context_errors():
+    """A bad certificate path must not escape as a raw FileNotFoundError -- it should be
+    wrapped in IndexerUnavailableError so the log names the actual problem instead of the
+    generic "Indexer is not configured or unavailable" manage_indexer_tasks() falls back to."""
+    import wazuh.core.indexer.indexer as indexer_module
+
+    indexer_module._ssl_context_cache = None
+    indexer_module._ssl_context_cache_key = None
+
+    client = AsyncMock()
+    keystore_client = MagicMock()
+    keystore_client.__enter__.return_value.get.side_effect = [
+        {"value": "wazuh-manager"},
+        {"value": "wazuh-manager"},
+    ]
+
+    wazuh_config = {
+        "indexer": {
+            "hosts": ["https://localhost:9200"],
+            "ssl": {
+                "certificate": "/nonexistent/typo.pem",
+                "key": "/nonexistent/typo-key.pem",
+            },
+        }
+    }
+
+    with patch(
+                "wazuh.core.indexer.indexer._get_cached_indexer_config",
+                new_callable=AsyncMock,
+                return_value=wazuh_config,
+            ), \
+            patch(
+                "wazuh.core.indexer.indexer.KeystoreClient",
+                return_value=keystore_client,
+            ), \
+            patch(
+                "wazuh.core.indexer.indexer.create_indexer",
+                new_callable=AsyncMock,
+                return_value=client,
+            ), \
+            patch(
+                "wazuh.core.indexer.indexer._IndexerCircuitBreaker.check",
+                new_callable=AsyncMock,
+            ):
+        with pytest.raises(IndexerUnavailableError, match="Failed to build SSL context"):
+            async with get_indexer_client():
+                pass
 
 
 @pytest.mark.asyncio
@@ -148,7 +395,7 @@ def test_create_ssl_context_caching():
 
     cert = "/path/cert.pem"
     key = "/path/key.pem"
-    ca = "/path/ca.pem"
+    ca = ["/path/ca.pem"]
 
     # Clear the cache first
     indexer_module._ssl_context_cache = None
@@ -172,6 +419,27 @@ def test_create_ssl_context_caching():
         indexer_module._ssl_context_cache_key = None
         result3 = _create_ssl_context("/other/cert.pem", key, ca)
         assert mock_create.call_count == 2
+
+
+def test_create_ssl_context_trusts_every_configured_certificate_authority():
+    """Every CA in the list must end up trusted, not just the first one."""
+    import wazuh.core.indexer.indexer as indexer_module
+
+    indexer_module._ssl_context_cache = None
+    indexer_module._ssl_context_cache_key = None
+
+    with patch("wazuh.core.indexer.indexer.ssl.create_default_context") as mock_create:
+        mock_context = MagicMock(spec=ssl.SSLContext)
+        mock_create.return_value = mock_context
+
+        _create_ssl_context(None, None, ["/path/old-ca.pem", "/path/new-ca.pem"])
+
+        # The first CA is loaded exclusively (no system trust store fallback)...
+        mock_create.assert_called_once_with(
+            purpose=ssl.Purpose.SERVER_AUTH, cafile="/path/old-ca.pem"
+        )
+        # ...and every additional CA is trusted on top of it.
+        mock_context.load_verify_locations.assert_called_once_with(cafile="/path/new-ca.pem")
 
 
 @pytest.mark.asyncio
@@ -240,3 +508,67 @@ async def test_get_indexer_client_raises_when_circuit_breaker_open():
     finally:
         # Reset for other tests
         _IndexerCircuitBreaker._open_until = None
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_closes_when_the_configuration_changes():
+    """A wazuh-manager.conf change may have fixed the failure: the next attempt is let through."""
+    with patch("wazuh.core.indexer.indexer.os.path.getmtime", return_value=100.0):
+        await _IndexerCircuitBreaker.record_failure()
+        with pytest.raises(IndexerUnavailableError, match="Circuit breaker open"):
+            await _IndexerCircuitBreaker.check()
+
+    with patch("wazuh.core.indexer.indexer.os.path.getmtime", return_value=200.0):
+        await _IndexerCircuitBreaker.check()
+
+    assert _IndexerCircuitBreaker._open_until is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("indexer_extra, hosts", [
+    ({"ssl": {"certificate": "etc/certs/indexer-connector.pem"}}, ("https://localhost:9200",)),
+    ({}, ("https://node1:9200", "http://node2:9200")),
+    ({}, ()),
+], ids=["certificate-without-key", "mixed-schemes", "no-hosts"])
+async def test_get_indexer_client_reports_unusable_configuration_as_configuration_error(indexer_extra, hosts):
+    """Failures that retrying cannot fix are IndexerConfigurationError, so clusterd reports them once instead
+    of backing off as for an outage. It stays an IndexerUnavailableError for every existing handler."""
+    from wazuh.core.exception import IndexerConfigurationError
+
+    with pytest.raises(IndexerConfigurationError) as error:
+        await _run_get_indexer_client(indexer_extra, hosts=hosts)
+
+    assert isinstance(error.value, IndexerUnavailableError)
+
+
+@pytest.mark.asyncio
+async def test_get_indexer_client_missing_keystore_entry_is_a_configuration_error():
+    from wazuh.core.exception import IndexerConfigurationError
+
+    keystore_client = MagicMock()
+    keystore_client.__enter__.return_value.get.side_effect = KeyError("indexer/username")
+    with patch("wazuh.core.indexer.indexer._get_cached_indexer_config", new_callable=AsyncMock,
+               return_value={"indexer": {"hosts": ["https://localhost:9200"]}}), \
+            patch("wazuh.core.indexer.indexer.KeystoreClient", return_value=keystore_client), \
+            patch("wazuh.core.indexer.indexer._IndexerCircuitBreaker.check", new_callable=AsyncMock):
+        with pytest.raises(IndexerConfigurationError, match="Missing credential entry"):
+            async with get_indexer_client():
+                pass
+
+
+@pytest.mark.asyncio
+async def test_get_indexer_client_unreachable_keystore_is_not_a_configuration_error():
+    """The keystore daemon being down is transient: it keeps the outage backoff."""
+    from wazuh.core.exception import IndexerConfigurationError
+
+    keystore_client = MagicMock()
+    keystore_client.__enter__.return_value.get.side_effect = ConnectionRefusedError("keystore.sock")
+    with patch("wazuh.core.indexer.indexer._get_cached_indexer_config", new_callable=AsyncMock,
+               return_value={"indexer": {"hosts": ["https://localhost:9200"]}}), \
+            patch("wazuh.core.indexer.indexer.KeystoreClient", return_value=keystore_client), \
+            patch("wazuh.core.indexer.indexer._IndexerCircuitBreaker.check", new_callable=AsyncMock):
+        with pytest.raises(IndexerUnavailableError, match="Keystore operation failed") as error:
+            async with get_indexer_client():
+                pass
+
+    assert not isinstance(error.value, IndexerConfigurationError)

@@ -1,6 +1,5 @@
 /* Remote request listener
- * Copyright (C) 2015, Wazuh Inc.
- * Jun 07, 2017.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -106,9 +105,6 @@ size_t wcom_dispatch(char *command, char ** output) {
     } else if (strcmp(rcv_comm, "getallconfig") == 0) {
         return wcom_getallconfig(output);
 
-    } else if (strcmp(rcv_comm, "check-manager-configuration") == 0) {
-        return wcom_check_manager_config(output);
-
     } else {
         mdebug1("WCOM Unrecognized command '%s'.", rcv_comm);
         os_strdup("err Unrecognized command", *output);
@@ -125,7 +121,7 @@ size_t wcom_unmerge(const char *file_path, char ** output) {
         return strlen(*output);
     }
 
-    if (UnmergeFiles(final_path, INCOMING_DIR, OS_BINARY, NULL) == 0) {
+    if (UnmergeFiles(final_path, INCOMING_DIR, OS_BINARY, NULL) != UNMERGE_COMPLETE) {
         merror("At WCOM unmerge: Error unmerging file '%s.'", final_path);
         os_strdup("err Cannot unmerge file", *output);
         return strlen(*output);
@@ -293,81 +289,6 @@ error:
     return strlen(*output);
 }
 
-size_t wcom_check_manager_config(char **output) {
-    static const char *daemons[] = {"bin/wazuh-manager-authd", "bin/wazuh-manager-remoted",
-                                    "bin/wazuh-manager-analysisd",
-                                    "bin/wazuh-manager-modulesd", "bin/wazuh-manager-clusterd",
-                                    NULL
-                                    };
-
-    int response_retval = 0;
-    int i;
-    char command_in[PATH_MAX] = {0};
-    char *response_string = NULL;
-    char *command_out = NULL;
-    cJSON *response = cJSON_CreateObject();
-
-    OS_XML xml_check;
-    const char *cfg = WAZUHCONF;
-
-    if (OS_ReadXML(cfg, &xml_check) < 0) {
-        snprintf(response_string, 0, "Error reading %s file", cfg);
-        response_retval = EXECVE_ERROR;
-    } else {
-        OS_ClearXML(&xml_check);
-
-        for (i = 0; daemons[i]; i++) {
-            response_retval = 0;
-            snprintf(command_in, PATH_MAX, "%s -t", daemons[i]);
-            // Exec a command with a timeout of 2000 seconds.
-            if (wm_exec(command_in, &command_out, &response_retval, 2000, NULL) < 0) {
-                if (response_retval == EXECVE_ERROR) {
-                    mwarn("Path is invalid or file has insufficient permissions. %s", command_in);
-                } else {
-                    mwarn("Error executing [%s]", command_in);
-                }
-
-                os_free(response_string);
-                size_t size = snprintf(NULL, 0, "Error executing %s - (%d)", command_in, response_retval);
-                os_calloc(size + 1, sizeof(char), response_string);
-                snprintf(response_string, size, "Error executing %s - (%d)", command_in, response_retval);
-                break;
-            }
-
-            if (command_out && *command_out) {
-                // Remove last newline
-                size_t lastchar = strlen(command_out) - 1;
-                command_out[lastchar] = command_out[lastchar] == '\n' ? '\0' : command_out[lastchar];
-
-                wm_strcat(&response_string, command_out, ' ');
-            }
-
-            os_free(command_out);
-
-            if(response_retval) {
-                break;
-            }
-        }
-    }
-
-    cJSON_AddNumberToObject(response, "error", response_retval);
-
-    if (response_retval) {
-        char error_msg[OS_SIZE_4096 - 27] = {0};
-        snprintf(error_msg, OS_SIZE_4096 - 27, "%s", response_string);
-        cJSON_AddStringToObject(response, "message", error_msg);
-    } else {
-        cJSON_AddStringToObject(response, "message", "ok");
-    }
-
-    os_free(response_string);
-
-    *output = cJSON_PrintUnformatted(response);
-    cJSON_Delete(response);
-
-    return strlen(*output);
-}
-
 #ifndef WIN32
 void * wcom_main(__attribute__((unused)) void * arg) {
     int sock;
@@ -384,7 +305,7 @@ void * wcom_main(__attribute__((unused)) void * arg) {
         return NULL;
     }
 
-    while (1) {
+    while (FOREVER()) {
 
         // Wait for socket
         FD_ZERO(&fdset);
@@ -410,7 +331,8 @@ void * wcom_main(__attribute__((unused)) void * arg) {
             continue;
         }
 
-        os_calloc(OS_MAXSTR, sizeof(char), buffer);
+        // One byte more than the limit, so a request of exactly OS_MAXSTR bytes stays terminated.
+        os_calloc(OS_MAXSTR + 1, sizeof(char), buffer);
         switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
         case OS_SOCKTERR:
             merror("At wcom_main(): OS_RecvSecureTCP(): response size is bigger than expected");
@@ -422,20 +344,16 @@ void * wcom_main(__attribute__((unused)) void * arg) {
 
         case 0:
             mdebug1("Empty message from local client.");
-            close(peer);
-            break;
-
-        case OS_MAXLEN:
-            merror("Received message > %i", MAX_DYN_STR);
-            close(peer);
             break;
 
         default:
             length = wcom_dispatch(buffer, &response);
             OS_SendSecureTCP(peer, length, response);
             os_free(response);
-            close(peer);
         }
+
+        // Every outcome above ends the exchange, including a failed receive.
+        close(peer);
         os_free(buffer);
     }
 
@@ -449,7 +367,10 @@ void * wcom_main(__attribute__((unused)) void * arg) {
 
 int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename) {
 
-    if (w_ref_parent_folder(filename)) {
+    // A bare file name is all that is ever legitimate here. Rejecting separators also keeps the
+    // directory-relative open in w_fopen_nofollow() confined to basedir, since a separator-containing
+    // or absolute name would otherwise be resolved ignoring the directory descriptor.
+    if (!w_is_bare_filename(filename)) {
         return -1;
     }
 

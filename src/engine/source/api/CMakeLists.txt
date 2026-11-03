@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 add_subdirectory(adapter)
 add_subdirectory(metrics)
 add_subdirectory(geo)
@@ -9,6 +10,7 @@ add_subdirectory(event)
 add_subdirectory(cmcrud)
 add_subdirectory(ioccrud)
 add_subdirectory(status)
+add_subdirectory(contentsync)
 
 add_library(api INTERFACE)
 target_include_directories(api INTERFACE
@@ -25,4 +27,5 @@ target_link_libraries(api INTERFACE
   api::rawevtindexer
   api::ioccrud
   api::status
+  api::contentsync
 )

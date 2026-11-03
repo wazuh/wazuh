@@ -49,8 +49,8 @@ The module is generic — it is parameterized by:
 |---|---|
 | **Token** | `shared_ptr<BaseToken>` — polymorphic base for terms, operators, and parentheses |
 | **TermToken\<T\>** | A leaf token holding a domain-specific build token of type `T` |
-| **Operator Tokens** | `OrToken`, `AndToken` (binary), `NotToken` (unary) — with configurable precedence policy |
-| **Precedence** | Default: `NOT (3) > AND (2) > OR (1)`. Customizable via template `PrecedencePolicy` |
+| **Operator Tokens** | `OrToken`, `AndToken` (binary), `NotToken` (unary) — templates in `logicexpr::parser::details`, parameterized by a precedence policy |
+| **Precedence** | `details::DefaultPrecedencePolicy`: `NOT (3) > AND (2) > OR (1)`. The template `PrecedencePolicy` parameter allows another policy |
 | **Tokenizer** | Converts expression string into a `queue<Token>` by alternating between term parsing (parsec) and operator/parenthesis matching |
 | **Shunting-Yard** | Transforms infix token queue to postfix token stack, handling operator precedence and parentheses |
 | **parser::Expression** | Token-based binary tree built from the postfix stack |
@@ -81,7 +81,7 @@ logicexpr/
 
 ### `buildDijstraEvaluator()` ([logicexpr.hpp](interface/logicexpr/logicexpr.hpp))
 
-The main entry point — parses an expression string and returns an evaluation function:
+The main entry point (namespace `logicexpr`) — parses an expression string and returns an evaluation function:
 
 ```cpp
 template<typename Event, typename TermType, typename TermBuilder, typename TermParser>
@@ -98,14 +98,16 @@ buildDijstraEvaluator(const std::string& expression,
 | `TermBuilder` | Callable: `TermType → function<bool(Event)>` |
 | `TermParser` | A `parsec::Parser` that extracts `TermType` from the expression string |
 
-**Pipeline**: tokenize → Shunting-Yard → build parser::Expression tree → visit tree to create evaluator::Expression\<Event\> using termBuilder → flatten to Dijkstra evaluator function.
+**Pipeline**: tokenize → Shunting-Yard → build parser::Expression tree → visit tree to create evaluator::Expression\<Event\> using termBuilder → flatten to Dijkstra evaluator function. Any parse error is rethrown as `std::runtime_error` prefixed `Expression parsing failed.`; the `TermBuilder` is called once per term at build time, not per event.
 
 ### Token Hierarchy ([token.hpp](interface/logicexpr/token.hpp))
+
+All token types live in namespace `logicexpr::parser`; the operator templates are in its nested `details` namespace.
 
 ```
 BaseToken (abstract)
 ├── TermToken<T>              — leaf: holds domain-specific build token
-├── OpToken<Policy>           — operator base (has precedence)
+├── details::OpToken<Policy>  — operator base (has precedence)
 │   ├── UnaryOpToken<Policy>
 │   │   └── NotToken<Policy>  — NOT operator
 │   └── BinaryOpToken<Policy>
@@ -115,7 +117,7 @@ BaseToken (abstract)
 └── ParenthCloseToken         — )
 ```
 
-Default type aliases use `DefaultPrecedencePolicy`: `Token`, `OrToken`, `AndToken`, `NotToken`, `OpToken`.
+`Token` is `std::shared_ptr<BaseToken>`; the aliases `OpToken`, `UnaryOpToken`, `BinaryOpToken`, `OrToken`, `AndToken` and `NotToken` bind the templates to `details::DefaultPrecedencePolicy`.
 
 ### Tokenizer ([tokenizer.hpp](interface/logicexpr/tokenizer.hpp))
 
@@ -128,13 +130,15 @@ public:
 };
 ```
 
-Attempts term parsing first (via the provided parsec parser), then falls back to operator/parenthesis matching. Whitespace between tokens is ignored.
+`TermP` must be a `parsec::Parser` (checked by `static_assert`). At each position it attempts term parsing first (via the provided parser), then falls back to operator/parenthesis matching. Whitespace between tokens is ignored. Empty or whitespace-only input and an unknown token throw `std::runtime_error` carrying the formatted parsec trace.
 
 ### Parser ([parser.hpp](interface/logicexpr/parser.hpp))
 
 ```cpp
+namespace logicexpr::parser {
 template<typename TermParser>
 std::shared_ptr<Expression> parse(const std::string& rawExpression, TermParser&& termParser);
+}
 ```
 
 - `Expression` — binary tree node with `m_token`, `m_left`, `m_right`
@@ -143,6 +147,7 @@ std::shared_ptr<Expression> parse(const std::string& rawExpression, TermParser&&
 ### Evaluator ([evaluator.hpp](interface/logicexpr/evaluator.hpp))
 
 ```cpp
+namespace logicexpr::evaluator {
 enum class ExpressionType { TERM, OR, AND, NOT };
 
 template<typename Event>
@@ -155,9 +160,10 @@ class Expression {
 template<typename Event>
 std::function<bool(Event)> getDijstraEvaluator(
     const shared_ptr<const Expression<Event>>& expression);
+}
 ```
 
-The evaluator flattens the tree into a pre-order vector of operators, then evaluates using a stack machine that processes operators in reverse order — achieving efficient evaluation without recursion at runtime.
+The evaluator flattens the tree into a pre-order vector of operators, then evaluates using a stack machine that processes operators in reverse order — achieving evaluation without recursion at runtime. There is **no short-circuit**: every term function is called on every evaluation.
 
 ## Implementation Details
 
@@ -172,7 +178,7 @@ The `infixToPostfix()` function implements Dijkstra's Shunting-Yard:
 5. Operators pop higher-or-equal precedence operators from the operator stack to output, then push themselves.
 6. After all tokens, remaining operators are popped to output.
 
-A `syntaxChecker` state machine validates that tokens appear in legal order (e.g., no two consecutive terms, no binary operator after open parenthesis).
+Unbalanced parentheses throw `Parenthesis are not balanced`. A `syntaxChecker` state machine validates that tokens appear in legal order (e.g., no two consecutive terms, no binary operator after open parenthesis).
 
 ### Stack-Based Evaluation
 
@@ -182,7 +188,7 @@ A `syntaxChecker` state machine validates that tokens appear in legal order (e.g
 - **AND**: pops two operands, pushes conjunction
 - **OR**: pops two operands, pushes disjunction
 
-This avoids recursion and virtual dispatch at evaluation time.
+This avoids recursion at evaluation time. A single-term expression returns that term's result directly.
 
 ### Operator Keywords
 
@@ -192,6 +198,8 @@ This avoids recursion and virtual dispatch at evaluation time.
 | `AND` | Binary | 2 |
 | `NOT` | Unary | 3 (highest) |
 | `(` / `)` | Grouping | — |
+
+Keywords are matched case-sensitively (uppercase only), as literal prefixes at the current position, and only after the term parser has failed there.
 
 ## CMake Targets
 
@@ -206,14 +214,14 @@ This avoids recursion and virtual dispatch at evaluation time.
 
 Tests cover each layer independently:
 
-- **`token_test`**: Token creation, type checks (`isTerm`, `isOr`, etc.), equality, `getPtr` casting
-- **`tokenizer_test`**: Tokenization of valid expressions, whitespace handling, empty input, unknown tokens
-- **`parser_test`**: Shunting-Yard correctness, expression tree structure, precedence handling, unbalanced parentheses, syntax errors
-- **`evaluator_test`**: Evaluation of AND/OR/NOT combinations, nested expressions, single-term expressions
+- **`token_test`**: shared-pointer integrity (`getPtr` casting), default and custom precedence policies
+- **`tokenizer_test`**: parameterized tokenization of valid and invalid expressions (whitespace, empty input, unknown tokens), and a term parser that swallows operator text
+- **`parser_test`**: expression tree construction and utilities, parameterized valid expressions and bad expressions (unbalanced parentheses, syntax errors), non-copyable term types
+- **`evaluator_test`**: expression construction and utilities, `getDijstraEvaluator` on AND/OR/NOT trees, a NOT-term tree and a single-term expression
 - **`logicexpr_test`**: End-to-end `buildDijstraEvaluator` with mock term builders and parsers
 
 ## Consumers
 
 | Consumer | Usage |
 |---|---|
-| **`builder`** | The `check` stage builder uses `buildDijstraEvaluator` to compile `check` expressions (e.g., `helper1 AND NOT helper2`) in decoder/rule definitions into runtime boolean evaluation functions applied to events |
+| **`builder`** | `checkExpressionBuilder()` in `builder/src/builders/stage/check.cpp` applies the asset's definitions, then calls `buildDijstraEvaluator<base::Event, parsers::HelperToken>` to compile a string `check` expression into a runtime boolean function applied to events |

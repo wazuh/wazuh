@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -22,6 +22,17 @@ rlim_t nofile;
 #endif
 
 void _getLocalfilesListJSON(logreader *list, cJSON *array, const char *gpath);
+
+#ifndef WIN32
+void w_logcollector_check_max_files(long effective) {
+    if (effective >= 0 && maximum_files > effective - 100) {
+        mwarn("Definition 'logcollector.max_files' (%d) leaves fewer than 100 spare descriptors under the file "
+              "descriptor limit in force (%ld). Lower 'logcollector.max_files' or raise the limit the process is "
+              "started with.",
+              maximum_files, effective);
+    }
+}
+#endif
 
 /* Read the config file (the localfiles) */
 int LogCollectorConfig(const char *cfgfile)

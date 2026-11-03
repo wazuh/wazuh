@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <fmt/format.h>
 
 #include <algorithm>
@@ -253,8 +254,9 @@ base::Expression getEachIocEnrichTerm(const std::shared_ptr<ioc::kvdb::IKVDBMana
         const auto keyOpt = buildLookupKey(event, config);
         if (!keyOpt.has_value())
         {
-            const auto traceMsg =
-                isTestMode ? fmt::format(FMT_IOC_SOURCE_MISSING_TRACE, config.iocType, config.sourceFields) : std::string {};
+            const auto traceMsg = isTestMode
+                                      ? fmt::format(FMT_IOC_SOURCE_MISSING_TRACE, config.iocType, config.sourceFields)
+                                      : std::string {};
             return base::result::makeFailure<decltype(event)>(event, traceMsg);
         }
 
@@ -264,7 +266,7 @@ base::Expression getEachIocEnrichTerm(const std::shared_ptr<ioc::kvdb::IKVDBMana
         {
             const auto traceMsg =
                 isTestMode ? fmt::format(FMT_IOC_NOT_FOUND_TRACE, config.iocType, lookupKey, config.sourceFields)
-                      : std::string {};
+                           : std::string {};
             return base::result::makeFailure<decltype(event)>(event, traceMsg);
         }
 
@@ -282,8 +284,9 @@ base::Expression getEachIocEnrichTerm(const std::shared_ptr<ioc::kvdb::IKVDBMana
         event->appendJson(enrichmentMatch, IOC_ENRICHMENT_TARGET_PATH);
         *matchFound = true;
 
-        const auto traceMsg =
-            isTestMode ? fmt::format(FMT_IOC_MATCH_TRACE, config.iocType, config.sourceFields, lookupKey) : std::string {};
+        const auto traceMsg = isTestMode
+                                  ? fmt::format(FMT_IOC_MATCH_TRACE, config.iocType, config.sourceFields, lookupKey)
+                                  : std::string {};
 
         return base::result::makeSuccess<decltype(event)>(event, traceMsg);
     };
@@ -333,7 +336,8 @@ iocEnrichmentBuilder(const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbIocMana
                                                return base::result::makeFailure(e, std::string {});
                                            });
 
-    return {base::Implication::create("TraceableConditional", enrichmentExpr, conditionalSuccess), traceableName};
+    // Named like the traceable so the SUCCESS term publishes to its tracer (see makeTraceableSuccessExpression)
+    return {base::Implication::create(traceableName, enrichmentExpr, conditionalSuccess), traceableName};
 }
 
 } // namespace

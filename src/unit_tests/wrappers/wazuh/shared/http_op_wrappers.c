@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -13,6 +13,7 @@
 #include <setjmp.h>
 #include <stdarg.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 
 #include <cmocka.h>
@@ -93,4 +94,17 @@ int __wrap_uhttp_post(uhttp_client_t* c, const void* data, size_t len, uhttp_res
     }
 
     return retval;
+}
+
+int __wrap_uhttp_client_reset_headers(uhttp_client_t* c) {
+    (void)c;
+    function_called();
+    return mock_type(int);
+}
+
+int __wrap_uhttp_client_add_header(uhttp_client_t* c, const char* header_line) {
+    (void)c;
+    function_called();
+    check_expected(header_line);
+    return mock_type(int);
 }

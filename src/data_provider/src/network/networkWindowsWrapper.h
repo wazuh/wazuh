@@ -1,7 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015, Wazuh Inc.
- * November 5, 2020.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -12,8 +11,6 @@
 #ifndef _NETWORK_WINDOWS_WRAPPER_H
 #define _NETWORK_WINDOWS_WRAPPER_H
 
-#include <sstream>
-#include <iomanip>
 #include <ifdef.h>
 #include <iptypes.h>
 #include <netioapi.h>
@@ -21,6 +18,7 @@
 #include "inetworkWrapper.h"
 #include "makeUnique.h"
 #include "sharedDefs.h"
+#include "wazuhCommon.hpp"
 
 static const std::map<int, std::string> NETWORK_INTERFACE_TYPES =
 {
@@ -325,20 +323,7 @@ class NetworkWindowsInterface final : public INetworkInterfaceWrapper
 
             if (MAC_ADDRESS_LENGTH == m_interfaceAddress->PhysicalAddressLength)
             {
-                std::stringstream ss;
-
-                for (unsigned int idx = 0; idx < MAC_ADDRESS_LENGTH; ++idx)
-                {
-                    ss << std::hex << std::setfill('0') << std::setw(2);
-                    ss << static_cast<int>(static_cast<uint8_t>(m_interfaceAddress->PhysicalAddress[idx]));
-
-                    if (MAC_ADDRESS_LENGTH - 1 != idx)
-                    {
-                        ss << ":";
-                    }
-                }
-
-                retVal = ss.str();
+                retVal = wazuh::hex_encode_delimited(m_interfaceAddress->PhysicalAddress, MAC_ADDRESS_LENGTH, ':');
             }
 
             return retVal;

@@ -1,4 +1,4 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -99,10 +99,10 @@ class WazuhException(Exception):
                               f'exception: https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/'
                               f'configuration.html#remote-commands-localfile-and-wodle-command'},
         1125: {'message': 'Invalid manager configuration',
-               'remediation': 'Please, provide a valid manager configuration (etc/wazuh-manager.yml)'
+               'remediation': 'Please, provide a valid manager configuration (/etc/wazuh-manager/wazuh-manager.conf)'
                },
         1126: {'message': 'Error updating manager configuration',
-               'remediation': 'Please, ensure `WAZUH_PATH/etc/wazuh-manager.yml` has the proper permissions and ownership.'
+               'remediation': 'Please, ensure `/etc/wazuh-manager/wazuh-manager.conf` has the proper permissions and ownership.'
                },
         1127: {'message': 'Protected section was modified',
                'remediation': 'To solve this, either revert the changes made to this section or disable the protection '
@@ -115,11 +115,15 @@ class WazuhException(Exception):
                               f'configuration.html#agents'},
         1130: {'message': 'Configuration does not match the schema',
                'remediation': 'The message names the offending option as a JSON pointer (e.g. /auth/use_password). '
-                              'Fix it in `WAZUH_PATH/etc/wazuh-manager.conf`; `bin/wazuh-manager-conf validate` '
+                              'Fix it in `/etc/wazuh-manager/wazuh-manager.conf`; `bin/wazuh-manager-conf validate` '
                               'reports the same problem.'},
         1131: {'message': 'XML syntax error',
                'remediation': 'Please, provide a well-formed XML file with the single root <wazuh_config>: unescaped '
                               '& or <, legacy comments and multiple roots are not accepted.'},
+        1132: {'message': 'Secret option was modified',
+               'remediation': 'Changing the cluster key or the indexer section (hosts, TLS) requires the '
+                              '`cluster:read_secrets` action over the node. Send the key back as returned by the API '
+                              '(masked as `*****`) and the indexer section unchanged to keep the current ones.'},
 
         # Stats: 1300 - 1399
         1307: {'message': 'Invalid parameters',
@@ -248,6 +252,51 @@ class WazuhException(Exception):
                               'again once the backlog drains; check the indexer is reachable if it '
                               'does not'
                },
+        1767: {'message': 'Enrollment token not found',
+               'remediation': 'Check the token id with GET /agents/enrollment-tokens; a revoked token '
+                              'is still listed'
+               },
+        1768: {'message': 'Enrollment token refused',
+               'remediation': 'The address must be one of the names in the listener certificate '
+                              '(remote.https.certificate) and the certificate must be signed by '
+                              'remote.https.ca_certificate; see the detail'
+               },
+        1769: {'message': 'Enrollment tokens can only be managed on the master node',
+               'remediation': 'Send the request to the master node; workers only replicate the token store'
+               },
+        1770: {'message': 'Invalid enrollment token purge scope',
+               'remediation': 'Valid scopes are `dead` (revoked, expired or exhausted tokens) and `all`'
+               },
+        1771: {'message': 'The enrollment token store could not be written',
+               'remediation': 'The change is applied on this manager and will be written as soon as the '
+                              'store file is writable again; check the disk and the permissions of '
+                              '/etc/wazuh-manager/enrollment_tokens.json, then retry'
+               },
+        1772: {'message': 'The agent credentials could not be recorded',
+               'remediation': 'The manager refused the enrollment instead of handing out credentials it '
+                              'could not write down; check the disk and the permissions of '
+                              'queue/authd, and whether too many enrollments are still waiting for '
+                              'wazuh-db, then retry'
+               },
+        1773: {'message': 'Enrollment token request refused by the manager',
+               'remediation': 'Check the request against the field limits in the API spec, then retry'
+               },
+        1774: {'message': 'The agent has never connected to this node, which holds no information about it',
+               'remediation': 'The command is queued on this node and will run when the agent connects to it, '
+                              'within task-manager.task_ttl; do not send it again, as a second request creates a '
+                              'second task and the agent would run both. On a cluster the request is sent to '
+                              'every node and an agent only appears on the nodes it has connected to, so check '
+                              'the `nodes` field for the outcome reported by the node the agent does connect to'
+               },
+        1775: {'message': 'The task could not be created',
+               'remediation': 'The Task Manager did not store the command, so nothing is queued for the agent; '
+                              'see the detail for its answer, check that wazuh-manager-modulesd is running, '
+                              'then send the request again'
+               },
+        1776: {'message': 'The operative system of the agent is unknown',
+               'remediation': 'The agent has not reported its operative system yet. Please, use `GET /agents?select='
+                              'id,name,status` to check whether it has ever connected'
+               },
 
         # Manager:
         1901: {'message': 'Control socket has not been created'
@@ -303,6 +352,12 @@ class WazuhException(Exception):
         2030: {'message': 'Remoted admin request timeout'},
         2031: {'message': 'Remoted admin connection error'},
         2032: {'message': 'Could not parse remoted admin response as JSON'},
+
+        2033: {'message': 'Could not connect to the wazuh-db unix socket'},
+        2034: {'message': 'Invalid wazuh-db HTTP response'},
+        2035: {'message': 'wazuh-db request timeout'},
+        2036: {'message': 'wazuh-db connection error'},
+        2037: {'message': 'Could not parse wazuh-db response as JSON'},
 
         # Indexer
         2200: {'message': 'Error connecting to the Indexer service'},
@@ -386,6 +441,14 @@ class WazuhException(Exception):
                               'directory, is listed as an excluded file, or belongs to a cluster item which is not '
                               'allowed to be synchronized. Check the `WAZUH_HOME/logs/cluster.log` file to identify '
                               'the rejected file.'},
+        3063: {'message': 'Cluster protocol handshake failed',
+               'remediation': 'The peer did not open the connection with a supported cluster protocol preamble. '
+                              'Check that every node of the cluster runs the same Wazuh version and check the '
+                              '`WAZUH_HOME/logs/cluster.log` file for the rejected connection.'},
+        3064: {'message': 'Cluster message failed session verification',
+               'remediation': 'A message was decrypted but was not the next message of this connection, or its header '
+                              'did not match its contents. The connection was closed; it may indicate replayed or '
+                              'tampered cluster traffic. Check the `WAZUH_HOME/logs/cluster.log` file.'},
 
         # RBAC exceptions
         # The messages of these exceptions are provisional until the RBAC documentation is published.
@@ -443,8 +506,8 @@ class WazuhException(Exception):
         5004: {'message': 'The user could not be removed or updated',
                'remediation': 'Administrator users cannot be removed or updated'},
         5007: {'message': 'Insecure user password provided',
-               'remediation': 'The password must contain at least one upper and lower case letter, a number and a '
-                              'symbol.'},
+               'remediation': 'The password must contain at least one letter and one number, and only '
+                              'printable ASCII characters without spaces.'},
         5008: {'message': 'The current user cannot be deleted',
                'remediation': 'You can delete this user with the administrator user (wazuh) or '
                               'any other user with the necessary permissions'},
@@ -468,6 +531,8 @@ class WazuhException(Exception):
                'remediation': f'This limit can be changed in api.yaml file. More information here: https:/'
                               f'/documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/configuration.html#'
                               f'configuration-file'},
+        6006: {'message': 'Too many login attempts are being processed',
+               'remediation': 'Try again later'},
         6002: {'message': 'The body type is not the one specified in the content-type'},
         6003: {'message': 'Error trying to load the JWT secret',
                'remediation': 'Make sure you have the right permissions: WAZUH_PATH/api/configuration/security/'
@@ -780,3 +845,11 @@ class IndexerUnavailableError(WazuhIndexerError):
     """
     _default_type = "about:blank"
     _default_title = "Wazuh Indexer Unavailable"
+
+
+class IndexerConfigurationError(IndexerUnavailableError):
+    """
+    Raised when the indexer cannot be used because of the manager's own configuration or credentials (the indexer
+    section, its hosts or TLS material, the keystore entries). Retrying without changing them cannot succeed.
+    """
+    _default_title = "Wazuh Indexer Misconfigured"

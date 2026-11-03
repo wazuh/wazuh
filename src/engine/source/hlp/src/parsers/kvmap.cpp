@@ -1,4 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <iostream>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -26,10 +28,14 @@ Mapper getMapper(const json::Json& doc, std::string_view targetField)
 SemParser
 getSemParser(const std::string& targetField, const std::string& delim, const std::string& sep, char quote, char esc)
 {
-    return [=](std::string_view input, bool)
+    return [=](std::string_view input, bool enableTrace) -> std::variant<Mapper, base::Error>
     {
         json::Json doc {};
         size_t start = 0;
+        // Set when a key would be written to a path deeper than json::Json::MAX_DEPTH
+        bool tooDeep = false;
+        // Set to the first key that is not a valid JSON Pointer token sequence
+        std::optional<std::string_view> invalidKey;
 
         // Search for target respecting quotes and escapes
         auto findNext = [&](std::string_view text, size_t pos, const std::string& target) -> size_t
@@ -103,7 +109,16 @@ getSemParser(const std::string& targetField, const std::string& delim, const std
                 }
             }
 
-            updateDoc(doc, fmt::format("/{}", rawKey), rawValue, hasEscape, std::string(1, esc), quoted);
+            if (hasInvalidPointerEscape(rawKey))
+            {
+                invalidKey = rawKey;
+                return;
+            }
+
+            if (!updateDoc(doc, fmt::format("/{}", rawKey), rawValue, hasEscape, std::string(1, esc), quoted))
+            {
+                tooDeep = true;
+            }
         };
 
         while (start < input.size())
@@ -123,11 +138,32 @@ getSemParser(const std::string& targetField, const std::string& delim, const std
 
             processKeyValue(key, value);
 
-            if (delimPos == std::string_view::npos)
+            if (tooDeep || invalidKey || delimPos == std::string_view::npos)
             {
                 break;
             }
             start = delimPos + delim.size();
+        }
+
+        if (tooDeep)
+        {
+            if (enableTrace)
+            {
+                return base::Error {
+                    fmt::format("parse_key_value: key {} ({})", json::Json::DEPTH_ERROR_MSG, json::Json::MAX_DEPTH)};
+            }
+            return base::Error {};
+        }
+
+        if (invalidKey)
+        {
+            if (enableTrace)
+            {
+                return base::Error {fmt::format("parse_key_value: key '{}' has an invalid JSON Pointer escape ('~' "
+                                                "must be followed by '0' or '1')",
+                                                *invalidKey)};
+            }
+            return base::Error {};
         }
 
         return targetField.empty() ? noMapper() : getMapper(doc, targetField);

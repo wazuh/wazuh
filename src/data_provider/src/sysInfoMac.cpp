@@ -1,7 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015, Wazuh Inc.
- * October 7, 2020.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -9,9 +8,13 @@
  * Foundation.
  */
 #include "sysInfo.hpp"
+#include <deque>
+#include <optional>
 #include "cmdHelper.h"
 #include "stringHelper.h"
+#include <filesystem_utils.hpp>
 #include <filesystem_wrapper.hpp>
+#include "processInfoMac.h"
 #include "osinfo/sysOsParsers.h"
 #include <libproc.h>
 #include <pwd.h>
@@ -27,6 +30,8 @@
 #include "hardware/factoryHardwareFamilyCreator.h"
 #include "hardware/hardwareWrapperImplMac.h"
 #include "osPrimitivesImplMac.h"
+#include "processes/processArgsParserMac.h"
+#include "processesWrapperImplMac.h"
 #include "sqliteWrapperTemp.h"
 #include "packages/modernPackageDataRetriever.hpp"
 #include "timeHelper.h"
@@ -39,11 +44,12 @@
 #include "chrome.hpp"
 #include "safari_darwin.hpp"
 #include "firefox.hpp"
+#include <mach/mach_time.h>
+#include <unistd.h>
+#include "processHelperMac.h"
 
 const std::string MAC_APPS_PATH{"/Applications"};
 const std::string MAC_UTILITIES_PATH{"/Applications/Utilities"};
-const std::string MACPORTS_DB_NAME {"registry.db"};
-const std::string MACPORTS_QUERY {"SELECT name, version, date, location, archs FROM ports WHERE state = 'installed';"};
 constexpr auto MAC_ROSETTA_DEFAULT_ARCH {"arm64"};
 
 using ProcessTaskInfo = struct proc_taskallinfo;
@@ -59,9 +65,7 @@ static const std::vector<int> s_validFDSock =
 static const std::map<std::string, int> s_mapPackagesDirectories =
 {
     { "/Applications", PKG },
-    { "/Applications/Utilities", PKG},
     { "/System/Applications", PKG},
-    { "/System/Applications/Utilities", PKG},
     { "/System/Library/CoreServices", PKG},
     { "/private/var/db/receipts", RCP},
     { "/Library/Apple/System/Library/Receipts", RCP},
@@ -70,13 +74,75 @@ static const std::map<std::string, int> s_mapPackagesDirectories =
     { "/opt/local/var/macports/registry", MACPORTS}
 };
 
-static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_t pid)
+static mach_timebase_info_data_t getTimebase()
+{
+    mach_timebase_info_data_t tb{0, 0};
+    mach_timebase_info(&tb);
+    return tb;
+}
+
+static uint64_t machTimeToClockTicks(const uint64_t machTicks)
+{
+    static const auto timebase { getTimebase() };
+    static const int64_t clkTck { sysconf(_SC_CLK_TCK) };
+    return ProcessHelperMac::clockTicksFromMachTime(machTicks, timebase.numer, timebase.denom, clkTck);
+}
+
+static int32_t getMainThreadRunState(const pid_t pid)
+{
+    // Threads are listed in creation order, so the first handle is the main thread's. Handles
+    // are not unique, but the lookup returns the first thread that matches, which is the main
+    // thread itself.
+    uint64_t threadHandle {};
+
+    if (proc_pidinfo(pid, PROC_PIDLISTTHREADS, 0, &threadHandle, sizeof(threadHandle)) != sizeof(threadHandle))
+    {
+        return 0;
+    }
+
+    struct proc_threadinfo threadInfo {};
+
+    if (proc_pidinfo(pid, PROC_PIDTHREADINFO, threadHandle, &threadInfo, PROC_PIDTHREADINFO_SIZE) != PROC_PIDTHREADINFO_SIZE)
+    {
+        return 0;
+    }
+
+    return threadInfo.pth_run_state;
+}
+
+static bool getProcessArgs(const pid_t pid, std::vector<char>& buffer, ProcessArgs& processArgs)
+{
+    int mib[3] {CTL_KERN, KERN_PROCARGS2, pid};
+    size_t size {buffer.size()};
+
+    // Fails for zombies and for processes the caller is not allowed to inspect.
+    if (buffer.empty() || sysctl(mib, 3, buffer.data(), &size, nullptr, 0) != 0)
+    {
+        return false;
+    }
+
+    // When the argument area does not fit, the kernel returns its tail (environment strings)
+    // behind the real argc and fills the whole buffer. The buffer cannot be grown past
+    // kern.argmax, so a full buffer is treated as unreadable arguments.
+    if (size >= buffer.size())
+    {
+        return false;
+    }
+
+    return parseProcArgs2(buffer.data(), size, processArgs);
+}
+
+static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_t pid, std::vector<char>& argsBuffer)
 {
     nlohmann::json jsProcessInfo{};
     jsProcessInfo["pid"]        = std::to_string(pid);
-    jsProcessInfo["name"]       = taskInfo.pbsd.pbi_name;
-    jsProcessInfo["state"]      = UNKNOWN_VALUE;
+    // resolveProcessName() falls back to pbi_name, which the kernel cuts at a fixed byte
+    // length and can split a multi-byte character on the way.
+    jsProcessInfo["name"]       = Utils::sanitizeUtf8(resolveProcessName(pid, taskInfo.pbsd.pbi_name));
+    jsProcessInfo["state"]      = ProcessHelperMac::getProcessState(taskInfo.pbsd.pbi_status, getMainThreadRunState(pid));
     jsProcessInfo["parent_pid"] = taskInfo.pbsd.pbi_ppid;
+    jsProcessInfo["utime"]      = machTimeToClockTicks(taskInfo.ptinfo.pti_total_user);
+    jsProcessInfo["stime"]      = machTimeToClockTicks(taskInfo.ptinfo.pti_total_system);
     jsProcessInfo["start"]      = Utils::rawTimestampToISO8601(static_cast<uint32_t>(taskInfo.pbsd.pbi_start_tvsec));
 
     char pathBuffer[PROC_PIDPATHINFO_MAXSIZE] = {0};
@@ -85,7 +151,16 @@ static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_
         proc_pidpath(pid, pathBuffer, sizeof(pathBuffer))
     };
 
-    jsProcessInfo["command_line"] = pathLen > 0 ? std::string(pathBuffer) : "";
+    ProcessArgs processArgs;
+
+    // On failure processArgs stays empty and only the executable path is reported.
+    getProcessArgs(pid, argsBuffer, processArgs);
+
+    const auto commandLine {buildProcessCommandLine(pathLen > 0 ? std::string(pathBuffer) : "", processArgs)};
+
+    jsProcessInfo["command_line"] = commandLine.commandLine;
+    jsProcessInfo["args"]         = commandLine.args;
+    jsProcessInfo["args_count"]   = commandLine.argsCount;
 
     return jsProcessInfo;
 }
@@ -95,116 +170,6 @@ nlohmann::json SysInfo::getHardware() const
     nlohmann::json hardware;
     FactoryHardwareFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_shared<OSHardwareWrapperMac<OsPrimitivesMac>>())->buildHardwareData(hardware);
     return hardware;
-}
-
-static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std::function<void(nlohmann::json&)> callback)
-{
-    const file_system::FileSystemWrapper fs;
-
-    if (MACPORTS == pkgType)
-    {
-        if (fs.is_regular_file(pkgDirectory + "/" + MACPORTS_DB_NAME))
-        {
-            try
-            {
-                std::shared_ptr<SQLite::IConnection> sqliteConnection = std::make_shared<SQLite::Connection>(pkgDirectory + "/" + MACPORTS_DB_NAME);
-
-                SQLite::Statement stmt
-                {
-                    sqliteConnection,
-                    MACPORTS_QUERY
-                };
-
-                std::pair<SQLite::IStatement&, const int&> pkgContext {std::make_pair(std::ref(stmt), std::cref(pkgType))};
-
-                while (SQLITE_ROW == stmt.step())
-                {
-                    try
-                    {
-                        nlohmann::json jsPackage;
-                        FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(pkgContext)->buildPackageData(jsPackage);
-
-                        if (!jsPackage.at("name").get_ref<const std::string&>().empty())
-                        {
-                            // Only return valid content packages
-                            callback(jsPackage);
-                        }
-                    }
-                    catch (const std::exception& e)
-                    {
-                        std::cerr << e.what() << std::endl;
-                    }
-                }
-            }
-            catch (const std::exception& e)
-            {
-                std::cerr << e.what() << std::endl;
-            }
-        }
-    }
-    else
-    {
-        const auto packages { fs.list_directory(pkgDirectory) };
-
-        for (const auto& package : packages)
-        {
-            if ((PKG == pkgType && Utils::endsWith(package, ".app")) ||
-                    (RCP == pkgType && Utils::endsWith(package, ".plist")))
-            {
-                try
-                {
-                    nlohmann::json jsPackage;
-                    FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package.filename().string(), ""}, pkgType))->buildPackageData(jsPackage);
-
-                    if (!jsPackage.at("name").get_ref<const std::string&>().empty())
-                    {
-                        // Only return valid content packages
-                        callback(jsPackage);
-                    }
-                }
-                catch (const std::exception& e)
-                {
-                    std::cerr << e.what() << std::endl;
-                }
-            }
-            else if (BREW == pkgType)
-            {
-                if (fs.is_directory(package) && !Utils::startsWith(package.filename().string(), "."))
-
-                {
-                    const auto packageVersions { fs.list_directory(package) };
-
-                    for (const auto& versionPath : packageVersions)
-                    {
-                        const std::string version = versionPath.filename().string();
-
-                        if (!Utils::startsWith(version, "."))
-                        {
-                            try
-                            {
-                                nlohmann::json jsPackage;
-                                FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package.filename().string(), version}, pkgType))->buildPackageData(jsPackage);
-
-                                if (!jsPackage.at("name").get_ref<const std::string&>().empty())
-                                {
-                                    // Only return valid content packages
-                                    callback(jsPackage);
-                                }
-                            }
-                            catch (const std::exception& e)
-                            {
-                                std::cerr << e.what() << std::endl;
-                            }
-                        }
-                    }
-                }
-            }
-
-            // else: invalid package
-        }
-    }
-
-
 }
 
 nlohmann::json SysInfo::getPackages() const
@@ -300,49 +265,51 @@ nlohmann::json SysInfo::getOsInfo() const
     return ret;
 }
 
-static void getProcessesSocketFD(std::map<ProcessInfo, std::vector<std::shared_ptr<socket_fdinfo>>>& processSocket)
+static void getProcessesSocketFD(std::map<ProcessInfo, std::vector<socket_fdinfo>>& processSocket)
 {
-    int32_t maxProcess { 0 };
-    auto maxProcessLen { sizeof(maxProcess) };
+    std::vector<pid_t> pids;
 
-    if (!sysctlbyname("kern.maxproc", &maxProcess, &maxProcessLen, nullptr, 0))
+    try
     {
-        auto pids { std::make_unique<pid_t[]>(maxProcess) };
-        const auto processesCount { proc_listallpids(pids.get(), maxProcess) };
+        pids = listAllPids(OsPrimitivesMac{});
+    }
+    catch (const std::system_error&)
+    {
+        // Preserve the previous behavior: silently skip port collection if
+        // kern.maxproc can't be read, rather than propagating the error.
+        return;
+    }
 
-        for (auto i = 0 ; i < processesCount ; ++i)
+    for (const auto pid : pids)
+    {
+        proc_bsdinfo processInformation {};
+
+        if (proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &processInformation, PROC_PIDTBSDINFO_SIZE) != -1)
         {
-            const auto pid { pids[i] };
+            const std::string processName { resolveProcessName(pid, processInformation.pbi_name) };
+            const ProcessInfo processData { pid, processName };
 
-            proc_bsdinfo processInformation {};
+            const auto processFDBufferSize { proc_pidinfo(pid, PROC_PIDLISTFDS, 0, 0, 0) };
 
-            if (proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &processInformation, PROC_PIDTBSDINFO_SIZE) != -1)
+            if (processFDBufferSize != -1)
             {
-                const std::string processName { processInformation.pbi_name };
-                const ProcessInfo processData { pid, processName };
+                auto processFDInformationBuffer { std::make_unique<char[]>(processFDBufferSize) };
 
-                const auto processFDBufferSize { proc_pidinfo(pid, PROC_PIDLISTFDS, 0, 0, 0) };
-
-                if (processFDBufferSize != -1)
+                if (proc_pidinfo(pid, PROC_PIDLISTFDS, 0, processFDInformationBuffer.get(), processFDBufferSize) != -1)
                 {
-                    auto processFDInformationBuffer { std::make_unique<char[]>(processFDBufferSize) };
+                    auto processFDInformation { reinterpret_cast<proc_fdinfo*>(processFDInformationBuffer.get())};
 
-                    if (proc_pidinfo(pid, PROC_PIDLISTFDS, 0, processFDInformationBuffer.get(), processFDBufferSize) != -1)
+                    for (auto j = 0ul; j < processFDBufferSize / PROC_PIDLISTFD_SIZE; ++j )
                     {
-                        auto processFDInformation { reinterpret_cast<proc_fdinfo*>(processFDInformationBuffer.get())};
-
-                        for (auto j = 0ul; j < processFDBufferSize / PROC_PIDLISTFD_SIZE; ++j )
+                        if (PROX_FDTYPE_SOCKET == processFDInformation[j].proc_fdtype)
                         {
-                            if (PROX_FDTYPE_SOCKET == processFDInformation[j].proc_fdtype)
-                            {
-                                auto socketInfo { std::make_shared<socket_fdinfo>() };
+                            socket_fdinfo socketInfo {};
 
-                                if (PROC_PIDFDSOCKETINFO_SIZE == proc_pidfdinfo(pid, processFDInformation[j].proc_fd, PROC_PIDFDSOCKETINFO, socketInfo.get(), PROC_PIDFDSOCKETINFO_SIZE))
+                            if (PROC_PIDFDSOCKETINFO_SIZE == proc_pidfdinfo(pid, processFDInformation[j].proc_fd, PROC_PIDFDSOCKETINFO, &socketInfo, PROC_PIDFDSOCKETINFO_SIZE))
+                            {
+                                if (std::find(s_validFDSock.begin(), s_validFDSock.end(), socketInfo.psi.soi_kind) != s_validFDSock.end())
                                 {
-                                    if (socketInfo && std::find(s_validFDSock.begin(), s_validFDSock.end(), socketInfo->psi.soi_kind) != s_validFDSock.end())
-                                    {
-                                        processSocket[processData].push_back(socketInfo);
-                                    }
+                                    processSocket[processData].push_back(socketInfo);
                                 }
                             }
                         }
@@ -356,28 +323,20 @@ static void getProcessesSocketFD(std::map<ProcessInfo, std::vector<std::shared_p
 nlohmann::json SysInfo::getPorts() const
 {
     nlohmann::json ports;
-    std::map<ProcessInfo, std::vector<std::shared_ptr<socket_fdinfo>>> fdMap;
+    std::map<ProcessInfo, std::vector<socket_fdinfo>> fdMap;
     getProcessesSocketFD(fdMap);
 
     for (const auto& processInfo : fdMap)
     {
-        for (const auto& fdSocket : processInfo.second )
+        for (const auto& fdSocket : processInfo.second)
         {
             nlohmann::json port;
-            std::make_unique<PortImpl>(std::make_shared<BSDPortWrapper>(processInfo.first, fdSocket))->buildPortData(port);
+            const BSDPortWrapper wrapper(processInfo.first, fdSocket);
+            PortImpl(wrapper).buildPortData(port);
 
-            const auto portFound
+            if (ports.end() == std::find(ports.begin(), ports.end(), port))
             {
-                std::find_if(ports.begin(), ports.end(),
-                             [&port](const auto & element)
-                {
-                    return 0 == port.dump().compare(element.dump());
-                })
-            };
-
-            if (ports.end() == portFound)
-            {
-                ports.push_back(port);
+                ports.push_back(std::move(port));
             }
         }
     }
@@ -387,27 +346,21 @@ nlohmann::json SysInfo::getPorts() const
 
 void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) const
 {
-    int32_t maxProc{};
-    size_t len { sizeof(maxProc) };
-    const auto ret { sysctlbyname("kern.maxproc", &maxProc, &len, NULL, 0) };
+    const auto pids { listAllPids(OsPrimitivesMac{}) };
 
-    if (ret)
+    // Reused for every process; kern.argmax bounds the size of a process argument area.
+    int argMax{};
+    size_t len { sizeof(argMax) };
+    std::vector<char> argsBuffer;
+
+    if (!sysctlbyname("kern.argmax", &argMax, &len, NULL, 0) && argMax > 0)
     {
-        throw std::system_error
-        {
-            ret,
-            std::system_category(),
-            "Error reading kernel max processes."
-        };
+        argsBuffer.resize(static_cast<size_t>(argMax));
     }
 
-    const auto spPids         { std::make_unique<pid_t[]>(maxProc) };
-    const auto processesCount { proc_listallpids(spPids.get(), maxProc) };
-
-    for (int index = 0; index < processesCount; ++index)
+    for (const auto pid : pids)
     {
         ProcessTaskInfo taskInfo{};
-        const auto pid { spPids.get()[index] };
         const auto sizeTask
         {
             proc_pidinfo(pid, PROC_PIDTASKALLINFO, 0, &taskInfo, PROC_PIDTASKALLINFO_SIZE)
@@ -415,7 +368,7 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
 
         if (PROC_PIDTASKALLINFO_SIZE == sizeTask)
         {
-            auto processInfo = getProcessInfo(taskInfo, pid);
+            auto processInfo = getProcessInfo(taskInfo, pid, argsBuffer);
             callback(processInfo);
         }
     }
@@ -429,9 +382,57 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
     {
         const auto pkgDirectory { packageDirectory.first };
 
-        if (fs.is_directory(pkgDirectory))
+        try
         {
-            getPackagesFromPath(pkgDirectory, packageDirectory.second, callback);
+            if (fs.is_directory(pkgDirectory))
+            {
+                // A fixed, root-owned location: Apple ships real entries here as symlinks
+                // (e.g. /Applications/Safari.app into /System/Cryptexes/App since macOS 13),
+                // so symlinks must be followed here, not rejected.
+                getPackagesFromPath(pkgDirectory, packageDirectory.second, callback, false);
+            }
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << e.what() << std::endl;
+        }
+    }
+
+    // Per-user Applications folders (e.g. /Users/vagrant/Applications). Each user's copy is
+    // reported under its own path, same as the per-user pypi paths below; no cross-user dedup.
+    for (const auto& userApplicationsGlob : MACOS_USER_APPLICATIONS_DIRS)
+    {
+        std::deque<std::string> userApplicationsPaths;
+
+        try
+        {
+            file_system::FileSystemUtils().expand_absolute_path(userApplicationsGlob, userApplicationsPaths);
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << e.what() << std::endl;
+            continue;
+        }
+
+        for (const auto& userApplicationsPath : userApplicationsPaths)
+        {
+            // A user's own home directory is untrusted input: a symlink loop or similar there must not
+            // abort the scan for the remaining users, or for the pypi/npm scanning that follows.
+            try
+            {
+                // Reject the Applications folder itself if it is a symlink: it could point at
+                // another user's own Applications (misattributing their installs to this one),
+                // or at a directory this scan already covers (double-reporting every app in it).
+                if (fs.is_directory(userApplicationsPath) && !fs.is_symlink(userApplicationsPath))
+                {
+                    // A user-writable root: reject symlinked entries found inside it too.
+                    getPackagesFromPath(userApplicationsPath, PKG, callback, true);
+                }
+            }
+            catch (const std::exception& e)
+            {
+                std::cerr << e.what() << std::endl;
+            }
         }
     }
 
@@ -479,7 +480,10 @@ nlohmann::json SysInfo::getGroups() const
 
     for (auto& group : collectedGroups)
     {
-        allGids.insert(static_cast<gid_t>(group["gid"].get<int>()));
+        if (group.contains("gid"))
+        {
+            allGids.insert(static_cast<gid_t>(group["gid"].get<int>()));
+        }
     }
 
     // Single call to getUserNamesByGid with all GIDs
@@ -489,19 +493,34 @@ nlohmann::json SysInfo::getGroups() const
     for (auto& group : collectedGroups)
     {
         nlohmann::json groupItem {};
-        gid_t currentGid = static_cast<gid_t>(group["gid"].get<int>());
+        const bool hasGid { group.contains("gid") };
 
-        groupItem["group_id"] = group["gid"];
+        // A group resolvable only via OpenDirectory (see GroupsProvider::collect()) carries no
+        // real GID. group_id/group_id_signed are BIGINT columns downstream (dbsync's
+        // bindJsonData): a JSON null there still binds the literal integer 0, colliding with the
+        // real gid-0 group ("wheel"). Omitting the keys entirely is the only representation that
+        // reaches a genuine SQL NULL (buildInsertDataSqlQuery skips columns absent from the
+        // source JSON), so the fields are only set here when a real GID is known.
+        if (hasGid)
+        {
+            groupItem["group_id"] = group["gid"];
+            groupItem["group_id_signed"] = group["gid_signed"];
+        }
+
         groupItem["group_name"] = (group.contains("groupname") && !group["groupname"].get<std::string>().empty()) ? group["groupname"] : UNKNOWN_VALUE;
         groupItem["group_description"] = (group.contains("comment") && !group["comment"].get<std::string>().empty()) ? group["comment"] : UNKNOWN_VALUE;
-        groupItem["group_id_signed"] = group["gid_signed"];
-        groupItem["group_uuid"] = UNKNOWN_VALUE;
+        groupItem["group_uuid"] = (group.contains("uuid") && !group["uuid"].get<std::string>().empty()) ? group["uuid"] : UNKNOWN_VALUE;
         groupItem["group_is_hidden"] = group["is_hidden"];
 
-        // Obtain the users for this specific GID
-        auto gidStr = std::to_string(currentGid);
-        nlohmann::json collectedUsersGroups = allUsersGroups.contains(gidStr) ?
-                                              allUsersGroups[gidStr] : nlohmann::json::array();
+        // Obtain the users for this specific GID, when one is known
+        nlohmann::json collectedUsersGroups = nlohmann::json::array();
+
+        if (hasGid)
+        {
+            auto gidStr = std::to_string(static_cast<gid_t>(group["gid"].get<int>()));
+            collectedUsersGroups = allUsersGroups.contains(gidStr) ?
+                                   allUsersGroups[gidStr] : nlohmann::json::array();
+        }
 
         if (collectedUsersGroups.empty())
         {
@@ -509,19 +528,7 @@ nlohmann::json SysInfo::getGroups() const
         }
         else
         {
-            std::string usersConcatenated;
-
-            for (const auto& user : collectedUsersGroups)
-            {
-                if (!usersConcatenated.empty())
-                {
-                    usersConcatenated += secondaryArraySeparator;
-                }
-
-                usersConcatenated += user.get<std::string>();
-            }
-
-            groupItem["group_users"] = usersConcatenated;
+            groupItem["group_users"] = Utils::join(collectedUsersGroups.get<std::vector<std::string>>(), secondaryArraySeparator);
         }
 
         result.push_back(std::move(groupItem));
@@ -543,6 +550,10 @@ nlohmann::json SysInfo::getUsers() const
     SudoersProvider sudoersProvider;
     auto collectedSudoers = sudoersProvider.collect();
 
+    // The User_Alias map does not depend on the user either, so build it once for the whole scan
+    // instead of re-parsing it inside isUserSudoer() for every account.
+    auto sudoersUserAliases = SudoersProvider::collectUserAliases(collectedSudoers);
+
     UserGroupsProvider userGroupsProvider;
 
     for (auto& user : collectedUsers)
@@ -563,25 +574,18 @@ nlohmann::json SysInfo::getUsers() const
         std::set<uid_t> uid {static_cast<uid_t>(user["uid"].get<int>())};
         auto collectedUsersGroups = userGroupsProvider.getGroupNamesByUid(uid);
 
+        // The sudoers lookup needs the group names one by one, not concatenated.
+        std::set<std::string> userGroupNames;
+
         if (collectedUsersGroups.empty())
         {
             userItem["user_groups"] = UNKNOWN_VALUE;
         }
         else
         {
-            std::string accumGroups;
-
-            for (const auto& group : collectedUsersGroups)
-            {
-                if (!accumGroups.empty())
-                {
-                    accumGroups += secondaryArraySeparator;
-                }
-
-                accumGroups += group.get<std::string>();
-            }
-
-            userItem["user_groups"] = accumGroups;
+            const auto groupNames = collectedUsersGroups.get<std::vector<std::string>>();
+            userItem["user_groups"] = Utils::join(groupNames, secondaryArraySeparator);
+            userGroupNames.insert(groupNames.begin(), groupNames.end());
         }
 
         // Macos
@@ -610,9 +614,6 @@ nlohmann::json SysInfo::getUsers() const
         //TODO: Avoid this iteration, move logic to LoggedInUsersProvider
         for (auto& item : collectedLoggedInUser)
         {
-            // By default, user is not logged in.
-            userItem["login_status"] = 0;
-
             // tty,host,time and pid can take more than one value due to different logins.
             if (item["user"] == username)
             {
@@ -650,28 +651,40 @@ nlohmann::json SysInfo::getUsers() const
             userItem["user_last_login"] = UNKNOWN_VALUE;
         }
 
+        userItem["user_password_hash_algorithm"] = user["password_hash_algorithm"];
+        userItem["user_password_status"] = user["password_status"];
+        // macOS has no shadow file. The only aging policy it can hold is a pwpolicy/MDM-imposed
+        // change interval, which is where the expiration date and max_days_between_changes come
+        // from when present. macOS has no equivalent of a minimum password age or of a warning
+        // period before expiration, so those two stay not collected rather than a guessed zero.
+        // The provider reports the expiration as a UNIX timestamp, and -1 when its arithmetic
+        // would overflow; this schema stores the date as text.
         userItem["user_password_expiration_date"] = UNKNOWN_VALUE;
-        userItem["user_password_hash_algorithm"] = UNKNOWN_VALUE;
-        userItem["user_password_inactive_days"] = 0;
-        userItem["user_password_max_days_between_changes"] = 0;
-        userItem["user_password_min_days_between_changes"] = 0;
-        userItem["user_password_status"] = UNKNOWN_VALUE;
-        userItem["user_password_warning_days_before_expiration"] = 0;
 
-        // By default, user is not sudoer.
+        if (user.contains("password_expiration_date"))
+        {
+            const auto expirationTimestamp{user["password_expiration_date"].get<int64_t>()};
+
+            if (expirationTimestamp > 0)
+            {
+                userItem["user_password_expiration_date"] =
+                    Utils::rawTimestampToISO8601(static_cast<uint32_t>(expirationTimestamp));
+            }
+        }
+
+        userItem["user_password_inactive_days"] = NOT_COLLECTED_VALUE;
+        userItem["user_password_max_days_between_changes"] = user.contains("password_max_days_between_changes")
+                                                             ? user["password_max_days_between_changes"]
+                                                             : nlohmann::json(NOT_COLLECTED_VALUE);
+        userItem["user_password_min_days_between_changes"] = NOT_COLLECTED_VALUE;
+        userItem["user_password_warning_days_before_expiration"] = NOT_COLLECTED_VALUE;
+
         userItem["user_roles"] = UNKNOWN_VALUE;
 
-        for (auto& singleSudoer : collectedSudoers)
+        if (SudoersProvider::isUserSudoer(collectedSudoers, username, userGroupNames, sudoersUserAliases))
         {
-            // Searching in content of header
-            auto header = singleSudoer["header"].get<std::string>();
-
-            if (header.find(username) != std::string::npos)
-            {
-                //TODO: user_roles_sudo_sudo_rule_details has more detailed information.
-                userItem["user_roles"] = "sudo";
-
-            }
+            //TODO: user_roles_sudo_sudo_rule_details has more detailed information.
+            userItem["user_roles"] = "sudo";
         }
 
         result.push_back(std::move(userItem));
@@ -710,6 +723,30 @@ nlohmann::json SysInfo::getServices() const
             return 0;
         };
 
+        auto field = [&svc](const std::string & fieldName)
+        {
+            return svc.value(fieldName, std::string{});
+        };
+
+        // The provider renders plist booleans as the words "true"/"false", and as "0"/"1" when the
+        // plist spells them as numbers. std::stoi parses neither vocabulary, so boolean-backed
+        // fields go through this one normalization. An unrecognised spelling has no boolean
+        // meaning, which includes LAUNCHD_UNEVALUATED_VALUE.
+        auto launchdBool = [](const std::string & value) -> std::optional<bool>
+        {
+            if (value == "true" || value == "1")
+            {
+                return true;
+            }
+
+            if (value == "false" || value == "0")
+            {
+                return false;
+            }
+
+            return std::nullopt;
+        };
+
         // ECS mapping based on the provided table
         serviceItem["service_id"]           = (svc.contains("label") && !svc["label"].get<std::string>().empty()) ? svc["label"] : UNKNOWN_VALUE;
         serviceItem["service_name"]         = svc.value("name",         UNKNOWN_VALUE);
@@ -718,22 +755,19 @@ nlohmann::json SysInfo::getServices() const
         serviceItem["service_state"]        = UNKNOWN_VALUE;
         serviceItem["service_sub_state"]    = UNKNOWN_VALUE;
 
-        if (svc.contains("disabled"))
-        {
-            auto disabledValue = svc["disabled"].get<std::string>();
+        // An unset Disabled key means enabled, which is the launchd default. Anything the
+        // normalization above cannot read as a boolean, such as a feature flag conditional, is a
+        // form we cannot evaluate and must not report either way.
+        const auto disabledValue = field("disabled");
+        const auto disabled = launchdBool(disabledValue);
 
-            if (disabledValue == "0")
-            {
-                serviceItem["service_enabled"] = "1";
-            }
-            else if (disabledValue == "1")
-            {
-                serviceItem["service_enabled"] = "0";
-            }
-            else
-            {
-                serviceItem["service_enabled"] = UNKNOWN_VALUE;
-            }
+        if (disabled.has_value())
+        {
+            serviceItem["service_enabled"] = disabled.value() ? "0" : "1";
+        }
+        else if (disabledValue.empty())
+        {
+            serviceItem["service_enabled"] = "1";
         }
         else
         {
@@ -743,10 +777,10 @@ nlohmann::json SysInfo::getServices() const
         serviceItem["service_start_type"]                    = svc.value("run_at_load",         UNKNOWN_VALUE);
         serviceItem["service_restart"]                       = svc.value("keep_alive",          UNKNOWN_VALUE);
         serviceItem["service_frequency"]                     = stringToInt("start_interval");
-        serviceItem["service_starts_on_mount"]               = stringToInt("start_on_mount");
+        serviceItem["service_starts_on_mount"]               = launchdBool(field("start_on_mount")).value_or(false) ? 1 : 0;
         serviceItem["service_starts_on_path_modified"]       = svc.value("watch_paths",         UNKNOWN_VALUE);
         serviceItem["service_starts_on_not_empty_directory"] = svc.value("queue_directories",   UNKNOWN_VALUE);
-        serviceItem["service_inetd_compatibility"]           = stringToInt("inetd_compatibility");
+        serviceItem["service_inetd_compatibility"]           = launchdBool(field("inetd_compatibility")).value_or(false) ? 1 : 0;
         serviceItem["process_pid"]                           = 0;
         serviceItem["process_executable"]                    = svc.value("program",             UNKNOWN_VALUE);
         serviceItem["process_args"]                          = svc.value("program_arguments",   UNKNOWN_VALUE);
@@ -830,7 +864,14 @@ nlohmann::json SysInfo::getBrowserExtensions() const
 
             result.push_back(std::move(extensionItem));
         }
+    }
+    catch (const std::exception&)
+    {
+        // Keep collecting the remaining browsers
+    }
 
+    try
+    {
         // Collect Safari extensions
         SafariExtensionsProvider safariProvider;
         auto collectedSafariExtensions = safariProvider.collect();
@@ -864,7 +905,14 @@ nlohmann::json SysInfo::getBrowserExtensions() const
 
             result.push_back(std::move(extensionItem));
         }
+    }
+    catch (const std::exception&)
+    {
+        // Keep collecting the remaining browsers
+    }
 
+    try
+    {
         // Collect Firefox extensions
         FirefoxAddonsProvider firefoxProvider;
         auto collectedFirefoxExtensions = firefoxProvider.collect();

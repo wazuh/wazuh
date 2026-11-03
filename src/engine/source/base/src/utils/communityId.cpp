@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <algorithm>
 #include <arpa/inet.h>
 #include <array>
@@ -309,7 +310,7 @@ base::RespOrError<std::string> getCommunityIdV1(
 
         if (src.getFamily() != dst.getFamily())
         {
-            return base::Error{"Algorithm requires both IPs to be of the same family (IPv4 or IPv6)"};
+            return base::Error {"Algorithm requires both IPs to be of the same family (IPv4 or IPv6)"};
         }
 
         if (dst < src)

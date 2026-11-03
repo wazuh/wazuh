@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 import sys
 
 from engine_test.base_tester_integration import BaseIntegrationTester

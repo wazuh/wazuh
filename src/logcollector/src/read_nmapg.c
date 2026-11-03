@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -153,7 +153,7 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
         lines++;
 
         if (is_valid_context_file) {
-            OS_SHA1_Stream(context, NULL, str);
+            w_hash_read_line(lf, context, str, &current_position);
         }
 
         /* If need clear is set, we need to clear the line */

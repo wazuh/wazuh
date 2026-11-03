@@ -1,10 +1,11 @@
+# SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
 cmake_minimum_required(VERSION 3.12.4)
 
 project(keystore)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_FLAGS "-fPIC")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -42,6 +43,10 @@ if(NOT UNIT_TEST)
   add_executable(wazuh-manager-keystore src/main.cpp)
 
   target_link_libraries(wazuh-manager-keystore keystore)
+
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_POSITION_INDEPENDENT_CODE)
+    set_property(TARGET wazuh-manager-keystore APPEND_STRING PROPERTY LINK_FLAGS " -pie")
+  endif()
 
   set_target_properties(
     wazuh-manager-keystore PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE

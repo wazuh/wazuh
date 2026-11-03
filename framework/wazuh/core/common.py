@@ -1,4 +1,4 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -162,11 +162,43 @@ WPK_REPO_URL_4_X = "packages.wazuh.com/4.x/wpk/"
 
 
 # ================================================ Wazuh path - Config =================================================
-MANAGER_CONF = os.path.join(WAZUH_PATH, 'etc', 'wazuh-manager.conf')
-MANAGER_CONF_SCHEMA = os.path.join(WAZUH_PATH, 'etc', 'wazuh-manager.schema.json')
-INTERNAL_OPTIONS_CONF = os.path.join(WAZUH_PATH, 'etc', 'wazuh-manager-internal-options.conf')
-CLIENT_KEYS = os.path.join(WAZUH_PATH, 'etc', 'client.keys')
-SHARED_PATH = os.path.join(WAZUH_PATH, 'etc', 'shared')
+# The manager configuration directory is a fixed absolute path, outside the installation home. It is defined once per
+# language and the copies are kept identical: defs.h WAZUH_MANAGER_CONF_DIR, shared_modules/utils/managerConfDir.hpp,
+# the engine's base/managerConfig.hpp and src/init/shared.sh CONF_DIR.
+MANAGER_CONF_DIR = '/etc/wazuh-manager'
+
+
+def find_conf_path(wazuh_path: str) -> str:
+    """Get the manager configuration directory.
+
+    In a repository checkout (`wazuh_path` is then the repository root, see find_wazuh_path(); detected by the schema
+    source, as manager_conf.schema_path() does) the framework keeps using <repo>/etc, so tests never read the
+    configuration of a manager installed on the host. Everywhere else it is the fixed MANAGER_CONF_DIR.
+
+    Parameters
+    ----------
+    wazuh_path : str
+        The manager home (WAZUH_PATH).
+
+    Returns
+    -------
+    str
+        Absolute path of the configuration directory.
+    """
+    source_schema = os.path.join(wazuh_path, 'src', 'shared_modules', 'manager_config', 'schema',
+                                 'wazuh-manager.schema.json')
+    return os.path.join(wazuh_path, 'etc') if os.path.isfile(source_schema) else MANAGER_CONF_DIR
+
+
+CONF_PATH = find_conf_path(WAZUH_PATH)
+
+MANAGER_CONF = os.path.join(CONF_PATH, 'wazuh-manager.conf')
+MANAGER_CONF_SCHEMA = os.path.join(CONF_PATH, 'wazuh-manager.schema.json')
+INTERNAL_OPTIONS_CONF = os.path.join(CONF_PATH, 'wazuh-manager-internal-options.conf')
+CLIENT_KEYS = os.path.join(CONF_PATH, 'client.keys')
+SHARED_PATH = os.path.join(CONF_PATH, 'shared')
+AUTHD_PASS = os.path.join(CONF_PATH, 'authd.pass')
+CERTS_PATH = os.path.join(CONF_PATH, 'certs')
 
 
 # ================================================= Wazuh path - Misc ==================================================
@@ -178,9 +210,8 @@ OSSEC_PIDFILE_PATH = os.path.join(WAZUH_PATH, 'var', 'run')
 OS_PIDFILE_PATH = os.path.join('var', 'run')
 WDB_PATH = os.path.join(WAZUH_PATH, 'queue', 'db')
 DEFAULT_RBAC_RESOURCES = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'rbac', 'default')
-WAZUH_LOCALTIME_PATH = os.path.join(WAZUH_PATH, 'etc', 'localtime')
 CLUSTERD_WORKINGDIR = os.path.join(WAZUH_PATH, 'queue', 'cluster')
-INDEXER_PLUGINS_PATH = os.path.join(WAZUH_PATH, 'etc', 'indexer-plugins')
+INDEXER_PLUGINS_PATH = os.path.join(CONF_PATH, 'indexer-plugins')
 
 
 # ================================================ Wazuh path - Sockets ================================================
@@ -202,3 +233,27 @@ AR_BOOKMARK_FILEPATH = os.path.join(CLUSTERD_WORKINGDIR, "ar_bookmark.json")
 
 # ========================================== INSTALLATION UID PATH ====================================================
 SECURITY_PATH = os.path.join(WAZUH_PATH, 'api', 'configuration', 'security')
+
+# ============================================== CLUSTER PLACEHOLDERS =================================================
+
+# 1774 -> "this node's database holds no information about the agent". Not a verdict about the
+# agent but the absence of one: the node was asked about an agent that has never connected to it,
+# which is routine for 5.x agents, since they connect over stateless, load-balanced HTTPS and have
+# no fixed owning node.
+#
+# Lives here because two layers need it and neither owns it: wazuh/agent.py emits it, and the
+# cluster merge in core/cluster/dapi drops it for any agent another node did report on -- a
+# placeholder only stands while nothing better exists.
+AGENT_NOT_IN_LOCAL_DB_ERROR_CODE = 1774
+
+# 1816 -> the upgrade twin of 1774: the Task Manager's "Agent information not found in database"
+# (socket error 6), emitted by wazuh/agent.py upgrade_agents() and dropped by the same merge. Unlike
+# 1774 it is not always a placeholder -- the Task Manager also answers it for an agent whose OS
+# information is incomplete, on every node -- which is exactly why it must reach the merge rather
+# than be skipped by the node: when no node reports anything better, it is the outcome.
+UPGRADE_AGENT_NOT_IN_LOCAL_DB_ERROR_CODE = 1816
+
+# 1701 -> "Agent does not exist", by this node's replicated client.keys. A verdict when every node
+# gives it, but a copy that has not reached a worker yet makes that worker give it for an agent
+# another node knows, so the same merge drops it for any agent another node reported on.
+AGENT_DOES_NOT_EXIST_ERROR_CODE = 1701

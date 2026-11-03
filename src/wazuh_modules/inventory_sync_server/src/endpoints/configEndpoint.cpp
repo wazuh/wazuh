@@ -1,7 +1,6 @@
 /*
  * Wazuh inventory sync server module
- * Copyright (C) 2015, Wazuh Inc.
- * July 30, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -11,6 +10,9 @@
 
 #include "configEndpoint.hpp"
 
+#include "common/agentId.hpp"
+#include "common/jsonNestingDepth.hpp"
+#include "endpoints/reportedAgentMetadata.hpp"
 #include "loggerHelper.h"
 #include "sync/stateIndexAllowlist.hpp" // AGENT_CONFIG_INDEX -- shared with the deletion scope
 #include "timeHelper.h"
@@ -71,11 +73,13 @@ namespace
      * an array), with an explicit per-module sub-schema (`content.fim.syscheck.frequency`, etc.): a
      * module is unique per report by construction (object keys cannot repeat), so keying by module
      * name is what makes "does agent X have module Y" a single field lookup instead of a scan. The
-     * template is `dynamic: true`: a field this handler emits that isn't in that per-module
-     * sub-schema (a module the template doesn't know about yet, or a legacy/undeclared key within a
-     * known module) is indexed like any other field, with no schema check -- so nothing here
-     * validates individual `config` fields against that schema, only that every module's value is an
-     * object, and nothing downstream validates them either.
+     * template is `dynamic: strict_allow_templates`: a field under `content` that isn't in that
+     * per-module sub-schema (a module the template doesn't know about yet, or an undeclared key
+     * within a known module) is mapped by a dynamic template from the type of its first value. A
+     * value whose type conflicts with the existing mapping makes the indexer reject the whole
+     * document, and the previous one stays. Nothing here validates individual `config` fields, only
+     * that every module's value is an object, so a module that changes the type of a field it
+     * reports stops its agent's document from being updated.
      *
      * An empty `modules` object is rejected: every push replaces the agent's document whole (its
      * `_id` is the agent id), so indexing an empty report would erase the last good configuration.
@@ -129,6 +133,7 @@ namespace invsync::endpoints::config
             static wazuh::uds_http::LogThrottle acceptedThrottle;
             static wazuh::uds_http::LogThrottle goneThrottle;
             static wazuh::uds_http::LogThrottle unavailableThrottle;
+            static wazuh::uds_http::LogThrottle metadataThrottle;
 
             if (!request)
             {
@@ -143,6 +148,23 @@ namespace invsync::endpoints::config
             if (agentIdIt == request->headers.end() || agentIdIt->second.empty())
             {
                 responder->send(badRequest("Missing agent id header"));
+                return;
+            }
+            // It is also the document id and `wazuh.agent.id`, so it must be the one canonical spelling
+            // the whole-agent deletion matches: anything else would index a document no deletion
+            // reaches. remoted only ever sends that form, so this rejects a bypassing caller.
+            if (!invsync::common::isCanonicalAgentId(agentIdIt->second))
+            {
+                responder->send(badRequest("Agent id header must be a canonical agent id"));
+                return;
+            }
+
+            // Before the parse, on the raw bytes: the copy out of the document and dump() below both
+            // recurse once per level, so a deep enough body would overflow this thread's stack and
+            // take the whole of modulesd down.
+            if (invsync::common::exceedsNestingDepth(request->body))
+            {
+                responder->send(badRequest("Body nests deeper than the allowed limit"));
                 return;
             }
 
@@ -205,6 +227,7 @@ namespace invsync::endpoints::config
             }
 
             std::string serializedDocument;
+            std::size_t droppedMetadata {0};
             try
             {
                 // `modules` lists exactly the keys `content` ends up with -- derived from it rather
@@ -217,10 +240,12 @@ namespace invsync::endpoints::config
                 }
 
                 // Shaped to match the wazuh-agent-config template: schema version, the
-                // authenticated id, this manager's own identity, the server's clock, and the
-                // sanitized configuration -- nothing else. `dynamic: true` means an unmapped field
-                // here would not fail the write, but there is still no reason to send one.
+                // authenticated id, the agent's groups and host, this manager's own identity, the
+                // server's clock, and the sanitized configuration -- nothing else. The template is
+                // `dynamic: strict_allow_templates`: a key outside the mapped paths fails the write,
+                // and the write is fire-and-forget, so the failure is silent.
                 nlohmann::json indexedDocument;
+                droppedMetadata = invsync::endpoints::stampReportedAgentMetadata(document, indexedDocument);
                 indexedDocument["/wazuh/schema/version"_json_pointer] = WAZUH_SCHEMA_VERSION;
                 indexedDocument["/wazuh/agent/id"_json_pointer] = agentIdIt->second;
                 indexedDocument["/wazuh/agent/configuration/modules"_json_pointer] = modules;
@@ -239,6 +264,19 @@ namespace invsync::endpoints::config
                 LOGFN_DEBUG1(logFn(), "Could not build an agent config document: %s.", e.what());
                 responder->send(badRequest("Report holds bytes that are not valid UTF-8"));
                 return;
+            }
+
+            if (droppedMetadata > 0)
+            {
+                if (const auto decision = metadataThrottle.record())
+                {
+                    LOGFN_DEBUG1(logFn(),
+                                 "Accepted %llu agent config report(s) in the last %d s with reported groups or "
+                                 "host fields left empty because they failed validation (last from agent '%s').",
+                                 static_cast<unsigned long long>(decision.total),
+                                 wazuh::uds_http::LogThrottle::kDefaultWindowSeconds,
+                                 agentIdIt->second.c_str());
+                }
             }
 
             try

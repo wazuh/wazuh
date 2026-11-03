@@ -25,71 +25,133 @@ into one `summary.json` and plots it.
 # uds mode — straight to the module socket (the ingestion pipeline alone)
 ./run_benchmark.sh --scenario scenarios/real_syscollector_debian.json --mode uds
 
-# agent mode — enroll against authd, then HTTPS to remoted (the whole relay)
-sudo ./prepare_manager.sh                                    # one-time: open, password-free enrollment
+# agent mode — enroll the fleet over POST /enroll, then HTTPS to remoted (the whole relay)
+sudo ./prepare_manager.sh                                    # one-time: reachable enrollment + the fleet's token
 ./run_benchmark.sh --scenario scenarios/real_syscollector_debian.json --mode agent
+
+# uds mode with engine lanes — straight to the engine's POST /events/enriched (no remoted, no enrollment)
+./run_benchmark.sh --scenario scenarios/engine_direct_flood.json --mode uds \
+                   --socket /var/wazuh-manager/queue/sockets/engine-ingest-http.sock
 ```
 
 **The cluster name is read from the manager's own config.** The server answers `403` to any session
 whose `cluster_name` is not its own, and the scenarios only ship a placeholder, so getting this wrong
 means 100 % `403` and a run that measures nothing. Rather than make every caller repeat it,
 `run_benchmark.sh` reads `<cluster><name>` from
-`/var/wazuh-manager/etc/wazuh-manager.conf` — `--conf` points it elsewhere — and prints which value it
-used. `--cluster` overrides it. The cluster **node** is not sent at all: sessions declare no
-`cluster_node` (the manager never validated it and is dropping its last consumer), so there is no
-`--cluster-node` and nothing to detect.
+`/etc/wazuh-manager/wazuh-manager.conf` — `--conf` points it elsewhere — and prints which value it
+used. `--cluster` overrides it. There is no cluster **node** to send: the `Start` table of
+`inventorySync.fbs` has no `cluster_node` field any more, so there is no `--cluster-node` and
+nothing to detect.
 
 A **remote** `--manager` is deliberately never auto-detected: the local config would then describe a
 different manager, and silently declaring the wrong cluster is worse than stopping. In that case pass
 `--cluster` explicitly; the effective value is recorded in each run's `params.json`.
 
-If the manager configures a **global endpoint prefix** (`<remote><https><global_prefix>`), agent mode
-needs it too — and, exactly like the cluster name, it is read from the local manager's config when
-`--global-prefix` is not given, so a default installation needs no flag. A **remote** `--manager` is
-not auto-detected for the same reason, and `/` forces the unprefixed paths against a manager that
-does have one configured. Getting it wrong is not a soft failure: the prefix is part of the signed
-request target, so every request answers `404` and the run looks like a broken manager. A malformed
-prefix (an empty segment, a character the manager rejects) is warned about but still sent, so the
-tool can reproduce one on purpose. The effective value is recorded in `params.json` and in
-`sender_summary.json` under `meta.global_prefix`. The uds transport is never prefixed.
+Every HTTPS route of the manager lives under a **global endpoint prefix**
+(`<remote><https><global_prefix>`, default `/wazuh-manager/`), and agent mode must send it too.
+Exactly like the cluster name, it is read from the local manager's config when `--global-prefix` is
+not given. The installer always writes the tag, so a default installation needs no flag. One case is
+not covered: the script reads only the tag. If an operator deletes `<global_prefix>`, the manager
+falls back to the schema default `/wazuh-manager/` while the script finds nothing and sends bare
+paths, so pass `--global-prefix /wazuh-manager/` in that case. A **remote** `--manager` is not
+auto-detected, for the same reason as the cluster name, and `/` forces the unprefixed paths. Getting
+it wrong is not a soft failure: the prefix is part of the route, so every request answers `404` and
+the run looks like a broken manager. The prefix is not signed, because the bearer token binds only
+the agent's identity, so a prefix mismatch is never a `401`. A malformed prefix (an empty segment, a
+character the manager rejects) is warned about but still sent, so the tool can reproduce one on
+purpose. The effective value is recorded in `params.json` and in `sender_summary.json` under
+`meta.global_prefix`. The uds transport is never prefixed.
 
-Agent-mode runs also **wait until remoted actually accepts a signed request** before the clock starts,
-retrying within `--enroll-settle`. That is not a formality: remoted only knows a freshly enrolled agent
-after it reloads `client.keys`, and that took **~100 s** on the reference manager — nothing like the
-10 s `remoted.keyupdate_interval` implies. Until then every request is `401`, which has its own counter
-and invalidates the run rather than being counted as load. Give big fleets a generous budget
-(`--enroll-settle 240s`).
+Agent-mode runs also **wait until remoted actually accepts a signed request** before the clock starts.
+The sender probes with one `POST /control` `startup` every 2 s, and the budget is `--enroll-settle`
+with a 30 s floor (the 12 s default therefore waits up to 30 s). That is not a formality: remoted
+only knows a freshly enrolled agent after it reloads `client.keys`, and that took **~100 s** on the
+reference manager, far longer than the 10 s `remoted.keyupdate_interval` implies. Until then every
+request is `401`, which has its own counter and invalidates the run rather than being counted as
+load. Give big fleets a generous budget (`--enroll-settle 240s`, which is what `run_matrix.sh`
+passes).
 
-Each run creates `results_<label>/` with `bench.csv` (per-second cumulative counters + latency
-percentiles), `sender_summary.json` (metadata, totals, and the same counters broken down `by_fleet`
-and `by_lane`), `scenario.json` (the exact scenario, copied for reproducibility), `summary.json` (all
-of the above collated) and `monitor/` — the process samples plus each daemon's own statistics,
-including `stats-api-inventory-sync.csv` (the module's `GET /metrics`, one row per scrape) and
-`charts/`. The sender's formats are pinned by
-[`docu/09-metrics-and-output.md`](tool_simulator/docu/09-metrics-and-output.md).
+Each run creates `results_<label>/` with `bench.csv` (per-second cumulative counters + latency percentiles), `sender_summary.json` (metadata, totals, the same counters broken down `by_fleet` and `by_lane`, and the scenario's `expected` verdict), `scenario.json` (the exact scenario, copied for reproducibility), `samples/metrics.ndjson` (every daemon's `GET /metrics`, one JSON object per scrape), `summary.json` (what those inputs add up to), `monitor/` (process, disk and log samples) and `charts/`. The sender's formats are pinned by [`docu/09-metrics-and-output.md`](tool_simulator/docu/09-metrics-and-output.md).
 
-The same `monitor/` directory carries `stats-api-remoted-module.csv`, the remoted C++ module's
-`GET /metrics` over its admin socket (`queue/sockets/remote-admin-http.sock`): the `remoted.control.*`
-and `remoted.scanvd.*` counters plus the admin server's own transport gauges. The scan-vd family
-is what a saturation run is read on — an admission split, `scanvd_queue_full` and
-`scanvd_indexer_unavailable` against `scanvd_accepted` and `scanvd_vd_error`, says how many
-re-scans VD queued versus refused; the charts render it as
-`remoted_module_scanvd_funnel_<label>.png` (requests / accepted / queue_full /
-indexer_unavailable / vd_error / version_mismatch), and it counts the same admissions the sender's
-`scan_200`/`scan_503` do, so the two sides finally mean the same thing. Remoted's **C** statistics
-keep their own file (`stats-api-remoted.csv`, the legacy framed `getstats` socket); the two are
-disjoint. Both inventory sync and the admin server also report their route-class connection
-counts and in-flight byte budget, so a shed session can be attributed to the budget or to a class
-cap rather than guessed at.
+### `samples/metrics.ndjson` is the server-side artifact
 
-**One poller, one source of truth.** The monitor samples the manager's processes *and* polls each
-daemon's statistics, so it also owns the inventory-sync scrape. `scrape_metrics.sh` stays as a
-standalone tool and is only started automatically when the monitor cannot run (it needs `psutil`),
-so a missing Python package costs the process samples but never the server's own numbers.
+One file, one JSON object per scrape, every daemon in it (`src` says which). It is **lossless** in a checkable sense: the module's original `/metrics` response can be rebuilt from it, field for field, and the test suite asserts exactly that. Every metric is there under its own name — including the ones no chart is keyed on yet — with its `type`, `unit` and `description`, whether it was enabled, and the daemon's own clock.
 
-The server's counters are **cumulative for the module's lifetime**, not per run — `summary.json`
-carries a `server_metrics.delta` (last minus first scrape) which is what belongs to a given run.
-Percentiles are excluded from that delta on purpose: subtracting two p99 snapshots is meaningless.
+Per-metric descriptors (`type`, `unit`, `description`) go on the `meta` line rather than on every scrape. A manifest is a **revision, not a header**: a module may register a metric after the run has started (the transport diagnostics only exist once the server is up), and the collector re-emits the manifest whenever the descriptors change. A reader folds every manifest of the run, latest wins — `bench_samples.read_descriptors()` / `read_types()` — so a late metric keeps its type instead of arriving with readings and no description of them. `d` carries what the dump said about itself. `off` lists the metrics that reported `enabled: false` in that scrape — `wazuh_metrics` writes a *value* for a disabled metric too (whatever it last held), so without that list a stopped counter reads as a live one flatlining.
+
+```text
+{"kind":"run","r":"20260916T181538Z-35d5","started":"...Z","label":"<run label>"}
+{"kind":"meta","src":"inventory-sync","socket":"...","r":"...",
+ "types":{"sync.docs.indexed":"counter",...},"units":{...},"descriptions":{...}}
+{"ts":"...Z","t":12.0,"src":"inventory-sync","ok":true,"m":{"sync.docs.indexed":1234,...},
+ "h":{"vd.lane.time":{"count":9,"p50":...,"p99":...},...},
+ "d":{"name":"inventory_sync_server","timestamp":"...Z"},"r":"20260916T181538Z-35d5"}
+{"ts":"...Z","t":13.0,"src":"inventory-sync","ok":false,"err":"connection refused","r":"..."}
+```
+
+**Re-running a label appends to the same file.** `results_<label>/` is reused and the collectors append, so one samples file can hold several runs. Each run opens with a `run` marker and every line carries its `r`; the charts and `summary.json` both read the **last run only**, and `summary.json` records which (`server_metrics.<source>.run`). Reading the file whole instead — `jq` with no filter — spans runs, and a cumulative counter's delta then covers all of them. To scope a query by hand, filter on the last `r`:
+
+```bash
+RUN=$(jq -r 'select(.r).r' results_<label>/samples/metrics.ndjson | tail -1)
+jq -r --arg r "$RUN" 'select(.r==$r and .src=="inventory-sync" and .ok) | [.t, .m["vd.lane.depth"]] | @tsv' \
+    results_<label>/samples/metrics.ndjson
+```
+
+Two more rules matter when reading it. A metric the dump did not carry is **absent** from `m`, not zero — "this build does not register it", "this counter has not moved" and "this metric was turned off" are three different facts, and the format keeps all three apart (the third via `off`). A failed scrape carries **no metrics at all**, because zeros would read as a counter reset to anything computing a delta. Histograms live in `h`, so a percentile can never be mistaken for something you may subtract.
+
+Read through `bench_samples.observed()` rather than touching `m` and `h` directly: it returns both with whatever that scrape listed in `off` removed, which is what keeps a disabled metric's stale value — or a disabled histogram's stale distribution — out of a chart or a delta.
+
+Ad-hoc queries need nothing but `jq`:
+
+```bash
+# how the VD lane depth moved, as a time series (every run in the file)
+jq -r 'select(.src=="inventory-sync" and .ok) | [.t, .m["vd.lane.depth"]] | @tsv' \
+    results_<label>/samples/metrics.ndjson
+
+# every metric remoted_module published, whether or not it has a column
+jq -r 'select(.src=="remoted-module" and .ok) | .m | keys[]' \
+    results_<label>/samples/metrics.ndjson | sort -u
+```
+
+**Per-daemon CSV export is optional.** The collectors used to derive one per scrape, next to the samples file; nothing read it (the charts and the summary both prefer the samples file) and it held strictly less, because a fixed header can only carry what somebody aliased. Add `--export-csv` to export every daemon with samples after collection ends:
+
+```bash
+./run_benchmark.sh --scenario scenarios/real_syscollector_debian.json --mode uds --export-csv
+```
+
+Exports go to `results_<label>/stats-api-*.csv` and include only the latest run when a label is reused. This option requires `pandas` and works with `--no-charts`. If samples are unavailable, export is skipped; missing dependencies or export failures are reported without changing the sender's exit code. CSV export is disabled by default.
+
+You can also export an existing run separately:
+
+```bash
+python3 ../devContainer/scripts/bench_samples.py results_<label>              # every daemon
+python3 ../devContainer/scripts/bench_samples.py results_<label> --src remoted --out-dir /tmp
+```
+
+(Inside the devcontainer, `$WAZUH_DEV_SCRIPTS` points at the same directory.) It writes the full projection, so the export has every metric rather than the aliased subset. The format and that projection are defined by `tools/devContainer/scripts/bench_samples.py`.
+
+A run recorded before the samples file existed is **not chartable by this build**: the legacy CSV readers went with the CSVs. Re-run the scenario.
+
+The same `samples/metrics.ndjson` file carries the remoted C++ module's statistics under `src: "remoted-module"`, collected from `GET /metrics` over its admin socket (`queue/sockets/remote-admin-http.sock`): every `remoted.*` family the module registers (`control`, `scanvd`, `auth`, `enroll`, `cacerts`, `download`, `forwarder`, `server`, `admin`, `http`), the admin server's own transport gauges among them; the catalog is [remoted's metrics page](../../docs/ref/modules/remoted/metrics.md). The scan-vd family is what a saturation run is read on — an admission split, `scanvd_queue_full` and `scanvd_indexer_unavailable` against `scanvd_accepted` and `scanvd_vd_error`, says how many re-scans VD queued versus refused; the charts render it as `remoted_module_scanvd_funnel_<label>.png` (requests / accepted / queue_full / indexer_unavailable / vd_error / version_mismatch), and it counts the same admissions the sender's `scan_200`/`scan_503` do, so the two sides finally mean the same thing. Remoted's **C** statistics from the legacy framed `getstats` socket are recorded in the same file under `src: "remoted"`; the two sources are disjoint. Both inventory sync and the admin server also report their route-class connection counts and in-flight byte budget, so a shed session can be attributed to the budget or to a class cap rather than guessed at.
+
+**One poller, one format, one source of truth.** The monitor samples the manager's processes *and* polls each daemon's statistics, so it also owns the inventory-sync scrape, and every scrape lands in the same `samples/metrics.ndjson`. `scrape_metrics.sh` stays as a standalone tool, is only started automatically when the monitor cannot run (it needs `psutil`), and now writes that same format — so a missing Python package costs the process samples but never the server's own numbers, and never leaves the collator sniffing which producer had run.
+
+`summary.json` splits each daemon's metrics by **kind**, because what may be computed from a series depends on what it is — and the declared type is in the samples file, so nothing has to be guessed:
+
+| block | which metrics | what it reports |
+|---|---|---|
+| `counters` | declared `counter` | `first`, `last`, `delta`, `resets` |
+| `levels` | declared `gauge_int` / `pull` | `first`, `last`, `min`, `max` — **no delta** |
+| `text` | non-numeric readings | the value |
+| `histograms` | declared `histogram` | the last distribution |
+
+The server's counters are **cumulative for the module's lifetime**, not per run, so `delta` is what belongs to a given run. It is the sum of the rises, not `last - first`: a daemon that restarts mid-run makes its counters fall, and the work done after the restart still counts — `resets` says it happened rather than the run reporting a negative number.
+
+A level gets no delta at all. Five live sessions then two is not "-3 sessions"; it is a level that moved, and `min`/`max` are what describe it. Percentiles are likewise absent from any delta, which the samples file makes structural by keeping histograms in their own object.
+
+`delta`, `final` and `peak` remain as flat name-to-number views for tooling that indexes by metric name; `delta` holds **counters only**, which is the one place the word means something.
+
+`summary.json` carries what it computed and **names** its other inputs rather than copying them (`inputs` lists them, relative to the run directory). It used to embed `params.json` verbatim and six of `sender_summary.json`'s seven keys byte-identically while dropping the seventh — `expected`, the scenario's verdict, the only judgment in the set. The verdict is now in `summary.json` (condensed: `passed`, `checked`, `failed`, `first_failure`), with the full failure list still in `sender_summary.json`. `processes` covers every process the monitor sampled, not modulesd alone.
 
 ### The sender on its own
 
@@ -98,14 +160,23 @@ Percentiles are excluded from that delta on purpose: subtracting two p99 snapsho
 ```bash
 cd tool_simulator
 make all                       # flatc --go bindings + go build -> ./benchmark_sender
-make test                      # wazuh-agent+jwt frozen vector + FlatBuffers round-trip
+make test                      # go test ./... (JWT frozen vectors, FlatBuffers round-trip, ...)
 
 ./benchmark_sender --scenario ../scenarios/<scenario>.json --validate      # load + strict-check only
 ./benchmark_sender --scenario ../scenarios/<scenario>.json --mode uds \
                    --socket /var/wazuh-manager/queue/sockets/inventory-sync-http.sock
 ```
 
-The FlatBuffers Go bindings are generated by `make`, never committed. The design is documented before
+No CI lane builds the sender or runs its Go tests; run `make test` yourself after changing it.
+The Python side (`result_summary.py`, under `tests/`) runs in
+[5_testunit_dev-tools.yml](../../.github/workflows/5_testunit_dev-tools.yml):
+`python -m pytest -rs tests` from this directory, with `pytest psutil pandas matplotlib` installed;
+the job fails on any skipped case.
+
+The FlatBuffers Go bindings are generated by `make`, never committed. `make generate` runs the
+`flatc` at the Makefile's default `FLATC` path (`src/external/flatbuffers/build/flatc`, in the
+dependency tree); set `FLATC=` to use another one. `run_benchmark.sh` rebuilds a stale binary with `make build` only, so run `make all`
+once on a fresh checkout. The design is documented before
 the code on purpose: the sender reproduces the manager's authentication and wire contracts byte for
 byte, and those are worth pinning down in prose (and cross-checking against the manager's sources)
 before they are implemented.
@@ -134,26 +205,93 @@ the offset live from remoted's `/control` (the same signal a real agent uses); `
 `/control` to learn it from, so pass `--vd-feed-offset <value>` explicitly — query the live value
 with `curl --unix-socket queue/sockets/vd-http.sock http://localhost/vulnerability-detector/offset` —
 against a target whose feed offset is not 0, or every VD scenario's sessions fast-reject with `409`
-instead of exercising a real scan. See `SCENARIOS.md` for which scenarios this affects.
+instead of exercising a real scan. `run_benchmark.sh` has no `--vd-feed-offset` option of its own,
+so for a uds VD run call the sender directly (see [The sender on its own](#the-sender-on-its-own)).
+See `SCENARIOS.md` for which scenarios this affects.
 
 The same offset gates the **other** way a scan reaches the VD module: `POST /scan/vd`, the
 feed-update re-scan a real agent asks for once `/control` reports a higher `vd_feed_offset`. A
 scenario sends one with a `scan_vd` step (agent mode only), typically right after the VD inventory
 step and with an `initial_delay` so the documents it re-scans have landed first —
 `scenarios/real_vd_rescan_storm.json` does exactly that with 100 agents. It is a different manager
-path from a VDFirst session's scan (remoted relaying VD's admission instead of the inventory
-pipeline's VD scan lane), and its `200` means **queued by VD**, not scanned: the scans themselves
-show up in the manager's log as `reason=feed_update`. Full contract in
+path from a VDFirst session's scan: remoted relays the VD module's admission, which records a
+durable `vd_scan` task in the Task Manager, and the Task Manager's dispatcher later runs it through
+the inventory sync server. Its `200` means **recorded and will run**, not scanned: the scans
+themselves show up in the manager's log as `reason=feed_update`. Full contract in
 [`docu/14-scan-vd.md`](tool_simulator/docu/14-scan-vd.md).
 
 ## Manager preparation (agent mode)
 
-Agent-mode runs enroll a synthetic fleet against authd, so enrollment must be open and password-free.
-`prepare_manager.sh` sets the `<auth>` block to `disabled=no`, `remote_enrollment=yes`,
-`use_password=no` (optionally `max_agents=N`) and removes `etc/authd.pass`. It is idempotent and
-writes a one-time `.bak`. The compiled default is already `use_password=0`, but upstream #36705 turned
-the shared password **on by default in the installer**, so a fresh install rejects unauthenticated
-enrollment until this is undone.
+Agent-mode runs enroll a synthetic fleet the way a 5.x agent handed an enrollment token does — `POST
+/enroll` on 1517 with a `wazuh-enroll+jwt` bearer — so the manager under test keeps the **enrollment
+policy it was installed with**. `prepare_manager.sh` does three things; the first two soften
+nothing, and the third removes a rate ceiling deliberately:
+
+1. makes remote enrollment reachable: `<auth>` gets `disabled=no`, `remote_enrollment=yes`. The
+   `/enroll` route is always registered, but it answers `403` unless both hold. `--max-agents N`
+   also sets the enrollment cap, which is not a configuration-file option: the script writes the
+   internal option `authd.max_agents=N` (an integer in `[0, 2147483647]`, `0` = no limit, the
+   default) to `/etc/wazuh-manager/wazuh-manager-internal-options.conf` (`--internal-options PATH`
+   names another file), replacing an earlier value, and removes a stale `<auth><max_agents>` element an earlier version of the script wrote
+   (the schema refuses it, so it would keep the manager from starting);
+2. mints **one multi-use enrollment token** for the fleet (`wazuh-manager-authd
+   --create-enrollment-token`, authd's defaults: 30 days, unlimited uses) and writes it to
+   `.enrollment_token` next to the script, which `run_benchmark.sh` picks up by itself;
+3. sets `<remote><https>`'s `enroll_rate_limit` and `cacerts_rate_limit` to `0` — the documented
+   "no limit" (issue #39129). Those two routes ship with a rate limit (100 and 50 req/s), counted
+   **for the endpoint as a whole rather than per agent**, so a harness asking faster than a fleet's
+   steady state — which is the whole point of a capacity run — gets `429`s from a perfectly healthy
+   manager: the `cacerts` scenario's 200 unpaced requests would spend the burst and see roughly half
+   refused. `--keep-rate-limits` leaves the shipped values in place, which is how you benchmark the
+   limiter itself; the sender counts a `429` as an ordinary outcome either way (`cacerts_429`,
+   `enroll_https_429`, assertable as `s429`).
+
+`<use_password>` and `/etc/wazuh-manager/authd.pass` are left exactly as installed. That is the point of issue
+#39054: benchmarking used to require `use_password=no`, a configuration no production manager has,
+and a config flip the script had to apply and undo.
+
+The mint is validated against the running listener certificate, so its `--address` must be one of
+that certificate's SANs; the default is read from the certificate itself. `--address` overrides it,
+and `--no-mint` skips minting (bring your own token with `--enroll-token-file`). It is idempotent and
+writes a one-time `.bak`.
+
+### Bootstrapping over the legacy 1515 listener
+
+`--bootstrap 1515` enrolls the fleet through authd's plaintext-inside-TLS listener instead, which is
+kept for comparing the two first-contact paths. The listener must be up: `<auth><legacy_enrollment>`
+follows `<remote><legacy><enabled>` when it is not set, and the installer enables the legacy
+block. That protocol carries no credential, so it needs the old flip, which is now explicit:
+
+```bash
+sudo ./prepare_manager.sh --open-1515      # ALSO sets use_password=no and removes /etc/wazuh-manager/authd.pass
+./run_benchmark.sh --scenario scenarios/real_syscollector_debian.json --mode agent --bootstrap 1515
+```
+
+It opens unauthenticated enrollment to anything that can reach port 1515, which is why it is not the
+default any more — and a later `prepare_manager.sh` **without** the flag does not undo it: put
+`<use_password>` back by hand (the one-time `.bak` has the original) when done comparing. Each run
+records which bootstrap it used in `sender_summary.json` (`meta.bootstrap`) and `params.json`, so two
+runs are never confused for one another.
+
+### The Server API password
+
+`cleanup_agents.sh` (which `run_benchmark.sh` and `run_matrix.sh` call before every agent-mode
+run) authenticates as `WAZUH_API_USER` (default `wazuh`). Its password has no default, because a
+5.x installation generates the `wazuh` user's password and publishes it as
+`WAZUH_MANAGER_API_PASSWORD` in `/etc/wazuh-manager/export/credentials.env` (root-only; see
+[Credentials](../../docs/ref/getting-started/credentials.md)). The script takes the first of
+`WAZUH_API_PASS`, `WAZUH_MANAGER_API_PASSWORD`, and that file's line when the caller can read it
+(under `sudo`). For an unprivileged run, export it once:
+
+```bash
+export WAZUH_API_PASS="$(sudo sed -n 's/^WAZUH_MANAGER_API_PASSWORD=//p' /etc/wazuh-manager/export/credentials.env)"
+```
+
+Without a password, with one the API refuses (`401`), or with the API down, the script prints why
+and exits 1; `run_benchmark.sh` and `run_matrix.sh` then print a `WARNING: pre-run cleanup FAILED`
+on stderr and run anyway. The previous run's `bench-*` agents then stay, so re-enrolling the same
+names fails with "Duplicate agent name" (authd's `<auth><force>` policy refuses to replace an agent
+registered less than `after_registration_time`, 1 h by default, ago).
 
 ## Inspecting a run's indexed data (agent mode)
 
@@ -191,11 +329,11 @@ run exits. Pair it with `--keep-agents` so the documents survive after that too:
 | Script | What it does |
 |---|---|
 | `run_benchmark.sh` | Orchestrates one run end to end (monitor + sender + summary + charts) |
-| `prepare_manager.sh` | Opens password-free enrollment for agent mode (idempotent) |
-| `scrape_metrics.sh` | Standalone `GET /metrics` poller (long format). Only used as a fallback when the monitor cannot run |
-| `cleanup_agents.sh` | Deletes only `bench-*` agents via the Wazuh API (never a real one) |
-| `indexer_control.sh` | Start/stop/health the local `wazuh-indexer` (e.g. an indexer-down scenario) |
-| `result_summary.py` | Collates a run's artifacts into `summary.json` (descriptive only, no pass/fail) |
+| `prepare_manager.sh` | Makes remote enrollment reachable, mints the fleet's enrollment token and clears the two unauthenticated routes' rate limits (idempotent); `--open-1515` for the legacy bootstrap, `--keep-rate-limits` to benchmark the limiter |
+| `scrape_metrics.sh` | Wrapper around `bench_collect.py`, the collector the monitor also runs — same loop, same validation, same lines. Only started automatically when the monitor cannot run (it needs psutil) |
+| `cleanup_agents.sh` | Deletes only `bench-*` agents via the Server API (never a real one); `--all` deletes every agent. Credentials come from `WAZUH_API_URL`, `WAZUH_API_USER` and `WAZUH_API_PASS` (or the published `WAZUH_MANAGER_API_PASSWORD`, see below); exits 1 when it cannot authenticate |
+| `indexer_control.sh` | Start/stop/health the local `wazuh-indexer`, by hand (no script calls it), e.g. to stop it during a run and observe the manager with the indexer down |
+| `result_summary.py` | Collates a run's artifacts into `summary.json` — every daemon's metric deltas, every process's resource aggregates, the scenario's verdict (descriptive only, no pass/fail) |
 | `run_matrix.sh` | Runs the whole matrix the load report is built from |
 | `make_report_tables.py` | Turns the resulting `results_*/` into the report's tables |
 
@@ -206,8 +344,8 @@ report from someone else's laptop would be misleading as a reference. The matrix
 committed instead, so any environment can regenerate the whole thing:
 
 ```bash
-sudo ./prepare_manager.sh              # open, password-free enrollment (agent mode)
-./run_matrix.sh                        # 12 runs -> results_<label>/
+sudo ./prepare_manager.sh              # reachable enrollment + the fleet's token (agent mode)
+./run_matrix.sh                        # 14 runs -> results_<label>/
 ./make_report_tables.py > tables.md    # environment + status + latency + throughput tables
 ```
 
@@ -232,9 +370,18 @@ The same scenarios over two transports, so the difference isolates the relay:
 - **`--mode uds`** — straight to the module's Unix socket (`POST /stateful`), measuring the
   ingestion pipeline alone: validation, sharded workers, group commit, the vulnerability-detection
   scan lane.
-- **`--mode agent`** — like a real fleet: enroll against authd, then HTTPS to remoted with a
-  `wazuh-agent+jwt` bearer token per request, sending `POST /control` (`startup`, a `notify` keepalive every 10 s, `shutdown`) and
-  the `POST /stateful` sessions.
+- **`--mode agent`** — like a real fleet: enroll over `POST /enroll` with an enrollment token
+  (`--bootstrap 1515` for the legacy listener), then HTTPS to remoted with a
+  `wazuh-agent+jwt` bearer token per request, sending `POST /control` (`startup`, a `notify` keepalive every `defaults.control.keepalive_interval`, 10 s when unset, `shutdown`) and
+  the `POST /stateful` sessions. A `cacerts` step adds the unauthenticated `GET /cacerts` (the CA that
+  signs the listener certificate) — the trust bootstrap a real agent does first, and the floor of the
+  listener's fixed per-request cost since nothing sits downstream of it (`scenarios/cacerts.json`).
+  An `enroll_https` step MEASURES that same first-contact path under load
+  (`scenarios/enroll_https.json`): each repetition enrolls a fresh `bench-…-tk-N` agent, on top of
+  the one enrollment per agent the bootstrap already did, and its cost is reported in its own
+  `enroll_https_*` counters — the fleet's own bootstrap is setup and is never folded into them. Both
+  use the token from `--enroll-token-file` / `WAZUH_ENROLLMENT_TOKEN` / `.enrollment_token`, and
+  `cleanup_agents.sh` removes every `bench-*` agent either produced.
 
 Per run it produces `bench.csv` (per-second cumulative counters and latency percentiles),
 `sender_summary.json` (metadata, totals, per-kind histograms — plus the `expected` verdict when the
@@ -252,7 +399,9 @@ documented for a synthetic client until now).
 ## Related
 
 - System under test: [`docs/ref/modules/inventory-sync-server/`](../../docs/ref/modules/inventory-sync-server/README.md)
-- The module's developer map (requirements, design decisions D1–D22, developer FAQ):
+- The module's developer map (requirements, design decisions D1–D30, developer FAQ):
   [`inventory_sync_server/README.md`](../../src/wazuh_modules/inventory_sync_server/README.md)
 - Correctness (not performance): the integration QA in [`inventory_sync_server/qa/`](../../src/wazuh_modules/inventory_sync_server/qa/README.md)
-- Runtime statistics the monitor scrapes: `GET /metrics`, documented in the API reference
+- Runtime statistics the monitor scrapes: `GET /metrics`, documented in the inventory sync server's
+  [API reference](../../docs/ref/modules/inventory-sync-server/api-reference.md#get-metrics) and in
+  [remoted's metric catalog](../../docs/ref/modules/remoted/metrics.md)

@@ -1,7 +1,6 @@
 /*
  * Wazuh Module for Agent control
- * Copyright (C) 2015, Wazuh Inc.
- * January, 2019
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -395,11 +394,9 @@ static void *process_control() {
             break;
         case 0:
             mtinfo(WM_CONTROL_LOGTAG, "Empty message from local client.");
-            close(peer);
             break;
         case OS_SOCKTERR:
             mterror(WM_CONTROL_LOGTAG, "Received message > %i", MAX_DYN_STR);
-            close(peer);
             break;
         default:
             buffer[length] = '\0';
@@ -410,7 +407,6 @@ static void *process_control() {
             } else {
                 OS_SendSecureTCP(peer, 3, "Err");
             }
-            close(peer);
         }
 #else
         switch (length = OS_RecvUnix(peer, OS_MAXSTR, buffer), length) {
@@ -419,11 +415,9 @@ static void *process_control() {
             break;
         case 0:
             mtinfo(WM_CONTROL_LOGTAG, "Empty message from local client.");
-            close(peer);
             break;
         case OS_MAXLEN:
             mterror(WM_CONTROL_LOGTAG, "Received message > %i", MAX_DYN_STR);
-            close(peer);
             break;
         default:
             wm_control_dispatch(buffer, &response);
@@ -433,9 +427,11 @@ static void *process_control() {
             } else {
                 OS_SendUnix(peer, "Err", 4);
             }
-            close(peer);
         }
 #endif
+
+        /* Every outcome above, including a receive error, ends with the peer. */
+        close(peer);
 
         free(buffer);
         buffer = NULL;

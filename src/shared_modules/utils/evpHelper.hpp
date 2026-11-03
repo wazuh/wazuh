@@ -1,12 +1,13 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015, Wazuh Inc.
- * July 10, 2024.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #ifndef _EVPHELPER_HPP
@@ -96,6 +97,13 @@ public:
      */
     void decryptAES256(const std::vector<char>& input, std::string& output)
     {
+        if (input.size() < CIPHER_KEY_SIZE + CIPHER_IV_SIZE)
+        {
+            // Too short to even hold a key and IV, let alone any ciphertext: input.size() -
+            // CIPHER_KEY_SIZE - CIPHER_IV_SIZE below would underflow to a huge size_t.
+            throw std::runtime_error("Input too short to contain a key, IV and ciphertext");
+        }
+
         EVP_CIPHER_CTX* ctx;
 
         int len;

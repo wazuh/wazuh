@@ -1,2 +1,3 @@
 #!/bin/sh
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # prerm script for wazuh-internal-tools

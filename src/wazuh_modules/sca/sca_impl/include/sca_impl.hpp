@@ -17,6 +17,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <shared_mutex>
 #include <string>
 #include <vector>
@@ -25,6 +26,24 @@
 using YamlToJsonFunc = std::function<nlohmann::json(const std::string&)>;
 
 class SCASyncManager;
+
+/// @brief How a recovery (DataClean + resend of the whole snapshot) ended.
+enum class RecoveryOutcome
+{
+    COMPLETED, ///< The manager received the whole snapshot.
+    QUEUED,    ///< The index was cleared and the snapshot queued, but sending it failed; the next
+    ///< regular synchronization delivers it.
+    FAILED     ///< Nothing was queued; the recovery is retried in the next integrity_interval.
+};
+
+/// @brief Result of SecurityConfigurationAssessment::synchronizeDatabaseSnapshot().
+struct SnapshotSyncResult
+{
+    SyncModuleResult sync;
+    /// @brief True once the index was cleared and the snapshot queued, so a failure after that
+    /// point is delivered by the next regular synchronization.
+    bool queued{false};
+};
 
 class SecurityConfigurationAssessment
 {
@@ -168,6 +187,22 @@ class SecurityConfigurationAssessment
         /// @brief Flag indicating if a sync operation is currently in progress
         std::atomic<bool> m_syncInProgress {false};
 
+        /// @brief Set while a flush sends. syncModule() stands back from it; pause() does not wait
+        /// for it.
+        std::atomic<bool> m_flushInProgress {false};
+
+        /// @brief Set while a DataClean outside the sync cycle runs (the integrity recovery, the
+        /// all-policies-removed cleanup). A flush waits for it; it stands back from a flush.
+        std::atomic<bool> m_recoveryInProgress {false};
+
+        /// @brief Agent id change resends actually started. Reported by get_identity_changed so the
+        /// sync thread backs off only after a real attempt, not after a cycle that never tried.
+        std::atomic<uint32_t> m_identityResyncAttempts {0};
+
+        /// @brief Set once Run() has initialized the document limits, before its first scan. The
+        /// identity resend waits for it.
+        std::atomic<bool> m_runInitialized {false};
+
         /// @brief Cached first-sync completion state used to gate initial stateful publication.
         std::atomic<bool> m_firstSyncCompleted {false};
 
@@ -198,10 +233,17 @@ class SecurityConfigurationAssessment
         int executeFlushSync();
 
         /// @brief Perform full recovery: load all checks and resync
-        /// @return true on success, false on failure.
+        /// @return How the recovery ended; see RecoveryOutcome.
         /// @note Protected (rather than private) so test subclasses can drive recovery
         ///       deterministically, same reason as executeFlushSync() above.
-        bool performRecovery();
+        RecoveryOutcome performRecovery();
+
+        /// @brief Handle case when all policies are removed from config
+        /// Sends DataClean, clears DB, syncs, and signals exit
+        /// @return true if DataClean was sent and handled successfully
+        /// @note Protected (rather than private) so test subclasses can drive its retries
+        ///       against a flush, same reason as executeFlushSync() above.
+        bool handleAllPoliciesRemoved();
 
     private:
         /// @brief Get the create statement for the database
@@ -249,7 +291,32 @@ class SecurityConfigurationAssessment
         /// Reads the id from the shared-memory metadata provider, which is the same value, via
         /// the same call, that stamps the outgoing session -- so a resync can never be sent
         /// under an id different from the one it was compared against.
-        void checkAgentIdentity();
+        /// @return false when the resend could not run (the module is stopping, Run() did not
+        ///         apply the document limits in time) or did not reach the manager: nothing else is
+        ///         sent then, not even a delta.
+        bool checkAgentIdentity();
+
+        /// @brief Whether the agent id differs from the one SCA last synchronized as.
+        ///
+        /// Read-only twin of checkAgentIdentity()'s decision, for the sync thread to poll.
+        /// @return 1 when it changed; 0 when it did not, or was never recorded (adopted, not a
+        ///         change); -1 when it cannot tell: no id published yet, a failed read, or no sync
+        ///         protocol to resend with. The sync thread keeps its retry state on -1.
+        int agentIdentityChangeState();
+
+        /// @brief What checkAgentIdentity() and agentIdentityChangeState() both decide on.
+        enum class AgentIdentity
+        {
+            Unknown,    ///< No id published yet, or the marker could not be read.
+            Unrecorded, ///< No id recorded yet: adopted, never resynced.
+            Unchanged,  ///< Recorded and equal to the current one.
+            Changed     ///< Recorded and different: the manager has nothing under this id.
+        };
+
+        /// @brief Reads the current and the recorded agent id and classifies them.
+        /// @param currentId Set to the id the metadata provider publishes (0 when unknown).
+        /// @param syncedId Set to the id last recorded as synchronized (0 when none).
+        AgentIdentity readAgentIdentity(long& currentId, int64_t& syncedId);
 
         /// @brief Refresh the cached first-sync completion flag from metadata.
         void refreshFirstSyncCompletedState();
@@ -260,8 +327,8 @@ class SecurityConfigurationAssessment
         /// @brief Synchronize the current DB snapshot using FULL mode.
         /// @param increaseVersions Whether to bump versions before building the snapshot.
         /// @param syncReason Reason used in logs.
-        /// @return SyncModuleResult with success flag and an optional failure reason string.
-        SyncModuleResult synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason);
+        /// @return The sync result, and whether the snapshot was queued before it ended.
+        SnapshotSyncResult synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason);
 
         /// @brief Logs a failed SyncModuleResult at the right level: INFO for an expected
         /// shutdown/prerequisite/manager-not-ready-within-tolerance hiccup, WARNING (or
@@ -274,13 +341,21 @@ class SecurityConfigurationAssessment
         /// @param genericFailureLevel Level for the final fallback branch (a real failure unrelated
         /// to manager-not-ready/local-transport). executeFlushSync() keeps that case at LOG_ERROR,
         /// since it is an on-demand operation rather than a periodic cycle that retries on its own.
+        /// @param retryNote Sentence saying when the operation is retried. Unset keeps the periodic
+        /// cycle's "Will retry next cycle." on a deferral and says nothing on a failure; recovery sets it,
+        /// since it is retried in the next integrity_interval, not the next cycle.
         void logSyncFailure(const SyncModuleResult& result, const std::string& operationLabel,
-                            modules_log_level_t genericFailureLevel = LOG_WARNING);
+                            modules_log_level_t genericFailureLevel = LOG_WARNING,
+                            const std::optional<std::string>& retryNote = std::nullopt);
 
         /// @brief Check with manager if full sync required via checksum
         /// @param checksum Local checksum to validate
-        /// @return true if recovery needed
-        bool checkIfRecoveryRequired(const std::string& checksum);
+        /// @return MISMATCH if recovery is needed, VALID if the checksum matches, NOT_CHECKED (with the
+        ///         reason) if the check did not complete.
+        IntegrityCheckResult checkIfRecoveryRequired(const std::string& checksum);
+
+        /// @brief The configured integrity_interval in the largest whole unit that fits (86400 -> "24h").
+        std::string integrityIntervalText() const;
 
         /// @brief Check if DB has data (policies or checks)
         /// @return true if DB contains any policies or checks
@@ -290,11 +365,6 @@ class SecurityConfigurationAssessment
         /// If the database has existing data, triggers DataClean to notify the manager and clears DB.
         /// @return true if no cleanup was needed (DB was already empty), false if cleanup was performed or failed
         bool handleNoPoliciesAvailable();
-
-        /// @brief Handle case when all policies are removed from config
-        /// Sends DataClean, clears DB, syncs, and signals exit
-        /// @return true if DataClean was sent and handled successfully
-        bool handleAllPoliciesRemoved();
 
         /// @brief Handle report events when internal limit changed
         /// @param demotedIds Check ids demoted by the limit change

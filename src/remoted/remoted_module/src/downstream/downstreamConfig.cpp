@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module (C++ worker bridge)
- * Copyright (C) 2015, Wazuh Inc.
- * July 27, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -23,9 +22,13 @@ namespace
     // http_request_timeout (30 s) so a stock install starts warning-free; calibration with real
     // session sizes is F9's job (inventory_sync_server_docs 13 §3.3).
     constexpr int DEFAULT_STATEFUL_RESPONSE_TIMEOUT_SEC {20};
-    // 11 MiB, not 10: strictly larger than the agent-request cap because /stats and /config echo
-    // the agent's document back enriched (see DownstreamConfig::maxResponseBodySize).
-    constexpr std::size_t DEFAULT_MAX_RESPONSE_BODY_SIZE {11U * 1024U * 1024U};
+    // The re-send then lands at twice the deadline, past the immediate-session p90 measured under
+    // group rotation (31 s); a deployment whose sessions run longer raises it, 0 drops the header.
+    constexpr int DEFAULT_STATEFUL_RETRY_AFTER_SEC {20};
+    // Fallback only, used when the caller passes 0. remoted never does -- secure.c always reads
+    // remoted.downstream_max_response_body_size, whose default is 10 MiB -- so this mirrors that
+    // default rather than introducing a second one.
+    constexpr std::size_t DEFAULT_MAX_RESPONSE_BODY_SIZE {10U * 1024U * 1024U};
 
     // A positive caller value wins; otherwise the built-in default (seconds).
     int resolveSeconds(const int configValue, const int defaultValue)
@@ -60,6 +63,10 @@ namespace remoted::downstream
             resolveSeconds(config.downstream_response_timeout, DEFAULT_RESPONSE_TIMEOUT_SEC) * 1000;
         result.statefulResponseTimeoutMs =
             resolveSeconds(config.downstream_stateful_response_timeout, DEFAULT_STATEFUL_RESPONSE_TIMEOUT_SEC) * 1000;
+        // 0 is a setting here ("no header"), not an absence: only a negative value falls back.
+        result.statefulRetryAfterSec = config.downstream_stateful_retry_after >= 0
+                                           ? config.downstream_stateful_retry_after
+                                           : DEFAULT_STATEFUL_RETRY_AFTER_SEC;
         result.ioThreads = resolveThreadCount(config.downstream_io_threads);
         result.postProcessThreads = resolveThreadCount(config.downstream_post_process_threads);
         result.maxResponseBodySize =

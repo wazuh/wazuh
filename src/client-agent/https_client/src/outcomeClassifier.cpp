@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -33,9 +32,22 @@ OutcomeClass classifyOutcome(const HttpResponse& response)
         return OutcomeClass::Ok;
     }
 
-    if (code == 401) // Generic auth failure, the only auth code in the contract.
+    // 401: the only auth code in the contract. Which of the eight failure classes it is stays out
+    // of OutcomeClass on purpose -- that keeps its "what was observed" contract, and the class is a
+    // property of the body, not of the status. RetrySender reads it with parseAuthFailClass() where
+    // the escalation decision is actually made (#39064).
+    if (code == 401)
     {
         return OutcomeClass::AuthFail;
+    }
+
+    // 404: nothing at the target. Split out of Permanent because the two
+    // demand opposite treatment -- Permanent says the payload is unacceptable,
+    // while a 404 says nothing about it, so a batch rejected this way must be
+    // kept rather than dropped.
+    if (code == 404)
+    {
+        return OutcomeClass::RouteNotFound;
     }
 
     // 413: the /stateless batch exceeds what the manager accepts; the stream
@@ -78,4 +90,21 @@ OutcomeClass classifyOutcome(const HttpResponse& response)
     // 5xx other than the 503 handled above (500, and 502/504 only when an
     // intermediary is in the path).
     return (code >= 500) ? OutcomeClass::ServerError : OutcomeClass::Permanent;
+}
+
+bool isCertificateVerificationFailure(const HttpResponse& response)
+{
+    if (response.status != TransportStatus::TlsFail)
+    {
+        return false;
+    }
+
+    if (response.tlsFailure.kind != TlsFailureKind::None)
+    {
+        // Already classified (and already logged) as a hostname mismatch or a
+        // certificate-date problem by classifyTlsVerifyFailure()'s own lines.
+        return false;
+    }
+
+    return response.tlsFailure.depth0VerificationFailed || response.tlsFailure.chainTrustRejectedAboveDepth0;
 }

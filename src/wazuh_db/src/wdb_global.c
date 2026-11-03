@@ -1,7 +1,6 @@
 /*
  * Wazuh SQLite integration
- * Copyright (C) 2015, Wazuh Inc.
- * June 06, 2016.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -40,7 +39,7 @@ static const char *global_db_agent_fields[] = {
 
 static const char *SQL_VACUUM_INTO = "VACUUM INTO ?;";
 
-int wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* register_ip, char* internal_key, char* group, int date_add) {
+int wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* register_ip, char* internal_key, char* reenroll_secret, char* group, int date_add) {
     sqlite3_stmt *stmt = NULL;
 
     // Validate group names before inserting
@@ -94,11 +93,17 @@ int wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* regi
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
-    if (sqlite3_bind_int(stmt, 6, date_add) != SQLITE_OK) {
+    /* NULL for every agent not enrolled through authd's local `add` (client.keys mirroring, legacy
+     * 1515, older records): the column is read by the re-enrollment path only (#38993). */
+    if (sqlite3_bind_text(stmt, 6, reenroll_secret, -1, NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+    if (sqlite3_bind_int(stmt, 7, date_add) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
-    if (sqlite3_bind_text(stmt, 7, group, -1, NULL) != SQLITE_OK) {
+    if (sqlite3_bind_text(stmt, 8, group, -1, NULL) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
@@ -221,6 +226,45 @@ int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *connection
         return OS_INVALID;
     }
     if (sqlite3_bind_int(stmt, 3, id) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    return wdb_exec_stmt_silent(stmt);
+}
+
+int wdb_global_set_agent_credentials(wdb_t *wdb, int id, const char *name, const char *register_ip, const char *internal_key, const char *reenroll_secret) {
+    sqlite3_stmt *stmt = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("Cannot begin transaction");
+        return OS_INVALID;
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_SET_AGENT_CREDENTIALS) < 0) {
+        mdebug1("Cannot cache statement");
+        return OS_INVALID;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_GLOBAL_SET_AGENT_CREDENTIALS];
+
+    if (sqlite3_bind_text(stmt, 1, name, -1, NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+    if (sqlite3_bind_text(stmt, 2, register_ip, -1, NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+    if (sqlite3_bind_text(stmt, 3, internal_key, -1, NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+    if (sqlite3_bind_text(stmt, 4, reenroll_secret, -1, NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+    if (sqlite3_bind_int(stmt, 5, id) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
@@ -1061,7 +1105,7 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
                         if (!wdb_global_agent_exists(wdb, id)) {
                             // Create agent in never_connected state
                             const char *ip = "0.0.0.0";
-                            if (OS_INVALID == wdb_global_insert_agent(wdb, id, (char*)create_agent_name, (char*)ip, (char*)ip, NULL, NULL, time(NULL))) {
+                            if (OS_INVALID == wdb_global_insert_agent(wdb, id, (char*)create_agent_name, (char*)ip, (char*)ip, NULL, NULL, NULL, time(NULL))) {
                                 mdebug1("Unable to create agent '%d' in never_connected state", id);
                                 result = WDBC_ERROR;
                             } else {
@@ -1978,6 +2022,25 @@ cJSON* wdb_global_get_backups() {
     return j_backups;
 }
 
+/**
+ * @brief Tell whether a name can only denote a backup created by wdb_global_create_backup().
+ *
+ * The name is joined to WDB_BACKUP_FOLDER, so it must be a bare file name: the backup prefix, the
+ * ".gz" suffix, and only the characters a generated name carries — no '/', no "..".
+ */
+static bool wdb_global_is_valid_backup_name(const char* name) {
+    const size_t prefix_len = sizeof(WDB_GLOB_BACKUP_NAME) - 1;
+    const size_t suffix_len = sizeof(".gz") - 1;
+    const size_t len = strlen(name);
+
+    if (len <= prefix_len + suffix_len || strncmp(name, WDB_GLOB_BACKUP_NAME, prefix_len) != 0
+        || strcmp(name + len - suffix_len, ".gz") != 0 || strstr(name, "..") != NULL) {
+        return false;
+    }
+
+    return strspn(name, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.:") == len;
+}
+
 int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore_state, char* output) {
     char* backup_to_restore = NULL;
 
@@ -1989,10 +2052,23 @@ int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore
     }
 
     char global_path[OS_SIZE_256] = {0};
+    char backup_to_restore_path[OS_SIZE_256] = {0};
 
     snprintf(global_path, OS_SIZE_256, "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
 
     int result = OS_INVALID;
+
+    // Checked before the pre-restore backup, so a refused name leaves nothing behind
+    if (backup_to_restore) {
+        int written = snprintf(backup_to_restore_path, OS_SIZE_256, "%s/%s", WDB_BACKUP_FOLDER, backup_to_restore);
+
+        if (!wdb_global_is_valid_backup_name(backup_to_restore) || written < 0 || written >= OS_SIZE_256) {
+            mdebug1("Invalid snapshot name to restore: '%.64s'", backup_to_restore);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid snapshot name");
+            goto end;
+        }
+    }
+
     if (save_pre_restore_state) {
         if (OS_SUCCESS != wdb_global_create_backup(*wdb, output, "-pre_restore")) {
             merror("Creating pre-restore Global DB snapshot failed. Backup restore stopped: %s", output);
@@ -2002,10 +2078,8 @@ int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore
 
     if (backup_to_restore) {
         char global_tmp_path[OS_SIZE_256] = {0};
-        char backup_to_restore_path[OS_SIZE_256] = {0};
 
         snprintf(global_tmp_path, OS_SIZE_256, "%s/%s.db.back", WDB2_DIR, WDB_GLOB_NAME);
-        snprintf(backup_to_restore_path, OS_SIZE_256, "%s/%s", WDB_BACKUP_FOLDER, backup_to_restore);
 
         if (!w_uncompress_gzfile(backup_to_restore_path, global_tmp_path)) {
             // Preparing DB for restoration.

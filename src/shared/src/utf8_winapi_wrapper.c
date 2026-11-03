@@ -1,6 +1,6 @@
 /*
  * Shared functions for Syscheck events decoding
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -148,6 +148,23 @@ BOOL utf8_ReplaceFile(const char* old_name, const char* new_name, const char* ba
     os_free(wold_name);
     os_free(wnew_name);
     os_free(wbackup_name);
+    return ok;
+}
+
+BOOL utf8_MoveFileEx(const char* old_name, const char* new_name, DWORD flags) {
+    wchar_t *wold_name = auto_to_wide(old_name);
+    wchar_t *wnew_name = auto_to_wide(new_name);
+
+    if (!wold_name || !wnew_name) {
+        os_free(wold_name);
+        os_free(wnew_name);
+        return FALSE;
+    }
+
+    BOOL ok = MoveFileExW(wold_name, wnew_name, flags);
+
+    os_free(wold_name);
+    os_free(wnew_name);
     return ok;
 }
 

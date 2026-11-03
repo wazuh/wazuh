@@ -7,6 +7,41 @@ After=network.target network-online.target
 Type=forking
 LimitNOFILE=65536
 TimeoutSec=45
+# Start waits up to ~130 s for analysisd's engine API (wait_for_wazuh_engine_ready in
+# wazuh-manager-control); a shorter start timeout would report a systemd timeout instead of the
+# script's own error. Stop keeps the 45 s above.
+TimeoutStartSec=180
+
+# Sandboxing. No manager daemon chroots into the installation directory any more: the unit confines all
+# of them instead. NoNewPrivileges stays unset because wazuh-manager-service-control is setuid root (the
+# Server API's restart and reload go through it).
+ProtectSystem=full
+# Writable: the installation directory and the configuration directory /etc/wazuh-manager, the only
+# two places wazuh-manager-resolve-credentials --prestart writes (rbac.db and the keystore under the
+# first; ca/, export/ and certs/ under the second). It reads the indexer's /etc/wazuh-indexer/export,
+# which stays read-only here. '-' skips a missing path.
+ReadWritePaths=WAZUH_HOME_TMP -/etc/wazuh-manager
+PrivateTmp=yes
+# Hides /home, /root and /run/user: an installation under /home cannot run under this unit.
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ProtectKernelLogs=yes
+ProtectClock=yes
+ProtectHostname=yes
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+# Every daemon drops to the wazuh-manager user and so holds no capability; the bounding set caps the
+# root phase (wazuh-manager-control, the credential resolver, each daemon before its drop) and whatever
+# runs wazuh-manager-service-control. Ownership and modes (resolver), root writes into wazuh-manager
+# directories, the privilege drop, signals to the daemons on stop, and a listener port below 1024.
+CapabilityBoundingSet=CAP_CHOWN CAP_FOWNER CAP_DAC_OVERRIDE CAP_DAC_READ_SEARCH CAP_SETUID CAP_SETGID CAP_KILL CAP_NET_BIND_SERVICE
+SystemCallArchitectures=native
+# A call outside the set fails with EPERM, so the daemon logs it instead of dying of SIGSYS.
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
 
 ExecStart=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-manager-control start
 ExecStop=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-manager-control stop

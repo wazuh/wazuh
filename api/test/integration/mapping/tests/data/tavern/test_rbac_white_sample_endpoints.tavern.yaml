@@ -1,0 +1,9 @@
+---
+test_name: Denied
+
+stages:
+  - name: 403 in an RBAC file
+    request:
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
+    response:
+      status_code: 403

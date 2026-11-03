@@ -11,7 +11,7 @@ Defaults and ranges are the ones the product ships; every *measured* figure quot
 the #38284 campaign on the 4-core/8 GB reference pair (c5ad.xlarge, Amazon Linux 2023),
 cross-checked on a second architecture.
 
-**Where the options live.** Manager: `etc/wazuh-manager-internal-options.conf`
+**Where the options live.** Manager: `/etc/wazuh-manager/wazuh-manager-internal-options.conf`
 (`remoted.*`, `wazuh_modules.*`) and `wazuh-manager.conf` (the `<remote>`/`<global>` XML settings).
 Agent: `etc/local_internal_options.conf` (`agent.*`, `logcollector.*`) and the agent's own XML
 (`<client>`). Both internal-options files are **per node/host and never synchronized**: nothing in
@@ -31,11 +31,12 @@ Each hop has its own clock, and they are not nested inside one another:
 
 | Phase | Bounded by | Default | How it ends |
 |---|---|---|---|
-| TLS handshake **plus** reading the whole request | [`remoted.http_read_timeout`](configuration.md#remotedhttp_read_timeout) | 10 s | connection closed, no HTTP status |
+| TLS handshake | [`remoted.http_read_timeout`](configuration.md#remotedhttp_read_timeout) (same value, its own clock) | 10 s | connection closed, no HTTP status |
+| Reading the whole request, once the handshake succeeded | [`remoted.http_read_timeout`](configuration.md#remotedhttp_read_timeout) | 10 s | connection closed, no HTTP status |
 | Handling, once the request is fully read | [`remoted.http_request_timeout`](configuration.md#remotedhttp_request_timeout) | 30 s | request torn down |
 | Downstream connect | [`remoted.downstream_connect_timeout`](configuration.md#remoteddownstream_connect_timeout) | 2 s | `503` |
 | Downstream body write | [`remoted.downstream_write_timeout`](configuration.md#remoteddownstream_write_timeout) | 5 s | `503` |
-| Downstream answer | [`remoted.downstream_response_timeout`](configuration.md#remoteddownstream_response_timeout) / [`..._stateful_...`](configuration.md#remoteddownstream_stateful_response_timeout) | 5 s / 20 s | `503` |
+| Downstream answer | [`remoted.downstream_response_timeout`](configuration.md#remoteddownstream_response_timeout) / [`..._stateful_...`](configuration.md#remoteddownstream_stateful_response_timeout) | 5 s / 20 s | `503` (`/stateful`: with `Retry-After` [`..._stateful_retry_after`](configuration.md#remoteddownstream_stateful_retry_after), 20 s) |
 | Writing the response | [`remoted.http_write_timeout`](configuration.md#remotedhttp_write_timeout) | 10 s | connection closed. Rearmed per chunk on a streamed `POST /download`, which does **not** make a slow transfer safe: below ~1 Mbit/s it is what aborts WPK downloads (§5) |
 | The whole request, from the agent's side | `agent.https_request_timeout` / `agent.https_stateful_timeout` | 10 s / 90 s | attempt consumed, retry after backoff |
 
@@ -72,13 +73,13 @@ Check these before changing anything. Each one has a measured failure mode.
 
 | # | Rule | What breaks when violated |
 |---|---|---|
-| 1 | [`remoted.control_keepalive_throttle`](configuration.md#remotedcontrol_keepalive_throttle) < ½ · `<global><agents_disconnection_time>` | live, answering agents flap to `disconnected` for part of every cycle (measured: ~30 s of every 120 s at 2× the threshold). The staleness the disconnection sweep sees is the throttle **plus** the agent's `<client><notify_time>`, which the manager cannot know; remoted warns at startup from half upward |
+| 1 | [`remoted.control_keepalive_throttle`](configuration.md#remotedcontrol_keepalive_throttle) < ½ · [`<global><agents_disconnection_time>`](../task_manager/configuration.md#agents_disconnection_time) | live, answering agents flap to `disconnected` for part of every cycle (measured: ~30 s of every 120 s at 2× the threshold). The staleness the disconnection sweep sees is the throttle **plus** the agent's `<client><notify_time>`, which the manager cannot know; remoted warns at startup from half upward |
 | 2 | `agent.https_request_timeout` > the downstream answer the manager is waiting for | the agent abandons a request the engine already ingested and retries it → duplicate events (measured ×6 against a slow engine). `/stateless` carries no batch identity, so the engine cannot recognize a repeat, and the amplification is **not** bounded by the attempt budget: once those are spent the batch is kept and re-sent on the next flush tick, so it repeats until the downstream answers inside the deadline. At defaults the comparison is 10 s against a 5 s response deadline, with 12 s of worst-case downstream chain behind it: raise `downstream_response_timeout` and you cross into the duplicating regime without touching the agent |
 | 3 | `remoted.http_read_timeout` ≥ (largest body) / (slowest sustained uplink) | the manager closes the connection mid-upload, the agent sees a transport failure and burns an attempt, forever. Cuts track the knob to a tenth of a second (measured: 10.16 s at the shipped 10 s, 3.13 s at 3 s, none at 60 s) and raising `remoted.http_request_timeout` to 180 s does not move them, so raising `agent.https_stateful_timeout` for a slow link **buys nothing on its own** |
 | 4 | `agent.https_stateful_attempts × agent.https_stateful_timeout` + backoffs < 15 min | that ceiling is the agent's fixed session safety net (§4); past it, sessions overlap, duplicate and head-of-line block. Defaults sit at ≈8 min (5 × 90 s + ≤15 s of ladder) — do not raise both together |
-| 5 | proxy response timeout ≥ [`remoted.http_request_timeout`](configuration.md#remotedhttp_request_timeout) (30 s), proxy body limit ≥ `<remote><https><max_body_size>` (20 MiB) | the proxy cuts requests the manager would have completed, and — if it retries them on another manager — the same session is processed twice. See [load balancers §4.5](load-balancers/README.md#45-align-the-timeouts) |
+| 5 | proxy response timeout ≥ [`remoted.http_request_timeout`](configuration.md#remotedhttp_request_timeout) (30 s), proxy body limit ≥ `<remote><https><max_body_size>` (10 MiB) | the proxy cuts requests the manager would have completed, and — if it retries them on another manager — the same session is processed twice. See [load balancers §4.5](load-balancers/README.md#45-align-the-timeouts) |
 | 6 | `connect + write + response` ≤ [`remoted.http_request_timeout`](configuration.md#remotedhttp_request_timeout) | the HTTP server tears the request down before the downstream deadline can fire, so the log names the wrong culprit. remoted warns at startup when the sum cannot be honored |
-| 7 | [`remoted.jwt_clock_skew`](configuration.md#remotedjwt_clock_skew) ≥ real agent/manager clock drift | every request fails `401` with no other symptom. Fix NTP rather than widening the window: widening it widens the replay window of a captured token |
+| 7 | [`remoted.jwt_clock_skew`](configuration.md#remotedjwt_clock_skew) ≥ real agent/manager clock drift | every request fails `401` of class `stale_token` (the agent corrects its clock from the `Date` header and retries). Fix NTP rather than widening the window: widening it widens the replay window of a captured token |
 | 8 | `wazuh_modules.inventory_sync_server_session_query_batch_size` ≤ the indexer's `max_result_window` (10000) | integrity checks fail permanently with `500`. The option refuses values outside `0 \| 100–10000` at startup |
 | 9 | `remoted.control_keepalive_throttle` > the fleet's `<client><notify_time>` | a throttle at or below the notify interval suppresses nothing: it can only drop a notify that arrives inside an already-open window |
 
@@ -91,7 +92,7 @@ These have no option. They are the ceilings the tunable values have to fit under
 | 60 s | Agent bearer token lifetime (`exp - iat`) of the `wazuh-agent+jwt` profile | the tolerated clock error is [`jwt_max_age`](configuration.md#remotedjwt_max_age) + [`jwt_clock_skew`](configuration.md#remotedjwt_clock_skew), nothing else |
 | 15 min | Agent-side ceiling on waiting for one `/stateful` session's verdict (`SESSION_RESPONSE_TIMEOUT`) | invariant 4 |
 | 60 s | I/O deadline on the agent's local `queue-sync` hand-off between a sync module and the HTTPS client | the intake answers only once it has spooled the whole body, so on a slow link — where the previous upload is still in flight — this fires **before** the 90 s HTTPS budget ever binds: the module reports the local transport as unavailable, defers, and the next cycle restarts the session from zero |
-| 3 | Consecutive deferrals tolerated before a sync failure is logged at WARNING instead of INFO | `Synchronization of <table> deferred: ... Will retry next cycle.` at INFO is normal right after a restart; the same cause four cycles running escalates |
+| 3 | Consecutive deferrals tolerated before a sync failure is logged at WARNING instead of INFO | `<Module> synchronization deferred: ... Will retry next cycle.` (`FIM`, `Syscollector`) at INFO is normal right after a restart; the same cause four cycles running escalates to `<Module> synchronization failed <n> times in a row: ...` |
 | 5 × 10 s | Integrity-check retries on a `409` before the agent trusts a checksum mismatch | a full resync is not triggered by one disagreeing check |
 | 6 h / 5 min | remoted's control-registry entry TTL and eviction sweep | throttle state for an agent that stops talking is reclaimed on that cadence |
 | `agents_disconnection_time` | the disconnection sweep's window; it is polled on a quarter of that, bounded to [60 s, 300 s] | detection lands within the threshold plus one poll — 15 m to 18 m 45 s at the default; notify cadence does not speed it up |
@@ -118,18 +119,23 @@ at the shipped defaults (60 s throttle, 10 s notify) that is 6×; the campaign m
 rather than quoting either number. Detection latency is governed by `agents_disconnection_time`
 alone (§4). Budget outage recovery at ~6.5 TLS handshakes/min per disconnected agent, and check
 that against [`remoted.max_parallel_connections`](configuration.md#remotedmax_parallel_connections)
-(512) before a fleet-wide restart.
+(256) before a fleet-wide restart.
 
 **Manager outages and event loss.** Short outages are transparent (measured: a 25 s outage
 delivered every buffered event exactly once). On longer ones the loss point is **not** the HTTPS
 producer pause — `agent.https_producer_pause_threshold` does stop the agent's send path, which is
 exactly why the backlog lands one layer up — but `logcollector.queue_size` (1024 lines), which
-drops new lines on a full queue with **one** warning ever emitted per target
-(`Target '...' message queue is full`) and a debug-level line per discard afterwards. Size it as
+drops new lines on a full queue and warns at most once a minute per target with the count lost since
+the previous warning (`Target '<target>' message queue is full (<size>). <n> log line(s) lost since
+the last warning.`). Size it as
 `peak EPS × required outage window`: the default tolerates ≈100 s at 20 eps (measured: 33% of a
 3-minute outage's events lost).
 
-**Overloaded `/stateful`.** Under sustained overload, shedding is capacity-driven and roughly
+**Overloaded `/stateful`.** A session that outlives `downstream_stateful_response_timeout` is
+still applied by the sync server after remoted answered `503`; that `503` carries
+`Retry-After` (`downstream_stateful_retry_after`, 20 s) so the agent's re-send lands after it
+instead of running the same session twice on the manager. Under sustained overload, shedding is
+capacity-driven and roughly
 independent of `downstream_stateful_response_timeout`; what the knob bounds is the **latency
 tail** (saturated p99 ≈ 0.94 × knob, measured across six values). Keep the default 20 s — it sat
 at 3.4× the measured flush p99 under 3× overload — and never set it below 2× your deployment's
@@ -175,11 +181,11 @@ Answer these once per deployment; they decide which of the knobs above you will 
 | Live agents flap `disconnected` | throttle ≥ ½ disconnection time (invariant 1) | startup warning; `last_keepalive` age vs threshold |
 | Duplicate events after engine slowness | invariant 2: a timeout layer aborting after the body was consumed | same-body deliveries at the engine ingress; `/stateless` has no dedup |
 | Uploads fail on one link class only, always at the same size | invariant 3: the read deadline, not the agent budget | connection closed with no HTTP status; the agent counts a transport failure |
-| A first sync never converges | session too large for the budgets, or the local hand-off failing (§4) | `Synchronization of ... deferred` / `... failed N times in a row` on the agent |
+| A first sync never converges | session too large for the budgets, or the local hand-off failing (§4) | `<Module> synchronization deferred: ...` / `<Module> synchronization failed <n> times in a row` on the agent |
 | Integrity check returns `500` forever | the session query page is larger than the indexer accepts | the indexer's `index.max_result_window` against the configured batch size (values above 10000 are already refused at startup, so this means the indexer's window was lowered) |
-| `503` with `Retry-After` on `/stateful` | VD feed not ready (CVE content not loaded) | content-updater log |
-| `503` without `Retry-After` | downstream timeout **or** an in-flight budget shed — indistinguishable to the agent | `remoted.server.budget.*` vs `remoted.forwarder.*`; budget sheds are not in endpoint metrics |
-| Every request `401`, no other symptom | clock drift past the token window (invariant 7) | `remoted.auth.reject.clock_skew` |
+| `503` with `Retry-After` on `/stateful` | VD feed not ready (CVE content not loaded), indexer contention on the same documents, or remoted stopped waiting for the session (`downstream_stateful_response_timeout`) | content-updater log; the response body; `remoted.forwarder.error.response_timeout` |
+| `503` without `Retry-After` | a downstream connect, write or (on any route but `/stateful`) response failure, **or** an in-flight budget shed — indistinguishable to the agent | `remoted.server.budget.*` vs `remoted.forwarder.*`; budget sheds are not in endpoint metrics |
+| Every request `401` of class `stale_token` | clock drift past the token window (invariant 7) | `remoted.auth.reject.clock_skew` |
 | Agent reports synced but the indexer is missing data | immediate sessions report success while the indexer is unreachable; the queue is not persistent | `Indexer node ... is no longer available` in the manager log |
 
 ## 8. Verifying a change

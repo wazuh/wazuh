@@ -6,13 +6,12 @@ All access to the Wazuh Server API is protected by JWT authentication and RBAC a
 
 ## JWT Authentication
 
-- All endpoints require a JWT token (except `/security/user/authenticate`)
-- Tokens are short-lived (default: **900 seconds**)
+- All endpoints require a JWT token, except `POST /security/user/authenticate` and `POST /security/user/authenticate/run_as`, which take HTTP basic authentication
+- Tokens are short-lived: `auth_token_exp_timeout`, **900 seconds** by default (see [Configuration](configuration.md#auth_token_exp_timeout))
 - Tokens must be included in every request: `Authorization: Bearer <JWT_TOKEN>`
-- Tokens are signed using **Elliptic Curve (EC) keys** generated at startup
-- Authentication logic uses `PyJWT` for token encoding/decoding
-- Credentials are validated against the RBAC ORM database
-- Authentication **must run on the master node** in cluster deployments
+- Tokens are signed with **ES512** (an EC P-521 key pair) by `PyJWT`. The keys are `api/configuration/security/private_key.pem` and `public_key.pem`, generated when missing and regenerated whenever every token is revoked (`PUT /security/user/revoke`, `PUT` or `DELETE /security/config`)
+- Credentials are validated against the users in `rbac.db`
+- The API, and so authentication, runs **only on the master node**
 
 ### Authentication Flow
 
@@ -45,41 +44,60 @@ A fresh installation seeds `rbac.db` from `rbac/default/*.yaml` with exactly two
 | ID | User | `allow_run_as` | Used by |
 |----|------|----------------|---------|
 | 1 | `wazuh` | No | Operators and scripts calling the API directly |
-| 2 | `wazuh-wui` | Yes | The Wazuh dashboard |
+| 2 | `wazuh-internal-client` | Yes | The Wazuh dashboard backend, to call the API on behalf of the indexer user who logged in. It is not an account to log into the dashboard with |
 
-Only `wazuh-wui` can authenticate with an authorization context, because resolving one into roles is the dashboard's mechanism for mapping the indexer user who logged in onto a Wazuh role (see the rules in `rbac/default/rules.yaml`). `wazuh` has no use for it, so the flag is off: `POST /security/user/authenticate/run_as` as `wazuh` answers `403` with error `6004`. Either flag can be changed with `PUT /security/users/{user_id}/run_as`.
+Only `wazuh-internal-client` can authenticate with an authorization context, because resolving one into roles is the dashboard's mechanism for mapping the indexer user who logged in onto a Wazuh role (see the rules in `rbac/default/rules.yaml`). `wazuh` has no use for it, so the flag is off: `POST /security/user/authenticate/run_as` as `wazuh` answers `403` with error `6004`. Either flag can be changed with `PUT /security/users/{user_id}/run_as`.
 
 The flag on its own does not grant the shipped mappings, which is easy to miss. `RBAChecker.get_user_roles` evaluates a rule holding a reserved ID — the five in `rules.yaml` get IDs `1..5`, while rules created through the API start at `100` — only when the caller is user ID 2. Enabling `allow_run_as` on any other account therefore lets it resolve **custom rules only**, and a context that matches one grants that role whatever the account's own role links say.
 
-Both users are created with **the password shipped in `rbac/default/users.yaml`**, which is the username itself. They are reserved IDs (`<= MAX_ID_RESERVED`), so only another reserved user can change their password — `update_user` needs a `current_user` naming who is asking, which the API takes from the token's `sub`.
+Because the account's operator chooses the context, the flag puts every role linked to such a rule within reach — the rules linked **when it logs in**, not when the flag was enabled. Any role can gain a custom rule later, `administrator` included (an SSO mapping usually does exactly that), so an account with the flag reaches every role, present or future. `PUT /security/users/{user_id}/run_as` with `allow_run_as=true` therefore asks for what linking any role directly would (`POST /security/users/{user_id}/roles`): `security:update` over **every** role, on top of `security:edit_run_as`. In `white` RBAC mode that means an allow on `role:id:*` — listing every role that exists today is not enough — and in both modes no deny on any existing role. It answers `403` with error `4000`, listing the existing roles missing, or naming `role:id:*` when only the wildcard is. Disabling the flag asks for nothing more. A password reset of another user (`PUT /security/users/{user_id}`) is held to the same standard: `security:update` over the roles linked to that user, and over every role when its flag is on; resetting your own password is exempt. The stock `users_admin` role holds no `role:id` permission, so on its own it can disable run_as but never enable it, and reset the password only of users without the flag that are linked to no role.
 
-`wazuh-manager-apid` logs a warning on every start for each of these users whose password is still the shipped one. It does not refuse to serve: the defaults are documented, and some deployments configure the credentials only after the first start.
+**Neither user ships with a password.** `rbac/default/users.yaml` carries none: each is seeded with the value the credential resolver supplies (`WAZUH_MANAGER_API_PASSWORD`, `WAZUH_MANAGER_WUI_PASSWORD`), or with a freshly generated 32-character password when nothing supplies one, and the result is published in `/etc/wazuh-manager/export/credentials.env` (readable by root only; the dashboard on the same host reads its password there). Only a master seeds: the Server API runs there. Two installations therefore never share a credential. An already-seeded database is never reseeded, so both keys are ignored from that point on however they are set. See [Credentials](../../getting-started/credentials.md).
+
+They are reserved IDs (`<= MAX_ID_RESERVED`), so only another reserved user can change their password — `update_user` needs a `current_user` naming who is asking, which the API takes from the token's `sub`.
+
+The `administrator` role these two users carry is also the only one that receives `secrets_read`,
+the policy behind `cluster:read_secrets` and `agent:read_secrets`. An `rbac.db` seeded **before** that policy existed does not
+gain it — the defaults are only re-inserted when the ORM version changes — so on such an installation
+even `wazuh` sees the enrollment password and the cluster key masked, and is denied an agent's key,
+until the database is recreated or the policy is added by hand.
+
+That is the general rule, not an exception: **RBAC policies are not migrated.** There is no upgrade
+path from 4.x, and an `rbac.db` left by an earlier 5.0 development build keeps whatever defaults it
+was seeded with — its owner recreates it, or adds the missing policy. New default policies therefore
+reach an installation through a fresh database, and nothing in the manager rewrites one in place.
+
+`rbac.db` is created by the credential resolver with `bin/rbac_control seed`, which reads a JSON object mapping the default usernames to their passwords from `--passwords-file` (`-` for the standard input), generates a password for any user left out, and leaves an existing, non-empty database untouched.
 
 Change them with `bin/rbac_control change-password`, which prompts for each password when run without options (an empty answer leaves that one unchanged) and can also be driven from a file so that installers and password tools can use it:
 
 ```bash
 # One user, password read from the first line of a file (use '-' for the standard input)
-bin/rbac_control change-password --user wazuh-wui --password-file /root/wui.pass
+bin/rbac_control change-password -u wazuh-internal-client -p /root/internal-client.pass
 
 # Every default user in a single execution
-echo '{"wazuh": "...", "wazuh-wui": "..."}' | bin/rbac_control change-password --passwords-file -
+echo '{"wazuh": "...", "wazuh-internal-client": "..."}' | bin/rbac_control change-password --passwords-file -
 ```
 
-Passwords are never accepted as a command-line argument, so they do not reach the process list. The command exits non-zero if any requested change was not applied. A new password must satisfy the policy enforced by `framework/wazuh/security.py`: 12 to 64 characters, with a lowercase letter, an uppercase letter, a digit and a symbol. Changing `wazuh-wui`'s password requires updating the dashboard configuration to match.
+Passwords are never accepted as a command-line argument, so they do not reach the process list. The command exits non-zero if any requested change was not applied. It always changes the master's database: run on a worker, the change is forwarded to the master (see [Cluster deployments](../../getting-started/credentials.md#cluster-deployments) for what that means after a promotion). A new password must satisfy the policy enforced by `framework/wazuh/security.py`: 12 to 64 printable ASCII characters without spaces, with at least one letter and one digit (PCI DSS v4.0 requirement 8.3.6). Changing `wazuh-internal-client`'s password requires updating the dashboard configuration to match.
+
+Neither `PUT /security/users/{user_id}` nor `rbac_control change-password` updates `/etc/wazuh-manager/export/credentials.env`: `rbac.db` is the only authority once seeded, and the file holds the install-time value, which is stale after any change (see [Rotation](../../getting-started/credentials.md#rotation)).
+
+`bin/rbac_control factory-reset` (asks for confirmation unless `-f`/`--force` is given) recreates `rbac.db` and gives both default users new random passwords that are neither printed nor written to `/etc/wazuh-manager/export/credentials.env`. The running API keeps authenticating against the previous database until the manager restarts, so run `change-password` and then restart the manager.
 
 ### What a password change does and does not do
 
-The policy above is enforced by `security.update_user` and `security.create_user`: a password outside 12-64 characters fails with error `5009`, one missing a character class with `5007`. A caller that is not itself a reserved user gets `5011`, however privileged its role, and these users cannot be deleted at all (`5004`).
+The policy above is enforced by `security.update_user` and `security.create_user`: a password outside 12-64 characters fails with error `5009`, one missing a character class or using a character outside that set with `5007`. A caller that is not itself a reserved user gets `5011`, however privileged its role, and these users cannot be deleted at all (`5004`).
 
 Once a change goes through:
 
-- It is written to the **master** node's `rbac.db`. `check_user` and `update_user` are `local_master` requests, so a worker forwards every authentication and needs no action while it stays a worker. Each node still keeps its own `rbac.db`, seeded with the default users, and the cluster does not synchronize it (`cluster.json` shares `etc/`, `etc/shared/` and `var/multigroups/` only) — so a worker promoted to master starts serving the shipped defaults again. Repeat the change on any node that may take that role.
+- It is written to the **master** node's `rbac.db`. `check_user` and `update_user` are `local_master` requests, so a worker forwards every authentication and needs no action while it stays a worker. The cluster does not synchronize `rbac.db` (`cluster.json` shares `client.keys`, `authd.pass` and `enrollment_tokens.json`, `/etc/wazuh-manager/shared/` and `var/multigroups/` only), and the credential resolver seeds one only on a node configured as master. A fresh install generates every node's configuration as master, so a worker already holds the `rbac.db` it seeded at install: with the values supplied through `WAZUH_MANAGER_API_PASSWORD` / `WAZUH_MANAGER_WUI_PASSWORD` if they were set on that node before installing, and with freshly generated ones otherwise, which are not the master's. A worker promoted to master serves that database, never this change. Set those keys on every node that may take the role before installing it, and repeat this change there.
 - **No daemon restart** is required. The next `POST /security/user/authenticate` already uses the new password.
 - Every token held by the modified user is **revoked immediately** (`update_user` calls `invalid_users_tokens`), so a script that changes its own user's password must authenticate again before its next call. Tokens of other users are untouched; `PUT /security/user/revoke` revokes all of them at once.
-- A client left with the old password — typically a dashboard whose stored copy was not updated — is counted against `max_login_attempts` (50) and its IP is then blocked for `block_time` (300 seconds), answering `403`. The block is lifted when that time elapses, not when the password is corrected.
-- No manager component authenticates with `wazuh` or `wazuh-wui`, so the keystore and the manager configuration files are unaffected. The only copy outside the manager is the dashboard's `wazuh_core.hosts.<host>.password`, which is why changing `wazuh-wui` — and only that user — needs the dashboard updated and restarted.
+- A client left with the old password — typically a dashboard whose stored copy was not updated — is counted against `max_login_attempts` (50) and its IP is then blocked, answering `403`, until `block_time` (300 seconds) has passed since the first failed attempt counted. The block is lifted when that time elapses, not when the password is corrected.
+- No manager component authenticates with `wazuh` or `wazuh-internal-client`, so the keystore and the manager configuration files are unaffected. The only copy outside the manager is the dashboard's `wazuh_core.hosts.<host>.password`, which is why changing `wazuh-internal-client` — and only that user — needs the dashboard updated and restarted.
 
-The step-by-step procedure, including the dashboard side and the container variants, is in [Installation](../../getting-started/installation.md#change-the-default-api-passwords).
+The step-by-step procedure, including the dashboard side and the container variants, is in [Installation](../../getting-started/installation.md#server-api-users). The certificate the dashboard verifies the API with is covered in [What the dashboard takes from the manager](../../getting-started/credentials.md#what-the-dashboard-takes-from-the-manager).
 
 ---
 
@@ -93,25 +111,77 @@ RBAC is enforced **before** any core logic is executed.
 - Two RBAC modes: **white** (deny by default) and **black** (allow by default)
 - A `403 Forbidden` usually indicates RBAC blocking, not auth failure
 - Current user, RBAC mode, and cluster context are stored in `contextvars` for request-scoped access
+- The actions, resources and default roles are described in [RBAC](../rbac/README.md); the files that implement it in [RBAC Sub-module](architecture.md#rbac-sub-module)
 
-### RBAC Components
+### Sensitive configuration values
 
-| File | Role |
-|------|------|
-| `rbac/decorators.py` | `expose_resources` decorator that enforces action/resource permissions |
-| `rbac/orm.py` | ORM models for roles, policies, and user-role mappings |
-| `rbac/preprocessor.py` | Resource preprocessing before permission checks |
-| `rbac/default/*.yaml` | Built-in default RBAC data, loaded via `insert_default_resources` in `rbac/orm.py` |
-| `rbac/auth_context.py` | Authentication context handling |
+`GET /cluster/local/config` and the two node-configuration endpoints answer with the enrollment
+password (`authd.pass`) and the cluster key in them. Those two values, and any field named like a
+credential (`password`, `api_key`, `client_secret` and the other names in `SENSITIVE_FIELD_NAMES` of
+`framework/wazuh/rbac/decorators.py`), come back masked as `*****` unless the caller holds
+**`cluster:read_secrets`**, an action of its own: being allowed to change the
+configuration does not entitle anyone to read the secrets inside it. It is granted by the default
+policy `secrets_read`, which only the `administrator` role carries.
+
+The action is checked **against the node that answers**, with the same matcher every other permission
+goes through: a policy that grants it over `node:id:master-node` does not uncover a worker's values,
+a later `deny` over the node being served wins, and in `rbac_mode: black` the values come back in
+clear unless a policy denies them, as everything else does in that mode. The default policy grants
+it over `node:id:*`, so an `administrator` sees them on every node.
+
+The same action guards the **write** side of the cluster key. Knowing the key is what lets a host join
+the cluster as a peer, so being able to choose it is worth as much as being able to read it:
+`PUT /cluster/{node_id}/configuration` refuses a new `<cluster><key>` with error `1132` unless the
+caller holds `cluster:read_secrets` over that node. A configuration read masked and sent back
+unchanged keeps working: a key equal to the mask `*****` is replaced with the node's current key
+before the text is written, so `cluster:update_config` alone still edits every other
+option, cluster membership (`node_type`, `nodes`, `bind_addr`, `port`) included — without the key those
+grant nothing. The key is put back only where the parsed configuration holds `<cluster><key>`
+itself: a mask the parser drops (inside a comment) is written back as the mask, and a mask that would
+land anywhere else (another section's `<key>`, a CDATA section) is refused with `1132`, whatever the
+caller's permissions.
+
+It also guards the **indexer section**, which is not a secret but chooses where one goes. Every
+indexer client of the manager (clusterd, modulesd, the engine) authenticates to each `indexer.hosts`
+entry with the manager's indexer service-account credential, and `indexer.ssl` decides whether that
+peer is trusted. Pointing them at a host of one's choosing hands that credential over, so any change
+under `<indexer>` is refused with `1132` without `cluster:read_secrets` over the node. The section is
+served in clear, and sending it back unchanged keeps working. The api.yaml knob
+`upload_configuration.indexer.allow` (error `1127`) is an extra lock on top, for every caller: setting
+it to `true` never lifts this check.
+
+### Agent keys
+
+An agent's pre-shared key — the `client.keys` line that authenticates it — is the third secret behind
+`secrets_read`, through an action of its own, **`agent:read_secrets`**. `GET /agents/{agent_id}/key`
+requires it and answers `403` without it; unlike the configuration values there is nothing to mask,
+since the key is the whole answer. It is scoped per agent and per group, so a policy may uncover one
+agent's key and not another's.
+
+`agent:read` no longer grants it. The boundary worth remembering is *existing* versus *new*:
+`agent:create` still answers `POST /agents` with the key of the agent it just created, because an
+agent cannot be created without one, and that is not the same risk as reading the credential of an
+agent that already exists and may be running. An operator who provisions agents therefore keeps
+`agents_all` — `POST /agents`, or minting an enrollment token — and only re-reading an existing
+agent's key needs `administrator`.
+
+### Auditing a disclosure
+
+Every disclosure is recorded as a `secret_read` line naming the user and the fields, never the value.
+It lands in `logs/api.log` for `GET /cluster/local/config`, which the API process serves, and in
+`logs/cluster.log` for the two node-configuration endpoints, which run inside the answering node's
+`wazuh-manager-clusterd`. `GET /agents/{agent_id}/key` records its own line the same way, naming the
+agents served rather than a field. If the masking itself fails, the request fails: a response nobody could
+mask is not served.
 
 ---
 
 ## Rate Limiting & Brute-Force Protection
 
-- The API tracks failed login attempts per IP address
-- After exceeding a configurable threshold, the IP is added to a blocked set
-- Blocked IPs receive `429 Too Many Requests` or immediate rejection
-- Rate limiting state is managed in-memory within `middlewares.py` and `error_handler.py`
+- **Brute-force protection**: every request to `POST /security/user/authenticate` or `POST /security/user/authenticate/run_as` counts as a login attempt for its client IP, and a successful login gives its attempt back. When an IP (an IPv6 client by its `/64`) reaches `access.max_login_attempts` (50) failed attempts, its logins answer `403` with error `6000` until `access.block_time` (300 seconds) has passed since the first attempt counted.
+- **Login queue**: password checks are bounded per API process by [`authentication_pool_size`](configuration.md#authentication_pool_size); a login that finds the queue full answers `429` with error `6006`.
+- **Request rate**: each client address may make `access.max_request_per_minute` (300) authenticated requests per minute, and `access.max_unauthenticated_request_per_minute` (10) unauthenticated or failed-authentication ones. Beyond them the API answers `429` with error `6001` or `6005`. See [Configuration](configuration.md#request-rate-limiting).
+- The state is kept in memory by `api/api/middlewares.py`, so it is lost when `wazuh-manager-apid` restarts.
 
 ---
 
@@ -119,13 +189,20 @@ RBAC is enforced **before** any core logic is executed.
 
 The API sets the following security headers on all responses:
 
-| Header | Value | Purpose |
-|--------|-------|---------|
-| `Content-Security-Policy` | `none` | Restricts resource loading |
-| `X-Frame-Options` | `DENY` | Prevents clickjacking |
-| `Server` | `Wazuh` | Masks underlying server technology |
+| Header | Value |
+|--------|-------|
+| `Server` | `Wazuh` |
+| `Strict-Transport-Security` | `max-age=63072000; includeSubdomains` |
+| `X-Frame-Options` | `deny` |
+| `X-XSS-Protection` | `0` |
+| `X-Content-Type-Options` | `nosniff` |
+| `Content-Security-Policy` | `none` |
+| `Referrer-Policy` | `no-referrer, strict-origin-when-cross-origin` |
+| `Cache-Control` | `no-store` |
 
-These are applied via the `secure` Python library in `middlewares.py`.
+They are applied by `SecureHeadersMiddleware` in `api/api/middlewares.py` with the `secure` Python
+library (pinned at `0.3.0` in `framework/requirements.txt`): `Server`, `Content-Security-Policy` and
+`X-Frame-Options` are set explicitly, the others are that library's defaults.
 
 ---
 
@@ -134,5 +211,5 @@ These are applied via the `secure` Python library in `middlewares.py`.
 - Handle token expiration gracefully — re-authenticate before the token expires
 - Treat `403` as RBAC errors, not authentication failures
 - Never embed credentials in scripts — use environment variables or secret managers
-- In cluster deployments, ensure authentication calls reach the master node
+- In cluster deployments, send every request to the master node: workers do not run the API
 - Use the `rbac_mode` setting appropriate for your security posture (`white` for strict environments)

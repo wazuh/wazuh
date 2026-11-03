@@ -1,17 +1,22 @@
 # WAZUH SYSTEM FILE, PLEASE DO NOT MODIFY
 
+# These users carry no password. A password shipped in a packaged file is a password every
+# installation shares, which is the defect https://github.com/wazuh/wazuh/issues/39554 closes:
+# the value is supplied at seeding time by the credential resolver, or generated per
+# installation when nothing supplies one. See insert_default_resources() in ../../orm.py.
+
 default_users:
   wazuh:
     description: Superuser of Wazuh.
-    password: wazuh
     # Login with an authorization context is how the dashboard maps the indexer user who logged in
-    # onto a Wazuh role, and the dashboard authenticates as `wazuh-wui`. This account has no use for
-    # it: `RBAChecker` evaluates the shipped rules for `wazuh-wui` alone, so a context sent here
-    # resolves against custom rules only, granting whatever role those match regardless of the ones
-    # this account is actually linked to.
+    # onto a Wazuh role, and the dashboard authenticates as `wazuh-internal-client`. This account
+    # has no use for it: `RBAChecker` evaluates the shipped rules for `wazuh-internal-client` alone,
+    # so a context sent here resolves against custom rules only, granting whatever role those match
+    # regardless of the ones this account is actually linked to.
     allow_run_as: False
 
-  wazuh-wui:
-    description: Superuser of Wazuh UI
-    password: wazuh-wui
+  # Service account of the Wazuh dashboard: its backend authenticates here to call the Server API
+  # on behalf of the indexer user who logged in. It is not an account to log into the dashboard with.
+  wazuh-internal-client:
+    description: Internal client of the Server API used by the Wazuh dashboard. Not a dashboard login.
     allow_run_as: True

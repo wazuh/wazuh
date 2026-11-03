@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _CMCRUD_CMCRUDSERVICE_HPP
 #define _CMCRUD_CMCRUDSERVICE_HPP
 
@@ -32,9 +33,9 @@ public:
     bool existsNamespace(const cm::store::NamespaceId& nsId) const override;
     void deleteNamespace(const cm::store::NamespaceId& nsId) override;
     cm::store::dataType::Policy importNamespace(const cm::store::NamespaceId& nsId,
-                         std::string_view jsonDocument,
-                         std::string_view originSpace,
-                         bool force) override;
+                                                std::string_view jsonDocument,
+                                                std::string_view originSpace,
+                                                bool force) override;
     void importNamespace(const cm::store::NamespaceId& nsId,
                          const std::vector<json::Json>& kvdbs,
                          const std::vector<json::Json>& decoders,

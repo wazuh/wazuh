@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef VECTOR_HELPERS_HPP
 #define VECTOR_HELPERS_HPP
 

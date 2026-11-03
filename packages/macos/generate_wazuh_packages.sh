@@ -2,7 +2,7 @@
 set -e
 # Program to build and package OSX wazuh-agent
 # Wazuh package generator
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # This program is a free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public

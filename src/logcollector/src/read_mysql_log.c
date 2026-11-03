@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -42,7 +42,7 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
         str_len = strlen(str);
 
         if (is_valid_context_file) {
-            OS_SHA1_Stream(context, NULL, str);
+            w_hash_read_line(lf, context, str, &current_position);
         }
 
         /* Get the last occurrence of \n */

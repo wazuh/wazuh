@@ -46,10 +46,6 @@
             value: SERVICES_SCAN
         - browser_extensions:
             value: BROWSER_EXTENSIONS_SCAN
-        - synchronization:
-            elements:
-              - max_eps:
-                  value: MAX_EPS
 
     - section: syscheck
       elements:

@@ -1,8 +1,7 @@
 /*
  * SQL Schema for global database
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  *
- * June 30, 2016.
  *
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.
@@ -17,6 +16,7 @@ CREATE TABLE IF NOT EXISTS agent (
     ip TEXT,
     register_ip TEXT,
     internal_key TEXT,
+    reenroll_secret TEXT,
     os_name TEXT,
     os_version TEXT,
     os_major TEXT,

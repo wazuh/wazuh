@@ -141,7 +141,7 @@ Check if integrity_interval elapsed
 The SCA module operates with the following threads:
 
 * **Main Thread** (`wm_sca_main`): Runs the SCA implementation and handles policy execution
-* **Sync Thread** (`wm_sca_sync_module`): Handles periodic synchronization with the manager (when enabled)
+* **Sync Thread** (`wm_sca_sync_module`): Handles periodic synchronization with the manager (when enabled). The wait before each cycle restarts with every agent start, so the thread also asks whether the agent ID changed since the last full synchronization (for example after the agent was removed and re-enrolled): at startup, and every 30 seconds while it waits. On a change it runs its cycle at once, which resends the full snapshot under the new ID. While that resend keeps failing, the 30 seconds double on each failed attempt, up to the synchronization interval; a cycle that could not try (for example because a flush was sending) keeps the period
 
 ---
 
@@ -192,7 +192,7 @@ Configure SCA module minimally
       ├─► Set logging callback ─────────► sca_set_log_function(sca_log_callback)
       │
       ├─► Set sync parameters ──────────► sca_set_sync_parameters()
-      │   (module name, DB path, MQ funcs)
+      │   (module name, DB path, integrity interval)
       │
       └─► Initialize module ─────────────► sca_init()
       │
@@ -267,6 +267,8 @@ No enabled policies found?
                               └─► Exit module
 ```
 
+A failed DataClean is retried one scan interval later. Each attempt waits for a running synchronization or flush and holds a flush off only while it sends, so a flush requested while the module waits to retry is not delayed by that wait.
+
 ---
 
 ## Coordination Commands Architecture
@@ -337,6 +339,9 @@ Check if Sync Protocol Initialized
          └─► Initialized
              │
              ▼
+Wait for any SCA synchronization or recovery DataClean in progress, then hold both off until done
+             │
+             ▼
 Call synchronizeModule(Mode::DELTA)
              │
              ├─► Waits for manager acknowledgment
@@ -402,7 +407,7 @@ Return 0 (success) or -1 (error)
 
 ## Schema Validation Integration
 
-SCA integrates with the [Schema Validator](../utils/schema-validator/index.html) module to ensure all security check results conform to the expected Wazuh indexer schema before transmission.
+SCA integrates with the [Schema Validator](../utils/schema-validator/README.md) module to ensure all security check results conform to the expected Wazuh indexer schema before transmission.
 
 ### Purpose
 
@@ -655,13 +660,12 @@ LoggingHelper::getInstance().log(LOG_DEBUG,
 
 **Initialization:**
 ```
-[INFO] Schema validator initialized successfully from embedded resources
+[DEBUG] Schema validator initialized successfully from embedded resources
 ```
 
 **Validation Failure:**
 ```
-[ERROR] Schema validation failed for SCA message (checkId: cis_rhel7_1.1.1, index: wazuh-states-sca). Errors:
-  - Field 'check.result' expected type 'keyword', got 'integer'
+[ERROR] Schema validation failed for SCA message (checkId: cis_rhel7_1.1.1, index: wazuh-states-sca). Errors:   - check.result: Expected string, got number with value: 1
 [ERROR] Raw event that failed validation: {"check":{"id":"cis_rhel7_1.1.1","result":1}}
 [DEBUG] Marking SCA check for deferred deletion due to validation failure
 ```
@@ -708,11 +712,54 @@ Stores individual security checks:
 - `name`: Check name
 - `description`: Check description
 - `result`: Check result (Passed, Failed, Not applicable, Not run)
-- `reason`: Reason for result (optional)
+- `reason`: Why the check got its result (see [Reading `reason`](#reading-reason))
 - `version`: Document version for synchronization
+
+#### Reading `reason`
+
+`reason` explains the check's `result`:
+
+| `result` | `reason` |
+|----------|----------|
+| `Passed` | Empty. |
+| `Not applicable`, `Not run` | One line per rule that could not be evaluated, such as a missing file or a command that failed or timed out, or one of the fixed reasons below. |
+| `Failed` | A header, then the rules that made the check fail, once each, in policy order. Each rule reads as in the check's `rules`: as the policy writes it, with policy variables already replaced. |
+
+Fixed reasons:
+
+- `Policy requirements not met`: the policy does not apply to the host, so all its checks are
+  `Not applicable`.
+- `None of the check's rules could be evaluated on this system`: the check has no rule left to run,
+  because none of them could be parsed on this agent.
+- `Unknown reason`: a rule could not be evaluated and gave no reason.
+
+A rule is *satisfied* when it holds on the host as written, including a leading `not`. Which rules
+make a check fail depends on its `condition`:
+
+| `condition` | The check passes when | It fails because of | Header of the reason |
+|-------------|-----------------------|---------------------|----------------------|
+| `all` | every rule is satisfied | each rule that is not satisfied | `Rules not satisfied (condition 'all'):` |
+| `any` | at least one rule is satisfied | no rule being satisfied, so every rule is listed | `Rules not satisfied (condition 'any'):` |
+| `none` | no rule is satisfied | each rule that is satisfied | `Rules satisfied (condition 'none'):` |
+
+`Rules satisfied` is still a failure. Every rule of a `none` check describes something that must
+not be found, so the listed rules are the ones that were found. For example, check 28736 "Ensure
+pam_unix does not include nullok." looks for `nullok` in five PAM files and fails because one of
+them has it:
+
+```
+Rules satisfied (condition 'none'):
+f:/etc/pam.d/common-auth -> !r:^# && r:pam_unix\.so && r:nullok
+```
+
+Rules that are not listed either held or could not be evaluated: a `Failed` reason does not carry
+the lines that `Not applicable` uses for unevaluated rules.
+
+A reason longer than 1024 bytes is cut at the last whole line that fits and ends with a
+`[truncated]` line. When that would leave only the header, the first rule is cut instead.
 
 ### References
 
-- [Schema Validator Overview](../utils/schema-validator/index.html)
+- [Schema Validator Overview](../utils/schema-validator/README.md)
 - [Schema Validator API Reference](../utils/schema-validator/api-reference.md)
 - [Schema Validator Integration Guide](../utils/schema-validator/integration-guide.md)

@@ -4,17 +4,28 @@ on:
   workflow_dispatch:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
+    # The action checks only `find <path> -name '*.cpp' -o -name '*.hpp'` in each of the fifteen
+    # trees below (.github/actions/clang_format/action.yml), against the nearest .clang-format:
+    # headers (.h), CMake files and docs in those trees cannot change its result.
+    # upload_s3_artifact is not listed: it only uploads the error file of a failed check.
     paths:
       - .clang-format
-      - src/shared_modules/indexer_connector/**
-      - src/shared_modules/content_manager/**
-      - src/shared_modules/utils/**
-      - src/shared_modules/metrics/**
-      - src/shared_modules/manager_config/**
-      - src/wazuh_modules/inventory_sync_server/**
-      - src/wazuh_modules/task_manager/**
-      - src/wazuh_modules/vulnerability_scanner/**
-      - src/remoted/remoted_module/**
+      - src/engine/.clang-format
+      - src/shared_modules/indexer_connector/**/*.[ch]pp
+      - src/shared_modules/content_manager/**/*.[ch]pp
+      - src/shared_modules/utils/**/*.[ch]pp
+      - src/shared_modules/metrics/**/*.[ch]pp
+      - src/shared_modules/manager_config/**/*.[ch]pp
+      - src/shared_modules/ca_bundle/**/*.[ch]pp
+      - src/shared_modules/manager_certs/**/*.[ch]pp
+      - src/wazuh_modules/inventory_sync_server/**/*.[ch]pp
+      - src/wazuh_modules/task_manager/**/*.[ch]pp
+      - src/wazuh_modules/keystore_server/**/*.[ch]pp
+      - src/shared_modules/keystore/**/*.[ch]pp
+      - src/shared_modules/uds_http_server/**/*.[ch]pp
+      - src/wazuh_modules/vulnerability_scanner/**/*.[ch]pp
+      - src/remoted/remoted_module/**/*.[ch]pp
+      - src/engine/**/*.[ch]pp
       - .github/workflows/5_codelinter_clangformat.yml
       - .github/actions/clang_format/**
 
@@ -33,7 +44,7 @@ jobs:
 
     steps:
       - name: Cancel previous runs
-        uses: fkirc/skip-duplicate-actions@master
+        uses: fkirc/skip-duplicate-actions@v5.3.2
         with:
           cancel_others: 'true'
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -132,7 +143,7 @@ jobs:
           path: src/remoted/remoted_module
           id: remoted_module
 
-      # Manager configuration (etc/wazuh-manager.conf reader and CLI)
+      # Manager configuration (/etc/wazuh-manager/wazuh-manager.conf reader and CLI)
       - name: Manager config - Coding style
         id: manager_config_style
         continue-on-error: true
@@ -142,6 +153,72 @@ jobs:
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           path: src/shared_modules/manager_config
           id: manager_config
+
+      # CA bundle
+      - name: CA bundle - Coding style
+        id: ca_bundle_style
+        continue-on-error: true
+        uses: ./.github/actions/clang_format
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          path: src/shared_modules/ca_bundle
+          id: ca_bundle
+
+      # Manager certs CLI
+      - name: Manager certs - Coding style
+        id: manager_certs_style
+        continue-on-error: true
+        uses: ./.github/actions/clang_format
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          path: src/shared_modules/manager_certs
+          id: manager_certs
+
+      # Keystore server
+      - name: Keystore server - Coding style
+        id: keystore_server_style
+        continue-on-error: true
+        uses: ./.github/actions/clang_format
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          path: src/wazuh_modules/keystore_server
+          id: keystore_server
+
+      # Keystore
+      - name: Keystore - Coding style
+        id: keystore_style
+        continue-on-error: true
+        uses: ./.github/actions/clang_format
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          path: src/shared_modules/keystore
+          id: keystore
+
+      # UDS HTTP server
+      - name: UDS HTTP server - Coding style
+        id: uds_http_server_style
+        continue-on-error: true
+        uses: ./.github/actions/clang_format
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          path: src/shared_modules/uds_http_server
+          id: uds_http_server
+
+      # Engine (uses its own src/engine/.clang-format, the closest one to each file)
+      - name: Engine - Coding style
+        id: engine_style
+        continue-on-error: true
+        uses: ./.github/actions/clang_format
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          path: src/engine
+          id: engine
 
       - name: Check all coding style results
         if: always()
@@ -182,6 +259,30 @@ jobs:
 
           if [ "${{ steps.manager_config_style.outcome }}" != "success" ]; then
             FAILED_STEPS="$FAILED_STEPS ManagerConfig"
+          fi
+
+          if [ "${{ steps.ca_bundle_style.outcome }}" != "success" ]; then
+            FAILED_STEPS="$FAILED_STEPS CABundle"
+          fi
+
+          if [ "${{ steps.manager_certs_style.outcome }}" != "success" ]; then
+            FAILED_STEPS="$FAILED_STEPS ManagerCerts"
+          fi
+
+          if [ "${{ steps.keystore_server_style.outcome }}" != "success" ]; then
+            FAILED_STEPS="$FAILED_STEPS KeystoreServer"
+          fi
+
+          if [ "${{ steps.keystore_style.outcome }}" != "success" ]; then
+            FAILED_STEPS="$FAILED_STEPS Keystore"
+          fi
+
+          if [ "${{ steps.uds_http_server_style.outcome }}" != "success" ]; then
+            FAILED_STEPS="$FAILED_STEPS UdsHttpServer"
+          fi
+
+          if [ "${{ steps.engine_style.outcome }}" != "success" ]; then
+            FAILED_STEPS="$FAILED_STEPS Engine"
           fi
 
           if [ -n "$FAILED_STEPS" ]; then

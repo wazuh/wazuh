@@ -31,7 +31,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                             -Wl,--wrap,realpath,--wrap,getenv,--wrap,atexit ${DEBUG_OP_WRAPPERS} \
                             -Wl,--wrap,merror,--wrap,fseek,--wrap,access \
                             -Wl,--wrap,opendir,--wrap,readdir,--wrap,closedir,--wrap,rmdir \
-                            -Wl,--wrap,IsDir")
+                            -Wl,--wrap,IsDir,--wrap,fcntl")
     list(APPEND shared_tests_flags "${FILE_OP_BASE_FLAGS}")
 else()
     list(APPEND shared_tests_flags "-Wl,--wrap,get_windows_file_time_epoch,--wrap,mdebug2 \
@@ -41,6 +41,13 @@ else()
                                     -Wl,--wrap=access -Wl,--wrap=CreateFile -Wl,--wrap=opendir -Wl,--wrap=stat \
                                     -Wl,--wrap=utf8_CreateFile -Wl,--wrap=utf8_stat64 -Wl,--wrap=QueryDosDeviceA \
                                     -Wl,--wrap=convert_windows_string -Wl,--wrap=wstr_split ${DEBUG_OP_WRAPPERS}")
+endif()
+
+if(${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_names "test_cryptography")
+list(APPEND shared_tests_flags "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown \
+                                -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize \
+                                -Wl,--wrap=fim_db_teardown ${DEBUG_OP_WRAPPERS}")
 endif()
 
 list(APPEND shared_tests_names "test_rbtree_op")
@@ -73,6 +80,38 @@ list(APPEND shared_tests_flags "${STRING_OP_BASE_FLAGS} -Wl,--wrap,Start_win32_S
 else()
 list(APPEND shared_tests_flags "${STRING_OP_BASE_FLAGS}")
 endif()
+
+# Enrollment token primitives. All three sources ship in every target, and winagent.cmake puts
+# WAZUHEXT in TEST_DEPS, so the two that need OpenSSL build there too. They were skipped on
+# winagent until #39063, which left the pin path the Windows agent runs never exercised on it.
+list(APPEND shared_tests_names "test_b64url_op")
+set(B64URL_OP_BASE_FLAGS "${DEBUG_OP_WRAPPERS} -Wl,--wrap,syscom_dispatch")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_flags "${B64URL_OP_BASE_FLAGS} -Wl,--wrap,Start_win32_Syscheck \
+                                -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                                -Wl,--wrap=fim_db_teardown")
+else()
+list(APPEND shared_tests_flags "${B64URL_OP_BASE_FLAGS}")
+endif()
+
+# On winagent, DEPENDENCIES_O drags in the win32/syscheck object graph, so these symbols have to
+# be wrapped or the link fails -- the same set every other winagent test above uses.
+# syscom_dispatch belongs with them: agent_report.c, syscheck_op.c and wmodules.c all reach it
+# through DEPENDENCIES_O, and test_x509_op pulls that graph in where test_enrollment_token does
+# not, so leaving it out fails only the first of the two.
+if(${TARGET} STREQUAL "winagent")
+set(ETOKEN_FLAGS "-Wl,--wrap,Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown \
+                  -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=fim_db_teardown \
+                  -Wl,--wrap,syscom_dispatch")
+else()
+set(ETOKEN_FLAGS " ")
+endif()
+
+list(APPEND shared_tests_names "test_x509_op")
+list(APPEND shared_tests_flags "${ETOKEN_FLAGS}")
+
+list(APPEND shared_tests_names "test_enrollment_token")
+list(APPEND shared_tests_flags "${ETOKEN_FLAGS}")
 
 list(APPEND shared_tests_names "test_expression")
 set(EXPRESSION_BASE_FLAGS "-Wl,--wrap,OS_IsValidIP -Wl,--wrap,OSMatch_Execute -Wl,--wrap,OSRegex_Compile \
@@ -148,6 +187,13 @@ list(APPEND shared_tests_names "test_http_op")
 list(APPEND shared_tests_flags " ")
 endif()
 
+# w_path_names_fd() and the POSIX w_move_file_nofollow(), on real files: test_file_op mocks the
+# unlink() and lstat() they need. rename() is wrapped only to fail the way a bind mount does.
+if(NOT ${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_names "test_file_op_names")
+list(APPEND shared_tests_flags "-Wl,--wrap,rename ${DEBUG_OP_WRAPPERS}")
+endif()
+
 # manager_task_op.c reaches the Task Manager over http_op, so it is server-only for the same
 # reason. Only the manager has producers for it: authd and, through modulesd's callback, the
 # vulnerability scanner.
@@ -163,7 +209,8 @@ if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "-Wl,--wrap,RAND_bytes -Wl,--wrap,OS_IsValidIP ${DEBUG_OP_WRAPPERS} -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=fim_db_teardown")
 else()
-list(APPEND shared_tests_flags "-Wl,--wrap,RAND_bytes -Wl,--wrap,OS_IsValidIP ${DEBUG_OP_WRAPPERS}")
+list(APPEND shared_tests_flags "-Wl,--wrap,RAND_bytes -Wl,--wrap,OS_IsValidIP -Wl,--wrap,OS_MoveFile \
+                                -Wl,--wrap,TempFile ${DEBUG_OP_WRAPPERS}")
 endif()
 
 list(APPEND shared_tests_names "test_agent_op")
@@ -277,7 +324,7 @@ list(APPEND shared_tests_names "test_fs_op")
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 else()
-list(APPEND shared_tests_flags "-Wl,--wrap=statfs ${DEBUG_OP_WRAPPERS}")
+list(APPEND shared_tests_flags "-Wl,--wrap=stat -Wl,--wrap=statfs ${DEBUG_OP_WRAPPERS}")
 endif()
 
 list(APPEND shared_tests_names "test_wazuhdb_op")
@@ -342,7 +389,8 @@ list(APPEND shared_tests_flags "-Wl,--wrap,audit_send -Wl,--wrap,popen \
 endif()
 
 list(APPEND shared_tests_names "test_privsep_op")
-list(APPEND shared_tests_flags "-Wl,--wrap=sysconf,--wrap=getpwnam_r,--wrap=getgrnam_r,--wrap=getpid")
+list(APPEND shared_tests_flags "-Wl,--wrap=sysconf,--wrap=getpwnam_r,--wrap=getgrnam_r,--wrap=getpid \
+                                -Wl,--wrap=getrlimit,--wrap=setrlimit ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND shared_tests_names "test_mq_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,OS_BindUnixDomainWithPerms -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,sleep \
@@ -351,6 +399,9 @@ list(APPEND shared_tests_flags "-Wl,--wrap,OS_BindUnixDomainWithPerms -Wl,--wrap
 list(APPEND shared_tests_names "test_remoted_op")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 
+
+list(APPEND shared_tests_names "test_file_op_unmerge")
+list(APPEND shared_tests_flags "-Wl,--wrap,fopen,--wrap,fwrite,--wrap,fclose,--wrap,fread ${DEBUG_OP_WRAPPERS}")
 
 endif()
 
@@ -415,22 +466,6 @@ endif()
 list(APPEND shared_tests_names "test_hash_op")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 
-# Not built for winagent. generate_cert() is reachable only from the manager binaries -- remoted
-# and authd call it, nothing on an agent does -- and its hostname lookup cannot be intercepted
-# there: on Windows gethostname() is a dllimport from ws2_32, so the call goes through the import
-# thunk and -Wl,--wrap,gethostname never sees it. The mock is then left unconsumed ("remaining
-# non-returned values") and the runner's real hostname lands in the SAN the assertions compare.
-if(NOT ${TARGET} STREQUAL "winagent")
-list(APPEND shared_tests_names "test_generate_cert")
-list(APPEND shared_tests_flags "-Wl,--wrap,PEM_write_PrivateKey -Wl,--wrap,PEM_write_X509 -Wl,--wrap,RSA_generate_key_ex \
-                                -Wl,--wrap,X509_sign -Wl,--wrap,_merror -Wl,--wrap,wfopen \
-                                -Wl,--wrap,gethostname -Wl,--wrap,getpid \
-                                -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgetpos -Wl,--wrap,fread \
-                                -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,fgets \
-                                -Wl,--wrap,RSA_new -Wl,--wrap,EVP_PKEY_new -Wl,--wrap,X509_new -Wl,--wrap,popen \
-                                -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck -Wl,--wrap,is_fim_shutdown")
-endif()
-
 list(APPEND shared_tests_names "test_module_report")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 
@@ -441,6 +476,12 @@ list(APPEND shared_tests_names "test_cluster_utils")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 list(APPEND shared_tests_names "test_logging_config")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
+endif()
+
+if(NOT ${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_names "test_log_rotate")
+list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,time -Wl,--wrap,IsDir -Wl,--wrap,IsFile -Wl,--wrap,FileSize \
+                                -Wl,--wrap,rename_ex -Wl,--wrap,wfopen -Wl,--wrap,OS_CompressLog -Wl,--wrap,wopendir")
 endif()
 
 # Compiling tests
@@ -494,3 +535,26 @@ foreach(counter RANGE ${count})
     endif()
     add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()
+
+# Rebuild file_op.c as on AIX 6.1 (no O_NOFOLLOW, no *at()) so the forked walk and emulated O_NOFOLLOW run on Linux; the
+# local object overrides the library copy.
+if(NOT ${TARGET} STREQUAL "winagent")
+    list(FIND shared_tests_names "test_file_op" file_op_index)
+    list(GET shared_tests_flags ${file_op_index} file_op_flags)
+
+    add_executable(test_file_op_no_o_nofollow test_file_op.c ${SRC_FOLDER}/shared/src/file_op.c)
+    target_compile_definitions(test_file_op_no_o_nofollow PRIVATE W_VETTED_TEST_NO_O_NOFOLLOW)
+    if(${TARGET} STREQUAL "manager")
+        target_link_libraries(test_file_op_no_o_nofollow ${WAZUHLIB} ${WAZUHEXT} ${TEST_DEPS})
+    else()
+        target_link_libraries(test_file_op_no_o_nofollow ${TEST_DEPS})
+    endif()
+    # The emulation calls the real lstat(), so drop its wrapper: only the mocked tests excluded from this variant use it.
+    string(REPLACE ",--wrap,lstat" "" file_op_flags "${file_op_flags}")
+    string(FIND "${file_op_flags}" "--wrap,lstat" lstat_wrapped)
+    if(NOT lstat_wrapped EQUAL -1)
+        message(FATAL_ERROR "test_file_op_no_o_nofollow: the lstat wrapper is still linked")
+    endif()
+    target_link_libraries(test_file_op_no_o_nofollow ${file_op_flags})
+    add_test(NAME test_file_op_no_o_nofollow COMMAND test_file_op_no_o_nofollow)
+endif()

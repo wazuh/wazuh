@@ -20,9 +20,14 @@ from the indexer.
   vulnerability-detection integration workflow.
 - OpenSearch: an already-running one at `INDEXER_URL` (default
   `http://127.0.0.1:9200`) is used as-is; otherwise a single-node container
-  (`opensearch-test`, security disabled) is started via docker. A minimal
-  index template is installed so the fields the server's own queries sort and
-  filter on (`checksum.hash.sha1`, `wazuh.agent.id`, ...) are `keyword`.
+  (`opensearch-test`, OpenSearch 2.19, security disabled) is started via
+  docker. A minimal index template is installed so the fields the server's own
+  queries sort and filter on (`checksum.hash.sha1`, `wazuh.agent.id`, ...) are
+  `keyword`. The production `wazuh-agent-stats` and `wazuh-agent-config`
+  templates are installed as they are, downloaded from wazuh-indexer-plugins
+  with the same ref walk as the build (`tools/get_git_refs.sh`, or `GIT_REFS`):
+  they are `strict_allow_templates`, so a document that does not fit them fails
+  the suite instead of being mapped dynamically.
   Note that the container runs with the security plugin DISABLED, so nothing
   here exercises indexer permissions — a role whose write/delete privileges do
   not cover the `wazuh-agent-config` / `wazuh-agent-stats` patterns would pass
@@ -50,7 +55,7 @@ Environment overrides: `INVSYNC_TESTTOOL` (harness binary), `FLATC`,
 
 | File | Contract |
 |---|---|
-| `test_transport_and_validation.py` | Strand-side 400s (missing/invalid identity header, junk body, non-FullSession message, empty values D8, checksum shape) + the `mode`×`payload` matrix + identity/cluster 403 + agent-id padding |
+| `test_transport_and_validation.py` | Health probe, strand-side 400s (missing, non-numeric or non-canonical identity header, another spelling of the claimed agent id, empty or junk body, non-FullSession message, empty values D8, checksum shape) + the `mode`×`payload` matrix + identity/cluster 403 + agent-id padding + unknown route `404` / wrong verb `405` |
 | `test_ingestion.py` | ModuleDelta×SyncData: `_id` shape, the authoritative `wazuh.*` overlay (anti-impersonation), deletes, multi-index sessions, per-document skips (forbidden index, empty id, malformed JSON, vulnerabilities write-protection), no-op 200, idempotent re-POST, contexts not indexed |
 | `test_cleans_and_resync.py` | Cleans single/multi-index (agent-scoped, deduplicated), forbidden-index noop, and the composed full resync (D19: Cleans + ModuleDelta) |
 | `test_checksum.py` | **ModuleCheck for real** (the legacy suite's hole): match, mismatch→409, agent scoping, `search_after` pagination past 1000 documents, empty-set aggregate |

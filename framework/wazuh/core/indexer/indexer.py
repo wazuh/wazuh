@@ -15,7 +15,7 @@ from opensearchpy import AsyncOpenSearch
 from opensearchpy.exceptions import ImproperlyConfigured, TransportError
 from wazuh.core import common
 from wazuh.core.configuration import get_manager_conf
-from wazuh.core.exception import WazuhIndexerError, IndexerUnavailableError
+from wazuh.core.exception import WazuhIndexerError, IndexerConfigurationError, IndexerUnavailableError
 from wazuh.core.indexer.credential_manager import KeystoreClient
 from wazuh.core.indexer.states_components import StatesIndex
 from wazuh.core.indexer.metrics import MetricsIndex
@@ -79,7 +79,9 @@ _ssl_context_cache: Optional[ssl.SSLContext] = None
 _ssl_context_cache_key: Optional[tuple] = None
 
 
-def _create_ssl_context(client_cert: str, client_key: str, ca_certs: str) -> ssl.SSLContext:
+def _create_ssl_context(
+    client_cert: Optional[str], client_key: Optional[str], ca_certs: List[str]
+) -> ssl.SSLContext:
     """
     Create and cache SSL context for indexer connections.
 
@@ -92,12 +94,14 @@ def _create_ssl_context(client_cert: str, client_key: str, ca_certs: str) -> ssl
 
     Parameters
     ----------
-    client_cert : str
-        Path to client certificate file
-    client_key : str
-        Path to client key file
-    ca_certs : str
-        Path to CA certificate file
+    client_cert : str, optional
+        Path to client certificate file. None for no client certificate (basic
+        auth only).
+    client_key : str, optional
+        Path to client key file. None for no client certificate.
+    ca_certs : list of str
+        Paths to CA certificate files, trusted exclusively (no system trust
+        store fallback). Empty to use the system trust store instead.
 
     Returns
     -------
@@ -106,7 +110,7 @@ def _create_ssl_context(client_cert: str, client_key: str, ca_certs: str) -> ssl
     """
     global _ssl_context_cache, _ssl_context_cache_key
 
-    cache_key = (client_cert, client_key, ca_certs)
+    cache_key = (client_cert, client_key, tuple(ca_certs))
 
     # Fast path: check cache without lock
     if _ssl_context_cache is not None and _ssl_context_cache_key == cache_key:
@@ -118,11 +122,18 @@ def _create_ssl_context(client_cert: str, client_key: str, ca_certs: str) -> ssl
         if _ssl_context_cache is not None and _ssl_context_cache_key == cache_key:
             return _ssl_context_cache
 
+        # The first CA (if any) goes through create_default_context, which loads the
+        # system trust store only when cafile is None. Every additional CA is trusted
+        # on top of that via load_verify_locations, which accumulates rather than
+        # replacing, so all configured CAs end up trusted instead of only the first.
         context = ssl.create_default_context(
             purpose=ssl.Purpose.SERVER_AUTH,
-            cafile=ca_certs
+            cafile=ca_certs[0] if ca_certs else None
         )
-        context.load_cert_chain(certfile=client_cert, keyfile=client_key)
+        for extra_ca in ca_certs[1:]:
+            context.load_verify_locations(cafile=extra_ca)
+        if client_cert and client_key:
+            context.load_cert_chain(certfile=client_cert, keyfile=client_key)
         logger.debug("Created cached SSL context for indexer connections")
 
         _ssl_context_cache = context
@@ -145,8 +156,16 @@ class _IndexerCircuitBreaker:
     """
 
     _open_until: Optional[datetime] = None
+    _opened_at_conf_mtime: Optional[float] = None
     _lock = asyncio.Lock()
     BACKOFF_TIME = 60  # seconds before allowing retry after circuit opens
+
+    @staticmethod
+    def _conf_mtime() -> Optional[float]:
+        try:
+            return os.path.getmtime(common.MANAGER_CONF)
+        except OSError:
+            return None
 
     @classmethod
     async def check(cls) -> None:
@@ -159,6 +178,11 @@ class _IndexerCircuitBreaker:
             If circuit breaker is open (indexer recently failed)
         """
         async with cls._lock:
+            # A changed wazuh-manager.conf may have fixed what made the attempts fail (a wrong
+            # host, for example): it closes the breaker instead of waiting out the backoff.
+            if cls._open_until and cls._conf_mtime() != cls._opened_at_conf_mtime:
+                logger.info("Circuit breaker closed - the manager configuration changed")
+                cls._open_until = None
             if cls._open_until and datetime.now() < cls._open_until:
                 wait_seconds = (cls._open_until - datetime.now()).total_seconds()
                 raise IndexerUnavailableError(
@@ -171,6 +195,7 @@ class _IndexerCircuitBreaker:
         """Record indexer connection failure and open circuit breaker."""
         async with cls._lock:
             cls._open_until = datetime.now() + timedelta(seconds=cls.BACKOFF_TIME)
+            cls._opened_at_conf_mtime = cls._conf_mtime()
             logger.warning(f"Circuit breaker opened until {cls._open_until}")
 
     @classmethod
@@ -465,12 +490,11 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
 
     Raises
     ------
-    WazuhIndexerError
-        If initialization or connection fails.
-    ConfigurationError
-        If configuration is missing or malformed.
-    CredentialsError
-        If credentials are missing or invalid.
+    IndexerConfigurationError
+        The indexer section (hosts, TLS) or the keystore credentials cannot be used. Retrying without
+        changing them cannot succeed.
+    IndexerUnavailableError
+        The indexer, the keystore or the configuration could not be reached, or the circuit breaker is open.
     """
     # Check circuit breaker before attempting connection
     await _IndexerCircuitBreaker.check()
@@ -479,23 +503,21 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
         # Use cached configuration
         wazuh_config = await _get_cached_indexer_config()
         if not wazuh_config:
-            raise IndexerUnavailableError(
+            raise IndexerConfigurationError(
                 code=2200, extra_message="Missing indexer configuration in Wazuh config"
             )
     except Exception as e:
-        raise IndexerUnavailableError(
+        raise IndexerConfigurationError(
             code=2200, extra_message=f"Failed to parse Wazuh configuration: {e}"
         )
 
     indexer_section = wazuh_config.get("indexer", {})
     if not indexer_section:
-        raise IndexerUnavailableError(
+        raise IndexerConfigurationError(
             code=2200, extra_message="Empty indexer section in configuration"
         )
 
     ssl_config = indexer_section.get("ssl", {})
-    if not ssl_config:
-        raise IndexerUnavailableError(code=2200, extra_message="Missing SSL configuration")
 
     try:
         with KeystoreClient() as ks_client:
@@ -503,7 +525,7 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
                 user_response = ks_client.get("indexer", "username")
                 pass_response = ks_client.get("indexer", "password")
             except KeyError as e:
-                raise IndexerUnavailableError(
+                raise IndexerConfigurationError(
                     code=2201, extra_message=f"Missing credential entry in keystore: {e}"
                 )
             except Exception as e:
@@ -515,11 +537,11 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
             indexer_pass = pass_response.get("value") if pass_response else None
 
             if not indexer_user:
-                raise IndexerUnavailableError(
+                raise IndexerConfigurationError(
                     code=2201, extra_message="Empty or missing username in keystore"
                 )
             if not indexer_pass:
-                raise IndexerUnavailableError(
+                raise IndexerConfigurationError(
                     code=2201, extra_message="Empty or missing password in keystore"
                 )
     except IndexerUnavailableError:
@@ -532,7 +554,7 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
     # Parse host URLs
     hosts_raw = indexer_section.get("hosts", [])
     if not hosts_raw:
-        raise IndexerUnavailableError(
+        raise IndexerConfigurationError(
             code=2200, extra_message="No hosts specified in indexer configuration"
         )
 
@@ -540,37 +562,36 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
         parsed_urls = [urlparse(h) for h in hosts_raw]
         list_of_hosts = []
         list_of_ports = []
+        schemes = set()
 
         for i, p in enumerate(parsed_urls):
             if not p.hostname:
-                raise IndexerUnavailableError(
+                raise IndexerConfigurationError(
                     code=2200,
                     extra_message=f"Invalid host URL at position {i}: {hosts_raw[i]}",
                 )
             list_of_hosts.append(p.hostname)
             list_of_ports.append(p.port)
+            schemes.add(p.scheme.lower())
     except Exception as e:
-        raise IndexerUnavailableError(code=2200, extra_message=f"Failed to parse host URLs: {e}")
+        raise IndexerConfigurationError(code=2200, extra_message=f"Failed to parse host URLs: {e}")
 
-    # Validate SSL certificate paths
-    required_cert_paths = [
-        ("client_cert", ssl_config.get("certificate", [])),
-        ("client_key", ssl_config.get("key", [])),
-        ("ca_certs", ssl_config.get("certificate_authorities", [{}])[0].get("ca", [])),
-    ]
+    # The scheme of the configured hosts decides TLS, as it does for the C++ indexer connector.
+    # The client has a single TLS setting for every node, so the hosts must agree on it.
+    if schemes - {"http", "https"}:
+        raise IndexerConfigurationError(
+            code=2200,
+            extra_message=f"Unsupported indexer host scheme: {', '.join(sorted(schemes - {'http', 'https'}))}",
+        )
+    if len(schemes) > 1:
+        raise IndexerConfigurationError(
+            code=2200,
+            extra_message="indexer.hosts mixes http:// and https:// URLs; every host must use the same scheme",
+        )
+    use_ssl = schemes == {"https"}
 
-    for cert_name, cert_path_list in required_cert_paths:
-        if not cert_path_list or not cert_path_list[0]:
-            raise IndexerUnavailableError(
-                code=2200, extra_message=f"Missing or empty {cert_name} path"
-            )
-
-    client_cert = resolve_wazuh_path(ssl_config["certificate"][0])
-    client_key = resolve_wazuh_path(ssl_config["key"][0])
-    ca_certs = resolve_wazuh_path(ssl_config["certificate_authorities"][0]["ca"][0])
-
-    # Create cached SSL context to prevent repeated certificate file reads
-    ssl_context = _create_ssl_context(client_cert, client_key, ca_certs)
+    # Plain HTTP: indexer.ssl does not apply, so it is neither validated nor loaded.
+    ssl_context = _build_ssl_context(ssl_config) if use_ssl else None
 
     # Create indexer client with cached SSL context
     try:
@@ -579,7 +600,7 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
             ports=list_of_ports,
             user=indexer_user,
             password=indexer_pass,
-            use_ssl=True,
+            use_ssl=use_ssl,
             ssl_context=ssl_context,
         )
     except IndexerUnavailableError:
@@ -599,3 +620,56 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
             logger.warning(
                 f"Failed to close indexer client gracefully: {e}"
             )
+
+
+def _build_ssl_context(ssl_config: dict) -> ssl.SSLContext:
+    """Validate the indexer.ssl section and return the (cached) TLS context it describes.
+
+    Parameters
+    ----------
+    ssl_config : dict
+        The indexer.ssl section of the effective configuration.
+
+    Returns
+    -------
+    ssl.SSLContext
+        Context for the https:// indexer hosts.
+
+    Raises
+    ------
+    IndexerConfigurationError(2200)
+        A certificate without its key (or the reverse), an empty CA entry, or a context that cannot be built.
+    """
+    # TLS material is optional per the configuration schema: an empty certificate/key
+    # means no client certificate, an empty CA list means the system trust store. An
+    # empty entry inside an otherwise non-empty list is neither: it can never resolve to
+    # a usable file, so it is rejected the same way a lone certificate/key is.
+    certificate = ssl_config.get("certificate") or ""
+    key = ssl_config.get("key") or ""
+    cas = ssl_config.get("certificate_authorities") or []
+
+    if bool(certificate) != bool(key):
+        raise IndexerConfigurationError(
+            code=2200,
+            extra_message="indexer.ssl.certificate and indexer.ssl.key must be set together",
+        )
+
+    if any(not ca for ca in cas):
+        raise IndexerConfigurationError(
+            code=2200,
+            extra_message="indexer.ssl.certificate_authorities must not contain empty entries",
+        )
+
+    client_cert = resolve_wazuh_path(certificate) if certificate else None
+    client_key = resolve_wazuh_path(key) if key else None
+    ca_certs = [resolve_wazuh_path(ca) for ca in cas]
+
+    # Create cached SSL context to prevent repeated certificate file reads
+    try:
+        ssl_context = _create_ssl_context(client_cert, client_key, ca_certs)
+    except IndexerUnavailableError:
+        raise
+    except Exception as e:
+        raise IndexerConfigurationError(code=2200, extra_message=f"Failed to build SSL context: {e}")
+
+    return ssl_context

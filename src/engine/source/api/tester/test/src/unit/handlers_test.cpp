@@ -1,6 +1,9 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <gtest/gtest.h>
 
+#include <chrono>
 #include <functional>
+#include <future>
 #include <map>
 #include <stdexcept>
 #include <string>
@@ -202,7 +205,8 @@ INSTANTIATE_TEST_SUITE_P(
                 return req;
             },
             [](const std::shared_ptr<::router::ITesterAPI>& tester) { return sessionPost(tester); },
-            []() {
+            []()
+            {
                 return userErrorResponse<eEngine::GenericStatus_Response>(
                     "Invalid policy name: Invalid namespace ID: ");
             },
@@ -221,7 +225,8 @@ INSTANTIATE_TEST_SUITE_P(
                 return req;
             },
             [](const std::shared_ptr<::router::ITesterAPI>& tester) { return sessionPost(tester); },
-            []() {
+            []()
+            {
                 return userErrorResponse<eEngine::GenericStatus_Response>(
                     "Invalid policy name: Invalid namespace ID: not-valid");
             },
@@ -458,10 +463,7 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](auto& tester) { EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0); },
             []()
-            {
-                return userErrorResponse<eEngine::tester::RunPost_Response>(
-                    "Metadata should contain 'wazuh' as root");
-            },
+            { return userErrorResponse<eEngine::tester::RunPost_Response>("Metadata should contain 'wazuh' as root"); },
             []() { return makeSchemaValidator(false); },
         },
         // Additional fail case with invalid metadata
@@ -482,10 +484,7 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](auto& tester) { EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0); },
             []()
-            {
-                return userErrorResponse<eEngine::tester::RunPost_Response>(
-                    "Metadata should contain 'wazuh' as root");
-            },
+            { return userErrorResponse<eEngine::tester::RunPost_Response>("Metadata should contain 'wazuh' as root"); },
             []() { return makeSchemaValidator(false); },
         },
         LogtestPostCase {
@@ -509,7 +508,8 @@ INSTANTIATE_TEST_SUITE_P(
                 // Handler should fail before calling ingestTest
                 EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0);
             },
-            []() {
+            []()
+            {
                 return userErrorResponse<eEngine::tester::RunPost_Response>(
                     "queue is required and must be non-zero (1..255)");
             },
@@ -938,7 +938,8 @@ INSTANTIATE_TEST_SUITE_P(
         OutputValidationCase {
             "GEO_POINTarrayCorrectCase",
             R"({"observer_geo_location": [-74.00, 40.71]})",
-            []() -> std::shared_ptr<schemf::IValidator> { return makeSchemaMock({{"observer_geo_location", schemf::Type::GEO_POINT}}); },
+            []() -> std::shared_ptr<schemf::IValidator>
+            { return makeSchemaMock({{"observer_geo_location", schemf::Type::GEO_POINT}}); },
             [](const eEngine::tester::Result_Validation& v)
             {
                 ASSERT_TRUE(v.valid());
@@ -950,9 +951,7 @@ INSTANTIATE_TEST_SUITE_P(
             "NullLeafKnownField",
             R"({"agent.id":null,"source.port":null})",
             []() -> std::shared_ptr<schemf::IValidator>
-            {
-                return makeSchemaMock({{"agent.id", schemf::Type::KEYWORD}, {"source.port", schemf::Type::INTEGER}});
-            },
+            { return makeSchemaMock({{"agent.id", schemf::Type::KEYWORD}, {"source.port", schemf::Type::INTEGER}}); },
             [](const eEngine::tester::Result_Validation& v)
             {
                 EXPECT_TRUE(v.valid());
@@ -1152,6 +1151,33 @@ TEST(RunPostTemporaryValidation, ValidFieldsNoTemporariesNoErrors)
 
     EXPECT_TRUE(v.valid());
     EXPECT_EQ(v.errors_size(), 0);
+}
+
+// The wait for the test result is bounded by the configured tester timeout (analysisd.server_api_timeout)
+TEST(RunPostTimeout, UsesConfiguredTestTimeout)
+{
+    auto tester = std::make_shared<MockTesterAPI>();
+    // Never fulfilled while the handler waits: the promise outlives the call
+    auto pending = std::make_shared<std::promise<base::RespOrError<::router::test::Output>>>();
+    EXPECT_CALL(*tester, getTestTimeout()).WillRepeatedly(testing::Return(10));
+    EXPECT_CALL(*tester, ingestTest(testing::_, testing::_))
+        .WillOnce([pending](auto&&, auto&&) { return pending->get_future(); });
+
+    eEngine::tester::RunPost_Request protoReq;
+    protoReq.set_name("test-session");
+    protoReq.set_event("1:/var/log/test:some event");
+    protoReq.set_trace_level(eEngine::tester::TraceLevel::NONE);
+
+    httplib::Response res;
+    const auto start = std::chrono::steady_clock::now();
+    runPost(tester, base::eventParsers::parseLegacyEvent, makeSchemaMock({}))(
+        createRequest<eEngine::tester::RunPost_Request>(protoReq), res);
+    const auto elapsed = std::chrono::steady_clock::now() - start;
+
+    EXPECT_EQ(res.status, httplib::StatusCode::BadRequest_400);
+    EXPECT_NE(res.body.find("Timeout waiting for ingestTest"), std::string::npos);
+    // Far below the former hard-coded 5 s wait
+    EXPECT_LT(elapsed, std::chrono::seconds(4));
 }
 
 class LogtestDeleteTest : public ::testing::TestWithParam<LogtestDeleteCase>

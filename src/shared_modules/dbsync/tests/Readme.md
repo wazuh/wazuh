@@ -6,7 +6,7 @@
 ## Compile Wazuh
 In order to run unit tests on a specific wazuh target, the project needs to be built with the `TEST` option as shown below:
 ```
-make deps RESOURCES_URL=file:///path/to/deps/
+make deps DEPS_POOL_URL=file:///path/to/pool
 make TARGET=server|agent TEST=1
 ```
 

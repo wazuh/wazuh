@@ -1,6 +1,6 @@
 /*
  * Module-tagged config and stats reports
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -45,6 +45,16 @@ void module_report_add(cJSON *report, const char *module, cJSON *body) {
     }
 
     cJSON_AddItemToObject(report, module, body);
+}
+
+void module_report_add_secret(cJSON *object, const char *key,
+                              const char *secret, bool unmasked) {
+    if (!object || !key || !secret || *secret == '\0') {
+        return;
+    }
+
+    cJSON_AddStringToObject(object, key,
+                            unmasked ? secret : MODULE_REPORT_SECRET_MASK);
 }
 
 size_t module_report_reply(cJSON *report, char **output) {

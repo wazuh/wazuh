@@ -1,0 +1,213 @@
+# Wazuh 5.0.0 cluster behind a load balancer.
+#
+# One master, two workers, real wazuh-clusterd. Two balancers in front, each offering
+# BOTH TLS models at once, so a scenario switches model by changing port, not config:
+#
+#   host 21517 -> haproxy :1517  TLS passthrough      (per connection)
+#   host 21518 -> haproxy :1518  TLS termination      (per request)
+#   host 31517 -> nginx   :1517  TLS passthrough      (per connection)
+#   host 31518 -> nginx   :1518  TLS termination      (per request)
+#   host 41517/41518/41519       straight to master / worker1 / worker2, no balancer
+#
+# Static addresses, because the listener certificates carry them as IP SANs.
+
+# The probe image is built separately; see the README. It mounts BOTH this directory's
+# probe/ scripts and the repository's own agent tools from the parent directory, so the
+# wire-format helpers (wire_jwt.py, send_*.py) are never duplicated here.
+
+networks:
+  lab:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+services:
+  wazuh-master:
+    image: lab-wazuh-manager:deb
+    hostname: wazuh-master
+    container_name: wazuh-master
+    command: ["wazuh-master", "master", "wazuh-master"]
+    environment:
+      AUTHD_PASS: "labpassword"
+    volumes:
+      - ./certs:/lab-certs:ro
+      - ./certs-indexer:/lab-certs-indexer:ro
+    ports:
+      - "41517:1517"
+      - "45000:55000"
+    networks:
+      lab:
+        ipv4_address: 172.28.0.11
+    cap_add: [SYS_PTRACE]
+
+  wazuh-worker1:
+    image: lab-wazuh-manager:deb
+    hostname: wazuh-worker1
+    container_name: wazuh-worker1
+    command: ["wazuh-worker1", "worker", "wazuh-master"]
+    volumes:
+      - ./certs:/lab-certs:ro
+      - ./certs-indexer:/lab-certs-indexer:ro
+    ports:
+      - "41518:1517"
+    networks:
+      lab:
+        ipv4_address: 172.28.0.12
+    depends_on: [wazuh-master]
+
+  # worker2 is the lab's designated victim: cert_drill.sh installs broken certificates here,
+  # and overrides/ is where a failure-injection scenario is staged. Empty by default, so the
+  # node comes up healthy; see overrides/README.md.
+  wazuh-worker2:
+    image: lab-wazuh-manager:deb
+    hostname: wazuh-worker2
+    container_name: wazuh-worker2
+    command: ["wazuh-worker2", "worker", "wazuh-master"]
+    volumes:
+      - ./certs:/lab-certs:ro
+      - ./certs-indexer:/lab-certs-indexer:ro
+      - ./overrides:/lab-overrides:ro
+    ports:
+      - "41519:1517"
+    networks:
+      lab:
+        ipv4_address: 172.28.0.13
+    depends_on: [wazuh-master]
+
+  wazuh-lb-haproxy:
+    image: haproxy:2.9
+    hostname: wazuh-lb-haproxy
+    container_name: wazuh-lb-haproxy
+    user: root
+    volumes:
+      - ./base/haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - ./certs:/certs:ro
+      - ./certs-public:/certs-public:ro
+    ports:
+      - "21514:1514"
+      - "21515:1515"
+      - "21517:1517"
+      - "21518:1518"
+      - "21519:1519"
+      - "28404:8404"
+    networks:
+      lab:
+        ipv4_address: 172.28.0.20
+    depends_on: [wazuh-master, wazuh-worker1, wazuh-worker2]
+
+  wazuh-lb-nginx:
+    image: nginx:1.27
+    hostname: wazuh-lb-nginx
+    container_name: wazuh-lb-nginx
+    volumes:
+      - ./base/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/certs:ro
+    ports:
+      - "31514:1514"
+      - "31515:1515"
+      - "31517:1517"
+      - "31518:1518"
+    networks:
+      lab:
+        ipv4_address: 172.28.0.21
+    depends_on: [wazuh-master, wazuh-worker1, wazuh-worker2]
+
+  # ---- Real 4.x agent, legacy channel, through the same balancer ----------------
+  # Enrollment on 1515 reaches the master only; events on 1514 are spread across all
+  # three nodes. This is the mixed-fleet front end a migration actually needs.
+  wazuh-agent4-a:
+    image: lab-agent4:4.14.1
+    hostname: wazuh-agent4-a
+    container_name: wazuh-agent4-a
+    command: ["agent4-a", "wazuh-lb-haproxy", "labpassword"]
+    networks:
+      lab:
+        ipv4_address: 172.28.0.61
+    depends_on: [wazuh-lb-haproxy]
+
+  wazuh-agent4-b:
+    image: lab-agent4:4.14.1
+    hostname: wazuh-agent4-b
+    container_name: wazuh-agent4-b
+    command: ["agent4-b", "wazuh-lb-haproxy", "labpassword"]
+    networks:
+      lab:
+        ipv4_address: 172.28.0.62
+    depends_on: [wazuh-lb-haproxy]
+
+  # ---- Real 5.x agents, HTTPS channel, one per TLS model ------------------------
+  # verification_mode full is deliberate: it checks the hostname, which is what makes
+  # the per-node SAN work of generate_certs.sh meaningful. Under passthrough the agent
+  # validates the BACKEND leaf while dialling the balancer name, so every node's SAN
+  # has to carry that name (FINDINGS.md L-01).
+  wazuh-agent5-term:
+    image: lab-agent5:branch
+    hostname: wazuh-agent5-term
+    container_name: wazuh-agent5-term
+    command: ["agent5-term", "wazuh-lb-haproxy:1518", "full", "labpassword"]
+    volumes:
+      - ./certs:/lab-certs:ro
+    networks:
+      lab:
+        ipv4_address: 172.28.0.71
+    depends_on: [wazuh-lb-haproxy]
+
+  wazuh-agent5-pass:
+    image: lab-agent5:branch
+    hostname: wazuh-agent5-pass
+    container_name: wazuh-agent5-pass
+    command: ["agent5-pass", "wazuh-lb-nginx:1517", "full", "labpassword"]
+    volumes:
+      - ./certs:/lab-certs:ro
+    networks:
+      lab:
+        ipv4_address: 172.28.0.72
+    depends_on: [wazuh-lb-nginx]
+
+  # ---- The 4.x -> 5.x in-place transition ---------------------------------------
+  # Behind a `profiles:` key so it never starts with the rest of the lab: it takes over the
+  # identity of a 4.x agent, and running both at once would have two containers using one
+  # client.keys line. Start it by name, after stopping the agent it replaces:
+  #
+  #   docker exec wazuh-agent4-a cat /var/ossec/etc/client.keys > migrate/legacy.keys
+  #   docker stop wazuh-agent4-a
+  #   docker compose --profile migrate up -d migrated-agent
+  #
+  # 5.x binaries, but the ossec.conf and client.keys the 4.x agent had -- an upgrade never
+  # rewrites ossec.conf, so that is what a migrated host looks like on first boot.
+  migrated-agent:
+    image: lab-agent5:branch
+    hostname: migrated-agent
+    container_name: migrated-agent
+    profiles: ["migrate"]
+    entrypoint: ["/migrate/entrypoint.sh"]
+    environment:
+      # 0 (default) reproduces a real in-place upgrade: no trust anchor, so the agent resolves
+      # verification_mode to `none`. 1 installs the lab CA and it comes up `full` instead.
+      MIGRATE_PLACE_ANCHOR: "0"
+    volumes:
+      - ./migrate:/migrate
+      - ./certs:/lab-certs:ro
+    networks:
+      lab:
+        ipv4_address: 172.28.0.73
+    depends_on: [wazuh-lb-haproxy]
+
+  # ---- Wazuh indexer, single node -----------------------------------------------
+  # Needed for the one measurement the lab could not take without it: vd_feed_offset
+  # divergence between nodes while their vulnerability feeds load at different rates.
+  wazuh-indexer:
+    image: lab-indexer:5.0.0
+    hostname: wazuh-indexer
+    container_name: wazuh-indexer
+    volumes:
+      - ./certs-indexer:/lab-certs-indexer:ro
+    ports:
+      - "49200:9200"
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+      nofile:  { soft: 65536, hard: 65536 }
+    networks:
+      lab:
+        ipv4_address: 172.28.0.30

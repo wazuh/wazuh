@@ -12,11 +12,12 @@ tuned through internal options.
 | `<cluster>` in the manager configuration | The cluster name stamped onto every document |
 | Internal options | Every transport and connector tunable listed below |
 
-Two values are deliberately NOT configurable:
+Three values are deliberately NOT configurable:
 
 - **The socket path** is fixed at `queue/sockets/inventory-sync-http.sock`, relative to the installation
   directory. Internal options can only carry integers, so there is no mechanism to set a path; remoted
-  resolves the same relative path through its chroot.
+  and modulesd both run with the installation directory as their working directory and resolve the same
+  relative path.
 - **The socket mode** is fixed at `0660`. It was an internal option and that was a trap: the value is a
   raw permission mode, but internal options are parsed as DECIMAL, so writing the documented `0660`
   produced decimal 660 -- out of range, killing the daemon -- while a value that did fit, say `440`, was
@@ -29,7 +30,7 @@ Two values are deliberately NOT configurable:
 
 ## Internal Options
 
-**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`
+**Configuration file:** `/etc/wazuh-manager/wazuh-manager-internal-options.conf`
 
 **Internal Options prefix:** `wazuh_modules.inventory_sync_server_*`
 
@@ -40,9 +41,9 @@ An option present in `wazuh-manager-internal-options.conf` but out of its allowe
 non-numeric -- prevents `wazuh-manager-modulesd` from starting, and is reported by
 `wazuh-manager-modulesd -t`. Values are parsed as decimal; a leading zero does not mean octal.
 
-The shipped `wazuh-manager-internal-options.conf` template lists every option below commented out
-with its compiled default and range; uncomment an entry only to override it. The file is never
-overwritten during upgrades.
+The shipped `wazuh-manager-internal-options.conf` carries only a comment header: every default below
+is compiled into the module. Add a line only to override one. The file is never overwritten during
+upgrades.
 
 ### Transport
 
@@ -204,7 +205,7 @@ wazuh_modules.inventory_sync_server_max_parallel_connections=1024
 
 - **Default value:** `1024`
 - **Allowed values:** 0 to 65536
-- **Note:** Max simultaneous connections; over it `503` and close. Every connection and every deferred reply costs a file descriptor out of a limit shared with all of modulesd, so setting this above `wazuh_modules.rlimit_nofile` logs a warning and guarantees failures before the cap is reached. Live occupancy is visible as `server.sessions.live` in [`GET /metrics`](metrics.md#transport--server) (the cap itself has no shed counter: a hit shows in the logs and as `live` pinned at the cap).
+- **Note:** Max simultaneous connections; over it `503` and close. Every connection and every deferred reply costs a file descriptor out of a limit shared with all of modulesd, so setting this above modulesd's effective descriptor limit (`wazuh_modules.rlimit_nofile`, capped by the hard limit the process starts with) logs a warning and guarantees failures before the cap is reached. Live occupancy is visible as `server.sessions.live` in [`GET /metrics`](metrics.md#transport--server) (the cap itself has no shed counter: a hit shows in the logs and as `live` pinned at the cap).
 
 ### wazuh_modules.inventory_sync_server_max_inflight_bytes
 
@@ -228,7 +229,7 @@ wazuh_modules.inventory_sync_server_reserved_control_connections=64
 
 - **Default value:** `64`
 - **Allowed values:** 0 to 256 (`0`/absent: the default; clamped to at most a quarter of `max_parallel_connections`)
-- **Note:** The route-class model's decisive knob: the data class's session cap resolves to `max_parallel_connections` minus this reserve, so a saturated `POST /stateful` plane alone can never fill the accept queue — control-class requests (agent deletions) and liveness probes always find a slot. Per-class occupancy is visible as `server.sessions.{data,control,liveness}` in [`GET /metrics`](metrics.md#transport--server).
+- **Note:** The route-class model's decisive knob: the data class's session cap resolves to `max_parallel_connections` minus this reserve, so a saturated `POST /stateful` plane alone can never fill the accept queue — control-class requests (agent deletions and on-demand scans) and liveness probes always find a slot. Per-class occupancy is visible as `server.sessions.{data,control,liveness}` in [`GET /metrics`](metrics.md#transport--server).
 
 ### wazuh_modules.inventory_sync_server_control_max_body_bytes
 
@@ -240,7 +241,7 @@ wazuh_modules.inventory_sync_server_control_max_body_bytes=65536
 
 - **Default value:** `65536` (64 KiB)
 - **Allowed values:** 0 to 1048576 (`0`/absent: the default)
-- **Note:** Control-class requests (the agent-deletion routes) carry their identity in a header and an empty body by contract, so anything above this cap is a client error answered `413` from the declared length, before a single body byte is read. Control-class requests are exempt from the in-flight byte budget; this cap is what bounds them instead.
+- **Note:** Control-class requests (`POST /_internal/agents/delete` and `POST /_internal/vd/scan`) carry only a small JSON body naming the agent (`{"agent_id":"7"}`), so anything above this cap is a client error answered `413` from the declared length, before a single body byte is read. Control-class requests are exempt from the in-flight byte budget; this cap is what bounds them instead.
 
 ### wazuh_modules.inventory_sync_server_control_max_sessions
 
@@ -295,7 +296,8 @@ wazuh_modules.inventory_sync_server_sync_queue_bytes=67108864
 
 ### wazuh_modules.inventory_sync_server_vd_feed_retry_after_seconds
 
-`Retry-After` value, in seconds, answered with `503` while the vulnerability feed is not ready.
+`Retry-After` value, in seconds, answered with `503` while the vulnerability feed is not ready (or the
+scanner is enabled here but still starting up).
 
 ```ini
 wazuh_modules.inventory_sync_server_vd_feed_retry_after_seconds=10
@@ -303,7 +305,8 @@ wazuh_modules.inventory_sync_server_vd_feed_retry_after_seconds=10
 
 - **Default value:** `10`
 - **Allowed values:** 10 to 1800
-- **Note:** Only VD sessions get this header; the agent re-sends the same session after the delay.
+- **Note:** Only VD sessions (and on-demand scans that reach a lane worker while the feed is not ready)
+  get this header; the agent re-sends the same session after the delay.
   The minimum is 10 because a smaller value tells the whole fleet to hammer the endpoint. This
   setting fixes the header **value** only — how often it fires is driven by the CVE-feed download
   state and is visible as `vd.retry_after.total` in
@@ -325,7 +328,7 @@ wazuh_modules.inventory_sync_server_vd_workers=0
 
 ### wazuh_modules.inventory_sync_server_vd_scan_queue_slots
 
-Sessions allowed to wait for a VD worker.
+Sessions and on-demand scan requests allowed to wait for a VD worker.
 
 ```ini
 wazuh_modules.inventory_sync_server_vd_scan_queue_slots=0
@@ -333,23 +336,48 @@ wazuh_modules.inventory_sync_server_vd_scan_queue_slots=0
 
 - **Default value:** `0` (twice `vd_workers`)
 - **Allowed values:** 0 to 256
-- **Note:** A VD session arriving with the queue full is answered `503` ("scan capacity exhausted") —
+- **Note:** A VD session (or an on-demand scan) arriving with the queue full is answered `503` ("scan capacity exhausted") —
   scans run synchronously inside the request, so queueing more than the lane can drain only trades a
   fast `503` for a slow timeout. Refusals count as `vd.capacity.503.total` in
   [`GET /metrics`](metrics.md#vulnerability-detection-lane--vd).
 
 ---
 
+### wazuh_modules.inventory_sync_server_max_sessions_per_agent
+
+Sessions one agent may have admitted and not yet answered, across the sync pipeline and the
+vulnerability-detection scan lane.
+
+```ini
+wazuh_modules.inventory_sync_server_max_sessions_per_agent=2
+```
+
+- **Default value:** `2`
+- **Allowed values:** 1 to 1024
+- **Note:** A session past it is answered `503` before anything is queued, and counted as
+  `sync.agent_busy.total` in [`GET /metrics`](metrics.md#sync-pipeline--syncpipeline-syncshardi-syncsessionduration). A session stays counted
+  until it is answered, which can be after remoted has stopped waiting for it: remoted gives up at
+  `remoted.downstream_stateful_response_timeout` (20 s by default) and the agent re-sends, while this
+  module keeps applying the first copy. The default of 2 is the session being applied plus one such
+  re-send. Further copies are refused rather than queued behind work that is already in progress,
+  so one agent cannot fill `sync_queue_bytes` or the scan lane for the rest of the fleet.
+- **Note:** A rising count usually means a slow indexer or vulnerability scanner, not a broken
+  agent: the agents re-send faster than their sessions are applied. Raising the value only queues
+  more duplicates.
+
+---
+
 ### wazuh_modules.inventory_sync_server_session_query_batch_size
 
-Indexer search page size used while draining a session.
+Indexer search page size of the checksum verification (`ModuleCheck` sessions), which pages the agent's
+documents with `search_after`.
 
 ```ini
 wazuh_modules.inventory_sync_server_session_query_batch_size=0
 ```
 
 - **Default value:** `0` (1000 documents)
-- **Allowed values:** `0` (module default), or `100` to `10000` (the indexer rejects pages above `index.max_result_window`, default `10000`)
+- **Allowed values:** `0` (module default), or `100` to `10000` (the indexer rejects pages above `index.max_result_window`, default `10000`); `1`–`99` is rejected at startup
 - **Note:** Larger pages mean fewer round-trips to the indexer but a bigger response held in memory
   per query.
 
@@ -460,10 +488,13 @@ wazuh_modules.inventory_sync_server_indexer_sync_max_retry_attempts=5
 - **Note:** Failed attempts allowed to one connector operation (a bulk flush with its `413` split
   chunks, a delete-by-query, an update-by-query, a search) before it gives up and the session fails.
   Together with `max_retry_duration_seconds` below — whichever is spent first — this bounds the
-  retry loops that would otherwise let a persistent `429` or an unreachable indexer block the
+  retry loops that would otherwise let a persistent `429` (or `502`/`503`/`504` on a bulk flush), or an unreachable indexer, block the
   flushing worker, and the shard behind it, forever. `0` disables the attempts bound (retries are
   then limited only by `max_retry_duration_seconds`); setting both to `0` makes retries fully
-  unbounded and logs a startup `WARNING`. Use `1` for a single attempt with no retry.
+  unbounded and logs a startup `WARNING`. Use `1` for a single attempt with no retry. This does not
+  cover a by-query version conflict: that has its own fixed allowance of 3 attempts, bounded only by
+  `max_retry_duration_seconds`, so a delete-by-query or update-by-query can still be re-sent with
+  `max_retry_attempts` at `1` (see the [connector reference](../indexer_connector/README.md)).
 
 #### wazuh_modules.inventory_sync_server_indexer_sync_max_retry_duration_seconds
 
@@ -481,7 +512,10 @@ wazuh_modules.inventory_sync_server_indexer_sync_max_retry_duration_seconds=15
   agent already gave up on. One in-flight request can still overshoot the deadline by up to
   `request_timeout_seconds`. `0` disables the deadline (retries are then limited only by
   `max_retry_attempts`); setting both to `0` makes retries fully unbounded and logs a startup
-  `WARNING`.
+  `WARNING`. It is also the `Retry-After` the server attaches to the `503` it answers when a
+  by-query's version-conflict allowance runs out (15 when the deadline is disabled): the competing
+  writer cannot keep the conflict alive longer than its own allowance, so a re-send after that
+  delay finds the documents free.
 
 #### Asynchronous connector
 
@@ -616,11 +650,17 @@ never land.
 
 ## Troubleshooting
 
-### The module logs that it cannot use its socket path
+### The module logs that it cannot use or bind its socket path
 
-The manager will not start. The path is fixed, so the fault is always its parent directory: it is
-missing, is not writable, or a file that is not a socket is sitting at the path. Check
-`/var/wazuh-manager/queue/sockets/`.
+The path is fixed, so the fault is always on disk. Check `/var/wazuh-manager/queue/sockets/`:
+
+- `cannot use its socket path`: checked once when the module starts — the parent directory is
+  missing or not writable, or a file that is not a socket sits at the path.
+  `wazuh-manager-modulesd` exits instead of running without inventory ingress. This happens after
+  `wazuh-manager-control start` has already reported success, so it shows in `status` and in
+  `logs/wazuh-manager.log`.
+- `could not bind`: the start-time check passed but the bind itself failed later, when the socket
+  is opened (after the indexer objects are built). The module keeps running and retries every 60 s.
 
 ### `/stats` and `/config` answer 503
 
@@ -629,27 +669,37 @@ and that the indexer is running. This is expected while the indexer starts up af
 
 ### Requests are answered 503 under load
 
-Four gates shed with a `503`, in the order a request meets them — each with its own evidence in
-[`GET /metrics`](metrics.md):
+Five gates shed with a `503`, in the order a `POST /stateful` request meets them — each with its
+own evidence in [`GET /metrics`](metrics.md):
 
 1. **Connection cap** (`max_parallel_connections`) — too many simultaneous connections. No shed
    counter; `server.sessions.live` pinned at the cap is the signature.
 2. **In-flight byte budget** (`max_inflight_bytes`) — too many request bytes being read at once.
    Counted in `server.rejected.budget`; watch the `server.budget.*` levels alongside it (available
    near 0, inflight near the cap).
-3. **Pipeline admission queue** (`sync_queue_bytes`) — sessions accepted but waiting for an ingestion
+3. **Per-agent pending sessions** (`max_sessions_per_agent`) — the agent already has that many
+   sessions admitted and not yet answered; counted as `sync.agent_busy.total`. Usually a slow
+   indexer or scanner, not a reason to raise the cap.
+4. **Pipeline admission queue** (`sync_queue_bytes`) — sessions accepted but waiting for an ingestion
    worker exceed the global byte cap; counted as `sync.pipeline.shed.total`.
-4. **VD lane capacity** (`vd_scan_queue_slots`) — VD sessions only, when the scan queue is full;
+5. **VD lane capacity** (`vd_scan_queue_slots`) — VD sessions only, when the scan queue is full;
    counted as `vd.capacity.503.total`.
 
-All four are logged, throttled, with the current counts. Raise the matching option — but see the
+All five are logged, throttled, with the current counts. (The two `_internal` routes are not
+budget-charged; their own gate is the control class's session cap, `control_max_sessions`, counted
+in `server.rejected.session_cap`.) Raise the matching option — but see the
 descriptor-limit note on `max_parallel_connections`, and prefer raising `sync_workers` over
 `sync_queue_bytes` when the queue sheds while CPUs sit idle: the queue is a buffer, not throughput.
 
 ### Confirming what the module is running with
 
-Enable `wazuh_modules.debug=1` and restart: the module logs every resolved tunable at startup. The values
-are also reported by `getconfig wmodules` on the modulesd socket.
+Enable `wazuh_modules.debug=1` and restart: the module logs, at debug level, the value read for every
+option above except `session_query_batch_size` (`0` meaning "the module default"). `getconfig wmodules` on the
+modulesd socket reports the same values, except `reserved_control_connections`,
+`control_max_body_bytes`, `control_max_sessions`, `max_sessions_per_agent` and
+`session_query_batch_size`. Both report the value as read, not as resolved: `max_inflight_bytes`
+reads `0` when the option is absent (the 256 MiB default) and `-1` when it is explicitly `0`
+(unlimited).
 
 ## Related options in other daemons
 

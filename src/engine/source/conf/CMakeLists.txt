@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 add_library(conf STATIC
     src/conf.cpp
     src/fileLoader.cpp

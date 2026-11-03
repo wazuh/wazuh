@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Shell script functions for Wazuh
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
 TRUE="true";

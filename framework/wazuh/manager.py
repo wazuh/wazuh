@@ -1,25 +1,29 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import json
 import logging
 from os import remove
 from os.path import exists
+from secrets import token_hex
 
 from wazuh import Wazuh
 from wazuh.core import common, configuration
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import manager_restart, manager_reload
 from wazuh.core.configuration import get_manager_conf
-from wazuh.core.engine_http import EngineHTTPClient, RemotedHTTPClient, VdHTTPClient
+from wazuh.core.engine_http import (EngineHTTPClient, RemotedAdminHTTPError, RemotedHTTPClient, VdHTTPClient,
+                                    WazuhDBStatusHTTPClient)
 from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core.manager import status, get_api_conf, get_wazuh_logs, \
     get_logs_summary, validate_manager_conf, WAZUH_LOG_FIELDS
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.manager_conf import load_manager_conf, load_manager_conf_text, write_manager_conf
-from wazuh.core.manager_conf_policy import check_protected_sections
+from wazuh.core.manager_conf_policy import SECRET_SECTIONS, check_protected_sections, check_secret_sections
 from wazuh.core.utils import process_array, safe_move, full_copy
-from wazuh.rbac.decorators import expose_resources, mask_sensitive_config
+from wazuh.rbac.decorators import (MASK_DEFAULT, can_read_secrets, expose_resources, mask_sensitive_config,
+                                   unmask_xml_by_path)
 
 logger = logging.getLogger('wazuh')
 
@@ -98,6 +102,38 @@ def _modulesd_status(running: bool) -> dict:
     }
 
 
+def _wdb_status(running: bool) -> dict:
+    """Build the status entry for wazuh-db from its own GET /v1/status endpoint.
+
+    A PID check cannot answer this one: wazuh-manager-db can be running, accepting connections on
+    its socket, and still unable to query `global.db`. In that state `remoted`'s POST /control
+    answers `503` for every agent it serves while events keep flowing, and nothing else reports the
+    node as degraded (issue #39429). This is what makes that visible here.
+
+    Unlike remoted's admin plane, this socket is not optional: it is the same daemon answering, so
+    being unable to reach it while the process runs is a real unready state, not an unreachable
+    side channel. It is reported as such rather than falling back to plain liveness.
+    """
+    if not running:
+        return {'ready': False}
+
+    client = None
+    try:
+        client = WazuhDBStatusHTTPClient()
+        wdb = client.get_status()
+    except WazuhException as exc:
+        return {'ready': False, 'reason': f'status endpoint unreachable: {exc}'}
+    finally:
+        if client is not None:
+            client.close()
+
+    entry = {'ready': wdb.get('status') == 'ok'}
+    global_db = wdb.get('global')
+    if isinstance(global_db, dict):
+        entry['global'] = global_db
+    return entry
+
+
 def _remoted_status(running: bool) -> dict:
     """Build the status entry for remoted from its local admin GET /status endpoint.
 
@@ -134,6 +170,81 @@ def _remoted_status(running: bool) -> dict:
     return entry
 
 
+# Why remoted could not describe its certificates, by the code RemotedHTTPClient raised. Every
+# entry is remoted's own state (down, no admin plane, slow, garbled), never the caller's fault.
+_REMOTED_TLS_REASONS = {
+    2013: 'request failed',
+    2028: 'admin client unavailable',
+    2030: 'timeout',
+    2031: 'admin socket unreachable',
+    2032: 'invalid response',
+}
+
+
+def _remoted_tls(running: bool) -> dict:
+    """Fetch remoted's `GET /tls` document, or say why it is not available.
+
+    Anything that is remoted's own state -- not running, admin socket never came up, HTTPS
+    listener not started (the route's 503), a timeout, a garbled answer -- becomes an explicit
+    `{'available': False, 'reason': ...}` instead of an exception: a consumer must never read a
+    missing document as "no certificate to worry about", and an error would leave no node to hang
+    that state on. The document itself passes through untouched, `seconds_until_expiry` negative
+    once expired included.
+    """
+    if not running:
+        return {'available': False, 'reason': 'remoted not running'}
+
+    client = None
+    try:
+        client = RemotedHTTPClient()
+        document = client.get_tls()
+    except RemotedAdminHTTPError as exc:
+        # remoted is up but its HTTPS listener is not (yet): the route answers 503 by contract.
+        reason = 'listener not started' if exc.status_code == 503 else 'unexpected response'
+        return {'available': False, 'reason': reason}
+    except WazuhInternalError as exc:
+        return {'available': False, 'reason': _REMOTED_TLS_REASONS.get(exc.code, 'invalid response')}
+    except WazuhError as exc:
+        return {'available': False, 'reason': _REMOTED_TLS_REASONS.get(exc.code, 'unexpected response')}
+    except WazuhException:
+        return {'available': False, 'reason': 'unexpected response'}
+    finally:
+        if client is not None:
+            client.close()
+
+    return {'available': True, **document}
+
+
+@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
+def get_remoted_tls() -> AffectedItemsWazuhResult:
+    """Report the TLS certificate material remoted serves on this node.
+
+    The certificate the HTTPS listener presents to agents and the CA bundle `GET /cacerts` hands
+    out, as remoted's admin `GET /tls` describes them: dates, identities, which CA signs the leaf,
+    sizes against their limits. No thresholds: the consumer decides what "soon" means. The CA half
+    is read on this request; the listener's certificate is the one loaded when remoted started
+    (`listener.loaded_at`), so a replaced file shows only after a restart.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Exactly one affected item, always carrying `node`: the document with `available: true`, or
+        `{'node', 'available': False, 'reason'}` when remoted could not describe itself (not
+        running, admin socket unreachable, listener not started, timeout, invalid response). Never a
+        failed item: the state is the node's answer, not an error of the request.
+    """
+    result = AffectedItemsWazuhResult(
+        all_msg=f"TLS certificate information was returned{' in specified node' if node_id != 'manager' else ''}",
+        none_msg=f"Could not read TLS certificate information{' in specified node' if node_id != 'manager' else ''}",
+    )
+
+    running = status().get('wazuh-manager-remoted') == 'running'
+    result.affected_items.append({'node': node_id, **_remoted_tls(running)})
+    result.total_affected_items = len(result.affected_items)
+
+    return result
+
+
 @expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
 def get_status() -> AffectedItemsWazuhResult:
     """Report the node status: whether it is ready to process events, per daemon.
@@ -167,6 +278,8 @@ def get_status() -> AffectedItemsWazuhResult:
             entry.update(_modulesd_status(running))
         elif daemon == 'wazuh-manager-remoted':
             entry.update(_remoted_status(running))
+        elif daemon == 'wazuh-manager-db':
+            entry.update(_wdb_status(running))
 
         node_ready = node_ready and bool(entry['ready'])
         node_status[daemon] = entry
@@ -493,13 +606,108 @@ def get_basic_info() -> AffectedItemsWazuhResult:
     return result
 
 
+def _placeholder_masked_secrets(new_conf: str, current_document: dict) -> tuple:
+    """Replace every masked secret option of `new_conf` with a one-time placeholder, never with the secret itself.
+
+    The text scan that finds the masks (`unmask_xml_by_path`) cannot tell the real option from a same-named leaf in
+    another section, a comment or a CDATA section, and a crafted text can widen its span at will. So the secret is not
+    put back here: each mask gets its own random placeholder, valid for the option's schema, and
+    `_restore_masked_secrets` decides from the parsed document which one, if any, is the option.
+
+    Parameters
+    ----------
+    new_conf : str
+        Configuration text as sent by the caller.
+    current_document : dict
+        Effective document currently on disk.
+
+    Returns
+    -------
+    tuple
+        The text with the placeholders, and {pointer: (current value, [placeholders])} for every secret option that had
+        a mask to replace.
+    """
+    placeholders = {}
+    for pointer in SECRET_SECTIONS:
+        parts = pointer.strip('/').split('/')
+        current = current_document
+        for part in parts:
+            current = current.get(part) if isinstance(current, dict) else None
+        if not isinstance(current, str):
+            continue
+
+        marker = token_hex(16)
+        chunks = unmask_xml_by_path(new_conf, '.'.join(parts), marker).split(marker)
+        if len(chunks) == 1:
+            continue
+
+        # 32 hex characters: what the cluster key's schema accepts, so the text still parses.
+        tokens = [token_hex(16) for _ in chunks[1:]]
+        new_conf = chunks[0] + ''.join(token + chunk for token, chunk in zip(tokens, chunks[1:]))
+        placeholders[pointer] = (current, tokens)
+
+    return new_conf, placeholders
+
+
+def _restore_masked_secrets(new_conf: str, new_document: dict, placeholders: dict) -> str:
+    """Put the current secret back at the one placeholder the parsed document holds at the secret's own option.
+
+    Placeholders the parser dropped (comments) become the mask again. A placeholder that reached the document anywhere
+    else -- another option, a CDATA section -- is a decoy built to copy the secret into a field served unmasked, and
+    the text is refused.
+
+    Parameters
+    ----------
+    new_conf : str
+        Configuration text returned by `_placeholder_masked_secrets`.
+    new_document : dict
+        Effective document of that text. Updated in place with the restored values.
+    placeholders : dict
+        Placeholders returned by `_placeholder_masked_secrets`.
+
+    Raises
+    ------
+    WazuhError(1132)
+        A masked secret was placed outside its own option.
+
+    Returns
+    -------
+    str
+        The text with the secret restored at its option and the mask everywhere else.
+    """
+    serialized = json.dumps(new_document)
+    for pointer, (value, tokens) in placeholders.items():
+        parts = pointer.strip('/').split('/')
+        parent = new_document
+        for part in parts[:-1]:
+            parent = parent.get(part) if isinstance(parent, dict) else None
+
+        parsed = [token for token in tokens if token in serialized]
+        if not parsed:
+            restored = None
+        elif len(parsed) == 1 and isinstance(parent, dict) and parent.get(parts[-1]) == parsed[0]:
+            restored = parsed[0]
+            parent[parts[-1]] = value
+        else:
+            raise WazuhError(1132, extra_message=f'{pointer}: a masked value is only restored at that option')
+
+        for token in tokens:
+            new_conf = new_conf.replace(token, value if token == restored else MASK_DEFAULT)
+
+    return new_conf
+
+
 @expose_resources(actions=['cluster:update_config'], resources=[f'node:id:{node_id}'])
 def update_manager_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
     """Replace the manager configuration (etc/wazuh-manager.conf) with the provided one.
 
-    The new text is checked before anything is written (XML syntax, schema, protected sections); the file is then
-    replaced atomically and validated by `bin/wazuh-manager-conf` (cross-field semantics). Any failure restores the
-    previous file.
+    The new text is checked before anything is written (XML syntax, schema, protected sections, secret options); the
+    file is then replaced atomically and validated by `bin/wazuh-manager-conf` (cross-field semantics). Any failure
+    restores the previous file.
+
+    A secret option (the cluster key) sent back masked, as the API serves it to a caller without
+    `cluster:read_secrets`, keeps its current value; changing it to anything else requires that action. So does
+    changing the indexer section: its hosts receive the manager's indexer credential.
 
     Parameters
     ----------
@@ -523,11 +731,18 @@ def update_manager_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
         if not new_conf:
             raise WazuhError(1125)
 
-        # XML syntax (1131), schema (1130) and protected sections (1127/1129), before touching the file.
-        # One CLI call parses, validates and applies the defaults (the certificate files it names are
-        # not required to exist yet: validate_manager_conf() checks them against the written file).
+        # A secret sent back masked keeps the current value: the mask would not even pass the schema. It is parsed
+        # behind a placeholder and restored only where the parser puts the option itself.
+        current_document = load_manager_conf()
+        new_conf, placeholders = _placeholder_masked_secrets(new_conf, current_document)
+
+        # XML syntax (1131), schema (1130), protected sections (1127/1129) and secret options (1132), before
+        # touching the file. One CLI call parses, validates and applies the defaults (the certificate files it
+        # names are not required to exist yet: validate_manager_conf() checks them against the written file).
         new_document = load_manager_conf_text(new_conf)
-        check_protected_sections(new_document, load_manager_conf())
+        new_conf = _restore_masked_secrets(new_conf, new_document, placeholders)
+        check_protected_sections(new_document, current_document)
+        check_secret_sections(new_document, current_document, can_read_secrets())
 
         # Create a backup of the current configuration before attempting to replace it
         try:

@@ -1,7 +1,6 @@
 /*
  * Wazuh Module Manager
- * Copyright (C) 2015, Wazuh Inc.
- * April 22, 2016.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -47,7 +46,7 @@ int main(int argc, char **argv)
 #ifdef CLIENT
 #define WM_GETOPT_CONF ""
 #else
-#define WM_GETOPT_CONF "c:"   // -c <config>: manager configuration file (etc/wazuh-manager.conf)
+#define WM_GETOPT_CONF "c:"   // -c <config>: manager configuration file (/etc/wazuh-manager/wazuh-manager.conf)
 #endif
 #ifdef WAZUH_RUNTIME_USER
     const char *runtime_user = WAZUH_RUNTIME_USER;
@@ -124,15 +123,11 @@ int main(int argc, char **argv)
     os_free(home_path);
 
 #ifdef CLIENT
-    int nofile = getDefine_Int("wazuh_modules", "rlimit_nofile", 8192, 1048576);
+    const int nofile = getDefine_Int("wazuh_modules", "rlimit_nofile", 8192, 1048576);
 #else
-    int nofile = getDefine_Int_default("wazuh_modules", "rlimit_nofile", 8192, 1048576, 8192);
+    const int nofile = getDefine_Int_default("wazuh_modules", "rlimit_nofile", 8192, 1048576, 65536);
 #endif
-    struct rlimit rlimit = { .rlim_cur=(rlim_t)nofile, .rlim_max=(rlim_t)nofile };
-
-    if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {
-        merror("Could not set resource limit for file descriptors to %d: %s (%d)", (int)nofile, strerror(errno), errno);
-    }
+    w_raise_nofile_limit(nofile, "wazuh_modules.rlimit_nofile");
 
 #ifdef WAZUH_RUNTIME_USER
     wm_drop_privileges(runtime_user);
@@ -239,7 +234,8 @@ void wm_help()
 
 void wm_setup()
 {
-    // Read the configuration (etc/wazuh-manager.conf on the manager, ossec.conf on the agent) and internal options
+    // Read the configuration (/etc/wazuh-manager/wazuh-manager.conf on the manager, ossec.conf on the
+    // agent) and internal options
 
     if (wm_config() < 0) {
         exit(EXIT_FAILURE);
@@ -257,6 +253,15 @@ void wm_setup()
 
     if (batch.size > 0) {
         mdebug1("Sync sessions bounded to %lld bytes by <agent><batch><size>.", batch.size);
+    }
+
+    // agent.sync_max_blocks_per_cycle is handed down the same way: how many of those
+    // sessions one sync cycle may send before the rest waits for the next cycle.
+    const int sync_max_blocks = getDefine_Int_default("agent", "sync_max_blocks_per_cycle", 1, 1000, 0);
+    asp_set_max_blocks_per_sync((uint32_t)sync_max_blocks);
+
+    if (sync_max_blocks > 0) {
+        mdebug1("Sync cycles bounded to %d blocks by agent.sync_max_blocks_per_cycle.", sync_max_blocks);
     }
 #endif
 
@@ -359,6 +364,14 @@ void wm_handler(int signum)
 {
     static bool wm_sig_processing = false;
 
+    // Raised first and before the wait below: wazuh-control signals every daemon in the same
+    // pass, so syscheckd can already be gone during the wait. wm_fim_query_json() and
+    // modulesSync() read this flag to log that as part of the shutdown instead of an ERROR,
+    // and agent-info aborts its coordination on it. Module loops blocked in
+    // wm_sleep_interruptible / wm_select_interruptible leave on it, and the modules that check
+    // it while still starting up abort their start. A second, ignored signal sets it again.
+    wm_shutdown_requested = 1;
+
     w_mutex_lock(&sig_lock);
     if (wm_sig_processing) {
         mdebug2("Signal received: %d, but another one is being processed. Ignoring.", signum);
@@ -370,7 +383,8 @@ void wm_handler(int signum)
     }
     w_mutex_unlock(&sig_lock);
 
-    // We wait in case the modules haven't completed the initialization
+    // Grace time before the stop() callbacks, so the modules that don't read the flag can
+    // finish starting.
     sleep(1);
 
     wmodule * cur_module;
@@ -379,11 +393,6 @@ void wm_handler(int signum)
     case SIGINT:
     case SIGTERM:
         mdebug1("Shutting down Wazuh modules.");
-
-        // Signal all module loops to exit before calling their stop() callbacks
-        // so that modules blocked in wm_sleep_interruptible / wm_select_interruptible
-        // wake up immediately.
-        wm_shutdown_requested = 1;
 
         for (cur_module = wmodules; cur_module && cur_module->context && cur_module->context->name; cur_module = cur_module->next) {
             if (cur_module->context->stop) {

@@ -1,0 +1,69 @@
+---
+test_name: GET /agents
+
+stages:
+  - name: Success
+    request:
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
+      method: GET
+    response: &ok
+      status_code: 200
+
+  - name: Bad limit
+    request:
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents?limit=0"
+    response:
+      status_code: 400
+      json:
+        total: !anyint
+
+  - name: Forbidden outside an rbac file does not count
+    request:
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
+    response:
+      status_code: 403
+
+---
+test_name: Literal segments win
+
+stages:
+  - name: PUT /agents/group, not /agents/{agent_id}
+    request:
+      url: "{protocol:s}://{host:s}:{master_port:d}/agents/group"
+      method: PUT
+    response:
+      <<: *ok
+
+---
+test_name: Parametrized
+
+marks:
+  - parametrize:
+      key: [method, path]
+      vals:
+        - [DELETE, /agents/001]
+        - [PATCH, /agents]
+
+stages:
+  - name: Undeclared method
+    request:
+      url: "{protocol:s}://{host:s}:{balanced_port:d}{path}"
+      method: "{method}"
+    response:
+      status_code: 405
+
+---
+test_name: Unknown route
+
+stages:
+  - name: Not in the spec
+    request:
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/ui"
+    response:
+      status_code: 404
+
+  - name: Status list
+    request:
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001"
+    response:
+      status_code: [200, 404]

@@ -114,7 +114,7 @@ EXPORTED void sca_set_push_functions(push_stateless_func stateless_func, push_st
 
 ```c
 typedef int (*push_stateless_func)(const char* message);
-typedef int (*push_stateful_func)(const char* id, Operation_t operation, const char* index, const char* message);
+typedef int (*push_stateful_func)(const char* id, Operation_t operation, const char* index, const char* message, uint64_t version);
 ```
 
 ---
@@ -125,7 +125,7 @@ typedef int (*push_stateful_func)(const char* id, Operation_t operation, const c
 Sets synchronization protocol parameters.
 
 ```c
-EXPORTED void sca_set_sync_parameters(const char* module_name, const char* sync_db_path, const MQ_Functions* mq_funcs);
+EXPORTED void sca_set_sync_parameters(const char* module_name, const char* sync_db_path, unsigned int integrity_interval);
 ```
 
 ---
@@ -135,7 +135,7 @@ EXPORTED void sca_set_sync_parameters(const char* module_name, const char* sync_
 Triggers synchronization with the manager.
 
 ```c
-EXPORTED bool sca_sync_module(Mode_t mode, unsigned int timeout, unsigned int retries, unsigned int max_eps);
+EXPORTED bool sca_sync_module(Mode_t mode);
 ```
 
 ---
@@ -145,7 +145,7 @@ EXPORTED bool sca_sync_module(Mode_t mode, unsigned int timeout, unsigned int re
 Persists a difference for synchronization.
 
 ```c
-EXPORTED void sca_persist_diff(const char* id, Operation_t operation, const char* index, const char* data);
+EXPORTED void sca_persist_diff(const char* id, Operation_t operation, const char* index, const char* data, uint64_t version);
 ```
 
 ---
@@ -165,15 +165,12 @@ EXPORTED bool sca_parse_response(const unsigned char* data, size_t length);
 Notifies the manager that specific indices have been cleaned and should be removed.
 
 ```c
-EXPORTED bool sca_notify_data_clean(const char** indices, size_t indices_count, unsigned int timeout, unsigned int retries, size_t max_eps);
+EXPORTED bool sca_notify_data_clean(const char** indices, size_t indices_count);
 ```
 
 **Parameters:**
 - `indices`: Array of index names to clean
 - `indices_count`: Number of indices in the array
-- `timeout`: Timeout value in seconds for the notification operation
-- `retries`: Number of retry attempts on failure
-- `max_eps`: Maximum events per second during the notification
 
 **Returns:**
 - `true`: Notification succeeded
@@ -181,20 +178,14 @@ EXPORTED bool sca_notify_data_clean(const char** indices, size_t indices_count, 
 
 **Description:**
 
-Sends a data clean notification to the manager, informing it that specific SCA indices should be removed from the agent's state. This is typically used when the SCA module is disabled or when specific policies are removed.
+Sends a data clean notification to the manager, informing it that the given SCA indices should be removed from the agent's state. `wazuh-modulesd` calls it when the SCA module is disabled. When all policies are removed from the configuration, the module sends the same notification internally.
 
 **Usage Example:**
 ```c
-// Notify data clean for SCA policies
-const char* indices_to_clean[] = {
-    "wazuh-states-sca-policy1",
-    "wazuh-states-sca-policy2"
-};
+// Notify data clean for the SCA index
+const char* indices[] = {SCA_SYNC_INDEX};
 
-bool notify_success = sca_notify_data_clean(indices_to_clean, 2,
-                                           sca_config->sync_response_timeout,
-                                           SCA_SYNC_RETRIES,
-                                           sca_config->sync_max_eps);
+bool notify_success = sca_notify_data_clean(indices, 1);
 ```
 
 ---
@@ -260,7 +251,7 @@ Sends real-time SCA alerts through the message queue system using `SendMSGPredic
 Persists stateful messages for reliable delivery.
 
 ```c
-static int wm_sca_persist_stateful(const char* id, Operation_t operation, const char* index, const char* message);
+static int wm_sca_persist_stateful(const char* id, Operation_t operation, const char* index, const char* message, uint64_t version);
 ```
 
 **Description:**
@@ -280,11 +271,11 @@ Configures the SCA module parameters.
 ```cpp
 void Setup(bool enabled,
            bool scanOnStart,
-           std::time_t scanInterval,
+           std::chrono::seconds scanInterval,
            const int commandsTimeout,
            const bool remoteEnabled,
            const std::vector<sca::PolicyData>& policies,
-           const YamlToJsonFunc& yamlToJsonFunc);
+           const YamlToJsonFunc& yamlToJsonFunc = nullptr);
 ```
 
 #### `Run()`
@@ -306,11 +297,11 @@ void Stop();
 #### Synchronization Methods
 
 ```cpp
-void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs);
-bool syncModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps);
-void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data);
+void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, std::chrono::seconds integrityInterval);
+bool syncModule(Mode mode);
+void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version);
 bool parseResponseBuffer(const uint8_t* data, size_t length);
-bool notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps);
+bool notifyDataClean(const std::vector<std::string>& indices);
 void deleteDatabase();
 ```
 
@@ -406,7 +397,8 @@ Triggers an immediate synchronization session to send all pending SCA check chan
 **Behavior:**
 - Checks if sync protocol is initialized
 - If not initialized, returns `0` (not an error, just nothing to flush)
-- If initialized, calls `synchronizeModule()` with `Mode::DELTA`
+- If initialized, waits for any SCA synchronization or integrity-recovery DataClean already in progress (such as a full resend after an agent ID change) and keeps new ones from starting until it is done
+- Calls `synchronizeModule()` with `Mode::DELTA`
 - Blocks until synchronization completes
 - Returns result of synchronization operation
 

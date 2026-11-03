@@ -25,4 +25,4 @@ The following elements have been updated or reviewed (should also be checked if 
 - [ ] Tests (unit tests, API integration tests).
 - [ ] Changelog.
 - [ ] Documentation.
-- [ ] Integration test mapping (using `api/test/integration/mapping/_test_mapping.py`).
+- [ ] API integration test coverage and selection (`api/test/integration/mapping/endpoint_coverage.py --write`, `selection_rules.yaml`).

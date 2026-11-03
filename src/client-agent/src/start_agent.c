@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -28,14 +28,17 @@
 static void w_agentd_keys_init (void);
 STATIC void send_msg_on_startup(void);
 
-/* Arm the startup gate and block until the agent has a usable key, enrolling
- * if needed (see w_agentd_keys_init()). Must complete before the HTTPS client
+/* Arm the startup gate, make the shared configuration directory consistent
+ * with merged.mg (see w_https_client_reconcile_shared_config()), and block until
+ * the agent has a usable key, enrolling if needed (see w_agentd_keys_init()).
+ * Must complete before the HTTPS client
  * is ever started: bridge_build_config() reads client.keys exactly once, at
  * hc_create() time, with no retry -- if it sees an empty keystore there the
  * client never runs, silently, for the rest of the process's life. */
 void start_agent_prepare(void)
 {
     startup_gate_initialize();
+    w_https_client_reconcile_shared_config();
     w_agentd_keys_init();
 }
 
@@ -68,7 +71,22 @@ static void w_agentd_keys_init (void) {
         /* Check if we can auto-enroll */
         if (agt->enrollment.enabled) {
             int delay_sleep = 0;
-            while (try_enroll_to_server() != 0) {
+            w_enroll_status_t status;
+
+            while ((status = try_enroll_to_server()) != W_ENROLL_OK) {
+                /* #39064: not every rejection is worth another attempt. A credential the manager
+                 * judged and refused will be refused again, for ever, at the top of the ramp --
+                 * which is the lab loop this issue exists to remove. w_enrollment_apply_policy()
+                 * owns that decision (and shreds a dead re-enrollment secret on the way), so this
+                 * loop and bridge_reenroll_thread()'s cannot drift apart on it. */
+                if (w_enrollment_apply_policy(status) == W_ENROLL_ACTION_STOP) {
+                    /* No key, and no prospect of getting one without an operator. Exiting is the
+                     * honest end -- the same one AG_NOKEYS_EXIT below reports for an agent that
+                     * cannot enroll at all -- rather than a daemon that stays up doing nothing. */
+                    merror_exit("Enrollment cannot succeed as configured; the agent has no key and "
+                                "is stopping. See the error above for what has to change.");
+                }
+
                 /* #38465: a single unconditional target now (agt->server[0] via
                  * the shared transport config), so the dual-target loop this
                  * used to have (a configured enrollment server, then each
@@ -109,91 +127,70 @@ static void w_agentd_keys_init (void) {
  * uses (agt->server[] beyond index 0 has had no real failover behavior since
  * the HTTPS migration -- confirmed against main.c's own startup validation
  * and bridge_build_transport_config(), both of which only ever look at [0]). */
-int try_enroll_to_server(void) {
+w_enroll_status_t try_enroll_to_server(void) {
     w_enroll_request_t request = {0};
     if (w_enrollment_build_request(&request) != 0) {
-        return -1;
+        /* A local validation failure (an invalid configured name or address): nothing was sent, and
+         * no manager is going to change its mind about it. Reported as fatal so the caller stops
+         * instead of re-building the same rejected request for ever. */
+        return W_ENROLL_ERR_AUTH_FATAL;
     }
 
     hc_enroll_result_t result;
-    w_https_client_enroll(request.body_json, request.password, &result);
+    w_https_client_enroll(request.body_json, request.password, request.enroll_kid, request.enroll_key_hex,
+                          &result);
+    /* Destroyed AFTER the response is read: a 403 names the enrollment token that was refused,
+     * and the id it names is the kid this request signed with. */
+    const w_enroll_status_t status = w_enrollment_process_response(&result, request.enroll_kid);
     w_enroll_request_destroy(&request);
 
-    if (w_enrollment_process_response(&result) != W_ENROLL_OK) {
-        return -1;
+    if (status != W_ENROLL_OK) {
+        return status;
     }
 
     /* Wait for key update on agent side */
     mdebug1("Waiting %ld seconds before server connection", (long)agt->enrollment.delay_after_enrollment);
     sleep(agt->enrollment.delay_after_enrollment);
+
+    /* Under the keystore writer lock: OS_UpdateKeys() frees every keyentry and the id/raw_key
+     * strings inside it before reading the replacements. No reader runs concurrently today (see
+     * g_agent_keys_lock); the lock is defensive, for any future reader outside the re-enrollment
+     * thread. The crypto-method reset is inside the same critical section: it walks the entries
+     * this call just installed, and a reader seeing the keystore between the two would see them
+     * half set up. */
+    w_agent_keys_write_lock();
     /* Successful enroll, read keys */
     OS_UpdateKeys(&keys);
     /* Set the crypto method for the agent */
     os_set_agent_crypto_method(&keys, W_METH_AES);
-    return 0;
-}
+    w_agent_keys_write_unlock();
 
-/* Attempts, and the pause between them, for reading the record that is about to be replaced.
- * Sized for the `updating` window described in w_agentd_populate_metadata(): a struct copy in
- * another process, not a retry loop around anything that can stay busy. */
-#define METADATA_READ_ATTEMPTS 3
-#define METADATA_READ_RETRY_MS 10
+    return W_ENROLL_OK;
+}
 
 /* Populate shared memory with agent metadata so the first keepalive already
  * contains full agent info.
  *
  * Serialized: start_agent() publishes from the main thread, bridge_on_startup_result()
  * and bridge_on_control_response() from the module's dispatcher thread, and
- * bridge_reenroll_thread() from the re-enrollment worker, while
- * metadata_provider_update() has no writer lock of its own -- it only raises an
- * `updating` flag readers poll, so two overlapping writers would clear it while
- * one is still copying and a reader would get a torn record. */
+ * bridge_reenroll_thread() from the re-enrollment worker -- this local mutex serializes
+ * those call sites within agentd itself. metadata_provider_update() additionally serializes
+ * internally against every writer within its own process now too (#39543 review follow-up),
+ * so a concurrent write from agent-info (a different process) can no longer tear the record
+ * either.
+ *
+ * vd_feed_offset is not set below, deliberately: metadata_provider_update() never touches
+ * that field (see its own doc comment) -- it is exclusively owned and published by
+ * agent-info via metadata_provider_update_vd_feed_offset(), independent of this call
+ * entirely. An earlier version of this function read the existing value first specifically
+ * to avoid clobbering it before publishing; that is now handled structurally by the
+ * provider instead, so there is nothing left to carry over here. */
 void w_agentd_populate_metadata(void)
 {
     static pthread_mutex_t metadata_mutex = PTHREAD_MUTEX_INITIALIZER;
     agent_metadata_t metadata = {0};
 
     w_mutex_lock(&metadata_mutex);
-
-    /* Carry over vd_feed_offset, the one field agentd does not own. metadata_provider_update()
-     * replaces the whole record, and that offset is written only by agent-info, from what the
-     * manager reports over /control -- publishing a zero makes every VD synchronization abort
-     * with NO_VD_OFFSET_ERROR until agent-info's next cycle rewrites it, which in turn fails
-     * Syscollector::syncModule() and makes the wodle skip the recovery pass behind it. Every
-     * other field here is either local to the agent or set below from what the handshake
-     * reported.
-     *
-     * The read is retried because -1 is not one answer but two: nothing has ever been published
-     * (first boot, where a zero offset is the truth), or the reader hit the `updating` flag
-     * agent-info raises while it writes. agent-info is a different process, so the mutex above
-     * does not serialize against it, and that window is no wider than a struct copy -- but
-     * reading it as "no offset" would suppress VD synchronization until agent-info's next
-     * /control cycle, which is to say it would disable the identity resync this change exists
-     * for, in exactly the window right after a re-enrollment where it is needed. Retrying is the
-     * local fix; the structural one is a partial update in the provider, so agentd never has to
-     * round-trip a field it does not own. */
-    {
-        agent_metadata_t previous = {0};
-        int carried = 0;
-
-        for (int attempt = 0; attempt < METADATA_READ_ATTEMPTS; attempt++) {
-            if (metadata_provider_get(&previous) == 0) {
-                metadata.vd_feed_offset = previous.vd_feed_offset;
-                metadata_provider_free_metadata(&previous);
-                carried = 1;
-                break;
-            }
-
-            if (attempt + 1 < METADATA_READ_ATTEMPTS) {
-                w_time_delay(METADATA_READ_RETRY_MS);
-            }
-        }
-
-        if (!carried) {
-            /* Also the ordinary first-boot path, where there is genuinely nothing to carry. */
-            mdebug1("No published agent metadata to carry the VD feed offset from.");
-        }
-    }
 
 #ifdef WIN32
     os_info *os = get_win_version();

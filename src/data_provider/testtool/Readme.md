@@ -8,7 +8,7 @@
 The Data Provider Testing Tool was created to test and validate the data obtained by the module's execution. This tool works as a black box where an user will be able execute it and analyze the output data as desired.
 
 ## Compile Wazuh
-In order compile the solution on a specific wazuh target, the project needs to be built either in os_kernel_release or debug mode.
+In order compile the solution on a specific wazuh target, the project needs to be built either in release or debug mode.
 ```
 make TARGET=server|agent <DEBUG=1>
 ```

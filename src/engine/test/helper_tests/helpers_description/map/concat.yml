@@ -36,14 +36,14 @@ output:
 
 test:
   - arguments:
-      operand_right_3: "yes"
+      operand_left: "hello"
       operand_right: " "
       operand_right_1: "no"
-      operand_left: "hello"
       operand_right_2: "yes"
+      operand_right_3: "yes"
     should_pass: true
     expected: hello noyesyes
-    description: Concatenate a string with another empty one
+    description: Concatenate several strings in argument order
   - arguments:
       operand_left:
         source: reference

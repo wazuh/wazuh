@@ -10,7 +10,7 @@ Complete configuration reference for the Wazuh agent daemon (agentd).
 
 **Internal Options:** `agent.*`, `windows.*` (Windows only)
 
-For module overview and architecture, see [Client Module](index.html).
+For module overview and architecture, see [Client Module](README.md).
 
 ---
 
@@ -18,7 +18,7 @@ For module overview and architecture, see [Client Module](index.html).
 
 Configures the agent's connection to the Wazuh manager.
 
-`<client>` is the 4.X name of this block and is renamed to `<agent>` in 5.0; the inner block is `<manager>`. A configuration left by a 4.X agent still starts: `<client><server><address>` is read and the port defaults to `1517`. No other option inside `<client>` is read, so rename the block to `<agent><manager>` to keep them all.
+`<client>` is the 4.X name of this block and is renamed to `<agent>` in 5.0; the inner block is `<manager>`. A configuration left by a 4.X agent still starts, and two things are read out of the legacy block: `<client><server><address>`, with the port defaulting to `1517`, and the whole `<client><enrollment>` sub-block, so an upgraded agent keeps the identity it enrolls with. Every other option directly inside `<client>` is ignored and warned about at startup; the options nested in its `<server>` block are dropped without a message. Rename the block to `<agent><manager>` to keep them all.
 
 ### manager
 
@@ -32,7 +32,7 @@ The complete connection target: the manager's address, optionally a port, and op
 URL path prefix it is served under. This one option replaces the separate `address` and `port`
 tags.
 
-```
+```text
 endpoint = [ "https://" ] host [ ":" port ] [ "/" [ prefix ] ]
 ```
 
@@ -90,7 +90,6 @@ and logs that it no longer has any effect.
 
 **DEPRECATED:** parsed but ignored. See `max_retries`.
 
-
 ### ssl
 
 TLS configuration for the agent's HTTPS connection to the manager. Controls how the agent
@@ -118,30 +117,54 @@ Path to the private key matching `<certificate>`.
 
 Path to the CA bundle used to verify the manager's certificate.
 
-- **Default value:** None
+- **Default value:** None in `ossec.conf`. When the option is absent and the resolved mode is
+  `full` or `certificate`, the agent uses the trust anchor described below as the CA, so an
+  agent that bootstrapped from an enrollment token verifies without this option being set at
+  all.
 - **Allowed values:** Path to a PEM-encoded CA bundle file, readable by the agent
-- **Required:** Yes, when `<verification_mode>` is `full` or `certificate` -- the agent fails
-  closed (refuses to start) without a readable CA file in that case.
-- **Note:** Must NOT be set when `<verification_mode>` is `system` -- the agent fails closed if
-  it is, since the OS trust store is used as the anchor instead and a configured CA would go
-  silently unused. Ignored (with a warning if set but unreadable) when `<verification_mode>` is
-  `none`.
+- **Required:** Only when neither this option nor the trust anchor is present and
+  `<verification_mode>` is `full` or `certificate` -- the agent then fails closed (refuses to
+  start) with `(4118)`.
+- **Note:** Must NOT be set when `<verification_mode>` is `system` -- the agent fails closed
+  with `(4120)` if it is, since the OS trust store is used as the anchor instead and a
+  configured CA would go silently unused. Ignored when `<verification_mode>` is `none`.
+- **Note:** A file that is readable but holds no certificate the agent can parse is refused at
+  startup with `(4123)`, rather than at the first handshake. Readable is not usable.
 
 #### verification_mode
 
 How strictly the agent verifies the manager's TLS certificate.
 
-- **Default value:** `system` when `<certificate_authorities>` is not set, `certificate` when it
-  is set without an explicit `<verification_mode>` (mirrors the manager's own inference for
-  `<remote><https><ca>`/`<verification_mode>` in `remote-config.c`). `none` is never the default —
-  it is only reached via an explicit `<verification_mode>none</verification_mode>`.
+- **Default value:** There is no single default. The mode is resolved at startup from what
+  `<ssl>` says and whether a trust anchor is on disk (`w_agent_resolve_ssl_posture()`):
+
+  | What is configured | Resolved mode |
+  |---|---|
+  | An explicit `<verification_mode>` | That mode, `none` included |
+  | `<certificate_authorities>`, no explicit mode | `certificate` (mirrors the manager's own inference for `<remote><https><ca>`), logged as a warning |
+  | Neither, but the trust anchor is present | `full`, with the anchor as the CA |
+  | Nothing at all | `none` |
+
+  Two consequences worth reading twice:
+
+  * **A stock install with no trust material verifies nothing**, and logs
+    `TLS verification is DISABLED (verify_mode=none)` at warning level. `none` is never chosen over
+    a usable anchor, but it *is* what an agent given nothing falls back to, because `system` could
+    only ever refuse: the manager's certificate is signed by its own `root-ca.pem`, which is in no
+    OS trust store.
+  * **Placing a CA at `etc/certs/root-ca.pem` promotes the agent to `full`**, which includes the
+    hostname check, without any configuration change. Behind a load balancer in TLS passthrough that
+    requires every manager node's certificate to carry the address the agent dials; see
+    [A Wazuh server cluster behind a load balancer](../cluster/lb.md). If it does not, the agent
+    fails with a TLS error and no HTTP status.
+
 - **Allowed values:**
-  - `full` — verify the certificate against `<certificate_authorities>` AND check that it
-    matches the manager's hostname (strictest).
-  - `certificate` — verify the certificate against `<certificate_authorities>`, but do not
-    check the hostname.
-  - `none` — no TLS verification at all. Insecure; intended for quick testing only.
-  - `system` — verify the certificate (and hostname, like `full`) against the operating
+  - `full` -- verify the certificate against the CA AND check that it matches the manager's
+    hostname (strictest).
+  - `certificate` -- verify the certificate against the CA, but do not check the hostname.
+  - `none` -- no TLS verification at all. Insecure; intended for quick testing only. Does not
+    apply to enrollment with a token, which is always verified (see the note below).
+  - `system` -- verify the certificate (and hostname, like `full`) against the operating
     system's own trusted CA store instead of `<certificate_authorities>`, the way a web
     browser trusts a public website. Useful when the manager's certificate is issued by a
     publicly (or OS-) trusted CA, so a CA bundle does not need to be distributed to every
@@ -150,7 +173,33 @@ How strictly the agent verifies the manager's TLS certificate.
     paths (e.g. `/etc/ssl/certs/ca-certificates.crt` on Debian-family systems,
     `/etc/pki/tls/certs/ca-bundle.crt` on RHEL-family systems) and fails closed at startup if
     none is found on the host.
+- **Note:** an explicit `none` is honoured even with an anchor on disk, and warns, since that is the
+  one combination an operator is most likely to have reached by accident:
+
+  ```console
+  WARNING: (4122): <ssl><verification_mode> is 'none' and the trust anchor 'etc/certs/root-ca.pem' is present: TLS verification stays disabled, as configured, and the anchor is not used. Remove <verification_mode>none</verification_mode> to verify against it.
+  ```
+
+- **Note:** the mode applies to the agent's connections after enrollment. Enrollment with a token,
+  on first start or through `wazuh-agent-auth`, is always verified as `full` against the token's
+  CA -- the one it embeds, or the one it pins -- whatever `<verification_mode>` says, so an
+  explicit `none` does not let an agent enroll with a manager whose certificate that CA does not
+  vouch for. Before it enrolls, the agent logs this to `ossec.log` (`wazuh-agent-auth` does not
+  print it):
+
+  ```console
+  WARNING: (4127): <ssl><verification_mode> is 'none', but that only applies once the agent is enrolled: token enrollment still verifies the manager's certificate against the enrollment token's CA.
+  ```
+
+- **Note:** the resolution runs once, at startup. An anchor written while the agent is running is
+  picked up on its next start, except during the enrollment-token bootstrap, which is sequenced to
+  take effect on the same start.
+- **Note:** `<ssl>` cannot be set through centralized configuration. A group's `agent.conf` rejects
+  it, so an agent's verification posture is never remotely settable by the manager it verifies.
 - **Note:** Any value other than the four above is rejected at config-parse time.
+- **Note:** An explicit mode always wins, and that includes turning verification off on a host
+  that could verify. An explicit `none` with a trust anchor present keeps `none` and logs
+  `(4122)` at warning level, naming the anchor it is declining to use.
 
 #### ciphers
 
@@ -160,13 +209,36 @@ TLS 1.3 ciphersuite list to offer during the handshake.
 - **Allowed values:** Colon-separated list of TLS 1.3 ciphersuite names
 - **Example:** `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256`
 
-### ip_update_interval
+### The trust anchor
 
-Interval in seconds for updating agent's IP address with the manager.
+The certificate authority the agent verifies the manager against when `<ssl>` does not name
+one. It is a file, not a configuration option, and its presence **is** the default
+verification state -- see the resolution table under `verification_mode` above.
 
-- **Default value:** `0` (disabled)
-- **Allowed values:** `0` (disabled) or positive integer (seconds)
-- **Note:** When `0`, IP updates are disabled; set to positive value (e.g., `3600`) to enable periodic IP update messages
+| | Path | Ownership |
+|---|---|---|
+| Linux, macOS | `etc/certs/root-ca.pem`, relative to the installation directory | `0640 wazuh:wazuh`, in a `01770 root:wazuh` directory |
+| Windows | `certs\root-ca.pem` | The inherited ACL of the directory the agent creates |
+
+Four things write it:
+
+- **The enrollment-token bootstrap**, on the agent's first start after a token install, or when
+  `wazuh-agent-auth` enrolls the agent or refreshes its CA with `--certs-only`. It fetches the
+  manager's CA, checks it against the token's pin and installs only the certificate that matched.
+  A token minted with `--embed-ca` installs the certificates it carries instead, with no fetch.
+- **A WPK upgrade from 4.x**, where the manager delivers its CA over the upgrade channel. See
+  [Trust anchor delivery to legacy agents](../../../guide/migration/remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents).
+- **An operator**, placing the file by hand or through configuration management.
+- **The manager's CA publication**, while the agent runs. When the manager publishes a newer CA
+  bundle, the agent downloads it over its verified connection and replaces the file with it.
+  This is how an agent enrolled with a pinned token, which starts out trusting a single CA,
+  comes to trust every CA the manager publishes, and how enrolled agents follow a CA rotation.
+  It only applies to this file: an agent whose `<certificate_authorities>` names a different file,
+  or whose `<verification_mode>` is `none` or `system`, is never refreshed.
+
+The agent never edits it in place: it only ever replaces the whole file, which is why the
+directory is group-writable with the sticky bit set -- the agent can replace its own anchor
+but nothing root-owned beside it.
 
 ### config-profile
 
@@ -181,12 +253,12 @@ Agent configuration profile (used with centralized configuration via `agent.conf
 
 Interval between agent keep-alive notifications to the manager.
 
-- **Default value:** `60`
-- **Allowed values:** Positive integer (seconds)
-- **Minimum:** `10`
+- **Default value:** `10`
+- **Allowed values:** Positive integer (seconds).
 - **Note:** This is not what decides when the agent is marked `disconnected`. The manager uses
   `<global><agents_disconnection_time>` (default `15m`) against the last keepalive it recorded, so
-  `notify_time` only has to be comfortably below that figure — see the
+  `notify_time` only has to be comfortably below that figure — see
+  [agents_disconnection_time](../task_manager/configuration.md#agents_disconnection_time) and the
   [manager configuration reference](../../configuration/manager/reference.md#global).
 
 ### time-reconnect
@@ -194,6 +266,12 @@ Interval between agent keep-alive notifications to the manager.
 **DEPRECATED:** parsed but ignored. There is no persistent connection to reconnect under the
 HTTPS transport; the parser accepts the tag so an upgraded configuration does not fail and logs
 that it no longer has any effect.
+
+### ip_update_interval
+
+**DEPRECATED:** parsed but ignored. The agent no longer sends periodic IP updates; the parser
+accepts the tag so an upgraded configuration does not fail and logs that it no longer has any
+effect.
 
 ### auto_restart
 
@@ -244,14 +322,113 @@ Comma-separated list of groups to assign during enrollment.
 - **Default value:** `default`
 - **Allowed values:** Comma-separated group names
 
+#### Enrollment token
+
+Not an `ossec.conf` option: a one-shot file the installer leaves for the agent to consume on
+its first start.
+
+| | Path | Ownership |
+|---|---|---|
+| Linux, macOS | `etc/enrollment_token` | `0600`, readable only by root |
+| Windows | `enrollment_token` | SYSTEM and Administrators |
+
+Written by the installer from `WAZUH_ENROLLMENT_TOKEN` (see
+[Installation](../../getting-started/installation.md#enrollment)).
+An agent enrolled after its install is enrolled with
+[`wazuh-agent-auth`](README.md#enrolling-or-re-pointing-an-agent), which reads a token from any
+path and leaves it alone.
+
+The bootstrap runs at agent start, before the privilege drop, and takes these steps in order:
+decode the token, open an unverified connection to the address it names and fetch the manager's
+CA, compare the SHA-256 of that certificate's SubjectPublicKeyInfo against the token's pin,
+install only the matching certificate as the trust anchor, open a **new** fully verified
+connection, enroll, and delete this file. No credential crosses the unverified connection. A
+pin mismatch aborts with a named error and no enrollment is attempted.
+
+The file is also deleted, unused, whenever it can no longer be consumed -- on an agent that
+already holds an anchor or an identity, and when the manager reports the token as unknown,
+revoked or out of uses. It is a credential; it is not left at rest once it is spent.
+
+Failures are split into permanent and transient. A
+transient one -- an unreachable manager, a misprovisioned CA, a `5xx` -- is retried in place, on
+the same ramp as enrollment itself -- the `agent.enrollment_retry_delta` and
+`agent.enrollment_retry_max` internal options under **Enrollment Retry** below -- so an agent
+that starts before its manager does still bootstraps. A `401` from `/enroll` naming
+`token_unknown` or `stale_token` -- a node whose copy of the token store has not caught up yet,
+or clocks that disagree -- is retried on the same ramp for a minute: the first attempt that still
+fails after that stops the agent with an error (75 seconds after the first `401` with the default
+ramp) and keeps the token, so a restart tries again. A permanent one -- a malformed
+token, a pin mismatch, a `404` from `/cacerts` -- is not retried. The service start does not wait
+for the retries: once the first attempt fails in a way worth retrying, the agent reports itself
+started and keeps retrying in the background.
+
 #### authorization_pass_path
 
 Path to file containing enrollment authorization password.
 
-- **Default value:** None
+- **Default value:** `etc/authd.pass` (`authd.pass` on Windows)
 - **Allowed values:** Valid file path
 - **Note:** Password must match manager's authd password. Re-read on every
   enrollment attempt, so rotating the file does not require an agent restart.
+- **Removed from the endpoint in 5.0.** This is a *fleet-wide* secret: one value
+  that enrolls any endpoint, stored at rest on every endpoint that has it. Use
+  an enrollment token (`WAZUH_ENROLLMENT_TOKEN` at install time), which is
+  single-use and per-endpoint, and the per-agent re-enrollment secret the
+  manager issues thereafter (see *Re-enrollment* below).
+- A **fresh 5.0 install never creates** `etc/authd.pass`. `WAZUH_REGISTRATION_PASSWORD`
+  is accepted but ignored, and says so in `ossec.log`.
+- The **5.0 package upgrade deletes** an existing `etc/authd.pass` — once, at
+  upgrade, in the package scripts rather than in the agent, so it does not
+  depend on the agent ever reaching a manager. It is overwritten before it is
+  unlinked.
+- Only the compiled default path is removed. A path configured **explicitly**
+  here is operator-owned — a shared mount, a templated file, one kept for
+  re-imaging — and is never touched, so an agent that still reads a password
+  from a path of your choosing keeps working.
+
+#### Re-enrollment
+
+An agent that enrolls against a 5.0 manager receives a **per-agent
+re-enrollment secret** in the `/enroll` response and stores it at
+`etc/reenroll.secret` (`reenroll.secret` on Windows), as `<id> <secret>`. It is
+rotated on every subsequent enrollment.
+
+The secret is what the agent re-enrolls with when the manager reports that its
+key is no longer known, and it replaces the fleet password as the endpoint's
+unattended recovery capability:
+
+- It is **narrower**: it rotates the key of that one agent id and cannot mint a
+  new identity. A stolen secret is worth one endpoint, not the fleet.
+- It gets `client.keys`'s protection (mode `0640`, same owner), because it has
+  `client.keys`'s power. A process that can rewrite the key already owns the
+  agent.
+- It must stay writable by the unprivileged agent user: every rotation is
+  performed by the running daemon, after the privilege drop.
+
+**Agents enrolled before the 5.0 upgrade.** The secret is only ever issued in an
+`/enroll` response, and an agent that is already enrolled has no way to ask for
+one: the manager refuses an enrollment whose `key_hash` matches an agent it
+already knows, and omitting the hash re-registers the agent under a new id. Such
+an agent keeps working on the key it holds, but the upgrade removes its
+`authd.pass`, so it has no unattended recovery left. If it is ever removed on the
+manager, register it again with
+[`wazuh-agent-auth --force-enroll`](README.md#enrolling-or-re-pointing-an-agent).
+
+The agent only discards an identity when the manager explicitly says it is
+unknown. Any other authentication failure — a clock outside the manager's
+accepted window, an enrollment key that has not synced to the node serving the
+request, or a response whose failure class cannot be read — is retried with the
+existing credential. A credential the manager has judged and refused stops the
+retry loop instead of repeating for ever.
+
+#### Moving an agent to another manager or CA
+
+Use [`wazuh-agent-auth`](README.md#enrolling-or-re-pointing-an-agent): `--certs-only` when the
+same deployment rotated its certificate authority or changed its address, `--force-enroll` for a
+deployment that has never seen this agent.
+
+The bootstrap that runs at first start does not repeat once the agent holds a trust anchor or an
+identity, so editing these files by hand does not move an agent.
 
 #### agent_address
 
@@ -285,9 +462,75 @@ The following options are **no longer used**: `manager_address`, `port`,
 IPv6 manager is now the zone id inside `<endpoint>`, e.g.
 `<endpoint>[fe80::1%25eth0]:1517</endpoint>`) and `ssl_cipher`,
 `server_ca_path`, `agent_certificate_path`, `agent_key_path` (superseded by
-`<agent><ssl>`). A configuration carrying them — e.g. left over from a 4.x
+`<agent><ssl>`), and `auto_method` (removed outright: enrollment always negotiates
+TLS 1.3). A configuration carrying them — e.g. left over from a 4.x
 `ossec.conf`, which an in-place upgrade does not rewrite — still starts the
 agent normally: each is recognized and logged at `INFO`, not rejected.
+
+### batch
+
+Size and cadence of the accumulator behind the HTTPS `POST /stateless` route. The same size is the ceiling held
+for one `/stateful` session.
+
+```xml
+<agent>
+  <batch>
+    <size>1MB</size>
+    <interval>10s</interval>
+  </batch>
+</agent>
+```
+
+- **`size`** — Default `1MB`. Positive byte count with the usual suffixes, up to `1GB`.
+- **`interval`** — Default `10s`. Positive duration, up to one day.
+- **Note:** `size` has to stay under the manager's request-body caps, which the agent cannot see.
+  Up to `remoted.auth_max_body_size` (5 MiB by default) an oversized batch is answered `413` and the
+  agent splits it and resends smaller without losing events. Above `<remote><https><max_body_size>`
+  (10 MiB by default) the manager closes the connection with no response; the agent reads that as a
+  network failure, keeps the batch and retries it indefinitely, and no further events leave the
+  agent. If this value is raised, raise both manager settings first and keep `size` at or below the
+  auth cap. See [remoted's configuration](../remoted/configuration.md#httpsmax_body_size). Because
+  `size` counts bytes before compression, it must also stay under the manager's decoded-body cap,
+  [`remoted.auth_max_decoded_body_size`](../remoted/configuration.md#remotedauth_max_decoded_body_size)
+  (32 MiB by default). `/stateful` sessions are bounded instead by the agent's byte share on the
+  manager,
+  [`remoted.max_inflight_bytes_per_agent`](../remoted/configuration.md#remotedmax_inflight_bytes_per_agent)
+  (128 MiB by default), which is what a vulnerability-detection first sync, sent unsplit, has to
+  fit in.
+
+### stats_report
+
+Periodic push of the agent's internal statistics to the manager's `/stats` endpoint.
+
+```xml
+<agent>
+  <stats_report>
+    <enabled>yes</enabled>
+    <interval>60s</interval>
+  </stats_report>
+</agent>
+```
+
+- **`enabled`** — Default `no`. Allowed values: `yes`, `no`.
+- **`interval`** — Default `60` seconds. Positive duration with the usual suffixes (`60s`, `5m`, `1h`), up to one day (`86400`). `0` is rejected.
+
+### config_report
+
+Periodic push of the agent's effective configuration to the manager's `/config` endpoint.
+
+```xml
+<agent>
+  <config_report>
+    <enabled>yes</enabled>
+    <interval>1h</interval>
+  </config_report>
+</agent>
+```
+
+- **`enabled`** — Default `yes`. Allowed values: `yes`, `no`.
+- **`interval`** — Default `3600` seconds. Positive duration with the usual suffixes, up to one day (`86400`). `0` is rejected.
+- **Note:** The manager relies on this snapshot even when the configuration was never changed, which is why it ships enabled.
+- **Credentials:** The report keeps the key of an inline credential but shows its value as `*****`: `access_key` and `secret_key` (aws-s3), `api_token` (github), `client_secret` (office365), `secret_value` (ms-graph), `application_key` and `account_key` (azure-logs). A credential that is not set is left out. Paths to a file holding a credential, such as `client_secret_path`, `auth_path` or `credentials_file`, are reported as they are. Free-text options, such as a `command` line, are reported verbatim, so don't put credentials in them. To report the credentials in clear, set `wazuh_modules.unmask_credentials=1` in `local_internal_options.conf` (see [Common Internal Options](../../configuration/agent/README.md#common-internal-options)); the same values then also appear in the index.
 
 ---
 
@@ -311,7 +554,7 @@ Protects against unauthorized agent modifications and uninstallation.
 
 Prevent agent package uninstallation.
 
-- **Default value:** `yes`
+- **Default value:** `no`
 - **Allowed values:** `yes`, `no`
 - **Behavior:** When enabled, prevents `apt remove`, `yum remove`, etc.
 
@@ -325,41 +568,14 @@ Additional client settings can be configured in the internal options file.
 
 **Note:** Modify `local_internal_options.conf` instead of `internal_options.conf` to preserve settings across upgrades.
 
-### Connection and Network Settings
+### General Settings
 
 ```ini
 # Debug level for agentd (0=no debug, 1=basic, 2=verbose)
 agent.debug=0
 
-# Send timeout in seconds (default: 60)
-agent.send_timeout=60
-
-# TCP keep-alive idle time in seconds (default: 30)
-agent.tcp_keepidle=30
-
-# TCP keep-alive interval between probes in seconds (default: 10)
-agent.tcp_keepintvl=10
-
-# TCP keep-alive probe count (default: 3)
-agent.tcp_keepcnt=3
-
-# Maximum retry attempts for failed requests (default: 4)
-agent.max_attempts=4
-
-# Request pool size (default: 1024)
-agent.request_pool=1024
-
-# Request RTO (retransmission timeout) in seconds (default: 1)
-agent.request_rto_sec=1
-
-# Request RTO in milliseconds (default: 0)
-agent.request_rto_msec=0
-
 # Remote configuration enabled (0=no, 1=yes, default: 1)
 agent.remote_conf=1
-
-# Minimum events per second threshold (default: 50)
-agent.min_eps=50
 
 # State reporting interval in seconds (default: 5)
 agent.state_interval=5
@@ -437,6 +653,23 @@ life of the process. Editing either one on a running agent has no effect until i
 out-of-range value refuses the start rather than terminating the agent later, at its first failed
 re-enrollment.
 
+### Stateful Sync Cycle
+
+```ini
+# Most stateful sync sessions (blocks) one FIM, SCA or Syscollector sync cycle
+# sends (default: 50, range 1-1000). Each block is bounded by <agent><batch><size>.
+agent.sync_max_blocks_per_cycle=50
+```
+
+Whatever is still queued after the last block waits for the module's next synchronization interval,
+so one cycle carries at most about `sync_max_blocks_per_cycle × <batch><size>` (about 50 MiB with the
+defaults). A first synchronization larger than that, such as the Windows registry baseline, takes
+several intervals to reach the indexer, and items queued after it wait their turn. Syscollector's
+vulnerability detection sync is bounded too, but it has no byte budget, so its first block already
+carries everything queued. FIM's recovery resync (after an agent ID change or a failed integrity check)
+runs while it holds the scan locks, so it sends at most 10 blocks per table whatever this option says,
+and the regular cycle sends the rest. The value is read once, when the agent starts.
+
 ### Buffer Settings
 
 ```ini
@@ -501,7 +734,6 @@ Automatic agent registration:
     <enabled>yes</enabled>
     <agent_name>web-server-prod-01</agent_name>
     <groups>webservers,production</groups>
-    <authorization_pass_path>/var/ossec/etc/authd.pass</authorization_pass_path>
   </enrollment>
   <manager>
     <endpoint>manager.example.com:1517</endpoint>
@@ -582,7 +814,7 @@ Full example with all sections:
 
 ## See Also
 
-- [Client Module](index.html) - Module overview and architecture
+- [Client Module](README.md) - Module overview and architecture
 - [Remoted Configuration](../remoted/configuration.md) - Manager-side agent listener configuration
 - [Centralized Configuration](../agent-management/centralized-configuration.md) - Group-based configuration
-- [Agent Enrollment](../agent-management/enrollment.md) - Agent registration process
+- [Enrollment lifecycle](../authd/enrollment-lifecycle.md) - Agent registration, end to end

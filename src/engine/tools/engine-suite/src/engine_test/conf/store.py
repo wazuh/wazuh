@@ -1,8 +1,9 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 import os
 import json
 from engine_test.conf.integration import IntegrationConf
 
-DEFAULT_CONFIG_FILE = "/var/wazuh-manager/etc/engine-test.conf"
+DEFAULT_CONFIG_FILE = "/etc/wazuh-manager/engine-test.conf"
 
 
 class ConfigDatabase:
@@ -41,10 +42,10 @@ class ConfigDatabase:
                 if use_default:
                     try:
                         import grp
-                        gid = grp.getgrnam("wazuh").gr_gid
+                        gid = grp.getgrnam("wazuh-manager").gr_gid
                         os.chown(self.config_file, -1, gid)
                     except Exception as e:
-                        print(f"Warning: wazuh group cannot be set for {self.config_file}. Error: {e}")
+                        print(f"Warning: wazuh-manager group cannot be set for {self.config_file}. Error: {e}")
             else:
                 raise Exception(f"Configuration file already exists: {self.config_file}")
         except Exception as e:

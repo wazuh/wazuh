@@ -1613,6 +1613,230 @@ namespace
             }
         }));
     }
+
+    // Runs one coordination in which FIM accepts the pause and then refuses refusedCommand
+    // ("is_pause_completed" or "flush") the way wm_fim_query_json() reports a stopped syscheckd.
+    // With shutdownFirst, the shutdown predicate turns true just before that query, as modulesd's
+    // flag does when a stop or reload lands then; stop() reaches agent-info on a second refusal, as
+    // it does after the grace second. SCA and syscollector are not configured.
+    // Returns the level of the first log containing logText.
+    modules_log_level_t refusedFimQueryLogLevel(const std::string& refusedCommand, const std::string& logText,
+                                                bool shutdownFirst)
+    {
+        auto mockDBSync = std::make_shared<MockDBSync>();
+        auto mockSysInfo = std::make_shared<MockSysInfo>();
+        auto mockFileIO = std::make_shared<MockFileIOUtils>();
+        auto mockFileSystem = std::make_shared<MockFileSystemWrapper>();
+
+        int selectRowsCalls = 0;
+        expectMetadataSyncNeeded(mockDBSync, selectRowsCalls);
+
+        EXPECT_CALL(*mockFileSystem, exists(::testing::_))
+        .WillRepeatedly(::testing::Return(false));
+
+        nlohmann::json osData = {{"os_name", "TestOS"}};
+        EXPECT_CALL(*mockSysInfo, os())
+        .WillRepeatedly(::testing::Return(osData));
+
+        std::vector<std::pair<modules_log_level_t, std::string>> logs;
+        bool shuttingDown = false;
+        int refusals = 0;
+        std::shared_ptr<AgentInfoImpl> agentInfo;
+
+        auto logFunc = [&logs](modules_log_level_t level, const std::string & msg)
+        {
+            logs.emplace_back(level, msg);
+        };
+
+        auto queryModuleFunc = [&](const std::string & module_name, const std::string & query, char** response) -> int
+        {
+            const auto command = nlohmann::json::parse(query)["command"].get<std::string>();
+            nlohmann::json responseJson = {{"error", 0}, {"message", "Success"}};
+            int result = 0;
+
+            if (module_name != "fim")
+            {
+                responseJson = {{"error", MQ_ERR_MODULE_NOT_FOUND}, {"message", "Module not found or not configured"}};
+                result = -1;
+            }
+            else if (command == refusedCommand)
+            {
+                shuttingDown = shutdownFirst;
+
+                if (++refusals > 1)
+                {
+                    agentInfo->stop();
+                }
+
+                responseJson = {{"error", MQ_ERR_MODULE_NOT_RUNNING},
+                    {"message", "Syscheck module refused connection. The component might be disabled"}
+                };
+                result = -1;
+            }
+            else if (command == "is_pause_completed")
+            {
+                responseJson["data"] = {{"status", "completed"}, {"result", "success"}, {"first_sync_completed", true}};
+            }
+            else if (command == "get_version")
+            {
+                responseJson["data"]["version"] = 5;
+            }
+
+            * response = strdup(responseJson.dump().c_str());
+            return result;
+        };
+
+        agentInfo = std::make_shared<AgentInfoImpl>(
+                        ":memory:", nullptr, logFunc, queryModuleFunc, mockDBSync,
+                        mockSysInfo, mockFileIO, mockFileSystem);
+        agentInfo->setIsShuttingDownFunction([&shuttingDown]()
+        {
+            return shuttingDown;
+        });
+        agentInfo->setPausePollDelayMs(0);
+
+        agentInfo->start(1, 86400, []()
+        {
+            return false;
+        });
+        agentInfo.reset();
+
+        const auto it = std::find_if(logs.begin(), logs.end(), [&logText](const auto & log)
+        {
+            return log.second.find(logText) != std::string::npos;
+        });
+        EXPECT_NE(it, logs.end()) << "no log contains: " << logText;
+        return it != logs.end() ? it->first : LOG_INFO;
+    }
+}
+
+// A stop or reload that lands while agent-info polls FIM for pause completion: syscheckd is
+// already gone, but stop() has not reached agent-info yet. Part of the shutdown, not a WARNING.
+TEST_F(AgentInfoCoordinationTest, RefusedPausePollDuringShutdownLogsDebug)
+{
+    EXPECT_EQ(refusedFimQueryLogLevel("is_pause_completed", "Failed to poll pause status for fim", true), LOG_DEBUG);
+}
+
+// The same refusal while the agent runs means syscheckd died: still a WARNING.
+TEST_F(AgentInfoCoordinationTest, RefusedPausePollWhileRunningLogsWarning)
+{
+    EXPECT_EQ(refusedFimQueryLogLevel("is_pause_completed", "Failed to poll pause status for fim", false), LOG_WARNING);
+}
+
+// The same stop or reload landing between FIM's pause and the flush trigger.
+TEST_F(AgentInfoCoordinationTest, RefusedFlushDuringShutdownLogsDebug)
+{
+    EXPECT_EQ(refusedFimQueryLogLevel("flush", "Failed to trigger flush for fim", true), LOG_DEBUG);
+}
+
+TEST_F(AgentInfoCoordinationTest, RefusedFlushWhileRunningLogsWarning)
+{
+    EXPECT_EQ(refusedFimQueryLogLevel("flush", "Failed to trigger flush for fim", false), LOG_WARNING);
+}
+
+// modulesd raises its shutdown flag a second before stop() reaches agent-info. A coordination
+// already running then must end on the flag alone: no more module queries, no WARNING or ERROR,
+// and no coordination reported as done.
+TEST_F(AgentInfoCoordinationTest, ShutdownFlagAbortsCoordinationWithoutWarnings)
+{
+    // As expectMetadataSyncNeeded(), but with recent integrity checks: a zero timestamp makes the
+    // loop store a new one through the real DBSync API, which rejects the mock's handle with an
+    // ERROR unrelated to the coordination.
+    const auto now = std::chrono::duration_cast<std::chrono::seconds>(
+                         std::chrono::system_clock::now().time_since_epoch()).count();
+    int selectRowsCalls = 0;
+
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(reinterpret_cast<void*>(0x1)));
+
+    EXPECT_CALL(*m_mockDBSync, addTableRelationship(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([&selectRowsCalls, now](const nlohmann::json& /* query */,
+                                                              std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    {
+        if (selectRowsCalls++ == 0)
+        {
+            nlohmann::json flagData;
+            flagData["should_sync_metadata"] = 1;
+            flagData["should_sync_groups"] = 0;
+            flagData["last_metadata_integrity"] = now;
+            flagData["last_groups_integrity"] = now;
+            flagData["is_first_run"] = 0;
+            flagData["is_first_groups_run"] = 0;
+            callback(SELECTED, flagData);
+        }
+    }));
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    std::vector<std::pair<modules_log_level_t, std::string>> logs;
+    bool shuttingDown = false;
+    size_t logsBeforeShutdown = 0;
+    int queriesAfterShutdown = 0;
+    std::shared_ptr<AgentInfoImpl> agentInfo;
+
+    auto logFunc = [&logs](modules_log_level_t level, const std::string & msg)
+    {
+        logs.emplace_back(level, msg);
+    };
+
+    auto queryModuleFunc = [&](const std::string & module_name, const std::string & query, char** response) -> int
+    {
+        if (shuttingDown)
+        {
+            ++queriesAfterShutdown;
+        }
+
+        const auto command = nlohmann::json::parse(query)["command"].get<std::string>();
+        nlohmann::json responseJson = {{"error", 0}, {"message", "Success"}};
+
+        if (module_name == "fim" && command == "is_pause_completed")
+        {
+            // FIM is still pausing when SIGTERM reaches modulesd.
+            responseJson["data"] = {{"status", "in_progress"}, {"first_sync_completed", true}};
+            shuttingDown = true;
+            logsBeforeShutdown = logs.size();
+        }
+        else if (command == "get_version")
+        {
+            responseJson["data"]["version"] = 5;
+        }
+
+        * response = strdup(responseJson.dump().c_str());
+        return 0;
+    };
+
+    agentInfo = std::make_shared<AgentInfoImpl>(
+                    ":memory:", nullptr, logFunc, queryModuleFunc, m_mockDBSync,
+                    m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+    agentInfo->setIsShuttingDownFunction([&shuttingDown]()
+    {
+        return shuttingDown;
+    });
+    agentInfo->setPausePollDelayMs(0);
+
+    agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+    agentInfo.reset();
+
+    ASSERT_TRUE(shuttingDown) << "the coordination never reached the FIM pause poll";
+    EXPECT_EQ(queriesAfterShutdown, 0);
+
+    for (size_t i = logsBeforeShutdown; i < logs.size(); ++i)
+    {
+        EXPECT_NE(logs[i].first, LOG_WARNING) << logs[i].second;
+        EXPECT_NE(logs[i].first, LOG_ERROR) << logs[i].second;
+        EXPECT_EQ(logs[i].second.find("Successfully coordinated"), std::string::npos) << logs[i].second;
+    }
 }
 
 // Deferral: FIM reports first_sync_completed=false -> coordination is deferred with

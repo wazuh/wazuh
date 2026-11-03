@@ -1,12 +1,13 @@
 /*
  * Wazuh Utils - Singleton template
- * Copyright (C) 2015, Wazuh Inc.
- * Apr 03, 2023.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 #ifndef _SOCKET_WRAPPER_HPP
 #define _SOCKET_WRAPPER_HPP
@@ -38,6 +39,10 @@ using HeaderFieldType = uint32_t;
 constexpr auto PACKET_FIELD_SIZE {sizeof(PacketFieldType)};
 constexpr auto HEADER_FIELD_SIZE {sizeof(HeaderFieldType)};
 constexpr auto BUFFER_MAX_SIZE {8192 * 8};
+// Largest packet size a peer may announce in the length prefix. The prefix is untrusted: without this cap a
+// local peer forces a multi-GiB allocation, and 0xFFFFFFFF wrapped the "+ 1" of the resize to an empty buffer.
+// Every current producer stays far below it (wazuh-db answers are capped at 64 KiB).
+constexpr uint32_t RECEIVE_PACKET_MAX_SIZE {16 * 1024 * 1024};
 #ifdef CLIENT
 constexpr auto RECEIVE_BUFFER_OPTION {SO_RCVBUFFORCE};
 constexpr auto SEND_BUFFER_OPTION {SO_SNDBUFFORCE};
@@ -399,6 +404,25 @@ private:
     std::queue<Packet> m_unsentPacketList {};
     std::mutex m_mutex;
 
+    void shrinkRecvBuffer()
+    {
+        m_recvDataBuffer.resize(BUFFER_MAX_SIZE);
+        m_recvDataBuffer.shrink_to_fit();
+    }
+
+    // Drop a malformed packet: the next read starts at a new length prefix, with the default buffer.
+    void resetReadState()
+    {
+        m_readPosition = 0;
+        m_readSize = PACKET_FIELD_SIZE;
+        m_totalReadSize = 0;
+        m_status = SocketStatus::HEADER;
+        if (m_recvDataBuffer.size() > BUFFER_MAX_SIZE)
+        {
+            shrinkRecvBuffer();
+        }
+    }
+
 public:
     explicit Socket(const int sock = INVALID_SOCKET)
         : m_sock {sock}
@@ -447,6 +471,9 @@ public:
         {
             T::close(m_sock);
         }
+
+        // Drop any partially read frame from the previous connection.
+        resetReadState();
 
         // Create socket.
         m_sock = T::socket(connInfo.type == SocketType::UNIX ? AF_UNIX : AF_INET, type, 0);
@@ -525,9 +552,15 @@ public:
                             uip = (uint32_t*)m_recvDataBuffer.data();
                             m_totalReadSize = *uip;
 
+                            if (m_totalReadSize > RECEIVE_PACKET_MAX_SIZE)
+                            {
+                                resetReadState();
+                                throw std::runtime_error {"Invalid packet size."};
+                            }
+
                             if (m_totalReadSize > BUFFER_MAX_SIZE)
                             {
-                                m_recvDataBuffer.resize(m_totalReadSize + 1);
+                                m_recvDataBuffer.resize(static_cast<size_t>(m_totalReadSize) + 1);
                             }
 
                             // We have read the entire header, now we need to read the body.
@@ -569,13 +602,20 @@ public:
                         }
                         else
                         {
-                            m_readPosition = 0;
-                            m_readSize = PACKET_FIELD_SIZE;
-                            m_status = SocketStatus::HEADER;
-
                             auto headerDataSize = TCommunicationProtocol::getHeaderSize(m_recvDataBuffer);
                             auto dataOffset = TCommunicationProtocol::getDataOffset(headerDataSize);
                             auto headerOffset = TCommunicationProtocol::getHeaderOffset();
+
+                            // The inner header size is untrusted too: it must fit inside the packet just read.
+                            if (static_cast<uint64_t>(dataOffset) > m_totalReadSize)
+                            {
+                                resetReadState();
+                                throw std::runtime_error {"Invalid header size."};
+                            }
+
+                            m_readPosition = 0;
+                            m_readSize = PACKET_FIELD_SIZE;
+                            m_status = SocketStatus::HEADER;
 
                             callback(m_sock,
                                      m_recvDataBuffer.data() + dataOffset,
@@ -585,7 +625,7 @@ public:
 
                             if (m_totalReadSize > BUFFER_MAX_SIZE)
                             {
-                                m_recvDataBuffer.resize(BUFFER_MAX_SIZE);
+                                shrinkRecvBuffer();
                             }
                         }
                     }

@@ -41,8 +41,8 @@ chown -R root:wheel ${DIR}/lib
 # To the ossec queue (default for agentd to read)
 chown -R ${USER}:${GROUP} ${DIR}/queue/{diff,sockets,rids}
 
-chmod -R 770 ${DIR}/queue/{sockets}
-chmod -R 750 ${DIR}/queue/{diff,sockets,rids}
+chmod -R 770 ${DIR}/queue/sockets
+chmod -R 750 ${DIR}/queue/{diff,rids}
 
 # For the logging user
 chmod 770 ${DIR}/logs
@@ -73,6 +73,9 @@ chmod 640 ${DIR}/etc/wpk_root.pem
 # For the /var/run
 chmod -R 770 ${DIR}/var
 chown -R root:${GROUP} ${DIR}/var
+# Only root writes the WPK files root then installs, so the group cannot swap one after the
+# signature check.
+chmod 750 ${DIR}/var/upgrade
 
 # VERSION.json
 chmod -R 440 ${DIR}/VERSION.json
@@ -156,10 +159,10 @@ rm -rf ${DIR}/packages_files
 # Remove old ossec user and group if exists and change ownwership of files
 if [[ $(dscl . -read /Groups/ossec) ]]; then
     echo "Changing group from Ossec to Wazuh"
-    find ${DIR}/ -group ossec -user root -exec chown root:wazuh {} \ > /dev/null 2>&1 || true
+    find ${DIR}/ -group ossec -user root -exec chown root:wazuh {} \; > /dev/null 2>&1 || true
     if [[ $(dscl . -read /Users/ossec) ]]; then
         echo "Changing user from Ossec to Wazuh"
-        find ${DIR}/ -group ossec -user ossec -exec chown wazuh:wazuh {} \ > /dev/null 2>&1 || true
+        find ${DIR}/ -group ossec -user ossec -exec chown wazuh:wazuh {} \; > /dev/null 2>&1 || true
         echo "Removing Ossec user"
         sudo /usr/bin/dscl . -delete "/Users/ossec"
     fi
@@ -185,6 +188,31 @@ fi
 # Remove deprecated binaries
 if [ -f ${DIR}/bin/agent-auth ]; then
   rm -f ${DIR}/bin/agent-auth
+fi
+
+# #39064: drop the fleet-wide enrollment password. It is one secret that enrols any endpoint, left
+# at rest on every one of them; 5.0 replaces it with an enrollment token. An agent that enrols
+# through POST /enroll also receives a per-agent re-enrollment secret; one enrolled before the
+# upgrade holds none, so once the file is gone it has no unattended recovery left. A fresh 5.0
+# install never creates the file, so without this an upgraded host -- the longest-running one in
+# the estate, which is exactly where the exposure matters most -- would keep it for ever.
+#
+# Upgrade only, and once: this is a package decision, not a runtime one, so it must not depend on
+# the agent ever reaching a manager. Overwritten before it is unlinked, because the bytes are a
+# secret. The issue names the DEB and RPM hooks; macOS carries the identical exposure.
+#
+# etc/ belongs to wazuh, which could leave a link at etc/authd.pass for dd to write zeros through.
+# The entry is renamed first into a directory only root can enter, under ${DIR} (a rename moves a
+# link, never its target), and only zeroed there when it is a plain file with no other link.
+if [ -n "${upgrade}" ] && [ -f ${DIR}/etc/authd.pass ] && AUTHD_PASS_STAGE=$(mktemp -d "${DIR}/.authd-pass.XXXXXX"); then
+  AUTHD_PASS="${AUTHD_PASS_STAGE}/authd.pass"
+  if mv -f ${DIR}/etc/authd.pass "${AUTHD_PASS}"; then
+    if [ -f "${AUTHD_PASS}" ] && [ ! -L "${AUTHD_PASS}" ] && [ -n "$(find "${AUTHD_PASS}" -links 1)" ] && [ -s "${AUTHD_PASS}" ]; then
+      dd if=/dev/zero of="${AUTHD_PASS}" bs=1 count=$(wc -c < "${AUTHD_PASS}") conv=notrunc > /dev/null 2>&1 || true
+    fi
+    echo "wazuh-agent: removed the fleet-wide enrollment password at ${DIR}/etc/authd.pass. 5.0 enrols with an enrollment token (WAZUH_ENROLLMENT_TOKEN); an agent enrolled before the upgrade holds no re-enrollment secret and must be re-pointed with a token if the manager stops recognising its key."
+  fi
+  rm -rf "${AUTHD_PASS_STAGE}"
 fi
 
 if [ -n "${upgrade}" ] && [ -n "${restart}" ]; then

@@ -1,6 +1,11 @@
 /*
- * Copyright (C) 2015, Wazuh Inc.
- * This program is free software; you can redistribute it and/or modify it under the terms of GPLv2.
+ * Copyright (C) Wazuh Inc.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 #include "defaults.hpp"
 
@@ -13,8 +18,11 @@ namespace manager_config::detail
     namespace
     {
 
-        /// Resolve a local `$ref` ("#/definitions/x") or return the schema itself. `allOf: [{$ref}]` wrappers are
-        /// followed too, so a property may combine a definition with its own `default`/`description`.
+        /// Resolve a bare local `$ref` ("#/definitions/x"), following chained refs, or return the schema itself
+        /// (also for a non-local or dangling ref). Only a top-level `$ref` member is followed: an `allOf`, `anyOf`
+        /// or `oneOf` wrapper is returned unresolved, so neither the `default` nor the `properties` of a definition
+        /// reached through one are ever applied (a `default` placed directly on the wrapper still is, by
+        /// fillDefaults()).
         const rapidjson::Value& resolve(const rapidjson::Value& schema, const rapidjson::Value& root)
         {
             if (schema.IsObject())

@@ -1,4 +1,4 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -48,6 +48,15 @@ def pyDaemon():
             "fork #2 failed: %d (%s)\n" % (e.errno, e.strerror))
         sys.exit(1)
 
+    # Decouple from parent environment; relative paths resolve against the installation
+    # directory, as in the C daemons. Done before the redirection below so that a failure is
+    # still reported on stderr.
+    try:
+        os.chdir(common.WAZUH_PATH)
+    except OSError as e:
+        sys.stderr.write(f"Cannot change to the installation directory '{common.WAZUH_PATH}': {e}\n")
+        sys.exit(1)
+
     # Redirect standard file descriptors
     sys.stdout.flush()
     sys.stderr.flush()
@@ -57,9 +66,6 @@ def pyDaemon():
     os.dup2(si.fileno(), sys.stdin.fileno())
     os.dup2(so.fileno(), sys.stdout.fileno())
     os.dup2(se.fileno(), sys.stderr.fileno())
-
-    # Decouple from parent environment
-    os.chdir('/')
 
 
 def create_pid(name: str, pid: int):
@@ -123,8 +129,10 @@ def delete_child_pids(name: str, ppid: int, logger: logging.Logger):
     for process in psutil.Process(ppid).children(recursive=True):
         try:
             process.kill()
-        except psutil.Error:
-            logger.error(f'Error while trying to terminate the process with ID {process.pid}.')
+        except psutil.NoSuchProcess:
+            logger.debug(f'Process with ID {process.pid} had already exited.')
+        except psutil.Error as exc:
+            logger.error(f'Error while trying to terminate the process with ID {process.pid}: {exc!r}')
         except Exception as exc:
             logger.error(f'Unhandled exception while trying to terminate the process with ID {process.pid}: {exc}')
         for filename in filenames[:]:

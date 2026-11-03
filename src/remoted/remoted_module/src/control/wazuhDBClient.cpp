@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module - WazuhDB client
- * Copyright (C) 2015, Wazuh Inc.
- * July 30, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -16,11 +15,13 @@
 #include "loggerHelper.h"
 #include "socketClient.hpp"
 #include "socketWrapper.hpp"
+#include <algorithm>
 #include <chrono>
 #include <condition_variable>
 #include <cstdint>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <queue>
 #include <sstream>
 #include <string>
@@ -77,6 +78,65 @@ namespace remoted::control
             static remoted::common::LogThrottle instance;
             return instance;
         }
+
+        remoted::common::LogThrottle& expiredThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
+
+        // `global select-agent-group` answers a JSON array: [] when the local replica has no row for
+        // the agent, [{"group":"a,b"}] otherwise, where a row with no groups carries "" or null.
+        // Anything else is malformed and yields nullopt, which the caller reports as ProtocolError:
+        // a reply that cannot be read must not become an empty membership, because /control turns
+        // an empty membership into "default".
+        std::optional<AgentGroupsResult> parseAgentGroups(const std::string& payload)
+        {
+            if (payload.empty())
+            {
+                return std::nullopt;
+            }
+
+            const auto json = nlohmann::json::parse(payload, nullptr, false);
+            if (json.is_discarded() || !json.is_array())
+            {
+                return std::nullopt;
+            }
+
+            AgentGroupsResult result;
+            if (json.empty())
+            {
+                result.noRow = true;
+                return result;
+            }
+
+            const auto& row = json.front();
+            if (!row.is_object())
+            {
+                return std::nullopt;
+            }
+
+            const auto group = row.find("group");
+            if (group == row.end() || group->is_null())
+            {
+                return result;
+            }
+            if (!group->is_string())
+            {
+                return std::nullopt;
+            }
+
+            std::istringstream iss(group->get<std::string>());
+            std::string name;
+            while (std::getline(iss, name, ','))
+            {
+                if (!name.empty())
+                {
+                    result.groups.push_back(name);
+                }
+            }
+            return result;
+        }
     } // namespace
     class WazuhDBClient::Impl
     {
@@ -85,10 +145,12 @@ namespace remoted::control
              uint32_t poolSize,
              uint32_t deadlineMs,
              uint32_t maxQueueSize,
-             ControlMetrics& metrics)
+             ControlMetrics& metrics,
+             uint32_t requestDeadlineMs)
             : m_wdbSocketPath(wdbSocketPath)
             , m_poolSize(poolSize)
             , m_deadlineMs(deadlineMs)
+            , m_requestDeadline(requestDeadlineMs == 0 ? kWdbRequestDeadlineMs : requestDeadlineMs)
             , m_maxQueueSize(maxQueueSize == 0 ? kWdbMaxQueueSize : maxQueueSize)
             , m_metrics(metrics)
         {
@@ -96,6 +158,7 @@ namespace remoted::control
             {
                 m_workers.emplace_back([this, i]() { workerLoop(); });
             }
+            m_reaper = std::thread([this]() { reaperLoop(); });
         }
 
         ~Impl()
@@ -105,6 +168,7 @@ namespace remoted::control
                 m_stopping = true;
             }
             m_cv.notify_all();
+            m_reaperCv.notify_all();
             for (auto& worker : m_workers)
             {
                 if (worker.joinable())
@@ -112,10 +176,17 @@ namespace remoted::control
                     worker.join();
                 }
             }
+            if (m_reaper.joinable())
+            {
+                m_reaper.join();
+            }
 
             // Fail any callbacks left in the queue instead of silently dropping
             // them. Callbacks capture upstream state; leaking them means the
-            // upstream code will never learn the request completed.
+            // upstream code will never learn the request completed. Stopping, not
+            // Io: a clean shutdown drain is not a transport failure (same contract
+            // as the task client's drain). Workers and reaper are joined, so the
+            // drain is the only owner left and each request is still answered once.
             std::queue<Request> pending;
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
@@ -123,7 +194,7 @@ namespace remoted::control
             }
             while (!pending.empty())
             {
-                pending.front().callback(SocketError::Io, "");
+                pending.front().callback(SocketError::Stopping, "");
                 pending.pop();
             }
         }
@@ -139,8 +210,18 @@ namespace remoted::control
                 }
                 else
                 {
-                    m_queue.push({command, std::move(callback)});
-                    m_cv.notify_one();
+                    // One constant deadline per client and a FIFO queue: the front is always the
+                    // request that expires first, which is all the reaper has to watch.
+                    const bool wasEmpty = m_queue.empty();
+                    m_queue.push({command, std::move(callback), std::chrono::steady_clock::now() + m_requestDeadline});
+                    // notify_all, not notify_one: a worker in its reconnect backoff waits on this
+                    // condition variable too, so a single wake-up could land on it and leave the
+                    // connected workers asleep.
+                    m_cv.notify_all();
+                    if (wasEmpty)
+                    {
+                        m_reaperCv.notify_one();
+                    }
                 }
             }
             if (reject)
@@ -163,19 +244,82 @@ namespace remoted::control
         {
             std::string command;
             std::function<void(SocketError, const std::string&)> callback;
+            std::chrono::steady_clock::time_point deadline;
         };
+
+        // A request that ran out of time before wazuh-db answered it. Called by whichever owner
+        // took it off the queue (the reaper or a worker), outside m_mutex.
+        void expire(Request& req)
+        {
+            incWdbError(m_metrics);
+            if (const auto throttle = expiredThrottle().record())
+            {
+                LOGFN_WARN(logFn(),
+                           "WazuhDB request expired before wazuh-db answered (deadline=%lld ms): %llu request(s) "
+                           "in the last %d s.",
+                           static_cast<long long>(m_requestDeadline.count()),
+                           throttle.total,
+                           remoted::common::LogThrottle::kDefaultWindowSeconds);
+            }
+            req.callback(SocketError::Timeout, "");
+        }
+
+        // Fails every queued request whose deadline has passed. While wazuh-db is down a worker still
+        // dequeues -- SocketClient keeps retrying the connect on its own thread and swallows the send
+        // failure -- and then holds that request for up to the round-trip deadline, so the pool
+        // drains the queue one round trip at a time. Without this thread, whatever waits behind it
+        // waits without bound, long past the caller's own timeout.
+        void reaperLoop()
+        {
+            std::unique_lock<std::mutex> lock(m_mutex);
+            while (!m_stopping)
+            {
+                if (m_queue.empty())
+                {
+                    m_reaperCv.wait(lock, [this]() { return m_stopping || !m_queue.empty(); });
+                    continue;
+                }
+
+                const auto now = std::chrono::steady_clock::now();
+                // A copy, never a reference into the queue: wait_until() reads its time point after
+                // it has released and re-taken the lock, and a worker may pop (free) the front in
+                // between.
+                const auto frontDeadline = m_queue.front().deadline;
+                if (now < frontDeadline)
+                {
+                    // Woken early by stop, or by a push that found the queue empty; either way the
+                    // loop re-reads the front.
+                    m_reaperCv.wait_until(lock, frontDeadline);
+                    continue;
+                }
+
+                std::vector<Request> expired;
+                while (!m_queue.empty() && m_queue.front().deadline <= now)
+                {
+                    expired.push_back(std::move(m_queue.front()));
+                    m_queue.pop();
+                }
+
+                lock.unlock();
+                for (auto& req : expired)
+                {
+                    expire(req);
+                }
+                lock.lock();
+            }
+        }
 
         void workerLoop()
         {
             using SocketType = Socket<OSPrimitives, SizeHeaderProtocol>;
             using ClientType = SocketClient<SocketType, EpollWrapper>;
 
-            std::unique_ptr<ClientType> client;
             std::string response;
             std::mutex responseMutex;
             std::condition_variable responseCv;
             bool responseReady = false;
             bool needsReconnect = true;
+            std::unique_ptr<ClientType> client;
 
             auto connectClient = [&]() -> bool
             {
@@ -239,6 +383,15 @@ namespace remoted::control
                 m_queue.pop();
                 lock.unlock();
 
+                // Expired while queued: fail it here and never send it -- a late send would do work
+                // for a caller that has already been answered, or give up on it.
+                const auto dequeuedAt = std::chrono::steady_clock::now();
+                if (dequeuedAt >= req.deadline)
+                {
+                    expire(req);
+                    continue;
+                }
+
                 response.clear();
                 responseReady = false;
 
@@ -248,9 +401,10 @@ namespace remoted::control
                     const auto sentAt = std::chrono::steady_clock::now();
                     client->send(req.command.data(), req.command.size());
 
+                    // The round-trip deadline, capped by what is left of the request's own.
+                    const auto waitUntil = std::min(sentAt + std::chrono::milliseconds(m_deadlineMs), req.deadline);
                     std::unique_lock<std::mutex> respLock(responseMutex);
-                    if (responseCv.wait_for(
-                            respLock, std::chrono::milliseconds(m_deadlineMs), [&]() { return responseReady; }))
+                    if (responseCv.wait_until(respLock, waitUntil, [&]() { return responseReady; }))
                     {
                         // Observed only on success: wdbError already counts the failures, so the
                         // histogram means "how long a HEALTHY round trip takes" -- the number that
@@ -263,6 +417,15 @@ namespace remoted::control
                                                            .count()));
                         LOGFN_DEBUG2(logFn(), "Received WazuhDB response.");
                         req.callback(SocketError::None, response);
+                    }
+                    else if (waitUntil == req.deadline)
+                    {
+                        // The request's own budget ran out while it was in flight -- the usual end
+                        // of a request queued while wazuh-db is down, since FIFO order hands each
+                        // worker the next one before it expires. Same report as the reaper's, so
+                        // the operator sees one line for one cause whichever thread hit it.
+                        expire(req);
+                        needsReconnect = true;
                     }
                     else
                     {
@@ -298,6 +461,7 @@ namespace remoted::control
         std::string m_wdbSocketPath;
         uint32_t m_poolSize;
         uint32_t m_deadlineMs;
+        std::chrono::milliseconds m_requestDeadline;
         uint32_t m_maxQueueSize;
         ControlMetrics& m_metrics;
 
@@ -305,6 +469,8 @@ namespace remoted::control
         std::queue<Request> m_queue;
         std::mutex m_mutex;
         std::condition_variable m_cv;
+        std::thread m_reaper;
+        std::condition_variable m_reaperCv;
         std::atomic<bool> m_stopping {false};
     };
 
@@ -312,8 +478,9 @@ namespace remoted::control
                                  uint32_t poolSize,
                                  uint32_t deadlineMs,
                                  uint32_t maxQueueSize,
-                                 ControlMetrics& metrics)
-        : m_impl(std::make_unique<Impl>(wdbSocketPath, poolSize, deadlineMs, maxQueueSize, metrics))
+                                 ControlMetrics& metrics,
+                                 uint32_t requestDeadlineMs)
+        : m_impl(std::make_unique<Impl>(wdbSocketPath, poolSize, deadlineMs, maxQueueSize, metrics, requestDeadlineMs))
     {
     }
 
@@ -343,7 +510,7 @@ namespace remoted::control
               });
     }
 
-    void WazuhDBClient::getAgentGroups(AgentId id, std::function<void(SocketError, std::vector<std::string>)> callback)
+    void WazuhDBClient::getAgentGroups(AgentId id, std::function<void(SocketError, AgentGroupsResult)> callback)
     {
         std::ostringstream oss;
         oss << "global select-agent-group " << id;
@@ -371,41 +538,8 @@ namespace remoted::control
                       return;
                   }
 
-                  std::string payload = getPayload(response);
-                  if (payload.empty())
-                  {
-                      callback(SocketError::None, {});
-                      return;
-                  }
-
-                  try
-                  {
-                      auto json = nlohmann::json::parse(payload);
-                      std::string groupsCsv;
-
-                      // Wazuh-DB returns an array: [{"group":"grp1,grp2"}]
-                      if (json.is_array() && !json.empty() && json[0].is_object())
-                      {
-                          groupsCsv = json[0].value("group", "");
-                      }
-
-                      std::vector<std::string> groups;
-                      if (!groupsCsv.empty())
-                      {
-                          std::istringstream iss(groupsCsv);
-                          std::string group;
-                          while (std::getline(iss, group, ','))
-                          {
-                              if (!group.empty())
-                              {
-                                  groups.push_back(group);
-                              }
-                          }
-                      }
-
-                      callback(SocketError::None, groups);
-                  }
-                  catch (...)
+                  auto result = parseAgentGroups(getPayload(response));
+                  if (!result)
                   {
                       if (const auto throttle = parseErrorThrottle().record())
                       {
@@ -416,63 +550,79 @@ namespace remoted::control
                                      remoted::common::LogThrottle::kDefaultWindowSeconds);
                       }
                       callback(SocketError::ProtocolError, {});
+                      return;
                   }
+
+                  callback(SocketError::None, std::move(*result));
               });
     }
 
     /**
+     * @brief Length of the run of ASCII digits starting at @p pos.
+     */
+    static size_t digitRunLength(const std::string& str, size_t pos)
+    {
+        size_t end = pos;
+        while (end < str.size() && str[end] >= '0' && str[end] <= '9')
+        {
+            ++end;
+        }
+        return end - pos;
+    }
+
+    /**
      * @brief Parse os_major and os_minor from os_version string
-     * @param osVersion The OS version string (e.g., "22.04", "20.04.5", "15-SP7")
+     *
+     * The agent sends the raw os-release VERSION, so the string may carry no separator at all
+     * ("2023", "12 (bookworm)", "40 (Server Edition)") or trailing text after the minor
+     * ("9.4 (Plow)", "24.04.1 LTS (Noble Numbat)"). Like syscollector, the major is the leading run
+     * of digits and the minor the run of digits after the first dot.
+     *
+     * @param osVersion The OS version string (e.g., "22.04", "20.04.5", "15-SP7", "12 (bookworm)")
      * @param osMajor Output string for major version
      * @param osMinor Output string for minor version
      */
     static void parseOsVersion(const std::string& osVersion, std::string& osMajor, std::string& osMinor)
     {
-        if (osVersion.empty())
+        const size_t majorLen = digitRunLength(osVersion, 0);
+        if (majorLen == 0)
         {
             return;
         }
 
-        // Find the first dot or hyphen separator
-        size_t dotPos = osVersion.find('.');
-        size_t hyphenPos = osVersion.find('-');
-        size_t sepPos = std::min(dotPos, hyphenPos);
+        osMajor = osVersion.substr(0, majorLen);
 
-        if (sepPos == std::string::npos || sepPos == 0)
+        if (majorLen == osVersion.size())
         {
             return;
         }
 
-        // Extract major version
-        osMajor = osVersion.substr(0, sepPos);
-
-        // Extract minor version
-        if (dotPos != std::string::npos && dotPos == sepPos)
+        if (osVersion[majorLen] == '.')
         {
-            // Standard format: "22.04" or "20.04.5"
-            size_t minorStart = dotPos + 1;
-            size_t minorEnd = osVersion.find('.', minorStart);
-            if (minorEnd == std::string::npos)
+            // Standard format: "22.04", "20.04.5", "9.4 (Plow)"
+            const size_t minorStart = majorLen + 1;
+            const size_t minorLen = digitRunLength(osVersion, minorStart);
+            if (minorLen > 0)
             {
-                minorEnd = osVersion.length();
-            }
-            if (minorEnd > minorStart)
-            {
-                osMinor = osVersion.substr(minorStart, minorEnd - minorStart);
+                osMinor = osVersion.substr(minorStart, minorLen);
             }
         }
-        else if (hyphenPos != std::string::npos && hyphenPos == sepPos)
+        else if (osVersion[majorLen] == '-')
         {
             // SUSE format: "15-SP7"
-            size_t spPos = osVersion.find("SP", hyphenPos);
+            size_t spPos = osVersion.find("SP", majorLen);
             if (spPos == std::string::npos)
             {
-                spPos = osVersion.find("sp", hyphenPos);
+                spPos = osVersion.find("sp", majorLen);
             }
             if (spPos != std::string::npos)
             {
-                size_t minorStart = spPos + 2;
-                osMinor = osVersion.substr(minorStart);
+                const size_t minorStart = spPos + 2;
+                const size_t minorLen = digitRunLength(osVersion, minorStart);
+                if (minorLen > 0)
+                {
+                    osMinor = osVersion.substr(minorStart, minorLen);
+                }
             }
         }
     }

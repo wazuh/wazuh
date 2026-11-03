@@ -62,9 +62,9 @@ func Request(c *wire.Client, feedOffset uint64, now int64) (Result, error) {
 	switch resp.Status {
 	case 200:
 		// The reply is the literal {}. It says "queued", NOT "scanned": the
-		// request sits in VD's dispatch lane and the scan runs later on VD's
-		// single worker, so nothing downstream may read this latency as a scan
-		// duration.
+		// request was recorded as a durable vd_scan task and the scan runs
+		// later, when task-manager dispatches it, so nothing downstream may read
+		// this latency as a scan duration.
 		var reply map[string]any
 		if err := json.Unmarshal(resp.Body, &reply); err != nil {
 			return result, &ErrProtocol{fmt.Sprintf("scan/vd: 200 with a non-JSON body: %v", err)}

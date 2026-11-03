@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -814,6 +814,7 @@ void OS_IPFound_valid_ipv6(void **state)
     os_calloc(1, sizeof(os_ip), ret_ip);
     os_strdup("1010:1010:1010:1010:1010:1010:1010:1010", ret_ip->ip);
     os_calloc(1, sizeof(os_ipv6), ret_ip->ipv6);
+    ret_ip->is_ipv6 = true;
 
     unsigned int a = 0;
     for(a = 0; a < 16; a++) {
@@ -842,6 +843,7 @@ void OS_IPFound_valid_ipv6_fail(void **state)
     os_calloc(1, sizeof(os_ip), ret_ip);
     os_strdup("1010:1010:1010:1010:1010:1010:1010:1010", ret_ip->ip);
     os_calloc(1, sizeof(os_ipv6), ret_ip->ipv6);
+    ret_ip->is_ipv6 = true;
 
     unsigned int a = 0;
     for(a = 0; a < 16; a++) {
@@ -859,6 +861,98 @@ void OS_IPFound_valid_ipv6_fail(void **state)
     assert_int_equal(ret, 0);
 
     w_free_os_ip(ret_ip);
+}
+
+void OS_IPFound_ipv4_query_ipv6_rule(void **state)
+{
+    os_ip *rule;
+    os_calloc(1, sizeof(os_ip), rule);
+    os_strdup("::/0", rule->ip);
+    os_calloc(1, sizeof(os_ipv6), rule->ipv6);
+    rule->is_ipv6 = true;
+
+    will_return(__wrap_get_ipv4_numeric, 1);
+    will_return(__wrap_get_ipv4_numeric, 0x0302010A);
+
+    assert_int_equal(OS_IPFound("10.1.2.3", rule), 0);
+
+    w_free_os_ip(rule);
+}
+
+void OS_IPFound_ipv6_query_ipv4_rule(void **state)
+{
+    os_ip *rule;
+    os_calloc(1, sizeof(os_ip), rule);
+    os_strdup("10.0.0.0/8", rule->ip);
+    os_calloc(1, sizeof(os_ipv4), rule->ipv4);
+    rule->is_ipv6 = false;
+    rule->ipv4->ip_address = 0x0000000A;
+    rule->ipv4->netmask = 0x000000FF;
+
+    will_return(__wrap_get_ipv4_numeric, OS_INVALID);
+    will_return(__wrap_get_ipv6_numeric, 1);
+    will_return(__wrap_get_ipv6_numeric, 0x00);
+
+    // The os_ipv4 allocation is 8 bytes: reading it as an os_ipv6 runs past its end.
+    assert_int_equal(OS_IPFound("1010:1010:1010:1010:1010:1010:1010:1010", rule), 0);
+
+    w_free_os_ip(rule);
+}
+
+void OS_IPFound_ipv6_query_any_rule(void **state)
+{
+    os_ip *rule;
+    os_calloc(1, sizeof(os_ip), rule);
+    os_strdup("any", rule->ip);
+    os_calloc(1, sizeof(os_ipv6), rule->ipv6);
+    rule->is_ipv6 = false;
+
+    will_return(__wrap_get_ipv4_numeric, OS_INVALID);
+    will_return(__wrap_get_ipv6_numeric, 1);
+    will_return(__wrap_get_ipv6_numeric, 0x00);
+
+    assert_int_equal(OS_IPFound("1010:1010:1010:1010:1010:1010:1010:1010", rule), 1);
+
+    w_free_os_ip(rule);
+}
+
+void OS_IPFoundList_ipv6_query_ipv4_rule(void **state)
+{
+    os_ip **rules;
+    os_calloc(2, sizeof(os_ip *), rules);
+    os_calloc(1, sizeof(os_ip), rules[0]);
+    os_strdup("10.0.0.0/8", rules[0]->ip);
+    os_calloc(1, sizeof(os_ipv4), rules[0]->ipv4);
+    rules[0]->is_ipv6 = false;
+    rules[0]->ipv4->ip_address = 0x0000000A;
+    rules[0]->ipv4->netmask = 0x000000FF;
+
+    will_return(__wrap_get_ipv4_numeric, OS_INVALID);
+    will_return(__wrap_get_ipv6_numeric, 1);
+    will_return(__wrap_get_ipv6_numeric, 0x00);
+
+    assert_int_equal(OS_IPFoundList("1010:1010:1010:1010:1010:1010:1010:1010", rules), 0);
+
+    w_free_os_ip(rules[0]);
+    free(rules);
+}
+
+void OS_IPFoundList_ipv4_query_ipv6_rule(void **state)
+{
+    os_ip **rules;
+    os_calloc(2, sizeof(os_ip *), rules);
+    os_calloc(1, sizeof(os_ip), rules[0]);
+    os_strdup("::/0", rules[0]->ip);
+    os_calloc(1, sizeof(os_ipv6), rules[0]->ipv6);
+    rules[0]->is_ipv6 = true;
+
+    will_return(__wrap_get_ipv4_numeric, 1);
+    will_return(__wrap_get_ipv4_numeric, 0x0302010A);
+
+    assert_int_equal(OS_IPFoundList("10.1.2.3", rules), 0);
+
+    w_free_os_ip(rules[0]);
+    free(rules);
 }
 
 void OS_IPFoundList_fail(void **state)
@@ -991,6 +1085,7 @@ void OS_IPFoundList_valid_ipv6_fail(void **state)
     for(unsigned int i = 0; i < 2; i++) {
         os_strdup("0101:0101:0101:0101:0101:0101:0101:0101", (*ret_ip[i]).ip);
         os_calloc(1, sizeof(os_ipv6), (*ret_ip[i]).ipv6);
+        (*ret_ip[i]).is_ipv6 = true;
 
         unsigned int a = 0;
         for(a = 0; a < 16; a++) {
@@ -1026,6 +1121,7 @@ void OS_IPFoundList_valid_ipv6(void **state)
     for(unsigned int i = 0; i < 2; i++) {
         os_strdup("0101:0101:0101:0101:0101:0101:0101:0101", (*ret_ip[i]).ip);
         os_calloc(1, sizeof(os_ipv6), (*ret_ip[i]).ipv6);
+        (*ret_ip[i]).is_ipv6 = true;
 
         unsigned int a = 0;
         for(a = 0; a < 16; a++) {
@@ -1315,7 +1411,10 @@ static int setup_local_defines(void **state)
     FILE *fp = fopen("./local_internal_options.conf", "w");
     assert_non_null(fp);
     fputs("agent.blank_value=\n"
-          "agent.good_value=7\n",
+          "agent.good_value=7\n"
+          "agent.negative_value=-5\n"
+          "agent.lone_minus=-\n"
+          "agent.inner_minus=1-2\n",
           fp);
     fclose(fp);
 
@@ -1353,6 +1452,41 @@ void getDefine_Int_default_present_value_is_read(void **state)
     (void)state;
 
     assert_int_equal(getDefine_Int_default("agent", "good_value", 0, 10, 5), 7);
+}
+
+/* A negative value is read where the declared range allows it (e.g. wazuh_modules.task_nice). */
+void getDefine_Int_default_negative_value_in_range_is_read(void **state)
+{
+    (void)state;
+
+    assert_int_equal(getDefine_Int_default("agent", "negative_value", -20, 19, 0), -5);
+}
+
+void getDefine_Int_default_negative_value_out_of_range_exits(void **state)
+{
+    (void)state;
+
+    expect_string(__wrap__merror_exit, formatted_msg, "(2302): Invalid definition for agent.negative_value: '-5'.");
+
+    expect_assert_failure(getDefine_Int_default("agent", "negative_value", 0, 10, 5));
+}
+
+void getDefine_Int_default_lone_minus_exits(void **state)
+{
+    (void)state;
+
+    expect_string(__wrap__merror_exit, formatted_msg, "(2302): Invalid definition for agent.lone_minus: '-'.");
+
+    expect_assert_failure(getDefine_Int_default("agent", "lone_minus", -20, 19, 0));
+}
+
+void getDefine_Int_default_inner_minus_exits(void **state)
+{
+    (void)state;
+
+    expect_string(__wrap__merror_exit, formatted_msg, "(2302): Invalid definition for agent.inner_minus: '1-2'.");
+
+    expect_assert_failure(getDefine_Int_default("agent", "inner_minus", -20, 19, 0));
 }
 
 int main(void) {
@@ -1394,6 +1528,9 @@ int main(void) {
         cmocka_unit_test(OS_IPFound_valid_ipv4_negated),
         cmocka_unit_test(OS_IPFound_valid_ipv6),
         cmocka_unit_test(OS_IPFound_valid_ipv6_fail),
+        cmocka_unit_test(OS_IPFound_ipv4_query_ipv6_rule),
+        cmocka_unit_test(OS_IPFound_ipv6_query_ipv4_rule),
+        cmocka_unit_test(OS_IPFound_ipv6_query_any_rule),
         // Test OS_IPFoundList
         cmocka_unit_test(OS_IPFoundList_fail),
         cmocka_unit_test(OS_IPFoundList_valid_ipv4),
@@ -1401,6 +1538,8 @@ int main(void) {
         cmocka_unit_test(OS_IPFoundList_valid_ipv4_not_found),
         cmocka_unit_test(OS_IPFoundList_valid_ipv6_fail),
         cmocka_unit_test(OS_IPFoundList_valid_ipv6),
+        cmocka_unit_test(OS_IPFoundList_ipv4_query_ipv6_rule),
+        cmocka_unit_test(OS_IPFoundList_ipv6_query_ipv4_rule),
         // Test OS_CIDRtoStr
         cmocka_unit_test(OS_CIDRtoStr_any),
         cmocka_unit_test(OS_CIDRtoStr_valid_ipv4),
@@ -1422,6 +1561,14 @@ int main(void) {
         cmocka_unit_test_setup_teardown(getDefine_Int_default_absent_key_returns_default, setup_local_defines,
                                         teardown_local_defines),
         cmocka_unit_test_setup_teardown(getDefine_Int_default_present_value_is_read, setup_local_defines,
+                                        teardown_local_defines),
+        cmocka_unit_test_setup_teardown(getDefine_Int_default_negative_value_in_range_is_read, setup_local_defines,
+                                        teardown_local_defines),
+        cmocka_unit_test_setup_teardown(getDefine_Int_default_negative_value_out_of_range_exits, setup_local_defines,
+                                        teardown_local_defines),
+        cmocka_unit_test_setup_teardown(getDefine_Int_default_lone_minus_exits, setup_local_defines,
+                                        teardown_local_defines),
+        cmocka_unit_test_setup_teardown(getDefine_Int_default_inner_minus_exits, setup_local_defines,
                                         teardown_local_defines),
     };
 

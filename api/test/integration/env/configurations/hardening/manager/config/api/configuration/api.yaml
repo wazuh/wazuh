@@ -1,0 +1,45 @@
+host: [0.0.0.0]
+port: 55000
+
+# Advanced configuration
+
+https:
+ enabled: yes
+ key: "apid-key.pem"
+ cert: "apid.pem"
+ use_ca: False
+ ca: "root-ca.pem"
+
+# Logging configuration
+# Values for API log level: disabled, info, warning, error, debug, debug2 (each level includes the previous level).
+logs:
+ level: "info"
+ format: "plain"
+
+# Cross-origin resource sharing: https://github.com/aio-libs/aiohttp-cors#usage
+cors:
+ enabled: yes
+ source_route: "https://allowed.example"
+ expose_headers: "*"
+ allow_headers: "*"
+ allow_credentials: no
+
+# Upload limit of test_hardening_endpoints.tavern.yaml: 10 KiB
+max_upload_size: 10240
+
+# Access parameters
+access:
+  max_login_attempts: 10000
+  max_request_per_minute: 10000
+  max_unauthenticated_request_per_minute: 10000
+
+# Drop privileges (Run as wazuh-manager user)
+drop_privileges: yes
+
+# Uploadable Wazuh configuration sections (allow all for testing)
+upload_configuration:
+  agents:
+    allow_higher_versions:
+      allow: yes
+  indexer:
+    allow: yes

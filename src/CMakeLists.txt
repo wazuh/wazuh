@@ -1,3 +1,7 @@
+# The `# deps-recipe` blocks hold what reaches the external dependencies build and go into their pool keys
+# (packages/externals/deps.py); a setting that changes how the dependencies compile goes inside one. The Debug and
+# sanitizer flags stay out: the pool is always built in Release without them (packages/externals/build_external.sh).
+# deps-recipe: begin
 cmake_minimum_required(VERSION 3.12.4)
 
 # Force ranlib and windres for scan-build cross-compilation compatibility Must
@@ -34,17 +38,20 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 if(COVERITY)
   add_definitions(-D__GNUC__=8)
 endif(COVERITY)
+# deps-recipe: end
 
 # Compiler flags for Debug and Release builds
 if(NOT FSANITIZE)
   set(CMAKE_CXX_FLAGS_DEBUG "-g")
 endif()
 
+# deps-recipe: begin
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 else()
   set(CMAKE_CXX_FLAGS_RELEASE "-O3 -s")
 endif()
+# deps-recipe: end
 
 # Sanitizer flags (override DEBUG flags when enabled)
 if(FSANITIZE)
@@ -73,6 +80,7 @@ function(add_coverage_libraries target_name)
     endif()
   endif()
 endfunction()
+# deps-recipe: begin
 
 # SRC_FOLDER should point to the src/ directory Sub-modules will try to redefine
 # it, so we set a guard variable
@@ -83,8 +91,10 @@ set(WAZUH_MAIN_PROJECT
 
 # Shared CMake helpers
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+# deps-recipe: end
 include(WazuhRpath)
 include(WazuhJemalloc)
+# deps-recipe: begin
 
 # Define CLIENT for agent builds
 if("${TARGET}" STREQUAL "winagent" OR "${TARGET}" STREQUAL "agent")
@@ -115,6 +125,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_INCLUDES OFF)
   set(CMAKE_C_USE_RESPONSE_FILE_FOR_INCLUDES OFF)
 endif()
+# deps-recipe: end
 # Set Wine as crosscompiling emulator for Windows unit tests
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows" AND UNIT_TEST)
   find_program(WINE "wine")
@@ -123,6 +134,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows" AND UNIT_TEST)
   endif()
   set(CMAKE_CROSSCOMPILING_EMULATOR wine)
 endif()
+# deps-recipe: begin
 
 # Read the VERSION JSON file
 file(READ "${SRC_FOLDER}/../VERSION.json" VERSION_JSON)
@@ -159,6 +171,7 @@ set(BENCHMARK_ENABLE_TESTING "OFF")
 link_directories(${SRC_FOLDER})
 link_directories(${SRC_FOLDER}/build/lib)
 
+# deps-recipe: end
 # Wazuh headers
 include_directories(${SRC_FOLDER}/shared/include)
 
@@ -226,6 +239,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
       psapi crypt32 shlwapi
       CACHE INTERNAL "Common Windows libraries for all executables")
 endif()
+# deps-recipe: begin
 
 # Helper variables
 set(IS_AGENT FALSE)
@@ -235,18 +249,26 @@ endif()
 
 # External dependencies
 add_subdirectory(external)
+# deps-recipe: end
 
 # Common modules (all targets)
 add_subdirectory(config)
 add_subdirectory(shared)
 add_subdirectory(shared_modules/file_helper)
 set(CURL_DEP wazuhext)
+if(NOT EXISTS ${SRC_FOLDER}/shared_modules/http-request/CMakeLists.txt)
+  message(FATAL_ERROR "The shared_modules/http-request submodule is not checked out: "
+                      "run 'make -C src deps' or 'git submodule update --init'.")
+endif()
 add_subdirectory(shared_modules/http-request)
 add_subdirectory(shared_modules/schema_validator)
 add_subdirectory(shared_modules/utils)
-# Before wazuh_modules: inventory_sync_server links it, and registering it here (rather than via
-# that module's standalone-build guard) keeps one canonical configuration. Manager-only, like its
-# ext_asio/ext_llhttp dependencies.
+# NOTE: this gate never fires -- IS_LINUX is set only inside external/CMakeLists.txt's own scope
+# (no PARENT_SCOPE). The library is actually registered, EXCLUDE_FROM_ALL, by whichever consumer's
+# `if(NOT TARGET wazuh_uds_http_server)` guard runs first (inventory_sync_server, task_manager,
+# vulnerability_scanner, remoted_module or wazuh_db -- in configure order, so inventory_sync_server
+# does today), so options set here change
+# nothing and uds_http_server_utest is not part of `all`.
 if(IS_LINUX AND NOT IS_AGENT)
   add_subdirectory(shared_modules/uds_http_server)
 endif()
@@ -275,10 +297,15 @@ endif()
 if(NOT IS_AGENT)
   add_subdirectory(engine)
   add_subdirectory(os_auth)
+  # Before remoted: remoted_module links ca_bundle, and registering it here (out of the list's
+  # alphabetical order, like uds_http_server above) keeps the dependency readable. CMake itself
+  # does not need the order -- it resolves link targets by name at generate time.
+  add_subdirectory(shared_modules/ca_bundle)
   add_subdirectory(remoted)
   add_subdirectory(shared_modules/content_manager)
   add_subdirectory(shared_modules/indexer_connector)
   add_subdirectory(shared_modules/keystore)
+  add_subdirectory(shared_modules/manager_certs)
   add_subdirectory(shared_modules/manager_config)
   add_subdirectory(shared_modules/metrics)
   add_subdirectory(util)

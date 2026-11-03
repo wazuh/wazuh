@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _BK_MOCK_CONTROLLER_HPP
 #define _BK_MOCK_CONTROLLER_HPP
 
@@ -10,9 +11,9 @@ namespace bk::mocks
 class MockController : public IController
 {
 public:
-    MOCK_METHOD(void, ingest, (base::Event &&), (override));
-    MOCK_METHOD(base::Event, ingestGet, (base::Event &&), (override));
-    MOCK_METHOD(bool, isAviable, (), (const, override));
+    MOCK_METHOD(void, ingest, (base::Event&&), (override));
+    MOCK_METHOD(base::Event, ingestGet, (base::Event&&), (override));
+    MOCK_METHOD(bool, isAvailable, (), (const, override));
     MOCK_METHOD(void, start, (), (override));
     MOCK_METHOD(void, stop, (), (override));
     MOCK_METHOD(std::string, printGraph, (), (const, override));

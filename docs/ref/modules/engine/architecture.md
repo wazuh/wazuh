@@ -2,9 +2,9 @@
 
 ## Introduction
 
-The **Wazuh Engine** is the decoding, enrichment and routing events of the Wazuh manager (it ships as the `wazuh-manager-analysisd` daemon). It receives raw events from `wazuh-manager-remoted`, normalizes them to the Wazuh Common Schema using user-defined decoders, enriches them (GeoIP, IOC, key-value lookups), evaluates them against one or more security policies, and forwards the resulting documents to `wazuh-indexer`.
+The **Wazuh Engine** is the decoding, enrichment and routing component of the Wazuh manager (it ships as the `wazuh-manager-analysisd` daemon). It receives raw events from `wazuh-manager-remoted`, normalizes them to the Wazuh Common Schema using user-defined decoders, enriches them (GeoIP, IOC, key-value lookups), evaluates them against one or more security policies, and forwards the resulting documents to `wazuh-indexer`.
 
-The engine never communicates with agents or with Wazuh CTI directly. Its only inbound peer for events is `remoted` and `vd`, and its only outbound peer for event/content flows is `wazuh-indexer`. The only external Internet connectivity it requires is downloading GeoIP/ASN databases from official Wazuh servers for geolocation updates. Content (decoders, integrations, policies, IOC databases) is also pulled from `wazuh-indexer` rather than from a CTI feed. For the runtime concepts referenced throughout this document — events, decoders, security policies, spaces, helper functions, assets — see the [quick-start](./index.html). For the API surface, see [api-reference.md](./api-reference.md).
+The engine never communicates with agents or with Wazuh CTI directly. Its only inbound peers for events are `wazuh-manager-remoted` and the vulnerability scanner of `wazuh-manager-modulesd`, and its only outbound peer for event/content flows is `wazuh-indexer`. The only external Internet connectivity it requires is downloading GeoIP/ASN databases from the manifest URL `analysisd.geo_manifest_url` (plus IANA time-zone updates, only when `analysisd.tzdb_auto_update` is enabled). Content (decoders, integrations, policies, IOC databases) is also pulled from `wazuh-indexer` rather than from a CTI feed. For the runtime concepts referenced throughout this document — events, decoders, security policies, spaces, helper functions, assets — see the [quick-start](./README.md). For the API surface, see [api-reference.md](./api-reference.md).
 
 
 > [!NOTE]
@@ -26,8 +26,8 @@ classDef ExternalClass font-size:14px,stroke-width:2px,fill:#3f51b5,color:#fff,r
 classDef ModuleClass font-size:14px,stroke-width:2px,rx:10,ry:10
 classDef HubClass font-size:14px,stroke-width:2px,fill:#e8eaf6,rx:10,ry:10
 
-remoted["wazuh-manager-remoted / vulnerability detector"]:::ExternalClass
-operator["Wazuh-indexer / Internal CLI"]:::ExternalClass
+remoted["wazuh-manager-remoted / vulnerability scanner"]:::ExternalClass
+operator["Server API, wazuh-manager-control, internal CLI<br/>(wazuh-indexer in standalone mode)"]:::ExternalClass
 indexer["wazuh-indexer"]:::ExternalClass
 
 subgraph engine["Wazuh Engine"]
@@ -43,6 +43,7 @@ subgraph engine["Wazuh Engine"]
   ioc["IOC"]:::ModuleClass
   geo["Geo"]:::ModuleClass
   ic["Indexer Connector"]:::HubClass
+  cmlib["Content Manager<br/>(shared library)"]:::ModuleClass
   streamlog["Stream Log"]:::ModuleClass
   conf["Configuration"]:::ModuleClass
 
@@ -57,7 +58,7 @@ subgraph engine["Wazuh Engine"]
   backend --> geo
   backend --> ic
   backend --> streamlog
-  cm --> ic
+  cm --> cmlib
   conf --> ic
 end
 
@@ -65,9 +66,11 @@ remoted --> server
 operator --> server
 ic --> indexer
 indexer --> ic
+cmlib --> indexer
+indexer --> cmlib
 ```
 
-The diagram shows the engine boundary and its relationships with the outside world. Events enter through the **Server** module, are routed by the **Orchestrator** to the active security policies, and are processed by the **Backend** using the executable graph produced by the **Builder**. Content (decoders, integrations, policies, KVDBs) is pulled from `wazuh-indexer` by the **Engine Content Manager** through the **Indexer Connector**, which is also the channel for outbound processed events.
+The diagram shows the engine boundary and its relationships with the outside world. Events enter through the **Server** module, are routed by the **Orchestrator** to the active security policies, and are processed by the **Backend** using the executable graph produced by the **Builder**. Content (decoders, integrations, policies, KVDBs) is pulled from `wazuh-indexer` by the **Engine Content Manager** through the shared **Content Manager** library, which the engine links in-process; the **Indexer Connector** carries outbound processed events and the engine's own remote configuration.
 
 ---
 
@@ -84,9 +87,10 @@ The diagram shows the engine boundary and its relationships with the outside wor
 | KVDB | Per-space key-value lookups used by decoders and filters | [Key Value Databases (KVDBs)](./README.md#key-value-databases-kvdbs) |
 | IOC | Global Indicator-of-Compromise databases consumed by enrichment | [IOC enrichment](./README.md#ioc-enrichment) |
 | Geo | GeoIP/ASN enrichment using MaxMind databases | [Geo enrichment](./README.md#geo-enrichment) |
-| Indexer Connector | Sole channel to `wazuh-indexer`: outbound events, inbound content, inbound configuration | [Output process](./README.md#output-process) |
+| Indexer Connector | Engine's own `wazuh-indexer` channel: outbound events, inbound configuration | [Output process](./README.md#output-process) |
+| Content Manager (shared library) | Downloads ruleset and IoC content from `wazuh-indexer`; linked in-process, shared with Vulnerability Detection | `src/engine/source/cmcontent/README.md` |
 | Stream Log | Async rotating log channels backing file outputs and the event dumper | [Output directory structure](./README.md#output-directory-structure) |
-| Configuration | Local YAML configuration plus runtime settings pulled from `wazuh-indexer` | — |
+| Configuration | Local settings (`analysisd.*` internal options, `WAZUH_*` environment variables, the `<indexer>` section of `wazuh-manager.conf`) plus runtime settings pulled from `wazuh-indexer` | [Engine configuration](./configuration.md) |
 
 ---
 
@@ -94,7 +98,7 @@ The diagram shows the engine boundary and its relationships with the outside wor
 
 ### Server
 
-Two HTTP servers running on Unix Domain Sockets. The **events** socket receives raw events from `wazuh-manager-remoted` or `vulnerability detector`. The **management API** socket exposes the operations used by internal client dev tools and the rest of the Wazuh manager: managing routes, running tester sessions, applying content changes, querying GeoIP/IOC state, toggling raw event indexing, and reading metrics. Both sockets speak HTTP with JSON bodies; the schema for every request and response is defined in protobuf.
+Two HTTP servers running on Unix Domain Sockets under `/var/wazuh-manager/queue/sockets/`. The **events** socket, `engine-ingest-http.sock`, receives raw events (`POST /events/enriched`) from `wazuh-manager-remoted` and the vulnerability scanner. The **management API** socket, `engine-api-http.sock`, exposes the operations used by the Server API (metrics and status), the readiness check of `wazuh-manager-control start`, and the internal development tools: managing routes, running tester sessions, applying content changes, querying GeoIP/IOC state, reading the raw-event indexer status, controlling the event dumper, and reading metrics. Both sockets speak HTTP with JSON bodies; the schema for every request and response is defined in protobuf. See [api-reference.md](./api-reference.md).
 
 ### Orchestrator
 
@@ -106,7 +110,7 @@ The Builder turns the declarative content stored in the Engine Content Manager �
 
 ### Backend
 
-The Backend is the runtime that executes the compiled graph for every event. It walks the stages described in [Policy processing](./README.md#policy-processing): pre-filter, decoders (including KVDB lookups), enrichment (Geo and IOC), post-filter, and outputs. The Backend is policy-agnostic — it has no domain knowledge of decoders or rules; it only knows how to evaluate the graph the Builder produced.
+The Backend is the runtime that executes the compiled graph for every event. It walks the stages described in [Policy processing](./README.md#policy-processing): pre-filter, decoders (including KVDB lookups), enrichment (Geo and IOC), post-filter, and outputs. The Backend is policy-agnostic — it has no domain knowledge of decoders or outputs; it only knows how to evaluate the graph the Builder produced.
 
 ### Engine Content Manager
 
@@ -130,7 +134,13 @@ The Geo module performs GeoIP and ASN lookups using MaxMind MMDB databases. Like
 
 ### Indexer Connector
 
-The Indexer Connector is the single component that talks to `wazuh-indexer`. It carries three flows: **outbound** processed events (driven by policy outputs), **inbound** content (consumed by the Engine Content Manager and the IOC synchronizer), and **inbound** runtime configuration (consumed by the Configuration module). Concentrating all `wazuh-indexer` traffic in one place is what allows the rest of the engine to stay independent of the indexer's transport details.
+The Indexer Connector carries the engine's own `wazuh-indexer` traffic: **outbound** processed events (driven by policy outputs) and **inbound** runtime configuration (consumed by the Configuration module).
+
+**Content downloads do not go through it.** Ruleset and IoC content is pulled by the shared **Content Manager** library (`shared_modules/content_manager`), the same library the Vulnerability Detection module uses. It opens no connection of its own: the engine builds one indexer connector and hands it to both, so there is one health monitor and one place to configure the indexer. Downloads use only the connector's synchronous read calls, never its indexing queue, so they do not delay events.
+
+### Content Manager (shared library)
+
+See `src/engine/source/cmcontent/README.md` for the engine's half of it: the per-space and per-type topic specs and the sinks that turn downloaded documents into routes and IoC databases.
 
 ### Stream Log
 
@@ -138,7 +148,7 @@ Stream Log provides asynchronous, rotating log channels with size-based and time
 
 ### Configuration
 
-The local configuration is loaded from the Wazuh manager's XML/ini at startup; every module reads from it. A subset of runtime parameters is also pulled periodically from `wazuh-indexer` as **remote configuration**, so operators can tune behaviour without restarting the engine. Remote configuration changes are applied with rollback if a module rejects the new values.
+The local configuration is loaded once at startup — `analysisd.*` internal options overridable by `WAZUH_*` environment variables, the `<indexer>` section of the XML `wazuh-manager.conf`, and the indexer credentials from the keystore (see [Engine configuration](./configuration.md#configuration-sources)); every module reads from it. Runtime parameters are also pulled periodically (`analysisd.remote_conf_sync_interval`) from `wazuh-indexer` as **remote configuration**, so operators can tune behaviour without restarting the engine; in this version the only one is `index_raw_events`, which switches the raw-event indexer on or off. A value the consuming module rejects is discarded and the previous one kept.
 
 ---
 
@@ -208,5 +218,5 @@ IOC databases follow a parallel, independent pipeline: their own synchronizer pu
 
 ## Notes
 
-- This document covers the structure of the engine and the contracts between its modules. For runtime semantics — stages, helpers, asset structure, examples — read the [quick-start](./index.html). For the API surface, read [api-reference.md](./api-reference.md).
+- This document covers the structure of the engine and the contracts between its modules. For runtime semantics — stages, helpers, asset structure, examples — read the [quick-start](./README.md). For the API surface, read [api-reference.md](./api-reference.md).
 - The diagrams are intentionally simplified. Cross-cutting facilities such as logging, metrics and configuration loading are not drawn but are described in the corresponding module subsection above.

@@ -1,6 +1,8 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include "parse_field.hpp"
 #include "fmt/format.h"
 #include "number.hpp"
+#include <algorithm>
 #include <base/json.hpp>
 #include <iostream>
 #include <string_view>
@@ -86,6 +88,18 @@ void unescape(bool is_escaped, std::string& vs, std::string_view escape)
     }
 }
 
+bool hasInvalidPointerEscape(std::string_view key)
+{
+    for (auto pos = key.find('~'); pos != std::string_view::npos; pos = key.find('~', pos + 2))
+    {
+        if (pos + 1 >= key.size() || (key[pos + 1] != '0' && key[pos + 1] != '1'))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 // TODO: evaluate which is the most suitable site for this functionality
 std::string convertDotToSlash(std::string_view key)
 {
@@ -99,23 +113,41 @@ std::string convertDotToSlash(std::string_view key)
     return s;
 }
 
-void updateDoc(json::Json& doc,
+namespace
+{
+// A JSON Pointer path has one token per '/'; the escapes ~0 and ~1 add none.
+bool exceedsMaxDepth(std::string_view path)
+{
+    return static_cast<std::size_t>(std::count(path.cbegin(), path.cend(), '/')) > json::Json::MAX_DEPTH;
+}
+} // namespace
+
+bool updateDoc(json::Json& doc,
                std::string_view key,
                std::string_view value,
                bool is_escaped,
                std::string_view escape,
                bool is_quoted)
 {
+    // Keys come from event data: every token is written as an object member, never as an array index.
+    // The dots of the key nest the value whether it is empty or not, so both count towards the depth cap
+    const auto path = convertDotToSlash(key);
+    if (exceedsMaxDepth(path))
+    {
+        return false;
+    }
+
     if (value.empty())
     {
-        doc.setNull(key);
-        return;
+        doc.setNullAsMembers(path);
+        return true;
     }
 
     // If the value is a string, unescape it if necessary and add it to the JSON document
     auto vs = std::string {value.data(), value.size()};
     unescape(is_escaped, vs, escape);
-    doc.setString(vs, convertDotToSlash(key));
+    doc.setStringAsMembers(vs, path);
+    return true;
 }
 
 } // namespace hlp

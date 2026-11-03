@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include "builders/baseBuilders_test.hpp"
 #include "builders/stage/normalize.hpp"
 

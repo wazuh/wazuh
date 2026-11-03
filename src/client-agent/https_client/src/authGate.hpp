@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * July 21, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -47,6 +46,9 @@ class AuthGate final
         {
             if (m_state.exchange(State::Paused, std::memory_order_acq_rel) == State::Running)
             {
+                // Counted before the consumer is asked, so any release() it leads to comes after
+                // this count: a reader that sees the gate released again also sees the incident.
+                m_incidents.fetch_add(1, std::memory_order_acq_rel);
                 m_sink.onReenrollRequired();
                 m_wake();
             }
@@ -67,12 +69,21 @@ class AuthGate final
             return m_state.load(std::memory_order_acquire) == State::Paused;
         }
 
+        /// How many incidents have latched the gate so far. A key renewed from inside
+        /// on_reenroll_required can release the gate before a reader polls paused(); the count
+        /// still tells that reader an incident happened (#38329). Read it after paused().
+        uint64_t incidents() const
+        {
+            return m_incidents.load(std::memory_order_acquire);
+        }
+
     private:
         enum class State : uint8_t { Running, Paused };
 
         ICallbackSink& m_sink;
         std::function<void()> m_wake;
         std::atomic<State> m_state {State::Running};
+        std::atomic<uint64_t> m_incidents {0};
 };
 
 #endif // _HC_AUTH_GATE_HPP

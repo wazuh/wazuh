@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
 cmake_minimum_required(VERSION 3.12.4)
 
 project(utils_utest)
@@ -38,6 +39,7 @@ file(
   "byteArrayHelper_test.cpp"
   "cmdHelper_test.cpp"
   "cacheLRU_test.cpp"
+  "conditionSync_test.cpp"
   "mapWrapperSafe_test.cpp"
   "msgDispatcher_test.cpp"
   "pipelineNodes_test.cpp"
@@ -51,6 +53,7 @@ file(
   "loggerHelper_test.cpp"
   "globHelper_test.cpp"
   "wazuhDBQueryBuilder_test.cpp"
+  "wazuhCommon_test.cpp"
   "main.cpp")
 
 file(

@@ -1,9 +1,9 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import patch, MagicMock, AsyncMock, call
 import binascii
@@ -16,6 +16,8 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from connexion import AsyncApp
+from connexion.middleware import MiddlewarePosition
+from content_size_limit_asgi import ContentSizeLimitMiddleware
 from connexion.testing import TestContext
 from connexion.exceptions import ProblemException, OAuthProblem, Unauthorized
 
@@ -25,7 +27,8 @@ from wazuh.core.exception import WazuhInternalError
 
 from api.middlewares import charge_unauthenticated_request, charge_authenticated_request, \
     is_authenticated_bucket_exhausted, check_blocked_ip, \
-    settle_login_attempt, cleanup_general_request_stats, UNKNOWN_USER_STRING, LOGIN_ENDPOINT, \
+    settle_login_attempt, cleanup_general_request_stats, cleanup_login_attempt_stats, get_client_key, \
+    UNKNOWN_USER_STRING, LOGIN_ENDPOINT, \
     RUN_AS_LOGIN_ENDPOINT, AUTH_CONTEXT_MAX_PAYLOAD_SIZE, CheckAuthContextSizeMiddleware, CheckRateLimitsMiddleware, \
     CheckAuthenticatedRateLimitMiddleware, WazuhAccessLoggerMiddleware, CheckBlockedIP, SecureHeadersMiddleware, \
     CheckExpectHeaderMiddleware, secure_headers, access_log, get_declared_content_length, read_capped_body, \
@@ -146,16 +149,16 @@ async def test_middlewares_check_blocked_ip_ko(mock_req):
 
 @pytest.mark.asyncio
 @freeze_time(datetime(1970, 1, 1, 0, 0, 10))
-@pytest.mark.parametrize('stats, expected_attempts, expect_blocked', [
-    ({}, 1, False),
-    ({'ip': {'attempts': 3, 'timestamp': 10}}, 4, False),
-    ({'ip': {'attempts': 4, 'timestamp': 10}}, 5, True),
+@pytest.mark.parametrize('stats, expected_attempts, expected_timestamp, expect_blocked', [
+    ({}, 1, 10.0, False),
+    ({'ip': {'attempts': 3, 'timestamp': 5}}, 4, 5, False),
+    ({'ip': {'attempts': 4, 'timestamp': 5}}, 5, 5, True),
 ])
 async def test_middlewares_check_blocked_ip_counts_attempt(
-        stats, expected_attempts, expect_blocked, mock_req):
+        stats, expected_attempts, expected_timestamp, expect_blocked, mock_req):
     """Test that `check_blocked_ip` counts the current attempt atomically with the block
        check (before authentication runs), and blocks the IP once max_login_attempts is
-       reached."""
+       reached. The timestamp is set when the entry is created and kept afterwards."""
     api_conf = {'access': {'block_time': 300, 'max_login_attempts': 5}}
     with patch("api.middlewares.ip_stats", new=dict(stats)) as mock_ip_stats, \
          patch("api.middlewares.ip_block", new=set()) as mock_ip_block, \
@@ -163,7 +166,7 @@ async def test_middlewares_check_blocked_ip_counts_attempt(
         await check_blocked_ip(mock_req)
 
         assert mock_ip_stats['ip']['attempts'] == expected_attempts
-        assert mock_ip_stats['ip']['timestamp'] == datetime(1970, 1, 1, 0, 0, 10).timestamp()
+        assert mock_ip_stats['ip']['timestamp'] == expected_timestamp
         assert ('ip' in mock_ip_block) == expect_blocked
 
 
@@ -191,16 +194,17 @@ async def test_middlewares_check_blocked_ip_enforces_limit_without_auth_failure(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('stats, max_login_attempts, expected_attempts, expect_blocked', [
-    ({'ip': {'attempts': 1, 'timestamp': 10}}, 5, 0, False),
-    ({'ip': {'attempts': 3, 'timestamp': 10}}, 5, 2, False),
-    ({'ip': {'attempts': 5, 'timestamp': 10}, }, 5, 4, False),
+@pytest.mark.parametrize('stats, max_login_attempts, expected_stats, expect_blocked', [
+    ({'ip': {'attempts': 1, 'timestamp': 10}}, 5, {}, False),
+    ({'ip': {'attempts': 3, 'timestamp': 10}}, 5, {'ip': {'attempts': 2, 'timestamp': 10}}, False),
+    ({'ip': {'attempts': 5, 'timestamp': 10}, }, 5, {'ip': {'attempts': 4, 'timestamp': 10}}, False),
+    ({'ip': {'attempts': 1, 'timestamp': 10}}, 1, {}, False),
 ])
 async def test_middlewares_settle_login_attempt(
-        stats, max_login_attempts, expected_attempts, expect_blocked, mock_req):
+        stats, max_login_attempts, expected_stats, expect_blocked, mock_req):
     """Test that `settle_login_attempt` releases the attempt reserved by `check_blocked_ip`
-       for a successful login, and unblocks the IP if the release brings it back under
-       max_login_attempts."""
+       for a successful login, drops the entry when no attempt is left, and unblocks the IP if
+       the release brings it back under max_login_attempts."""
     api_conf = {'access': {'block_time': 300, 'max_login_attempts': max_login_attempts}}
     starting_block = {'ip'} if stats['ip']['attempts'] >= max_login_attempts else set()
     with patch("api.middlewares.ip_stats", new=dict(stats)) as mock_ip_stats, \
@@ -208,7 +212,7 @@ async def test_middlewares_settle_login_attempt(
          patch("api.middlewares.configuration.api_conf", new=api_conf):
         await settle_login_attempt(mock_req)
 
-        assert mock_ip_stats['ip']['attempts'] == expected_attempts
+        assert mock_ip_stats == expected_stats
         assert ('ip' in mock_ip_block) == expect_blocked
 
 
@@ -239,8 +243,51 @@ async def test_middlewares_repeated_successful_logins_never_block_ip(mock_req):
             await check_blocked_ip(mock_req)
             await settle_login_attempt(mock_req)
 
-        assert mock_ip_stats['ip']['attempts'] == 0
+        assert mock_ip_stats == {}
         assert "ip" not in mock_ip_block
+
+
+@pytest.mark.asyncio
+async def test_middlewares_login_traffic_does_not_slide_the_window(mock_req):
+    """Regression test: failed attempts older than `block_time` expire even if the IP keeps
+       calling the login endpoint, so sporadic failures among successful logins never add up
+       to `max_login_attempts`."""
+    api_conf = {'access': {'block_time': 60, 'max_login_attempts': 3}}
+    with patch("api.middlewares.ip_stats", new={}) as mock_ip_stats, \
+         patch("api.middlewares.ip_block", new=set()) as mock_ip_block, \
+         patch("api.middlewares.configuration.api_conf", new=api_conf), \
+         freeze_time(datetime(1970, 1, 1)) as frozen:
+        # (seconds since the first failure, request succeeds)
+        for elapsed, succeeds in [(0, False), (20, True), (40, False), (60, True), (80, False)]:
+            frozen.move_to(datetime(1970, 1, 1) + timedelta(seconds=elapsed))
+            await check_blocked_ip(mock_req)
+            if succeeds:
+                await settle_login_attempt(mock_req)
+
+        assert mock_ip_stats['ip']['attempts'] == 1
+        assert "ip" not in mock_ip_block
+
+
+@pytest.mark.asyncio
+async def test_middlewares_window_starts_at_first_failed_attempt(mock_req):
+    """Test that successful logins before the first failure do not anchor the window: three
+       failures within `block_time` of each other block the IP even if the first request seen
+       from it was a successful login older than `block_time`."""
+    api_conf = {'access': {'block_time': 60, 'max_login_attempts': 3}}
+    with patch("api.middlewares.ip_stats", new={}) as mock_ip_stats, \
+         patch("api.middlewares.ip_block", new=set()) as mock_ip_block, \
+         patch("api.middlewares.configuration.api_conf", new=api_conf), \
+         freeze_time(datetime(1970, 1, 1)) as frozen:
+        await check_blocked_ip(mock_req)
+        await settle_login_attempt(mock_req)
+        assert mock_ip_stats == {}
+
+        for elapsed in (50, 70, 90):
+            frozen.move_to(datetime(1970, 1, 1) + timedelta(seconds=elapsed))
+            await check_blocked_ip(mock_req)
+
+        assert mock_ip_stats['ip'] == {'attempts': 3, 'timestamp': 50.0}
+        assert "ip" in mock_ip_block
 
 
 @pytest.mark.asyncio
@@ -494,6 +541,108 @@ async def test_cleanup_general_request_stats_noop_on_empty_dict():
         await cleanup_general_request_stats(now=100)
 
         assert mock_stats == {}
+
+
+@pytest.mark.parametrize('host, expected', [
+    ('192.0.2.7', '192.0.2.7'),
+    ('2001:db8:1:2:aaaa:bbbb:cccc:dddd', '2001:db8:1:2::/64'),
+    ('2001:db8:1:2::1', '2001:db8:1:2::/64'),
+    ('2001:DB8:1:2::1', '2001:db8:1:2::/64'),
+    ('::ffff:192.0.2.7', '192.0.2.7'),
+    ('::1', '::/64'),
+    ('testclient', 'testclient'),
+])
+def test_get_client_key(host, expected):
+    """IPv4 is kept as is, IPv6 is grouped by its /64, an IPv4-mapped address folds to its IPv4
+       address, and anything that is not an address is used unchanged."""
+    assert get_client_key(host) == expected
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_check_blocked_ip_groups_an_ipv6_client_by_its_64():
+    """Rotating the interface identifier of an IPv6 address must not reset the login lockout:
+       every address of the /64 is charged to, and blocked under, one key."""
+    api_conf = {'access': {'block_time': 300, 'max_login_attempts': 3}}
+    with patch("api.middlewares.ip_stats", new={}) as mock_ip_stats, \
+         patch("api.middlewares.ip_block", new=set()) as mock_ip_block, \
+         patch("api.middlewares.configuration.api_conf", new=api_conf):
+        for suffix in ('1', '2', '3'):
+            await check_blocked_ip(SimpleNamespace(client=SimpleNamespace(host=f'2001:db8::{suffix}')))
+
+        assert mock_ip_stats == {'2001:db8::/64': {'attempts': 3, 'timestamp': 10.0}}
+        assert mock_ip_block == {'2001:db8::/64'}
+
+        with pytest.raises(ProblemException) as exc_info:
+            await check_blocked_ip(SimpleNamespace(client=SimpleNamespace(host='2001:db8::ffff')))
+        assert exc_info.value.status == 403
+
+        # A different /64 is a different client.
+        await check_blocked_ip(SimpleNamespace(client=SimpleNamespace(host='2001:db8:0:1::1')))
+        assert mock_ip_stats['2001:db8:0:1::/64']['attempts'] == 1
+
+
+@pytest.mark.asyncio
+async def test_settle_login_attempt_uses_the_client_key():
+    """A successful login releases the attempt under the same key it was charged to."""
+    with patch("api.middlewares.ip_stats", new={'2001:db8::/64': {'attempts': 2, 'timestamp': 10}}) as stats, \
+         patch("api.middlewares.ip_block", new=set()), \
+         patch("api.middlewares.configuration.api_conf", new={'access': {'max_login_attempts': 5}}):
+        await settle_login_attempt(SimpleNamespace(client=SimpleNamespace(host='2001:db8::99')))
+
+        assert stats['2001:db8::/64']['attempts'] == 1
+
+
+@pytest.mark.asyncio
+async def test_charge_unauthenticated_request_groups_an_ipv6_client_by_its_64():
+    """The unauthenticated bucket is charged per /64, so rotating addresses share one budget."""
+    with patch("api.middlewares.general_request_stats", new={}) as mock_stats:
+        assert await charge_unauthenticated_request(
+            SimpleNamespace(client=SimpleNamespace(host='2001:db8::1')), max_requests=1, error_code=6005) == 0
+        assert await charge_unauthenticated_request(
+            SimpleNamespace(client=SimpleNamespace(host='2001:db8::2')), max_requests=1, error_code=6005) == 6005
+
+        assert list(mock_stats) == ['2001:db8::/64']
+
+
+@pytest.mark.asyncio
+async def test_charge_authenticated_request_keeps_the_full_address():
+    """The authenticated bucket stays per address: rotating there requires valid credentials."""
+    with patch("api.middlewares.general_request_stats", new={}) as mock_stats:
+        await charge_authenticated_request(
+            SimpleNamespace(client=SimpleNamespace(host='2001:db8::1')), max_requests=10, error_code=6001)
+
+        assert list(mock_stats) == ['2001:db8::1']
+
+
+@pytest.mark.asyncio
+async def test_cleanup_login_attempt_stats():
+    """Entries whose block_time has elapsed are dropped, with their block; live ones are kept."""
+    stats = {
+        'expired-blocked': {'attempts': 50, 'timestamp': 0},
+        'expired': {'attempts': 1, 'timestamp': 100},
+        'live-blocked': {'attempts': 50, 'timestamp': 101},
+        'live': {'attempts': 1, 'timestamp': 350},
+    }
+    with patch("api.middlewares.ip_stats", new=stats) as mock_ip_stats, \
+         patch("api.middlewares.ip_block", new={'expired-blocked', 'live-blocked'}) as mock_ip_block, \
+         patch("api.middlewares.configuration.api_conf", new={'access': {'block_time': 300}}):
+        await cleanup_login_attempt_stats(now=400)
+
+        assert set(mock_ip_stats) == {'live-blocked', 'live'}
+        assert mock_ip_block == {'live-blocked'}
+
+
+@pytest.mark.asyncio
+async def test_cleanup_login_attempt_stats_noop_on_empty_dict():
+    """Cleanup must be a no-op (no error) when there is nothing to prune."""
+    with patch("api.middlewares.ip_stats", new={}) as mock_ip_stats, \
+         patch("api.middlewares.ip_block", new=set()) as mock_ip_block, \
+         patch("api.middlewares.configuration.api_conf", new={'access': {'block_time': 300}}):
+        await cleanup_login_attempt_stats(now=400)
+
+        assert mock_ip_stats == {}
+        assert mock_ip_block == set()
 
 
 @pytest.mark.asyncio
@@ -854,7 +1003,7 @@ async def test_access_log_hashes_the_unredacted_auth_context(mock_req):
     mock_req.json = AsyncMock(return_value=auth_context)
     mock_req.query_params = {}
     mock_req.method = 'POST'
-    mock_req.context = {'user': 'wazuh-wui', 'token_info': {}}
+    mock_req.context = {'user': 'wazuh-internal-client', 'token_info': {}}
     mock_req.scope = {'path': RUN_AS_LOGIN_ENDPOINT}
     mock_req.headers = {'content-type': 'None'}
 
@@ -888,7 +1037,7 @@ async def test_access_log_run_as_context_only_logged_at_debug(debug_enabled, moc
     mock_req.json = AsyncMock(return_value=auth_context)
     mock_req.query_params = {}
     mock_req.method = 'POST'
-    mock_req.context = {'user': 'wazuh-wui', 'token_info': {}}
+    mock_req.context = {'user': 'wazuh-internal-client', 'token_info': {}}
     mock_req.scope = {'path': RUN_AS_LOGIN_ENDPOINT}
     mock_req.headers = {'content-type': 'None'}
 
@@ -1464,12 +1613,33 @@ async def test_check_expect_header_middleware_uses_runtime_max_upload_size():
     call_next_mock = AsyncMock(return_value=Response("Success"))
 
     with patch('api.middlewares.configuration.api_conf', new={'max_upload_size': 5}):
-        with pytest.raises(ExpectFailedException) as exc_info:
+        with pytest.raises(PayloadTooLargeException) as exc_info:
             await middleware.dispatch(mock_request, call_next_mock)
 
     call_next_mock.assert_not_called()
-    assert exc_info.value.status == 417
+    # The expectation is understood; it is the body it announces that is refused, so this is a 413
+    # like every other size ceiling in the API, not the 417 an unmeetable expectation gets.
+    assert exc_info.value.status == 413
     assert "Maximum content size limit (5) exceeded" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_check_expect_header_middleware_no_limit():
+    """A `max_upload_size` of 0 disables the ceiling, so no declared length is refused at the header."""
+    middleware = CheckExpectHeaderMiddleware(AsyncApp(__name__))
+
+    mock_request = MagicMock(headers={
+        'Expect': '100-continue',
+        'Content-Length': str(10 * 1024 * 1024 * 1024)
+    })
+    response = Response("Success")
+    call_next_mock = AsyncMock(return_value=response)
+
+    with patch('api.middlewares.configuration.api_conf', new={'max_upload_size': 0}):
+        returned_response = await middleware.dispatch(mock_request, call_next_mock)
+
+    call_next_mock.assert_called_once_with(mock_request)
+    assert returned_response == response
 
 
 @pytest.mark.asyncio
@@ -1680,3 +1850,121 @@ async def test_access_log_no_warning_for_200(mock_req):
         await access_log(request=mock_req, response=response, prev_time=expected_time)
 
         mock_warning.assert_not_called()
+
+
+def default_auth_context_limit():
+    """Pin the live auth context limit to its default, so the host's installed api.yaml can't skew the test."""
+    return patch.dict('api.middlewares.configuration.api_conf',
+                      {'auth_context_max_payload_size': AUTH_CONTEXT_MAX_PAYLOAD_SIZE})
+
+
+def build_ad_ldap_payload(group_count):
+    """Build an AD/LDAP-shaped run_as authentication context with `group_count` group entries.
+
+    Parameters
+    ----------
+    group_count : int
+        Number of group entries in the context.
+
+    Returns
+    -------
+    bytes
+        Serialised authentication context.
+    """
+    auth_context = {
+        'auth_context': {
+            'user': 'jdoe@example.com',
+            'department': 'Security Operations',
+            'groups': [
+                {
+                    'name': f'CN=WazuhGroup{i:04d},OU=Groups,DC=example,DC=com',
+                    'sid': f'S-1-5-21-1234567890-987654321-1122334455-{10000 + i}',
+                }
+                for i in range(group_count)
+            ],
+        }
+    }
+    return json.dumps(auth_context).encode()
+
+
+@pytest.mark.asyncio
+async def test_check_auth_context_size_middleware_honours_the_configured_limit():
+    """Check that the live `auth_context_max_payload_size` governs, not the module default."""
+    custom_limit = 2048
+    response = MagicMock()
+    dispatch_mock = AsyncMock(return_value=response)
+    request = build_request(path=RUN_AS_LOGIN_ENDPOINT, content_length=custom_limit + 1)
+    middleware = CheckAuthContextSizeMiddleware(AsyncApp(__name__), dispatch=dispatch_mock)
+
+    with patch.dict('api.middlewares.configuration.api_conf',
+                    {'auth_context_max_payload_size': custom_limit}), \
+         pytest.raises(PayloadTooLargeException) as exc_info:
+        await middleware.dispatch(request=request, call_next=dispatch_mock)
+
+    assert exc_info.value.status == 413
+    assert str(custom_limit) in exc_info.value.detail
+    dispatch_mock.assert_not_awaited()
+
+    # The same declared length is below the default limit, so it goes through untouched.
+    with default_auth_context_limit():
+        assert await middleware.dispatch(request=request, call_next=dispatch_mock) == response
+
+
+@pytest.mark.asyncio
+async def test_check_auth_context_size_middleware_admits_an_ad_ldap_context():
+    """Check that an AD/LDAP context larger than the logging limit is not refused."""
+    body = build_ad_ldap_payload(200)
+    assert MAX_LOGGED_BODY_SIZE < len(body) < AUTH_CONTEXT_MAX_PAYLOAD_SIZE
+    response = MagicMock()
+    dispatch_mock = AsyncMock(return_value=response)
+    request = build_request(path=RUN_AS_LOGIN_ENDPOINT, content_length=len(body))
+    middleware = CheckAuthContextSizeMiddleware(AsyncApp(__name__), dispatch=dispatch_mock)
+
+    with default_auth_context_limit():
+        assert await middleware.dispatch(request=request, call_next=dispatch_mock) == response
+
+
+@pytest.mark.asyncio
+async def test_wazuh_access_logger_middleware_caches_an_auth_context_over_the_logging_limit():
+    """Check that the run_as path is bounded by the auth context limit, not by the logging one.
+
+    `CheckAuthContextSizeMiddleware` admits a context up to `auth_context_max_payload_size`, and a
+    body this layer does not cache reaches `access_log` with nothing to hash: the attempt would be
+    logged without its auth context hash.
+    """
+    body = build_ad_ldap_payload(120)
+    assert MAX_LOGGED_BODY_SIZE < len(body) < AUTH_CONTEXT_MAX_PAYLOAD_SIZE
+    response = MagicMock()
+    response.status_code = 200
+    dispatch_mock = AsyncMock(return_value=response)
+    request = build_request(path=RUN_AS_LOGIN_ENDPOINT, content_length=len(body),
+                            receive=chunked_receive(body, 1))
+    middleware = WazuhAccessLoggerMiddleware(AsyncApp(__name__), dispatch=dispatch_mock)
+
+    with patch('api.middlewares.access_log'), \
+         patch('api.middlewares.ConnexionRequest.from_starlette_request', return_value=request), \
+         default_auth_context_limit():
+        assert await middleware.dispatch(request=request, call_next=dispatch_mock) == response
+
+    assert request._body == body
+
+
+@pytest.mark.asyncio
+async def test_wazuh_access_logger_middleware_respects_the_configured_auth_context_limit():
+    """Check that lowering the option also lowers what this layer is willing to buffer."""
+    custom_limit = 2048
+    response = MagicMock()
+    response.status_code = 200
+    dispatch_mock = AsyncMock(return_value=response)
+    # `build_request` fails the read, so caching anything at all shows up as an error.
+    request = build_request(path=RUN_AS_LOGIN_ENDPOINT, content_length=custom_limit + 1)
+    middleware = WazuhAccessLoggerMiddleware(AsyncApp(__name__), dispatch=dispatch_mock)
+
+    with patch('api.middlewares.access_log'), \
+         patch('api.middlewares.ConnexionRequest.from_starlette_request', return_value=request), \
+         patch.dict('api.middlewares.configuration.api_conf',
+                    {'auth_context_max_payload_size': custom_limit}):
+        assert await middleware.dispatch(request=request, call_next=dispatch_mock) == response
+
+    assert not hasattr(request, '_body')
+

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef WAZUH_ENGINE_PARSE_FIELD_HPP
 #define WAZUH_ENGINE_PARSE_FIELD_HPP
 
@@ -68,16 +69,36 @@ getField(std::string_view input, const char delimiter, const char quote, const c
 void unescape(bool is_escaped, std::string& vs, std::string_view escape);
 
 /**
+ * @brief Checks whether a key cannot be written as a JSON Pointer token.
+ *
+ * Keys become JSON Pointer tokens, where '~' starts an escape (RFC 6901: "~0" is '~', "~1" is '/'). A '~' followed
+ * by any other character, or at the end of the key, makes the pointer invalid and json::Json would throw on it.
+ *
+ * @param key The key as it will be written, before or after converting '.' into '/'.
+ * @return true if the key contains an invalid escape; false if it is a valid pointer token sequence.
+ */
+bool hasInvalidPointerEscape(std::string_view key);
+
+/**
  * @brief Adds a key:value pair to a JSON document. Unescapes the value if necessary.
  *
+ * The value is written under @p key with every '.' converted into '/': as null if it is empty, as a string otherwise.
+ * Every token of that path is written as an object member name, never as an array index (json::Json::setNullAsMembers,
+ * json::Json::setStringAsMembers). The tokens of the path are counted, one per '/' (std::count; the escapes ~0 and ~1
+ * add none), and nothing is written if there are more than json::Json::MAX_DEPTH.
+ *
  * @param doc The JSON document to update.
- * @param key The key to be added to the document.
+ * @param key The key to be added to the document. The caller rejects keys with an invalid pointer escape first
+ * (hasInvalidPointerEscape); writing one throws.
  * @param value The value to be added to the document.
  * @param is_escaped Whether the value should be unescaped.
  * @param escape The character used to unescape quote or escape characters inside the string value.
- * @param is_quoted Whether the value is quoted. If false, it tries to parse the value as int or double.
+ * @param is_quoted Whether the value was quoted in the source. Currently not consulted: a non-empty value is
+ * always stored as a string (unescaped when @p is_escaped) and an empty one as null; no numeric conversion is done.
+ * @return true if the pair was written; false, without touching @p doc, if the path it would be written to has more
+ * than json::Json::MAX_DEPTH tokens.
  */
-void updateDoc(json::Json& doc,
+bool updateDoc(json::Json& doc,
                std::string_view key,
                std::string_view value,
                bool is_escaped,

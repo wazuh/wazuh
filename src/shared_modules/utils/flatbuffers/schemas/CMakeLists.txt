@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
 get_filename_component(FLATC_PATH ${SRC_FOLDER}/external/flatbuffers/build/
                        ABSOLUTE)
 set(FLATC_EXECUTABLE ${FLATC_PATH}/flatc)

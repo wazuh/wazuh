@@ -1,12 +1,13 @@
 /*
  * Wazuh Utils - Singleton template
- * Copyright (C) 2015, Wazuh Inc.
- * Apr 03, 2023.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 #ifndef _SOCKET_SERVER_HPP
 #define _SOCKET_SERVER_HPP
@@ -78,16 +79,18 @@ private:
         }
     }
 
-    void processRead(std::shared_ptr<TSocket> client,
+    bool processRead(std::shared_ptr<TSocket> client,
                      const std::function<void(const int, const char*, uint32_t, const char*, uint32_t)>& onRead) const
     {
         try
         {
             client->read(onRead);
+            return true;
         }
         catch (const std::exception&)
         {
-            // Error reading from client
+            // Error reading from client (disconnect, socket error or malformed packet).
+            return false;
         }
     }
 
@@ -104,14 +107,12 @@ private:
             }
 
             // If EPOLLIN is set, then we can read data, so process the read.
-            if (event & EPOLLIN)
-            {
-                processRead(std::move(client), onRead);
-            }
+            // A failed read leaves the stream out of sync with the framing, so the client is dropped as well.
+            const auto readFailed {(event & EPOLLIN) && !processRead(std::move(client), onRead)};
 
             // If EPOLLERR or EPOLLHUP is set, then remove the client(Close the connection). This removes is in the end
             // to process the max number of events.
-            if (event & EPOLLERR || event & EPOLLHUP)
+            if (readFailed || event & EPOLLERR || event & EPOLLHUP)
             {
                 removeClient(eventFD);
             }

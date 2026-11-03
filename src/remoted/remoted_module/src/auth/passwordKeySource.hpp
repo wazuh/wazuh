@@ -1,7 +1,6 @@
 /*
  * Wazuh auth middleware (framework-agnostic)
- * Copyright (C) 2015, Wazuh Inc.
- * August 19, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -22,12 +21,13 @@
 
 #include "common/logThrottle.hpp" // Safe in a header: LogThrottle deliberately does not log.
 #include "jwt/secureBytes.hpp"
+#include "managerConfDir.hpp"
 
 namespace remoted::auth
 {
 
     /**
-     * @brief Turns authd's enrollment password (etc/authd.pass) into the `wazuh-enroll+jwt` HS256 key,
+     * @brief Turns authd's enrollment password (/etc/wazuh-manager/authd.pass) into the `wazuh-enroll+jwt` HS256 key,
      *        hot-reloaded on change. Backs Password-mode enrollment auth (see EnrollmentAuthenticator).
      *
      * Strictly read-only, on every node -- master or worker alike. authd itself is asymmetric:
@@ -59,8 +59,10 @@ namespace remoted::auth
     class PasswordKeySource
     {
     public:
-        /// Path to authd's enrollment password file, relative to the manager's home directory.
-        static constexpr const char* kDefaultPath = "etc/authd.pass";
+        /// Path to authd's enrollment password file, in the manager's fixed configuration directory
+        /// (AUTHD_PASS in defs.h).
+        static constexpr const char* kDefaultPath = "/etc/wazuh-manager/authd.pass";
+        static_assert(Utils::isInManagerConfDir(kDefaultPath));
 
         /// Built-in refresh interval when the caller passes <=0 (matches Keystore's own default).
         static constexpr int kDefaultRefreshIntervalSeconds = 10;

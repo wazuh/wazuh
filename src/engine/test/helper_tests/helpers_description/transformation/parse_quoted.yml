@@ -7,13 +7,15 @@ metadata:
     It supports custom quotation and escape characters, allowing for flexibility in parsing complex quoted strings.
     Evaluates the content of the input field to extract text that is enclosed in the specified `quoted` character
     considering any `escape` characters used to include the quotation character within the quoted text.
+    After `input_field` it accepts up to two optional single-character values: the quotation character
+    (default `"`) and the escape character (default `\`).
   keywords:
     - parser
 
 helper_type: transformation
 
 # Indicates whether the helper function supports a variable number of arguments
-is_variadic: true
+is_variadic: false
 
 # Arguments expected by the helper function
 arguments:

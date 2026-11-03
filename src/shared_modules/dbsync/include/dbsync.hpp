@@ -1,7 +1,6 @@
 /*
  * Wazuh DBSYNC
- * Copyright (C) 2015, Wazuh Inc.
- * October 13, 2020.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -168,6 +167,16 @@ class EXPORTED DBSync : public IDBSync
          *
          */
         void closeAndDeleteDatabase() override;
+
+        /**
+         * @brief Why opening the persistent database deleted it and created it again.
+         *
+         * Left to the owner to log: the log callback of DBSync is shared by every module of the
+         * process, so a message sent through it carries another module's tag and level.
+         *
+         * @return The reason, or an empty string when the database was not created again.
+         */
+        std::string recreateReason() const;
 
         /**
         * @brief Gets the concatenated checksums from all the elements of a table

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <fmt/format.h>
 
 #include <store/istore.hpp>
@@ -57,9 +58,8 @@ std::vector<MappingConfig> loadMappingConfigs(const json::Json& config)
     std::vector<MappingConfig> mappingConfigs {};
     mappingConfigs.reserve(collection.size());
 
-    const auto parseEcsPath = [](const json::Json& value,
-                                  const std::string& jsonField,
-                                  std::optional<std::string>& dest)
+    const auto parseEcsPath =
+        [](const json::Json& value, const std::string& jsonField, std::optional<std::string>& dest)
     {
         std::string fieldStr;
         if (value.getString(fieldStr, jsonField) == json::RetGet::Success)
@@ -387,7 +387,8 @@ std::pair<base::Expression, std::string> geoEnrichmentBuilder(const std::shared_
                                                return base::result::makeFailure(e, std::string {});
                                            });
 
-    return {base::Implication::create("TraceableConditional", enrichmentExpr, conditionalSuccess),
+    // Named like the traceable so the SUCCESS term publishes to its tracer (see makeTraceableSuccessExpression)
+    return {base::Implication::create(GEO_ENRICHMENT_TRACEABLE_NAMES, enrichmentExpr, conditionalSuccess),
             GEO_ENRICHMENT_TRACEABLE_NAMES};
 };
 

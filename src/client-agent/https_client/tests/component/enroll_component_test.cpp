@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * August 19, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -122,7 +121,7 @@ namespace
 
 TEST(EnrollComponentTest, OpenModeSucceedsAgainstFakeManager)
 {
-    constexpr uint16_t port = 44870;
+    constexpr uint16_t port = 24870;
     FakeManager manager {port, "", /*tls=*/true};
 
     const auto config = tlsConfig(port);
@@ -137,7 +136,7 @@ TEST(EnrollComponentTest, OpenModeSucceedsAgainstFakeManager)
 
 TEST(EnrollComponentTest, PasswordModeSucceedsWithCorrectSignature)
 {
-    constexpr uint16_t port = 44871;
+    constexpr uint16_t port = 24871;
     FakeManager manager {port,
                          /*keyHex=*/"",
                          /*tls=*/true,
@@ -162,7 +161,7 @@ TEST(EnrollComponentTest, PasswordModeSucceedsWithCorrectSignature)
 
 TEST(EnrollComponentTest, PasswordModeIsRejectedWhenPasswordsDiffer)
 {
-    constexpr uint16_t port = 44872;
+    constexpr uint16_t port = 24872;
     FakeManager manager {port,
                          "",
                          true,
@@ -189,7 +188,7 @@ TEST(EnrollComponentTest, PasswordModeIsRejectedWhenPasswordsDiffer)
 
 TEST(EnrollComponentTest, ForcedApplicationErrorsPassThroughUnmapped)
 {
-    constexpr uint16_t port = 44873;
+    constexpr uint16_t port = 24873;
     FakeManager manager {port, "", true, 0, {}, 0, 0, {}, {}, 0, 0, {}, /*enrollForcedStatus=*/409};
 
     const auto config = tlsConfig(port);
@@ -202,7 +201,7 @@ TEST(EnrollComponentTest, ForcedApplicationErrorsPassThroughUnmapped)
 
 TEST(EnrollComponentTest, ClientCertConfigCoexistsWithPasswordOverRealHandshake)
 {
-    constexpr uint16_t port = 44874;
+    constexpr uint16_t port = 24874;
     FakeManager manager {port,
                          "",
                          /*tls=*/true,

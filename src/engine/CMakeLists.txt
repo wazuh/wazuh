@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Minimum 3.14 required by googletest discover tests
 # Todo find wich component is not working properly until 3.22.1 version
 cmake_minimum_required(VERSION 3.22.1 FATAL_ERROR)
@@ -42,7 +43,6 @@ if(WAZUH_ENGINE_TEST)
 elseif(UNIT_TEST)
   set(ENGINE_BUILD_TEST ON CACHE BOOL "Generate tests" FORCE)
   set(ENGINE_ENABLE_ASAN ON CACHE BOOL "Enable AddressSanitizer for all targets" FORCE)
-  message(WARNING "When compiling with ASAN, you must specify in LD_LIBRARY_PATH the directory where it should look for libwazuhshared.so")
 endif()
 
 
@@ -322,6 +322,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/fastqueue)
 add_subdirectory(${ENGINE_SOURCE_DIR}/httpsrv)
 add_subdirectory(${ENGINE_SOURCE_DIR}/dumper)
 add_subdirectory(${ENGINE_SOURCE_DIR}/wiconnector)
+add_subdirectory(${ENGINE_SOURCE_DIR}/cmcontent)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cmstore)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cmcrud)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cmsync)
@@ -360,6 +361,7 @@ target_link_libraries(wazuh-engine
     cmstore::cmstore
     cmcrud::cmcrud
     cmsync::cmsync
+    cmcontent::cmcontent
     rawevtindexer::rawevtindexer
     confremote::confremote
 )

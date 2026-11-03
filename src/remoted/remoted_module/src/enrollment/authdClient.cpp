@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module - authd enrollment bridge client
- * Copyright (C) 2015, Wazuh Inc.
- * August 19, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -93,6 +92,40 @@ namespace remoted::enrollment
             }
             return message;
         }
+
+        /// The `add` wire request. Built on the calling thread (see AuthdClient::addAgent), so the
+        /// bounded queue carries opaque bytes and knows nothing about verbs.
+        std::string buildAddPayload(const AuthdAddRequest& request)
+        {
+            nlohmann::json arguments;
+            arguments["name"] = request.name;
+            arguments["ip"] = request.ip;
+            if (request.groups)
+            {
+                arguments["groups"] = *request.groups;
+            }
+            if (request.keyHash)
+            {
+                arguments["key_hash"] = *request.keyHash;
+            }
+            if (request.tokenId)
+            {
+                arguments["token_id"] = *request.tokenId;
+            }
+            if (request.reenroll)
+            {
+                arguments["reenroll"] = {{"kid", request.reenroll->kid}, {"bearer", request.reenroll->bearer}};
+            }
+            if (request.source)
+            {
+                arguments["source"] = *request.source;
+            }
+
+            nlohmann::json payload;
+            payload["function"] = "add";
+            payload["arguments"] = std::move(arguments);
+            return payload.dump();
+        }
     } // namespace
 
     class AuthdClient::Impl
@@ -149,14 +182,16 @@ namespace remoted::enrollment
             while (!pending.empty())
             {
                 AuthdResult result;
-                result.errorCode = -1;
+                result.errorCode = kAuthdRequestNotSentErrorCode;
                 result.message = "AuthdClient is stopping";
                 pending.front().callback(std::move(result));
                 pending.pop();
             }
         }
 
-        void addAgent(AuthdAddRequest request, std::function<void(AuthdResult)> callback)
+        /// The wire request is built by the CALLER's thread (see addAgent() below) and travels as
+        /// opaque bytes from here on: this queue and its worker pool only move it to authd.
+        void enqueue(std::string wire, std::function<void(AuthdResult)> callback)
         {
             std::function<void(AuthdResult)> reject;
             bool stopping = false;
@@ -177,7 +212,7 @@ namespace remoted::enrollment
                 }
                 else
                 {
-                    m_queue.push({std::move(request), std::move(callback)});
+                    m_queue.push({std::move(wire), std::move(callback)});
                     m_cv.notify_one();
                 }
             }
@@ -193,7 +228,7 @@ namespace remoted::enrollment
                                      remoted::common::LogThrottle::kDefaultWindowSeconds);
                     }
                     AuthdResult result;
-                    result.errorCode = -1;
+                    result.errorCode = kAuthdRequestNotSentErrorCode;
                     result.message = "AuthdClient is stopping";
                     reject(std::move(result));
                     return;
@@ -208,7 +243,7 @@ namespace remoted::enrollment
                                remoted::common::LogThrottle::kDefaultWindowSeconds);
                 }
                 AuthdResult result;
-                result.errorCode = -1;
+                result.errorCode = kAuthdRequestNotSentErrorCode;
                 result.message = "Enrollment request queue is full";
                 reject(std::move(result));
             }
@@ -217,7 +252,7 @@ namespace remoted::enrollment
     private:
         struct Request
         {
-            AuthdAddRequest request;
+            std::string wire; ///< The already-serialized authd request.
             std::function<void(AuthdResult)> callback;
         };
 
@@ -253,15 +288,14 @@ namespace remoted::enrollment
                 // SYNCHRONOUS call (see its comment about asio::thread_pool terminating on any
                 // escaping exception) does NOT cover this: addAgent() already returned by the
                 // time this runs, later, on a different thread entirely. An uncaught exception
-                // here -- from performRequest() itself (e.g. nlohmann::json::dump()/bad_alloc
-                // building the wire request, before its own try blocks even start) or from
-                // req.callback() (e.g. mapAuthdResult()'s JSON building, or IHttpResponder::send()
-                // racing an already-torn-down connection) -- would escape this thread's entry
-                // function and std::terminate the entire remoted daemon, taking down every other
-                // agent's connection along with the one enrollment request that triggered it.
+                // here -- from performRequest() itself, or from req.callback() (e.g.
+                // mapAuthdResult()'s JSON building, or IHttpResponder::send() racing an
+                // already-torn-down connection) -- would escape this thread's entry function and
+                // std::terminate the entire remoted daemon, taking down every other agent's
+                // connection along with the one enrollment request that triggered it.
                 try
                 {
-                    req.callback(performRequest(req.request));
+                    req.callback(performRequest(req.wire));
                 }
                 catch (const std::exception& e)
                 {
@@ -274,29 +308,12 @@ namespace remoted::enrollment
             }
         }
 
-        AuthdResult performRequest(const AuthdAddRequest& request)
+        AuthdResult performRequest(const std::string& requestStr)
         {
             using SocketType = Socket<OSPrimitives, SizeHeaderProtocol>;
 
             AuthdResult result;
-            result.errorCode = -1;
-
-            nlohmann::json arguments;
-            arguments["name"] = request.name;
-            arguments["ip"] = request.ip;
-            if (request.groups)
-            {
-                arguments["groups"] = *request.groups;
-            }
-            if (request.keyHash)
-            {
-                arguments["key_hash"] = *request.keyHash;
-            }
-
-            nlohmann::json payload;
-            payload["function"] = "add";
-            payload["arguments"] = std::move(arguments);
-            const std::string requestStr = payload.dump();
+            result.errorCode = kAuthdRequestNotSentErrorCode;
 
             // Deliberately the bare Socket, not shared_modules/utils's SocketClient: SocketClient's
             // connect() only starts a background thread that connects asynchronously and returns
@@ -406,6 +423,8 @@ namespace remoted::enrollment
             }
             catch (const std::exception& e)
             {
+                // Socket::send() only throws before completing the frame (see its while loop),
+                // and authd can't act on a frame it never fully received.
                 result.message = std::string("I/O error talking to authd: ") + e.what();
                 if (const auto throttle = ioErrorThrottle().record())
                 {
@@ -437,6 +456,8 @@ namespace remoted::enrollment
             {
                 if (!responseReceived)
                 {
+                    // The send already completed: authd may have acted on it.
+                    result.errorCode = kAuthdOutcomeUnknownErrorCode;
                     result.message = std::string("I/O error talking to authd: ") + e.what();
                     if (const auto throttle = ioErrorThrottle().record())
                     {
@@ -453,6 +474,8 @@ namespace remoted::enrollment
 
             if (!responseReceived)
             {
+                // The send completed, so authd may have processed it before this timeout.
+                result.errorCode = kAuthdOutcomeUnknownErrorCode;
                 result.message = "Timed out waiting for authd's reply";
                 if (const auto throttle = timeoutThrottle().record())
                 {
@@ -470,13 +493,16 @@ namespace remoted::enrollment
 
         AuthdResult parseResponse(const std::string& response)
         {
+            // Only reached once a response was received: never "not sent" past this point.
             AuthdResult result;
-            result.errorCode = -1;
+            result.errorCode = kAuthdOutcomeUnknownErrorCode;
 
             try
             {
                 const auto json = nlohmann::json::parse(response);
-                const int errorCode = json.value("error", -1);
+                // Default matches this function's own invariant: a well-formed reply missing
+                // "error" is still an answer, not a send failure.
+                const int errorCode = json.value("error", kAuthdOutcomeUnknownErrorCode);
 
                 if (errorCode == 0)
                 {
@@ -486,6 +512,7 @@ namespace remoted::enrollment
                     result.name = data.value("name", "");
                     result.ip = data.value("ip", "");
                     result.key = data.value("key", "");
+                    result.reenrollSecret = data.value("reenroll_secret", "");
                 }
                 else
                 {
@@ -497,7 +524,7 @@ namespace remoted::enrollment
             }
             catch (const std::exception& e)
             {
-                result.errorCode = -1;
+                result.errorCode = kAuthdOutcomeUnknownErrorCode;
                 result.message = std::string("Malformed response from authd: ") + e.what();
                 if (const auto throttle = protocolErrorThrottle().record())
                 {
@@ -552,7 +579,7 @@ namespace remoted::enrollment
 
     void AuthdClient::addAgent(AuthdAddRequest request, std::function<void(AuthdResult)> callback)
     {
-        m_impl->addAgent(std::move(request), std::move(callback));
+        m_impl->enqueue(buildAddPayload(request), std::move(callback));
     }
 
     std::uint32_t AuthdClient::resolveResponseTimeoutMs(std::uint32_t configuredMs, bool isWorkerNode) noexcept

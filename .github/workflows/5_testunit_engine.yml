@@ -4,9 +4,60 @@ on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
-      - 'src/engine/**'
-      - '.github/actions/reinstall_cmake/**'
+      # The engine and its ctest suites/benchmarks (ENGINE_TEST=y, the if(WAZUH_ENGINE_TEST) block of src/engine/CMakeLists.txt).
+      # Only source/* is added to the build (its add_subdirectory(${ENGINE_SOURCE_DIR}/...) list): test/, tools/,
+      # ruleset/, standalone/, internal_packages/ and docs/ feed no target this lane runs.
+      - 'src/engine/CMakeLists.txt'
+      - 'src/engine/source/**'
+      # Link closure outside src/engine. The engine is configured inside the src/ tree
+      # (add_subdirectory(engine) in src/CMakeLists.txt).
+      - 'src/CMakeLists.txt'
+      # wazuh_link_jemalloc(wazuh-engine PLAIN) in src/engine/CMakeLists.txt, defined in src/cmake/WazuhJemalloc.cmake
+      - 'src/cmake/**'
+      # wazuhext and the vendored libraries the engine imports from src/external (add_subdirectory(external) in src/CMakeLists.txt)
+      - 'src/external/CMakeLists.txt'
+      # make deps / build; pins http-request (HTTP_REQUEST_BRANCH in src/Makefile) and tzdata
+      - 'src/Makefile'
+      - 'src/deps.lock.mk'
+      # Ref list for every ref-based `make deps` download (GIT_REFS_LIST in src/Makefile)
+      - 'tools/get_git_refs.sh'
+      # Submodule gitlink: urlrequest, linked by conf and geo (target_link_libraries in
+      # source/conf/ and source/geo/CMakeLists.txt) and by indexer_connector. Moves together with HTTP_REQUEST_BRANCH.
+      - 'src/shared_modules/http-request'
+      # include_directories(${SHARED_MODULES}/utils) in src/engine/CMakeLists.txt: loggerHelper.h, proc.hpp, zlibHelper.hpp
+      - 'src/shared_modules/utils/**'
+      # commonDefs.h, on the indexer_connector/keystore include path (include_directories(${SHARED_MODULES}/common) in indexer_connector/CMakeLists.txt)
+      - 'src/shared_modules/common/**'
+      # base links manager_config (target_link_libraries(base) PRIVATE); schema embedded at build time
+      # (MANAGER_CONFIG_SCHEMA_FILE -> embeddedSchema.hpp in manager_config/CMakeLists.txt)
+      - 'src/shared_modules/manager_config/**'
+      # wiconnector links indexer_connector (target_link_libraries(wIndexerConnector_wIndexerConnector))
+      - 'src/shared_modules/indexer_connector/**'
+      # linked by indexer_connector (target_link_libraries(indexer_connector)); keyStore.hpp in
+      # wIndexerConnector_utest (its target_include_directories in source/wiconnector/CMakeLists.txt)
+      - 'src/shared_modules/keystore/**'
+      # Other components' test trees, harnesses and tools: never linked into the engine.
+      - '!src/shared_modules/utils/tests/**'
+      - '!src/shared_modules/utils/benchmark/**'
+      - '!src/shared_modules/utils/mocks/**'
+      - '!src/shared_modules/utils/flatbuffers/**'
+      - '!src/shared_modules/manager_config/tests/**'
+      - '!src/shared_modules/manager_config/cli/**'
+      - '!src/shared_modules/indexer_connector/tests/**'
+      - '!src/shared_modules/indexer_connector/qa/**'
+      - '!src/shared_modules/indexer_connector/testtool/**'
+      - '!src/shared_modules/keystore/tests/**'
+      - '!src/shared_modules/keystore/qa/**'
+      - '!src/shared_modules/keystore/testtool/**'
+      # READMEs and design docs build nothing.
+      - '!src/**/*.md'
+      # CI plumbing. upload_s3_artifact only uploads the sanitizer logs here; it stays out because
+      # 5_testintegration_engine.yml exercises it on every engine PR.
       - '.github/workflows/5_testunit_engine.yml'
+      - '.github/actions/reinstall_cmake/**'
+      # run by reinstall_cmake (its `sudo tools/devContainer/reinstall-cmake.sh` step)
+      - 'tools/devContainer/reinstall-cmake.sh'
+      - '.github/actions/setup-sccache/**'
   workflow_dispatch:
 
 concurrency:
@@ -56,7 +107,9 @@ jobs:
           sed -i -E 's/^(option\(\s*ENGINE_ENABLE_ASAN\b[^)]*\b)OFF(\b[^)]*\))/\1ON\2/' "$file" || {
             echo "ERROR: sed failed setting ENGINE_ENABLE_ASAN=ON"; exit 1; }
 
-          grep -nE 'option\(\s*ENGINE_ENABLE_ASAN\b.*\bON\b' "$file" || {
+          # Anchor on the default (the last argument): a bare \bON\b would also match an "ON" in
+          # the option's description and let an unapplied rewrite pass.
+          grep -nE 'option\(\s*ENGINE_ENABLE_ASAN\b[^)]*\bON\s*\)' "$file" || {
             echo "ERROR: ENGINE_ENABLE_ASAN not set to ON in ${file}"; exit 1; }
 
       - name: Build Wazuh manager
@@ -70,7 +123,9 @@ jobs:
         env:
           ASAN_OPTIONS: malloc_context_size=8:print_stats=0:fast_unwind_on_malloc=1:log_path=${{ runner.temp }}/asan
           LSAN_OPTIONS: report_objects=0:log_path=${{ runner.temp }}/asan
-        run: MALLOC_CHECK_=2 ctest -T test --output-on-failure -j$(nproc)
+        # --no-tests=error: a tree configured without ENGINE_BUILD_TEST registers no test, and
+        # ctest would otherwise exit 0 having run nothing.
+        run: MALLOC_CHECK_=2 ctest -T test --output-on-failure --no-tests=error -j$(nproc)
 
       - name: Upload ASAN/LSAN logs
         if: always()

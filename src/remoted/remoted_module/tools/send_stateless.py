@@ -37,12 +37,17 @@ import zstandard
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-DEFAULT_CLIENT_KEYS = "/var/wazuh-manager/etc/client.keys"
+DEFAULT_CLIENT_KEYS = "/etc/wazuh-manager/client.keys"
+
+
+# A JSON string escape for U+0000, kept as a constant so the literal two-character sequence is
+# never mangled by an editor or a copy-paste into something that interprets it.
+ESCAPED_NUL = r"\u0000"  # two characters, not a NUL byte
 
 
 def default_body(agent_id: str) -> bytes:
     """One H line naming `agent_id` + one event. The H line MUST name the authenticated agent: the
-    manager answers 400 (payload_agent_mismatch) to a batch that claims another id."""
+    manager answers 400 to a batch that claims another id."""
     return b'H {"wazuh":{"agent":{"id":"' + agent_id.encode() + b'"}}}\nE 1:/var/log/syslog:hello from python'
 
 
@@ -51,7 +56,7 @@ DEFAULT_BODY = default_body("1001")  # re-derived from --agent-id in main()
 # Must match AuthConfig's defaults (interface/authTypes.hpp) unless the manager
 # overrides them -- only used to pick offsets that reliably land on the wrong
 # side of each window.
-MAX_BODY_SIZE = 10 * 1024 * 1024  # AuthConfig default; transport cap (20 MiB) sits above it on purpose.
+MAX_BODY_SIZE = 5 * 1024 * 1024  # AuthConfig default; transport cap (10 MiB) sits above it on purpose.
 
 # Hardcoded in RestinioHttpServer.cpp's incoming_http_msg_limits(); not exposed
 # through HttpServerConfig, so these are fixed regardless of manager config.
@@ -59,7 +64,7 @@ MAX_URL_SIZE = 2048
 MAX_FIELD_NAME_SIZE = 256
 MAX_FIELD_VALUE_SIZE = 8192
 MAX_FIELD_COUNT = 64
-TRANSPORT_MAX_BODY_SIZE = 20 * 1024 * 1024  # httpServerConfig.cpp's DEFAULT_MAX_BODY_SIZE
+TRANSPORT_MAX_BODY_SIZE = 10 * 1024 * 1024  # httpServerConfig.cpp's DEFAULT_MAX_BODY_SIZE
 
 # Sentinel "expected status": these violations make RESTinio's HTTP parser
 # abort and close the connection outright (see RestinioHttpServer.cpp /
@@ -79,7 +84,7 @@ CONN_CLOSED = "CONN_CLOSED"
 # instead of making every invocation repeat it -- a default installation needs no flag. An
 # explicit value always wins; pass '/' to force the unprefixed paths against a prefixed manager.
 
-DEFAULT_MANAGER_CONF = "/var/wazuh-manager/etc/wazuh-manager.conf"
+DEFAULT_MANAGER_CONF = "/etc/wazuh-manager/wazuh-manager.conf"
 
 GLOBAL_PREFIX = ""
 
@@ -124,9 +129,9 @@ def prefixed(path: str) -> str:
 # --- Scenarios -------------------------------------------------------------
 # Each returns (headers, body_to_send, target). Every distinct AuthError that
 # publicErrorFor() (authMiddleware.cpp) maps to a distinct status is covered
-# here, including PayloadAgentMismatch (400): /stateless cross-checks the H
-# line's wazuh.agent.id against the authenticated agent-id before forwarding
-# (statelessEndpoint.cpp). Also covers every transport-level limit RESTinio
+# here, plus an H line naming another agent (400): /stateless forwards it with
+# the authenticated id as X-Wazuh-Agent-Id, the engine rejects the mismatch and
+# remoted relays that 400. Also covers every transport-level limit RESTinio
 # itself enforces (RestinioHttpServer.cpp), which fail differently: see
 # CONN_CLOSED.
 
@@ -219,10 +224,12 @@ def scenario_ascii_key(agent_id, agent_key):
 
 
 def scenario_body_too_large(agent_id, agent_key):
-    # Between AuthConfig's body cap (10 MiB) and the transport's own hard cap
-    # (16 MiB, see httpServerConfig.cpp) on purpose: big enough for AuthMiddleware
+    # Between AuthConfig's body cap (5 MiB) and the transport's own hard cap
+    # (10 MiB, see httpServerConfig.cpp) on purpose: big enough for AuthMiddleware
     # to reject it with a clean 413, not so big RESTinio drops the connection
-    # first with no response at all.
+    # first with no response at all. Both caps moved in #39129 -- keep the two
+    # constants above in step with them or this scenario silently turns into
+    # scenario_transport_body_too_large and stops covering the 413 path at all.
     target = prefixed("/stateless")
     body = b"A" * (MAX_BODY_SIZE + 1024 * 1024)
     headers = auth_headers(agent_id, agent_key)
@@ -269,8 +276,8 @@ def scenario_too_many_headers(agent_id, agent_key):
 
 def scenario_payload_agent_mismatch(agent_id, agent_key):
     # The bearer token names the real agent; the H line's
-    # wazuh.agent.id claims a different one. statelessEndpoint.cpp rejects the mismatch with a
-    # plain 400 before ever forwarding the batch to the engine.
+    # wazuh.agent.id claims a different one. The engine rejects the mismatch against the
+    # X-Wazuh-Agent-Id remoted sets, and remoted relays it as a plain 400.
     target = prefixed("/stateless")
     claimed_id = str(int(agent_id) + 1)
     body = f'H {{"wazuh":{{"agent":{{"id":"{claimed_id}"}}}}}}\nE 1:/var/log/syslog:hello from python'.encode()
@@ -278,8 +285,65 @@ def scenario_payload_agent_mismatch(agent_id, agent_key):
     return headers, body, target
 
 
+def scenario_duplicate_identity_member(agent_id, agent_key):
+    # The one case that must still answer 400. The H line names the real
+    # agent FIRST -- so the identity comparison itself is satisfied -- and repeats "wazuh" with a
+    # victim's id. A lookup here takes the first member, the engine's merge keeps the last, and the
+    # body is forwarded byte for byte in between: without the uniqueness check the event is ingested
+    # under the victim. Unlike the two pointer cases below, this repetition IS on the identity path,
+    # so the endpoint refuses it rather than leaving it to the engine.
+    target = prefixed("/stateless")
+    victim = str(int(agent_id) + 1)
+    body = (
+        'H {{"wazuh":{{"agent":{{"id":"{me}"}}}},"wazuh":{{"agent":{{"id":"{them}"}}}}}}'
+        "{LF}E 1:/var/log/syslog:hello from python"
+    ).format(me=agent_id, them=victim, LF=chr(10)).encode()
+    headers = auth_headers(agent_id, agent_key)
+    return headers, body, target
+
+
+def scenario_pointer_injection_slash_key(agent_id, agent_key):
+    # Expects 202, not 400, and that is the point. "wazuh/agent" is ONE literal member name that is
+    # not on the identity path, so /stateless validates the header as unambiguous and forwards it --
+    # deliberately, to keep the endpoint check proportional to the identity path.
+    #
+    # It used to be an injection: the engine built the JSON Pointer it recurses with by raw
+    # concatenation, so on the key's SECOND occurrence the pointer became "/wazuh/agent" and landed
+    # on the real agent object, overwriting the id that had just been validated. The engine now
+    # escapes the member name (base/src/json.cpp), so the key stays an inert literal sibling.
+    #
+    # A 400 here means the endpoint check was widened back; a 5xx means the engine rejected the
+    # batch. What this scenario cannot see is the ingested agent id -- the tool only reads the HTTP
+    # status. That property is asserted directly in base_utest
+    # (JsonSettersTest.MergeDoesNotLetASlashInAMemberNameRetargetThePointer).
+    target = prefixed("/stateless")
+    victim = str(int(agent_id) + 1)
+    body = (
+        'H {{"wazuh":{{"agent":{{"id":"{me}"}}}},"wazuh/agent":{{}},"wazuh/agent":{{"id":"{them}"}}}}'
+        "{LF}E 1:/var/log/syslog:hello from python"
+    ).format(me=agent_id, them=victim, LF=chr(10)).encode()
+    headers = auth_headers(agent_id, agent_key)
+    return headers, body, target
+
+
+def scenario_pointer_injection_nul_key(agent_id, agent_key):
+    # Same shape, via the other half of the old defect: the member name was read as a C-string when
+    # the pointer was built, so it truncated at the NUL to "wazuh" and the merge walked into the real
+    # wazuh object. The name is now taken by length, so it stays distinct. Sent as a JSON NUL escape,
+    # which is legal in a JSON string. Expects 202 for the same reason as the slash case above.
+    target = prefixed("/stateless")
+    victim = str(int(agent_id) + 1)
+    key = 'wazuh' + ESCAPED_NUL + 'x'
+    body = (
+        'H {{"wazuh":{{"agent":{{"id":"{me}"}}}},"{k}":{{}},"{k}":{{"agent":{{"id":"{them}"}}}}}}'
+        "{LF}E 1:/var/log/syslog:hello from python"
+    ).format(me=agent_id, them=victim, k=key, LF=chr(10)).encode()
+    headers = auth_headers(agent_id, agent_key)
+    return headers, body, target
+
+
 def scenario_transport_body_too_large(agent_id, agent_key):
-    # The transport's own hard cap (20 MiB) rather than AuthConfig's (10 MiB,
+    # The transport's own hard cap (10 MiB) rather than AuthConfig's (5 MiB,
     # see scenario_body_too_large): this one must never reach AuthMiddleware
     # at all, so it gets no clean 413 -- RESTinio drops the connection as
     # soon as it sees a too-large Content-Length, before any body is read.
@@ -320,10 +384,11 @@ def scenario_malformed_zstd(agent_id, agent_key):
 
 
 def scenario_zstd_body_beyond_the_auth_cap(agent_id, agent_key):
-    # auth_max_body_size (10 MiB) bounds the WIRE body only. A DECOMPRESSED body is bounded by the
-    # server's live in-flight capacity instead (max_inflight_bytes, 256 MiB by default), so a batch
-    # that decompresses well past 10 MiB is accepted -- that is the behavior change zstd support
-    # introduced, and what this scenario pins down.
+    # auth_max_body_size (5 MiB) bounds the WIRE body only. A DECOMPRESSED body has its own cap,
+    # remoted.auth_max_decoded_body_size (32 MiB by default), and draws on the server's live
+    # in-flight capacity (max_inflight_bytes, 256 MiB by default), so a batch that decompresses to
+    # ~6 MiB -- past the wire cap, well under the decoded one -- is accepted. That is the behavior
+    # change zstd support introduced, and what this scenario pins down.
     #
     # There is deliberately no e2e scenario for the 413 that capacity exhaustion produces: with the
     # default 256 MiB budget a single request cannot realistically reach it, and forcing it would
@@ -355,6 +420,9 @@ SCENARIOS = [
     ("non_canonical_kid", 401, scenario_non_canonical_kid),
     ("ascii_key", 401, scenario_ascii_key),
     ("payload_agent_mismatch", 400, scenario_payload_agent_mismatch),
+    ("duplicate_identity_member", 400, scenario_duplicate_identity_member),
+    ("pointer_injection_slash_key", 202, scenario_pointer_injection_slash_key),
+    ("pointer_injection_nul_key", 202, scenario_pointer_injection_nul_key),
     ("body_too_large", 413, scenario_body_too_large),
     ("url_too_large", CONN_CLOSED, scenario_url_too_large),
     ("header_name_too_large", CONN_CLOSED, scenario_header_name_too_large),

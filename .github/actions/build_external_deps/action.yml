@@ -1,6 +1,27 @@
 name: "Build external dependencies"
 description: "Build the external dependencies for the project"
 
+# The three standalone builds below configure sub-projects outside src/build. The http-request and
+# keystore outputs are consumed only through link_directories(): http-request/build by
+# indexer_connector, vulnerability_scanner and data_provider, keystore/build by indexer_connector
+# (their CMakeLists.txt). The flatbuffers step generates the schema headers several modules include.
+# A lane whose target needs none of an output can opt out, which also takes that sub-project out
+# of its trigger closure. Defaults keep today's behaviour; opt a lane out only after a green trial
+# run (nothing here was built to prove which lanes can).
+inputs:
+  build_http_request:
+    description: "Build shared_modules/http-request standalone"
+    required: false
+    default: "true"
+  build_keystore:
+    description: "Build shared_modules/keystore standalone"
+    required: false
+    default: "true"
+  build_flatbuffer_schemas:
+    description: "Compile the flatbuffers schemas (shared_modules/utils/flatbuffers)"
+    required: false
+    default: "true"
+
 runs:
   using: "composite"
   steps:
@@ -33,6 +54,7 @@ runs:
         shell: bash
 
       - name: Build http-request
+        if: inputs.build_http_request != 'false'
         run: |
           cd src
           SRC_FOLDER=$(pwd)
@@ -43,6 +65,7 @@ runs:
         shell: bash
 
       - name: Build keystore
+        if: inputs.build_keystore != 'false'
         run: |
           cd src
           SRC_FOLDER=$(pwd)
@@ -53,6 +76,7 @@ runs:
         shell: bash
 
       - name: Build flatbuffer schemas
+        if: inputs.build_flatbuffer_schemas != 'false'
         run: |
           cd src
           SRC_FOLDER=$(pwd)

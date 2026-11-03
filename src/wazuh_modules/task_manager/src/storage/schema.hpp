@@ -1,7 +1,6 @@
 /*
  * Wazuh task manager module
- * Copyright (C) 2015, Wazuh Inc.
- * September 1, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -140,8 +139,9 @@ CREATE TABLE IF NOT EXISTS MANAGER_TASK_SCHEDULES (
 CREATE INDEX IF NOT EXISTS idx_manager_task_schedules_next_run
     ON MANAGER_TASK_SCHEDULES (NEXT_RUN_AT);
 
--- Module bookkeeping. Inherited from wazuh-db's generic vacuum accounting, and now the module's
--- own: it records when the last VACUUM ran so the interval survives a restart.
+-- Module bookkeeping, as key/value pairs. Nothing reads it today: it used to hold the time of the
+-- last daily VACUUM, which incremental auto-vacuum replaced, and an older database may still carry
+-- that row.
 CREATE TABLE IF NOT EXISTS metadata (
     key   TEXT PRIMARY KEY,
     value TEXT

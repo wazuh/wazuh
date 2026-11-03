@@ -1,24 +1,56 @@
 /*
  * Wazuh Indexer Connector - shared monitor / transport tests (selector, transport, sync connector)
- * Copyright (C) 2015, Wazuh Inc.
- * July 30, 2026.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #include "sharedIndexerSession_test.hpp"
 
 #include "indexerConnectorSyncImpl.hpp"
 #include "indexerTransport.hpp"
+#include "keyStore.hpp"
 #include <filesystem>
 #include <fstream>
 #include <stdexcept>
 
 using shared_session_test::baseConfig;
 using shared_session_test::hosts;
+
+namespace
+{
+    bool seedIndexerCredentials()
+    {
+        try
+        {
+            // Keystore::put() opens `queue/keystore` relative to the working directory and creates
+            // the store itself, but not the directory above it.
+            std::filesystem::create_directories("queue");
+            Keystore::put("indexer", "username", "test-user");
+            Keystore::put("indexer", "password", "test-password");
+            return true;
+        }
+        catch (const std::exception&)
+        {
+            return false;
+        }
+    }
+
+    /// Seeded before main() on purpose. buildSecureCommunication() caches the indexer credentials in
+    /// function-local statics on its first call, so nothing running afterwards -- a fixture SetUp(),
+    /// a SetUpTestSuite() -- can change what the cache holds for the rest of the binary.
+    ///
+    /// Seeding is required at all because since #39554 an unset credential makes that function throw
+    /// instead of falling back to a built-in "wazuh-manager"/"wazuh-manager" pair. The refusal itself
+    /// therefore cannot be asserted in this binary: it would need the cache to be empty, which is the
+    /// opposite of what every other test here needs.
+    const bool g_credentialsSeeded = seedIndexerCredentials();
+} // namespace
 
 using SharedMonitorTest = SharedMonitorTestBase;
 
@@ -147,6 +179,11 @@ TEST_F(BuildSecureCommunicationTest, ANonexistentSingleCaFileThrows)
 
 TEST_F(BuildSecureCommunicationTest, AnExistingCaFileIsAccepted)
 {
+    if (!g_credentialsSeeded)
+    {
+        GTEST_SKIP() << "the indexer credentials could not be seeded into queue/keystore";
+    }
+
     const auto path = std::filesystem::temp_directory_path() / "indexer_connector_test_ca.pem";
     {
         std::ofstream file {path};
@@ -165,5 +202,10 @@ TEST_F(BuildSecureCommunicationTest, AnExistingCaFileIsAccepted)
 /// here can open the keystore.
 TEST_F(BuildSecureCommunicationTest, AMissingHostsListIsNotThisFunctionsConcern)
 {
+    if (!g_credentialsSeeded)
+    {
+        GTEST_SKIP() << "the indexer credentials could not be seeded into queue/keystore";
+    }
+
     EXPECT_NO_THROW(buildSecureCommunication(nlohmann::json::object(), LogFn {"test"}));
 }

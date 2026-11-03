@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module - Enrollment endpoint configuration
- * Copyright (C) 2015, Wazuh Inc.
- * August 19, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -47,10 +46,10 @@ namespace remoted::enrollment
         /// exactly this policy (EnrollmentAuthConfig::timePolicy).
         jwt_profile::v1::TimePolicy timePolicy {};
 
-        /// Same `auth_max_body_size` ABI field (and the same 10 MiB default) authTypes.cpp
+        /// Same `auth_max_body_size` ABI field (and the same 5 MiB default) authTypes.cpp
         /// resolves for the agent<->manager scheme's AuthConfig -- see EnrollmentAuthConfig's own
         /// field comment for why /enroll must not silently exempt itself from this cap.
-        std::size_t maxBodySize {10U * 1024U * 1024U};
+        std::size_t maxBodySize {5U * 1024U * 1024U};
 
         /// Seconds between etc/authd.pass change checks. Passed straight to PasswordKeySource,
         /// which itself treats <=0 as "use its own built-in default" -- no resolution needed here.

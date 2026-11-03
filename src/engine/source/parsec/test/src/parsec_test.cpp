@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <gtest/gtest.h>
 
 #include <stdexcept>
@@ -252,6 +253,14 @@ TEST(ParsecResultTest, ValueMove)
     };
     parsec::Result<resT> result {valTest, {true, 0, {}, {}}};
     ASSERT_EQ(valTest, getVal(result.value()));
+}
+
+TEST(ParsecResultTest, ValueOnFailureThrows)
+{
+    parsec::Result<resT> result {{}, {false, 0, "message", {}}};
+    const auto& constResult = result;
+    ASSERT_THROW(constResult.value(), std::bad_optional_access);
+    ASSERT_THROW(result.value(), std::bad_optional_access);
 }
 
 TEST(ParsecResultTest, Error)

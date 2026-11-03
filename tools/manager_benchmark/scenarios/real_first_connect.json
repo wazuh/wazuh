@@ -1,6 +1,6 @@
 {
   "name": "real_first_connect",
-  "description": "The agent-mode twin of real_first_connect_uds: a freshly connected Windows agent and Linux agent enrolling, then replaying their own REAL first-connection dumps at FULL fidelity over remoted's HTTPS relay with /control keepalives. Compression rides the schema default (zstd in agent mode, like a real 5.x agent): the Windows FIM first sync is ~26 MB in one session, past remoted's 10 MiB auth_max_body_size uncompressed - this payload is the use case remoted's zstd support exists for (~3 MB on the wire). Running it with --compression none demonstrates the cap rejection.",
+  "description": "The agent-mode twin of real_first_connect_uds: a freshly connected Windows agent and Linux agent enrolling, then replaying their own REAL first-connection dumps at FULL fidelity over remoted's HTTPS relay with /control keepalives. Compression rides the schema default (zstd in agent mode, like a real 5.x agent): the Windows FIM first sync is ~26 MB in one session, past remoted's 5 MiB auth_max_body_size uncompressed - this payload is the use case remoted's zstd support exists for (~3 MB on the wire). Running it with --compression none demonstrates the cap rejection.",
   "mode": "agent",
   "defaults": {
     "cluster_name": "cluster01",

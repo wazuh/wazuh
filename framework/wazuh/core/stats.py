@@ -1,4 +1,4 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -30,18 +30,22 @@ class _Histogram(NamedTuple):
 # place those metric names are written; they project that array onto a typed, nested object
 # published as `metrics.http_server`.
 #
-# The whole `remoted.*` catalog is reported except `remoted.admin.server.*`, which describes the
-# very socket used to fetch the dump. A metric missing from the dump omits its field rather than
+# Only the metrics named in the tables below are reported; anything else in the dump is dropped.
+# That leaves out `remoted.admin.server.*`, which describes the very socket used to fetch the
+# dump, and also (not projected yet) `remoted.enroll.token.*`, `remoted.enroll.reenroll.*`,
+# `remoted.enroll.token_store.*`, `remoted.enroll.unverified.rate_limit.*`,
+# `remoted.server.connections.handshaking`, `remoted.server.handshake.*` and
+# `remoted.download.denied`. A metric missing from the dump omits its field rather than
 # reporting a zero, so a rename on the C++ side surfaces as an absent field instead of a
 # convincing but false counter.
 # ---------------------------------------------------------------------------------------------
 
 # Endpoints whose `remoted.http.<endpoint>.responses.*` family the module registers.
-_HTTP_ENDPOINTS = ('stateless', 'stateful', 'stats', 'config', 'enroll')
+_HTTP_ENDPOINTS = ('stateless', 'stateful', 'stats', 'config', 'enroll', 'cacerts')
 
 # The closed status set of that family; some cells are structurally zero for a given endpoint
 # but are kept so every endpoint reports the same vocabulary.
-_HTTP_STATUS_CELLS = ('2xx', '400', '403', '409', '413', '500', '503', 'other')
+_HTTP_STATUS_CELLS = ('2xx', '400', '403', '409', '413', '429', '500', '503', 'other')
 
 # Endpoints that additionally resolve a `remoted.http.<endpoint>.latency` histogram.
 _HTTP_LATENCY_ENDPOINTS = ('stateless', 'stateful', 'enroll')
@@ -62,6 +66,10 @@ _AUTH_REJECT_REASONS = (
     'body_too_large',
     'bad_encoding',
     'malformed',
+    'token_unknown',
+    'token_expired',
+    'token_revoked',
+    'agent_busy',
 )
 
 # {output group: {output field: source metric name | nested spec | _Histogram}}
@@ -78,6 +86,17 @@ _REMOTED_METRIC_GROUPS = {
             'depth': 'remoted.enroll.authd.queue.depth',
             'capacity': 'remoted.enroll.authd.queue.capacity',
             'rejected_total': 'remoted.enroll.authd.queue.rejected.total',
+        },
+        # Refused by the endpoint's rate limit before the authd round trip, so it is in none of the
+        # outcome counters above. `rate_limit` is the live budget of the verified-credential bucket
+        # (the re-enrollment / no-credential one is remoted.enroll.unverified.rate_limit.* in
+        # GET /metrics): `available` at 0 while `rate_limited` climbs is a ceiling set below what
+        # the fleet needs.
+        'rate_limited': 'remoted.enroll.rate_limited',
+        'rate_limit': {
+            'limit': 'remoted.enroll.rate_limit.limit',
+            'burst': 'remoted.enroll.rate_limit.burst',
+            'available': 'remoted.enroll.rate_limit.available',
         },
     },
     'control': {
@@ -120,6 +139,10 @@ _REMOTED_METRIC_GROUPS = {
         'inflight_bytes': 'remoted.server.budget.inflight.bytes',
         'inflight_requests': 'remoted.server.budget.inflight.requests',
         'rejected_total': 'remoted.server.budget.rejected.total',
+        # The connection ceiling has no rejection counter: reaching it postpones the accept instead
+        # of refusing, so `open` against `max` is the only way to see it being approached.
+        'connections_open': 'remoted.server.connections.open',
+        'connections_max': 'remoted.server.connections.max',
     },
     'downloads': {
         'started': 'remoted.download.started',
@@ -127,6 +150,23 @@ _REMOTED_METRIC_GROUPS = {
         'not_found': 'remoted.download.not_found',
         'open_error': 'remoted.download.open_error',
         'bytes_total': 'remoted.download.bytes.total',
+    },
+    # The listener's own certificate: days to expiry (negative once expired) and whether the CA
+    # `GET /cacerts` hands out signs it. Both pulls read 0 while the listener is down.
+    'tls': {
+        'cert_expiry_days': 'remoted.server.tls.cert_expiry_days',
+        'ca_matches_leaf': 'remoted.server.tls.ca_matches_leaf',
+    },
+    'cacerts': {
+        'served': 'remoted.cacerts.served',
+        'not_found': 'remoted.cacerts.not_found',
+        'ca_mismatch': 'remoted.cacerts.ca_mismatch',
+        'rate_limited': 'remoted.cacerts.rate_limited',
+        'rate_limit': {
+            'limit': 'remoted.cacerts.rate_limit.limit',
+            'burst': 'remoted.cacerts.rate_limit.burst',
+            'available': 'remoted.cacerts.rate_limit.available',
+        },
     },
     'vd_scan': {
         'requests_total': 'remoted.scanvd.requests.total',

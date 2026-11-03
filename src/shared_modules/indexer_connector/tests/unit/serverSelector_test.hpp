@@ -1,12 +1,13 @@
 /*
  * Wazuh Indexer Connector - ServerSelector tests
- * Copyright (C) 2015, Wazuh Inc.
- * September 08, 2023.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #ifndef _SERVER_SELECTOR_TEST_HPP
@@ -14,11 +15,14 @@
 
 #include "mocks/MockHTTPRequest.hpp"
 #include "serverSelector.hpp"
+#include <algorithm>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <json.hpp>
+#include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -45,6 +49,43 @@ protected:
     void TearDown() override
     {
         m_mockHttpRequest.reset();
+    }
+
+    /**
+     * @brief Helper to answer each host's health check with an HTTP status: 200 is a green cluster,
+     * anything else goes to onError with the given body.
+     *
+     * @param answers Port substring -> {status code, error body}.
+     */
+    void setupProbeAnswers(const std::map<std::string, std::pair<long, std::string>>& answers)
+    {
+        using ::testing::_;
+        using ::testing::Invoke;
+
+        EXPECT_CALL(*m_mockHttpRequest, get(_, _, _))
+            .WillRepeatedly(Invoke(
+                [answers](auto requestParams, PostRequestParametersVariant postParams, auto /*configParams*/)
+                {
+                    const auto url = std::get<TRequestParameters<std::string>>(requestParams).url.url();
+                    const auto it =
+                        std::find_if(answers.begin(),
+                                     answers.end(),
+                                     [&url](const auto& entry) { return url.find(entry.first) != std::string::npos; });
+                    const auto [statusCode, body] =
+                        it == answers.end() ? std::pair<long, std::string> {503, ""} : it->second;
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        const auto& params = std::get<TPostRequestParameters<const std::string&>>(postParams);
+                        statusCode == 200 ? params.onSuccess(R"([{"status":"green"}])")
+                                          : params.onError("Client error", statusCode, body);
+                    }
+                    else
+                    {
+                        const auto& params = std::get<TPostRequestParameters<std::string&&>>(postParams);
+                        statusCode == 200 ? params.onSuccess(std::string {R"([{"status":"green"}])"})
+                                          : params.onError("Client error", statusCode, body);
+                    }
+                }));
     }
 
     /**

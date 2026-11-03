@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 
 
 LOCK=./var/upgrade/upgrade_in_progress_pid
@@ -61,23 +61,14 @@ else
     abort_upgrade "2"
 fi
 
-# Escapes the three characters that are structurally significant in XML content --
-# '&', '<', '>' -- so a value written verbatim into ossec.conf (a CA path, in
-# particular) can never be mistaken for markup or break the file's well-formedness.
-# '&' must run first: escaping '<'/'>' introduces new literal '&' characters (as part
-# of "&lt;"/"&gt;") that must not themselves be re-escaped by a later pass.
-xml_escape() {
-    printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
-}
-
-# Strips commented-out lines before xml_value/xml_tag_present/xml_block_present extract
-# anything, so a tag an operator comments out (e.g. to fall back to the default) reads as
-# absent here too, matching OS_XML's own comment handling -- same in_comment
-# line-tracking technique this file's pin_ca() and register_configure_agent.sh's
-# agent_option_value() already use. Like those, a comment that opens and closes on the
-# same line is not stripped: every comment actually shipped in this codebase's XML wraps
-# whole indented lines, so that trade-off is accepted here too rather than fixed once and
-# left inconsistent elsewhere.
+# Strips commented-out lines before xml_value/xml_tag_present extract anything, so a
+# tag an operator comments out (e.g. to fall back to the default) reads as absent
+# here too, matching OS_XML's own comment handling -- same in_comment line-tracking
+# technique register_configure_agent.sh's agent_option_value() already uses. Like
+# that one, a comment that opens and closes on the same line is not stripped: every
+# comment actually shipped in this codebase's XML wraps whole indented lines, so
+# that trade-off is accepted here too rather than fixed once and left inconsistent
+# elsewhere.
 strip_xml_comments() {
     awk '
         in_comment {
@@ -128,10 +119,8 @@ mep_error() {
 
 }
 
-# Split a combined <endpoint> value (#38624) into MEP_HOST / MEP_PORT / MEP_ENDPOINT.
-# Same logic as parse_manager_endpoint() in register_configure_agent.sh,
-# ParseManagerEndpoint() in inst-functions.sh and its VBScript twin; duplicated because
-# this script ships inside the WPK and runs standalone, with nothing to source.
+# This parser stays because a WPK upgrade still has to read the <endpoint> already in ossec.conf,
+# and this script ships inside the WPK and runs standalone, with nothing to source.
 parse_manager_endpoint() {
 
     mep_raw="$1"
@@ -362,110 +351,336 @@ probe_server_verified() {
     fi
 }
 
-# True (exit 0) if <block><sub> exists at all, regardless of what it contains --
-# distinct from xml_tag_present, which looks for a specific leaf tag. Needed so
-# pin_ca() inserts into an existing (but otherwise unrelated, e.g. <ciphers>-only)
-# <ssl> block instead of creating a second, duplicate one.
-xml_block_present() {
-    strip_xml_comments | tr -d '\n\r' | grep -o "<$1>.*</$1>" | grep -qE "<$2>|<$2[ \t]*/>"
+# Whether the manager's certificate verifies against the given CA file alone, at the
+# address, port and prefix the upgraded agent will dial: 0 yes, 1 no, 2 could not tell
+# (no curl, no TLS 1.3 support, or no answer).
+probe_server_with_ca() {
+    PROBE_TIMEOUT=5
+    probe_build_target "${1}" "${2}" "${3}"
+
+    command -v curl > /dev/null 2>&1 || return 2
+    curl --tlsv1.3 --cacert "${4}" -s -f -m ${PROBE_TIMEOUT} -o /dev/null "https://${PROBE_HOST}:${2}${PROBE_PATH}"
+    case $? in
+        # 22 is an HTTP error status, which only comes after a verified handshake.
+        0|22) return 0 ;;
+        51|60|83) return 1 ;;
+        # Some TLS backends report a failed verification as a generic handshake error: it was the
+        # CA only if the same handshake succeeds without verification.
+        35)
+            curl --tlsv1.3 -k -s -f -m ${PROBE_TIMEOUT} -o /dev/null "https://${PROBE_HOST}:${2}${PROBE_PATH}"
+            case $? in
+                0|22) return 1 ;;
+                *) return 2 ;;
+            esac
+            ;;
+        *) return 2 ;;
+    esac
 }
 
-# Pin a CA file into <agent><ssl><certificate_authorities>, creating the <ssl> block
-# if the config does not have one yet. Mirrors set_agent_ssl_ca() in
-# register_configure_agent.sh; duplicated because this script ships inside the WPK
-# and runs standalone, with nothing to source. Only called when
-# xml_tag_present agent ssl certificate_authorities is false, so it never overwrites
-# an operator-configured CA.
+# The most certificates a delivery may carry. Mirrors ca_bundle::kMaxCertificates -- the most
+# the manager will ever vouch for in a published bundle -- so a file holding more is not one of
+# ours whatever else it is, and the bound also caps how many openssl invocations the per-
+# certificate loop below can be made to run.
+CA_MAX_CERTIFICATES=6
+
+# Split a PEM file into one file per certificate, named "<prefix>.N" (1-based, in file order),
+# and echo how many were written.
 #
-# Returns non-zero (and leaves ossec.conf untouched) if the insertion point was never
-# found -- e.g. an existing <ssl> block whose opening tag isn't alone on its own line --
-# rather than silently reporting success with nothing actually pinned.
-pin_ca() {
-    CA_PATH="$(xml_escape "${1}")"
-    TMP_PIN_CONF="$(mktemp)"
-    PIN_OK=1
-
-    if xml_block_present agent ssl; then
-        # SSL_CA (xml_value agent ssl certificate_authorities) is empty both when the tag
-        # is absent AND when it's present-but-empty (a self-closed <certificate_authorities/>,
-        # or leftover from an interrupted prior run) -- callers reach pin_ca() in both cases.
-        # Drop any such existing occurrence within this <ssl> block instead of inserting a
-        # second, sibling one: the real parser applies last-tag-wins, and the newly inserted
-        # tag lands BEFORE (not after) an existing one here, so the stale/empty tag would
-        # otherwise silently win over the CA this function was just asked to pin.
-        awk -v ca="${CA_PATH}" '
-            in_comment {
-                if ($0 ~ /-->/) { in_comment = 0 }
-                print
-                next
-            }
-            # A self-contained one-line comment ("<!-- ... -->", both on this line) must
-            # be recognized here too, ahead of every rule below -- otherwise a
-            # commented-out example matches the unanchored certificate_authorities check
-            # further down and gets stripped as if it were the live tag.
-            $0 ~ /<!--/ {
-                print
-                if ($0 !~ /-->/) { in_comment = 1 }
-                next
-            }
-            !inserted && /^[[:space:]]*<ssl>[[:space:]]*$/ {
-                print
-                print "      <certificate_authorities>" ca "</certificate_authorities>"
-                inserted = 1
-                in_ssl = 1
-                next
-            }
-            inserted && in_ssl && /^[[:space:]]*<\/ssl>[[:space:]]*$/ {
-                in_ssl = 0
-                print
-                next
-            }
-            inserted && in_ssl && (/<certificate_authorities[[:space:]]*\/>/ || /<certificate_authorities>[^<]*<\/certificate_authorities>/) {
-                next
-            }
-            { print }
-            END { if (!inserted) { exit 1 } }
-        ' ./etc/ossec.conf > "${TMP_PIN_CONF}"
-        PIN_OK=$?
-    else
-        # Only <agent>, never <client>: an unmigrated 4.x-shaped ossec.conf (a WPK
-        # upgrade never rewrites the file, so this is a live shape, not hypothetical,
-        # #38103) is read by Read_Legacy_Client_Address(), which only looks at
-        # <server><address>/<endpoint> and never <ssl> -- pinning under <client> would
-        # report success here while leaving the real parser's certificate_authorities
-        # unset. Fail the same way a malformed <ssl> block does, so the caller aborts
-        # instead of believing a CA it can't actually use is now pinned.
-        awk -v ca="${CA_PATH}" '
-            in_comment {
-                if ($0 ~ /-->/) { in_comment = 0 }
-                print
-                next
-            }
-            $0 ~ /<!--/ {
-                print
-                if ($0 !~ /-->/) { in_comment = 1 }
-                next
-            }
-            !inserted && /^[[:space:]]*<agent>[[:space:]]*$/ {
-                print
-                print "    <ssl>"
-                print "      <certificate_authorities>" ca "</certificate_authorities>"
-                print "    </ssl>"
-                inserted = 1
-                next
-            }
-            { print }
-            END { if (!inserted) { exit 1 } }
-        ' ./etc/ossec.conf > "${TMP_PIN_CONF}"
-        PIN_OK=$?
-    fi
-
-    if [ "${PIN_OK}" -eq 0 ]; then
-        cat "${TMP_PIN_CONF}" > ./etc/ossec.conf
-    fi
-    rm -f "${TMP_PIN_CONF}"
-    return ${PIN_OK}
+# Only the encapsulation boundaries and what lies between them are copied. Everything outside a
+# BEGIN/END pair is dropped here rather than carried into the installed anchor -- which matters
+# for more than tidiness: w_ca_publication_read() (src/client-agent/src/ca_publication.c) reads
+# exactly that region of this file for a "## generation:" line and takes it as the publication
+# this agent has already adopted. A delivery carrying a forged one would pin the agent at that
+# generation and silently stop it ever adopting another CA bundle. Installing only the
+# certificates removes the possibility instead of testing for it.
+#
+# Per RFC 7468 2, text before the first boundary is legal in a PEM file and openssl x509 ignores
+# it, so a delivery with a preamble is still accepted -- the preamble simply does not survive.
+split_pem_certificates() {
+    awk -v prefix="$2" '
+        /^-----BEGIN CERTIFICATE-----/ { inside = 1; count++; out = prefix "." count }
+        inside { print > out }
+        /^-----END CERTIFICATE-----/ { if (inside) { close(out); inside = 0 } }
+        END { print count + 0 }
+    ' "$1" 2>/dev/null
 }
+
+# Decide whether one certificate file is an installable trust anchor.
+#
+# Sets CA_CERT_REJECT (empty when the certificate is structurally fine), CA_CERT_WINDOW (empty
+# unless it is outside its validity period) and CA_CERT_CURRENT (1 when it is usable right now).
+# The split between the two failure kinds is what lets a bundle keep an aged-out root beside its
+# live replacement; see the caller.
+validate_ca_certificate() {
+    CA_CERT_REJECT=""
+    CA_CERT_WINDOW=""
+    CA_CERT_CURRENT=0
+
+    if ! openssl x509 -in "$1" -noout > /dev/null 2>&1; then
+        CA_CERT_REJECT="does not parse as a PEM certificate"
+        return
+    fi
+
+    if ! openssl x509 -in "$1" -noout -text 2>/dev/null | grep -A1 "X509v3 Basic Constraints" | grep -q "CA:TRUE"; then
+        CA_CERT_REJECT="is not a CA certificate (no X509v3 Basic Constraints CA:TRUE)"
+        return
+    fi
+
+    CA_NOT_BEFORE=$(openssl x509 -in "$1" -noout -startdate 2>/dev/null | cut -d= -f2-)
+    CA_NOT_AFTER=$(openssl x509 -in "$1" -noout -enddate 2>/dev/null | cut -d= -f2-)
+    NOW_EPOCH=$(date +%s)
+    # openssl's notBefore/notAfter come out as "Mon D HH:MM:SS YYYY TZ" (e.g.
+    # "Sep 10 19:55:53 2026 GMT"). GNU date -d parses that directly; BSD date
+    # (macOS) has no -d and needs strptime-style -j -f instead, or every valid
+    # CA is silently rejected here as having an "unparsable validity period".
+    #
+    # TZ=UTC on these two calls specifically: BSD date -j converts the parsed
+    # struct tm via mktime(), which always interprets it in the process's own
+    # local timezone regardless of what %Z matched in the input string --
+    # openssl's output is unconditionally GMT, so without forcing TZ=UTC here,
+    # a host west of UTC would compute an epoch shifted later than the real
+    # notBefore/notAfter (east of UTC, shifted earlier), silently rejecting a
+    # genuinely-valid, freshly-issued CA as "not yet valid".
+    if [[ "$OS" == "Darwin" ]]; then
+        CA_NOT_BEFORE_EPOCH=$(TZ=UTC date -j -f "%b %e %T %Y %Z" "${CA_NOT_BEFORE}" +%s 2>/dev/null)
+        CA_NOT_AFTER_EPOCH=$(TZ=UTC date -j -f "%b %e %T %Y %Z" "${CA_NOT_AFTER}" +%s 2>/dev/null)
+    else
+        CA_NOT_BEFORE_EPOCH=$(date -d "${CA_NOT_BEFORE}" +%s 2>/dev/null)
+        CA_NOT_AFTER_EPOCH=$(date -d "${CA_NOT_AFTER}" +%s 2>/dev/null)
+    fi
+
+    if [ -z "${CA_NOT_BEFORE_EPOCH}" ] || [ -z "${CA_NOT_AFTER_EPOCH}" ]; then
+        # A date this script cannot read is a structural problem, not an aged-out anchor: there
+        # is no window to be outside of, so it is rejected outright rather than skipped.
+        CA_CERT_REJECT="has an unparsable validity period"
+    elif [ "${NOW_EPOCH}" -lt "${CA_NOT_BEFORE_EPOCH}" ]; then
+        CA_CERT_WINDOW="is not yet valid (notBefore ${CA_NOT_BEFORE})"
+    elif [ "${NOW_EPOCH}" -gt "${CA_NOT_AFTER_EPOCH}" ]; then
+        CA_CERT_WINDOW="has expired (notAfter ${CA_NOT_AFTER})"
+    else
+        CA_CERT_CURRENT=1
+    fi
+}
+
+# Default drop-in location for the manager's CA (mirrored on Windows in
+# do_upgrade.ps1): an operator can place it here ahead of an upgrade without having
+# to hand-edit ossec.conf, and it also doubles as the on-disk anchor path for a CA
+# delivered by the manager (below). Resolves to /var/ossec/etc/certs/root-ca.pem on
+# a default install.
+DEFAULT_CA_FILE="./etc/certs/root-ca.pem"
+
+# Detect and validate a manager-delivered CA. The manager streams its root
+# CA into var/incoming under this reserved filename over the com channel, before
+# issuing the upgrade command -- never look in var/upgrade, since
+# com upgrade's cldir_ex(UPGRADE_DIR) has already cleared it by the time this script
+# runs. Runs at the very start of the script, ahead of the manager connectivity
+# check and the <ssl> gate below.
+#
+# Installing the file is the whole cutover: ossec.conf is never edited, and the
+# agent picks up an anchor at DEFAULT_CA_FILE on its own when <verification_mode>
+# is unset.
+INCOMING_CA_FILE="./var/incoming/root-ca.pem"
+
+# Set once the delivered CA passes validation; it is installed further down, past
+# the last gate that can abort this upgrade.
+CA_VALIDATED=0
+
+# Set when the delivered CA could not be validated for lack of a tool.
+CA_TOOL_HINT=""
+CA_TOOL_HINT_PENDING=0
+CA_TOOL_DISCARD=0
+
+if [ -L "${INCOMING_CA_FILE}" ]; then
+    # var/incoming is written by com's own transfer, but is not exclusively
+    # Wazuh-controlled -- reject a symlink outright rather than read or copy
+    # through it, same reasoning as this codebase's own w_fopen_nofollow() for
+    # this same directory.
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - A CA arrived at ${INCOMING_CA_FILE} as a symlink; refusing to follow it, discarding it and continuing the upgrade unverified." >> ./logs/upgrade.log
+    rm -f "${INCOMING_CA_FILE}"
+elif [ -f "${INCOMING_CA_FILE}" ]; then
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Found a CA delivered by the manager at ${INCOMING_CA_FILE}, validating it." >> ./logs/upgrade.log
+
+    CA_REJECT_REASON=""
+    CA_TOOL_MISSING=0
+    # A directory only this script's user can enter, with a name nobody can guess. The wazuh group
+    # can write var/incoming, and var/upgrade on installs older than this script, so a fixed name
+    # there could be a link that group planted, and cp would write through it.
+    CA_WORK_DIR=$(mktemp -d 2>/dev/null)
+    if [ -n "${CA_WORK_DIR}" ]; then
+        trap 'rm -rf "${CA_WORK_DIR}"' EXIT
+    fi
+    CA_SNAPSHOT="${CA_WORK_DIR}/root-ca.pem"
+
+    # var/incoming is not exclusively Wazuh-controlled: a file that validated as a
+    # legitimate CA a moment ago could be swapped for a symlink to a sensitive
+    # file (e.g. /etc/shadow) before a later step re-reads the same path. The
+    # top-level -L check above and this point are several statements apart --
+    # wide enough for that swap -- so re-check immediately adjacent to the only
+    # read of this path, not just once at the top of this block: the narrowest
+    # window achievable without O_NOFOLLOW-capable tooling. -L again also
+    # catches a symlink swapped in since the top-level check; find's own
+    # default (physical/lstat) mode would see a freshly-swapped-in symlink's
+    # own link count (usually 1), not catch it via -links alone, so both checks
+    # run together, immediately before the cp, rather than relying on either
+    # alone. Snapshot into our own copy in CA_WORK_DIR and validate/install
+    # from that snapshot alone from here on, so nothing after this point ever
+    # re-opens the attacker-influenced path.
+    if [ -z "${CA_WORK_DIR}" ]; then
+        CA_REJECT_REASON="could not be copied for validation (no private temporary directory)"
+    elif [ -L "${INCOMING_CA_FILE}" ] || [ -n "$(find "${INCOMING_CA_FILE}" -links +1 2>/dev/null)" ]; then
+        CA_REJECT_REASON="is a symlink or has more than one hard link"
+    elif ! cp "${INCOMING_CA_FILE}" "${CA_SNAPSHOT}" 2>/dev/null; then
+        CA_REJECT_REASON="could not be read"
+    fi
+
+    # A missing tool is an environment problem, not evidence the delivered file
+    # itself is bad -- every openssl invocation below would fail not-found (exit
+    # 127) exactly like a real parse failure looks, and a missing awk would leave
+    # split_pem_certificates() echoing nothing, which reads here as "no certificate
+    # in the file" -- either way silently destroying a possibly-valid delivery via
+    # the unconditional cleanup further down instead of leaving it for a retry once
+    # the tool is available. Reported and handled distinctly so an operator isn't
+    # misled into troubleshooting the certificate instead of the missing tool, and
+    # so the incoming file isn't deleted for a reason that has nothing to do with
+    # its own content.
+    if [ -z "${CA_REJECT_REASON}" ]; then
+        for CA_TOOL in openssl awk; do
+            if ! command -v "${CA_TOOL}" > /dev/null 2>&1; then
+                CA_REJECT_REASON="cannot be validated: ${CA_TOOL} was not found on this host"
+                CA_TOOL_MISSING=1
+                break
+            fi
+        done
+    fi
+
+    # Cheap bound before invoking openssl at all: empty or implausibly large for
+    # a CA certificate is rejected the same way a malformed one is, without ever
+    # parsing it.
+    if [ -z "${CA_REJECT_REASON}" ]; then
+        CA_BYTES=$(wc -c < "${CA_SNAPSHOT}" 2>/dev/null)
+        CA_BYTES=${CA_BYTES:-0}
+
+        if [ "${CA_BYTES}" -eq 0 ] || [ "${CA_BYTES}" -gt 65536 ]; then
+            CA_REJECT_REASON="is empty or larger than the 64 KiB a CA certificate should ever need"
+        else
+            # A trust store is legitimately a BUNDLE since #39321: the agent adopts up to
+            # ca_bundle::kMaxCertificates from a manager publication, and during a rotation
+            # overlap two or more roots are trusted at once. So every certificate is validated
+            # here, rather than the file being refused for holding more than one -- openssl x509
+            # reads only the first certificate of a multi-cert PEM and ignores the rest, which is
+            # why acting on the file as a whole was never an option and the split comes first.
+            #
+            # Every reject below is worded so that a ONE-certificate delivery -- which is what
+            # the manager actually sends, and what every install has received until now -- gets
+            # exactly the message it got before this file could hold a bundle. The
+            # "certificate N of M" phrasing appears only for a real bundle.
+            CA_CERT_COUNT=$(split_pem_certificates "${CA_SNAPSHOT}" "${CA_SNAPSHOT}.cert")
+            CA_CERT_COUNT=${CA_CERT_COUNT:-0}
+            CA_CURRENT_COUNT=0
+            CA_WINDOW_FIRST=""
+
+            if [ "${CA_CERT_COUNT}" -eq 0 ]; then
+                # No encapsulation boundary at all. Same verdict, and the same words, as the
+                # single openssl parse that used to stand here.
+                CA_REJECT_REASON="does not parse as a PEM certificate"
+            elif [ "${CA_CERT_COUNT}" -gt "${CA_MAX_CERTIFICATES}" ]; then
+                CA_REJECT_REASON="contains ${CA_CERT_COUNT} certificates (at most ${CA_MAX_CERTIFICATES}, the most the manager will ever publish in one bundle)"
+            fi
+
+            CA_CERT_INDEX=1
+            while [ -z "${CA_REJECT_REASON}" ] && [ "${CA_CERT_INDEX}" -le "${CA_CERT_COUNT}" ]; do
+                validate_ca_certificate "${CA_SNAPSHOT}.cert.${CA_CERT_INDEX}"
+
+                if [ -n "${CA_CERT_REJECT}" ]; then
+                    if [ "${CA_CERT_COUNT}" -eq 1 ]; then
+                        CA_REJECT_REASON="${CA_CERT_REJECT}"
+                    else
+                        CA_REJECT_REASON="contains a certificate (${CA_CERT_INDEX} of ${CA_CERT_COUNT}) that ${CA_CERT_REJECT}"
+                    fi
+                elif [ "${CA_CERT_CURRENT}" = "1" ]; then
+                    CA_CURRENT_COUNT=$((CA_CURRENT_COUNT + 1))
+                else
+                    # Kept, not rejected, and kept only in a bundle: a rotation's overlap is
+                    # exactly where an aged-out root sits beside the live replacement that
+                    # supersedes it, and OpenSSL simply fails to build a chain through an anchor
+                    # outside its window. Dropping the whole delivery over one stale certificate
+                    # would leave this agent with NO anchor, which is the single outcome CA
+                    # delivery exists to prevent.
+                    if [ -z "${CA_WINDOW_FIRST}" ]; then
+                        CA_WINDOW_FIRST="${CA_CERT_WINDOW}"
+                    fi
+
+                    # Worded to stay true whatever the verdict turns out to be: the delivery is
+                    # still refused below if NO certificate is current, and a line promising an
+                    # install would contradict the refusal that follows it.
+                    if [ "${CA_CERT_COUNT}" -gt 1 ]; then
+                        echo "$(date +"%Y/%m/%d %H:%M:%S") - Delivered CA at ${INCOMING_CA_FILE}: certificate ${CA_CERT_INDEX} of ${CA_CERT_COUNT} ${CA_CERT_WINDOW}, so it cannot verify anything; that alone is not a reason to refuse the delivery." >> ./logs/upgrade.log
+                    fi
+                fi
+
+                CA_CERT_INDEX=$((CA_CERT_INDEX + 1))
+            done
+
+            if [ -z "${CA_REJECT_REASON}" ] && [ "${CA_CURRENT_COUNT}" -eq 0 ]; then
+                if [ "${CA_CERT_COUNT}" -eq 1 ]; then
+                    CA_REJECT_REASON="${CA_WINDOW_FIRST}"
+                else
+                    CA_REJECT_REASON="holds ${CA_CERT_COUNT} certificates and not one of them is inside its validity period"
+                fi
+            fi
+
+            # Install the certificates that were validated, not the file they arrived in --
+            # see split_pem_certificates(). Concatenating the pieces in delivery order
+            # reproduces a manager delivery byte for byte, since that is one certificate with
+            # nothing around it (remotedModuleFacade.hpp, tlsCaLeafSignerPem()).
+            if [ -z "${CA_REJECT_REASON}" ]; then
+                : > "${CA_SNAPSHOT}.rebuilt"
+                CA_CERT_INDEX=1
+                while [ "${CA_CERT_INDEX}" -le "${CA_CERT_COUNT}" ]; do
+                    cat "${CA_SNAPSHOT}.cert.${CA_CERT_INDEX}" >> "${CA_SNAPSHOT}.rebuilt" 2>/dev/null
+                    CA_CERT_INDEX=$((CA_CERT_INDEX + 1))
+                done
+
+                if ! mv -f "${CA_SNAPSHOT}.rebuilt" "${CA_SNAPSHOT}" 2>/dev/null; then
+                    CA_REJECT_REASON="could not be read"
+                fi
+            fi
+
+            rm -f "${CA_SNAPSHOT}".cert.* "${CA_SNAPSHOT}.rebuilt" 2>/dev/null
+        fi
+    fi
+
+    if [ "${CA_TOOL_MISSING}" = "1" ] && [ -f "${DEFAULT_CA_FILE}" ] && [ -r "${DEFAULT_CA_FILE}" ]; then
+        # The anchor already in place supersedes it; kept, a later upgrade would install it over that anchor.
+        CA_TOOL_DISCARD=1
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Delivered CA at ${INCOMING_CA_FILE} ${CA_REJECT_REASON}; a trust anchor is already present at ${DEFAULT_CA_FILE}, so the delivered copy is discarded." >> ./logs/upgrade.log
+    elif [ "${CA_TOOL_MISSING}" = "1" ]; then
+        # Left in place (see the cleanup below): it is what (4126) in the agent log points at.
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Delivered CA at ${INCOMING_CA_FILE} ${CA_REJECT_REASON}; leaving it in place and continuing unverified." >> ./logs/upgrade.log
+        # Replaces the generic "place the CA" advice below; the recovery needs neither tool.
+        # Composed once the manager address is known (below): the token has to name it.
+        CA_TOOL_HINT_PENDING=1
+    elif [ -n "${CA_REJECT_REASON}" ]; then
+        # A malformed/expired/non-CA file must not break the upgrade, nor be left
+        # behind for a later upgrade to pick up -- remove it below same as on success.
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Delivered CA at ${INCOMING_CA_FILE} ${CA_REJECT_REASON}; refusing to install it and continuing without it." >> ./logs/upgrade.log
+    else
+        # Written only once the remaining gates have passed (see below).
+        CA_VALIDATED=1
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Delivered CA at ${INCOMING_CA_FILE} is valid; holding it until this script's remaining checks pass, then installing it at ${DEFAULT_CA_FILE}." >> ./logs/upgrade.log
+    fi
+
+    # Kept while an install is still pending: the snapshot is its source, and leaving
+    # the delivered file lets an aborted upgrade retry against the same delivery.
+    if [ "${CA_VALIDATED}" != "1" ]; then
+        rm -f "${CA_SNAPSHOT}"
+        if [ "${CA_TOOL_MISSING}" != "1" ] || [ "${CA_TOOL_DISCARD}" = "1" ]; then
+            rm -f "${INCOMING_CA_FILE}"
+        fi
+    fi
+else
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - No CA delivered by the manager at ${INCOMING_CA_FILE} this run." >> ./logs/upgrade.log
+fi
 
 # A WPK upgrade never rewrites ossec.conf, so this script meets two config shapes and has
 # to read both (#38624):
@@ -507,6 +722,16 @@ fi
 
 # Strip any leading/trailing '/' so the probe URL never doubles one up.
 SERVER_ENDPOINT=$(echo "${SERVER_ENDPOINT}" | sed -e 's|^/*||' -e 's|/*$||')
+
+# The token must name the address, port and prefix this agent already dials, or --certs-only
+# rewrites <manager><endpoint> to whatever the token names instead.
+if [ "${CA_TOOL_HINT_PENDING}" = "1" ]; then
+    CA_TOKEN_CMD="wazuh-manager-authd --create-enrollment-token --address ${SERVER_ADDRESS} --port ${SERVER_PORT}"
+    if [ -n "${SERVER_ENDPOINT}" ]; then
+        CA_TOKEN_CMD="${CA_TOKEN_CMD} --prefix ${SERVER_ENDPOINT}"
+    fi
+    CA_TOOL_HINT="The manager's CA is already on this host at ${INCOMING_CA_FILE} but could not be validated: ${CA_TOOL} was not found. To enable verification, mint a token on the master (${CA_TOKEN_CMD} --no-credential), then stop the agent, run ./bin/wazuh-agent-auth --token-file <file> --certs-only and start the agent."
+fi
 
 if [ -z "${SERVER_ADDRESS}" ]; then
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. No manager address found in the configuration." >> ./logs/upgrade.log
@@ -561,16 +786,124 @@ if [ -z "${SSL_VERIFICATION_MODE}" ]; then
     fi
 fi
 
-# Default drop-in location for the manager's CA (mirrored on Windows in
-# do_upgrade.ps1): an operator can place it here ahead of an upgrade without having
-# to hand-edit ossec.conf. Resolves to /var/ossec/etc/certs/root-ca.pem on a default
-# install.
-DEFAULT_CA_FILE="./etc/certs/root-ca.pem"
+# Whether the currently-installed (pre-upgrade) agent predates 5.0, queried now
+# because the package below replaces it. A genuine 4.x config is always
+# <client>-only -- Read_Legacy_Client() (config.c) never reads <ssl> under
+# <client> -- so that agent cannot express TLS verification via ossec.conf, edit or
+# not. It also does not need to for safety: under implicit 'system' mode,
+# w_agent_validate_ssl_ca() (config.c) only refuses to start when no OS CA bundle
+# exists at all, never when that bundle simply fails to verify this particular
+# manager -- so letting a legacy upgrade proceed past that specific failure below
+# does not risk the fail-closed outage this gate exists to prevent. An
+# already-5.x agent gets no such pass: it has had every chance to be configured
+# correctly, so the strict check remains in force for it.
+CURRENT_AGENT_VERSION=""
+if command -v dpkg-query > /dev/null 2>&1; then
+    CURRENT_AGENT_VERSION=$(dpkg-query -W -f='${Version}' wazuh-agent 2>/dev/null)
+fi
+if [ -z "${CURRENT_AGENT_VERSION}" ] && command -v rpm > /dev/null 2>&1; then
+    CURRENT_AGENT_VERSION=$(rpm -q --qf '%{VERSION}' wazuh-agent 2>/dev/null)
+fi
+
+CURRENT_AGENT_MAJOR="${CURRENT_AGENT_VERSION%%.*}"
+IS_LEGACY_AGENT=0
+case "${CURRENT_AGENT_MAJOR}" in
+    ''|*[!0-9]*) ;; # unknown or unparsable (e.g. macOS, no package manager match) -- never assume legacy from a guess
+    *) [ "${CURRENT_AGENT_MAJOR}" -lt 5 ] && IS_LEGACY_AGENT=1 ;;
+esac
+
+# Same path as AGENT_ANCHOR_CA (src/shared/include/defs.h), which the agent now reads
+# directly: a present, readable file here supplies the verification state for anything
+# <ssl> left unsaid, so the resolution this gate mirrors above is no longer the one the
+# upgraded binary applies. Two rows diverge: an unset <verification_mode>, which this gate
+# resolves to 'system' and the new binary to 'full' with the anchor present or 'none'
+# without it; and a config with no readable <certificate_authorities>, which this gate
+# aborts on and the new binary starts with. An explicit mode is honoured unchanged.
+# Reconciling the rest is still open; no verdict below was changed for it, but the state
+# that drives the divergence is logged.
+
+# A CA that validates on its own may still not be this manager's (rotated since it was delivered,
+# or the address is not in the certificate). Installed, it would take the agent off the air under
+# 'full'; dropped, whoever answered on the unauthenticated TLS port could leave the agent unverified.
+# So the upgrade aborts and keeps the CA. When the check cannot run, the CA is installed as before.
+# Only where the agent will verify against the anchor: not with its own <certificate_authorities>,
+# not under 'none', and not under 'certificate', where it does not check the hostname and curl
+# cannot be told not to.
+if [ "${CA_VALIDATED}" = "1" ] && [ "${WAZUH_UPGRADE_TEST_SKIP_MANAGER_CHECK}" != "1" ] && [ -z "${SSL_CA}" ] \
+        && [ "${SSL_VERIFICATION_MODE}" != "certificate" ] && [ "${SSL_VERIFICATION_MODE}" != "none" ]; then
+    # A pre-5.0 agent has no wazuh-agent-auth to install the anchor with. A 5.x one is never sent a
+    # CA, so a copy it holds was left by an earlier upgrade.
+    CA_PROBE_ADVICE="Fix the manager certificate and retry the upgrade"
+    if [ "${IS_LEGACY_AGENT}" != "1" ]; then
+        CA_PROBE_ADVICE="If this agent already runs 5.x, that copy was left by an earlier upgrade (the manager only sends its CA to pre-5.0 agents): install the anchor with ./bin/wazuh-agent-auth --token-file <file> --certs-only, which also removes the copy, and retry. Otherwise, fix the manager certificate and retry the upgrade"
+    fi
+    probe_server_with_ca "${SERVER_ADDRESS}" "${SERVER_PORT}" "${SERVER_ENDPOINT}" "${CA_SNAPSHOT}"
+    case $? in
+        0)
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Delivered CA verifies the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}." >> ./logs/upgrade.log
+            ;;
+        1)
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. Delivered CA at ${INCOMING_CA_FILE} does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}: the manager's CA was rotated, that address is not in its certificate, or something else answered on that port. The CA is kept and the agent keeps running its current version. ${CA_PROBE_ADVICE}; interrupting upgrade." >> ./logs/upgrade.log
+            rm -f "${CA_SNAPSHOT}"
+            abort_upgrade "2"
+            ;;
+        *)
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Could not check the delivered CA against the manager at ${SERVER_ADDRESS}:${SERVER_PORT} (curl missing, without TLS 1.3 support, or no answer); installing it on its own validation." >> ./logs/upgrade.log
+            ;;
+    esac
+fi
+
+# One already on disk and one validated this run but not yet written reach the same
+# post-upgrade state, so the checks below ask this instead of testing the file.
+ANCHOR_AVAILABLE=0
+if { [ -f "${DEFAULT_CA_FILE}" ] && [ -r "${DEFAULT_CA_FILE}" ]; } || [ "${CA_VALIDATED}" = "1" ]; then
+    ANCHOR_AVAILABLE=1
+fi
+
+if [ "${ANCHOR_AVAILABLE}" = "1" ]; then
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - A trust anchor will be in place at ${DEFAULT_CA_FILE} for the upgraded agent. It verifies with 'full' against that file when <ssl> names no <verification_mode>, and uses it as the default <certificate_authorities>. An explicit <verification_mode> is honoured unchanged." >> ./logs/upgrade.log
+else
+    # No anchor at all -- neither delivered this run nor left over from a previous
+    # one -- and <ssl> left unset resolves to 'none' without it: the upgraded agent
+    # will run unverified. Say so plainly, since this is the one remaining path to
+    # an unverified 5.0 agent and it must be obvious, not silent.
+    NO_ANCHOR_ADVICE="${CA_TOOL_HINT}"
+    if [ -z "${NO_ANCHOR_ADVICE}" ]; then
+        NO_ANCHOR_ADVICE="To enable verification: place the manager's CA at ${DEFAULT_CA_FILE} and re-run the upgrade, or configure <certificate_authorities> explicitly and restart the agent."
+    fi
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - No trust anchor is present at ${DEFAULT_CA_FILE}; the upgraded agent will run unverified unless <ssl><verification_mode> and <certificate_authorities> are configured explicitly. ${NO_ANCHOR_ADVICE}" >> ./logs/upgrade.log
+fi
+
+# The recovery is spelled out once, on the line above; the gate's lines below point back to it.
+if [ -n "${CA_TOOL_HINT}" ]; then
+    CA_HINT_REF="See the 'No trust anchor' line above for how to enable verification."
+    LEGACY_ADVICE="${CA_HINT_REF}"
+    SYSTEM_ABORT_ADVICE="${CA_HINT_REF} Interrupting upgrade."
+    ANCHOR_ABORT_ADVICE=". ${CA_HINT_REF} Interrupting upgrade."
+else
+    LEGACY_ADVICE="No trust anchor is present at ${DEFAULT_CA_FILE}; place one there and re-run the upgrade, or configure <certificate_authorities> explicitly after the upgrade, to enable verification."
+    SYSTEM_ABORT_ADVICE="Place the manager's CA there and retry, or configure <certificate_authorities> explicitly; interrupting upgrade."
+    ANCHOR_ABORT_ADVICE=", interrupting upgrade."
+fi
 
 case "${SSL_VERIFICATION_MODE}" in
     full|certificate)
-        if [ -z "${SSL_CA}" ] || [ ! -f "${SSL_CA}" ] || [ ! -r "${SSL_CA}" ]; then
-            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is '${SSL_VERIFICATION_MODE}' but <certificate_authorities> ('${SSL_CA}') is missing or unreadable, interrupting upgrade." >> ./logs/upgrade.log
+        # Two different questions, and the anchor only answers the second. A configured
+        # <certificate_authorities> must be usable on its own terms: the agent refuses to
+        # start on a path it cannot read and the anchor does not substitute for one the
+        # operator named, so that still aborts however the anchor looks. With no path
+        # configured the anchor is the CA, which is the row this gate used to abort on while
+        # the upgraded binary started -- the second of the two divergences named above, and
+        # now the default shape, since a clean 5.x config ships
+        # <verification_mode>full</verification_mode> with no <certificate_authorities> and a
+        # token install gets its anchor from the bootstrap rather than from ossec.conf.
+        if [ -n "${SSL_CA}" ]; then
+            if [ ! -f "${SSL_CA}" ] || [ ! -r "${SSL_CA}" ]; then
+                echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is '${SSL_VERIFICATION_MODE}' but <certificate_authorities> ('${SSL_CA}') is missing or unreadable, interrupting upgrade." >> ./logs/upgrade.log
+                abort_upgrade "2"
+            fi
+        elif [ "${ANCHOR_AVAILABLE}" != "1" ]; then
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is '${SSL_VERIFICATION_MODE}' but no <certificate_authorities> is configured and no trust anchor is present at ${DEFAULT_CA_FILE}${ANCHOR_ABORT_ADVICE}" >> ./logs/upgrade.log
             abort_upgrade "2"
         fi
         ;;
@@ -594,27 +927,53 @@ case "${SSL_VERIFICATION_MODE}" in
             echo "$(date +"%Y/%m/%d %H:%M:%S") - System CA trust check skipped (test mode)." >> ./logs/upgrade.log
         elif probe_server_verified "${SERVER_ADDRESS}" "${SERVER_PORT}" "${SERVER_ENDPOINT}"; then
             echo "$(date +"%Y/%m/%d %H:%M:%S") - The system trust store already verifies the manager's certificate; proceeding under verify_mode=system." >> ./logs/upgrade.log
+        elif [ "${SSL_VERIFICATION_MODE_EXPLICIT}" = "1" ] && [ "${ANCHOR_AVAILABLE}" = "1" ]; then
+            # Under 'system' the agent falls back to the anchor when the OS trust store fails.
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - <ssl><verification_mode> is explicitly 'system' and the system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}, but a trust anchor is present at ${DEFAULT_CA_FILE} -- the upgraded agent falls back to it when the OS trust store fails, so proceeding." >> ./logs/upgrade.log
         elif [ "${SSL_VERIFICATION_MODE_EXPLICIT}" = "1" ]; then
-            # <verification_mode>system</verification_mode> was set explicitly:
-            # pinning a CA here would be rejected at runtime (validateTls() in
-            # moduleConfig.cpp refuses system+certificate_authorities together), so
-            # there is nothing this script can safely fix on the operator's behalf.
-            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is explicitly 'system' but the system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}. Import it into the OS trust store, or switch to <verification_mode>certificate</verification_mode> with a <certificate_authorities> path, interrupting upgrade." >> ./logs/upgrade.log
-            abort_upgrade "2"
-        elif [ -f "${DEFAULT_CA_FILE}" ] && [ -r "${DEFAULT_CA_FILE}" ]; then
-            if pin_ca "${DEFAULT_CA_FILE}"; then
-                echo "$(date +"%Y/%m/%d %H:%M:%S") - The system trust store does not verify the manager's certificate; pinned ${DEFAULT_CA_FILE} as <certificate_authorities> instead." >> ./logs/upgrade.log
+            # Explicit 'system' with no anchor to fall back to. A <certificate_authorities> pin is
+            # rejected alongside 'system', so the fix is the operator's.
+            EXPLICIT_SYSTEM_ADVICE="Import the manager's CA into the OS trust store, place it at ${DEFAULT_CA_FILE} and retry, or switch to <verification_mode>certificate</verification_mode> with a <certificate_authorities> path"
+            if [ -n "${CA_TOOL_HINT}" ]; then
+                EXPLICIT_SYSTEM_ADVICE="${EXPLICIT_SYSTEM_ADVICE}. ${CA_HINT_REF} Interrupting upgrade."
             else
-                echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. Found a CA at ${DEFAULT_CA_FILE} but could not pin it into <ssl><certificate_authorities> (no <agent> block found, or an existing <ssl> block was not in the expected format), interrupting upgrade." >> ./logs/upgrade.log
-                abort_upgrade "2"
+                EXPLICIT_SYSTEM_ADVICE="${EXPLICIT_SYSTEM_ADVICE}, interrupting upgrade."
             fi
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is explicitly 'system' but the system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}, and no trust anchor is present at ${DEFAULT_CA_FILE} to fall back to. ${EXPLICIT_SYSTEM_ADVICE}" >> ./logs/upgrade.log
+            abort_upgrade "2"
+        elif [ "${ANCHOR_AVAILABLE}" = "1" ]; then
+            # <verification_mode> was left unset (not explicit), so the new binary
+            # resolves purely from anchor presence -- 'full' against DEFAULT_CA_FILE --
+            # regardless of what this gate's own 'system' resolution or the OS trust
+            # store say (see the divergence noted above). A usable
+            # anchor is available (validated this run and installed once the gates pass,
+            # or left over from a previous delivery), which is a different, equally
+            # sufficient path to a working post-upgrade connection -- this is precisely
+            # the scenario this feature exists for. Checked ahead of IS_LEGACY_AGENT
+            # since an already-5.x agent needs this path too: without it, a 5.x agent
+            # receiving its manager's CA for the first time would have the anchor
+            # installed and then abort anyway, never reaching a state where it takes
+            # effect.
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - The system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}, but a trust anchor is present at ${DEFAULT_CA_FILE} and <ssl><verification_mode> is unset -- the upgraded agent resolves to 'full' against that anchor regardless of the OS trust store, so proceeding." >> ./logs/upgrade.log
+        elif [ "${IS_LEGACY_AGENT}" = "1" ]; then
+            # The currently-installed agent (pre-upgrade) predates 5.0: its <client>-only
+            # config cannot express TLS verification regardless of what this script does
+            # (see CURRENT_AGENT_VERSION above), and 'system' mode's real fail-closed
+            # condition -- no OS CA bundle at all -- does not apply here. Proceed rather
+            # than block a legacy migration over a check that agent was never able to
+            # pass in the first place.
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - The system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}, but the currently-installed agent (${CURRENT_AGENT_VERSION}) predates 5.0 and its config cannot express TLS verification either way -- proceeding unverified. ${LEGACY_ADVICE}" >> ./logs/upgrade.log
         else
-            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. The system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}, and no CA was found at ${DEFAULT_CA_FILE}. Place the manager's CA there, or configure <certificate_authorities> explicitly, then retry the upgrade; staying on the current version, interrupting upgrade." >> ./logs/upgrade.log
+            # Reached only when no usable anchor is present at all (the branch above
+            # already handles the case where one is) -- ossec.conf is never modified
+            # by this script, so there is genuinely nothing more it can do here.
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. The system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}, and no trust anchor is present at ${DEFAULT_CA_FILE}. ${SYSTEM_ABORT_ADVICE}" >> ./logs/upgrade.log
             abort_upgrade "2"
         fi
         ;;
     none)
-        # Explicitly disabled -- nothing for this gate to check.
+        # Nothing for this gate to check: 'none' needs no CA and reaches no trust store, and
+        # the upgraded binary honours it whether or not an anchor is on disk.
         ;;
     *)
         # Neither ReadConfig() nor this gate's own default-resolution above can produce
@@ -628,11 +987,149 @@ case "${SSL_VERIFICATION_MODE}" in
         ;;
 esac
 
+# in_dir DIR COMMAND...: runs COMMAND in a subshell whose working directory is DIR (relative to
+# the installation), only when no link leads there. A name COMMAND resolves relative to it then
+# stays in that directory, whatever happens to DIR's path afterwards.
+REAL_HOME="$(pwd -P)"
+in_dir() {
+    (cd -P -- "$1" 2>/dev/null && [ "$(pwd -P)" = "${REAL_HOME}/${1#./}" ] && shift && "$@")
+}
+
+# Fails unless the working directory belongs to this script's user. Write access for anyone else
+# is then removed, unless the sticky bit already keeps them to their own entries (the agent keeps
+# etc/certs 01770 so it can replace the anchor at runtime): a file created here afterwards cannot be
+# renamed, replaced or linked over by anybody else.
+ensure_cwd_is_ours() {
+    [ -n "$(find . -maxdepth 0 -user "$(id -u)" 2>/dev/null)" ] || return 1
+    if [ -n "$(find . -maxdepth 0 \( -perm -0002 -o \( -perm -0020 ! -perm -1000 \) \) 2>/dev/null)" ]; then
+        chmod go-w . || return 1
+    fi
+}
+
+# The agent reads its anchor as the wazuh group, so the working directory is handed to that group
+# and made readable by it. Its other bits, the sticky one included, are left as they are.
+let_agent_group_read_cwd() {
+    chgrp wazuh . 2>/dev/null
+    chmod g+rx . 2>/dev/null
+}
+
+# rename_over SOURCE TARGET: renames SOURCE to TARGET. A link at TARGET is replaced, even one to a
+# directory, which plain mv -f would move SOURCE into instead; a directory at TARGET makes it fail.
+# BSD mv has no -T, and its -h still moves SOURCE into a real directory, so macOS checks for one
+# first: one created in between still receives SOURCE.
+rename_over() {
+    if [ "${OS}" = "Darwin" ]; then
+        { [ ! -d "$2" ] || [ -L "$2" ]; } && mv -fh "$1" "$2"
+    else
+        mv -fT "$1" "$2"
+    fi
+}
+
+# install_ca_anchor SNAPSHOT: installs SNAPSHOT as root-ca.pem in the working directory. Written to a
+# temporary file renamed over the target, so a reader never sees half an anchor and a link planted
+# at the name is replaced rather than written through. root:wazuh 640, like wpk_root.pem.
+install_ca_anchor() {
+    ensure_cwd_is_ours || return 1
+    let_agent_group_read_cwd
+    CA_TMP=$(mktemp ./.root-ca.pem.XXXXXX 2>/dev/null) || return 1
+    chown root:wazuh "${CA_TMP}" 2>/dev/null
+    if chmod 640 "${CA_TMP}" && cat "$1" > "${CA_TMP}" && rename_over "${CA_TMP}" root-ca.pem; then
+        return 0
+    fi
+    rm -f "${CA_TMP}"
+    return 1
+}
+
+# Installed only past the last gate that can abort: with <verification_mode> unset the
+# anchor's mere presence flips the agent to 'full' on its next restart, so writing it
+# earlier left an aborted upgrade with a changed trust posture on the old version.
+if [ "${CA_VALIDATED}" = "1" ]; then
+    # An operator can point <certificate_authorities> at this exact default path
+    # themselves (rather than relying on manager delivery) -- comparing resolved
+    # paths where possible, since the config value and DEFAULT_CA_FILE are rarely
+    # written the same way (absolute vs. relative) even when they name the same
+    # file. Overwriting still proceeds either way (the manager is authoritative
+    # for its own CA), but a collision with an operator's own explicit pin is a
+    # more consequential event than routine anchor rotation and deserves its own,
+    # louder log line rather than reading identically to one.
+    OPERATOR_CA_PATH=$(xml_value agent ssl certificate_authorities)
+    CA_PINNED_HERE=0
+    if [ -n "${OPERATOR_CA_PATH}" ]; then
+        if command -v readlink > /dev/null 2>&1 \
+            && [ -n "$(readlink -f "${OPERATOR_CA_PATH}" 2>/dev/null)" ] \
+            && [ "$(readlink -f "${OPERATOR_CA_PATH}" 2>/dev/null)" = "$(readlink -f "${DEFAULT_CA_FILE}" 2>/dev/null)" ]; then
+            CA_PINNED_HERE=1
+        elif [ "${OPERATOR_CA_PATH}" = "${DEFAULT_CA_FILE}" ]; then
+            CA_PINNED_HERE=1
+        fi
+    fi
+
+    # Replacing an already-present anchor is a bigger event than a first install --
+    # the manager is authoritative for its own CA, so this always proceeds, but the
+    # operator should be able to grep for the distinction rather than see the same
+    # "Installed" line either way.
+    if [ "${CA_PINNED_HERE}" = "1" ]; then
+        CA_INSTALL_VERB="Overwrote the operator-pinned (<certificate_authorities>${OPERATOR_CA_PATH}</certificate_authorities>)"
+    elif [ -f "${DEFAULT_CA_FILE}" ]; then
+        CA_INSTALL_VERB="Replaced the existing"
+    else
+        CA_INSTALL_VERB="Installed the delivered"
+    fi
+
+    # etc/ is writable by the wazuh group, which can turn etc/certs into a link, or into a
+    # directory of its own, and chown, chmod and cp would follow either as root. So etc/certs is
+    # only created when nothing is there (mkdir -m sets the mode as it creates it, and chown -h
+    # never follows a link), an existing one keeps its mode, and the anchor is written from
+    # inside the directory (see in_dir()).
+    DEFAULT_CA_DIR="$(dirname "${DEFAULT_CA_FILE}")"
+    if [ ! -e "${DEFAULT_CA_DIR}" ] && [ ! -L "${DEFAULT_CA_DIR}" ]; then
+        mkdir -m 750 "${DEFAULT_CA_DIR}" 2>/dev/null && chown -h root:wazuh "${DEFAULT_CA_DIR}" 2>/dev/null
+    fi
+
+    if ! in_dir "${DEFAULT_CA_DIR}" ensure_cwd_is_ours; then
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Not installing the delivered CA at ${DEFAULT_CA_FILE}: ${DEFAULT_CA_DIR} is missing, is a link, or belongs to another user; leaving any existing anchor untouched and continuing the upgrade." >> ./logs/upgrade.log
+    elif in_dir "${DEFAULT_CA_DIR}" install_ca_anchor "${CA_SNAPSHOT}"; then
+        # Only a real bundle says how many certificates it carried: a one-certificate
+        # delivery is what the manager sends and what every install has logged until
+        # now, so that line stays exactly as it was and stays greppable.
+        CA_COUNT_SUFFIX=""
+        if [ "${CA_CERT_COUNT:-1}" -gt 1 ]; then
+            CA_COUNT_SUFFIX=" (${CA_CERT_COUNT} certificates)"
+        fi
+
+        # A present, readable anchor here is picked up automatically at agent startup
+        # and resolves an unset <verification_mode> to 'full' against it -- so this
+        # alone is sufficient to activate verification; no <ssl> edit is needed.
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - ${CA_INSTALL_VERB} CA at ${DEFAULT_CA_FILE}${CA_COUNT_SUFFIX}. ossec.conf is not modified, but this alone is sufficient to activate certificate verification: the agent resolves an unset <verification_mode> to 'full' against a present, readable anchor at this path." >> ./logs/upgrade.log
+    else
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Could not install the delivered CA at ${DEFAULT_CA_FILE} (write failure); leaving any existing anchor untouched and continuing the upgrade." >> ./logs/upgrade.log
+    fi
+
+    rm -f "${CA_SNAPSHOT}"
+    rm -f "${INCOMING_CA_FILE}"
+fi
+
+# Whether the package manager's own install hooks can be trusted to have already
+# stopped and restarted the daemon (deb's preinst/postinst, rpm's %pre/%post -- both
+# confirmed in this repo to use a wazuh.restart marker + an explicit stop-then-restart).
+# Left 0 for apk and the install.sh fallback: install.sh's own stop helper never
+# restarts, so wazuh-control status already reports "not running" there regardless, but
+# no equivalent packaging/install hooks for apk exist anywhere in this codebase to
+# confirm the same restart behavior -- treat it the same as the fallback rather than
+# assume an unconfirmed package format behaves like deb/rpm.
+PACKAGE_MANAGER_HANDLES_RESTART=0
+
 if [[ "$OS" == "Darwin" ]]; then
     installer -pkg ./var/upgrade/wazuh-agent* -target / >> ./logs/upgrade.log 2>&1
 elif [[ "$OS" == "Linux" ]]; then
     if pkg_exists ./var/upgrade/*.rpm; then
         if command -v rpm >/dev/null 2>&1; then
+            # Set before, not after, the actual install command: RESULT=$? below reads
+            # the exit status of the LAST command in whichever branch ran, and a plain
+            # assignment always returns 0 -- placing this after rpm -UFvh would make
+            # RESULT always read as success regardless of whether the package install
+            # itself actually failed.
+            PACKAGE_MANAGER_HANDLES_RESTART=1
             rpm -UFvh ./var/upgrade/wazuh-agent* >> ./logs/upgrade.log 2>&1
         else
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. RPM package found but rpm command not found." >> ./logs/upgrade.log
@@ -640,6 +1137,8 @@ elif [[ "$OS" == "Linux" ]]; then
         fi
     elif pkg_exists ./var/upgrade/*.deb; then
         if command -v dpkg >/dev/null 2>&1; then
+            # Same ordering reason as the rpm branch above.
+            PACKAGE_MANAGER_HANDLES_RESTART=1
             dpkg -i --force-confdef ./var/upgrade/wazuh-agent* >> ./logs/upgrade.log 2>&1
         else
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. DEB package found but dpkg command not found." >> ./logs/upgrade.log
@@ -675,10 +1174,44 @@ echo "$(date +"%Y/%m/%d %H:%M:%S") - Installation result = ${RESULT}" >> ./logs/
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Checking for Wazuh Agent control script." >> ./logs/upgrade.log
 
 if [ -f "./bin/wazuh-control" ]; then
-    echo "$(date +"%Y/%m/%d %H:%M:%S") - Restarting Wazuh Agent." >> ./logs/upgrade.log
     if [[ "$OS" == "Darwin" ]]; then
-        launchctl bootstrap system /Library/LaunchDaemons/com.wazuh.agent.plist >> ./logs/upgrade.log 2>&1 || true
+        if ./bin/wazuh-control status 2>/dev/null | grep -q "wazuh-agentd is running"; then
+            # packages/macos/package_files/postinstall.sh (embedded in the .pkg) already
+            # restarted the agent via 'launchctl bootstrap' when it found the WAZUH_RESTART
+            # marker preinstall.sh drops for a running agent. Bootstrapping the same label
+            # into the system domain again here fails ("Bootstrap failed: 5: Input/output
+            # error") because it's already loaded, and races this script's own
+            # wait-for-connection loop below against a daemon it never actually restarted.
+            #
+            # Checked via wazuh-agentd's own liveness (matching the deb/rpm branch below),
+            # not 'launchctl print system/com.wazuh.agent': the generated LaunchDaemon has no
+            # KeepAlive, and its Wazuh-launcher wrapper swallows a failed 'wazuh-control start'
+            # without exiting (falls straight into its request-polling loop regardless) -- so
+            # the launchd job can read as loaded/running even when wazuh-agentd itself never
+            # came up, which would wrongly skip the restart below.
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Wazuh Agent is already running (restarted by the package installer); skipping redundant restart." >> ./logs/upgrade.log
+        else
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Restarting Wazuh Agent." >> ./logs/upgrade.log
+            launchctl bootstrap system /Library/LaunchDaemons/com.wazuh.agent.plist >> ./logs/upgrade.log 2>&1 || true
+        fi
+    elif [ "${PACKAGE_MANAGER_HANDLES_RESTART}" = "1" ] && ./bin/wazuh-control status 2>/dev/null | grep -q "wazuh-agentd is running"; then
+        # deb's postinst / rpm's %post already stopped the pre-upgrade agent (preinst/%pre)
+        # and restarted it after install -- via systemctl when the host runs systemd -- when
+        # it finds the wazuh.restart marker those scripts drop. Calling wazuh-control restart
+        # again here bypasses systemd and kills the daemon set it's still supervising as
+        # wazuh-agent.service; systemd then marks the unit "deactivated" with nothing left to
+        # bring it back up, and this script's own wait-for-connection loop below times out
+        # against a dead agent. If wazuh-agentd is already up, trust that restart instead of
+        # racing it.
+        #
+        # Gated on PACKAGE_MANAGER_HANDLES_RESTART (deb/rpm only): without it, a leftover
+        # pre-upgrade wazuh-agentd process from an install method that does NOT restart on
+        # its own (apk has no confirmed install hooks in this codebase; see where that flag
+        # is set) would be misread as "already restarted," silently skipping the restart and
+        # leaving the OLD binary running despite a logged success.
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Wazuh Agent is already running (restarted by the package installer); skipping redundant restart." >> ./logs/upgrade.log
     else
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Restarting Wazuh Agent." >> ./logs/upgrade.log
         ./bin/wazuh-control restart >> ./logs/upgrade.log 2>&1
     fi
 else
@@ -688,12 +1221,21 @@ fi
 
 sleep 1
 
+# wazuh-agentd writes its state file after dropping privileges, into var/run, which the wazuh
+# group can write. Sourced as root, it would run whatever that group put there, so only the
+# status value is read from it. Prints nothing when the file holds no status.
+read_agent_status() {
+    sed -n "s/^status='\([a-z]*\)'\$/\1/p" ./var/run/wazuh-agentd.state 2>/dev/null | tail -n 1
+}
 
 # Wait connection
 status="pending"
 COUNTER=30
 while [ "$status" != "connected" -a $COUNTER -gt 0 ]; do
-    . ./var/run/wazuh-agentd.state >> ./logs/upgrade.log 2>&1
+    AGENT_STATUS=$(read_agent_status)
+    if [ -n "${AGENT_STATUS}" ]; then
+        status="${AGENT_STATUS}"
+    fi
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Waiting connection... Remaining attempts: ${COUNTER}." >> ./logs/upgrade.log
     sleep 1
     COUNTER=$[COUNTER - 1]

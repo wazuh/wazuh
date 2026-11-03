@@ -223,7 +223,22 @@ void AgentInfoImpl::start(int interval, int integrityInterval, const std::functi
         }
     }
 
-    // Initial delay before first run to allow other modules to start
+    // Initial delay before first run to allow other modules to start -- but only when this
+    // cycle could actually need them running. The delay exists so coordinateModules() (which
+    // pauses FIM/SCA/Syscollector, see COORDINATION_MODULES) finds them already started; that
+    // path is reached only through performDeltaSync(), which itself is skipped whenever
+    // m_isFirstRun/m_isFirstGroupsRun is true (see the do-while loop below). So when BOTH are
+    // still true here (a genuinely fresh agent-info instance: no metadata or groups baseline
+    // yet), coordination cannot fire this cycle no matter how long we wait, and the delay is
+    // pure, harmful latency -- it is exactly what stalls populateAgentMetadata() past
+    // syscollector's own first VD sync attempt (#39543): both start at the same moment, but
+    // syscollector's first scan-to-sync takes ~1-2s while this delay held metadata_provider's
+    // vd_feed_offset at its stale/zero value for a full 5s, guaranteeing a 409 the manager's
+    // feed had already moved past. Skipping it here does not touch the delay for any other
+    // cycle where a real metadata/group change needs the coordination it protects.
+    const bool coordinationCouldRunThisCycle = !m_isFirstRun || !m_isFirstGroupsRun;
+
+    if (coordinationCouldRunThisCycle)
     {
         std::unique_lock<std::mutex> lock(m_mutex);
         m_cv.wait_for(lock, std::chrono::seconds(5), [this] { return m_stopped.load(); });
@@ -422,9 +437,9 @@ bool AgentInfoImpl::parseResponseBuffer(const uint8_t* data, size_t length)
         return m_spSyncProtocol->parseResponseBuffer(data, length);
     }
 
-    // A late manager response can arrive after stop() has torn the sync protocol
-    // down; that is expected during shutdown, so don't raise it to WARNING then.
-    m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Sync protocol not initialized or invalid data");
+    // A late manager response can arrive after the sync protocol was torn down, also by a run
+    // loop that ended on the shutdown flag before stop(); expected then, so don't raise it to WARNING.
+    m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "Sync protocol not initialized or invalid data");
     return false;
 }
 
@@ -670,6 +685,11 @@ void AgentInfoImpl::updateMetadataProvider(const nlohmann::json& agentMetadata, 
     copyField(metadata.os_version, sizeof(metadata.os_version), agentMetadata, "host_os_version");
     copyField(metadata.cluster_name, sizeof(metadata.cluster_name), agentMetadata, "cluster_name");
 
+    // metadata_provider_update() (called below) ignores this field -- vd_feed_offset is
+    // exclusively published via metadata_provider_update_vd_feed_offset(), from
+    // observeVdFeedOffset() (#39543 review follow-up). Still copied here so `metadata` stays a
+    // faithful snapshot for any future consumer of this struct; it is not currently used for
+    // anything else downstream of this function.
     if (agentMetadata.contains("vd_feed_offset") && agentMetadata["vd_feed_offset"].is_number_unsigned())
     {
         metadata.vd_feed_offset = agentMetadata["vd_feed_offset"].get<uint64_t>();
@@ -769,7 +789,8 @@ std::vector<std::string> AgentInfoImpl::readAgentGroups() const
 
     // merged.mg has two possible formats:
     // 1. Single group: First line is "#groupname" (where groupname is not a hash)
-    // 2. Multiple groups: First line is "#hash_id" (8-char hex), groups appear as "<!-- Source file:
+    // 2. Multiple groups: First line is "#hash_id" (32-char hex; 8-char before the hash was widened),
+    //    groups appear as "<!-- Source file:
     // groupname/agent.conf -->"
     bool isFirstLine = true;
     bool foundXMLComments = false;
@@ -792,9 +813,9 @@ std::vector<std::string> AgentInfoImpl::readAgentGroups() const
 
                 if (!firstLineValue.empty())
                 {
-                    // Check if this looks like a hash (8 hex characters) or a group name
-                    // Hashes are typically 8 characters and all hexadecimal
-                    bool looksLikeHash = (firstLineValue.length() == 8);
+                    // Check if this looks like a hash or a group name. Hashes are 32 hexadecimal
+                    // characters, or 8 in a merged.mg written before the hash was widened
+                    bool looksLikeHash = (firstLineValue.length() == 32 || firstLineValue.length() == 8);
 
                     if (looksLikeHash)
                     {
@@ -1197,7 +1218,7 @@ AgentInfoImpl::ModuleResponse AgentInfoImpl::queryModuleWithRetry(const std::str
         // down. On macOS the module thread is joined without a timeout (see the non-Linux
         // branch in src/wazuh_modules/src/main.c), so a non-interruptible retry here would
         // stall modulesd shutdown, leak its PID file and block the next start.
-        if (m_stopped)
+        if (isShutdownInProgress())
         {
             m_logFunction(LOG_INFO, "Agent stopping, aborting query to " + moduleName);
 
@@ -1268,7 +1289,7 @@ AgentInfoImpl::ModuleResponse AgentInfoImpl::queryModuleWithRetry(const std::str
 
             if (m_cv.wait_for(lock,
                               std::chrono::milliseconds(COORDINATION_RETRY_DELAY_MS),
-                              [this] { return m_stopped.load(); }))
+                              [this] { return isShutdownInProgress(); }))
             {
                 lock.unlock();
                 m_logFunction(LOG_INFO, "Agent stopping, aborting query to " + moduleName);
@@ -1315,7 +1336,7 @@ void AgentInfoImpl::resumePausedModules(const std::set<std::string>& pausedModul
 
         if (!response.success)
         {
-            if (!m_stopped && !response.isModuleUnavailable)
+            if (!isShutdownInProgress() && !response.isModuleUnavailable)
             {
                 m_logFunction(LOG_WARNING, "Failed to resume module " + module + ": " + response.response);
             }
@@ -1337,12 +1358,12 @@ AgentInfoImpl::PauseProbeResult AgentInfoImpl::pollFimPauseCompletion(const std:
     auto waitOrStopped = [this]() -> bool
     {
         std::unique_lock<std::mutex> lock(m_mutex);
-        return m_cv.wait_for(lock, std::chrono::milliseconds(m_pausePollDelayMs), [this] { return m_stopped.load(); });
+        return m_cv.wait_for(lock, std::chrono::milliseconds(m_pausePollDelayMs), [this] { return isShutdownInProgress(); });
     };
 
     for (int attempt = 1; attempt <= MAX_PAUSE_POLL_ATTEMPTS; ++attempt)
     {
-        if (m_stopped)
+        if (isShutdownInProgress())
         {
             m_logFunction(LOG_INFO, "Agent stopping, aborting FIM pause poll for " + moduleName);
             return PauseProbeResult::Failed;
@@ -1353,7 +1374,8 @@ AgentInfoImpl::PauseProbeResult AgentInfoImpl::pollFimPauseCompletion(const std:
 
         if (!pollResponse.success)
         {
-            m_logFunction(LOG_WARNING,
+            // A shutdown stops syscheckd before stop() reaches this module: expected then.
+            m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING,
                           "Failed to poll pause status for " + moduleName + " (attempt " + std::to_string(attempt) +
                           "/" + std::to_string(MAX_PAUSE_POLL_ATTEMPTS) + ")");
 
@@ -1479,7 +1501,7 @@ bool AgentInfoImpl::pollFlushCompletion(std::set<std::string> pendingModules)
         m_logFunction(LOG_DEBUG_VERBOSE, "Polling " + moduleName + " for flush completion (async flush)");
     }
 
-    while (!m_stopped && !pendingModules.empty())
+    while (!isShutdownInProgress() && !pendingModules.empty())
     {
         std::vector<std::string> completedModules;
 
@@ -1570,7 +1592,7 @@ bool AgentInfoImpl::pollFlushCompletion(std::set<std::string> pendingModules)
 
             if (m_cv.wait_for(lock,
                               std::chrono::milliseconds(FLUSH_POLL_DELAY_MS),
-                              [this] { return m_stopped.load(); }))
+                              [this] { return isShutdownInProgress(); }))
             {
                 break; // stop requested - exit the poll loop immediately
             }
@@ -1689,7 +1711,7 @@ AgentInfoImpl::PauseCoordinationResult AgentInfoImpl::pauseCoordinationModules(s
 {
     for (const auto& module : COORDINATION_MODULES)
     {
-        if (m_stopped)
+        if (isShutdownInProgress())
         {
             m_logFunction(LOG_INFO, "Agent stopping, aborting module coordination during pause phase");
             return PauseCoordinationResult::Failed;
@@ -1701,7 +1723,7 @@ AgentInfoImpl::PauseCoordinationResult AgentInfoImpl::pauseCoordinationModules(s
         ModuleResponse response = queryModuleWithRetry(module, pauseMessage);
         m_logFunction(LOG_DEBUG, "Response from " + module + " pause: " + response.response);
 
-        if (m_stopped)
+        if (isShutdownInProgress())
         {
             m_logFunction(LOG_INFO, "Agent stopping, aborting module coordination during pause phase");
             return PauseCoordinationResult::Failed;
@@ -1790,7 +1812,7 @@ bool AgentInfoImpl::triggerModuleFlush(const std::set<std::string>& pausedModule
 {
     for (const auto& module : pausedModules)
     {
-        if (m_stopped)
+        if (isShutdownInProgress())
         {
             m_logFunction(LOG_INFO, "Agent stopping, aborting module coordination during flush trigger phase");
             return false;
@@ -1804,7 +1826,8 @@ bool AgentInfoImpl::triggerModuleFlush(const std::set<std::string>& pausedModule
 
         if (!response.success)
         {
-            m_logFunction(LOG_WARNING,
+            // Same as the pause poll: a shutdown stops syscheckd before stop() reaches this module.
+            m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING,
                           "Failed to trigger flush for " + module + " (error " + std::to_string(response.errorCode) +
                           "), aborting coordination");
             return false;
@@ -1826,7 +1849,7 @@ int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModule
     // Step 1: Get version from each module
     for (const auto& module : pausedModules)
     {
-        if (m_stopped)
+        if (isShutdownInProgress())
         {
             m_logFunction(LOG_INFO, "Agent stopping, aborting module coordination during version calculation");
             return -1;
@@ -1838,7 +1861,7 @@ int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModule
 
         if (!response.success)
         {
-            if (!m_stopped && !response.isModuleUnavailable)
+            if (!isShutdownInProgress() && !response.isModuleUnavailable)
             {
                 m_logFunction(LOG_WARNING,
                               "Failed to get version from " + module + " (error " + std::to_string(response.errorCode) +
@@ -1891,7 +1914,7 @@ int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModule
     // Step 3: Set new version on all modules
     for (const auto& module : pausedModules)
     {
-        if (m_stopped)
+        if (isShutdownInProgress())
         {
             m_logFunction(LOG_INFO, "Agent stopping, aborting module coordination during version update");
             return -1;
@@ -1903,7 +1926,7 @@ int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModule
 
         if (!response.success)
         {
-            if (!m_stopped && !response.isModuleUnavailable)
+            if (!isShutdownInProgress() && !response.isModuleUnavailable)
             {
                 m_logFunction(LOG_WARNING,
                               "Failed to set version on " + module + " (error " + std::to_string(response.errorCode) +
@@ -2496,11 +2519,42 @@ AgentInfoImpl::VdOffsetObserveResult AgentInfoImpl::observeVdFeedOffset(uint64_t
 
         if (state.hasOffset && offset <= state.offset)
         {
-            // Not newer: agents never move the stored offset backward (N3), and an exact
-            // repeat is a no-op too.
+            // Not newer for the durable record below -- but metadata_provider's live copy is a
+            // separate store with its own lifecycle, and on at least one platform it does not
+            // survive every restart this durable table does (a fresh, empty in-memory record
+            // starts back at an unset offset, while this on-disk table keeps its last known
+            // value across that same restart). Without republishing here, a restart right after
+            // this exact offset was already durably known would leave the live copy stuck at its
+            // post-restart default forever: this early return is the only path a repeated,
+            // unchanged offset ever takes, so it is also the only chance to notice the live copy
+            // needs it again. The call is cheap and idempotent -- metadata_provider itself decides
+            // whether it can accept it yet -- so repeating it on every unchanged observation costs
+            // nothing once the live copy already matches. Publishes state.offset, the durably-known
+            // value, rather than the incoming (not-newer, possibly backward) one -- this branch is
+            // also reached in the defensive backward-offset case this durable record already
+            // guards against, and the live copy must never regress to a value older than what is
+            // already trusted here.
+            metadata_provider_update_vd_feed_offset(state.offset);
             result.pending = state.pending;
             result.pendingOffset = state.pendingOffset;
             return result;
+        }
+
+        // Publish to metadata_provider right here, on this IPC/query thread, BEFORE the durable
+        // DBSync write below -- not just to agent-info's own durable vd_feed_state table.
+        // Waiting for the next populateAgentMetadata() cycle (main loop, its own cadence) is what
+        // let a fresh agent's first VD sync race an empty/stale offset in metadata_provider
+        // (#39543): local metadata gathering (hostname/os info, fast, no network) usually
+        // finishes well before this observe() call (which needs a round trip to the manager)
+        // ever fires, so has_metadata is normally already true here and this actually takes
+        // effect. When it is not yet true (no full snapshot exists at all so far), this is a
+        // no-op and the value is simply left for that first full populate to pick up, same as
+        // before this call existed. Ordered ahead of writeVdFeedStateLocked() (a DBSync
+        // transaction) specifically because that write is not free -- publishing first shaves
+        // that extra latency off the window a racing first VD sync could still land in.
+        if (metadata_provider_update_vd_feed_offset(offset) == 0)
+        {
+            m_logFunction(LOG_DEBUG, "Published a fresh VD feed offset directly to metadata_provider.");
         }
 
         state.hasOffset = true;
@@ -2727,7 +2781,7 @@ bool AgentInfoImpl::performDeltaSync(const std::string& table)
     {
         std::lock_guard<std::mutex> lock(m_dbSyncMutex);
 
-        if (!m_dBSync || m_stopped)
+        if (!m_dBSync || isShutdownInProgress())
         {
             m_logFunction(LOG_DEBUG, "Skipping delta sync for " + table + " (module stopping or DB unavailable)");
             return false;
@@ -2775,7 +2829,7 @@ bool AgentInfoImpl::performIntegritySync(const std::string& table)
     {
         std::lock_guard<std::mutex> lock(m_dbSyncMutex);
 
-        if (!m_dBSync || m_stopped)
+        if (!m_dBSync || isShutdownInProgress())
         {
             m_logFunction(LOG_DEBUG, "Skipping integrity sync for " + table + " (module stopping or DB unavailable)");
             return false;

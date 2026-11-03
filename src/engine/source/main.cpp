@@ -1,19 +1,24 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <algorithm>
+#include <atomic>
 #include <csignal>
 #include <exception>
 #include <filesystem>
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <vector>
 
+#include <sys/resource.h>
+
 #include <agentcache/agentMetadataCache.hpp>
+#include <api/contentsync/handlers.hpp>
 #include <api/handlers.hpp>
 #include <api/status/handlers.hpp>
 #include <base/eventParser.hpp>
 #include <base/json.hpp>
-#include <base/libwazuhshared.hpp>
 #include <base/logging.hpp>
 #include <base/managerConfig.hpp>
 #include <base/process.hpp>
@@ -23,12 +28,17 @@
 #include <bk/rx/controller.hpp>
 #include <builder/allowedFields.hpp>
 #include <builder/builder.hpp>
+#include <cmcontent/contentTopic.hpp>
+#include <cmcontent/registration.hpp>
+#include <cmcontent/releasableIndexer.hpp>
 #include <cmcrud/cmcrudservice.hpp>
 #include <cmstore/cmstore.hpp>
 #include <cmsync/cmsync.hpp>
 #include <conf/conf.hpp>
 #include <conf/keys.hpp>
 #include <confremote/confremotemanager.hpp>
+#include <contentIndexerAdapters.hpp>
+#include <contentLogging.hpp>
 #include <defs/defs.hpp>
 #include <dumper/dumper.hpp>
 #include <eMessages/eMessage.h>
@@ -48,6 +58,7 @@
 #include <rawevtindexer/raweventindexer.hpp>
 #include <router/orchestrator.hpp>
 #include <scheduler/scheduler.hpp>
+#include <scheduler/triggerableTask.hpp>
 #include <schemf/schema.hpp>
 #include <store/drivers/fileDriver.hpp>
 #include <store/store.hpp>
@@ -78,8 +89,8 @@ void printUsage(const char* progName)
               << "Options:\n"
               << "  -f    Run in foreground (do not daemonize)\n"
               << "  -t    Test configuration\n"
-              << "  -d    Test configurationRun in debug mode. This option may be repeated to increase the verbosity "
-                 "of the debug messages.\n"
+              << "  -d    Run in debug mode. This option may be repeated to increase the verbosity of the debug "
+                 "messages.\n"
               << "  -h    Show this help message and exit\n";
     std::exit(EXIT_SUCCESS);
 }
@@ -149,18 +160,8 @@ int main(int argc, char* argv[])
     }
     else
     {
-        // Use wazuh-shared logging
-        try
-        {
-            base::libwazuhshared::init();
-            exitHandler.add([]() { base::libwazuhshared::shutdown(); });
-        }
-        catch (const std::exception& e)
-        {
-            fprintf(stderr, "Error initializing wazuh-shared: %s\n", e.what());
-            return EXIT_FAILURE;
-        }
-
+        // Manager mode: home resolved like the other manager daemons (exits when it is not a directory)
+        base::process::setManagerMode();
         const auto wazuhHome = base::process::getWazuhHome();
         if (chdir(wazuhHome.string().c_str()) == -1)
         {
@@ -168,10 +169,9 @@ int main(int argc, char* argv[])
             return EXIT_FAILURE;
         }
 
-        // Manager configuration (etc/wazuh-manager.conf). -t validates it, including the files it
-        // references; a normal start loads it once (no file checks) and registers it as the section
-        // provider of libwazuhshared.so before the first log, so the logging format and the cluster
-        // getters inside the shared library read the same document.
+        // Manager configuration (/etc/wazuh-manager/wazuh-manager.conf; relative paths inside it resolve
+        // against the home). -t validates it, including the files it references; a normal start loads it
+        // once (no file checks) before the first log.
         if (opts.testConfig)
         {
             if (const auto error = base::managerConfig::validate(wazuhHome))
@@ -185,7 +185,6 @@ int main(int argc, char* argv[])
         try
         {
             base::managerConfig::load(wazuhHome);
-            base::managerConfig::registerSharedHook();
         }
         catch (const std::exception& e)
         {
@@ -193,14 +192,38 @@ int main(int argc, char* argv[])
             return EXIT_FAILURE;
         }
 
-        try
+        // Manager log (logs/wazuh-manager.log|.json, relative to the home), before the first log line and
+        // goDaemon(); the debug level is applied later, with the internal options.
+        const auto logFormat = base::managerConfig::logFormat();
+        base::logging::initManager(
+            {"logs/wazuh-manager.log", "logs/wazuh-manager.json", logFormat.plain, logFormat.json});
+        // Shared-library lines logged through Log::GLOBAL_LOG_FUNCTION (e.g. indexer_connector's monitoring) go to
+        // the same sink, as the removed logging::init() did.
+        Log::assignLogFunction(logging::createStandaloneLogFunction());
+    }
+
+    // Raise the soft file descriptor limit; the hard limit belongs to whoever started the manager
+    {
+        constexpr rlim_t target = 8192;
+        struct rlimit limit {};
+        if (getrlimit(RLIMIT_NOFILE, &limit) == 0 && limit.rlim_cur < target)
         {
-            logging::init();
-        }
-        catch (const std::exception& e)
-        {
-            std::cerr << e.what() << '\n';
-            return EXIT_FAILURE;
+            const rlim_t soft = (limit.rlim_max == RLIM_INFINITY || limit.rlim_max >= target) ? target : limit.rlim_max;
+            if (soft > limit.rlim_cur)
+            {
+                limit.rlim_cur = soft;
+                if (setrlimit(RLIMIT_NOFILE, &limit) != 0)
+                {
+                    LOG_ERROR("Could not set the file descriptor limit to {}: {}", soft, strerror(errno));
+                }
+            }
+            if (soft < target)
+            {
+                LOG_WARNING("File descriptor limit is {}, below the {} requested by the engine. Raise the limit the "
+                            "process is started with (LimitNOFILE, ulimit -n, container ulimits) to go higher.",
+                            soft,
+                            target);
+            }
         }
     }
 
@@ -210,8 +233,12 @@ int main(int argc, char* argv[])
         base::process::goDaemon();
     }
 
-    // Load the configuration
-    const auto confPath = base::process::getWazuhHome() / "etc/wazuh-manager-internal-options.conf";
+    // Load the configuration. Manager mode: the internal options live in the fixed configuration directory.
+    // Standalone mode never reads the file (conf::Conf::load()); its path stays relative to the cwd.
+    const auto confPath = base::process::isStandaloneModeEnable()
+                              ? base::process::getWazuhHome() / "etc/wazuh-manager-internal-options.conf"
+                              : std::filesystem::path(std::string(base::managerConfig::MANAGER_CONF_DIR))
+                                    / "wazuh-manager-internal-options.conf";
     auto confManager = conf::Conf(std::make_shared<conf::FileLoader>(confPath));
     try
     {
@@ -246,6 +273,15 @@ int main(int argc, char* argv[])
         sigaction(SIGPIPE, &sigPipeHandler, nullptr);
     }
 
+    // Content manager: its lines go to the engine's log under the engine's tag. Only when event
+    // processing is on, the switch that decides whether CMSync and IocSync exist (D3 of the content
+    // manager).
+    if (confManager.get<bool>(conf::key::SERVER_ENABLE_EVENT_PROCESSING))
+    {
+        content_manager::setLogFunction(logging::createStandaloneLogFunction(),
+                                        "wazuh-manager-analysisd:content-updater");
+    }
+
     // Engine start - Init modules
 
     std::shared_ptr<store::Store> store;
@@ -260,6 +296,9 @@ int main(int argc, char* argv[])
     std::shared_ptr<scheduler::Scheduler> scheduler;
     std::shared_ptr<streamlog::LogManager> streamLogger;
     std::shared_ptr<wiconnector::WIndexerConnector> indexerConnector;
+    /// The Engine's one indexer connector, as the content registrations use it (D1 of the content
+    /// manager): the same instance indexerConnector forwards to, never a second connection.
+    std::shared_ptr<content_manager::IContentIndexer> contentIndexer;
     std::shared_ptr<httpsrv::Server> apiServer;
     std::shared_ptr<dumper::Dumper> dumper;
     std::shared_ptr<raweventindexer::RawEventIndexer> rawEventIndexer;
@@ -269,7 +308,10 @@ int main(int argc, char* argv[])
     std::shared_ptr<cm::crud::ICrudService> cmCrudService;
     std::shared_ptr<cm::sync::CMSync> cmSyncService;
     std::shared_ptr<ioc::sync::IocSync> iocSyncService;
+    std::shared_ptr<scheduler::TriggerableTask> cmSyncTask;
+    std::shared_ptr<scheduler::TriggerableTask> iocSyncTask;
     std::shared_ptr<agentcache::AgentMetadataCache> agentMetadataCache;
+    std::size_t agentMetadataCacheCleanInterval {0}; // validated with the cache, before any event is accepted
     bool firstStart {false};
 
     try
@@ -279,11 +321,11 @@ int main(int argc, char* argv[])
         // is not permitted anymore.
         if (!base::process::isStandaloneModeEnable() && confManager.get<bool>(conf::key::DROP_PRIVILEGES))
         {
-            const auto gid = base::process::privSepGetGroup(base::process::WAZUH_GROUP);
-            base::process::privSepSetGroup(gid);
+            const auto gid = base::process::lookupGid(base::process::WAZUH_GROUP);
+            base::process::dropToGroup(gid);
 
-            const auto uid = base::process::privSepGetUser(base::process::WAZUH_USER);
-            base::process::privSepSetUser(uid);
+            const auto uid = base::process::lookupUid(base::process::WAZUH_USER);
+            base::process::dropToUser(uid);
         }
 
         // Set new log level if it is different from the default
@@ -420,8 +462,6 @@ int main(int argc, char* argv[])
             {
                 wiconnector::Config icConfig {};
                 icConfig.hosts = confManager.get<std::vector<std::string>>(conf::key::INDEXER_HOST);
-                icConfig.username = confManager.get<std::string>(conf::key::INDEXER_USER);
-                icConfig.password = confManager.get<std::string>(conf::key::INDEXER_PASSWORD);
                 // SSL config
                 {
                     icConfig.ssl.cert = confManager.get<std::string>(conf::key::INDEXER_SSL_CERTIFICATE);
@@ -433,7 +473,7 @@ int main(int argc, char* argv[])
 
             try
             {
-                // Get base configuration (from standalone or the `indexer` section of etc/wazuh-manager.conf)
+                // Get base configuration (from standalone or the `indexer` section of wazuh-manager.conf)
                 const auto baseJsonCnf = base::process::isStandaloneModeEnable()
                                              ? standAloneConfig()
                                              : base::managerConfig::sectionJson("indexer");
@@ -525,15 +565,21 @@ int main(int argc, char* argv[])
                 }
                 jsonCnf.setUint64(monitoringInterval, "/monitoring_interval_seconds");
 
-                const auto maxHitsPerRequest =
-                    confManager.get<std::size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE);
-
-                // Create indexer connector with enhanced configuration
-                indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf.str(), maxHitsPerRequest);
-                // Register destructive shutdown first so it executes (LIFO) AFTER requestShutdown,
-                // ensuring in-flight pagination loops abort and release shared locks before destroy.
-                exitHandler.add([indexerConnector]() { indexerConnector->shutdown(); });
-                exitHandler.add([indexerConnector]() { indexerConnector->requestShutdown(); });
+                // One connector for everything: event indexing and every content download share it,
+                // so there is one health monitor and an outage is reported once.
+                const auto asyncConnector = wiconnector::makeIndexerConnectorAsync(jsonCnf.str());
+                indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(asyncConnector);
+                // The content topics hold their indexer for their whole life, so their share is
+                // released here too: the connector stops at this point, not when main returns.
+                auto releasableIndexer =
+                    std::make_shared<cmcontent::ReleasableIndexer>(content_manager::makeContentIndexer(asyncConnector));
+                contentIndexer = releasableIndexer;
+                exitHandler.add(
+                    [indexerConnector, releasableIndexer]()
+                    {
+                        releasableIndexer->release();
+                        indexerConnector->shutdown();
+                    });
 
                 // Register pull metric for indexer queue (output/egress)
                 std::weak_ptr<wiconnector::WIndexerConnector> wIndexer = indexerConnector;
@@ -573,7 +619,8 @@ int main(int argc, char* argv[])
             LOG_INFO("Indexer Connector DISABLED - events will not be indexed");
         }
 
-        // Stream log for alerts an archive
+        // Stream logger: rotating per-channel files under the streamlog base path (logs/<channel>/ by
+        // default) for the builder's file outputs and the event dumper
         if (enableProcessing)
         {
 
@@ -694,51 +741,122 @@ int main(int argc, char* argv[])
                 bytesDescription);
         }
 
-        // CMsync
+        // Content sync (rulesets and IOCs): one service per content, each run by a task the
+        // scheduler runs on its interval and the API can run now.
         if (enableProcessing)
         {
-            auto maxRetries = confManager.get<size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_MAX_RETRIES);
-            auto retryInterval = confManager.get<size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_RETRY_INTERVAL);
+            const auto contentOptions = [&confManager](std::size_t pageSize)
+            {
+                cmcontent::Options options;
+                options.pageSize = pageSize;
+                options.pitKeepAlive = confManager.get<std::string>(conf::key::CONTENT_PIT_KEEP_ALIVE);
+                options.consumerCacheSeconds = confManager.get<size_t>(conf::key::CONTENT_CONSUMER_CACHE_SECONDS);
+                options.consumerRetrySeconds = confManager.get<size_t>(conf::key::CONTENT_CONSUMER_RETRY_INTERVAL);
+                return options;
+            };
+            const auto topicFactory = cmcontent::defaultTopicFactory(contentIndexer);
+
             cmSyncService = std::make_shared<cm::sync::CMSync>(
-                indexerConnector, cmCrudService, store, orchestrator, maxRetries, retryInterval);
+                cmCrudService,
+                store,
+                orchestrator,
+                topicFactory,
+                contentOptions(confManager.get<size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE)),
+                cmcontent::RetryPolicy {confManager.get<size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_MAX_RETRIES),
+                                        confManager.get<size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_RETRY_INTERVAL)});
+            exitHandler.add([cmSyncService]() { cmSyncService->requestShutdown(); });
             LOG_INFO("Content Manager Sync Service initialized");
 
-            exitHandler.add([cmSyncService]() { cmSyncService->requestShutdown(); });
-        }
-
-        // IOCSync
-        if (enableProcessing)
-        {
-            // Create IOC Sync Service
-            auto maxRetries = confManager.get<size_t>(conf::key::IOC_INDEXER_CONNECTOR_MAX_RETRIES);
-            auto retryInterval = confManager.get<size_t>(conf::key::IOC_INDEXER_CONNECTOR_RETRY_INTERVAL);
-            auto iocSyncBatchSize = confManager.get<size_t>(conf::key::IOC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE);
             iocSyncService = std::make_shared<ioc::sync::IocSync>(
-                indexerConnector, IOCkvdb, store, maxRetries, retryInterval, iocSyncBatchSize);
+                IOCkvdb,
+                store,
+                topicFactory,
+                contentOptions(confManager.get<size_t>(conf::key::IOC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE)),
+                cmcontent::RetryPolicy {confManager.get<size_t>(conf::key::IOC_INDEXER_CONNECTOR_MAX_RETRIES),
+                                        confManager.get<size_t>(conf::key::IOC_INDEXER_CONNECTOR_RETRY_INTERVAL)});
+            exitHandler.add([iocSyncService]() { iocSyncService->requestShutdown(); });
             LOG_INFO("IOC Sync Service initialized");
 
-            exitHandler.add([iocSyncService]() { iocSyncService->requestShutdown(); });
-
-            // Add IOC sync to scheduler
-            auto iocSyncInterval = confManager.get<std::size_t>(conf::key::IOC_SYNC_INTERVAL);
-            if (iocSyncInterval > 0)
+            // Logs only on transitions between "no enabled route" and "at least one".
+            auto lastWarned = std::make_shared<std::optional<bool>>();
+            const auto reportRouteStatus = [orchestrator, lastWarned, firstStart]()
             {
-                scheduler->scheduleTask(
-                    "ioc-sync-task",
-                    scheduler::TaskConfig {.interval = iocSyncInterval,
-                                           .runImmediately = true,
-                                           .CPUPriority = 0,
-                                           .taskFunction = [iocSyncService]() { iocSyncService->synchronize(); }});
-                LOG_DEBUG("IOC Sync task scheduled with interval: {} seconds, {} max retries, {} seconds for retry "
-                          "interval and {} for batch size",
-                          iocSyncInterval,
-                          maxRetries,
-                          retryInterval,
-                          iocSyncBatchSize);
+                const auto entries = orchestrator->getEntries();
+                const bool shouldWarn =
+                    std::none_of(entries.begin(),
+                                 entries.end(),
+                                 [](const auto& e) { return e.status() == router::env::State::ENABLED; });
+                if (*lastWarned == shouldWarn)
+                {
+                    return;
+                }
+                *lastWarned = shouldWarn;
+                if (!shouldWarn)
+                {
+                    LOG_INFO("[CMSync] Event processing is now active");
+                }
+                else if (firstStart)
+                {
+                    LOG_INFO("[CMSync] No active routes available. Incoming events will be discarded until content "
+                             "synchronization completes");
+                }
+                else
+                {
+                    LOG_WARNING("[CMSync] No active routes available. Incoming events will be discarded until "
+                                "content synchronization completes");
+                }
+            };
+
+            // 0 is legal and disables the early retry.
+            constexpr std::size_t CM_SYNC_RETRY_INTERVAL_MAX = 3600;
+            const auto cmSyncRetryConfigured = confManager.get<std::size_t>(conf::key::CM_SYNC_RETRY_INTERVAL);
+            if (cmSyncRetryConfigured > CM_SYNC_RETRY_INTERVAL_MAX)
+            {
+                throw std::runtime_error(
+                    fmt::format("analysisd.cm_sync_retry_interval must be between 0 and {} (got {})",
+                                CM_SYNC_RETRY_INTERVAL_MAX,
+                                cmSyncRetryConfigured));
+            }
+            // While a space has no route (indexer failure, content not ready yet), the next run comes after the
+            // shorter retry interval instead of the regular one, and never later than the regular one.
+            const auto cmSyncInterval = confManager.get<std::size_t>(conf::key::CM_SYNC_INTERVAL);
+            const auto cmSyncRetryInterval = cm::sync::earlyRetryInterval(cmSyncRetryConfigured, cmSyncInterval);
+            auto cmSyncPending = std::make_shared<std::atomic<bool>>(false);
+
+            cmSyncTask = std::make_shared<scheduler::TriggerableTask>(
+                scheduler,
+                "cm-sync-task",
+                cmSyncInterval,
+                0,
+                [reportRouteStatus, orchestrator, cmSyncService, cmSyncPending, cmSyncRetryInterval]()
+                {
+                    // Detects a route lost between runs (e.g. deleted by hand), then recovery.
+                    reportRouteStatus();
+                    // The full worker pool must exist before the first sync mutates it.
+                    orchestrator->expandWorkerPool();
+                    const bool pending = cmSyncService->synchronize();
+                    if (pending && !cmSyncPending->exchange(true) && cmSyncRetryInterval > 0)
+                    {
+                        LOG_INFO("[CMSync] A content space has no route yet, retrying every {} seconds until it loads",
+                                 cmSyncRetryInterval);
+                    }
+                    cmSyncPending->store(pending);
+                    reportRouteStatus();
+                },
+                [cmSyncPending, cmSyncRetryInterval]() -> std::size_t
+                { return cmSyncPending->load() ? cmSyncRetryInterval : 0; });
+
+            const auto iocSyncInterval = confManager.get<std::size_t>(conf::key::IOC_SYNC_INTERVAL);
+            iocSyncTask = std::make_shared<scheduler::TriggerableTask>(
+                scheduler, "ioc-sync-task", iocSyncInterval, 0, [iocSyncService]() { iocSyncService->synchronize(); });
+            iocSyncTask->start();
+            if (iocSyncInterval == 0)
+            {
+                LOG_INFO("IOC Sync task runs on request only (interval = 0)");
             }
             else
             {
-                LOG_INFO("IOC Sync task disabled (interval = 0)");
+                iocSyncTask->trigger(); // First run now, then on the interval.
             }
         }
 
@@ -865,12 +983,17 @@ int main(int argc, char* argv[])
             LOG_DEBUG("Content Manager CRUD API registered");
 
             // IOC CRUD
-            api::ioccrud::handlers::registerHandlers(IOCkvdb, scheduler, store, apiServer);
+            const std::filesystem::path iocInputPath(confManager.get<std::string>(conf::key::KVDB_IOC_INPUT_PATH));
+            api::ioccrud::handlers::registerHandlers(IOCkvdb, scheduler, store, apiServer, iocInputPath);
             LOG_DEBUG("IOC CRUD API registered");
 
             // Status
             api::status::handlers::registerHandlers(cmSyncService, iocSyncService, geoManager, apiServer);
             LOG_DEBUG("Status API registered.");
+
+            // On-demand content synchronization (ruleset and IOC)
+            api::contentsync::handlers::registerHandlers(cmSyncTask, iocSyncTask, apiServer);
+            LOG_DEBUG("Content synchronization API registered.");
 
             // Finally start the API server
             apiServer->start(confManager.get<std::string>(conf::key::SERVER_API_SOCKET));
@@ -880,10 +1003,16 @@ int main(int argc, char* argv[])
         if (enableProcessing)
         {
             engineRemoteServer = std::make_shared<httpsrv::Server>("Event services", 0, false);
+            // Every cache setting is validated here, before the ingest server below starts listening: a
+            // bad value must stop start-up before any batch is accepted, not after.
+            agentMetadataCacheCleanInterval = agentcache::validateCleanInterval(
+                confManager.get<std::size_t>(conf::key::AGENT_METADATA_CACHE_CLEAN_INTERVAL));
             agentMetadataCache = std::make_shared<agentcache::AgentMetadataCache>(
-                std::chrono::seconds(confManager.get<std::size_t>(conf::key::AGENT_METADATA_CACHE_TTL)));
+                std::chrono::seconds(confManager.get<std::size_t>(conf::key::AGENT_METADATA_CACHE_TTL)),
+                agentcache::Limits {confManager.get<std::size_t>(conf::key::AGENT_METADATA_CACHE_MAX_ENTRIES),
+                                    confManager.get<std::size_t>(conf::key::AGENT_METADATA_CACHE_MAX_BYTES)});
 
-            // Register the cache's instantaneous "agent.cache.entries" pull metric.
+            // Register retained cache usage and configured limits.
             agentcache::registerCacheMetrics(agentMetadataCache);
 
             exitHandler.add([engineRemoteServer]() { engineRemoteServer->stop(); });
@@ -913,53 +1042,11 @@ int main(int argc, char* argv[])
 
         if (enableProcessing)
         {
-            // Helper to check if the orchestrator has any enabled route.
-            const auto hasEnabledRoutes = [&orchestrator]()
-            {
-                const auto entries = orchestrator->getEntries();
-                return std::any_of(entries.begin(),
-                                   entries.end(),
-                                   [](const auto& e) { return e.status() == router::env::State::ENABLED; });
-            };
-
-            // Tracks the last reported state. nullopt = no prior report, so the
-            // first observation always logs.
-            auto lastWarned = std::make_shared<std::optional<bool>>();
-
-            // Logs only on state transitions (no routes <-> at least one enabled route).
-            const auto reportRouteStatus = [hasEnabledRoutes, lastWarned, firstStart]()
-            {
-                const bool shouldWarn = !hasEnabledRoutes();
-                if (*lastWarned == shouldWarn)
-                {
-                    return;
-                }
-                *lastWarned = shouldWarn;
-                if (shouldWarn)
-                {
-                    if (firstStart)
-                    {
-                        LOG_INFO("[CMSync] No active routes available. Incoming events will be discarded "
-                                 "until content synchronization completes");
-                    }
-                    else
-                    {
-                        LOG_WARNING("[CMSync] No active routes available. Incoming events will be discarded "
-                                    "until content synchronization completes");
-                    }
-                }
-                else
-                {
-                    LOG_INFO("[CMSync] Event processing is now active");
-                }
-            };
-
             // Async clean agent cache, safely evicting stale entries to avoid memory bloat. This is a best-effort
             // operation, so it is not critical if the cache is not cleaned on time. The number of evicted
             // entries is recorded by the cache itself (agent.cache.evictions).
             scheduler->scheduleTask("clean-agent-cache",
-                                    scheduler::TaskConfig {.interval = confManager.get<std::size_t>(
-                                                               conf::key::AGENT_METADATA_CACHE_CLEAN_INTERVAL),
+                                    scheduler::TaskConfig {.interval = agentMetadataCacheCleanInterval,
                                                            .runImmediately = false,
                                                            .CPUPriority = 0,
                                                            .taskFunction = [agentMetadataCache]()
@@ -970,29 +1057,9 @@ int main(int argc, char* argv[])
                                                                }
                                                            }});
 
-            // Async Synchronize on startup
-            scheduler->scheduleTask(
-                "cm-sync-task",
-                scheduler::TaskConfig {.interval = confManager.get<std::size_t>(conf::key::CM_SYNC_INTERVAL),
-                                       .runImmediately = true,
-                                       .CPUPriority = 0,
-                                       .taskFunction = [=]()
-                                       {
-                                           // Detect external loss of routes between sync runs
-                                           // (e.g., manual route deletion).
-                                           reportRouteStatus();
-
-                                           // Expand the router worker pool before the initial
-                                           // content synchronization. This ensures the initial sync
-                                           // mutates the complete worker pool instead of only the
-                                           // primary worker.
-                                           orchestrator->expandWorkerPool();
-                                           cmSyncService->synchronize();
-
-                                           // Detect recovery (or re-loss) after sync.
-                                           reportRouteStatus();
-                                       }});
-            scheduler->scheduleTaskFirst("cm-sync-task");
+            // The first ruleset sync runs before every other task: the last one moved to the front of the
+            // queue is the first to run. It is the recurring run itself, so the early retry can follow it.
+            cmSyncTask->start(/*runNow=*/true);
 
             scheduler->start();
             LOG_INFO("Scheduler started");

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -15,6 +15,7 @@
 #include "monotonicCondition.hpp"
 
 #include <string>
+#include <functional>
 #include <array>
 #include <map>
 #include <vector>
@@ -24,6 +25,7 @@
 #include <chrono>
 #include <memory>
 #include <atomic>
+#include <cstdint>
 
 /// @brief Implementation of IPersistentQueue with persistent storage backend.
 ///
@@ -40,7 +42,16 @@ class PersistentQueue : public IPersistentQueue
         /// @param logger Logger function
         /// @param storage Optional shared pointer to a custom storage backend.
         ///                If null, a default PersistentQueueStorage is used.
-        explicit PersistentQueue(const std::string& dbPath, LoggerFunc logger, std::shared_ptr<IPersistentQueueStorage> storage = nullptr);
+        /// @param flushBatchSize Maximum buffered events before an immediate flush. If unset, DEFAULT_FLUSH_BATCH_SIZE is used.
+        /// @param flushInterval Maximum time to wait before flushing a non-full buffer. If unset, DEFAULT_FLUSH_INTERVAL is used.
+        /// @param walAutocheckpointPages Optional override for the default storage backend's WAL auto-checkpoint
+        ///                               threshold, in pages. Ignored when an explicit @p storage is given.
+        explicit PersistentQueue(const std::string& dbPath,
+                                 LoggerFunc logger,
+                                 std::shared_ptr<IPersistentQueueStorage> storage = nullptr,
+                                 std::optional<std::size_t> flushBatchSize = std::nullopt,
+                                 std::optional<std::chrono::milliseconds> flushInterval = std::nullopt,
+                                 std::optional<int32_t> walAutocheckpointPages = std::nullopt);
 
         /// @brief Destructor.
         ~PersistentQueue() override;
@@ -87,23 +98,37 @@ class PersistentQueue : public IPersistentQueue
         void deleteDatabase() override;
 
     private:
+        /// @brief Used when no flush batch size override is given.
+        static constexpr std::size_t DEFAULT_FLUSH_BATCH_SIZE = 100;
+
+        /// @brief Used when no flush interval override is given.
+        static constexpr std::chrono::milliseconds DEFAULT_FLUSH_INTERVAL{500};
+
+        /// @brief Caps the upfront buffer reservation so a large configured batch size does not eagerly allocate that much.
+        static constexpr std::size_t MAX_RESERVE_HINT = 10000;
+
         /// @brief Maximum number of buffered events before triggering an immediate flush.
-        static constexpr std::size_t FLUSH_BATCH_SIZE = 100;
+        const std::size_t FLUSH_BATCH_SIZE;
 
         /// @brief Maximum time to wait before flushing a non-full buffer.
-        static constexpr std::chrono::milliseconds FLUSH_INTERVAL{500};
+        const std::chrono::milliseconds FLUSH_INTERVAL;
+
+        /// @brief Drops buffered items matching the predicate from both slots.
+        ///        Must be called with m_storageMutex held.
+        void discardBuffered(const std::function<bool(const PersistedData&)>& matches);
 
         /// @brief Mutex protecting m_buffers.
         std::mutex m_mutex;
 
-        /// @brief Mutex serializing all m_storage access across threads.
+        /// @brief Mutex serializing all m_storage access across threads, and every flush as a
+        ///        whole (swap, write and clear). Always taken before m_mutex, never after it.
         std::mutex m_storageMutex;
 
         /// @brief Condition variable signalling the flush thread.
         MonotonicCondition m_cv;
 
-        /// @brief Double buffer (ping-pong): producers write to m_buffers[m_currentIdx],
-        ///        the flush thread swaps the index and drains the old slot.
+        /// @brief Double buffer (ping-pong): producers write to m_buffers[m_currentIdx], and a
+        ///        flush (background thread or sync) swaps the index and drains the old slot.
         std::array<std::vector<PersistedData>, 2> m_buffers;
 
         /// @brief Index (0 or 1) of the buffer currently accepting new events.
@@ -124,10 +149,10 @@ class PersistentQueue : public IPersistentQueue
         /// @brief Main loop executed by m_flushThread.
         void flushLoop();
 
-        /// @brief Writes a batch to storage in a single transaction.
-        /// @return true if the batch was persisted successfully, false otherwise.
-        bool flushBuffer(const std::vector<PersistedData>& batch);
-
-        /// @brief Steals any items currently in m_buffers and flushes them to storage.
-        void flushPendingBuffer();
+        /// @brief Swaps out the active buffer and writes it to storage in a single transaction.
+        ///        Used by both the background thread and the sync paths; a failed batch stays
+        ///        in its slot for the next flush of that slot.
+        /// @return true if the active buffer held items (whether or not the write succeeded),
+        ///         false if it was empty and nothing was flushed.
+        bool flushActiveBuffer();
 };

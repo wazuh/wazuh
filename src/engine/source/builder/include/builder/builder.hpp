@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef BUILDER2_BUILDER_HPP
 #define BUILDER2_BUILDER_HPP
 
@@ -79,8 +80,7 @@ public:
     /**
      * @copydoc IBuilder::buildPolicy
      */
-    std::shared_ptr<IPolicy>
-    buildPolicy(const cm::store::NamespaceId& namespaceId, bool isTestMode) const override;
+    std::shared_ptr<IPolicy> buildPolicy(const cm::store::NamespaceId& namespaceId, bool isTestMode) const override;
 
     /**
      * @copydoc IValidator::softIntegrationValidate

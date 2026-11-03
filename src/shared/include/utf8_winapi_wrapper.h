@@ -1,6 +1,6 @@
 /*
  * Shared functions for Syscheck events decoding
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -51,6 +51,9 @@ HANDLE utf8_CreateFile(const char* utf8_path,
 
 /// Replace a file with utf8 path
 BOOL utf8_ReplaceFile(const char* old_name, const char* new_name, const char* backup_name, DWORD flags);
+
+/// Move a file with utf8 paths
+BOOL utf8_MoveFileEx(const char* old_name, const char* new_name, DWORD flags);
 
 /// Delete a file with utf8 path
 BOOL utf8_DeleteFile(const char* utf8_path);

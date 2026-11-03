@@ -1,0 +1,31 @@
+name: 5.X - Migration tool - Unit tests
+
+on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - '.github/workflows/5_testunit_migration.yml'
+      # The tool and its suite. Both are standard-library only: the suite loads the tool by path
+      # (test_wazuh_migrate_identity.py:31-35) and the tool imports nothing outside the stdlib.
+      - 'tools/migration/*.py'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check prerequisites
+        # The TLS case is skipUnless(openssl) (test_wazuh_migrate_identity.py:547); fail instead of
+        # letting it skip silently.
+        run: command -v openssl
+
+      - name: Run migration tool tests
+        run: python3 tools/migration/test_wazuh_migrate_identity.py

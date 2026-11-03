@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 import sys
 from api_communication.client import APIClient
 import api_communication.proto.engine_pb2 as engine

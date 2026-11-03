@@ -3,44 +3,51 @@
 `wazuh_metrics` (`src/shared_modules/metrics/`) is the shared lock-free metrics library
 for manager daemons **outside the engine**: counters, gauges, histograms (128
 log-linear buckets, p50/p90/p99 with ~12.5% bounded error, clamped into the exact
-`[min, max]` of the same snapshot), pull metrics and a
-sliding-window rate, behind a thread-safe registry (`Manager`) and a JSON dump.
+`[min, max]` of the same snapshot) and pull metrics, behind a thread-safe registry
+(`Manager`) and a JSON dump.
 
 It is derived from the engine's `fastmetrics` (same metric semantics, same hot-path
 discipline) with deliberate differences: **no singleton** (each daemon instantiates its
 own `Manager` and injects it), histograms, and a rapidjson-based `dumpJson()`. Scalar
 entries carry the same `{name, type, enabled, value}` shape as the engine's `/metrics`
-dump, so tooling treats both alike. The planned unification is the engine aliasing
-`namespace fastmetrics = wazuh::metrics;` and dropping its copy.
+dump, so tooling treats both alike.
 
 ## Who uses it
 
 | Module | Daemon | Serves the dump on |
 |---|---|---|
-| [Inventory Sync Server](../../inventory-sync-server/metrics.md) | wazuh-manager-modulesd | `queue/sockets/inventory-sync-http.sock` |
-| [Remoted module](../../remoted/metrics.md) | wazuh-manager-remoted | `queue/sockets/remote-admin-http.sock` |
+| [Inventory Sync Server](../../inventory-sync-server/metrics.md) | `wazuh-manager-modulesd` | `GET /metrics` on `queue/sockets/inventory-sync-http.sock` |
+| [Task Manager](../../task_manager/metrics.md) | `wazuh-manager-modulesd` | `GET /v1/metrics` on `queue/sockets/task-http.sock` |
+| [Vulnerability Scanner](../../vulnerability-scanner/metrics.md) | `wazuh-manager-modulesd` | `GET /metrics` on `queue/sockets/vd-http.sock` |
+| [Remoted module](../../remoted/metrics.md) | `wazuh-manager-remoted` | `GET /metrics` on `queue/sockets/remote-admin-http.sock` |
 
 Each module documents its own metric catalog (with the option that tunes each metric)
 in its `metrics.md` — this page is about the library and how to query any module.
 
 ## Querying a module's metrics
 
-One `GET /metrics` per module socket, served over HTTP-on-UDS by the
-[UDS HTTP Server](../uds-http-server/README.md):
+One request per module socket, served over HTTP-on-UDS by the
+[UDS HTTP Server](../uds-http-server/README.md). Run it as root or as a member of the
+`wazuh-manager` group (the sockets are mode `0660`):
 
 ```bash
-curl -s --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync-http.sock  http://localhost/metrics
-curl -s --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock  http://localhost/metrics
+curl -s --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync-http.sock http://localhost/metrics
+curl -s --unix-socket /var/wazuh-manager/queue/sockets/task-http.sock           http://localhost/v1/metrics
+curl -s --unix-socket /var/wazuh-manager/queue/sockets/vd-http.sock             http://localhost/metrics
+curl -s --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock   http://localhost/metrics
 ```
 
 Properties that matter to an operator:
 
-- The route is **budget-exempt** (Liveness class): it keeps answering exactly while the
-  module is shedding data-plane load.
+- The route is **budget-exempt** (Liveness class; Control on the Task Manager socket): it
+  keeps answering while the module is shedding data-plane load.
 - It is **UDS-local**: no agent can reach it, and remoted forwards nothing to it.
 - Counters are **cumulative since module start**, not per run.
-- The dump is one deterministic JSON document — entries sorted by name; a histogram's
-  `value` is its observation count and its `summary` carries count/sum/min/max/p50/p90/p99:
+- The dump is one deterministic JSON document. The envelope `name` is the module
+  (`inventory_sync_server`, `task_manager`, `vulnerability_scanner`, `remoted`), entries are
+  sorted by name, and `type` is `counter`, `gauge_int`, `pull` or `histogram`.
+  `description` and `unit` appear only when the module registered them. A histogram's
+  `value` is its observation count, and its `summary` carries count/sum/min/max/p50/p90/p99:
 
 ```json
 {
@@ -48,9 +55,9 @@ Properties that matter to an operator:
   "timestamp": "2026-08-06T12:00:00Z",
   "metrics": [
     {"name": "sync.bulk.flushes", "type": "counter", "enabled": true, "value": 41,
-     "description": "Group-commit flushes", "unit": "count"},
-    {"name": "sync.session.duration", "type": "histogram", "enabled": true, "value": 41,
-     "unit": "microseconds",
+     "description": "Successful pipeline group-commit flushes", "unit": "count"},
+    {"name": "sync.session.duration.bulk", "type": "histogram", "enabled": true, "value": 41,
+     "description": "Enqueue-to-response time of bulk sessions", "unit": "microseconds",
      "summary": {"count": 41, "sum": 5150000, "min": 900, "max": 410000,
                   "p50": 98304, "p90": 229376, "p99": 393216}}
   ]

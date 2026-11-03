@@ -1,8 +1,9 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
+import contextlib
 import fcntl
 import hashlib
 import json
@@ -10,7 +11,6 @@ import jwt
 import logging
 import os
 import time
-from concurrent.futures import ThreadPoolExecutor
 from typing import Union
 
 from cryptography.exceptions import UnsupportedAlgorithm
@@ -21,6 +21,7 @@ from connexion.exceptions import Unauthorized
 import api.configuration as conf
 import wazuh.core.utils as core_utils
 import wazuh.rbac.utils as rbac_utils
+from api.api_exception import MaxRequestsException
 from api.constants import SECURITY_CONFIG_PATH
 from api.constants import SECURITY_PATH
 from api.util import raise_if_exc
@@ -34,7 +35,69 @@ from wazuh.core.decorators import dapi_allower
 
 INVALID_TOKEN = "Invalid token"
 EXPIRED_TOKEN = "Token expired"
-pool = ThreadPoolExecutor(max_workers=1)
+
+# Password checks a login may wait for, per check allowed to run, before further logins are refused.
+LOGIN_PENDING_PER_SLOT = 8
+
+
+class LoginGate:
+    """Bound the password checks this API process has in flight.
+
+    A password check costs a scrypt derivation (~80 ms) in the `authentication_pool`, which also
+    validates the token of every authenticated request. Left unbounded, a burst of failed logins
+    from addresses the per-IP lockout cannot group queues enough derivations ahead of those token
+    checks to time every authenticated request out. At most `slots` checks run at once, so with a
+    pool of two or more workers one is always left for token checks, and once `max_pending` logins
+    are running or waiting, a further one is refused before it costs anything.
+
+    Parameters
+    ----------
+    slots : int
+        Password checks allowed to run at once.
+    max_pending : int
+        Password checks allowed to run or wait at once.
+    """
+
+    def __init__(self, slots: int, max_pending: int):
+        self._slots = asyncio.Semaphore(slots)
+        self._max_pending = max_pending
+        self._pending = 0
+
+    @contextlib.asynccontextmanager
+    async def admit(self):
+        """Hold a password-check slot for the duration of the block.
+
+        Raises
+        ------
+        MaxRequestsException
+            If `max_pending` password checks are already running or waiting (6006).
+        """
+        if self._pending >= self._max_pending:
+            raise MaxRequestsException(code=6006)
+        self._pending += 1
+        try:
+            async with self._slots:
+                yield
+        finally:
+            self._pending -= 1
+
+
+_login_gate = None
+
+
+def get_login_gate() -> LoginGate:
+    """Return this process's `LoginGate`, sized from `authentication_pool_size` on first use.
+
+    Returns
+    -------
+    LoginGate
+        The gate every password check goes through.
+    """
+    global _login_gate
+    if _login_gate is None:
+        slots = max(1, conf.api_conf['authentication_pool_size'] - 1)
+        _login_gate = LoginGate(slots=slots, max_pending=slots * LOGIN_PENDING_PER_SLOT)
+    return _login_gate
 
 
 @dapi_allower()
@@ -62,10 +125,12 @@ def check_user_master(user: str, password: str) -> dict:
     return {'result': False}
 
 
-def check_user(user: str, password: str, required_scopes=None) -> Union[dict, None]:
+async def check_user(user: str, password: str, required_scopes=None) -> Union[dict, None]:
     """Validate a username-password pair.
 
-    Convenience method to use in OpenAPI specification.
+    Convenience method to use in OpenAPI specification. connexion calls it on the event loop, so it
+    awaits the check rather than waiting for it: a blocking wait here froze every other request for
+    as long as the password check, and its queue in the `authentication_pool`, took.
 
     Parameters
     ----------
@@ -74,22 +139,32 @@ def check_user(user: str, password: str, required_scopes=None) -> Union[dict, No
     password : str
         User password.
 
+    Raises
+    ------
+    MaxRequestsException
+        If too many password checks are already running or waiting (see `LoginGate`).
+
     Returns
     -------
     dict or None
-        Dictionary with the username and its status or None.
+        Dictionary with the username, its status and the time the credential check started or None.
     """
-    dapi = DistributedAPI(f=check_user_master,
-                          f_kwargs={'user': user, 'password': password},
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=False,
-                          logger=logging.getLogger('wazuh-api')
-                          )
-    data = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())
+    async with get_login_gate().admit():
+        # Taken before the stored hash is read, and used as the issue time of the token this login
+        # gets, so the token is ordered against user token rules by when its credentials were
+        # checked rather than by when it was signed.
+        auth_time_ms = int(core_utils.get_utc_now().timestamp() * 1000)
+        dapi = DistributedAPI(f=check_user_master,
+                              f_kwargs={'user': user, 'password': password},
+                              request_type='local_master',
+                              is_async=False,
+                              wait_for_complete=False,
+                              logger=logging.getLogger('wazuh-api')
+                              )
+        data = raise_if_exc(await dapi.distribute_function())
 
     if data['result']:
-        return {'sub': user, 'active': True }
+        return {'sub': user, 'active': True, 'auth_time_ms': auth_time_ms}
 
 
 # Set JWT settings
@@ -498,11 +573,15 @@ def get_security_conf() -> dict:
     return conf.security_conf
 
 
-def generate_token(user_id: str = None, data: dict = None, auth_context: dict = None) -> str:
+async def generate_token(issued_at_ms: int, user_id: str = None, data: dict = None,
+                         auth_context: dict = None) -> str:
     """Generate an encoded JWT token. This method should be called once a user is properly logged on.
 
     Parameters
     ----------
+    issued_at_ms : int
+        Time the credential check of this login started (milliseconds), as returned by
+        `check_user`. It is the token's issue time, never the signing time: see `check_user`.
     user_id : str
         Unique username.
     data : dict
@@ -521,17 +600,15 @@ def generate_token(user_id: str = None, data: dict = None, auth_context: dict = 
                           wait_for_complete=False,
                           logger=logging.getLogger('wazuh-api')
                           )
-    result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).dikt
-    # Get timestamp with millisecond precision directly
-    now_ms = int(core_utils.get_utc_now().timestamp() * 1000)
-    now_seconds = now_ms // 1000
+    result = raise_if_exc(await dapi.distribute_function()).dikt
+    issued_at_seconds = issued_at_ms // 1000
 
     payload = {
                   "iss": JWT_ISSUER,
                   "aud": "Wazuh API REST",
-                  "nbf": now_seconds,  # Standard claim: integer seconds since epoch (RFC 7519)
-                  "nbf_ms": now_ms,  # Private claim: milliseconds for precise validation
-                  "exp": now_seconds + result['auth_token_exp_timeout'],
+                  "nbf": issued_at_seconds,  # Standard claim: integer seconds since epoch (RFC 7519)
+                  "nbf_ms": issued_at_ms,  # Private claim: milliseconds for precise validation
+                  "exp": issued_at_seconds + result['auth_token_exp_timeout'],
                   "sub": str(user_id),
                   "run_as": auth_context is not None,
                   "rbac_roles": data['roles'],
@@ -566,7 +643,7 @@ def get_optimized_policies(roles: tuple) -> dict:
 
 @dapi_allower()
 def check_token(username: str, roles: tuple, token_nbf_time: int, run_as: bool,
-                origin_node_type: str) -> dict:
+                origin_node_type: str, hash_auth_context: str = None) -> dict:
     """Check the validity of a token with the current time and the generation time of the token.
 
     The validity decision is never cached. Caching it meant that deleting a user, changing its
@@ -587,6 +664,9 @@ def check_token(username: str, roles: tuple, token_nbf_time: int, run_as: bool,
     origin_node_type : str
         Type of the node the request originated from. Only requests coming from the master node
         may be served the cached policies.
+    hash_auth_context : str, optional
+        Hash of the authorization context a run_as token was granted for. Logging out with a
+        run_as token revokes this context, not the account the token names.
 
     Returns
     -------
@@ -605,8 +685,10 @@ def check_token(username: str, roles: tuple, token_nbf_time: int, run_as: bool,
             if not am.user_allow_run_as(user['username']) and set(user_roles) != set(roles):
                 return {'valid': False}
             with TokenManager() as tm:
-                # Always validate the user and run_as blacklists, even when the token carries no roles.
-                if not tm.is_token_valid(user_id=user_id, token_nbf_time=int(token_nbf_time), run_as=run_as):
+                # Always validate the user, run_as and run_as context blacklists, even when the
+                # token carries no roles.
+                if not tm.is_token_valid(user_id=user_id, token_nbf_time=int(token_nbf_time), run_as=run_as,
+                                         hash_auth_context=hash_auth_context):
                     return {'valid': False}
                 # Validate every role carried by the token, not only the statically-linked ones.
                 # run_as users have their roles assigned dynamically, so those roles travel in the
@@ -626,9 +708,12 @@ def check_token(username: str, roles: tuple, token_nbf_time: int, run_as: bool,
     return {'valid': True, 'policies': dict(policies)}
 
 
-def decode_token(token: str) -> dict:
+async def decode_token(token: str) -> dict:
     """Decode a JWT formatted token and add processed policies.
     Raise an Unauthorized exception in case validation fails.
+
+    connexion calls it on the event loop for every authenticated request, so the checks below are
+    awaited, never waited for.
 
     Parameters
     ----------
@@ -649,19 +734,26 @@ def decode_token(token: str) -> dict:
         # Decode JWT token with local secret
         payload = jwt.decode(token, generate_keypair()[1], algorithms=[JWT_ALGORITHM], audience='Wazuh API REST')
 
+        # A run_as token is revoked on logout by its authorization context (see
+        # `wazuh.security.revoke_current_user_tokens`), so one without it could not be logged out.
+        # Every run_as token `generate_token` issues carries it.
+        if payload['run_as'] and not payload.get('hash_auth_context'):
+            raise Unauthorized(INVALID_TOKEN)
+
         # Check token and add processed policies in the Master node
         # Use nbf_ms for millisecond precision validation, fallback to nbf * 1000 for backward compatibility
         token_nbf_time = payload.get('nbf_ms', int(payload['nbf'] * 1000))
         dapi = DistributedAPI(f=check_token,
                               f_kwargs={'username': payload['sub'],
                                         'roles': tuple(payload['rbac_roles']), 'token_nbf_time': token_nbf_time,
-                                        'run_as': payload['run_as'], 'origin_node_type': read_config()['node_type']},
+                                        'run_as': payload['run_as'], 'origin_node_type': read_config()['node_type'],
+                                        'hash_auth_context': payload.get('hash_auth_context')},
                               request_type='local_master',
                               is_async=False,
                               wait_for_complete=False,
                               logger=logging.getLogger('wazuh-api')
                               )
-        data = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).to_dict()
+        data = raise_if_exc(await dapi.distribute_function()).to_dict()
 
         if not data['result']['valid']:
             raise Unauthorized(INVALID_TOKEN)
@@ -675,7 +767,7 @@ def decode_token(token: str) -> dict:
                               wait_for_complete=False,
                               logger=logging.getLogger('wazuh-api')
                               )
-        result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())
+        result = raise_if_exc(await dapi.distribute_function())
 
         current_rbac_mode = result['rbac_mode']
         current_expiration_time = result['auth_token_exp_timeout']

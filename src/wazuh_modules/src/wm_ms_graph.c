@@ -13,6 +13,7 @@
 
 #include "wmodules.h"
 #include "wm_ms_graph.h"
+#include "module_report.h"
 
 #ifdef WIN32
 #ifdef WAZUH_UNIT_TESTING
@@ -31,6 +32,9 @@ static cJSON* wm_ms_graph_scan_apps_devices(const wm_ms_graph* ms_graph, const c
 static void wm_ms_graph_destroy(wm_ms_graph* ms_graph);
 static void wm_ms_graph_cleanup();
 cJSON* wm_ms_graph_dump(const wm_ms_graph* ms_graph);
+static const char* wm_ms_graph_api_type_name(const char* query_fqdn);
+static cJSON* wm_ms_graph_dump_tenant(const wm_ms_graph_auth* auth);
+static cJSON* wm_ms_graph_dump_resource(const wm_ms_graph_resource* resource);
 static bool wm_ms_graph_ensure_valid_token(wm_ms_graph_auth *auth_config, ssize_t curl_max_size, bool* token_changed);
 static curl_response* wm_ms_graph_http_get_with_retry(char** headers, const char* url, size_t curl_max_size, const char* relationship_name);
 
@@ -597,10 +601,62 @@ void wm_ms_graph_cleanup() {
     mtinfo(WM_MS_GRAPH_LOGTAG, "Module shutdown.");
 }
 
+static const char* wm_ms_graph_api_type_name(const char* query_fqdn) {
+    // The FQDN used for querying the API is unique across types, so we can ignore the login FQDN
+    static const char* const api_types[][2] = {
+        { WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, "global" },
+        { WM_MS_GRAPH_GCC_HIGH_API_QUERY_FQDN, "gcc-high" },
+        { WM_MS_GRAPH_DOD_API_QUERY_FQDN, "dod" },
+    };
+
+    for (size_t i = 0; query_fqdn && i < sizeof(api_types) / sizeof(api_types[0]); i++) {
+        if (!strcmp(query_fqdn, api_types[i][0])) {
+            return api_types[i][1];
+        }
+    }
+    return NULL;
+}
+
+static cJSON* wm_ms_graph_dump_tenant(const wm_ms_graph_auth* auth) {
+    cJSON* tenant = cJSON_CreateObject();
+    const char* api_type = wm_ms_graph_api_type_name(auth->query_fqdn);
+
+    if (auth->client_id) {
+        cJSON_AddStringToObject(tenant, "client_id", auth->client_id);
+    }
+    if (auth->tenant_id) {
+        cJSON_AddStringToObject(tenant, "tenant_id", auth->tenant_id);
+    }
+    module_report_add_secret(tenant, "secret_value", auth->secret_value, wm_unmask_credentials);
+    if (api_type) {
+        cJSON_AddStringToObject(tenant, "api_type", api_type);
+    }
+    return tenant;
+}
+
+static cJSON* wm_ms_graph_dump_resource(const wm_ms_graph_resource* resource) {
+    cJSON* dumped = cJSON_CreateObject();
+    cJSON* relationships = cJSON_CreateArray();
+
+    cJSON_AddStringToObject(dumped, "name", resource->name);
+    for (unsigned int i = 0; resource->relationships && i < resource->num_relationships; i++) {
+        if (resource->relationships[i]) {
+            cJSON_AddItemToArray(relationships, cJSON_CreateString(resource->relationships[i]));
+        }
+    }
+    // All of them under one key, the one the index maps: repeating the key kept only the last one
+    if (cJSON_GetArraySize(relationships) > 0) {
+        cJSON_AddItemToObject(dumped, "relationship", relationships);
+    } else {
+        cJSON_Delete(relationships);
+    }
+    return dumped;
+}
+
 cJSON* wm_ms_graph_dump(const wm_ms_graph* ms_graph) {
     cJSON* root = cJSON_CreateObject();
     cJSON* ms_graph_info = cJSON_CreateObject();
-    cJSON* ms_graph_auth = cJSON_CreateObject();
+    cJSON* api_auth = cJSON_CreateArray();
 
     if (ms_graph->enabled) {
         cJSON_AddStringToObject(ms_graph_info, "enabled", "yes");
@@ -631,55 +687,27 @@ cJSON* wm_ms_graph_dump(const wm_ms_graph* ms_graph) {
     }
     sched_scan_dump(&ms_graph->scan_config, ms_graph_info);
 
-    int e;
-    wm_ms_graph_auth *it;
-
-    for (e = 0; ms_graph->auth_config[e]; e++) {
-        it = ms_graph->auth_config[e];
-
-        if (it->client_id) {
-            cJSON_AddStringToObject(ms_graph_auth, "client_id", it->client_id);
-        }
-        if (it->tenant_id) {
-            cJSON_AddStringToObject(ms_graph_auth, "tenant_id", it->tenant_id);
-        }
-        if (it->secret_value) {
-            cJSON_AddStringToObject(ms_graph_auth, "secret_value", it->secret_value);
-        }
-        // The FQDN used for querying the API is unique across types, so we can ignore the login FQDN
-        if (!strcmp(it->query_fqdn, WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN)) {
-            cJSON_AddStringToObject(ms_graph_auth, "api_type", "global");
-        } else if (!strcmp(it->query_fqdn, WM_MS_GRAPH_GCC_HIGH_API_QUERY_FQDN)) {
-            cJSON_AddStringToObject(ms_graph_auth, "api_type", "gcc-high");
-        } else if (!strcmp(it->query_fqdn, WM_MS_GRAPH_DOD_API_QUERY_FQDN)) {
-            cJSON_AddStringToObject(ms_graph_auth, "api_type", "dod");
-        }
+    // One entry per tenant: a single object repeated every key, and a JSON parser keeps only the last one
+    for (int e = 0; ms_graph->auth_config && ms_graph->auth_config[e]; e++) {
+        cJSON_AddItemToArray(api_auth, wm_ms_graph_dump_tenant(ms_graph->auth_config[e]));
     }
-    cJSON_AddItemToObject(ms_graph_info, "api_auth", ms_graph_auth);
+    if (cJSON_GetArraySize(api_auth) > 0) {
+        cJSON_AddItemToObject(ms_graph_info, "api_auth", api_auth);
+    } else {
+        cJSON_Delete(api_auth);
+    }
 
     if (ms_graph->resources) {
         cJSON* resource_array = cJSON_CreateArray();
         for (unsigned int resource_num = 0; resource_num < ms_graph->num_resources; resource_num++) {
-            cJSON* resource = cJSON_CreateObject();
             if (ms_graph->resources[resource_num].name) {
-                cJSON_AddStringToObject(ms_graph_auth, "name", ms_graph->resources[resource_num].name);
-            } else {
-                cJSON_free(resource);
-                continue;
+                cJSON_AddItemToArray(resource_array, wm_ms_graph_dump_resource(&ms_graph->resources[resource_num]));
             }
-            if (ms_graph->resources[resource_num].relationships) {
-                for (unsigned int relationship_num = 0; relationship_num < ms_graph->resources[resource_num].num_relationships; relationship_num++) {
-                    if (ms_graph->resources[resource_num].relationships[relationship_num]) {
-                        cJSON_AddStringToObject(resource, "relationship", ms_graph->resources[resource_num].relationships[relationship_num]);
-                    }
-                }
-            }
-            cJSON_AddItemToArray(resource_array, resource);
         }
         if (cJSON_GetArraySize(resource_array) > 0) {
             cJSON_AddItemToObject(ms_graph_info, "resources", resource_array);
         } else {
-            cJSON_free(resource_array);
+            cJSON_Delete(resource_array);
         }
     }
     cJSON_AddItemToObject(root, "ms_graph", ms_graph_info);

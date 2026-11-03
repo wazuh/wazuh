@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -19,14 +18,20 @@
 #include "jwt/jwtRequestTokenVerifier.hpp"
 #include "jwt/secureBytes.hpp"
 #include "keyProvider.hpp"
+#include "spkiPin.hpp"
 
 #include "external/cpp-httplib/httplib.h"
 #include "external/nlohmann/json.hpp"
 
+#include <gtest/gtest.h>
+
 #include <openssl/evp.h>
+#include <openssl/pem.h>
 #include <openssl/x509.h>
+#include <openssl/x509v3.h>
 #include <zstd.h>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <csignal>
@@ -72,6 +77,37 @@ inline std::string fakeManagerSettingsHash(const std::string& startupBody)
 }
 
 /**
+ * @brief Shapes the CA-rotation surface of the fake manager (#39321): what every notify
+ *        advertises, and what GET /cacerts answers with.
+ *
+ * Grouped rather than spread over yet more positional constructor arguments, because these
+ * six only ever make sense together: a served generation without an advertised one describes
+ * nothing an agent would act on.
+ */
+struct CaBundleOptions
+{
+    /// Reported top-level as "ca_generation" on every notify. 0 -> the field is omitted
+    /// entirely, which is exactly what a manager predating #39321 looks like on the wire.
+    std::int64_t advertisedGeneration {0};
+    /// Sent as the Wazuh-CA-Generation response header on /cacerts. 0 -> no header at all,
+    /// one of rule 5.3's discard reasons. Set it different from advertisedGeneration to
+    /// play the lagging node behind a load balancer.
+    std::int64_t servedGeneration {0};
+    /// How many certificates GET /cacerts serves. 0 -> the single certificate the bootstrap
+    /// suite already expects, so existing callers are unaffected.
+    int bundleCertificates {0};
+    /// Non-zero -> /cacerts answers this status with an error body instead of the bundle,
+    /// which is how 404/503/429 are driven without standing up a second server.
+    int forcedStatus {0};
+    /// How many /cacerts requests forcedStatus applies to. 0 with a forcedStatus set means
+    /// every one of them; a positive value lets a test watch the agent recover on a later
+    /// attempt, the idiom scanVdRejectFirstNAttempts already uses for /scan/vd.
+    int forcedStatusFirstNAttempts {0};
+    /// Sent as Retry-After alongside forcedStatus when positive.
+    int retryAfterSeconds {0};
+};
+
+/**
  * @brief Fork-based plaintext fake manager (the http-request component-test
  *        idiom). It validates the wazuh-agent+jwt bearer of every request server-side with
  *        the shared key, so a 200 proves real cross-implementation auth
@@ -88,7 +124,7 @@ class FakeManager final
         /// body (and the settings_hash reported by notify) switches to v2, so
         /// a client detects the change and refreshes its startup data.
         /// configBlob non-empty: /download serves it (chunked octet-stream)
-        /// and every notify reports agent.config_hash = MD5(configBlob), so a
+        /// and every notify reports agent.config_hash = SHA-256(configBlob), so a
         /// client whose local hash differs downloads it. Those notifies also
         /// carry agent.config_token = FAKE_MANAGER_CONFIG_TOKEN, and /download
         /// serves nothing else, so the client must relay the token verbatim.
@@ -120,6 +156,9 @@ class FakeManager final
         /// with a generic error body instead of running the real flow, so a
         /// test can drive the 400/401/403/409/500/503 mapping in
         /// w_enrollment_process_response() without needing five fake servers.
+        /// caBundle: the CA-rotation surface (#39321) -- what notify advertises
+        /// and what /cacerts serves. Defaults leave both routes exactly as the
+        /// bootstrap suite has always seen them.
         FakeManager(uint16_t port,
                     const std::string& keyHex,
                     bool tls = false,
@@ -132,7 +171,8 @@ class FakeManager final
                     uint64_t vdFeedOffset = 0,
                     int scanVdRejectFirstNAttempts = 0,
                     std::string enrollPassword = {},
-                    int enrollForcedStatus = 0)
+                    int enrollForcedStatus = 0,
+                    CaBundleOptions caBundle = {})
             : m_port(port)
             , m_keyHex(keyHex)
             , m_tls(tls)
@@ -146,7 +186,33 @@ class FakeManager final
             , m_scanVdRejectFirstNAttempts(scanVdRejectFirstNAttempts)
             , m_enrollPassword(std::move(enrollPassword))
             , m_enrollForcedStatus(enrollForcedStatus)
+            , m_caBundle(caBundle)
         {
+            // Generated BEFORE fork(), deliberately: the server runs in a child
+            // process that shares no memory with the test, so a certificate made
+            // inside runServer() could never be read back here. Minting it in the
+            // parent means the child inherits these exact bytes through fork() and
+            // cacertsPem()/cacertsPin() answer for what the route actually serves --
+            // which is what lets a test mint a token carrying the matching pin.
+            m_cacertsPem = makeCacertsPem(m_caBundle.bundleCertificates);
+
+            // The listener's own certificate is minted here too, and for the same reason:
+            // #39321's refresh travels over a VERIFIED connection, so a test driving it has
+            // to hold the anchor to write into ca_path. Generating it inside runServer()
+            // would leave those bytes in a process this one cannot read. It is CA:TRUE with
+            // SAN IP:127.0.0.1 so it can act as its own trust anchor under HC_VERIFY_FULL;
+            // every other suite runs HC_VERIFY_NONE and never looks at either.
+            if (m_tls)
+            {
+                EVP_PKEY* pkey = nullptr;
+                X509* cert = nullptr;
+                makeSelfSigned(&pkey, &cert);
+                m_tlsCertPem = pemEncodeCert(cert);
+                m_tlsKeyPem = pemEncodePrivateKey(pkey);
+                X509_free(cert);
+                EVP_PKEY_free(pkey);
+            }
+
             m_pid = fork();
 
             if (m_pid == 0)
@@ -169,6 +235,31 @@ class FakeManager final
 
         FakeManager(const FakeManager&) = delete;
         FakeManager& operator=(const FakeManager&) = delete;
+
+        /// The exact PEM the GET /cacerts route serves. Readable in the test
+        /// process because it is minted before fork() (see the constructor).
+        const std::string& cacertsPem() const
+        {
+            return m_cacertsPem;
+        }
+
+        /// The listener's own certificate, PEM encoded -- CA:TRUE, so writing it to a file
+        /// and pointing ca_path at it is all an HC_VERIFY_FULL client needs to trust this
+        /// server. Empty when the manager was built without TLS.
+        const std::string& tlsCaPem() const
+        {
+            return m_tlsCertPem;
+        }
+
+        /// That certificate's SPKI pin -- 43 characters of unpadded base64url,
+        /// the form an enrollment token's `pin` field carries. This is how a
+        /// pin-compare test gets a pin that is genuinely expected to match,
+        /// without hardcoding a value for a certificate generated at run time.
+        std::string cacertsPin() const
+        {
+            const auto digest = spkiSha256FromPem(m_cacertsPem);
+            return digest ? spkiPinBase64Url(*digest) : std::string {};
+        }
 
     private:
         /// Authenticates one agent request exactly as the manager does: the SHARED
@@ -213,6 +304,7 @@ class FakeManager final
             const std::string holdFile = m_statefulHoldFile;
             const uint64_t vdFeedOffset = m_vdFeedOffset;
             const int scanVdRejectFirstNAttempts = m_scanVdRejectFirstNAttempts;
+            const CaBundleOptions caBundle = m_caBundle;
             const std::string configHash =
                 configBlob.empty() ? std::string {} :
                 sha256Hex(configBlob.data(), configBlob.size());
@@ -231,6 +323,29 @@ class FakeManager final
                 const bool rotated = rotateAfter > 0 && !rotatedKey.empty() && notifyCount->load() >= rotateAfter;
                 return verifyBearer(rotated ? rotatedKey : keyHex, target, request);
             };
+            // #39040/#39064: a 5.0 manager names the authentication failure class on every 401,
+            // and the agent's auth gate escalates to re-enrollment on `unknown_agent` alone -- a
+            // bodyless 401 reads as Unclassified, which means "retry and keep the identity". A test
+            // that rotates the key is modelling a manager that no longer holds this identity's
+            // credential, so its refusals have to say so or the re-enrollment path is unreachable.
+            // Rotation is what arms this: with none configured the body stays empty and every other
+            // test sees the same bodyless 401 it always did.
+            std::string authFailBody;
+
+            if (rotateAfter > 0 && !rotatedKey.empty())
+            {
+                authFailBody = R"({"error":"Invalid client authentication","code":"unknown_agent"})";
+            }
+
+            const auto refuseAuth = [authFailBody](httplib::Response & response)
+            {
+                response.status = 401;
+
+                if (!authFailBody.empty())
+                {
+                    response.set_content(authFailBody, "application/json");
+                }
+            };
             // Accumulates accepted /stateless bodies so the fork parent can
             // read them back via GET /peek/stateless (fork servers share no
             // memory; a peek endpoint is the observability channel).
@@ -238,12 +353,12 @@ class FakeManager final
             auto acceptedMutex = std::make_shared<std::mutex>();
 
             server.Post("/stateless",
-                        [verify, backpressureArmed, statelessMaxBody, acceptedEvents, acceptedMutex](
+                        [verify, refuseAuth, backpressureArmed, statelessMaxBody, acceptedEvents, acceptedMutex](
                             const httplib::Request & request, httplib::Response & response)
             {
                 if (!verify("/stateless", request))
                 {
-                    response.status = 401;
+                    refuseAuth(response);
                     return;
                 }
 
@@ -302,12 +417,12 @@ class FakeManager final
                 auto store = kind == "stats" ? lastStats : lastConfig;
                 server.Post(
                     "/" + kind,
-                    [verify, kind, store, acceptedMutex, configCount](const httplib::Request & request,
-                                                                      httplib::Response & response)
+                    [verify, refuseAuth, kind, store, acceptedMutex, configCount](const httplib::Request & request,
+                                                                                  httplib::Response & response)
                 {
                     if (!verify("/" + kind, request))
                     {
-                        response.status = 401;
+                        refuseAuth(response);
                         return;
                     }
 
@@ -372,12 +487,12 @@ class FakeManager final
             };
 
             server.Post("/stateful",
-                        [verify, lastSession, holdFile, statefulBytes](const httplib::Request & request,
-                                                                       httplib::Response & response)
+                        [verify, refuseAuth, lastSession, holdFile, statefulBytes](const httplib::Request & request,
+                                                                                   httplib::Response & response)
             {
                 if (!verify("/stateful", request))
                 {
-                    response.status = 401;
+                    refuseAuth(response);
                     return;
                 }
 
@@ -404,11 +519,11 @@ class FakeManager final
 
             server.Post(
                 "/download",
-                [verify, configBlob](const httplib::Request & request, httplib::Response & response)
+                [verify, refuseAuth, configBlob](const httplib::Request & request, httplib::Response & response)
             {
                 if (!verify("/download", request))
                 {
-                    response.status = 401;
+                    refuseAuth(response);
                     return;
                 }
 
@@ -472,19 +587,20 @@ class FakeManager final
 
             server.Post(
                 "/control",
-                [verify,
-                 settingsFlipAfter,
-                 notifyCount,
-                 configHash,
-                 controlTypes,
-                 controlContentTypes,
-                 lastNotifyBody,
-                 controlMutex,
-                 vdFeedOffset](const httplib::Request & request, httplib::Response & response)
+                [verify, refuseAuth,
+                         settingsFlipAfter,
+                         notifyCount,
+                         configHash,
+                         controlTypes,
+                         controlContentTypes,
+                         lastNotifyBody,
+                         controlMutex,
+                         vdFeedOffset,
+                         caBundle](const httplib::Request & request, httplib::Response & response)
             {
                 if (!verify("/control", request))
                 {
-                    response.status = 401;
+                    refuseAuth(response);
                     return;
                 }
 
@@ -555,8 +671,15 @@ class FakeManager final
 
                     const std::string vdFeedOffsetField =
                         vdFeedOffset > 0 ? R"(,"vd_feed_offset":)" + std::to_string(vdFeedOffset) : std::string {};
+                    // Top-level, beside settings_hash rather than nested under agent -- where
+                    // #39321 rule 3 puts it, and where ControlStream reads it from.
+                    const std::string caGenerationField =
+                        caBundle.advertisedGeneration > 0
+                        ? R"(,"ca_generation":)" + std::to_string(caBundle.advertisedGeneration)
+                        : std::string {};
                     response.set_content(R"({"agent":)" + agent + R"(,"settings_hash":")" +
-                                         fakeManagerSettingsHash(startupBody) + R"(")" + vdFeedOffsetField + "}",
+                                         fakeManagerSettingsHash(startupBody) + R"(")" + vdFeedOffsetField +
+                                         caGenerationField + "}",
                                          "application/json");
                     return;
                 }
@@ -610,12 +733,12 @@ class FakeManager final
             auto scanVdMutex = std::make_shared<std::mutex>();
 
             server.Post("/scan/vd",
-                        [verify, vdFeedOffset, scanVdRejectFirstNAttempts, scanVdAttempts, lastScanVdBody, scanVdMutex](
+                        [verify, refuseAuth, vdFeedOffset, scanVdRejectFirstNAttempts, scanVdAttempts, lastScanVdBody, scanVdMutex](
                             const httplib::Request & request, httplib::Response & response)
             {
                 if (!verify("/scan/vd", request))
                 {
-                    response.status = 401;
+                    refuseAuth(response);
                     return;
                 }
 
@@ -761,10 +884,124 @@ class FakeManager final
                 response.status = 200;
                 response.set_content(*lastEnrollBody, "text/plain");
             });
+
+            // GET /cacerts: the unverified-fetch leg of the enrollment-token bootstrap.
+            // Serves m_cacertsPem, minted in the constructor before fork() and so
+            // readable by the test through cacertsPem()/cacertsPin(). It is
+            // deliberately NOT the TLS listener's own certificate: a test asserting on
+            // this body proves the client received exactly the bytes this route served,
+            // not something it could have derived from the handshake it rode in on.
+            //
+            // This fake manager never models global_prefix for any route; prefix-folding
+            // is the client's job (prefixedTarget(), see cacertsClient.hpp), covered at
+            // the unit level, not here.
+            //
+            // Under #39321 this route is also the refresh path, so it additionally stamps
+            // Wazuh-CA-Generation and can be made to fail: caBundle.forcedStatus drives the
+            // 404/503/429 cases, optionally only for the first few attempts so a test can
+            // watch the agent come back and succeed.
+            auto cacertsAttempts = std::make_shared<std::atomic<int>>(0);
+            server.Get("/cacerts",
+                       [pem = m_cacertsPem, caBundle, cacertsAttempts](const httplib::Request&,
+                                                                       httplib::Response & response)
+            {
+                const int attempt = cacertsAttempts->fetch_add(1) + 1;
+                const bool forced = caBundle.forcedStatus != 0 &&
+                                    (caBundle.forcedStatusFirstNAttempts == 0 ||
+                                     attempt <= caBundle.forcedStatusFirstNAttempts);
+
+                if (forced)
+                {
+                    response.status = caBundle.forcedStatus;
+
+                    if (caBundle.retryAfterSeconds > 0)
+                    {
+                        response.set_header("Retry-After", std::to_string(caBundle.retryAfterSeconds));
+                    }
+
+                    response.set_content(R"({"error":"cacerts unavailable"})", "application/json");
+                    return;
+                }
+
+                if (caBundle.servedGeneration > 0)
+                {
+                    response.set_header("Wazuh-CA-Generation", std::to_string(caBundle.servedGeneration));
+                }
+
+                response.status = 200;
+                response.set_content(pem, "application/x-pem-file");
+            });
+
+            // How many times the route was actually reached. The server is a forked child,
+            // so counting on this side and reading it back over HTTP is the only way the
+            // test can tell "refused and retried" from "never asked again".
+            server.Get("/peek/cacerts",
+                       [cacertsAttempts](const httplib::Request&, httplib::Response & response)
+            {
+                response.status = 200;
+                response.set_content(std::to_string(cacertsAttempts->load()), "text/plain");
+            });
         }
 
-        // Self-signed cert + key generated in-process (no CLI, no files). The
-        // client uses HC_VERIFY_NONE, so the cert only needs to exist.
+        /// Mints what GET /cacerts serves and returns it as PEM. A count of 0 keeps the
+        /// historical single certificate; anything higher concatenates that many, which is
+        /// the shape a real rotation publishes -- the outgoing anchor beside the incoming
+        /// one, so agents on either side of the changeover still verify.
+        static std::string makeCacertsPem(int certificates)
+        {
+            std::string pem;
+
+            for (int index = 0; index < std::max(1, certificates); index++)
+            {
+                EVP_PKEY* pkey = nullptr;
+                X509* cert = nullptr;
+                makeSelfSigned(&pkey, &cert);
+                pem += pemEncodeCert(cert);
+                X509_free(cert);
+                EVP_PKEY_free(pkey);
+            }
+
+            return pem;
+        }
+
+        static std::string pemEncodeCert(X509* cert)
+        {
+            BIO* bio = BIO_new(BIO_s_mem());
+            PEM_write_bio_X509(bio, cert);
+            char* data = nullptr;
+            const long len = BIO_get_mem_data(bio, &data);
+            std::string pem(data, static_cast<size_t>(len));
+            BIO_free(bio);
+            return pem;
+        }
+
+        static std::string pemEncodePrivateKey(EVP_PKEY* pkey)
+        {
+            BIO* bio = BIO_new(BIO_s_mem());
+            PEM_write_bio_PrivateKey(bio, pkey, nullptr, nullptr, 0, nullptr, nullptr);
+            char* data = nullptr;
+            const long len = BIO_get_mem_data(bio, &data);
+            std::string pem(data, static_cast<size_t>(len));
+            BIO_free(bio);
+            return pem;
+        }
+
+        static void addExtension(X509* cert, int nid, const char* value)
+        {
+            X509V3_CTX ctx;
+            X509V3_set_ctx_nodb(&ctx);
+            X509V3_set_ctx(&ctx, cert, cert, nullptr, nullptr, 0);
+
+            if (X509_EXTENSION* ext = X509V3_EXT_conf_nid(nullptr, &ctx, nid, value); ext != nullptr)
+            {
+                X509_add_ext(cert, ext, -1);
+                X509_EXTENSION_free(ext);
+            }
+        }
+
+        // Self-signed cert + key generated in-process (no CLI, no files). Most of the suite
+        // runs HC_VERIFY_NONE and needs only that the cert exist; CA:TRUE and SAN
+        // IP:127.0.0.1 are here so the #39321 refresh suite can verify against it for real.
         static void makeSelfSigned(EVP_PKEY** keyOut, X509** certOut)
         {
             EVP_PKEY* pkey = EVP_RSA_gen(2048);
@@ -777,18 +1014,37 @@ class FakeManager final
             X509_NAME_add_entry_by_txt(
                 name, "CN", MBSTRING_ASC, reinterpret_cast<const unsigned char*>("127.0.0.1"), -1, -1, 0);
             X509_set_issuer_name(cert, name);
+            addExtension(cert, NID_basic_constraints, "critical,CA:TRUE");
+            addExtension(cert, NID_subject_alt_name, "IP:127.0.0.1");
             X509_sign(cert, pkey, EVP_sha256());
             *keyOut = pkey;
             *certOut = cert;
+        }
+
+        static X509* pemDecodeCert(const std::string& pem)
+        {
+            BIO* bio = BIO_new_mem_buf(pem.data(), static_cast<int>(pem.size()));
+            X509* cert = PEM_read_bio_X509(bio, nullptr, nullptr, nullptr);
+            BIO_free(bio);
+            return cert;
+        }
+
+        static EVP_PKEY* pemDecodePrivateKey(const std::string& pem)
+        {
+            BIO* bio = BIO_new_mem_buf(pem.data(), static_cast<int>(pem.size()));
+            EVP_PKEY* pkey = PEM_read_bio_PrivateKey(bio, nullptr, nullptr, nullptr);
+            BIO_free(bio);
+            return pkey;
         }
 
         void runServer()
         {
             if (m_tls)
             {
-                EVP_PKEY* pkey = nullptr;
-                X509* cert = nullptr;
-                makeSelfSigned(&pkey, &cert);
+                // Decoded from the bytes the parent minted, so tlsCaPem() really is the
+                // anchor for what this listener presents.
+                X509* cert = pemDecodeCert(m_tlsCertPem);
+                EVP_PKEY* pkey = pemDecodePrivateKey(m_tlsKeyPem);
                 httplib::SSLServer server {cert, pkey};
                 registerEndpoints(server);
                 server.listen("127.0.0.1", m_port);
@@ -802,7 +1058,7 @@ class FakeManager final
             server.listen("127.0.0.1", m_port);
         }
 
-        void waitUntilReady() const
+        void waitUntilReady()
         {
             const char* scheme = m_tls ? "https" : "http";
             const std::string base = std::string {scheme} + "://127.0.0.1:" + std::to_string(m_port);
@@ -816,8 +1072,21 @@ class FakeManager final
                     return; // Any HTTP reply means the listener is up.
                 }
 
+                // The child exits as soon as listen() fails, which means something in this binary
+                // already holds the port. Fail now and name it: probing a server that is gone used
+                // to cost 300s and then read as the code under test hanging.
+                if (waitpid(m_pid, nullptr, WNOHANG) == m_pid)
+                {
+                    m_pid = -1; // Reaped: the destructor must not signal a pid that may be reused.
+                    ADD_FAILURE() << "FakeManager: the server for " << base
+                                  << " exited before it was ready; is port " << m_port << " already taken?";
+                    return;
+                }
+
                 usleep(50 * 1000);
             }
+
+            ADD_FAILURE() << "FakeManager: nothing answered on " << base << " after 300s and the server is still running";
         }
 
         pid_t m_pid {-1};
@@ -834,6 +1103,14 @@ class FakeManager final
         int m_scanVdRejectFirstNAttempts {0};
         std::string m_enrollPassword;
         int m_enrollForcedStatus {0};
+        CaBundleOptions m_caBundle {};
+        /// The certificate GET /cacerts serves, minted before fork() so both
+        /// processes hold the same bytes. See the constructor.
+        std::string m_cacertsPem;
+        /// The TLS listener's own certificate and key, minted before fork() for the same
+        /// reason. Empty unless this manager speaks TLS.
+        std::string m_tlsCertPem;
+        std::string m_tlsKeyPem;
 };
 
 #endif // _HC_FAKE_MANAGER_HPP

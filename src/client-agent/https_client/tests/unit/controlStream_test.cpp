@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -46,6 +45,16 @@ namespace
         return value;
     }
 
+    /// A 401 that names its failure class, as remoted renders it. Since #39064 only
+    /// `unknown_agent` latches the AuthGate, so a test about the latch has to say which 401 it
+    /// means -- a classless 401 is deliberately retried without ever touching the identity.
+    HttpResponse authFail(const std::string& code = "unknown_agent")
+    {
+        return response(TransportStatus::Ok,
+                        401,
+                        R"({"error":"Invalid client authentication","code":")" + code + R"("})");
+    }
+
     std::string bodyOf(const HttpRequestSpec& spec)
     {
         return std::string {reinterpret_cast<const char*>(spec.body), spec.bodyLength};
@@ -82,6 +91,7 @@ namespace
                 , m_config(makeConfig())
                 , m_spoolFactory(::testing::TempDir())
                 , m_configHash("abc")
+                , m_caPublication(1789000010)
                 , m_authGate(m_sink, [] {})
             , m_stream(m_config,
                        m_performer,
@@ -91,6 +101,7 @@ namespace
                        m_sink,
                        m_spoolFactory,
                        m_configHash,
+                       m_caPublication,
                        m_cluster,
                        m_authGate,
                        m_compressionGate,
@@ -120,6 +131,7 @@ namespace
             MockHttpPerformer m_performer;
             TempSpoolFactory m_spoolFactory;
             ConfigHashState m_configHash;
+            CaPublicationState m_caPublication;
             ClusterIdentity m_cluster;
             AuthGate m_authGate;
             CompressionGate m_compressionGate;
@@ -255,22 +267,88 @@ TEST_F(ControlStreamTest, VersionRejectionGoesRejected)
     EXPECT_EQ(HC_STATE_REJECTED, m_stream.connState());
 }
 
-TEST_F(ControlStreamTest, PersistentAuthFailureGoesAuthError)
+TEST_F(ControlStreamTest, RetryableAuthFailureDoesNotGoAuthError)
 {
-    EXPECT_CALL(m_sink, onStateChange(HC_STATE_AUTH_ERROR));
-    // A 401 gets one fresh-timestamp retry; a second 401 escalates to AUTH_ERROR.
+    // A 401 the AuthGate did not latch must not reach AUTH_ERROR (#39064). AUTH_ERROR sends
+    // nothing (nextAction() is Idle), slows the cadence, drops an armed settings refresh, and can
+    // only be left through CredentialRenewed -- "a new key is in place" -- which would be false
+    // here, since nothing was renewed. Going there and self-healing back cost a full
+    // re-registration and an AUTH_ERROR -> REGISTERED flap on every retryable 401, which is the
+    // disruption this issue set out to remove for the seven non-`unknown_agent` classes.
+    //
+    // Deliberately a CLASSLESS 401 (no body): the fail-safe reading. A manager that will not say
+    // why it refused us has not told us to throw the identity away.
+    EXPECT_CALL(m_sink, onStateChange(HC_STATE_AUTH_ERROR)).Times(0);
+    // A 401 gets one fresh-timestamp retry; the second is what would have escalated.
     EXPECT_CALL(m_performer, perform(_)).Times(2).WillRepeatedly(Return(response(TransportStatus::Ok, 401)));
 
     EXPECT_FALSE(m_stream.step(m_waiter));
+    // Still Starting: the retry loop owns this, and the session is kept.
+    EXPECT_EQ(HC_STATE_STARTING, m_stream.connState());
+    EXPECT_FALSE(m_authGate.paused());
+}
+
+TEST_F(ControlStreamTest, UnknownAgentAuthFailureStillGoesAuthError)
+{
+    // The other half of the rule: the one class that DOES cost the agent its identity still
+    // latches the gate and still converges the machine to AUTH_ERROR.
+    EXPECT_CALL(m_sink, onStateChange(HC_STATE_AUTH_ERROR));
+    EXPECT_CALL(m_performer, perform(_)).Times(2).WillRepeatedly(Return(authFail()));
+
+    EXPECT_FALSE(m_stream.step(m_waiter));
     EXPECT_EQ(HC_STATE_AUTH_ERROR, m_stream.connState());
+    EXPECT_TRUE(m_authGate.paused());
+}
+
+TEST_F(ControlStreamTest, UnescalatedAuthFailureReportsABackoffOverrideInsteadOfTheFixedCadence)
+{
+    // A 401 the AuthGate did not latch must not keep retrying on the plain notify cadence
+    // forever: RetrySender returns it unescalated on every call (#39064), and useSlowCadence()/
+    // rejectedRetryIntervalS stays reserved for the genuine unknown_agent/AUTH_ERROR path (see
+    // UnknownAgentAuthFailureStillGoesAuthError above) -- so this stream's own Backoff has to
+    // govern the cadence instead (#39601).
+    ScriptedRandom random {{1.0}}; // Jitter always hits the window ceiling.
+    ControlStream stream {m_config,          m_performer,     m_signer,        m_clock,
+                          random,            m_sink,          m_spoolFactory,  m_configHash,
+                          m_caPublication,   m_cluster,       m_authGate,      m_compressionGate,
+                          m_taskStore,       m_vdOffsetStore, [this] { return m_hostJson; }};
+
+    EXPECT_CALL(m_performer, perform(_)).Times(2).WillRepeatedly(Return(response(TransportStatus::Ok, 401)));
+    EXPECT_FALSE(stream.step(m_waiter));
+    EXPECT_FALSE(stream.useSlowCadence());
+
+    const auto backoff = stream.unescalatedAuthFailBackoff();
+    ASSERT_TRUE(backoff.has_value());
+    EXPECT_EQ(std::chrono::milliseconds {m_config.backoffBaseMs}, *backoff); // First window.
+}
+
+TEST_F(ControlStreamTest, EscalatedAuthFailureReportsNoBackoffOverride)
+{
+    // unknown_agent already gets its own fixed slow cadence through useSlowCadence(); it must
+    // not also start ramping this stream's Backoff on top of that.
+    EXPECT_CALL(m_performer, perform(_)).Times(2).WillRepeatedly(Return(authFail()));
+    EXPECT_FALSE(m_stream.step(m_waiter));
+    EXPECT_TRUE(m_stream.useSlowCadence());
+
+    EXPECT_FALSE(m_stream.unescalatedAuthFailBackoff().has_value());
+}
+
+TEST_F(ControlStreamTest, SuccessReportsNoBackoffOverride)
+{
+    EXPECT_CALL(m_sink, onStateChange(HC_STATE_REGISTERED));
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, R"({"limits":{"eps":0}})")));
+
+    EXPECT_TRUE(m_stream.step(m_waiter));
+    EXPECT_FALSE(m_stream.unescalatedAuthFailBackoff().has_value());
 }
 
 TEST_F(ControlStreamTest, PausedGateSkipsHttpAndReleaseResumesWithAFreshStartup)
 {
     // First step: 401 startup engages the gate (via RetrySender) -> AUTH_ERROR.
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Return(response(TransportStatus::Ok, 401))) // Startup -> 401.
-    .WillOnce(Return(response(TransportStatus::Ok, 401))) // One-shot auth retry -> 401 -> pause.
+    .WillOnce(Return(authFail()))                        // Startup -> 401 unknown_agent.
+    .WillOnce(Return(authFail()))                        // One-shot auth retry -> 401 -> pause.
     .WillOnce(Invoke(                                     // Post-release startup.
                   [&](const HttpRequestSpec & spec)
     {
@@ -290,6 +368,126 @@ TEST_F(ControlStreamTest, PausedGateSkipsHttpAndReleaseResumesWithAFreshStartup)
     m_authGate.release();
     EXPECT_TRUE(m_stream.step(m_waiter));
     EXPECT_EQ(HC_STATE_REGISTERED, m_stream.connState());
+}
+
+TEST_F(ControlStreamTest, AKeyRenewedInsideTheReenrollCallbackStillReRegisters)
+{
+    // hc_set_agent_identity() may run inside on_reenroll_required, so the gate can be released
+    // before the step that latched it classifies its own 401. That 401 still named
+    // unknown_agent: it must reach AUTH_ERROR and re-register, not pass as retryable (#38329).
+    EXPECT_CALL(m_sink, onReenrollRequired()).WillOnce(Invoke([this] { m_authGate.release(); }));
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, R"({"limits":{}})"))) // Startup accepted.
+    .WillOnce(Return(authFail()))                                             // Notify -> 401 unknown_agent.
+    .WillOnce(Return(authFail()))                                             // Auth retry -> latch + release.
+    .WillOnce(Invoke(                                                          // The renewed key re-registers.
+                  [&](const HttpRequestSpec & spec)
+    {
+        EXPECT_NE(std::string::npos, bodyOf(spec).find("\"type\":\"startup\""));
+        return response(TransportStatus::Ok, 200, R"({"limits":{}})");
+    }));
+
+    EXPECT_TRUE(m_stream.step(m_waiter));
+    EXPECT_FALSE(m_stream.step(m_waiter));
+    EXPECT_FALSE(m_authGate.paused()); // Already renewed by the callback.
+    EXPECT_EQ(HC_STATE_AUTH_ERROR, m_stream.connState());
+
+    EXPECT_TRUE(m_stream.step(m_waiter));
+    EXPECT_EQ(HC_STATE_REGISTERED, m_stream.connState());
+}
+
+TEST_F(ControlStreamTest, AKeyRenewedInsideTheReenrollCallbackDuringStartupStillGoesAuthError)
+{
+    // The same early renewal on the Startup path: the dead credential still converges to
+    // AUTH_ERROR before the renewed key registers.
+    EXPECT_CALL(m_sink, onReenrollRequired()).WillOnce(Invoke([this] { m_authGate.release(); }));
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(authFail()))                                              // Startup -> 401 unknown_agent.
+    .WillOnce(Return(authFail()))                                              // Auth retry -> latch + release.
+    .WillOnce(Return(response(TransportStatus::Ok, 200, R"({"limits":{}})"))); // The renewed key registers.
+
+    EXPECT_FALSE(m_stream.step(m_waiter));
+    EXPECT_FALSE(m_authGate.paused());
+    EXPECT_EQ(HC_STATE_AUTH_ERROR, m_stream.connState());
+
+    EXPECT_TRUE(m_stream.step(m_waiter));
+    EXPECT_EQ(HC_STATE_REGISTERED, m_stream.connState());
+}
+
+TEST_F(ControlStreamTest, AnotherSendersRenewedIncidentStillReRegisters)
+{
+    // A 401 latched by another sender sharing the gate -- here the config fetcher's /download,
+    // run from this very Notify -- can be renewed before the next step polls the gate. That
+    // incident must still go through AUTH_ERROR and re-register (#38329).
+    const std::string notify =
+        R"({"status":"ok","agent":{"config_token":"web-servers","config_hash":"0123456789abcdef"}})";
+    std::vector<hc_conn_state_t> states;
+    EXPECT_CALL(m_sink, onStateChange(_)).WillRepeatedly(Invoke([&](hc_conn_state_t state)
+    {
+        states.push_back(state);
+    }));
+    EXPECT_CALL(m_sink, onReenrollRequired()).WillOnce(Invoke([this] { m_authGate.release(); }));
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))   // Startup.
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify))) // Notify advertising a new config.
+    .WillOnce(Return(authFail()))                                 // /download -> 401 unknown_agent.
+    .WillOnce(Return(authFail()))                                 // Auth retry -> latch + release.
+    .WillOnce(Invoke(                                              // The renewed key re-registers.
+                  [&](const HttpRequestSpec & spec)
+    {
+        EXPECT_NE(std::string::npos, bodyOf(spec).find("\"type\":\"startup\""));
+        return response(TransportStatus::Ok, 200, R"({"limits":{}})");
+    }));
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify -> /download 401 -> latched and already renewed.
+    EXPECT_FALSE(m_authGate.paused());
+
+    EXPECT_TRUE(m_stream.step(m_waiter));
+    const std::vector<hc_conn_state_t> expected {HC_STATE_REGISTERED, HC_STATE_AUTH_ERROR, HC_STATE_STARTING, HC_STATE_REGISTERED};
+    EXPECT_EQ(expected, states);
+}
+
+TEST_F(ControlStreamTest, AReleaseWithoutAnIncidentDoesNotReRegister)
+{
+    // hc_set_agent_identity() also runs outside any incident (e.g. after the first enrollment):
+    // a release() with nothing latched must not cost an AUTH_ERROR and a re-registration.
+    std::vector<hc_conn_state_t> states;
+    EXPECT_CALL(m_sink, onStateChange(_)).WillRepeatedly(Invoke([&](hc_conn_state_t state)
+    {
+        states.push_back(state);
+    }));
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}"))) // Startup.
+    .WillOnce(Invoke(                                            // Still a plain notify.
+                  [&](const HttpRequestSpec & spec)
+    {
+        EXPECT_NE(std::string::npos, bodyOf(spec).find("\"type\":\"notify\""));
+        return response(TransportStatus::Ok, 200, "{}");
+    }));
+
+    m_stream.step(m_waiter);
+    m_authGate.release();
+    EXPECT_TRUE(m_stream.step(m_waiter));
+    EXPECT_EQ(std::vector<hc_conn_state_t> {HC_STATE_REGISTERED}, states);
+}
+
+TEST_F(ControlStreamTest, ARetryable401WhileAnotherSenderLatchedTheGateStillGoesAuthError)
+{
+    // The gate decides, not this 401's class: a stale_token on /control, which #39064 retries,
+    // still means AUTH_ERROR when another sender latched the gate while it was in flight.
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}"))) // Startup.
+    .WillOnce(Invoke([this](const HttpRequestSpec&)           // Notify: another sender latches mid-flight.
+    {
+        m_authGate.reportAuthFailure();
+        return authFail("stale_token");
+    }))
+    .WillOnce(Return(authFail("stale_token")));                 // Fresh-timestamp retry.
+
+    EXPECT_TRUE(m_stream.step(m_waiter));
+    EXPECT_FALSE(m_stream.step(m_waiter));
+    EXPECT_EQ(HC_STATE_AUTH_ERROR, m_stream.connState());
 }
 
 TEST_F(ControlStreamTest, NotifyCarriesTypeVersionAndHost)
@@ -480,10 +678,9 @@ TEST_F(ControlStreamTest, ConfigMismatchDownloadsVerifiesAndDelivers)
 
 TEST_F(ControlStreamTest, UsesConfigTokenVerbatimAsTheDownloadResourceId)
 {
-    // The manager names the configuration resource; the agent must NOT derive it. The token
-    // here deliberately bears no relation to the reported groups, which is the whole point:
-    // whatever the manager decides to address a config with (a group selector today, anything
-    // else later), an agent that only passes it through keeps working with no change.
+    // A manager that publishes config_token may require it back (every 5.0.x one does), so
+    // the agent relays it. The token here deliberately bears no relation to the reported
+    // groups: the agent passes it through and never derives a selector of its own.
     const std::string notify = R"({"status":"ok","agent":{"groups":["default","test"],)"
                                R"("config_token":"opaque-token-42","config_hash":"multi-hash"}})";
 
@@ -508,8 +705,8 @@ TEST_F(ControlStreamTest, MultiGroupTokenIsSentUnchanged)
 {
     // The 5.0 manager's token IS the group selector: every group, comma-joined, in the
     // manager's own order (controlHandler.cpp's makeConfigToken over toGroupsCsv). The agent
-    // must relay it byte-for-byte -- re-sorting or truncating it to the first group would
-    // resolve a different merged.mg that can never match the reported hash, looping forever.
+    // must relay it byte-for-byte -- re-sorting or truncating it would name a selector that is
+    // not the agent's own, and the manager refuses it.
     const std::string notify =
         R"({"status":"ok","agent":{"groups":["default","test"],)"
         R"("config_token":"default,test","config_hash":"multi-hash"}})";
@@ -531,11 +728,33 @@ TEST_F(ControlStreamTest, MultiGroupTokenIsSentUnchanged)
     EXPECT_EQ(R"({"resource_type":"config","resource_id":"default,test"})", downloadBody);
 }
 
-TEST_F(ControlStreamTest, MissingConfigTokenFallsBackToTheGroupsCsv)
+TEST_F(ControlStreamTest, ConfigTokenIsJsonEscapedInTheDownloadBody)
 {
-    // A manager that reports no config_token must behave exactly as it did before the field
-    // existed: the agent rebuilds the selector from agent.groups itself, comma-joined in the
-    // reported order.
+    // The token is the manager's, so it is serialized rather than spliced into the body.
+    const std::string notify =
+        R"({"status":"ok","agent":{"groups":["default"],"config_token":"a\"b","config_hash":"h"}})";
+
+    std::string downloadBody;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))    // Startup.
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify))) // Notify.
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        downloadBody = bodyOf(spec);
+        return response(TransportStatus::Ok, 404);
+    }));
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify -> download attempt.
+
+    EXPECT_EQ(R"({"resource_type":"config","resource_id":"a\"b"})", downloadBody);
+}
+
+TEST_F(ControlStreamTest, MissingConfigTokenSendsNoResourceId)
+{
+    // A manager that reports no config_token derives the selector itself, so the request
+    // names no resource: the agent never rebuilds one from agent.groups.
     const std::string notify =
         R"({"status":"ok","agent":{"groups":["default","test"],"config_hash":"multi-hash"}})";
 
@@ -553,14 +772,12 @@ TEST_F(ControlStreamTest, MissingConfigTokenFallsBackToTheGroupsCsv)
     m_stream.step(m_waiter); // Startup.
     m_stream.step(m_waiter); // Notify -> download attempt.
 
-    EXPECT_EQ(R"({"resource_type":"config","resource_id":"default,test"})", downloadBody);
+    EXPECT_EQ(R"({"resource_type":"config"})", downloadBody);
 }
 
-TEST_F(ControlStreamTest, MissingConfigTokenAndNoGroupsFallsBackToDefault)
+TEST_F(ControlStreamTest, MissingConfigTokenAndNoGroupsSendsNoResourceId)
 {
-    // The other half of the pre-config_token behaviour: with no token AND no groups there is
-    // still something to ask for, since every agent is implicitly in "default". A 5.0 manager
-    // never gets here -- it always reports a non-empty token.
+    // With no token and no groups nothing is substituted either: no "default" selector.
     const std::string notify =
         R"({"status":"ok","agent":{"groups":[],"config_hash":"some-hash"}})";
 
@@ -578,7 +795,7 @@ TEST_F(ControlStreamTest, MissingConfigTokenAndNoGroupsFallsBackToDefault)
     m_stream.step(m_waiter); // Startup.
     m_stream.step(m_waiter); // Notify -> download attempt.
 
-    EXPECT_EQ(R"({"resource_type":"config","resource_id":"default"})", downloadBody);
+    EXPECT_EQ(R"({"resource_type":"config"})", downloadBody);
 }
 
 TEST_F(ControlStreamTest, AgentGroupsReportedOnFirstNotifyThenOnlyOnChange)
@@ -658,11 +875,10 @@ TEST_F(ControlStreamTest, AgentGroupsReReportedAfterARefreshStartupEvenWhenUncha
 
 TEST_F(ControlStreamTest, AgentGroupsReportsEmptyRatherThanDefaultFallback)
 {
-    // This is group IDENTITY, not the download selector (which the manager now names on its
-    // own, in config_token). An empty group set must stay empty here: agcom.c treats it as a
-    // distinct, meaningful value ("Empty agent_groups is allowed - fallback to merge.mg will
-    // be used"), not a synonym for being in "default" -- so no fallback is substituted, even
-    // though the download path's own legacy selector does substitute one.
+    // This is group IDENTITY, not the download selector (config_token, relayed as is). An
+    // empty group set must stay empty here: agcom.c treats it as a distinct, meaningful value
+    // ("Empty agent_groups is allowed - fallback to merge.mg will be used"), not a synonym
+    // for being in "default" -- so no fallback is substituted.
     const std::string notifyNoGroups = R"({"agent":{"groups":[]}})";
 
     EXPECT_CALL(m_sink, onAgentGroups(std::string {}));
@@ -798,6 +1014,47 @@ TEST_F(ControlStreamTest, FailedDownloadRetriesOnTheNextNotify)
 
     EXPECT_EQ(4, downloads); // 2 notifies x DOWNLOAD_MAX_ATTEMPTS(2).
     EXPECT_EQ("abc", m_configHash.get());
+}
+
+TEST_F(ControlStreamTest, PermanentDownloadRejectionIsNotRetriedWithinANotify)
+{
+    // A 400 is Permanent: the same request would get the same answer, so the fetcher gives up
+    // after one attempt instead of spending DOWNLOAD_MAX_ATTEMPTS, and the next notify (same hash,
+    // nothing delivered) tries again. The WARN it raises once per advertised hash goes to the
+    // library's own log sink, which this executable cannot observe.
+    std::string notify = R"({"status":"ok","agent":{"groups":["default"],"config_hash":"ffff"}})";
+
+    int downloads = 0;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillRepeatedly(Invoke(
+                        [&](const HttpRequestSpec & spec)
+    {
+        if (spec.target == "/download")
+        {
+            downloads++;
+            return response(TransportStatus::Ok, 400, R"({"error":"Invalid request format","code":400})");
+        }
+
+        if (bodyOf(spec).find("startup") != std::string::npos)
+        {
+            return response(TransportStatus::Ok, 200, "{}");
+        }
+
+        return response(TransportStatus::Ok, 200, notify);
+    }));
+    EXPECT_CALL(m_sink, onConfigDownloaded(_, _)).Times(0);
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify -> 400, one attempt.
+    EXPECT_EQ(1, downloads);
+
+    m_stream.step(m_waiter); // Notify, same hash -> tried again, still rejected.
+    EXPECT_EQ(2, downloads);
+
+    notify = R"({"status":"ok","agent":{"groups":["default"],"config_hash":"eeee"}})";
+    m_stream.step(m_waiter); // Notify, new hash -> tried again.
+    EXPECT_EQ(3, downloads);
+    EXPECT_EQ("abc", m_configHash.get()); // Never updated.
 }
 
 TEST_F(ControlStreamTest, DrainStepSendsBareShutdown)
@@ -1218,6 +1475,99 @@ TEST_F(ControlStreamTest, PauseCarriesTheTransportReasonToTheConsumer)
     EXPECT_EQ(curlError, reported);
 }
 
+TEST_F(ControlStreamTest, CertVerificationFailureStillPausesProducersAfterThreshold)
+{
+    // Same shape as PauseCarriesTheTransportReasonToTheConsumer, but with the tlsFailure
+    // fields a real chain/CA-trust rejection carries (isCertificateVerificationFailure()'s
+    // own predicate is unit-tested directly in outcomeClassifier_test.cpp). The new,
+    // independent WARNING this also drives (updateProducerPause(), logged straight through
+    // LOGFN_WARN -- not through the mock sink, so its text can't be asserted from this
+    // binary) must coexist with the pre-existing threshold/latch bookkeeping below without
+    // disturbing it: this is what this test actually asserts.
+    const std::string curlError = "(60) SSL certificate problem: unable to get local issuer certificate";
+    HttpResponse certFailure = response(TransportStatus::TlsFail, 0, {}, {}, curlError);
+    certFailure.tlsFailure.depth0VerificationFailed = true;
+
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillRepeatedly(Return(certFailure));
+
+    std::string reported;
+    EXPECT_CALL(m_sink, onProducerPause(true, _)).Times(1)
+    .WillOnce(Invoke([&](bool, const std::string & reason)
+    {
+        reported = reason;
+    }));
+    m_waiter.script({true, true, true, true, true, true, true});
+
+    m_stream.step(m_waiter); // Startup accepted.
+    m_stream.step(m_waiter); // 1/2.
+    m_stream.step(m_waiter); // 2/2 -> pause.
+
+    EXPECT_EQ(curlError, reported);
+}
+
+TEST_F(ControlStreamTest, CertVerificationFailureRecoveryStillResumesProducers)
+{
+    // The recovery half of the same coexistence claim: once the manager's certificate
+    // verifies again, the pre-existing resume path still fires. Internally this also clears
+    // m_certVerificationReported and resets the new limiter -- not directly observable here,
+    // but what that reset actually buys (an immediate report on a LATER, separate incident,
+    // rather than a suppressed one landing in the old incident's tail window) is exercised on
+    // its own in LogRateLimiterTest.ResetMakesTheNextOccurrenceEmitImmediately.
+    const std::string curlError = "(60) SSL certificate problem: self-signed certificate";
+    HttpResponse certFailure = response(TransportStatus::TlsFail, 0, {}, {}, curlError);
+    certFailure.tlsFailure.chainTrustRejectedAboveDepth0 = true;
+
+    int attempt = 0;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillRepeatedly(Invoke(
+                        [&](const HttpRequestSpec&)
+    {
+        attempt++;
+
+        if (attempt == 1)
+        {
+            return response(TransportStatus::Ok, 200, "{}"); // Startup.
+        }
+
+        // Attempts 2-13: three failing steps of four attempts each (mirrors
+        // ThresholdPausesOnceAndRecoveryReleasesWithoutAStateChange).
+        return attempt <= 13 ? certFailure : response(TransportStatus::Ok, 200, "{}");
+    }));
+
+    int pauses = 0;
+    int resumes = 0;
+
+    ::testing::InSequence sequence;
+    EXPECT_CALL(m_sink, onProducerPause(true, _)).Times(1)
+    .WillOnce(Invoke([&](bool, const std::string&)
+    {
+        pauses++;
+    }));
+    EXPECT_CALL(m_sink, onProducerPause(false, _)).Times(1)
+    .WillOnce(Invoke([&](bool, const std::string&)
+    {
+        resumes++;
+    }));
+    m_waiter.script({true, true, true, true, true, true, true, true, true});
+
+    m_stream.step(m_waiter); // Startup accepted.
+
+    m_stream.step(m_waiter);
+    EXPECT_EQ(0, pauses); // 1/2: counted, not armed yet.
+
+    m_stream.step(m_waiter);
+    EXPECT_EQ(1, pauses); // 2/2: armed here.
+
+    m_stream.step(m_waiter);
+    EXPECT_EQ(1, pauses); // Still unreachable: no second announcement.
+    EXPECT_EQ(0, resumes);
+
+    m_stream.step(m_waiter);
+    EXPECT_EQ(1, resumes); // The successful notify releases it.
+}
+
 TEST_F(ControlStreamTest, PauseFromAnAnsweredRejectionCarriesNoTransportReason)
 {
     // A 409 means the manager answered, so any curl error still on the response
@@ -1241,6 +1591,23 @@ TEST_F(ControlStreamTest, PauseFromAnAnsweredRejectionCarriesNoTransportReason)
     EXPECT_TRUE(reported.empty());
 }
 
+TEST_F(ControlStreamTest, RouteNotFoundNeverPausesProducers)
+{
+    // A 404 is reported and then deliberately left alone: unlike the other answered
+    // rejections it does not arm the producer lock, so the batches it rejects stay
+    // buffered and the buffer's own cap is what bounds a long outage. Not retryable,
+    // so a step is one attempt and no script is needed.
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 404)));
+    EXPECT_CALL(m_sink, onProducerPause(_, _)).Times(0);
+
+    m_stream.step(m_waiter); // Startup accepted.
+    m_stream.step(m_waiter);
+    m_stream.step(m_waiter);
+    m_stream.step(m_waiter); // Well past producer_pause_threshold, still no pause.
+}
+
 TEST_F(ControlStreamTest, LatchedAuthFailurePausesProducersAcrossGatedCycles)
 {
     // WillRepeatedly, so the one-shot fresh-timestamp retry gets a 401 too and
@@ -1249,7 +1616,7 @@ TEST_F(ControlStreamTest, LatchedAuthFailurePausesProducersAcrossGatedCycles)
     // as AuthFail so the condition keeps being counted while it lasts.
     EXPECT_CALL(m_performer, perform(_))
     .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
-    .WillRepeatedly(Return(response(TransportStatus::Ok, 401)));
+    .WillRepeatedly(Return(authFail()));
     // Counted so the assertions below can pin the pause to the GATED cycle. That
     // is the whole claim: without counting gated cycles the streak would freeze
     // at 1 and never arm, and a total of one would not distinguish the two.
@@ -1284,8 +1651,8 @@ TEST_F(ControlStreamTest, ANewKeyClearsTheAuthPauseAndResumesProducers)
     // the second escalates, which is what latches the gate.
     EXPECT_CALL(m_performer, perform(_))
     .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
-    .WillOnce(Return(response(TransportStatus::Ok, 401)))
-    .WillOnce(Return(response(TransportStatus::Ok, 401)))
+    .WillOnce(Return(authFail()))
+    .WillOnce(Return(authFail()))
     .WillRepeatedly(Return(response(TransportStatus::Ok, 200, "{}")));
 
     int resumes = 0;
@@ -1358,6 +1725,83 @@ TEST_F(ControlStreamTest, AFailingShutdownDoesNotCountTowardTheThreshold)
     EXPECT_EQ(1, pauses); // Two real steps are still what arms it.
 }
 
+/* The fixture's agent holds publication 1789000010, so a higher one is a refresh to arm. */
+TEST_F(ControlStreamTest, NotifyWithAHigherCaGenerationArmsARefresh)
+{
+    const std::string notify = R"({"status":"ok","ca_generation":1789000012})";
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify)))
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 200, "{}")));
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify.
+
+    EXPECT_EQ(1789000012, m_caPublication.pending());
+    EXPECT_EQ(1789000010, m_caPublication.local()); // Nothing is installed by observing.
+}
+
+TEST_F(ControlStreamTest, NotifyWithALowerCaGenerationIsIgnored)
+{
+    const std::string notify = R"({"status":"ok","ca_generation":1789000009})";
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify)))
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 200, "{}")));
+
+    m_stream.step(m_waiter);
+    m_stream.step(m_waiter);
+
+    EXPECT_EQ(0, m_caPublication.pending());
+}
+
+/* A manager predating #39321 says nothing about CA bundles, which is not the same as a manager
+ * reporting that nobody has published one -- but both leave the trust store alone. */
+TEST_F(ControlStreamTest, NotifyWithoutCaGenerationArmsNothing)
+{
+    const std::string notify = R"({"status":"ok"})";
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify)))
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 200, "{}")));
+
+    m_stream.step(m_waiter);
+    m_stream.step(m_waiter);
+
+    EXPECT_EQ(0, m_caPublication.pending());
+}
+
+TEST_F(ControlStreamTest, NotifyWithAZeroOrNullCaGenerationArmsNothing)
+{
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, R"({"status":"ok","ca_generation":0})")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, R"({"status":"ok","ca_generation":null})")))
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 200, "{}")));
+
+    m_stream.step(m_waiter);
+    m_stream.step(m_waiter); // 0: a bundle nobody published.
+    m_stream.step(m_waiter); // null: no servable bundle at all.
+
+    EXPECT_EQ(0, m_caPublication.pending());
+}
+
+/* Tolerant like the rest of the Notify body: a field of the wrong type is the absence it
+ * effectively is, and must not stop the agent reading the tasks alongside it. */
+TEST_F(ControlStreamTest, NotifyWithANonIntegerCaGenerationArmsNothing)
+{
+    const std::string notify = R"({"status":"ok","ca_generation":"latest"})";
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify)))
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 200, "{}")));
+
+    m_stream.step(m_waiter);
+    m_stream.step(m_waiter);
+
+    EXPECT_EQ(0, m_caPublication.pending());
+}
+
 TEST_F(ControlStreamTest, NotifyWithVdFeedOffsetObservesIt)
 {
     // FakeVdOffsetStore defaults VDFirst-done to true, so this advancing offset also marks
@@ -1407,9 +1851,11 @@ TEST_F(ControlStreamTest, PendingRescanTriggersScanVdRequestAndClearsOnSuccess)
 
         if (spec.target == "/control")
         {
+            EXPECT_EQ(CONTROL_MAX_RESPONSE_BYTES, spec.maxResponseBytes);
             return response(TransportStatus::Ok, 200, notify);
         }
 
+        EXPECT_EQ(SHORT_REPLY_MAX_RESPONSE_BYTES, spec.maxResponseBytes);
         return response(TransportStatus::Ok, 200, "{}"); // /scan/vd accepted.
     }));
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _LOGICEXPR_PARSER_H
 #define _LOGICEXPR_PARSER_H
 
@@ -201,9 +202,9 @@ std::stack<Token> infixToPostfix(std::queue<Token>& infix)
 class Expression : public std::enable_shared_from_this<Expression>
 {
 public:
-    Token m_token;                              ///< Token of this node.
-    std::shared_ptr<Expression> m_left;         ///< Left child expression (or sole child for unary operators).
-    std::shared_ptr<Expression> m_right;        ///< Right child expression (for binary operators).
+    Token m_token;                       ///< Token of this node.
+    std::shared_ptr<Expression> m_left;  ///< Left child expression (or sole child for unary operators).
+    std::shared_ptr<Expression> m_right; ///< Right child expression (for binary operators).
 
     /**
      * @brief Get the Ptr object

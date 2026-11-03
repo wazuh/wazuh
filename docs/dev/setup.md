@@ -10,22 +10,27 @@ The recommended platform for development is **Ubuntu 24.04**.
 
 The minimum toolchain requirements are:
 
-- GNU C/C++ Compiler 13+
+- GNU C/C++ Compiler 13+ (CI and the package builders use GCC 14)
 - GNU Make
-- CMake 3.18+
-- SELinux Policy Core Utils
+- CMake 3.22.1+ (the engine refuses an older one, although the top-level project accepts 3.12.4)
 - procps
 - curl
 
-For running unit tests, CMocka is required.
+Optional, for the agent only: `checkmodule` and `semodule_package`, which `src/Makefile` needs to build the
+agent's SELinux policy. When either is missing the policy is skipped without an error; the manager build
+never uses them.
+
+For running the C unit tests (CMocka suites), CMocka is required, and the unit-test project refuses to
+configure without `lcov`, `gcov` and `genhtml` (see [Test execution](test-execution.md)).
 
 ### Installation on Ubuntu 24.04
 
 Install the required packages using apt:
 
 ```bash
-apt install gcc g++ make cmake curl procps policycoreutils
-apt install libcmocka-dev
+apt install gcc g++ make cmake curl procps
+apt install checkpolicy semodule-utils     # optional: agent SELinux policy
+apt install libcmocka-dev lcov             # C unit tests
 ```
 
 ### Installation on Rocky Linux 9
@@ -33,7 +38,8 @@ apt install libcmocka-dev
 Install the required packages and enable the GCC toolset:
 
 ```bash
-dnf install make cmake gcc-toolset-13-gcc-c++ gcc-toolset-13-gcc procps policycoreutils
+dnf install make cmake gcc-toolset-13-gcc-c++ gcc-toolset-13-gcc procps
+dnf install checkpolicy policycoreutils    # optional: agent SELinux policy
 scl enable gcc-toolset-13 bash
 
 # Install CMocka
@@ -44,7 +50,7 @@ dnf install libcmocka-devel
 
 ### Windows Agent Build Requirements
 
-To build the Windows agent, you need MinGW, CMocka, and Wine.
+To build the Windows agent, you need MinGW. A MinGW build of CMocka and Wine are only needed for the cross-compiled unit tests, not to build.
 
 #### Installing MinGW and Wine on Ubuntu 24.04
 
@@ -128,10 +134,10 @@ Build tasks automate compilation from within VS Code. Create or update `.vscode/
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "build server",
+      "label": "build manager",
       "type": "shell",
       "command": "make",
-      "args": ["TARGET=server", "DEBUG=1", "-j4"],
+      "args": ["TARGET=manager", "DEBUG=1", "-j4"],
       "options": {
         "cwd": "${workspaceFolder}/src"
       },
@@ -172,7 +178,9 @@ Build tasks automate compilation from within VS Code. Create or update `.vscode/
 
 **Task configuration notes:**
 
-- `DEBUG=1` - Compiles with debug symbols (`-g` flag) for debugging
+- `DEBUG=1` - Configures a `Debug` build (no optimization). Without it the build is `RelWithDebInfo`, which already carries symbols but is optimized. Like every Makefile flag it stays in the CMake cache: a later build without it is still `Debug` (see [Build from Sources](build-sources.md#build-options))
+- `TARGET=manager` - The manager; `TARGET=server` is accepted as an alias and rewritten to `manager`, but `make server` (a goal, not a `TARGET`) stops with an error
+- The three tasks share the single build tree, whose cache is `src/build/CMakeCache.txt`, and each target needs its own `make -C src deps TARGET=<target>` first; run `make -C src clean-internals` before switching `TARGET` so that no cached setting of the previous one carries over
 - `-j4` - Enables parallel compilation with 4 jobs
 - `problemMatcher: ["$gcc"]` - Parses compiler output to display errors in the Problems panel
 
@@ -202,7 +210,7 @@ Debug configurations enable interactive debugging with GDB. Create or update `.v
           "ignoreFailures": true
         }
       ],
-      "preLaunchTask": "build server",
+      "preLaunchTask": "build manager",
       "miDebuggerPath": "/usr/bin/gdb"
     }
   ]
@@ -222,7 +230,7 @@ Debug configurations enable interactive debugging with GDB. Create or update `.v
 - `args` - Command-line arguments passed to the program
 - `preLaunchTask` - Task to run before debugging (e.g., rebuild the binary)
 - `stopAtEntry` - Set to `true` to pause at the program entry point
-- The binary must be compiled with debug symbols (`DEBUG=1`)
+- Step-by-step debugging is reliable only on a `DEBUG=1` build; the default build is optimized
 
 **Additional debug configurations:**
 
@@ -235,29 +243,31 @@ You can add more configurations for other Wazuh components:
   "request": "launch",
   "program": "/var/wazuh-manager/bin/wazuh-manager-remoted",
   "args": ["-f"],
-  "preLaunchTask": "build server",
+  "preLaunchTask": "build manager",
   "MIMode": "gdb"
 }
 ```
 
 ### Deployment After Building
 
-After building, you may need to copy binaries to the installation directory. You can automate this with additional tasks:
+The debug configurations above run the installed binaries, so a rebuilt binary has to be copied into the installation directory first. Build outputs land in `src/build/bin/` (daemons and CLIs) and `src/build/lib/` (shared libraries); the engine is built as `src/build/engine/wazuh-engine` and installed as `bin/wazuh-manager-analysisd`. You can automate the copy with an additional task:
 
 ```json
 {
   "label": "deploy wazuh-manager-analysisd",
   "type": "shell",
   "command": "sudo",
-  "args": ["cp", "wazuh-manager-analysisd", "/var/wazuh-manager/bin/"],
+  "args": ["cp", "build/engine/wazuh-engine", "/var/wazuh-manager/bin/wazuh-manager-analysisd"],
   "options": {
     "cwd": "${workspaceFolder}/src"
   },
-  "dependsOn": ["build server"]
+  "dependsOn": ["build manager"]
 }
 ```
 
 Alternatively, link the `preLaunchTask` in your debug configuration to rebuild and deploy before each debug session.
+
+When you copy a rebuilt daemon, copy the shared libraries of `src/build/lib/` into the installation's `lib/` too: a module library left from an older build is loaded by the new daemon at run time and can crash it.
 
 ## Troubleshooting
 

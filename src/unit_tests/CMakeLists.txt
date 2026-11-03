@@ -1,4 +1,4 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License (version 2) as published by the
@@ -176,6 +176,10 @@ if(${TARGET} STREQUAL "winagent")
                  "syscheckd/test_syscheck_top_level.conf" NEWLINE_STYLE WIN32)
   configure_file("config_files/test_syscheck_config_win.conf"
                  "syscheckd/test_syscheck_config.conf" NEWLINE_STYLE WIN32)
+  configure_file("config_files/test_syscheck_invalid_diff_limit.conf"
+                 "syscheckd/test_syscheck_invalid_diff_limit.conf" NEWLINE_STYLE WIN32)
+  configure_file("config_files/test_syscheck_diff_nodiff_mixed.conf"
+                 "syscheckd/test_syscheck_diff_nodiff_mixed.conf" NEWLINE_STYLE WIN32)
 else()
   configure_file("config_files/test_syscheck.conf"
                  "syscheckd/test_syscheck.conf" COPYONLY)
@@ -197,6 +201,10 @@ else()
                  "syscheckd/test_syscheck_top_level.conf" COPYONLY)
   configure_file("config_files/test_syscheck.conf"
                  "syscheckd/test_syscheck_config.conf" COPYONLY)
+  configure_file("config_files/test_syscheck_invalid_diff_limit.conf"
+                 "syscheckd/test_syscheck_invalid_diff_limit.conf" COPYONLY)
+  configure_file("config_files/test_syscheck_diff_nodiff_mixed.conf"
+                 "syscheckd/test_syscheck_diff_nodiff_mixed.conf" COPYONLY)
 endif()
 
 # Coverage
@@ -272,7 +280,7 @@ add_custom_target(
   #     content_manager,indexer_connector}/: C++ modules with their own coverage
   #     workflow (5_testunit_<module>.yml + coverage_cpp action); legacy UT cmocka
   #     does not exercise them in any target.
-  #   - wazuh_modules/src/wm_{content_manager,inventory_sync_server,
+  #   - wazuh_modules/src/wm_{inventory_sync_server,
   #     vulnerability_scanner}.c: C bridge files for the above C++ modules. Their
   #     wm_*_read() entry points are registered only under #ifndef CLIENT, but no
   #     cmocka test exercises them in either target — the logic is covered by each
@@ -292,7 +300,6 @@ add_custom_target(
     "*wazuh_modules/vulnerability_scanner/*" --remove coverage.total
     "*wazuh_modules/content_manager/*" --remove coverage.total
     "*wazuh_modules/indexer_connector/*" --remove coverage.total
-    "*wazuh_modules/src/wm_content_manager.c" --remove coverage.total
     "*wazuh_modules/src/wm_inventory_sync_server.c" --remove coverage.total
     "*wazuh_modules/inventory_sync_server/*" --remove coverage.total
     "*wazuh_modules/src/wm_vulnerability_scanner.c"

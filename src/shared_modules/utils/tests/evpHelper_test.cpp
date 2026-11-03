@@ -1,12 +1,13 @@
 /*
  * Wazuh - Shared Modules utils tests
- * Copyright (C) 2015, Wazuh Inc.
- * July 11, 2024.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #include "evpHelper_test.hpp"
@@ -27,4 +28,17 @@ TEST_F(EVPHelperTest, ValidEncryptionAndDecryption)
 
     EXPECT_NO_THROW(EVPHelper().decryptAES256(encryptedData, decryptedData));
     ASSERT_EQ(decryptedData, inputData);
+}
+
+/**
+ * @brief decryptAES256 must reject input too short to hold a key and IV instead of
+ * underflowing ciphertextLen (input.size() - CIPHER_KEY_SIZE - CIPHER_IV_SIZE) into a huge
+ * size_t and attempting an oversized allocation.
+ */
+TEST_F(EVPHelperTest, DecryptRejectsInputShorterThanKeyAndIV)
+{
+    std::vector<char> tooShort(10, 0);
+    std::string decryptedData;
+
+    EXPECT_THROW(EVPHelper().decryptAES256(tooShort, decryptedData), std::runtime_error);
 }

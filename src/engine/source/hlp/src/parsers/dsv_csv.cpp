@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <algorithm>
 #include <iostream>
 #include <stdexcept>
@@ -56,9 +57,23 @@ inline Parser dsvParserFunction(std::string name,
         throw std::runtime_error(fmt::format("CSV/DSV parser needs a stop string"));
     }
 
-    const auto toStopP = syntax::parsers::toEnd(endTokens);
+    for (const auto& header : headers)
+    {
+        if (hasInvalidPointerEscape(header))
+        {
+            throw std::runtime_error(fmt::format(
+                "CSV/DSV header '{}' has an invalid JSON Pointer escape ('~' must be followed by '0' or '1')",
+                header.substr(1)));
+        }
+    }
 
-    return [toStopP, target = targetField, delimiterChar, quoteChar, headers, escapeChar, name](std::string_view txt)
+    const auto toStopP = syntax::parsers::toEnd(endTokens);
+    // Headers come from the asset but the depth limit is enforced anyway; the closure owns the trace because a
+    // failure result only keeps a view of it
+    auto depthTrace = fmt::format("{}: field path {} ({})", name, json::Json::DEPTH_ERROR_MSG, json::Json::MAX_DEPTH);
+
+    return [toStopP, target = targetField, delimiterChar, quoteChar, headers, escapeChar, name, depthTrace](
+               std::string_view txt)
     {
         auto synR = toStopP(txt);
         if (synR.failure())
@@ -87,7 +102,11 @@ inline Parser dsvParserFunction(std::string name,
             auto fValue = field.value();
 
             auto v = remaining.substr(fValue.start(), fValue.len());
-            updateDoc(doc, headers[i], v, fValue.isEscaped(), std::string_view {&escapeChar, 1}, fValue.isQuoted());
+            if (!updateDoc(
+                    doc, headers[i], v, fValue.isEscaped(), std::string_view {&escapeChar, 1}, fValue.isQuoted()))
+            {
+                return abs::makeFailure<ResultT>(txt.substr(start), depthTrace);
+            }
 
             start += fValue.end() + 1;
             i++;

@@ -1,0 +1,93 @@
+# Name of the helper function
+name: merge_recursive
+
+metadata:
+  description: |
+    Recursively merge “any_object” into “field”. Both fields must exist and be of the same type, object or array;
+    otherwise the operation fails and neither field is modified.
+    When merging objects, a key present in both is merged recursively if both values are objects or arrays;
+    any other collision (string, number or boolean) is overwritten by the value from “any_object”.
+    When merging arrays, the elements of “any_object” that are not already in “field” are appended,
+    keeping the original order; no element is removed.
+    The result is written to “field” and “any_object” is deleted.
+    At build time, when “field” is a schema field it must be of type object (temporary fields starting with `_` are not checked).
+    This helper function is typically used in the map stage
+  keywords:
+    - undefined
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  any_object:
+    type:
+      - object
+      - array
+      - number
+      - string
+      - boolean
+    source: reference # includes only references (their names start with $)
+
+target_field:
+  type:
+    - object
+    - array
+    - number
+    - string
+    - boolean
+
+skipped:
+  - success_cases # Field types do not match
+
+test:
+  - arguments:
+      any_object:
+        a:
+          d: e
+    target_field:
+      a:
+        b: c
+    should_pass: true
+    expected:
+      a:
+        b: c
+        d: e
+    description: Nested objects are merged recursively
+  - arguments:
+      any_object:
+        key: new
+    target_field:
+      key: old
+      other: 1
+    should_pass: true
+    expected:
+      key: new
+      other: 1
+    description: A scalar collision is overwritten by the source value
+  - arguments:
+      any_object:
+        - 0
+        - 1
+        - 2
+        - 4
+    target_field:
+      - 1
+      - 3
+    should_pass: true
+    expected:
+      - 1
+      - 3
+      - 0
+      - 2
+      - 4
+    description: Arrays keep their order and only new elements are appended
+  - arguments:
+      any_object:
+        - 1
+    target_field:
+      a: 1
+    should_pass: false
+    description: Fields of different types are not merged

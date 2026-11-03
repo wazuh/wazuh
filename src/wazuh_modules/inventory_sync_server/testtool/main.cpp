@@ -1,7 +1,6 @@
 /*
  * Wazuh inventory sync server + VD integration test tool
- * Copyright (C) 2015, Wazuh Inc.
- * August 5, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -33,6 +32,7 @@
 
 #include "flatbuffers/include/inventorySync_generated.h"
 #include "inventory_sync_server.h"
+#include "keyStore.hpp"
 #include "vulnerabilityScannerFacade.hpp"
 
 #include "external/nlohmann/json.hpp"
@@ -516,6 +516,20 @@ namespace
         }
         return false;
     }
+
+    /// The indexer connector reads its credentials from queue/keystore and refuses to start without
+    /// them. The manager's resolver stores them there; this tool takes them from its config.
+    void seedCredentials(const nlohmann::json& config)
+    {
+        if (config.contains("username") && config["username"].is_string())
+        {
+            Keystore::put("indexer", "username", config["username"].get<std::string>());
+        }
+        if (config.contains("password") && config["password"].is_string())
+        {
+            Keystore::put("indexer", "password", config["password"].get<std::string>());
+        }
+    }
 } // namespace
 
 int main(int argc, char* argv[])
@@ -546,6 +560,7 @@ int main(int argc, char* argv[])
         const auto clusterName = moduleConfig.value("clusterName", std::string("cluster01"));
 
         std::filesystem::create_directories("queue/sockets");
+        seedCredentials(moduleConfig);
 
         // VD first: the server's start registers its scan coordinator and resolves the production
         // scanner adapter against the running facade. Under --no-vd the facade never starts and

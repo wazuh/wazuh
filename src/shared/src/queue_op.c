@@ -1,7 +1,6 @@
 /*
  * Queue (abstract data type)
- * Copyright (C) 2015, Wazuh Inc.
- * October 2, 2017
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -39,7 +38,7 @@ int queue_full(const w_queue_t * queue) {
     return (queue->begin + 1) % queue->size == queue->end;
 }
 
-int queue_full_ex(const w_queue_t * queue) {
+int queue_full_ex(w_queue_t * queue) {
     int is_full;
 
     w_mutex_lock(&queue->mutex);
@@ -60,7 +59,7 @@ int queue_empty_ex(w_queue_t * queue) {
     return empty;
 }
 
-float queue_get_percentage_ex(const w_queue_t * queue) {
+float queue_get_percentage_ex(w_queue_t * queue) {
 
     if (queue == NULL) {
         return -1;

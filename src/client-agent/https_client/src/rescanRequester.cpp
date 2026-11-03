@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * August 7, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -34,6 +33,7 @@ namespace
         spec.contentType = "application/json";
         spec.body = reinterpret_cast<const uint8_t*>(body.data());
         spec.bodyLength = body.size();
+        spec.maxResponseBytes = SHORT_REPLY_MAX_RESPONSE_BYTES;
         spec.timeoutMs = timeoutMs;
         return spec;
     }

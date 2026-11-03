@@ -28,8 +28,8 @@ if(NOT ${TARGET} STREQUAL "winagent")
                         -Wl,--wrap,fim_db_get_max_version_file -Wl,--wrap,fim_db_set_version_file \
                         -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,fim_db_file_delete \
                         -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_recovery_check_if_full_sync_required \
-                        -Wl,--wrap,fim_recovery_persist_table_and_resync -Wl,--wrap,fim_db_update_last_sync_time \
-                        -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                        -Wl,--wrap,fim_recovery_persist_table_and_resync \
+                        -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_sync_module_bounded -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                         -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                         -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
                         -Wl,--wrap,w_query_agentd")
@@ -59,8 +59,8 @@ if(NOT ${TARGET} STREQUAL "winagent")
                               -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows -Wl,--wrap,popen \
                               -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,fim_db_file_delete \
                               -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_recovery_check_if_full_sync_required \
-                              -Wl,--wrap,fim_recovery_persist_table_and_resync -Wl,--wrap,fim_db_update_last_sync_time \
-                              -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                              -Wl,--wrap,fim_recovery_persist_table_and_resync \
+                              -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_sync_module_bounded -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                               -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                               -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
                               -Wl,--wrap,w_query_agentd")
@@ -77,7 +77,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
     set(SYSCHECK_AUDIT_FLAGS "-Wl,--wrap,pthread_cond_wait -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,lstat -Wl,--wrap,stat \
                               -Wl,--wrap,openproc -Wl,--wrap,readproc -Wl,--wrap,freeproc -Wl,--wrap,popen \
                               -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,audit_add_rule -Wl,--wrap,audit_restart  \
-                              -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,closeproc  -Wl,--wrap,recv -Wl,--wrap,IsDir \
+                              -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,closeproc  -Wl,--wrap,recv -Wl,--wrap,close -Wl,--wrap,IsDir \
                               -Wl,--wrap,IsLink -Wl,--wrap,IsFile -Wl,--wrap,IsSocket -Wl,--wrap,fprintf -Wl,--wrap,wfopen \
                               -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fgetpos \
                               -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc \
@@ -96,8 +96,8 @@ if(NOT ${TARGET} STREQUAL "winagent")
                               -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
                               -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,fim_db_file_delete \
                               -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_recovery_check_if_full_sync_required \
-                              -Wl,--wrap,fim_recovery_persist_table_and_resync -Wl,--wrap,fim_db_update_last_sync_time \
-                              -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                              -Wl,--wrap,fim_recovery_persist_table_and_resync \
+                              -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_sync_module_bounded -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                               -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                               -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
                               -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
@@ -116,7 +116,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                            -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush \
                            -Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite\
                            -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,getpid -Wl,--wrap,sleep -Wl,--wrap,unlink \
-                           -Wl,--wrap,audit_delete_rule -Wl,--wrap,realpath -Wl,--wrap,atexit -Wl,--wrap,audit_open\
+                           -Wl,--wrap,audit_delete_rule -Wl,--wrap,realpath -Wl,--wrap,lstat -Wl,--wrap,stat -Wl,--wrap,atexit -Wl,--wrap,audit_open\
                            -Wl,--wrap,get_user -Wl,--wrap,get_group -Wl,--wrap,readlink -Wl,--wrap,audit_get_rule_list \
                            -Wl,--wrap,SendMSG -Wl,--wrap,fim_whodata_event -Wl,--wrap,search_audit_rule \
                            -Wl,--wrap,audit_close -Wl,--wrap,fim_manipulated_audit_rules -Wl,--wrap,wfopen \
@@ -131,8 +131,8 @@ if(NOT ${TARGET} STREQUAL "winagent")
                            -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
                            -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,fim_db_file_delete \
                            -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_recovery_check_if_full_sync_required \
-                           -Wl,--wrap,fim_recovery_persist_table_and_resync -Wl,--wrap,fim_db_update_last_sync_time \
-                           -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                           -Wl,--wrap,fim_recovery_persist_table_and_resync \
+                           -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_sync_module_bounded -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                            -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                            -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
                            -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
@@ -150,8 +150,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
 			                "-Wl,--wrap=_minfo -Wl,--wrap,_merror"
                             "-Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_recovery_check_if_full_sync_required"
                             "-Wl,--wrap,fim_recovery_persist_table_and_resync"
-                            "-Wl,--wrap,fim_db_update_last_sync_time"
-                            "-Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff"
+                            "-Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_sync_module_bounded -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff"
                             "-Wl,--wrap,asp_notify_data_clean"
                             "-Wl,--wrap,asp_delete_database"
                             "-Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate"
@@ -189,12 +188,11 @@ else()
                            -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table \
                            -Wl,--wrap=fim_db_teardown ${HASH_OP_WRAPPERS} \
                            -Wl,--wrap=utf8_GetNamedSecurityInfo -Wl,--wrap=utf8_SetNamedSecurityInfo \
-                           -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                           -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_sync_module_bounded -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                            -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                            -Wl,--wrap,fim_recovery_check_if_full_sync_required \
                            -Wl,--wrap,fim_recovery_persist_table_and_resync \
                            -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed \
-                           -Wl,--wrap,fim_db_update_last_sync_time \
                            -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
                            -Wl,--wrap,w_query_agentd -Wl,--wrap=QueryDosDeviceA ${DEBUG_OP_WRAPPERS}")
     target_link_libraries(test_win_whodata SYSCHECK_EVENT_O ${TEST_EVENT_DEPS} fimdb)

@@ -1,0 +1,59 @@
+openapi: 3.0.0
+security:
+  - jwt: []
+components:
+  parameters:
+    pretty:
+      name: pretty
+      in: query
+    agent_id:
+      name: agent_id
+      in: path
+x-rbac-catalog:
+  actions:
+    agent:read: {}
+paths:
+  /:
+    get:
+      tags: [Info]
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+      responses:
+        '200': {}
+  /agents:
+    get:
+      tags: [Agents]
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:read'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - name: limit
+          in: query
+      responses:
+        '200': {}
+        '400': {}
+    post:
+      tags: [Agents]
+      requestBody:
+        content: {}
+      responses:
+        '200': {}
+  /agents/group:
+    put:
+      tags: [Agents]
+      responses:
+        '200': {}
+  /agents/{agent_id}:
+    get:
+      tags: [Agents]
+      parameters:
+        - $ref: '#/components/parameters/agent_id'
+      responses:
+        '200': {}
+        '404': {}
+  /login:
+    post:
+      tags: [Security]
+      security: []
+      responses:
+        '200': {}

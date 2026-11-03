@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module (C++ worker bridge)
- * Copyright (C) 2015, Wazuh Inc.
- * July 21, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -12,8 +11,13 @@
 #ifndef _REMOTED_HTTP_SERVER_INTERFACE_HPP
 #define _REMOTED_HTTP_SERVER_INTERFACE_HPP
 
+#include "caCertificateSource.hpp"
+#include "caRecordEvents.hpp"
 #include "inFlightBudget.hpp"
+#include "tlsCertificateStatus.hpp"
+#include "tlsInventory.hpp"
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -183,7 +187,9 @@ namespace remoted::http
          *
          * Shares send()'s exactly-once guarantee: send() and stream() together may be called once
          * per request, from any thread. Returns immediately -- the transfer proceeds asynchronously
-         * and the source is drained on the worker pool.
+         * and the source is drained on the worker pool. Once the server has stopped accepting
+         * (IHttpServer::stopAccepting()) there is no pool left: the transfer never starts, the
+         * source is released, and the request is answered 503 instead.
          *
          * Only meaningful on a route registered with ResponseMode::Streamable. The default below
          * exists so that responders which never stream (and every test double) need no override;
@@ -257,17 +263,26 @@ namespace remoted::http
         /// agent and manager surfaces as 404. Public HTTPS listener only (the local admin UDS
         /// server is never prefixed). Note: the prefix consumes part of maxUrlSize.
         std::string globalPrefix {};
-        std::string certificatePath; ///< TLS certificate chain (PEM) path.
-        std::string privateKeyPath;  ///< TLS private key (PEM) path.
-        std::string caPath;          ///< CA bundle (PEM) used to verify client certificates.
-        std::string ciphers;         ///< TLS 1.3 ciphersuite override
+        std::string certificatePath;   ///< TLS certificate chain (PEM) path.
+        std::string privateKeyPath;    ///< TLS private key (PEM) path.
+        std::string caPath;            ///< CA bundle (PEM) used to verify client certificates.
+        std::string caCertificatePath; ///< CA that signs the listener certificate (PEM); served on GET /cacerts
+                                       ///< (remote.https.ca_certificate). Not the client-verification caPath.
+        /// Where the node remembers the publication of the bundle it last served, so an ordinary CA
+        /// file can be told from a published one that was rewritten by hand (issue #39319). Its own
+        /// directory under var/run/, created by the daemon at start (C25); an EMPTY value disables
+        /// the record, which only changes what is logged -- never what is served or vouched for.
+        /// Not a configuration option: buildHttpServerConfig() leaves this default, tests point it
+        /// at a temporary directory of their own.
+        std::string caPublicationRecordPath {"var/run/remoted-ca-bundle/record.json"};
+        std::string ciphers;                                                    ///< TLS 1.3 ciphersuite override
         ClientVerificationMode verificationMode {ClientVerificationMode::None}; ///< Client-certificate strictness.
         DualStackMode dualStackMode {DualStackMode::Unset}; ///< IPV6_V6ONLY override (IPv6 bind only).
         std::size_t ioThreads {2};                          ///< RESTinio/asio I/O threads (accept + read/write).
         std::size_t workerThreads {4};                      ///< Handler worker-pool size (blocking work offload).
-        std::size_t maxBodySize {20U * 1024U * 1024U}; ///< Transport hard cap (backstop above the auth body limit).
-        std::size_t readTimeoutSec {10};               ///< Time to receive a full request on a connection (also covers
-                                                       ///< the TLS handshake window).
+        std::size_t maxBodySize {10U * 1024U * 1024U}; ///< Transport hard cap (backstop above the auth body limit).
+        std::size_t readTimeoutSec {10};               ///< Time to receive a full request on a connection, and,
+                                                       ///< separately, to complete the TLS handshake before it.
         std::size_t writeTimeoutSec {10};              ///< Time allowed to write a response.
         std::size_t requestTimeoutSec {30};            ///< Time allowed to handle a request end-to-end.
         std::size_t maxUrlSize {2048};                 ///< Max URL size, bytes.
@@ -283,7 +298,28 @@ namespace remoted::http
         /// Max in-flight (unprocessed) request payload bytes before new requests get 503. 0 disables the limit.
         std::size_t maxInFlightBytes {256U * 1024U * 1024U};
         /// Max simultaneous TCP connections (bounds the read-phase peak: maxParallelConnections * maxBodySize).
-        std::size_t maxParallelConnections {512};
+        std::size_t maxParallelConnections {256};
+        /// Max connections from one address still in the TLS handshake; one more is closed at once
+        /// (remoted.max_handshakes_per_source). 0 disables the cap. Established connections are never
+        /// counted, so a fleet behind one NAT or load-balancer address is not limited by it.
+        std::size_t maxHandshakesPerSource {32};
+        /// How often the served certificate is re-evaluated (expiry, and whether caCertificatePath
+        /// signs it) after the start-time evaluation -- see IHttpServer::certificateStatus(). Not a
+        /// configuration option: buildHttpServerConfig() leaves the default, tests inject a short one.
+        std::chrono::seconds certificateStatusInterval {std::chrono::hours {24}};
+        /// How often, between two of those evaluations, the CA bundle alone is judged again and its
+        /// publication events delivered: a CA that expires in place silences the agents that verify
+        /// this manager, so no request would ever notice it (issue #39519). No log line repeats: an
+        /// event is posted once per change. Not a configuration option; 0 disables it.
+        std::chrono::seconds caBundleRecheckInterval {std::chrono::seconds {60}};
+        /// Called by start() with the CA source and the publication-event mailbox it just built,
+        /// before the listener accepts anything -- and again on every later start(), with the new
+        /// pair. It is how the owner of a logger that is NOT the transport (the GET /cacerts
+        /// handler, wired in the facade) gets to drain the mailbox and persist the record in the
+        /// request that noticed a change, without this interface growing a method for it (C21b).
+        /// Not a configuration option; empty by default, and an empty one is a no-op.
+        std::function<void(std::shared_ptr<CaCertificateSource>, std::shared_ptr<CaRecordEventMailbox>)>
+            onCaRecordReady {};
     };
 
     /**
@@ -304,6 +340,27 @@ namespace remoted::http
         std::size_t budgetInFlightBytes {0};   ///< Bytes currently reserved by admitted requests.
         std::size_t budgetInFlightCount {0};   ///< Requests currently holding a reservation.
         std::uint64_t budgetRejectedTotal {0}; ///< Requests the budget has shed (cumulative).
+        /// Connections currently open on the listener, and the ceiling they are counted against
+        /// (`remoted.max_parallel_connections`). Distinct from budgetInFlightCount, which counts
+        /// REQUESTS holding a byte reservation: a connection is open from the accept until it
+        /// closes, which on a streamed response (POST /download) is the whole transfer.
+        ///
+        /// This is the only visibility into that ceiling. Reaching it does NOT produce an error:
+        /// the transport postpones the accept and the connection waits in the kernel's backlog,
+        /// so saturation shows up as latency, never as a counted rejection -- which is exactly
+        /// why the level has to be observable.
+        ///
+        /// Counted from the start of the TLS handshake, when the connection already holds its slot.
+        std::size_t connectionsOpen {0};
+        std::size_t connectionsMax {0};
+        /// Of connectionsOpen, those still in the TLS handshake. An honest one leaves it in
+        /// milliseconds, so a level that stays up is peers holding slots without ever speaking TLS.
+        std::size_t connectionsHandshaking {0};
+        /// Handshakes the deadline (readTimeoutSec) closed, cumulative.
+        std::uint64_t handshakeTimeoutsTotal {0};
+        /// Connections closed at once because their address already had maxHandshakesPerSource
+        /// handshakes in progress, cumulative.
+        std::uint64_t handshakeRejectedPerSourceTotal {0};
     };
 
     /**
@@ -381,6 +438,104 @@ namespace remoted::http
         }
 
         /**
+         * @brief Latest evaluation of the served TLS certificate: days to expiry and whether it
+         *        CHAINS to HttpServerConfig::caCertificatePath (the CA `GET /cacerts` hands out).
+         *
+         * Expiry is evaluated once before the listener starts accepting and again every
+         * HttpServerConfig::certificateStatusInterval (that is what `evaluations` counts). The CA
+         * half is taken from the same CaCertificateSource `/cacerts` answers from, on every call,
+         * so it can never disagree with the endpoint: `caMatchesLeaf`, `caSubjects`, the chain
+         * fields and `caReadFailure` describe the file as of the last read -- or, while the file
+         * cannot be read, the last good read of it. `caMatchesLeaf` is a real chain validation
+         * (ca_bundle::leafChainsToAnyCa(), C33), so a CA that only signs the leaf reads false. The
+         * facade publishes it as the `remoted.server.tls.*` pulls and `/cacerts` refuses (503) to
+         * serve a bundle that reads `caMatchesLeaf == false`. Callable from any thread; a default-constructed snapshot
+         * (nothing known, 0 evaluations) before start() and on implementations that never
+         * evaluate, like the test fakes.
+         */
+        virtual TlsCertificateSnapshot certificateStatus() const
+        {
+            return {};
+        }
+
+        /**
+         * @brief Current state of the CA file: the certificates to publish and whether the served
+         *        leaf chains to them, taken from one read (see CaCertificateSource).
+         *
+         * What `GET /cacerts` answers with. Re-read on each call and re-validated whenever the
+         * file's content changes, so the PEM handed out and the verdict about it always describe
+         * the same bytes. A read that fails keeps the last good snapshot (with `lastReadFailure`
+         * set); a readable file with no certificate in it clears it. Callable from any thread; an
+         * empty snapshot before start() and on implementations that hold no certificate, like the
+         * test fakes.
+         */
+        virtual CaCertificateSnapshot caCertificateSnapshot() const
+        {
+            return {};
+        }
+
+        /**
+         * @brief The generation the served CA bundle may be announced under, from the cache the
+         *        source revalidates at most once a second (CaCertificateSource::descriptor()).
+         *
+         * What the control notify path tells an agent (`ca_generation`): the publication a
+         * vouched-for bundle carries, 0 when there is a servable bundle no guard vouched for, and
+         * `nullopt` when there is no servable bundle at all. One call per notify on purpose -- it
+         * costs at most one read of the file per second per node, however many agents ask (C18) --
+         * and no hash of anything ever comes out of here. Callable from any thread; an empty
+         * descriptor (`nullopt`) before start() and on implementations that hold no CA, like the
+         * test fakes, which is what makes the field absent on a manager without the feature. Also
+         * `nullopt` once the listener is gone -- after stop(), or after a bind that fails past TLS
+         * setup -- even while the source underneath still holds a perfectly good bundle: this is a
+         * generation for a manager this process is serving, and past that point it is not serving
+         * anything (issue #39319, C26).
+         */
+        virtual CaCertificateSource::CaDescriptor caDescriptor() const
+        {
+            return {};
+        }
+
+        /**
+         * @brief The one certificate of the served CA bundle the listener's leaf chains to,
+         *        re-serialised (CaCertificateSource::leafSignerPem()).
+         *
+         * What the legacy WPK delivery pushes to a pre-v5.0.0 agent mid-upgrade: a SINGLE
+         * certificate, never the bundle and never its `##` block, because the agent-side installer
+         * refuses a drop-in carrying more than one (C7). Bytes written on success; 0 when the leaf
+         * chains to nothing in the bundle, there is no servable bundle or there is no leaf, **or the
+         * certificate it chains to is not an anchor the agent-side installer would
+         * keep** -- not a CA (no `basicConstraints CA:TRUE`), or outside its validity window at the
+         * moment of the read (issue #39319, C26 and C33: a valid signature is not enough, since a
+         * rotation's overlap is exactly where an expired re-issue of the same key signs the same
+         * leaf as the current certificate, and a certificate holding that key under another subject
+         * signs it without being its issuer at all); -1 when `capacity` is too small. Callable from any
+         * thread; 0 before start(), on implementations that hold no CA like the test fakes, and
+         * once the listener is gone -- after stop(), or after a bind that fails past TLS setup --
+         * even while the source underneath still holds a servable bundle, which is what keeps this
+         * from shipping an anchor for a manager this process is not serving.
+         */
+        virtual int caLeafSignerPem(char* /*buffer*/, std::size_t /*capacity*/) const
+        {
+            return 0;
+        }
+
+        /**
+         * @brief What `GET /tls` publishes: the served leaf as loaded by start() (descriptor, when it
+         *        was loaded, its configured path) and the CA file from one caCertificateSnapshot()
+         *        read, with its configured path (see TlsInventory).
+         *
+         * `listener` is engaged only while the server is accepting -- between start() and
+         * stopAccepting() -- so the route can answer 503 instead of describing a certificate nothing
+         * is serving. The CA half is read on every call, like caCertificateSnapshot(); the leaf half
+         * is computed once per start(). Callable from any thread; an empty inventory before start(),
+         * after stopAccepting(), and on implementations that hold no certificate, like the test fakes.
+         */
+        virtual TlsInventory tlsInventory() const
+        {
+            return {};
+        }
+
+        /**
          * @brief Start listening. Throws on bind/TLS/configuration failure.
          *
          * @param config Server configuration.
@@ -394,7 +549,11 @@ namespace remoted::http
          * every handler dispatch that was already queued has completed; (2) the underlying
          * I/O runtime is deliberately left ALIVE, so a response to a request that was already
          * handed off before this call (e.g. to a downstream forwarder) can still be delivered
-         * safely via IHttpResponder::send() from any thread, at any point afterward.
+         * safely via IHttpResponder::send() from any thread, at any point afterward; (3) the
+         * worker pool is gone, so IHttpResponder::stream() called afterward starts no transfer:
+         * it answers 503 through send() instead. A caller that may still stream from its own
+         * threads (the /download fallback's lookup workers) should drain them BEFORE this call,
+         * so their transfers run on a live pool.
          *
          * Call this BEFORE tearing down anything an in-flight handler might still call into
          * (a downstream client/forwarder) -- that is what makes finishing that in-flight work

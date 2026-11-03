@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * All right reserved.
  *
  * This program is free software; you can redistribute it
@@ -127,7 +127,9 @@ static void wm_task_manager_read_tunables(wm_task_manager *data) {
     data->keep_log_days = wm_task_manager_zeroable("manager_task_log_keep_days", 0, 500);
     data->size_rotate_mb = wm_task_manager_zeroable("manager_task_log_size_rotate", 0, 4096);
     data->daily_rotations = getDefine_Int_default("wazuh_modules", "manager_task_log_daily_rotations", 1, 256, 0);
-    data->day_wait = getDefine_Int_default("wazuh_modules", "manager_task_log_day_wait", 0, 600, 0);
+    /* Minimum 1, not 0: the module's valueOr() reads 0 as "unset" and substitutes the 10 s default,
+     * so accepting 0 here would let an operator ask for midnight and silently get 00:00:10. */
+    data->day_wait = getDefine_Int_default("wazuh_modules", "manager_task_log_day_wait", 1, 600, 0);
     data->delete_old_batch = getDefine_Int_default("wazuh_modules", "manager_task_delete_old_batch", 1, 100000, 0);
     data->delete_old_budget = getDefine_Int_default("wazuh_modules", "manager_task_delete_old_budget", 1, 3600, 0);
 
@@ -158,7 +160,7 @@ static void wm_task_manager_read_tunables(wm_task_manager *data) {
 }
 
 /* Default instance of the module (default_modules[] in wmodules.c): the configuration itself comes from
- * etc/wazuh-manager.conf through wm_task_manager_read_json(). `nodes` is unused (manager only). */
+ * /etc/wazuh-manager/wazuh-manager.conf through wm_task_manager_read_json(). `nodes` is unused (manager only). */
 int wm_task_manager_read(__attribute__((unused)) const OS_XML *xml, __attribute__((unused)) xml_node **nodes, wmodule *module) {
     wm_task_manager* data;
 
@@ -253,17 +255,20 @@ static void wm_task_manager_read_remoted(wm_task_manager *data) {
 
     cJSON_Delete(section);
 
-    /* The seven fields Read_Remote_JSON() can allocate. Everything else in the struct is scalar. */
+    /* The eight fields Read_Remote_JSON() can allocate. Everything else in the struct is scalar.
+     * https.ca_certificate is easy to miss because it is the only one this module never reads --
+     * it is allocated all the same, once per modulesd start. */
     os_free(remoted_config.lip);
     os_free(remoted_config.https.bind_addr);
     os_free(remoted_config.https.global_prefix);
     os_free(remoted_config.https.certificate);
     os_free(remoted_config.https.key);
     os_free(remoted_config.https.ca);
+    os_free(remoted_config.https.ca_certificate);
     os_free(remoted_config.https.ciphers);
 }
 
-/* Reader of the `task-manager` section of the effective document (etc/wazuh-manager.conf, see
+/* Reader of the `task-manager` section of the effective document (/etc/wazuh-manager/wazuh-manager.conf, see
  * mconf-config.h). `module` is the instance default_modules[] already initialised through
  * wm_task_manager_read(NULL, NULL, module). The schema guarantees non-negative integers; 0 keeps the
  * module default, as with the XML reader. */
@@ -274,9 +279,10 @@ int wm_task_manager_read_json(const cJSON *section, wmodule *module) {
 
     wm_task_manager *data = module->data;
 
-    /* Outside the section guard below: `global` and `remote` are different sections, and both are
-     * still needed when `task-manager` itself is absent -- the sweep needs its interval, and the
-     * upgrade gates need remoted's delivery settings. */
+    /* Outside the section guard below: `global` and `remote` are different sections, read whatever
+     * `section` is -- the sweep needs its interval, and the upgrade gates need remoted's delivery
+     * settings. On a manager the defaults step inserts every absent section, so `section` is only NULL
+     * when a caller passes no document; the guard is defensive, not a "section removed" path. */
     data->disconnection_time = wm_task_manager_disconnection_time();
     wm_task_manager_read_remoted(data);
 

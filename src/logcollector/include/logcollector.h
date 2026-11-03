@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -46,6 +46,17 @@
 
 /* Read logcollector config */
 int LogCollectorConfig(const char* cfgfile);
+
+#ifndef WIN32
+/**
+ * @brief Warn when logcollector.max_files does not fit under the file descriptor limit in force
+ *
+ * LogCollectorConfig() checks max_files against the configured logcollector.rlimit_nofile, before
+ * the soft limit is raised. When the hard limit caps that raise, the limit in force can be lower.
+ * @param effective Soft limit in force, as returned by w_raise_nofile_limit().
+ */
+void w_logcollector_check_max_files(long effective);
+#endif
 
 /* Parse read config into JSON format */
 cJSON* getLocalfileConfig(void);
@@ -250,6 +261,8 @@ typedef struct w_msg_queue_t
     w_queue_t* msg_queue;
     pthread_mutex_t mutex;
     pthread_cond_t available;
+    time_t last_warned;              ///< Last time the "queue is full" warning fired for this target
+    unsigned long dropped_since_warning; ///< Lines dropped for this target since last_warned
 } w_msg_queue_t;
 
 /* Hash table of queues */
@@ -344,6 +357,19 @@ int w_update_file_status(const char* path, int64_t pos, EVP_MD_CTX* context);
  */
 bool w_get_hash_context(logreader* lf, EVP_MD_CTX** context, int64_t position);
 
+/**
+ * @brief Update the hash context with the line just read by fgets, NUL bytes included
+ *
+ * fgets does not report how many bytes it read, so the length is the distance between `*position`
+ * and the current position of the stream. If the position cannot be read, the line is hashed up to
+ * its first NUL, as before (w_ftell already logs the failure).
+ * @param lf Structure that contains file information.
+ * @param context EVP_MD_CTX context.
+ * @param line Line read from `lf->fp`.
+ * @param position Position of the stream before the line was read. It is moved to the end of the line.
+ */
+void w_hash_read_line(logreader *lf, EVP_MD_CTX *context, const char *line, int64_t *position);
+
 extern int sample_log_length;
 extern int lc_debug_level;
 extern int accept_remote;
@@ -354,6 +380,8 @@ extern rlim_t nofile;
 #endif
 
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
+extern volatile sig_atomic_t macos_log_shutdown;
+
 /**
  * @brief This function is called to release macOS log's "show" and/or "stream" resources
  */

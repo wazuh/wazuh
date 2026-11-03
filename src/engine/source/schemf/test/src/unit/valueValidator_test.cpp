@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -34,23 +35,58 @@ TEST(ValueValidatorTest, Bool_RejectsString)
 }
 
 // ---------------------------------------------------------------------------
-// getShortValidator  (int8 range check)
+// getByteValidator  (int8 range check)
+// ---------------------------------------------------------------------------
+
+TEST(ValueValidatorTest, Byte_AcceptsInRange)
+{
+    auto v = getByteValidator();
+    EXPECT_FALSE(base::isError(v(json::Json {"0"})));
+    EXPECT_FALSE(base::isError(v(json::Json {"127"})));
+    EXPECT_FALSE(base::isError(v(json::Json {"-128"})));
+}
+
+TEST(ValueValidatorTest, Byte_RejectsOutOfRange)
+{
+    auto v = getByteValidator();
+    auto res = v(json::Json {"200"});
+    ASSERT_TRUE(base::isError(res));
+    EXPECT_THAT(base::getError(res).message, HasSubstr("range for byte"));
+
+    res = v(json::Json {"-129"});
+    ASSERT_TRUE(base::isError(res));
+}
+
+TEST(ValueValidatorTest, Byte_RejectsString)
+{
+    auto v = getByteValidator();
+    auto res = v(json::Json {"\"abc\""});
+    ASSERT_TRUE(base::isError(res));
+    EXPECT_THAT(base::getError(res).message, HasSubstr("integer"));
+}
+
+// ---------------------------------------------------------------------------
+// getShortValidator  (int16 range check)
 // ---------------------------------------------------------------------------
 
 TEST(ValueValidatorTest, Short_AcceptsInRange)
 {
     auto v = getShortValidator();
     EXPECT_FALSE(base::isError(v(json::Json {"0"})));
-    EXPECT_FALSE(base::isError(v(json::Json {"127"})));
-    EXPECT_FALSE(base::isError(v(json::Json {"-128"})));
+    EXPECT_FALSE(base::isError(v(json::Json {"200"})));
+    EXPECT_FALSE(base::isError(v(json::Json {"32767"})));
+    EXPECT_FALSE(base::isError(v(json::Json {"-32768"})));
 }
 
 TEST(ValueValidatorTest, Short_RejectsOutOfRange)
 {
     auto v = getShortValidator();
-    auto res = v(json::Json {"200"});
+    auto res = v(json::Json {"32768"});
     ASSERT_TRUE(base::isError(res));
-    EXPECT_THAT(base::getError(res).message, HasSubstr("range"));
+    EXPECT_THAT(base::getError(res).message, HasSubstr("range for short"));
+
+    res = v(json::Json {"-32769"});
+    ASSERT_TRUE(base::isError(res));
 }
 
 TEST(ValueValidatorTest, Short_RejectsString)
@@ -212,6 +248,88 @@ TEST(ValueValidatorTest, Date_RejectsNumber)
     EXPECT_THAT(base::getError(res).message, HasSubstr("string"));
 }
 
+TEST(ValueValidatorTest, Date_RejectsOutOfRangeFields)
+{
+    auto v = getDateValidator();
+    for (const auto* value : {R"("2024-13-01T00:00:00Z")",
+                              R"("2024-02-31T00:00:00Z")",
+                              R"("2023-02-29T00:00:00Z")",
+                              R"("2024-01-01T24:00:00Z")",
+                              R"("2024-01-01T25:00:00Z")",
+                              R"("2024-01-01T00:60:00Z")",
+                              R"("2024-01-01T00:00:60Z")",
+                              R"("2024-01-01T23:59:60Z")"})
+    {
+        SCOPED_TRACE(value);
+        auto res = v(json::Json {value});
+        ASSERT_TRUE(base::isError(res));
+        EXPECT_THAT(base::getError(res).message, HasSubstr("Invalid date"));
+    }
+}
+
+TEST(ValueValidatorTest, Date_RejectsTrailingAndShortFields)
+{
+    auto v = getDateValidator();
+    for (const auto* value : {R"("2024-01-01T00:00:00Zx")",
+                              R"("2024-1-1T0:0:0Z")",
+                              R"("2024-01-01T00:00:00")",
+                              R"("2024-01-01T00:00:00.Z")",
+                              R"("2024-01-01T00:00:00.1234567890Z")",
+                              R"("2024-01-01T00:00:00Zul")",
+                              R"("2024-01-01T00:00:00ZuluX")",
+                              R"("2024-01-01T00:00:00ZULU")",
+                              R"("2024-01-01T00:00:00ZUTC")",
+                              R"("2024-01-01T00:00:00+02:00x")",
+                              R"("2024-01-01T00:00:00+02:00Z")",
+                              R"("2024-01-01T00:00:00+2:00")",
+                              R"("2024-01-01T00:00:00+0200")",
+                              R"("2024-01-01T00:00:00+02")",
+                              R"("2024-01-01T00:00:00+02:0")",
+                              R"("2024-01-01T00:00:00+02:60")",
+                              R"("2024-01-01T00:00:00+15:00")",
+                              R"("2024-01-01T00:00:00 +02:00")",
+                              R"("2024-01-01T00:00:00.+02:00")",
+                              R"("2024-01-01T00:00:00.1234567890+02:00")",
+                              R"("2024-01-01x")",
+                              R"("2024-01-01Z")",
+                              R"("2024-01-01+02:00")",
+                              R"("2024-1-01")",
+                              R"("2024-01-1")",
+                              R"("2024-13-01")",
+                              R"("2024-02-30")",
+                              R"("2023-02-29")",
+                              R"("2024-01-00")"})
+    {
+        SCOPED_TRACE(value);
+        auto res = v(json::Json {value});
+        ASSERT_TRUE(base::isError(res));
+    }
+}
+
+TEST(ValueValidatorTest, Date_AcceptsValidForms)
+{
+    auto v = getDateValidator();
+    for (const auto* value : {R"("2024-01-01T00:00:00Z")",
+                              R"("2024-02-29T23:59:59Z")",
+                              R"("2024-01-01T00:00:00.123Z")",
+                              R"("2024-01-01T00:00:00.123456789Z")",
+                              R"("2024-01-01T00:00:00Zulu")",
+                              R"("2024-01-01T00:00:00.123Zulu")",
+                              R"("2024-01-01T00:00:00+02:00")",
+                              R"("2024-01-01T00:00:00-02:00")",
+                              R"("2024-01-01T00:00:00+00:00")",
+                              R"("2024-01-01T00:00:00+14:00")",
+                              R"("2024-01-01T00:00:00-12:30")",
+                              R"("2024-01-01T00:00:00.123+02:00")",
+                              R"("2024-01-01T00:00:00.123456789-05:30")",
+                              R"("2024-01-01")",
+                              R"("2024-02-29")"})
+    {
+        SCOPED_TRACE(value);
+        EXPECT_FALSE(base::isError(v(json::Json {value})));
+    }
+}
+
 // ---------------------------------------------------------------------------
 // getIpValidator
 // ---------------------------------------------------------------------------
@@ -236,6 +354,89 @@ TEST(ValueValidatorTest, Ip_RejectsNumber)
     auto res = v(json::Json {"42"});
     ASSERT_TRUE(base::isError(res));
     EXPECT_THAT(base::getError(res).message, HasSubstr("string"));
+}
+
+TEST(ValueValidatorTest, Ip_AcceptsValidAddresses)
+{
+    auto v = getIpValidator();
+    for (const auto* value : {R"("10.0.0.1")", R"("::1")", R"("2001:db8::1")", R"("::ffff:1.2.3.4")"})
+    {
+        SCOPED_TRACE(value);
+        EXPECT_FALSE(base::isError(v(json::Json {value})));
+    }
+}
+
+TEST(ValueValidatorTest, Ip_RejectsOutOfRangeOctets)
+{
+    auto v = getIpValidator();
+    for (const auto* value : {R"("999.999.999.999")", R"("256.1.1.1")", R"("01.2.3.4")"})
+    {
+        SCOPED_TRACE(value);
+        auto res = v(json::Json {value});
+        ASSERT_TRUE(base::isError(res));
+        EXPECT_THAT(base::getError(res).message, HasSubstr("Invalid IP"));
+    }
+}
+
+TEST(ValueValidatorTest, Ip_RejectsMalformed)
+{
+    auto v = getIpValidator();
+    for (const auto* value : {R"("1:2:")", R"("::::")", R"("1.2.3.4x")", R"(" 1.2.3.4")"})
+    {
+        SCOPED_TRACE(value);
+        auto res = v(json::Json {value});
+        ASSERT_TRUE(base::isError(res));
+    }
+}
+
+TEST(ValueValidatorTest, Ip_AcceptsZoneIds)
+{
+    auto v = getIpValidator();
+    for (const auto* value : {R"("fe80::1%eth0")",
+                              R"("fe80::1%0")",
+                              R"("fe80::1%15")",
+                              R"("fe80::1%ETH0")",
+                              R"("fe80::87a:f22b:64d4:824a%15")",
+                              R"("::%eth0")",
+                              R"("1:2:3:4:5:6:7:8%eth0")",
+                              R"("fe80::1%eth0%x")",
+                              R"("fe80::1%eth 0")",
+                              R"("fe80::1%a.b_c-d")"})
+    {
+        SCOPED_TRACE(value);
+        EXPECT_FALSE(base::isError(v(json::Json {value})));
+    }
+}
+
+TEST(ValueValidatorTest, Ip_RejectsMalformedZoneIds)
+{
+    auto v = getIpValidator();
+    for (const auto* value : {R"("fe80::1%")",
+                              R"("%eth0")",
+                              R"("%")",
+                              R"("1.2.3.4%eth0")",
+                              R"("1.2.3.4%")",
+                              R"("::ffff:1.2.3.4%eth0")",
+                              R"("fe80::g%eth0")",
+                              R"("fe80:::1%eth0")",
+                              R"("1:2:3:4:5:6:7:8:9%eth0")",
+                              R"("fe80::1/64%eth0")",
+                              R"("[fe80::1%eth0]")",
+                              R"(" fe80::1%eth0")",
+                              R"("fe80::1%eth0\u0000x")"})
+    {
+        SCOPED_TRACE(value);
+        auto res = v(json::Json {value});
+        ASSERT_TRUE(base::isError(res));
+        EXPECT_THAT(base::getError(res).message, HasSubstr("Invalid IP"));
+    }
+}
+
+TEST(ValueValidatorTest, Ip_RejectsEmbeddedNul)
+{
+    auto v = getIpValidator();
+    auto res = v(json::Json {R"("10.0.0.1\u0000x")"});
+    ASSERT_TRUE(base::isError(res));
 }
 
 // ---------------------------------------------------------------------------
@@ -263,6 +464,27 @@ TEST(ValueValidatorTest, Binary_RejectsNumber)
     auto res = v(json::Json {"42"});
     ASSERT_TRUE(base::isError(res));
     EXPECT_THAT(base::getError(res).message, HasSubstr("string"));
+}
+
+TEST(ValueValidatorTest, Binary_RejectsTrailingGarbage)
+{
+    auto v = getBinaryValidator();
+    for (const auto* value : {R"("QUJD!!!")", R"("")"})
+    {
+        SCOPED_TRACE(value);
+        auto res = v(json::Json {value});
+        ASSERT_TRUE(base::isError(res));
+    }
+}
+
+TEST(ValueValidatorTest, Binary_AcceptsPadded)
+{
+    auto v = getBinaryValidator();
+    for (const auto* value : {R"("QUJD")", R"("QUI=")"})
+    {
+        SCOPED_TRACE(value);
+        EXPECT_FALSE(base::isError(v(json::Json {value})));
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -400,29 +622,26 @@ TEST(GeoValidatorTest, Array_LonLat_OutOfRange)
 TEST(GeoValidatorTest, Array_Of_GeoObjects_Valid)
 {
     auto v = getGeoValidator();
-    EXPECT_FALSE(base::isError(
-        v(json::Json {R"([{"lat":40.71,"lon":-74.00},{"lat":50.0,"lon":10.0}])"})));
+    EXPECT_FALSE(base::isError(v(json::Json {R"([{"lat":40.71,"lon":-74.00},{"lat":50.0,"lon":10.0}])"})));
 }
 
 TEST(GeoValidatorTest, Array_Of_DifferentGeoObjects_Valid)
 {
     auto v = getGeoValidator();
-    EXPECT_FALSE(base::isError(
-        v(json::Json {R"([{"lat":40.71,"lon":-74.00},{"type":"Point","coordinates":[-74.00,40.71]}])"})));
+    EXPECT_FALSE(
+        base::isError(v(json::Json {R"([{"lat":40.71,"lon":-74.00},{"type":"Point","coordinates":[-74.00,40.71]}])"})));
 }
 
 TEST(GeoValidatorTest, Array_Of_GeoJsonAndStrings_Valid)
 {
     auto v = getGeoValidator();
-    EXPECT_FALSE(base::isError(
-        v(json::Json {R"([{"type":"Point","coordinates":[-74.00,40.71]},"40.71,-74.00"])"})));
+    EXPECT_FALSE(base::isError(v(json::Json {R"([{"type":"Point","coordinates":[-74.00,40.71]},"40.71,-74.00"])"})));
 }
 
 TEST(GeoValidatorTest, Array_Of_GeoObjects_OneInvalid)
 {
     auto v = getGeoValidator();
-    EXPECT_TRUE(base::isError(
-        v(json::Json {R"([{"lat":40.71,"lon":-74.00},{"lat":91.0,"lon":0.0}])"})));
+    EXPECT_TRUE(base::isError(v(json::Json {R"([{"lat":40.71,"lon":-74.00},{"lat":91.0,"lon":0.0}])"})));
 }
 
 TEST(GeoValidatorTest, Array_Of_GeoStrings_Valid)

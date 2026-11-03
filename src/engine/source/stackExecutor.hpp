@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef CMD_DETAILS_STACK_EXECUTOR_HPP
 #define CMD_DETAILS_STACK_EXECUTOR_HPP
 

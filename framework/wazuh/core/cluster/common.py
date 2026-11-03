@@ -1,4 +1,4 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -22,13 +22,15 @@ from typing import Any, Callable, Coroutine, Dict, Iterable, List, Tuple, Union
 from uuid import uuid4
 
 import cryptography.fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 import wazuh.core.results as wresults
 from wazuh import Wazuh
 from wazuh.core import common, exception, utils
 from wazuh.core.cluster import cluster
 from wazuh.core.cluster import utils as cluster_utils
-from wazuh.core.indexer.indexer import get_indexer_client
+from wazuh.core.indexer.indexer import IndexerConfigurationError, get_indexer_client
 from wazuh.core.wdb import AsyncWazuhDBConnection, WazuhDBConnection
 from wazuh.core.wdb_http import get_wdb_http_client
 
@@ -48,6 +50,21 @@ MAX_CHUNK_SIZE = 10485760  # maximum chunk size of the message to receive in byt
 # the declared payload) before being closed.  Bounds memory hold-time for
 # half-open messages regardless of source IP.
 PRE_AUTH_PAYLOAD_TIMEOUT = 30
+
+# Cluster protocol preamble: each side of a keyed connection sends it before any frame, and the session keys
+# are derived from both nonces. See docs/ref/security/cluster-model.md, "Transport Protection".
+PROTOCOL_MAGIC = b'WZCP'
+PROTOCOL_VERSION = 1
+SESSION_NONCE_SIZE = 32
+PREAMBLE_FORMAT = f'!4sB{SESSION_NONCE_SIZE}s'
+PREAMBLE_SIZE = struct.calcsize(PREAMBLE_FORMAT)
+
+# Header encrypted at the start of every token: per-direction sequence number, counter and command name.
+SEALED_HEADER_FORMAT = '!QI11s'
+SEALED_HEADER_SIZE = struct.calcsize(SEALED_HEADER_FORMAT)
+
+# Errors that make the peer untrustworthy: the connection is closed instead of answered.
+SESSION_ERROR_CODES = (3025, 3063, 3064)
 
 MAX_CONCURRENT_DIVIDED_MSGS = 10  # maximum number of concurrent divided messages being received. This is used to mitigate DoS attacks with many divided messages.
 
@@ -103,6 +120,9 @@ class InBuffer:
         self.cmd = ''  # request's command in header
         self.flag_divided = b''  # request's command flag to indicate a msg division
         self.counter = 0  # request's counter in the box
+        # Whether the header was parsed. A header may end exactly at a read boundary, so 'received == 0'
+        # does not tell a new message from one whose payload has not started arriving yet.
+        self.header_received = False
 
     def get_info_from_header(self, header: bytes, header_format: str, header_size: int) -> bytes:
         """Get information contained in the request's header.
@@ -122,6 +142,7 @@ class InBuffer:
             Buffer without the content of the header.
         """
         self.counter, self.total, cmd = struct.unpack(header_format, header[:header_size])
+        self.header_received = True
         # The last Byte of the command is the flag indicating the division
         flag = cmd[-1:]
         self.flag_divided = flag if flag == InBuffer.divide_flag else b''
@@ -326,6 +347,9 @@ class Handler(asyncio.Protocol):
     Define common methods for echo clients and servers.
     """
 
+    # Whether this side opened the connection. It selects which derived key is used for sending.
+    is_connector = False
+
     def __init__(self, fernet_key: str, cluster_items: Dict, logger: logging.Logger = None, tag: str = "Handler"):
         """Class constructor.
 
@@ -360,12 +384,23 @@ class Handler(asyncio.Protocol):
         self.in_msg = InBuffer()
         # Stores incoming file information from file commands.
         self.in_file = {}
+        # Full paths of files whose transfer completed with a valid checksum and that no task has claimed yet.
+        self.received_files = set()
         # Stores incoming string information from string commands.
         self.in_str = {}
         # Maximum message length to send in a single request.
         self.request_chunk = 5242880
-        # Object use to encrypt and decrypt requests.
-        self.my_fernet = cryptography.fernet.Fernet(base64.b64encode(fernet_key.encode())) if fernet_key else None
+        # Static cluster key. Messages are never encrypted with it directly: the per-connection keys below are
+        # derived from it once both preambles are exchanged. None for the plaintext local socket.
+        self.cluster_key = fernet_key.encode() if fernet_key else None
+        # Nonce sent in our preamble; None until the preamble is sent.
+        self.local_nonce = None
+        # Fernet objects for each direction of this connection; None until the handshake completes.
+        self.send_fernet = None
+        self.recv_fernet = None
+        # Per-direction sequence numbers of the next message to seal and to open.
+        self.send_seq = 0
+        self.recv_seq = 0
         # Logging.Logger object used to write logs.
         self.logger = logging.getLogger('wazuh') if not logger else logger
         # Logging tag.
@@ -416,6 +451,156 @@ class Handler(asyncio.Protocol):
         """
         self.transport.write(message)
 
+    def start_session(self) -> None:
+        """Start the protocol session once the connection is established.
+
+        A keyed handler sends its preamble and waits for the peer's one before any frame is exchanged. A handler
+        without key (the local socket) has nothing to negotiate, so its session is established right away.
+        """
+        if self.cluster_key is None:
+            self.session_established()
+            return
+
+        self.local_nonce = os.urandom(SESSION_NONCE_SIZE)
+        self.push(struct.pack(PREAMBLE_FORMAT, PROTOCOL_MAGIC, PROTOCOL_VERSION, self.local_nonce))
+
+    def session_established(self) -> None:
+        """Hook called once frames can be exchanged. Connectors override it to start their own requests."""
+        pass
+
+    def _consume_preamble(self) -> bool:
+        """Read the peer's preamble from the input buffer, if it has not been read yet.
+
+        Returns
+        -------
+        bool
+            Whether frames can be parsed from the input buffer.
+
+        Raises
+        ------
+        WazuhClusterError(3063)
+            If the preamble does not carry the supported protocol magic and version.
+        """
+        if self.cluster_key is None or self.recv_fernet is not None:
+            return True
+        if len(self.in_buffer) < PREAMBLE_SIZE:
+            return False
+
+        magic, version, peer_nonce = struct.unpack(PREAMBLE_FORMAT, self.in_buffer[:PREAMBLE_SIZE])
+        if magic != PROTOCOL_MAGIC or version != PROTOCOL_VERSION:
+            raise exception.WazuhClusterError(3063, extra_message='unsupported protocol preamble')
+        self.in_buffer = self.in_buffer[PREAMBLE_SIZE:]
+        self._establish_session(peer_nonce)
+        self.session_established()
+        return True
+
+    def _establish_session(self, peer_nonce: bytes) -> None:
+        """Derive this connection's keys from the cluster key and both preamble nonces.
+
+        Parameters
+        ----------
+        peer_nonce : bytes
+            Nonce received in the peer's preamble.
+
+        Raises
+        ------
+        WazuhClusterError(3063)
+            If our own preamble was never sent.
+        """
+        if self.local_nonce is None:
+            raise exception.WazuhClusterError(3063, extra_message='preamble received before sending ours')
+
+        connector_nonce, acceptor_nonce = (self.local_nonce, peer_nonce) if self.is_connector \
+            else (peer_nonce, self.local_nonce)
+        salt = connector_nonce + acceptor_nonce
+
+        def derive(direction: bytes) -> cryptography.fernet.Fernet:
+            key = HKDF(algorithm=hashes.SHA256(), length=32, salt=salt,
+                       info=b'wazuh-cluster/1 ' + direction).derive(self.cluster_key)
+            return cryptography.fernet.Fernet(base64.urlsafe_b64encode(key))
+
+        c2s, s2c = derive(b'c2s'), derive(b's2c')
+        self.send_fernet, self.recv_fernet = (c2s, s2c) if self.is_connector else (s2c, c2s)
+        self.send_seq = self.recv_seq = 0
+
+    def _seal(self, command: bytes, counter: int, data: bytes) -> bytes:
+        """Encrypt a message bound to this connection, its position and its header.
+
+        The sequence number is not consumed here: msg_build consumes it once all frames are built.
+
+        Parameters
+        ----------
+        command : bytes
+            Command name, without padding.
+        counter : int
+            Message ID written in the header.
+        data : bytes
+            Payload to encrypt.
+
+        Returns
+        -------
+        bytes
+            Token to send, or the data itself when the handler has no key.
+
+        Raises
+        ------
+        WazuhClusterError(3063)
+            If the handshake has not completed yet.
+        """
+        if self.cluster_key is None:
+            return data
+        if self.send_fernet is None:
+            raise exception.WazuhClusterError(3063, extra_message='message built before the handshake completed')
+
+        return self.send_fernet.encrypt(struct.pack(SEALED_HEADER_FORMAT, self.send_seq, counter, command) + data)
+
+    def _open(self, token: bytes, counter: int, command: bytes) -> bytes:
+        """Decrypt a received message and check that it is the next one of this connection with this header.
+
+        Parameters
+        ----------
+        token : bytes
+            Received token, already reassembled if the message was divided.
+        counter : int
+            Message ID read from the header.
+        command : bytes
+            Command name read from the header.
+
+        Returns
+        -------
+        bytes
+            Decrypted payload, or the token itself when the handler has no key.
+
+        Raises
+        ------
+        WazuhClusterError(3025)
+            If the token cannot be decrypted with this connection's receiving key.
+        WazuhClusterError(3063)
+            If the handshake has not completed yet.
+        WazuhClusterError(3064)
+            If the sequence number, counter or command bound in the token do not match.
+        """
+        if self.cluster_key is None:
+            return token
+        if self.recv_fernet is None:
+            raise exception.WazuhClusterError(3063, extra_message='message received before the handshake completed')
+
+        try:
+            plaintext = self.recv_fernet.decrypt(token)
+        except cryptography.fernet.InvalidToken:
+            raise exception.WazuhClusterError(3025)
+
+        if len(plaintext) < SEALED_HEADER_SIZE:
+            raise exception.WazuhClusterError(3064, extra_message='sealed header is truncated')
+        seq, sealed_counter, sealed_command = struct.unpack(SEALED_HEADER_FORMAT, plaintext[:SEALED_HEADER_SIZE])
+        if seq != self.recv_seq:
+            raise exception.WazuhClusterError(3064, extra_message=f'expected message {self.recv_seq}, got {seq}')
+        if sealed_counter != counter or sealed_command.rstrip(b'\0') != command:
+            raise exception.WazuhClusterError(3064, extra_message='header does not match the sealed header')
+
+        self.recv_seq += 1
+        return plaintext[SEALED_HEADER_SIZE:]
+
     def next_counter(self) -> int:
         """Increase the message ID counter.
 
@@ -432,6 +617,8 @@ class Handler(asyncio.Protocol):
 
         Each message contains a header in self.header_format format that includes self.counter, the data size and the
         command. The data is also encrypted and added to the bytearray starting from the position self.header_len.
+        The token also carries the connection's next sequence number, the counter and the command, so the frames
+        returned must be pushed in order and before any other message is built.
 
         Parameters
         ----------
@@ -452,9 +639,10 @@ class Handler(asyncio.Protocol):
         if cmd_len > self.cmd_len - len(InBuffer.divide_flag):
             raise exception.WazuhClusterError(3024, extra_message=command)
 
+        # Seal the command name as the receiver parses it from the header (up to the first space)
+        encrypted_data = self._seal(command.split(b' ')[0], counter, data)
         # Adds - to command until it reaches cmd length
         command = command + b' ' + b'-' * (self.cmd_len - cmd_len - 1)
-        encrypted_data = self.my_fernet.encrypt(data) if self.my_fernet is not None else data
         encrypted_message_size = self.header_len + len(encrypted_data)
 
         # Message size is <= request_chunk, send the message
@@ -462,7 +650,7 @@ class Handler(asyncio.Protocol):
             msg = bytearray(encrypted_message_size)
             msg[:self.header_len] = struct.pack(self.header_format, counter, len(encrypted_data), command)
             msg[self.header_len:encrypted_message_size] = encrypted_data
-            return [msg]
+            msg_list = [msg]
 
         # Message size > request_chunk, send the message divided
         else:
@@ -488,7 +676,10 @@ class Handler(asyncio.Protocol):
                 partial_data_size += message_size - self.header_len
                 msg_list.append(msg)
 
-            return msg_list
+        # Consume the sequence number only once every frame is built, so a failed build leaves no gap
+        if self.send_fernet is not None:
+            self.send_seq += 1
+        return msg_list
 
     def msg_parse(self) -> bool:
         """Parse an incoming message.
@@ -500,7 +691,7 @@ class Handler(asyncio.Protocol):
         """
         if self.in_buffer:
             # Check if a new message was received.
-            if self.in_msg.received == 0 and len(self.in_buffer) >= self.header_len:
+            if not self.in_msg.header_received and len(self.in_buffer) >= self.header_len:
                 # A new message has been received. Both header and payload must be processed.
                 self.in_buffer = self.in_msg.get_info_from_header(header=self.in_buffer,
                                                                   header_format=self.header_format,
@@ -511,7 +702,7 @@ class Handler(asyncio.Protocol):
                 if self.in_msg.total > 0 and self.in_msg.received < self.in_msg.total:
                     self._start_payload_deadline()
                 return True
-            elif self.in_msg.received != 0:
+            elif self.in_msg.header_received:
                 # The previous message has not been completely received yet. No header to parse, just payload.
                 self.in_buffer = self.in_msg.receive_data(data=self.in_buffer)
                 return True
@@ -543,14 +734,10 @@ class Handler(asyncio.Protocol):
                 # Full payload received — cancel any outstanding completion deadline.
                 self._cancel_payload_deadline()
                 # Decrypt received message if it is not a part of a divided message
-                try:
-                    decrypted_payload = \
-                        self.my_fernet.decrypt(bytes(self.in_msg.payload)) \
-                            if self.my_fernet is not None and not self.in_msg.flag_divided and \
-                               self.in_msg.counter not in self.div_msg_box \
-                            else bytes(self.in_msg.payload)
-                except cryptography.fernet.InvalidToken:
-                    raise exception.WazuhClusterError(3025)
+                decrypted_payload = \
+                    self._open(bytes(self.in_msg.payload), self.in_msg.counter, self.in_msg.cmd) \
+                        if not self.in_msg.flag_divided and self.in_msg.counter not in self.div_msg_box \
+                        else bytes(self.in_msg.payload)
                 yield self.in_msg.cmd, self.in_msg.counter, decrypted_payload, self.in_msg.flag_divided
                 self.in_msg = InBuffer()
             else:
@@ -675,7 +862,22 @@ class Handler(asyncio.Protocol):
                      f'in {result["time_spent"]:.3f}s.')
         result['error_messages'] = [error[1] for error in result['error_messages']['chunks']]
 
+        # Handed to the local remoted and never sent back: callers serialize this dict to the peer as the apply's
+        # result, and that reply stays what it was.
+        self.publish_agent_groups(result.pop('registry_publications', []))
+
         return result
+
+    def publish_agent_groups(self, publications: list) -> None:
+        """Hand the per-chunk publications of an agent-groups apply to the local remoted's registry.
+
+        A no-op here: only a worker publishes (`WorkerHandler` overrides it). Must never block nor raise.
+
+        Parameters
+        ----------
+        publications : list of dict
+            One publication per chunk, in chunk order (see `send_data_to_wdb`).
+        """
 
     async def send_file(self, filename: str, task_id: bytes = None) -> int:
         """Send a file to peer, slicing it into chunks.
@@ -835,6 +1037,8 @@ class Handler(asyncio.Protocol):
         """
         self.in_buffer += message
         try:
+            if not self._consume_preamble():
+                return
             for command, counter, payload, flag_divided in self.get_messages():
                 # If the message is a divided one
                 if flag_divided == InBuffer.divide_flag:
@@ -856,10 +1060,7 @@ class Handler(asyncio.Protocol):
                         payload = self.div_msg_box[counter] + payload
                         del self.div_msg_box[counter]
                         # Decrypt the joined payload
-                        try:
-                            payload = self.my_fernet.decrypt(bytes(payload)) if self.my_fernet else bytes(payload)
-                        except cryptography.fernet.InvalidToken:
-                            raise exception.WazuhClusterError(3025)
+                        payload = self._open(bytes(payload), counter, command)
                     # If the message is the response of a previously sent request.
                     if counter in self.box:
                         if self.box[counter] is None:
@@ -878,6 +1079,11 @@ class Handler(asyncio.Protocol):
                     f"Details: {e.message} bytes received, but the maximum allowed is {MAX_TOTAL_SIZE} bytes. "
                     f"Closing connection."
                 )
+                if self.transport:
+                    self.close()
+                return
+            elif e.code in SESSION_ERROR_CODES:
+                self.logger.error(f"[Cluster] {e}. Closing connection.")
                 if self.transport:
                     self.close()
                 return
@@ -1043,7 +1249,7 @@ class Handler(asyncio.Protocol):
         if not any(os.path.commonpath([dst, root]) == root for root in _ALLOWED_PREFIXES):
             return b"err", b"Write path not allowed"
 
-        self.in_file[data] = {"fd": open(dst, "wb"), "checksum": hashlib.sha256()}
+        self.in_file[data] = {"fd": open(dst, "wb"), "checksum": hashlib.sha256(), "path": dst}
 
         return b"ok ", b"Ready to receive new file"
 
@@ -1085,6 +1291,7 @@ class Handler(asyncio.Protocol):
         name, checksum = data.split(b' ', 1)
         self.in_file[name]['fd'].close()
         if self.in_file[name]['checksum'].digest() == checksum:
+            self.received_files.add(self.in_file[name]['path'])
             del self.in_file[name]
             return b"ok", b"File received correctly"
         else:
@@ -1403,6 +1610,11 @@ class WazuhCommon:
             self.get_logger(logger_tag).error(f"Task {task_id} not found in sync_tasks")
             raise exception.WazuhClusterError(3027, extra_message=task_id)
 
+        if safe_path not in self.received_files:
+            self.get_logger(logger_tag).error(f"File {safe_path} was not received for task {task_id}")
+            raise exception.WazuhClusterError(3027, extra_message=task_id)
+        self.received_files.discard(safe_path)
+
         # Set full path to file for task 'task_id' and notify it is ready to be read, so the lock is released.
         self.sync_tasks[task_id].filename = safe_path
         self.sync_tasks[task_id].received_information.set()
@@ -1430,7 +1642,14 @@ class WazuhCommon:
         """
         task_id, error_details = task_id_and_error_details.split(' ', 1)
         error_details_json = json.loads(error_details, object_hook=as_wazuh_object)
+        if not isinstance(error_details_json, Exception):
+            self.get_logger(logger_tag).error(f"Invalid error details received for task {task_id}")
+            return b'ok', b'Error received'
         if task_id in self.sync_tasks:
+            if not isinstance(self.sync_tasks[task_id].filename, str):
+                self.get_logger(logger_tag).error(f"Task {task_id} already holds an error, ignoring additional report")
+                return b'ok', b'Error received'
+
             # Remove filename if exists
             if os.path.exists(self.sync_tasks[task_id].filename):
                 try:
@@ -1821,6 +2040,47 @@ def error_receiving_agent_information(logger, response, info_type):
     return b'ok', b'Thanks'
 
 
+# The agent ids remoted's POST /_internal/agents/groups accepts (an unsigned 32-bit id; 0 is the manager).
+_REGISTRY_MAX_AGENT_ID = 2 ** 32 - 1
+
+
+def _registry_agent_id(item: Any) -> Union[int, None]:
+    """Return the agent id of an agent-groups item, or None when it has none the local remoted would accept."""
+    agent_id = item.get('id') if isinstance(item, dict) else None
+    if isinstance(agent_id, bool) or not isinstance(agent_id, int) or not 0 < agent_id <= _REGISTRY_MAX_AGENT_ID:
+        return None
+    return agent_id
+
+
+def _registry_publication(agents: Any) -> dict:
+    """Build the publication of a chunk sent to wazuh-manager-db: invalidate every agent it names.
+
+    The same for an applied chunk and for one whose effect is unknown (an error or a timeout): a publication never
+    carries groups, only which agents changed. It describes the database as it was when this chunk was written, and
+    the local remoted may already hold a newer read, so remoted only withdraws those agents' cached memberships and
+    reads them from wazuh-manager-db on their next request.
+
+    Parameters
+    ----------
+    agents : Any
+        The chunk's `data` list, or None when the chunk could not be parsed (then there is nothing to publish).
+
+    Returns
+    -------
+    dict
+        `{"invalidate": [ids]}`, or empty when the chunk names no agent.
+    """
+    ids = [agent_id for agent_id in map(_registry_agent_id, agents if isinstance(agents, list) else [])
+           if agent_id is not None]
+    return {'invalidate': ids} if ids else {}
+
+
+def _append_registry_publication(publications: list, publication: dict) -> None:
+    """Append `publication` to `publications` unless it is empty."""
+    if publication:
+        publications.append(publication)
+
+
 async def send_data_to_wdb(data, timeout, info_type='agent-info'):
     """Send chunks of data to Wazuh-db socket.
 
@@ -1836,7 +2096,9 @@ async def send_data_to_wdb(data, timeout, info_type='agent-info'):
     Returns
     -------
     result : dict
-        Dict containing number of updated chunks, error messages (if any) and time spent.
+        Dict containing number of updated chunks, error messages (if any) and time spent. For `agent-groups` it also
+        carries `registry_publications`: one publication per chunk, in chunk order, for the local remoted -- an
+        `invalidate` of the chunk's agents for every chunk sent, applied or not, none for the chunks never sent.
     """
     result = {'updated_chunks': 0, 'error_messages': {'chunks': [], 'others': []}, 'time_spent': 0}
     before = time.perf_counter()
@@ -1850,20 +2112,34 @@ async def send_data_to_wdb(data, timeout, info_type='agent-info'):
 
                 result['updated_chunks'] += len(agents_sync)
             elif info_type == 'agent-groups':
+                # What each chunk did to the local database, in chunk order, for the local remoted's registry of
+                # memberships (see update_chunks_wdb). Filled as the loop goes, so a timeout keeps what came before.
+                publications = result.setdefault('registry_publications', [])
                 wdb_conn = WazuhDBConnection()
 
                 for i, chunk in enumerate(data['chunks']):
+                    agents = None
+                    published = False
                     try:
-                        data['payload']['data'] = json.loads(chunk)[0]['data']
+                        agents = json.loads(chunk)[0]['data']
+                        data['payload']['data'] = agents
                         wdb_conn.send(
                             f"{data['set_data_command']} {json.dumps(data['payload'], separators=(',', ':'))}",
                             raw=True
                         )
+                        _append_registry_publication(publications, _registry_publication(agents))
+                        published = True
                         result['updated_chunks'] += 1
                     except TimeoutError as e:
+                        # The chunk may or may not have been applied: remoted must read those agents again.
+                        if not published:
+                            _append_registry_publication(publications, _registry_publication(agents))
                         wdb_conn.close()
                         raise e
                     except Exception as e:
+                        # Errored chunks may be partially applied; the ignored errors are uncertain too.
+                        if not published:
+                            _append_registry_publication(publications, _registry_publication(agents))
                         error = str(e)
 
                         if any(ignored_exception in error for ignored_exception in IGNORED_WDB_EXCEPTIONS):
@@ -2026,6 +2302,9 @@ class IndexerTaskManager:
     created automatically.
     """
 
+    # Seconds between checks of wazuh-manager.conf's mtime while waiting to retry the indexer.
+    CONF_POLL_INTERVAL = 10
+
     def __init__(self):
         """Class constructor.
 
@@ -2055,10 +2334,18 @@ class IndexerTaskManager:
             in an ``asyncio.Task``.
         base_delay : int, optional
             Seconds to wait between availability checks when the indexer is
-            reachable, by default 300.
+            reachable, and between checks while the indexer configuration is
+            unusable, by default 300.
         max_delay : int, optional
             Upper bound in seconds for the exponential backoff delay applied
             when the indexer is unavailable, by default 3600.
+
+        Notes
+        -----
+        A configuration error (the indexer section or the keystore credentials) is not an outage:
+        it is logged once, as an error, and checked again every ``base_delay`` seconds without
+        doubling. Any wait after a failure ends early when wazuh-manager.conf changes, so a fixed
+        configuration is picked up within ``CONF_POLL_INTERVAL`` seconds.
 
         Returns
         -------
@@ -2066,10 +2353,14 @@ class IndexerTaskManager:
         """
         delay = base_delay
         active_tasks: List[asyncio.Task] = []
+        config_error = None
 
         while True:
             try:
-                self.logger.info("Checking if the indexer is available to initiate indexer tasks.")
+                if config_error is None:
+                    self.logger.info("Checking if the indexer is available to initiate indexer tasks.")
+                else:
+                    self.logger.debug("Checking if the indexer configuration is usable.")
                 async with get_indexer_client() as client:
                     await client.healthcheck()
 
@@ -2086,10 +2377,27 @@ class IndexerTaskManager:
                     }
 
                 delay = base_delay
+                config_error = None
                 await asyncio.sleep(base_delay)
 
+            except IndexerConfigurationError as e:
+                if str(e) != config_error:
+                    self.logger.error(f"Indexer tasks cannot start, the indexer configuration is not usable: {e}. "
+                                      f"Checking again when {common.MANAGER_CONF} changes, or every {base_delay} "
+                                      f"seconds.")
+                config_error = str(e)
+
+                if active_tasks:
+                    await self._stop_indexer_tasks(active_tasks)
+                    active_tasks = []
+                    self.indexer_tasks = {}
+
+                delay = base_delay
+                await self._wait_for_retry(base_delay)
+
             except Exception as e:
-                self.logger.warning(f"Indexer is not configured or unavailable: {e}.")
+                config_error = None
+                self.logger.warning(f"Indexer is not configured or unavailable: {e}.", exc_info=True)
 
                 if active_tasks:
                     await self._stop_indexer_tasks(active_tasks)
@@ -2097,8 +2405,32 @@ class IndexerTaskManager:
                     self.indexer_tasks = {}
 
                 self.logger.info(f"Retrying indexer check in {delay} seconds.")
-                await asyncio.sleep(delay)
+                await self._wait_for_retry(delay)
                 delay = min(delay * 2, max_delay)
+
+    async def _wait_for_retry(self, delay: int) -> None:
+        """Wait up to ``delay`` seconds, returning early when wazuh-manager.conf changes.
+
+        Parameters
+        ----------
+        delay : int
+            Longest wait, in seconds.
+        """
+        def conf_mtime():
+            try:
+                return os.stat(common.MANAGER_CONF).st_mtime_ns
+            except OSError:
+                return None
+
+        initial = conf_mtime()
+        remaining = delay
+        while remaining > 0:
+            step = min(self.CONF_POLL_INTERVAL, remaining)
+            await asyncio.sleep(step)
+            remaining -= step
+            if conf_mtime() != initial:
+                self.logger.info(f"{common.MANAGER_CONF} changed. Checking the indexer again.")
+                return
 
     async def _stop_indexer_tasks(self, tasks: List[asyncio.Task]) -> None:
         """Cancel and await all active indexer tasks.

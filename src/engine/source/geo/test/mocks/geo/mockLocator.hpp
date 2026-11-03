@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef GEO_MOCK_LOCATOR_HPP
 #define GEO_MOCK_LOCATOR_HPP
 

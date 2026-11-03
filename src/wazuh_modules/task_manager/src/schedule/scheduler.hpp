@@ -1,7 +1,6 @@
 /*
  * Wazuh task manager module
- * Copyright (C) 2015, Wazuh Inc.
- * September 1, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -50,7 +49,6 @@ namespace task_manager::schedule
             std::chrono::seconds wakeBackstop {60};
             std::chrono::seconds sweepInterval {60};
             std::chrono::seconds cleanupInterval {300};
-            std::chrono::seconds vacuumInterval {86400};
             std::chrono::seconds sizeRotateInterval {60};
             /// @brief Whether to signal the size-triggered rotation at all.
             ///
@@ -107,6 +105,9 @@ namespace task_manager::schedule
         void spawnDueRuns(Timestamp now);
         void runRetention(Timestamp now);
 
+        /// @brief Hand the space retention freed back to the filesystem, one bounded step at a time.
+        void compact();
+
         /// @brief Truncate the WAL, and say so when a read snapshot is pinning it.
         void checkpointWal();
 
@@ -127,8 +128,10 @@ namespace task_manager::schedule
 
         Timestamp m_nextSweep {0};
         Timestamp m_nextCleanup {0};
-        Timestamp m_nextVacuum {0};
         Timestamp m_nextSizeRotate {0};
+
+        /// @brief The unsupported-database notice is said once per process, not once per pass.
+        bool m_compactUnsupportedLogged {false};
     };
 } // namespace task_manager::schedule
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include "builders/opmap/map.hpp"
 
 namespace builder::builders::opmap

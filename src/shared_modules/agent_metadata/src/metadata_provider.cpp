@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -9,7 +9,9 @@
 
 #include "metadata_provider.h"
 
+#include <algorithm>
 #include <atomic>
+#include <cstdint>
 #include <cstring>
 #include <mutex>
 #include <type_traits>
@@ -48,7 +50,18 @@ namespace
         agent_metadata_t base_metadata;
         size_t groups_count;
         char groups[MAX_GROUPS_PER_MULTIGROUP][MAX_GROUP_NAME_LEN];
+        /// Seqlock counter: odd while a writer is inside the record. A reader that sees it
+        /// change across its copy discards the copy. Last, so the size change re-creates a
+        /// segment left by an older layout; 32 bits, so it is lock-free across processes on
+        /// every agent architecture, the 32-bit Windows agent included.
+        std::atomic<uint32_t> sequence;
     };
+
+    static_assert(std::atomic<uint32_t>::is_always_lock_free,
+                  "The seqlock counter is shared across processes, so it must be lock-free.");
+
+    /// How many times get() retries a copy a writer overlapped before reporting "try later".
+    constexpr int MAX_READ_ATTEMPTS {3};
 
     /**
      * @brief Process-wide owner of the shared memory segment
@@ -73,6 +86,22 @@ namespace
 
             int update(const agent_metadata_t* metadata)
             {
+                // Serializes this process's own writers (populateAgentMetadata()'s full update()
+                // vs. observeVdFeedOffset()'s narrow updateVdFeedOffset(), which can run
+                // concurrently on different threads within wazuh-modulesd/agentd) -- #39543 review
+                // follow-up. beginWrite()/endWrite() below are the reader-facing seqlock (a reader
+                // discards a copy a write overlapped); they do nothing to stop two writers from
+                // interleaving, which could let a stale read-then-write clobber a fresher value.
+                // Static, not an instance member: a std::mutex has a non-trivial destructor, and
+                // the class itself must stay trivially destructible (#38766, see the static_assert
+                // below) -- a static class member lives in its own storage and is not torn down by
+                // ~SharedMemoryProvider(), so it does not affect that guarantee. It only
+                // synchronizes writers within this process; it is not shared across processes
+                // (agentd and modulesd each have their own instance of this static), which is the
+                // pre-existing, separate hazard start_agent.c's w_agentd_populate_metadata()
+                // comment already documents.
+                std::lock_guard<std::mutex> writeLock(s_writeMutex);
+
                 if (!metadata || !m_shm)
                 {
                     return -1;
@@ -91,7 +120,7 @@ namespace
 
 #endif
 
-                m_shm->updating.store(true, std::memory_order_release);
+                beginWrite();
 
                 // Copy scalar fields
                 std::strncpy(m_shm->base_metadata.agent_id, metadata->agent_id, sizeof(m_shm->base_metadata.agent_id) - 1);
@@ -124,7 +153,19 @@ namespace
                 std::strncpy(m_shm->base_metadata.cluster_name, metadata->cluster_name, sizeof(m_shm->base_metadata.cluster_name) - 1);
                 m_shm->base_metadata.cluster_name[sizeof(m_shm->base_metadata.cluster_name) - 1] = '\0';
 
-                m_shm->base_metadata.vd_feed_offset = metadata->vd_feed_offset;
+                // vd_feed_offset is deliberately NOT copied from `metadata` here, on every update,
+                // with no bootstrap exception: this field is exclusively owned/written by
+                // updateVdFeedOffset(), the narrow path the IPC handler uses the moment the
+                // manager reports an offset. A full update() is driven by a periodic, DB-backed
+                // read (populateAgentMetadata()'s own getVdFeedState() snapshot, or agentd's
+                // carry-over read in w_agentd_populate_metadata()) that can legitimately be stale
+                // by the time this call actually runs -- serializing writers (the mutex above)
+                // stops torn records, but does nothing to stop this call from overwriting a
+                // fresher value with a stale one it read earlier. Leaving the field alone here,
+                // unconditionally, means whichever caller last wrote it via updateVdFeedOffset()
+                // stays authoritative regardless of how update() calls interleave with it or which
+                // one happens to run first after a restart -- see that function's own comment for
+                // why it no longer needs a bootstrap assist from this one to stay correct.
 
                 // Copy groups
                 m_shm->groups_count = (metadata->groups_count > MAX_GROUPS_PER_MULTIGROUP) ? MAX_GROUPS_PER_MULTIGROUP : metadata->groups_count;
@@ -143,7 +184,52 @@ namespace
                 }
 
                 m_shm->has_metadata = true;
-                m_shm->updating.store(false, std::memory_order_release);
+                endWrite();
+
+                return 0;
+            }
+
+            // Narrow counterpart to update(): touches only vd_feed_offset, so a caller that
+            // just observed an offset from the manager (e.g. the IPC handler on the query
+            // thread) can publish it without waiting for -- or overwriting the rest of -- the
+            // next full populateAgentMetadata() cycle. Its caller invokes this on every
+            // observation, including one for an offset it already durably knows about, not only
+            // the first time a value is seen: that value still needs to reach whatever fresh
+            // copy of this shared record exists on this run, which the caller's own durable
+            // record has no visibility into. Refuses (-1) before has_metadata is true: with no
+            // prior full snapshot, setting only this field would let a reader see hostname/os/*
+            // as blank, which syscollector's own Start message also depends on. In that case the
+            // offset is simply left for the first full update() to pick up, same as before this
+            // function existed -- and the caller's own repeat invocations on every later
+            // observation (even of an unchanged value) are what eventually deliver it once
+            // has_metadata does flip true, without needing update() itself to carry it.
+            int updateVdFeedOffset(uint64_t offset)
+            {
+                // Same writer-serialization rationale as update() above.
+                std::lock_guard<std::mutex> writeLock(s_writeMutex);
+
+                if (!m_shm)
+                {
+                    return -1;
+                }
+
+#ifndef _WIN32
+
+                if (m_read_only)
+                {
+                    return -1;
+                }
+
+#endif
+
+                if (!m_shm->has_metadata)
+                {
+                    return -1;
+                }
+
+                beginWrite();
+                m_shm->base_metadata.vd_feed_offset = offset;
+                endWrite();
 
                 return 0;
             }
@@ -155,17 +241,89 @@ namespace
                     return -1;
                 }
 
-                if (m_shm->updating.load(std::memory_order_acquire))
+                for (int attempt = 0; attempt < MAX_READ_ATTEMPTS; ++attempt)
                 {
-                    return -1;  // Update in progress, try again later
+                    const auto begin = m_shm->sequence.load(std::memory_order_acquire);
+
+                    if ((begin & 1U) != 0 || m_shm->updating.load(std::memory_order_acquire))
+                    {
+                        return -1;  // Update in progress, try again later
+                    }
+
+                    if (!m_shm->has_metadata)
+                    {
+                        return -1;
+                    }
+
+                    copyRecord(out_metadata);
+
+                    // A writer that started after the check above may have changed anything we
+                    // copied, groups_count included: discard the copy rather than return a mix.
+                    std::atomic_thread_fence(std::memory_order_acquire);
+
+                    if (m_shm->sequence.load(std::memory_order_relaxed) == begin)
+                    {
+                        return 0;
+                    }
+
+                    freeGroups(out_metadata);
                 }
 
-                if (!m_shm->has_metadata)
+                return -1;
+            }
+
+            void reset()
+            {
+                // Same writer-serialization rationale as update() above.
+                std::lock_guard<std::mutex> writeLock(s_writeMutex);
+
+#ifndef _WIN32
+
+                // Same read-only mapping hazard as update().
+                if (m_read_only)
                 {
-                    return -1;
+                    return;
                 }
 
-                // Copy scalar fields
+#endif
+
+                if (m_shm)
+                {
+                    beginWrite();
+                    m_shm->has_metadata = false;
+                    m_shm->groups_count = 0;
+                    // update() never touches this field (see its own comment), and it is not
+                    // implied by has_metadata=false above: without clearing it here too, a value
+                    // set via updateVdFeedOffset() outlives this reset -- this segment is a named,
+                    // OS-persistent mapping (see its own doc comment), so a stale value survives
+                    // not just within one process but across separate process runs, which is what
+                    // let one test's nonzero offset leak into an unrelated later test expecting the
+                    // field's zero default.
+                    m_shm->base_metadata.vd_feed_offset = 0;
+                    endWrite();
+                }
+            }
+
+        private:
+            /// Writers bracket every change with these, under s_writeMutex.
+            void beginWrite()
+            {
+                m_shm->sequence.fetch_add(1, std::memory_order_relaxed);
+                std::atomic_thread_fence(std::memory_order_release);
+                m_shm->updating.store(true, std::memory_order_release);
+            }
+
+            void endWrite()
+            {
+                m_shm->updating.store(false, std::memory_order_release);
+                m_shm->sequence.fetch_add(1, std::memory_order_release);
+            }
+
+            /// One copy of the record. groups_count is read once and bounded, and every name is
+            /// copied with a bounded length, so a concurrent writer cannot make this write past
+            /// what it allocated; get() decides whether the copy is consistent.
+            void copyRecord(agent_metadata_t* out_metadata) const
+            {
                 std::strncpy(out_metadata->agent_id, m_shm->base_metadata.agent_id, sizeof(out_metadata->agent_id) - 1);
                 out_metadata->agent_id[sizeof(out_metadata->agent_id) - 1] = '\0';
 
@@ -198,50 +356,39 @@ namespace
 
                 out_metadata->vd_feed_offset = m_shm->base_metadata.vd_feed_offset;
 
-                // Copy groups
-                if (m_shm->groups_count > 0)
-                {
-                    out_metadata->groups = new char* [m_shm->groups_count];
-                    out_metadata->groups_count = m_shm->groups_count;
+                const size_t count = std::min<size_t>(m_shm->groups_count, MAX_GROUPS_PER_MULTIGROUP);
 
-                    for (size_t i = 0; i < m_shm->groups_count; ++i)
-                    {
-                        const size_t len = std::strlen(m_shm->groups[i]);
-                        out_metadata->groups[i] = new char[len + 1];
-                        std::strcpy(out_metadata->groups[i], m_shm->groups[i]);
-                    }
-                }
-                else
+                if (count == 0)
                 {
                     out_metadata->groups = nullptr;
                     out_metadata->groups_count = 0;
-                }
-
-                return 0;
-            }
-
-            void reset()
-            {
-#ifndef _WIN32
-
-                // Same read-only mapping hazard as update().
-                if (m_read_only)
-                {
                     return;
                 }
 
-#endif
+                out_metadata->groups = new char* [count];
+                out_metadata->groups_count = count;
 
-                if (m_shm)
+                for (size_t i = 0; i < count; ++i)
                 {
-                    m_shm->updating.store(true, std::memory_order_release);
-                    m_shm->has_metadata = false;
-                    m_shm->groups_count = 0;
-                    m_shm->updating.store(false, std::memory_order_release);
+                    const size_t len = strnlen(m_shm->groups[i], MAX_GROUP_NAME_LEN - 1);
+                    out_metadata->groups[i] = new char[len + 1];
+                    std::memcpy(out_metadata->groups[i], m_shm->groups[i], len);
+                    out_metadata->groups[i][len] = '\0';
                 }
             }
 
-        private:
+            static void freeGroups(agent_metadata_t* metadata)
+            {
+                for (size_t i = 0; i < metadata->groups_count; ++i)
+                {
+                    delete[] metadata->groups[i];
+                }
+
+                delete[] metadata->groups;
+                metadata->groups = nullptr;
+                metadata->groups_count = 0;
+            }
+
             SharedMemoryProvider()
                 : m_shm(nullptr)
 #ifdef _WIN32
@@ -285,6 +432,7 @@ namespace
                 if (created)
                 {
                     m_shm->updating.store(false);
+                    m_shm->sequence.store(0);
                     m_shm->has_metadata = false;
                     m_shm->groups_count = 0;
                 }
@@ -356,6 +504,7 @@ namespace
                 if (created && !m_read_only)
                 {
                     m_shm->updating.store(false);
+                    m_shm->sequence.store(0);
                     m_shm->has_metadata = false;
                     m_shm->groups_count = 0;
                 }
@@ -370,10 +519,15 @@ namespace
             int m_shm_fd;
             bool m_read_only;
 #endif
+            static std::mutex s_writeMutex;
     };
 
+    std::mutex SharedMemoryProvider::s_writeMutex;
+
     // Guards the invariant above: anything that makes this destructible again brings back
-    // the exit-time unmap that #38766 was.
+    // the exit-time unmap that #38766 was. A static data member is not part of an instance's
+    // layout/teardown (it has its own storage duration, independent of ~SharedMemoryProvider()),
+    // so s_writeMutex above does not affect this.
     static_assert(std::is_trivially_destructible<SharedMemoryProvider>::value,
                   "SharedMemoryProvider must stay trivially destructible: a destructor would "
                   "unmap the segment before agentd's shutdown drain has finished reading it.");
@@ -384,6 +538,11 @@ namespace
 int metadata_provider_update(const agent_metadata_t* metadata)
 {
     return SharedMemoryProvider::instance().update(metadata);
+}
+
+int metadata_provider_update_vd_feed_offset(uint64_t offset)
+{
+    return SharedMemoryProvider::instance().updateVdFeedOffset(offset);
 }
 
 int metadata_provider_get(agent_metadata_t* out_metadata)

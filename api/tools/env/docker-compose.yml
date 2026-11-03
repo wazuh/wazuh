@@ -60,7 +60,7 @@ services:
         ports:
             - "55050:55000"
         volumes:
-            - wazuh-certs:/var/wazuh-manager/etc/certs
+            - wazuh-certs:/etc/wazuh-manager/certs
             - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/wazuh-manager/framework/scripts
             - ${WAZUH_LOCAL_PATH}/api/scripts:/var/wazuh-manager/api/scripts
             - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/wazuh-manager/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
@@ -68,6 +68,8 @@ services:
         environment:
             OPENDISTRO_SECURITY_ENABLED: "false"
             NODE_NAME: "wazuh.manager"
+            WAZUH_MANAGER_API_PASSWORD: "${WAZUH_API_PASSWORD:-WazuhApi.2026}"
+            WAZUH_MANAGER_WUI_PASSWORD: "${WAZUH_WUI_PASSWORD:-WazuhWui.2026}"
         entrypoint:
             - /scripts/entrypoint.sh
             - wazuh.manager
@@ -88,7 +90,7 @@ services:
                 aliases:
                     - wazuh.worker
         volumes:
-            - wazuh-certs:/var/wazuh-manager/etc/certs
+            - wazuh-certs:/etc/wazuh-manager/certs
             - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/wazuh-manager/framework/scripts
             - ${WAZUH_LOCAL_PATH}/api/scripts:/var/wazuh-manager/api/scripts
             - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/wazuh-manager/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
@@ -98,6 +100,8 @@ services:
                 condition: service_started
         environment:
             NODE_NAME: "wazuh.worker1"
+            WAZUH_MANAGER_API_PASSWORD: "${WAZUH_API_PASSWORD:-WazuhApi.2026}"
+            WAZUH_MANAGER_WUI_PASSWORD: "${WAZUH_WUI_PASSWORD:-WazuhWui.2026}"
         ports:
             - "55051:55000"
         entrypoint:
@@ -114,7 +118,7 @@ services:
                 aliases:
                     - wazuh2.worker
         volumes:
-            - wazuh-certs:/var/wazuh-manager/etc/certs
+            - wazuh-certs:/etc/wazuh-manager/certs
             - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/wazuh-manager/framework/scripts
             - ${WAZUH_LOCAL_PATH}/api/scripts:/var/wazuh-manager/api/scripts
             - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/wazuh-manager/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
@@ -124,6 +128,8 @@ services:
                 condition: service_started
         environment:
             NODE_NAME: "wazuh.worker2"
+            WAZUH_MANAGER_API_PASSWORD: "${WAZUH_API_PASSWORD:-WazuhApi.2026}"
+            WAZUH_MANAGER_WUI_PASSWORD: "${WAZUH_WUI_PASSWORD:-WazuhWui.2026}"
         ports:
             - "55052:55000"
         entrypoint:

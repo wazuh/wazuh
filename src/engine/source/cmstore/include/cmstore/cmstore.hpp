@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _CMSTORE_CMSTORE
 #define _CMSTORE_CMSTORE
 

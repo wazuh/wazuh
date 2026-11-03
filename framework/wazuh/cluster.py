@@ -1,7 +1,8 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from copy import deepcopy
 from typing import Union
 
 from wazuh.core import common
@@ -30,7 +31,8 @@ def read_config_wrapper() -> AffectedItemsWazuhResult:
                                       none_msg='No information was returned'
                                       )
     try:
-        result.affected_items.append(dict(read_config()))
+        # read_config is cached and the masking edits nested values in place
+        result.affected_items.append(deepcopy(read_config()))
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)
     result.total_affected_items = len(result.affected_items)

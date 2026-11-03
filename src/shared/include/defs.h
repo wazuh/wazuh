@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009-2012 Trend Micro Inc.
  * All rights reserved.
  *
@@ -117,6 +117,16 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define WAZUH_HOME_ENV "WAZUH_MANAGER_HOME"
 #endif
 
+/* Manager configuration directory. Fixed: a custom installation home moves the home only, never the
+ * configuration. Defined once per language and kept identical in all of them: here,
+ * shared_modules/utils/managerConfDir.hpp, the engine's base/managerConfig.hpp,
+ * framework/wazuh/core/common.py (CONF_PATH) and src/init/shared.sh (CONF_DIR). */
+#ifndef CLIENT
+#ifndef WAZUH_MANAGER_CONF_DIR
+#define WAZUH_MANAGER_CONF_DIR "/etc/wazuh-manager"
+#endif
+#endif
+
 /* Default queue */
 #define DEFAULTQUEUE "queue/sockets/queue"
 
@@ -171,8 +181,13 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Active Response files */
 #define AR_BINDIR      "active-response/bin"
 #ifndef WIN32
+#ifdef CLIENT
 #define AGENTCONFIG  "etc/shared/agent.conf"
 #define DEF_CA_STORE "etc/wpk_root.pem"
+#else
+#define AGENTCONFIG  WAZUH_MANAGER_CONF_DIR "/shared/agent.conf"
+#define DEF_CA_STORE WAZUH_MANAGER_CONF_DIR "/wpk_root.pem"
+#endif
 #else
 #define AGENTCONFIG  "shared/agent.conf"
 #define DEF_CA_STORE "wpk_root.pem"
@@ -263,7 +278,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #else
 /* Manager: defaults live in code via getDefine_Int_default(); only the
  * user-overrides file is needed. WAZUH_DEFINES is intentionally not defined. */
-#define WAZUH_LDEFINES "etc/wazuh-manager-internal-options.conf"
+#define WAZUH_LDEFINES WAZUH_MANAGER_CONF_DIR "/wazuh-manager-internal-options.conf"
 #endif
 #else
 #define WAZUH_DEFINES  "internal_options.conf"
@@ -272,11 +287,97 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Authentication keys file */
 #ifndef WIN32
+#ifdef CLIENT
 #define KEYS_FILE  "etc/client.keys"
 #define AUTHD_PASS "etc/authd.pass"
+#define ENROLLMENT_TOKENS_FILE "etc/enrollment_tokens.json"
+#else
+#define KEYS_FILE  WAZUH_MANAGER_CONF_DIR "/client.keys"
+#define AUTHD_PASS WAZUH_MANAGER_CONF_DIR "/authd.pass"
+#define ENROLLMENT_TOKENS_FILE WAZUH_MANAGER_CONF_DIR "/enrollment_tokens.json"
+#endif
 #else
 #define KEYS_FILE  "client.keys"
 #define AUTHD_PASS "authd.pass"
+#define ENROLLMENT_TOKENS_FILE "enrollment_tokens.json"
+#endif
+
+/* Agent trust anchor: the CA the agent verifies the manager against when <ssl> does not
+ * name one (#38940 requirement 4). Its presence is the verification state -- see
+ * w_agent_resolve_ssl_posture() -- so it deliberately lives outside ossec.conf, which a
+ * configuration-management run templates and would otherwise overwrite.
+ *
+ * Relative, like KEYS_FILE above: both platforms chdir() into the install directory before
+ * ClientConf() runs (main.c, win_agent.c), and Windows keeps these files without the etc/
+ * prefix. Nothing in the agent packages creates etc/certs -- only the manager's do -- so on a
+ * stock install the directory does not exist and the probe simply finds nothing.
+ *
+ * The same path is hard-coded in the two WPK upgrade gates (src/init/pkg_installer.sh and
+ * src/win32/do_upgrade.ps1), which predate this constant and cannot include it. They also
+ * still mirror the pre-#39025 resolution; reconciling them is #38949 question 6. */
+#ifndef WIN32
+#define AGENT_ANCHOR_CA "etc/certs/root-ca.pem"
+#else
+#define AGENT_ANCHOR_CA "certs/root-ca.pem"
+#endif
+
+/* Written beside the anchor once one has been committed, and never removed. Records that this
+ * install has held a trust anchor, which the anchor's own presence can no longer answer: since
+ * #39321 the agent owns the anchor so it can replace it on a CA rotation, and an agent that can
+ * replace a file can also delete it. Without this, deleting one file would send
+ * w_agent_resolve_ssl_posture() back to 'none' and the agent would come up unverified, looking
+ * exactly like a stock install that never had an anchor at all.
+ *
+ * Root-owned in a sticky directory, so the runtime user cannot remove it even though it can
+ * replace the anchor next to it. Empty: only its existence carries meaning.
+ *
+ * This does not stop that user OVERWRITING the anchor with a CA of its own -- nothing short of
+ * a privileged writer could, once the agent is able to adopt a rotation unaided. What it closes
+ * is the cheaper attack and the commoner accident: silently losing verification entirely. */
+#ifndef WIN32
+#define AGENT_ANCHOR_MARKER "etc/certs/.anchor-committed"
+#else
+#define AGENT_ANCHOR_MARKER "certs/.anchor-committed"
+#endif
+
+/* Where a remote upgrade stages the manager's CA. The Linux installer leaves it here when it
+ * cannot validate it; the Windows one always removes it. */
+#ifndef WIN32
+#define AGENT_DELIVERED_CA "var/incoming/root-ca.pem"
+#endif
+
+/* Enrollment-token bootstrap: the one-shot file src/init/register_configure_agent.sh's
+ * WAZUH_ENROLLMENT_TOKEN_PATH writes at install time. w_agent_token_bootstrap() reads it once,
+ * before AGENT_ANCHOR_CA exists, and deletes it once a committed success is already in place
+ * (an anchor on disk, or a non-empty KEYS_FILE) or once this run's own bootstrap succeeds --
+ * kept on disk through almost every failure, permanent or transient, since a failure is usually
+ * exactly what makes a later attempt worth retrying. The one exception is a 403 in which authd
+ * names this token itself unknown, revoked or out of uses (#39064): no later attempt can turn
+ * that into a success, so it is deleted rather than re-presented to the same refusal on every
+ * restart. See token_bootstrap.c. Relative, same convention as AGENT_ANCHOR_CA above. */
+#ifndef WIN32
+#define AGENT_ENROLLMENT_TOKEN_FILE "etc/enrollment_token"
+#else
+#define AGENT_ENROLLMENT_TOKEN_FILE "enrollment_token"
+#endif
+
+/* Per-agent re-enrollment secret (issue #39064): the credential this agent re-enrolls with when
+ * the manager says its key is unknown, replacing the fleet-wide etc/authd.pass as the endpoint's
+ * recovery capability. Written from the `reenroll_secret` field of an /enroll 200 and rotated by
+ * every subsequent one; holds "<id> <secret>", because the bearer's `kid` is the agent's own id
+ * and an agent that has lost client.keys still has to know which id to present.
+ *
+ * Given client.keys's protection (0640, owned by the same user), NOT the anchor's: the secret's
+ * power is exactly client.keys's power -- it rotates the key of the same id and cannot mint a new
+ * identity -- so a process that can rewrite client.keys already owns the agent. It also has to be
+ * writable by the unprivileged user, because rotation happens in the running daemon, after the
+ * privilege drop. See reenroll_secret.h for the full argument.
+ *
+ * Relative, same convention as AGENT_ANCHOR_CA above. */
+#ifndef WIN32
+#define AGENT_REENROLL_SECRET "etc/reenroll.secret"
+#else
+#define AGENT_REENROLL_SECRET "reenroll.secret"
 #endif
 
 /* Timestamp file */
@@ -287,9 +388,18 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define AUTHD_QUEUE_DIR     "queue/authd"
 #define PENDING_PURGES_FILE "queue/authd/pending-purges"
 
+/* The credentials authd has already handed out and the database has not stored yet (issue #39078).
+ * Same directory and the same reason: it is authd's own durable state, and it carries secrets, so
+ * it is written 0640 and never shared with the other daemons. */
+#define PENDING_IDENTITIES_FILE "queue/authd/pending-identities"
+
 /* Shared config directory */
 #ifndef WIN32
+#ifdef CLIENT
 #define SHAREDCFG_DIR "etc/shared"
+#else
+#define SHAREDCFG_DIR WAZUH_MANAGER_CONF_DIR "/shared"
+#endif
 #else
 #define SHAREDCFG_DIR "shared"
 #endif
@@ -324,7 +434,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #ifdef CLIENT
 #define WAZUHCONF "etc/ossec.conf"
 #else
-#define WAZUHCONF "etc/wazuh-manager.conf"
+#define WAZUHCONF WAZUH_MANAGER_CONF_DIR "/wazuh-manager.conf"
 #endif
 #else
 #define WAZUHCONF "ossec.conf"
@@ -345,6 +455,9 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 #define SHAREDCFG_FILE     SHAREDCFG_DIR "/merged.mg"
 #define SHAREDCFG_FILENAME "merged.mg"
+/* Bundle being received by the agent. As an 8.3 name it gets no NTFS short alias that an entry could write through,
+ * and managers never distribute files whose names start with merged.mg. */
+#define SHAREDCFG_TMPFILENAME "merged.mgt"
 
 #define MAX_QUEUED_EVENTS_PATH "/proc/sys/fs/inotify/max_queued_events"
 

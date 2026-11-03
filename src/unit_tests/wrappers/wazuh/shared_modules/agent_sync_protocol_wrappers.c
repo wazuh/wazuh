@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -12,10 +12,15 @@
 __attribute__((weak)) void __wrap_asp_sync_module_hook(void) {
 }
 
-AgentSyncProtocolHandle* __wrap_asp_create(const char* module, const char* db_path, asp_logger_t logger) {
+AgentSyncProtocolHandle* __wrap_asp_create(const char* module, const char* db_path, asp_logger_t logger,
+                                           uint64_t flush_batch_size, uint64_t flush_interval_ms,
+                                           uint64_t wal_autocheckpoint_pages) {
     check_expected_ptr(module);
     (void)db_path;
     (void)logger;
+    (void)flush_batch_size;
+    (void)flush_interval_ms;
+    (void)wal_autocheckpoint_pages;
     return mock_ptr_type(AgentSyncProtocolHandle*);
 }
 
@@ -54,13 +59,29 @@ SyncModuleResult_t __wrap_asp_sync_module(AgentSyncProtocolHandle* handle,
     return result;
 }
 
-bool __wrap_asp_requires_full_sync(AgentSyncProtocolHandle* handle,
-                                   const char* index,
-                                   const char* checksum) {
+SyncModuleResult_t __wrap_asp_sync_module_bounded(AgentSyncProtocolHandle* handle,
+                                                  int mode,
+                                                  uint32_t max_blocks) {
+    check_expected_ptr(handle);
+    check_expected(mode);
+    check_expected(max_blocks);
+
+    if (s_asp_sync_module_use_full_result) {
+        return *(SyncModuleResult_t *)mock_type(SyncModuleResult_t *);
+    }
+
+    SyncModuleResult_t result = {0};
+    result.success = mock_type(bool);
+    return result;
+}
+
+IntegrityCheckResult_t __wrap_asp_requires_full_sync(AgentSyncProtocolHandle* handle,
+                                                     const char* index,
+                                                     const char* checksum) {
     check_expected_ptr(handle);
     check_expected_ptr(index);
     check_expected_ptr(checksum);
-    return mock_type(bool);
+    return *mock_ptr_type(IntegrityCheckResult_t*);
 }
 
 long __wrap_asp_get_agent_id(void) {

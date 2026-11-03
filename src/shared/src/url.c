@@ -1,7 +1,6 @@
 /*
  * URL download support library
- * Copyright (C) 2015, Wazuh Inc.
- * April 3, 2018.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -98,7 +97,7 @@ int wurl_get(const char * url, const char * dest, const char * header, const cha
         }
 
         res += curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
-        res += curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
+        res += curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
 
         if (res != 0) {
             mdebug1("Parameter setup error at CURL");
@@ -225,7 +224,7 @@ char * wurl_http_get(const char * url, size_t max_size, const long timeout) {
         }
 
         res += curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
-        res += curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
+        res += curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
 
         if (timeout) {
             res += curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);

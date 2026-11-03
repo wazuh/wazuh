@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * August 26, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -42,8 +41,8 @@ class ISigner
         /// new numeric id with the new key). Payloads that carry the agent id
         /// (the /stateless H line, the /stats and /config stamps) read it from
         /// here, never from the frozen ModuleConfig, so the identity moves as one
-        /// with the bearer -- the manager answers 400 (PayloadAgentMismatch) to a
-        /// batch whose header names an agent other than the one that signed it.
+        /// with the bearer -- the engine rejects an H-line identity different from
+        /// the verified JWT identity supplied by remoted; remoted relays HTTP 400.
         virtual std::string agentId() const = 0;
 };
 

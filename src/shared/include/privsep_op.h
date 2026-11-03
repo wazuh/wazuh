@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -104,5 +104,22 @@ int Privsep_SetUser(uid_t uid);
 int Privsep_SetGroup(gid_t gid);
 
 int Privsep_Chroot(const char *path) __attribute__((nonnull));
+
+/**
+ * @brief Raise the soft file descriptor limit up to `target`, never above the hard limit.
+ *
+ * The hard limit is left untouched, so no capability is needed and the call works after
+ * dropping privileges. A hard limit below `target` is kept and reported as a warning.
+ *
+ * @param target Soft limit wanted.
+ * @param option_name Internal option that carries `target`, named in the warning.
+ * @return Soft limit in force after the call: `target` when it was raised to it, the hard limit
+ *         when that caps the raise, the inherited soft limit when it was already at or above
+ *         `target` (never lowered), or `target` when the soft limit is unlimited, as a lower bound
+ *         that fits in a long. Callers use it for their own checks; the configured option keeps
+ *         its value, so what a daemon reports does not depend on how it was started.
+ * @retval -1 getrlimit() or setrlimit() failed; the inherited limit is kept.
+ */
+long w_raise_nofile_limit(long target, const char *option_name) __attribute__((nonnull));
 
 #endif /* PRIV_H */

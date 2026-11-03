@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 from typing import Optional, Tuple
 
 from google.protobuf.message import Message
@@ -87,6 +88,8 @@ def get_endpoint(message: Message) -> Tuple[Optional[str], str, str]:
         endpoint = '_internal/tester/table/get'
     if isinstance(message, tester.RunPost_Request):
         endpoint = '_internal/tester/run/post'
+    if isinstance(message, tester.PublicRunPost_Request):
+        endpoint = 'logtest'
     if isinstance(message, tester.LogtestDelete_Request):
         endpoint = 'logtest'
         method = 'delete'

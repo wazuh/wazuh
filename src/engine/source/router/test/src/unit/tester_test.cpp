@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <gtest/gtest.h>
 
 #include <bk/mockController.hpp>
@@ -34,8 +35,7 @@ public:
 
     void addEntryCallers(const std::unordered_set<base::Name>& fakeAssets, const std::string& hash)
     {
-        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_))
-            .WillOnce(::testing::Return(m_mockPolicy));
+        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_)).WillOnce(::testing::Return(m_mockPolicy));
         EXPECT_CALL(*m_mockPolicy, assets()).WillRepeatedly(::testing::ReturnRefOfCopy(fakeAssets));
         EXPECT_CALL(*m_mockControllerMaker, create(testing::_, testing::_, testing::_))
             .WillOnce(::testing::Return(m_mockController));
@@ -54,8 +54,7 @@ public:
 
     void rebuildEntryCallersSuccess(const std::unordered_set<base::Name>& fakeAssets, const std::string& hash)
     {
-        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_))
-            .WillOnce(::testing::Return(m_mockPolicy));
+        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_)).WillOnce(::testing::Return(m_mockPolicy));
         EXPECT_CALL(*m_mockPolicy, assets()).WillRepeatedly(::testing::ReturnRefOfCopy(fakeAssets));
         EXPECT_CALL(*m_mockControllerMaker, create(testing::_, testing::_, testing::_))
             .WillOnce(::testing::Return(m_mockController));
@@ -142,8 +141,7 @@ TEST_F(TesterTest, FailedCreatingEnvironmentControllerNull)
     std::unordered_set<base::Name> fakeAssets {};
     fakeAssets.insert(base::Name("asset/test/0"));
 
-    EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_))
-        .WillOnce(::testing::Return(m_mockPolicy));
+    EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_)).WillOnce(::testing::Return(m_mockPolicy));
     EXPECT_CALL(*m_mockPolicy, assets()).WillRepeatedly(::testing::ReturnRefOfCopy(fakeAssets));
     EXPECT_CALL(*m_mockPolicy, expression()).WillOnce(::testing::ReturnRefOfCopy(base::Expression {}));
     EXPECT_CALL(*m_mockControllerMaker, create(testing::_, testing::_, testing::_))
@@ -455,8 +453,7 @@ TEST_F(TesterTest, RenameEntryFromNotExist)
 {
     auto error = m_test->renameEntry("nonExistent", "newName");
     EXPECT_TRUE(error.has_value());
-    EXPECT_STREQ(error.value().message.c_str(),
-                 "Error renaming session: The 'nonExistent' environment does not exist");
+    EXPECT_STREQ(error.value().message.c_str(), "Error renaming session: The 'nonExistent' environment does not exist");
 }
 
 TEST_F(TesterTest, RenameEntryToAlreadyExists)

@@ -1,4 +1,4 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -200,6 +200,25 @@ def test_get_script_arguments(capsys, mutually_exclusive_parameter):
     stdout, stderr = capsys.readouterr()
     assert stdout == "", 'stdout was not empty'
     assert stderr == "", 'stderr was not empty'
+
+
+@pytest.mark.parametrize('environment, argv_keys, expected', [
+    ({aws_tools.ACCESS_KEY_ENV: 'env-access', aws_tools.SECRET_KEY_ENV: 'env-secret'}, [],
+     ('env-access', 'env-secret')),
+    ({aws_tools.ACCESS_KEY_ENV: 'env-access', aws_tools.SECRET_KEY_ENV: 'env-secret'},
+     ['--access_key', 'arg-access', '--secret_key', 'arg-secret'], ('arg-access', 'arg-secret')),
+    ({aws_tools.ACCESS_KEY_ENV: '', aws_tools.SECRET_KEY_ENV: ''}, [], (None, None)),
+    ({}, [], (None, None)),
+])
+def test_get_script_arguments_reads_keys_from_environment(environment, argv_keys, expected):
+    """Test 'get_script_arguments' takes the inline keys from the environment, where wazuh-modulesd passes them,
+    unless they are given on the command line."""
+    clean_env = {k: v for k, v in os.environ.items() if k not in (aws_tools.ACCESS_KEY_ENV, aws_tools.SECRET_KEY_ENV)}
+    with patch.dict(os.environ, {**clean_env, **environment}, clear=True), \
+            patch("sys.argv", ['main', '--bucket', 'any', *argv_keys]):
+        args = aws_tools.get_script_arguments()
+
+    assert (args.access_key, args.secret_key) == expected
 
 
 @pytest.mark.parametrize('args', [

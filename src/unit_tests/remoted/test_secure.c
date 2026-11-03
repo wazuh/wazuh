@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -36,6 +36,7 @@
 #include "../wrappers/wazuh/shared/queue_linked_op_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 #include "../wrappers/wazuh/shared/batch_queue_op_wrappers.h"
+#include "../wrappers/wazuh/shared/http_op_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_metadata_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 #include "../wrappers/wazuh/config/mconf-config_wrappers.h"
@@ -51,7 +52,6 @@ extern keystore keys;
 extern remoted logr;
 extern wnotify_t* notify;
 extern char* str_family_address[FAMILY_ADDRESS_SIZE];
-extern OSHash* agent_data_hash;
 
 void tmp_HandleSecureMessage_invalid_family_address(sa_family_t sin_family);
 
@@ -61,6 +61,7 @@ void HandleSecureMessage(const message_t *message, w_indexed_queue_t * control_m
 // STATIC in secure.c, which expands to nothing under WAZUH_UNIT_TESTING.
 bool discard_legacy_agent_message(const char* msg, const char* agent_id);
 void remoted_module_control_config(remoted_module_config_t *rm_config);
+void w_remoted_check_tls_files(const remoted_module_config_t *rm_config);
 
 /* Setup/teardown */
 
@@ -86,6 +87,7 @@ static int setup_new_tcp(void** state)
     test_mode = 1;
     os_calloc(1, sizeof(wnotify_t), notify);
     notify->fd = 0;
+    unauthenticated_max = 16384;
     return 0;
 }
 
@@ -100,7 +102,6 @@ static int setup_remoted_configuration(void** state)
 {
     test_mode = 1;
     node_name = "test_node_name";
-    agent_data_hash = (OSHash*)1;
 
     test_agent_info* agent;
     os_calloc(1, sizeof(test_agent_info), agent);
@@ -601,6 +602,7 @@ void test_HandleSecureMessage_shutdown_message(void** state)
     will_return(__wrap_ReadSecMSG, message.size);
     will_return(__wrap_ReadSecMSG, "#!-agent shutdown ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_value(__wrap_rem_getCounter, fd, 1);
     will_return(__wrap_rem_getCounter, 10);
@@ -716,6 +718,7 @@ void test_HandleSecureMessage_shutdown_message_embedded_null(void** state)
     will_return(__wrap_ReadSecMSG, decrypted_length);
     will_return(__wrap_ReadSecMSG, decrypted);
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_value(__wrap_rem_getCounter, fd, 1);
     will_return(__wrap_rem_getCounter, 10);
@@ -818,6 +821,7 @@ void test_HandleSecureMessage_HC_req_message(void** state)
     will_return(__wrap_ReadSecMSG, message.size);
     will_return(__wrap_ReadSecMSG, "#!-req payload");
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_value(__wrap_rem_getCounter, fd, 1);
     will_return(__wrap_rem_getCounter, 10);
@@ -908,6 +912,7 @@ void test_HandleSecureMessage_invalid_HC_req_message(void** state)
     will_return(__wrap_ReadSecMSG, message.size);
     will_return(__wrap_ReadSecMSG, "#!-req witouthCounter");
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_value(__wrap_rem_getCounter, fd, 1);
     will_return(__wrap_rem_getCounter, 10);
@@ -1003,6 +1008,7 @@ void test_HandleSecureMessage_NewMessage_NoShutdownMessage(void** state)
     will_return(__wrap_ReadSecMSG, message.size);
     will_return(__wrap_ReadSecMSG, "#!-agent startup ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_value(__wrap_rem_getCounter, fd, 1);
     will_return(__wrap_rem_getCounter, 10);
@@ -1109,6 +1115,7 @@ void test_HandleSecureMessage_OldMessage_NoShutdownMessage(void** state)
     will_return(__wrap_ReadSecMSG, message.size);
     will_return(__wrap_ReadSecMSG, "#!-agent startup ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_value(__wrap_rem_getCounter, fd, 1);
     will_return(__wrap_rem_getCounter, 10);
@@ -1170,11 +1177,9 @@ void test_HandleSecureMessage_invalid_message(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, message.sock);
-    expect_value(__wrap_nb_close, sock, message.sock);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, message.sock);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -1246,11 +1251,9 @@ void test_HandleSecureMessage_different_sock(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, message.sock);
-    expect_value(__wrap_nb_close, sock, message.sock);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, message.sock);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -1321,11 +1324,9 @@ void test_HandleSecureMessage_different_sock_2(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, message.sock);
-    expect_value(__wrap_nb_close, sock, message.sock);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, message.sock);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -1397,11 +1398,9 @@ void test_HandleSecureMessage_conflict_first_seen(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, message.sock);
-    expect_value(__wrap_nb_close, sock, message.sock);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, message.sock);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -1475,11 +1474,9 @@ void test_HandleSecureMessage_conflict_persists(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, message.sock);
-    expect_value(__wrap_nb_close, sock, message.sock);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, message.sock);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -1552,6 +1549,7 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
     will_return(__wrap_ReadSecMSG, message.size);
     will_return(__wrap_ReadSecMSG, buffer);
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_function_call(__wrap_key_unlock);
 
@@ -1563,11 +1561,9 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, key->sock);
-    expect_value(__wrap_nb_close, sock, key->sock);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, key->sock);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -1651,6 +1647,7 @@ void test_HandleSecureMessage_close_idle_sock_2(void** state)
     will_return(__wrap_ReadSecMSG, 3);
     will_return(__wrap_ReadSecMSG, "AAA");
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_function_call(__wrap_key_unlock);
     expect_function_call(__wrap_key_lock_read);
@@ -1661,11 +1658,9 @@ void test_HandleSecureMessage_close_idle_sock_2(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, key->sock);
-    expect_value(__wrap_nb_close, sock, key->sock);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, key->sock);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -1746,11 +1741,9 @@ void test_HandleSecureMessage_close_idle_sock_disabled(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, message.sock);
-    expect_value(__wrap_nb_close, sock, message.sock);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, message.sock);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -1824,11 +1817,9 @@ void test_HandleSecureMessage_close_idle_sock_disabled_2(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, message.sock);
-    expect_value(__wrap_nb_close, sock, message.sock);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, message.sock);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -1906,11 +1897,9 @@ void test_HandleSecureMessage_close_idle_sock_recv_fail(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, message.sock);
-    expect_value(__wrap_nb_close, sock, message.sock);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, message.sock);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -1928,11 +1917,9 @@ void test_HandleSecureMessage_close_idle_sock_recv_fail(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, key->sock);
-    expect_value(__wrap_nb_close, sock, key->sock);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, key->sock);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -2019,11 +2006,9 @@ void test_HandleSecureMessage_close_idle_sock_decrypt_fail(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, message.sock);
-    expect_value(__wrap_nb_close, sock, message.sock);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, message.sock);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -2041,11 +2026,9 @@ void test_HandleSecureMessage_close_idle_sock_decrypt_fail(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, key->sock);
-    expect_value(__wrap_nb_close, sock, key->sock);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, key->sock);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -2124,6 +2107,7 @@ void test_HandleSecureMessage_close_idle_sock_control_msg_succes(void** state)
     will_return(__wrap_ReadSecMSG, message.size);
     will_return(__wrap_ReadSecMSG, buffer);
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_value(__wrap_rem_getCounter, fd, 1);
     will_return(__wrap_rem_getCounter, 10);
@@ -2151,11 +2135,9 @@ void test_HandleSecureMessage_close_idle_sock_control_msg_succes(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, key->sock);
-    expect_value(__wrap_nb_close, sock, key->sock);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, key->sock);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -2262,6 +2244,7 @@ void test_HandleSecureMessage_close_same_sock(void** state)
     will_return(__wrap_ReadSecMSG, message.size);
     will_return(__wrap_ReadSecMSG, buffer);
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_function_call(__wrap_key_unlock);
     expect_string(__wrap__mdebug1, formatted_msg, "Stripped 1 trailing null byte(s) from event payload of agent '001'");
@@ -2338,6 +2321,7 @@ void test_HandleSecureMessage_close_same_sock_2(void** state)
     will_return(__wrap_ReadSecMSG, 4);
     will_return(__wrap_ReadSecMSG, "AAA");
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_function_call(__wrap_key_unlock);
     expect_string(__wrap__mdebug1, formatted_msg, "Stripped 1 trailing null byte(s) from event payload of agent '001'");
@@ -2440,6 +2424,7 @@ static void run_upgrade_ack_forwarded_test(const char *ack_json, int enqueue_rc)
     will_return(__wrap_ReadSecMSG, message.size);
     will_return(__wrap_ReadSecMSG, buffer);
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_function_call(__wrap_key_unlock);
 
@@ -2609,6 +2594,7 @@ void test_HandleSecureMessage_event_enqueue_failed(void** state)
     will_return(__wrap_ReadSecMSG, message.size);
     will_return(__wrap_ReadSecMSG, buffer);
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_function_call(__wrap_key_unlock);
 
@@ -2681,6 +2667,7 @@ void test_HandleSecureMessage_discard_dbsync_message(void** state)
     will_return(__wrap_ReadSecMSG, message.size);
     will_return(__wrap_ReadSecMSG, buffer);
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_function_call(__wrap_key_unlock);
 
@@ -2769,6 +2756,7 @@ void test_HandleSecureMessage_event_without_trailing_null(void** state)
     will_return(__wrap_ReadSecMSG, payload_len);
     will_return(__wrap_ReadSecMSG, buffer);
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_function_call(__wrap_key_unlock);
 
@@ -2841,6 +2829,7 @@ void test_HandleSecureMessage_event_enqueue_success(void** state)
     will_return(__wrap_ReadSecMSG, payload_len);
     will_return(__wrap_ReadSecMSG, buffer);
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_function_call(__wrap_key_unlock);
 
@@ -2932,6 +2921,7 @@ void test_HandleSecureMessage_event_with_trailing_null(void** state)
     will_return(__wrap_ReadSecMSG, payload_len + 1);
     will_return(__wrap_ReadSecMSG, buffer);
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_function_call(__wrap_key_unlock);
 
@@ -3012,6 +3002,7 @@ void test_HandleSecureMessage_discard_legacy_stateful_sync(void** state)
     will_return(__wrap_ReadSecMSG, total_len);
     will_return(__wrap_ReadSecMSG, buffer);
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_function_call(__wrap_key_unlock);
 
@@ -3041,6 +3032,8 @@ void test_handle_new_tcp_connection_success(void** state)
 
     will_return(__wrap_accept, AF_INET);
     will_return(__wrap_accept, sock_client);
+
+    will_return(__wrap_nb_unauthenticated_count, 0);
 
     // nb_open
     expect_value(__wrap_nb_open, sock, sock_client);
@@ -3072,6 +3065,8 @@ void test_handle_new_tcp_connection_wnotify_fail(void** state)
     will_return(__wrap_accept, AF_INET);
     will_return(__wrap_accept, sock_client);
 
+    will_return(__wrap_nb_unauthenticated_count, 0);
+
     // nb_open
     expect_value(__wrap_nb_open, sock, sock_client);
     expect_value(__wrap_nb_open, peer_info, (struct sockaddr_storage*)&peer_info);
@@ -3098,11 +3093,9 @@ void test_handle_new_tcp_connection_wnotify_fail(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, sock_client);
-    expect_value(__wrap_nb_close, sock, sock_client);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, sock_client);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -3146,6 +3139,347 @@ void test_handle_new_tcp_connection_socket_fail_err(void** state)
                   "(1242): Couldn't accept TCP connections: Software caused connection abort (103)");
 
     handle_new_tcp_connection(notify, (struct sockaddr_storage*)&peer_info);
+}
+
+void test_handle_new_tcp_connection_refused_at_unauthenticated_cap(void** state)
+{
+    struct sockaddr_in peer_info;
+    int sock_client = 12;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = 0x0A00A8C0;
+
+    will_return(__wrap_accept, AF_INET);
+    will_return(__wrap_accept, sock_client);
+
+    will_return(__wrap_nb_unauthenticated_count, 16384);
+
+    unauthenticated_refused = 0;
+    unauthenticated_refused_warned = 0;
+
+    expect_value(__wrap_time, time, 0);
+    will_return(__wrap_time, 1000);
+
+    // Closed before nb_open(): no buffers, no TCP counter to undo
+    will_return(__wrap_close, 0);
+
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "Refused 1 legacy TCP connection(s): 16384 connections are already waiting to authenticate "
+                  "(remoted.unauthenticated_max).");
+
+    handle_new_tcp_connection(notify, (struct sockaddr_storage*)&peer_info);
+}
+
+/* _close_sock() over a socket, as the reaper and the ping path drive it. cmocka keeps the pointer
+ * expect_string() is given, so the disconnect message must outlive this frame: callers pass a literal. */
+static void expect_close_sock(int sock, const char* disconnected_msg)
+{
+    expect_value(__wrap_rem_setCounter, fd, sock);
+    expect_value(__wrap_rem_setCounter, counter, 0);
+
+    expect_function_call(__wrap_key_lock_read);
+    expect_value(__wrap_OS_DeleteSocket, sock, sock);
+    will_return(__wrap_OS_DeleteSocket, 0);
+    expect_function_call(__wrap_key_unlock);
+
+    expect_value(__wrap_nb_close_socket, sock, sock);
+    will_return(__wrap_nb_close_socket, true);
+    expect_function_call(__wrap_rem_dec_tcp);
+
+    expect_string(__wrap__mdebug1, formatted_msg, disconnected_msg);
+}
+
+void test_reap_unauthenticated_connections_closes_expired(void** state)
+{
+    int socks[] = {7, 9};
+
+    global_counter = 0;
+    unauthenticated_timeout = 60;
+    unauthenticated_refused = 0;
+
+    expect_value(__wrap_nb_collect_unauthenticated, deadline, 1940);
+    will_return(__wrap_nb_collect_unauthenticated, 2);
+    will_return(__wrap_nb_collect_unauthenticated, socks);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "TCP peer [7] sent no authenticated message within 60 seconds. Closing.");
+    expect_close_sock(7, "TCP peer disconnected [7]");
+    expect_string(__wrap__mdebug1, formatted_msg, "TCP peer [9] sent no authenticated message within 60 seconds. Closing.");
+    expect_close_sock(9, "TCP peer disconnected [9]");
+
+    reap_unauthenticated_connections(2000);
+
+    // A second call within the same second does not sweep again
+    reap_unauthenticated_connections(2000);
+}
+
+void test_reap_unauthenticated_connections_none_expired(void** state)
+{
+    unauthenticated_timeout = 60;
+    unauthenticated_refused = 0;
+
+    expect_value(__wrap_nb_collect_unauthenticated, deadline, 2940);
+    will_return(__wrap_nb_collect_unauthenticated, 0);
+    will_return(__wrap_nb_collect_unauthenticated, NULL);
+
+    reap_unauthenticated_connections(3000);
+}
+
+void test_handle_new_tcp_connection_refusal_within_window_not_reported(void** state)
+{
+    struct sockaddr_in peer_info;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = 0x0A00A8C0;
+
+    unauthenticated_refused = 0;
+    unauthenticated_refused_warned = 1000;
+
+    will_return(__wrap_accept, AF_INET);
+    will_return(__wrap_accept, 12);
+    will_return(__wrap_nb_unauthenticated_count, 16384);
+    expect_value(__wrap_time, time, 0);
+    will_return(__wrap_time, 1010);
+    will_return(__wrap_close, 0);
+
+    // Under a minute since the last warning: counted, not logged
+    handle_new_tcp_connection(notify, (struct sockaddr_storage*)&peer_info);
+
+    assert_int_equal(unauthenticated_refused, 1);
+}
+
+void test_reap_unauthenticated_connections_reports_pending_refusals(void** state)
+{
+    // Refusals that stopped after the last warning are reported by the sweep once the minute is up
+    unauthenticated_refused = 3;
+    unauthenticated_refused_warned = 1000;
+    unauthenticated_timeout = 60;
+    unauthenticated_max = 16384;
+
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "Refused 3 legacy TCP connection(s): 16384 connections are already waiting to authenticate "
+                  "(remoted.unauthenticated_max).");
+
+    expect_value(__wrap_nb_collect_unauthenticated, deadline, 1000);
+    will_return(__wrap_nb_collect_unauthenticated, 0);
+    will_return(__wrap_nb_collect_unauthenticated, NULL);
+
+    reap_unauthenticated_connections(1060);
+
+    assert_int_equal(unauthenticated_refused, 0);
+    assert_int_equal(unauthenticated_refused_warned, 1060);
+}
+
+/* _close_sock() up to nb_close_socket(): the counter and the keystore */
+static void expect_close_sock_until_close(int sock)
+{
+    expect_value(__wrap_rem_setCounter, fd, sock);
+    expect_value(__wrap_rem_setCounter, counter, 0);
+
+    expect_function_call(__wrap_key_lock_read);
+    expect_value(__wrap_OS_DeleteSocket, sock, sock);
+    will_return(__wrap_OS_DeleteSocket, 0);
+    expect_function_call(__wrap_key_unlock);
+}
+
+void test_close_sock_released_slots_decrement_tcp(void** state)
+{
+    global_counter = 0;
+
+    expect_close_sock_until_close(5);
+
+    // nb_close_socket() released the slots (close() succeeded, or failed with anything but EBADF, since
+    // Linux frees the descriptor anyway): the session is gone
+    expect_value(__wrap_nb_close_socket, sock, 5);
+    will_return(__wrap_nb_close_socket, true);
+    expect_function_call(__wrap_rem_dec_tcp);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [5]");
+
+    _close_sock(&keys, 5);
+}
+
+void test_close_sock_ebadf_leaves_slots_alone(void** state)
+{
+    global_counter = 0;
+
+    expect_close_sock_until_close(5);
+
+    // EBADF: another _close_sock() already closed it and released the slots, and the number may
+    // already belong to a newly accepted connection. nb_close_socket() leaves its slots alone, and the
+    // counter does not change.
+    expect_value(__wrap_nb_close_socket, sock, 5);
+    will_return(__wrap_nb_close_socket, false);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [5]");
+
+    _close_sock(&keys, 5);
+}
+
+void test_rem_check_unauthenticated_cap_within_limit(void** state)
+{
+    nofile_effective = 65536;
+    unauthenticated_max = 32768; // exactly half: no warning
+
+    rem_check_unauthenticated_cap();
+}
+
+void test_rem_check_unauthenticated_cap_above_half_warns(void** state)
+{
+    nofile_effective = 1024;
+    unauthenticated_max = 16384;
+
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "remoted.unauthenticated_max (16384) is above half the file descriptor limit (1024): connections "
+                  "that never authenticate could take the descriptors registered agents need.");
+
+    rem_check_unauthenticated_cap();
+}
+
+/* A "#ping" frame from 127.0.0.1 over the given socket */
+static void make_ping_message(message_t* message, char* buffer, int sock)
+{
+    struct sockaddr_in peer_info = {0};
+
+    snprintf(buffer, OS_MAXSTR + 1, "#ping");
+    memset(message, 0, sizeof(*message));
+    message->buffer = buffer;
+    message->size = 5;
+    message->sock = sock;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = 0x0100007F;
+    memcpy(&message->addr, &peer_info, sizeof(peer_info));
+}
+
+static void expect_pong_queued(int sock, int retval)
+{
+    expect_value(__wrap_nb_queue_nowait, socket, sock);
+    expect_string(__wrap_nb_queue_nowait, msg, "#pong");
+    expect_value(__wrap_nb_queue_nowait, msg_size, 5);
+    will_return(__wrap_nb_queue_nowait, retval);
+}
+
+void test_HandleSecureMessage_ping_tcp_reply_queued(void** state)
+{
+    char buffer[OS_MAXSTR + 1];
+    message_t message;
+    make_ping_message(&message, buffer, 1);
+
+    expect_pong_queued(1, 0);
+
+    HandleSecureMessage(&message, NULL, NULL);
+}
+
+void test_HandleSecureMessage_ping_tcp_peer_not_reading(void** state)
+{
+    char buffer[OS_MAXSTR + 1];
+    message_t message;
+    make_ping_message(&message, buffer, 1);
+
+    global_counter = 0;
+
+    expect_pong_queued(1, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "TCP peer [1] from '127.0.0.1' is not reading its ping replies. Closing.");
+    expect_close_sock(1, "TCP peer disconnected [1]");
+
+    HandleSecureMessage(&message, NULL, NULL);
+}
+
+void test_HandleSecureMessage_ping_tcp_socket_gone(void** state)
+{
+    char buffer[OS_MAXSTR + 1];
+    message_t message;
+    make_ping_message(&message, buffer, 1);
+
+    // Nothing to close: the connection was released before the worker got the message
+    expect_pong_queued(1, -2);
+
+    HandleSecureMessage(&message, NULL, NULL);
+}
+
+void test_HandleSecureMessage_ping_udp(void** state)
+{
+    char buffer[OS_MAXSTR + 1];
+    message_t message;
+    make_ping_message(&message, buffer, USING_UDP_NO_CLIENT_SOCKET);
+
+    will_return(__wrap_sendto, 5);
+
+    HandleSecureMessage(&message, NULL, NULL);
+}
+
+void test_HandleSecureMessage_ping_udp_send_fails(void** state)
+{
+    char buffer[OS_MAXSTR + 1];
+    message_t message;
+    make_ping_message(&message, buffer, USING_UDP_NO_CLIENT_SOCKET);
+
+    will_return(__wrap_sendto, -1);
+    errno = EAGAIN;
+    expect_string(__wrap__mdebug1,
+                  formatted_msg,
+                  "Ping reply to '127.0.0.1' could not be sent: Resource temporarily unavailable (11)");
+
+    HandleSecureMessage(&message, NULL, NULL);
+}
+
+/* send_msg_nowait() as send_control_ack() drives it: full_sock is set only on SEND_MSG_QUEUE_FULL */
+int __wrap_send_msg_nowait(const char* agent_id, const char* msg, ssize_t msg_length, int* full_sock)
+{
+    check_expected(agent_id);
+    check_expected(msg);
+    check_expected(msg_length);
+
+    int retval = mock_type(int);
+
+    if (retval == SEND_MSG_QUEUE_FULL) {
+        *full_sock = mock_type(int);
+    }
+
+    return retval;
+}
+
+static void expect_ack_sent(int retval)
+{
+    expect_string(__wrap_send_msg_nowait, agent_id, "001");
+    expect_string(__wrap_send_msg_nowait, msg, "#!-agent ack ");
+    expect_value(__wrap_send_msg_nowait, msg_length, -1);
+    will_return(__wrap_send_msg_nowait, retval);
+}
+
+void test_send_control_ack_queued(void** state)
+{
+    expect_ack_sent(OS_SUCCESS);
+    expect_function_call(__wrap_rem_inc_send_ack);
+
+    send_control_ack("001");
+}
+
+void test_send_control_ack_agent_not_reading(void** state)
+{
+    global_counter = 0;
+
+    // The agent's send queue is full: the ACK is dropped and the connection closed, without waiting
+    expect_ack_sent(SEND_MSG_QUEUE_FULL);
+    will_return(__wrap_send_msg_nowait, 4);
+    expect_function_call(__wrap_rem_inc_send_discarded);
+    expect_string(__wrap__mdebug1,
+                  formatted_msg,
+                  "Agent '001' is not reading the messages sent to it on TCP peer [4]. Closing.");
+    expect_close_sock(4, "TCP peer disconnected [4]");
+
+    send_control_ack("001");
+}
+
+void test_send_control_ack_not_sent(void** state)
+{
+    // Unknown or disconnected agent, closed socket, encryption failure: logged by send_msg_nowait()
+    expect_ack_sent(OS_INVALID);
+
+    send_control_ack("001");
 }
 
 void test_handle_incoming_data_from_udp_socket_0(void** state)
@@ -3198,11 +3532,9 @@ void test_handle_incoming_data_from_tcp_socket_too_big_message(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, sock_client);
-    expect_value(__wrap_nb_close, sock, sock_client);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, sock_client);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -3231,11 +3563,9 @@ void test_handle_incoming_data_from_tcp_socket_case_0(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, sock_client);
-    expect_value(__wrap_nb_close, sock, sock_client);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, sock_client);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -3268,11 +3598,9 @@ void test_handle_incoming_data_from_tcp_socket_case_1(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, sock_client);
-    expect_value(__wrap_nb_close, sock, sock_client);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, sock_client);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -3331,11 +3659,9 @@ void test_handle_outgoing_data_to_tcp_socket_case_1_EPIPE(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, sock_client);
-    expect_value(__wrap_nb_close, sock, sock_client);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, sock_client);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -3374,8 +3700,8 @@ void test_remoted_module_https_config_defaults(void** state)
     remoted_module_config_t rm_config = {0};
 
     // __wrap_getDefine_Int_default is a plain FIFO mock(), so these MUST stay in the same order
-    // as the getDefine_Int_default() calls in remoted_module_https_config(): 13 http_*, then
-    // 3 memory-management, then 7 downstream_*, then 3 auth_*. Adding an option there without
+    // as the getDefine_Int_default() calls in remoted_module_https_config(): 14 http_*, then
+    // 6 memory-management, then 7 downstream_*, then 4 auth_*. Adding an option there without
     // adding a value here makes the queue run dry and cmocka aborts the test.
     // http_*
     will_return(__wrap_getDefine_Int_default, 0); // http_io_threads (0 = auto, cpp_get_nproc())
@@ -3392,22 +3718,29 @@ void test_remoted_module_https_config_defaults(void** state)
     will_return(__wrap_getDefine_Int_default, 8192);
     will_return(__wrap_getDefine_Int_default, 65536); // http_stream_chunk_size
     will_return(__wrap_getDefine_Int_default, 1);     // http_content_encoding_enabled (1 = enabled)
-    // memory-management
+    // memory-management. These mirror secure.c's own defaults deliberately: the wrapper is a plain
+    // FIFO that ignores the default_val argument, so this test cannot VERIFY a default -- carrying
+    // the real numbers at least stops it reading as if 512/256 were still the ones in force.
     will_return(__wrap_getDefine_Int_default, 268435456);
-    will_return(__wrap_getDefine_Int_default, 512);
     will_return(__wrap_getDefine_Int_default, 256);
+    will_return(__wrap_getDefine_Int_default, 32); // max_handshakes_per_source
+    will_return(__wrap_getDefine_Int_default, 128);
+    will_return(__wrap_getDefine_Int_default, 6); // max_requests_per_agent
+    will_return(__wrap_getDefine_Int_default, 0); // max_inflight_bytes_per_agent (0 = half the budget)
     // downstream_*
     will_return(__wrap_getDefine_Int_default, 2);
     will_return(__wrap_getDefine_Int_default, 5);
     will_return(__wrap_getDefine_Int_default, 5);
     will_return(__wrap_getDefine_Int_default, 20); // downstream_stateful_response_timeout
+    will_return(__wrap_getDefine_Int_default, 20); // downstream_stateful_retry_after
     will_return(__wrap_getDefine_Int_default, 0); // downstream_io_threads (0 = auto)
     will_return(__wrap_getDefine_Int_default, 0); // downstream_post_process_threads (0 = auto)
     will_return(__wrap_getDefine_Int_default, 10485760);
     // jwt_* / auth_*
     will_return(__wrap_getDefine_Int_default, 60); // jwt_max_age
     will_return(__wrap_getDefine_Int_default, 30); // jwt_clock_skew
-    will_return(__wrap_getDefine_Int_default, 10485760);
+    will_return(__wrap_getDefine_Int_default, 5242880); // auth_max_body_size
+    will_return(__wrap_getDefine_Int_default, 33554432); // auth_max_decoded_body_size
 
     remoted_module_https_config(&rm_config);
 
@@ -3428,19 +3761,25 @@ void test_remoted_module_https_config_defaults(void** state)
     assert_int_equal(rm_config.http_concurrent_accepts, 2);
     assert_int_equal(rm_config.http_buffer_size, 8192);
     assert_int_equal(rm_config.max_inflight_bytes, 268435456);
-    assert_int_equal(rm_config.max_parallel_connections, 512);
-    assert_int_equal(rm_config.max_deferred_requests, 256);
+    assert_int_equal(rm_config.max_parallel_connections, 256);
+    assert_int_equal(rm_config.max_handshakes_per_source, 32);
+    assert_int_equal(rm_config.max_handshakes_per_source_set, 1);
+    assert_int_equal(rm_config.max_deferred_requests, 128);
+    assert_int_equal(rm_config.max_requests_per_agent, 6);
+    assert_int_equal(rm_config.max_inflight_bytes_per_agent, 0);
     assert_int_equal(rm_config.downstream_connect_timeout, 2);
     assert_int_equal(rm_config.downstream_write_timeout, 5);
     assert_int_equal(rm_config.downstream_response_timeout, 5);
     assert_int_equal(rm_config.downstream_stateful_response_timeout, 20);
+    assert_int_equal(rm_config.downstream_stateful_retry_after, 20);
     assert_int_equal(rm_config.downstream_io_threads, 0);
     assert_int_equal(rm_config.downstream_post_process_threads, 0);
     assert_int_equal(rm_config.downstream_max_response_body_size, 10485760);
     assert_int_equal(rm_config.jwt_max_age, 60);
     assert_int_equal(rm_config.jwt_clock_skew, 30);
     assert_int_equal(rm_config.jwt_clock_skew_set, 1);
-    assert_int_equal(rm_config.auth_max_body_size, 10485760);
+    assert_int_equal(rm_config.auth_max_body_size, 5242880);
+    assert_int_equal(rm_config.auth_max_decoded_body_size, 33554432);
     assert_true(rm_config.http_content_encoding_enabled);
 }
 
@@ -3472,12 +3811,16 @@ void test_remoted_module_https_config_custom_values(void** state)
     // memory-management
     will_return(__wrap_getDefine_Int_default, 33554432);
     will_return(__wrap_getDefine_Int_default, 256);
+    will_return(__wrap_getDefine_Int_default, 16); // max_handshakes_per_source
     will_return(__wrap_getDefine_Int_default, 128);
+    will_return(__wrap_getDefine_Int_default, 12); // max_requests_per_agent
+    will_return(__wrap_getDefine_Int_default, 100663296); // max_inflight_bytes_per_agent
     // downstream_*
     will_return(__wrap_getDefine_Int_default, 7);
     will_return(__wrap_getDefine_Int_default, 11);
     will_return(__wrap_getDefine_Int_default, 13);
     will_return(__wrap_getDefine_Int_default, 45); // downstream_stateful_response_timeout
+    will_return(__wrap_getDefine_Int_default, 35); // downstream_stateful_retry_after
     will_return(__wrap_getDefine_Int_default, 6);
     will_return(__wrap_getDefine_Int_default, 9);
     will_return(__wrap_getDefine_Int_default, 20971520);
@@ -3485,6 +3828,7 @@ void test_remoted_module_https_config_custom_values(void** state)
     will_return(__wrap_getDefine_Int_default, 45); // jwt_max_age
     will_return(__wrap_getDefine_Int_default, 20); // jwt_clock_skew
     will_return(__wrap_getDefine_Int_default, 31457280);
+    will_return(__wrap_getDefine_Int_default, 67108864); // auth_max_decoded_body_size
 
     remoted_module_https_config(&rm_config);
 
@@ -3506,11 +3850,16 @@ void test_remoted_module_https_config_custom_values(void** state)
     assert_int_equal(rm_config.http_buffer_size, 16384);
     assert_int_equal(rm_config.max_inflight_bytes, 33554432);
     assert_int_equal(rm_config.max_parallel_connections, 256);
+    assert_int_equal(rm_config.max_handshakes_per_source, 16);
+    assert_int_equal(rm_config.max_handshakes_per_source_set, 1);
     assert_int_equal(rm_config.max_deferred_requests, 128);
+    assert_int_equal(rm_config.max_requests_per_agent, 12);
+    assert_int_equal(rm_config.max_inflight_bytes_per_agent, 100663296);
     assert_int_equal(rm_config.downstream_connect_timeout, 7);
     assert_int_equal(rm_config.downstream_write_timeout, 11);
     assert_int_equal(rm_config.downstream_response_timeout, 13);
     assert_int_equal(rm_config.downstream_stateful_response_timeout, 45);
+    assert_int_equal(rm_config.downstream_stateful_retry_after, 35);
     assert_int_equal(rm_config.downstream_io_threads, 6);
     assert_int_equal(rm_config.downstream_post_process_threads, 9);
     assert_int_equal(rm_config.downstream_max_response_body_size, 20971520);
@@ -3518,7 +3867,41 @@ void test_remoted_module_https_config_custom_values(void** state)
     assert_int_equal(rm_config.jwt_clock_skew, 20);
     assert_int_equal(rm_config.jwt_clock_skew_set, 1);
     assert_int_equal(rm_config.auth_max_body_size, 31457280);
+    assert_int_equal(rm_config.auth_max_decoded_body_size, 67108864);
     assert_false(rm_config.http_content_encoding_enabled);
+}
+
+void test_remoted_module_https_config_decoded_cap_below_wire_cap(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config = {0};
+
+    // A decoded cap below the wire cap would refuse, once decoded, a body the wire cap accepted:
+    // it is raised to the wire cap with a warning. Same FIFO order as the tests above.
+    for (int i = 0; i < 13; ++i) {
+        will_return(__wrap_getDefine_Int_default, 1); // http_*
+    }
+    will_return(__wrap_getDefine_Int_default, 1); // http_content_encoding_enabled
+    for (int i = 0; i < 6; ++i) {
+        will_return(__wrap_getDefine_Int_default, 1); // memory-management
+    }
+    for (int i = 0; i < 8; ++i) {
+        will_return(__wrap_getDefine_Int_default, 1); // downstream_*
+    }
+    will_return(__wrap_getDefine_Int_default, 60);       // jwt_max_age
+    will_return(__wrap_getDefine_Int_default, 30);       // jwt_clock_skew
+    will_return(__wrap_getDefine_Int_default, 8388608);  // auth_max_body_size: 8 MiB
+    will_return(__wrap_getDefine_Int_default, 2097152);  // auth_max_decoded_body_size: 2 MiB
+
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "'remoted.auth_max_decoded_body_size' (2097152) is below 'remoted.auth_max_body_size' (8388608); "
+                  "using 8388608.");
+
+    remoted_module_https_config(&rm_config);
+
+    assert_int_equal(rm_config.auth_max_body_size, 8388608);
+    assert_int_equal(rm_config.auth_max_decoded_body_size, 8388608);
 }
 
 // Tests remoted_enrollment_config
@@ -3623,8 +4006,8 @@ void test_remoted_enrollment_config_read_config_fails_closed(void** state)
 /* Tests w_remoted_build_module_config */
 //
 // w_remoted_build_module_config() calls remoted_module_https_config() internally, so
-// each test below must queue the same 25 __wrap_getDefine_Int_default return values
-// (13 http_*, then 3 memory-management, then 6 downstream_*, then 3 auth_*, in that
+// each test below must queue the same __wrap_getDefine_Int_default return values
+// (14 http_*, then 6 memory-management, then 7 downstream_*, then 4 auth_*, in that
 // fixed order) as the remoted_module_https_config tests above, even though these
 // tests assert on the <https>-driven fields instead. Each also queues one
 // __wrap_w_mconf_section scenario (see remoted_enrollment_config tests above) plus its 5
@@ -3642,10 +4025,15 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     test_logr.https.certificate = "/etc/remoted-https/server.crt";
     test_logr.https.key = "/etc/remoted-https/server.key";
     test_logr.https.ca = "/etc/remoted-https/ca.crt";
+    test_logr.https.ca_certificate = "/etc/remoted-https/listener-ca.crt";
     test_logr.https.ciphers = "HIGH:!ADH";
     test_logr.https.verification_mode = REMOTED_HTTPS_VERIFY_CERTIFICATE;
     test_logr.https.max_body_size = 12345;
     test_logr.https.dual_stack = REMOTED_HTTPS_DUAL_STACK_YES;
+    test_logr.https.enroll_rate_limit = 12;
+    // 0 is a real setting ("no limit"), not an absent one: it must survive the crossing as 0 and
+    // arrive with rate_limit_set, or the module would read it as "apply your default" instead.
+    test_logr.https.cacerts_rate_limit = 0;
 
     // http_*
     will_return(__wrap_getDefine_Int_default, 0);
@@ -3665,12 +4053,16 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     // memory-management
     will_return(__wrap_getDefine_Int_default, 268435456);
     will_return(__wrap_getDefine_Int_default, 512);
+    will_return(__wrap_getDefine_Int_default, 32); // max_handshakes_per_source
     will_return(__wrap_getDefine_Int_default, 256);
+    will_return(__wrap_getDefine_Int_default, 6); // max_requests_per_agent
+    will_return(__wrap_getDefine_Int_default, 0); // max_inflight_bytes_per_agent (0 = half the budget)
     // downstream_*
     will_return(__wrap_getDefine_Int_default, 2);
     will_return(__wrap_getDefine_Int_default, 5);
     will_return(__wrap_getDefine_Int_default, 5);
     will_return(__wrap_getDefine_Int_default, 20); // downstream_stateful_response_timeout
+    will_return(__wrap_getDefine_Int_default, 20); // downstream_stateful_retry_after
     will_return(__wrap_getDefine_Int_default, 0);
     will_return(__wrap_getDefine_Int_default, 0);
     will_return(__wrap_getDefine_Int_default, 10485760);
@@ -3678,6 +4070,7 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     will_return(__wrap_getDefine_Int_default, 60); // jwt_max_age
     will_return(__wrap_getDefine_Int_default, 30); // jwt_clock_skew
     will_return(__wrap_getDefine_Int_default, 10485760);
+    will_return(__wrap_getDefine_Int_default, 33554432); // auth_max_decoded_body_size
 
     // remoted_enrollment_config(): the `auth` section is a "normally enabled" authd config, then
     // its own getDefine_Int_default calls.
@@ -3705,6 +4098,7 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     assert_string_equal(rm_config.certificate_path, "/etc/remoted-https/server.crt");
     assert_string_equal(rm_config.private_key_path, "/etc/remoted-https/server.key");
     assert_string_equal(rm_config.ca_path, "/etc/remoted-https/ca.crt");
+    assert_string_equal(rm_config.ca_certificate_path, "/etc/remoted-https/listener-ca.crt");
     assert_string_equal(rm_config.ciphers, "HIGH:!ADH");
     // cluster_name is populated by HandleSecure() itself, not this helper.
     assert_string_equal(rm_config.cluster_name, "");
@@ -3718,9 +4112,16 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     assert_int_equal(rm_config.authd_response_timeout, 0);
     assert_int_equal(rm_config.authd_max_queue_size, 256);
     assert_int_equal(rm_config.authd_worker_threads, 8);
+
+    // The two rate fields cross verbatim, explicit 0 included, and rate_limit_set says they are
+    // real values -- that flag is what stops a zeroed struct from reading as "unlimited" on the
+    // module side. The bucket depth is not in the ABI: the module derives it from the rate.
+    assert_int_equal(rm_config.rate_limit_set, 1);
+    assert_int_equal(rm_config.enroll_rate_limit, 12);
+    assert_int_equal(rm_config.cacerts_rate_limit, 0);
 }
 
-/* Tests remoted_module_control_config: the eight control_* options plus the two vd_scan_*
+/* Tests remoted_module_control_config: the nine control_* options plus the two vd_scan_*
  * timeouts, in read order. */
 
 static void queue_control_config_defines(int keepalive_throttle)
@@ -3728,6 +4129,7 @@ static void queue_control_config_defines(int keepalive_throttle)
     will_return(__wrap_getDefine_Int_default, 60);    // control_groups_refresh_interval
     will_return(__wrap_getDefine_Int_default, 4);     // control_wdb_request_connections
     will_return(__wrap_getDefine_Int_default, 2000);  // control_wdb_roundtrip_deadline
+    will_return(__wrap_getDefine_Int_default, 5000);  // control_wdb_request_deadline
     will_return(__wrap_getDefine_Int_default, 10000); // control_wdb_max_queue_size
     will_return(__wrap_getDefine_Int_default, 4);     // control_tm_concurrency
     will_return(__wrap_getDefine_Int_default, 2000);  // control_tm_deadline
@@ -3772,9 +4174,241 @@ void test_remoted_module_control_config_silent_below_disconnection_time(void** s
     memset(&rm_config, 0, sizeof(rm_config));
     remoted_module_control_config(&rm_config);
 
+    assert_int_equal(rm_config.wdb_roundtrip_deadline_ms, 2000);
+    assert_int_equal(rm_config.wdb_request_deadline_ms, 5000);
+    assert_int_equal(rm_config.wdb_max_queue_size, 10000);
     assert_int_equal(rm_config.keepalive_throttle_sec, 449);
     assert_int_equal(rm_config.vd_scan_read_timeout_sec, 5);
     assert_int_equal(rm_config.vd_scan_write_timeout_sec, 5);
+}
+
+/* Tests w_remoted_check_tls_files: the preflight that fails closed before remoted writes its PID file. The
+ * five messages are pinned verbatim (the integration test test_https_cert_missing matches them in the log). */
+
+#define TLS_FILES_TEST_CERT "/etc/wazuh-manager/certs/remoted.pem"
+#define TLS_FILES_TEST_KEY "/etc/wazuh-manager/certs/remoted-key.pem"
+#define TLS_FILES_TEST_HINT                                                                                  \
+    " The pair is issued at installation and is never reissued at start: if the files are present, "      \
+    "check that they are root:wazuh-manager and mode 0640, since remoted opens them after "               \
+    "dropping privileges; otherwise provision remoted.pem, remoted-key.pem and root-ca.pem under "        \
+    "/etc/wazuh-manager/certs (see 'Credentials' in the installation guide)."
+
+static void tls_files_config(remoted_module_config_t *rm_config)
+{
+    memset(rm_config, 0, sizeof(*rm_config));
+    snprintf(rm_config->certificate_path, sizeof(rm_config->certificate_path), "%s", TLS_FILES_TEST_CERT);
+    snprintf(rm_config->private_key_path, sizeof(rm_config->private_key_path), "%s", TLS_FILES_TEST_KEY);
+}
+
+// Both files are probed with R_OK, certificate first, whatever the outcome of the first probe.
+static void expect_tls_files_access(int certificate_result, int key_result)
+{
+    expect_string(__wrap_access, __name, TLS_FILES_TEST_CERT);
+    expect_value(__wrap_access, __type, R_OK);
+    will_return(__wrap_access, certificate_result);
+    expect_string(__wrap_access, __name, TLS_FILES_TEST_KEY);
+    expect_value(__wrap_access, __type, R_OK);
+    will_return(__wrap_access, key_result);
+}
+
+// The CA certificate published on /cacerts is always probed last, R_OK too: only the cases that get
+// past every earlier check reach it.
+static void expect_tls_ca_certificate_access(const char *ca_certificate, int ca_certificate_result)
+{
+    expect_string(__wrap_access, __name, ca_certificate);
+    expect_value(__wrap_access, __type, R_OK);
+    will_return(__wrap_access, ca_certificate_result);
+}
+
+void test_w_remoted_check_tls_files_ok(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config;
+    tls_files_config(&rm_config);
+
+    // No expect_string for __wrap__merror_exit: exiting here fails the test. An empty
+    // ca_certificate_path probes the module's default, never access("").
+    expect_tls_files_access(0, 0);
+    expect_tls_ca_certificate_access(REMOTED_MODULE_DEFAULT_CA_CERTIFICATE_PATH, 0);
+
+    w_remoted_check_tls_files(&rm_config);
+}
+
+// Paths are taken as configured: an absolute host path is probed and reported verbatim, like a relative one.
+void test_w_remoted_check_tls_files_absolute_paths(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config;
+    memset(&rm_config, 0, sizeof(rm_config));
+    snprintf(rm_config.certificate_path, sizeof(rm_config.certificate_path), "%s", "/etc/pki/wazuh/remoted.pem");
+    snprintf(rm_config.private_key_path, sizeof(rm_config.private_key_path), "%s", "/etc/pki/wazuh/remoted-key.pem");
+
+    expect_string(__wrap_access, __name, "/etc/pki/wazuh/remoted.pem");
+    expect_value(__wrap_access, __type, R_OK);
+    will_return(__wrap_access, -1);
+    expect_string(__wrap_access, __name, "/etc/pki/wazuh/remoted-key.pem");
+    expect_value(__wrap_access, __type, R_OK);
+    will_return(__wrap_access, 0);
+    expect_string(__wrap__merror_exit, formatted_msg,
+                  "Cannot start the HTTPS agent listener: the TLS certificate '/etc/pki/wazuh/remoted.pem' is missing "
+                  "or unreadable by the service user." TLS_FILES_TEST_HINT);
+
+    expect_assert_failure(w_remoted_check_tls_files(&rm_config));
+}
+
+void test_w_remoted_check_tls_files_cert_missing(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config;
+    tls_files_config(&rm_config);
+
+    expect_tls_files_access(-1, 0);
+    expect_string(__wrap__merror_exit, formatted_msg,
+                  "Cannot start the HTTPS agent listener: the TLS certificate '/etc/wazuh-manager/certs/remoted.pem' is missing or "
+                  "unreadable by the service user." TLS_FILES_TEST_HINT);
+
+    expect_assert_failure(w_remoted_check_tls_files(&rm_config));
+}
+
+void test_w_remoted_check_tls_files_key_missing(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config;
+    tls_files_config(&rm_config);
+
+    expect_tls_files_access(0, -1);
+    expect_string(__wrap__merror_exit, formatted_msg,
+                  "Cannot start the HTTPS agent listener: the TLS private key '/etc/wazuh-manager/certs/remoted-key.pem' is missing "
+                  "or unreadable by the service user." TLS_FILES_TEST_HINT);
+
+    expect_assert_failure(w_remoted_check_tls_files(&rm_config));
+}
+
+void test_w_remoted_check_tls_files_both_missing(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config;
+    tls_files_config(&rm_config);
+
+    expect_tls_files_access(-1, -1);
+    expect_string(__wrap__merror_exit, formatted_msg,
+                  "Cannot start the HTTPS agent listener: the TLS certificate '/etc/wazuh-manager/certs/remoted.pem' and private key "
+                  "'/etc/wazuh-manager/certs/remoted-key.pem' are missing or unreadable by the service user." TLS_FILES_TEST_HINT);
+
+    expect_assert_failure(w_remoted_check_tls_files(&rm_config));
+}
+
+// With client-certificate verification on, the CA is probed after the pair, R_OK too.
+static void expect_tls_ca_access(const char *ca, int ca_result)
+{
+    expect_string(__wrap_access, __name, ca);
+    expect_value(__wrap_access, __type, R_OK);
+    will_return(__wrap_access, ca_result);
+}
+
+void test_w_remoted_check_tls_files_ca_explicit_unreadable(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config;
+    tls_files_config(&rm_config);
+    snprintf(rm_config.ca_path, sizeof(rm_config.ca_path), "%s", "etc/x.pem");
+    rm_config.verification_mode = REMOTED_HTTPS_VERIFY_CERTIFICATE;
+
+    expect_tls_files_access(0, 0);
+    expect_tls_ca_access("etc/x.pem", -1);
+    expect_string(__wrap__merror_exit, formatted_msg,
+                  "Cannot start the HTTPS agent listener: the CA certificate 'etc/x.pem', which verifies agent "
+                  "client certificates, is missing or unreadable by the service user. remote.https.verification_mode "
+                  "requires it: if the file is present, check that it is readable by the service user, since "
+                  "remoted opens it after dropping privileges; otherwise point remote.https.ca at the CA that "
+                  "signs the agents' client certificates.");
+
+    expect_assert_failure(w_remoted_check_tls_files(&rm_config));
+}
+
+void test_w_remoted_check_tls_files_ca_default_full(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config;
+    tls_files_config(&rm_config);
+    rm_config.verification_mode = REMOTED_HTTPS_VERIFY_FULL;
+
+    // An empty ca_path probes the module's default, never access(""). No expect_string for
+    // __wrap__merror_exit: exiting here fails the test.
+    expect_tls_files_access(0, 0);
+    expect_tls_ca_access(REMOTED_MODULE_DEFAULT_CA_PATH, 0);
+    expect_tls_ca_certificate_access(REMOTED_MODULE_DEFAULT_CA_CERTIFICATE_PATH, 0);
+
+    w_remoted_check_tls_files(&rm_config);
+}
+
+void test_w_remoted_check_tls_files_ca_none(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config;
+    tls_files_config(&rm_config);
+    rm_config.verification_mode = REMOTED_HTTPS_VERIFY_NONE;
+
+    // The pair and the published CA certificate are probed, never the verification CA: a fourth
+    // access() call would find no expectation and fail the test.
+    expect_tls_files_access(0, 0);
+    expect_tls_ca_certificate_access(REMOTED_MODULE_DEFAULT_CA_CERTIFICATE_PATH, 0);
+
+    w_remoted_check_tls_files(&rm_config);
+}
+
+void test_w_remoted_check_tls_files_ca_unset(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config;
+    tls_files_config(&rm_config);
+    rm_config.verification_mode = REMOTED_HTTPS_VERIFY_UNSET;
+
+    // UNSET resolves to no verification in the module, so the CA is not probed either; the published
+    // CA certificate still is.
+    expect_tls_files_access(0, 0);
+    expect_tls_ca_certificate_access(REMOTED_MODULE_DEFAULT_CA_CERTIFICATE_PATH, 0);
+
+    w_remoted_check_tls_files(&rm_config);
+}
+
+// The published CA certificate is required in every verification mode: 5.x agents bootstrap their
+// trust from GET /cacerts. It is reported as configured.
+void test_w_remoted_check_tls_files_ca_certificate_unreadable(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config;
+    tls_files_config(&rm_config);
+    snprintf(rm_config.ca_certificate_path, sizeof(rm_config.ca_certificate_path), "%s", "etc/certs/publish.pem");
+    rm_config.verification_mode = REMOTED_HTTPS_VERIFY_NONE;
+
+    expect_tls_files_access(0, 0);
+    expect_tls_ca_certificate_access("etc/certs/publish.pem", -1);
+    expect_string(__wrap__merror_exit, formatted_msg,
+                  "Cannot start the HTTPS agent listener: the CA certificate 'etc/certs/publish.pem' that remoted "
+                  "publishes on /cacerts for agent enrollment is missing or unreadable by the service user. If the "
+                  "file is present, check that it is readable by the service user, since remoted opens it after "
+                  "dropping privileges; otherwise provision it, or point remote.https.ca_certificate at the CA "
+                  "certificate 5.x agents must trust (see 'Credentials' in the installation guide).");
+
+    expect_assert_failure(w_remoted_check_tls_files(&rm_config));
+}
+
+// An explicit, readable ca_certificate_path is probed as configured, after the verification CA.
+void test_w_remoted_check_tls_files_ca_certificate_ok(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config;
+    tls_files_config(&rm_config);
+    snprintf(rm_config.ca_certificate_path, sizeof(rm_config.ca_certificate_path), "%s", "/etc/pki/wazuh/ca.pem");
+    rm_config.verification_mode = REMOTED_HTTPS_VERIFY_CERTIFICATE;
+
+    // No expect_string for __wrap__merror_exit: exiting here fails the test.
+    expect_tls_files_access(0, 0);
+    expect_tls_ca_access(REMOTED_MODULE_DEFAULT_CA_PATH, 0);
+    expect_tls_ca_certificate_access("/etc/pki/wazuh/ca.pem", 0);
+
+    w_remoted_check_tls_files(&rm_config);
 }
 
 void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(void** state)
@@ -3783,8 +4417,8 @@ void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(v
     remoted test_logr;
     memset(&test_logr, 0, sizeof(test_logr));
     test_logr.https.verification_mode = REMOTED_HTTPS_VERIFY_UNSET;
-    // bind_addr/global_prefix/certificate/key/ca/ciphers left NULL, as when <https> is entirely
-    // absent. For global_prefix the empty buffer IS the compatibility contract: an upgraded conf
+    // bind_addr/global_prefix/certificate/key/ca/ca_certificate/ciphers left NULL, as when <https> is
+    // entirely absent. For global_prefix the empty buffer IS the compatibility contract: an upgraded conf
     // without the tag keeps serving unprefixed endpoints (the module resolves "" to "/").
 
     will_return(__wrap_getDefine_Int_default, 0);
@@ -3803,17 +4437,22 @@ void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(v
     will_return(__wrap_getDefine_Int_default, 1);      // http_content_encoding_enabled
     will_return(__wrap_getDefine_Int_default, 268435456);
     will_return(__wrap_getDefine_Int_default, 512);
+    will_return(__wrap_getDefine_Int_default, 32); // max_handshakes_per_source
     will_return(__wrap_getDefine_Int_default, 256);
+    will_return(__wrap_getDefine_Int_default, 6); // max_requests_per_agent
+    will_return(__wrap_getDefine_Int_default, 0); // max_inflight_bytes_per_agent (0 = half the budget)
     will_return(__wrap_getDefine_Int_default, 2);
     will_return(__wrap_getDefine_Int_default, 5);
     will_return(__wrap_getDefine_Int_default, 5);
     will_return(__wrap_getDefine_Int_default, 20); // downstream_stateful_response_timeout
+    will_return(__wrap_getDefine_Int_default, 20); // downstream_stateful_retry_after
     will_return(__wrap_getDefine_Int_default, 0);
     will_return(__wrap_getDefine_Int_default, 0);
     will_return(__wrap_getDefine_Int_default, 10485760);
     will_return(__wrap_getDefine_Int_default, 300);
     will_return(__wrap_getDefine_Int_default, 30);
     will_return(__wrap_getDefine_Int_default, 10485760);
+    will_return(__wrap_getDefine_Int_default, 33554432); // auth_max_decoded_body_size
 
     // remoted_enrollment_config(): no `auth` section available (document not loaded) --
     // enrollment_enabled must fail closed, not default to enabled.
@@ -3836,9 +4475,247 @@ void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(v
     assert_string_equal(rm_config.certificate_path, "");
     assert_string_equal(rm_config.private_key_path, "");
     assert_string_equal(rm_config.ca_path, "");
+    assert_string_equal(rm_config.ca_certificate_path, "");
     assert_string_equal(rm_config.ciphers, "");
 
     assert_false(rm_config.enrollment_enabled);
+}
+
+/* canonical_agent_id: the spelling the manager gives every agent id, zero-padded to three digits */
+
+void test_canonical_agent_id_pads_and_keeps_wide_ids(void **state) {
+    const char *in[]  = {"0", "0000000000", "1", "001", "0001", "1000", "4294967295"};
+    const char *out[] = {"000", "000", "001", "001", "001", "1000", "4294967295"};
+    char buf[16];
+
+    for (size_t i = 0; i < sizeof(in) / sizeof(in[0]); i++) {
+        assert_int_equal(canonical_agent_id(in[i], buf, sizeof(buf)), 0);
+        assert_string_equal(buf, out[i]);
+    }
+}
+
+void test_canonical_agent_id_rejects_what_is_not_an_agent_id(void **state) {
+    const char *in[] = {"", "abc", "12x", "-1", "12345678901", "4294967296"};
+    char buf[16];
+
+    for (size_t i = 0; i < sizeof(in) / sizeof(in[0]); i++) {
+        assert_int_equal(canonical_agent_id(in[i], buf, sizeof(buf)), -1);
+    }
+    assert_int_equal(canonical_agent_id(NULL, buf, sizeof(buf)), -1);
+    assert_int_equal(canonical_agent_id("1", NULL, sizeof(buf)), -1);
+    assert_int_equal(canonical_agent_id("1", buf, 0), -1);
+    assert_int_equal(canonical_agent_id("1", buf, 3), -1);
+    assert_int_equal(canonical_agent_id("1", buf, 4), 0);
+    assert_string_equal(buf, "001");
+}
+
+/* append_header: the H line names the agent with its canonical id */
+
+void test_append_header_writes_canonical_id(void **state) {
+    dispatch_ctx_t ctx = {.agent_id = "7"};
+    bulk_init(&ctx.bulk, 256);
+
+    expect_string(__wrap_agent_meta_snapshot_str, agent_id_str, "7");
+    expect_any(__wrap_agent_meta_snapshot_str, out);
+    will_return(__wrap_agent_meta_snapshot_str, -1); // no metadata: the id alone
+
+    assert_int_equal(append_header(&ctx), 0);
+    assert_string_equal(ctx.canonical_id, "007");
+    assert_int_equal(ctx.drop, 0);
+    // The bulk is a length-delimited buffer, not a C string: assert on a terminated copy.
+    char *line = strndup(ctx.bulk.buf, ctx.bulk.len);
+    assert_non_null(line);
+    assert_true(strncmp(line, "H {", 3) == 0);
+    assert_non_null(strstr(line, "\"id\":\"007\""));
+    assert_null(strstr(line, "\"id\":\"7\""));
+    free(line);
+
+    bulk_free(&ctx.bulk);
+}
+
+void test_append_header_marks_non_numeric_id_for_drop(void **state) {
+    dispatch_ctx_t ctx = {.agent_id = "x1"};
+    bulk_init(&ctx.bulk, 256);
+
+    atomic_store(&s_last_invalid_id_warn, 0);
+    expect_value(__wrap_time, time, 0);
+    will_return(__wrap_time, 1000);
+    expect_string(__wrap__mwarn, formatted_msg, "Discarding events of agent 'x1': its id is not a valid agent id.");
+
+    assert_int_equal(append_header(&ctx), -1);
+    assert_int_equal(ctx.drop, 1);
+    assert_int_equal(ctx.bulk.len, 0);
+
+    bulk_free(&ctx.bulk);
+}
+
+void test_invalid_agent_batches_are_dropped_with_throttled_warnings(void **state) {
+    const time_t times[] = {1000, 1089, 1090};
+    atomic_store(&s_last_invalid_id_warn, 0);
+
+    for (size_t i = 0; i < sizeof(times) / sizeof(times[0]); i++) {
+        dispatch_ctx_t ctx = {.agent_id = "x1"};
+        bulk_init(&ctx.bulk, 256);
+        expect_value(__wrap_time, time, 0);
+        will_return(__wrap_time, times[i]);
+        if (i != 1) {
+            expect_string(__wrap__mwarn, formatted_msg,
+                          "Discarding events of agent 'x1': its id is not a valid agent id.");
+        }
+        for (size_t j = 0; j < 2; j++) {
+            evt_item_t *event = calloc(1, sizeof(*event));
+            assert_non_null(event);
+            event->raw = strdup("test event");
+            assert_non_null(event->raw);
+            event->len = strlen(event->raw);
+            expect_function_call(__wrap_rem_inc_recv_events_failed);
+            rr_collect_one(event, &ctx);
+        }
+        assert_int_equal(ctx.drop, 1);
+        assert_int_equal(ctx.bulk.len, 0);
+        bulk_free(&ctx.bulk);
+    }
+    atomic_store(&s_last_invalid_id_warn, 0);
+}
+
+/* set_batch_identity: the reused client starts each batch from its own headers, plus the agent's */
+
+void test_batch_without_agent_identity_is_dropped(void **state) {
+    dispatch_ctx_t ctx = {0};
+    bulk_init(&ctx.bulk, 256);
+    evt_item_t *event = calloc(1, sizeof(*event));
+    assert_non_null(event);
+    event->raw = strdup("test event");
+    assert_non_null(event->raw);
+    event->len = strlen(event->raw);
+
+    expect_string(__wrap__mwarn, formatted_msg, "Unable to append header for agent '?'");
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
+    rr_collect_one(event, &ctx);
+    assert_int_equal(ctx.drop, 1);
+    assert_int_equal(ctx.header_added, 0);
+    assert_int_equal(ctx.bulk.len, 0);
+    bulk_free(&ctx.bulk);
+}
+
+void test_set_batch_identity_resets_then_adds_the_header(void **state) {
+    uhttp_client_t *cli = (uhttp_client_t *)0x1;
+
+    expect_function_call(__wrap_uhttp_client_reset_headers);
+    will_return(__wrap_uhttp_client_reset_headers, 0);
+    expect_function_call(__wrap_uhttp_client_add_header);
+    expect_string(__wrap_uhttp_client_add_header, header_line, "X-Wazuh-Agent-Id: 042");
+    will_return(__wrap_uhttp_client_add_header, 0);
+
+    assert_int_equal(set_batch_identity(cli, "042"), 0);
+}
+
+void test_set_batch_identity_reports_a_header_failure(void **state) {
+    uhttp_client_t *cli = (uhttp_client_t *)0x1;
+
+    expect_function_call(__wrap_uhttp_client_reset_headers);
+    will_return(__wrap_uhttp_client_reset_headers, 0);
+    expect_function_call(__wrap_uhttp_client_add_header);
+    expect_string(__wrap_uhttp_client_add_header, header_line, "X-Wazuh-Agent-Id: 042");
+    will_return(__wrap_uhttp_client_add_header, 1);
+
+    assert_int_equal(set_batch_identity(cli, "042"), -1);
+}
+
+void test_set_batch_identity_resets_between_agents(void **state) {
+    uhttp_client_t *cli = (uhttp_client_t *)0x1;
+    const char *ids[] = {"001", "042"};
+    const char *headers[] = {"X-Wazuh-Agent-Id: 001", "X-Wazuh-Agent-Id: 042"};
+    for (size_t i = 0; i < 2; i++) {
+        expect_function_call(__wrap_uhttp_client_reset_headers);
+        will_return(__wrap_uhttp_client_reset_headers, 0);
+        expect_function_call(__wrap_uhttp_client_add_header);
+        expect_string(__wrap_uhttp_client_add_header, header_line, headers[i]);
+        will_return(__wrap_uhttp_client_add_header, 0);
+        assert_int_equal(set_batch_identity(cli, ids[i]), 0);
+    }
+}
+
+void test_set_batch_identity_reports_a_reset_failure(void **state) {
+    uhttp_client_t *cli = (uhttp_client_t *)0x1;
+
+    expect_function_call(__wrap_uhttp_client_reset_headers);
+    will_return(__wrap_uhttp_client_reset_headers, 1);
+
+    assert_int_equal(set_batch_identity(cli, "042"), -1);
+}
+
+/* flush_batch: a batch is sent only with its identity header; otherwise it is discarded and counted */
+
+static void fill_batch(dispatch_ctx_t *ctx, size_t events) {
+    bulk_init(&ctx->bulk, 256);
+    bulk_append_fmt(&ctx->bulk, "H {\"wazuh\":{\"agent\":{\"id\":\"007\"}}}\n");
+    for (size_t i = 0; i < events; i++) {
+        bulk_append_fmt(&ctx->bulk, "E event %zu\n", i);
+    }
+    ctx->events = events;
+    snprintf(ctx->canonical_id, sizeof(ctx->canonical_id), "%s", "007");
+}
+
+void test_flush_batch_sends_after_setting_the_identity_header(void **state) {
+    uhttp_client_t *cli = (uhttp_client_t *)0x1;
+    dispatch_ctx_t ctx = {.agent_id = "7"};
+    uhttp_result_t res = {0};
+    fill_batch(&ctx, 2);
+
+    expect_function_call(__wrap_uhttp_client_reset_headers);
+    will_return(__wrap_uhttp_client_reset_headers, 0);
+    expect_function_call(__wrap_uhttp_client_add_header);
+    expect_string(__wrap_uhttp_client_add_header, header_line, "X-Wazuh-Agent-Id: 007");
+    will_return(__wrap_uhttp_client_add_header, 0);
+    will_return(__wrap_uhttp_post, NULL);
+    will_return(__wrap_uhttp_post, 0);
+    will_return(__wrap_uhttp_post, 200);
+
+    assert_int_equal(flush_batch(cli, &ctx, &res), 0);
+    assert_int_equal(res.http_status, 200);
+    assert_int_equal(ctx.drop, 0);
+
+    bulk_free(&ctx.bulk);
+}
+
+void test_flush_batch_discards_and_counts_when_the_header_fails(void **state) {
+    uhttp_client_t *cli = (uhttp_client_t *)0x1;
+    dispatch_ctx_t ctx = {.agent_id = "7"};
+    uhttp_result_t res = {0};
+    fill_batch(&ctx, 3);
+    atomic_store(&s_last_identity_header_warn, 0);
+
+    expect_function_call(__wrap_uhttp_client_reset_headers);
+    will_return(__wrap_uhttp_client_reset_headers, 0);
+    expect_function_call(__wrap_uhttp_client_add_header);
+    expect_string(__wrap_uhttp_client_add_header, header_line, "X-Wazuh-Agent-Id: 007");
+    will_return(__wrap_uhttp_client_add_header, 1);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
+    expect_value(__wrap_time, time, 0);
+    will_return(__wrap_time, 1000);
+    expect_string(__wrap__mwarn, formatted_msg, "Discarding a batch of agent '7': unable to set its identity header.");
+    // No uhttp_post is queued: a call would fail the test.
+
+    assert_int_equal(flush_batch(cli, &ctx, &res), 0);
+    assert_int_equal(ctx.drop, 1);
+
+    bulk_free(&ctx.bulk);
+}
+
+void test_flush_batch_skips_a_dropped_batch(void **state) {
+    uhttp_client_t *cli = (uhttp_client_t *)0x1;
+    dispatch_ctx_t ctx = {.agent_id = "x1", .drop = 1};
+    uhttp_result_t res = {0};
+    bulk_init(&ctx.bulk, 64);
+    bulk_append_fmt(&ctx.bulk, "E stray\n");
+
+    // No header call and no post are queued: any of them would fail the test.
+    assert_int_equal(flush_batch(cli, &ctx, &res), 0);
+
+    bulk_free(&ctx.bulk);
 }
 
 int main(void)
@@ -3895,6 +4772,30 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_handle_new_tcp_connection_socket_fail, setup_new_tcp, teardown_new_tcp),
         cmocka_unit_test_setup_teardown(
             test_handle_new_tcp_connection_socket_fail_err, setup_new_tcp, teardown_new_tcp),
+        cmocka_unit_test_setup_teardown(
+            test_handle_new_tcp_connection_refused_at_unauthenticated_cap, setup_new_tcp, teardown_new_tcp),
+        // Tests reap_unauthenticated_connections
+        cmocka_unit_test(test_reap_unauthenticated_connections_closes_expired),
+        cmocka_unit_test(test_reap_unauthenticated_connections_none_expired),
+        cmocka_unit_test(test_reap_unauthenticated_connections_reports_pending_refusals),
+        cmocka_unit_test_setup_teardown(
+            test_handle_new_tcp_connection_refusal_within_window_not_reported, setup_new_tcp, teardown_new_tcp),
+        // Tests _close_sock
+        cmocka_unit_test(test_close_sock_released_slots_decrement_tcp),
+        cmocka_unit_test(test_close_sock_ebadf_leaves_slots_alone),
+        // Tests rem_check_unauthenticated_cap
+        cmocka_unit_test(test_rem_check_unauthenticated_cap_within_limit),
+        cmocka_unit_test(test_rem_check_unauthenticated_cap_above_half_warns),
+        // Tests HandleSecureMessage #ping
+        cmocka_unit_test(test_HandleSecureMessage_ping_tcp_reply_queued),
+        cmocka_unit_test(test_HandleSecureMessage_ping_tcp_peer_not_reading),
+        cmocka_unit_test(test_HandleSecureMessage_ping_tcp_socket_gone),
+        cmocka_unit_test(test_HandleSecureMessage_ping_udp),
+        cmocka_unit_test(test_HandleSecureMessage_ping_udp_send_fails),
+        // Tests send_control_ack
+        cmocka_unit_test(test_send_control_ack_queued),
+        cmocka_unit_test(test_send_control_ack_agent_not_reading),
+        cmocka_unit_test(test_send_control_ack_not_sent),
         // Tests handle_incoming_data_from_udp_socket
         cmocka_unit_test(test_handle_incoming_data_from_udp_socket_0),
         cmocka_unit_test(test_handle_incoming_data_from_udp_socket_success),
@@ -3910,6 +4811,7 @@ int main(void)
         // Tests remoted_module_https_config
         cmocka_unit_test(test_remoted_module_https_config_defaults),
         cmocka_unit_test(test_remoted_module_https_config_custom_values),
+        cmocka_unit_test(test_remoted_module_https_config_decoded_cap_below_wire_cap),
         // Tests remoted_enrollment_config
         cmocka_unit_test(test_remoted_enrollment_config_enabled_and_flags_passed_through),
         cmocka_unit_test(test_remoted_enrollment_config_authd_disabled_wins),
@@ -3920,6 +4822,31 @@ int main(void)
         cmocka_unit_test(test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty),
         // Tests remoted_module_control_config
         cmocka_unit_test(test_remoted_module_control_config_warns_when_throttle_reaches_disconnection_time),
-        cmocka_unit_test(test_remoted_module_control_config_silent_below_disconnection_time)};
+        cmocka_unit_test(test_remoted_module_control_config_silent_below_disconnection_time),
+        // Tests w_remoted_check_tls_files
+        cmocka_unit_test(test_w_remoted_check_tls_files_ok),
+        cmocka_unit_test(test_w_remoted_check_tls_files_cert_missing),
+        cmocka_unit_test(test_w_remoted_check_tls_files_key_missing),
+        cmocka_unit_test(test_w_remoted_check_tls_files_both_missing),
+        cmocka_unit_test(test_w_remoted_check_tls_files_ca_explicit_unreadable),
+        cmocka_unit_test(test_w_remoted_check_tls_files_ca_default_full),
+        cmocka_unit_test(test_w_remoted_check_tls_files_ca_none),
+        cmocka_unit_test(test_w_remoted_check_tls_files_ca_unset),
+        cmocka_unit_test(test_w_remoted_check_tls_files_ca_certificate_unreadable),
+        cmocka_unit_test(test_w_remoted_check_tls_files_ca_certificate_ok),
+        cmocka_unit_test(test_w_remoted_check_tls_files_absolute_paths),
+        cmocka_unit_test(test_canonical_agent_id_pads_and_keeps_wide_ids),
+        cmocka_unit_test(test_canonical_agent_id_rejects_what_is_not_an_agent_id),
+        cmocka_unit_test(test_append_header_writes_canonical_id),
+        cmocka_unit_test(test_append_header_marks_non_numeric_id_for_drop),
+        cmocka_unit_test(test_invalid_agent_batches_are_dropped_with_throttled_warnings),
+        cmocka_unit_test(test_batch_without_agent_identity_is_dropped),
+        cmocka_unit_test(test_set_batch_identity_resets_then_adds_the_header),
+        cmocka_unit_test(test_set_batch_identity_resets_between_agents),
+        cmocka_unit_test(test_set_batch_identity_reports_a_header_failure),
+        cmocka_unit_test(test_set_batch_identity_reports_a_reset_failure),
+        cmocka_unit_test(test_flush_batch_sends_after_setting_the_identity_header),
+        cmocka_unit_test(test_flush_batch_discards_and_counts_when_the_header_fails),
+        cmocka_unit_test(test_flush_batch_skips_a_dropped_batch)};
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

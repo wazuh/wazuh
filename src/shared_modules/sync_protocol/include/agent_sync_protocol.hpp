@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -17,9 +17,11 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
@@ -35,9 +37,23 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param retries Default number of retries for synchronization operations.
         /// @param queue Optional persistent queue to use for message storage and retrieval.
         /// @param syncTransport Optional carrier for whole sessions; defaults to the queue-sync socket.
+        /// @param isFeedBased True when this instance's sessions are checked against a
+        ///        manager-tracked feed position rather than a per-item/global-state checksum --
+        ///        currently only syscollector's dedicated VD sync-protocol instance. Only affects
+        ///        the wording of a 409/CHECKSUM_ERROR failure reason (see
+        ///        determineSyncFailureReasonBasedOnSyncResult()); every other instance (FIM, SCA,
+        ///        agent-info, syscollector's own regular inventory sync) leaves this false.
+        /// @param flushBatchSize Optional override for the persistent queue's flush batch size (see PersistentQueue).
+        /// @param flushInterval Optional override for the persistent queue's flush interval (see PersistentQueue).
+        /// @param walAutocheckpointPages Optional override for the persistent queue's default storage backend's
+        ///                               WAL auto-checkpoint threshold, in pages (see PersistentQueue).
         explicit AgentSyncProtocol(const std::string& moduleName, std::optional<std::string> dbPath, LoggerFunc logger,
                                    std::shared_ptr<IPersistentQueue> queue = nullptr,
-                                   std::shared_ptr<ISyncSessionTransport> syncTransport = nullptr);
+                                   std::shared_ptr<ISyncSessionTransport> syncTransport = nullptr,
+                                   bool isFeedBased = false,
+                                   std::optional<std::size_t> flushBatchSize = std::nullopt,
+                                   std::optional<std::chrono::milliseconds> flushInterval = std::nullopt,
+                                   std::optional<int32_t> walAutocheckpointPages = std::nullopt);
 
         /// @copydoc IAgentSyncProtocol::persistDifference
         void persistDifference(const std::string& id,
@@ -50,9 +66,20 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @copydoc IAgentSyncProtocol::synchronizeModule
         SyncModuleResult synchronizeModule(Mode mode, Option option = Option::SYNC) override;
 
+        /// @brief synchronizeModule() with a tighter block limit for this one call.
+        ///
+        /// For callers that synchronize while holding locks other threads wait on, so the
+        /// time they hold them stays bounded. Whatever is left stays queued for the next
+        /// regular cycle.
+        ///
+        /// @param mode Synchronization mode.
+        /// @param maxBlocks Most blocks this call may send. Zero, or a value above the
+        ///                  instance's own limit, uses that limit.
+        SyncModuleResult synchronizeModuleBounded(Mode mode, size_t maxBlocks);
+
         /// @copydoc IAgentSyncProtocol::requiresFullSync
-        bool requiresFullSync(const std::string& index,
-                              const std::string& checksum) override;
+        IntegrityCheckResult requiresFullSync(const std::string& index,
+                                              const std::string& checksum) override;
 
         /// @copydoc IAgentSyncProtocol::synchronizeMetadataOrGroups
         SyncModuleResult synchronizeMetadataOrGroups(Mode mode, const std::vector<std::string>& indices, uint64_t globalVersion) override;
@@ -82,6 +109,17 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         ///
         /// @param maxBytes Maximum bytes per session, or 0 to keep the default.
         static void setSessionMaxBytes(size_t maxBytes);
+
+        /// @brief Set how many blocks one DELTA sync cycle may send before the rest waits for the next cycle.
+        ///
+        /// The value belongs to the agent.sync_max_blocks_per_cycle internal option, which the daemon
+        /// hosting the modules reads and hands down before any module builds its protocol instance, like
+        /// setSessionMaxBytes(). Instances take a copy at construction. Zero leaves the built-in default
+        /// in place. The VD options are bounded too, but they fetch with no byte budget, so their first
+        /// block already carries the whole queue.
+        ///
+        /// @param maxBlocks Maximum blocks per sync cycle, or 0 to keep the default.
+        static void setMaxBlocksPerSync(size_t maxBlocks);
 
         /// @brief Returns the agent id this process is currently synchronizing under.
         ///
@@ -120,6 +158,11 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 
         /// @brief Name of the module associated with this instance.
         std::string m_moduleName;
+
+        /// @brief True when this instance's sessions are checked against a manager-tracked feed
+        ///        position (currently only syscollector's VD instance) rather than a
+        ///        per-item/global-state checksum. See the constructor's doc comment.
+        bool m_isFeedBased;
 
         /// @brief Carries a whole session to the agent over the queue-sync STREAM
         ///        socket, which has no 64 KB bound.
@@ -239,8 +282,12 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Whether this synchronization option must bypass FullSession size capping.
         bool isUncappedSyncOption(Option option) const;
 
-        /// @brief Splits DELTA sync into capped FullSessions by fetching blocks from the queue.
-        SyncModuleResult synchronizeDeltaByBlocks(Option option);
+        /// @brief Shared body of synchronizeModule() and synchronizeModuleBounded().
+        SyncModuleResult synchronizeModuleUpTo(Mode mode, Option option, size_t maxBlocks);
+
+        /// @brief Splits DELTA sync into capped FullSessions by fetching blocks from the queue,
+        ///        sending at most @p maxBlocks of them.
+        SyncModuleResult synchronizeDeltaByBlocks(Option option, size_t maxBlocks);
 
         /// @brief Applies the /stateful HTTP result received from https_client callback
         ///        routing. This IS the sync protocol's response path: there is no EndAck
@@ -251,10 +298,10 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         ///        (timeout/connect/TLS failure/abort), handled like a 503.
         /// @param body Raw JSON response body (may be empty); used only for logging - the
         ///        HTTP code alone fully determines the outcome.
-        /// @param expectedSession Session that this result belongs to; 0 skips validation
-        ///        (legacy path). The check is performed under m_syncState.mtx so it is
-        ///        race-free with a concurrent session start.
-        bool applyHttpResult(int httpCode, std::string_view body, uint64_t expectedSession = 0);
+        /// @param expectedSession Session that this result belongs to. It must match the
+        ///        session in flight, so 0 never does. The check is performed under
+        ///        m_syncState.mtx so it is race-free with a concurrent session start.
+        bool applyHttpResult(int httpCode, std::string_view body, uint64_t expectedSession);
 
         /// @brief Picks the id for a new session. The agent chooses it because the
         ///        single-message exchange has no StartAck to carry one back; a retry
@@ -326,6 +373,11 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             /// @ref SyncModuleResult::awaitingPrerequisite.
             bool lastSyncAwaitingPrerequisite = false;
 
+            /// @brief Raw HTTP body of the last non-2xx response, captured for CHECKSUM_ERROR
+            /// (409) so determineSyncFailureReasonBasedOnSyncResult() can tell a real feed-offset
+            /// mismatch apart from a checksum mismatch instead of guessing from isFeedBased alone.
+            std::string lastSyncFailureBody;
+
             /// @brief Numeric session ID of the current in-flight session.
             ///
             /// Set by runSession() before the first send attempt and cleared on reset().
@@ -355,6 +407,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                 lastSyncResult = SyncResult::SUCCESS;
                 lastSyncManagerNotReady = false;
                 lastSyncAwaitingPrerequisite = false;
+                lastSyncFailureBody.clear();
                 currentSession = 0;
             }
         };
@@ -410,7 +463,18 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         size_t m_sessionMaxBytes {FULLSESSION_MAX_BYTES};
 
         static constexpr size_t FULLSESSION_PREFILTER_GRACE_BYTES = 64U * 1024U;
-        static constexpr size_t FULLSESSION_MAX_BLOCKS_PER_SYNC = 10U;
+
+        /// Built-in number of blocks per DELTA sync cycle, used until a daemon calls
+        /// setMaxBlocksPerSync(). 50 blocks of the 1 MiB default session keep about the
+        /// 50 MiB per cycle that 10 blocks of the former 5 MiB session allowed.
+        static constexpr size_t FULLSESSION_MAX_BLOCKS_PER_SYNC = 50U;
+
+        /// Process-wide for the same reason as @ref s_sessionMaxBytes.
+        static std::atomic<size_t> s_maxBlocksPerSync;
+
+        /// This instance's copy, taken at construction.
+        size_t m_maxBlocksPerSync {FULLSESSION_MAX_BLOCKS_PER_SYNC};
+
         static constexpr std::string_view HTTP_RESULT_PREFIX = "HCRESULT:";
 };
 

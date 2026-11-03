@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * Implementation of the logging module needs to be defined in a cpp file, as spdlog uses static variables that need to
  * be defined only once when included in multiple translation units. This issue occurs when the old logging.hpp is moved
@@ -162,40 +163,6 @@ void testInit(Level lvl)
     }
 }
 
-void initializeFullLogFunction(
-    const std::function<void(
-        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
-        callback)
-{
-    Log::assignLogFunction(callback);
-}
-
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-
-    void init()
-    {
-        using LogginFnWrapperType = void (*)(int, const char*, const char*, int, const char*, const char*, va_list);
-        const auto logWrapper = base::libwazuhshared::getFunction<LogginFnWrapperType>("mtLoggingFunctionsWrapper");
-        base::libwazuhshared::setLoggerTag(logging::default_tag());
-
-        initializeFullLogFunction(
-            [logWrapper](const int logLevel,
-                         const std::string& tag,
-                         const std::string& file,
-                         const int line,
-                         const std::string& func,
-                         const std::string& logMessage,
-                         va_list args)
-            { logWrapper(logLevel, tag.c_str(), file.c_str(), line, func.c_str(), logMessage.c_str(), args); });
-    }
-
-#ifdef __cplusplus
-}
-#endif
-
 void applyLevelStandalone(logging::Level target, int debugCount)
 {
     // -d takes priority over the configuration
@@ -223,11 +190,7 @@ void applyLevelWazuh(logging::Level target, int debugCount)
         return; // Info/Warn/Err/Critical
     }
 
-    using NowDebugFnType = void (*)();
-    const auto nowDebug = base::libwazuhshared::getFunction<NowDebugFnType>("nowDebug");
-
-    const int times = (effective == logging::Level::Debug) ? 1 : 2;
-    for (int i = 0; i < times; ++i) nowDebug();
+    base::logging::setManagerDebugLevel((effective == logging::Level::Debug) ? 1 : 2);
 
     LOG_DEBUG("Changed log level to '{}'", logging::levelToStr(effective));
 }

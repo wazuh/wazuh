@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -36,8 +36,6 @@ fpos_t fp_pos;
 /* The agent key is the agent's HS256 secret (remoted's wazuh-agent+jwt bearer profile): exactly
  * AGENT_KEY_BYTES bytes from the CSPRNG, stored in client.keys as AGENT_KEY_HEX_CHARS lowercase hex
  * chars. remoted decodes those hex chars back into the 32 raw key bytes; nothing else is accepted. */
-#define AGENT_KEY_BYTES 32
-#define AGENT_KEY_HEX_CHARS (2 * AGENT_KEY_BYTES)
 
 int OS_IsValidAgentKey(const char *key)
 {
@@ -55,6 +53,73 @@ int OS_IsValidAgentKey(const char *key)
     return (1);
 }
 
+int OS_IsValidReenrollSecret(const char *secret)
+{
+    size_t i;
+
+    if (!secret || strlen(secret) != AGENT_REENROLL_SECRET_HEX_CHARS) {
+        return (0);
+    }
+    for (i = 0; i < AGENT_REENROLL_SECRET_HEX_CHARS; i++) {
+        const char c = secret[i];
+        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) {
+            return (0);
+        }
+    }
+    return (1);
+}
+
+int OS_NewReenrollSecret(char *out, size_t out_size)
+{
+    static const char HEX[] = "0123456789abcdef";
+    unsigned char rnd[AGENT_REENROLL_SECRET_BYTES];
+    size_t i;
+
+    if (!out || out_size < AGENT_REENROLL_SECRET_HEX_CHARS + 1) {
+        return (-1);
+    }
+    out[0] = '\0';
+
+    /* Straight from the CSPRNG, like the agent key above: a secret the agent will re-enroll with for
+     * years is worth refusing the enrollment over. */
+    if (RAND_bytes(rnd, sizeof(rnd)) != 1) {
+        merror("Unable to generate a re-enrollment secret: the CSPRNG (RAND_bytes) failed.");
+        return (-1);
+    }
+    for (i = 0; i < sizeof(rnd); i++) {
+        out[2 * i] = HEX[rnd[i] >> 4];
+        out[2 * i + 1] = HEX[rnd[i] & 0x0f];
+    }
+    out[AGENT_REENROLL_SECRET_HEX_CHARS] = '\0';
+    OPENSSL_cleanse(rnd, sizeof(rnd));
+    return (0);
+}
+
+int OS_NewAgentKey(char *out, size_t out_size)
+{
+    static const char HEX[] = "0123456789abcdef";
+    unsigned char rnd[AGENT_KEY_BYTES];
+    size_t i;
+
+    if (!out || out_size < AGENT_KEY_HEX_CHARS + 1) {
+        return (-1);
+    }
+    out[0] = '\0';
+
+    /* 32 bytes straight from the CSPRNG. Never fall back to a weaker generator: a key the agent
+     * will authenticate with for years is worth refusing the enrollment over. */
+    if (RAND_bytes(rnd, sizeof(rnd)) != 1) {
+        return (-1);
+    }
+    for (i = 0; i < sizeof(rnd); i++) {
+        out[2 * i] = HEX[rnd[i] >> 4];
+        out[2 * i + 1] = HEX[rnd[i] & 0x0f];
+    }
+    out[AGENT_KEY_HEX_CHARS] = '\0';
+    OPENSSL_cleanse(rnd, sizeof(rnd));
+    return (0);
+}
+
 int OS_AddNewAgent(keystore *keys,
                    const char *id,
                    const char *name,
@@ -62,9 +127,6 @@ int OS_AddNewAgent(keystore *keys,
                    const char *key,
                    unsigned int max_agents)
 {
-    static const char HEX[] = "0123456789abcdef";
-    unsigned char rnd[AGENT_KEY_BYTES];
-    size_t i;
     char _id[12] = { '\0' };
     char buffer[KEYSIZE] = { '\0' };
 
@@ -88,18 +150,10 @@ int OS_AddNewAgent(keystore *keys,
     }
 
     if (!key) {
-        /* 32 bytes straight from the CSPRNG. Never fall back to a weaker generator: a key the agent
-         * will authenticate with for years is worth refusing the enrollment over. */
-        if (RAND_bytes(rnd, sizeof(rnd)) != 1) {
+        if (OS_NewAgentKey(buffer, sizeof(buffer)) != 0) {
             merror("Unable to generate a key for agent '%s': the CSPRNG (RAND_bytes) failed.", name);
             return OS_INVALID;
         }
-        for (i = 0; i < sizeof(rnd); i++) {
-            buffer[2 * i] = HEX[rnd[i] >> 4];
-            buffer[2 * i + 1] = HEX[rnd[i] & 0x0f];
-        }
-        buffer[AGENT_KEY_HEX_CHARS] = '\0';
-        OPENSSL_cleanse(rnd, sizeof(rnd));
         key = buffer;
     }
 
@@ -149,6 +203,18 @@ int OS_IsValidAgentInsertID(const char *id)
     errno = 0;
     value = strtol(id, &endptr, 10);
     return errno == 0 && '\0' == *endptr && value > 0 && value <= INT32_MAX;
+}
+
+int OS_CanonicalAgentInsertID(const char *id, char *out, size_t size)
+{
+    int written;
+
+    if (!out || size == 0 || !OS_IsValidAgentInsertID(id)) {
+        return -1;
+    }
+
+    written = snprintf(out, size, "%03ld", strtol(id, NULL, 10));
+    return written > 0 && (size_t)written < size ? 0 : -1;
 }
 
 /* Get agent name of ID */
@@ -361,12 +427,44 @@ char *IPExist(const char *u_ip)
     return NULL;
 }
 
+/* Copy every line of the timestamp file but the one for id. Returns 0, or -1 when either stream
+ * failed, which is logged. */
+static int copy_timestamps_without(FILE *fp, FILE *out, const char *id)
+{
+    char line[OS_BUFFER_SIZE];
+    char * sep;
+
+    while (fgets(line, OS_BUFFER_SIZE, fp)) {
+        if (sep = strchr(line, ' '), sep) {
+            *sep = '\0';
+        } else {
+            continue;
+        }
+
+        if (strcmp(id, line) != 0) {
+            *sep = ' ';
+            fputs(line, out);
+        }
+    }
+
+    if (ferror(fp)) {
+        merror(FREAD_ERROR, TIMESTAMP_FILE, errno, strerror(errno));
+        return -1;
+    }
+
+    if (fflush(out) != 0 || ferror(out)) {
+        merror(FWRITE_ERROR, TIMESTAMP_FILE, errno, strerror(errno));
+        return -1;
+    }
+
+    return 0;
+}
+
 void OS_RemoveAgentTimestamp(const char *id)
 {
     FILE *fp;
     File file;
-    char line[OS_BUFFER_SIZE];
-    char * sep;
+    int copied;
 
     fp = wfopen(TIMESTAMP_FILE, "r");
 
@@ -380,21 +478,20 @@ void OS_RemoveAgentTimestamp(const char *id)
         return;
     }
 
-    while (fgets(line, OS_BUFFER_SIZE, fp)) {
-        if (sep = strchr(line, ' '), sep) {
-            *sep = '\0';
-        } else {
-            continue;
-        }
+    copied = copy_timestamps_without(fp, file.fp, id);
+    fclose(fp);
 
-        if (strcmp(id, line) != 0) {
-            *sep = ' ';
-            fputs(line, file.fp);
-        }
+    if (fclose(file.fp) != 0 && copied == 0) {
+        merror(FWRITE_ERROR, TIMESTAMP_FILE, errno, strerror(errno));
+        copied = -1;
     }
 
-    fclose(fp);
-    fclose(file.fp);
-    OS_MoveFile(file.name, TIMESTAMP_FILE);
+    /* Only a complete copy replaces the file: a short read or write would drop every remaining
+     * agent's timestamp. OS_MoveFile() says itself why it failed; on some of its failures the
+     * staged copy is still there, and nothing else would ever remove it. */
+    if (copied != 0 || OS_MoveFile(file.name, TIMESTAMP_FILE) < 0) {
+        unlink(file.name);
+    }
+
     free(file.name);
 }

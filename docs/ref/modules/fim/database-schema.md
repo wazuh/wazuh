@@ -181,12 +181,16 @@ CREATE TABLE IF NOT EXISTS table_metadata (
 
 #### Purpose
 
-The `table_metadata` table supports FIM recovery functionality by tracking each table's last synchronization attempt. This allows the system to trigger recovery operations with the frequency specified by the `integtrity_interal` option's value.
+The `table_metadata` table supports FIM recovery functionality by tracking each table's last synchronization attempt. This allows the system to trigger recovery operations with the frequency specified by the `<synchronization><integrity_interval>` option's value.
 
 **Tracked Tables:**
 - `file_entry` - File monitoring state
 - `registry_key` - Registry key monitoring state (Windows only)
 - `registry_data` - Registry value monitoring state (Windows only)
+
+**Identity Markers:** the same table holds the agent ID FIM data was last synchronized under, stored in `last_sync_time`:
+- `synced_agent_id`: Agent ID under which the manager holds every FIM table; when the agent's current ID differs (for example, after re-enrolling), FIM resends every monitored entry
+- `synced_agent_id:<table>`: Agent ID under which that table was last resent during a resend still in progress, so a resend cut short by a restart or by a failed table resumes with the tables still pending; reset to `0` once `synced_agent_id` records the new ID
 
 ---
 
@@ -202,9 +206,11 @@ CREATE TABLE IF NOT EXISTS persistent_queue (
     idx TEXT NOT NULL,
     data TEXT NOT NULL,
     operation INTEGER NOT NULL,
+    version INTEGER NOT NULL DEFAULT 0,
     sync_status INTEGER NOT NULL DEFAULT 0,
     create_status INTEGER NOT NULL DEFAULT 0,
-    operation_syncing INTEGER NOT NULL DEFAULT 3
+    operation_syncing INTEGER NOT NULL DEFAULT 3,
+    is_data_context INTEGER NOT NULL DEFAULT 0
 );
 ```
 
@@ -216,9 +222,11 @@ CREATE TABLE IF NOT EXISTS persistent_queue (
 | `idx` | TEXT | - | Index identifier for grouping related entries |
 | `data` | TEXT | - | JSON serialized FIM data |
 | `operation` | INTEGER | - | Type of operation (0=CREATE, 1=UPDATE, 2=DELETE) |
+| `version` | INTEGER | 0 | Version of the entry's data |
 | `sync_status` | INTEGER | 0 | Current sync state (0=PENDING, 1=SYNCING, 2=SYNCING_UPDATED) |
 | `create_status` | INTEGER | 0 | Creation tracking (0=EXISTING, 1=NEW, 2=NEW_DELETED) |
 | `operation_syncing` | INTEGER | 3 | Original operation being synchronized |
+| `is_data_context` | INTEGER | 0 | Whether the row is context data rather than a data value; always `0` for FIM |
 
 #### Sync Status Values
 
@@ -283,6 +291,6 @@ Database files are stored in fixed locations relative to Wazuh installation:
 
 ```sql
 -- Sync protocol database optimizations
-PRAGMA synchronous = NORMAL;    -- Balanced durability/performance
+PRAGMA synchronous = OFF;       -- Never fsync(), not even at WAL checkpoints; see sync protocol persistence-performance.md
 PRAGMA journal_mode = WAL;      -- Write-Ahead Logging for concurrency
 ```

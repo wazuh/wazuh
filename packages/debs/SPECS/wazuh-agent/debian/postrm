@@ -45,9 +45,13 @@ case "$1" in
             mkdir -p ${DIR}/etc
         fi
 
-        # If the directory is not empty, copy the files into ${DIR}/etc
-        if ls -A ${DIR}/tmp/conffiles > /dev/null 2>&1 ; then
-            mv ${DIR}/tmp/conffiles/* ${DIR}/etc
+        # If the directory is not empty, move the files into ${DIR}/etc. Only the directory prerm
+        # made, root's and not a link, is read back: tmp/ is writable by the wazuh group.
+        if [ -d ${DIR}/tmp/conffiles ] && [ ! -L ${DIR}/tmp/conffiles ] \
+            && [ -n "$(find ${DIR}/tmp/conffiles -maxdepth 0 -user 0)" ] \
+            && [ -n "$(ls -A ${DIR}/tmp/conffiles)" ]; then
+            mv ${DIR}/tmp/conffiles/* ${DIR}/etc \
+                || echo "WARNING: some configuration files could not be kept in ${DIR}/etc." >&2
         fi
         rm -rf ${DIR}/tmp
         if [ "$1" = "remove" ]; then
@@ -56,6 +60,11 @@ case "$1" in
             rm -rf ${DIR}/logs
             rm -rf ${DIR}/queue
             rm -rf ${DIR}/etc/shared
+            # Written at runtime, not shipped, so nothing else here removes it. It records that
+            # this install once committed a trust anchor, and the agent refuses to start (4125)
+            # when it is present with no anchor beside it -- which is exactly what a reinstall
+            # that enrolls by password would leave behind if this survived the removal.
+            rm -f ${DIR}/etc/certs/.anchor-committed
         fi
 
         # Delete audisp wazuh plugin if exists

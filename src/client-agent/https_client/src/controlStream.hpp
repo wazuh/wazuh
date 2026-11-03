@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -16,8 +15,10 @@
 #include "callbackSink.hpp"
 #include "clusterIdentity.hpp"
 #include "configFetcher.hpp"
+#include "caPublicationState.hpp"
 #include "configHashState.hpp"
 #include "controlStateMachine.hpp"
+#include "logRateLimiter.hpp"
 #include "moduleConfig.hpp"
 #include "moduleLog.hpp"
 #include "rescanRequester.hpp"
@@ -29,7 +30,10 @@
 #include "vdOffsetStore.hpp"
 #include "wpkFetcher.hpp"
 
+#include <chrono>
+#include <cstdint>
 #include <functional>
+#include <optional>
 #include <string>
 #include <thread>
 #include <vector>
@@ -49,6 +53,7 @@ class ControlStream final
         ControlStream(const ModuleConfig& config, IHttpPerformer& performer, const ISigner& signer,
                       IClock& clock, IRandom& random, ICallbackSink& sink,
                       ISpoolFileFactory& spoolFactory, ConfigHashState& configHash,
+                      CaPublicationState& caPublication,
                       ClusterIdentity& cluster, AuthGate& authGate, CompressionGate& compressionGate,
                       ITaskIdStore& taskStore, IVdOffsetStore& vdOffsetStore,
                       std::function<std::string()> collectHost = {});
@@ -89,6 +94,23 @@ class ControlStream final
             return m_machine.useSlowCadence();
         }
 
+        /// Non-empty only right after a /control attempt whose 401 was NOT escalated (the
+        /// AuthGate stayed open: any class but unknown_agent -- that already gets
+        /// useSlowCadence()/rejectedRetryIntervalS through AuthError instead). RetrySender
+        /// deliberately returns such a 401 unescalated on every call (#39064), so nothing else
+        /// slows the Notify/Startup cadence: mutates the Backoff this stream's RetrySender
+        /// already resets on success, growing the interval instead of retrying on the plain
+        /// notify cadence forever (#39601).
+        std::optional<std::chrono::milliseconds> unescalatedAuthFailBackoff()
+        {
+            if (m_lastOutcome == OutcomeClass::AuthFail && !useSlowCadence())
+            {
+                return m_backoff.next();
+            }
+
+            return std::nullopt;
+        }
+
         /// Blocks until any in-flight remote_upgrade download/dispatch thread (see
         /// dispatchUpgradeTask()) finishes. Must be called by the owner (HttpsClientFacade::
         /// stop()) BEFORE any referenced Waiter is destroyed -- ControlStream's own
@@ -114,15 +136,21 @@ class ControlStream final
         void dispatchUpgradeTask(const NotifyTask& task, Waiter& waiter);
         void maybeArmSettingsRefresh(const std::string& incoming);
         void updateProducerPause(OutcomeClass outcome);
-        /// resourceId is the manager-supplied agent.config_token, passed to /download verbatim
-        /// (opaque to the agent). Falls back to the group selector only for a manager that
-        /// reports no token -- see handleNotifyBody().
-        void maybeDownloadConfig(const std::string& managerHash, const std::string& resourceId,
+        /// Downloads the configuration when managerHash is resolved (non-empty, not "0") and
+        /// differs from the local hash. configToken is the manager's agent.config_token, relayed
+        /// to /download verbatim (empty when the manager publishes none).
+        void maybeDownloadConfig(const std::string& managerHash, const std::string& configToken,
                                  Waiter& waiter);
         void maybeReportAgentGroups(const std::string& csv);
+        /// Rule 3 of #39321 applied to one notify: arms a refresh when the advertised
+        /// publication is one this agent should adopt. std::nullopt means the field was absent.
+        void maybeAdoptCaPublication(std::optional<std::int64_t> advertised);
         void maybeRequestVdRescan(uint64_t offset, Waiter& waiter);
         void updateConnectionInfo(const HttpResponse& response);
-        ControlStateMachine::Event eventFor(OutcomeClass outcome) const;
+        ControlStateMachine::Event eventFor(OutcomeClass outcome);
+        /// True when the AuthGate is paused or has latched an incident this stream has not
+        /// handled yet; either way it records the current count as handled. Control thread only.
+        bool takeAuthIncident();
 
         const ModuleConfig& m_config;
         Backoff m_backoff;
@@ -132,6 +160,7 @@ class ControlStream final
         ConfigFetcher m_fetcher;
         WpkFetcher m_wpkFetcher;
         ConfigHashState& m_configHash;
+        CaPublicationState& m_caPublication;
         ClusterIdentity& m_cluster;
         AuthGate& m_authGate;
         ControlStateMachine m_machine;
@@ -148,6 +177,11 @@ class ControlStream final
         /// attempt reached the manager at all. Handed to the consumer when the
         /// producer pause is armed.
         std::string m_lastCurlError;
+        /// Whether the last /control attempt's HttpResponse was the ordinary
+        /// chain/CA-trust class of TLS failure (isCertificateVerificationFailure()).
+        /// Same lifecycle as m_lastCurlError: overwritten every step, success
+        /// included, always before the outcome reaches updateProducerPause().
+        bool m_lastCertVerificationFailed {false};
         const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
 
         /// SHA-256 of the exact startup-response bytes (the local settings
@@ -161,7 +195,7 @@ class ControlStream final
         bool m_settingsLoopWarned {false};
 
         /// The agent.groups CSV last reported to the sink (Startup or Notify), raw
-        /// (no "default" fallback -- that substitution is /download's alone). Unset
+        /// (no "default" fallback: empty when the agent has no groups). Unset
         /// until the first Startup/Notify with a groups field; compared against on
         /// every Notify so onAgentGroups() only fires on an actual change.
         bool m_groupsReported {false};
@@ -183,8 +217,31 @@ class ControlStream final
         /// at boot for its own reasons.
         bool m_producersPaused {false};
 
+        /// One 404 report per incident: /control retries forever on its own cadence,
+        /// so the condition would otherwise be announced every cycle for as long as
+        /// it lasts. Cleared by a success, so a route that breaks again later is
+        /// reported again.
+        bool m_routeNotFoundReported {false};
+
+        /// One report per incident, independent of and reported before the pause-threshold
+        /// bookkeeping below (same reasoning as m_routeNotFoundReported): a persistent
+        /// cert-trust failure must not wait producerPauseThreshold cycles for its first
+        /// line, and once armed the periodic reminder comes from m_certVerificationLimiter,
+        /// not from re-arming this flag. Cleared on recovery so a later, separate incident
+        /// is reported again from its own first occurrence.
+        bool m_certVerificationReported {false};
+        /// First-emits-then-one-per-window for the cert-verification-failure report;
+        /// reset() on recovery (see m_certVerificationReported).
+        LogRateLimiter m_certVerificationLimiter;
+
         /// Set from Effects::resetCadence; see consumeFastFollowup().
         bool m_fastFollowup {false};
+
+        /// The last step()'s outcome; see unescalatedAuthFailBackoff().
+        OutcomeClass m_lastOutcome {OutcomeClass::Interrupted};
+
+        /// The last AuthGate::incidents() value takeAuthIncident() handled.
+        uint64_t m_authIncidentsSeen {0};
 };
 
 #endif // _HC_CONTROL_STREAM_HPP

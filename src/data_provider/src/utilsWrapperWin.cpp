@@ -1,7 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015, Wazuh Inc.
- * December 22, 2021.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -17,6 +16,9 @@
 #include <locale>         // For localization utilities (if needed for string conversion)
 #include <chrono>         // For the bounded WMI enumeration wait (issue #38370)
 
+// encodingWindowsHelper.h brings in winsock2.h, which has to precede the windows.h that
+// utilsWrapperWin.hpp's WMI headers pull in.
+#include "encodingWindowsHelper.h"
 #include "utilsWrapperWin.hpp"
 #include <shellapi.h>
 
@@ -322,7 +324,9 @@ ProcessCmdLine parseProcessCommandLine(const std::wstring& fullCmdLineW)
                 const int convertedSize = WideCharToMultiByte(
                                               CP_UTF8, 0, argv[i], -1, arg.data(), argSize, nullptr, nullptr);
 
-                if (convertedSize > 0)
+                // convertedSize includes the null terminator, so 1 is an empty argument (""),
+                // which is skipped like on Linux and macOS.
+                if (convertedSize > 1)
                 {
                     arg.resize(static_cast<std::size_t>(convertedSize - 1));
 
@@ -332,6 +336,7 @@ ProcessCmdLine parseProcessCommandLine(const std::wstring& fullCmdLineW)
                     }
 
                     result.argvs += arg;
+                    ++result.argsCount;
                 }
             }
         }
@@ -343,6 +348,67 @@ ProcessCmdLine parseProcessCommandLine(const std::wstring& fullCmdLineW)
     }
 
     return result;
+}
+
+constexpr auto SYSTEM_IDLE_PROCESS_NAME {"System Idle Process"};
+constexpr auto SYSTEM_PROCESS_NAME {"System"};
+
+bool isSystemProcess(const DWORD pid)
+{
+    return pid == 0 || pid == 4;
+}
+
+static std::string processName(const PROCESSENTRY32& processEntry)
+{
+    std::string ret;
+    const DWORD pId { processEntry.th32ProcessID };
+
+    if (isSystemProcess(pId))
+    {
+        ret = (pId == 0) ? SYSTEM_IDLE_PROCESS_NAME : SYSTEM_PROCESS_NAME;
+    }
+    else
+    {
+        ret = processEntry.szExeFile;
+    }
+
+    return ret;
+}
+
+nlohmann::json buildProcessSnapshotRecord(const PROCESSENTRY32& processEntry)
+{
+    // Assigned from json::object(): a braced or empty-brace initialiser would give an array
+    // or a null, and update() rejects both.
+    auto jsProcessInfo = nlohmann::json::object();
+    const DWORD pId { processEntry.th32ProcessID };
+
+    jsProcessInfo["name"] = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(processName(processEntry));
+    jsProcessInfo["pid"]  = std::to_string(pId);
+
+    // The snapshot reports pid 0 as its own parent; emitting that would leave a self-referential
+    // edge that loops any parent-child walk of the inventory.
+    if (0 != pId)
+    {
+        jsProcessInfo["parent_pid"] = processEntry.th32ParentProcessID;
+    }
+
+    return jsProcessInfo;
+}
+
+nlohmann::json buildProcessRecord(const PROCESSENTRY32& processEntry, const nlohmann::json& handleFields)
+{
+    // Copy-initialised: nlohmann::json jsProcessInfo { ... } would select the initializer_list
+    // constructor and wrap the record in an array.
+    auto jsProcessInfo = buildProcessSnapshotRecord(processEntry);
+
+    // A default-constructed nlohmann::json is a null, which update() rejects. Having no
+    // handle-derived fields is the ordinary outcome here, not an error.
+    if (!handleFields.is_null())
+    {
+        jsProcessInfo.update(handleFields);
+    }
+
+    return jsProcessInfo;
 }
 
 void QueryWUHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)

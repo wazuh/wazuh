@@ -1,7 +1,6 @@
 /*
  * Wazuh DBSYNC
- * Copyright (C) 2015, Wazuh Inc.
- * July 11, 2020.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -688,6 +687,75 @@ TEST_F(DBSyncTest, SetMaxRowsBadData)
     ASSERT_NE(nullptr, handle);
     EXPECT_NE(0, dbsync_set_table_max_rows(reinterpret_cast<void*>(0xffffffff), "dummy", 100));
     EXPECT_NE(0, dbsync_set_table_max_rows(handle, "dummy", 100));
+}
+
+TEST_F(DBSyncTest, syncRowOmittedColumnStillModifiesWhenTheChecksumCoversIt)
+{
+    // Omitting a column keeps its stored value, but only that column escapes comparison. A
+    // checksum computed over the whole document changes when a key disappears from it, and the
+    // checksum is compared like any other column, so the row is still reported as modified.
+    // This is why a value that a scan may fail to measure has to be left out of the checksum
+    // input as well, not merely left out of the row.
+    const auto sql{ "CREATE TABLE packages(`name` TEXT, `size` BIGINT, `checksum` TEXT, PRIMARY KEY (`name`)) WITHOUT ROWID;"};
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
+
+    CallbackMock wrapper;
+    EXPECT_CALL(wrapper, callbackMock(INSERTED,
+                                      nlohmann::json::parse(R"({"name":"texlive","size":100,"checksum":"with-size"})"))).Times(1);
+    // The measurement failed, so size is omitted. The checksum was computed without it and
+    // therefore differs, which is reported as a modification even though size is untouched.
+    EXPECT_CALL(wrapper, callbackMock(MODIFIED,
+                                      nlohmann::json::parse(R"({"name":"texlive","checksum":"without-size"})"))).Times(1);
+
+    const auto insertWithSize{ R"({"table":"packages","data":[{"name":"texlive","size":100,"checksum":"with-size"}]})"};
+    const auto syncWithoutSize{ R"({"table":"packages","data":[{"name":"texlive","checksum":"without-size"}]})"};
+
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert{ cJSON_Parse(insertWithSize) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsOmitted{ cJSON_Parse(syncWithoutSize) };
+
+    callback_data_t callbackData { callback, &wrapper };
+
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert.get(), callbackData));
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsOmitted.get(), callbackData));
+
+    EXPECT_NO_THROW(dbsync_teardown());
+}
+
+TEST_F(DBSyncTest, syncRowOmittedColumnKeepsStoredValueAndRaisesNoEvent)
+{
+    // A collector that cannot establish a value leaves the key out rather than sending 0.
+    // This pins what that relies on: an absent column is not compared, so it neither
+    // overwrites what is stored nor raises a modification.
+    const auto sql{ "CREATE TABLE packages(`name` TEXT, `size` BIGINT, PRIMARY KEY (`name`)) WITHOUT ROWID;"};
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
+
+    CallbackMock wrapper;
+    EXPECT_CALL(wrapper, callbackMock(INSERTED, nlohmann::json::parse(R"({"name":"texlive","size":100})"))).Times(1);
+    // The measured value changing is a real modification and must still be reported once.
+    EXPECT_CALL(wrapper, callbackMock(MODIFIED, nlohmann::json::parse(R"({"name":"texlive","size":200})"))).Times(1);
+
+    const auto insertWithSize{ R"({"table":"packages","data":[{"name":"texlive","size":100}]})"};
+    const auto syncWithoutSize{ R"({"table":"packages","data":[{"name":"texlive"}]})"};
+    const auto syncSameSize{ R"({"table":"packages","data":[{"name":"texlive","size":100}]})"};
+    const auto syncChangedSize{ R"({"table":"packages","data":[{"name":"texlive","size":200}]})"};
+
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert{ cJSON_Parse(insertWithSize) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsOmitted{ cJSON_Parse(syncWithoutSize) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSame{ cJSON_Parse(syncSameSize) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsChanged{ cJSON_Parse(syncChangedSize) };
+
+    callback_data_t callbackData { callback, &wrapper };
+
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert.get(), callbackData));   // inserted, size 100
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsOmitted.get(), callbackData));  // size omitted: no event
+    // Had the omission zeroed the column, supplying 100 again would now read as a change.
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsSame.get(), callbackData));     // still 100: no event
+    // A genuine change must still be detected, so the two checks above are not vacuous.
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsChanged.get(), callbackData));  // modified to 200
+
+    EXPECT_NO_THROW(dbsync_teardown());
 }
 
 TEST_F(DBSyncTest, syncRowInsertAndModified)
@@ -2159,6 +2227,47 @@ TEST_F(DBSyncTest, UpdateDataCPP)
     };
 
     EXPECT_NO_THROW(dbSync->updateWithSnapshot(nlohmann::json::parse(insertionSqlStmt2), callbackData));
+}
+
+TEST_F(DBSyncTest, UpdateDataCPPQuotedValues)
+{
+    // Both the updated value and the primary key carry quotes: the snapshot update must store
+    // them verbatim instead of letting them alter the UPDATE statement.
+    const auto sql{ "CREATE TABLE packages(`name` TEXT, `version` TEXT, PRIMARY KEY (`name`)) WITHOUT ROWID;"};
+    const auto snapshot1{ R"({"table":"packages","data":[{"name":"O'Brien","version":"1"}]})"};
+    const auto snapshot2{ R"({"table":"packages","data":[{"name":"O'Brien","version":"2'; DROP TABLE packages; --"}]})"};
+    const auto selectData
+    {
+        R"({"table":"packages",
+           "query":{"column_list":["name","version"],
+           "row_filter":"",
+           "distinct_opt":false,
+           "order_by_opt":"",
+           "count_opt":100}})"
+    };
+
+    std::unique_ptr<DBSync> dbSync;
+    EXPECT_NO_THROW(dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql));
+
+    nlohmann::json jsResponse;
+    EXPECT_NO_THROW(dbSync->updateWithSnapshot(nlohmann::json::parse(snapshot1), jsResponse));
+
+    CallbackMock wrapper;
+    EXPECT_CALL(wrapper, callbackMock(MODIFIED, testing::_)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(SELECTED,
+                                      nlohmann::json::parse(R"({"name":"O'Brien","version":"2'; DROP TABLE packages; --"})")))
+    .Times(1);
+
+    ResultCallbackData callbackData
+    {
+        [&wrapper](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+        {
+            wrapper.callbackMock(type, jsonResult);
+        }
+    };
+
+    EXPECT_NO_THROW(dbSync->updateWithSnapshot(nlohmann::json::parse(snapshot2), callbackData));
+    EXPECT_NO_THROW(dbSync->selectRows(nlohmann::json::parse(selectData), callbackData));
 }
 
 TEST_F(DBSyncTest, constructorWithHandle)

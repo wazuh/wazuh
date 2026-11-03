@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module (C++ worker bridge)
- * Copyright (C) 2015, Wazuh Inc.
- * July 27, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -65,6 +64,10 @@ namespace
                 case remoted::auth::AuthError::BodyTooLarge: return m.bodyTooLarge;
                 case remoted::auth::AuthError::UnsupportedContentEncoding:
                 case remoted::auth::AuthError::MalformedContentEncoding: return m.badEncoding;
+                case remoted::auth::AuthError::TokenUnknown: return m.tokenUnknown;
+                case remoted::auth::AuthError::TokenExpired: return m.tokenExpired;
+                case remoted::auth::AuthError::TokenRevoked: return m.tokenRevoked;
+                case remoted::auth::AuthError::AgentBusy: return m.agentBusy;
                 // MissingProtocolVersion, UnsupportedProtocolVersion, MissingAuthorization,
                 // MalformedAuthorization -- and, defensively, None (errorResponseFor() is never
                 // called with it).
@@ -95,10 +98,13 @@ namespace
         ClockSkew,                ///< Token outside the accepted window -> jwt_max_age / jwt_clock_skew.
         BodyTooLarge,             ///< Over the authenticated-body cap -> auth_max_body_size.
         UnusableKey,              ///< The agent exists but its client.keys key does not decode.
-        AgentMismatch,            ///< An authenticated agent claimed a different agent's id (security signal).
+        InvalidHeaderLine,        ///< An authenticated batch failed the H-line prefix/size check.
         EnrollmentKeyUnavailable, ///< /enroll's Password mode: etc/authd.pass unavailable, or HKDF
                                   ///< unavailable manager-wide. Deliberately NOT UnusableKey -- there
                                   ///< is no agent and no client.keys entry yet to "re-enroll".
+        AgentBusy,                ///< One authenticated agent hit its request or byte share. The client
+                                  ///< pulls the trigger, but it is an AUTHENTICATED one: the operator
+                                  ///< acts on the agent, so it is a throttled WARN naming it.
     };
 
     RejectionKind classify(remoted::auth::AuthError err)
@@ -109,10 +115,14 @@ namespace
             case remoted::auth::AuthError::BodyTooLarge: return RejectionKind::BodyTooLarge;
             case remoted::auth::AuthError::MissingKey: return RejectionKind::UnusableKey;
             case remoted::auth::AuthError::EnrollmentKeyUnavailable: return RejectionKind::EnrollmentKeyUnavailable;
-            case remoted::auth::AuthError::PayloadAgentMismatch: return RejectionKind::AgentMismatch;
+            case remoted::auth::AuthError::PayloadAgentMismatch: return RejectionKind::InvalidHeaderLine;
+            case remoted::auth::AuthError::AgentBusy: return RejectionKind::AgentBusy;
             // Already reported by AuthMiddleware's own throttled WARN, which names the agent id and
             // the peer address (neither reaches this funnel). Kept at DEBUG2 to avoid a second line.
             case remoted::auth::AuthError::AddressNotAllowed: return RejectionKind::ClientFault;
+            // TokenUnknown / TokenExpired / TokenRevoked: the operator-side signal is the metric cell
+            // (remoted.auth.reject.token_*, remoted.enroll.token.*); an unknown or lapsed token is a
+            // property of the credential the peer presented, and the peer controls how many it sends.
             default: return RejectionKind::ClientFault;
         }
     }
@@ -125,8 +135,9 @@ namespace
         static LogThrottle clockSkewThrottle;
         static LogThrottle bodyTooLargeThrottle;
         static LogThrottle unusableKeyThrottle;
-        static LogThrottle agentMismatchThrottle;
+        static LogThrottle headerLineThrottle;
         static LogThrottle enrollmentKeyUnavailableThrottle;
+        static LogThrottle agentBusyThrottle;
 
         // NOTE: every argument below must stay allocation-free (literals and integers only). This
         // function runs on every rejected request, and LOGFN_DEBUG2's guard does NOT currently
@@ -152,7 +163,10 @@ namespace
                 {
                     LOGFN_WARN(logFn(),
                                "Rejected %llu request(s) with 413 in the last %d s: the body exceeded the "
-                               "authenticated-body cap. Consider increasing the value of 'auth_max_body_size'.",
+                               "authenticated-body cap. Consider increasing the value of 'auth_max_body_size' or, "
+                               "for zstd bodies, 'auth_max_decoded_body_size' -- or 'max_inflight_bytes_per_agent' "
+                               "on /stateful, whose vulnerability-detection first sync carries a host's whole "
+                               "inventory and cannot be split by the agent.",
                                static_cast<unsigned long long>(d.total),
                                LogThrottle::kDefaultWindowSeconds);
                 }
@@ -185,14 +199,30 @@ namespace
                 }
                 break;
 
-            case RejectionKind::AgentMismatch:
-                if (const auto d = agentMismatchThrottle.record())
+            case RejectionKind::InvalidHeaderLine:
+                if (const auto d = headerLineThrottle.record())
                 {
-                    // Security-relevant: the request's MAC verified, so this is a legitimately
-                    // authenticated agent submitting a batch attributed to a different agent id.
+                    // Authentication already succeeded; name the sender of the malformed or
+                    // oversized H-line slice so the operator can investigate that agent.
                     LOGFN_WARN(logFn(),
-                               "Rejected %llu authenticated request(s) in the last %d s whose payload claimed a "
-                               "different agent id than the one that signed them (authenticated agent '%.*s').",
+                               "Rejected %llu authenticated request(s) in the last %d s whose stateless batch has "
+                               "no H-line prefix or exceeds its 8 KiB limit (authenticated agent '%.*s').",
+                               static_cast<unsigned long long>(d.total),
+                               LogThrottle::kDefaultWindowSeconds,
+                               static_cast<int>(agentContext.size()),
+                               agentContext.data());
+                }
+                break;
+
+            case RejectionKind::AgentBusy:
+                if (const auto d = agentBusyThrottle.record())
+                {
+                    // Names the agent of the request that emits the line; the count covers every
+                    // agent shed since the last one. An honest agent never reaches the default cap.
+                    LOGFN_WARN(logFn(),
+                               "Rejected %llu request(s) with 503 in the last %d s from agent(s) already holding "
+                               "their share: 'max_requests_per_agent' open requests or 'max_inflight_bytes_per_agent' "
+                               "decoded bytes (agent '%.*s'). Investigate the agent before raising either value.",
                                static_cast<unsigned long long>(d.total),
                                LogThrottle::kDefaultWindowSeconds,
                                static_cast<int>(agentContext.size()),
@@ -221,26 +251,38 @@ namespace remoted::endpoints
     {
         const auto pe = remoted::auth::publicErrorFor(err);
 
-        // Log AND count the PRE-collapse reason. publicErrorFor() deliberately folds every
-        // distinct credential failure into one generic 401 so a client cannot tell which check
-        // failed -- but that also destroyed the distinction for the operator, since nothing
-        // logged it. This is the single funnel every client-visible auth rejection passes
-        // through, so one call here covers all of them.
+        // Log AND count the FINE reason. The wire names the public class publicErrorFor() maps it to
+        // (issue #38993) -- coarser on purpose: several reasons share `invalid_signature` -- so the
+        // full distinction only exists for the operator, here. This is the single funnel every
+        // client-visible auth rejection passes through, so one call covers all of them.
         logRejection(err, pe.status, agentContext);
         countRejection(err);
 
+        // Body: {"error":"<message>","code":<status>}, except that a 401's `code` is its class
+        // (string): the same value the challenge's error_description carries, so a client that reads
+        // only the body and one that reads only the header learn the same thing.
         std::string body {R"({"error":")"};
         body += pe.message; // static, quote/backslash-free messages
         body += R"(","code":)";
-        body += std::to_string(pe.status);
+        if (pe.code != nullptr)
+        {
+            body += '"';
+            body += pe.code; // static, [a-z_] only
+            body += '"';
+        }
+        else
+        {
+            body += std::to_string(pe.status);
+        }
         body += "}";
         auto response = remoted::http::HttpResponse::json(pe.status, std::move(body));
-        if (pe.status == 401)
+        if (pe.challenge != nullptr)
         {
-            // RFC 6750 §3: a 401 to a bearer-protected resource carries the challenge. Uniform for
-            // every credential failure (it names the scheme, never the reason) and absent from the
+            // RFC 6750 §3: a 401 to a bearer-protected resource carries the challenge, and since
+            // #38993 the challenge names the class (`error="invalid_token", error_description=...`,
+            // or `error="invalid_request"` when no usable credential was presented). Absent from the
             // non-credential 400/413/415, which are not authentication failures.
-            response.headers.emplace_back("WWW-Authenticate", "Bearer");
+            response.headers.emplace_back("WWW-Authenticate", pe.challenge);
         }
         return response;
     }

@@ -1,7 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015, Wazuh Inc.
- * November 10, 2020.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -40,21 +39,21 @@ class SysInfoPortWrapperMock: public IPortWrapper
 
 TEST_F(SysInfoPortTest, Test_SPEC_Data)
 {
-    auto mock { std::make_shared<SysInfoPortWrapperMock>() };
+    SysInfoPortWrapperMock mock;
     nlohmann::json port {};
-    EXPECT_CALL(*mock, protocol()).Times(1).WillOnce(Return("1"));
-    EXPECT_CALL(*mock, localIp()).Times(1).WillOnce(Return("2"));
-    EXPECT_CALL(*mock, localPort()).Times(1).WillOnce(Return(3));
-    EXPECT_CALL(*mock, remoteIP()).Times(1).WillOnce(Return("4"));
-    EXPECT_CALL(*mock, remotePort()).Times(1).WillOnce(Return(5));
-    EXPECT_CALL(*mock, txQueue()).Times(1).WillOnce(Return(6));
-    EXPECT_CALL(*mock, rxQueue()).Times(1).WillOnce(Return(7));
-    EXPECT_CALL(*mock, inode()).Times(1).WillOnce(Return(4274126910));
-    EXPECT_CALL(*mock, state()).Times(1).WillOnce(Return("9"));
-    EXPECT_CALL(*mock, pid()).Times(1).WillOnce(Return(10));
-    EXPECT_CALL(*mock, processName()).Times(1).WillOnce(Return("11"));
+    EXPECT_CALL(mock, protocol()).Times(1).WillOnce(Return("1"));
+    EXPECT_CALL(mock, localIp()).Times(1).WillOnce(Return("2"));
+    EXPECT_CALL(mock, localPort()).Times(1).WillOnce(Return(3));
+    EXPECT_CALL(mock, remoteIP()).Times(1).WillOnce(Return("4"));
+    EXPECT_CALL(mock, remotePort()).Times(1).WillOnce(Return(5));
+    EXPECT_CALL(mock, txQueue()).Times(1).WillOnce(Return(6));
+    EXPECT_CALL(mock, rxQueue()).Times(1).WillOnce(Return(7));
+    EXPECT_CALL(mock, inode()).Times(1).WillOnce(Return(4274126910));
+    EXPECT_CALL(mock, state()).Times(1).WillOnce(Return("9"));
+    EXPECT_CALL(mock, pid()).Times(1).WillOnce(Return(10));
+    EXPECT_CALL(mock, processName()).Times(1).WillOnce(Return("11"));
 
-    EXPECT_NO_THROW(std::make_unique<PortImpl>(mock)->buildPortData(port));
+    EXPECT_NO_THROW(PortImpl(mock).buildPortData(port));
     EXPECT_EQ("1", port.at("network_transport").get_ref<const std::string&>());
     EXPECT_EQ("2", port.at("source_ip").get_ref<const std::string&>());
     EXPECT_EQ(3, port.at("source_port").get<int32_t>());

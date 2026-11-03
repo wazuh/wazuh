@@ -67,7 +67,7 @@ DELETION_SCOPE = ("wazuh-states-*", "wazuh-agent-config", "wazuh-agent-stats")
 DEFAULT_INDEXER = "https://127.0.0.1:9200"
 DEFAULT_CERT = "/etc/wazuh-indexer/certs/admin.pem"
 DEFAULT_KEY = "/etc/wazuh-indexer/certs/admin-key.pem"
-DEFAULT_CLIENT_KEYS = "etc/client.keys"
+DEFAULT_CLIENT_KEYS = "/etc/wazuh-manager/client.keys"
 
 
 class UnixHTTPConnection(http.client.HTTPConnection):
@@ -242,9 +242,11 @@ def main():
     if status == 503:
         print("\n    503 means no configured indexer host is healthy, or the pipeline is shutting "
               "down. The deletion was NOT performed; this is the endpoint telling the caller to "
-              "retry, which is exactly what authd does.")
+              "retry, which is exactly what task-manager's dispatcher does with an agent_delete_indexer "
+              "task.")
     elif status == 400:
-        print("\n    400 means the agent id header was missing or non-numeric.")
+        print("\n    400 means the body's agent_id was missing or not a valid agent id (the body must "
+              "be a JSON object with an \"agent_id\" member).")
 
     if not args.verify:
         return 0 if status == 200 else 1

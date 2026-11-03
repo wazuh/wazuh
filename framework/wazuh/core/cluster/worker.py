@@ -1,4 +1,4 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -17,9 +17,11 @@ from typing import Union
 
 from wazuh.core import cluster as metadata, common, exception, utils
 from wazuh.core.cluster import client, cluster, common as c_common
+from wazuh.core.cluster import utils as cluster_utils
 from wazuh.core.cluster.common import IndexerTaskManager
 from wazuh.core.cluster.dapi import dapi
-from wazuh.core.cluster.utils import log_subprocess_execution, safe_join
+from wazuh.core.cluster.registry_publisher import RegistryPublisher
+from wazuh.core.cluster.utils import local_path, log_subprocess_execution, safe_join
 from wazuh.core.configuration import get_manager_conf
 from wazuh.core.exception import WazuhException
 from wazuh.core.indexer.active_response import ActiveResponseFetchTask
@@ -530,6 +532,22 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
         return response
 
+    def publish_agent_groups(self, publications: list) -> None:
+        """Queue the per-chunk publications of an agent-groups apply for the local remoted.
+
+        Called by `update_chunks_wdb` after every apply -- the periodic reception, the full resync and the retry of
+        rejected chunks -- so remoted's registry of memberships follows this node's wazuh-manager-db without waiting
+        for its cached memberships to expire. Synchronous and never raises: the publisher posts them from its own task.
+
+        Parameters
+        ----------
+        publications : list of dict
+            One publication per chunk, in chunk order.
+        """
+        publisher = getattr(self.server, 'registry_publisher', None)
+        if publisher is not None:
+            publisher.enqueue(publications)
+
     @staticmethod
     def _agent_groups_chunk_agent_ids(data: dict) -> Set[int]:
         """Collect the IDs of every agent referenced in an agent-groups chunk list.
@@ -847,7 +865,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             data_ : dict
                 File metadata such as modification time, whether it's a merged file or not, etc.
             """
-            full_filename_path = safe_join(common.WAZUH_PATH, filename)
+            full_filename_path = local_path(filename)
 
             if data_['merged']:  # worker nodes can only receive agent-groups files
                 item_key = data_['cluster_item_key']
@@ -855,12 +873,12 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                     raise exception.WazuhClusterError(3061, extra_message=item_key)
 
                 # Split merged file into individual files inside zipdir (directory containing unzipped files),
-                # and then move each one to the destination directory (<wazuh_path>/filename).
+                # and then move each one to the destination directory (local_path(filename)).
                 # The TYPE string used in the 'unmerge_info' function is a placeholder. It corresponds to the
                 # directory inside '{wazuh_path}/queue/' path.
                 for name, content, _ in cluster.unmerge_info('TYPE', zip_path, filename_):
-                    full_unmerged_name = safe_join(common.WAZUH_PATH, name)
-                    expected_base = safe_join(common.WAZUH_PATH, item_key)
+                    full_unmerged_name = local_path(name)
+                    expected_base = local_path(item_key)
                     if not os.path.commonpath([full_unmerged_name, expected_base]).startswith(expected_base):
                         raise exception.WazuhClusterError(3062,
                             extra_message=f"File path outside allowed directory: {name}")
@@ -875,14 +893,18 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 item_key = data_['cluster_item_key']
                 if item_key not in cluster_items['files']:
                     raise exception.WazuhClusterError(3061, extra_message=item_key)
-                expected_base = safe_join(common.WAZUH_PATH, item_key)
+                expected_base = local_path(item_key)
                 if not os.path.commonpath([full_filename_path, expected_base]).startswith(expected_base):
                     raise exception.WazuhClusterError(3062,
                         extra_message=f"File path outside allowed directory: {filename_}")
+                if cluster.is_excluded(os.path.basename(full_filename_path),
+                                       cluster_items['files'].get('excluded_files', []),
+                                       cluster_items['files'].get('excluded_extensions', [])):
+                    raise exception.WazuhClusterError(3062, extra_message=f"File is in excluded list: {filename_}")
                 # Create destination dir if it doesn't exist.
                 if not os.path.exists(os.path.dirname(full_filename_path)):
                     utils.mkdir_with_mode(os.path.dirname(full_filename_path))
-                # Move the file from zipdir (directory containing unzipped files) to <wazuh_path>/filename.
+                # Move the file from zipdir (directory containing unzipped files) to local_path(filename).
                 safe_move(safe_join(zip_path, filename_), full_filename_path,
                           permissions=cluster_items['files'][item_key]['permissions'],
                           ownership=(common.wazuh_uid(), common.wazuh_gid())
@@ -912,11 +934,16 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                         item_key = file_data['cluster_item_key']
                         if item_key not in cluster_items['files']:
                             raise exception.WazuhClusterError(3061, extra_message=item_key)
-                        file_path = safe_join(common.WAZUH_PATH, file_to_remove)
-                        expected_base = safe_join(common.WAZUH_PATH, item_key)
+                        file_path = local_path(file_to_remove)
+                        expected_base = local_path(item_key)
                         if not os.path.commonpath([file_path, expected_base]).startswith(expected_base):
                             raise exception.WazuhClusterError(3062,
                                 extra_message=f"File path outside allowed directory: {file_to_remove}")
+                        if cluster.is_excluded(os.path.basename(file_path),
+                                               cluster_items['files'].get('excluded_files', []),
+                                               cluster_items['files'].get('excluded_extensions', [])):
+                            raise exception.WazuhClusterError(3062,
+                                extra_message=f"File is in excluded list: {file_to_remove}")
                         try:
                             os.remove(file_path)
                             validated_extra[file_to_remove] = file_data
@@ -939,10 +966,9 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                    if cluster_items['files'][data['cluster_item_key']]['remove_subdirs_if_empty'])
         for directory in directories_to_check:
             try:
-                full_path = safe_join(common.WAZUH_PATH, directory)
-                dir_files = set(os.listdir(full_path))
-                if not dir_files or dir_files.issubset(set(cluster_items['files']['excluded_files'])):
-                    shutil.rmtree(full_path)
+                full_path = local_path(directory)
+                if not os.listdir(full_path):
+                    os.rmdir(full_path)
             except Exception as e:
                 errors['extra'] += 1
                 result_logs["debug2"][directory].append(f"Error removing directory '{directory}': {e}")
@@ -995,6 +1021,11 @@ class Worker(client.AbstractClientManager):
         self.run_active_response_job = None
         self.active_response_task = ActiveResponseFetchTask(self)
         self.indexer_task_manager = IndexerTaskManager()
+        # Publishes the agent-groups memberships this node applies to the local remoted. Owned here, not by the
+        # handler, so its queue survives reconnections to the master.
+        publisher_logger = self.logger.getChild('Registry publish')
+        publisher_logger.addFilter(cluster_utils.ClusterFilter(tag=self.tag, subtag='Registry publish'))
+        self.registry_publisher = RegistryPublisher(logger=publisher_logger)
 
     def add_tasks(self) -> List[Tuple[Awaitable[Any], Tuple]]:
         """Define the tasks that the worker will always run in an infinite loop.
@@ -1007,7 +1038,8 @@ class Worker(client.AbstractClientManager):
         """
         tasks = super().add_tasks() + [(self.client.sync_integrity, tuple()),
                                       (self.client.sync_agent_info, tuple()),
-                                      (self.dapi.run, tuple())]
+                                      (self.dapi.run, tuple()),
+                                      (self.registry_publisher.run, tuple())]
         try:
             _indexer_conf = get_manager_conf(section="indexer")["indexer"].get("hosts")
         except Exception:

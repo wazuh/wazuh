@@ -1,6 +1,6 @@
 # Installation
 
-This guide provides instructions for installing Wazuh server and agent components. Before proceeding, verify that your system meets the requirements listed in the [Packages](packages.md) page.
+This guide provides instructions for installing Wazuh server and agent components. Before proceeding, verify that your system meets the [Requirements](requirements.md) and that a package exists for your platform ([Packages](packages.md)).
 
 ## Server
 
@@ -26,9 +26,30 @@ sudo dpkg -i wazuh-manager_*.deb
 sudo rpm -ivh wazuh-manager-*.rpm
 ```
 
+The package refuses to install, even as a fresh installation, on a host that still carries a pre-5.0
+manager: an `/etc/ossec-init.conf` of type `server` or `local` naming a version below 5, or a `/var/ossec`
+installation that reports itself a server (`wazuh-control info -t`) and whose `VERSION.json` names a version
+below 5. A 4.x agent on the same host does not block it. A 4.x manager is not upgraded in place: move to 5.0 as
+described in [Migrating a 4.x manager](../../guide/migration/manager-4x-to-5x.md).
+
+#### Installed layout
+
+The manager uses two directories, with no link between them:
+
+| Directory | Holds | Owner:group, mode |
+|---|---|---|
+| `/etc/wazuh-manager` | `wazuh-manager.conf`, `wazuh-manager-internal-options.conf`, `client.keys`, the agent groups under `shared/`, the enrollment password and token store; `ca/` and `export/`, root's only, hold the manager's CA and what it publishes for the dashboard ([Credentials](credentials.md#files-and-modes)) | `root:wazuh-manager`, `0770` |
+| `/etc/wazuh-manager/certs` | every TLS certificate and key the daemons read (see [Credentials and certificates](#credentials-and-certificates)) | `root:wazuh-manager`, `0750`; every file `root:wazuh-manager`, `0640` |
+| `/var/wazuh-manager` | binaries, the Server API, databases, queues, logs and detection content | `root:wazuh-manager`, `0750` |
+
+The configuration directory is fixed: a source installation with a custom installation directory
+(`USER_DIR`) moves `/var/wazuh-manager` only. A relative path written in `wazuh-manager.conf` still
+resolves against the installation directory. No daemon writes `certs/`; only root does (the credential resolver, and `wazuh-manager-certs` for the CA bundle). What
+`dpkg --purge` and `rpm -e` remove from each directory is described in [Uninstall](../uninstall.md).
+
 ### Installation variables
 
-The `<remote>` block of the generated `/var/wazuh-manager/etc/wazuh-manager.conf` can be customized at installation time through environment variables. They are honored by the DEB and RPM packages and by the source installer (`install.sh`, also through `etc/preloaded-vars.conf`). When a variable is not set, the default value is used.
+The `<remote>` block of the generated `/etc/wazuh-manager/wazuh-manager.conf` can be customized at installation time through environment variables. They are honored by the DEB and RPM packages and by the source installer (`install.sh`, also through `etc/preloaded-vars.conf`). When a variable is not set, the default value is used.
 
 ```bash
 sudo WAZUH_REMOTE_HTTPS_BIND_ADDR='0.0.0.0' WAZUH_REMOTE_HTTPS_PORT='1517' dpkg -i wazuh-manager_*.deb
@@ -39,7 +60,7 @@ sudo WAZUH_REMOTE_HTTPS_BIND_ADDR='0.0.0.0' WAZUH_REMOTE_HTTPS_PORT='1517' rpm -
 ```
 
 > [!NOTE]
-> When using `sudo`, the variables must be placed after `sudo` (as in the examples above) so they reach the package scriptlets. An invalid value aborts a fresh installation with an error, before any configuration is written.
+> When using `sudo`, the variables must be placed after `sudo` (as in the examples above) so they reach the package scriptlets. An invalid value aborts a fresh installation with `ERROR: Invalid value '<value>' for installation variable <NAME>: <reason>`, before any configuration is written. A value that passes those checks is then validated with the generated file as a whole, and a fresh installation whose generated `wazuh-manager.conf` the validator refuses is aborted as well (`ERROR: the generated /etc/wazuh-manager/wazuh-manager.conf is not a valid manager configuration.` from the packages).
 >
 > The variables apply whenever the configuration file is generated. On a fresh installation that is `wazuh-manager.conf`. On an RPM upgrade nothing is generated, so the variables have no effect. On a DEB upgrade the active configuration is never modified, but the variables do shape the regenerated `wazuh-manager.conf.new`; see [Upgrade](../upgrade.md).
 
@@ -48,17 +69,18 @@ sudo WAZUH_REMOTE_HTTPS_BIND_ADDR='0.0.0.0' WAZUH_REMOTE_HTTPS_PORT='1517' rpm -
 | `WAZUH_REMOTE_HTTPS_PORT` | `remote.https.port` | `1517` |
 | `WAZUH_REMOTE_HTTPS_BIND_ADDR` | `remote.https.bind_addr` | `0.0.0.0` |
 | `WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX` | `remote.https.global_prefix` | `/wazuh-manager/` |
-| `WAZUH_REMOTE_HTTPS_CERTIFICATE` | `remote.https.certificate` | `etc/certs/remoted.pem` |
-| `WAZUH_REMOTE_HTTPS_KEY` | `remote.https.key` | `etc/certs/remoted-key.pem` |
+| `WAZUH_REMOTE_HTTPS_CERTIFICATE` | `remote.https.certificate` | `/etc/wazuh-manager/certs/remoted.pem` |
+| `WAZUH_REMOTE_HTTPS_KEY` | `remote.https.key` | `/etc/wazuh-manager/certs/remoted-key.pem` |
+| `WAZUH_REMOTE_HTTPS_CA_CERTIFICATE` | `remote.https.ca_certificate` | `/etc/wazuh-manager/certs/root-ca.pem` |
 | `WAZUH_REMOTE_HTTPS_CA` | `remote.https.ca` | not set |
-| `WAZUH_REMOTE_HTTPS_VERIFICATION_MODE` | `remote.https.verification_mode` | not set (`none`) |
-| `WAZUH_REMOTE_HTTPS_CIPHERS` | `remote.https.ciphers` | not set |
-| `WAZUH_REMOTE_HTTPS_MAX_BODY_SIZE` | `remote.https.max_body_size` | not set (`20MB`) |
+| `WAZUH_REMOTE_HTTPS_VERIFICATION_MODE` | `remote.https.verification_mode` | not set (`certificate` when `WAZUH_REMOTE_HTTPS_CA` is set, `none` otherwise) |
+| `WAZUH_REMOTE_HTTPS_CIPHERS` | `remote.https.ciphers` | not set (library default) |
+| `WAZUH_REMOTE_HTTPS_MAX_BODY_SIZE` | `remote.https.max_body_size` | not set (`10M`, 10 MiB) |
 | `WAZUH_REMOTE_HTTPS_DUAL_STACK` | `remote.https.dual_stack` | not set (`no`) |
 | `WAZUH_REMOTE_LEGACY_ENABLED` | `remote.legacy.enabled` | `yes` |
 | `WAZUH_REMOTE_LEGACY_PORT` | `remote.legacy.port` | `1514` |
 | `WAZUH_REMOTE_LEGACY_PROTOCOL` | `remote.legacy.protocol` | `tcp` |
-| `WAZUH_REMOTE_LEGACY_LOCAL_IP` | `remote.legacy.local_ip` | `0.0.0.0` |
+| `WAZUH_REMOTE_LEGACY_LOCAL_IP` | `remote.legacy.local_ip` | `0.0.0.0` (not written when `WAZUH_REMOTE_LEGACY_IPV6='yes'`, so remoted listens on `::`) |
 | `WAZUH_REMOTE_LEGACY_QUEUE_SIZE` | `remote.legacy.queue_size` | `131072` |
 | `WAZUH_REMOTE_LEGACY_IPV6` | `remote.legacy.ipv6` | not set (`no`) |
 | `WAZUH_REMOTE_LEGACY_RIDS_CLOSING_TIME` | `remote.legacy.rids_closing_time` | not set (`5m`) |
@@ -67,59 +89,107 @@ sudo WAZUH_REMOTE_HTTPS_BIND_ADDR='0.0.0.0' WAZUH_REMOTE_HTTPS_PORT='1517' rpm -
 
 Options marked "not set" are only written to the configuration file when their variable is provided; the value in parentheses is the built-in default applied by `wazuh-manager-remoted`. See the [remoted configuration reference](../modules/remoted/configuration.md) for the meaning and accepted values of each option.
 
-`WAZUH_REMOTE_HTTPS_CERTIFICATE` and `WAZUH_REMOTE_HTTPS_KEY` must be provided together. When they are, the installer does not generate the default self-signed certificate: the referenced files are managed by the administrator. `WAZUH_REMOTE_HTTPS_VERIFICATION_MODE` values `certificate` and `full` require `WAZUH_REMOTE_HTTPS_CA`.
+The generated configuration always contains a `<legacy>` block with `<enabled>yes</enabled>`, so an installed manager listens for 4.x agents on port `1514/tcp` as well as on the HTTPS listener (`1517`). That is the installer's choice, not the configuration default: a `<remote>` block with no `<legacy>` block leaves the legacy listener off. Install with `WAZUH_REMOTE_LEGACY_ENABLED='no'`, or set [`legacy.enabled`](../modules/remoted/configuration.md#legacyenabled) to `no` afterwards, for a manager that serves 5.x agents only.
+
+Write `WAZUH_REMOTE_HTTPS_MAX_BODY_SIZE` as the configuration accepts it — a byte count with an optional single-letter suffix (`B`, `K`, `M`, `G`), such as `20M`. The installer's own check also lets a two-letter suffix such as `20MB` through, which the configuration validator then refuses, aborting a fresh installation.
+
+`WAZUH_REMOTE_HTTPS_CERTIFICATE` and `WAZUH_REMOTE_HTTPS_KEY` must be provided together. Pointing them anywhere other than the default `/etc/wazuh-manager/certs/remoted.pem`/`remoted-key.pem` opts out of the certificates the manager issues for itself: the referenced files are then provisioned and managed by the administrator (see [Using certificates issued elsewhere](#using-certificates-issued-elsewhere) and [Credentials](credentials.md#certificates)). `WAZUH_REMOTE_HTTPS_VERIFICATION_MODE` values `certificate` and `full` require `WAZUH_REMOTE_HTTPS_CA`.
 
 `WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX` is the URL path every HTTPS endpoint is served under (for example, `/stateless` is exposed as `/wazuh-manager/stateless`). Set it to `/` to serve the endpoints unprefixed. Agents must be configured with the same prefix: the request signature covers the full request path exactly as sent, so a proxy in between must forward it untouched, and a prefix mismatch between agent and manager surfaces as `404`.
 
 > [!IMPORTANT]
-> `WAZUH_REMOTE_HTTPS_CERTIFICATE`, `WAZUH_REMOTE_HTTPS_KEY` and `WAZUH_REMOTE_HTTPS_CA` must be paths relative to the installation directory, such as `etc/certs/remoted.crt`. `wazuh-manager-remoted` chroots to `/var/wazuh-manager` before opening them, so a host-absolute path like `/etc/pki/wazuh/server.crt` passes validation but is opened as `/var/wazuh-manager/etc/pki/wazuh/server.crt` at runtime. When the file is not there, the HTTPS server fails to start and takes the legacy agent listener down with it: the service reports `active` while nothing is listening. The files must exist and be readable by the `wazuh-manager` user before the manager is started; the installer does not create them and does not adjust their ownership.
+> `WAZUH_REMOTE_HTTPS_CERTIFICATE`, `WAZUH_REMOTE_HTTPS_KEY` and `WAZUH_REMOTE_HTTPS_CA_CERTIFICATE` must name files directly in `/etc/wazuh-manager/certs`, given as absolute paths as the defaults are, such as `/etc/wazuh-manager/certs/remoted.crt`. The credential check that runs before every start refuses any other location, a relative path included (it resolves against the installation directory `/var/wazuh-manager`), with `Invalid credentials. Exiting` and `INVALID remote.https.certificate: … is outside /etc/wazuh-manager/certs, the only place the resolver checks …`; it also requires each file to be `root:wazuh-manager` `0640` (`Unsafe credentials. Exiting` otherwise). The credential resolver issues only the default `remoted.pem`/`remoted-key.pem` pair and `root-ca.pem` bundle: a file under another name is yours to provision before the manager is started, and while it is absent the start is refused with `Unresolved credentials. Exiting` (`MISSING …: configured as remote.https.certificate …; stage the pair …`). See [Configured file names](credentials.md#configured-file-names).
+>
+> `WAZUH_REMOTE_HTTPS_CA` is not checked by the resolver. Give it as an absolute path; a relative one resolves against `/var/wazuh-manager` (every daemon runs with it as its working directory), so `wazuh-manager-remoted` opens a path exactly as `wazuh-manager-conf validate` checked it. Under the systemd unit (`ProtectHome=yes`, `PrivateTmp=yes`) a file under `/home`, `/root`, `/run/user` or the host's `/tmp` is not visible. When the file is missing, `wazuh-manager-control start` refuses to start anything (`(1244): Invalid configuration at '/remote/https/ca': file not found: …`); when it exists but the `wazuh-manager` user cannot read it and `verification_mode` is `certificate` or `full`, `wazuh-manager-remoted` exits at startup (`Cannot start the HTTPS agent listener: …`).
 
 ### Configuration
 
-#### Deploy certificates
+#### Credentials and certificates
 
-Deploy the SSL certificates for secure communication between the Wazuh server and indexer. These certificates should be extracted from the `wazuh-certificates.tar` file generated during the certificate creation process.
+The manager sets up every credential it needs with its credential resolver: the two Server API passwords, the
+indexer password, its own CA and two server pairs, and its trust in the indexer. It runs when the package is
+installed, the only moment the CA is minted and the server pairs are issued, and again before every start, when it
+checks everything and completes the passwords and the indexer trust. On a single host where the indexer is already installed there is nothing to configure:
+the manager generates what it owns and imports the indexer's CA, client pair and password from
+`/etc/wazuh-indexer/export/`. Install order does not matter: what a component could not resolve at install time
+is resolved when it starts.
 
-```bash
-NODE_NAME=node-1
-
-# Create certificates directory
-sudo mkdir -p /var/wazuh-manager/etc/certs
-
-# Extract and deploy certificates
-sudo tar -xf wazuh-certificates.tar -C /var/wazuh-manager/etc/certs/ ./$NODE_NAME.pem ./$NODE_NAME-key.pem ./root-ca.pem
-sudo mv /var/wazuh-manager/etc/certs/$NODE_NAME.pem /var/wazuh-manager/etc/certs/indexer-connector.pem
-sudo mv /var/wazuh-manager/etc/certs/$NODE_NAME-key.pem /var/wazuh-manager/etc/certs/indexer-connector-key.pem
-
-# Set ownership and permissions on the indexer certificates.
-# The installer creates etc/certs as root:wazuh-manager with the sticky bit (1770)
-# and the daemons self-generate their own certificates (authd, remoted, apid) there
-# as wazuh-manager:wazuh-manager. Only the externally provisioned indexer material is
-# owned by root:wazuh-manager 0640, so the manager can read it after dropping
-# privileges but cannot replace its own trust anchor.
-sudo chown root:wazuh-manager \
-    /var/wazuh-manager/etc/certs/root-ca.pem \
-    /var/wazuh-manager/etc/certs/indexer-connector.pem \
-    /var/wazuh-manager/etc/certs/indexer-connector-key.pem
-sudo chmod 640 \
-    /var/wazuh-manager/etc/certs/root-ca.pem \
-    /var/wazuh-manager/etc/certs/indexer-connector.pem \
-    /var/wazuh-manager/etc/certs/indexer-connector-key.pem
-```
-
-**Note:** Replace `node-1` with the name you used when generating the certificates.
-
-#### Configure indexer connection
-
-Configure the Wazuh server to connect to the Wazuh indexer using the secure keystore:
+When the indexer runs on another host, give the manager what it cannot invent or import. Copy the indexer's
+`ca.pem` and the client pair it issued for this manager (`manager-client.pem`, `manager-client-key.pem`, from the
+indexer's `/etc/wazuh-indexer/export/`) into the manager's certificates directory under the names below, and put
+the password in `/etc/wazuh-manager/local.env`:
 
 ```bash
-# Set indexer credentials (default: wazuh-manager/wazuh-manager)
-sudo /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -v wazuh-manager
-sudo /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v wazuh-manager
+sudo install -m 0640 -o root -g wazuh-manager ca.pem /etc/wazuh-manager/certs/indexer-ca.pem
+sudo install -m 0640 -o root -g wazuh-manager manager-client.pem /etc/wazuh-manager/certs/indexer-connector.pem
+sudo install -m 0640 -o root -g wazuh-manager manager-client-key.pem /etc/wazuh-manager/certs/indexer-connector-key.pem
+sudo install -m 0600 -o root -g root /dev/null /etc/wazuh-manager/local.env
+echo "WAZUH_INDEXER_MANAGER_PASSWORD='<the wazuh-manager password on the indexer>'" \
+    | sudo tee /etc/wazuh-manager/local.env > /dev/null
 ```
 
-Update the indexer configuration in `/var/wazuh-manager/etc/wazuh-manager.conf` to specify the indexer IP address:
+The generated Server API passwords are published, readable by root only, in
+`/etc/wazuh-manager/export/credentials.env`; the dashboard on the same host reads its own from there.
+
+See **[Credentials](credentials.md)** for every file and key, the password policy, the certificate rules and what
+to do when the manager refuses to start.
+
+#### Using certificates issued elsewhere
+
+A distributed deployment, a corporate PKI, cert-manager or Vault all issue the manager's certificates outside the
+host. Stage them **before** installing the package, so the install issues nothing, or replace the pairs it issued
+afterwards. Staged files are validated at every start and never replaced.
+
+The manager uses two server pairs of its own, issued by one CA, and the indexer's trust:
+
+| File in `/etc/wazuh-manager/certs/` | Content |
+|---|---|
+| `remoted.pem`, `remoted-key.pem` | the agent listener's chain (a `serverAuth` leaf, followed by its CA) and key, served by `wazuh-manager-remoted` and reused by `wazuh-manager-authd` on port 1515 |
+| `apid.pem`, `apid-key.pem` | the Server API's chain (a `serverAuth` leaf, `CA:FALSE`, with a SAN extension, followed by its CA) and key |
+| `root-ca.pem` | the agents' CA bundle; must contain the CA in `/etc/wazuh-manager/ca/root-ca.pem` |
+| `indexer-ca.pem` | the indexer's CA |
+| `indexer-connector.pem`, `indexer-connector-key.pem` | the client pair the indexer issued for this manager (`clientAuth`) and its key |
+
+When your PKI issued the server pairs from an intermediate CA, `apid.pem` carries the leaf followed by the
+intermediates, the intermediate that issued the remoted leaf is added to `certs/root-ca.pem` (agents receive that
+file alone), and `ca/root-ca.pem` stays the root; see [Server pairs](credentials.md#server-pairs).
+
+The CA that issued the two server pairs goes in `/etc/wazuh-manager/ca/root-ca.pem` (`root:root 0644` in a
+`root:root 0700` directory). Its key, `root-ca.key`, is only needed where the manager should issue pairs itself;
+without it nothing can be signed on this host. With pairs staged and no CA in `ca/`, the install does not mint a
+second one beside them: it reports `MISSING /etc/wazuh-manager/ca/root-ca.pem: stage the CA that issued the pairs`.
+
+```bash
+# <node>-remoted.pem, ... stand for the files your PKI issued for this node.
+sudo install -d -m 0700 -o root -g root /etc/wazuh-manager/ca
+sudo install -m 0644 -o root -g root root-ca.pem /etc/wazuh-manager/ca/root-ca.pem
+sudo install -m 0640 -o root -g wazuh-manager root-ca.pem /etc/wazuh-manager/certs/root-ca.pem
+sudo install -m 0640 -o root -g wazuh-manager <node>-remoted.pem /etc/wazuh-manager/certs/remoted.pem
+sudo install -m 0640 -o root -g wazuh-manager <node>-remoted-key.pem /etc/wazuh-manager/certs/remoted-key.pem
+sudo install -m 0640 -o root -g wazuh-manager <node>-apid.pem /etc/wazuh-manager/certs/apid.pem
+sudo install -m 0640 -o root -g wazuh-manager <node>-apid-key.pem /etc/wazuh-manager/certs/apid-key.pem
+```
+
+If the install already minted a CA before you staged yours, remove `ca/root-ca.key` and
+`ca/.wazuh-manager-bootstrap-ca`, put your CA in `ca/root-ca.pem`, and replace `certs/root-ca.pem` and the pairs
+as above: the bundle is never rewritten, and pairs issued by the minted CA no longer chain. The next start
+publishes the new CA in `/etc/wazuh-manager/export/ca.pem`.
+
+Every file in `/etc/wazuh-manager/certs` is `root:wazuh-manager` `0640`, in a `root:wazuh-manager` `0750`
+directory: the daemons read their pairs after dropping privileges, through the group, but cannot replace or loosen
+them. To serve another certificate on the API, use other file names in `/etc/wazuh-manager/certs` and point
+`https.key` and `https.cert` at them, with the same owner and mode.
+
+Before every start, the credential resolver checks each pair: that it parses, matches its key, is inside its
+validity window, is issued by its CA, and (for the indexer client pair) carries `clientAuth`. A problem stops the
+start with a line naming the file; see [When the manager does not start](credentials.md#when-the-manager-does-not-start).
+Check what a node presents with `openssl x509 -in /etc/wazuh-manager/certs/remoted.pem -noout -text`.
+
+#### Configure the indexer address
+
+Update the `<indexer>` block of `/etc/wazuh-manager/wazuh-manager.conf` with the indexer address.
+The credentials are not configured here — they live in the manager's keystore, written by the
+credential resolver. The installer generates this block:
 
 ```xml
 <indexer>
@@ -128,126 +198,115 @@ Update the indexer configuration in `/var/wazuh-manager/etc/wazuh-manager.conf` 
   </hosts>
   <ssl>
     <certificate_authorities>
-      <ca>/var/wazuh-manager/etc/certs/root-ca.pem</ca>
+      <ca>/etc/wazuh-manager/certs/indexer-ca.pem</ca>
     </certificate_authorities>
-    <certificate>/var/wazuh-manager/etc/certs/indexer-connector.pem</certificate>
-    <key>/var/wazuh-manager/etc/certs/indexer-connector-key.pem</key>
+    <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
+    <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
   </ssl>
 </indexer>
 ```
 
-Replace `127.0.0.1` with your indexer IP address if it's running on a different host.
+Replace `127.0.0.1` with your indexer IP address if it's running on a different host. The `<ssl>`
+files must stay directly in `/etc/wazuh-manager/certs`, given as absolute paths: a relative path resolves against
+the installation directory `/var/wazuh-manager`, and the credential check refuses any file outside `certs/`
+([Configured file names](credentials.md#configured-file-names)). See the
+[indexer connector configuration](../modules/indexer_connector/configuration.md) for every option.
 
 ### Start the manager
 
-Start and enable the server service:
+On a fresh installation neither the packages nor `install.sh` start or enable the service: you start
+it when the deployment is ready. (An upgrade restarts a manager that was running before it.) Set
+`USER_AUTO_START="y"` in `etc/preloaded-vars.conf` to have `install.sh` start it anyway. A fresh package
+install ends by printing where the Server API passwords are (only when it published them: a resolver run
+stopped by an unsafe or invalid entry writes nothing), whether the credential
+resolution is incomplete and the command that completes it, and the command to start the service (and to
+enable it at boot, when systemd is running).
+
+Every start first validates the configuration file, then checks the credentials and certificates, the files the
+configuration names and each daemon's own test, and finally completes the passwords and the indexer credential;
+it starts no daemon when any step fails ([the order and the messages](credentials.md#when-the-manager-does-not-start)).
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable wazuh-manager
-sudo systemctl start wazuh-manager
+sudo systemctl enable --now wazuh-manager
 ```
 
 Verify the server is running:
 
 ```bash
 sudo systemctl status wazuh-manager
+sudo /var/wazuh-manager/bin/wazuh-manager-control status
 ```
 
-### Change the default API passwords
+`wazuh-manager-control status` prints one `<daemon> is running...` line per daemon and exits `1` when
+any of them is down. `wazuh-manager-apid` is listed only on a master node, and
+`wazuh-manager-authd` only when `auth.disabled` is not set.
 
-The manager ships two Server API users. Both are linked to the `administrator` role and both are created with a password equal to the username the first time the API starts (`framework/wazuh/rbac/default/users.yaml`):
+If it refuses to start, `wazuh-manager-control` (and so the journal) prints one line ending in `Exiting`:
+`wazuh-manager.conf: Configuration error.` or `<daemon>: Configuration error.` for the configuration, or
+`Unsafe credentials.`, `Invalid credentials.`, `Unresolved credentials.` or `Cannot check the credentials.` for the
+credentials. `/var/wazuh-manager/logs/wazuh-manager.log` records the reason: the `(1244)` verdict naming the
+option or file, or `wazuh-manager-control: ERROR: unresolved credentials` (or `unsafe`, `invalid`) followed by
+the resolver's lines naming the file or key and what to do. Fix it and start the service again; no reinstall is
+needed. See [When the manager does not start](credentials.md#when-the-manager-does-not-start).
 
-| User        | Default password | Used by                                                      |
-| ----------- | ---------------- | ------------------------------------------------------------ |
-| `wazuh`     | `wazuh`          | Operators and automation calling the Server API              |
-| `wazuh-wui` | `wazuh-wui`      | The Wazuh dashboard, to reach the Server API on port 55000   |
+### Server API users
 
-While a user keeps its shipped password, `wazuh-manager-apid` says so on every start:
+The manager ships two Server API users, both linked to the `administrator` role:
 
-```
-WARNING: The 'wazuh' API user still has its default password. Anyone able to reach the API can use it.
-Change it with '/var/wazuh-manager/bin/rbac_control change-password'
-```
+| User | Used by |
+| ---- | ------- |
+| `wazuh` | Operators and automation calling the Server API |
+| `wazuh-internal-client` | The Wazuh dashboard, to reach the Server API on port 55000 |
 
-Change both right after the first start. A password must be 12 to 64 characters long and contain at least one uppercase letter, one lowercase letter, one digit and one non-alphanumeric character; the API rejects anything else with error `5009` (length) or `5007` (character classes).
+Neither ships with a password. Each is seeded on the first installation with the value supplied
+through `WAZUH_MANAGER_API_PASSWORD` / `WAZUH_MANAGER_WUI_PASSWORD`, or with a freshly generated one
+when nothing supplies it, and the result is published in `/etc/wazuh-manager/export/credentials.env`. Two
+independent installations therefore never share a credential. An already-seeded `rbac.db` is never reseeded, so
+changing a supplied value later does not change a password the manager already holds. See
+[Credentials](credentials.md#the-keys) for the keys and
+[the password policy](credentials.md#the-password-policy).
 
-Run the following on the **master node**: authentication is always resolved there, so that is the database the API reads. Every node keeps its own `api/configuration/security/rbac.db` and the cluster does not synchronize it, so a worker still holds the shipped defaults; they stay unused while it is a worker, but they become live the moment it is promoted to master. Repeat the change on any node that may take that role.
+To change one afterwards, run `rbac_control change-password` on any node. It prompts for each
+default user (Enter leaves one unchanged) and always applies the change to the **master node's**
+database, which is the one the Server API reads: run on a worker, the request is forwarded to the
+master. The cluster does not synchronize `rbac.db`, so a node promoted to master later serves its
+own: the one it seeded while it was configured as master (the generated configuration makes every
+node a master until you change it), or one seeded at its first start as master when it has none. A
+password changed with this command is not carried over to it. The file-driven forms are in [Default users](../modules/server-api/authentication.md#default-users).
 
 ```bash
 sudo /var/wazuh-manager/bin/rbac_control change-password
 ```
 
-The tool prompts for a new password for each default user and applies them in one run. Press Enter to leave a user unchanged.
-
-```
-New password for 'wazuh' (skip):
-New password for 'wazuh-wui' (skip):
-	wazuh: UPDATED
-	wazuh-wui: UPDATED
-```
-
-For unattended installs the same command reads the passwords from a file, so they never reach the process list, and exits non-zero if any change was not applied:
+The same change can be made through the API, which is the option for automation. `wazuh` has ID `1`
+and `wazuh-internal-client` has ID `2` (`GET /security/users`). Change `wazuh-internal-client` first: changing a user's
+password invalidates every token that user holds, so once `wazuh`'s own password changes the token
+obtained below stops working.
 
 ```bash
-# One user, password read from the first line of a file ('-' reads the standard input)
-sudo /var/wazuh-manager/bin/rbac_control change-password --user wazuh-wui --password-file /root/wui.pass
-
-# Both default users in a single execution
-echo '{"wazuh": "<NEW_WAZUH_PASSWORD>", "wazuh-wui": "<NEW_WAZUH_WUI_PASSWORD>"}' \
-    | sudo /var/wazuh-manager/bin/rbac_control change-password --passwords-file -
-```
-
-The same change can be made through the API, which is the option for automation. `wazuh` has ID `1` and `wazuh-wui` has ID `2` (`GET /security/users`). Change `wazuh-wui` first: changing a user's password invalidates every token that user holds, so once `wazuh`'s own password changes the token obtained below stops working.
-
-```bash
-TOKEN=$(curl -s -k -u wazuh:wazuh -X POST "https://localhost:55000/security/user/authenticate?raw=true")
+TOKEN=$(curl -s -k -u wazuh:<WAZUH_MANAGER_API_PASSWORD> -X POST "https://localhost:55000/security/user/authenticate?raw=true")
 curl -s -k -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-    -d '{"password":"<NEW_WAZUH_WUI_PASSWORD>"}' "https://localhost:55000/security/users/2"
+    -d '{"password":"<NEW_WAZUH_MANAGER_WUI_PASSWORD>"}' "https://localhost:55000/security/users/2"
 curl -s -k -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-    -d '{"password":"<NEW_WAZUH_PASSWORD>"}' "https://localhost:55000/security/users/1"
+    -d '{"password":"<NEW_WAZUH_MANAGER_API_PASSWORD>"}' "https://localhost:55000/security/users/1"
 ```
-
-No manager daemon needs a restart: the new password applies to the next authentication, and the tokens of the modified user are revoked at once (`Invalid token`). Tokens held by other users are unaffected. No other manager component uses these accounts, so nothing else on the manager has to be updated.
-
-**If you changed `wazuh-wui`, update the dashboard right away.** This step applies to that user only, on the host where the Wazuh dashboard runs — changing `wazuh` needs nothing here. The dashboard keeps its own copy of the `wazuh-wui` password and cannot reach the API until it matches: every page load fails with `3002 - Request failed with status code 401`. Each of those failures counts as a login attempt on the API, and after `max_login_attempts` (50) the API blocks the dashboard's IP for `block_time` (300 seconds) — the error then becomes `403` and stays that way until the block expires, even after the password is fixed. On a host installed from packages the copy is in `/etc/wazuh-dashboard/opensearch_dashboards.yml`, read once at startup:
-
-```yaml
-wazuh_core.hosts:
-  default:
-    url: https://<MANAGER_IP>
-    port: 55000
-    username: wazuh-wui
-    password: <NEW_WAZUH_WUI_PASSWORD>
-    run_as: true
-```
-
-```bash
-sudo systemctl restart wazuh-dashboard
-```
-
-In containers the manager side is the same command through the container runtime — `docker compose exec wazuh.manager /var/wazuh-manager/bin/rbac_control change-password`, or `kubectl exec -n wazuh wazuh-manager-master-0 -- …` — and the dashboard image takes the credential from its `API_USERNAME`/`API_PASSWORD` environment variables (in Kubernetes, the `wazuh-api-cred` Secret), so update those and recreate the dashboard container or roll out the deployment. The RBAC database persists in the manager's `api/configuration` volume.
-
-The installation assistant ships `wazuh-passwords-tool.sh`, which wraps the same API call for one user per run and needs every argument of its API mode:
-
-```bash
-bash wazuh-passwords-tool.sh -A -au <API_ADMIN_USER> -ap <API_ADMIN_PASSWORD> -u wazuh-wui -p <NEW_WAZUH_WUI_PASSWORD>
-```
-
-It is not a replacement for `rbac_control change-password`: run with `-A` alone it prints its usage and exits `1`, and it changes a single user per invocation. When the user given to `-u` is `wazuh-wui` **and** a Wazuh dashboard is installed on that same host, it also rewrites the dashboard file described above; in every other case that file is left untouched. The tool requires the package layout of a host installation, so it does not apply to the container paths.
 
 See [Default users](../modules/server-api/authentication.md#default-users) for the `allow_run_as` semantics, the endpoint rules that apply to these reserved users, and [what a password change does and does not do](../modules/server-api/authentication.md#what-a-password-change-does-and-does-not-do).
 
+
 ### Cluster configuration
 
-The Wazuh server cluster allows you to scale horizontally by distributing the load across multiple nodes. The cluster comes enabled by default with the following configuration in `/var/wazuh-manager/etc/wazuh-manager.conf`:
+Every 5.x manager is a cluster node. The installer generates this block in
+`/etc/wazuh-manager/wazuh-manager.conf`, with a `<key>` of 32 random hexadecimal characters drawn
+for each installation (shown here as `GENERATED_KEY`):
 
 ```xml
 <cluster>
   <name>wazuh</name>
   <node_name>node01</node_name>
   <node_type>master</node_type>
-  <key>fd3350b86d239654e34866ab3c4988a8</key>
+  <key>GENERATED_KEY</key>
   <port>1516</port>
   <bind_addr>127.0.0.1</bind_addr>
   <nodes>
@@ -259,16 +318,19 @@ The Wazuh server cluster allows you to scale horizontally by distributing the lo
 
 #### Multi-node deployment
 
-For a multi-node cluster deployment, you need to configure one master node and one or more worker nodes. Follow these steps on each node:
+A multi-node cluster has one master node and one or more worker nodes. Because each installation
+draws its own key, copy the master's `<key>` to every worker. Before installing the nodes, supply the
+same credentials and CA to all of them — see
+[Cluster deployments](credentials.md#cluster-deployments).
 
-1. **On the master node**, edit `/var/wazuh-manager/etc/wazuh-manager.conf`:
+1. **On the master node**, edit `/etc/wazuh-manager/wazuh-manager.conf`:
 
 ```xml
 <cluster>
   <name>wazuh</name>
   <node_name>master-node</node_name>
   <node_type>master</node_type>
-  <key>fd3350b86d239654e34866ab3c4988a8</key>
+  <key>MASTER_KEY</key>
   <port>1516</port>
   <bind_addr>0.0.0.0</bind_addr>
   <nodes>
@@ -278,16 +340,17 @@ For a multi-node cluster deployment, you need to configure one master node and o
 </cluster>
 ```
 
-Replace `MASTER_NODE_IP` with the actual IP address of the master node.
+Keep the `<key>` the installer generated (shown here as `MASTER_KEY`), and replace `MASTER_NODE_IP`
+with the actual IP address of the master node.
 
-2. **On each worker node**, edit `/var/wazuh-manager/etc/wazuh-manager.conf`:
+2. **On each worker node**, edit `/etc/wazuh-manager/wazuh-manager.conf`:
 
 ```xml
 <cluster>
   <name>wazuh</name>
   <node_name>worker-node-01</node_name>
   <node_type>worker</node_type>
-  <key>fd3350b86d239654e34866ab3c4988a8</key>
+  <key>MASTER_KEY</key>
   <port>1516</port>
   <bind_addr>0.0.0.0</bind_addr>
   <nodes>
@@ -297,7 +360,8 @@ Replace `MASTER_NODE_IP` with the actual IP address of the master node.
 </cluster>
 ```
 
-Replace `MASTER_NODE_IP` with the actual IP address of the master node, and use a unique `node_name` for each worker.
+Replace `MASTER_KEY` with the master's key, `MASTER_NODE_IP` with the actual IP address of the master
+node, and use a unique `node_name` for each worker.
 
 3. **Restart the Wazuh manager service** on all nodes after making configuration changes:
 
@@ -311,42 +375,42 @@ sudo systemctl restart wazuh-manager
 sudo /var/wazuh-manager/bin/cluster_control -l
 ```
 
-### Configuration parameters
-
-**`name`**\
-Name of the cluster. All nodes must use the same cluster name.
-
-**`node_name`**\
-Unique name for each node in the cluster.
-
-**`node_type`**\
-Node role, either `master` or `worker`. Only one master node is allowed per cluster.
-
-**`key`**\
-Pre-shared key for cluster authentication. All nodes must use the same key.
-
-**`port`**\
-Port for cluster communication. Default: `1516`.
-
-**`bind_addr`**\
-IP address to bind the cluster listener. Use `0.0.0.0` to listen on all interfaces.
-
-**`nodes`**\
-List of master node IP addresses for worker nodes to connect to.
-
-**`hidden`**\
-Whether the node is hidden from the cluster. Default: `no`.
+Every option, with its type, default and range, is in the
+[cluster configuration reference](../modules/cluster/configuration.md).
 
 ## Agent
 
+A 5.0 agent registers with an **enrollment token**. The token names the manager, pins the certificate authority that signs the agent-facing certificate of the manager it was minted on, and carries the enrollment credential. Tokens are minted on the manager (in a cluster, on the master node, whichever node the token's address names). With the manager running, mint one naming the address the agents will connect to:
+
+```bash
+sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address mgr.example.com
+```
+
+The token is printed on standard output, once: no command retrieves it later. `--address` must be a name in the subject alternative names of the manager's `remote.https.certificate`, and `--port`, `--prefix`, `--ttl`, `--max-uses`, `--description`, `--embed-ca` and `--no-credential` shape the token. See [minting a token](../modules/authd/enrollment-lifecycle.md#step-1-the-operator-mints-a-token) for every check the mint makes, and [Enrollment tokens](../modules/authd/README.md#enrollment-tokens) for listing, revocation and the refusal rules.
+
+A token comes in three shapes, and every installation method below accepts any of them:
+
+| Shape | Minted with | What the agent does with it |
+|---|---|---|
+| Pinned | the default | Fetches the manager's CA, installs only the certificate that matches the pin in the token as the trust anchor |
+| Embedded CA | `--embed-ca` | Installs every CA certificate the token carries as the trust anchor; no fetch |
+| Credential-less | `--no-credential` | Points the agent at the manager and installs the trust anchor, but presents no enrollment credential |
+
+In a [CA rotation](../modules/remoted/ca-rotation.md#enrollment-tokens-and-a-rotation) that changes the CA key, pinned tokens minted before the manager's certificates are replaced, and `--embed-ca` tokens minted before the new CA was added, stop working once the certificates are replaced; agents already enrolled with them are not affected. Mint new ones for any still used to enroll agents once every node's certificate has been replaced.
+
 > [!IMPORTANT]
-> Enrollment password protection is enabled by default in Wazuh 5.0. Before enrolling agents, you must retrieve the auto-generated password from the manager using:
-> 
-> ```bash
-> sudo cat /var/wazuh-manager/etc/authd.pass
-> ```
-> 
-> Pass this password to the installer using the `WAZUH_REGISTRATION_PASSWORD` environment variable (or `/tmp/wazuh_envs` on macOS, or the installer arguments on Windows) as shown in the examples below.
+> Every token expires: 30 days by default, 3650 days at most. Expiry is checked by the manager, not by the installer, so an agent given a stale token installs and starts normally and then fails to register. The agent log names the token id the manager refused.
+
+### Installation methods
+
+| Method | How the agent is installed | How it registers |
+|---|---|---|
+| **One-line command** | The command the dashboard generates, which carries the token | During the package install |
+| **Package (Linux/macOS)** | `dpkg`, `rpm` or `installer` | Afterwards, with [`wazuh-agent-auth`](../modules/client/README.md#enrolling-or-re-pointing-an-agent), when the install passed no token |
+| **Package (Windows)** | The MSI | Afterwards, from the tray GUI's **Manage** menu (or [`wazuh-agent-auth`](../modules/client/README.md#enrolling-or-re-pointing-an-agent)), when the install passed no token |
+| **From sources** | `install.sh` | Afterwards, with [`wazuh-agent-auth`](../modules/client/README.md#enrolling-or-re-pointing-an-agent) |
+
+The one-line command comes from the dashboard's *Deploy new agent* page. It sets the deployment variables, downloads the package and installs it. Copy it and run it on the endpoint. The agent name and the groups are optional, as they were before, and are only set when you fill them in.
 
 ### Download package
 
@@ -360,10 +424,10 @@ Download the Wazuh agent package for your platform and version. See the [Package
 sudo dpkg -i wazuh-agent_*.deb
 ```
 
-You can optionally specify configuration parameters (such as the manager IP and the required registration password):
+The deployment variables below are passed as environment variables, which is what the dashboard's one-line command does:
 
 ```bash
-sudo WAZUH_MANAGER='10.0.0.2' WAZUH_REGISTRATION_PASSWORD='<PASSWORD>' WAZUH_AGENT_NAME='web-server-01' dpkg -i wazuh-agent_*.deb
+sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' WAZUH_AGENT_NAME='web-server-01' dpkg -i wazuh-agent_*.deb
 ```
 
 #### Red Hat-based platforms
@@ -372,10 +436,8 @@ sudo WAZUH_MANAGER='10.0.0.2' WAZUH_REGISTRATION_PASSWORD='<PASSWORD>' WAZUH_AGE
 sudo rpm -ivh wazuh-agent-*.rpm
 ```
 
-You can optionally specify configuration parameters:
-
 ```bash
-sudo WAZUH_MANAGER='10.0.0.2' WAZUH_REGISTRATION_PASSWORD='<PASSWORD>' WAZUH_AGENT_NAME='web-server-01' rpm -ivh wazuh-agent-*.rpm
+sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' WAZUH_AGENT_NAME='web-server-01' rpm -ivh wazuh-agent-*.rpm
 ```
 
 #### SUSE-based platforms
@@ -384,10 +446,8 @@ sudo WAZUH_MANAGER='10.0.0.2' WAZUH_REGISTRATION_PASSWORD='<PASSWORD>' WAZUH_AGE
 sudo rpm -ivh wazuh-agent-*.rpm
 ```
 
-You can optionally specify configuration parameters:
-
 ```bash
-sudo WAZUH_MANAGER='10.0.0.2' WAZUH_REGISTRATION_PASSWORD='<PASSWORD>' WAZUH_AGENT_NAME='web-server-01' rpm -ivh wazuh-agent-*.rpm
+sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' WAZUH_AGENT_NAME='web-server-01' rpm -ivh wazuh-agent-*.rpm
 ```
 
 #### Starting the agent
@@ -406,6 +466,14 @@ Verify the agent is running:
 sudo systemctl status wazuh-agent
 ```
 
+Shortly after its first connection the agent reloads itself once. It downloads its group's shared configuration from the manager and applies it, and `/var/ossec/logs/ossec.log` records:
+
+```
+Agent is reloading due to shared configuration changes.
+```
+
+This is expected, not a crash: `systemctl status` shows the reload, and the service stays active. With `<auto_restart>no</auto_restart>` the first reload still happens and logs `Agent is reloading to apply startup hash validated configuration.` instead. See [`auto_restart`](../modules/client/configuration.md#auto_restart).
+
 ### macOS
 
 Install the agent:
@@ -414,10 +482,10 @@ Install the agent:
 sudo installer -pkg wazuh-agent-*.pkg -target /
 ```
 
-You can optionally specify configuration parameters by writing them to `/tmp/wazuh_envs` before running the installer:
+macOS takes its deployment variables from `/tmp/wazuh_envs`, one `NAME='value'` per line. The installer sources that file and then deletes it:
 
 ```bash
-echo "WAZUH_MANAGER='10.0.0.2'" > /tmp/wazuh_envs && echo "WAZUH_REGISTRATION_PASSWORD='<PASSWORD>'" >> /tmp/wazuh_envs && echo "WAZUH_AGENT_NAME='macbook-01'" >> /tmp/wazuh_envs && sudo installer -pkg wazuh-agent-*.pkg -target /
+echo "WAZUH_ENROLLMENT_TOKEN='<TOKEN>'" > /tmp/wazuh_envs && echo "WAZUH_AGENT_NAME='macbook-01'" >> /tmp/wazuh_envs && sudo installer -pkg wazuh-agent-*.pkg -target /
 ```
 
 Start the agent service:
@@ -434,16 +502,18 @@ sudo /Library/Ossec/bin/wazuh-control status
 
 ### Windows
 
+In the commands below, replace `<MSI_PATH>` with the full path of the downloaded MSI (see [Package paths by format](packages.md#package-paths-by-format) for the file name). `Start-Process -Wait` returns only when the installer finishes, and the command prints the msiexec exit code: `0` or `3010` (restart pending) mean success, and any other value is a [Windows Installer error code](https://learn.microsoft.com/en-us/windows/win32/msi/error-codes).
+
 Install the agent silently:
 
 ```powershell
-wazuh-agent-*.msi /q
+(Start-Process msiexec.exe -ArgumentList '/i "<MSI_PATH>" /q' -Wait -PassThru).ExitCode
 ```
 
-You can optionally specify configuration parameters:
+The deployment variables are MSI properties:
 
 ```powershell
-wazuh-agent-*.msi /q WAZUH_MANAGER="10.0.0.2" WAZUH_REGISTRATION_PASSWORD="<PASSWORD>" WAZUH_AGENT_NAME="windows-server-01"
+(Start-Process msiexec.exe -ArgumentList '/i "<MSI_PATH>" /q WAZUH_ENROLLMENT_TOKEN="<TOKEN>" WAZUH_AGENT_NAME="windows-server-01"' -Wait -PassThru).ExitCode
 ```
 
 For interactive installation, double-click the MSI file and follow the installation wizard.
@@ -451,122 +521,120 @@ For interactive installation, double-click the MSI file and follow the installat
 Start the Wazuh Agent service:
 
 ```powershell
-Start-Service -Name wazuh
+Start-Service -Name WazuhSvc
 ```
 
 Verify the agent is running:
 
 ```powershell
-Get-Service -Name wazuh
+Get-Service -Name WazuhSvc
 ```
+
+#### Module signature verification
+
+The agent verifies the signature of the modules it loads, which requires `Microsoft Identity Verification Root Certificate Authority 2020`, the root Azure Artifact Signing chains to, to be trusted. Windows installs it automatically when the agent first needs it. On endpoints where it cannot (automatic root certificate updates disabled, for example with the `DisableRootAutoUpdate` policy, or old systems without the current root list), the agent logs:
+
+```
+The signature of file 'C:\Program Files (x86)\ossec-agent\wazuh-agent.exe' terminated in a root certificate that is not trusted.
+The dynamic signature validation is not available because the CA name('Microsoft Identity Verification Root Certificate Authority 2020') is not available.
+```
+
+The agent keeps running without module verification. To enable it, install the root in the `Trusted Root Certification Authorities` store of the local computer, as described in [KB5022661](https://support.microsoft.com/en-us/topic/kb5022661-windows-support-for-the-azure-code-signing-program-4b505a31-fa1e-4ea6-85dd-6630229e8ef4); the certificate is available in the [Microsoft PKI repository](https://www.microsoft.com/pkiops/docs/repository.htm). Build options are described in [Package generation](../../dev/package-generation.md#windows-agent-package).
+
+### Verifying the agent connected
+
+Check from the manager side. The Server API runs on the master node; list the agent by name and look at its `status`, which reads `active` once it is connected (`pending`, `never_connected` or `disconnected` otherwise). `<WAZUH_MANAGER_API_PASSWORD>` is the current password of the `wazuh` user. Until you change it, that is the `WAZUH_MANAGER_API_PASSWORD` line of `/etc/wazuh-manager/export/credentials.env` on the master (see [The published passwords](credentials.md#the-published-passwords)); the file keeps the install-time value, so after a change use the new password:
+
+```bash
+TOKEN=$(curl -s -k -u wazuh:<WAZUH_MANAGER_API_PASSWORD> -X POST "https://localhost:55000/security/user/authenticate?raw=true")
+curl -s -k -X GET "https://localhost:55000/agents?name=web-server-01&select=id,name,status,ip&pretty=true" \
+    -H "Authorization: Bearer $TOKEN"
+```
+
+Drop `name=` to list every agent. The dashboard shows the same list under **Endpoints**. See [List agents](../modules/server-api/api-reference.md#list-agents) for the other filters.
 
 ### Options
 
-#### Server connection
+#### Enrollment
 
-**`WAZUH_MANAGER`**\
-Specifies the IP address or hostname of the Wazuh server. The agent uses this to establish communication with the server. Superseded by `WAZUH_MANAGER_ENDPOINT` when that is set.
+**`WAZUH_ENROLLMENT_TOKEN`**\
+The enrollment token minted on the manager. The only way to register an agent. The installer decodes it, writes the manager address it carries into `<agent><manager><endpoint>`, and stores the token at `etc/enrollment_token` (`0600`, readable only by root; SYSTEM and Administrators only on Windows). The agent consumes it on its first start: it fetches the manager's CA, checks it against the token's pin, installs it as the trust anchor at `etc/certs/root-ca.pem`, enrolls over a fully verified connection, and deletes the token file.
 
-**`WAZUH_MANAGER_PORT`**\
-Defines the port used to communicate with the Wazuh server. Default: `1517`. Superseded by `WAZUH_MANAGER_ENDPOINT` when that is set.
+A token install needs no TLS configuration of any kind. The anchor arrives with the token.
 
-**`WAZUH_MANAGER_ENDPOINT`**\
-The whole connection target in one value — address, optional port and optional reverse-proxy path prefix. Takes priority over `WAZUH_MANAGER` and `WAZUH_MANAGER_PORT`, which remain supported: when only those are set, an equivalent `<endpoint>` is composed from them. The separate `<address>` and `<port>` configuration settings are no longer written.
+A token that cannot be decoded is a **refusal**: nothing is written, the agent keeps the configuration the package shipped, and the reason is logged with a named code — `ERR_BAD_TOKEN` for a token the decoder rejected or one carrying no address, `ERR_NO_DECODER` when the decoder could not be run at all.
 
-```
-WAZUH_MANAGER_ENDPOINT = [ "https://" ] host [ ":" port ] [ "/" [ prefix ] ]
+#### TLS verification
 
-host   = IPv4 literal, hostname, or a bracketed IPv6 literal   ; REQUIRED
-port   = 1-65535                                               ; default 1517
-prefix = reverse-proxy path segments                           ; default wazuh-manager
-```
+**`WAZUH_SSL_VERIFICATION`**\
+Writes `<agent><ssl><verification_mode>`. Exactly one of `full`, `certificate`, `system` or `none`, matched case-sensitively; any other value is logged and the element is left unset. See [`verification_mode`](../modules/client/configuration.md#verification_mode) for what each mode checks and for the ladder that resolves the mode when this is not set.
 
-The address is the only mandatory component; anything omitted takes its default, so `192.168.0.60` behaves exactly like `192.168.0.60:1517/wazuh-manager/`. The prefix must match the server's own configured prefix.
+Most installs do not need it. A token install resolves to `full` against the anchor it just received, and this variable only overrides that. It matters in two cases: a manager fronted by a publicly trusted certificate, where `system` needs no anchor at all; and an install being configured by hand, where it is the only TLS input a variable can supply.
 
-| Value | Address | Port | Prefix |
-|---|---|---|---|
-| `192.168.0.60` | `192.168.0.60` | `1517` | `/wazuh-manager/` |
-| `manager.example.com:8443` | `manager.example.com` | `8443` | `/wazuh-manager/` |
-| `192.168.0.60/proxy/path` | `192.168.0.60` | `1517` | `/proxy/path/` |
-| `https://192.168.0.60:8443/proxy` | `192.168.0.60` | `8443` | `/proxy/` |
-| `192.168.0.60/` | `192.168.0.60` | `1517` | *none — see below* |
-| `[2001:db8::1]:8443` | `2001:db8::1` | `8443` | `/wazuh-manager/` |
+The mode it writes governs the agent's connections once it is enrolled, not the token enrollment itself. That enrollment is always fully verified against the token's CA, the one it embeds or the one it pins, whatever this variable says, so `none` does not let an agent enroll with a manager whose certificate the token's CA does not vouch for. An agent with an explicit `none` says so before it enrolls, with `(4127)`.
 
-A **trailing slash with nothing after it** opts out of the prefix entirely, for a server that runs without one. Note the difference from omitting the slash: `192.168.0.60` gets the default prefix, while `192.168.0.60/` gets none.
-
-An `https://` scheme is accepted and ignored if present; any other scheme is rejected, since HTTPS is the only transport served. An IPv6 address must be bracketed so its colons are not mistaken for the port separator, and its brackets are dropped from the generated configuration. A link-local IPv6 address may carry a zone id, written with the `%` percent-encoded as `%25` — `[fe80::1%25eth0]` or `[fe80::1%257]`. An interface name is resolved to its index while the configuration is parsed, so a name that does not exist on the host is rejected there rather than failing later as an obscure connection error.
-
-A value that does not match the grammar is rejected: no server block is written, the reason is logged to `ossec.log`, and the agent fails to start rather than connecting somewhere unintended.
-
-The value is written verbatim into the agent's configuration, which takes the same grammar:
-
-```xml
-<agent>
-  <manager>
-    <endpoint>192.168.0.60:1517/wazuh-manager/</endpoint>
-  </manager>
-</agent>
-```
-
-An agent upgraded in place keeps whatever `ossec.conf` it already had, so the older spelling with separate `<address>`, `<port>` and a prefix-only `<endpoint>` is still read. It logs a deprecation warning and will stop being accepted in a future release; rewrite it as a single `<endpoint>` when convenient.
-
-#### Enrollment configuration
-
-A 5.0 agent enrolls over the **same** connection and TLS configuration it uses for everything else —
-`POST /enroll` on the server's HTTPS port (`1517` by default). It no longer opens a separate
-connection to the legacy `authd` listener on port `1515`, so enrollment needs no address, port or
-certificate settings of its own.
-
-> The variables below are still accepted so an existing deployment script keeps working. The address
-> and port ones are genuinely ignored: enrollment always targets the configured manager endpoint now,
-> not a separate listener. `WAZUH_REGISTRATION_CA`, below, is the exception — it is read and does
-> take effect, since `<agent><ssl>` is where enrollment gets its TLS material from too.
-
-**`WAZUH_REGISTRATION_SERVER`** *(ignored in 5.0)*\
-Formerly the address of a separate enrollment server. Enrollment now always targets the configured manager endpoint.
-
-**`WAZUH_REGISTRATION_PORT`** *(ignored in 5.0)*\
-Formerly the port of the legacy enrollment listener (`1515`). Enrollment now uses `WAZUH_MANAGER_PORT`.
-
-**`WAZUH_REGISTRATION_PASSWORD`**\
-Sets the password required for agent enrollment. This password must match the one configured on the server. Enrollment password protection is enabled by default, so retrieve the auto-generated password from the manager before enrolling agents:
-
-```bash
-sudo cat /var/wazuh-manager/etc/authd.pass
-```
-
-Passing it through this variable is the recommended approach: the installer writes `etc/authd.pass` on the agent and sets its ownership and permissions automatically. See [`use_password`](../modules/authd/configuration.md#use_password) for details and for adding the password to an already-installed agent.
-
-**`WAZUH_REGISTRATION_CA`**\
-Path to the CA used to verify the manager's certificate. Writes `<agent><ssl><certificate_authorities>`
-directly — the whole connection's TLS material, not just enrollment's, since 5.0 no longer has a
-separate enrollment connection. If `<verification_mode>` is not also set explicitly, the agent infers
-`certificate` from the presence of this CA (see [`verification_mode`](../modules/client/configuration.md#verification_mode)).
-Has no effect if `<verification_mode>` is already explicitly `system` in the shipped configuration,
-since the agent rejects that combination at runtime; a log line explains why in that case.
-
-**`WAZUH_REGISTRATION_CERTIFICATE`** *(ignored in 5.0)*\
-Formerly the agent's certificate for enrollment authentication. Use `<agent><ssl><certificate>`.
-
-**`WAZUH_REGISTRATION_KEY`** *(ignored in 5.0)*\
-Formerly the agent's private key for enrollment authentication. Use `<agent><ssl><key>`.
+> [!NOTE]
+> In 5.0 this variable is named `WAZUH_SSL_VERIFICATION`. The 4.x spelling `SSL_VERIFICATION` is not read and has no alias.
 
 #### Agent identity
 
 **`WAZUH_AGENT_NAME`**\
-Sets the agent's name for identification in the Wazuh server. Default: system hostname.
+Sets the agent's name for identification in the Wazuh server. Writes `<enrollment><agent_name>`. Default: system hostname. Deprecated alias on Windows: `AGENT_NAME`.
 
 **`WAZUH_AGENT_GROUP`**\
-Assigns the agent to a specific group upon enrollment. Default: `default`.
+Assigns the agent to one or more groups at enrollment, comma-separated. Writes `<enrollment><groups>`. Default: `default`. Deprecated alias: `WAZUH_GROUP` (`GROUP` on Windows).
 
 #### Advanced options
 
 **`WAZUH_KEEP_ALIVE_INTERVAL`**\
-Defines the interval in seconds between keep-alive messages sent to the server. When not specified, system defaults apply.
+Interval in seconds between keep-alive notifications to the manager. Writes `<agent><notify_time>`. Default: `10`. Deprecated alias: `WAZUH_NOTIFY_TIME` (`NOTIFY_TIME` on Windows).
 
-**`WAZUH_TIME_RECONNECT`** *(ignored in 5.0)*\
-Formerly forced the agent to reconnect every N seconds. There is no persistent connection to
-re-establish over HTTPS, so `<agent><time-reconnect>` is accepted and ignored.
+**`WAZUH_TIME_RECONNECT`** *(no effect)*\
+Targets `<agent><time-reconnect>`, an option that is deprecated and ignored. Deprecated alias on Windows: `TIME_RECONNECT`.
 
 **`ENROLLMENT_DELAY`**\
-Sets a delay in seconds between agent enrollment and the first connection attempt. When not specified, system defaults apply.
+Delay in seconds between a successful enrollment and the first connection attempt. Writes `<enrollment><delay_after_enrollment>`. Default: `20`. `0` is rejected by the agent's configuration parser.
+
+#### Variables removed in 5.0
+
+The enrollment token replaced the whole registration family. The names below are still read, so an install carrying a 4.x-era command line or an untouched playbook is told what happened, but none of them writes anything:
+
+```console
+wazuh-agent: WAZUH_MANAGER is not supported in 5.0 and was ignored: registration is configured by WAZUH_ENROLLMENT_TOKEN alone; this variable no longer has any effect.
+```
+
+| What you used to set | What you set now |
+|---|---|
+| `WAZUH_MANAGER`, `WAZUH_MANAGER_IP`, `WAZUH_MANAGER_PORT`, `WAZUH_MANAGER_ENDPOINT` | `WAZUH_ENROLLMENT_TOKEN` — the manager address travels inside the token. Without a token, `<agent><manager><endpoint>` in `ossec.conf` |
+| `WAZUH_REGISTRATION_PASSWORD`, `WAZUH_PASSWORD` | `WAZUH_ENROLLMENT_TOKEN` — the token carries its own credential, scoped and revocable. No fleet-wide password is written to the endpoint |
+| `WAZUH_REGISTRATION_SERVER`, `WAZUH_REGISTRATION_PORT`, `WAZUH_AUTHD_SERVER`, `WAZUH_AUTHD_PORT` | Nothing. Enrollment has used the manager's own HTTPS endpoint since 5.0.0; there is no separate enrollment listener to address |
+| `WAZUH_REGISTRATION_CA`, `WAZUH_CERTIFICATE` | Nothing on a token install — the anchor arrives with the token. On a hand-configured install, place the CA at `etc/certs/root-ca.pem` yourself, or name it in `<agent><ssl><certificate_authorities>` |
+| `WAZUH_REGISTRATION_CERTIFICATE`, `WAZUH_PEM` | `<agent><ssl><certificate>` in `ossec.conf` |
+| `WAZUH_REGISTRATION_KEY`, `WAZUH_KEY` | `<agent><ssl><key>` in `ossec.conf` |
+| `SSL_VERIFICATION` | `WAZUH_SSL_VERIFICATION` — renamed, with no alias |
+
+On Windows the same properties are removed under their unprefixed MSI spellings as well: `ADDRESS`, `SERVER_PORT`, `AUTHD_SERVER`, `AUTHD_PORT`, `PASSWORD`, `CERTIFICATE`, `PEM` and `KEY`.
+
+#### Installing without a token
+
+A package install with no `WAZUH_ENROLLMENT_TOKEN` completes, and the installer records that the agent has nowhere to connect:
+
+```console
+wazuh-agent: no manager configured [INFO_NO_MANAGER]: WAZUH_ENROLLMENT_TOKEN was not supplied, so the agent does not know where to connect.
+```
+
+That is the **Package** and **From sources** methods: the agent is installed but not yet registered. A package install leaves the placeholder `<endpoint>MANAGER_IP</endpoint>`, and the agent refuses to start with it until it is registered:
+
+```console
+wazuh-agentd: ERROR: (4112): Invalid server address found: 'MANAGER_IP'
+wazuh-agentd: ERROR: (1215): No client configured. Exiting.
+```
+
+Register it with [`wazuh-agent-auth`](../modules/client/README.md#enrolling-or-re-pointing-an-agent), which installs the trust anchor, enrolls, and writes the manager address the token names. The variables that are not about registration — `WAZUH_AGENT_NAME`, `WAZUH_AGENT_GROUP`, the timers and `WAZUH_SSL_VERIFICATION` — already applied during the install, and the command reads the name and groups back out of `ossec.conf`, so the agent registers with the ones the install set.
+
+### Migrating agents already running
+
+An agent upgraded from 4.x keeps its identity and never enrolls again, so it needs no token. A remote upgrade delivers the manager's CA over the upgrade channel; a local package upgrade does not, and the agent then runs unverified until [`wazuh-agent-auth --certs-only`](../modules/client/README.md#enrolling-or-re-pointing-an-agent) installs one, keeping its id. See [Trust anchor delivery to legacy agents](../../guide/migration/remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents) and the validation checklist on the same page.
+
+> [!NOTE]
+> **Manager-side mutual TLS blocks remote upgrades to 5.0.** Finish migrating the fleet before setting `<remote><https><verification_mode>` to anything other than `none`.

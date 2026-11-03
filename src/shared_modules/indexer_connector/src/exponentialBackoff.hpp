@@ -1,12 +1,13 @@
 /*
  * Wazuh - Indexer Connector exponential backoff.
- * Copyright (C) 2015, Wazuh Inc.
- * July 8, 2026.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #ifndef INDEXER_EXPONENTIAL_BACKOFF_HPP
@@ -45,7 +46,12 @@ public:
 
         if (failures == 0)
         {
-            return cap;
+            // Never faster than the base delay, but spread over up to half of it again (within the
+            // cap), so connectors that failed in the same instant do not retry in lockstep.
+            const auto upperBound = std::min(cap + cap / 2, m_maxDelay);
+            std::uniform_int_distribution<int64_t> distribution {static_cast<int64_t>(cap.count()),
+                                                                 static_cast<int64_t>(upperBound.count())};
+            return std::chrono::milliseconds {distribution(m_rng)};
         }
 
         const auto lowerBound = previousExponentialDelay(cap);
@@ -130,6 +136,11 @@ public:
             return true;
         }
         return m_timeBounded && (std::chrono::steady_clock::now() + nextDelay >= m_deadline);
+    }
+
+    size_t attempts() const
+    {
+        return m_failedAttempts;
     }
 
 private:

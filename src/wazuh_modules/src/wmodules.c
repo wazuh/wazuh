@@ -1,7 +1,6 @@
 /*
  * Wazuh Module Manager
- * Copyright (C) 2015, Wazuh Inc.
- * April 27, 2016.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -30,9 +29,12 @@ int wm_task_nice = 0;       // Nice value for tasks.
 static gid_t wm_gid;               // Group ID.
 int wm_max_eps;             // Maximum events per second
 int wm_kill_timeout;        // Time for a process to quit before killing it
+int wm_socket_timeout;      // Longest a local client can stay silent, or not read the reply
+int wm_unmask_credentials;  // Module dumps report credentials in clear, not masked
 int wm_debug_level;
 #ifndef CLIENT
-const char *wm_config_path = WAZUHCONF;   // Manager configuration (etc/wazuh-manager.conf), -c overrides it.
+// Manager configuration (/etc/wazuh-manager/wazuh-manager.conf), -c overrides it.
+const char *wm_config_path = WAZUHCONF;
 #endif
 volatile sig_atomic_t wm_shutdown_requested = 0;
 
@@ -117,6 +119,10 @@ int wm_config() {
     wm_max_eps = getDefine_Int_default("wazuh_modules", "max_eps", 1, 1000, 100);
     wm_kill_timeout = getDefine_Int_default("wazuh_modules", "kill_timeout", 0, 3600, 10);
 #endif
+    // With a compiled-in default on both builds, so an agent that kept an internal_options.conf
+    // from before this option existed still starts.
+    wm_socket_timeout = getDefine_Int_default("wazuh_modules", "socket_timeout", 1, 60, 1);
+    wm_unmask_credentials = getDefine_Int_default("wazuh_modules", "unmask_credentials", 0, 1, 0);
 
     if(wm_initialize_default_modules(&wmodules) < 0) {
         return OS_INVALID;
@@ -134,9 +140,10 @@ int wm_config() {
     agent_cfg = 1;
     ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg);
 #else
-    // Read the manager configuration (etc/wazuh-manager.conf): loaded once (the helper logs the error),
+    // Read the manager configuration (/etc/wazuh-manager/wazuh-manager.conf): loaded once (the helper logs the error),
     // then each section of the effective document as cJSON. task-manager always exists
-    // (default_modules[]); vulnerability-detection is created only when its section is present.
+    // (default_modules[]), and so does vulnerability-detection: the effective document always carries
+    // its section (absent sections are inserted with their defaults), so `enabled` is the only switch.
     //
     // There is no `agent-upgrade` section here, and none in the schema: that module is agent-only.
     // The manager serves upgrades from the task manager, which reads their two settings from its own
@@ -174,9 +181,11 @@ int wm_config() {
 
     wmodule *module;
 
-    if ((module = wm_content_manager_read())) {
-        wm_add(module);
-    }
+    // No content_manager module: it is a library, not a module. Its only job here was to install a
+    // log function into the shared object, which the vulnerability scanner -- the only thing in
+    // this process that registers a content topic -- now does itself in its own start(), before any
+    // topic exists. Registering it separately also started it AFTER the scanner, so anything the
+    // updater logged in between went nowhere.
 
     // Keystore server: hosts queue/sockets/keystore.sock for the Python framework's credential
     // manager, so the API's indexer access does not depend on any other module.
@@ -417,6 +426,31 @@ cJSON *getModulesConfig(void) {
     return root;
 }
 
+/**
+ * @brief Tell whether a sync frame is addressed to a module.
+ *
+ * A sync frame starts with "<module>_sync " or, for the vulnerability detection stream of a
+ * module, "<module>_vd_sync ". Only that leading header names the destination: the payload that
+ * follows is arbitrary data and may contain any module name.
+ *
+ * @param frame Sync frame.
+ * @param name Module name.
+ * @return true if the frame header names the module.
+ */
+static bool wm_sync_frame_targets(const char * frame, const char * name) {
+    static const char VD_SYNC_HEADER[] = "_vd" SYNC_HEADER;
+    const size_t name_len = strlen(name);
+
+    if (strncmp(frame, name, name_len) != 0) {
+        return false;
+    }
+
+    frame += name_len;
+
+    return strncmp(frame, SYNC_HEADER, strlen(SYNC_HEADER)) == 0
+           || strncmp(frame, VD_SYNC_HEADER, strlen(VD_SYNC_HEADER)) == 0;
+}
+
 // sync data
 int modulesSync(char* args, size_t length) {
     int ret = -1;
@@ -430,9 +464,9 @@ int modulesSync(char* args, size_t length) {
         }
 
         for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
-            if (strstr(args, cur_module->context->name)) {
+            if (wm_sync_frame_targets(args, cur_module->context->name)) {
                 ret = 0;
-                if (strstr(args, "_sync ") && cur_module->context->sync != NULL) {
+                if (cur_module->context->sync != NULL) {
                     ret = cur_module->context->sync(args, length);
                 }
                 break;
@@ -692,6 +726,8 @@ cJSON *getModulesInternalOptions(void) {
     cJSON_AddNumberToObject(internals,"wazuh_modules.task_nice",wm_task_nice);
     cJSON_AddNumberToObject(internals,"wazuh_modules.max_eps",wm_max_eps);
     cJSON_AddNumberToObject(internals,"wazuh_modules.kill_timeout",wm_kill_timeout);
+    cJSON_AddNumberToObject(internals,"wazuh_modules.socket_timeout",wm_socket_timeout);
+    cJSON_AddNumberToObject(internals,"wazuh_modules.unmask_credentials",wm_unmask_credentials);
     cJSON_AddNumberToObject(internals,"wazuh_modules.debug",wm_debug_level);
 
     cJSON_AddItemToObject(root,"internal_options",internals);

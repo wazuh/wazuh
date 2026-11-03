@@ -41,7 +41,7 @@ install_package(){
 
     log_info "Installing package: $package_path"
 
-    WAZUH_MANAGER="1.2.3.4" $install "$package_path"
+    $install "$package_path"
 
     # Verify installation
     if $check_package_status "wazuh-agent" >/dev/null 2>&1; then
@@ -49,6 +49,12 @@ install_package(){
     else
         log_error "Package installation verification failed"
     fi
+}
+
+configure_manager(){
+    log_info "Pointing the agent at a dummy manager..."
+    sed -i 's/MANAGER_IP/1.2.3.4/g' /var/ossec/etc/ossec.conf
+    log_success "Manager address configured"
 }
 
 test_daemons(){
@@ -108,6 +114,7 @@ main() {
 
     # Run smoke test steps
     install_package "$package_name"
+    configure_manager
     test_daemons
     start_agent
     verify_agent_running

@@ -1,13 +1,14 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import httpx
 
-from wazuh.core.engine_http import EngineHTTPClient, RemotedHTTPClient, VdHTTPClient
+from wazuh.core.engine_http import (AsyncRemotedHTTPClient, EngineHTTPClient, RemotedAdminHTTPError,
+                                    RemotedHTTPClient, VdHTTPClient)
 from wazuh.core.exception import WazuhError, WazuhInternalError
 
 
@@ -457,6 +458,97 @@ def test_remoted_get_status_request_error():
     assert exc_info.value.code == 2013
 
 
+REMOTED_TLS_RESPONSE = {
+    'evaluated_at': '2026-09-15T10:00:00Z', 'evaluated_at_ts': 1789466400,
+    'listener': {
+        'subject': 'CN=manager-01', 'issuer': 'CN=Corp Root CA', 'sans': ['manager-01.example.com'],
+        'not_before': '2026-01-01T00:00:00Z', 'not_before_ts': 1767225600,
+        'not_after': '2027-01-01T00:00:00Z', 'not_after_ts': 1798761600,
+        'seconds_until_expiry': 9295200, 'fingerprint': 'x509-sha256:' + '0' * 64, 'serial': '0x01',
+        'path': 'etc/certs/remoted.pem', 'loaded_at': '2026-09-14T08:12:31Z', 'loaded_at_ts': 1789373551,
+    },
+    'ca_bundle': {
+        'path': 'etc/certs/root-ca.pem', 'publication': 0, 'publication_vouched': False,
+        'content_sha256': 'b' * 64, 'certificates_count': 1, 'certificates_limit': 6,
+        'serialized_bytes': 1200, 'serialized_bytes_limit': 8191, 'matches_active_leaf': True, 'chain_valid': True,
+        'certificates': [{'subject': 'CN=Corp Root CA', 'signs_active_leaf': True}],
+    },
+}
+
+
+def test_remoted_get_tls_ok():
+    client = _make_remoted_client()
+    mock_response = MagicMock()
+    mock_response.is_error = False
+    mock_response.json.return_value = REMOTED_TLS_RESPONSE
+    client._client.get.return_value = mock_response
+
+    result = client.get_tls()
+
+    client._client.get.assert_called_once_with(
+        url='http://localhost/tls',
+        headers={'Content-Type': 'application/json'},
+    )
+    assert result == REMOTED_TLS_RESPONSE
+
+
+def test_remoted_get_tls_http_error_carries_the_status_code():
+    """remoted answers 503 while its listener is not up: the status travels with the 2029 so the
+    framework can tell that case apart from any other error status without parsing the body."""
+    client = _make_remoted_client()
+    mock_response = MagicMock()
+    mock_response.is_error = True
+    mock_response.status_code = 503
+    mock_response.text = '{"error":"Service unavailable","code":503}'
+    client._client.get.return_value = mock_response
+
+    with pytest.raises(RemotedAdminHTTPError) as exc_info:
+        client.get_tls()
+    assert isinstance(exc_info.value, WazuhError)
+    assert exc_info.value.code == 2029
+    assert exc_info.value.status_code == 503
+    assert 'Service unavailable' in exc_info.value.message
+
+
+def test_remoted_get_tls_invalid_json():
+    client = _make_remoted_client()
+    mock_response = MagicMock()
+    mock_response.is_error = False
+    mock_response.json.side_effect = ValueError("not valid json")
+    client._client.get.return_value = mock_response
+
+    with pytest.raises(WazuhInternalError) as exc_info:
+        client.get_tls()
+    assert exc_info.value.code == 2032
+
+
+def test_remoted_get_tls_timeout():
+    client = _make_remoted_client()
+    client._client.get.side_effect = httpx.TimeoutException("timed out", request=MagicMock())
+
+    with pytest.raises(WazuhInternalError) as exc_info:
+        client.get_tls()
+    assert exc_info.value.code == 2030
+
+
+def test_remoted_get_tls_connect_error():
+    client = _make_remoted_client()
+    client._client.get.side_effect = httpx.ConnectError("connection refused", request=MagicMock())
+
+    with pytest.raises(WazuhInternalError) as exc_info:
+        client.get_tls()
+    assert exc_info.value.code == 2031
+
+
+def test_remoted_get_tls_request_error():
+    client = _make_remoted_client()
+    client._client.get.side_effect = httpx.RequestError("generic error", request=MagicMock())
+
+    with pytest.raises(WazuhError) as exc_info:
+        client.get_tls()
+    assert exc_info.value.code == 2013
+
+
 def test_remoted_http_client_init_error():
     with patch('wazuh.core.common.REMOTED_ADMIN_SOCKET', '/var/wazuh-manager/queue/sockets/remote-admin-http.sock'):
         with patch('httpx.HTTPTransport', side_effect=OSError("no socket")):
@@ -542,3 +634,156 @@ def test_remoted_get_metrics_dump_request_error():
     with pytest.raises(WazuhError) as exc_info:
         client.get_metrics_dump()
     assert exc_info.value.code == 2013
+
+
+# ── AsyncRemotedHTTPClient ───────────────────────────────────────────────
+
+AGENT_GROUPS_PUBLICATION = {'invalidate': [1, 5]}
+
+
+def _make_async_remoted_client() -> AsyncRemotedHTTPClient:
+    with patch('wazuh.core.common.REMOTED_ADMIN_SOCKET', '/var/wazuh-manager/queue/sockets/remote-admin-http.sock'):
+        with patch('httpx.AsyncHTTPTransport'), patch('httpx.AsyncClient'):
+            client = AsyncRemotedHTTPClient()
+
+    client._client = MagicMock()
+    client._client.post = AsyncMock()
+    client._client.aclose = AsyncMock()
+    return client
+
+
+async def test_async_remoted_post_agent_groups_ok():
+    client = _make_async_remoted_client()
+    mock_response = MagicMock()
+    mock_response.is_error = False
+    mock_response.json.return_value = {'invalidated': 1, 'skipped': 1}
+    client._client.post.return_value = mock_response
+
+    result = await client.post_agent_groups(AGENT_GROUPS_PUBLICATION)
+
+    assert result == {'invalidated': 1, 'skipped': 1}
+    client._client.post.assert_awaited_once_with(url='http://localhost/_internal/agents/groups',
+                                                 json=AGENT_GROUPS_PUBLICATION,
+                                                 headers={'Content-Type': 'application/json'})
+
+
+@pytest.mark.parametrize('error, expected_type, expected_code', [
+    (httpx.TimeoutException('timeout'), WazuhInternalError, 2030),
+    (httpx.ConnectError('connect'), WazuhInternalError, 2031),
+    (httpx.RequestError('request'), WazuhError, 2013),
+])
+async def test_async_remoted_post_agent_groups_transport_errors(error, expected_type, expected_code):
+    client = _make_async_remoted_client()
+    client._client.post.side_effect = error
+
+    with pytest.raises(expected_type) as exc_info:
+        await client.post_agent_groups(AGENT_GROUPS_PUBLICATION)
+
+    assert exc_info.value.code == expected_code
+
+
+@pytest.mark.parametrize('status_code', [400, 404, 503])
+async def test_async_remoted_post_agent_groups_http_error(status_code):
+    client = _make_async_remoted_client()
+    mock_response = MagicMock()
+    mock_response.is_error = True
+    mock_response.status_code = status_code
+    mock_response.text = '{"error":"...","code":%d}' % status_code
+    client._client.post.return_value = mock_response
+
+    with pytest.raises(RemotedAdminHTTPError) as exc_info:
+        await client.post_agent_groups(AGENT_GROUPS_PUBLICATION)
+
+    # The status travels with the error, so the publisher can tell an older remoted (404) apart.
+    assert exc_info.value.code == 2029
+    assert exc_info.value.status_code == status_code
+
+
+async def test_async_remoted_post_agent_groups_invalid_json():
+    client = _make_async_remoted_client()
+    mock_response = MagicMock()
+    mock_response.is_error = False
+    mock_response.json.side_effect = ValueError('bad json')
+    client._client.post.return_value = mock_response
+
+    with pytest.raises(WazuhInternalError) as exc_info:
+        await client.post_agent_groups(AGENT_GROUPS_PUBLICATION)
+
+    assert exc_info.value.code == 2032
+
+
+async def test_async_remoted_close():
+    client = _make_async_remoted_client()
+
+    await client.close()
+
+    client._client.aclose.assert_awaited_once()
+
+
+def test_async_remoted_client_init_error():
+    with patch('httpx.AsyncHTTPTransport', side_effect=Exception('no transport')):
+        with pytest.raises(WazuhInternalError) as exc_info:
+            AsyncRemotedHTTPClient()
+
+    assert exc_info.value.code == 2028
+
+
+# ── RemotedHTTPClient.post_agent_groups (the framework's group writers) ──
+
+def test_remoted_post_agent_groups_ok():
+    client = _make_remoted_client()
+    mock_response = MagicMock()
+    mock_response.is_error = False
+    mock_response.json.return_value = {'invalidated': 1, 'skipped': 1}
+    client._client.post.return_value = mock_response
+
+    result = client.post_agent_groups(AGENT_GROUPS_PUBLICATION)
+
+    assert result == {'invalidated': 1, 'skipped': 1}
+    client._client.post.assert_called_once_with(url='http://localhost/_internal/agents/groups',
+                                                json=AGENT_GROUPS_PUBLICATION,
+                                                headers={'Content-Type': 'application/json'})
+
+
+@pytest.mark.parametrize('error, expected_type, expected_code', [
+    (httpx.TimeoutException('timeout'), WazuhInternalError, 2030),
+    (httpx.ConnectError('connect'), WazuhInternalError, 2031),
+    (httpx.RequestError('request'), WazuhError, 2013),
+])
+def test_remoted_post_agent_groups_transport_errors(error, expected_type, expected_code):
+    client = _make_remoted_client()
+    client._client.post.side_effect = error
+
+    with pytest.raises(expected_type) as exc_info:
+        client.post_agent_groups(AGENT_GROUPS_PUBLICATION)
+
+    assert exc_info.value.code == expected_code
+
+
+@pytest.mark.parametrize('status_code', [400, 404, 503])
+def test_remoted_post_agent_groups_http_error(status_code):
+    client = _make_remoted_client()
+    mock_response = MagicMock()
+    mock_response.is_error = True
+    mock_response.status_code = status_code
+    mock_response.text = '{"error":"...","code":%d}' % status_code
+    client._client.post.return_value = mock_response
+
+    with pytest.raises(RemotedAdminHTTPError) as exc_info:
+        client.post_agent_groups(AGENT_GROUPS_PUBLICATION)
+
+    assert exc_info.value.code == 2029
+    assert exc_info.value.status_code == status_code
+
+
+def test_remoted_post_agent_groups_invalid_json():
+    client = _make_remoted_client()
+    mock_response = MagicMock()
+    mock_response.is_error = False
+    mock_response.json.side_effect = ValueError('bad json')
+    client._client.post.return_value = mock_response
+
+    with pytest.raises(WazuhInternalError) as exc_info:
+        client.post_agent_groups(AGENT_GROUPS_PUBLICATION)
+
+    assert exc_info.value.code == 2032

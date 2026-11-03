@@ -36,10 +36,10 @@ test:
         key: value
     target_field: key-not-exist
     should_pass: false
-    description: Compare two different integers
+    description: The key is not present in the object
   - arguments:
       object:
         key: value
     target_field: key
     should_pass: true
-    description: Compare two equals integers
+    description: The key is present in the object

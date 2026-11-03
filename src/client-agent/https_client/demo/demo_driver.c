@@ -1,6 +1,6 @@
 /*
  * Wazuh agent HTTPS client — demo driver.
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  *
  * A standalone, plain-C program that drives the REAL https_client module (the
  * production libhttps_client, exactly as agentd would through the bridge) at a

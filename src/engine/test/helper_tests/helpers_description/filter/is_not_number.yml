@@ -32,7 +32,7 @@ test:
     description: Not number (boolean)
   - target_field: [1]
     should_pass: true
-    description: number (array not empty)
+    description: Not number (array)
   - target_field:
       key: value
     should_pass: true

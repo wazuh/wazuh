@@ -1,6 +1,9 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include "graph.hpp"
 #include <gtest/gtest.h>
 
+#include <random>
+#include <string>
 #include <unordered_set>
 #include <vector>
 
@@ -192,66 +195,102 @@ TEST(GraphTest, Empty)
     ASSERT_FALSE(graph.empty());
 }
 
-TEST(GraphTest, VisitPreOrder)
+namespace
 {
-    auto initialize = []()
-    {
-        return Graph<std::string, int>("root", 0);
-    };
-    ASSERT_NO_THROW(initialize());
-    auto graph = initialize();
+struct Chain
+{
+    Graph<std::string, int> graph {"root", 0};
+    std::vector<std::string> expectedNodes {"root"};
+    std::vector<std::string> expectedLeaves;
+};
 
-    // Generate a random graph, with graph depth of 11 and max number of 5 children per
-    // node. Remember added nodes to check that the visit function is called on them and
-    // in the correct order.
-    std::unordered_set<std::string> addedNodes = {"root"};
-    std::vector<std::string> expectedNodes = {"root"};
-    std::vector<std::string> expectedLeafNodes;
-    for (int i = 1; i < 11; ++i)
-    {
-        std::string nodeName = "node" + std::to_string(i);
-        graph.addNode(nodeName, i);
-        addedNodes.insert(nodeName);
-    }
+/// Chain root -> node1 -> ... -> nodeN where nodeI has children[I-1] generated children. A generated child is a
+/// leaf; the last chain node is a leaf only when it has no children.
+Chain buildChain(const std::vector<int>& children)
+{
+    Chain chain;
     std::string prev = "root";
-    for (auto i = 1; i < 11; ++i)
+    for (std::size_t i = 1; i <= children.size(); ++i)
     {
-        auto nodeName = "node" + std::to_string(i);
-        graph.addEdge(prev, nodeName);
+        const auto nodeName = "node" + std::to_string(i);
+        chain.graph.addNode(nodeName, static_cast<int>(i));
+        chain.graph.addEdge(prev, nodeName);
         prev = nodeName;
-        expectedNodes.push_back(nodeName);
+        chain.expectedNodes.push_back(nodeName);
 
-        // Add random number of children to the node.
-        auto numChildren = std::rand() % 5;
-        for (auto j = 0; j < numChildren; ++j)
+        for (int j = 0; j < children[i - 1]; ++j)
         {
-            auto childName = nodeName + "." + std::to_string(j);
-            graph.addNode(childName, j);
-            graph.addEdge(nodeName, childName);
-            addedNodes.insert(childName);
-            expectedNodes.push_back(childName);
-            expectedLeafNodes.push_back(childName);
+            const auto childName = nodeName + "." + std::to_string(j);
+            chain.graph.addNode(childName, j);
+            chain.graph.addEdge(nodeName, childName);
+            chain.expectedNodes.push_back(childName);
+            chain.expectedLeaves.push_back(childName);
         }
     }
-
-    // Check visit function
-    auto it = expectedNodes.begin();
-    auto visitor = [&](const std::string& nodeId, const int& nodeValue)
+    if (children.empty() || children.back() == 0)
     {
+        chain.expectedLeaves.push_back(prev);
+    }
+    return chain;
+}
+
+void checkVisits(Chain& chain)
+{
+    std::unordered_set<std::string> addedNodes(chain.expectedNodes.begin(), chain.expectedNodes.end());
+
+    auto it = chain.expectedNodes.begin();
+    auto visitor = [&](const std::string& nodeId, const int&)
+    {
+        ASSERT_NE(it, chain.expectedNodes.end());
         ASSERT_TRUE(addedNodes.find(nodeId) != addedNodes.end());
         ASSERT_EQ(nodeId, *it);
         ++it;
     };
-    ASSERT_NO_THROW(graph.visit(visitor));
+    ASSERT_NO_THROW(chain.graph.visit(visitor));
+    EXPECT_EQ(it, chain.expectedNodes.end());
 
-    it = expectedLeafNodes.begin();
-    auto visitorLeaf = [&](const std::string& nodeId, const int& nodeValue)
+    auto leafIt = chain.expectedLeaves.begin();
+    auto visitorLeaf = [&](const std::string& nodeId, const int&)
     {
+        ASSERT_NE(leafIt, chain.expectedLeaves.end());
         ASSERT_TRUE(addedNodes.find(nodeId) != addedNodes.end());
-        ASSERT_EQ(nodeId, *it);
-        ++it;
+        ASSERT_EQ(nodeId, *leafIt);
+        ++leafIt;
     };
-    ASSERT_NO_THROW(graph.visitLeaves(visitorLeaf));
+    ASSERT_NO_THROW(chain.graph.visitLeaves(visitorLeaf));
+    EXPECT_EQ(leafIt, chain.expectedLeaves.end());
+}
+} // namespace
+
+TEST(GraphTest, VisitPreOrder)
+{
+    // Depth-10 chain with 0..4 children per node, from deterministic seeds.
+    for (unsigned seed = 1; seed <= 20; ++seed)
+    {
+        SCOPED_TRACE("seed " + std::to_string(seed));
+        std::mt19937 gen(seed);
+        std::vector<int> children;
+        for (int i = 0; i < 10; ++i)
+        {
+            children.push_back(static_cast<int>(gen() % 5));
+        }
+        auto chain = buildChain(children);
+        checkVisits(chain);
+    }
+}
+
+TEST(GraphTest, VisitLeavesLastNodeWithoutChildren)
+{
+    auto chain = buildChain({1, 3, 2, 4, 2, 0, 2, 3, 2, 0});
+    ASSERT_EQ(chain.expectedLeaves.back(), "node10");
+    checkVisits(chain);
+}
+
+TEST(GraphTest, VisitLeavesLastNodeWithChildren)
+{
+    auto chain = buildChain({0, 0, 0, 0, 0, 0, 0, 0, 0, 2});
+    ASSERT_EQ(chain.expectedLeaves, (std::vector<std::string> {"node10.0", "node10.1"}));
+    checkVisits(chain);
 }
 
 TEST(GraphTest, GetGraphStr)

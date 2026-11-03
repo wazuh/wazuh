@@ -167,7 +167,6 @@ generate-results() {
     declare -A components=( \
         [data_provider]=data_provider \
         [dbsync]=shared_modules/dbsync \
-        [rsync]=shared_modules/rsync \
         [syscollector]=wazuh_modules/syscollector \
         [fim]=syscheckd \
     )
@@ -175,7 +174,6 @@ generate-results() {
     declare -A rtr_titles=( \
         [data_provider]="Data provider" \
         [dbsync]="DBsync" \
-        [rsync]="Rsync" \
         [syscollector]="Syscollector" \
         [fim]="File integrity monitoring" \
     )
@@ -196,7 +194,7 @@ generate-results() {
 
     # Print cmocka test results
     declare -A cmocka_titles=( \
-        [server]="Linux Manager cmocka tests" \
+        [manager]="Linux Manager cmocka tests" \
         [agent]="Linux agent cmocka tests" \
         [winagent]="Windows agent cmocka tests" \
     )
@@ -241,15 +239,14 @@ if $DO_BUILD; then
 
     # Execute the main test sequence
     clean-build > /dev/null 2>&1
-    build server
-    cmocka-tests server > result-cmocka-server.txt
+    build manager
+    cmocka-tests manager > result-cmocka-manager.txt
     run-ctest > result-ctest.txt
 
     # RTR tests for components
     declare -A components=( \
         [data_provider]=data_provider \
         [dbsync]=shared_modules/dbsync \
-        [rsync]=shared_modules/rsync \
         [syscollector]=wazuh_modules/syscollector\
         [fim]=syscheckd\
     )

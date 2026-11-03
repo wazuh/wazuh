@@ -1,6 +1,6 @@
 /*
  * Wazuh inventory sync server module
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -50,9 +50,7 @@ namespace invsync::endpoints::vd_scan
      *
      * THE ADMISSION ROUTE STAYS WHERE IT IS. `POST /vulnerability-detector/scan` on the scanner's
      * own socket keeps its validation, its readiness preflight and its `503 scan_queue_full`
-     * vocabulary, because remoted distinguishes that code from the content manager's
-     * `ondemand_queue_full` for metrics. What changes there is only what it does after admitting:
-     * create a task row instead of pushing onto an in-memory deque.
+     * vocabulary, which remoted attributes in its metrics. After admitting, it creates a task row.
      */
 
     /// @brief The verb. POST because the caller's C-side HTTP helper (uhttp_*) only speaks POST.
@@ -83,8 +81,8 @@ namespace invsync::endpoints::vd_scan
      *
      * This is a leak backstop, not a quality-of-service deadline: the real bound on a scan is the
      * dispatcher's own request timeout, and there is no ground truth for scan duration in the tree
-     * to set either from. Calibrate from `vd.dispatch.scan.duration`, the microsecond histogram VD
-     * already records around `triggerAgentScan`.
+     * to set either from. Calibrate from `vd.scan.duration`, the histogram this module's VD scan
+     * lane records around each on-demand scan.
      */
     constexpr std::size_t responseTimeoutSeconds()
     {

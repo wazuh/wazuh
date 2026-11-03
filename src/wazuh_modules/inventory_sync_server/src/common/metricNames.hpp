@@ -1,7 +1,6 @@
 /*
  * Wazuh inventory sync server module
- * Copyright (C) 2015, Wazuh Inc.
- * August 6, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -33,6 +32,7 @@ namespace invsync::metrics
     // -- pipeline ---------------------------------------------------------------------------
     constexpr auto REQUESTS_TOTAL_PREFIX {"sync.requests.total."}; ///< + HTTP status code
     constexpr auto PIPELINE_SHED_TOTAL {"sync.pipeline.shed.total"};
+    constexpr auto AGENT_BUSY_TOTAL {"sync.agent_busy.total"}; ///< D28: per-agent session cap refusals
     constexpr auto BULK_FLUSHES {"sync.bulk.flushes"};
     constexpr auto BULK_BYTES_TOTAL {"sync.bulk.bytes.total"};
     constexpr auto BULK_SESSIONS_TOTAL {"sync.bulk.sessions.total"};
@@ -41,6 +41,8 @@ namespace invsync::metrics
     constexpr auto SHARD_PREFIX {"sync.shard."}; ///< + <worker> + ".depth" / ".bytes"
     constexpr auto INDEXER_BULK_REQUESTS {"sync.indexer.bulk.requests"};
     constexpr auto INDEXER_BULK_BYTES {"sync.indexer.bulk.bytes.total"};
+    constexpr auto INDEXER_CONFLICT_RETRIES {"sync.indexer.conflict.retries"};
+    constexpr auto INDEXER_CONFLICT_EXHAUSTED {"sync.indexer.conflict.exhausted"};
     constexpr auto BULK_FLUSH_FAILURES_PREFIX {"sync.bulk.flush.failures."}; ///< + documents/exhausted/other
     constexpr auto BULK_SESSIONS_FAILED {"sync.bulk.sessions.failed"};
 
@@ -122,9 +124,9 @@ namespace invsync::metrics
             const auto counter = [&manager](const char* code)
             {
                 return manager.getOrCreateCounter(std::string {REQUESTS_TOTAL_PREFIX} + code,
-                                                  "POST /stateful and agent-deletion responses the handlers sent "
-                                                  "with this status (transport-level answers -- 413, 504, malformed "
-                                                  "HTTP -- are not counted)",
+                                                  "POST /stateful, agent-deletion and on-demand VD scan responses "
+                                                  "the handlers sent with this status (transport-level answers -- "
+                                                  "413, 504, malformed HTTP -- are not counted)",
                                                   "count");
             };
             return RequestCounters {counter("200"),

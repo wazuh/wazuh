@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * Contributed by Jeremy Rossi (@jrossi)
  *
  * This program is free software; you can redistribute it

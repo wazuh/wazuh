@@ -1,6 +1,6 @@
-# manager_config — loader of the manager configuration (`etc/wazuh-manager.conf`)
+# manager_config — loader of the manager configuration (`/etc/wazuh-manager/wazuh-manager.conf`)
 
-Manager-only C++17 static library that turns `etc/wazuh-manager.conf` (strict XML) into the **effective
+Manager-only C++17 static library that turns `/etc/wazuh-manager/wazuh-manager.conf` (strict XML) into the **effective
 configuration** (parsed XML, validated against the embedded JSON Schema, defaults filled, cross-field
 semantics checked) and exposes it as canonical JSON to the C daemons (`manager_config_c.h`) and as a C++
 class (`manager_config.hpp`). It replaces the pseudo-XML `ReadConfig`/`os_xml` path and the "bypass"
@@ -13,20 +13,22 @@ daemons remoted, authd, wazuh-db and modulesd through libconfig's `w_mconf_*()`
 `getconfig` returns the effective sections); the cluster getters and the logging format inside libwazuh
 through the `w_mconf_hook_*` provider; the engine (`wazuh-manager-analysisd`) through the C++ API —
 `src/engine/source/base/src/managerConfig.cpp` links the `manager_config` target, loads the document
-once and registers it as the section provider of `libwazuhshared.so`; `wazuh-server.sh` (`validate`
-before any daemon `-t`, `get cluster.node_type`, `get auth.disabled`); and the Python framework
-(`wazuh.core.manager_conf` consumes `dump`/`validate` of the CLI — there is no second implementation of
-the language).
+once and reads its sections directly (for example the logging format, `managerConfig::logFormat()`);
+`bin/wazuh-manager-certs` through the C++ API (`src/shared_modules/manager_certs/CMakeLists.txt`);
+`wazuh-server.sh` (`validate` before any daemon `-t`, `get cluster.node_type`, `get auth.disabled`); the
+credential resolver (`src/init/credentials/wazuh-manager-resolve-credentials.py`, which runs the CLI's
+`dump` for the configured TLS paths); and the Python framework (`wazuh.core.manager_conf` consumes
+`dump`/`validate` of the CLI — there is no second implementation of the language).
 
 ## Requirements
 
 | # | Requirement | Where |
 |---|---|---|
 | RF-1 | Strict XML: exactly one `<wazuh_config>` root; entities decoded; raw `&`, `--` inside comments, legacy `<! !>` comments and a second root are rejected with the offending line | `src/xmlToJson.cpp` |
-| RF-2 | Canonical JSON with the schema's types: `yes`/`no` → boolean, digits → integer where allowed, repeated or comma-separated values → arrays, the attribute forms of the dialect (`<backup database="…">`, `<disconnected_time enabled="…">`) → nested objects, lowercase enums normalized | `src/xmlToJson.cpp` |
+| RF-2 | Canonical JSON with the schema's types: `yes`/`no` → boolean, digits → integer where allowed, repeated or comma-separated values → arrays, the attribute forms of the dialect (`<backup database="…">`, `<disconnected_time enabled="…">`) → nested objects, enums matched in any case and normalized to the schema's spelling | `src/xmlToJson.cpp` |
 | RF-3 | Validation against the embedded draft-04 schema; the first error is reported with its JSON pointer and keyword | `src/schemaValidate.cpp` |
 | RF-4 | Defaults declared in the schema are filled into the effective document (a missing section = its defaults) | `src/defaults.cpp` |
-| RF-5 | Uniform, fatal cross-field rules: certificate/key pairing, no `.`/`..` prefix segments, distinct listener ports, existence of the HTTPS/authd certificate files (relative to the manager home; `indexer.ssl.*` is not checked — the installer never creates those files, the connector reports them at runtime) | `src/semantics.cpp` |
+| RF-5 | Uniform, fatal cross-field rules: certificate/key pairing, no `.`/`..` prefix segments, distinct listener ports, existence of the HTTPS/authd certificate files (relative to the manager home; nothing recreates them at start — the credential resolver issues them once at installation, or the operator provisions them, e.g. with wazuh-certs-tool — so the `file not found` verdict carries that hint; `indexer.ssl.*` is not checked here: the credential resolver owns those files — imported from the indexer's export or staged by the operator — and refuses the start itself, before any daemon runs, when they are missing or invalid) | `src/semantics.cpp` |
 | RF-6 | `sectionJson()` / `documentJson()` canonical JSON (cJSON-parseable); C API without exceptions or C++ types across the boundary | `src/manager_config.cpp`, `src/manager_config_c.cpp` |
 | RNF-1 | C++17, STATIC, manager only, pugixml + rapidjson PRIVATE | `CMakeLists.txt` |
 | RNF-2 | Schema embedded at build time (`generated/embeddedSchema.hpp`) | `CMakeLists.txt` |
@@ -35,9 +37,10 @@ the language).
 ## Design decisions
 
 - **Schema as the single source of truth** (`schema/wazuh-manager.schema.json`): types, ranges, enums, defaults and
-  descriptions of the 65 leaf options — byte-identical to the YAML PoC's schema, so the 5.1 XML→YAML conversion is a
-  backend swap. Draft-04 because it is what rapidjson's validator implements and what the Python framework uses
-  (`jsonschema.Draft4Validator`). Definitions (`duration`, `size`, `port`…) are reused through `allOf: [{$ref}]`.
+  descriptions of the 69 leaf options (the count `managerConfig_test.cpp`'s leaf guard pins) — byte-identical to the
+  YAML PoC's schema, so the 5.1 XML→YAML conversion is a backend swap. Draft-04 because it is what rapidjson's
+  validator implements and what the Python framework uses (`jsonschema.Draft4Validator`). Definitions (`duration`,
+  `size`, `port`…) are reused through `allOf: [{$ref}]`.
 - **Schema-driven typing** over the pugixml DOM: the target type of every element decides the conversion, so
   `<disabled>no</disabled>` is the boolean `false`, `<port>1514</port>` is an integer, `<protocol>tcp,udp</protocol>`
   and `<hosts><host>…</host></hosts>` are arrays, and `true`/`false` fail with `type` ("booleans are yes/no").
@@ -52,11 +55,20 @@ the language).
   crash for those; there is no more general re-validation of the effective document.
 - **Defaults algorithm**: for every property of an object schema missing in the document, insert its
   `default` when declared (property or resolved `$ref`), else an empty object when it is an object schema; recurse into
-  object properties. Options without `default` (`verification_mode`, `ciphers`, `max_body_size`, `dual_stack`) stay absent:
-  absence is meaningful ("module default / inferred").
-- **Ports**: a disabled listener (`remote.legacy.enabled: no`, `auth.disabled: yes`) does not reserve its port.
-- **Files**: `LoadOptions::checkFiles` (default on) resolves relative paths against `LoadOptions::home`; unit tests turn it
-  off or create the files under a temporary home. Only `remote.https.*` and `auth.ssl_*` are checked.
+  object properties. Options without `default` (`remote.legacy.local_ip`, `remote.https.verification_mode`,
+  `auth.legacy_enrollment`, `task-manager.wpk_repository`) stay absent: absence is
+  meaningful ("module default / inferred"); the required `cluster.key` and `indexer.hosts` have none either. A
+  default the consuming module applies anyway is declared in the schema (`remote.https.ciphers`, `max_body_size`,
+  `dual_stack` carry remoted_module's built-in values), so the effective document shows what is in force.
+- **Ports**: a listener that binds nothing does not reserve its port: the legacy one unless
+  `remote.legacy.enabled`, and `auth.port` unless authd binds it — `auth.disabled: no`, `auth.remote_enrollment: yes`
+  and `auth.legacy_enrollment` (when unset, `remote.legacy.enabled`), the same condition authd applies.
+  `remote.https.port` and `cluster.port` always do.
+- **Files**: `LoadOptions::checkFiles` (default on) resolves relative paths against `LoadOptions::home` and uses absolute
+  ones as they are. The certificate/key defaults are absolute (`/etc/wazuh-manager/certs/...`, the fixed configuration
+  directory, which a custom home never moves), so unit tests turn the checks off or name the files explicitly under a
+  temporary home; an operator-written relative path still means "relative to the manager home". Only `remote.https.{certificate,key,ca,ca_certificate}` and
+  `auth.{ssl_agent_ca,ssl_manager_cert,ssl_manager_key}` are checked, and an empty value is skipped.
 - **`cluster.key` is required and has no default**: a well-known default key would be a shared secret; the installer
   always generates one. `cluster` and `indexer` are the only `required` properties at the document root:
   every manager runs as a cluster node, and `wazuh-manager-analysisd` cannot start with zero indexer hosts,
@@ -150,9 +162,12 @@ $WAZUH_REPO/src/build/shared_modules/manager_config/tests/unit/manager_config_ut
 $TMP_PY_VENV/bin/python3 tests/parity.py schema/wazuh-manager.schema.json tests/vectors
 ```
 
-CI runs all three on every PR touching `src/shared_modules/manager_config/**`, `src/init/**` or
-`etc/templates/**` (the last two because the CLI suite validates the configuration the installer
-generates) via `.github/workflows/5_testunit_managerconfig.yml`: one job with the three suites plus a
+CI runs all three on every PR touching `src/shared_modules/manager_config/**` (except this README),
+`error_messages.h`, the installer files the CLI suite executes (`gen_wazuh.sh`, `shared.sh`,
+`inst-functions.sh`, `template-select.sh` and the seven generic templates `WriteManager()` reads — it
+validates the configuration the installer generates) or the configure and build inputs, via
+`.github/workflows/5_testunit_managerconfig.yml` (its `paths:` list is the exact set): one job with the
+installer text-handling suite and the three suites plus a
 coverage report (uploaded, not gated) and an ASAN/UBSAN job that runs the GTest only — the CLI suite
 asserts exact exit codes and an empty stderr, which a sanitizer's reports would break.
 
@@ -163,6 +178,10 @@ it is the reference for the Python framework and the seed of the 5.0→5.1 conve
 
 | Situation | Message |
 |---|---|
-| file missing / oversized | plain message (the CLI maps it to `(1239)` in a later stage) |
+| file missing, unreadable or larger than 1 MiB | plain message, empty JSON pointer (`configuration file not found: <path>`, `… cannot be read: …`, `… larger than 1048576 bytes: …`). The CLI checks the file itself first and reports a missing one as `(1239): Configuration file not found: '<path>'.`; the C daemons render the loader's message under `(1244)` |
 | malformed XML, raw `&`, `--` in a comment, second root, wrong root | `invalid XML: … (line N)` / specific message with the line, empty JSON pointer |
-| schema / semantics | JSON pointer + violated keyword (`/remote/https/port: does not satisfy 'maximum' …`); consumers render it as `(1244): Invalid configuration at '<pointer>': <reason>` |
+| schema / semantics | JSON pointer + violated keyword (`/remote/https/port: does not satisfy 'maximum' … [schema …]`). `bin/wazuh-manager-conf` renders it as `(1244): Invalid configuration at '<pointer>': <reason>.` (`'/'` for an empty pointer); the C daemons put the file path in the subject and `Error::what()` (`<pointer>: <reason>`) in the reason |
+
+## License
+
+Dual-licensed under `GPL-2.0-only OR AGPL-3.0-or-later`: the C daemons use it under GPLv2 and the engine under AGPLv3. See [COPYING](COPYING).

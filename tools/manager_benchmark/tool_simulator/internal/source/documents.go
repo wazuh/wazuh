@@ -35,7 +35,7 @@ type GeneratedDoc struct {
 // EVERY document carries checksum.hash.sha1, unconditionally: a real agent has
 // no mode that omits it. syscollector writes /checksum/hash/sha1 into every item
 // it emits (syscollectorImp.cpp), SCA computes one per check
-// (sca_event_handler.cpp), FIM keeps it as a column of its own, and all 32,000
+// (sca_event_handler.cpp), FIM keeps it as a column of its own, and all 33,982
 // documents of the captured corpus in sample_payloads/dumps/ have it. It is also
 // what the ModuleCheck aggregate is computed over, so a document without one is
 // a document the integrity path could never reconcile.

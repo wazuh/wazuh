@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -6,8 +6,8 @@
  * Foundation.
  */
 
-/* w_mconf_*(): the libconfig layer over the manager_config library (etc/wazuh-manager.conf). Real
- * loader, temporary XML files in the working directory. Manager only. */
+/* w_mconf_*(): the libconfig layer over the manager_config library (/etc/wazuh-manager/wazuh-manager.conf).
+ * Real loader, temporary XML files in the working directory. Manager only. */
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -25,6 +25,24 @@
 #include "mconf_hook.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../external/cJSON/cJSON.h"
+#include "../../shared_modules/manager_config/include/manager_config/manager_config_c.h"
+
+/* WAZUHCONF is absolute on the manager (WAZUH_MANAGER_CONF_DIR), a path a unit test can neither create
+ * nor rely on, so the default-file load is redirected to LOCAL_DEFAULT_CONF in the working directory
+ * (-Wl,--wrap,mconf_load_ex). Every other path reaches the real loader unchanged. */
+#define LOCAL_DEFAULT_DIR  "etc"
+#define LOCAL_DEFAULT_CONF LOCAL_DEFAULT_DIR "/wazuh-manager.conf"
+
+int __real_mconf_load_ex(const char *path, const char *home, int check_files, mconf_t **out, char *err,
+                         size_t errlen);
+
+int __wrap_mconf_load_ex(const char *path, const char *home, int check_files, mconf_t **out, char *err,
+                         size_t errlen) {
+    if (path != NULL && strcmp(path, WAZUHCONF) == 0) {
+        path = LOCAL_DEFAULT_CONF;
+    }
+    return __real_mconf_load_ex(path, home, check_files, out, err, errlen);
+}
 
 static const char *TEST_CONF = "test_mconf-config.conf";
 
@@ -46,8 +64,8 @@ static int teardown_conf(void **state) {
     (void) state;
     unlink(TEST_CONF);
     unlink(TEST_CONF_B);
-    unlink("etc/wazuh-manager.conf");
-    rmdir("etc");
+    unlink(LOCAL_DEFAULT_CONF);
+    rmdir(LOCAL_DEFAULT_DIR);
     w_mconf_free();
     return 0;
 }
@@ -119,6 +137,7 @@ static void test_w_mconf_validate_checks_files(void **state) {
                    "  <remote><https>\n"
                    "    <certificate>test_mconf-config.conf</certificate>\n"
                    "    <key>test_mconf-config.conf</key>\n"
+                   "    <ca_certificate>test_mconf-config.conf</ca_certificate>\n"
                    "  </https></remote>\n"
                    "  <auth>\n"
                    "    <ssl_manager_cert>test_mconf-config.conf</ssl_manager_cert>\n"
@@ -157,8 +176,8 @@ static void test_w_mconf_hook_provider_loads_default_file_silently(void **state)
     (void) state;
 
     w_mconf_free();
-    mkdir("etc", 0755);
-    FILE *fp = fopen("etc/wazuh-manager.conf", "w");
+    mkdir(LOCAL_DEFAULT_DIR, 0755);
+    FILE *fp = fopen(LOCAL_DEFAULT_CONF, "w");
     assert_non_null(fp);
     fputs("<wazuh_config><cluster>\n"
           "  <key>0123456789abcdef0123456789abcdef</key>\n"
@@ -178,7 +197,7 @@ static void test_w_mconf_hook_provider_loads_default_file_silently(void **state)
 
     /* Invalid default file (malformed XML): the provider stays silent and answers NULL */
     w_mconf_free();
-    fp = fopen("etc/wazuh-manager.conf", "w");
+    fp = fopen(LOCAL_DEFAULT_CONF, "w");
     fputs("<wazuh_config><cluster>\n", fp);
     fclose(fp);
     assert_null(w_mconf_hook_section("cluster"));

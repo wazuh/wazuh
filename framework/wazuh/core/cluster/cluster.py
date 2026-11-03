@@ -1,4 +1,4 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -21,8 +21,10 @@ from wazuh import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core import common
 from wazuh.core.cluster.utils import (
     get_cluster_items,
+    local_path,
     read_config,
     safe_join,
+    wire_path,
 )
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.utils import blake2b, get_date_from_timestamp, get_utc_now, mkdir_with_mode
@@ -111,6 +113,27 @@ def get_node():
 # Files
 #
 
+
+def is_excluded(filename: str, excluded_files: list, excluded_extensions: list) -> bool:
+    """Check whether a file name is excluded from the cluster synchronization.
+
+    Parameters
+    ----------
+    filename : str
+        File name without directory.
+    excluded_files : list
+        File names excluded from the synchronization.
+    excluded_extensions : list
+        File extensions excluded from the synchronization.
+
+    Returns
+    -------
+    bool
+        True if the file is excluded.
+    """
+    return filename in excluded_files or filename.endswith(tuple(excluded_extensions))
+
+
 def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get_cluster_item_key, previous_status=None,
              get_hash=True):
     """Iterate recursively inside a directory, save the path of each found file and obtain its metadata.
@@ -146,7 +169,7 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
         previous_status = {}
     walk_files = {}
     result_logs = {'debug': defaultdict(list), 'error': defaultdict(list)}
-    full_dirname = path.join(common.WAZUH_PATH, dirname)
+    full_dirname = local_path(dirname)
     # Get list of all files and directories inside 'full_dirname'.
     try:
         for root_, _, files_ in walk(full_dirname, topdown=True):
@@ -154,12 +177,12 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
             if recursive or root_ == full_dirname:
                 for file_ in files_:
                     # If file is inside 'excluded_files' or file extension is inside 'excluded_extensions', skip over.
-                    if file_ in excluded_files or any([file_.endswith(ext) for ext in excluded_extensions]):
+                    if is_excluded(file_, excluded_files, excluded_extensions):
                         continue
                     try:
                         #  If 'all' files have been requested or entry is in the specified files list.
                         if files == ['all'] or file_ in files:
-                            relative_file_path = path.join(path.relpath(root_, common.WAZUH_PATH), file_)
+                            relative_file_path = path.join(wire_path(root_), file_)
                             abs_file_path = path.join(root_, file_)
                             file_mod_time = path.getmtime(abs_file_path)
                             try:
@@ -311,11 +334,11 @@ def compress_files(name, list_path, cluster_control_json=None, max_zip_size=None
                 continue
 
             try:
-                with open(path.join(common.WAZUH_PATH, file), 'rb') as rf:
+                with open(local_path(file), 'rb') as rf:
                     new_file = rf.read()
                     if len(new_file) > max_zip_size:
                         result_logs['warning'][file].append(f'File too large to be synced: '
-                                                            f'{path.join(common.WAZUH_PATH, file)}')
+                                                            f'{local_path(file)}')
                         update_cluster_control(file, cluster_control_json)
                         continue
                     # Compress the content of each file and surrounds it with separators.

@@ -53,6 +53,13 @@ from helpers.uds_client import ServerClient  # noqa: E402
 
 CONFIG = json.loads((QA_DIR / "config.json").read_text())
 
+# The production templates of the two indices the /stats and /config reports write. Both are
+# `strict_allow_templates`, so installing the real ones is what makes the suite prove that the
+# documents the server builds are accepted, rather than mapped dynamically by a permissive index.
+INDEXER_PLUGINS_RAW = "https://raw.githubusercontent.com/wazuh/wazuh-indexer-plugins"
+INDEXER_PLUGINS_STATES_PATH = "plugins/setup/src/main/resources/templates/states"
+AGENT_INDEX_TEMPLATES = ("agent-stats", "agent-config")
+
 # A permissive template with the few fields the server's own queries need typed:
 # the checksum sort and the term/update-by-query filters require keyword, and a
 # dynamic (text) mapping would fail the sort outright.
@@ -99,14 +106,16 @@ def _ensure_opensearch(url):
             container.remove(force=True)
             raise docker.errors.NotFound("recreate")
     except docker.errors.NotFound:
+        # 2.16+ is needed: the agent-stats/agent-config templates use strict_allow_templates.
         client.containers.run(
-            "opensearchproject/opensearch:2.11.1",
+            "opensearchproject/opensearch:2.19.1",
             detach=True,
             name="opensearch-test",
             ports={"9200/tcp": 9200},
             environment={
                 "discovery.type": "single-node",
                 "DISABLE_SECURITY_PLUGIN": "true",
+                "DISABLE_INSTALL_DEMO_CONFIG": "true",
                 "OPENSEARCH_JAVA_OPTS": "-Xms512m -Xmx512m",
             },
         )
@@ -118,6 +127,31 @@ def _ensure_opensearch(url):
     raise RuntimeError(f"OpenSearch never became available at {url}")
 
 
+def _git_refs():
+    """The refs src/Makefile tries for its indexer template downloads, in the same order."""
+    override = os.environ.get("GIT_REFS") or os.environ.get("INDEXER_PLUGINS_REFS")
+    if override:
+        return override.split()
+    script = SRC_DIR.parent / "tools" / "get_git_refs.sh"
+    result = subprocess.run(["bash", str(script)], capture_output=True, text=True, check=False)
+    return result.stdout.split()
+
+
+def _agent_index_template(name):
+    """The production template `name` from wazuh-indexer-plugins, at the first ref that has it.
+
+    The current branch comes first, so a branch named like an indexer-plugins branch tests
+    against the templates being changed there."""
+    import requests
+
+    for ref in _git_refs():
+        response = requests.get(f"{INDEXER_PLUGINS_RAW}/{ref}/{INDEXER_PLUGINS_STATES_PATH}/{name}.json",
+                                timeout=10)
+        if response.status_code == 200:
+            return response.json()
+    raise RuntimeError(f"Could not download the {name} index template from any of {_git_refs()}")
+
+
 @pytest.fixture(scope="session")
 def indexer():
     import requests
@@ -127,6 +161,10 @@ def indexer():
     response = requests.put(f"{url.rstrip('/')}/_index_template/qa-wazuh-states",
                             json=STATE_TEMPLATE, timeout=10)
     response.raise_for_status()
+    for name in AGENT_INDEX_TEMPLATES:
+        response = requests.put(f"{url.rstrip('/')}/_index_template/qa-{name}",
+                                json=_agent_index_template(name), timeout=10)
+        response.raise_for_status()
     yield client
 
 

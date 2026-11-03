@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module - Control config unit tests
- * Copyright (C) 2015, Wazuh Inc.
- * July 31, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -109,6 +108,18 @@ TEST(ControlConfigTest, PositiveOverridesReplaceDefaults)
     EXPECT_EQ(cfg.tmDeadlineMs, 500U);
     EXPECT_EQ(cfg.tmMaxQueueSize, 20000U);
     EXPECT_EQ(cfg.keepaliveThrottleSec, 15U);
+}
+
+TEST(ControlConfigTest, WdbRequestDeadlineDefaultsAndOverrides)
+{
+    auto raw = zeroedConfig();
+    EXPECT_EQ(buildControlConfig(raw).wdbRequestDeadlineMs, kWdbRequestDeadlineMs);
+
+    raw.wdb_request_deadline_ms = 1234;
+    EXPECT_EQ(buildControlConfig(raw).wdbRequestDeadlineMs, 1234U);
+
+    raw.wdb_request_deadline_ms = -1;
+    EXPECT_EQ(buildControlConfig(raw).wdbRequestDeadlineMs, kWdbRequestDeadlineMs);
 }
 
 // -----------------------------------------------------------------------------

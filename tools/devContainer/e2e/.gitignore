@@ -1,0 +1,5 @@
+certs/*
+wazuh-indexer/*.deb
+wazuh-dashboard/*.deb
+init.log
+.credentials.env

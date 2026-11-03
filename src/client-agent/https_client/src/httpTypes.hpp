@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -13,11 +12,13 @@
 #define _HC_HTTP_TYPES_HPP
 
 #include "https_client.h"
+#include "tlsCertDiagnostics.hpp"
 
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <ctime>
+#include <ostream>
 #include <string>
 #include <vector>
 
@@ -27,7 +28,11 @@ enum class TransportStatus
     Ok,          ///< The request completed and an HTTP status is available.
     Timeout,     ///< The request timed out.
     ConnectFail, ///< DNS/connect failure.
-    TlsFail,     ///< TLS handshake/verification failure.
+    TlsFail,     ///< TLS handshake/verification failure. HttpResponse::tlsFailure narrows
+    ///< this further (#39062) when the cause is a hostname mismatch or a certificate-date
+    ///< problem; verify_mode=system's local-anchor fallback (curlPerformer.cpp, #39123)
+    ///< acts only when tlsFailure.kind is still None -- a genuine chain/CA-trust failure,
+    ///< the one cause a different anchor could plausibly fix.
     Aborted,     ///< Interrupted through the abort flag (shutdown).
     OtherError   ///< Any other transport error.
 };
@@ -46,6 +51,9 @@ enum class OutcomeClass
     BackPressure,    ///< 503 + Retry-After / 429: server delay wins when longer.
     AuthFail,        ///< 401: one fresh-timestamp retry, then re-enrollment.
     Permanent,       ///< 400/...: retrying identical bytes cannot succeed.
+    RouteNotFound,   ///< 404: the target names no route the manager serves (an
+    ///< endpoint/global_prefix mismatch), or -- on /download alone -- no such
+    ///< resource. Which one it is depends on the endpoint, so the consumer decides.
     PayloadTooLarge, ///< 413: /stateless splits + resends smaller (#37835).
     VersionRejected, ///< 409 at Startup: REJECTED state, slow re-Startup.
     CompressionRejected, ///< 415: manager doesn't accept Content-Encoding: zstd;
@@ -76,6 +84,9 @@ inline const char* outcomeName(OutcomeClass outcome)
 
         case OutcomeClass::Permanent:
             return "Permanent";
+
+        case OutcomeClass::RouteNotFound:
+            return "RouteNotFound";
 
         case OutcomeClass::PayloadTooLarge:
             return "PayloadTooLarge";
@@ -125,6 +136,9 @@ inline int toHcResult(OutcomeClass outcome)
         case OutcomeClass::Permanent:
             return HC_RESULT_PERMANENT;
 
+        case OutcomeClass::RouteNotFound:
+            return HC_RESULT_PERMANENT;
+
         case OutcomeClass::PayloadTooLarge:
             return HC_RESULT_PERMANENT;
 
@@ -142,12 +156,33 @@ inline int toHcResult(OutcomeClass outcome)
     }
 }
 
+/// HTTP verb for one HttpRequestSpec. Every endpoint so far has been a POST,
+/// so this stays a minimal two-value switch rather than a full verb set.
+enum class HttpMethod
+{
+    Post, ///< The long-standing default: a fixed-size or streamed body.
+    Get   ///< No body; CurlPerformer sends CURLOPT_HTTPGET instead.
+};
+
+/// Caps on the responses read into memory. Each sits far above the largest answer a manager
+/// sends, because a transfer cut at its cap is retried like a network failure.
+/// /control carries the task batch, which remoted's task client reads with an 11 MiB limit, plus
+/// the groups and hashes. 65 MiB also covers remoted.downstream_max_response_body_size (64 MiB at
+/// most), should the task client ever take that option.
+constexpr uint64_t CONTROL_MAX_RESPONSE_BYTES = 65ULL * 1024 * 1024;
+/// A /stateful answer is relayed to its module as one local frame, which must fit OS_MAXSTR.
+constexpr uint64_t STATEFUL_MAX_RESPONSE_BYTES = HC_MAX_STATEFUL_RESPONSE_BODY;
+/// /stateless, /stats, /config and /scan/vd answer with a short status document.
+constexpr uint64_t SHORT_REPLY_MAX_RESPONSE_BYTES = 64ULL * 1024;
+
 /// One signed HTTP attempt, as handed to the performer. TLS settings and the
 /// base URL are the performer's own configuration; the spec carries only the
 /// per-request data.
 struct HttpRequestSpec
 {
     std::string target;                ///< e.g. "/stateless" (also the MAC'd target).
+    HttpMethod method {HttpMethod::Post}; ///< Defaults to POST so every pre-existing caller
+    ///< (which never sets this) keeps behaving unchanged.
     std::string contentType;           ///< Emitted as Content-Type when non-empty; empty
     ///< leaves libcurl's default (non-JSON endpoints).
     std::vector<std::string> headers;  ///< Extra headers (auth headers included).
@@ -163,7 +198,7 @@ struct HttpRequestSpec
     std::string responseFilePath;      ///< When non-empty: stream the response body to this
     ///< file (truncated per attempt) instead of
     ///< HttpResponse::body.
-    uint64_t maxResponseBytes {0};     ///< Cap on a file-streamed response (0 = unlimited);
+    uint64_t maxResponseBytes {0};     ///< Cap on the response body, streamed or in memory (0 = unlimited);
     ///< exceeding it aborts the transfer.
     uint32_t timeoutMs {0};
     const std::atomic<bool>* abortFlag {nullptr}; ///< Optional cooperative abort.
@@ -175,6 +210,8 @@ struct HttpResponse
     TransportStatus status {TransportStatus::OtherError};
     long httpCode {0};
     long retryAfterSeconds {0}; ///< Parsed Retry-After header (0 = absent).
+    std::int64_t caGeneration {0}; ///< Parsed Wazuh-CA-Generation header (0 = absent or
+    ///< not a positive integer). Only ever set on GET /cacerts.
     std::time_t serverDateSeconds {0}; ///< Parsed Date header, manager's clock at
     ///< response time (0 = absent/unparsed). Every response the manager's
     ///< transport builds carries one, including every 401 -- RetrySender's
@@ -185,6 +222,85 @@ struct HttpResponse
     std::string body;
     std::string curlError;      ///< libcurl's own wording for a failed attempt, empty
     ///< otherwise (success, or a failure that never reached libcurl).
+    TlsFailureDetail tlsFailure; ///< Populated (kind != None) only when status == TlsFail
+    ///< AND the failure was classified as a hostname mismatch or a certificate-date
+    ///< problem; default-constructed (kind == None) otherwise, including for every
+    ///< other TlsFail cause (chain/CA trust), which stays generic. See
+    ///< tlsCertDiagnostics.hpp.
+
+    /// Whether libcurl could not even LOAD the CA file configured for this attempt
+    /// (CURLE_SSL_CACERT_BADFILE -- missing, unreadable, or not a certificate it can
+    /// parse), as opposed to loading it fine and then failing to verify the peer
+    /// against it. Deliberately separate from tlsFailure: a bad local CA file is a
+    /// permanent local misconfiguration, not a verification outcome, and (unlike a
+    /// hostname mismatch or a chain/CA-trust failure) OpenSSL's verify callback never
+    /// runs at all when the CA file itself fails to load -- sawDepth0 stays false,
+    /// which is exactly what makes this indistinguishable from a pure transport
+    /// failure (a cipher-negotiation failure, a reset mid-handshake) without this
+    /// field. verify_mode=system's local-anchor fallback (curlPerformer.cpp) checks this
+    /// before its normal sawDepth0/depth0VerificationFailed gate, so an anchor that breaks
+    /// after startup (config.c parses it only once) stops the agent with a named reason
+    /// instead of being retried forever as if it were a network failure.
+    bool caFileLoadFailed {false};
 };
+
+/// Name of a TransportStatus, for the printer below and for logs, on the same reasoning as
+/// outcomeName(): an ordinal does not carry the reason to the reader.
+inline const char* transportStatusName(TransportStatus status)
+{
+    switch (status)
+    {
+        case TransportStatus::Ok:
+            return "Ok";
+
+        case TransportStatus::Timeout:
+            return "Timeout";
+
+        case TransportStatus::ConnectFail:
+            return "ConnectFail";
+
+        case TransportStatus::TlsFail:
+            return "TlsFail";
+
+        case TransportStatus::Aborted:
+            return "Aborted";
+
+        case TransportStatus::OtherError:
+            return "OtherError";
+
+        default:
+            return "unknown";
+    }
+}
+
+/**
+ * @brief Renders an HttpResponse for gtest, found by argument-dependent lookup.
+ *
+ * Without it gtest has no way to print this type and falls back to dumping the object's raw
+ * bytes. That is worse than unreadable: sizeof(HttpResponse) spans the padding the compiler
+ * inserts after `status` to align `httpCode`, those bytes are never written by any constructor,
+ * and reading them is a genuine use of uninitialised memory -- which valgrind reports as an
+ * error, failing the RTR job.
+ *
+ * The dump is not confined to a failing assertion either. INSTANTIATE_TEST_SUITE_P records
+ * PrintToString(param) for every parameter while registering the suite, so a suite parameterised
+ * on HttpResponse trips this during InitGoogleMock(), before a single test runs and however many
+ * of them pass.
+ *
+ * The body is summarised by length rather than printed: it can be as large as the client's
+ * 8 KiB cap, and its bytes are never what the reader of a failure message is after.
+ */
+inline void PrintTo(const HttpResponse& response, std::ostream* os)
+{
+    *os << "HttpResponse{status=" << transportStatusName(response.status)
+        << ", httpCode=" << response.httpCode
+        << ", retryAfterSeconds=" << response.retryAfterSeconds
+        << ", caGeneration=" << response.caGeneration
+        << ", serverDateSeconds=" << static_cast<long long>(response.serverDateSeconds)
+        << ", localIp='" << response.localIp << "'"
+        << ", body=" << response.body.size() << " byte(s)"
+        << ", curlError='" << response.curlError << "'"
+        << ", tlsFailureKind=" << static_cast<int>(response.tlsFailure.kind) << "}";
+}
 
 #endif // _HC_HTTP_TYPES_HPP

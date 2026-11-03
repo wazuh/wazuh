@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module - Hash cache
- * Copyright (C) 2015, Wazuh Inc.
- * July 31, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -25,10 +24,12 @@ namespace remoted::control
         ~HashCache();
 
         /**
-         * Resolve the absolute path of the merged.mg file for a group set.
+         * Resolve the path of the merged.mg file (relative to remoted's cwd, the installation directory) for a group
+         * set.
          * @param groupsCsv Raw comma-separated group list, in the order returned
          *                  by wdb's `select-agent-group`. No URL-encoding.
-         * @return The resolved merged.mg path, or an empty string on invalid input.
+         * @return The resolved merged.mg path, or an empty string when a group name is invalid. An
+         *         empty @p groupsCsv is the "default" group.
          */
         std::string getMergedMgPath(const std::string& groupsCsv) const;
 

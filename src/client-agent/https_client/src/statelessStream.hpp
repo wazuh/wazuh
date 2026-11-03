@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -16,6 +15,7 @@
 #include "bufferLevel.hpp"
 #include "callbackSink.hpp"
 #include "eventAccumulator.hpp"
+#include "logRateLimiter.hpp"
 #include "moduleConfig.hpp"
 #include "moduleLog.hpp"
 #include "retrySender.hpp"
@@ -26,6 +26,14 @@
 #include <functional>
 #include <mutex>
 #include <string>
+
+/// What the /stateless H line had to leave out to stay within remoted's limit.
+enum class HeaderLineTrim
+{
+    None,
+    Groups,
+    AllButId
+};
 
 /**
  * @brief The /stateless sender (D6). Intake appends to the accumulator; the
@@ -78,7 +86,9 @@ class StatelessStream final
 
     private:
         bool flushDue(bool force) const;
-        bool flushOnce(Waiter& waiter, uint32_t timeoutMs, uint32_t maxAttempts);
+        /// Returns the outcome of the attempt (not just ok/failed) so tick() can tell an
+        /// unescalated AuthFail apart from every other failure and back off accordingly (#39601).
+        OutcomeClass flushOnce(Waiter& waiter, uint32_t timeoutMs, uint32_t maxAttempts);
         /// identityChanged: the signer's agent id moved (hc_set_agent_identity) between building
         /// the batch and the last attempt -- a 400 then means the H line, not the events.
         void handleOutcome(OutcomeClass outcome, const EventAccumulator::Snapshot& snapshot, bool identityChanged);
@@ -107,6 +117,9 @@ class StatelessStream final
         /// stream starts sending -- is picked up without restarting the stream. A one-flush-old
         /// value is used for the budget check in between flushes; harmless, since the accumulator
         /// self-corrects at the very next flush either way.
+        /// What the last H line left out to stay within remoted's limit (same lock). Declared
+        /// before m_headerLine, whose initializer writes it.
+        HeaderLineTrim m_headerTrim {HeaderLineTrim::None};
         std::string m_headerLine;
         /// The agent id m_headerLine was built for (same lock); compared with the signer's live id
         /// after a failed flush to tell an identity swap apart from a genuinely bad batch.
@@ -117,6 +130,7 @@ class StatelessStream final
         BufferLevelLadder m_ladder;
         uint64_t m_droppedEvents {0};
         bool m_oversizedWarned {false}; ///< Warn-once latch for unsplittable 413s.
+        LogRateLimiter m_headerTrimLimiter;
 };
 
 #endif // _HC_STATELESS_STREAM_HPP

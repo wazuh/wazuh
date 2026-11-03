@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include "builders/baseBuilders_test.hpp"
 
 #include "builders/opfilter/filter.hpp"
@@ -38,11 +39,7 @@ INSTANTIATE_TEST_SUITE_P(
         FilterT(R"({"target": 1.2})", opfilter::filterBuilder, "target", {makeValue("1.3")}, FAILURE()),
         FilterT(R"({"target": "hola"})", opfilter::filterBuilder, "target", {makeValue(R"("hola")")}, SUCCESS()),
         FilterT(R"({"target": "hola"})", opfilter::filterBuilder, "target", {makeValue(R"("hola2")")}, FAILURE()),
-        FilterT(R"({"target": "hola"})",
-                opfilter::filterBuilder,
-                "target",
-                {makeStringOnlyValue("hola")},
-                SUCCESS()),
+        FilterT(R"({"target": "hola"})", opfilter::filterBuilder, "target", {makeStringOnlyValue("hola")}, SUCCESS()),
         FilterT(R"({"target": "a\"b\\c"})",
                 opfilter::filterBuilder,
                 "target",

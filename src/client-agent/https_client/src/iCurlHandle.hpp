@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -30,6 +29,8 @@ enum class CurlOption
     Post,           ///< long 1
     PostFields,     ///< ptr to the in-memory body
     PostFieldSize,  ///< long body length
+    Get,            ///< long 1: CURLOPT_HTTPGET. Also clears any prior POST state, but
+    ///< that's moot -- every handle is built fresh per request (CurlHandleFactory).
     TimeoutMs,      ///< long per-request timeout
     VerifyPeer,     ///< long 0/1
     VerifyHost,     ///< long 0/2
@@ -70,6 +71,10 @@ struct HeaderCapture
 {
     long* retryAfter {nullptr};
     std::time_t* serverDate {nullptr};
+    /// Wazuh-CA-Generation on a GET /cacerts: the publication the answering node vouches for.
+    /// Left at 0 when the header is absent, which is what a manager predating #39321 sends and
+    /// is never adopted either way.
+    std::int64_t* caGeneration {nullptr};
 };
 
 /**
@@ -92,11 +97,17 @@ class ICurlHandle
         virtual bool setOptionPtr(CurlOption option, const void* value) = 0;
         virtual void appendHeader(const std::string& header) = 0;
 
+        /// Sets X509_V_FLAG_PARTIAL_CHAIN so a self-signed CaInfo root echoed back
+        /// in the peer's own chain verifies instead of failing with
+        /// X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN. Trusts nothing beyond CaInfo.
+        /// @return false if the underlying option was rejected by libcurl.
+        virtual bool trustSelfSignedRoot() = 0;
+
         /// @return false if the underlying option(s) were rejected by libcurl;
         ///         the caller must not proceed to perform() in that case, since
         ///         the requested behavior (e.g. capturing the response) would
         ///         silently not be in effect.
-        virtual bool captureResponseBody(std::string* output) = 0;
+        virtual bool captureResponseBody(std::string* output, uint64_t maxBytes) = 0;
         virtual bool captureResponseToFile(std::FILE* file, uint64_t maxBytes) = 0;
 
         /// Installs the one HEADERFUNCTION/HEADERDATA pair libcurl allows per
@@ -120,6 +131,21 @@ class ICurlHandle
         /// The error class plus, when libcurl supplied one, the TLS/OpenSSL detail
         /// behind it -- the part TransportStatus cannot carry.
         virtual std::string curlError() = 0;
+
+        /// The classified cause behind the last perform(), when it failed with
+        /// TransportStatus::TlsFail and the OpenSSL verify callback identified it as a
+        /// hostname mismatch or a certificate-date problem (see tlsCertDiagnostics.hpp).
+        /// Default-constructed (kind == None) after a success, after any other failure,
+        /// and after an ordinary chain/CA-trust TlsFail, which stays generic.
+        virtual TlsFailureDetail tlsFailureDetail() = 0;
+
+        /// Whether the last perform() failed because libcurl could not LOAD the CA file
+        /// set via CurlOption::CaInfo (CURLE_SSL_CACERT_BADFILE) -- missing, unreadable,
+        /// or not a certificate it can parse -- as opposed to loading it fine and then
+        /// failing to verify the peer against it. False after a success and after any
+        /// other failure. See HttpResponse::caFileLoadFailed (httpTypes.hpp) for why this
+        /// is kept separate from tlsFailureDetail().
+        virtual bool caFileLoadFailed() = 0;
 };
 
 using CurlHandleFactory = std::function<std::unique_ptr<ICurlHandle>()>;

@@ -5,7 +5,7 @@ The **Rootcheck** module performs anomaly and behavior-based detection on monito
 > **Important Changes in Wazuh 5.0:**
 > Starting in version 5.0, rootcheck no longer performs signature-based detection of rootkit files and trojans, nor does it support policy checking capabilities. The manager also no longer persists rootcheck data in a database. Rootcheck now operates in a stateless mode, sending real-time alerts without server-side storage.
 >
-> For policy and configuration assessment, use the [Security Configuration Assessment (SCA)](../sca/index.html) module instead.
+> For policy and configuration assessment, use the [Security Configuration Assessment (SCA)](../sca/README.md) module instead.
 
 ## Overview
 
@@ -119,6 +119,6 @@ If you were using rootcheck features removed in Wazuh 5.0, here are the recommen
 
 ## Related Modules
 
-- **[Security Configuration Assessment (SCA)](../sca/index.html)**: Policy and configuration compliance checking
-- **[File Integrity Monitoring (FIM)](../fim/index.html)**: Monitor file changes and detect malicious files
-- **[Syscollector](../syscollector/index.html)**: System inventory and change detection
+- **[Security Configuration Assessment (SCA)](../sca/README.md)**: Policy and configuration compliance checking
+- **[File Integrity Monitoring (FIM)](../fim/README.md)**: Monitor file changes and detect malicious files
+- **[Syscollector](../syscollector/README.md)**: System inventory and change detection

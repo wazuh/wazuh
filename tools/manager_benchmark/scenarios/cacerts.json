@@ -1,0 +1,22 @@
+{
+  "name": "cacerts",
+  "description": "Contract test for GET /cacerts (RF-27): a fleet of 20 agents each fetches the manager's CA PEM 10 times over the HTTPS listener. Every request must be answered 200 with an application/x-pem-file body carrying a CERTIFICATE block -- the trust-bootstrap property a real fleet relies on before it verifies anything -- with no transport errors. The route is unauthenticated and body-less, so this doubles as the floor of the listener's fixed per-request cost (TLS + routing, no downstream). A 404 here means the manager has no remote.https.ca_certificate file; a 503 means the configured CA does not sign the listener's certificate and the manager refused to hand it out (both fail the verdict deliberately).",
+  "mode": "agent",
+  "defaults": {
+    "module": "syscollector",
+    "option": "Sync",
+    "cluster_name": "cluster01",
+    "retry": { "enabled": false }
+  },
+  "lanes": {
+    "cacerts": [
+      { "kind": "cacerts", "repeat_count": 10 }
+    ]
+  },
+  "fleets": [
+    { "name": "linux", "agents": 20, "first_id": 27000, "lanes": ["cacerts"],
+      "start": { "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04", "architecture": "x86_64", "agentversion": "5.0.0" } }
+  ],
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "30s" },
+  "expected": { "cacerts": { "sent": { "eq": 200 }, "s200": { "eq": 200 }, "other": { "eq": 0 } }, "transport_errors": { "eq": 0 } }
+}

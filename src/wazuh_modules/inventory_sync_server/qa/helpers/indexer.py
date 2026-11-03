@@ -83,10 +83,23 @@ class Indexer:
         The deletion route answers at ADMISSION, so a 200 only promises the purge is queued:
         this loop is what waits for the purge itself, plus the index refresh after it."""
         deadline = time.monotonic() + timeout
-        docs = []
+        docs = None
+        unavailable = None
         while time.monotonic() < deadline:
-            docs = self.agent_docs(agent_id, index=index)
+            try:
+                docs = self.agent_docs(agent_id, index=index)
+            except requests.HTTPError as error:
+                # The first write of a test auto-creates an index the previous test deleted, and a
+                # search that lands while its primary shard is still being allocated answers 503.
+                # Poll again: a failed search says nothing about the count, not even about zero.
+                if error.response is None or error.response.status_code != 503:
+                    raise
+                unavailable = error
+                time.sleep(0.2)
+                continue
             if len(docs) == count:
                 return docs
             time.sleep(0.2)
-        return docs
+        if docs is None and unavailable is not None:
+            raise unavailable
+        return docs if docs is not None else []

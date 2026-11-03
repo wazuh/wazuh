@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef GEO_ERROR_CODES_HPP
 #define GEO_ERROR_CODES_HPP
 

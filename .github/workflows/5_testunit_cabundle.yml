@@ -1,0 +1,170 @@
+name: 5.X - CA bundle - Unit tests
+
+on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - ".github/workflows/5_testunit_cabundle.yml"
+      # ca_bundle_utest links only ca_bundle + gtest + the vendored `crypto` (test/CMakeLists.txt:16-23,
+      # CMakeLists.txt:30): the module is its whole in-tree source closure.
+      - "src/shared_modules/ca_bundle/**"
+      # Configure path: build_target_cpp configures src/ as one tree -- src/CMakeLists.txt (registers
+      # this module at :283, includes src/cmake/*.cmake at :85-87, reads VERSION.json at :128) and
+      # src/external/CMakeLists.txt, which defines the `crypto` alias this library links (:115).
+      - "src/CMakeLists.txt"
+      - "src/cmake/**"
+      - "src/external/CMakeLists.txt"
+      - "VERSION.json"
+      # build_external_deps runs `make deps`/`make build-external` (src/Makefile; its ref list comes
+      # from tools/get_git_refs.sh, src/Makefile:708) and builds the http-request submodule
+      # (action.yml:35-43, also configured at src/CMakeLists.txt:244). A submodule bump changes only
+      # the gitlink path, which `http-request/**` would never match.
+      - "src/Makefile"
+      - "src/deps.lock.mk"
+      - "tools/get_git_refs.sh"
+      - "src/shared_modules/http-request"
+      # Result-affecting actions this workflow executes (reinstall_cmake runs the devContainer script,
+      # reinstall_cmake/action.yml:29). upload_s3_artifact is left out on purpose: coverage_cpp calls
+      # it with continue-on-error (coverage_cpp/action.yml:112-121), so it can only report, and the
+      # agent package and -rtr lanes exercise it on PRs.
+      - ".github/actions/build_external_deps/**"
+      - ".github/actions/build_target_cpp/**"
+      - ".github/actions/coverage_cpp/**"
+      - ".github/actions/test_cpp/**"
+      - ".github/actions/reinstall_cmake/**"
+      - "tools/devContainer/reinstall-cmake.sh"
+      - ".github/actions/setup-sccache/**"
+      # Prose: no build or test reads it.
+      - "!src/shared_modules/ca_bundle/README.md"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  cabundle-modules:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@v5.3.2
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install a compatible CMake
+        uses: ./.github/actions/reinstall_cmake
+      # Compilation cache (issue 38139). Skipped on fork PRs (no credentials).
+      - name: "Configure AWS credentials for the compilation cache"
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+          role-duration-seconds: 7200
+      - name: "Set up sccache"
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: ./.github/actions/setup-sccache
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          region: ${{ secrets.CI_AWS_REGION }}
+          key-prefix: sccache/5.0.0
+
+      # Mandatory: the library links ext_pugixml and ext_rapidjson, and the test target links
+      # gtest/gmock from src/external/googletest/lib, all produced by this action.
+      - name: Project dependencies
+        uses: ./.github/actions/build_external_deps
+
+      # No -DTARGET is passed, so IS_AGENT stays FALSE and the server-only branch that owns
+      # add_subdirectory(shared_modules/ca_bundle) is the one configured.
+      - name: CA bundle - Build tests
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "ca_bundle_utest"
+          test: "true"
+          asan: "false"
+
+      # `ca_bundle` is the module-wide ctest label: it selects the GTest.
+      #
+      # Valgrind is deliberately off: test_cpp runs `valgrind ctest` without --trace-children=yes, so
+      # the test binaries are not instrumented anyway. The ASAN job below is the memory gate that matters here.
+      - name: CA bundle - Run tests
+        uses: ./.github/actions/test_cpp
+        with:
+          valgrind: "false"
+          target: "ca_bundle"
+
+      # Coverage is reported, not gated (threshold 0): the point of this workflow is that the suites
+      # run at all, which they did not before. The lcov report is uploaded as an artifact so the team
+      # can pin a real floor once the number has a history.
+      - name: CA bundle - Coverage
+        uses: ./.github/actions/coverage_cpp
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          path: src/shared_modules/ca_bundle
+          test_directory: src/shared_modules/ca_bundle
+          id: ca_bundle
+          threshold: "0"
+          validate_function_coverage: "false"
+      - name: "Compilation cache statistics"
+        if: always()
+        run: sccache --show-stats 2>/dev/null | grep -viE "cache location|bucket" || true
+
+  cabundle-asan:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install a compatible CMake
+        uses: ./.github/actions/reinstall_cmake
+      # Compilation cache (issue 38139). Skipped on fork PRs (no credentials).
+      - name: "Configure AWS credentials for the compilation cache"
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+          role-duration-seconds: 7200
+      - name: "Set up sccache"
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: ./.github/actions/setup-sccache
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          region: ${{ secrets.CI_AWS_REGION }}
+          key-prefix: sccache/5.0.0
+
+      - name: Project dependencies
+        uses: ./.github/actions/build_external_deps
+
+      - name: CA bundle - Build tests
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "ca_bundle_utest"
+          test: "true"
+          asan: "true"
+
+      # This job is not a redundant second run: build_target_cpp's asan mode compiles with
+      # -fsanitize=address,undefined,leak. Only the GTest label is selected here.
+      - name: CA bundle - Run tests
+        uses: ./.github/actions/test_cpp
+        with:
+          target: "ca_bundle_utest"
+          valgrind: "false"

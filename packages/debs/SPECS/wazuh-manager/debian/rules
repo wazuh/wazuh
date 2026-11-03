@@ -21,6 +21,8 @@ export TARGET_DIR=${CURDIR}/${PKG_DIR}
 
 # Package build options
 export INSTALLATION_DIR="/var/wazuh-manager"
+# The manager's configuration directory (CONF_DIR in src/init/shared.sh), outside the installation directory
+export CONF_DIR=/etc/wazuh-manager
 export INSTALLATION_SCRIPTS_DIR="${INSTALLATION_DIR}/packages_files/manager_installation_scripts"
 export JOBS="5"
 export DEBUG_ENABLED="no"
@@ -38,7 +40,7 @@ override_dh_auto_install:
 
 override_dh_install:
 
-	rm -rf $(INSTALLATION_DIR)/
+	rm -rf $(INSTALLATION_DIR)/ $(CONF_DIR)/
 	# Build the binaries
 	make -C src deps TARGET=manager
 	make -j$(JOBS) -C src/ TARGET=manager DEBUG=$(DEBUG_ENABLED)
@@ -50,10 +52,17 @@ override_dh_install:
 	USER_UPDATE="n" \
 	USER_ENABLE_EMAIL="n" \
 	USER_ENABLE_AUTHD="y" \
-	USER_GENERATE_AUTHD_CERT="y" \
 	USER_AUTO_START="n" \
-	USER_CREATE_SSL_CERT="n" \
+	USER_RESOLVE_CREDENTIALS="n" \
 	./install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
+
+	# USER_RESOLVE_CREDENTIALS="n" above, and this scrub behind it: this is a staging install whose
+	# tree is copied into the package, so credential material generated here would be shipped to
+	# every deployment -- and dpkg has no equivalent of rpm's unpackaged-files check to catch it.
+	# postinst resolves them on the target host instead.
+	rm -f  $(INSTALLATION_DIR)/api/configuration/security/rbac.db
+	rm -f  $(CONF_DIR)/certs/*.pem
+	rm -rf $(INSTALLATION_DIR)/queue/keystore/*
 
 	# Copying init.d script
 	mkdir -p ${TARGET_DIR}/etc/init.d/
@@ -72,11 +81,14 @@ override_dh_install:
 	rm -rf $(INSTALLATION_DIR)/logs/*.log
 	rm -rf $(INSTALLATION_DIR)/logs/*.json
 
-	./gen_permissions.sh $(INSTALLATION_DIR)/ ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/restore-permissions.sh
+	./gen_permissions.sh $(INSTALLATION_DIR)/ ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/restore-permissions.sh --guard-writable
+	./gen_permissions.sh $(CONF_DIR)/ ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/restore-permissions-conf.sh --guard-writable
 
 	# Copying to target
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_DIR)/
 	cp -r $(INSTALLATION_DIR)/. $(TARGET_DIR)$(INSTALLATION_DIR)/
+	mkdir -p ${TARGET_DIR}$(CONF_DIR)/
+	cp -r $(CONF_DIR)/. $(TARGET_DIR)$(CONF_DIR)/
 
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/
 	cp VERSION.json ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/
@@ -94,6 +106,14 @@ override_dh_install:
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/etc/templates/config/ubuntu
 	cp -r etc/templates/config/ubuntu ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/etc/templates/config/
 
+	# Install the license texts: GPLv2 for the manager, AGPLv3 for the engine (wazuh-manager-analysisd)
+	mkdir -p ${TARGET_DIR}/usr/share/doc/wazuh-manager
+	install -m 0644 LICENSE src/engine/LICENSE-engine src/engine/COPYING-engine THIRD-PARTY-NOTICES ${TARGET_DIR}/usr/share/doc/wazuh-manager/
+
+# Keep the license texts uncompressed: debian/copyright points to them by name.
+override_dh_compress:
+	dh_compress -XLICENSE -XLICENSE-engine -XCOPYING-engine -XTHIRD-PARTY-NOTICES
+
 override_dh_fixperms:
 	dh_fixperms
 	# Fix Python permissions
@@ -106,12 +126,40 @@ override_dh_fixperms:
 	chmod 0640 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/lib/pkgconfig/python3.pc
 
 # debian/conffiles is intentionally empty: the manager registers no dpkg
-# conffiles. preinst snapshots ${DIR}/etc into manager_upgrade_preserve/ and
-# postinst's restore_upgrade_preserve() copies it back as the last content step,
-# so dpkg's conffile prompt would ask about a file the postinst overwrites from
-# that snapshot anyway.
+# conffiles for its configuration. preinst snapshots ${CONF_DIR} into
+# manager_upgrade_preserve/ and postinst's restore_upgrade_preserve() copies it
+# back as the last content step, so dpkg's conffile prompt would ask about a file
+# the postinst overwrites from that snapshot anyway. dh_installdeb lists every
+# file under /etc as a conffile by itself (compat >= 3), so the configuration
+# directory's entries are taken out of the generated list; the init script in
+# /etc/init.d stays one.
 override_dh_installdeb:
 	dh_installdeb
+	[ ! -f $(TARGET_DIR)/DEBIAN/conffiles ] || sed -i '\#^$(CONF_DIR)/#d' $(TARGET_DIR)/DEBIAN/conffiles
+	[ -s $(TARGET_DIR)/DEBIAN/conffiles ] || rm -f $(TARGET_DIR)/DEBIAN/conffiles
+
+# The manager is installed neither enabled nor started; `systemctl enable --now wazuh-manager` is
+# the documented step, because the manager needs credentials it cannot always resolve at install
+# time and a unit enabled without being started only produces a failed unit at the next reboot.
+#
+# Declared rather than relied upon. Today nothing enables or starts it for two incidental reasons:
+# there is no debian/*.service, and no maintainer script carries a `#DEBHELPER#` token, so
+# dh_installdeb has nowhere to inject a snippet. Neither is a decision, and both are one ordinary
+# edit away from reversing -- dh_installsystemd scans units already in the package build directory
+# (override_dh_install installs one into usr/lib/systemd/system/), so whether it is picked up today
+# depends on the debhelper version in the build container rather than on compat 7.
+#
+# Both command generations are named on purpose: dh_installsystemd exists from debhelper 11, the
+# dh_systemd_* pair before it, and an override for a command that is not in the sequence is simply
+# never called. So this stays correct whichever debhelper builds the package.
+override_dh_installsystemd:
+	dh_installsystemd --no-enable --no-start
+
+override_dh_systemd_enable:
+	dh_systemd_enable --no-enable
+
+override_dh_systemd_start:
+	dh_systemd_start --no-start
 
 override_dh_auto_clean:
 	$(MAKE) -C src clean
@@ -119,4 +167,4 @@ override_dh_auto_clean:
 override_dh_strip:
 	dh_strip --dbg-package=wazuh-manager-dbg --exclude=${PKG_DIR}${INSTALLATION_DIR}/framework/python
 
-.PHONY: override_dh_install override_dh_strip override_dh_auto_clean override_dh_auto_build override_dh_auto_configure override_dh_fixperms override_dh_installdeb
+.PHONY: override_dh_install override_dh_strip override_dh_auto_clean override_dh_auto_build override_dh_auto_configure override_dh_fixperms override_dh_installdeb override_dh_installsystemd override_dh_systemd_enable override_dh_systemd_start

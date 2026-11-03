@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -43,7 +42,7 @@
 
 namespace
 {
-    constexpr uint16_t FAKE_PORT = 44853; // Distinct from http-request's 44441.
+    constexpr uint16_t FAKE_PORT = 24853; // Below the ephemeral range; see facadeE2e's port map.
     const std::string KEY_HEX = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
 
     ModuleConfig componentConfig()

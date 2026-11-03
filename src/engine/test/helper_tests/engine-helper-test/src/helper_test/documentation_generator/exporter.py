@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 from abc import ABC, abstractmethod
 from enum import Enum
 from pathlib import Path

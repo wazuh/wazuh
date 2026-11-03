@@ -2,7 +2,7 @@
 
 In previous Wazuh versions (4.x), the manager's `remoted` module accepted raw syslog messages from network devices (firewalls, routers, switches) on port 514, configured via `<connection>syslog</connection>` in the manager's `ossec.conf`.
 
-Starting with Wazuh 5.0, this syslog input capability has been removed from `remoted`. The module now exclusively handles encrypted agent connections. To continue collecting syslog from network devices, you must deploy rsyslog on a collection host to receive the messages, and install a Wazuh agent on that host to forward them to the Wazuh server.
+Starting with Wazuh 5.0, this syslog input capability has been removed from `wazuh-manager-remoted`, which now only handles agent connections, and the manager configuration (`wazuh-manager.conf`) has no option for it: a `<connection>`, `<allowed-ips>` or `<denied-ips>` element under `<remote>` is an unknown option, and the manager refuses to start with it. To continue collecting syslog from network devices, you must deploy rsyslog on a collection host to receive the messages, and install a Wazuh agent on that host to forward them to the Wazuh server.
 
 This guide covers two approaches for the rsyslog-to-Wazuh pipeline:
 
@@ -53,12 +53,12 @@ Network device ──(UDP/TCP port 514)──► rsyslog ──► /var/log/remo
 
 | | Option A — journald | Option B — log file |
 | --------------------------- | ----------------------------------------- | ------------------------------------------ |
-| **Agent config change** | None — journald is read by Wazuh agent | `<localfile>` block required |
+| **Agent config change** | None when the agent's configuration already reads `journald` (see below) | `<localfile>` block required |
 | **Per-host filtering** | Via journald fields (`_HOSTNAME`, etc.) | By file path (`/var/log/remote/<host>.log`) |
 | **OS requirement** | systemd-based Linux hosts | Any Linux host |
 | **rsyslog module** | `omjournal` — custom templates may fail silently on rsyslog 8.x | Built-in file output |
 
-Option A is simpler to operate: journald handles retention automatically and no agent configuration is needed beyond the default. Option B is more portable and works on systems without systemd, and gives a clear per-host file for manual inspection.
+Option A is simpler to operate: journald handles retention automatically and no agent configuration is needed beyond the default one. Option B is more portable and works on systems without systemd, and gives a clear per-host file for manual inspection.
 
 ## Configuration mapping (4.x → 5.x)
 
@@ -122,7 +122,7 @@ The agent appears in the Wazuh dashboard under **Agent management -> Summary** w
 
 ## Option A: rsyslog → journald → logcollector
 
-rsyslog receives the syslog messages and writes them directly to the systemd journal using the `omjournal` output module. The Wazuh agent reads the journal by default — no additional agent configuration is required.
+rsyslog receives the syslog messages and writes them directly to the systemd journal using the `omjournal` output module. When the Wazuh agent is installed on a host where `journalctl` is available, its generated `ossec.conf` already includes a `<localfile>` with `<location>journald</location>` and `<log_format>journald</log_format>`, so no additional agent configuration is required. If that block is missing, add it.
 
 > **Important:** The `_HOSTNAME` field in the systemd journal is a *trusted field* — journald always sets it to the local machine's hostname, and no application (including rsyslog) can override it.
 
@@ -193,11 +193,11 @@ On the collection host, confirm the message arrived in the journal:
 journalctl -f
 ```
 
-The Wazuh agent reads the journal — no changes to `/var/ossec/etc/ossec.conf` are needed.
+With the `journald` `<localfile>` above in place, the Wazuh agent reads the journal — no other change to `/var/ossec/etc/ossec.conf` is needed.
 
 ### 4. Verify events appear in the dashboard
 
-In the Wazuh dashboard, go to **Explore -> Discover**. Events from remote devices will appear with `wazuh.protocol.location: journald`. The same decoders that matched your devices in Wazuh 4.x continue to fire without modification.
+In the Wazuh dashboard, go to **Explore -> Discover**. Events from remote devices will appear with `wazuh.protocol.location: journald`. Which decoder handles them is decided by the Engine's 5.x decoders — see [Decoder and rule compatibility](#decoder-and-rule-compatibility).
 
 ---
 
@@ -266,18 +266,18 @@ Edit the agent's configuration file at `/var/ossec/etc/ossec.conf` and add a `<l
 
 This single block covers all files written by rsyslog under `/var/log/remote/`, regardless of how many source hosts are added in the future.
 
-> **Message format and Wazuh decoder compatibility:** The `dynaFile` approach above uses rsyslog's default message format, which includes the syslog timestamp (`Jun  3 08:14:22`). Wazuh's built-in syslog decoders require this timestamp as the first field to match. If you use a custom message template, it **must** include `%timereported:::date-rfc3164%` at the start:
+> **Message format and Wazuh decoder compatibility:** The `dynaFile` approach above uses rsyslog's default message format, which includes the syslog timestamp (`Jun  3 08:14:22`). The syslog decoders expect this RFC 3164 header, timestamp first. If you use a custom message template, it **must** include `%timereported:::date-rfc3164%` at the start:
 >
 > ```
 > # Correct — timestamp is present, Wazuh syslog decoders match
 > template(name="MsgFmt" type="string" string="%timereported:::date-rfc3164% %HOSTNAME% %app-name%[%procid%]: %msg%\n")
 > action(type="omfile" file="/var/log/remote/syslog.log" template="MsgFmt")
 >
-> # Wrong — no timestamp, events land in wazuh-events-v5-unclassified-* without field extraction
+> # Wrong — no timestamp, events are left unclassified, without field extraction
 > template(name="MsgFmt" type="string" string="%HOSTNAME% %app-name%[%procid%]: %msg%\n")
 > ```
 >
-> Events missing a timestamp will appear in the Wazuh dashboard under the `wazuh-events-v5-unclassified-*` index with only `event.original` populated and no decoded fields.
+> Events that no integration's decoder matches are unclassified (`wazuh.integration.category: unclassified`), with only `event.original` populated and no decoded fields. They are indexed, into `wazuh-events-v5-unclassified`, only when the policy's `index_unclassified_events` flag is set; it is `false` by default, and such events are then not indexed at all.
 
 Restart the agent to apply the configuration:
 
@@ -299,13 +299,18 @@ Expected output:
 
 ### 3. Verify events appear in the dashboard
 
-In the Wazuh dashboard, go to **Explore -> Discover** and filter by `location: /var/log/remote/`. The same decoders that matched your devices in Wazuh 4.x continue to fire without modification.
+In the Wazuh dashboard, go to **Explore -> Discover** and filter by `wazuh.protocol.location`, which holds the path of the file each event was read from (`/var/log/remote/<host>.log`).
 
 ---
 
 ## Decoder and rule compatibility
 
-Existing Wazuh decoders and rules for network device syslog (for example, `cisco-asa`, `pf`, `juniper`) continue to work without modification under both options. The syslog message body forwarded by rsyslog is identical to what `remoted` previously received on port 514. No decoder updates are required as part of this migration.
+The syslog message body forwarded by rsyslog is the same text the 4.x `remoted` received on port 514, so nothing about the message has to change. What changes is what processes it: 4.x XML decoders and rules do not run in 5.x at all.
+
+- **Decoding** is done by the Engine with the 5.x decoders of the integrations available to it (Standard content from Wazuh CTI, plus your Custom space). A 4.x custom XML decoder for a device must be rewritten — see [Migrating decoders from XML to YAML](xml-decoders-migration.md).
+- **Detection** is done in the Wazuh Indexer by Sigma rules, which produce findings instead of alerts. A 4.x custom rule must be rewritten — see [Migrating rules from 4.x to 5.x](rules-4x-to-5x.md).
+
+Before retiring the 4.x pipeline, send a sample of each device's log through logtest to check which integration decodes it.
 
 > **Note:** In Wazuh 4.x, the source IP of the remote device was available because `remoted` received the connection directly. In Wazuh 5.x the agent reads from a local file or the journal, so the original source IP is only preserved if rsyslog records it — either in the file path (Option B uses `%FROMHOST-IP%` in the `dynaFile` template, so each device gets its own file) or as part of the message via a custom template property such as `%fromhost-ip%`.
 
@@ -313,7 +318,7 @@ Existing Wazuh decoders and rules for network device syslog (for example, `cisco
 
 ## Migration example
 
-### Wazuh 4.x with syslog configured
+### Wazuh 4.x with syslog configured (4.x manager)
 
 #### Generating remote logs
 
@@ -353,17 +358,17 @@ Alerts appear in `/var/ossec/logs/alerts/alerts.log`:
 [wazuh-user@wazuh-server ~]$ sudo tail -f /var/ossec/logs/alerts/alerts.log
 ** Alert 1780935033.426378: - syslog,remote_test,
 2026 Jun 08 16:10:33 ubu24-2->192.168.70.105
-Rule: 100002 (level 3) -> 'Remote syslog test message from ubu24-2'
+Rule: 100002 (level 3) -> 'Remote syslog test message'
 Jun  8 13:10:24 ubu24-2 ubuntu: New remote log 1619
 
 ** Alert 1780935036.426594: - syslog,remote_test,
 2026 Jun 08 16:10:36 ubu24-2->192.168.70.105
-Rule: 100002 (level 3) -> 'Remote syslog test message from ubu24-2'
+Rule: 100002 (level 3) -> 'Remote syslog test message'
 Jun  8 13:10:26 ubu24-2 ubuntu: New remote log 1620
 
 ** Alert 1780935038.426810: - syslog,remote_test,
 2026 Jun 08 16:10:38 ubu24-2->192.168.70.105
-Rule: 100002 (level 3) -> 'Remote syslog test message from ubu24-2'
+Rule: 100002 (level 3) -> 'Remote syslog test message'
 Jun  8 13:10:29 ubu24-2 ubuntu: New remote log 1621
 ```
 

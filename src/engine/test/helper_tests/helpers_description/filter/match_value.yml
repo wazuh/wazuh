@@ -40,12 +40,12 @@ test:
       array: [1,2,3,4]
     target_field: 10
     should_pass: false
-    description: Value is in array
+    description: Value is not in array
   - arguments:
       array: [hello]
     target_field: wazuh
     should_pass: false
-    description: Value not is in array
+    description: Value is not in array
   - arguments:
       array:
         - key: value

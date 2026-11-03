@@ -8,12 +8,17 @@ set -uo pipefail
 # figure (numbers will differ with the hardware; the shape of the matrix will not).
 #
 # Usage:
-#   sudo ./prepare_manager.sh              # once: open, password-free enrollment
-#   ./run_matrix.sh                        # 12 runs -> results_<label>/
+#   sudo ./prepare_manager.sh              # once: reachable enrollment + the fleet's token
+#   ./run_matrix.sh                        # 14 runs -> results_<label>/
 #   ./make_report_tables.py > tables.md    # the report's tables, from the artifacts
 #
 # The cluster name is read from the local manager's config (the server answers 403
 # to a foreign cluster). Pass --cluster only for a remote manager or to override it.
+#
+# --bootstrap enroll-token|1515: how every agent-mode entry enrolls its fleet. The
+# default (enroll-token) needs the token prepare_manager.sh minted; 1515 is the legacy
+# comparison and needs `prepare_manager.sh --open-1515`. Run the matrix twice, once with
+# each, to compare the two first-contact paths on one machine.
 #
 # --keep-agents: skip the pre-run cleanup of bench-* agents before each agent-mode
 # entry, so every agent-mode run's agents AND indexed documents survive the whole
@@ -30,8 +35,10 @@ cd "$SCRIPT_DIR"
 # Empty means "let run_benchmark.sh read it from the manager's own config"; pass
 # --cluster only for a remote manager, or to override what the config says.
 CLUSTER=""
-# The manager's <remote><https><global_prefix>, when it has one. Unlike the cluster name
-# it is never read from the config: pass it, or every agent-mode run in the matrix 404s.
+# The manager's <remote><https><global_prefix>. Empty lets run_benchmark.sh read it from a
+# local manager's config, like the cluster name; when the tag is absent there the manager
+# still serves under its default '/wazuh-manager/' while the run sends no prefix, so pass
+# it explicitly (or every agent-mode run in the matrix 404s).
 GLOBAL_PREFIX=""
 SOCKET="/var/wazuh-manager/queue/sockets/inventory-sync-http.sock"
 SEED=4242
@@ -40,6 +47,8 @@ SEED=4242
 # that exhausts it fails loudly instead of measuring 401s.
 ENROLL_SETTLE=240s
 ONLY=""
+# How agent-mode entries enroll their fleet; passed straight through.
+BOOTSTRAP="enroll-token"
 # Charts are produced by default: a run that is not plotted rarely gets looked at.
 CHARTS=true
 KEEP_AGENTS=false
@@ -54,6 +63,7 @@ while [[ $# -gt 0 ]]; do
         --seed)           SEED="$2"; shift 2 ;;
         --enroll-settle)  ENROLL_SETTLE="$2"; shift 2 ;;
         --only)           ONLY="$2"; shift 2 ;;   # run a single label
+        --bootstrap)      BOOTSTRAP="$2"; shift 2 ;;
         --no-charts)      CHARTS=false; shift ;;
         --keep-agents)    KEEP_AGENTS=true; shift ;;
         -h|--help)        usage ;;
@@ -69,11 +79,12 @@ MATRIX=(
     "syscollector_agent  agent  scenarios/real_syscollector_debian.json"
     "fim_uds             uds    scenarios/real_fim_first_sync_ubuntu.json"
     "fim_agent           agent  scenarios/real_fim_first_sync_ubuntu.json"
-    # Vulnerability-detection scan lane (single worker by default)
+    # Vulnerability-detection scan lane (vd_workers workers; default half the host's cores)
     "vd_uds              uds    scenarios/real_vd_debian.json"
     # First connection at full fidelity (Windows: the 27,726-item registry
     # corpus in ONE ~26 MB session). The agent twin rides the agent-mode zstd
-    # default: uncompressed it cannot pass remoted's 10 MiB body cap, so the
+    # default: uncompressed it cannot pass remoted's authenticated-body cap
+    # (remoted.auth_max_body_size, 5 MiB by default), so the
     # pair also isolates the relay + decompression cost of the heaviest
     # realistic session.
     "first_connect_uds   uds    scenarios/real_first_connect_uds.json"
@@ -108,9 +119,12 @@ for entry in "${MATRIX[@]}"; do
         else
             # Names are reused across runs, so clear the previous fleet first; this only
             # ever deletes bench-* agents.
-            ./cleanup_agents.sh >/dev/null 2>&1 || true
+            if ! ./cleanup_agents.sh >/dev/null; then
+                echo "WARNING: pre-run cleanup FAILED for $label (see the error above); stale" \
+                     "bench-* agents will fail its enrollment with 'Duplicate agent name'." >&2
+            fi
         fi
-        extra+=(--enroll-settle "$ENROLL_SETTLE")
+        extra+=(--enroll-settle "$ENROLL_SETTLE" --bootstrap "$BOOTSTRAP")
     fi
 
     echo "=== $label ($mode) — $(date -u +%H:%M:%S)"

@@ -118,6 +118,42 @@ TEST_F(CommandRuleEvaluatorTest, RegexPatternMatchesOutputReturnsFound)
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
 }
 
+TEST_F(CommandRuleEvaluatorTest, AnchoredRegexPatternMatchesWindowsLineEnding)
+{
+    m_ctx.rule = "some command";
+    m_ctx.pattern = std::string("r:^0\\s*$");
+
+    m_execMock = [](const std::string&)
+    {
+        CommandRuleEvaluator::ExecResult result;
+        result.StdOut = "0\r\n";
+        result.StdErr = "";
+        result.ExitCode = 0;
+        return std::make_optional<CommandRuleEvaluator::ExecResult>(result);
+    };
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
+}
+
+TEST_F(CommandRuleEvaluatorTest, AnchoredRegexPatternIgnoresDigitInErrorText)
+{
+    m_ctx.rule = "some command";
+    m_ctx.pattern = std::string("r:^0\\s*$");
+
+    m_execMock = [](const std::string&)
+    {
+        CommandRuleEvaluator::ExecResult result;
+        result.StdOut = "Exception calling \"GetTempFileName\" with \"0\" argument(s): \"The file exists.\"\r\n";
+        result.StdErr = "";
+        result.ExitCode = 0;
+        return std::make_optional<CommandRuleEvaluator::ExecResult>(result);
+    };
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::NotFound);
+}
+
 TEST_F(CommandRuleEvaluatorTest, RegexPatternDoesNotMatchOutputReturnsNotFound)
 {
     m_ctx.rule = "some command";

@@ -1,17 +1,18 @@
 /*
  * Wazuh - Shared Modules utils tests
- * Copyright (C) 2015, Wazuh Inc.
- * October 19, 2023.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #include "zlibHelper_test.hpp"
 #include "hashHelper.h"
-#include "stringHelper.h"
+#include "wazuhCommon.hpp"
 #include "zlibHelper.hpp"
 #include "gtest/gtest.h"
 #include <algorithm>
@@ -81,7 +82,8 @@ std::string ZlibHelperTest::getFileHash(const std::filesystem::path& filepath) c
 
     Utils::HashData hash;
     hash.update(buffer.c_str(), buffer.size());
-    return Utils::asciiToHex(hash.hash());
+    const auto digest {hash.hash()};
+    return wazuh::hex_encode(digest.data(), digest.size());
 };
 
 /**
@@ -290,6 +292,23 @@ TEST_F(ZlibHelperTest, ZipDecompressMultipleFiles)
 TEST_F(ZlibHelperTest, ZipDecompressNotCompressedFile)
 {
     EXPECT_THROW(Utils::ZlibHelper::zipDecompress(RAW_FILE, OUTPUT_DIR), std::runtime_error);
+}
+
+/**
+ * @brief The zip-slip guard must reject an entry that escapes into a sibling directory sharing
+ * outputDir's textual prefix (OUTPUT_DIR is ".../zlibHelper"; the entry targets
+ * ".../zlibHelper-evil/pwned.txt"), not just ordinary ../ traversal out of the tree entirely.
+ *
+ */
+TEST_F(ZlibHelperTest, ZipDecompressRejectsSiblingDirectoryEscape)
+{
+    const auto ZIP_SLIP {INPUT_FILES_DIR / "zipslip.zip"};
+    const auto siblingEscape {OUTPUT_DIR.parent_path() / "zlibHelper-evil"};
+
+    EXPECT_THROW(Utils::ZlibHelper::zipDecompress(ZIP_SLIP, OUTPUT_DIR), std::runtime_error);
+    EXPECT_FALSE(std::filesystem::exists(siblingEscape));
+
+    std::filesystem::remove_all(siblingEscape);
 }
 
 /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -63,7 +63,7 @@ static void test_w_authd_validate_ciphers_multiple_colons_only(void **state) {
     assert_int_equal(w_authd_validate_ciphers(":::"), OS_INVALID);
 }
 
-/* Read_Authd_JSON(): the effective `auth` section of etc/wazuh-manager.conf */
+/* Read_Authd_JSON(): the effective `auth` section of /etc/wazuh-manager/wazuh-manager.conf */
 
 static void free_authd_strings(authd_config_t *c) {
     os_free(c->ciphers);
@@ -78,8 +78,8 @@ static void test_Read_Authd_JSON_effective_defaults(void **state) {
     cJSON *auth = cJSON_Parse(
         "{\"disabled\":false,\"port\":1515,\"ipv6\":false,\"use_source_ip\":false,\"purge\":true,\"use_password\":true,"
         "\"ciphers\":\"TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256\","
-        "\"ssl_agent_ca\":\"\",\"ssl_verify_host\":false,\"ssl_manager_cert\":\"etc/certs/remoted.pem\","
-        "\"ssl_manager_key\":\"etc/certs/remoted-key.pem\",\"remote_enrollment\":true,\"legacy_enrollment\":true,"
+        "\"ssl_agent_ca\":\"\",\"ssl_verify_host\":false,\"ssl_manager_cert\":\"/etc/wazuh-manager/certs/remoted.pem\","
+        "\"ssl_manager_key\":\"/etc/wazuh-manager/certs/remoted-key.pem\",\"remote_enrollment\":true,\"legacy_enrollment\":true,"
         "\"force\":{\"enabled\":true,\"key_mismatch\":true,\"disconnected_time\":{\"enabled\":true,\"value\":\"1h\"},"
         "\"after_registration_time\":\"1h\"},\"agents\":{\"allow_higher_versions\":false}}");
     assert_non_null(auth);
@@ -95,8 +95,8 @@ static void test_Read_Authd_JSON_effective_defaults(void **state) {
     assert_string_equal(local_config.ciphers, DEFAULT_CIPHERS);
     assert_null(local_config.agent_ca);
     assert_int_equal(local_config.flags.verify_host, 0);
-    assert_string_equal(local_config.manager_cert, "etc/certs/remoted.pem");
-    assert_string_equal(local_config.manager_key, "etc/certs/remoted-key.pem");
+    assert_string_equal(local_config.manager_cert, "/etc/wazuh-manager/certs/remoted.pem");
+    assert_string_equal(local_config.manager_key, "/etc/wazuh-manager/certs/remoted-key.pem");
     assert_int_equal(local_config.flags.remote_enrollment, 1);
     assert_int_equal(local_config.flags.legacy_enrollment, 1);
     assert_true(local_config.force_options.enabled);
@@ -108,6 +108,72 @@ static void test_Read_Authd_JSON_effective_defaults(void **state) {
 
     cJSON_Delete(auth);
     free_authd_strings(&local_config);
+}
+
+/* w_authd_resolve_legacy_enrollment(): unset in `auth`, the flag follows remote.legacy.enabled */
+static void test_w_authd_resolve_legacy_enrollment_follows_legacy_listener(void **state) {
+    authd_config_t local_config = {0};
+    cJSON *auth = cJSON_Parse("{\"remote_enrollment\":true}");
+    cJSON *legacy_on = cJSON_Parse("{\"legacy\":{\"enabled\":true,\"port\":1514},\"https\":{}}");
+    cJSON *legacy_off = cJSON_Parse("{\"legacy\":{\"enabled\":false},\"https\":{}}");
+    cJSON *no_legacy = cJSON_Parse("{\"https\":{}}");
+    assert_non_null(auth);
+    assert_non_null(legacy_on);
+    assert_non_null(legacy_off);
+    assert_non_null(no_legacy);
+
+    assert_int_equal(Read_Authd_JSON(auth, &local_config), 0);
+    assert_int_equal(local_config.flags.legacy_enrollment, 1); // reader default, before resolution
+
+    w_authd_resolve_legacy_enrollment(&local_config, auth, legacy_off);
+    assert_int_equal(local_config.flags.legacy_enrollment, 0);
+
+    w_authd_resolve_legacy_enrollment(&local_config, auth, legacy_on);
+    assert_int_equal(local_config.flags.legacy_enrollment, 1);
+
+    w_authd_resolve_legacy_enrollment(&local_config, auth, no_legacy);
+    assert_int_equal(local_config.flags.legacy_enrollment, 0);
+
+    local_config.flags.legacy_enrollment = 1;
+    w_authd_resolve_legacy_enrollment(&local_config, auth, NULL);
+    assert_int_equal(local_config.flags.legacy_enrollment, 0);
+
+    local_config.flags.legacy_enrollment = 1;
+    w_authd_resolve_legacy_enrollment(&local_config, NULL, NULL);
+    assert_int_equal(local_config.flags.legacy_enrollment, 0);
+
+    cJSON_Delete(auth);
+    cJSON_Delete(legacy_on);
+    cJSON_Delete(legacy_off);
+    cJSON_Delete(no_legacy);
+    free_authd_strings(&local_config);
+}
+
+static void test_w_authd_resolve_legacy_enrollment_explicit_value_wins(void **state) {
+    authd_config_t local_config = {0};
+    cJSON *auth_yes = cJSON_Parse("{\"legacy_enrollment\":true}");
+    cJSON *auth_no = cJSON_Parse("{\"legacy_enrollment\":false}");
+    cJSON *legacy_on = cJSON_Parse("{\"legacy\":{\"enabled\":true}}");
+    cJSON *legacy_off = cJSON_Parse("{\"legacy\":{\"enabled\":false}}");
+    assert_non_null(auth_yes);
+    assert_non_null(auth_no);
+    assert_non_null(legacy_on);
+    assert_non_null(legacy_off);
+
+    assert_int_equal(Read_Authd_JSON(auth_yes, &local_config), 0);
+    w_authd_resolve_legacy_enrollment(&local_config, auth_yes, legacy_off);
+    assert_int_equal(local_config.flags.legacy_enrollment, 1);
+    free_authd_strings(&local_config);
+
+    assert_int_equal(Read_Authd_JSON(auth_no, &local_config), 0);
+    w_authd_resolve_legacy_enrollment(&local_config, auth_no, legacy_on);
+    assert_int_equal(local_config.flags.legacy_enrollment, 0);
+    free_authd_strings(&local_config);
+
+    cJSON_Delete(auth_yes);
+    cJSON_Delete(auth_no);
+    cJSON_Delete(legacy_on);
+    cJSON_Delete(legacy_off);
 }
 
 static void test_Read_Authd_JSON_force_times_int_or_string(void **state) {
@@ -168,6 +234,8 @@ int main(void)
     const struct CMUnitTest tests[] = {
         // Tests
         cmocka_unit_test(test_Read_Authd_JSON_effective_defaults),
+        cmocka_unit_test(test_w_authd_resolve_legacy_enrollment_follows_legacy_listener),
+        cmocka_unit_test(test_w_authd_resolve_legacy_enrollment_explicit_value_wins),
         cmocka_unit_test(test_Read_Authd_JSON_force_times_int_or_string),
         cmocka_unit_test(test_Read_Authd_JSON_empty_agent_ca_is_null),
         cmocka_unit_test(test_Read_Authd_JSON_disabled_true_and_invalid_port),

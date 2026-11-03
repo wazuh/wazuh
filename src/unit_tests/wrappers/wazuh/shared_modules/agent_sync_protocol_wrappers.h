@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -17,7 +17,9 @@
 #include <stdbool.h>
 #include "agent_sync_protocol_c_interface.h"
 
-AgentSyncProtocolHandle* __wrap_asp_create(const char* module, const char* db_path, asp_logger_t logger);
+AgentSyncProtocolHandle* __wrap_asp_create(const char* module, const char* db_path, asp_logger_t logger,
+                                           uint64_t flush_batch_size, uint64_t flush_interval_ms,
+                                           uint64_t wal_autocheckpoint_pages);
 
 void __wrap_asp_persist_diff(AgentSyncProtocolHandle* handle,
                              const char* id,
@@ -28,6 +30,12 @@ void __wrap_asp_persist_diff(AgentSyncProtocolHandle* handle,
 
 SyncModuleResult_t __wrap_asp_sync_module(AgentSyncProtocolHandle* handle,
                                           int mode);
+
+/// @brief Wrapper for asp_sync_module_bounded(). Scripted like __wrap_asp_sync_module(), and
+/// follows the same __wrap_asp_sync_module_use_full_result() switch.
+SyncModuleResult_t __wrap_asp_sync_module_bounded(AgentSyncProtocolHandle* handle,
+                                                  int mode,
+                                                  uint32_t max_blocks);
 
 /**
  * @brief Wrapper for asp_get_agent_id. Scripted with will_return(): 0 means "the provider has
@@ -42,9 +50,10 @@ long __wrap_asp_get_agent_id(void);
 /// that need to drive classification flags (e.g. local_transport_unavailable) call this with true.
 void __wrap_asp_sync_module_use_full_result(bool enable);
 
-bool __wrap_asp_requires_full_sync(AgentSyncProtocolHandle* handle,
-                                   const char* index,
-                                   const char* checksum);
+/// will_return(IntegrityCheckResult_t*) supplies the whole result.
+IntegrityCheckResult_t __wrap_asp_requires_full_sync(AgentSyncProtocolHandle* handle,
+                                                     const char* index,
+                                                     const char* checksum);
 
 bool __wrap_asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data, size_t length);
 

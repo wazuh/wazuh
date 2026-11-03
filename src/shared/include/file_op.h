@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -225,13 +225,19 @@ void DeleteState();
 int MergeAppendFile(FILE *finalfp, const char *files, int path_offset) __attribute__((nonnull(1, 2)));
 
 
+/* UnmergeFiles() results */
+#define UNMERGE_FAILED          0   /* An entry could not be written, or the merged file could not be read */
+#define UNMERGE_COMPLETE        1   /* Every entry was unmerged */
+#define UNMERGE_NAMES_SKIPPED   2   /* Entries with invalid names were skipped, every other one was unmerged */
+
 /**
  * @brief Unmerge file.
  *
  * @param finalpath Path of the merged file.
  * @param optdir Path of the folder to unmerge the files. If not specified, the files will be unmerged in the current working directory.
  * @param mode Indicates if the merged file must be readed as a binary file  or not. Use `#OS_TEXT`, `#OS_BINARY`.
- * @return 1 if the file was unmerged, 0 on error.
+ * @param unmerged_files Optional list to which successfully extracted names are appended, including on error.
+ * @return `#UNMERGE_COMPLETE`, `#UNMERGE_NAMES_SKIPPED` or `#UNMERGE_FAILED`. Successful entries are retained.
  */
 int UnmergeFiles(const char *finalpath, const char *optdir, int mode, char ***unmerged_files) __attribute__((nonnull(1)));
 
@@ -321,6 +327,24 @@ int OS_MoveFile(const char *src, const char *dst);
 
 
 /**
+ * @brief Moves @p src onto @p dst without following a link at either name.
+ *
+ * For a destination in a directory that an unprivileged account can write. It renames first. When
+ * the rename can't replace @p dst -- a single-file bind mount answers EBUSY, another filesystem
+ * EXDEV -- it copies @p src into @p dst instead, through descriptors w_openat_nofollow_vetted()
+ * opened, so a symlink or a hard link at either name is refused, never written through. @p src is
+ * removed once the copy is complete. OS_MoveFile()'s copy opens both names with fopen().
+ *
+ * On Windows it is MoveFileEx() replacing @p dst, without a copy fallback.
+ *
+ * @param src Source path.
+ * @param dst Destination path.
+ * @return 0 on success. -1 on failure, with @p src left in place and errno set (POSIX).
+ */
+int w_move_file_nofollow(const char *src, const char *dst);
+
+
+/**
  * @brief Copy file.
  *
  * @param src Source path.
@@ -375,10 +399,10 @@ int cldir_ex(const char *name);
  * Example:
  * @code
  * const char *preserve[] = {"keep.txt", "subfolder/important.conf", NULL};
- * cldir_ex_ignore("/var/wazuh-manager/etc/shared", preserve);
- * // Preserves: /var/wazuh-manager/etc/shared/keep.txt
- * //            /var/wazuh-manager/etc/shared/subfolder/important.conf
- * //            /var/wazuh-manager/etc/shared/subfolder/ (directory kept because it has preserved file)
+ * cldir_ex_ignore("/etc/wazuh-manager/shared", preserve);
+ * // Preserves: /etc/wazuh-manager/shared/keep.txt
+ * //            /etc/wazuh-manager/shared/subfolder/important.conf
+ * //            /etc/wazuh-manager/shared/subfolder/ (directory kept because it has preserved file)
  * // Deletes:   Everything else
  * @endcode
  */
@@ -498,28 +522,66 @@ int w_stat(const char * pathname,
  */
 FILE * wfopen(const char * pathname, const char * mode);
 
+/**
+ * @brief Open a file for reading only if it is a regular file.
+ *
+ * On POSIX the last component of the path must not be a symbolic link, and the type is checked on the
+ * opened descriptor, so it is the type of the file that will be read. The open does not wait for a
+ * writer when the path is a FIFO. On Windows this is wfopen().
+ *
+ * @param pathname Path of the file.
+ * @param mode Read mode, "r" or "rb".
+ * @return File pointer, or NULL on error.
+ */
+FILE * w_fopen_regular(const char * pathname, const char * mode);
+
 
 /**
- * @brief Create or truncate a file inside a base directory for writing, without following symlinks.
+ * @brief Create, truncate or append to a file inside a base directory, without following symlinks.
  *
- * Intended for directories that only ever hold files written by Wazuh itself (var/incoming and
- * friends): a symlink, hard link, FIFO, device or directory found at the target path is rejected
+ * Intended for directories that only ever hold files written by Wazuh itself (var/incoming, the
+ * active-response log and friends): a symlink, hard link, FIFO, device or directory found at the target path is rejected
  * instead of being written through. @p filename must be a bare file name; it is rejected if it is
  * empty, "." or "..", if it refers to a parent folder, or if it contains a path separator, so the
  * resulting open cannot escape @p basedir.
  *
  * On both platforms the file is opened without truncating, the descriptor is vetted, and only then is
- * the file truncated: truncating at open time would destroy the target of a hard link before anything
- * about it could be checked. On Linux/macOS the open is relative to a descriptor of @p basedir and
- * uses O_NOFOLLOW; on Windows it skips reparse-point processing. In both cases the descriptor must
- * turn out to be a regular file with a link count of exactly 1.
+ * the file truncated (write modes only; append modes keep the content and write at its end):
+ * truncating at open time would destroy the target of a hard link before anything about it could be
+ * checked. On Linux/macOS the open is relative to a descriptor of @p basedir and uses O_NOFOLLOW;
+ * HP-UX, which has no openat(), opens the joined path with O_NOFOLLOW instead; AIX, which has neither,
+ * rejects a symlink found by lstat() and checks the opened file is the one lstat() saw, or creates a
+ * missing file with O_EXCL; on Windows it skips reparse-point processing. In all cases the descriptor
+ * must turn out to be a regular file with a link count of exactly 1.
  *
  * @param basedir Base directory holding the file. Not created by this function.
  * @param filename Bare file name inside @p basedir.
- * @param mode Open mode, either "w" or "wb".
+ * @param mode Open mode: "w" or "wb" to truncate, "a" or "ab" to append.
  * @return File pointer on success, NULL on error (sets errno).
  */
 FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char * mode);
+
+
+/**
+ * @brief Open an existing file inside a base directory for update, without following symlinks and
+ *        without truncating it at any point.
+ *
+ * Update-mode sibling of w_fopen_nofollow(), for callers that must write over a file's existing
+ * allocation rather than replace its contents -- overwriting a credential before unlinking it, for
+ * one, where truncating would release the secret's bytes and write the replacement somewhere else.
+ * The same vetting applies: @p filename must be a bare file name, and the descriptor must turn out
+ * to be a regular file with a link count of exactly 1, so a symlink, hard link, FIFO, device or
+ * directory at the target path is rejected instead of written through.
+ *
+ * The file must already exist; it is never created. A caller overwriting "what is there" has
+ * nothing to do when nothing is there, and creating the file would turn a target that vanished
+ * mid-operation into a fresh empty one.
+ *
+ * @param basedir Base directory holding the file. Not created by this function.
+ * @param filename Bare file name inside @p basedir.
+ * @return File pointer opened "r+b" and positioned at offset 0, or NULL on error (sets errno).
+ */
+FILE * w_fopen_nofollow_update(const char * basedir, const char * filename);
 
 
 /**
@@ -531,9 +593,11 @@ FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char 
  * name; it is rejected if it is empty, "." or "..", if it refers to a parent folder, or if it contains a
  * path separator, so the resulting open cannot escape @p basedir.
  *
- * On Linux/macOS the open is relative to a descriptor of @p basedir and uses O_NOFOLLOW; on Windows it
- * skips reparse-point processing. In both cases the descriptor must turn out to be a regular file with a
- * link count of exactly 1 before it is handed to zlib.
+ * On Linux/macOS the open is relative to a descriptor of @p basedir and uses O_NOFOLLOW; HP-UX, which
+ * has no openat(), opens the joined path with O_NOFOLLOW instead; AIX, which has neither, rejects a
+ * symlink found by lstat() and checks the opened file is the one lstat() saw; on Windows it skips
+ * reparse-point processing. In all cases the descriptor must turn out to be a regular file with a link
+ * count of exactly 1 before it is handed to zlib.
  *
  * @param basedir Base directory holding the file. Not created by this function.
  * @param filename Bare file name inside @p basedir.
@@ -543,12 +607,101 @@ FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char 
 gzFile w_gzopen_nofollow(const char * basedir, const char * filename, const char * mode);
 
 
+#ifndef WIN32
+/**
+ * @brief Opens @p filename inside @p basedir without following symlinks, and vets the resulting descriptor
+ * as a lone regular file -- rejecting hard links, FIFOs, devices, and directories -- before handing it
+ * back. Shared by w_fopen_nofollow() and w_gzopen_nofollow() so a future hardening fix only has to be
+ * applied once instead of needing to be kept in sync across every caller.
+ *
+ * @param basedir Base directory holding the file.
+ * @param filename Bare file name inside @p basedir.
+ * @param oflags open()/openat() flags; must include O_CLOEXEC | O_NONBLOCK | O_NOCTTY (the last two so
+ *               a FIFO cannot block the open and a terminal cannot become the daemon's controlling tty)
+ *               on top of whichever of O_RDONLY/O_WRONLY/O_CREAT the caller needs.
+ *               O_NOFOLLOW is added here. Deliberately never includes O_TRUNC: truncating at open time
+ *               would destroy the target before anything about it can be checked, which is precisely how
+ *               a hard link slips through -- it is a regular file, so no file type test can tell it apart.
+ *               A caller that needs the file truncated must do so only after this returns a vetted
+ *               descriptor.
+ * @param mode Permission bits, used only when oflags includes O_CREAT.
+ * @return A vetted file descriptor, with O_NONBLOCK already cleared, on success; -1 on error (sets errno).
+ */
+int w_openat_nofollow_vetted(const char * basedir, const char * filename, int oflags, mode_t mode);
+
+/**
+ * @brief Whether @p path names the regular file open on @p fd, and only that: not through a symlink,
+ *        and with no second hard link.
+ *
+ * For a file staged under a name an unprivileged account can replace, checked right before the name
+ * is used.
+ *
+ * @param path Name to check.
+ * @param fd Descriptor of the file it should name.
+ * @return true if @p path names that file.
+ */
+bool w_path_names_fd(const char *path, int fd);
+#endif
+
+
+/**
+ * @brief Open a file for reading, following an admin-trusted symlink but rejecting an untrusted one.
+ *
+ * Intended for paths configured by an admin (such as logcollector's `<localfile>` entries and glob
+ * expansions) where following a symlink is an accepted, even intended, feature — unlike
+ * w_fopen_nofollow()/w_gzopen_nofollow(), which reject every symlink outright.
+ *
+ * On POSIX the path is resolved one component at a time, so every symlink on it, including one naming a
+ * directory, is inspected before it is followed. On Linux a symlink on procfs, such as /proc/<pid>/root,
+ * names an object rather than a path, so once inspected it is followed by the kernel. The final entry is
+ * opened non-blocking, so a FIFO cannot block the open. The file is then accepted only when:
+ * - it is a regular file, or a FIFO or character device owned by root or found in a directory owned by
+ *   root that only root can write to;
+ * - every symlink followed is owned by root, sits in a directory only root can write to, or is owned by
+ *   the file's owner;
+ * - if it, or any symlink followed, has more than one hard link, the directory holding it is owned by root
+ *   or by its owner and is not writable by group or others, since a hard link can be made by anyone who
+ *   can write there.
+ *
+ * A rejection sets errno to EINVAL (file type) or EPERM (trust), never ENOENT, so a caller that treats
+ * ENOENT as "file gone" is not misled by it. A path that keeps changing while it is checked, as a symlink
+ * re-pointed during rotation does, is retried a few times and then fails with EAGAIN: it was not rejected,
+ * and may be opened again later.
+ *
+ * Windows follows junctions and symlinks too, and accepts a path that traverses none without further
+ * checks. When it does, the path is resolved one component at a time, as on POSIX: each junction or
+ * symlink met is checked, then its target is read one level only and the walk continues from there, so the
+ * junctions and symlinks inside a link's destination are checked too. Each directory and link on the way
+ * is held open, without delete sharing, so it cannot be renamed, deleted or replaced until the file has
+ * been matched against it. Every junction or symlink met must be owned by SYSTEM, BUILTIN\Administrators,
+ * TrustedInstaller, a member of the local Administrators group or the owner of the file finally read, and
+ * no other principal may modify it, else the open fails with EPERM. The same rejection applies to a
+ * reparse point that redirects the path in a way that cannot be read one level at a time, a link to
+ * anything but a local volume, a chain of more than 40 junctions or symbolic links, and a file reached by
+ * more than one hard link. A component that changes, vanishes or is in a sharing violation while it is
+ * checked is retried and then fails with EAGAIN. The file must be on disk (EINVAL otherwise) and on a
+ * local volume (EPERM otherwise).
+ *
+ * Solaris 10 and HP-UX lack the *at() calls the component walk needs. There the path is followed as
+ * wfopen() would, still non-blocking, and the same rules are applied to the opened file, but only the
+ * path's last entry is checked as a symlink, so a symlink swapped in a directory higher up is not caught.
+ *
+ * @param path Path of the file. May be absolute or relative, and may contain symlinks.
+ * @param mode Open mode, either "r" or "rb".
+ * @return File pointer on success, NULL on error (sets errno).
+ */
+FILE * w_fopen_vetted_follow(const char * path, const char * mode);
+
+
 /**
  * @brief Compress a file in GZIP.
  *
+ * On POSIX the source is opened as w_fopen_vetted_follow() does, except a symlink as its last entry is not
+ * followed, and it must be a regular file.
+ *
  * @param filesrc Source file.
  * @param filedst Compressed file path.
- * @return 0 on success, -1 on error.
+ * @return 0 on success, -2 if the source is skipped, -1 on error.
  */
 int w_compress_gzfile(const char *filesrc, const char *filedst);
 
@@ -694,8 +847,10 @@ char **expand_win32_wildcards(const char *path);
  * - Extended-length paths: \\\\?\\C:\\...
  * - Mapped network drives: Z:\\folder\\file.txt
  *
- * Any path starting with \\\\ is considered a network path, as there are no
- * legitimate local file paths in Windows that begin with this prefix.
+ * Any path starting with two separators is considered a network path, as there
+ * are no legitimate local file paths in Windows that begin with this prefix.
+ * Forward slashes are treated like backslashes, so forms such as //server/share
+ * or /\\server\\share are caught as well.
  *
  * @param path A null-terminated string containing the file path to check.
  * @return true if the path points to a network location, false otherwise.

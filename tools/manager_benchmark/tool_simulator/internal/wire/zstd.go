@@ -11,7 +11,7 @@ import (
 // routes (authentication does not look at the body, compressed or not), and
 // Decompress reads the .json.zst captured-session dumps, which are stored
 // compressed because the full-fidelity first-connect corpus would otherwise
-// put ~44 MB of JSON in the repo.
+// put ~32 MB of JSON in the repo.
 //
 // klauspost/compress is pure Go on purpose: the tool must cross-build and run
 // from a plain `go build` (docu/11), which rules out a cgo binding to the

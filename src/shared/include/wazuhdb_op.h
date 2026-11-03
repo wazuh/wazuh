@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2015, Wazuh Inc.
- * April 15, 2019.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -93,6 +92,25 @@ typedef enum wdbc_result
 } wdbc_result;
 
 extern const char* WDBC_RESULT[];
+
+/**
+ * @brief Log a failure to reach or be answered by wazuh-db at the right severity.
+ *
+ * ERROR, unless this daemon has already taken its termination signal (w_shutdown_requested): then
+ * debug. wazuh-server.sh signals every daemon in one pass and wazuh-db exits in milliseconds, so a
+ * thread that queries it while its own daemon runs the exit handlers -- remoted refreshing its group
+ * list, or saving a keepalive -- sees it close under it on a clean stop. Outside a shutdown the same
+ * failure is the fault it always was. For the client's own lines and for the helper that logs on top
+ * of them, so that the message does not just move one layer up.
+ */
+#define wdbc_fail(...) \
+    do { \
+        if (w_shutdown_requested()) { \
+            mdebug1(__VA_ARGS__); \
+        } else { \
+            merror(__VA_ARGS__); \
+        } \
+    } while (0)
 
 int wdbc_connect();
 int wdbc_connect_with_attempts(int max_attempts);

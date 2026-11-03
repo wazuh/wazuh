@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef IOCKVDB_IREADONLY_HANDLER_HPP
 #define IOCKVDB_IREADONLY_HANDLER_HPP
 

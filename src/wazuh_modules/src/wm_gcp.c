@@ -1,7 +1,6 @@
 /*
  * Wazuh Module for Security Configuration Assessment
- * Copyright (C) 2015, Wazuh Inc.
- * January 25, 2019.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -85,11 +84,17 @@ cJSON *wm_gcp_bucket_dump(const wm_gcp_bucket_base *gcp_config);          // Rea
 
 /**
  * @brief Parse the output of the GCP script and prints it depending on the debug
- *        level stated by the script
+ *        level stated by the script. If the script exited non-zero and nothing in
+ *        its output ended up as a visible log line (e.g. it crashed before its own
+ *        logger was constructed, or crashed with an unformatted traceback after only
+ *        logging below the configured debug level), the raw output is surfaced
+ *        instead of being dropped.
  * @param output Output returned by the call to the script
  * @param tag Tag that should be used when printing the messages
+ * @param exit_status Exit code returned by the script
  */
-static void wm_gcp_parse_output(char *output, char *tag);
+static void wm_gcp_parse_output(char *output, char *tag, int exit_status);
+static void wm_gcp_report_exec_failure(int status, const char *tag); // Log a command wm_exec() could not run
 
 
 /* Context definition */
@@ -308,24 +313,47 @@ void wm_gcp_pubsub_run(const wm_gcp_pubsub *data) {
 
     os_free(command);
 
-    if (wm_exec_ret_code != 0){
-        mterror(WM_GCP_PUBSUB_LOGTAG, "Internal error. Exiting...");
-        if (wm_exec_ret_code > 0) {
-            os_free(output);
-        }
-        pthread_exit(NULL);
+    if (wm_exec_ret_code != 0) {
+        wm_gcp_report_exec_failure(status, WM_GCP_PUBSUB_LOGTAG);
+        os_free(output);
+        return;
     } else if (status > 0) {
         mtwarn(WM_GCP_PUBSUB_LOGTAG, "Command returned exit code %d", status);
     }
 
-    wm_gcp_parse_output(output, WM_GCP_PUBSUB_LOGTAG);
+    wm_gcp_parse_output(output, WM_GCP_PUBSUB_LOGTAG, status);
     os_free(output);
 }
 
-static void wm_gcp_parse_output(char *output, char *tag){
+// Log a command that wm_exec() could not run. It is not fatal to the module: the next scan gets
+// its own attempt.
+
+static void wm_gcp_report_exec_failure(int status, const char *tag) {
+    // The script could not be run. /usr/bin/env, which runs it, also exits with this code when python3 is missing
+    if (status == EXECVE_ERROR) {
+        mterror(tag, "Could not execute '%s' (exit code %d). Check that it and the python3 interpreter it runs with are installed.",
+                WM_GCP_SCRIPT_PATH, status);
+    } else {
+        mterror(tag, "Internal error running the command.");
+    }
+}
+
+static void wm_gcp_parse_output(char *output, char *tag, int exit_status){
     char *line;
     char * parsing_output = output;
     int debug_level = isDebug();
+    // Set only when a line explains *why* the wodle failed (CRITICAL/ERROR), not merely that
+    // something got printed. DEBUG/INFO/WARNING lines don't mean the cause is on record: if one
+    // of those is emitted and the process then dies without going through gcloud.py's own
+    // exception handler (OOM kill, a segfault inside a native extension, abort()), whatever
+    // unformatted output follows still needs to be surfaced. Every gcloud.py path that logs
+    // CRITICAL/ERROR does so from its top-level handler immediately before exiting, so there's
+    // nothing meaningful left to lose once that fires.
+    int logged_anything = 0;
+
+    if (!output) {
+        return;
+    }
 
     for (line = strstr(parsing_output, WM_GCP_LOGGING_TOKEN); line; line = strstr(parsing_output, WM_GCP_LOGGING_TOKEN)) {
         char * tokenized_line;
@@ -340,7 +368,7 @@ static void wm_gcp_parse_output(char *output, char *tag){
         // 1 is added because it's mandatory to consider the null byte
         int cp_length = 1 + strlen(line) - next_lines_chars > WM_STRING_MAX ? WM_STRING_MAX : 1 + strlen(line) - next_lines_chars;
         snprintf(tokenized_line, cp_length, "%s", line);
-        if (tokenized_line[cp_length - 2] == '\n') tokenized_line[cp_length - 2] = '\0';
+        if (cp_length >= 2 && tokenized_line[cp_length - 2] == '\n') tokenized_line[cp_length - 2] = '\0';
 
         char *p_line = NULL;
 
@@ -360,10 +388,12 @@ static void wm_gcp_parse_output(char *output, char *tag){
             if ((p_line = strstr(tokenized_line, "- CRITICAL - "))) {
                 p_line += 13;
                 mterror(tag, "%s", p_line);
+                logged_anything = 1;
             }
             if ((p_line = strstr(tokenized_line, "- ERROR - "))) {
                 p_line += 10;
                 mterror(tag, "%s", p_line);
+                logged_anything = 1;
             }
             if ((p_line = strstr(tokenized_line, "- WARNING - "))) {
                 p_line += 12;
@@ -373,6 +403,22 @@ static void wm_gcp_parse_output(char *output, char *tag){
 
         parsing_output += cp_length + strlen(WM_GCP_LOGGING_TOKEN) - 1;
         os_free(tokenized_line);
+    }
+
+    // The wodle exited non-zero but no line ever explained why (no CRITICAL/ERROR was logged) --
+    // whether because none of the output carried the wodle's own logging token at all (e.g. it
+    // crashed at import time, before its logger existed), or it only logged DEBUG/INFO/WARNING
+    // (or CRITICAL/ERROR hidden below the configured debug level) before dying some other way
+    // (a crash outside its own exception handling, a raw traceback with no recognized marker).
+    // Surface the raw output so ossec.log names the real cause instead of just the exit code
+    // already reported by the caller. Capped well below OS_MAXSTR (a single, unescaped line in
+    // the plain log sink) -- keeping the tail rather than the head when it doesn't fit, since a
+    // Python traceback's most diagnostic line (the exception type and message) is the last one,
+    // not the first.
+    if (!logged_anything && exit_status != 0 && *output) {
+        size_t output_len = strlen(output);
+        const char *to_log = output_len > OS_SIZE_6144 - 1 ? output + (output_len - (OS_SIZE_6144 - 1)) : output;
+        mterror(tag, "%s", to_log);
     }
 }
 
@@ -431,17 +477,15 @@ void wm_gcp_bucket_run(wm_gcp_bucket *exec_bucket) {
 
     os_free(command);
 
-    if (wm_exec_ret_code != 0){
-        mterror(WM_GCP_BUCKET_LOGTAG, "Internal error. Exiting...");
-        if (wm_exec_ret_code > 0) {
-            os_free(output);
-        }
-        pthread_exit(NULL);
+    if (wm_exec_ret_code != 0) {
+        wm_gcp_report_exec_failure(status, WM_GCP_BUCKET_LOGTAG);
+        os_free(output);
+        return;
     } else if (status > 0) {
         mtwarn(WM_GCP_BUCKET_LOGTAG, "Command returned exit code %d", status);
     }
 
-    wm_gcp_parse_output(output, WM_GCP_BUCKET_LOGTAG);
+    wm_gcp_parse_output(output, WM_GCP_BUCKET_LOGTAG, status);
     os_free(output);
 }
 

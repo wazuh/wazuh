@@ -1,5 +1,5 @@
 """
- Copyright (C) 2015-2024, Wazuh Inc.
+ Copyright (C) Wazuh Inc.
  Created by Wazuh, Inc. <info@wazuh.com>.
  This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 """
@@ -45,7 +45,7 @@ def manipulate_file(action, file_path):
 
 # Variables
 groups_list = ['default', 'testing_group']
-mg_name = hashlib.sha256(','.join(groups_list).encode()).hexdigest()[:8]
+mg_name = hashlib.sha256(','.join(groups_list).encode()).hexdigest()[:32]
 mg_folder_path = os.path.join(VAR_MULTIGROUPS_PATH, mg_name)
 merged_mg_file = os.path.join(mg_folder_path, 'merged.mg')
 shared_file_name = 'testing_file'

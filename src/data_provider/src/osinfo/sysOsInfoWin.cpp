@@ -1,7 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015, Wazuh Inc.
- * November 3, 2020.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -24,7 +23,7 @@ static std::string getVersion(const bool isMinor = false)
     std::string version;
 
     DWORD versionNumber {};
-    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)"};
+    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)", KEY_READ | KEY_WOW64_64KEY};
 
     if (IsWindows8OrGreater()
             && currentVersion.dword(isMinor ? "CurrentMinorVersionNumber" : "CurrentMajorVersionNumber", versionNumber))
@@ -55,7 +54,7 @@ static std::string getBuild()
 {
     std::string build;
 
-    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)"};
+    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)", KEY_READ | KEY_WOW64_64KEY};
     build = currentVersion.string("CurrentBuildNumber");
 
     return build;
@@ -88,14 +87,15 @@ static std::string getRelease(const std::string& build)
         {"10240", "1507"},
         {"10586", "1511"},
         {"14393", "1607"},
-        {"15063", "1709"},
+        {"15063", "1703"},
+        {"16299", "1709"},
         {"17134", "1803"},
         {"17763", "1809"},
         {"18362", "1903"},
         {"18363", "1909"},
     };
     std::string release;
-    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)"};
+    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)", KEY_READ | KEY_WOW64_64KEY};
 
     if (IsWindows8OrGreater())
     {
@@ -121,18 +121,6 @@ static std::string getRelease(const std::string& build)
                 release = "sp" + Utils::trim(sp.substr(SERVICE_PACK_PREFIX.size()));
             }
         }
-        else
-        {
-            Utils::Registry currentVersion64{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)", KEY_READ | KEY_WOW64_64KEY};
-
-            if (currentVersion64.string("CSDVersion", sp))
-            {
-                if (Utils::startsWith(sp, SERVICE_PACK_PREFIX))
-                {
-                    release = "sp" + Utils::trim(sp.substr(SERVICE_PACK_PREFIX.size()));
-                }
-            }
-        }
     }
 
     return release;
@@ -141,14 +129,11 @@ static std::string getRelease(const std::string& build)
 static std::string getDisplayVersion()
 {
     std::string display_version;
-    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)"};
+    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)", KEY_READ | KEY_WOW64_64KEY};
 
-    if (!currentVersion.string("DisplayVersion", display_version))
-    {
-        display_version = UNKNOWN_VALUE;
-    }
+    currentVersion.string("DisplayVersion", display_version);
 
-    return display_version;
+    return Utils::trim(display_version);
 }
 
 static std::string getName()
@@ -198,24 +183,8 @@ static std::string getName()
 
 static std::string getMachine()
 {
-    static const std::map<std::string, std::string> ARCH_MAP
-    {
-        {"AMD64",   "x86_64"},
-        {"IA64",    "x86_64"},
-        {"ARM64",   "x86_64"},
-        {"x86",     "i686"},
-    };
-    std::string machine { UNKNOWN_VALUE };
     Utils::Registry environment{HKEY_LOCAL_MACHINE, R"(System\CurrentControlSet\Control\Session Manager\Environment)"};
-    const auto arch{environment.string("PROCESSOR_ARCHITECTURE")};
-    const auto it{ARCH_MAP.find(arch)};
-
-    if (it != ARCH_MAP.end())
-    {
-        machine = it->second;
-    }
-
-    return machine;
+    return SysOsInfoProviderWindows::machineFromProcessorArchitecture(environment.string("PROCESSOR_ARCHITECTURE"));
 }
 
 static std::string getNodeName()

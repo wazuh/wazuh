@@ -1,6 +1,6 @@
 
 
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -10,7 +10,7 @@ from wazuh.core import common
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError
 
 """
-Wazuh HIDS Python package
+Wazuh Python package
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Wazuh is a python package to manage OSSEC.
 

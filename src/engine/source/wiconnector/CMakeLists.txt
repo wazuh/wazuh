@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Defs
 set(IFACE_DIR ${CMAKE_CURRENT_LIST_DIR}/interface)
 set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
@@ -48,7 +49,7 @@ target_link_libraries(wIndexerConnector_utest
     wIndexerConnector::wIndexerConnector
     wIndexerConnector::mocks
 )
-target_include_directories(wIndexerConnector_utest PRIVATE ${SRC_DIR})
+target_include_directories(wIndexerConnector_utest PRIVATE ${SRC_DIR} ${SHARED_MODULES}/keystore/include)
 gtest_discover_tests(wIndexerConnector_utest PROPERTIES RESOURCE_LOCK "rocks_db_lock")
 
 endif(ENGINE_BUILD_TEST)

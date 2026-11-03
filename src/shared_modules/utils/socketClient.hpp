@@ -1,12 +1,13 @@
 /*
  * Wazuh socket client
- * Copyright (C) 2015, Wazuh Inc.
- * March 25, 2023.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #ifndef _SOCKET_CLIENT_HPP
@@ -43,6 +44,8 @@ private:
     std::mutex m_mutex;
     int m_stopFD[2] = {-1, -1};
     std::shared_mutex m_socketMutex;
+    std::function<void(const std::string&)> m_onError;
+    std::atomic<bool> m_lastSendFailed {false};
 
     void sendPendingMessages()
     {
@@ -59,11 +62,12 @@ private:
     }
 
 public:
-    explicit SocketClient(std::string socketPath)
+    explicit SocketClient(std::string socketPath, std::function<void(const std::string&)> onError = {})
         : m_socketPath {std::move(socketPath)}
         , m_epoll {std::make_shared<TEpoll>()}
         , m_socket {std::make_shared<TSocket>()}
         , m_shouldStop {false}
+        , m_onError {std::move(onError)}
     {
         int result = ::pipe(m_stopFD);
         if (result == -1)
@@ -174,7 +178,8 @@ public:
                                 }
                                 catch (const std::exception& e)
                                 {
-                                    m_shouldStop = true;
+                                    handleConnect(type);
+                                    afterConnect = true;
                                     break;
                                 }
                             }
@@ -209,6 +214,11 @@ public:
             {
                 // Failure to connect to socket
                 delay = std::min(delay * 2, MAX_DELAY);
+                if (m_onError)
+                {
+                    m_onError("Failed to connect to socket '" + m_socketPath + "': " + e.what() + ". Retrying in " +
+                              std::to_string(delay) + " seconds.");
+                }
             }
         } while (!m_cv.wait_for(lock, std::chrono::seconds(delay), [&]() { return m_shouldStop.load(); }));
     }
@@ -219,10 +229,22 @@ public:
         try
         {
             m_socket->send(dataBody, sizeBody, dataHeader, sizeHeader);
+            // Socket::send() queues without throwing once a send has failed, so a non-throwing send only means
+            // the connection recovered when nothing is left pending.
+            if (m_lastSendFailed.load() && !m_socket->hasUnsentMessages() && m_lastSendFailed.exchange(false) &&
+                m_onError)
+            {
+                m_onError("Recovered sending data to socket '" + m_socketPath + "'.");
+            }
         }
         catch (const std::exception& e)
         {
-            // Error sending message
+            // Error sending message. Logged once on the transition into failure (and once on recovery, above)
+            // rather than on every attempt. The data is queued by Socket::send() and flushed on EPOLLOUT.
+            if (!m_lastSendFailed.exchange(true) && m_onError)
+            {
+                m_onError("Failed to send data to socket '" + m_socketPath + "': " + e.what());
+            }
             m_epoll->modifyDescriptor(m_socket->fileDescriptor(), EPOLLIN | EPOLLOUT);
         }
     }

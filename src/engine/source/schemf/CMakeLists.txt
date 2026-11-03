@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Defs
 set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
 set(INC_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
@@ -21,7 +22,7 @@ PRIVATE
   ${SRC_DIR}
   ${INC_DIR}/schemf
 )
-target_link_libraries(schemf PUBLIC schemf::ischema PRIVATE hlp base)
+target_link_libraries(schemf PUBLIC schemf::ischema PRIVATE hlp base date::date)
 
 # Tests
 if(ENGINE_BUILD_TEST)
@@ -45,7 +46,7 @@ add_executable(schemf_utest
     ${UNIT_SRC_DIR}/type_test.cpp
 )
 target_include_directories(schemf_utest PRIVATE ${SRC_DIR} ${INC_DIR}/schemf)
-target_link_libraries(schemf_utest PRIVATE schemf hlp GTest::gtest_main GTest::gmock schemf::mocks base::test)
+target_link_libraries(schemf_utest PRIVATE schemf hlp date::date GTest::gtest_main GTest::gmock schemf::mocks base::test)
 gtest_discover_tests(schemf_utest)
 
 add_executable(schemf_ctest

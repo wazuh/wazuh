@@ -566,7 +566,7 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "user_id": ["wazuh", "wazuh-wui"]
+      "user_id": ["wazuh", "wazuh-internal-client"]
     },
     "fake_system_resources": {"user:id:*": ["wazuh"]},
     "allowed_resources": [["wazuh"]]
@@ -575,7 +575,7 @@
     "rbac": {
       "security:read": {
         "user:id:*": "deny",
-        "user:id:wazuh-wui": "allow"
+        "user:id:wazuh-internal-client": "allow"
       }
     },
     "decorator_params": {
@@ -585,16 +585,16 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "user_id": ["wazuh", "wazuh-wui"]
+      "user_id": ["wazuh", "wazuh-internal-client"]
     },
     "fake_system_resources": {"user:id:*": ["wazuh"]},
-    "allowed_resources": [["wazuh-wui"]]
+    "allowed_resources": [["wazuh-internal-client"]]
   },
   {
     "rbac": {
       "security:delete": {
         "user:id:*": "deny",
-        "user:id:wazuh-wui": "allow"
+        "user:id:wazuh-internal-client": "allow"
       }
     },
     "decorator_params": {
@@ -604,16 +604,16 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "user_id": ["wazuh", "wazuh-wui"]
+      "user_id": ["wazuh", "wazuh-internal-client"]
     },
     "fake_system_resources": {"user:id:*": ["wazuh"]},
-    "allowed_resources": [["wazuh-wui"]]
+    "allowed_resources": [["wazuh-internal-client"]]
   },
   {
     "rbac": {
       "security:delete": {
         "user:id:wazuh": "deny",
-        "user:id:wazuh-wui": "allow"
+        "user:id:wazuh-internal-client": "allow"
       }
     },
     "decorator_params": {
@@ -623,10 +623,10 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "user_id": ["wazuh", "wazuh-wui"]
+      "user_id": ["wazuh", "wazuh-internal-client"]
     },
     "fake_system_resources": {"user:id:*": ["wazuh"]},
-    "allowed_resources": [["wazuh-wui"]]
+    "allowed_resources": [["wazuh-internal-client"]]
   },
   {
     "rbac": {
@@ -1005,5 +1005,91 @@
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"], "file:path:*": ["etc/wazuh-manager.conf"]},
     "allowed_resources": [["etc/rules/local_rules.xml"]]
+  },
+  {
+    "rbac": {
+      "security:update": {
+        "user:id:*": "allow",
+        "role:id:*": "allow",
+        "role:id:1": "deny"
+      }
+    },
+    "decorator_params": {
+        "actions": ["security:update"],
+        "resources": ["user:id:{user_id}", "role:id:{role_ids}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "user_id": "100",
+      "role_ids": ["01"]
+    },
+    "fake_system_resources": {"user:id:*": ["1", "2", "100"], "role:id:*": ["1", "2", "3"]},
+    "allowed_resources": [[], []],
+    "result": "deny"
+  },
+  {
+    "rbac": {
+      "security:update": {
+        "user:id:*": "allow",
+        "role:id:*": "allow",
+        "role:id:1": "deny"
+      }
+    },
+    "decorator_params": {
+        "actions": ["security:update"],
+        "resources": ["user:id:{user_id}", "role:id:{role_ids}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "user_id": "0100",
+      "role_ids": ["002", "01"],
+      "call_func": true
+    },
+    "fake_system_resources": {"user:id:*": ["1", "2", "100"], "role:id:*": ["1", "2", "3"]},
+    "allowed_resources": [["100"], ["2"]],
+    "result": "allow"
+  },
+  {
+    "rbac": {
+      "agent:read": {
+        "agent:id:*": "allow",
+        "agent:id:005": "deny"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": ["0005"]
+    },
+    "fake_system_resources": {"agent:id:*": ["001", "005"]},
+    "allowed_resources": [[]],
+    "result": "deny"
+  },
+  {
+    "rbac": {
+      "agent:read": {
+        "agent:id:*": "allow",
+        "agent:id:005": "deny"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": ["0005", "5", "0001", "1"],
+      "call_func": true
+    },
+    "fake_system_resources": {"agent:id:*": ["001", "005"]},
+    "allowed_resources": [["001"]],
+    "result": "allow"
   }
 ]

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _ROUTER_TABLE_HPP
 #define _ROUTER_TABLE_HPP
 

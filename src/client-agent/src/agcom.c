@@ -1,6 +1,5 @@
 /* Remote request listener
- * Copyright (C) 2015, Wazuh Inc.
- * Mar 12, 2018.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

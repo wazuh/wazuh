@@ -1,20 +1,23 @@
 /*
  * Wazuh content manager
- * Copyright (C) 2015, Wazuh Inc.
- * June 21, 2023.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #ifndef _SERVER_SELECTOR_HPP
 #define _SERVER_SELECTOR_HPP
 
+#include "indexerConnector.hpp"
 #include "monitoring.hpp"
 #include "roundRobinSelector.hpp"
 #include "secureCommunication.hpp"
+#include <initializer_list>
 #include <memory>
 #include <string>
 
@@ -75,23 +78,32 @@ public:
     /**
      * @brief Get next selected server.
      *
+     * Prefers an Available host; a Throttled one (it answered 429, so it is alive but shedding load)
+     * is used only when no host is Available, and the call throws only when every host is Down. With a
+     * single host this is the same as accepting anything that is not Down.
+     *
      * @return std::string Server address.
+     * @throws IndexerConnectorException if every host is Down.
      */
     std::string_view getNext()
     {
-        std::string_view initialValue {RoundRobinSelector<std::string>::getNext()};
-        auto retValue {initialValue};
+        const std::string_view initialValue {RoundRobinSelector<std::string>::getNext()};
 
-        while (!m_monitoring->isAvailable(retValue))
+        for (const auto accepted : {HostState::Available, HostState::Throttled})
         {
-            retValue = RoundRobinSelector<std::string>::getNext();
-            if (retValue.compare(initialValue) == 0)
+            auto candidate {initialValue};
+            do
             {
-                throw std::runtime_error("No available server. Unavailable nodes: " +
-                                         m_monitoring->getUnavailableServersDetails());
-            }
+                if (m_monitoring->state(candidate) == accepted)
+                {
+                    return candidate;
+                }
+                candidate = RoundRobinSelector<std::string>::getNext();
+            } while (candidate.compare(initialValue) != 0);
         }
-        return retValue;
+
+        throw IndexerConnectorException("No available server. Unavailable nodes: " +
+                                        m_monitoring->getUnavailableServersDetails());
     }
 
     /**
@@ -108,6 +120,26 @@ public:
         for (const auto& server : RoundRobinSelector<std::string>::values())
         {
             if (m_monitoring->isAvailable(server))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @brief Check have a server that accepts requests now: Available, not merely Throttled.
+     *
+     * Stricter than isAvailable(), for callers that make a promise on the answer (an admission that
+     * lets the requester forget its request). Like isAvailable(), it does not move the cursor.
+     *
+     * @return true if some server is Available, false otherwise.
+     */
+    bool hasAvailableServer() const
+    {
+        for (const auto& server : RoundRobinSelector<std::string>::values())
+        {
+            if (m_monitoring->state(server) == HostState::Available)
             {
                 return true;
             }

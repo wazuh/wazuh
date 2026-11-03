@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -12,6 +11,7 @@
 #ifndef _HC_MODULE_CONFIG_HPP
 #define _HC_MODULE_CONFIG_HPP
 
+#include "caPublicationState.hpp"
 #include "https_client.h"
 #include "loggerHelper.h"
 #include "sysSeams.hpp"
@@ -47,6 +47,13 @@ struct ModuleConfig
         std::string agentKeyHex;
         hc_verify_mode_t verifyMode {HC_VERIFY_FULL};
         std::string caPath;
+        /// verify_mode=system only: the agent's own trust anchor (AGENT_ANCHOR_CA,
+        /// bridged from the bootstrap/upgrade paths), tried only after the OS trust
+        /// store has actually failed to verify the manager's certificate
+        /// (CurlPerformer's fallback, #39123) -- never a substitute for the OS store,
+        /// which is still tried first on every connection. Empty when no such file
+        /// exists; the fallback then never engages, exactly like today.
+        std::string systemFallbackCaPath;
         std::string clientCert;
         std::string clientKey;
         std::string ciphers;
@@ -70,11 +77,18 @@ struct ModuleConfig
 
         std::string version;
         std::string configChecksum;
+        std::int64_t caPublication {CA_PUBLICATION_UNKNOWN};
 
         uint32_t requestTimeoutMs {10000};
         uint32_t statefulTimeoutMs {90000};
         uint32_t backoffBaseMs {1000};
         uint32_t backoffCapMs {60000};
+
+        /// Whether a published CA bundle may replace the trust store this agent verifies
+        /// against. False when <certificate_authorities> names a file the agent did not install
+        /// and does not own -- an operator's own CA is theirs to manage, and writing to it would
+        /// be both a surprise and, for the usual root-owned path, an install that never succeeds.
+        bool caRefreshAllowed {false};
         uint32_t drainTimeoutMs {5000};
 
         // Per-stream retry budgets (total tries, not retries-after-the-first).
@@ -115,13 +129,20 @@ struct ModuleConfig
         /// pairing), without the serverHost/agentId precondition -- an
         /// enrolling agent has no agentId yet, but the same TLS matrix still
         /// has to hold before its /enroll request goes out (#38465).
-        bool validateTransport(const IFsProbe& fsProbe, const LogFn& logFn) const;
+        /// @param unverifiedByDesign Set only by the enrollment-token bootstrap's GET /cacerts
+        ///        leg, which forces verify_mode=none because the anchor it is about to fetch is
+        ///        the very thing there would be to verify against. Reported as what it is rather
+        ///        than as the "verification is DISABLED" warning, which on that one request
+        ///        describes the design instead of a problem.
+        bool validateTransport(const IFsProbe& fsProbe, const LogFn& logFn,
+                               bool unverifiedByDesign = false) const;
 
         std::string baseUrl() const;
 
     private:
         bool validateTiming(const LogFn& logFn) const;
-        bool validateTls(const IFsProbe& fsProbe, const LogFn& logFn) const;
+        bool validateTls(const IFsProbe& fsProbe, const LogFn& logFn,
+                         bool unverifiedByDesign = false) const;
         bool validateClientCert(const IFsProbe& fsProbe, const LogFn& logFn) const;
 };
 

@@ -1,5 +1,5 @@
 """
-copyright: Copyright (C) 2015-2024, Wazuh Inc.
+copyright: Copyright (C) Wazuh Inc.
 
            Created by Wazuh, Inc. <info@wazuh.com>.
 
@@ -134,7 +134,10 @@ def test_host_port(test_configuration, test_metadata, add_configuration, truncat
                        which includes API configuration parameters (IP addresses and ports).
 
     expected_output:
-        - '.*INFO: Listening on {host}:{port}.+'
+        - '.*INFO: Listening on {host}:{port}.+' (valid host/port combinations)
+        - '.*could not bind on any address out of {host}.*' (a host not assigned to any
+          interface here, e.g. INVALID_HOST_INVALID_PORT/INVALID_HOST_VALID_PORT -- the API
+          cannot bind it at all, so it never starts, rather than starting but being unreachable)
         - r'200' ('OK' HTTP status code)
     """
     host = test_configuration['blocks']['host']

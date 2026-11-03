@@ -1,4 +1,4 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -376,6 +376,16 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
         super().__init__(dct)
         self._affected_items = affected_items if affected_items is not None else []
         self._failed_items = {}
+        # Which node produced which outcome, for operations DAPI distributes across the cluster.
+        # {node_name: {'affected_items': [...], 'failed_items': {code: [ids]}}}
+        #
+        # Populated by forward_request() from each node's own answer, BEFORE the merge below
+        # reconciles them, and unioned rather than reconciled. That ordering is the point: the
+        # merge deliberately lets a success override a failure for the same item, which is right
+        # for the stale-view case it exists for but erases a genuinely node-local fact -- an agent
+        # whose upgrade task was created on two nodes and could not be created on a third reads as
+        # a clean success, and the operator is never told which node could not serve it (#39428).
+        self._node_attribution = {}
         if total_affected_items is not None:
             self._total_affected_items = total_affected_items
         else:
@@ -507,6 +517,10 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
             result.affected_items = deduped_affected
             result.total_affected_items -= duplicates
 
+        # Unioned, never reconciled: each entry is what one node reported about itself, and two
+        # nodes disagreeing is the information worth keeping, not a conflict to resolve.
+        result._node_attribution = {**self._node_attribution, **other._node_attribution}
+
         return result
 
     def to_dict(self) -> dict:
@@ -578,6 +592,81 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
     @property
     def failed_items(self):
         return self._failed_items
+
+    @property
+    def node_attribution(self):
+        return self._node_attribution
+
+    def drop_uninformative_failures(self, code: int):
+        """Drop `code` from failed_items for every item some other source already accounted for.
+
+        `code` marks a failure that is not a verdict about the item but the absence of one --
+        `common.AGENT_NOT_IN_LOCAL_DB_ERROR_CODE`, "this node has no information about the agent",
+        or its upgrade twin `common.UPGRADE_AGENT_NOT_IN_LOCAL_DB_ERROR_CODE`.
+        It is worth reporting only while nothing better exists: once another node has reported
+        that same item, as an affected item or with a real error, keeping the placeholder lists
+        the item twice and counts it twice in total_failed_items, so a 12-agent request comes back
+        with 14 failures.
+
+        Called on the merged result, never on a single node's answer: a node's own answer is what
+        `nodes` preserves, and there the placeholder is exactly the information wanted -- it says
+        which node could not serve the item and why.
+
+        Parameters
+        ----------
+        code : int
+            Error code to treat as a placeholder.
+        """
+        # Every entry with the code, not the first: errors are keyed by their text too, so two nodes
+        # wording the placeholder differently leave two entries.
+        placeholders = [error for error in self._failed_items if error.code == code]
+        if not placeholders:
+            return
+
+        # Identifier-shaped items only, like attribute_to_node: an endpoint whose affected items
+        # are whole documents has no ids to reconcile, and a dict is not hashable.
+        accounted_for = {item for item in self._affected_items if isinstance(item, str)}
+        accounted_for |= {id_
+                          for error, ids in self._failed_items.items() if error.code != code
+                          for id_ in ids}
+
+        for placeholder in placeholders:
+            self._failed_items[placeholder] -= accounted_for
+            if not self._failed_items[placeholder]:
+                del self._failed_items[placeholder]
+        self._recalculate_failed_items()
+
+    def attribute_to_node(self, node_name: str):
+        """Record this result's own outcomes as produced by `node_name`.
+
+        Called once per node by forward_request(), on that node's untouched answer, so what is
+        stored is that node's view before any merge reconciles it away.
+
+        Only IDENTIFIER-shaped affected items are recorded. Many distributed endpoints put whole
+        documents in `affected_items` -- `GET /cluster/{node_id}/daemons/stats` returns a metrics
+        dump per daemon, `/logs` returns log entries -- and for those "which items did this node
+        apply" is not a question anyone asks: copying them here would duplicate the entire payload
+        once per node and say nothing. An endpoint whose items are neither identifiers nor failures
+        therefore contributes no entry at all, which keeps its response byte-identical.
+
+        Parameters
+        ----------
+        node_name : str
+            Cluster node that produced this result.
+        """
+        entry = {}
+        if self._affected_items and all(isinstance(item, str) for item in self._affected_items):
+            entry['affected_items'] = sorted(self._affected_items, key=str)
+        if self._failed_items:
+            # Keyed by exception, and two exceptions with the same code but a per-item
+            # extra_message are different keys (1824/1775 carry the task manager's message per
+            # agent): union them, or each code keeps only the last exception's ids.
+            failed_by_code = {}
+            for error, ids in self._failed_items.items():
+                failed_by_code.setdefault(error.code, set()).update(ids)
+            entry['failed_items'] = {code: sorted(ids, key=str) for code, ids in failed_by_code.items()}
+        if entry:
+            self._node_attribution[node_name] = entry
 
     @property
     def all_msg(self):
@@ -749,6 +838,7 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
                               'id': sort_ids(ids)
                               }
                              for exc, ids in ordered_failed_items],
+            **({'nodes': self._node_attribution} if self._node_attribution else {}),
             **self.dikt
         }
 

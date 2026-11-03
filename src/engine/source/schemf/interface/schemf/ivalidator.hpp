@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _SCHEMF_IVALIDATOR_HPP
 #define _SCHEMF_IVALIDATOR_HPP
 
@@ -141,7 +142,7 @@ public:
 };
 
 using ValueValidator = std::function<base::OptError(const json::Json&)>; ///< Validates a JSON value.
-using ValidationToken = std::shared_ptr<BaseToken>;                    ///< Token describing a validation intent.
+using ValidationToken = std::shared_ptr<BaseToken>;                      ///< Token describing a validation intent.
 
 /**
  * @brief Wrap a ValueValidator so it validates each element of an array individually.

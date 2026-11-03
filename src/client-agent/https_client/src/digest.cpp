@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * July 21, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -10,6 +9,7 @@
  */
 
 #include "digest.hpp"
+#include "wazuhCommon.hpp"
 
 #include <openssl/evp.h>
 
@@ -21,20 +21,6 @@ namespace
 {
     using MdCtxPtr = std::unique_ptr<EVP_MD_CTX, decltype(&EVP_MD_CTX_free)>;
 
-    std::string toHex(const unsigned char* bytes, size_t length)
-    {
-        static const char digits[] = "0123456789abcdef";
-        std::string hex;
-        hex.reserve(2 * length);
-
-        for (size_t i = 0; i < length; i++)
-        {
-            hex.push_back(digits[bytes[i] >> 4]);
-            hex.push_back(digits[bytes[i] & 0x0f]);
-        }
-
-        return hex;
-    }
 } // namespace
 
 std::string sha256Hex(const void* data, size_t length)
@@ -50,7 +36,7 @@ std::string sha256Hex(const void* data, size_t length)
         return {}; // LCOV_EXCL_LINE: EVP failures are not reproducible here.
     }
 
-    return toHex(hash.data(), hashLength);
+    return wazuh::hex_encode(hash.data(), hashLength);
 }
 
 std::string sha1Hex(const void* data, size_t length)
@@ -66,7 +52,7 @@ std::string sha1Hex(const void* data, size_t length)
         return {}; // LCOV_EXCL_LINE: EVP failures are not reproducible here.
     }
 
-    return toHex(hash.data(), hashLength);
+    return wazuh::hex_encode(hash.data(), hashLength);
 }
 
 std::optional<std::string> sha256FileHex(const std::string& path)
@@ -106,7 +92,7 @@ std::optional<std::string> sha256FileHex(const std::string& path)
         return std::nullopt; // LCOV_EXCL_LINE: not reproducible.
     }
 
-    return toHex(hash.data(), hashLength);
+    return wazuh::hex_encode(hash.data(), hashLength);
 }
 
 std::optional<std::string> sha1FileHex(const std::string& path)
@@ -146,5 +132,5 @@ std::optional<std::string> sha1FileHex(const std::string& path)
         return std::nullopt; // LCOV_EXCL_LINE: not reproducible.
     }
 
-    return toHex(hash.data(), hashLength);
+    return wazuh::hex_encode(hash.data(), hashLength);
 }

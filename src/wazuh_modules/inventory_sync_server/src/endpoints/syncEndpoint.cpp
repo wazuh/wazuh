@@ -1,7 +1,6 @@
 /*
  * Wazuh inventory sync server module
- * Copyright (C) 2015, Wazuh Inc.
- * July 28, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -64,6 +63,7 @@ namespace invsync::endpoints::sync
             static wazuh::uds_http::LogThrottle goneThrottle;
             static wazuh::uds_http::LogThrottle unavailableThrottle;
             static wazuh::uds_http::LogThrottle capacityThrottle;
+            static wazuh::uds_http::LogThrottle agentBusyThrottle;
 
             if (!request)
             {
@@ -124,6 +124,39 @@ namespace invsync::endpoints::sync
 
             auto& session = std::get<invsync::sync::ValidatedSession>(result);
 
+            // D28: one agent may have only so many sessions admitted and not yet answered. remoted
+            // frees its own per-agent slot when it gives up waiting (its downstream deadline), but
+            // the pipeline and the scan lane keep working on an admitted session -- so without this
+            // an agent could re-send into the shared queue on every timeout and fill it for
+            // everyone. From here on every answer, inline or from a worker, releases the slot.
+            if (deps.agentSessions)
+            {
+                auto slot = deps.agentSessions->tryAcquire(session.agentId);
+                if (!slot)
+                {
+                    if (const auto decision = agentBusyThrottle.record())
+                    {
+                        LOGFN_WARN(logFn(),
+                                   "Rejected %llu session(s) with 503 in the last %d s from agent(s) that already had "
+                                   "'inventory_sync_server_max_sessions_per_agent' sessions pending (last: agent "
+                                   "'%s'). An agent re-sending faster than its sessions are applied points at a slow "
+                                   "indexer or scanner, or at a misbehaving agent.",
+                                   static_cast<unsigned long long>(decision.total),
+                                   wazuh::uds_http::LogThrottle::kDefaultWindowSeconds,
+                                   session.agentId.c_str());
+                    }
+                    if (deps.agentBusyTotal)
+                    {
+                        deps.agentBusyTotal->add();
+                    }
+                    deps.requestCounters.count(503);
+                    responder->send(serviceUnavailable());
+                    return;
+                }
+                responder =
+                    std::make_shared<invsync::sync::AdmittedSessionResponder>(std::move(responder), std::move(*slot));
+            }
+
             // VD DATA sessions ride the scan lane (D22: scan -> ok -> index -> 200). Only data
             // sessions: a Cleans/Check that happens to carry a VD option has nothing to scan and
             // follows the normal pipeline below.
@@ -138,16 +171,17 @@ namespace invsync::endpoints::sync
                     return;
                 }
 
-                // D17: while the CVE feed is downloading, VD sessions are rejected WITHOUT
-                // processing -- the re-POST applies scan and ingest together, and nobody blocks
-                // waiting for the feed (the lane re-checks at dispatch too).
+                // D17: while the CVE feed is downloading, or the scanner is enabled here but
+                // still starting up, VD sessions are rejected WITHOUT processing -- the re-POST
+                // applies scan and ingest together, and nobody blocks waiting for either (the
+                // lane re-checks at dispatch too).
                 if (!scanner->feedReady())
                 {
                     if (const auto decision = vdThrottle.record())
                     {
                         LOGFN_DEBUG1(logFn(),
                                      "Answered 503 + Retry-After to %llu vulnerability-detection session(s) in the "
-                                     "last %d s: the CVE feed is not ready.",
+                                     "last %d s: the CVE feed is not ready, or the scanner is still starting up.",
                                      static_cast<unsigned long long>(decision.total),
                                      wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
                     }

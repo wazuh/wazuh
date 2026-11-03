@@ -1,30 +1,46 @@
 #!/usr/bin/env bash
 
+# The manager configuration directory is fixed, outside the installation home.
+CONF_DIR=/etc/wazuh-manager
+
+# Copy a fixture tree laid out like the installed manager: its etc/ is the configuration directory, the
+# rest goes under the installation home.
+copy_manager_tree() {
+  for entry in "$1"/*; do
+    [ -e "$entry" ] || continue
+    if [ "$(basename "$entry")" = "etc" ]; then
+      cp -rf "$entry"/. "$CONF_DIR"/
+    else
+      cp -rf "$entry" /var/wazuh-manager/
+    fi
+  done
+}
+
 # Apply API configuration
-cp -rf /tmp_volume/config/* /var/wazuh-manager/ && chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/api
+copy_manager_tree /tmp_volume/config && chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/api
 
 # Modify wazuh configuration file
 for conf_file in /tmp_volume/configuration_files/*.conf; do
-  python3 /tools/xml_parser.py /var/wazuh-manager/etc/wazuh-manager.conf $conf_file
+  python3 /tools/xml_parser.py $CONF_DIR/wazuh-manager.conf $conf_file
 done
 
-  sed -i "s:<node>127.0.0.1</node>:<node>$1</node>:g" /var/wazuh-manager/etc/wazuh-manager.conf
-  sed -i "s:<node_name>node01</node_name>:<node_name>$2</node_name>:g" /var/wazuh-manager/etc/wazuh-manager.conf
+  sed -i "s:<node>127.0.0.1</node>:<node>$1</node>:g" $CONF_DIR/wazuh-manager.conf
+  sed -i "s:<node_name>node01</node_name>:<node_name>$2</node_name>:g" $CONF_DIR/wazuh-manager.conf
   sed -i "s:validate_responses=False:validate_responses=True:g" /var/wazuh-manager/api/scripts/wazuh_manager_apid.py
-  sed -i "s:<bind_addr>127.0.0.1</bind_addr>:<bind_addr>0.0.0.0</bind_addr>:g" /var/wazuh-manager/etc/wazuh-manager.conf
-  sed -i "s:<local_ip>127.0.0.1</local_ip>:<local_ip>0.0.0.0</local_ip>:g" /var/wazuh-manager/etc/wazuh-manager.conf
-  sed -i "/<cluster>/,/<\/cluster>/s:<key>.*</key>:<key>9d273b53510fef702b54a92e9cffc82e</key>:" /var/wazuh-manager/etc/wazuh-manager.conf
+  sed -i "s:<bind_addr>127.0.0.1</bind_addr>:<bind_addr>0.0.0.0</bind_addr>:g" $CONF_DIR/wazuh-manager.conf
+  sed -i "s:<local_ip>127.0.0.1</local_ip>:<local_ip>0.0.0.0</local_ip>:g" $CONF_DIR/wazuh-manager.conf
+  sed -i "/<cluster>/,/<\/cluster>/s:<key>.*</key>:<key>9d273b53510fef702b54a92e9cffc82e</key>:" $CONF_DIR/wazuh-manager.conf
 
 if [ "$3" != "master" ]; then
-    sed -i "s:<node_type>master</node_type>:<node_type>worker</node_type>:g" /var/wazuh-manager/etc/wazuh-manager.conf
+    sed -i "s:<node_type>master</node_type>:<node_type>worker</node_type>:g" $CONF_DIR/wazuh-manager.conf
 fi
 
-cp -rf /tmp_volume/configuration_files/config/* /var/wazuh-manager/
-chown root:wazuh-manager /var/wazuh-manager/etc/client.keys
+copy_manager_tree /tmp_volume/configuration_files/config
+chown root:wazuh-manager $CONF_DIR/client.keys
 chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/queue/db
-chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc/shared
-chmod --reference=/var/wazuh-manager/etc/shared/default /var/wazuh-manager/etc/shared/group*
-cd /var/wazuh-manager/etc/shared && find -name merged.mg -exec chown wazuh-manager:wazuh-manager {} \; && cd /
+chown -R wazuh-manager:wazuh-manager $CONF_DIR/shared
+chmod --reference=$CONF_DIR/shared/default $CONF_DIR/shared/group*
+cd $CONF_DIR/shared && find -name merged.mg -exec chown wazuh-manager:wazuh-manager {} \; && cd /
 
 sleep 1
 
@@ -37,23 +53,13 @@ for sh_file in /tmp_volume/configuration_files/*.sh; do
   . $sh_file
 done
 
-# API SSL sync (only when cluster + shared ssl volume)
-SSL_DIR="/var/wazuh-manager/etc/certs"
-SSL_KEY="${SSL_DIR}/apid-key.pem"
-SSL_CRT="${SSL_DIR}/apid.pem"
-
-if [ "$4" != "standalone" ] && [ "$3" != "master" ]; then
-  echo "[entrypoint] Worker waiting for shared API SSL files..."
-  elapsed_time=0
-  while [ ! -s "$SSL_KEY" ] || [ ! -s "$SSL_CRT" ]; do
-    if [ $elapsed_time -gt 120 ]; then
-      echo "Timeout waiting for API SSL files ($SSL_KEY, $SSL_CRT)" >&2
-      exit 1
-    fi
-    sleep 1
-    elapsed_time=$((elapsed_time+1))
-  done
-fi
+# The start resolves credentials first and refuses to run without them. The tavern suites log in as
+# wazuh-internal-client with a known password, and this environment has no indexer, so its value only has to be
+# present. Same values on every node: they share the api_security volume, which the master seeds and the workers
+# never do.
+export WAZUH_MANAGER_API_PASSWORD='Wazuh-Integration1'
+export WAZUH_MANAGER_WUI_PASSWORD='WazuhWui-Integration1'
+export WAZUH_INDEXER_MANAGER_PASSWORD='Indexer-Integration1'
 
 echo "" > /var/wazuh-manager/logs/api.log
 /var/wazuh-manager/bin/wazuh-manager-control start

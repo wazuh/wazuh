@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <api/rawevtindexer/handlers.hpp>
 
 #include <base/logging.hpp>

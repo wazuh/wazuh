@@ -1,7 +1,6 @@
 /*
  * Wazuh Syscheck
- * Copyright (C) 2015-2022, Wazuh Inc.
- * January 11, 2022.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -242,23 +241,6 @@ TEST_F(DBTestFixture, TestFimDBUpdateLastSyncTimeValueNullParameter)
     {
         // Should not crash, just log error
         fim_db_update_last_sync_time_value(nullptr, 1234567890);
-    });
-}
-
-TEST_F(DBTestFixture, TestFimDBUpdateLastSyncTime)
-{
-    EXPECT_NO_THROW(
-    {
-        // Get initial sync time (should be 0)
-        auto initialSyncTime = fim_db_get_last_sync_time(FIMDB_FILE_TABLE_NAME);
-        ASSERT_EQ(initialSyncTime, 0);
-
-        // Update to current time using fim_db_update_last_sync_time
-        fim_db_update_last_sync_time(FIMDB_FILE_TABLE_NAME);
-
-        // Verify it was updated (should be greater than 0)
-        auto updatedSyncTime = fim_db_get_last_sync_time(FIMDB_FILE_TABLE_NAME);
-        ASSERT_GT(updatedSyncTime, 0);
     });
 }
 

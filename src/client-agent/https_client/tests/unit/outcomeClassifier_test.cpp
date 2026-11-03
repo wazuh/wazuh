@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -64,7 +63,11 @@ INSTANTIATE_TEST_SUITE_P(
         ClassifierCase {TransportStatus::Ok, 299, OutcomeClass::Ok},
         // Transport errors: retryable AND the confirmed-disconnect class that
         // arms the producer pause. TlsFail is deliberately in here too: no HTTP
-        // status arrived, so the manager did not answer.
+        // status arrived, so the manager did not answer -- including a TlsFail
+        // CurlPerformer's verify_mode=system fallback (#39123) already decided was
+        // not eligible (a classified hostname/date failure, or no fallback path
+        // configured) or had already exhausted; CurlPerformer resolves the
+        // retry-eligible case before a response ever gets here.
         ClassifierCase {TransportStatus::Timeout, 0, OutcomeClass::Unreachable},
         ClassifierCase {TransportStatus::ConnectFail, 0, OutcomeClass::Unreachable},
         ClassifierCase {TransportStatus::TlsFail, 0, OutcomeClass::Unreachable},
@@ -94,7 +97,9 @@ INSTANTIATE_TEST_SUITE_P(
         ClassifierCase {TransportStatus::Ok, 415, OutcomeClass::CompressionRejected},
         // Permanent for this payload.
         ClassifierCase {TransportStatus::Ok, 400, OutcomeClass::Permanent},
-        ClassifierCase {TransportStatus::Ok, 404, OutcomeClass::Permanent}));
+        // 404 is NOT Permanent: nothing at the target says nothing about the
+        // payload, so the two classes get opposite treatment downstream.
+        ClassifierCase {TransportStatus::Ok, 404, OutcomeClass::RouteNotFound}));
 
 TEST(OutcomeClassifierTest, AbortedIsInterruptedNeverOk)
 {
@@ -103,6 +108,63 @@ TEST(OutcomeClassifierTest, AbortedIsInterruptedNeverOk)
     EXPECT_EQ(OutcomeClass::Interrupted, classifyOutcome(makeResponse(TransportStatus::Aborted, 200)));
     EXPECT_EQ(OutcomeClass::Interrupted, classifyOutcome(makeResponse(TransportStatus::Aborted, 0)));
 }
+
+struct CertVerificationCase
+{
+    TransportStatus status;
+    TlsFailureKind kind;
+    bool depth0VerificationFailed;
+    bool chainTrustRejectedAboveDepth0;
+    bool expected;
+};
+
+inline void PrintTo(const CertVerificationCase& value, std::ostream* stream)
+{
+    *stream << "status=" << static_cast<int>(value.status) << " kind=" << static_cast<int>(value.kind)
+            << " depth0Failed=" << value.depth0VerificationFailed
+            << " chainAboveDepth0=" << value.chainTrustRejectedAboveDepth0
+            << " expected=" << value.expected;
+}
+
+class IsCertificateVerificationFailureTable : public ::testing::TestWithParam<CertVerificationCase>
+{
+};
+
+TEST_P(IsCertificateVerificationFailureTable, ClassifiesAsExpected)
+{
+    const auto& param = GetParam();
+    HttpResponse response = makeResponse(param.status, 0);
+    response.tlsFailure.kind = param.kind;
+    response.tlsFailure.depth0VerificationFailed = param.depth0VerificationFailed;
+    response.tlsFailure.chainTrustRejectedAboveDepth0 = param.chainTrustRejectedAboveDepth0;
+    EXPECT_EQ(param.expected, isCertificateVerificationFailure(response));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    D9Table,
+    IsCertificateVerificationFailureTable,
+    ::testing::Values(
+        // The ordinary chain/CA-trust class this issue is about: leaf-depth rejection.
+        CertVerificationCase {TransportStatus::TlsFail, TlsFailureKind::None, true, false, true},
+        // Chain-trust rejection above the leaf (an untrusted intermediate/root) -- OpenSSL's
+        // chain builder can reject before ever reaching depth 0, so depth0VerificationFailed
+        // stays false in this case.
+        CertVerificationCase {TransportStatus::TlsFail, TlsFailureKind::None, false, true, true},
+        // Already classified elsewhere as hostname/date: must not double-report.
+        CertVerificationCase {TransportStatus::TlsFail, TlsFailureKind::HostnameMismatch, true, false, false},
+        CertVerificationCase {TransportStatus::TlsFail, TlsFailureKind::CertExpired, true, false, false},
+        CertVerificationCase {TransportStatus::TlsFail, TlsFailureKind::CertNotYetValid, false, true, false},
+        // A TlsFail that never reached certificate inspection at all (a cipher-negotiation
+        // failure, or a corrupt local CA file -- HttpResponse::caFileLoadFailed's case):
+        // neither flag is ever set, so this must stay generic, unclassified TlsFail.
+        CertVerificationCase {TransportStatus::TlsFail, TlsFailureKind::None, false, false, false},
+        // Not a TLS failure at all: never a cert-verification failure regardless of what the
+        // (irrelevant here) tlsFailure fields happen to say.
+        CertVerificationCase {TransportStatus::Ok, TlsFailureKind::None, true, true, false},
+        CertVerificationCase {TransportStatus::Timeout, TlsFailureKind::None, true, true, false},
+        CertVerificationCase {TransportStatus::ConnectFail, TlsFailureKind::None, true, true, false},
+        CertVerificationCase {TransportStatus::Aborted, TlsFailureKind::None, true, true, false},
+        CertVerificationCase {TransportStatus::OtherError, TlsFailureKind::None, true, true, false}));
 
 TEST(OutcomeClassifierTest, HcResultMapping)
 {
@@ -114,6 +176,9 @@ TEST(OutcomeClassifierTest, HcResultMapping)
     EXPECT_EQ(HC_RESULT_BACKPRESSURE, toHcResult(OutcomeClass::BackPressure));
     EXPECT_EQ(HC_RESULT_AUTH_FAIL, toHcResult(OutcomeClass::AuthFail));
     EXPECT_EQ(HC_RESULT_PERMANENT, toHcResult(OutcomeClass::Permanent));
+    // Split from Permanent inside the module only: both are terminal for the
+    // request as sent, so the C ABI sees no change.
+    EXPECT_EQ(HC_RESULT_PERMANENT, toHcResult(OutcomeClass::RouteNotFound));
     EXPECT_EQ(HC_RESULT_PERMANENT, toHcResult(OutcomeClass::VersionRejected));
     EXPECT_EQ(HC_RESULT_PERMANENT, toHcResult(OutcomeClass::CompressionRejected));
     EXPECT_EQ(HC_RESULT_ERROR, toHcResult(OutcomeClass::Interrupted));

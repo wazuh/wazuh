@@ -9,14 +9,13 @@ This page lists the supported operating systems and architectures for Wazuh Serv
 | Platform     | Version | x86_64 | aarch64 |
 | ------------ | ------- | :----: | :-----: |
 | Amazon Linux | 2023    |   ✔️    |    ✔️    |
-| Amazon Linux | 2       |   ✔️    |    ✔️    |
 
 ### Ubuntu
 
 | Platform | Version | x86_64 | aarch64 |
 | -------- | ------- | :----: | :-----: |
+| Ubuntu   | 26.04   |   ✔️    |    ✔️    |
 | Ubuntu   | 24.04   |   ✔️    |    ✔️    |
-| Ubuntu   | 22.04   |   ✔️    |    ✔️    |
 
 ### Red Hat
 
@@ -39,6 +38,7 @@ This page lists the supported operating systems and architectures for Wazuh Serv
 
 | Platform | Version | x86_64 | aarch64 |
 | -------- | ------- | :----: | :-----: |
+| Ubuntu   | 26.04   |   ✔️    |    ✔️    |
 | Ubuntu   | 24.04   |   ✔️    |    ✔️    |
 | Ubuntu   | 22.04   |   ✔️    |    ✔️    |
 | Ubuntu   | 20.04   |   ✔️    |    ✔️    |
@@ -50,6 +50,8 @@ This page lists the supported operating systems and architectures for Wazuh Serv
 | -------------- | ------- | :----: | :-----: |
 | Windows        | 11      |   ✔️    |    ✔️    |
 | Windows        | 10      |   ✔️    |    ✔️    |
+| Windows        | 8       |   ✔️    |         |
+| Windows        | 7       |   ✔️    |         |
 | Windows Server | 2025    |   ✔️    |         |
 | Windows Server | 2022    |   ✔️    |         |
 | Windows Server | 2019    |   ✔️    |         |
@@ -61,6 +63,8 @@ This page lists the supported operating systems and architectures for Wazuh Serv
 
 | Platform | Version | x86_64 | aarch64 |
 | -------- | ------- | :----: | :-----: |
+| macOS    | 27      |         |    ✔️    |
+| macOS    | 26      |   ✔️    |    ✔️    |
 | macOS    | 15      |   ✔️    |    ✔️    |
 | macOS    | 14      |   ✔️    |    ✔️    |
 
@@ -89,6 +93,7 @@ This page lists the supported operating systems and architectures for Wazuh Serv
 
 | Platform     | Version | x86_64 | aarch64 |
 | ------------ | ------- | :----: | :-----: |
+| Oracle Linux | 10      |   ✔️    |    ✔️    |
 | Oracle Linux | 9       |   ✔️    |    ✔️    |
 | Oracle Linux | 8       |   ✔️    |    ✔️    |
 | Oracle Linux | 7       |   ✔️    |         |
@@ -110,6 +115,9 @@ This page lists the supported operating systems and architectures for Wazuh Serv
 
 | Platform | Version | x86_64 | aarch64 |
 | -------- | ------- | :----: | :-----: |
+| Fedora   | 45      |   ✔️    |    ✔️    |
+| Fedora   | 44      |   ✔️    |    ✔️    |
+| Fedora   | 43      |   ✔️    |    ✔️    |
 | Fedora   | 42      |   ✔️    |    ✔️    |
 | Fedora   | 41      |   ✔️    |    ✔️    |
 
@@ -117,7 +125,9 @@ This page lists the supported operating systems and architectures for Wazuh Serv
 
 | Platform      | Version | x86_64 | aarch64 |
 | ------------- | ------- | :----: | :-----: |
+| OpenSUSE Leap | 16      |   ✔️    |    ✔️    |
 | OpenSUSE Leap | 15      |   ✔️    |    ✔️    |
+| SLES          | 16      |   ✔️    |    ✔️    |
 | SLES          | 15      |   ✔️    |    ✔️    |
 
 ### AlmaLinux

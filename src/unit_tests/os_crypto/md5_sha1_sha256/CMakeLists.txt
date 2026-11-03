@@ -1,4 +1,4 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -9,7 +9,7 @@ cmake_minimum_required(VERSION 3.10)
 
 list(APPEND md5_sha1_tests_names "test_md5_sha1_sha256_op")
 list(APPEND md5_sha1_tests_flags "-Wl,--wrap,_mwarn -Wl,--wrap,wpopenv,--wrap,wpclose,--wrap,fread,--wrap,fclose,--wrap,fflush,--wrap,fgets,--wrap,fgetpos \
-                                  -Wl,--wrap,fseek,--wrap,fwrite,--wrap,remove,--wrap,fgetc,--wrap,fopen,--wrap,wfopen -Wl,--wrap,popen")
+                                  -Wl,--wrap,fseek,--wrap,fwrite,--wrap,remove,--wrap,fgetc,--wrap,fopen,--wrap,wfopen -Wl,--wrap,popen -Wl,--wrap,w_fopen_regular")
 
 # Compiling tests
 list(LENGTH md5_sha1_tests_names count)

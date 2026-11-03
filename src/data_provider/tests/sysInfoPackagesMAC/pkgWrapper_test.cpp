@@ -1,7 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015, Wazuh Inc.
- * July 20, 2023.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -10,10 +9,12 @@
  */
 
 #include "pkgWrapper_test.h"
+#include <optional>
 #include "packages/packageMac.h"
 #include "packages/pkgWrapper.h"
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <limits.h>
 #include <stdexcept>
@@ -89,11 +90,11 @@ TEST_F(PKGWrapperTest, LongVersion)
     EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->format(), "pkg");
     EXPECT_EQ(wrapper->osPatch(), "");
-    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->source(), "applications");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), std::nullopt);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
@@ -118,11 +119,11 @@ TEST_F(PKGWrapperTest, ShortVersion)
     EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->format(), "pkg");
     EXPECT_EQ(wrapper->osPatch(), "");
-    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->source(), "applications");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), std::nullopt);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
@@ -147,11 +148,11 @@ TEST_F(PKGWrapperTest, NameDifferentExecutable)
     EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->format(), "pkg");
     EXPECT_EQ(wrapper->osPatch(), "");
-    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->source(), "applications");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), std::nullopt);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
@@ -176,11 +177,11 @@ TEST_F(PKGWrapperTest, NameFirst)
     EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->format(), "pkg");
     EXPECT_EQ(wrapper->osPatch(), "");
-    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->source(), "applications");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), std::nullopt);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
@@ -205,11 +206,11 @@ TEST_F(PKGWrapperTest, NoNameButExecutable)
     EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->format(), "pkg");
     EXPECT_EQ(wrapper->osPatch(), "");
-    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->source(), "applications");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), std::nullopt);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
@@ -234,11 +235,11 @@ TEST_F(PKGWrapperTest, NoNameNoExecutable)
     EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->format(), "pkg");
     EXPECT_EQ(wrapper->osPatch(), "");
-    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->source(), "applications");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), std::nullopt);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
@@ -263,11 +264,11 @@ TEST_F(PKGWrapperTest, NoVersion)
     EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->format(), "pkg");
     EXPECT_EQ(wrapper->osPatch(), "");
-    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->source(), "applications");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), std::nullopt);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
@@ -292,11 +293,11 @@ TEST_F(PKGWrapperTest, NoGroups)
     EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->format(), "pkg");
     EXPECT_EQ(wrapper->osPatch(), "");
-    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->source(), "applications");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), std::nullopt);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
@@ -321,11 +322,11 @@ TEST_F(PKGWrapperTest, NoDescription)
     EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->format(), "pkg");
     EXPECT_EQ(wrapper->osPatch(), "");
-    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->source(), "applications");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), std::nullopt);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
@@ -350,13 +351,87 @@ TEST_F(PKGWrapperTest, NoVendor)
     EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->format(), "pkg");
     EXPECT_EQ(wrapper->osPatch(), "");
-    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->source(), "applications");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), std::nullopt);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
+}
+
+// A bundle under a Utilities directory is the only case that may report
+// "utilities". Paired with the cases above, which all sit directly under
+// input_files, this pins both values the classifier can produce.
+TEST_F(PKGWrapperTest, SourceUtilitiesFolder)
+{
+    std::string inputPath;
+    inputPath += currentWorkingDirectory();
+    inputPath += "/input_files/Utilities";
+    std::string package { "PKGWrapperTest_Utilities.app" };
+
+    struct PackageContext ctx
+    {
+        inputPath, package, ""
+    };
+    std::shared_ptr<PKGWrapper> wrapper;
+    EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
+    EXPECT_EQ(wrapper->name(), "SampleUtility");
+    EXPECT_EQ(wrapper->version(), "1.2.3");
+    EXPECT_EQ(wrapper->groups(), "public.app-category.utilities");
+    EXPECT_EQ(wrapper->description(), "com.wazuh.SampleUtility");
+    EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
+    EXPECT_EQ(wrapper->format(), "pkg");
+    EXPECT_EQ(wrapper->osPatch(), "");
+    EXPECT_EQ(wrapper->source(), "utilities");
+    EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
+    EXPECT_EQ(wrapper->vendor(), "Wazuh");
+    EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
+    EXPECT_EQ(wrapper->size(), std::nullopt);
+    EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
+    EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
+}
+
+// The classifier looks for the substring anywhere in the path, so it must not
+// be fooled by a bundle whose own name merely contains the word. This case
+// fails against a classifier rewritten as a prefix or a whole-name match.
+TEST_F(PKGWrapperTest, SourceBundleNamedLikeUtilities)
+{
+    std::string inputPath;
+    inputPath += currentWorkingDirectory();
+    inputPath += "/input_files";
+    std::string package { "PKGWrapperTest_MyUtilities.app" };
+
+    struct PackageContext ctx
+    {
+        inputPath, package, ""
+    };
+    std::shared_ptr<PKGWrapper> wrapper;
+    EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
+    EXPECT_EQ(wrapper->name(), "MyUtilities");
+    EXPECT_EQ(wrapper->source(), "applications");
+    EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
+}
+
+// A folder whose name merely starts with the word (e.g. a vendor's own "Utilities Pro")
+// must not be classified as the system Utilities folder. Only an exact "Utilities"
+// path component should count, not any folder name containing it as a prefix.
+TEST_F(PKGWrapperTest, SourceFolderNamedLikeUtilitiesButNotExactly)
+{
+    const std::string parentDir { m_tempDir + "/Utilities Pro" };
+    const std::string package { "PKGWrapperTest_NotUtilities.app" };
+    const std::string contentsDir { parentDir + "/" + package + "/Contents" };
+    ASSERT_TRUE(std::filesystem::create_directories(contentsDir));
+
+    std::ofstream file { contentsDir + "/Info.plist" };
+    file << "<plist></plist>";
+    file.close();
+
+    PackageContext ctx { parentDir, package, "" };
+    std::shared_ptr<PKGWrapper> wrapper;
+    EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
+
+    EXPECT_EQ(wrapper->source(), "applications");
 }
 
 TEST_F(PKGWrapperTest, pkgVersionXML)
@@ -383,7 +458,7 @@ TEST_F(PKGWrapperTest, pkgVersionXML)
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package);
     EXPECT_EQ(wrapper->vendor(), "Wazuh");
     EXPECT_EQ(wrapper->priority(), " ");
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), std::nullopt);
     EXPECT_EQ(wrapper->install_time(), "2024-11-07T08:58:38Z");
     EXPECT_EQ(wrapper->multiarch(), " ");
 }
@@ -412,7 +487,7 @@ TEST_F(PKGWrapperTest, pkgVersionBin)
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package);
     EXPECT_EQ(wrapper->vendor(), "Zoom");
     EXPECT_EQ(wrapper->priority(), " ");
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), std::nullopt);
     EXPECT_EQ(wrapper->install_time(), "2024-11-08T11:44:04Z");
     EXPECT_EQ(wrapper->multiarch(), " ");
 }
@@ -441,7 +516,7 @@ TEST_F(PKGWrapperTest, pkgVersionLong)
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package);
     EXPECT_EQ(wrapper->vendor(), "R-project");
     EXPECT_EQ(wrapper->priority(), " ");
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), std::nullopt);
     EXPECT_EQ(wrapper->install_time(), "2024-11-13T10:59:10Z");
     EXPECT_EQ(wrapper->multiarch(), " ");
 }
@@ -712,4 +787,74 @@ TEST_F(PKGWrapperTest, DeadReceiptClearsNameOnly)
     // Other fields are still populated from the plist parsing phase.
     EXPECT_EQ(wrapper->source(), "receipts");
     EXPECT_EQ(wrapper->version(), "1.0");
+}
+
+// ---------------------------------------------------------------------------
+// Scenario: the file behind a package path is not a plain regular file.
+// A per-user ~/Applications is untrusted input, so these three shapes must
+// all be rejected (empty name, no throw, no hang) instead of parsed.
+// ---------------------------------------------------------------------------
+TEST_F(PKGWrapperTest, RejectsAFifoInsteadOfBlocking)
+{
+    const std::string plistName { "fifo.plist" };
+    const std::string plistPath { m_tempDir + "/" + plistName };
+    ASSERT_EQ(0, ::mkfifo(plistPath.c_str(), 0644));
+
+    PackageContext ctx { m_tempDir, plistName, "" };
+    std::shared_ptr<PKGWrapper> wrapper;
+
+    // The point of the test: opening a FIFO with no writer must not block
+    // this construction forever, which is exactly what it would do without
+    // the O_NONBLOCK open used to read the file.
+    EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
+    EXPECT_EQ(wrapper->name(), "");
+}
+
+TEST_F(PKGWrapperTest, RejectsASymlinkToACharacterDevice)
+{
+    const std::string plistName { "devzero.plist" };
+    const std::string plistPath { m_tempDir + "/" + plistName };
+    ASSERT_EQ(0, ::symlink("/dev/zero", plistPath.c_str()));
+
+    PackageContext ctx { m_tempDir, plistName, "" };
+    std::shared_ptr<PKGWrapper> wrapper;
+    EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
+    EXPECT_EQ(wrapper->name(), "");
+}
+
+TEST_F(PKGWrapperTest, RejectsAFileLargerThanTheSizeLimit)
+{
+    // A sparse file: its logical size is huge but it occupies no real disk
+    // space, the same shape as the attack this size check defends against.
+    const std::string plistName { "huge_receipt.plist" };
+    const std::string plistPath { m_tempDir + "/" + plistName };
+    {
+        std::ofstream file { plistPath, std::ios::binary };
+    }
+    ASSERT_EQ(0, ::truncate(plistPath.c_str(), MAX_PLIST_SIZE + 1));
+
+    PackageContext ctx { m_tempDir, plistName, "" };
+    std::shared_ptr<PKGWrapper> wrapper;
+    EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
+    EXPECT_EQ(wrapper->name(), "");
+}
+
+TEST_F(PKGWrapperTest, FollowsASymlinkToAnOrdinaryReceiptFile)
+{
+    const std::string realName { "real_receipt.plist" };
+    const std::string realPath { m_tempDir + "/" + realName };
+    writeReceiptPlist(realPath, "com.example.symlinked", "3.2.1", "2025-06-01T00:00:00Z", "/");
+
+    const std::string linkName { "receipt_via_symlink.plist" };
+    const std::string linkPath { m_tempDir + "/" + linkName };
+    ASSERT_EQ(0, ::symlink(realPath.c_str(), linkPath.c_str()));
+
+    // A symlink to an ordinary file must still be accepted and parsed like the
+    // real file: only the resolved target's type matters, not whether the
+    // final path component is itself a symlink.
+    PackageContext ctx { m_tempDir, linkName, "" };
+    std::shared_ptr<PKGWrapper> wrapper;
+    EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
+    EXPECT_EQ(wrapper->version(), "3.2.1");
+    EXPECT_EQ(wrapper->source(), "receipts");
 }

@@ -133,13 +133,16 @@ sequenceDiagram
         Manager-->>AD: 409 response to the /stateful request
         AD->>ASP: parseResponseBuffer("HCRESULT:<session>:409:<body>")
         ASP->>ASP: applyHttpResult(409, body, session)<br/>SyncResult::CHECKSUM_ERROR
-        ASP-->>Module: true (full sync needed)
+        ASP-->>Module: MISMATCH (after every attempt answered 409)
         Module->>Module: Schedule full synchronization
     else Checksum match
         Manager-->>AD: 200 OK response to the /stateful request
         AD->>ASP: parseResponseBuffer("HCRESULT:<session>:200:<body>")
         ASP->>ASP: applyHttpResult(200, body, session)
-        ASP-->>Module: false (integrity valid)
+        ASP-->>Module: VALID
+    else Check did not complete (503, no response, intake unreachable, stop)
+        ASP-->>Module: NOT_CHECKED + reason
+        Module->>Module: Report it, never as valid
     end
 ```
 

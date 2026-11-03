@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module - POST /enroll mTLS end-to-end test
- * Copyright (C) 2015, Wazuh Inc.
- * August 19, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -63,7 +62,8 @@ namespace
     class PassthroughBodyDecoder final : public IBodyDecoder
     {
     public:
-        remoted::auth::AuthError decode(ContentEncoding, remoted::auth::Payload&) const override
+        remoted::auth::AuthError
+        decode(ContentEncoding, remoted::auth::Payload&, const remoted::decoding::DecodeCharge&) const override
         {
             return remoted::auth::AuthError::None;
         }

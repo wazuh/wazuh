@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <iockvdb/dbInstance.hpp>
 
 #include <stdexcept>
@@ -72,4 +73,4 @@ void DbInstance::put(std::string_view key, std::string_view value)
     }
 }
 
-} // namespace kvdbioc
+} // namespace ioc::kvdb

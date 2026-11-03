@@ -1,7 +1,6 @@
 /*
  * Wazuh DBSYNC
- * Copyright (C) 2015, Wazuh Inc.
- * June 11, 2020.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -111,6 +110,11 @@ void DBSyncImplementation::updateSnapshotData(const DBSYNC_HANDLE   handle,
 
     std::unique_lock<std::shared_timed_mutex> lock{ ctx->m_syncMutex };
     ctx->m_dbEngine->refreshTableData(json, callback, lock);
+}
+
+std::string DBSyncImplementation::recreateReason(const DBSYNC_HANDLE handle)
+{
+    return dbEngineContext(handle)->m_dbEngine->recreateReason();
 }
 
 std::shared_ptr<DBSyncImplementation::DbEngineContext> DBSyncImplementation::dbEngineContext(const DBSYNC_HANDLE handle)

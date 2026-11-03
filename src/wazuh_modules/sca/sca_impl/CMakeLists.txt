@@ -119,8 +119,10 @@ add_library(
   src/sca_event_handler.cpp
   src/sca_sync_manager.cpp
   src/sca_utils.cpp
+  src/sca_reason_sanitizer.cpp
   src/sca_checksum.cpp
   src/check_condition_evaluator.cpp
+  src/unique_lines.cpp
   $<$<PLATFORM_ID:Windows>:src/sca_policy_check_win.cpp>
   ${RESOURCE_OBJ_DLL})
 

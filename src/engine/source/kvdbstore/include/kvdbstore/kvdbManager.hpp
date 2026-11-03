@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // kvdbManager.hpp
 #ifndef _KVDB_STORE_MANAGER_H
 #define _KVDB_STORE_MANAGER_H

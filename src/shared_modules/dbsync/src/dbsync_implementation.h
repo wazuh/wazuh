@@ -1,7 +1,6 @@
 /*
  * Wazuh DBSYNC
- * Copyright (C) 2015, Wazuh Inc.
- * June 11, 2020.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -84,6 +83,8 @@ namespace DbSync
             void releaseContext(const DBSYNC_HANDLE handle);
 
             void closeAndDeleteDatabase(const DBSYNC_HANDLE handle, const std::string& path);
+
+            std::string recreateReason(const DBSYNC_HANDLE handle);
 
             static bool isShuttingDown()
             {

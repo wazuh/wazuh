@@ -2,8 +2,11 @@ run-name: Check changelog on PR ${{ github.event.pull_request.number }}
 name: 5.X - Check changelog
 
 on:
+  # No `paths`: every PR owes a CHANGELOG.md entry or the `no-changelog` label. `unlabeled` re-runs
+  # the check when that label is removed (otherwise the green it granted stays); `reopened` re-runs
+  # it on a PR whose last run predates its closing.
   pull_request:
-    types: [opened, synchronize, ready_for_review, labeled]
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
 
 permissions:
   contents: read

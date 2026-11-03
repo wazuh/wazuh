@@ -1,12 +1,13 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015, Wazuh Inc.
- * May 11, 2023.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #ifndef _OSPRIMITIVES_INTERFACE_MAC_H
@@ -14,6 +15,8 @@
 
 #include "IOKit/IOKitLib.h"
 #include "CoreFoundation/CFBase.h"
+#include "mach/mach.h"
+#include "mach/mach_host.h"
 
 class IOsPrimitivesMac
 {
@@ -24,6 +27,11 @@ class IOsPrimitivesMac
 
         virtual int sysctl(int* name, u_int namelen, void* oldp, size_t* oldlenp, void* newp, size_t newlen) const = 0;
         virtual int sysctlbyname(const char* name, void* oldp, size_t* oldlenp, void* newp, size_t newlen) const = 0;
+        virtual int proc_listallpids(void* buffer, int buffersize) const = 0;
+
+        virtual kern_return_t host_statistics64(host_t hostPriv, host_flavor_t flavor, host_info64_t hostInfo64Out, mach_msg_type_number_t* hostInfo64OutCnt) const = 0;
+        virtual mach_port_t mach_host_self() const = 0;
+        virtual kern_return_t mach_port_deallocate(ipc_space_t task, mach_port_name_t name) const = 0;
 
         virtual CFMutableDictionaryRef IOServiceMatching(const char* name) const = 0;
         virtual kern_return_t IOServiceGetMatchingServices(mach_port_t mainPort, CFDictionaryRef matching, io_iterator_t* existing) const = 0;

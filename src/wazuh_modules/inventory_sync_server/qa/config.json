@@ -5,5 +5,7 @@
         ],
         "flush_interval_seconds": 1
     },
-    "clusterName": "cluster01"
+    "clusterName": "cluster01",
+    "username": "admin",
+    "password": "admin"
 }

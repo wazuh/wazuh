@@ -1,13 +1,14 @@
 #include <sca_checksum.hpp>
 #include <sca_event_handler.hpp>
 #include <sca_field_decoder.hpp>
+#include <sca_reason_sanitizer.hpp>
 #include <sca_sync_manager.hpp>
-#include <sca_utils.hpp>
 
 #include <dbsync.hpp>
 #include <hashHelper.h>
 #include <stringHelper.h>
 #include <timeHelper.h>
+#include <wazuhCommon.hpp>
 
 #include <array>
 
@@ -784,7 +785,8 @@ std::string SCAEventHandler::CalculateHashId(const nlohmann::json& data) const
     Utils::HashData hash(Utils::HashType::Sha1);
     hash.update(baseId.c_str(), baseId.size());
 
-    return Utils::asciiToHex(hash.hash());
+    const auto digest {hash.hash()};
+    return wazuh::hex_encode(digest.data(), digest.size());
 }
 
 void SCAEventHandler::PushStateful(const nlohmann::json& event, ReturnTypeCallback operation, uint64_t version) const

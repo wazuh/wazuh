@@ -1,8 +1,7 @@
 #!/bin/sh
 
 # Wazuh Template Selector
-# Copyright (C) 2015, Wazuh Inc.
-# November 18, 2016.
+# Copyright (C) Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public

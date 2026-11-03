@@ -18,9 +18,10 @@ relayed back to the agent IS the session result — no acks, no retransmission, 
   can never be reordered.
 - **Synchronous vulnerability scanning**: sessions with option `VDFirst`/`VDSync` run through a
   dedicated scan lane that executes the [Vulnerability Scanner](../vulnerability-scanner/README.md)
-  BEFORE indexing — a `200` guarantees the scan ran AND the inventory was flushed; a failed scan
-  answers `500` with nothing indexed; a still-downloading CVE feed answers `503 + Retry-After`
-  without processing.
+  BEFORE indexing — a `200` guarantees the scan ran AND the inventory was flushed (on a node that
+  runs no scanner the inventory is indexed without a scan, and still answered `200`); a failed scan
+  answers `500` with nothing indexed; a still-downloading CVE feed, or a scanner enabled here but
+  still starting up, answers `503 + Retry-After` without processing.
 - **Agent deletion endpoint** (`POST /_internal/agents/delete`): manager-internal and UDS-local,
   called by the Task Manager's dispatcher to execute a durable deletion task that
   `wazuh-manager-authd` created when the agent was removed. It reaches every index holding
@@ -30,6 +31,9 @@ relayed back to the agent IS the session result — no acks, no retransmission, 
   connector that writes them (so it orders after a `/config` or `/stats` report that connector has
   accepted but not yet pushed). It answers at COMPLETION — the `200` means the delete-by-query ran
   and flushed — which is what lets the task be recorded as `completed` and have that mean purged.
+- **On-demand scan endpoint** (`POST /_internal/vd/scan`): manager-internal and UDS-local, called by
+  the Task Manager's dispatcher to rescan one agent on the same scan lane, so the scan can never run
+  while a session of that agent is being applied. Also answered at completion.
 - HTTP/1.1 over a Unix domain socket, so no TCP port is exposed; admission control before a body is
   read (in-flight byte budget, connection cap); two-phase shutdown; the socket does not open until
   the indexer session and connectors are constructed successfully.
@@ -40,6 +44,7 @@ relayed back to the agent IS the session result — no acks, no retransmission, 
   scan lane, agent deletion, transport, startup gate, shutdown, and the design decisions
 - [API Reference](api-reference.md) - the routes, their statuses and their bodies
 - [Configuration](configuration.md) - the internal options, their ranges and their defaults
+- [Metrics](metrics.md) - the `GET /metrics` catalog, each metric with the option it helps size
 - [Schemas](flatbuffers.md) - the FullSession FlatBuffers contract
 - [Test Tools](test-tools.md) - the UDS drivers (smoke sender, agent-deletion driver), the
   integration test driver and the QA suite
@@ -50,6 +55,7 @@ relayed back to the agent IS the session result — no acks, no retransmission, 
 | --- | --- | --- |
 | `POST /stateful` | Remoted (relaying agents) | Apply one whole synchronization session |
 | `POST /_internal/agents/delete` | The Task Manager's dispatcher | Delete every document of an agent, across `wazuh-states-*`, `wazuh-agent-config` and `wazuh-agent-stats`. Agent id in the body; answered at completion |
+| `POST /_internal/vd/scan` | The Task Manager's dispatcher | Rescan one agent's stored inventory for vulnerabilities. Agent id in the body; answered at completion |
 | `POST /stats`, `POST /config` | Remoted (relaying agents) | Agent stats/config documents |
 | `GET /` | anyone local | Liveness probe |
 | `GET /metrics` | anyone local (operators, the benchmark harness) | Runtime statistics as JSON — full catalog in [Metrics](metrics.md) |
@@ -92,31 +98,32 @@ agent's documents). The situations an operator will recognize:
 
 ## FAQ (operations)
 
-- **Why am I seeing `503`s under load?** Four gates shed on purpose rather than queueing
-  unboundedly: the connection cap, the in-flight byte budget, the pipeline's admission queue, and
-  the VD lane's capacity — see the
+- **Why am I seeing `503`s under load?** Five gates shed on purpose rather than queueing
+  unboundedly: the connection cap, the in-flight byte budget, the per-agent cap on pending
+  sessions, the pipeline's admission queue, and the VD lane's capacity — see the
   [503 troubleshooting entry](configuration.md#requests-are-answered-503-under-load) for which
   option matches which gate. Sheds are expected backpressure: agents retry on their own.
 - **What does `Retry-After` mean?** Only one `503` carries it: the CVE feed is still downloading,
-  so vulnerability-detection sessions are rejected *without processing* and the agent re-sends
-  the same session after the given seconds. No other `503` schedules the retry for the agent.
+  or the vulnerability scanner is enabled here but still starting up, so vulnerability-detection
+  sessions are rejected *without processing* and the agent re-sends the same session after the
+  given seconds. No other `503` schedules the retry for the agent.
 - **Why did an agent full-resync out of nowhere?** Its `ModuleCheck` answered `409` — the
   manager-side checksum of that module's documents did not match the agent's. The resync is the
   repair, not the problem.
-- **I deleted an agent and its documents are still in the indexer.** Look for a `WARNING` from
-  `wazuh-manager-authd` naming that agent: authd retries the deletion three times and, if it never
-  gets a `200`, says so and leaves the documents in place — with the agent gone from `client.keys`
-  nothing else ever overwrites them. (A warning and not an error because the agent itself is gone and
-  cannot reconnect; the leftover is orphaned data, not a broken manager.) Fix what the ERROR points at (an unhealthy indexer, or modulesd
-  not listening on the socket) and repeat the deletion; it is idempotent, so re-running it is always
-  safe. One narrower cause leaves no ERROR behind: a `wazuh-states-*` document written inside the index
-  refresh interval is invisible to the deletion's search, and the same repeat clears it. (A
-  `POST /config` or `POST /stats` report in flight at deletion time is no longer one of these causes:
-  those two documents are deleted by id on the same asynchronous queue that writes them, so a report
-  the queue has accepted is applied before the delete queued behind it.)
-  `inventory_sync_server/tools/send_delete_agent.py
-  --verify` counts the agent's documents before and after, which is the quickest way to see what a
-  `200` actually did.
+- **I deleted an agent and its documents are still in the indexer.** The purge is a durable
+  `agent_delete_indexer` task that authd records and the [Task Manager](../task_manager/README.md)
+  runs no earlier than `authd.purge_delay` (120 s by default) after the removal, then retries with no
+  attempt budget until it gets a `200`. So first check whether it has run yet: while the indexer is
+  unhealthy this module answers it `503` and logs a throttled `WARNING` (`Rejected ... agent
+  deletion(s) with 503 ... no configured indexer host is currently healthy`). Once it succeeds the
+  module logs `Deletion of agent <id> state documents completed`. Documents can still survive a
+  successful deletion in two narrow cases: a `wazuh-states-*` document written inside the index
+  refresh interval is invisible to the deletion's search, and the `wazuh-agent-config` /
+  `wazuh-agent-stats` deletes, which are only queued in memory, are lost if modulesd stops before
+  they are pushed. Repeating the deletion clears both; it is idempotent, so re-running it is always
+  safe. `src/wazuh_modules/inventory_sync_server/tools/send_delete_agent.py --verify` repeats it and
+  counts the agent's documents before and after, which is the quickest way to see what a `200`
+  actually did (see [Test Tools](test-tools.md)).
 - **Where are the metrics?** `GET /metrics` on the module's socket, UDS-local (agents can never
   reach it): `curl -s --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync-http.sock
   http://localhost/metrics`. Shard depths/bytes tell you whether load is skewed;
@@ -132,6 +139,8 @@ agent's documents). The situations an operator will recognize:
 ## Related Modules
 
 - [Remoted](../remoted/README.md) - relays agent sessions to this module.
+- [Task Manager](../task_manager/README.md) - its dispatcher drives the agent-deletion and on-demand
+  scan routes.
 - [Vulnerability Scanner](../vulnerability-scanner/README.md) - executed synchronously by the scan
   lane for VD sessions; coordinates feed-update scans through a shared per-agent registry.
 - [Keystore](../keystore/README.md) - the encrypted credential store the indexer connectors read.
@@ -142,7 +151,7 @@ agent's documents). The situations an operator will recognize:
 Two in-repo companions to these pages (plain paths — they live outside this book):
 
 - `src/wazuh_modules/inventory_sync_server/README.md` — the developer's map of the module: the
-  functional/non-functional requirements catalog, the full set of design decisions (D1–D22), the
+  functional/non-functional requirements catalog, the full set of design decisions (D1–D30), the
   annotated schema, the developer FAQ, and where to touch what.
 - `tools/manager_benchmark/` — the load harness: the same wire as a real fleet over UDS or
   through remoted, the `contract_*` scenarios that pin this module's `400`/`413`/`503` contracts,

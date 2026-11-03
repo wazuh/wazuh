@@ -1,7 +1,6 @@
 /*
  * Wazuh DBSYNC
- * Copyright (C) 2015, Wazuh Inc.
- * June 11, 2020.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -158,6 +157,8 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
 
         void closeAndDeleteDatabase(const std::string& path) override;
 
+        std::string recreateReason() const override;
+
     private:
         void initialize(const std::string&              path,
                         const std::string&              tableStmtCreation,
@@ -287,10 +288,6 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
                         const std::vector<Row>& rowKeysValue);
 
         void getFieldValueFromTuple(const Field& value,
-                                    std::string& resultValue,
-                                    const bool quotationMarks = false);
-
-        void getFieldValueFromTuple(const Field& value,
                                     nlohmann::json& object);
 
         SQLiteDBEngine(const SQLiteDBEngine&) = delete;
@@ -323,6 +320,7 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
         std::shared_ptr<SQLite::IConnection> m_sqliteConnection;
         std::mutex m_stmtMutex;
         std::unique_ptr<SQLite::ITransaction> m_transaction;
+        std::string m_recreateReason;
         std::mutex m_maxRowsMutex;
         std::map<std::string, MaxRows> m_maxRows;
         std::string m_lastCleanDBError;

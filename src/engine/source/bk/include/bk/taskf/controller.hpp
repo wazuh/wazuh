@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _BK_TASKF_CONTROLLER_HPP
 #define _BK_TASKF_CONTROLLER_HPP
 
@@ -79,9 +80,9 @@ public:
     void stop() override {};
 
     /**
-     * @copydoc bk::IController::isAviable
+     * @copydoc bk::IController::isAvailable
      */
-    inline bool isAviable() const override { return true; }
+    inline bool isAvailable() const override { return true; }
 
     /**
      * @copydoc bk::IController::printGraph

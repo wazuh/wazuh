@@ -1,21 +1,57 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015, Wazuh Inc.
- * December 28, 2020.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #include "timeHelper_test.h"
 #include "timeHelper.h"
+#include <cstdlib>
 #include <regex>
 
-void TimeUtilsTest::SetUp() {};
+namespace
+{
+    void setTimezone(const char* tz)
+    {
+#ifdef WIN32
+        _putenv_s("TZ", tz);
+        _tzset();
+#else
+        setenv("TZ", tz, 1);
+        tzset();
+#endif
+    }
+} // namespace
 
-void TimeUtilsTest::TearDown() {};
+void TimeUtilsTest::SetUp()
+{
+    const auto* tz = std::getenv("TZ");
+    m_hadTimezone = tz != nullptr;
+    m_timezone = m_hadTimezone ? tz : "";
+};
+
+void TimeUtilsTest::TearDown()
+{
+#ifdef WIN32
+    setTimezone(m_timezone.c_str());
+#else
+    if (m_hadTimezone)
+    {
+        setTimezone(m_timezone.c_str());
+    }
+    else
+    {
+        unsetenv("TZ");
+        tzset();
+    }
+#endif
+};
 
 TEST_F(TimeUtilsTest, CheckTimestamp)
 {
@@ -78,15 +114,29 @@ TEST_F(TimeUtilsTest, CheckCompactTimestampInvalidFormat)
 
 TEST_F(TimeUtilsTest, TimestampToISO8601)
 {
-    // Get timestamp in local time
-    const auto timestamp {Utils::getTimestamp(std::time(nullptr), false)};
-    // Get current ISO8601 timestamp in UTC
-    const auto currentISO8601 {Utils::getCurrentISO8601()};
-    // replace milliseconds to 000Z to align with timestamp format
-    const auto currentISO8601ZeroMs {currentISO8601.substr(0, currentISO8601.size() - 4) + "000Z"};
-
-    EXPECT_EQ(currentISO8601ZeroMs, Utils::timestampToISO8601(timestamp));
     EXPECT_EQ("", Utils::timestampToISO8601("21:00:00"));
+    EXPECT_TRUE(
+        std::regex_match(Utils::getCurrentISO8601(), std::regex(R"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)")));
+
+    // ISO8601 input is returned normalized
+    EXPECT_EQ("2025-11-26T12:00:01.000Z", Utils::timestampToISO8601("2025-11-26T12:00:01Z"));
+    EXPECT_EQ("2025-11-26T12:00:01.000Z", Utils::timestampToISO8601("2025-11-26T12:00:01.000Z"));
+
+    setTimezone("UTC");
+    EXPECT_EQ("2025-12-01T18:25:40.000Z", Utils::timestampToISO8601("2025/12/01 18:25:40"));
+    EXPECT_EQ("2025-06-30T18:29:50.000Z", Utils::timestampToISO8601("2025/06/30 18:29:50"));
+
+    setTimezone("JST-9");
+    EXPECT_EQ("2025-12-01T09:25:40.000Z", Utils::timestampToISO8601("2025/12/01 18:25:40"));
+    EXPECT_EQ("2025-06-30T09:29:50.000Z", Utils::timestampToISO8601("2025/06/30 18:29:50"));
+
+    // Round trip of the current time, one second resolution; JST-9 has no DST, so local time is unambiguous
+    const auto now {std::time(nullptr)};
+    std::tm utc {};
+    gmtime_r(&now, &utc);
+    std::ostringstream expected;
+    expected << std::put_time(&utc, "%FT%T") << ".000Z";
+    EXPECT_EQ(expected.str(), Utils::timestampToISO8601(Utils::getTimestamp(now, false)));
 }
 
 TEST_F(TimeUtilsTest, RawTimestampToISO8601)
@@ -107,6 +157,8 @@ TEST_F(TimeUtilsTest, RawTimestampToISO8601)
     EXPECT_EQ("2020-11-13T01:54:25.060Z", Utils::rawTimestampToISO8601(1605232465.06));
     EXPECT_EQ("2020-11-13T01:54:25.040Z", Utils::rawTimestampToISO8601(1605232465.04));
     EXPECT_EQ("2020-11-13T01:54:25.120Z", Utils::rawTimestampToISO8601(1605232465.120));
+    EXPECT_EQ("2020-11-13T01:54:26.000Z", Utils::rawTimestampToISO8601(1605232465.9996));
+    EXPECT_EQ("2020-11-13T01:54:25.999Z", Utils::rawTimestampToISO8601(1605232465.9994));
 
     // Test conversion from "YYYY/MM/DD hh:mm:ss" format - result depends on system timezone
     // Just verify it returns valid ISO8601 format

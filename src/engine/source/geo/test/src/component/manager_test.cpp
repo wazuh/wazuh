@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <gtest/gtest.h>
 
 #include <atomic>
@@ -154,10 +155,9 @@ TEST_F(GeoManagerTest, MultithreadLookup)
             {
                 if (res.value() != "Wazuh")
                 {
-                    setError(
-                        error,
-                        errorMsg,
-                        fmt::format("Locator thread got response '{}' which is not 'Wazuh'", res.value()));
+                    setError(error,
+                             errorMsg,
+                             fmt::format("Locator thread got response '{}' which is not 'Wazuh'", res.value()));
                 }
             }
         }
@@ -209,10 +209,9 @@ TEST_F(GeoManagerTest, MultithreadListLookup)
             {
                 if (res.value() != "Wazuh")
                 {
-                    setError(
-                        error,
-                        errorMsg,
-                        fmt::format("Locator thread got response '{}' which is not 'Wazuh'", res.value()));
+                    setError(error,
+                             errorMsg,
+                             fmt::format("Locator thread got response '{}' which is not 'Wazuh'", res.value()));
                 }
             }
         }
@@ -278,8 +277,7 @@ TEST_F(GeoManagerTest, MultithreadGetLocator)
             auto locatorResp = manager->getLocator(type);
             if (locatorResp.isError())
             {
-                setError(
-                    error, errorMsg, fmt::format("Error getting locator: {}", locatorResp.readableStr()));
+                setError(error, errorMsg, fmt::format("Error getting locator: {}", locatorResp.readableStr()));
             }
         }
     };
@@ -318,8 +316,7 @@ TEST_F(GeoManagerTest, ComplexUseCase)
             auto locatorResp = manager->getLocator(type);
             if (locatorResp.isError())
             {
-                setError(
-                    error, errorMsg, fmt::format("Error getting locator: {}", locatorResp.readableStr()));
+                setError(error, errorMsg, fmt::format("Error getting locator: {}", locatorResp.readableStr()));
             }
             else
             {
@@ -335,8 +332,7 @@ TEST_F(GeoManagerTest, ComplexUseCase)
                     {
                         setError(error,
                                  errorMsg,
-                                 fmt::format("Locator thread got response '{}' which is not 'Wazuh'",
-                                             res.value()));
+                                 fmt::format("Locator thread got response '{}' which is not 'Wazuh'", res.value()));
                     }
                 }
             }

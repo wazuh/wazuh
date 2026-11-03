@@ -1,10 +1,11 @@
 """
-Copyright (C) 2015-2024, Wazuh Inc.
+Copyright (C) Wazuh Inc.
 Created by Wazuh, Inc. <info@wazuh.com>.
 This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 """
 
 import os
+import re
 import subprocess
 import pytest
 import sys
@@ -40,7 +41,11 @@ import wazuh_testing.utils.configuration as wazuh_configuration
 from wazuh_testing.utils.services import control_service
 
 WAZUH_MERGED_MG_PATH = os.path.join(SHARED_CONFIGURATIONS_PATH, 'merged.mg')
+WAZUH_SHARED_AGENT_CONF_PATH = os.path.join(SHARED_CONFIGURATIONS_PATH, 'agent.conf')
 AUTHD_PENDING_PURGES_PATH = os.path.join(WAZUH_PATH, 'queue', 'authd', 'pending-purges')
+# The manager configuration directory is fixed: a custom installation home never moves it.
+MANAGER_CONF_DIR = '/etc/wazuh-manager'
+MANAGER_CERTS_DIR = os.path.join(MANAGER_CONF_DIR, 'certs')
 
 # - - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -170,11 +175,15 @@ def load_wazuh_basic_configuration():
     minimal_configuration = configuration.get_minimal_configuration()
 
     # The framework's template still points auth at etc/certs/authd.pem, which no 5.x installation
-    # creates (the installer generates etc/certs/remoted.pem and reuses it for authd). The strict
-    # loader checks the files at service start, so the stale path would abort the whole restart.
-    # Fix it here until the template is updated in qa-integration-framework.
-    minimal_configuration = [line.replace('etc/certs/authd.pem', 'etc/certs/remoted.pem')
-                                 .replace('etc/certs/authd-key.pem', 'etc/certs/remoted-key.pem')
+    # has: the credential resolver issues remoted.pem and remoted-key.pem at installation (or the CI
+    # workflow provisions them with wazuh-certs-tool), and authd reuses that pair. Its certificate paths
+    # are also relative ('etc/certs/...'), which resolve against the installation home, while the
+    # certificates live in the fixed manager configuration directory. The strict loader checks the files
+    # at service start, so a stale path would abort the whole restart. Fix both here until the template is
+    # updated in qa-integration-framework.
+    minimal_configuration = [re.sub(r'(?<![\w/])etc/certs/', MANAGER_CERTS_DIR + '/',
+                                    line.replace('etc/certs/authd.pem', 'etc/certs/remoted.pem')
+                                        .replace('etc/certs/authd-key.pem', 'etc/certs/remoted-key.pem'))
                              for line in minimal_configuration]
 
     # Make a backup from current configuration
@@ -468,16 +477,24 @@ def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
 
     yield
 
-    if all_daemons:
-        logger.debug("Stopping wazuh using wazuh-control")
-        services.control_service("stop")
-    else:
-        if daemons == API_DAEMONS_REQUIREMENTS:
-            daemons.reverse()  # Stop in reverse, otherwise the next start will fail
-        for daemon in daemons:
-            if daemon is not None:
-                logger.debug(f"Stopping {daemon}")
-                services.control_service("stop", daemon=daemon)
+    # Suites set ignore_errors because their cases start the service on configurations it
+    # rejects. Stopping a service left in that state can fail as well (systemctl reporting
+    # "Job for wazuh-agent.service canceled." and exiting 1), so the same tolerance applies.
+    try:
+        if all_daemons:
+            logger.debug("Stopping wazuh using wazuh-control")
+            services.control_service("stop")
+        else:
+            if daemons == API_DAEMONS_REQUIREMENTS:
+                daemons.reverse()  # Stop in reverse, otherwise the next start will fail
+            for daemon in daemons:
+                if daemon is not None:
+                    logger.debug(f"Stopping {daemon}")
+                    services.control_service("stop", daemon=daemon)
+    except (ValueError, subprocess.CalledProcessError) as stop_error:
+        logger.error(f"{str(stop_error)}")
+        if not ignore_errors:
+            raise stop_error
 
 
 @pytest.fixture()
@@ -646,11 +663,11 @@ def configure_sockets_environment_implementation(
 
             # Use a 60s timeout (vs the framework default of 10s) because
             # test_authd_key_request_worker has been observed to need >30s for
-            # wazuh-authd to publish its pid file when started right after the
-            # previous module killed wazuh-authd (likely TIME_WAIT on port 1515
+            # wazuh-manager-authd to publish its pid file when started right after the
+            # previous module killed wazuh-manager-authd (likely TIME_WAIT on port 1515
             # or post-fork init taking longer than expected). If the timeout
             # still hits, the next step is to capture /var/ossec/logs/ossec.log
-            # to see what wazuh-authd is doing after goDaemon().
+            # to see what wazuh-manager-authd is doing after goDaemon().
             services.wait_expected_daemon_status(
                 target_daemon=daemon,
                 running_condition=True,
@@ -843,21 +860,29 @@ def ensure_merged_mg() -> None:
     (startup_gate_check_manager_config_hash()) can release immediately on the first
     /control notify instead of waiting for a /download round trip.
 
-    On Linux the file is created with group-writable permissions (0o660) and
-    owned by root:wazuh so that wazuh-agentd can overwrite it when receiving
+    It also writes an empty agent.conf when there is none, as a real unmerge leaves one next to
+    merged.mg: wazuh-agentd validates it at startup and discards merged.mg when it is missing.
+
+    On Linux the files are created with group-writable permissions (0o660) and
+    owned by root:wazuh so that wazuh-agentd can overwrite them when receiving
     a new merged.mg from the manager (or simulator).
     """
     os.makedirs(os.path.dirname(WAZUH_MERGED_MG_PATH), exist_ok=True)
-    with open(WAZUH_MERGED_MG_PATH, 'wb') as f:
-        f.write(RemotedSimulator.DEFAULT_MERGED_MG_CONTENT)
-    if sys.platform != platforms.WINDOWS:
-        import grp
-        os.chmod(WAZUH_MERGED_MG_PATH, 0o660)
-        try:
-            wazuh_gid = grp.getgrnam('wazuh').gr_gid
-            os.chown(WAZUH_MERGED_MG_PATH, -1, wazuh_gid)
-        except (KeyError, PermissionError):
-            pass
+    files = {WAZUH_MERGED_MG_PATH: RemotedSimulator.DEFAULT_MERGED_MG_CONTENT}
+    if not os.path.exists(WAZUH_SHARED_AGENT_CONF_PATH):
+        files[WAZUH_SHARED_AGENT_CONF_PATH] = b'<agent_config>\n</agent_config>\n'
+
+    for path, content in files.items():
+        with open(path, 'wb') as f:
+            f.write(content)
+        if sys.platform != platforms.WINDOWS:
+            import grp
+            os.chmod(path, 0o660)
+            try:
+                wazuh_gid = grp.getgrnam('wazuh').gr_gid
+                os.chown(path, -1, wazuh_gid)
+            except (KeyError, PermissionError):
+                pass
 
 
 @pytest.fixture()

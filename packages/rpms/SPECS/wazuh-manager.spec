@@ -8,7 +8,7 @@ Summary:     Wazuh helps you to gain security visibility into your infrastructur
 Name:        wazuh-manager
 Version:     %{_version}
 Release:     %{_release}
-License:     GPL
+License:     GPL-2.0-only AND AGPL-3.0-or-later
 Group:       System Environment/Daemons
 Source0:     %{name}-%{version}.tar.gz
 URL:         https://www.wazuh.com/
@@ -21,6 +21,18 @@ Conflicts:   ossec-hids ossec-hids-agent
 Obsoletes: wazuh-api < 4.0.0
 AutoReqProv: no
 
+# AutoReqProv is off above, so every dependency is stated rather than inferred, and each line below
+# names what still needs it.
+#
+#   coreutils  Every scriptlet and wazuh-manager-control (cp, mv, chown, chmod, mkdir, cat, head,
+#              od, tr, cut, date...). It also brings glibc, which the daemons and the bundled
+#              Python link and whose getent and ldconfig the scriptlets and the API call.
+#
+# Requires(pre)/(postun) above cover the account tools. Not declared, on purpose: systemctl and
+# service (the init system the host runs, called only when present), /sbin/nologin (the service
+# account's shell, a path never executed) and ldconfig (part of glibc, above). The credential
+# resolver is Python run by the bundled interpreter and calls no host tool; libstdc++ and libgcc_s
+# ship in lib/, and the interpreter's zlib and binascii modules take zlib from lib/libwazuhext.so.
 Requires: coreutils
 BuildRequires: coreutils glibc-devel automake autoconf libtool policycoreutils-python curl perl
 
@@ -37,6 +49,10 @@ log analysis, file integrity monitoring, intrusions detection and policy and com
 # Don't generate build_id links to prevent conflicts with other
 # packages.
 %global _build_id_links none
+# The rpm of the builder image is built with prefix /usr/local: pin the license directory
+# to /usr/share/licenses/<name>, where %license files belong.
+%global _defaultlicensedir /usr/share/licenses
+%global _docdir_fmt %%{NAME}
 
 # Build debuginfo package
 %package -n wazuh-manager-debuginfo
@@ -73,17 +89,29 @@ echo 'USER_DELETE_DIR="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_UPDATE="n"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_EMAIL="n"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_AUTHD="y"' >> ./etc/preloaded-vars.conf
-echo 'USER_GENERATE_AUTHD_CERT="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_AUTO_START="n"' >> ./etc/preloaded-vars.conf
-echo 'USER_CREATE_SSL_CERT="n"' >> ./etc/preloaded-vars.conf
+# This is a staging install whose tree is copied into the package below. Resolving credentials here
+# would bake this build host's rbac.db, bootstrap CA private key and certificates into an artifact
+# every deployment installs. %post resolves them on the target host instead.
+echo 'USER_RESOLVE_CREDENTIALS="n"' >> ./etc/preloaded-vars.conf
 ./install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
+
+# Belt and braces for the line above: whatever produced them, credential material must never reach
+# a package. Dropped before the copy into BUILDROOT, so anything new that starts being generated at
+# build time is caught by rpm's own unpackaged-files check rather than shipped.
+rm -f  %{_localstatedir}/api/configuration/security/rbac.db
+rm -f  %{_sysconfdir}/wazuh-manager/certs/*.pem
+rm -rf %{_localstatedir}/queue/keystore/*
 
 # Create directories
 mkdir -p ${RPM_BUILD_ROOT}%{_initrddir}
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}
+mkdir -p ${RPM_BUILD_ROOT}%{_sysconfdir}/wazuh-manager
 
-# Copy the installed files into RPM_BUILD_ROOT directory
+# Copy the installed files into RPM_BUILD_ROOT directory: the installation directory and the
+# configuration directory, which lives outside it
 cp -pr %{_localstatedir}/* ${RPM_BUILD_ROOT}%{_localstatedir}/
+cp -pr %{_sysconfdir}/wazuh-manager/. ${RPM_BUILD_ROOT}%{_sysconfdir}/wazuh-manager/
 sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/wazuh-manager-rh.init
 install -m 0755 src/init/templates/wazuh-manager-rh.init ${RPM_BUILD_ROOT}%{_initrddir}/wazuh-manager
 mkdir -p ${RPM_BUILD_ROOT}/usr/lib/systemd/system/
@@ -117,16 +145,19 @@ exit 0
 
 %pre
 
-# ============================================================
-# HARD BLOCK: Prevent upgrade from versions prior to 5.x
-# ============================================================
+# Every shell percent sign in these scriptlets is doubled: rpm's macro pass halves each pair, so the
+# shell receives the parameter expansions and format strings as written for it.
+
+# The configuration directory is fixed, outside the installation directory.
+CONF_DIR="%{_sysconfdir}/wazuh-manager"
+
 print_unsupported_manager_upgrade() {
-  DETECTED_VERSION=$(echo "${1:-unknown}" | sed 's/^v//')
+  DETECTED_VERSION="${1:-unknown}"
   cat <<EOF >&2
 ==============================================================
 ERROR: Upgrade from Wazuh manager versions prior to 5.x is not supported.
 
-Detected installed version: ${DETECTED_VERSION}
+Detected installed version: ${DETECTED_VERSION#v}
 
 A clean installation of Wazuh manager 5.x is required.
 Refer to the 5.x migration guide for more information.
@@ -134,58 +165,106 @@ Refer to the 5.x migration guide for more information.
 EOF
 }
 
-if [ "$1" -eq 2 ]; then
-  # Check if this is an upgrade from versions prior to 5.x.
-  if [ -f %{_sysconfdir}/ossec-init.conf ]; then
-    . %{_sysconfdir}/ossec-init.conf
-    OLD_VERSION="${VERSION}"
-  elif [ -x %{_localstatedir}/bin/wazuh-manager-control ]; then
-    OLD_VERSION=$(%{_localstatedir}/bin/wazuh-manager-control info -v 2>/dev/null || echo "")
-  fi
+# major_of VERSION: the major number of a version such as v4.14.0 or 4.14.0-1.
+major_of() {
+  MAJOR_OF="${1#v}"
+  echo "${MAJOR_OF%%%%.*}"
+}
 
-  if [ -n "${OLD_VERSION}" ]; then
-    OLD_MAJOR=$(echo "${OLD_VERSION}" | sed 's/^v//' | cut -d. -f1)
-    if [ -n "${OLD_MAJOR}" ] && [ "${OLD_MAJOR}" -le 4 ] 2>/dev/null; then
-      print_unsupported_manager_upgrade "${OLD_VERSION}"
-      exit 1
-    fi
-  fi
+# json_version FILE: the value of "version" in a VERSION.json.
+json_version() {
+  while IFS= read -r JSON_LINE || [ -n "${JSON_LINE}" ]; do
+    case "${JSON_LINE}" in
+      *'"version"'*)
+        JSON_LINE="${JSON_LINE#*\"version\"}"
+        JSON_LINE="${JSON_LINE#*\"}"
+        echo "${JSON_LINE%%%%\"*}"
+        return 0
+        ;;
+    esac
+  done < "$1"
+  return 1
+}
+
+# is_pre5 VERSION: true when VERSION names a major before 5.
+is_pre5() {
+  PRE5_MAJOR=$(major_of "$1")
+  case "${PRE5_MAJOR}" in
+    ''|*[!0-9]*) return 1 ;;
+  esac
+  [ "${PRE5_MAJOR}" -le 4 ]
+}
+
+# The pids of every running wazuh-manager-authd, from /proc (no procps).
+authd_pids() {
+  for PROC_DIR in /proc/[0-9]*; do
+    [ -r "${PROC_DIR}/cmdline" ] || continue
+    IFS= read -r PROC_CMD < "${PROC_DIR}/cmdline" 2>/dev/null || [ -n "${PROC_CMD}" ] || continue
+    case "${PROC_CMD}" in
+      *wazuh-manager-authd*) echo "${PROC_DIR#/proc/}" ;;
+    esac
+    PROC_CMD=""
+  done
+}
+
+# running TEXT: true when a status text says the service is running.
+running() {
+  case "$1" in
+    *"is running"*) return 0 ;;
+  esac
+  return 1
+}
+
+# ============================================================
+# HARD BLOCK: no 4.x manager may be replaced or sit beside this one, on an upgrade or on a fresh
+# install: its init file, or the version file of a /var/ossec install that reports itself a server.
+# ============================================================
+OLD_VERSION=""
+# Only a 4.x manager (TYPE server or local) blocks this one: a 4.x agent beside it is allowed.
+if [ -f %{_sysconfdir}/ossec-init.conf ]; then
+  OLD_TYPE=$(set +e; . %{_sysconfdir}/ossec-init.conf > /dev/null 2>&1; echo "${TYPE}") || OLD_TYPE=""
+  case "${OLD_TYPE}" in
+    server|local)
+      OLD_VERSION=$(set +e; . %{_sysconfdir}/ossec-init.conf > /dev/null 2>&1; echo "${VERSION}") || OLD_VERSION=""
+      ;;
+  esac
+fi
+if ! is_pre5 "${OLD_VERSION}" && [ -f /var/ossec/VERSION.json ] && [ -x /var/ossec/bin/wazuh-control ] \
+    && [ "$(/var/ossec/bin/wazuh-control info -t 2>/dev/null)" = "server" ]; then
+  OLD_VERSION=$(json_version /var/ossec/VERSION.json 2>/dev/null) || OLD_VERSION=""
+fi
+if is_pre5 "${OLD_VERSION}"; then
+  print_unsupported_manager_upgrade "${OLD_VERSION}"
+  exit 1
 fi
 
-# Create the wazuh-manager group if it doesn't exists
-if command -v getent > /dev/null 2>&1 && ! getent group wazuh-manager > /dev/null 2>&1; then
-  groupadd -r wazuh-manager
-elif ! getent group wazuh-manager > /dev/null 2>&1; then
+# Create the wazuh-manager group and user if they don't exist
+if ! getent group wazuh-manager > /dev/null 2>&1; then
   groupadd -r wazuh-manager
 fi
-
-# Create the wazuh-manager user if it doesn't exists
 if ! getent passwd wazuh-manager > /dev/null 2>&1; then
-  useradd -g wazuh-manager -G wazuh-manager -d %{_localstatedir} -r -s /sbin/nologin wazuh-manager
+  useradd -r -g wazuh-manager -d %{_localstatedir} -M -s /sbin/nologin wazuh-manager
 fi
 
 # Validate upgrade constraints for Manager (only during upgrade)
 if [ "$1" -eq 2 ]; then
   # Get version information
+  OLD_VERSION=""
   if [ -f "%{_localstatedir}/bin/wazuh-manager-control" ]; then
-    OLD_VERSION=`%{_localstatedir}/bin/wazuh-manager-control info -v 2>/dev/null`
-    MAJOR=$(echo $OLD_VERSION | cut -dv -f2 | cut -d. -f1)
+    OLD_VERSION=$(%{_localstatedir}/bin/wazuh-manager-control info -v 2>/dev/null) || OLD_VERSION=""
   elif [ -f %{_localstatedir}/VERSION.json ]; then
-    OLD_VERSION=`grep -oP '(?<="version": ")[^"]*' %{_localstatedir}/VERSION.json 2>/dev/null`
-    MAJOR=$(echo $OLD_VERSION | cut -d. -f1)
+    OLD_VERSION=$(json_version %{_localstatedir}/VERSION.json 2>/dev/null) || OLD_VERSION=""
   fi
-
-  ERROR_TYPE=""
+  MAJOR=$(major_of "${OLD_VERSION}")
 
   # Determine if upgrade should be blocked
-  if [ -z "$MAJOR" ]; then
-    ERROR_TYPE="no_version"
-  elif [ "$MAJOR" -lt 5 ]; then
-    ERROR_TYPE="old_version"
-  fi
-
-  # If any error was detected, show message and block
-  if [ -n "$ERROR_TYPE" ]; then
+  case "${MAJOR}" in
+    ''|*[!0-9]*)
+      print_unsupported_manager_upgrade "${OLD_VERSION}"
+      exit 1
+      ;;
+  esac
+  if [ "${MAJOR}" -lt 5 ]; then
     print_unsupported_manager_upgrade "${OLD_VERSION}"
     exit 1
   fi
@@ -193,62 +272,116 @@ fi
 
 # Stop the services to upgrade the package
 if [ "$1" -eq 2 ]; then
+  UPGRADE_PRESERVE_DIR="%{_localstatedir}/tmp/manager_upgrade_preserve"
+  # Refused, and the directory taken, while the manager is still running: a failed upgrade keeps
+  # this directory on purpose, so once one has failed every later attempt finds it, and refusing
+  # after the stop below would take the manager down and leave it down, since the wazuh.restart
+  # marker is only honoured by a %%posttrans that never runs after a failed %%pre. tmp/ is writable
+  # by wazuh-manager: a plain mkdir fails on anything already at that path, a link included, and
+  # once it has succeeded nothing can be planted there before the snapshot copies into it.
+  if [ -e "${UPGRADE_PRESERVE_DIR}" ]; then
+    echo "ERROR: Existing manager upgrade preserve backup found at ${UPGRADE_PRESERVE_DIR}." >&2
+    echo "ERROR: Recover or move this directory before retrying the upgrade." >&2
+    exit 1
+  fi
+  if ! mkdir -m 0700 "${UPGRADE_PRESERVE_DIR}"; then
+    echo "ERROR: Could not create the manager upgrade preserve backup at ${UPGRADE_PRESERVE_DIR}." >&2
+    exit 1
+  fi
+
+  # tmp/ is writable by wazuh-manager and touch follows a link planted there, creating its target.
+  # The marker is created with noclobber (O_EXCL), which fails on any link instead of following it.
+  rm -f %{_localstatedir}/tmp/wazuh.restart
+  RESTART_WITH=""
   if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-manager > /dev/null 2>&1; then
     systemctl stop wazuh-manager.service > /dev/null 2>&1
-    touch %{_localstatedir}/tmp/wazuh.restart
+    ( set -C; : > %{_localstatedir}/tmp/wazuh.restart ) 2> /dev/null || true
+    RESTART_WITH="systemctl"
   # Check for SysV
-  elif command -v service > /dev/null 2>&1 && service wazuh-manager status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
+  elif command -v service > /dev/null 2>&1 && running "$(service wazuh-manager status 2>/dev/null)"; then
     service wazuh-manager stop > /dev/null 2>&1
-    touch %{_localstatedir}/tmp/wazuh.restart
-  elif %{_localstatedir}/bin/wazuh-manager-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
-    touch %{_localstatedir}/tmp/wazuh.restart
+    ( set -C; : > %{_localstatedir}/tmp/wazuh.restart ) 2> /dev/null || true
+    RESTART_WITH="service"
+  elif running "$(%{_localstatedir}/bin/wazuh-manager-control status 2>/dev/null)"; then
+    ( set -C; : > %{_localstatedir}/tmp/wazuh.restart ) 2> /dev/null || true
+    RESTART_WITH="control"
   fi
   if [ -x %{_localstatedir}/bin/wazuh-manager-control ]; then
     %{_localstatedir}/bin/wazuh-manager-control stop > /dev/null 2>&1
-  elif [ -x %{_localstatedir}/bin/wazuh-control ]; then
-    %{_localstatedir}/bin/wazuh-control stop > /dev/null 2>&1
   fi
-  if pgrep -f wazuh-manager-authd > /dev/null 2>&1; then
-    kill -15 $(pgrep -f wazuh-manager-authd)
+  AUTHD_PIDS=$(authd_pids)
+  if [ -n "${AUTHD_PIDS}" ]; then
+    kill -15 ${AUTHD_PIDS} > /dev/null 2>&1 || true
   fi
 
-  UPGRADE_PRESERVE_DIR="%{_localstatedir}/tmp/manager_upgrade_preserve"
+  # A subshell on its own, not the left side of an || list: the shell ignores set -e inside a
+  # command whose failure is tested, so written that way a failed mkdir or cp would not stop the
+  # snapshot and its status would be whatever the last command returned.
   (
     set -e
-    if [ -e "${UPGRADE_PRESERVE_DIR}" ]; then
-      echo "ERROR: Existing manager upgrade preserve backup found at ${UPGRADE_PRESERVE_DIR}." >&2
-      echo "ERROR: Recover or move this directory before retrying the upgrade." >&2
-      exit 1
-    fi
-    mkdir -p "${UPGRADE_PRESERVE_DIR}"
-
-    if [ -d "%{_localstatedir}/etc" ]; then
-      cp -a "%{_localstatedir}/etc" "${UPGRADE_PRESERVE_DIR}/"
+    if [ -d "${CONF_DIR}" ]; then
+      mkdir "${UPGRADE_PRESERVE_DIR}/etc"
+      cp -a "${CONF_DIR}/." "${UPGRADE_PRESERVE_DIR}/etc/"
     fi
 
     if [ -d "%{_localstatedir}/data" ]; then
-      mkdir -p "${UPGRADE_PRESERVE_DIR}/data"
+      mkdir "${UPGRADE_PRESERVE_DIR}/data"
       for DATA_ENTRY in "%{_localstatedir}/data/"* "%{_localstatedir}/data/."[!.]* "%{_localstatedir}/data/"..?*; do
         [ -e "${DATA_ENTRY}" ] || continue
-        DATA_NAME=$(basename "${DATA_ENTRY}")
-        [ "${DATA_NAME}" = "tzdb" ] && continue
+        [ "${DATA_ENTRY##*/}" = "tzdb" ] && continue
         cp -a "${DATA_ENTRY}" "${UPGRADE_PRESERVE_DIR}/data/"
       done
     fi
-  ) || {
+  )
+  if [ $? -ne 0 ]; then
     echo "ERROR: Could not prepare manager upgrade preserve backup at ${UPGRADE_PRESERVE_DIR}." >&2
+    # Undone here: the directory this run reserved goes (its content is a partial copy of files
+    # still in place), and the manager is started again, through the same tool that found it
+    # running, if the stop above did. The marker goes too, since %%posttrans will not run after
+    # this %%pre fails.
+    rm -rf "${UPGRADE_PRESERVE_DIR}"
+    if [ -f %{_localstatedir}/tmp/wazuh.restart ]; then
+      rm -f %{_localstatedir}/tmp/wazuh.restart
+      case "${RESTART_WITH}" in
+        systemctl) systemctl start wazuh-manager.service > /dev/null 2>&1 ;;
+        service) service wazuh-manager start > /dev/null 2>&1 ;;
+        *) %{_localstatedir}/bin/wazuh-manager-control start > /dev/null 2>&1 ;;
+      esac || echo "WARNING: the manager could not be started again after the failed upgrade; start it by hand." >&2
+    fi
     exit 1
-  }
+  fi
 fi
 
 # Nothing is cleaned out of var/db/ here: it holds mitre.db and nothing else in
 # 5.x, and %pre refuses an upgrade from an earlier major, so no other file can
 # reach it. Anything left at the old paths is ignored.
 
-if [ -f %{_localstatedir}/queue/db/global.db ]; then
-  chmod 660 %{_localstatedir}/queue/db/global.db*
-  chown wazuh-manager:wazuh-manager %{_localstatedir}/queue/db/global.db*
-fi
+# logs/ and queue/db/ are writable by wazuh-manager, so anything in them may be a link the service
+# account planted, and chmod has no -h. Nothing here changes a mode there as root: a file
+# wazuh-manager owns gets chown -h and then a chmod run as wazuh-manager, which fails on anything
+# else. chroot --userspec (coreutils) switches user; the command then re-enters the working directory
+# in_dir() verified (by path: --skip-chdir needs coreutils 8.23, and EL7 ships 8.22; a swapped path
+# could only aim wazuh-manager at its own files). in_dir DIR COMMAND... runs COMMAND with DIR as its
+# working directory, only when no link leads there, so a name relative to it cannot be redirected by
+# swapping a directory above.
+as_service_user() {
+  chroot --userspec=wazuh-manager:wazuh-manager / sh -c 'cd -- "$1" && shift && exec "$@"' as_service_user "$(pwd -P)" "$@"
+}
+REAL_DIR=$(cd -P %{_localstatedir} 2> /dev/null && pwd -P) || REAL_DIR=""
+in_dir() {
+  [ -n "${REAL_DIR}" ] || return 1
+  (cd -P -- "$1" 2> /dev/null && [ "$(pwd -P)" = "${REAL_DIR}${1#"%{_localstatedir}"}" ] && shift && "$@")
+}
+
+fix_global_db() {
+  for DB_FILE in global.db*; do
+    if [ -f "${DB_FILE}" ] && [ ! -L "${DB_FILE}" ]; then
+      chown -h wazuh-manager:wazuh-manager "${DB_FILE}"
+      as_service_user chmod 660 "${DB_FILE}" || true
+    fi
+  done
+}
+in_dir %{_localstatedir}/queue/db fix_global_db || true
 
 # Remove Vuln-detector database
 rm -f %{_localstatedir}/queue/vulnerabilities/cve.db || true
@@ -263,154 +396,152 @@ if [ "$1" -eq 2 ]; then
   if [ -d %{_localstatedir}/~api ]; then
     rm -rf %{_localstatedir}/~api
   fi
-
-  # Ask wazuh-manager-control the version
-  VERSION=$(%{_localstatedir}/bin/wazuh-manager-control info -v)
-
-  # Get the major and minor version
-  MAJOR=$(echo $VERSION | cut -dv -f2 | cut -d. -f1)
-  MINOR=$(echo $VERSION | cut -d. -f2)
-
-  # Delete uncompatible DBs versions
-  if [ $MAJOR = 3 ] && [ $MINOR -lt 7 ]; then
-    rm -f %{_localstatedir}/queue/db/*.db*
-    rm -f %{_localstatedir}/queue/db/.template.db
-  fi
-
-  # Delete 3.X Wazuh API service
-  if [ "$MAJOR" = "3" ] && [ -d %{_localstatedir}/api ]; then
-    if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 ; then
-      systemctl stop wazuh-api.service > /dev/null 2>&1
-      systemctl disable wazuh-api.service > /dev/null 2>&1
-      rm -f /etc/systemd/system/wazuh-api.service
-    elif command -v service > /dev/null 2>&1 && command -v chkconfig > /dev/null 2>&1; then
-      service wazuh-api stop > /dev/null 2>&1
-      chkconfig wazuh-api off > /dev/null 2>&1
-      chkconfig --del wazuh-api > /dev/null 2>&1
-      rm -f /etc/rc.d/init.d/wazuh-api || true
-    fi
-  fi
 fi
 
 %post
 
-# Upgrade install code block
-if [ "$1" -eq 2 ]; then
-  if [ -d %{_localstatedir}/logs/ossec ]; then
-    rm -rf %{_localstatedir}/logs/wazuh
-    cp -rp %{_localstatedir}/logs/ossec %{_localstatedir}/logs/wazuh
-  fi
+# The configuration directory is fixed, outside the installation directory.
+CONF_DIR="%{_sysconfdir}/wazuh-manager"
 
-  if [ -d %{_localstatedir}/queue/ossec ]; then
-    rm -rf %{_localstatedir}/queue/sockets
-    cp -rp %{_localstatedir}/queue/ossec %{_localstatedir}/queue/sockets
-  fi
-
-fi
+# The configuration directory, logs/ and queue/db/ are writable by wazuh-manager, so anything in
+# them may be a link the service account planted, and chmod has no -h. Nothing here changes a mode
+# there as root: a file root creates is built in a root-only directory and renamed into place
+# (rename replaces a link, never follows it); a file wazuh-manager owns gets chown -h and then a
+# chmod run as wazuh-manager, which fails on anything else. chroot --userspec (coreutils) switches
+# user; the command then re-enters the working directory in_dir() verified (by path: --skip-chdir
+# needs coreutils 8.23, and EL7 ships 8.22; a swapped path could only aim wazuh-manager at its own
+# files). in_dir DIR COMMAND... runs COMMAND
+# with DIR as its working directory, only when no link leads there, so a name relative to it
+# cannot be redirected by swapping a directory above; in_conf_dir does the same under CONF_DIR.
+as_service_user() {
+  chroot --userspec=wazuh-manager:wazuh-manager / sh -c 'cd -- "$1" && shift && exec "$@"' as_service_user "$(pwd -P)" "$@"
+}
+REAL_DIR=$(cd -P %{_localstatedir} 2> /dev/null && pwd -P) || REAL_DIR=""
+in_dir() {
+  [ -n "${REAL_DIR}" ] || return 1
+  (cd -P -- "$1" 2> /dev/null && [ "$(pwd -P)" = "${REAL_DIR}${1#"%{_localstatedir}"}" ] && shift && "$@")
+}
+REAL_CONF_DIR=$(cd -P ${CONF_DIR} 2> /dev/null && pwd -P) || REAL_CONF_DIR=""
+in_conf_dir() {
+  [ -n "${REAL_CONF_DIR}" ] || return 1
+  (cd -P -- "$1" 2> /dev/null && [ "$(pwd -P)" = "${REAL_CONF_DIR}${1#"${CONF_DIR}"}" ] && shift && "$@")
+}
 
 # Fresh install code block
 if [ "$1" -eq 1 ]; then
 
   . %{_localstatedir}/packages_files/manager_installation_scripts/src/init/dist-detect.sh
 
-  # Generating wazuh-manager.conf file
-  if ! %{_localstatedir}/packages_files/manager_installation_scripts/src/init/gen_wazuh.sh conf manager ${DIST_NAME} ${DIST_VER}.${DIST_SUBVER} %{_localstatedir} > %{_localstatedir}/etc/wazuh-manager.conf; then
-    rm -f %{_localstatedir}/etc/wazuh-manager.conf
-    echo "ERROR: could not generate %{_localstatedir}/etc/wazuh-manager.conf." >&2
+  # Generating wazuh-manager.conf file, in packages_files/ (root only), and moving it into place
+  # once it validates (file existence is not checked: the certificates it references are
+  # generated later).
+  CONF_STAGE=%{_localstatedir}/packages_files/wazuh-manager.conf
+  if ! %{_localstatedir}/packages_files/manager_installation_scripts/src/init/gen_wazuh.sh conf manager ${DIST_NAME} ${DIST_VER}.${DIST_SUBVER} %{_localstatedir} > ${CONF_STAGE}; then
+    rm -f ${CONF_STAGE}
+    echo "ERROR: could not generate ${CONF_DIR}/wazuh-manager.conf." >&2
     exit 1
   fi
-  # The generated file must validate against the embedded schema (file existence is not
-  # checked: the certificates it references are generated later).
-  if ! %{_localstatedir}/bin/wazuh-manager-conf --skip-file-checks validate -f %{_localstatedir}/etc/wazuh-manager.conf; then
-    rm -f %{_localstatedir}/etc/wazuh-manager.conf
-    echo "ERROR: the generated %{_localstatedir}/etc/wazuh-manager.conf is not a valid manager configuration." >&2
+  if ! %{_localstatedir}/bin/wazuh-manager-conf --skip-file-checks validate -f ${CONF_STAGE}; then
+    rm -f ${CONF_STAGE}
+    echo "ERROR: the generated ${CONF_DIR}/wazuh-manager.conf is not a valid manager configuration." >&2
     exit 1
   fi
-  chown root:wazuh-manager %{_localstatedir}/etc/wazuh-manager.conf
-  chmod 0660 %{_localstatedir}/etc/wazuh-manager.conf
+  if ! { chmod 0660 ${CONF_STAGE} && chown root:wazuh-manager ${CONF_STAGE} && mv -fT ${CONF_STAGE} ${CONF_DIR}/wazuh-manager.conf; }; then
+    rm -f ${CONF_STAGE}
+    echo "ERROR: could not install ${CONF_DIR}/wazuh-manager.conf." >&2
+    exit 1
+  fi
 
-  touch %{_localstatedir}/logs/wazuh-manager.log
-  chown wazuh-manager:wazuh-manager %{_localstatedir}/logs/wazuh-manager.log
-  chmod 0660 %{_localstatedir}/logs/wazuh-manager.log
-
-  touch %{_localstatedir}/logs/wazuh-manager.json
-  chown wazuh-manager:wazuh-manager %{_localstatedir}/logs/wazuh-manager.json
-  chmod 0660 %{_localstatedir}/logs/wazuh-manager.json
+  # A link in logs/ is never a log file. The files are created by wazuh-manager itself.
+  for LOG_FILE in wazuh-manager.log wazuh-manager.json; do
+    if [ -L "%{_localstatedir}/logs/${LOG_FILE}" ]; then
+      rm -f "%{_localstatedir}/logs/${LOG_FILE}"
+    fi
+    if [ -f "%{_localstatedir}/logs/${LOG_FILE}" ]; then
+      chown -h wazuh-manager:wazuh-manager %{_localstatedir}/logs/${LOG_FILE}
+    fi
+    as_service_user touch %{_localstatedir}/logs/${LOG_FILE} || true
+    as_service_user chmod 0660 %{_localstatedir}/logs/${LOG_FILE} || true
+  done
 fi
 
-if [[ -d /run/systemd/system ]]; then
+if [ -d /run/systemd/system ]; then
   rm -f %{_initrddir}/wazuh-manager
 fi
 
-# Unified certificate directory: root-owned and sticky. The server daemons self-generate
-# their certificates here and read them after dropping privileges to wazuh-manager; the
-# sticky bit keeps them from replacing the root-owned indexer trust material in the dir.
-mkdir -p %{_localstatedir}/etc/certs
+# No install-time certificate check any more. The credential resolver invoked at the end of this
+# scriptlet issues the pair when it can, and when it cannot the answer may well have changed by the
+# time the operator starts the service -- so the check belongs at start, where it is made. Warning
+# here about a state that no longer exists is what trains operators to ignore installer output.
 
-# Generate auto-signed certificate for the HTTPS agent server (remoted_module) if not
-# exists. Skipped when the admin supplied their own certificate/key paths through the
-# WAZUH_REMOTE_HTTPS_CERTIFICATE / WAZUH_REMOTE_HTTPS_KEY installation variables. This is
-# the manager's ONLY self-signed cert/key pair: authd no longer generates its own (its
-# <ssl_manager_cert>/<ssl_manager_key> point here too), so both listeners present the same
-# manager identity -- required now that /enroll's mTLS mode treats this certificate as the
-# enrollment credential.
-if [ -z "${WAZUH_REMOTE_HTTPS_CERTIFICATE}" ] && [ -z "${WAZUH_REMOTE_HTTPS_KEY}" ]; then
-  if [ ! -f "%{_localstatedir}/etc/certs/remoted-key.pem" ] && [ ! -f "%{_localstatedir}/etc/certs/remoted.pem" ]; then
-    %{_localstatedir}/bin/wazuh-manager-remoted -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K %{_localstatedir}/etc/certs/remoted-key.pem -X %{_localstatedir}/etc/certs/remoted.pem 2>/dev/null
+# The certificates' ownership is set by %files and the resolver, and re-applied in %posttrans after
+# the upgrade-preserve restore.
+
+rm -f ${CONF_DIR}/shared/merged.mg  >/dev/null 2>&1
+
+# Resolve every credential the manager owns or consumes: seed rbac.db with generated or supplied
+# Server API passwords, store the indexer password in the keystore, import the indexer's CA and
+# client pair from /etc/wazuh-indexer/export when it is installed here, and -- on a fresh install
+# only -- mint the manager's CA and issue its two server pairs.
+#
+# $1 is 1 on a fresh install and >= 2 on an upgrade. That distinction is the whole reason the two
+# modes exist: --upgrade completes the passwords, the keystore and the indexer trust (each a no-op
+# once in place) and only validates the manager's CA and server pairs: it never mints a CA or
+# issues a pair. An operator who replaced them with their own PKI must not find them reissued by a
+# package upgrade.
+#
+# Neither mode may abort this scriptlet, so both always exit 0 and simply leave unresolved whatever
+# they could not resolve. The service refuses to start and names what is missing; that is where the
+# check belongs, because the answer changes between these two moments and only the answer at start
+# matters.
+#
+# Its standard error is relayed as is, after its progress lines, and kept: every problem is one
+# `MISSING|INVALID|UNSAFE <subject>: <reason>` line there (the contract wazuh-manager-control reads
+# too), and an unsafe entry stops the run before anything is written. The next-steps block below
+# must not claim what the resolver did not do, so it reads the outcome from that output and from
+# the files, never from the mode alone.
+CRED_STATUS=0
+CRED_ERR=""
+CRED_INCOMPLETE="no"
+if [ -x %{_localstatedir}/bin/wazuh-manager-resolve-credentials ]; then
+  if [ "$1" -eq 1 ]; then
+    CRED_MODE="--install"
+  else
+    CRED_MODE="--upgrade"
+  fi
+  { CRED_ERR=$(%{_localstatedir}/bin/wazuh-manager-resolve-credentials ${CRED_MODE} -H %{_localstatedir} 2>&1 1>&3) || CRED_STATUS=$?; } 3>&1
+  if [ -n "${CRED_ERR}" ]; then
+    printf '%%s\n' "${CRED_ERR}" >&2
+  fi
+  if [ "${CRED_STATUS}" -ne 0 ] || printf '%%s\n' "${CRED_ERR}" | grep -q -E '^(MISSING|INVALID|UNSAFE) '; then
+    CRED_INCOMPLETE="yes"
   fi
 fi
-
-# The server certificates each daemon self-generates are owned by wazuh-manager (the daemon
-# must write them). Re-applied unconditionally so upgrades that left them root-owned get corrected.
-for CERT_FILE in remoted.pem remoted-key.pem apid.pem apid-key.pem; do
-  if [ -f "%{_localstatedir}/etc/certs/${CERT_FILE}" ]; then
-    chown wazuh-manager:wazuh-manager %{_localstatedir}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
-    chmod 640 %{_localstatedir}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
-  fi
-done
-
-# The indexer trust material is provisioned externally and only read by the manager, so it is
-# owned root and group wazuh-manager (read-only for the service).
-for CERT_FILE in root-ca.pem indexer-connector.pem indexer-connector-key.pem; do
-  if [ -f "%{_localstatedir}/etc/certs/${CERT_FILE}" ]; then
-    chown root:wazuh-manager %{_localstatedir}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
-    chmod 640 %{_localstatedir}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
-  fi
-done
-
-chown root:wazuh-manager %{_localstatedir}/etc/certs > /dev/null 2>&1 || true
-chmod 1770 %{_localstatedir}/etc/certs > /dev/null 2>&1 || true
-
-rm -f %{_localstatedir}/etc/shared/merged.mg  >/dev/null 2>&1
-
-# Set merged.mg permissions to new ones
-find %{_localstatedir}/etc/shared/ -type f -name 'merged.mg' -exec chmod 644 {} \;
-
-# Restore wazuh-manager.conf permissions after upgrading
-chown root:wazuh-manager %{_localstatedir}/etc/wazuh-manager.conf
-chmod 0660 %{_localstatedir}/etc/wazuh-manager.conf
 
 # Delete the installation files used to configure the manager
 rm -rf %{_localstatedir}/packages_files
 
-# Remove old ossec user and group if exists and change ownwership of files
-
-if getent group ossec > /dev/null 2>&1; then
-  find %{_localstatedir}/ -group ossec -user root -print0 | xargs -0 chown root:wazuh-manager > /dev/null 2>&1 || true
-  if getent passwd ossec > /dev/null 2>&1; then
-    find %{_localstatedir}/ -group ossec -user ossec -print0 | xargs -0 chown wazuh-manager:wazuh-manager > /dev/null 2>&1 || true
-    userdel ossec > /dev/null 2>&1
+# Next steps, last thing a fresh install prints (the indexer and the dashboard end the same way): the
+# package neither starts nor enables the service, and nothing else says where the Server API passwords
+# went. Only on a fresh install ($1 = 1): an upgrade or a reinstall finds the passwords already set.
+# install.sh prints its own start hint, so this lives in the package only.
+#
+# The password hint is printed only when the resolver published the file: a worker publishes nothing
+# (the Server API runs on the master), and a run stopped by an unsafe or invalid entry writes nothing
+# at all. When the resolver reported a problem, the manager refuses to start until it is fixed, and
+# only --install issues what the install could not, so that is the command to repeat.
+if [ "$1" -eq 1 ]; then
+  if [ -f "${CONF_DIR}/export/credentials.env" ]; then
+    echo "Server API passwords saved in ${CONF_DIR}/export/credentials.env (readable by root only)."
   fi
-  if getent passwd ossecm > /dev/null 2>&1; then
-    find %{_localstatedir}/ -group ossec -user ossecm -print0 | xargs -0 chown wazuh-manager:wazuh-manager > /dev/null 2>&1 || true
-    userdel ossecm > /dev/null 2>&1
+  if [ "${CRED_INCOMPLETE}" = "yes" ]; then
+    echo "Credential resolution is incomplete: the manager does not start until every MISSING, INVALID or UNSAFE entry reported above is resolved."
+    echo "Fix them, then run: %{_localstatedir}/bin/wazuh-manager-resolve-credentials --install -H %{_localstatedir}"
   fi
-  if getent passwd ossecr > /dev/null 2>&1; then
-    find %{_localstatedir}/ -group ossec -user ossecr -print0 | xargs -0 chown wazuh-manager:wazuh-manager > /dev/null 2>&1 || true
-    userdel ossecr > /dev/null 2>&1
-  fi
-  if getent group ossec > /dev/null 2>&1; then
-    groupdel ossec > /dev/null 2>&1
+  if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then
+    echo "Start the manager and enable it at boot: systemctl enable --now wazuh-manager"
+  else
+    echo "Start the manager: service wazuh-manager start"
   fi
 fi
 
@@ -423,14 +554,42 @@ if [ $1 = 0 ]; then
   if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-manager > /dev/null 2>&1; then
     systemctl stop wazuh-manager.service > /dev/null 2>&1
   # Check for SysV
-  elif command -v service > /dev/null 2>&1 && service wazuh-manager status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
-    service wazuh-manager stop > /dev/null 2>&1
+  elif command -v service > /dev/null 2>&1; then
+    case "$(service wazuh-manager status 2>/dev/null)" in
+      *"is running"*) service wazuh-manager stop > /dev/null 2>&1 ;;
+    esac
   fi
   %{_localstatedir}/bin/wazuh-manager-control stop > /dev/null 2>&1
 
 fi
 
 %postun
+
+# The configuration directory is fixed, outside the installation directory.
+CONF_DIR="%{_sysconfdir}/wazuh-manager"
+
+# save_conf MODE DIR: the *.save pass over the kept configuration, without find, in the two passes
+# the two find commands it replaces made. MODE "drop" deletes the *.save left by an earlier erase;
+# MODE "rename" then renames every other regular file in DIR and below to *.save. Two passes, never
+# one: a single loop would rename client.keys onto client.keys.save and then reach that name and
+# delete it. *rpmsave files and anything whose name contains "shared" keep their names. Links are
+# neither followed nor renamed.
+save_conf() {
+  for SAVE_ENTRY in "$2"/* "$2"/.[!.]* "$2"/..?*; do
+    if [ -L "${SAVE_ENTRY}" ]; then
+      continue
+    elif [ -d "${SAVE_ENTRY}" ]; then
+      save_conf "$1" "${SAVE_ENTRY}"
+    elif [ -f "${SAVE_ENTRY}" ]; then
+      case "$1:${SAVE_ENTRY##*/}" in
+        *:*rpmsave) ;;
+        drop:*save) rm -f "${SAVE_ENTRY}" ;;
+        rename:*save|rename:*shared*) ;;
+        rename:*) mv -f "${SAVE_ENTRY}" "${SAVE_ENTRY}.save" ;;
+      esac
+    fi
+  done
+}
 
 # If the package is been uninstalled
 if [ $1 = 0 ];then
@@ -439,25 +598,14 @@ if [ $1 = 0 ];then
     userdel wazuh-manager >/dev/null 2>&1
   fi
   # Remove the wazuh-manager group if it exists
-  if command -v getent > /dev/null 2>&1 && getent group wazuh-manager > /dev/null 2>&1; then
-    groupdel wazuh-manager >/dev/null 2>&1
-  elif getent group wazuh-manager > /dev/null 2>&1; then
+  if getent group wazuh-manager > /dev/null 2>&1; then
     groupdel wazuh-manager >/dev/null 2>&1
   fi
 
-  # Backup agents centralized configuration (etc/shared)
-  if [ -d %{_localstatedir}/etc/shared ]; then
-    find %{_localstatedir}/etc/ -type f  -name "*save" ! -name "*rpmsave" -exec rm -f {} \;
-    find %{_localstatedir}/etc/ -type f ! -name "*shared*" ! -name "*rpmsave" -exec mv {} {}.save \;
-  fi
-
-  # Backup HTTPS agent server certificates (remoted.pem, remoted-key.pem) -- also authd's manager
-  # identity now (see ssl_manager_cert/ssl_manager_key in auth.template)
-  if [ -f %{_localstatedir}/etc/certs/remoted.pem ]; then
-      mv %{_localstatedir}/etc/certs/remoted.pem %{_localstatedir}/etc/certs/remoted.pem.save
-  fi
-  if [ -f %{_localstatedir}/etc/certs/remoted-key.pem ]; then
-      mv %{_localstatedir}/etc/certs/remoted-key.pem %{_localstatedir}/etc/certs/remoted-key.pem.save
+  # Backup agents centralized configuration (shared/)
+  if [ -d ${CONF_DIR}/shared ] && [ ! -L ${CONF_DIR} ]; then
+    save_conf drop ${CONF_DIR}
+    save_conf rename ${CONF_DIR}
   fi
 
   # Remove lingering folders and files
@@ -470,18 +618,39 @@ if [ $1 = 0 ];then
   rm -rf %{_localstatedir}/logs/
   rm -rf %{_localstatedir}/tmp
   rm -rf %{_localstatedir}/data
+
+  # What is kept (the saved configuration, backups) is an archive of a removed installation: it
+  # goes to root, private to root. Part of it belonged to the removed account, whose numeric IDs
+  # the next system account created would inherit. chmod -R skips the links it meets and
+  # chown -R -h changes them without following, so a link planted by the account cannot aim
+  # this at another file.
+  for KEPT_DIR in ${CONF_DIR} %{_localstatedir}; do
+    if [ -d "${KEPT_DIR}" ] && [ ! -L "${KEPT_DIR}" ]; then
+      chmod -R go-rwx "${KEPT_DIR}" 2>/dev/null || true
+      chown -R -h root:root "${KEPT_DIR}" 2>/dev/null || true
+    fi
+  done
 fi
 
 # posttrans code is the last thing executed in a install/upgrade
 %posttrans
+
+# The configuration directory is fixed, outside the installation directory.
+CONF_DIR="%{_sysconfdir}/wazuh-manager"
+
 UPGRADE_PRESERVE_DIR="%{_localstatedir}/tmp/manager_upgrade_preserve"
 
 if [ -d "${UPGRADE_PRESERVE_DIR}" ]; then
+  # The configuration directory and data/ are writable by wazuh-manager: --remove-destination
+  # replaces a link planted at a destination instead of writing (and chowning, with -a) through it.
+  # A subshell on its own, not the left side of an || list: the shell ignores set -e inside a
+  # command whose failure is tested, and a failed copy would otherwise go unnoticed and the
+  # snapshot be deleted below.
   (
     set -e
     if [ -d "${UPGRADE_PRESERVE_DIR}/etc" ]; then
-      mkdir -p "%{_localstatedir}/etc"
-      cp -a "${UPGRADE_PRESERVE_DIR}/etc/." "%{_localstatedir}/etc/"
+      mkdir -p "${CONF_DIR}"
+      cp -a --remove-destination "${UPGRADE_PRESERVE_DIR}/etc/." "${CONF_DIR}/"
     fi
 
     if [ -d "${UPGRADE_PRESERVE_DIR}/data" ]; then
@@ -489,13 +658,14 @@ if [ -d "${UPGRADE_PRESERVE_DIR}" ]; then
 
       for DATA_ENTRY in "${UPGRADE_PRESERVE_DIR}/data/"* "${UPGRADE_PRESERVE_DIR}/data/."[!.]* "${UPGRADE_PRESERVE_DIR}/data/"..?*; do
         [ -e "${DATA_ENTRY}" ] || continue
-        cp -a "${DATA_ENTRY}" "%{_localstatedir}/data/"
+        cp -a --remove-destination "${DATA_ENTRY}" "%{_localstatedir}/data/"
       done
     fi
-  ) || {
+  )
+  if [ $? -ne 0 ]; then
     echo "ERROR: Could not restore manager upgrade preserve backup; contents left at ${UPGRADE_PRESERVE_DIR}." >&2
     exit 1
-  }
+  fi
   rm -rf "${UPGRADE_PRESERVE_DIR}"
 fi
 
@@ -511,15 +681,41 @@ for year_dir in %{_localstatedir}/logs/[0-9][0-9][0-9][0-9]; do
   fi
 done
 
+# Every certificate and key is root's and readable through wazuh-manager, re-applied after the
+# restore above (cp -a keeps the preserved ownership). The configuration directory is writable by
+# wazuh-manager, so the account could put its own directory (or a link to one) in place of certs/:
+# the link check and pwd -P refuse a link, and the owner check refuses a directory that is not
+# root's. Inside a root-owned 0750 directory nobody else can swap an entry, so the chown and chmod
+# below run as root.
+fix_certs() {
+  [ "$(stat -c %%u .)" = 0 ] || return 1
+  chmod 0750 .
+  for CERT_FILE in *.pem; do
+    if [ -f "${CERT_FILE}" ] && [ ! -L "${CERT_FILE}" ]; then
+      chown -h root:wazuh-manager "${CERT_FILE}" > /dev/null 2>&1 || true
+      chmod 0640 "${CERT_FILE}" > /dev/null 2>&1 || true
+    fi
+  done
+}
+REAL_CONF_DIR=$(cd -P ${CONF_DIR} 2> /dev/null && pwd -P) || REAL_CONF_DIR=""
+if [ -n "${REAL_CONF_DIR}" ] && [ ! -L ${CONF_DIR}/certs ]; then
+  (cd -P -- ${CONF_DIR}/certs 2> /dev/null && [ "$(pwd -P)" = "${REAL_CONF_DIR}/certs" ] && fix_certs) || true
+fi
+
 if [ -f %{_sysconfdir}/systemd/system/wazuh-manager.service ]; then
   rm -rf %{_sysconfdir}/systemd/system/wazuh-manager.service
+  systemctl daemon-reload > /dev/null 2>&1
+fi
+
+# Load the unit this package ships whatever the service state: a stopped one would otherwise
+# start next with the previous unit definition.
+if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 ; then
   systemctl daemon-reload > /dev/null 2>&1
 fi
 
 if [ -f %{_localstatedir}/tmp/wazuh.restart ]; then
   rm -f %{_localstatedir}/tmp/wazuh.restart
   if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 ; then
-    systemctl daemon-reload > /dev/null 2>&1
     systemctl restart wazuh-manager.service > /dev/null 2>&1
   elif command -v service > /dev/null 2>&1 ; then
     service wazuh-manager restart > /dev/null 2>&1
@@ -528,24 +724,12 @@ if [ -f %{_localstatedir}/tmp/wazuh.restart ]; then
   fi
 fi
 
-if [ -d %{_localstatedir}/logs/ossec ]; then
-  rm -rf %{_localstatedir}/logs/ossec/
-fi
-
-if [ -d %{_localstatedir}/queue/ossec ]; then
-  rm -rf %{_localstatedir}/queue/ossec/
-fi
-
-%triggerin -- glibc
-[ -r %{_sysconfdir}/localtime ] && cp -fpL %{_sysconfdir}/localtime %{_localstatedir}/etc
- chown root:wazuh-manager %{_localstatedir}/etc/localtime
- chmod 0640 %{_localstatedir}/etc/localtime
-
 %clean
 rm -fr %{buildroot}
 
 %files
 %defattr(-,root,wazuh-manager)
+%license LICENSE src/engine/LICENSE-engine src/engine/COPYING-engine THIRD-PARTY-NOTICES
 %config(missingok) %{_initrddir}/wazuh-manager
 /usr/lib/systemd/system/wazuh-manager.service
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}
@@ -567,6 +751,7 @@ rm -fr %{buildroot}
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-control
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-remoted
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/verify-agent-conf
+%attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-certs
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-conf
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-apid
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-clusterd
@@ -575,26 +760,24 @@ rm -fr %{buildroot}
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-modulesd
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/rbac_control
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-keystore
-%dir %attr(770, root, wazuh-manager) %{_localstatedir}/etc
-%attr(660, root, wazuh-manager) %ghost %{_localstatedir}/etc/wazuh-manager.conf
-%dir %attr(1770, root, wazuh-manager) %{_localstatedir}/etc/certs
-%attr(640, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/etc/certs/remoted.pem
-%attr(640, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/etc/certs/remoted-key.pem
-%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/client.keys
-%attr(640, root, wazuh-manager) %{_localstatedir}/etc/wazuh-manager-internal-options.conf
-%attr(640, root, wazuh-manager) %{_localstatedir}/etc/wazuh-manager.schema.json
-%attr(640, root, wazuh-manager) %{_localstatedir}/etc/localtime
-%dir %attr(770, root, wazuh-manager) %{_localstatedir}/etc/shared
-%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/default
-%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/agent-template.conf
-%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/default/*
-%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs
-%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs/default
-%attr(640, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs/default/*.yml
-%dir %attr(750, root, wazuh-manager) %{_localstatedir}/etc/indexer-plugins
-%attr(640, root, wazuh-manager) %{_localstatedir}/etc/indexer-plugins/metrics-agents.json
-%attr(640, root, wazuh-manager) %{_localstatedir}/etc/indexer-plugins/metrics-comms.json
-%attr(640, root, wazuh-manager) %{_localstatedir}/etc/indexer-plugins/metrics-normalization.json
+%attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-resolve-credentials
+%dir %attr(770, root, wazuh-manager) %{_sysconfdir}/wazuh-manager
+%attr(660, root, wazuh-manager) %ghost %{_sysconfdir}/wazuh-manager/wazuh-manager.conf
+%dir %attr(750, root, wazuh-manager) %{_sysconfdir}/wazuh-manager/certs
+%attr(660, wazuh-manager, wazuh-manager) %{_sysconfdir}/wazuh-manager/client.keys
+%attr(640, root, wazuh-manager) %{_sysconfdir}/wazuh-manager/wazuh-manager-internal-options.conf
+%attr(640, root, wazuh-manager) %{_sysconfdir}/wazuh-manager/wazuh-manager.schema.json
+%dir %attr(770, root, wazuh-manager) %{_sysconfdir}/wazuh-manager/shared
+%dir %attr(770, wazuh-manager, wazuh-manager) %{_sysconfdir}/wazuh-manager/shared/default
+%attr(660, wazuh-manager, wazuh-manager) %{_sysconfdir}/wazuh-manager/shared/agent-template.conf
+%attr(660, wazuh-manager, wazuh-manager) %{_sysconfdir}/wazuh-manager/shared/default/*
+%dir %attr(750, wazuh-manager, wazuh-manager) %{_sysconfdir}/wazuh-manager/outputs
+%dir %attr(750, wazuh-manager, wazuh-manager) %{_sysconfdir}/wazuh-manager/outputs/default
+%attr(640, wazuh-manager, wazuh-manager) %{_sysconfdir}/wazuh-manager/outputs/default/*.yml
+%dir %attr(750, root, wazuh-manager) %{_sysconfdir}/wazuh-manager/indexer-plugins
+%attr(640, root, wazuh-manager) %{_sysconfdir}/wazuh-manager/indexer-plugins/metrics-agents.json
+%attr(640, root, wazuh-manager) %{_sysconfdir}/wazuh-manager/indexer-plugins/metrics-comms.json
+%attr(640, root, wazuh-manager) %{_sysconfdir}/wazuh-manager/indexer-plugins/metrics-normalization.json
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/framework
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/framework/python
 %{_localstatedir}/framework/python/*
@@ -610,7 +793,6 @@ rm -fr %{buildroot}
 %attr(640, root, wazuh-manager) %{_localstatedir}/framework/wazuh/core/cluster/dapi/*.py
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/lib
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libwazuhext.so
-%attr(750, root, wazuh-manager) %{_localstatedir}/lib/libwazuhshared.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libschema_validator.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libjemalloc.so.2
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libstdc++.so.6
@@ -626,6 +808,8 @@ rm -fr %{buildroot}
 %{_localstatedir}/lib/libpython3.12.so.1.0
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/logs
 %attr(660, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/logs/api.log
+%attr(660, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/logs/api.json
+%attr(660, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/logs/cluster.log
 %attr(660, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/logs/wazuh-manager.log
 %attr(660, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/logs/wazuh-manager.json
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/logs/api

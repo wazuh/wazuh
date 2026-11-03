@@ -26,6 +26,7 @@ arguments:
     type: string
     generate: string
     source: value
+    optional: true # defaults to "%Y-%m-%dT%H:%M:%SZ" when omitted
 
 skipped:
   - success_cases

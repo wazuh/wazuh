@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <gtest/gtest.h>
 
 #include <bk/mockController.hpp> // Force mock compilation
@@ -1063,4 +1064,100 @@ TEST(BKTraceTest, ChainForcesSuccessTrue)
     ASSERT_TRUE(outEv->success()) << "Chain should force success=true even if the operand fails";
 
     subscription.unsubscribe();
+}
+
+TEST(BKTraceTest, ChainRunsOperandAfterFailure)
+{
+    using RxEvent = std::shared_ptr<base::result::Result<base::Event>>;
+    using Observable = rxcpp::observable<RxEvent>;
+
+    // Term that force failure
+    auto tFail =
+        base::Term<base::EngineOp>::create("tFail", [](const auto& e) { return base::result::makeFailure(e, "fail"); });
+
+    // Term that writes on the event and succeeds
+    auto tWrite = base::Term<base::EngineOp>::create("tWrite",
+                                                     [](const auto& e)
+                                                     {
+                                                         e->setBool(true, "/written");
+                                                         return base::result::makeSuccess(e, "write");
+                                                     });
+
+    auto chain = base::Chain::create("chain", {tFail, tWrite});
+
+    rxcpp::subjects::subject<RxEvent> subj;
+    Observable input = subj.get_observable();
+
+    bk::rx::detail::ExprBuilder builder;
+    std::unordered_map<std::string, std::shared_ptr<bk::rx::detail::Tracer>> traces;
+    std::unordered_set<std::string> traceables;
+
+    auto output = builder.build(chain, traces, traceables, input);
+
+    RxEvent outEv;
+    auto subscription = output.subscribe([&](const RxEvent& ev) { outEv = ev; });
+
+    auto event = std::make_shared<json::Json>();
+    auto rxEv = std::make_shared<base::result::Result<base::Event>>(base::result::makeSuccess(event));
+
+    subj.get_subscriber().on_next(rxEv);
+    subj.get_subscriber().on_completed();
+
+    ASSERT_TRUE(outEv != nullptr);
+    ASSERT_TRUE(outEv->success());
+    ASSERT_EQ(outEv->payload()->getBool("/written"), true) << "Chain should run the operand after a failed one";
+
+    subscription.unsubscribe();
+}
+
+// A traceable subtree's publisher must not leak to the sibling terms built after it
+template<typename Controller>
+void traceablePublisherNotLeakedTest()
+{
+    auto expression = base::Broadcast::create(
+        "root", {base::Chain::create("asset", {EasyExp::term("t1", true)}), EasyExp::term("t2", true)});
+    Controller c(expression, {"asset"});
+    Subscriber<Controller> s;
+    auto subRes = c.subscribe("asset", s.getSubscriber());
+    ASSERT_FALSE(base::isError(subRes)) << "Error subscribing: " << base::getError(subRes).message;
+    // Only t1 (inside "asset") publishes to the asset's subscribers; t2 publishes nowhere
+    s.checkTraceActivation(c, {SUCCES_TRACE});
+}
+
+TEST(BKTraceTest, TraceablePublisherNotLeakedToSiblings)
+{
+    traceablePublisherNotLeakedTest<bk::taskf::Controller>();
+    traceablePublisherNotLeakedTest<bk::rx::Controller>();
+}
+
+// An exception thrown by a term is a failure of that term (same behaviour on both backends)
+template<typename Controller>
+void termExceptionIsFailureTest()
+{
+    auto tThrow = base::Term<base::EngineOp>::create(
+        "tThrow", [](const auto&) -> base::result::Result<base::Event> { throw std::runtime_error {"boom"}; });
+    auto tAfter = base::Term<base::EngineOp>::create("tAfter",
+                                                     [](const auto& e)
+                                                     {
+                                                         e->setBool(true, "/after");
+                                                         return base::result::makeSuccess(e, "after");
+                                                     });
+    // And stops at the first failure: tAfter must not run
+    Controller c(base::And::create("and", {tThrow, tAfter}), {"tThrow"});
+    Subscriber<Controller> s;
+    auto subRes = c.subscribe("tThrow", s.getSubscriber());
+    ASSERT_FALSE(base::isError(subRes)) << "Error subscribing: " << base::getError(subRes).message;
+
+    auto event = std::make_shared<json::Json>();
+    ASSERT_NO_THROW(event = c.ingestGet(std::move(event)));
+    ASSERT_NE(event, nullptr);
+    EXPECT_FALSE(event->exists("/after"));
+    ASSERT_EQ(s.traces.size(), 1);
+    EXPECT_EQ(s.traces[0], "[tThrow] -> Failure: operation throw exception.");
+}
+
+TEST(BKTraceTest, TermExceptionIsFailure)
+{
+    termExceptionIsFailureTest<bk::taskf::Controller>();
+    termExceptionIsFailureTest<bk::rx::Controller>();
 }

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef API_ADAPTER_HELPERS_HPP
 #define API_ADAPTER_HELPERS_HPP
 
@@ -64,7 +65,7 @@ inline httplib::Response buildJsonContentResponse(const json::Json& content)
 
     httplib::Response response;
     response.status = httplib::StatusCode::OK_200;
-    response.set_content(responseBody.str(), "plain/text");
+    response.set_content(responseBody.str(), "application/json");
     return response;
 }
 

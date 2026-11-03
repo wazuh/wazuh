@@ -2,7 +2,12 @@
 
 ## Overview
 
-The **dumper** module provides an activatable event-dumping mechanism for the Wazuh engine. When active, it writes incoming event data to rotating log files via the `streamlog` subsystem. When inactive, all `dump()` calls are silently discarded (no-op). The module can be toggled at runtime through API endpoints, enabling on-demand event capture for debugging and diagnostics without restarting the engine.
+The **dumper** module provides an activatable event-dumping mechanism for the Wazuh engine. When active, it writes the raw body of every batch received on `POST /events/enriched` (`engine-ingest-http.sock`) to rotating files via the `streamlog` subsystem. When inactive, all `dump()` calls are silently discarded (no-op). The module can be toggled at runtime through API endpoints on `engine-api-http.sock`, enabling on-demand event capture for debugging and diagnostics without restarting the engine.
+
+The dumper and its consumer exist only when event processing is enabled
+(`analysisd.server_enable_event_processing`, default `true`; `main.cpp`). The API routes are registered
+unconditionally; with processing disabled they answer an internal error (`Error: Handler is not initialized`,
+`api/adapter/include/api/adapter/adapter.hpp`).
 
 ## Architecture
 
@@ -56,14 +61,15 @@ Defined in `interface/dumper/idumper.hpp`. All methods are virtual:
 
 | Method | Description |
 |--------|-------------|
-| `dump(const std::string&)` | Write data to the log channel (no-op if inactive) |
+| `dump(const std::string&)` | Write data to the log channel (no-op if inactive); an empty string is still written |
 | `dump(const char*)` | Write data from C-string; returns early on `nullptr` or empty string |
 | `dump(std::string_view)` | Write data from zero-copy view; returns early on empty view |
-| `activate()` | Enable the dumper (creates the streamlog writer) |
+| `activate()` | Enable the dumper (creates the streamlog writer); throws `std::runtime_error` if the log manager is gone or the channel cannot be created |
 | `deactivate()` | Disable the dumper (releases the writer) |
 | `isActive()` | Returns `true` if the dumper currently holds an active writer |
 
-All `dump()` overloads are **non-throwing**: if the dumper is inactive, calls are silently ignored.
+No `dump()` overload reports an error: if the dumper is inactive the call is ignored, and the writer's `false`
+(queue full or channel closed) is discarded, so that data is silently lost.
 
 ### Active/Inactive State
 
@@ -79,16 +85,23 @@ State transitions:
 | `activate()` | inactive → active | Calls `ILogManager::ensureAndGetWriter()` to obtain a writer. No-op if already active |
 | `deactivate()` | active → inactive | Resets `m_logWriter` to null. No-op if already inactive |
 
+The constructor's `isActive` argument (default `false`) starts the dumper active; the constructor throws
+`std::runtime_error("Logger for dumper is not available")` when the log manager has already expired. The channel
+configuration is applied only when the channel is first created; a later `activate()` reuses the existing channel.
+
 ### Streamlog Channel
 
-The dumper writes to a channel named `"event-dumps"` with extension `"log"` (constants `CHANNEL_NAME` and `CHANNEL_EXTENSION`). The channel is configured via `streamlog::RotationConfig`:
+The dumper writes to a channel named `"event-dumps"` with extension `"log"` (constants `CHANNEL_NAME` and `CHANNEL_EXTENSION`). Streamlog places a channel in `<basePath>/<channel>/`, so with the defaults the files are
+`/var/wazuh-manager/logs/event-dumps/<YYYY>/<MMM>/wazuh-event-dumps-<DD>.log`, with a hard link
+`/var/wazuh-manager/logs/event-dumps/event-dumps.log` to the current file (`streamlog/src/logger.cpp`,
+`streamlog/src/channel.cpp`). The channel is configured via `streamlog::RotationConfig`:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `basePath` | `std::string` | Base directory for log files |
-| `pattern` | `std::string` | File naming pattern (supports `${YYYY}`, `${MMM}`, `${DD}`, `${name}`) |
+| `basePath` | `std::filesystem::path` | Base directory for log files |
+| `pattern` | `std::string` | File naming pattern (supports `${YYYY}`, `${YY}`, `${MM}`, `${MMM}`, `${DD}`, `${HH}`, `${name}`, and `${counter}` when `maxSize > 0`; the extension is appended) |
 | `maxSize` | `size_t` | Max size per file before rotation (`0` = unlimited) |
-| `bufferSize` | `size_t` | In-memory write buffer size |
+| `bufferSize` | `size_t` | Queue capacity, in events |
 | `shouldCompress` | `bool` | Whether to compress rotated files |
 | `compressionLevel` | `size_t` | Compression level (if enabled) |
 | `maxFiles` | `size_t` | Max number of rotated files to keep |
@@ -103,19 +116,22 @@ The dumper writes to a channel named `"event-dumps"` with extension `"log"` (con
 
 ## Configuration
 
-The dumper configuration is sourced from `conf` keys (passed via `RotationConfig` at construction):
+`main.cpp` fills the `RotationConfig` and the initial state from these `conf::key` constants
+(`conf/include/conf/keys.hpp`). Their `analysisd.*` names, environment variables and defaults are documented for
+operators in [Stream log](../../../../docs/ref/modules/engine/configuration.md#stream-log) and
+[Event dumper](../../../../docs/ref/modules/engine/configuration.md#event-dumper):
 
-| Key prefix | Description |
+| `conf::key` constant | Feeds |
 |-----------|-------------|
-| `STREAMLOG_BASE_PATH` | Base directory for dump log files |
-| `STREAMLOG_DUMPER_PATTERN` | File naming pattern for the dumper channel |
-| `STREAMLOG_DUMPER_MAX_SIZE` | Max file size before rotation |
-| `STREAMLOG_DUMPER_BUFFER_SIZE` | Write buffer size |
-| `STREAMLOG_SHOULD_COMPRESS` | Enable compression of rotated files |
-| `STREAMLOG_COMPRESSION_LEVEL` | Compression level |
-| `STREAMLOG_MAX_FILES` | Max rotated file count |
-| `STREAMLOG_MAX_ACCUMULATED_SIZE` | Max total rotated file size |
-| `DUMPER_ENABLED` | Initial active state (`true`/`false`) |
+| `STREAMLOG_BASE_PATH` | `basePath` (shared with the events stream) |
+| `STREAMLOG_DUMPER_PATTERN` | `pattern` |
+| `STREAMLOG_DUMPER_MAX_SIZE` | `maxSize` |
+| `STREAMLOG_DUMPER_BUFFER_SIZE` | `bufferSize` |
+| `STREAMLOG_SHOULD_COMPRESS` | `shouldCompress` (shared) |
+| `STREAMLOG_COMPRESSION_LEVEL` | `compressionLevel` (shared) |
+| `STREAMLOG_MAX_FILES` | `maxFiles` (shared) |
+| `STREAMLOG_MAX_ACCUMULATED_SIZE` | `maxAccumulatedSize` (shared) |
+| `DUMPER_ENABLED` (`analysisd.dumper_enabled`, default `false`) | Initial active state |
 
 ## Integration in `main.cpp`
 
@@ -133,11 +149,16 @@ dumper = std::make_shared<dumper::Dumper>(
 
 // 3. Register exit handler to deactivate on shutdown
 exitHandler.add([dumper]() { dumper->deactivate(); });
+
+// 4. Register the runtime-control routes on the API server, and pass the dumper to pushEvent
+api::dumper::handlers::registerHandlers(dumper, apiServer);
+engineRemoteServer->addRoute(httpsrv::Method::POST, "/events/enriched",
+                             api::event::handlers::pushEvent(orchestrator, dumper, agentMetadataCache));
 ```
 
 ### Consumer: Event Ingestion (`api/event`)
 
-The `pushEvent` HTTP handler receives a `weak_ptr<IDumper>` and dumps each incoming NDJSON batch before parsing:
+The `pushEvent` HTTP handler (`api/event/src/handlers.cpp`) holds a `weak_ptr<IDumper>` and dumps each request body, minus one trailing newline, before parsing it:
 
 ```cpp
 if (auto dumpRef = weakDump.lock(); dumpRef)
@@ -151,13 +172,17 @@ if (auto dumpRef = weakDump.lock(); dumpRef)
 
 ### Consumer: Runtime Control (`api/dumper`)
 
-Three HTTP endpoints allow runtime toggling:
+Three HTTP endpoints (`api/dumper/include/api/dumper/handlers.hpp`) allow runtime toggling; their request and
+response bodies are in the engine's
+[private API reference](../../../../docs/ref/modules/engine/private-api-reference.md):
 
 | Endpoint | Method | Action |
 |----------|--------|--------|
 | `/_internal/event-dumper/activate` | POST | `dumper->activate()` |
 | `/_internal/event-dumper/deactivate` | POST | `dumper->deactivate()` |
-| `/_internal/event-dumper/status` | POST | `dumper->isActive()` |
+| `/_internal/event-dumper/status` | POST | `dumper->isActive()`, returned as `active` |
+
+Runtime toggling is not persisted: the next start uses `analysisd.dumper_enabled` again.
 
 ## Thread Safety
 
@@ -196,6 +221,7 @@ Test the dumper with mocked `ILogManager` and `WriterEvent`:
 | `ConstructorWithInvalidLogger` | Null logger throws `std::runtime_error` |
 | `ConstructorInactive` | Default state is inactive |
 | `ConstructorActive` | Active construction creates writer |
+| `IsActiveWhenInactive` / `IsActiveWhenActive` | `isActive()` reflects the writer |
 | `Activate` | Transition from inactive to active |
 | `ActivateWhenAlreadyActive` | No duplicate writer creation |
 | `ActivateWithInvalidLogger` | Expired logger throws on activate |
@@ -204,22 +230,25 @@ Test the dumper with mocked `ILogManager` and `WriterEvent`:
 | `DumpStringWhenActive` | Data forwarded to writer |
 | `DumpStringWhenInactive` | Data silently discarded |
 | `DumpCStringWhenActive` | C-string forwarded to writer |
+| `DumpCStringWhenInactive` | C-string silently discarded |
 | `DumpNullCString` | `nullptr` returns early without writing |
 | `DumpEmptyCString` | Empty string returns early without writing |
-| `DumpWriterReturnsFalse` | No throw even if writer fails |
+| `DumpWriterReturnsFalse` | No throw when the writer returns `false` |
 | `ThreadSafety` | Concurrent `isActive()` calls are safe |
 | `DestructorCleansUp` | Destructor releases writer cleanly |
+
+The `std::string_view` overload, the one `pushEvent` uses, has no dedicated test.
 
 Build tests with `ENGINE_TEST=y`:
 
 ```bash
-make --directory=$WAZUH_REPO/src -j TARGET=manager ENGINE_TEST=y DEBUG=yes
+make -C src -j TARGET=manager ENGINE_TEST=y
 ```
 
 Run:
 
 ```bash
-$ENGINE_BUILD/source/dumper/dumper_utest
+src/build/engine/source/dumper/dumper_utest
 ```
 
 ## Mock

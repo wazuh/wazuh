@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -9,6 +9,7 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <limits>
 
 #include "users_darwin.hpp"
 #include "iopen_directory_utils_wrapper.hpp"
@@ -19,6 +20,7 @@ class MockUUIDWrapper : public IUUIDWrapper
 {
     public:
         MOCK_METHOD(void, uidToUUID, (uid_t uid, uuid_t& uuid), (override));
+        MOCK_METHOD(void, gidToUUID, (gid_t gid, uuid_t& uuid), (override));
         MOCK_METHOD(void, uuidToString, (const uuid_t& uuid, uuid_string_t& str), (override));
 };
 
@@ -35,6 +37,7 @@ class MockPasswdWrapper : public IPasswdWrapperDarwin
 class MockODUtilsWrapper : public IODUtilsWrapper
 {
         using StringBoolMap = std::map<std::string, bool>;
+        using StringJsonMap = std::map<std::string, nlohmann::json>;
     public:
         MOCK_METHOD(void, genEntries,
                     (const std::string& recordType,
@@ -45,7 +48,32 @@ class MockODUtilsWrapper : public IODUtilsWrapper
                     (const std::string& uid,
                      nlohmann::json& policyData),
                     (override));
+        MOCK_METHOD(void, genPasswordData,
+                    (StringJsonMap& passwordData),
+                    (override));
+        MOCK_METHOD(bool, genDisabledUsers,
+                    (std::set<std::string>& disabledUsers),
+                    (override));
 };
+
+/// Sets up the OpenDirectory password lookups with an account that has a password set and no
+/// disabled flag, for the tests that are not about the password data itself.
+static void expectPasswordData(const std::shared_ptr<MockODUtilsWrapper>& mockOD)
+{
+    EXPECT_CALL(*mockOD, genDisabledUsers(testing::_)).WillOnce([](std::set<std::string>&)
+    {
+        return true;
+    });
+    EXPECT_CALL(*mockOD, genPasswordData(testing::_))
+    .WillOnce([](std::map<std::string, nlohmann::json>& passwordData)
+    {
+        passwordData["testuser"] =
+        {
+            {"password_status", "active"},
+            {"password_hash_algorithm", "SALTED-SHA512-PBKDF2"}
+        };
+    });
+}
 
 TEST(UsersProviderTest, CollectWithConstraintsSingleUser)
 {
@@ -88,6 +116,8 @@ TEST(UsersProviderTest, CollectWithConstraintsSingleUser)
         };
     });
 
+    expectPasswordData(mockOD);
+
     UsersProvider provider(mockPasswd, mockUUID, mockOD);
 
     auto result = provider.collectWithConstraints({101});
@@ -100,6 +130,223 @@ TEST(UsersProviderTest, CollectWithConstraintsSingleUser)
     EXPECT_EQ(result[0]["failed_login_count"], 0);
     EXPECT_EQ(result[0]["failed_login_timestamp"], 0);
     EXPECT_EQ(result[0]["password_last_set_time"], 1735576569.186);
+    EXPECT_EQ(result[0]["password_status"], "active");
+    EXPECT_EQ(result[0]["password_hash_algorithm"], "SALTED-SHA512-PBKDF2");
+    EXPECT_FALSE(result[0].contains("password_max_days_between_changes"));
+    EXPECT_FALSE(result[0].contains("password_expiration_date"));
+}
+
+TEST(UsersProviderTest, CollectDerivesAgingFieldsFromExpiresEveryNDays)
+{
+    auto mockPasswd = std::make_shared<MockPasswdWrapper>();
+    auto mockUUID = std::make_shared<MockUUIDWrapper>();
+    auto mockOD = std::make_shared<MockODUtilsWrapper>();
+
+    static struct passwd fakePasswd
+    {
+        .pw_name = (char*)"testuser",
+        .pw_uid = 101,
+        .pw_gid = 20,
+        .pw_gecos = (char*)"Test User",
+        .pw_dir = (char*)"/Users/testuser",
+        .pw_shell = (char*)"/bin/bash"
+    };
+
+    EXPECT_CALL(*mockPasswd, getpwuid(101)).WillOnce(testing::Return(&fakePasswd));
+    EXPECT_CALL(*mockUUID, uidToUUID(101, testing::_)).WillOnce([](uid_t, uuid_t&) {});
+    EXPECT_CALL(*mockUUID, uuidToString(testing::_, testing::_)).WillOnce([](const uuid_t&, uuid_string_t& str)
+    {
+        strcpy(str, "abcdef00-1234-5678-90ab-cdefabcdef12");
+    });
+    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_)).WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
+    {
+        names["testuser"] = false;
+    });
+    // A pwpolicy/MDM-imposed change interval, as read from the nested
+    // policyCategoryPasswordChange/policyParameters entry.
+    EXPECT_CALL(*mockOD, genAccountPolicyData(testing::_, testing::_))
+    .WillOnce([](const std::string&, nlohmann::json & policyData)
+    {
+        policyData =
+        {
+            {"creation_time", 1735576566.727},
+            {"failed_login_count", 0},
+            {"failed_login_timestamp", 0},
+            {"password_last_set_time", 1735576569.0},
+            {"expires_every_n_days", 90}
+        };
+    });
+
+    expectPasswordData(mockOD);
+
+    UsersProvider provider(mockPasswd, mockUUID, mockOD);
+
+    auto result = provider.collectWithConstraints({101});
+
+    ASSERT_EQ(result.size(), static_cast<size_t>(1));
+    EXPECT_EQ(result[0]["password_max_days_between_changes"], 90);
+    EXPECT_EQ(result[0]["password_expiration_date"], 1735576569 + 90 * 86400);
+}
+
+TEST(UsersProviderTest, CollectOmitsAgingFieldsWithoutLastSetTime)
+{
+    auto mockPasswd = std::make_shared<MockPasswdWrapper>();
+    auto mockUUID = std::make_shared<MockUUIDWrapper>();
+    auto mockOD = std::make_shared<MockODUtilsWrapper>();
+
+    static struct passwd fakePasswd
+    {
+        .pw_name = (char*)"testuser",
+        .pw_uid = 101,
+        .pw_gid = 20,
+        .pw_gecos = (char*)"Test User",
+        .pw_dir = (char*)"/Users/testuser",
+        .pw_shell = (char*)"/bin/bash"
+    };
+
+    EXPECT_CALL(*mockPasswd, getpwuid(101)).WillOnce(testing::Return(&fakePasswd));
+    EXPECT_CALL(*mockUUID, uidToUUID(101, testing::_)).WillOnce([](uid_t, uuid_t&) {});
+    EXPECT_CALL(*mockUUID, uuidToString(testing::_, testing::_)).WillOnce([](const uuid_t&, uuid_string_t& str)
+    {
+        strcpy(str, "abcdef00-1234-5678-90ab-cdefabcdef12");
+    });
+    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_)).WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
+    {
+        names["testuser"] = false;
+    });
+    // A policy interval with no recorded last-set time. od_wrapper.mm always defaults
+    // password_last_set_time to 0.0 rather than omitting the key when OpenDirectory never
+    // reported it, so this must be treated the same as the key being absent: there is nothing
+    // to derive an expiration date from, and neither aging field should be reported.
+    EXPECT_CALL(*mockOD, genAccountPolicyData(testing::_, testing::_))
+    .WillOnce([](const std::string&, nlohmann::json & policyData)
+    {
+        policyData =
+        {
+            {"creation_time", 1735576566.727},
+            {"failed_login_count", 0},
+            {"failed_login_timestamp", 0},
+            {"password_last_set_time", 0.0},
+            {"expires_every_n_days", 90}
+        };
+    });
+
+    expectPasswordData(mockOD);
+
+    UsersProvider provider(mockPasswd, mockUUID, mockOD);
+
+    auto result = provider.collectWithConstraints({101});
+
+    ASSERT_EQ(result.size(), static_cast<size_t>(1));
+    EXPECT_FALSE(result[0].contains("password_max_days_between_changes"));
+    EXPECT_FALSE(result[0].contains("password_expiration_date"));
+}
+
+TEST(UsersProviderTest, CollectCapsExpirationDateAtInt32WireLimit)
+{
+    auto mockPasswd = std::make_shared<MockPasswdWrapper>();
+    auto mockUUID = std::make_shared<MockUUIDWrapper>();
+    auto mockOD = std::make_shared<MockODUtilsWrapper>();
+
+    static struct passwd fakePasswd
+    {
+        .pw_name = (char*)"testuser",
+        .pw_uid = 101,
+        .pw_gid = 20,
+        .pw_gecos = (char*)"Test User",
+        .pw_dir = (char*)"/Users/testuser",
+        .pw_shell = (char*)"/bin/bash"
+    };
+
+    EXPECT_CALL(*mockPasswd, getpwuid(101)).WillOnce(testing::Return(&fakePasswd));
+    EXPECT_CALL(*mockUUID, uidToUUID(101, testing::_)).WillOnce([](uid_t, uuid_t&) {});
+    EXPECT_CALL(*mockUUID, uuidToString(testing::_, testing::_)).WillOnce([](const uuid_t&, uuid_string_t& str)
+    {
+        strcpy(str, "abcdef00-1234-5678-90ab-cdefabcdef12");
+    });
+    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_)).WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
+    {
+        names["testuser"] = false;
+    });
+    // 24855 days is within the day-count-only bound (INT32_MAX/secondsPerDay) a prior version
+    // of this guard used, but lastSetTime + 24855*secondsPerDay still overflows the int wire
+    // field given how recent this last-set time is: the guard must weigh the full sum, not the
+    // day count in isolation.
+    EXPECT_CALL(*mockOD, genAccountPolicyData(testing::_, testing::_))
+    .WillOnce([](const std::string&, nlohmann::json & policyData)
+    {
+        policyData =
+        {
+            {"creation_time", 1735576566.727},
+            {"failed_login_count", 0},
+            {"failed_login_timestamp", 0},
+            {"password_last_set_time", 1735576569.0},
+            {"expires_every_n_days", 24855}
+        };
+    });
+
+    expectPasswordData(mockOD);
+
+    UsersProvider provider(mockPasswd, mockUUID, mockOD);
+
+    auto result = provider.collectWithConstraints({101});
+
+    ASSERT_EQ(result.size(), static_cast<size_t>(1));
+    EXPECT_EQ(result[0]["password_max_days_between_changes"], 24855);
+    EXPECT_EQ(result[0]["password_expiration_date"], -1);
+}
+
+TEST(UsersProviderTest, CollectCapsMaxDaysBetweenChangesAtInt32WireLimit)
+{
+    auto mockPasswd = std::make_shared<MockPasswdWrapper>();
+    auto mockUUID = std::make_shared<MockUUIDWrapper>();
+    auto mockOD = std::make_shared<MockODUtilsWrapper>();
+
+    static struct passwd fakePasswd
+    {
+        .pw_name = (char*)"testuser",
+        .pw_uid = 101,
+        .pw_gid = 20,
+        .pw_gecos = (char*)"Test User",
+        .pw_dir = (char*)"/Users/testuser",
+        .pw_shell = (char*)"/bin/bash"
+    };
+
+    EXPECT_CALL(*mockPasswd, getpwuid(101)).WillOnce(testing::Return(&fakePasswd));
+    EXPECT_CALL(*mockUUID, uidToUUID(101, testing::_)).WillOnce([](uid_t, uuid_t&) {});
+    EXPECT_CALL(*mockUUID, uuidToString(testing::_, testing::_)).WillOnce([](const uuid_t&, uuid_string_t& str)
+    {
+        strcpy(str, "abcdef00-1234-5678-90ab-cdefabcdef12");
+    });
+    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_)).WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
+    {
+        names["testuser"] = false;
+    });
+    // password_max_days_between_changes is the raw day count and shares the same int wire field
+    // as password_expiration_date, but has no arithmetic of its own to overflow -- it needs its
+    // own explicit cap rather than relying on the expiration-date guard.
+    EXPECT_CALL(*mockOD, genAccountPolicyData(testing::_, testing::_))
+    .WillOnce([](const std::string&, nlohmann::json & policyData)
+    {
+        policyData =
+        {
+            {"creation_time", 1735576566.727},
+            {"failed_login_count", 0},
+            {"failed_login_timestamp", 0},
+            {"password_last_set_time", 1735576569.0},
+            {"expires_every_n_days", 5000000000LL}
+        };
+    });
+
+    expectPasswordData(mockOD);
+
+    UsersProvider provider(mockPasswd, mockUUID, mockOD);
+
+    auto result = provider.collectWithConstraints({101});
+
+    ASSERT_EQ(result.size(), static_cast<size_t>(1));
+    EXPECT_EQ(result[0]["password_max_days_between_changes"], std::numeric_limits<int32_t>::max());
+    EXPECT_EQ(result[0]["password_expiration_date"], -1);
 }
 
 TEST(UsersProviderTest, CollectInvokesCollectAccountPolicyData)
@@ -144,6 +391,8 @@ TEST(UsersProviderTest, CollectInvokesCollectAccountPolicyData)
         };
     });
 
+    expectPasswordData(mockOD);
+
     UsersProvider provider(mockPasswd, mockUUID, mockOD);
 
     auto result = provider.collect();
@@ -157,4 +406,262 @@ TEST(UsersProviderTest, CollectInvokesCollectAccountPolicyData)
     EXPECT_EQ(user["failed_login_count"], 0);
     EXPECT_EQ(user["failed_login_timestamp"], 0);
     EXPECT_EQ(user["password_last_set_time"], 1735576569.186);
+    EXPECT_EQ(user["password_status"], "active");
+    EXPECT_EQ(user["password_hash_algorithm"], "SALTED-SHA512-PBKDF2");
+}
+
+TEST(UsersProviderTest, CollectReportsAccountWithoutPasswordAsNotSet)
+{
+    auto mockPasswd = std::make_shared<MockPasswdWrapper>();
+    auto mockUUID = std::make_shared<MockUUIDWrapper>();
+    auto mockOD = std::make_shared<MockODUtilsWrapper>();
+
+    static struct passwd fakePasswd
+    {
+        .pw_name = (char*)"_amavisd",
+        .pw_uid = 83,
+        .pw_gid = 83,
+        .pw_gecos = (char*)"AMaViS Daemon",
+        .pw_dir = (char*)"/var/virusmails",
+        .pw_shell = (char*)"/usr/bin/false"
+    };
+
+    EXPECT_CALL(*mockPasswd, getpwuid(83)).WillOnce(testing::Return(&fakePasswd));
+    EXPECT_CALL(*mockUUID, uidToUUID(83, testing::_)).WillOnce([](uid_t, uuid_t&) {});
+    EXPECT_CALL(*mockUUID, uuidToString(testing::_, testing::_)).WillOnce([](const uuid_t&, uuid_string_t& str)
+    {
+        strcpy(str, "ffffeeee-dddd-cccc-bbbb-aaaa00000053");
+    });
+    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_)).WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
+    {
+        names["_amavisd"] = true;
+    });
+    EXPECT_CALL(*mockOD, genAccountPolicyData(testing::_, testing::_))
+    .WillOnce([](const std::string&, nlohmann::json & policyData)
+    {
+        policyData = nlohmann::json::object();
+    });
+    EXPECT_CALL(*mockOD, genDisabledUsers(testing::_)).WillOnce([](std::set<std::string>&)
+    {
+        return true;
+    });
+    // Service accounts carry no ShadowHash authority, so no hash algorithm is reported either.
+    EXPECT_CALL(*mockOD, genPasswordData(testing::_))
+    .WillOnce([](std::map<std::string, nlohmann::json>& passwordData)
+    {
+        passwordData["_amavisd"] =
+        {
+            {"password_status", "not_set"},
+            {"password_hash_algorithm", ""}
+        };
+    });
+
+    UsersProvider provider(mockPasswd, mockUUID, mockOD);
+
+    auto result = provider.collectWithConstraints({83});
+
+    ASSERT_EQ(result.size(), static_cast<size_t>(1));
+    EXPECT_EQ(result[0]["password_status"], "not_set");
+    EXPECT_EQ(result[0]["password_hash_algorithm"], "");
+}
+
+TEST(UsersProviderTest, CollectReportsDisabledAccountAsLocked)
+{
+    auto mockPasswd = std::make_shared<MockPasswdWrapper>();
+    auto mockUUID = std::make_shared<MockUUIDWrapper>();
+    auto mockOD = std::make_shared<MockODUtilsWrapper>();
+
+    static struct passwd fakePasswd
+    {
+        .pw_name = (char*)"testuser",
+        .pw_uid = 101,
+        .pw_gid = 20,
+        .pw_gecos = (char*)"Test User",
+        .pw_dir = (char*)"/Users/testuser",
+        .pw_shell = (char*)"/bin/bash"
+    };
+
+    EXPECT_CALL(*mockPasswd, getpwuid(101)).WillOnce(testing::Return(&fakePasswd));
+    EXPECT_CALL(*mockUUID, uidToUUID(101, testing::_)).WillOnce([](uid_t, uuid_t&) {});
+    EXPECT_CALL(*mockUUID, uuidToString(testing::_, testing::_)).WillOnce([](const uuid_t&, uuid_string_t& str)
+    {
+        strcpy(str, "abcdef00-1234-5678-90ab-cdefabcdef12");
+    });
+    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_)).WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
+    {
+        names["testuser"] = false;
+    });
+    EXPECT_CALL(*mockOD, genAccountPolicyData(testing::_, testing::_))
+    .WillOnce([](const std::string&, nlohmann::json & policyData)
+    {
+        policyData = nlohmann::json::object();
+    });
+    EXPECT_CALL(*mockOD, genDisabledUsers(testing::_)).WillOnce([](std::set<std::string>& disabledUsers)
+    {
+        disabledUsers.insert("testuser");
+        return true;
+    });
+    // A disabled account keeps its hash, so the group membership has to win over "active".
+    EXPECT_CALL(*mockOD, genPasswordData(testing::_))
+    .WillOnce([](std::map<std::string, nlohmann::json>& passwordData)
+    {
+        passwordData["testuser"] =
+        {
+            {"password_status", "active"},
+            {"password_hash_algorithm", "SALTED-SHA512-PBKDF2"}
+        };
+    });
+
+    UsersProvider provider(mockPasswd, mockUUID, mockOD);
+
+    auto result = provider.collectWithConstraints({101});
+
+    ASSERT_EQ(result.size(), static_cast<size_t>(1));
+    EXPECT_EQ(result[0]["password_status"], "locked");
+    EXPECT_EQ(result[0]["password_hash_algorithm"], "SALTED-SHA512-PBKDF2");
+}
+
+TEST(UsersProviderTest, CollectReportsUserMissingFromDirectoryAsNotCollected)
+{
+    auto mockPasswd = std::make_shared<MockPasswdWrapper>();
+    auto mockUUID = std::make_shared<MockUUIDWrapper>();
+    auto mockOD = std::make_shared<MockODUtilsWrapper>();
+
+    static struct passwd fakePasswd
+    {
+        .pw_name = (char*)"testuser",
+        .pw_uid = 101,
+        .pw_gid = 20,
+        .pw_gecos = (char*)"Test User",
+        .pw_dir = (char*)"/Users/testuser",
+        .pw_shell = (char*)"/bin/bash"
+    };
+
+    EXPECT_CALL(*mockPasswd, getpwuid(101)).WillOnce(testing::Return(&fakePasswd));
+    EXPECT_CALL(*mockUUID, uidToUUID(101, testing::_)).WillOnce([](uid_t, uuid_t&) {});
+    EXPECT_CALL(*mockUUID, uuidToString(testing::_, testing::_)).WillOnce([](const uuid_t&, uuid_string_t& str)
+    {
+        strcpy(str, "abcdef00-1234-5678-90ab-cdefabcdef12");
+    });
+    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_)).WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
+    {
+        names["testuser"] = false;
+    });
+    EXPECT_CALL(*mockOD, genAccountPolicyData(testing::_, testing::_))
+    .WillOnce([](const std::string&, nlohmann::json & policyData)
+    {
+        policyData = nlohmann::json::object();
+    });
+    EXPECT_CALL(*mockOD, genDisabledUsers(testing::_)).WillOnce([](std::set<std::string>&)
+    {
+        return true;
+    });
+    // The record was unreadable, so it is absent from the map entirely.
+    EXPECT_CALL(*mockOD, genPasswordData(testing::_))
+    .WillOnce([](std::map<std::string, nlohmann::json>&) {});
+
+    UsersProvider provider(mockPasswd, mockUUID, mockOD);
+
+    auto result = provider.collectWithConstraints({101});
+
+    ASSERT_EQ(result.size(), static_cast<size_t>(1));
+    EXPECT_EQ(result[0]["password_status"], "");
+    EXPECT_EQ(result[0]["password_hash_algorithm"], "");
+}
+
+TEST(UsersProviderTest, CollectResolvesPasswordDataForUserAbsentFromPasswd)
+{
+    auto mockPasswd = std::make_shared<MockPasswdWrapper>();
+    auto mockUUID = std::make_shared<MockUUIDWrapper>();
+    auto mockOD = std::make_shared<MockODUtilsWrapper>();
+
+    // The account exists in OpenDirectory but not in the local passwd database.
+    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_)).WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
+    {
+        names["odonly"] = false;
+    });
+    EXPECT_CALL(*mockPasswd, getpwnam(testing::_)).WillOnce(testing::Return(nullptr));
+    EXPECT_CALL(*mockOD, genAccountPolicyData(testing::_, testing::_))
+    .WillOnce([](const std::string&, nlohmann::json & policyData)
+    {
+        policyData = nlohmann::json::object();
+    });
+    EXPECT_CALL(*mockOD, genDisabledUsers(testing::_)).WillOnce([](std::set<std::string>&)
+    {
+        return true;
+    });
+    EXPECT_CALL(*mockOD, genPasswordData(testing::_))
+    .WillOnce([](std::map<std::string, nlohmann::json>& passwordData)
+    {
+        passwordData["odonly"] =
+        {
+            {"password_status", "active"},
+            {"password_hash_algorithm", "SALTED-SHA512-PBKDF2"}
+        };
+    });
+
+    UsersProvider provider(mockPasswd, mockUUID, mockOD);
+
+    auto result = provider.collect();
+
+    ASSERT_EQ(result.size(), static_cast<size_t>(1));
+    EXPECT_EQ(result[0]["username"], "odonly");
+    EXPECT_EQ(result[0]["password_status"], "active");
+    EXPECT_EQ(result[0]["password_hash_algorithm"], "SALTED-SHA512-PBKDF2");
+}
+
+TEST(UsersProviderTest, CollectReportsNoStatusWhenTheDisabledAccountsCannotBeRead)
+{
+    auto mockPasswd = std::make_shared<MockPasswdWrapper>();
+    auto mockUUID = std::make_shared<MockUUIDWrapper>();
+    auto mockOD = std::make_shared<MockODUtilsWrapper>();
+
+    static struct passwd fakePasswd
+    {
+        .pw_name = (char*)"testuser",
+        .pw_uid = 101,
+        .pw_gid = 20,
+        .pw_gecos = (char*)"Test User",
+        .pw_dir = (char*)"/Users/testuser",
+        .pw_shell = (char*)"/bin/bash"
+    };
+
+    EXPECT_CALL(*mockPasswd, getpwuid(101)).WillOnce(testing::Return(&fakePasswd));
+    EXPECT_CALL(*mockUUID, uidToUUID(101, testing::_)).WillOnce([](uid_t, uuid_t&) {});
+    EXPECT_CALL(*mockUUID, uuidToString(testing::_, testing::_)).WillOnce([](const uuid_t&, uuid_string_t& str)
+    {
+        strcpy(str, "abcdef00-1234-5678-90ab-cdefabcdef12");
+    });
+    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_)).WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
+    {
+        names["testuser"] = false;
+    });
+    EXPECT_CALL(*mockOD, genAccountPolicyData(testing::_, testing::_))
+    .WillOnce([](const std::string&, nlohmann::json & policyData)
+    {
+        policyData = nlohmann::json::object();
+    });
+    // The directory could not be read, so an empty set does not mean nobody is disabled.
+    EXPECT_CALL(*mockOD, genDisabledUsers(testing::_)).WillOnce([](std::set<std::string>&)
+    {
+        return false;
+    });
+    EXPECT_CALL(*mockOD, genPasswordData(testing::_))
+    .WillOnce([](std::map<std::string, nlohmann::json>& passwordData)
+    {
+        passwordData["testuser"] =
+        {
+            {"password_status", "active"},
+            {"password_hash_algorithm", "SALTED-SHA512-PBKDF2"}
+        };
+    });
+
+    UsersProvider provider(mockPasswd, mockUUID, mockOD);
+
+    auto result = provider.collectWithConstraints({101});
+
+    ASSERT_EQ(result.size(), static_cast<size_t>(1));
+    // A disabled account keeps its hash, so "active" cannot be trusted here.
+    EXPECT_EQ(result[0]["password_status"], "");
+    EXPECT_EQ(result[0]["password_hash_algorithm"], "SALTED-SHA512-PBKDF2");
 }

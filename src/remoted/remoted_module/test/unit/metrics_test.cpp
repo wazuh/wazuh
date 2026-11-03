@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module - Metric catalog unit tests
- * Copyright (C) 2015, Wazuh Inc.
- * July 31, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -12,6 +11,7 @@
 #include "common/requestOutcomeMetrics.hpp"
 #include "control/metrics.hpp"
 #include "endpoints/endpoint.hpp"
+#include "enrollment/metrics.hpp"
 #include "scanvd/scanVdMetrics.hpp"
 
 #include <wazuh_metrics/jsonDump.hpp>
@@ -58,15 +58,17 @@ TEST(ControlMetricsTest, MakeRegistersFamilyAtZero)
                              METRIC_TASK_FETCH,
                              METRIC_TASK_FETCH_ERROR,
                              METRIC_REJECTED,
-                             METRIC_WDB_LATENCY})
+                             METRIC_WDB_LATENCY,
+                             METRIC_NO_ROW})
     {
         EXPECT_TRUE(manager.exists(name)) << name;
     }
-    EXPECT_EQ(manager.count(), 8U);
+    EXPECT_EQ(manager.count(), 9U);
     EXPECT_EQ(m.startup->get(), 0U);
     EXPECT_EQ(m.taskFetchError->get(), 0U);
     EXPECT_EQ(m.rejected->get(), 0U);
     EXPECT_EQ(m.wdbLatency->snapshot().count, 0U);
+    EXPECT_EQ(m.noRow->get(), 0U);
 }
 
 // Each inc helper touches exactly its own counter; a regression in the wrong counter
@@ -99,6 +101,9 @@ TEST(ControlMetricsTest, IncHelpersEachTouchOneCounter)
     EXPECT_EQ(valueOf(METRIC_TASK_FETCH_ERROR), 1U);
     incRejected(m);
     EXPECT_EQ(valueOf(METRIC_REJECTED), 1U);
+    incNoRow(m);
+    EXPECT_EQ(valueOf(METRIC_NO_ROW), 1U);
+    EXPECT_EQ(valueOf(METRIC_WDB_ERROR), 1U); // a missing row is not a failed round trip
 
     // The histogram helper records exactly one observation with the given value -- and, like
     // every helper here, is a safe no-op on the null object.
@@ -108,6 +113,7 @@ TEST(ControlMetricsTest, IncHelpersEachTouchOneCounter)
     EXPECT_EQ(snapshot.sum, 2500U);
     ControlMetrics nullObject;
     incRejected(nullObject);
+    incNoRow(nullObject);
     observeWdbLatency(nullObject, 1U); // not crashing IS the contract
 }
 
@@ -225,13 +231,16 @@ TEST(ResponseCountersTest, MakeRegistersFamilyAtZero)
     wazuh::metrics::Manager manager;
     const auto c = remoted::metrics::ResponseCounters::make(manager, "stateless");
 
-    for (const auto* code : {"2xx", "400", "403", "409", "413", "500", "503", "other"})
+    for (const auto* code : {"2xx", "400", "403", "409", "413", "429", "500", "503", "other"})
     {
         const std::string name = std::string {"remoted.http.stateless.responses."} + code;
         EXPECT_TRUE(manager.exists(name)) << name;
         EXPECT_EQ(static_cast<uint64_t>(manager.get(name)->value()), 0U) << name;
     }
-    EXPECT_EQ(manager.count(), 8U);
+    // 9 since the per-endpoint rate limit's 429 got a cell of its own: every endpoint registers the
+    // whole vocabulary, including the cells that are structurally zero for it (only /enroll and
+    // /cacerts can ever answer 429), so a scraper's columns stay uniform.
+    EXPECT_EQ(manager.count(), 9U);
     EXPECT_EQ(c.c2xx->get(), 0U);
 }
 
@@ -309,13 +318,95 @@ TEST(AuthRejectMetricsTest, MakeRegistersFamilyAtZero)
                              remoted::endpoints::METRIC_AUTH_REJECT_PAYLOAD_MISMATCH,
                              remoted::endpoints::METRIC_AUTH_REJECT_BODY_TOO_LARGE,
                              remoted::endpoints::METRIC_AUTH_REJECT_BAD_ENCODING,
-                             remoted::endpoints::METRIC_AUTH_REJECT_MALFORMED})
+                             remoted::endpoints::METRIC_AUTH_REJECT_MALFORMED,
+                             remoted::endpoints::METRIC_AUTH_REJECT_TOKEN_UNKNOWN,
+                             remoted::endpoints::METRIC_AUTH_REJECT_TOKEN_EXPIRED,
+                             remoted::endpoints::METRIC_AUTH_REJECT_TOKEN_REVOKED,
+                             remoted::endpoints::METRIC_AUTH_REJECT_AGENT_BUSY})
     {
         EXPECT_TRUE(manager.exists(name)) << name;
     }
-    EXPECT_EQ(manager.count(), 12U);
+    EXPECT_EQ(manager.count(), 16U);
     EXPECT_EQ(m.unknownAgent->get(), 0U);
     EXPECT_EQ(m.malformed->get(), 0U);
+    EXPECT_EQ(m.tokenRevoked->get(), 0U);
+    EXPECT_EQ(m.agentBusy->get(), 0U);
+}
+
+// makeEnrollmentMetrics() registers the whole remoted.enroll.* family at zero, the enrollment-token
+// outcomes (issue #38993) included -- same member<->name guard as the families above.
+TEST(EnrollmentMetricsTest, MakeRegistersFamilyAtZero)
+{
+    wazuh::metrics::Manager manager;
+    auto m = remoted::enrollment::makeEnrollmentMetrics(manager);
+
+    for (const auto* name : {remoted::enrollment::METRIC_ACCEPTED,
+                             remoted::enrollment::METRIC_REJECTED_AUTH,
+                             remoted::enrollment::METRIC_REJECTED_VALIDATION,
+                             remoted::enrollment::METRIC_DISABLED,
+                             remoted::enrollment::METRIC_AUTHD_ERROR,
+                             remoted::enrollment::METRIC_AUTHD_UNAVAILABLE,
+                             remoted::enrollment::METRIC_TOKEN_ACCEPTED,
+                             remoted::enrollment::METRIC_TOKEN_REJECTED_UNKNOWN,
+                             remoted::enrollment::METRIC_TOKEN_REJECTED_EXPIRED,
+                             remoted::enrollment::METRIC_TOKEN_REJECTED_REVOKED,
+                             remoted::enrollment::METRIC_TOKEN_REJECTED_EXHAUSTED,
+                             remoted::enrollment::METRIC_REENROLL_ACCEPTED,
+                             remoted::enrollment::METRIC_REENROLL_REJECTED_UNKNOWN,
+                             remoted::enrollment::METRIC_REENROLL_REJECTED_SIGNATURE,
+                             remoted::enrollment::METRIC_REENROLL_REJECTED_STALE,
+                             remoted::enrollment::METRIC_REENROLL_REJECTED_IN_PROGRESS,
+                             remoted::enrollment::METRIC_RATE_LIMITED})
+    {
+        EXPECT_TRUE(manager.exists(name)) << name;
+        EXPECT_EQ(static_cast<uint64_t>(manager.get(name)->value()), 0U) << name;
+    }
+    EXPECT_EQ(manager.count(), 17U);
+
+    // Each token inc helper touches exactly its own cell.
+    remoted::enrollment::incTokenAccepted(m);
+    remoted::enrollment::incTokenRejectedUnknown(m);
+    remoted::enrollment::incTokenRejectedUnknown(m);
+    remoted::enrollment::incTokenRejectedExpired(m);
+    remoted::enrollment::incTokenRejectedExpired(m);
+    remoted::enrollment::incTokenRejectedExpired(m);
+    remoted::enrollment::incTokenRejectedRevoked(m);
+    remoted::enrollment::incTokenRejectedRevoked(m);
+    remoted::enrollment::incTokenRejectedRevoked(m);
+    remoted::enrollment::incTokenRejectedRevoked(m);
+    remoted::enrollment::incTokenRejectedExhausted(m);
+    remoted::enrollment::incTokenRejectedExhausted(m);
+    remoted::enrollment::incTokenRejectedExhausted(m);
+    remoted::enrollment::incTokenRejectedExhausted(m);
+    remoted::enrollment::incTokenRejectedExhausted(m);
+    EXPECT_EQ(m.tokenAccepted->get(), 1U);
+    EXPECT_EQ(m.tokenRejectedUnknown->get(), 2U);
+    EXPECT_EQ(m.tokenRejectedExpired->get(), 3U);
+    EXPECT_EQ(m.tokenRejectedRevoked->get(), 4U);
+    EXPECT_EQ(m.tokenRejectedExhausted->get(), 5U);
+    EXPECT_EQ(m.accepted->get(), 0U); // the plain family is untouched by the token helpers
+
+    // Same guard for the re-enrollment helpers (issue #38993): each touches exactly its own cell.
+    remoted::enrollment::incReenrollAccepted(m);
+    remoted::enrollment::incReenrollRejectedUnknown(m);
+    remoted::enrollment::incReenrollRejectedUnknown(m);
+    remoted::enrollment::incReenrollRejectedSignature(m);
+    remoted::enrollment::incReenrollRejectedSignature(m);
+    remoted::enrollment::incReenrollRejectedSignature(m);
+    remoted::enrollment::incReenrollRejectedStale(m);
+    remoted::enrollment::incReenrollRejectedStale(m);
+    remoted::enrollment::incReenrollRejectedStale(m);
+    remoted::enrollment::incReenrollRejectedStale(m);
+    EXPECT_EQ(m.reenrollAccepted->get(), 1U);
+    EXPECT_EQ(m.reenrollRejectedUnknown->get(), 2U);
+    EXPECT_EQ(m.reenrollRejectedSignature->get(), 3U);
+    EXPECT_EQ(m.reenrollRejectedStale->get(), 4U);
+
+    // 9030: a rotation already in flight (issue #39078, H02)
+    remoted::enrollment::incReenrollRejectedInProgress(m);
+    EXPECT_EQ(m.reenrollRejectedInProgress->get(), 1U);
+    EXPECT_EQ(m.tokenAccepted->get(), 1U); // and the token cells are untouched by them
+    EXPECT_EQ(m.accepted->get(), 0U);
 }
 
 // errorResponseFor() is the single funnel every client-visible auth rejection passes through;
@@ -350,7 +441,7 @@ TEST(AuthRejectMetricsTest, ErrorResponseForCountsEveryAuthErrorInItsCell)
         }
     }
     // Sanity floor: if the probe stopped finding values, the discovery itself broke.
-    ASSERT_GE(live.size(), 15U) << "AuthError discovery via toString() found implausibly few values";
+    ASSERT_GE(live.size(), 16U) << "AuthError discovery via toString() found implausibly few values";
 
     for (const auto err : live)
     {
@@ -373,6 +464,7 @@ TEST(AuthRejectMetricsTest, ErrorResponseForCountsEveryAuthErrorInItsCell)
     EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_BODY_TOO_LARGE), 1U);
     EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_BAD_ENCODING), 2U); // both encoding causes
     EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_MALFORMED), 4U);    // the four header faults
+    EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_AGENT_BUSY), 1U);
 
     // The tripwire: every discovered AuthError landed in exactly one cell. A value appended to
     // the enum without a cell of its own lands in `malformed`, which makes that cell exceed the
@@ -389,7 +481,11 @@ TEST(AuthRejectMetricsTest, ErrorResponseForCountsEveryAuthErrorInItsCell)
                        valueOf(remoted::endpoints::METRIC_AUTH_REJECT_PAYLOAD_MISMATCH) +
                        valueOf(remoted::endpoints::METRIC_AUTH_REJECT_BODY_TOO_LARGE) +
                        valueOf(remoted::endpoints::METRIC_AUTH_REJECT_BAD_ENCODING) +
-                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_MALFORMED);
+                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_MALFORMED) +
+                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_TOKEN_UNKNOWN) +
+                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_TOKEN_EXPIRED) +
+                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_TOKEN_REVOKED) +
+                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_AGENT_BUSY);
     EXPECT_EQ(total, live.size()) << "an AuthError is not accounted for in any remoted.auth.reject.* cell";
 
     // Uninstall (back to the null object): the instance is process-wide, so leaving these

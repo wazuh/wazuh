@@ -72,7 +72,10 @@ void module_logger(modules_log_level_t level, const char* message) {
 AgentSyncProtocolHandle* handle = asp_create(
     "sca",
     "/var/ossec/queue/sca/sca_sync.db",
-    module_logger
+    module_logger,
+    0,  // flush_batch_size: use the built-in default
+    0,  // flush_interval_ms: use the built-in default
+    0   // wal_autocheckpoint_pages: keep SQLite's own default
 );
 
 if (!handle) {
@@ -103,7 +106,7 @@ void onFileCreated(const std::string& filepath, const FileInfo& info) {
     protocol->persistDifference(
         id,
         Operation::CREATE,
-        "fim_files",
+        "wazuh-states-fim-files",
         data.dump(),
         info.version
     );
@@ -117,7 +120,7 @@ void onFileModified(const std::string& filepath, const FileInfo& info) {
     protocol->persistDifference(
         id,
         Operation::MODIFY,
-        "fim_files",
+        "wazuh-states-fim-files",
         data.dump(),
         info.version
     );
@@ -130,7 +133,7 @@ void onFileDeleted(const std::string& filepath, uint64_t version) {
     protocol->persistDifference(
         id,
         Operation::DELETE_,
-        "fim_files",
+        "wazuh-states-fim-files",
         "{\"path\": \"" + filepath + "\"}",
         version
     );
@@ -150,7 +153,7 @@ void persist_policy_check(const char* policy_id, CheckResult* result, uint64_t v
         handle,
         policy_id,
         OPERATION_MODIFY,
-        "sca_checks",
+        "wazuh-states-sca",
         json_data,
         version
     );
@@ -184,8 +187,8 @@ void recoverModuleData(const std::string& index) {
     minfo("Starting module recovery process");
 
     // Clear the manager's index before resending the fresh snapshot.
-    if (!protocol->notifyDataClean({index})) {
-        merror("Failed to clear index %s before recovery; will retry later", index.c_str());
+    if (!protocol->notifyDataClean({index}).success) {
+        mwarn("Failed to clear index %s before recovery; will retry later", index.c_str());
         return;
     }
 
@@ -219,22 +222,25 @@ bool should_perform_full_sync(const char* index) {
     char checksum[65];
     calculate_index_checksum(index, checksum);
 
-    // Sends one FullSession carrying a ChecksumModule payload and waits for the EndAck
-    bool needs_full_sync = asp_requires_full_sync(handle, index, checksum);
+    // Sends one FullSession carrying a ChecksumModule payload and waits for the manager's answer
+    IntegrityCheckResult_t result = asp_requires_full_sync(handle, index, checksum);
 
-    if (needs_full_sync) {
-        minfo("Checksum mismatch detected for index %s, full sync required", index);
+    if (result.status == INTEGRITY_CHECK_MISMATCH) {
+        minfo("Checksum mismatch confirmed for index %s, full sync required", index);
+    } else if (result.status == INTEGRITY_CHECK_VALID) {
+        mdebug1("Checksum valid for index %s, delta sync sufficient", index);
     } else {
-        minfo("Checksum valid for index %s, delta sync sufficient", index);
+        // Not a passed check: nothing is known about the checksum.
+        mwarn("Integrity check could not be performed for index %s (%s)", index, result.failure_reason);
     }
 
-    return needs_full_sync;
+    return result.status == INTEGRITY_CHECK_MISMATCH;
 }
 ```
 
 ### Step 4: Process Manager Responses
 
-The manager's answer (an `EndAck`, or the HTTPS transport's own result code) needs to reach `parseResponseBuffer()` for the in-flight `synchronizeModule()`/`notifyDataClean()`/`requiresFullSync()`/`synchronizeMetadataOrGroups()` call to unblock. In practice, this is wired up once by the transport that delivers the manager's HTTPS response back to the module, not called ad hoc by each module.
+The manager's answer (the HTTPS transport's `HCRESULT:<session>:<code>:<body>` string) needs to reach `parseResponseBuffer()` for the in-flight `synchronizeModule()`/`notifyDataClean()`/`requiresFullSync()`/`synchronizeMetadataOrGroups()` call to unblock. In practice, this is wired up once by the transport that delivers the manager's HTTPS response back to the module, not called ad hoc by each module.
 
 #### C++ Example
 ```cpp
@@ -364,7 +370,7 @@ public:
         m_protocol->persistDifference(
             id,
             Operation::MODIFY,
-            "inventory_" + category,
+            "wazuh-states-inventory-" + category,
             data.dump(),
             version);
     }
@@ -383,7 +389,7 @@ public:
         m_protocol->persistDifference(
             pkg.name + "_" + pkg.version,
             Operation::CREATE,
-            "inventory_packages",
+            "wazuh-states-inventory-packages",
             data.dump(),
             1);
     }
@@ -394,7 +400,7 @@ public:
         m_protocol->persistDifference(
             pkgName,
             Operation::DELETE_,
-            "inventory_packages",
+            "wazuh-states-inventory-packages",
             "{\"name\": \"" + pkgName + "\"}",
             version);
     }
@@ -416,9 +422,9 @@ private:
             // Mode::FULL to reach for here.
             if (++syncCount % 16 == 0)
             {
-                if (!m_protocol->notifyDataClean({"inventory_packages"}))
+                if (!m_protocol->notifyDataClean({"wazuh-states-inventory-packages"}).success)
                 {
-                    merror("Failed to clear inventory_packages before full-replace resync");
+                    mwarn("Failed to clear wazuh-states-inventory-packages before full-replace resync");
                     continue;
                 }
 
@@ -507,7 +513,7 @@ asp_destroy(handle);  // Required cleanup
 
 ### 3. Shutdown
 
-Call `stop()`/`asp_stop()` before tearing down a module so any in-flight `synchronizeModule()`/`notifyDataClean()`/`requiresFullSync()` call unblocks instead of waiting indefinitely for a transport callback that will never arrive. `reset()`/`asp_reset()` clears the stop flag if the module restarts in the same process.
+Call `stop()`/`asp_stop()` before tearing down a module so any in-flight `synchronizeModule()`/`notifyDataClean()`/`requiresFullSync()` call unblocks instead of waiting up to 15 minutes for a transport callback that will never arrive. `reset()`/`asp_reset()` clears the stop flag if the module restarts in the same process.
 
 ### 4. Logging Integration
 
@@ -548,10 +554,10 @@ public:
                 (const std::string&, Operation, const std::string&, const std::string&, uint64_t, bool),
                 (override));
     MOCK_METHOD(SyncModuleResult, synchronizeModule, (Mode, Option), (override));
-    MOCK_METHOD(bool, requiresFullSync, (const std::string&, const std::string&), (override));
-    MOCK_METHOD(bool, notifyDataClean, (const std::vector<std::string>&, Option), (override));
+    MOCK_METHOD(IntegrityCheckResult, requiresFullSync, (const std::string&, const std::string&), (override));
+    MOCK_METHOD(SyncModuleResult, notifyDataClean, (const std::vector<std::string>&, Option, bool), (override));
     MOCK_METHOD(bool, parseResponseBuffer, (const uint8_t*, size_t), (override));
-    // ... plus the remaining IAgentSyncProtocol methods as needed by the test.
+    // ... plus every other pure virtual of IAgentSyncProtocol, or the mock cannot be instantiated.
 };
 ```
 
@@ -582,8 +588,9 @@ auto protocol = std::make_unique<AgentSyncProtocol>(
     nullptr,     // default persistent queue
     transport);
 
-// ... trigger a sync on another thread, then feed a synthetic EndAck back in:
-protocol->parseResponseBuffer(endAckBytes, endAckLength);
+// ... trigger a sync on another thread, then feed the result for the session it sent:
+const std::string result = "HCRESULT:" + std::to_string(sessionSent) + ":200:{}";
+protocol->parseResponseBuffer(reinterpret_cast<const uint8_t*>(result.data()), result.size());
 ```
 
 ## Troubleshooting
@@ -600,7 +607,7 @@ protocol->parseResponseBuffer(endAckBytes, endAckLength);
    - `SYNC_HANDOFF_RETRIES` (fixed at 3) only covers a transiently-unavailable local socket; it does not retry HTTP-level failures
 
 3. **Synchronization Never Returns**
-   - The protocol waits indefinitely for the manager's answer once the local hand-off succeeds; a hang here usually means the HTTPS transport's own timeout (`statefulTimeoutMs`) hasn't fired yet, or `stop()` was never called during shutdown
+   - Once the local hand-off succeeds, the protocol waits for the manager's answer for up to 15 minutes (`SESSION_RESPONSE_TIMEOUT`); at the defaults the HTTPS transport gives up on a `/stateful` session after at most about 11.5 minutes (up to ~14.5 with the one-shot `401`/`415` retries), longer if the manager answers with `Retry-After` or other sessions are queued ahead. When the 15 minutes run out the module logs `Session <n> got no response within 900s; treating as failed so the next cycle can retry.` at WARNING; `stop()` ends the wait early at shutdown
    - Check `agentd`/`https_client` logs and network connectivity to the manager
 
 4. **Memory Issues**

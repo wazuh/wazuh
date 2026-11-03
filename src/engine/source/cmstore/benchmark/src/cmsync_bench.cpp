@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <benchmark/benchmark.h>
 
 // Dummy benchmark to verify the benchmark framework is set up correctly.

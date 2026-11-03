@@ -3,9 +3,9 @@ name: downcase
 
 metadata:
   description: |
-    The operation converts any uppercase character to an lowercase character.
+    The operation converts any uppercase character to a lowercase character.
     The result of the lowercase (+downcase) operation is mapped to “field”.
-    If the field field already exists, then it will be replaced. In case of errors “field” will not be modified.
+    If the field already exists, then it will be replaced. In case of errors “field” will not be modified.
   keywords:
     - string
 

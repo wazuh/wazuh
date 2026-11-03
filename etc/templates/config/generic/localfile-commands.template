@@ -1,5 +1,0 @@
-  <localfile>
-    <log_format>command</log_format>
-    <command>df -P</command>
-    <frequency>360</frequency>
-  </localfile>

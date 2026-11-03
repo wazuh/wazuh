@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -20,15 +19,20 @@
 #include "httpsClientFacade.hpp"
 #include "syncIntake.hpp"
 
+#include "cacertsClient.hpp"
 #include "curlHandle.hpp"
 #include "curlPerformer.hpp"
 #include "enrollClient.hpp"
 #include "moduleConfig.hpp"
 #include "moduleLog.hpp"
+#include "spkiPin.hpp"
 #include "sysSeams.hpp"
 
+#include <atomic>
+#include <cstdio>
 #include <cstring>
 #include <string>
+#include <string_view>
 
 namespace Log
 {
@@ -49,23 +53,59 @@ struct hc_handle
 
 namespace
 {
-    // Route the module's LOGFN_* calls back through the agent's logger.
+    // Process-wide, like the log sink itself: one client per process.
+    enum class Lifecycle
+    {
+        Idle,     ///< Not started: a critical message exits through the agent's callback.
+        Running,  ///< Started: a critical message is reported through on_fatal instead.
+        Stopping, ///< Stopping: the agent is already exiting, so it is only logged.
+    };
+
+    std::atomic<Lifecycle> g_lifecycle {Lifecycle::Idle};
+    std::atomic<bool> g_fatalReported {false};
+    std::atomic<full_log_fnc_t> g_agentLog {nullptr};
+    // Written by hc_create() before any module thread exists, read only by those threads.
+    void (*g_onFatal)(const char*, void*) = nullptr;
+    void* g_onFatalUserData = nullptr;
+
+    void forwardLog(int level, const char* tag, const char* file, int line, const char* func,
+                    const char* logMessage, va_list args)
+    {
+        const auto lifecycle = g_lifecycle.load();
+
+        if (level == Log::LOGLEVEL_CRITICAL && lifecycle != Lifecycle::Idle)
+        {
+            if (lifecycle == Lifecycle::Running && !g_fatalReported.exchange(true))
+            {
+                char reason[1024];
+                va_list reasonArgs;
+                va_copy(reasonArgs, args);
+                std::vsnprintf(reason, sizeof(reason), logMessage, reasonArgs);
+                va_end(reasonArgs);
+                g_onFatal(reason, g_onFatalUserData);
+            }
+
+            level = Log::LOGLEVEL_ERROR;
+        }
+
+        if (const auto agentLog = g_agentLog.load())
+        {
+            agentLog(level, tag, file, line, func, logMessage, args);
+        }
+    }
+
+    // Route the module's LOGFN_* calls back through the agent's logger. The module keeps the
+    // first sink it is given for the whole process, so the sink installed is always
+    // forwardLog(), and each call only updates which agent callback it forwards to. A null
+    // callback (a caller with no logger yet) keeps the previous one.
     void assignModuleLogSink(full_log_fnc_t callbackLog)
     {
-        Log::assignLogFunction(
-            [callbackLog](const int level,
-                          const char* tag,
-                          const char* file,
-                          const int line,
-                          const char* func,
-                          const char* logMessage,
-                          va_list args)
+        if (callbackLog)
         {
-            if (callbackLog)
-            {
-                callbackLog(level, tag, file, line, func, logMessage, args);
-            }
-        });
+            g_agentLog.store(callbackLog);
+        }
+
+        Log::assignLogFunction(forwardLog);
     }
 
     // Fixed-size C buffers are not guaranteed NUL-terminated when the caller
@@ -90,6 +130,10 @@ extern "C"
         try
         {
             assignModuleLogSink(callbacks->log);
+            g_onFatal = callbacks->on_fatal;
+            g_onFatalUserData = callbacks->user_data;
+            g_fatalReported = false;
+            g_lifecycle = Lifecycle::Idle;
             return new hc_handle(*config, *callbacks);
         }
         catch (...)
@@ -103,6 +147,14 @@ extern "C"
         if (handle == nullptr)
         {
             return false;
+        }
+
+        // Before start(), not after: it starts the module threads, and one of them can hit a
+        // fatal condition before start() returns. A configuration start() rejects on this
+        // thread is reported too, and start() still returns false.
+        if (g_onFatal != nullptr)
+        {
+            g_lifecycle = Lifecycle::Running;
         }
 
         try
@@ -122,6 +174,8 @@ extern "C"
             return;
         }
 
+        g_lifecycle = Lifecycle::Stopping;
+
         try
         {
             handle->impl.stop();
@@ -134,6 +188,11 @@ extern "C"
 
     void hc_destroy(hc_handle* handle)
     {
+        if (handle != nullptr)
+        {
+            g_lifecycle = Lifecycle::Stopping;
+        }
+
         try
         {
             delete handle; // Destructor stops the client first.
@@ -324,7 +383,9 @@ extern "C"
 
             const std::string bodyJson = boundedField(request->body_json, sizeof(request->body_json));
             const std::string password = boundedField(request->password, sizeof(request->password));
-            const HttpResponse response = client.enroll(bodyJson, password);
+            const std::string enrollKid = boundedField(request->enroll_kid, sizeof(request->enroll_kid));
+            const std::string enrollKeyHex = boundedField(request->enroll_key_hex, sizeof(request->enroll_key_hex));
+            const HttpResponse response = client.enroll(bodyJson, password, enrollKid, enrollKeyHex);
 
             result->http_code = response.httpCode;
             result->retry_after_seconds = response.retryAfterSeconds;
@@ -333,6 +394,82 @@ extern "C"
                          sizeof(result->transport_error) - 1);
 
             return response.httpCode != 0;
+        }
+        catch (...)
+        {
+            return false; // LCOV_EXCL_LINE: nothing throws into C.
+        }
+    }
+
+    bool hc_fetch_cacerts(const hc_config_t* config, const hc_cacerts_request_t* request,
+                          hc_cacerts_result_t* result)
+    {
+        if (config == nullptr || request == nullptr || result == nullptr)
+        {
+            return false;
+        }
+
+        // Zeroed before anything that could throw -- same contract as hc_enroll().
+        *result = {};
+
+        try
+        {
+            // hc_fetch_cacerts() may run before hc_create() ever does (same
+            // first-boot bootstrap moment as hc_enroll()), so it assigns its
+            // own log sink rather than relying on one already being set.
+            assignModuleLogSink(request->log);
+
+            auto typedConfig = ModuleConfig::fromC(*config);
+            // Forced regardless of what the caller's config carries: GET /cacerts is the
+            // unverified bootstrap leg by definition -- there is no trust anchor yet to
+            // verify against.
+            typedConfig.verifyMode = HC_VERIFY_NONE;
+
+            FsProbe fsProbe;
+            CurlPerformer performer(typedConfig, defaultCurlHandleFactory(), fsProbe);
+            CacertsClient client(typedConfig, performer, fsProbe, HTTPS_CLIENT_LOGTAG, /*unverifiedByDesign=*/true);
+
+            const HttpResponse response = client.fetch();
+
+            result->http_code = response.httpCode;
+            // Flagged before the copy silently drops the tail. What gets cut is arbitrary --
+            // the pinned certificate may be exactly what is missing -- so the caller has to be
+            // able to tell "this is not the CA I expected" from "I could not read all of it".
+            result->body_truncated = response.body.size() >= sizeof(result->body);
+            std::strncpy(result->body, response.body.c_str(), sizeof(result->body) - 1);
+            std::strncpy(result->transport_error, response.curlError.c_str(),
+                         sizeof(result->transport_error) - 1);
+
+            return response.httpCode != 0;
+        }
+        catch (...)
+        {
+            return false; // LCOV_EXCL_LINE: nothing throws into C.
+        }
+    }
+
+    bool hc_spki_pinned_certificate(const char* cacerts_body, size_t body_len, const char* pin_b64url,
+                                    char* matched_pem, size_t matched_pem_size)
+    {
+        if (cacerts_body == nullptr || pin_b64url == nullptr || matched_pem == nullptr || matched_pem_size == 0)
+        {
+            return false;
+        }
+
+        try
+        {
+            const auto matched = spkiPinnedCertificatePem(std::string_view(cacerts_body, body_len), pin_b64url);
+
+            // A destination that cannot hold the whole certificate fails closed rather than
+            // writing a truncated one: a half-written PEM is not a trust anchor, and silently
+            // installing one would be worse than refusing the bootstrap.
+            if (!matched || matched->size() >= matched_pem_size)
+            {
+                return false;
+            }
+
+            std::memcpy(matched_pem, matched->c_str(), matched->size() + 1);
+            return true;
         }
         catch (...)
         {

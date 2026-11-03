@@ -1,7 +1,6 @@
 /*
  * Wazuh inventory sync server module - unit tests
- * Copyright (C) 2015, Wazuh Inc.
- * July 28, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -87,14 +86,14 @@ TEST(UdsHttpServerConfigTest, ZeroedStructYieldsEveryDocumentedDefault)
     EXPECT_EQ(0U, config.dataPolicy.maxSessions) << "0: resolved to maxConnections - reserved at start()";
 }
 
-// The socket path being relative is the whole basis of the chroot/chdir agreement with the peer:
-// modulesd chdir()s to the install dir, remoted chroot()s into it. An absolute default here would
-// silently break one of them.
+// The socket path being relative is the whole basis of the agreement with the peer:
+// it resolves against the installation directory, the working directory of remoted and modulesd.
+// An absolute default here would silently break that.
 TEST(UdsHttpServerConfigTest, DefaultSocketPathIsRelative)
 {
     const auto config = buildServerConfig(zeroedConfig());
     ASSERT_FALSE(config.socketPath.empty());
-    EXPECT_NE('/', config.socketPath.front()) << "the path must be relative for chroot and chdir to agree";
+    EXPECT_NE('/', config.socketPath.front()) << "the path must be relative to the installation directory";
 }
 
 TEST(UdsHttpServerConfigTest, PositiveValuesOverrideEveryDefault)

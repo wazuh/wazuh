@@ -1,12 +1,13 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015, Wazuh Inc.
- * July 14, 2020.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #include "stringHelper_test.h"
@@ -20,6 +21,35 @@ using namespace std::string_view_literals;
 void StringUtilsTest::SetUp() {};
 
 void StringUtilsTest::TearDown() {};
+
+TEST_F(StringUtilsTest, SanitizeUtf8KeepsValidText)
+{
+    const std::string valid {"ascii \xC3\xB1 \xE2\x82\xAC \xF0\x9F\x98\x80 \xED\x9F\xBF \xF4\x8F\xBF\xBF"};
+
+    EXPECT_EQ(Utils::sanitizeUtf8(valid), valid);
+    EXPECT_EQ(Utils::sanitizeUtf8(""), "");
+}
+
+TEST_F(StringUtilsTest, SanitizeUtf8ReplacesInvalidBytes)
+{
+    const std::string replacement {"\xEF\xBF\xBD"};
+
+    // Stray bytes and lone continuation bytes.
+    EXPECT_EQ(Utils::sanitizeUtf8("a\xFFz"), "a" + replacement + "z");
+    EXPECT_EQ(Utils::sanitizeUtf8("\x80"), replacement);
+    // Truncated sequences, including at the end of the string.
+    EXPECT_EQ(Utils::sanitizeUtf8("\xC3"), replacement);
+    EXPECT_EQ(Utils::sanitizeUtf8("\xE2\x82 x"), replacement + replacement + " x");
+    EXPECT_EQ(Utils::sanitizeUtf8("\xF0\x9F\x98"), replacement + replacement + replacement);
+    // Overlong forms.
+    EXPECT_EQ(Utils::sanitizeUtf8("\xC0\xAF"), replacement + replacement);
+    EXPECT_EQ(Utils::sanitizeUtf8("\xE0\x80\xAF"), replacement + replacement + replacement);
+    EXPECT_EQ(Utils::sanitizeUtf8("\xF0\x80\x80\xAF"), replacement + replacement + replacement + replacement);
+    // UTF-16 surrogates and code points above U+10FFFF.
+    EXPECT_EQ(Utils::sanitizeUtf8("\xED\xA0\x80"), replacement + replacement + replacement);
+    EXPECT_EQ(Utils::sanitizeUtf8("\xF4\x90\x80\x80"), replacement + replacement + replacement + replacement);
+    EXPECT_EQ(Utils::sanitizeUtf8("\xF5\x80\x80\x80"), replacement + replacement + replacement + replacement);
+}
 
 TEST_F(StringUtilsTest, CheckReplacement)
 {
@@ -108,15 +138,6 @@ TEST_F(StringUtilsTest, SplitIndex)
 TEST_F(StringUtilsTest, SplitIndexRuntimeError)
 {
     EXPECT_THROW(Utils::splitIndex("hello.world", '.', 2), std::runtime_error);
-}
-
-TEST_F(StringUtilsTest, AsciiToHexString)
-{
-    const std::vector<unsigned char> data {0x2d, 0x53, 0x3b, 0x9d, 0x9f, 0x0f, 0x06, 0xef, 0x4e, 0x3c,
-                                           0x23, 0xfd, 0x49, 0x6c, 0xfe, 0xb2, 0x78, 0x0e, 0xda, 0x7f};
-    const std::string expected {"2d533b9d9f0f06ef4e3c23fd496cfeb2780eda7f"};
-    const auto result {Utils::asciiToHex(data)};
-    EXPECT_EQ(expected, result);
 }
 
 TEST_F(StringUtilsTest, CheckFirstReplacement)
@@ -838,6 +859,15 @@ TEST_F(StringUtilsTest, ToLowerCaseSV)
     EXPECT_EQ("", Utils::toLowerCaseView(""sv));
     EXPECT_EQ("hello world", Utils::toLowerCaseView("HeLlO WoRlD"sv));
     EXPECT_EQ("123", Utils::toLowerCaseView("123"sv));
+}
+
+TEST_F(StringUtilsTest, Join)
+{
+    EXPECT_EQ("", Utils::join(std::vector<std::string> {}, ","));
+    EXPECT_EQ("a", Utils::join(std::vector<std::string> {"a"}, ","));
+    EXPECT_EQ("a,b,c", Utils::join(std::vector<std::string> {"a", "b", "c"}, ","));
+    EXPECT_EQ("a, b", Utils::join(std::vector<std::string> {"a", "b"}, ", "));
+    EXPECT_EQ("b,", Utils::join(std::vector<std::string> {"", "b", ""}, ","));
 }
 
 #endif

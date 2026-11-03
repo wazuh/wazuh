@@ -238,3 +238,23 @@
       key: '998bb619f50225fa0a4ec3b2a4888ae0a9b1d249189827462a5689d1d5586deb'
     groups:
       - 'Group1'
+
+- name: 'Unknown function'
+  description: 'A well-formed request naming a function authd does not serve is answered as such.'
+  configuration_parameters:
+  metadata:
+    cases:
+    -
+      input: '{"arguments":{"id":"001"},"function":"no_such_function"}'
+      output: '{"error":9003,"message":"No such function"}'
+    -
+      input: '{"arguments":{"id":"001"},"function":"issue_reenroll_secret"}'
+      output: '{"error":9003,"message":"No such function"}'
+    pre_existent_agents:
+    -
+      id: '001'
+      name: 'migrated_agent'
+      ip: 'any'
+      key: '998bb619f50225fa0a4ec3b2a4888ae0a9b1d249189827462a5689d1d5586deb'
+    groups:
+      -

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _JSON_H
 #define _JSON_H
 
@@ -213,13 +214,31 @@ private:
      */
     Json(CompactTag, size_t capacityHint);
 
+    /// Tag to select the exact-size document constructor.
+    struct ExactTag
+    {
+    };
+
     /**
-     * @brief Construct a new Json object form a rapidjason::Value.
-     * Copies the value.
+     * @brief Construct an empty document whose pool holds exactly @p poolBytes.
+     *
+     * Allocates one block of the allocator bookkeeping header plus @p poolBytes bytes and binds
+     * the document to a small-chunk allocator living in it. Unlike Json(CompactTag, size_t) it
+     * never rounds up to COMPACT_INITIAL_CAPACITY; if the document later outgrows the block,
+     * the pool grows in COMPACT_CHUNK_CAPACITY steps.
+     *
+     * @param poolBytes Bytes the document will allocate from its pool (0 = header only).
+     */
+    Json(ExactTag, size_t poolBytes);
+
+    /**
+     * @brief Construct a new Json object from a rapidjson::Value.
+     * Deep-copies the value into a pool sized exactly to it (const strings are copied too), so
+     * the new document is independent of the source and reserves no more than it uses.
      *
      * @param value The rapidjson::Value to copy.
      */
-    Json(const rapidjson::Value& value);
+    explicit Json(const rapidjson::Value& value);
 
     /**
      * @brief Construct a new Json object form a rapidjason::GenericObject.
@@ -267,7 +286,118 @@ public:
      *
      */
     Json();
+    // ---------------------------------------------------------------------------------------------
+    // Bounded parsing.
+    //
+    // A document built from text goes through parseBounded() — the text constructors below,
+    // Json::compact() and the helper-argument literal parser of the builder — so a JSON text nested
+    // deeper than MAX_DEPTH never becomes a DOM and the recursions that walk a DOM afterwards
+    // (copy on Pointer::Set, Writer::Accept, merge, ...) are bounded by construction.
+    // ---------------------------------------------------------------------------------------------
 
+    /**
+     * @brief Maximum nesting depth (open objects + arrays at any point) of a document built from text.
+     *
+     * Depth 1 is the root container: a text with MAX_DEPTH nested containers parses, one with
+     * MAX_DEPTH + 1 is a parse error. It is the single engine-wide nesting limit: parsers that build
+     * structure from untrusted text without rapidjson (XML element depth, paths from event keys) use it too.
+     */
+    static constexpr std::size_t MAX_DEPTH = 256;
+
+    /// Text of the depth-cap failure, as it appears in exceptions and parser traces ("... (256)" when formatted).
+    static constexpr std::string_view DEPTH_ERROR_MSG = "nesting depth exceeds the limit";
+
+    /**
+     * @brief Parse @p is into @p doc rejecting any nesting deeper than MAX_DEPTH.
+     *
+     * PRECONDITION: @p doc is a fresh (null) document. rapidjson's Document::Populate keeps a
+     * previous value when the generator fails, so parsing into a used document is not supported
+     * (asserted in debug builds). On failure @p doc stays null.
+     *
+     * The returned result is the Reader's: Populate never sets doc.HasParseError(), so callers MUST
+     * use this ParseResult. Its code is kParseErrorTermination when — and only when — the depth cap
+     * fired (rapidjson::Document's own handler never returns false); see isDepthError().
+     *
+     * @tparam parseFlags rapidjson parse flags (e.g. kParseStopWhenDoneFlag). kParseInsituFlag is not supported.
+     * @param doc Fresh document that receives the value (its allocator is used, so a compact document keeps its pool).
+     * @param is Input stream (StringStream, EncodedInputStream<UTF8<>, MemoryStream>, ...).
+     */
+    template<unsigned parseFlags = rapidjson::kParseNoFlags, typename InputStream>
+    static rapidjson::ParseResult parseBounded(rapidjson::Document& doc, InputStream& is)
+    {
+        static_assert(!(parseFlags & rapidjson::kParseInsituFlag), "in-situ parsing is not supported by parseBounded");
+        RAPIDJSON_ASSERT(doc.IsNull());
+        rapidjson::ParseResult result;
+        auto generator = [&](rapidjson::Document& handler) -> bool
+        {
+            BoundedHandler<rapidjson::Document> guard {handler, MAX_DEPTH};
+            rapidjson::Reader reader;
+            result = reader.Parse<parseFlags>(is, guard);
+            return static_cast<bool>(result);
+        };
+        doc.Populate(generator); // lvalue generator: Populate takes Generator&
+        return result;
+    }
+
+    /// @return true iff @p result is the depth-cap failure produced by parseBounded().
+    static bool isDepthError(const rapidjson::ParseResult& result)
+    {
+        return result.Code() == rapidjson::kParseErrorTermination;
+    }
+
+private:
+    /**
+     * @brief rapidjson Handler that forwards every SAX event to @p H and aborts the parse once the
+     * nesting depth exceeds @p maxDepth (returning false makes the Reader stop with kParseErrorTermination).
+     */
+    template<typename H>
+    class BoundedHandler
+    {
+    public:
+        using Ch = typename H::Ch;
+
+        BoundedHandler(H& inner, std::size_t maxDepth)
+            : m_inner(inner)
+            , m_maxDepth(maxDepth)
+        {
+        }
+
+        bool Null() { return m_inner.Null(); }
+        bool Bool(bool b) { return m_inner.Bool(b); }
+        bool Int(int i) { return m_inner.Int(i); }
+        bool Uint(unsigned u) { return m_inner.Uint(u); }
+        bool Int64(int64_t i) { return m_inner.Int64(i); }
+        bool Uint64(uint64_t u) { return m_inner.Uint64(u); }
+        bool Double(double d) { return m_inner.Double(d); }
+        bool RawNumber(const Ch* str, rapidjson::SizeType length, bool copy)
+        {
+            return m_inner.RawNumber(str, length, copy);
+        }
+        bool String(const Ch* str, rapidjson::SizeType length, bool copy) { return m_inner.String(str, length, copy); }
+        bool Key(const Ch* str, rapidjson::SizeType length, bool copy) { return m_inner.Key(str, length, copy); }
+        bool StartObject() { return enter() && m_inner.StartObject(); }
+        bool EndObject(rapidjson::SizeType memberCount)
+        {
+            --m_depth;
+            return m_inner.EndObject(memberCount);
+        }
+        bool StartArray() { return enter() && m_inner.StartArray(); }
+        bool EndArray(rapidjson::SizeType elementCount)
+        {
+            --m_depth;
+            return m_inner.EndArray(elementCount);
+        }
+
+    private:
+        /// Counts one more open container; false (abort) when the cap is exceeded.
+        bool enter() { return ++m_depth <= m_maxDepth; }
+
+        H& m_inner;
+        std::size_t m_maxDepth;
+        std::size_t m_depth {0};
+    };
+
+public:
     /**
      * @brief Construct a new Json object from a rapidjason Document.
      * Moves the document.
@@ -306,7 +436,7 @@ public:
      *
      * The initial block is max(COMPACT_INITIAL_CAPACITY, capacityHint rounded up to a
      * COMPACT_CHUNK_CAPACITY multiple); if the document outgrows it, the pool grows in
-     * COMPACT_CHUNK_CAPACITY steps. A small allocator bookkeeping header (~48 bytes)
+     * COMPACT_CHUNK_CAPACITY steps. A small allocator bookkeeping header (56 bytes on LP64)
      * lives inside the initial block.
      *
      * @param src The JSON string to parse.
@@ -336,7 +466,9 @@ public:
     /**
      * @brief Bytes actually allocated by the document's memory pool (its capacity).
      * For a standard document this is a multiple of 64 KB once anything is allocated;
-     * for a compact one, the initial block plus COMPACT_CHUNK_CAPACITY-sized chunks.
+     * for a compact one, the initial block plus COMPACT_CHUNK_CAPACITY-sized chunks; for an
+     * element copied by getArray(), getObject() or getJson(), exactly its content (plus
+     * COMPACT_CHUNK_CAPACITY-sized chunks if it is mutated later).
      */
     size_t getAllocatedMemory() const;
 
@@ -439,6 +571,15 @@ public:
      * @throws std::runtime_error If the pointer path is invalid.
      */
     bool exists(std::string_view pointerPath) const;
+
+    /**
+     * @brief Test decoded member names at one object without copying or traversing member values.
+     *
+     * Calls predicate with a length-aware view of each name, including repeated names, until it
+     * returns true. Views are valid while this document remains alive and unmodified.
+     * Returns false for an absent path, a non-object, or no match. Predicate exceptions propagate.
+     */
+    bool anyMemberName(const std::function<bool(std::string_view)>& predicate, const PointerPath& path = ROOT_PP) const;
 
     /**
      * @brief Check if the Json contains a field with the given dot path, and if so, with
@@ -546,6 +687,19 @@ public:
     }
 
     /**
+     * @brief Get a string through a unique path of object members.
+     *
+     * Each decoded pointer token must match exactly one member, comparing both bytes and length.
+     * Arrays are not traversed; numeric tokens are object member names. An empty path selects the root.
+     * Off-path members are not traversed or checked for uniqueness.
+     *
+     * @return Success, NotFound (absent or repeated member), or WrongType (non-object intermediate
+     *         or non-string leaf). The output is assigned only on success.
+     * @warning The returned view is valid only while this document remains alive and unmodified.
+     */
+    RetGet getUniqueString(std::string_view& out, const PointerPath& path = ROOT_PP) const noexcept;
+
+    /**
      * @brief Get the value of the int field at the given path.
      *
      * @param path JSON pointer path to the field (default: root).
@@ -621,6 +775,10 @@ public:
     /**
      * @brief Get the value of the array field at the given path.
      *
+     * Each element is an independent document whose pool is sized exactly to its content: it is
+     * meant to be read or copied into another document. To mutate one heavily, copy it with
+     * Json(const Json&), which yields a standard (64 KB-chunk) document.
+     *
      * @param path JSON pointer path to the field (default: root).
      * @return std::optional<std::vector<Json>> The array elements, or std::nullopt if not found or not an array.
      * @throws std::runtime_error If the pointer path is invalid.
@@ -629,6 +787,10 @@ public:
 
     /**
      * @brief get the value of the object field.
+     *
+     * Each member value is an independent document whose pool is sized exactly to its content: it
+     * is meant to be read or copied into another document. To mutate one heavily, copy it with
+     * Json(const Json&), which yields a standard (64 KB-chunk) document.
      *
      * @param path The base pointer path to get.
      *
@@ -698,7 +860,11 @@ public:
     std::optional<std::string> str(std::string_view path) const;
 
     /**
-     * @brief Get a copy of the Json object or nothing if the path not found.c++ diagram
+     * @brief Get a copy of the Json object or nothing if the path not found.
+     *
+     * The copy is an independent document whose pool is sized exactly to its content: it is meant
+     * to be read or copied into another document. To mutate it heavily, copy it with
+     * Json(const Json&), which yields a standard (64 KB-chunk) document.
      *
      * @param path The path to the object, default value is root object ("").
      * @return std::optional<Json> The Json object if it exists, std::nullopt otherwise.
@@ -1030,6 +1196,29 @@ public:
      * @throws std::runtime_error If path is invalid.
      */
     void setString(std::string_view value, std::string_view path = "");
+
+    /**
+     * @brief Set the String object at the path, reading every token of the path as an object member name.
+     * Unlike setString, a token made only of digits is never an array index: every node on the way that is not an
+     * object becomes one, so the cost does not depend on the value of a numeric token. Use it when the path comes
+     * from event data. As in JSON Pointer, a "-" token on an existing array still appends to it.
+     *
+     * @param value The value to set.
+     * @param path The path to the object.
+     *
+     * @throws std::runtime_error If path is invalid.
+     */
+    void setStringAsMembers(std::string_view value, std::string_view path);
+
+    /**
+     * @brief Set the Null object at the path, reading every token of the path as an object member name.
+     * @see setStringAsMembers
+     *
+     * @param path The path to the object.
+     *
+     * @throws std::runtime_error If path is invalid.
+     */
+    void setNullAsMembers(std::string_view path);
 
     /**
      * @brief Set the Array object at the path.

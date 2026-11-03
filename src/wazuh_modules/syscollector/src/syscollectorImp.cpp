@@ -1,7 +1,6 @@
 /*
  * Wazuh SysCollector
- * Copyright (C) 2015, Wazuh Inc.
- * October 7, 2020.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -14,6 +13,8 @@
 #include "stringHelper.h"
 #include "hashHelper.h"
 #include "timeHelper.h"
+#include "wazuhCommon.hpp"
+#include "defer.hpp"
 #include <algorithm>
 #include <cstdint>
 #include <iostream>
@@ -106,6 +107,9 @@ constexpr auto SYSCOLLECTOR_SYNCED_AGENT_ID_METADATA_KEY {"synced_agent_id"};
 // cleared and resent on every cycle -- each time as a first scan, which suppresses alerts, so a
 // genuinely new CVE appearing between two of those cycles would never raise one.
 constexpr auto SYSCOLLECTOR_VD_SYNCED_AGENT_ID_METADATA_KEY {"vd_synced_agent_id"};
+// Per plain-lane table, followed by the table name: the agent id the table was last resent under,
+// so a resync cut short by a restart or a failed table resumes with the tables still pending.
+constexpr auto SYSCOLLECTOR_TABLE_SYNCED_AGENT_ID_METADATA_PREFIX {"synced_agent_id:"};
 
 static const std::map<ReturnTypeCallback, std::string> OPERATION_MAP
 {
@@ -185,12 +189,17 @@ static void sanitizeJsonValue(nlohmann::json& input)
     }
     else if (input.is_string())
     {
-        const std::string& stringValue = input.get_ref<const std::string&>();
+        // Collected strings can hold arbitrary bytes (e.g. a process name set with prctl), and
+        // every later dump() of the item throws on invalid UTF-8.
+        const std::string stringValue = Utils::sanitizeUtf8(input.get_ref<const std::string&>());
 
         if (stringValue != " ")
         {
             input = Utils::trim(stringValue);
         }
+
+        // Collected strings (e.g. process names) may hold invalid UTF-8, which makes every later dump() throw.
+        input = nlohmann::json::parse(input.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace));
     }
 }
 
@@ -199,7 +208,8 @@ static std::string getItemChecksum(const nlohmann::json& item)
     const auto content{item.dump()};
     Utils::HashData hash;
     hash.update(content.c_str(), content.size());
-    return Utils::asciiToHex(hash.hash());
+    const auto digest {hash.hash()};
+    return wazuh::hex_encode(digest.data(), digest.size());
 }
 
 // Runtime counters that move on their own between scans. They are part of the inventory state, so
@@ -209,6 +219,11 @@ static std::string getItemChecksum(const nlohmann::json& item)
 static const std::map<std::string, std::vector<std::string>> VOLATILE_FIELDS_BY_TABLE
 {
     {HW_TABLE, {"memory_free", "memory_used"}},
+    // A package's size is measured by walking its files, so it can come back different, or not
+    // at all, without the package having changed: a file removed mid-walk, an entry cap or a
+    // deadline. Keeping it out of the checksum means such a scan neither reports a change nor
+    // overwrites the stored value, while the state document still carries the latest reading.
+    {PACKAGES_TABLE, {"size"}},
     {PROCESSES_TABLE, {"utime", "stime"}},
     {
         NET_IFACE_TABLE,
@@ -220,6 +235,30 @@ static const std::map<std::string, std::vector<std::string>> VOLATILE_FIELDS_BY_
         }
     }
 };
+
+// The columns that identify a package row, in the order the table declares them.
+static const std::vector<std::string> PACKAGE_KEY_FIELDS {"name", "version_", "architecture", "type", "path"};
+
+// A package row's identity as one string, so a stored size can be looked up for the row a scan
+// is about to report. Values are separated by a character that cannot appear in any of them.
+static std::string packageKey(const nlohmann::json& row)
+{
+    std::string key;
+
+    for (const auto& field : PACKAGE_KEY_FIELDS)
+    {
+        const auto it {row.find(field)};
+
+        if (it != row.end() && it->is_string())
+        {
+            key += it->get<std::string>();
+        }
+
+        key += '\x01';
+    }
+
+    return key;
+}
 
 static void eraseVolatileFields(nlohmann::json& item, const std::string& table)
 {
@@ -286,7 +325,8 @@ static std::string getItemId(const nlohmann::json& item, const std::vector<std::
         }
     }
 
-    return Utils::asciiToHex(hash.hash());
+    const auto digest {hash.hash()};
+    return wazuh::hex_encode(digest.data(), digest.size());
 }
 
 static bool isElementDuplicated(const nlohmann::json& input, const std::pair<std::string, std::string>& keyValue)
@@ -557,7 +597,16 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const bool browserExtensions,
                         const bool notifyOnFirstScan)
 {
-    auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement(), DbManagement::PERSISTENT);
+    auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement(), DbManagement::PERSISTENT,
+                                           UPGRADE_SQL_STATEMENTS);
+
+    // Logged here, with this module's tag: a recreated database is why the next sync resends
+    // the whole inventory.
+    if (const auto recreateReason {dbSync->recreateReason()}; !recreateReason.empty() && logFunction)
+    {
+        logFunction(LOG_WARNING, recreateReason);
+    }
+
     auto normalizer = std::make_unique<SysNormalizer>(normalizerConfigPath, normalizerType);
 
     std::unique_lock<std::mutex> lock{m_scan_mutex};
@@ -632,16 +681,15 @@ void Syscollector::start()
         m_spSyncProtocol->reset();
     }
 
+    // Deletes the disabled collectors' data itself once the notification is sent.
     bool notifySuccess = handleNotifyDataClean();
 
     if (notifySuccess)
     {
         if (m_logFunction)
         {
-            m_logFunction(LOG_DEBUG, "Syscollector data clean notification for disabled collectors sent successfully, proceeding to delete data.");
+            m_logFunction(LOG_DEBUG, "Syscollector data clean notification for disabled collectors sent successfully, data deleted.");
         }
-
-        deleteDisableCollectorsData();
     }
     else
     {
@@ -722,7 +770,41 @@ bool Syscollector::handleNotifyDataClean()
     {
         attempt++;
 
-        ret = notifyDisableCollectorsDataClean();
+        {
+            // Same reason as the recovery: this DataClean would reset a running flush's session.
+            // Waits for a flush, a synchronization or a recovery (the sync thread may already be
+            // resending after an agent id change) instead of skipping. Holds the recovery slot for
+            // the attempt, and on success until the disabled collectors' rows are deleted, so a
+            // flush cannot resend them after the DataClean. Released while a failed attempt waits
+            // to retry. A synchronization due meanwhile is skipped, as while a flush sends.
+            std::optional<ScanGuard> recoveryGuard;
+            std::optional<ScanGuard> startupDataCleanGuard;
+
+            if (hasDisabledCollectorsData())
+            {
+                std::unique_lock<std::mutex> lock(m_pauseMutex);
+
+                while ((m_flushInProgress.load() || m_syncing.load() || m_recoveryInProgress.load()) && !m_stopping.load())
+                {
+                    m_pauseCv.wait_for(lock, std::chrono::seconds(1));
+                }
+
+                if (m_stopping.load())
+                {
+                    break;
+                }
+
+                recoveryGuard.emplace(m_recoveryInProgress, m_pauseCv);
+                startupDataCleanGuard.emplace(m_startupDataCleanInProgress, m_pauseCv);
+            }
+
+            ret = notifyDisableCollectorsDataClean();
+
+            if (ret)
+            {
+                deleteDisableCollectorsData();
+            }
+        }
 
         if (ret)
         {
@@ -964,11 +1046,9 @@ nlohmann::json Syscollector::ecsSystemData(const nlohmann::json& originalData, b
     setJsonField(ret, originalData, "/host/hostname", "hostname", createFields);
     setJsonField(ret, originalData, "/host/os/build", "os_build", createFields);
     setJsonField(ret, originalData, "/host/os/codename", "os_codename", createFields);
-    setJsonField(ret, originalData, "/host/os/distribution/release", "os_distribution_release", createFields);
+    setJsonField(ret, originalData, "/host/os/display_version", "os_display_version", createFields);
     setJsonField(ret, originalData, "/host/os/full", "os_full", createFields);
-    setJsonField(ret, originalData, "/host/os/kernel/name", "os_kernel_name", createFields);
-    setJsonField(ret, originalData, "/host/os/kernel/release", "os_kernel_release", createFields);
-    setJsonField(ret, originalData, "/host/os/kernel/version", "os_kernel_version", createFields);
+    setJsonField(ret, originalData, "/host/os/kernel", "os_kernel_release", createFields);
     setJsonField(ret, originalData, "/host/os/major", "os_major", createFields);
     setJsonField(ret, originalData, "/host/os/minor", "os_minor", createFields);
     setJsonField(ret, originalData, "/host/os/name", "os_name", createFields);
@@ -1064,7 +1144,26 @@ nlohmann::json Syscollector::ecsPackageData(const nlohmann::json& originalData, 
     setJsonField(ret, originalData, "/package/name", "name", createFields);
     setJsonField(ret, originalData, "/package/path", "path", createFields);
     setJsonField(ret, originalData, "/package/priority", "priority", createFields);
-    setJsonField(ret, originalData, "/package/size", "size", createFields);
+
+    // A package never occupies 0 bytes. Collectors store 0 when the size is unknown, because
+    // DBSync cannot hold a NULL for this column without every comparison reporting a false
+    // change, so the sentinel is translated here rather than in the collectors. Same shape as
+    // /host/cpu/speed and the ports /process/pid above.
+    if (createFields || originalData.contains("size"))
+    {
+        const nlohmann::json::json_pointer pointer("/package/size");
+        const auto it {originalData.find("size")};
+
+        if (it != originalData.end() && it->is_number() && it->get<int64_t>() > 0)
+        {
+            ret[pointer] = *it;
+        }
+        else
+        {
+            ret[pointer] = nullptr;
+        }
+    }
+
     setJsonField(ret, originalData, "/package/source", "source", createFields);
     setJsonField(ret, originalData, "/package/type", "type", createFields);
     setJsonField(ret, originalData, "/package/vendor", "vendor", createFields);
@@ -1403,7 +1502,7 @@ nlohmann::json Syscollector::ecsServicesData(const nlohmann::json& originalData,
     setJsonField(ret, originalData, "/error/log/file/path", "error_log_file_path", createFields);
     setJsonField(ret, originalData, "/file/path", "file_path", createFields);
     setJsonField(ret, originalData, "/log/file/path", "log_file_path", createFields);
-    setJsonFieldArray(ret, originalData, "/process/args", "process_args", createFields);
+    setJsonFieldArrayFromJsonString(ret, originalData, "/process/args", "process_args", createFields);
     setJsonField(ret, originalData, "/process/executable", "process_executable", createFields);
     setJsonField(ret, originalData, "/process/group/name", "process_group_name", createFields);
     setJsonField(ret, originalData, "/process/pid", "process_pid", createFields);
@@ -1423,8 +1522,8 @@ nlohmann::json Syscollector::ecsServicesData(const nlohmann::json& originalData,
     setJsonField(ret, originalData, "/service/restart", "service_restart", createFields);
     setJsonField(ret, originalData, "/service/start_type", "service_start_type", createFields);
     setJsonField(ret, originalData, "/service/starts/on_mount", "service_starts_on_mount", createFields, true);
-    setJsonFieldArray(ret, originalData, "/service/starts/on_not_empty_directory", "service_starts_on_not_empty_directory", createFields);
-    setJsonFieldArray(ret, originalData, "/service/starts/on_path_modified", "service_starts_on_path_modified", createFields);
+    setJsonFieldArrayFromJsonString(ret, originalData, "/service/starts/on_not_empty_directory", "service_starts_on_not_empty_directory", createFields);
+    setJsonFieldArrayFromJsonString(ret, originalData, "/service/starts/on_path_modified", "service_starts_on_path_modified", createFields);
     setJsonField(ret, originalData, "/service/state", "service_state", createFields);
     setJsonField(ret, originalData, "/service/sub_state", "service_sub_state", createFields);
     setJsonField(ret, originalData, "/service/target/address", "service_target_address", createFields);
@@ -1548,6 +1647,10 @@ nlohmann::json Syscollector::getOSData()
 {
     nlohmann::json ret;
     ret[0] = m_spInfo->os();
+    // Not sent since host.os.kernel became the release alone. Stored, a change in either (e.g. a
+    // rebuilt kernel with the same release) would report a modified row with nothing new in it.
+    ret[0].erase("os_kernel_name");
+    ret[0].erase("os_kernel_version");
     sanitizeJsonValue(ret[0]);
     ret[0]["checksum"] = getItemChecksum(ret[0]);
     return ret;
@@ -1715,6 +1818,52 @@ void Syscollector::scanPackages()
     {
         m_logFunction(LOG_DEBUG_VERBOSE, "Starting packages scan");
 
+        // A scan that cannot measure a package's size leaves the value out, so the stored one is
+        // kept. The record reported to the inventory is built only from what the scan carried,
+        // though, so leaving it out there would report the package as having no size while the
+        // database still holds the real one, and no later scan would correct it. The sizes already
+        // known are therefore read once here and put back into any record that arrives without one.
+        // This runs before the transaction opens: reading the same tables from inside it would be
+        // querying a database that is midway through being written.
+        std::map<std::string, int64_t> knownSizes;
+        {
+            auto sizeQuery = SelectQuery::builder()
+                             .table(PACKAGES_TABLE)
+                             .columnList({"name", "version_", "architecture", "type", "path", "size"})
+                             .build();
+
+            const auto sizeCallback
+            {
+                [&knownSizes](ReturnTypeCallback returnType, const nlohmann::json & row)
+                {
+                    if (SELECTED == returnType)
+                    {
+                        const auto it {row.find("size")};
+
+                        if (it != row.end() && it->is_number())
+                        {
+                            knownSizes[packageKey(row)] = it->get<int64_t>();
+                        }
+                    }
+                }
+            };
+
+            try
+            {
+                m_spDBSync->selectRows(sizeQuery.query(), sizeCallback);
+            }
+            // LCOV_EXCL_START
+            catch (const std::exception& ex)
+            {
+                // Without the stored sizes a package that cannot be measured reports none, which is
+                // the behaviour this guards against, so say so rather than fail the whole scan.
+                m_logFunction(LOG_WARNING,
+                              std::string{"Could not read the stored package sizes: "} + ex.what());
+            }
+
+            // LCOV_EXCL_STOP
+        }
+
         const auto callback
         {
             [this](ReturnTypeCallback result, const nlohmann::json & data)
@@ -1730,12 +1879,15 @@ void Syscollector::scanPackages()
             QUEUE_SIZE,
             callback
         };
-        m_spInfo->packages([this, &txn](nlohmann::json & rawData)
+        m_spInfo->packages([this, &txn, &knownSizes](nlohmann::json & rawData)
         {
             nlohmann::json input;
 
             sanitizeJsonValue(rawData);
-            rawData["checksum"] = getItemChecksum(rawData);
+
+            auto checksumInput = rawData;
+            eraseVolatileFields(checksumInput, PACKAGES_TABLE);
+            rawData["checksum"] = getItemChecksum(checksumInput);
 
             input["table"] = PACKAGES_TABLE;
             m_spNormalizer->normalize("packages", rawData);
@@ -1743,6 +1895,23 @@ void Syscollector::scanPackages()
 
             if (!rawData.empty())
             {
+                // Inside this guard on purpose: removeExcluded empties the row for a package the
+                // configuration excludes, and putting a size into an emptied row would report a
+                // package that should not be reported at all. After normalising, too, because that
+                // is what decides the values the row is stored under, so the identity used for the
+                // lookup has to be the normalised one. Restoring the stored size changes nothing
+                // the database compares, since it is the value already held, but it keeps the
+                // reported record truthful.
+                if (!rawData.contains("size"))
+                {
+                    const auto known {knownSizes.find(packageKey(rawData))};
+
+                    if (known != knownSizes.end())
+                    {
+                        rawData["size"] = known->second;
+                    }
+                }
+
                 input["data"] = nlohmann::json::array( { rawData } );
                 input["options"]["return_old_data"] = true;
 
@@ -1877,11 +2046,21 @@ void Syscollector::scanProcesses()
             QUEUE_SIZE,
             callback
         };
-        m_spInfo->processes([this, &txn](nlohmann::json & rawData)
+        // A record with no start time is one the Windows collector could not read the process
+        // times for, whether because no handle opened or because GetProcessTimes failed. The
+        // other collectors always set it, so this counter stays at zero there.
+        std::size_t processesWithoutStartTime { 0 };
+
+        m_spInfo->processes([this, &txn, &processesWithoutStartTime](nlohmann::json & rawData)
         {
             nlohmann::json input;
 
             sanitizeJsonValue(rawData);
+
+            if (!rawData.contains("start"))
+            {
+                ++processesWithoutStartTime;
+            }
 
             auto checksumInput = rawData;
             eraseVolatileFields(checksumInput, PROCESSES_TABLE);
@@ -1894,6 +2073,13 @@ void Syscollector::scanProcesses()
             txn.syncTxnRow(input);
         });
         txn.getDeletedRows(callback);
+
+        if (processesWithoutStartTime > 0)
+        {
+            m_logFunction(LOG_DEBUG_VERBOSE,
+                          std::to_string(processesWithoutStartTime) +
+                          " process(es) reported without process start time");
+        }
 
         m_logFunction(LOG_DEBUG_VERBOSE, "Ending processes scan");
     }
@@ -2231,7 +2417,8 @@ std::string Syscollector::calculateHashId(const nlohmann::json& data, const std:
     Utils::HashData hash(Utils::HashType::Sha1);
     hash.update(primaryKey.c_str(), primaryKey.size());
 
-    return Utils::asciiToHex(hash.hash());
+    const auto digest {hash.hash()};
+    return wazuh::hex_encode(digest.data(), digest.size());
 }
 
 nlohmann::json Syscollector::addPreviousFields(nlohmann::json& current, const nlohmann::json& previous)
@@ -2383,6 +2570,46 @@ void Syscollector::setJsonFieldArray(nlohmann::json& target,
     }
 }
 
+void Syscollector::setJsonFieldArrayFromJsonString(nlohmann::json& target,
+                                                   const nlohmann::json& source,
+                                                   const std::string& destPath,
+                                                   const std::string& sourceKey,
+                                                   bool createFields)
+{
+    if (createFields || source.contains(sourceKey))
+    {
+        const nlohmann::json::json_pointer destPointer(destPath);
+        target[destPointer] = nullptr;
+
+        if (source.contains(sourceKey) && source[sourceKey].is_string() && source[sourceKey] != EMPTY_VALUE && source[sourceKey] != UNKNOWN_VALUE)
+        {
+            const auto& valueStr = source[sourceKey].get_ref<const std::string&>();
+            const auto parsed = nlohmann::json::parse(valueStr, nullptr, false);
+
+            const bool isStringArray = parsed.is_array() &&
+                                       std::all_of(parsed.begin(), parsed.end(), [](const nlohmann::json & element)
+            {
+                return element.is_string();
+            });
+
+            if (isStringArray)
+            {
+                // Empty elements are kept: an empty argument is still a distinct argument.
+                if (!parsed.empty())
+                {
+                    target[destPointer] = parsed;
+                }
+            }
+            else
+            {
+                // A value that is not a JSON string array (e.g. written by an older agent) is kept
+                // whole, since there is no reliable way to split it.
+                target[destPointer] = nlohmann::json::array({valueStr});
+            }
+        }
+    }
+}
+
 // Sync protocol methods implementation
 void Syscollector::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD,
                                     uint32_t integrityInterval)
@@ -2410,9 +2637,12 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
         m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, logger_func);
         m_logFunction(LOG_DEBUG, "Syscollector sync protocol initialized successfully with database: " + syncDbPath);
 
-        // Initialize VD sync protocol with different module name to avoid routing conflicts
+        // Initialize VD sync protocol with different module name to avoid routing conflicts.
+        // isFeedBased = true: this instance's 409s are checked against the manager's VD feed
+        // offset, not a per-item/global-state checksum -- see determineSyncFailureReasonBasedOnSyncResult().
         std::string vdModuleName = moduleName + "_vd";
-        m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(vdModuleName, syncDbPathVD, logger_func_vd);
+        m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(vdModuleName, syncDbPathVD, logger_func_vd,
+                                                                 nullptr, nullptr, /*isFeedBased=*/true);
         m_logFunction(LOG_DEBUG, "Syscollector VD sync protocol initialized successfully with database: " + syncDbPathVD + " and module name: " + vdModuleName);
 
         // Initialize schema validator factory from embedded resources
@@ -2453,10 +2683,49 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
         return {false, {}};
     }
 
-    m_logFunction(LOG_INFO, "Starting inventory synchronization.");
+    // RAII guard ensures m_syncing is set to false even if function exits early. Claimed under
+    // the mutex a flush checks it with, so the two never both start.
+    std::optional<ScanGuard> syncGuard;
 
-    // RAII guard ensures m_syncing is set to false even if function exits early
-    ScanGuard syncGuard(m_syncing, m_pauseCv);
+    {
+        std::lock_guard<std::mutex> lock(m_pauseMutex);
+
+        // Checked again under the mutex pause() waits with: a pause() that lands after the check
+        // above has already seen no sync running and returned.
+        if (m_paused || m_stopping.load())
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_DEBUG, "Syscollector module is paused or stopping, skipping synchronization");
+            }
+
+            return {false, {}};
+        }
+
+        if (m_flushInProgress.load())
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_DEBUG, "Syscollector synchronization skipped: flush in progress");
+            }
+
+            return {false, {}};
+        }
+
+        if (m_startupDataCleanInProgress.load())
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_DEBUG, "Syscollector synchronization skipped: DataClean in progress");
+            }
+
+            return {false, {}};
+        }
+
+        syncGuard.emplace(m_syncing, m_pauseCv);
+    }
+
+    m_logFunction(LOG_INFO, "Starting inventory synchronization.");
 
     // Held for the whole function: setSyncProtocol()/setSyncProtocolVD() replace these
     // pointers under the exclusive lock, and synchronizeModule() below can run for a while
@@ -2520,9 +2789,20 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
                 m_logFunction(LOG_WARNING, "Syscollector synchronization failed " +
                               std::to_string(result.consecutiveFailures) + " times in a row: " + result.failureReason);
             }
+            else if (result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+            {
+                // Same grace as the managerNotReady/localTransportUnavailable branch above: a
+                // session rejection (e.g. 409 checksum/version mismatch) is ordinarily transient
+                // -- the state it disagreed about (an index checksum, a feed offset) is expected
+                // to catch up within a cycle or two -- so it is not yet worth a WARNING.
+                m_logFunction(LOG_INFO, "Syscollector synchronization deferred" +
+                              (result.failureReason.empty() ? "." : ": " + result.failureReason) +
+                              " Will retry next cycle.");
+            }
             else
             {
-                m_logFunction(LOG_WARNING, "Syscollector synchronization failed" +
+                m_logFunction(LOG_WARNING, "Syscollector synchronization failed " +
+                              std::to_string(result.consecutiveFailures) + " times in a row" +
                               (result.failureReason.empty() ? "." : ": " + result.failureReason));
             }
         }
@@ -2578,12 +2858,31 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
                 m_logFunction(LOG_WARNING, "Syscollector VD synchronization failed " +
                               std::to_string(vdResult.consecutiveFailures) + " times in a row: " + vdResult.failureReason);
             }
+            else if (vdResult.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+            {
+                // Same grace as the managerNotReady/localTransportUnavailable branch above: a
+                // session rejection (e.g. 409 version_mismatch -- most commonly a fresh agent's
+                // first VD sync racing the manager's already-loaded feed, #39543) is ordinarily
+                // transient -- the agent's locally known feed offset is expected to catch up
+                // within a cycle or two -- so it is not yet worth a WARNING.
+                m_logFunction(LOG_INFO, "Syscollector VD synchronization deferred" +
+                              (vdResult.failureReason.empty() ? "." : ": " + vdResult.failureReason) +
+                              " Will retry next cycle.");
+            }
             else
             {
-                m_logFunction(LOG_WARNING, "Syscollector VD synchronization failed" +
+                m_logFunction(LOG_WARNING, "Syscollector VD synchronization failed " +
+                              std::to_string(vdResult.consecutiveFailures) + " times in a row" +
                               (vdResult.failureReason.empty() ? "." : ": " + vdResult.failureReason));
             }
         }
+    }
+
+    if (!overallSuccess)
+    {
+        // The identity resend only runs after a successful synchronization, so a failed one is
+        // the attempt that failed: the sync thread backs off on it just as on a failed resend.
+        m_identityResyncAttempts.fetch_add(1);
     }
 
     if (overallSuccess)
@@ -3188,6 +3487,42 @@ int Syscollector::executeFlushSync()
         return 0; // Not an error - just nothing to flush
     }
 
+    // Wait for a running synchronization or recovery before sending: a recovery clears the
+    // manager's indices with a DataClean, which has no session guard of its own and would reset
+    // this flush's session under it. agent-info polls the flush with no deadline, so waiting here
+    // only delays the coordination. The flags are cleared outside this mutex (ScanGuard), so the
+    // condition is re-checked every second rather than relying on the notification alone.
+    {
+        std::unique_lock<std::mutex> lock(m_pauseMutex);
+
+        while ((m_syncing.load() || m_recoveryInProgress.load()) && !m_stopping.load())
+        {
+            m_pauseCv.wait_for(lock, std::chrono::seconds(1));
+        }
+
+        if (m_stopping.load())
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_INFO, "Syscollector flush skipped: module is stopping");
+            }
+
+            return -1;
+        }
+
+        m_flushInProgress = true;
+    }
+
+    DEFER([this]()
+    {
+        {
+            std::lock_guard<std::mutex> lock(m_pauseMutex);
+            m_flushInProgress = false;
+        }
+
+        m_pauseCv.notify_all();
+    });
+
     // Trigger immediate synchronization to flush pending messages.
     SyncModuleResult result = {true, {}};
     SyncModuleResult vdResult = {true, {}};
@@ -3597,6 +3932,15 @@ std::string Syscollector::query(const std::string& jsonQuery)
                 response["error"] = MQ_ERR_INTERNAL;
                 response["message"] = "Failed to retrieve Syscollector synced agent id";
             }
+        }
+        else if (command == "get_identity_changed")
+        {
+            // Polled by the sync thread so a re-enrolled agent resends its inventory right away,
+            // instead of waiting for a sync interval that frequent reloads keep restarting.
+            response["error"] = MQ_SUCCESS;
+            response["message"] = "Syscollector identity change retrieved";
+            response["data"]["identity_changed"] = agentIdentityChangeState();
+            response["data"]["resync_attempts"] = m_identityResyncAttempts.load();
         }
         else if (command == "get_first_scan_completed")
         {
@@ -4515,6 +4859,12 @@ void Syscollector::checkDisabledCollectorsIndicesWithData()
     }
 }
 
+bool Syscollector::hasDisabledCollectorsData()
+{
+    std::shared_lock<std::shared_mutex> resourcesLock(m_resourcesMutex);
+    return !m_disabledCollectorsIndicesWithData.empty();
+}
+
 bool Syscollector::notifyDisableCollectorsDataClean()
 {
     // Serialize against releaseResources(): this entry point is driven by threads that
@@ -4700,7 +5050,7 @@ size_t Syscollector::getDocumentLimit(const std::string& index)
 }
 
 // LCOV_EXCL_START
-bool Syscollector::checkIfFullSyncRequired(const std::string& tableName)
+IntegrityCheckResult Syscollector::checkIfFullSyncRequired(const std::string& tableName)
 {
     m_logFunction(LOG_DEBUG, "Attempting to get checksum for " + tableName + " table");
 
@@ -4733,22 +5083,26 @@ bool Syscollector::checkIfFullSyncRequired(const std::string& tableName)
 
     m_logFunction(LOG_DEBUG, "Success! Final file table checksum is: " + std::string(final_checksum));
 
-    bool needs_full_sync;
-    needs_full_sync = m_spSyncProtocol->requiresFullSync(
-                          INDEX_MAP.at(tableName),
-                          final_checksum
-                      );
+    auto result = m_spSyncProtocol->requiresFullSync(
+                      INDEX_MAP.at(tableName),
+                      final_checksum
+                  );
 
-    if (needs_full_sync)
+    if (result.status == IntegrityCheckStatus::MISMATCH)
     {
-        m_logFunction(LOG_DEBUG, "Checksum mismatch detected for index " + tableName + " full sync required");
+        m_logFunction(LOG_DEBUG, "Checksum mismatch detected for table " + tableName + ", full sync required");
+    }
+    else if (result.status == IntegrityCheckStatus::VALID)
+    {
+        m_logFunction(LOG_DEBUG, "Checksum valid for table " + tableName + ", delta sync sufficient");
     }
     else
     {
-        m_logFunction(LOG_DEBUG, "Checksum valid for index " + tableName + ", delta sync sufficient");
+        // Reported by runRecoveryProcess(), once per pass for every table left unchecked.
+        m_logFunction(LOG_DEBUG, "Checksum not verified for table " + tableName + ": " + result.failureReason);
     }
 
-    return needs_full_sync;
+    return result;
 }
 // LCOV_EXCL_STOP
 
@@ -4890,6 +5244,22 @@ void Syscollector::updateLastSyncTime(const std::string& tableName, int64_t time
     updateMetadataValue(tableName, timestamp);
 }
 
+/// @brief integrity_interval in the largest whole unit that fits (86400 -> "24h").
+static std::string formatIntegrityInterval(uint32_t seconds)
+{
+    if (seconds != 0 && seconds % 3600 == 0)
+    {
+        return std::to_string(seconds / 3600) + "h";
+    }
+
+    if (seconds != 0 && seconds % 60 == 0)
+    {
+        return std::to_string(seconds / 60) + "m";
+    }
+
+    return std::to_string(seconds) + "s";
+}
+
 bool Syscollector::recoveryIntervalHasEllapsed(const std::string& tableName, int64_t integrityInterval)
 {
     int64_t currentTime = Utils::getSecondsFromEpoch();
@@ -4937,7 +5307,10 @@ bool Syscollector::isCollectorEnabledForTable(const std::string& tableName) cons
 // #38601: no longer excluded wholesale. The lane choice, the DataClean and the marker gating
 // are driven by syscollector_identity_tests.cpp against mocked protocols; only the per-item
 // persist loop below still needs a manager, and that is what stays excluded.
-bool Syscollector::resyncTableToManager(const std::string& tableName, const std::string& index, const bool syncNow)
+bool Syscollector::resyncTableToManager(const std::string& tableName,
+                                        const std::string& index,
+                                        const bool syncNow,
+                                        const std::string& retryNote)
 {
     try
     {
@@ -4945,7 +5318,7 @@ bool Syscollector::resyncTableToManager(const std::string& tableName, const std:
     }
     catch (const std::exception& ex)
     {
-        m_logFunction(LOG_ERROR, "Couldn't update version for every entry in " + tableName);
+        m_logFunction(LOG_ERROR, "Couldn't update version for every entry in " + tableName + "; " + retryNote);
         return false;
     }
 
@@ -4989,7 +5362,7 @@ bool Syscollector::resyncTableToManager(const std::string& tableName, const std:
     }
     catch (const std::exception& ex)
     {
-        m_logFunction(LOG_ERROR, "Failed to retrieve elements from " + tableName);
+        m_logFunction(LOG_ERROR, "Failed to retrieve elements from " + tableName + "; " + retryNote);
         return false;
     }
 
@@ -5007,13 +5380,20 @@ bool Syscollector::resyncTableToManager(const std::string& tableName, const std:
 
     if (!protocol)
     {
-        m_logFunction(LOG_WARNING, "No sync protocol available to recover table " + tableName + "; will retry later");
+        m_logFunction(LOG_WARNING, "No sync protocol available to recover table " + tableName + "; " + retryNote);
         return false;
     }
 
-    if (!protocol->notifyDataClean({index}).success)
+    if (const auto cleanResult = protocol->notifyDataClean({index}); !cleanResult.success)
     {
-        m_logFunction(LOG_WARNING, "Failed to clear index " + index + " before recovery resync for table " + tableName + "; will retry later");
+        if (cleanResult.stopped || m_stopping.load())
+        {
+            m_logFunction(LOG_INFO, "Recovery of index " + index + " interrupted: module is stopping.");
+            return false;
+        }
+
+        m_logFunction(LOG_WARNING, "Failed to clear index " + index + " before recovery resync for table " + tableName +
+                      (cleanResult.failureReason.empty() ? "" : " (" + Utils::rightTrim(cleanResult.failureReason, ".") + ")") + "; " + retryNote);
         return false;
     }
 
@@ -5081,29 +5461,31 @@ bool Syscollector::resyncTableToManager(const std::string& tableName, const std:
 
     if (recoverySucceeded)
     {
-        m_logFunction(LOG_DEBUG, "Recovery completed successfully");
+        m_logFunction(LOG_INFO, "Recovery of index " + index + " completed.");
     }
     else
     {
-        m_logFunction(LOG_DEBUG, "Recovery synchronization failed, will retry later");
+        // syncModule() already reported why the session failed. The rows are queued, so the
+        // ordinary cycle delivers them; nothing about this table has to be redone.
+        m_logFunction(LOG_INFO, "Recovery of index " + index + " did not finish sending; the queued rows will be "
+                      "delivered by the next regular synchronization.");
     }
 
 
     return true;
 }
 
-void Syscollector::checkAgentIdentity()
+Syscollector::AgentIdentity Syscollector::readAgentIdentity(long& currentId, int64_t& syncedId)
 {
-    const long currentId = AgentSyncProtocol::currentAgentId();
+    currentId = AgentSyncProtocol::currentAgentId();
+    syncedId = 0;
 
     if (currentId == 0)
     {
         // Nothing published yet. "Unknown" -- an unavailable provider, or one still holding the
         // previous id, must never read as a new identity.
-        return;
+        return AgentIdentity::Unknown;
     }
-
-    int64_t syncedId = 0;
 
     if (!getMetadataValue(SYSCOLLECTOR_SYNCED_AGENT_ID_METADATA_KEY, syncedId))
     {
@@ -5111,29 +5493,69 @@ void Syscollector::checkAgentIdentity()
         // worst outcome available: a single transient failure in the window right after a
         // re-enrollment would record the new id as already synchronized and suppress the resync
         // permanently. Treat it like an unknown id and try again next cycle.
-        return;
+        return AgentIdentity::Unknown;
     }
 
     if (syncedId == 0)
     {
         // Read cleanly, and nothing recorded: a clean install, or a database from before this
-        // marker existed. Adopt it and resync nothing -- on a clean install the ordinary first
-        // sync covers it, and on an upgraded agent the manager's copy is the one this agent has
-        // been maintaining all along.
+        // marker existed. The caller adopts it and resyncs nothing -- on a clean install the
+        // ordinary first sync covers it, and on an upgraded agent the manager's copy is the one
+        // this agent has been maintaining all along.
+        return AgentIdentity::Unrecorded;
+    }
+
+    return syncedId == currentId ? AgentIdentity::Unchanged : AgentIdentity::Changed;
+}
+
+int Syscollector::agentIdentityChangeState()
+{
+    // Without a sync protocol the resync has nothing to send with, so a change would never be
+    // acted on and the sync thread would wake for it every poll period.
+    if (!m_spSyncProtocol)
+    {
+        return -1;
+    }
+
+    long currentId = 0;
+    int64_t syncedId = 0;
+
+    switch (readAgentIdentity(currentId, syncedId))
+    {
+        case AgentIdentity::Changed:
+            return 1;
+
+        case AgentIdentity::Unknown:
+            return -1;
+
+        case AgentIdentity::Unrecorded:
+        case AgentIdentity::Unchanged:
+        default:
+            return 0;
+    }
+}
+
+void Syscollector::checkAgentIdentity()
+{
+    long currentId = 0;
+    int64_t syncedId = 0;
+    const auto identity = readAgentIdentity(currentId, syncedId);
+
+    if (identity == AgentIdentity::Unrecorded)
+    {
         updateMetadataValue(SYSCOLLECTOR_SYNCED_AGENT_ID_METADATA_KEY, currentId);
         return;
     }
 
-    if (syncedId == currentId)
+    if (identity != AgentIdentity::Changed)
     {
         return;
     }
 
-    m_logFunction(LOG_INFO,
-                  "Inventory was last synchronized as agent " + std::to_string(syncedId) +
-                  ", now running as agent " + std::to_string(currentId) + ". Resending every table.");
+    m_identityResyncAttempts.fetch_add(1);
 
     bool anyFailed = false;
+    bool vdLaneFailed = false;
     std::vector<std::string> vdTablesResent;
 
     // Has the VD lane already landed for this identity? Only the combined marker below waits for
@@ -5143,6 +5565,44 @@ void Syscollector::checkAgentIdentity()
     int64_t vdSyncedId = 0;
     const bool vdAlreadyResent = getMetadataValue(SYSCOLLECTOR_VD_SYNCED_AGENT_ID_METADATA_KEY, vdSyncedId)
                                  && vdSyncedId == static_cast<int64_t>(currentId);
+
+    // Same rule per plain-lane table: one already resent under this id is not cleared again, and
+    // a failed read counts as "not done". VD-lane tables follow the lane's marker instead.
+    const auto tableMarkerKey = [](const std::string & tableName)
+    {
+        return std::string(SYSCOLLECTOR_TABLE_SYNCED_AGENT_ID_METADATA_PREFIX) + tableName;
+    };
+    // The VD lane exists only while m_vdSyncEnabled; otherwise its tables ride the plain lane.
+    const auto onVDLane = [this](const std::string & index)
+    {
+        return isVDIndex(index) && m_vdSyncEnabled;
+    };
+    std::set<std::string> tablesAlreadyResent;
+
+    for (const auto& [tableName, index] : INDEX_MAP)
+    {
+        if (!isCollectorEnabledForTable(tableName))
+        {
+            continue;
+        }
+
+        int64_t tableSyncedId = 0;
+        const bool alreadyResent = onVDLane(index)
+                                   ? vdAlreadyResent
+                                   : getMetadataValue(tableMarkerKey(tableName), tableSyncedId)
+                                   && tableSyncedId == static_cast<int64_t>(currentId);
+
+        if (alreadyResent)
+        {
+            tablesAlreadyResent.insert(tableName);
+        }
+    }
+
+    m_logFunction(LOG_INFO,
+                  "Inventory was last synchronized as agent " + std::to_string(syncedId) + ", now running as agent " +
+                  std::to_string(currentId) + (tablesAlreadyResent.empty()
+                                               ? ". Resending every table."
+                                               : ". Resuming the resend with the tables not yet sent under this id."));
 
     // The plain lane keeps one session per table: an index is cleared immediately before its own
     // rows are queued, so a session that never reaches the manager leaves the others untouched
@@ -5171,8 +5631,9 @@ void Syscollector::checkAgentIdentity()
         {
             if (m_stopping.load())
             {
-                // Cut short by shutdown: leave the marker alone so the next boot re-fires rather
-                // than recording a pass that never finished.
+                // Cut short by shutdown: leave the identity marker alone so the next boot re-fires
+                // rather than recording a pass that never finished. The tables already resent keep
+                // their own markers, so that pass resumes with the pending ones.
                 return;
             }
 
@@ -5189,7 +5650,7 @@ void Syscollector::checkAgentIdentity()
             // claim a lane that never ran. A later run that does enable the lane would honour
             // that marker, skip the whole VD inventory, and leave it to go out as VDSYNC --
             // an alert for every finding the manager has never seen for this identity.
-            const bool vdTable = isVDIndex(index) && m_vdSyncEnabled;
+            const bool vdTable = onVDLane(index);
 
             // pass 0 = the plain lane, one session each; pass 1 = the VD lane, queued only.
             if (vdTable != (pass == 1))
@@ -5197,21 +5658,21 @@ void Syscollector::checkAgentIdentity()
                 continue;
             }
 
-            if (vdTable && vdAlreadyResent)
+            if (tablesAlreadyResent.count(tableName) != 0)
             {
-                // Already sent under this identity by an earlier cycle whose plain lane did not
-                // finish. Clearing and requeueing it again would buy nothing and cost an alert
-                // window.
+                // Already resent under this identity by an earlier, unfinished pass. For the VD
+                // lane, clearing and requeueing it again would also cost an alert window.
                 continue;
             }
 
-            if (!resyncTableToManager(tableName, index, !vdTable))
+            if (!resyncTableToManager(tableName, index, !vdTable, "it will be retried on the next sync cycle"))
             {
                 // Keep going: the tables that can be resent should be, and aborting here would
                 // make every later pass re-upload the ones that already succeeded. The marker is
                 // what must not move -- recording it would claim the manager holds data it never
                 // received -- so remember the failure and leave it alone at the end.
                 anyFailed = true;
+                vdLaneFailed = vdLaneFailed || vdTable;
             }
             else if (vdTable)
             {
@@ -5228,6 +5689,10 @@ void Syscollector::checkAgentIdentity()
                 // and if that second clean is ordered after the rows queued here, it deletes
                 // them.
                 updateLastSyncTime(tableName, Utils::getSecondsFromEpoch());
+
+                // Same proof the combined marker waits for: the manager accepted the DataClean
+                // and the rows are queued in the persistent sync queue.
+                updateMetadataValue(tableMarkerKey(tableName), currentId);
             }
         }
     }
@@ -5245,7 +5710,7 @@ void Syscollector::checkAgentIdentity()
                           "will be resent as an ordinary synchronization.");
         }
 
-        if (syncModule(Mode::DELTA).success)
+        if (syncModule(Mode::DELTA).success && !vdLaneFailed)
         {
             // Recorded here, not with the combined marker at the end: this lane is done for this
             // identity even if a plain table still is not, and the next cycle must not redo it.
@@ -5258,8 +5723,8 @@ void Syscollector::checkAgentIdentity()
         }
         else
         {
-            // The rows stay queued and the marker stays unset, so the next cycle sends them as a
-            // VDFirst session too. The identity marker is what must not move.
+            // A session that did not land, or a VD table that could not be cleared: the marker
+            // stays unset, so the next cycle resends the whole VD lane as one VDFirst session.
             anyFailed = true;
         }
     }
@@ -5276,15 +5741,63 @@ void Syscollector::checkAgentIdentity()
     // the next cycle sees a mismatch and resends everything. One extra pass under rapid
     // re-enrollment churn, never a marker claiming more than was actually sent.
     //
-    // Both markers move together, and only once every table above proved the manager accepted
-    // its DataClean. Gating on a plain sync result instead would let an empty queue -- which
-    // reports success without opening a session at all -- record a cycle that never landed.
+    // Both markers move together, and only once every table proved the manager accepted its
+    // DataClean, in this pass or in an earlier one under the same id. Gating on a plain sync
+    // result instead would let an empty queue -- which reports success without opening a session
+    // at all -- record a cycle that never landed.
+    //
+    // The per-table and VD markers only mean something while this transition is in progress.
+    // Cleared first, so a later enrollment that reuses an id they hold cannot skip a table; if
+    // any of them cannot be cleared, the identity is not recorded and the next cycle retries.
+    bool resetFailed = false;
+
+    for (const auto& [tableName, index] : INDEX_MAP)
+    {
+        int64_t tableSyncedId = 0;
+
+        if ((!getMetadataValue(tableMarkerKey(tableName), tableSyncedId) || tableSyncedId != 0)
+                && !updateMetadataValue(tableMarkerKey(tableName), 0))
+        {
+            resetFailed = true;
+        }
+    }
+
+    if (resetFailed || !updateMetadataValue(SYSCOLLECTOR_VD_SYNCED_AGENT_ID_METADATA_KEY, 0))
+    {
+        m_logFunction(LOG_DEBUG, "Could not clear the inventory resync progress markers; the identity will be "
+                      "recorded on the next sync cycle.");
+        return;
+    }
+
     updateMetadataValue(SYSCOLLECTOR_SYNCED_AGENT_ID_METADATA_KEY, currentId);
     updateMetadataValue(SYSCOLLECTOR_FIRST_SYNC_COMPLETED_METADATA_KEY, Utils::getSecondsFromEpoch());
 }
 
 void Syscollector::runRecoveryProcess()
 {
+    // A flush sending right now would have its session reset by the DataClean this may send; the
+    // next cycle runs it instead. Claimed under the mutex the flush checks it with. Also stands back
+    // from the start-up DataClean for disabled collectors, which holds the same slot: releasing it
+    // from here would let a flush start beside that DataClean.
+    std::optional<ScanGuard> recoveryGuard;
+
+    {
+        std::lock_guard<std::mutex> lock(m_pauseMutex);
+
+        if (m_flushInProgress.load() || m_recoveryInProgress.load())
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_DEBUG, m_flushInProgress.load() ? "Syscollector recovery skipped: flush in progress"
+                              : "Syscollector recovery skipped: DataClean in progress");
+            }
+
+            return;
+        }
+
+        recoveryGuard.emplace(m_recoveryInProgress, m_pauseCv);
+    }
+
     // #38601: identity before integrity. If this agent's id changed, the manager holds nothing
     // under it, and the per-table checksum loop below would only rediscover that one table at a
     // time, an integrity_interval apart each. Safe to drive the resync from here rather than
@@ -5292,30 +5805,77 @@ void Syscollector::runRecoveryProcess()
     // reaching syncModule() internally cannot recurse.
     checkAgentIdentity();
 
+    const auto retryNote = "it will be retried in the next integrity_interval (" +
+                           formatIntegrityInterval(m_integrityIntervalValue) + ")";
+    std::vector<std::string> notChecked;
+
     for (const auto& [tableName, index] : INDEX_MAP)
     {
         if (!isCollectorEnabledForTable(tableName)) continue;
 
-        // LCOV_EXCL_START
-        // Recovery process requires manager integration for checksum validation.
+        // A stop leaves every remaining table unstamped, so it is checked after the restart
+        // instead of being counted as checked without one.
+        if (m_stopping.load())
+        {
+            break;
+        }
+
         if (recoveryIntervalHasEllapsed(tableName, m_integrityIntervalValue))
         {
             m_logFunction(LOG_DEBUG, "Starting integrity validation process for " + tableName);
 
-            if (checkIfFullSyncRequired(tableName) && !resyncTableToManager(tableName, index))
+            const auto check = checkIfFullSyncRequired(tableName);
+
+            // m_stopping too: quiesce() raises it before it stops the protocol, so a check that
+            // failed in between does not carry the stopped flag.
+            if (check.status == IntegrityCheckStatus::NOT_CHECKED && (check.stopped || m_stopping.load()))
             {
-                // Preserved from before this was extracted: a table that cannot be resynced
-                // aborts the whole pass instead of moving on, so its integrity timestamp is
-                // left untouched and the next cycle retries it from the same point.
-                return;
+                m_logFunction(LOG_INFO, "Integrity check for " + index + " interrupted: module is stopping" +
+                              (check.mismatchUnconfirmed ? "; a checksum mismatch reported by the manager was not confirmed" : "") +
+                              ". It will be checked again after the restart.");
+                break;
             }
 
-            // Update the last sync time regardless of whether full sync was required
-            // This ensures the integrity check doesn't run again until integrity_interval has elapsed
+            if (check.status == IntegrityCheckStatus::NOT_CHECKED)
+            {
+                // Sync-protocol reasons are full sentences; drop the trailing period inside the parentheses.
+                notChecked.push_back(index + " (" + Utils::rightTrim(check.failureReason, ".") +
+                                     (check.mismatchUnconfirmed ? ", after a checksum mismatch reported by the manager" : "") +
+                                     ")");
+            }
+            else if (check.status == IntegrityCheckStatus::MISMATCH)
+            {
+                m_logFunction(LOG_INFO, "Checksum mismatch confirmed for " + index +
+                              "; starting recovery (index cleanup and full resend).");
+
+                // A failure here is reported by resyncTableToManager() itself. Like any other
+                // failure of this pass, the table still counts as checked, so it is not retried
+                // until the next integrity_interval -- unless a stop cut it short: the mismatch is
+                // confirmed, so the table is left unstamped and checked again after the restart.
+                if (!resyncTableToManager(tableName, index, true, retryNote) && m_stopping.load())
+                {
+                    break;
+                }
+            }
+
+            // Stamped whatever the outcome: a failed check or recovery is re-evaluated in the
+            // next integrity_interval, never in the next sync cycle.
             updateLastSyncTime(tableName, Utils::getSecondsFromEpoch());
         }
+    }
 
-        // LCOV_EXCL_STOP
+    if (!notChecked.empty())
+    {
+        std::string tables;
+
+        for (const auto& entry : notChecked)
+        {
+            tables += (tables.empty() ? "" : ", ") + entry;
+        }
+
+        m_logFunction(LOG_WARNING, "Integrity check could not be performed for " + std::to_string(notChecked.size()) +
+                      " table(s): " + tables + "; they will be checked again in the next integrity_interval (" +
+                      formatIntegrityInterval(m_integrityIntervalValue) + ").");
     }
 }
 

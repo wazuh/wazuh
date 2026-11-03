@@ -46,6 +46,11 @@ add_library(services STATIC ${SRC_FILES})
 
 target_link_libraries(services PRIVATE ${PLATFORM_LIBS_SERVICES})
 
+# With dbus built from source in the same build, wait for its headers.
+if(TARGET dbus_external)
+  add_dependencies(services dbus_external)
+endif()
+
 if(UNIT_TEST)
   add_coverage_libraries(services)
   add_subdirectory(tests)

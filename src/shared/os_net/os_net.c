@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -212,7 +212,9 @@ int OS_ConnectUnixDomain(const char *path, int type, int max_msg_size)
 
     /* Connect to the UNIX domain */
     if (connect(ossock, (struct sockaddr *)&n_us, SUN_LEN(&n_us)) < 0) {
+        int saved_errno = errno;
         OS_CloseSocket(ossock);
+        errno = saved_errno;
         return (OS_SOCKTERR);
     }
 
@@ -944,7 +946,7 @@ void resolve_hostname(char **hostname, int attempts) {
 }
 
 const char *get_ip_from_resolved_hostname(const char *resolved_hostname){
-    char *tmp_str;
+    const char *tmp_str;
     assert(resolved_hostname != NULL);
 
     /* Check if we have a resolved_hostname or an IP */

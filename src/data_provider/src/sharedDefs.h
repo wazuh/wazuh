@@ -1,7 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015, Wazuh Inc.
- * October 24, 2020.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -12,6 +11,8 @@
 #ifndef _SHARED_DEFS_H
 #define _SHARED_DEFS_H
 
+#include <chrono>
+#include <cstdint>
 #include <set>
 #include <string>
 
@@ -34,6 +35,16 @@ constexpr auto RPM_PATH {"/var/lib/rpm/"};
 constexpr auto SNAP_PATH {"/var/lib/snapd"};
 
 constexpr auto UNKNOWN_VALUE {" "};
+
+constexpr std::uintmax_t PACKAGE_SIZE_MAX_ENTRIES {1000000};
+constexpr std::chrono::milliseconds PACKAGE_SIZE_DEADLINE {30000};
+// Package metadata files (PyPI METADATA/PKG-INFO, npm package.json) larger than this are skipped
+constexpr std::uintmax_t PACKAGE_METADATA_MAX_FILE_SIZE {10 * 1024 * 1024};
+
+// Reported for a numeric field the platform provides no source for, so that consumers can tell
+// it apart from a genuine zero. The manager stores it as NULL.
+constexpr int NOT_COLLECTED_VALUE = -1;
+
 constexpr auto MAC_ADDRESS_COUNT_SEGMENTS
 {
     6ull
@@ -125,6 +136,14 @@ static const std::set<std::string> UNIX_NPM_DEFAULT_BASE_DIRS
     "/opt/local/lib",
     "/Users/*/.nvm/versions/node/v*/lib",
     "/private/var/root/.nvm/versions/node/v*/lib"
+};
+
+// Per-user application folders on macOS, expanded and scanned the same way as the
+// PYPI/NPM base dirs above. Add more glob patterns here to cover other per-user locations.
+static const std::set<std::string> MACOS_USER_APPLICATIONS_DIRS
+{
+    "/Users/*/Applications",
+    "/private/var/root/Applications"
 };
 
 #endif //_SHARED_DEFS_H

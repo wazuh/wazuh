@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -6,7 +6,6 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * June 19, 2019
  */
 
 #include <stdbool.h>

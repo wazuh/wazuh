@@ -274,8 +274,7 @@ stages:
     response:
       status_code: 400
       json:
-        error: 2003
-        detail: 'Error in wazuhdb request'
+        error: 1407
 
   - name: Try to show agents with a stray closing parenthesis in q
     request:
@@ -286,8 +285,7 @@ stages:
     response:
       status_code: 400
       json:
-        error: 2003
-        detail: 'Error in wazuhdb request'
+        error: 1407
 
   - name: Try to show agents with limit 0
     request:
@@ -2670,7 +2668,7 @@ stages:
         data:
           affected_items:
             - filename: agent.conf
-              hash: ab73af41699f13fdd81903b5f23d8d00
+              hash: b083dc1f093af79477ea03501b810fb6
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -2986,6 +2984,39 @@ stages:
             - id: '011'
           failed_items: []
           total_affected_items: 2
+          total_failed_items: 0
+
+  - name: Filter the agents without group with an OR query
+    request:
+      verify: False
+      <<: *no_group_request
+      params:
+        q: id=011,id=001
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: '011'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Filter the agents without group with an OR query matching only grouped agents
+    request:
+      verify: False
+      <<: *no_group_request
+      params:
+        q: id=001,id=002
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
           total_failed_items: 0
 
   - name: Try show agents with offset -1
@@ -3698,6 +3729,41 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
+  - name: Try to get the different combinations for the internal key
+    request:
+      verify: False
+      <<: *distinct_request
+      params:
+        fields: internal_key
+    response:
+      status_code: 400
+      json:
+        error: 1724
+
+  - name: Try to sort the different combinations by internal key
+    request:
+      verify: False
+      <<: *distinct_request
+      params:
+        fields: status
+        sort: internal_key
+    response:
+      status_code: 400
+      json:
+        error: 1403
+
+  - name: Try to filter the different combinations by internal key
+    request:
+      verify: False
+      <<: *distinct_request
+      params:
+        fields: status
+        q: internal_key=test
+    response:
+      status_code: 400
+      json:
+        error: 1408
+
 ---
 test_name: GET /agents/stats/distinct {fields}
 
@@ -3773,6 +3839,20 @@ stages:
             group2: 5
             group3: 4
 
+  - name: Try to get the summary of agents with an invalid id
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/summary"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "wrong_id"
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
 ---
 test_name: GET /agents/summary/status
 
@@ -3820,3 +3900,281 @@ stages:
           total_failed_items: 0
           failed_items: []
 
+
+---
+test_name: GET /agents/enrollment-tokens
+
+stages:
+
+    # POST /agents/enrollment-tokens
+  - name: Mint an enrollment token to list
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/enrollment-tokens"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        address: "wazuh-master"
+        max_uses: 5
+        description: "tavern-get"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          token: !anystr
+          id: !anystr
+          address: "wazuh-master"
+          expires: !anystr
+          pin_hex: !anystr
+      save:
+        json:
+          listed_token_id: data.id
+
+    # GET /agents/enrollment-tokens
+  - name: List the enrollment tokens (never the token text nor its credential)
+    request: &enrollment_tokens_list
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/enrollment-tokens"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: !anything
+          total_affected_items: !anyint
+          total_failed_items: 0
+          failed_items: []
+      verify_response_with:
+        - function: tavern_utils:test_validate_key_not_in_response
+          extra_kwargs:
+            key: "token"
+        - function: tavern_utils:test_validate_key_not_in_response
+          extra_kwargs:
+            key: "secret"
+
+    # GET /agents/enrollment-tokens?q=id=...&select=...
+  - name: Get the token just minted by id, selecting fields
+    request:
+      verify: False
+      <<: *enrollment_tokens_list
+      params:
+        q: "id={listed_token_id}"
+        select: "id,address,max_uses,uses,revoked,credential,description"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: "{listed_token_id}"
+              address: "wazuh-master"
+              max_uses: 5
+              uses: 0
+              revoked: false
+              credential: true
+              description: "tavern-get"
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: []
+
+    # GET /agents/enrollment-tokens?limit=1&sort=-created
+  - name: List with limit and sort
+    request:
+      verify: False
+      <<: *enrollment_tokens_list
+      params:
+        limit: 1
+        sort: "-created"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: !anystr
+              address: !anystr
+              created: !anystr
+              expires: !anystr
+              max_uses: !anyint
+              uses: !anyint
+              revoked: !anybool
+              credential: !anybool
+              description: !anything
+          total_affected_items: !anyint
+          total_failed_items: 0
+          failed_items: []
+
+    # GET /agents/enrollment-tokens?search=...
+  - name: Search by description
+    request:
+      verify: False
+      <<: *enrollment_tokens_list
+      params:
+        search: "tavern-get"
+        select: "id"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: "{listed_token_id}"
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: []
+
+    # GET /agents/enrollment-tokens?q=<date field>
+  - name: Filter by a date field (matching)
+    request:
+      verify: False
+      <<: *enrollment_tokens_list
+      params:
+        q: "id={listed_token_id};expires>2020-01-01"
+        select: "id"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: "{listed_token_id}"
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: []
+
+    # GET /agents/enrollment-tokens?q=<date field>
+  - name: Filter by a date field (not matching)
+    request:
+      verify: False
+      <<: *enrollment_tokens_list
+      params:
+        q: "id={listed_token_id};expires<2020-01-01"
+        select: "id"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+          failed_items: []
+
+    # GET /agents/enrollment-tokens?q=<boolean field>
+  - name: Filter by a boolean field (matching)
+    request:
+      verify: False
+      <<: *enrollment_tokens_list
+      params:
+        q: "id={listed_token_id};revoked=false;credential=true"
+        select: "id"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: "{listed_token_id}"
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: []
+
+    # GET /agents/enrollment-tokens?q=<boolean field>
+  - name: Filter by a boolean field (not matching)
+    request:
+      verify: False
+      <<: *enrollment_tokens_list
+      params:
+        q: "id={listed_token_id};revoked=true"
+        select: "id"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+          failed_items: []
+
+    # GET /agents/enrollment-tokens?search=<boolean value>
+  - name: Search a boolean value
+    request:
+      verify: False
+      <<: *enrollment_tokens_list
+      params:
+        q: "id={listed_token_id}"
+        search: "true"
+        select: "id"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: "{listed_token_id}"
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: []
+
+    # DELETE /agents/enrollment-tokens/{token_id}
+  - name: Revoke the token minted above (cleanup)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/enrollment-tokens/{listed_token_id}"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+
+---
+test_name: GET /agents/enrollment-tokens bad parameters
+
+marks:
+  - parametrize:
+      key: [param, value]
+      vals:
+        - [limit, 0]
+        - [limit, 999999]
+        - [offset, -1]
+        - [offset, wrong]
+        - [sort, "%25"]
+
+stages:
+  - name: Invalid value for a query parameter
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/enrollment-tokens?{param}={value}"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+---
+test_name: GET /agents/uninstall
+
+stages:
+
+  - name: Check user's permission to uninstall agents
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/uninstall"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        message: "User has permission to uninstall agents"
+        error: 0

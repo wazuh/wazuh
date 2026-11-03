@@ -1,12 +1,13 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015, Wazuh Inc.
- * September 9, 2023.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #ifndef _ROCKS_DB_WRAPPER_HPP
@@ -397,11 +398,12 @@ namespace Utils
          *
          * @param columnName Column name from where to get. If empty, the default column will be used.
          *
-         * @return std::pair<std::string, rocksdb::Slice> Last key-value pair.
+         * @return std::pair<std::string, std::string> Last key-value pair, both copied out of the
+         *         iterator, which does not outlive this call.
          *
          * @note The first element of the pair is the key, the second element is the value.
          */
-        std::pair<std::string, rocksdb::Slice> getLastKeyValue(const std::string& columnName = "")
+        std::pair<std::string, std::string> getLastKeyValue(const std::string& columnName = "")
         {
             std::unique_ptr<rocksdb::Iterator> it(
                 m_db->NewIterator(rocksdb::ReadOptions(), getColumnFamilyBasedOnName(columnName).handle()));
@@ -409,7 +411,7 @@ namespace Utils
             it->SeekToLast();
             if (it->Valid())
             {
-                return {it->key().ToString(), it->value()};
+                return {it->key().ToString(), it->value().ToString()};
             }
 
             throw std::runtime_error {"Error getting last key-value pair"};

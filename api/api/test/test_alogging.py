@@ -1,4 +1,4 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -117,6 +117,19 @@ def test_custom_logging(path, hash_auth_context, body, loggerlevel):
                                       call(json_info, extra={'log_type': 'json'})])
 
         log_info_mock.debug2.assert_called_with(f'Receiving headers {headers}')
+
+
+def test_custom_logging_masks_credential_headers():
+    """Check credential-bearing headers are masked in the debug2 log while the others are kept."""
+    headers = {'Authorization': 'Bearer secret-token', 'cookie': 'sid=secret-cookie', 'Host': 'localhost'}
+    with patch('api.alogging.logger') as log_mock:
+        log_mock.level = 1
+        alogging.custom_logging('wazuh', '1.1.1.1', 'GET', '/agents', {}, {}, 1.0, 200, headers=headers)
+
+    logged = log_mock.debug2.call_args.args[0]
+    assert 'secret-token' not in logged and 'secret-cookie' not in logged
+    assert "'authorization': 'Bearer ****'" in logged and "'cookie': '****'" in logged
+    assert "'host': 'localhost'" in logged
 
 
 @pytest.mark.parametrize("value, expected", [
@@ -350,3 +363,37 @@ def test_custom_logging_redacts_sensitive_fields():
     # The caller's objects are not rewritten on its behalf.
     assert body['nested']['password'] == 'SuperSecret123'
     assert query['password'] == 'q_secret'
+
+    # The debug2 header dump keeps the scheme and masks the credential behind it.
+    headers_line = log_mock.debug2.call_args.args[0]
+    assert REQUEST_HEADERS_TEST['authorization'].split(' ')[1] not in headers_line
+    assert "'authorization': 'Basic ****'" in headers_line
+
+
+@pytest.mark.parametrize('headers, expected', [
+    ({'Authorization': 'Bearer x.y.z'}, {'authorization': 'Bearer ****'}),
+    ({'authorization': 'Basic dXNlcjpwYXNz'}, {'authorization': 'Basic ****'}),
+    ({'Proxy-Authorization': 'Basic dXNlcjpwYXNz'}, {'proxy-authorization': 'Basic ****'}),
+    ({'AUTHORIZATION': 'opaque-token'}, {'authorization': '****'}),
+    ({'Cookie': 'session=abc; theme=dark'}, {'cookie': '****'}),
+    ({'X-API-Key': 'k'}, {'x-api-key': '****'}),
+    ({'host': '127.0.0.1:55000', 'user-agent': 'curl/8.5.0', 'accept': '*/*'},
+     {'host': '127.0.0.1:55000', 'user-agent': 'curl/8.5.0', 'accept': '*/*'}),
+    ({}, {}),
+    (None, {}),
+])
+def test_redact_headers(headers, expected):
+    """Credential headers are masked whatever their case; harmless ones stay verbatim."""
+    assert alogging.redact_headers(headers) == expected
+
+
+def test_redact_headers_walks_repeated_and_mixed_case_names():
+    """Starlette headers are case-insensitive and may repeat: every occurrence is masked."""
+    from starlette.datastructures import Headers
+
+    headers = Headers(raw=[(b'Authorization', b'Bearer first.token'),
+                           (b'authorization', b'Bearer second.token'),
+                           (b'Content-Type', b'application/json')])
+
+    assert alogging.redact_headers(headers) == {'authorization': 'Bearer ****, Bearer ****',
+                                                'content-type': 'application/json'}

@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module (C++ worker bridge)
- * Copyright (C) 2015, Wazuh Inc.
- * July 21, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -97,7 +96,9 @@ namespace
         {
         }
 
-        remoted::auth::AuthError decode(ContentEncoding encoding, remoted::auth::Payload& payload) const override
+        remoted::auth::AuthError decode(ContentEncoding encoding,
+                                        remoted::auth::Payload& payload,
+                                        const remoted::decoding::DecodeCharge& /*charge*/) const override
         {
             return m_fn(encoding, payload);
         }
@@ -305,6 +306,36 @@ TEST(AuthGatewayTest, ValidAuthReachesHandlerWithVerifiedRequest)
     // remoted.http.<endpoint>.latency measurement), not the "never stamped" epoch default.
     EXPECT_GE(seenReceivedAt, before);
     EXPECT_LE(seenReceivedAt, after);
+}
+
+// remoted tells its downstreams which agent a request belongs to with X-Wazuh-Agent-Id, and that
+// value must come from the verified token alone. An agent that sends a header of the same name has no
+// way to reach a handler with it: the gateway hands the handler only the authenticated id (the
+// AuthenticatedRequest carries no request headers at all).
+TEST(AuthGatewayTest, AgentSuppliedIdentityHeaderIsNotPropagated)
+{
+    FakeHttpServer server;
+    auto gateway = makeGateway();
+
+    std::string seenAgentId;
+    gateway.addAuthenticatedRoute(server,
+                                  Method::Post,
+                                  "/stateless",
+                                  [&seenAgentId](std::shared_ptr<const remoted::auth::AuthenticatedRequest> authReq,
+                                                 std::shared_ptr<IHttpResponder> responder)
+                                  {
+                                      seenAgentId = authReq->agentId;
+                                      responder->send(HttpResponse {200, "", {}});
+                                  });
+
+    auto request = signedRequest("some-body");
+    request.headers.emplace("x-wazuh-agent-id", "999");
+    auto responder = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/stateless", request, responder);
+
+    ASSERT_TRUE(responder->captured.has_value());
+    EXPECT_EQ(responder->captured->status, 200);
+    EXPECT_EQ(seenAgentId, "001");
 }
 
 TEST(AuthGatewayTest, PayloadOutlivesDispatchAndReleaseKeepsMetadata)
@@ -591,9 +622,11 @@ namespace
     }
 } // namespace
 
-// RFC 6750 §3: every 401 carries `WWW-Authenticate: Bearer`, uniformly -- it names the scheme, never
-// the reason -- while the non-credential rejections (400/413/415) carry no challenge at all.
-TEST(AuthGatewayTest, Every401CarriesTheBearerChallengeAndNothingElseDoes)
+// RFC 6750 §3: every 401 carries a `WWW-Authenticate: Bearer` challenge that names the failure CLASS
+// (issue #38993: `error="invalid_request"` when no usable credential was presented,
+// `error="invalid_token", error_description="<class>"` when one was judged and failed), with the same
+// class as the body's `code`; the non-credential rejections (400/413/415) carry no challenge at all.
+TEST(AuthGatewayTest, Every401CarriesItsClassInTheChallengeAndNothingElseDoes)
 {
     FakeHttpServer server;
     auto gateway = makeGateway();
@@ -612,28 +645,35 @@ TEST(AuthGatewayTest, Every401CarriesTheBearerChallengeAndNothingElseDoes)
         return responder->captured.value_or(HttpResponse {});
     };
 
-    // Missing Authorization.
+    const std::optional<std::string> invalidRequest {R"(Bearer error="invalid_request")"};
+    const std::optional<std::string> invalidSignature {
+        R"(Bearer error="invalid_token", error_description="invalid_signature")"};
+
+    // Missing Authorization: nothing to judge.
     HttpRequest missing;
     missing.method = Method::Post;
     missing.target = "/stateless";
     missing.headers.emplace("protocol-version", "1");
     auto response = dispatch(missing);
     EXPECT_EQ(response.status, 401);
-    EXPECT_EQ(headerOf(response, "WWW-Authenticate"), std::optional<std::string> {"Bearer"});
+    EXPECT_EQ(headerOf(response, "WWW-Authenticate"), invalidRequest);
+    EXPECT_EQ(response.body, R"({"error":"Invalid client authentication","code":"invalid_request"})");
 
-    // A retired-scheme credential, and a well-formed token with a corrupted signature.
+    // A retired-scheme credential (not a bearer at all), and a well-formed token with a corrupted
+    // signature (judged, and it does not work for that identity).
     auto legacy = signedRequest("body");
     legacy.headers["authorization"] = "Wazuh 001:1784238000:00112233445566778899aabbccddeeff";
     response = dispatch(legacy);
     EXPECT_EQ(response.status, 401);
-    EXPECT_EQ(headerOf(response, "WWW-Authenticate"), std::optional<std::string> {"Bearer"});
+    EXPECT_EQ(headerOf(response, "WWW-Authenticate"), invalidRequest);
 
     auto tampered = signedRequest("body");
     auto& authorization = tampered.headers["authorization"];
     authorization[authorization.size() - 2] = authorization[authorization.size() - 2] == 'A' ? 'B' : 'A';
     response = dispatch(tampered);
     EXPECT_EQ(response.status, 401);
-    EXPECT_EQ(headerOf(response, "WWW-Authenticate"), std::optional<std::string> {"Bearer"});
+    EXPECT_EQ(headerOf(response, "WWW-Authenticate"), invalidSignature);
+    EXPECT_EQ(response.body, R"({"error":"Invalid client authentication","code":"invalid_signature"})");
 
     // Missing protocol-version is a 400 about the protocol, not a credential failure: no challenge.
     auto noVersion = signedRequest("body");
@@ -644,6 +684,62 @@ TEST(AuthGatewayTest, Every401CarriesTheBearerChallengeAndNothingElseDoes)
 
     // The success path never carries one either.
     response = dispatch(signedRequest("body"));
+    EXPECT_EQ(response.status, 200);
+    EXPECT_FALSE(headerOf(response, "WWW-Authenticate").has_value());
+}
+
+// The two classes the agent acts on differently (issue #38993, §2.10 of the document): an id the
+// keystore does not know tells it to re-enroll; a token outside the accepted window tells it to fix
+// its clock and retry. Both were the same anonymous 401 before.
+TEST(AuthGatewayTest, UnknownAgentAndStaleTokenAreDistinguishableOnTheWire)
+{
+    FakeHttpServer server;
+    auto gateway = makeGateway();
+    gateway.addAuthenticatedRoute(
+        server,
+        Method::Post,
+        "/stateless",
+        [](std::shared_ptr<const remoted::auth::AuthenticatedRequest>, std::shared_ptr<IHttpResponder> responder)
+        { responder->send(HttpResponse {200, "", {}}); });
+
+    const auto dispatchBearer = [&server](const std::string& bearer) -> HttpResponse
+    {
+        HttpRequest request;
+        request.method = Method::Post;
+        request.target = "/stateless";
+        request.headers.emplace("protocol-version", "1");
+        request.headers.emplace("authorization", bearer);
+        request.body = "body";
+        auto responder = std::make_shared<CapturingResponder>();
+        server.dispatch(Method::Post, "/stateless", request, responder);
+        EXPECT_TRUE(responder->captured.has_value());
+        return responder->captured.value_or(HttpResponse {});
+    };
+    const auto bearerFor = [](const char* agentId, std::chrono::system_clock::time_point at)
+    {
+        const std::vector<std::uint8_t> key(32, 0x0A); // FakeKeystore's key for 001; 002 has none
+        const jwt_profile::v1::SecureBytes secret {key.data(), key.size()};
+        const auto token = jwt_profile::v1::JwtRequestTokenSigner::sign(
+            *jwt_profile::v1::CanonicalAgentId::parse(agentId), secret, at);
+        return "Bearer " + (token ? *token : std::string {});
+    };
+
+    // Agent 002 is not in the keystore: unknown_agent.
+    auto response = dispatchBearer(bearerFor("002", std::chrono::system_clock::now()));
+    EXPECT_EQ(response.status, 401);
+    EXPECT_EQ(headerOf(response, "WWW-Authenticate"),
+              std::optional<std::string> {R"(Bearer error="invalid_token", error_description="unknown_agent")"});
+    EXPECT_EQ(response.body, R"({"error":"Invalid client authentication","code":"unknown_agent"})");
+
+    // Agent 001 with a token issued ten minutes ago: stale_token.
+    response = dispatchBearer(bearerFor("001", std::chrono::system_clock::now() - std::chrono::minutes(10)));
+    EXPECT_EQ(response.status, 401);
+    EXPECT_EQ(headerOf(response, "WWW-Authenticate"),
+              std::optional<std::string> {R"(Bearer error="invalid_token", error_description="stale_token")"});
+    EXPECT_EQ(response.body, R"({"error":"Invalid client authentication","code":"stale_token"})");
+
+    // And the same request at the right time is a 200 with no challenge.
+    response = dispatchBearer(bearerFor("001", std::chrono::system_clock::now()));
     EXPECT_EQ(response.status, 200);
     EXPECT_FALSE(headerOf(response, "WWW-Authenticate").has_value());
 }
@@ -881,4 +977,341 @@ TEST(AuthGatewayTest, ManyConcurrentZstdRequestsNeverOvershootTheBudget)
     // Releasing them restores the budget exactly, with nothing leaked by any thread.
     EXPECT_EQ(server.m_budget.availableBytes(), kBudget);
     EXPECT_EQ(server.m_budget.inFlightCount(), 0U);
+}
+
+// The wire cap is checked on the COMPRESSED body, so it cannot bound what a zstd frame decodes to:
+// a frame of a few KB well under maxBodySize can expand to megabytes. The gateway's decoder carries
+// its own decoded cap ('remoted.auth_max_decoded_body_size'), and a body that would decode past it
+// is answered 413 before anything reaches the handler -- while one decoding to exactly the cap is
+// served.
+TEST(AuthGatewayTest, ZstdBodyDecodingPastTheDecodedCapIs413AndNeverReachesTheHandler)
+{
+    constexpr std::size_t kDecodedCap = 64 * 1024;
+    FakeHttpServer server;
+    AuthGateway gateway {remoted::auth::AuthConfig {},
+                         std::make_shared<FakeKeystore>(),
+                         std::make_shared<const remoted::decoding::BodyDecoder>(server, /*enabled=*/true, kDecodedCap)};
+
+    int handlerCalls = 0;
+    gateway.addAuthenticatedRoute(server,
+                                  Method::Post,
+                                  "/stateless",
+                                  [&handlerCalls](std::shared_ptr<const remoted::auth::AuthenticatedRequest>,
+                                                  std::shared_ptr<IHttpResponder> responder)
+                                  {
+                                      ++handlerCalls;
+                                      responder->send(HttpResponse::json(200, "{}"));
+                                  });
+
+    const auto bomb = remoted::testutil::zstdCompress(std::string(kDecodedCap + 1, 'q'));
+    ASSERT_LT(bomb.size(), remoted::auth::AuthConfig {}.maxBodySize) << "the frame must pass the wire cap";
+    auto over = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/stateless", signedRequestWithContentEncoding(bomb, "zstd"), over);
+    ASSERT_TRUE(over->captured.has_value());
+    EXPECT_EQ(over->captured->status, 413);
+    EXPECT_EQ(handlerCalls, 0);
+
+    const auto atCap = remoted::testutil::zstdCompress(std::string(kDecodedCap, 'q'));
+    auto served = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/stateless", signedRequestWithContentEncoding(atCap, "zstd"), served);
+    ASSERT_TRUE(served->captured.has_value());
+    EXPECT_EQ(served->captured->status, 200);
+    EXPECT_EQ(handlerCalls, 1);
+
+    // Nothing either request reserved is left behind.
+    EXPECT_EQ(server.m_budget.inFlightCount(), 0U);
+}
+
+// One agent may hold at most its cap of open requests. The one past it is answered a plain 503 --
+// before the decoder runs, so it never gets to spend the shared budget -- and the agent's share
+// comes back as soon as one of its replies leaves.
+TEST(AuthGatewayTest, AnAgentOverItsRequestCapIs503BeforeTheDecoder)
+{
+    FakeHttpServer server;
+    const auto limiter = std::make_shared<AgentRequestLimiter>(2);
+    int decoderCalls = 0;
+    AuthGateway gateway {remoted::auth::AuthConfig {},
+                         std::make_shared<FakeKeystore>(),
+                         stubDecoder(
+                             [&decoderCalls](ContentEncoding, remoted::auth::Payload&)
+                             {
+                                 ++decoderCalls;
+                                 return remoted::auth::AuthError::None;
+                             }),
+                         limiter};
+
+    // The handler parks every request, like a forward waiting on its downstream.
+    std::vector<std::shared_ptr<IHttpResponder>> parked;
+    gateway.addAuthenticatedRoute(
+        server,
+        Method::Post,
+        "/stateless",
+        [&parked](std::shared_ptr<const remoted::auth::AuthenticatedRequest>, std::shared_ptr<IHttpResponder> responder)
+        { parked.push_back(std::move(responder)); });
+
+    std::vector<std::shared_ptr<CapturingResponder>> admitted;
+    for (int i = 0; i < 2; ++i)
+    {
+        admitted.push_back(std::make_shared<CapturingResponder>());
+        server.dispatch(Method::Post, "/stateless", signedRequest("body"), admitted.back());
+    }
+    ASSERT_EQ(parked.size(), 2U);
+    EXPECT_EQ(limiter->openRequests("001"), 2U);
+
+    auto shed = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/stateless", signedRequest("body"), shed);
+    ASSERT_TRUE(shed->captured.has_value());
+    EXPECT_EQ(shed->captured->status, 503);
+    EXPECT_EQ(shed->captured->body, R"({"error":"Service unavailable","code":503})");
+    EXPECT_FALSE(headerOf(*shed->captured, "WWW-Authenticate").has_value()) << "not a credential failure";
+    EXPECT_EQ(decoderCalls, 2) << "the shed request must not reach the decoder";
+    EXPECT_EQ(parked.size(), 2U);
+
+    // One reply leaves: the agent may open one more.
+    parked.front()->send(HttpResponse::json(200, "{}"));
+    ASSERT_TRUE(admitted.front()->captured.has_value());
+    EXPECT_EQ(admitted.front()->captured->status, 200);
+    EXPECT_EQ(limiter->openRequests("001"), 1U);
+
+    auto next = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/stateless", signedRequest("body"), next);
+    EXPECT_FALSE(next->captured.has_value()) << "admitted and parked, not shed";
+    EXPECT_EQ(parked.size(), 3U);
+}
+
+// Every way a request can end after it was admitted gives the slot back: a decoder rejection, a
+// handler that throws (answered 500 by the gateway), and a failed authentication never takes one.
+TEST(AuthGatewayTest, EveryEarlyAnswerGivesTheAgentsSlotBack)
+{
+    FakeHttpServer server;
+    const auto limiter = std::make_shared<AgentRequestLimiter>(1);
+    AuthGateway gateway {remoted::auth::AuthConfig {},
+                         std::make_shared<FakeKeystore>(),
+                         stubDecoder(
+                             [](ContentEncoding encoding, remoted::auth::Payload&)
+                             {
+                                 return encoding == ContentEncoding::Zstd
+                                            ? remoted::auth::AuthError::MalformedContentEncoding
+                                            : remoted::auth::AuthError::None;
+                             }),
+                         limiter};
+    gateway.addAuthenticatedRoute(server,
+                                  Method::Post,
+                                  "/stateless",
+                                  [](std::shared_ptr<const remoted::auth::AuthenticatedRequest>,
+                                     std::shared_ptr<IHttpResponder>) { throw std::runtime_error("handler failure"); });
+
+    // Cap 1, so each of these would be shed as 503 if the previous one had kept its slot.
+    for (int i = 0; i < 3; ++i)
+    {
+        auto rejected = std::make_shared<CapturingResponder>();
+        server.dispatch(Method::Post, "/stateless", signedRequestWithContentEncoding("x", "zstd"), rejected);
+        ASSERT_TRUE(rejected->captured.has_value());
+        EXPECT_EQ(rejected->captured->status, 400);
+
+        auto failed = std::make_shared<CapturingResponder>();
+        server.dispatch(Method::Post, "/stateless", signedRequest("body"), failed);
+        ASSERT_TRUE(failed->captured.has_value());
+        EXPECT_EQ(failed->captured->status, 500);
+    }
+
+    auto unauthenticated = signedRequest("body");
+    unauthenticated.headers["authorization"] = "Bearer not-a-token";
+    auto bad = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/stateless", unauthenticated, bad);
+    ASSERT_TRUE(bad->captured.has_value());
+    EXPECT_EQ(bad->captured->status, 401);
+
+    EXPECT_EQ(limiter->openRequests("001"), 0U);
+    EXPECT_EQ(limiter->trackedAgents(), 0U);
+    EXPECT_EQ(limiter->rejectedTotal(), 0U);
+}
+
+// The per-agent byte share is charged with what decoding produced. A body that fits the share but
+// not what the agent's other open requests leave of it is answered 503 (transient: it fits once one
+// of them is answered), and its slot comes back with the answer.
+TEST(AuthGatewayTest, ABodyOverTheAgentsRemainingByteShareIs503)
+{
+    FakeHttpServer server;
+    const auto limiter = std::make_shared<AgentRequestLimiter>(4, 10);
+    AuthGateway gateway {remoted::auth::AuthConfig {}, std::make_shared<FakeKeystore>(), passthroughDecoder(), limiter};
+
+    std::vector<std::shared_ptr<IHttpResponder>> parked;
+    gateway.addAuthenticatedRoute(
+        server,
+        Method::Post,
+        "/stateless",
+        [&parked](std::shared_ptr<const remoted::auth::AuthenticatedRequest>, std::shared_ptr<IHttpResponder> responder)
+        { parked.push_back(std::move(responder)); });
+
+    auto first = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/stateless", signedRequest("1234567"), first); // 7 of 10
+    ASSERT_EQ(parked.size(), 1U);
+    EXPECT_EQ(limiter->heldBytes("001"), 7U);
+
+    auto over = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/stateless", signedRequest("1234"), over); // 7 + 4 > 10
+    ASSERT_TRUE(over->captured.has_value());
+    EXPECT_EQ(over->captured->status, 503);
+    EXPECT_EQ(parked.size(), 1U) << "never reached the handler";
+    EXPECT_EQ(limiter->openRequests("001"), 1U) << "the refused request gave its slot back";
+
+    auto fits = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/stateless", signedRequest("123"), fits); // 7 + 3 == 10
+    EXPECT_EQ(parked.size(), 2U);
+    EXPECT_EQ(limiter->heldBytes("001"), 10U);
+
+    // Answering returns the bytes with the slot.
+    parked.front()->send(HttpResponse::json(200, "{}"));
+    EXPECT_EQ(limiter->heldBytes("001"), 3U);
+}
+
+// A route may carry its own decoder: /stateful's bodies legitimately decode far larger than every
+// other route's, so it is capped at the agent's byte share instead of the shared decoded cap.
+TEST(AuthGatewayTest, ARouteDecoderReplacesTheSharedOneForThatRouteOnly)
+{
+    FakeHttpServer server;
+    int sharedCalls = 0;
+    int routeCalls = 0;
+    AuthGateway gateway {remoted::auth::AuthConfig {},
+                         std::make_shared<FakeKeystore>(),
+                         stubDecoder(
+                             [&sharedCalls](ContentEncoding, remoted::auth::Payload&)
+                             {
+                                 ++sharedCalls;
+                                 return remoted::auth::AuthError::None;
+                             })};
+    const auto answer =
+        [](std::shared_ptr<const remoted::auth::AuthenticatedRequest>, std::shared_ptr<IHttpResponder> responder)
+    {
+        responder->send(HttpResponse::json(200, "{}"));
+    };
+    gateway.addAuthenticatedRoute(server, Method::Post, "/stateless", answer);
+    gateway.addAuthenticatedRoute(server,
+                                  Method::Post,
+                                  "/stateful",
+                                  answer,
+                                  ResponseMode::Buffered,
+                                  stubDecoder(
+                                      [&routeCalls](ContentEncoding, remoted::auth::Payload&)
+                                      {
+                                          ++routeCalls;
+                                          return remoted::auth::AuthError::None;
+                                      }));
+
+    server.dispatch(Method::Post, "/stateless", signedRequest("a"), std::make_shared<CapturingResponder>());
+    server.dispatch(Method::Post, "/stateful", signedRequest("b"), std::make_shared<CapturingResponder>());
+    EXPECT_EQ(sharedCalls, 1);
+    EXPECT_EQ(routeCalls, 1);
+}
+
+// The byte share is charged WHILE the body decodes, not after. Regression guard for one agent
+// filling the shared budget: charged only after decode(), each of its parallel zstd frames held the
+// shared budget for its whole decode -- up to the route's cap, the agent's whole share on /stateful
+// -- before the share check refused it. Here the second frame is refused (503, transient) without
+// ever taking shared budget, and the first is charged once, not again after decoding.
+TEST(AuthGatewayTest, AZstdBodyIsChargedToTheShareWhileDecodingAndNeverTakesBudgetPastIt)
+{
+    constexpr std::size_t kBudget = 4U * 1024U * 1024U;
+    constexpr std::size_t kShare = 1024U * 1024U;
+    FakeHttpServer server {kBudget};
+    const auto limiter = std::make_shared<AgentRequestLimiter>(4, kShare);
+    // Capped at the share, like production's /stateful decoder.
+    AuthGateway gateway {remoted::auth::AuthConfig {},
+                         std::make_shared<FakeKeystore>(),
+                         std::make_shared<const remoted::decoding::BodyDecoder>(server, /*enabled=*/true, kShare),
+                         limiter};
+
+    // Parks the request too, so its decoded body (and that body's budget reservation) stays alive.
+    std::vector<std::shared_ptr<const remoted::auth::AuthenticatedRequest>> requests;
+    std::vector<std::shared_ptr<IHttpResponder>> parked;
+    gateway.addAuthenticatedRoute(
+        server,
+        Method::Post,
+        "/stateful",
+        [&requests, &parked](std::shared_ptr<const remoted::auth::AuthenticatedRequest> request,
+                             std::shared_ptr<IHttpResponder> responder)
+        {
+            requests.push_back(std::move(request));
+            parked.push_back(std::move(responder));
+        });
+
+    // A frame that declares its whole share: tiny on the wire, the share once decoded.
+    const auto compressed = remoted::testutil::zstdCompress(std::string(kShare, 'a'));
+
+    auto first = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/stateful", signedRequestWithContentEncoding(compressed, "zstd"), first);
+    ASSERT_EQ(parked.size(), 1U);
+    EXPECT_EQ(limiter->heldBytes("001"), kShare) << "charged while decoding, and not again afterwards";
+    EXPECT_EQ(server.m_budget.availableBytes(), kBudget - kShare);
+
+    auto second = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/stateful", signedRequestWithContentEncoding(compressed, "zstd"), second);
+    ASSERT_TRUE(second->captured.has_value());
+    EXPECT_EQ(second->captured->status, 503) << "the agent's share, not the body: transient";
+    EXPECT_EQ(parked.size(), 1U) << "never reached the handler";
+    EXPECT_EQ(server.m_budget.availableBytes(), kBudget - kShare) << "the refused frame took no shared budget";
+    EXPECT_EQ(limiter->openRequests("001"), 1U) << "the refused request gave its slot back";
+    EXPECT_EQ(limiter->heldBytes("001"), kShare) << "and the bytes it was refused were never kept";
+
+    parked.front()->send(HttpResponse::json(200, "{}"));
+    EXPECT_EQ(limiter->heldBytes("001"), 0U);
+    EXPECT_EQ(limiter->trackedAgents(), 0U);
+}
+
+// A frame with no declared size asks the share for a 64 KiB growth step first; a share smaller than
+// that refuses it, and the decoder retries at exactly the bytes needed, which fit. Regression guard:
+// that first refusal alone made the gateway answer 503 to a body that decoded fine.
+TEST(AuthGatewayTest, AShareRefusedGrowthStepTheRetryFitsStillReachesTheHandler)
+{
+    FakeHttpServer server;
+    constexpr std::size_t kShare = 16U * 1024U;
+    const auto limiter = std::make_shared<AgentRequestLimiter>(4, kShare);
+    // No decoder cap: it would refuse the 64 KiB step before the share is ever asked.
+    AuthGateway gateway {remoted::auth::AuthConfig {},
+                         std::make_shared<FakeKeystore>(),
+                         std::make_shared<const remoted::decoding::BodyDecoder>(server, /*enabled=*/true),
+                         limiter};
+    std::vector<std::shared_ptr<IHttpResponder>> parked;
+    gateway.addAuthenticatedRoute(
+        server,
+        Method::Post,
+        "/stateful",
+        [&parked](std::shared_ptr<const remoted::auth::AuthenticatedRequest>, std::shared_ptr<IHttpResponder> responder)
+        { parked.push_back(std::move(responder)); });
+
+    const std::string plain(100, 'a');
+    const auto compressed = remoted::testutil::zstdCompressWithoutDeclaredSize(plain);
+
+    auto responder = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/stateful", signedRequestWithContentEncoding(compressed, "zstd"), responder);
+    EXPECT_FALSE(responder->captured.has_value()) << "not answered 503";
+    ASSERT_EQ(parked.size(), 1U);
+    EXPECT_EQ(limiter->heldBytes("001"), plain.size()) << "charged for the body, not the refused step";
+
+    parked.front()->send(HttpResponse::json(200, "{}"));
+    EXPECT_EQ(limiter->heldBytes("001"), 0U);
+}
+
+// An unencoded body is charged by the gateway after decode() (the decoder allocates nothing for it),
+// so the share still counts it.
+TEST(AuthGatewayTest, AnUnencodedBodyIsStillChargedToTheShare)
+{
+    FakeHttpServer server;
+    const auto limiter = std::make_shared<AgentRequestLimiter>(4, 1024);
+    AuthGateway gateway {remoted::auth::AuthConfig {},
+                         std::make_shared<FakeKeystore>(),
+                         std::make_shared<const remoted::decoding::BodyDecoder>(server, /*enabled=*/true, 1024),
+                         limiter};
+    std::vector<std::shared_ptr<IHttpResponder>> parked;
+    gateway.addAuthenticatedRoute(
+        server,
+        Method::Post,
+        "/stateless",
+        [&parked](std::shared_ptr<const remoted::auth::AuthenticatedRequest>, std::shared_ptr<IHttpResponder> responder)
+        { parked.push_back(std::move(responder)); });
+
+    server.dispatch(Method::Post, "/stateless", signedRequest("1234567"), std::make_shared<CapturingResponder>());
+    ASSERT_EQ(parked.size(), 1U);
+    EXPECT_EQ(limiter->heldBytes("001"), 7U);
 }

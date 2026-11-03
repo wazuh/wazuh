@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <yml/yml.hpp>
 
 #include <iostream>
@@ -124,7 +125,7 @@ YAML::Node Converter::jsonToYaml(const rapidjson::Value& value)
     }
     else if (value.IsArray())
     {
-        YAML::Node node(YAML::NodeType::Sequence);   // key for empty arrays
+        YAML::Node node(YAML::NodeType::Sequence); // key for empty arrays
         for (auto& v : value.GetArray())
         {
             node.push_back(jsonToYaml(v));

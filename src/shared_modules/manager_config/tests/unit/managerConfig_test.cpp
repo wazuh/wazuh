@@ -1,6 +1,11 @@
 /*
- * Copyright (C) 2015, Wazuh Inc.
- * This program is free software; you can redistribute it and/or modify it under the terms of GPLv2.
+ * Copyright (C) Wazuh Inc.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 #include <gtest/gtest.h>
 
@@ -77,6 +82,19 @@ namespace
         return "<wazuh_config>" + body + CLUSTER_SECTION + INDEXER_SECTION + "</wazuh_config>";
     }
 
+    /// The five checked certificate/key options, spelled out under `dir`. The defaults are absolute
+    /// (/etc/wazuh-manager/certs/...), so a file-checking test that relied on them would look at the build
+    /// host's real configuration directory.
+    std::string certificates(const std::string& dir,
+                             const std::string& certificate = "remoted.pem",
+                             const std::string& caCertificate = "root-ca.pem")
+    {
+        return "<remote><https><certificate>" + dir + "/" + certificate + "</certificate><key>" + dir +
+               "/remoted-key.pem</key><ca_certificate>" + dir + "/" + caCertificate +
+               "</ca_certificate></https></remote><auth><ssl_manager_cert>" + dir +
+               "/remoted.pem</ssl_manager_cert><ssl_manager_key>" + dir + "/remoted-key.pem</ssl_manager_key></auth>";
+    }
+
 } // namespace
 
 // ---------------------------------------------------------------------------------------------------
@@ -107,8 +125,29 @@ TEST(Load, EffectiveDefaultsFromMinimalDocument)
     EXPECT_EQ(rapidjson::Pointer("/remote/legacy/port").Get(effective)->GetInt(), 1514);
     EXPECT_EQ(rapidjson::Pointer("/remote/https/port").Get(effective)->GetInt(), 1517);
     EXPECT_STREQ(rapidjson::Pointer("/remote/https/global_prefix").Get(effective)->GetString(), "/wazuh-manager/");
+    EXPECT_STREQ(rapidjson::Pointer("/remote/https/ca_certificate").Get(effective)->GetString(),
+                 "/etc/wazuh-manager/certs/root-ca.pem");
+    EXPECT_STREQ(rapidjson::Pointer("/remote/https/certificate").Get(effective)->GetString(),
+                 "/etc/wazuh-manager/certs/remoted.pem");
+    EXPECT_STREQ(rapidjson::Pointer("/remote/https/key").Get(effective)->GetString(),
+                 "/etc/wazuh-manager/certs/remoted-key.pem");
+    EXPECT_STREQ(rapidjson::Pointer("/auth/ssl_manager_cert").Get(effective)->GetString(),
+                 "/etc/wazuh-manager/certs/remoted.pem");
+    EXPECT_STREQ(rapidjson::Pointer("/auth/ssl_manager_key").Get(effective)->GetString(),
+                 "/etc/wazuh-manager/certs/remoted-key.pem");
     EXPECT_EQ(rapidjson::Pointer("/remote/https/verification_mode").Get(effective), nullptr) << "no default: absent";
+    // The rate limits are NOT written into the shipped file, but they do have defaults: an absent
+    // option must arrive at remoted as a real value, never as "unlimited".
+    EXPECT_EQ(rapidjson::Pointer("/remote/https/enroll_rate_limit").Get(effective)->GetInt(), 100);
+    EXPECT_EQ(rapidjson::Pointer("/remote/https/cacerts_rate_limit").Get(effective)->GetInt(), 50);
+    // The values remoted_module applies anyway, declared so the effective document shows them.
+    EXPECT_STREQ(rapidjson::Pointer("/remote/https/ciphers").Get(effective)->GetString(),
+                 "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256");
+    EXPECT_STREQ(rapidjson::Pointer("/remote/https/max_body_size").Get(effective)->GetString(), "10M");
+    EXPECT_FALSE(rapidjson::Pointer("/remote/https/dual_stack").Get(effective)->GetBool());
     EXPECT_EQ(rapidjson::Pointer("/auth/port").Get(effective)->GetInt(), 1515);
+    EXPECT_EQ(rapidjson::Pointer("/auth/legacy_enrollment").Get(effective), nullptr)
+        << "no default: authd follows remote.legacy.enabled when unset";
     EXPECT_TRUE(rapidjson::Pointer("/auth/force/disconnected_time/enabled").Get(effective)->GetBool());
     EXPECT_STREQ(rapidjson::Pointer("/wdb/backup/global/interval").Get(effective)->GetString(), "1d");
     EXPECT_EQ(rapidjson::Pointer("/vulnerability-detection/pageSize").Get(effective)->GetInt(), 100);
@@ -137,16 +176,25 @@ TEST(Load, GeneratedManagerFileKeepsUserValuesAndFillsTheRest)
     const auto doc = parseOk(slurp(VECTORS / "valid" / "generated-manager.conf"));
     const auto remote = json(doc.sectionJson("remote"));
     EXPECT_TRUE(rapidjson::Pointer("/legacy/enabled").Get(remote)->GetBool());
-    EXPECT_EQ(rapidjson::Pointer("/legacy/queue_size").Get(remote)->GetInt(), 131072) << "filled default";
-    EXPECT_STREQ(rapidjson::Pointer("/https/certificate").Get(remote)->GetString(), "etc/certs/remoted.pem");
-    EXPECT_EQ(remote["https"].MemberCount(), 6u)
-        << "port, bind_addr, global_prefix, certificate, key, ca (the three no-default options stay absent)";
+    EXPECT_EQ(rapidjson::Pointer("/legacy/queue_size").Get(remote)->GetInt(), 131072) << "written by the installer";
+    EXPECT_EQ(rapidjson::Pointer("/legacy/connection_overtake_time").Get(remote)->GetInt(), 60) << "filled default";
+    EXPECT_STREQ(rapidjson::Pointer("/https/certificate").Get(remote)->GetString(),
+                 "/etc/wazuh-manager/certs/remoted.pem");
+    EXPECT_STREQ(rapidjson::Pointer("/https/ca_certificate").Get(remote)->GetString(),
+                 "/etc/wazuh-manager/certs/root-ca.pem");
+    EXPECT_EQ(remote["https"].MemberCount(), 12u) << "port, bind_addr, global_prefix, certificate, key, ca, "
+                                                     "ca_certificate, ciphers, max_body_size, dual_stack and the "
+                                                     "two rate limits (verification_mode has no default and "
+                                                     "stays absent)";
     const auto auth = json(doc.sectionJson("auth"));
     EXPECT_TRUE(auth["purge"].GetBool());
     EXPECT_TRUE(auth["use_password"].GetBool());
-    EXPECT_EQ(auth.MemberCount(), 15u) << "13 leaves + force + agents objects (18 inventory options)";
+    EXPECT_EQ(auth.MemberCount(), 14u) << "12 defaulted leaves + force + agents objects (18 inventory options; "
+                                          "legacy_enrollment has no default)";
     const auto indexer = json(doc.sectionJson("indexer"));
     EXPECT_STREQ(rapidjson::Pointer("/hosts/0").Get(indexer)->GetString(), "https://127.0.0.1:9200");
+    EXPECT_STREQ(rapidjson::Pointer("/ssl/certificate_authorities/0").Get(indexer)->GetString(),
+                 "/etc/wazuh-manager/certs/indexer-ca.pem");
 }
 
 TEST(Load, EveryValidVectorLoads)
@@ -213,6 +261,36 @@ TEST(Schema, YesNoIsBooleanAndTrueFalseIsRejected)
     EXPECT_EQ(error.pointer, "/auth/use_password");
     EXPECT_NE(error.message.find("type"), std::string::npos) << error.what();
     EXPECT_NE(error.message.find("booleans are yes/no"), std::string::npos) << error.what();
+}
+
+TEST(Schema, CiphersAcceptOnlyTheSuitesTheDaemonsAccept)
+{
+    // remoted and authd accept exactly these five TLS 1.3 suites; a well-formed name outside them must fail
+    // here, not at a daemon's configuration test.
+    parseOk(wrap("<auth><ciphers>TLS_AES_128_CCM_8_SHA256:TLS_AES_128_CCM_SHA256</ciphers></auth>"
+                 "<remote><https><ciphers>TLS_AES_128_GCM_SHA256</ciphers></https></remote>"));
+    for (const char* ciphers : {"TLS_SM4_GCM_SM3", "TLS_AES_128_GCM_SHA256:", "TLS_AES_128_GCM_SHA256X"})
+    {
+        const auto auth = parseKo(wrap(std::string("<auth><ciphers>") + ciphers + "</ciphers></auth>"));
+        EXPECT_EQ(auth.pointer, "/auth/ciphers") << ciphers;
+        EXPECT_NE(auth.message.find("pattern"), std::string::npos) << auth.what();
+        const auto remote =
+            parseKo(wrap(std::string("<remote><https><ciphers>") + ciphers + "</ciphers></https></remote>"));
+        EXPECT_EQ(remote.pointer, "/remote/https/ciphers") << ciphers;
+    }
+}
+
+TEST(Schema, FeedUpdateIntervalRejectsZeroInAnyUnit)
+{
+    EXPECT_EQ(parseKo(wrap("<vulnerability-detection><feed-update-interval>0m</feed-update-interval>"
+                           "</vulnerability-detection>"))
+                  .pointer,
+              "/vulnerability-detection/feed-update-interval");
+    EXPECT_EQ(parseKo(wrap("<vulnerability-detection><feed-update-interval>0</feed-update-interval>"
+                           "</vulnerability-detection>"))
+                  .pointer,
+              "/vulnerability-detection/feed-update-interval");
+    parseOk(wrap("<vulnerability-detection><feed-update-interval>1</feed-update-interval></vulnerability-detection>"));
 }
 
 TEST(Schema, RejectsUnknownKeyPointingAtTheKey)
@@ -362,33 +440,73 @@ TEST(Semantics, CertificateWithoutKeyAndPortCollisionsAndDotSegments)
     parseOk(wrap("<auth><disabled>yes</disabled><port>1517</port></auth>"));
 }
 
+TEST(Semantics, AuthPortIsReservedOnlyWhileAuthdBindsIt)
+{
+    // authd binds auth.port only for legacy enrollment, which follows remote.legacy.enabled when unset.
+    parseOk(wrap("<auth><port>1517</port></auth>")); // no <legacy> block: legacy enrollment is off
+    parseOk(wrap("<remote><legacy><enabled>no</enabled></legacy></remote><auth><port>1517</port></auth>"));
+    EXPECT_EQ(
+        parseKo(wrap("<remote><legacy><port>1514</port></legacy></remote><auth><port>1517</port></auth>")).pointer,
+        "/auth/port")
+        << "legacy enabled: legacy enrollment follows it";
+    EXPECT_EQ(parseKo(wrap("<auth><legacy_enrollment>yes</legacy_enrollment><port>1517</port></auth>")).pointer,
+              "/auth/port")
+        << "an explicit legacy_enrollment wins over the absent <legacy> block";
+    parseOk(wrap("<remote><legacy><port>1514</port></legacy></remote>"
+                 "<auth><legacy_enrollment>no</legacy_enrollment><port>1517</port></auth>"));
+    parseOk(wrap("<remote><legacy><port>1514</port></legacy></remote>"
+                 "<auth><remote_enrollment>no</remote_enrollment><port>1517</port></auth>"));
+    parseOk(wrap("<auth><disabled>yes</disabled><legacy_enrollment>yes</legacy_enrollment><port>1517</port></auth>"));
+}
+
 TEST(Semantics, CheckFilesResolvesRelativeToHome)
 {
     const auto dir = std::filesystem::temp_directory_path() / "manager_config_utest_home";
     std::filesystem::create_directories(dir / "etc" / "certs");
-    for (const char* name : {"remoted.pem", "remoted-key.pem"})
+    for (const char* name : {"remoted.pem", "remoted-key.pem", "root-ca.pem"})
     {
         std::ofstream(dir / "etc" / "certs" / name) << "x";
     }
     manager_config::LoadOptions options;
     options.home = dir;
-    auto ok = manager_config::Document::parse(wrap(""), options);
+    auto ok = manager_config::Document::parse(wrap(certificates("etc/certs")), options);
     EXPECT_TRUE(std::holds_alternative<manager_config::Document>(ok)) << std::get<manager_config::Error>(ok).what();
-    auto ko = manager_config::Document::parse(wrap("<remote><https>"
-                                                   "<certificate>etc/certs/missing.pem</certificate>"
-                                                   "<key>etc/certs/remoted-key.pem</key></https></remote>"),
-                                              options);
+    auto ko = manager_config::Document::parse(wrap(certificates("etc/certs", "missing.pem")), options);
     ASSERT_TRUE(std::holds_alternative<manager_config::Error>(ko));
     EXPECT_EQ(std::get<manager_config::Error>(ko).pointer, "/remote/https/certificate");
+    // An absolute path is used as is, never joined with the home.
+    manager_config::LoadOptions elsewhere;
+    elsewhere.home = dir / "elsewhere";
+    auto absoluteOk = manager_config::Document::parse(wrap(certificates((dir / "etc" / "certs").string())), elsewhere);
+    EXPECT_TRUE(std::holds_alternative<manager_config::Document>(absoluteOk))
+        << std::get<manager_config::Error>(absoluteOk).what();
     // indexer.ssl.* is never checked: the installer does not create those files.
     auto indexerOk =
         manager_config::Document::parse(std::string("<wazuh_config><indexer><hosts><host>https://h:9200</host></hosts>"
                                                     "<ssl><certificate>etc/certs/missing.pem</certificate></ssl>"
                                                     "</indexer>") +
-                                            CLUSTER_SECTION + "</wazuh_config>",
+                                            certificates("etc/certs") + CLUSTER_SECTION + "</wazuh_config>",
                                         options);
     EXPECT_TRUE(std::holds_alternative<manager_config::Document>(indexerOk))
         << std::get<manager_config::Error>(indexerOk).what();
+    std::filesystem::remove_all(dir);
+}
+
+TEST(Semantics, CaCertificateFileValidation)
+{
+    const auto dir = std::filesystem::temp_directory_path() / "manager_config_utest_ca_cert";
+    std::filesystem::create_directories(dir / "etc" / "certs");
+    for (const char* name : {"remoted.pem", "remoted-key.pem", "root-ca.pem"})
+    {
+        std::ofstream(dir / "etc" / "certs" / name) << "x";
+    }
+    manager_config::LoadOptions options;
+    options.home = dir;
+    auto ko =
+        manager_config::Document::parse(wrap(certificates("etc/certs", "remoted.pem", "missing-ca.pem")), options);
+    ASSERT_TRUE(std::holds_alternative<manager_config::Error>(ko));
+    EXPECT_EQ(std::get<manager_config::Error>(ko).pointer, "/remote/https/ca_certificate");
+    EXPECT_NE(std::get<manager_config::Error>(ko).message.find("file not found"), std::string::npos);
     std::filesystem::remove_all(dir);
 }
 
@@ -398,14 +516,27 @@ TEST(Semantics, CheckFilesResolvesRelativeToHome)
 
 TEST(CApi, LoadSectionDocumentValidateFree)
 {
-    const auto file = (VECTORS / "valid" / "generated-manager.conf").string();
     const auto home = std::filesystem::temp_directory_path() / "manager_config_utest_capi";
     std::filesystem::create_directories(home / "etc" / "certs");
-    for (const char* name :
-         {"remoted.pem", "remoted-key.pem", "root-ca.pem", "indexer-connector.pem", "indexer-connector-key.pem"})
+    for (const char* name : {"remoted.pem",
+                             "remoted-key.pem",
+                             "root-ca.pem",
+                             "indexer-ca.pem",
+                             "indexer-connector.pem",
+                             "indexer-connector-key.pem"})
     {
         std::ofstream(home / "etc" / "certs" / name) << "x";
     }
+    // The installer writes absolute /etc/wazuh-manager/certs/... paths; a copy with relative ones resolves
+    // against `home` instead of the build host's real configuration directory.
+    std::string generated = slurp(VECTORS / "valid" / "generated-manager.conf");
+    const std::string absoluteCerts {"/etc/wazuh-manager/certs/"};
+    for (auto at = generated.find(absoluteCerts); at != std::string::npos; at = generated.find(absoluteCerts, at))
+    {
+        generated.replace(at, absoluteCerts.size(), "etc/certs/");
+    }
+    const auto file = (home / "generated-manager.conf").string();
+    std::ofstream(file) << generated;
     char err[512] = {0};
     mconf_t* conf = nullptr;
     // check_files == 0: the daemons load without requiring the certificate files (`-t` checks them)
@@ -441,7 +572,7 @@ TEST(CApi, LoadSectionDocumentValidateFree)
     std::filesystem::remove_all(home);
 }
 
-TEST(Schema, EmbeddedSchemaIsValidJsonWithSixtySixLeaves)
+TEST(Schema, EmbeddedSchemaIsValidJsonWithSixtyNineLeaves)
 {
     const auto schema = json(std::string {manager_config::schemaJson()});
     std::size_t leaves = 0;
@@ -465,5 +596,7 @@ TEST(Schema, EmbeddedSchemaIsValidJsonWithSixtySixLeaves)
         }
     };
     walk(schema);
-    EXPECT_EQ(leaves, 65u);
+    // Bump this deliberately, never to make the test pass: it is the guard that a schema option was
+    // added or removed on purpose. Last changed by the two remote.https rate limits (67 -> 69).
+    EXPECT_EQ(leaves, 69u);
 }

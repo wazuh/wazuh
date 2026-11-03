@@ -1,7 +1,6 @@
 /*
  * Wazuh task manager module
- * Copyright (C) 2015, Wazuh Inc.
- * September 1, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -224,10 +223,9 @@ namespace task_manager::http
             return *error;
         }
 
-        if (!m_store.createAgentTask(task))
-        {
-            return ApiResponse::error(500, "create_failed", "Failed to create task");
-        }
+        // True or a throw: an existing id is success (ids are deterministic), and any other store
+        // failure throws into the route adapter, which answers 500 internal_error.
+        m_store.createAgentTask(task);
 
         // Evicting BEFORE answering. A poll that raced this create must not be told "nothing
         // pending" from a cache entry this task has already invalidated.

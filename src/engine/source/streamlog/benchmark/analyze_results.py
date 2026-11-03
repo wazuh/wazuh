@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """
 Script to analyze and visualize benchmark results from async_vs_sync_bench.cpp
 """

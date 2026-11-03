@@ -1,11 +1,12 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _BASE_HASH_HPP
 #define _BASE_HASH_HPP
 
 #include <cstddef>
+#include <memory>
 #include <random>
 #include <string>
 #include <string_view>
-#include <memory>
 
 #include <openssl/evp.h>
 #include <openssl/md5.h>

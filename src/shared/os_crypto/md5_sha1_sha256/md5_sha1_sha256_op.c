@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -42,7 +42,7 @@ int OS_MD5_SHA1_SHA256_File(const char *fname,
     sha256output[0] = '\0';
     buf[OS_BUFFER_SIZE + 1] = '\0';
 
-    fp = wfopen(fname, mode == OS_BINARY ? "rb" : "r");
+    fp = w_fopen_regular(fname, mode == OS_BINARY ? "rb" : "r");
     if (!fp) {
         return (-1);
     }

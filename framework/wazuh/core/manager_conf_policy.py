@@ -1,4 +1,4 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -17,6 +17,17 @@ PROTECTED_SECTIONS = (
     ('/auth/agents/allow_higher_versions', ('agents', 'allow_higher_versions', 'allow'), 1129),
     ('/remote/agents/allow_higher_versions', ('agents', 'allow_higher_versions', 'allow'), 1129),
 )
+
+# Options that only a caller allowed to READ them in clear may change: the write-side twin of the read-side masking.
+# Knowing the cluster key is what lets a host join the cluster as a peer, so a caller who may not read it must not be
+# able to choose it either. Unlike PROTECTED_SECTIONS this is RBAC (`cluster:read_secrets`), not an api.yaml knob.
+SECRET_SECTIONS = ('/cluster/key',)
+
+# Options that choose where the manager sends a secret it never serves: every indexer client (clusterd, modulesd, the
+# engine) authenticates to each `indexer.hosts` entry with the manager's indexer service-account credential from the
+# keystore, and `indexer.ssl` decides whether that peer is trusted. Changing them hands the credential to a host of the
+# caller's choosing, so they take the same RBAC as the secrets. Not masked on read: a host list is not itself a secret.
+SECRET_DESTINATION_SECTIONS = ('/indexer',)
 
 
 def _resolve_pointer(document: dict, pointer: str):
@@ -65,3 +76,30 @@ def check_protected_sections(new_document: dict, current_document: dict, upload_
             continue
         if _resolve_pointer(new_document, pointer) != _resolve_pointer(current_document, pointer):
             raise WazuhError(code, extra_message=pointer)
+
+
+def check_secret_sections(new_document: dict, current_document: dict, can_read_secrets: bool):
+    """Raise if a secret option, or an option choosing where a secret is sent, differs between the new and the current
+    effective documents and the caller may not read secrets.
+
+    Parameters
+    ----------
+    new_document : dict
+        Effective document about to be written (defaults applied).
+    current_document : dict
+        Effective document currently on disk.
+    can_read_secrets : bool
+        Whether the caller holds `cluster:read_secrets` over the node being served.
+
+    Raises
+    ------
+    WazuhError(1132)
+        A secret option (the cluster key) or the indexer section was modified by a caller without
+        `cluster:read_secrets`.
+    """
+    if can_read_secrets:
+        return
+
+    for pointer in SECRET_SECTIONS + SECRET_DESTINATION_SECTIONS:
+        if _resolve_pointer(new_document, pointer) != _resolve_pointer(current_document, pointer):
+            raise WazuhError(1132, extra_message=pointer)

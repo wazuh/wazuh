@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -20,6 +20,12 @@
  * tasks (over the existing, unmodified `queue/sockets/task-http.sock` socket) and pushes any `remote_upgrade`
  * task to the agent using the same six-step wire protocol (lock_restart / open / write / close /
  * sha1 / upgrade) the agent-side handlers in wm_agent_upgrade_com.c already understand.
+ *
+ * Between the WPK's `sha1` and the `upgrade` command it also pushes the manager's own CA
+ * certificate, through a second open/write/close/sha1 cycle over the same channel -- so that an
+ * agent upgraded to 5.x has a trust anchor for the HTTPS listener it is about to start using. See
+ * legacy_task_deliver_ca(), which explains the position, the failure policy (never fails the
+ * upgrade) and the configuration gate.
  *
  * `get_pending_tasks` marks everything it returns `delivered` unconditionally, for every task
  * type -- so the version check must run strictly before calling it for a given agent, or a
@@ -64,13 +70,14 @@
 
 #include "shared.h"
 #include "remoted.h"
+#include "remoted_module.h"
 #include "agent_metadata_db.h"
 #include "wazuhdb_queries_op.h"
 #include "version_op.h"
 #include "os_net.h"
 #include "legacy_task_delivery.h"
-#include "queue_linked_op.h"
 #include "http_op.h"
+#include "sha1_op.h"
 
 #include <limits.h>
 
@@ -99,6 +106,50 @@
  * Duplicated as a plain constant here rather than pulled in from that module's header: this
  * poller only ever consumes a task's payload, it never touches task creation. */
 #define LEGACY_TASK_WPK_DEFAULT_PATH "var/upgrade/"
+
+/* --- Manager CA delivery (see legacy_task_deliver_ca()) ---------------------------------------
+ *
+ * A 5.0 manager is always a fresh install, so a 4.x fleet reaches 5.0 by remote upgrade. The
+ * upgraded agent then speaks HTTPS on 1517 but holds no trust anchor, and cannot enrol again to
+ * get one: it already has a client.keys identity, so it never sees an enrollment token. This
+ * channel is the one way in. It is also a good one -- it is encrypted and integrity-protected
+ * with the agent's own key, so the 4.x symmetric-key channel bootstraps the 5.0 asymmetric
+ * anchor with no unauthenticated moment and no trust-on-first-use window.
+ *
+ * The name is the SAME at both ends: the manager reads /etc/wazuh-manager/certs/root-ca.pem and the agent's
+ * installer looks for the drop-in at its own etc/certs/root-ca.pem (pkg_installer.sh's
+ * DEFAULT_CA_FILE; certs\root-ca.pem on Windows). Keeping it means the agent-side step is a copy
+ * rather than a rename, and a hand-staged anchor and a delivered one produce identical layouts. */
+#define LEGACY_TASK_CA_FILE_NAME "root-ca.pem"
+
+/* Fallback when remote.https.ca_certificate is unset. The C side leaves it NULL in that case --
+ * the default is applied by the C++ module (httpServerConfig.cpp, DEFAULT_CA_CERTIFICATE_PATH), so
+ * this poller has to apply the same one rather than read a NULL. Both come from remoted_module.h:
+ * they must name the same file, or an agent bootstrapped by upgrade and one bootstrapped from
+ * GET /cacerts would end up trusting different anchors. */
+#define LEGACY_TASK_CA_DEFAULT_PATH REMOTED_MODULE_DEFAULT_CA_CERTIFICATE_PATH
+
+/* Bound on how large a file this poller will read and push as a CA. A root CA PEM is 1-2 KiB and a
+ * bundle of a handful still fits easily; anything at this size is not a CA file and is far more
+ * likely to be a misconfiguration pointing at something else entirely. Refused rather than
+ * streamed, since the cost lands on the agent's disk and on this thread's sweep of every other
+ * agent. */
+#define LEGACY_TASK_CA_MAX_BYTES 65536
+
+/* In-cycle push attempts for the CA, deliberately LOWER than LEGACY_TASK_MAX_PUSH_ATTEMPTS.
+ *
+ * A failed WPK push loses the task -- get_pending_tasks already marked it delivered, so nothing
+ * offers it again -- which is what buys that path five attempts. A failed CA push loses nothing:
+ * the upgrade proceeds regardless (see the failure policy in legacy_task_deliver_ca()), and the
+ * next upgrade attempt sends the CA again. Three is enough to ride out a transient hiccup without
+ * spending this cycle's budget on an agent that is not answering. */
+#define LEGACY_TASK_CA_MAX_ATTEMPTS 3
+
+/* Target version at or above which the agent will speak HTTPS after the upgrade, and therefore the
+ * version at or above which it needs an anchor. Below it -- a 4.13 agent being stepped up to
+ * 4.14.x on its way to 5.0 -- there is nothing on the agent that would ever read the file, and
+ * nothing that would clean it out of var/incoming either. */
+#define LEGACY_TASK_CA_MIN_TARGET_VERSION "v5.0.0"
 
 /* Delay before the very first poll cycle after a remoted (re)start, giving reconnecting agents
  * time to report their version before the poller starts deciding eligibility from stale/absent
@@ -154,15 +205,58 @@
  * doesn't keep resending for the full, much longer poll interval. */
 #define LEGACY_TASK_ACK_DRAIN_INTERVAL_SEC 5
 
-/* FIFO of agent IDs (heap-allocated strings, owned by the queue until drained) awaiting a
- * clear_upgrade_result reply. Decouples ack detection -- done inline on a rem_handler worker
- * thread in secure.c, which must stay fast since that fixed-size pool is what dequeues and
- * processes every incoming secure message from every connected agent -- from the reply itself,
- * which needs a blocking round-trip to the agent (req_send_and_wait, up to response_timeout
- * seconds). Draining a burst of acks inline used to be able to tie up the whole worker pool for
- * that long, stalling every other agent's traffic; this queue lets this module's own poller
- * thread perform that blocking wait instead, off the shared pool entirely. */
-static w_linked_queue_t *pending_clear_upgrade_replies = NULL;
+/* Bound on legacy_task_ack_list. Each agent holds at most one slot (acks are deduplicated per
+ * agent), so this is only reached when more distinct agents than this ack at once. An ack refused
+ * for lack of room loses nothing: a 4.x agent keeps resending its ack on its own backoff until it
+ * is answered, so it is simply answered on a later resend. */
+#define LEGACY_TASK_ACK_LIST_MAX_SIZE 1024
+
+/* Wait for the agent's answer to clear_upgrade_result, capped by response_timeout. Far shorter
+ * than the WPK steps' response_timeout because the agent's work here is a local file delete, and
+ * because every second spent waiting is a second this thread is not serving the rest of the
+ * fleet. */
+#define LEGACY_TASK_ACK_REPLY_TIMEOUT_SEC 10
+
+/* After a clear_upgrade_result that failed (no answer, or a rejection), further acks from that
+ * agent are not answered for this long. Without it, an agent that acks and then never answers
+ * would cost this thread one LEGACY_TASK_ACK_REPLY_TIMEOUT_SEC every LEGACY_TASK_ACK_DRAIN_INTERVAL_SEC.
+ * A 4.x agent waits 300 seconds (its upgrade_wait_start default) before resending, doubling each
+ * time, so a genuine agent loses at most one resend to it. */
+#define LEGACY_TASK_ACK_RETRY_COOLDOWN_SEC 300
+
+/* One agent awaiting, or recently sent, a clear_upgrade_result reply. `queued` is set while a
+ * reply is owed; once taken by the poller it is cleared and `not_before` is the earliest moment a
+ * new ack from the same agent is queued again (covering the reply in flight, then the cooldown
+ * after a failed reply). A successful reply removes the entry. */
+typedef struct {
+    char *agent_id;
+    bool queued;
+    time_t not_before;
+} legacy_task_ack_entry_t;
+
+/* Outcome of offering an ack to legacy_task_ack_list. */
+typedef enum {
+    LEGACY_TASK_ACK_QUEUED,
+    LEGACY_TASK_ACK_ALREADY_QUEUED,
+    LEGACY_TASK_ACK_COOLING_DOWN,
+    LEGACY_TASK_ACK_LIST_FULL
+} legacy_task_ack_offer_t;
+
+/* Agents awaiting a clear_upgrade_result reply, in arrival order, one entry per agent.
+ * Decouples ack detection -- done inline on a rem_handler worker thread in secure.c, which must
+ * stay fast since that fixed-size pool is what dequeues and processes every incoming secure message
+ * from every connected agent -- from the reply itself, which needs a blocking round-trip to the
+ * agent (req_send_and_wait). This module's own poller thread performs that wait instead, off the
+ * shared pool entirely.
+ *
+ * Bounded three ways, so that acks an agent can send at will cannot grow memory or monopolize the
+ * poller thread: one entry per agent however many acks it sends, LEGACY_TASK_ACK_LIST_MAX_SIZE
+ * entries in total, and LEGACY_TASK_ACK_RETRY_COOLDOWN_SEC between replies to an agent whose last
+ * reply failed. Written by the worker pool and read by the poller, so every access holds
+ * legacy_task_ack_mutex; the blocking reply itself runs with the mutex released. */
+static legacy_task_ack_entry_t legacy_task_ack_list[LEGACY_TASK_ACK_LIST_MAX_SIZE];
+static size_t legacy_task_ack_count = 0;
+static pthread_mutex_t legacy_task_ack_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Distinguishes failures a retry can plausibly fix from ones it can't -- see each return site in
  * legacy_task_deliver_remote_upgrade() for the specific reasoning behind its classification. */
@@ -187,9 +281,8 @@ typedef struct {
 } legacy_task_retry_entry_t;
 
 /* Fixed-capacity, compacted (no gaps) array of pointers -- only ever touched by this module's own
- * poller thread, so no lock is needed, same assumption pending_clear_upgrade_replies makes for its
- * queue. LEGACY_TASK_RETRY_LIST_MAX_SIZE bounds it; legacy_task_retry_list_count tracks how many of
- * the leading slots are actually populated. */
+ * poller thread, so no lock is needed. LEGACY_TASK_RETRY_LIST_MAX_SIZE bounds it;
+ * legacy_task_retry_list_count tracks how many of the leading slots are actually populated. */
 /* Deadlines for the Task Manager round trip. Both are set EXPLICITLY because zero means different
  * things to libcurl: an unset request timeout is "never", while an unset connect timeout is its own
  * 300-second default -- either would let one unanswered poll stall this thread far past its cycle. */
@@ -204,11 +297,21 @@ STATIC char *legacy_task_manager_request(const char *route, const char *request_
 STATIC cJSON *legacy_task_get_pending(const char *agent_id) __attribute__((nonnull));
 STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *agent_id, const char *task_id, const cJSON *payload_obj, bool is_last_attempt, bool *out_no_response) __attribute__((nonnull(1, 2, 3, 5)));
 STATIC legacy_task_push_result_t legacy_task_attempt_delivery(const char *agent_id, const char *task_id, const cJSON *payload_json, bool *out_no_response) __attribute__((nonnull));
-STATIC bool legacy_task_send_step(const char *agent_id, const char *target, const char *rest, char **out_message, bool *out_malformed, bool *out_no_response, bool is_last_attempt) __attribute__((nonnull(1, 2, 3)));
+STATIC bool legacy_task_send_step(const char *agent_id, const char *target, const char *rest, char **out_message, bool *out_malformed, bool *out_no_response, bool is_last_attempt, int timeout_sec) __attribute__((nonnull(1, 2, 3)));
 STATIC bool legacy_task_send_upgrade_step(const char *agent_id, const char *command_name, cJSON *params, char **out_data, bool *out_malformed, bool *out_no_response, bool is_last_attempt) __attribute__((nonnull(1, 2, 3)));
+STATIC bool legacy_task_ca_target_speaks_https(const char *wpk_version);
+STATIC const char *legacy_task_ca_path(void);
+STATIC char *legacy_task_ca_read(unsigned int *out_length) __attribute__((nonnull));
+STATIC void legacy_task_ca_truncate(const char *agent_id) __attribute__((nonnull));
+STATIC bool legacy_task_ca_push(const char *agent_id, const char *pem, unsigned int length, const char *expected_sha1, bool is_last_attempt, bool *out_no_response) __attribute__((nonnull(1, 2, 4, 6)));
+STATIC void legacy_task_deliver_ca(const char *agent_id, const char *task_id, const char *wpk_version) __attribute__((nonnull(1, 2)));
 STATIC void legacy_upgrade_poll_cycle(void);
-STATIC void legacy_task_send_clear_upgrade_result(const char *agent_id) __attribute__((nonnull));
-STATIC void legacy_task_drain_clear_upgrade_replies(void);
+STATIC bool legacy_task_send_clear_upgrade_result(const char *agent_id) __attribute__((nonnull));
+STATIC void legacy_task_ack_remove_at(size_t index);
+STATIC legacy_task_ack_offer_t legacy_task_ack_offer(const char *agent_id) __attribute__((nonnull));
+STATIC char *legacy_task_ack_take_next(void);
+STATIC void legacy_task_ack_settle(const char *agent_id, bool replied) __attribute__((nonnull));
+STATIC void legacy_task_drain_clear_upgrade_replies(time_t deadline);
 STATIC void legacy_task_retry_list_free_entry(legacy_task_retry_entry_t *entry);
 STATIC void legacy_task_retry_list_remove_at(size_t index);
 STATIC void legacy_task_retry_list_purge_expired(void);
@@ -217,23 +320,19 @@ STATIC void legacy_task_retry_list_add(const char *agent_id, const char *task_id
 STATIC void legacy_task_retry_list_process(char **connected_agent_ids, size_t agent_count);
 
 void legacy_task_delivery_init(void) {
-    pending_clear_upgrade_replies = linked_queue_init();
+    w_mutex_lock(&legacy_task_ack_mutex);
+    while (legacy_task_ack_count > 0) {
+        legacy_task_ack_remove_at(0);
+    }
+    w_mutex_unlock(&legacy_task_ack_mutex);
 }
 
 void legacy_task_delivery_teardown(void) {
-    if (pending_clear_upgrade_replies) {
-        char *agent_id;
-
-        // linked_queue_pop_ex() blocks on an empty queue (waits on its condition variable), so
-        // draining must check for a pending node first rather than looping on its NULL return.
-        while (pending_clear_upgrade_replies->first) {
-            agent_id = (char *) linked_queue_pop_ex(pending_clear_upgrade_replies);
-            os_free(agent_id);
-        }
-
-        linked_queue_free(pending_clear_upgrade_replies);
-        pending_clear_upgrade_replies = NULL;
+    w_mutex_lock(&legacy_task_ack_mutex);
+    while (legacy_task_ack_count > 0) {
+        legacy_task_ack_remove_at(0);
     }
+    w_mutex_unlock(&legacy_task_ack_mutex);
 
     while (legacy_task_retry_list_count > 0) {
         legacy_task_retry_list_remove_at(0);
@@ -417,16 +516,17 @@ STATIC cJSON *legacy_task_get_pending(const char *agent_id) {
  * LEGACY_TASK_MAX_PUSH_ATTEMPTS) -- controls the severity of any failure logged here: `debug1`
  * for an attempt that still has budget left to recover on its own, `warning` for the one that
  * doesn't.
+ * @param timeout_sec How long to wait for the agent's answer.
  * @return true on a successful ack, false on any send/timeout/error response.
  */
-STATIC bool legacy_task_send_step(const char *agent_id, const char *target, const char *rest, char **out_message, bool *out_malformed, bool *out_no_response, bool is_last_attempt) {
+STATIC bool legacy_task_send_step(const char *agent_id, const char *target, const char *rest, char **out_message, bool *out_malformed, bool *out_no_response, bool is_last_attempt, int timeout_sec) {
     size_t payload_len = strlen(target) + 1 + strlen(rest);
     char *payload;
     os_malloc(payload_len + 1, payload);
     snprintf(payload, payload_len + 1, "%s %s", target, rest);
 
     char *response = NULL;
-    int rc = req_send_and_wait(agent_id, payload, payload_len, &response, response_timeout);
+    int rc = req_send_and_wait(agent_id, payload, payload_len, &response, timeout_sec);
     os_free(payload);
 
     if (rc != 0 || !response) {
@@ -460,13 +560,16 @@ STATIC bool legacy_task_send_step(const char *agent_id, const char *target, cons
                     os_strdup(message_obj->valuestring, *out_message);
                 }
             } else {
+                // Agent-supplied free text: escape CR/LF so it cannot forge lines in the plain-text log.
+                char *reason = escape_newlines(cJSON_IsString(message_obj) ? message_obj->valuestring : "unknown error");
                 if (is_last_attempt) {
                     mwarn("legacy_task_delivery: agent '%s' rejected step targeting '%s': %s", agent_id, target,
-                          cJSON_IsString(message_obj) ? message_obj->valuestring : "unknown error");
+                          reason);
                 } else {
                     mdebug1("legacy_task_delivery: agent '%s' rejected step targeting '%s': %s", agent_id, target,
-                            cJSON_IsString(message_obj) ? message_obj->valuestring : "unknown error");
+                            reason);
                 }
+                os_free(reason);
                 if (out_message && cJSON_IsString(message_obj)) {
                     os_strdup(message_obj->valuestring, *out_message);
                 }
@@ -512,11 +615,399 @@ STATIC bool legacy_task_send_upgrade_step(const char *agent_id, const char *comm
     cJSON_AddItemToObject(cmd, "parameters", params);
     char *cmd_str = cJSON_PrintUnformatted(cmd);
 
-    bool ok = legacy_task_send_step(agent_id, "upgrade", cmd_str, out_data, out_malformed, out_no_response, is_last_attempt);
+    bool ok = legacy_task_send_step(agent_id, "upgrade", cmd_str, out_data, out_malformed, out_no_response, is_last_attempt,
+                                    response_timeout);
 
     os_free(cmd_str);
     cJSON_Delete(cmd);
     return ok;
+}
+
+/**
+ * @brief Whether the version this upgrade installs will speak HTTPS, and therefore needs an anchor.
+ *
+ * compare_wazuh_versions() cannot answer this alone: it runs every input through atoi(), so a
+ * non-version string silently becomes 0.0.0 and compares BELOW v5.0.0 -- which would skip the CA
+ * for exactly the case that most needs it, the custom-WPK path, where the task carries no version
+ * at all. So the shape is checked here first and anything unrecognized is treated as "assume 5.x".
+ *
+ * That is the same conservatism the task manager already applies to a custom upload: it runs the
+ * HTTPS delivery gate against v5.0.0 unconditionally, on the grounds that a custom file's NAME
+ * cannot be trusted to say what it installs.
+ *
+ * @param wpk_version The task payload's `wpk_version`; NULL or empty on the custom-WPK path.
+ * @return true when the target is >= v5.0.0, or when it cannot be determined.
+ */
+STATIC bool legacy_task_ca_target_speaks_https(const char *wpk_version) {
+    if (!wpk_version || !*wpk_version) {
+        return true;
+    }
+
+    // "v5.0.0" or "5.0.0": one optional 'v', then a digit. Anything else is not a version string
+    // this can reason about, and unknown means send.
+    const char *digits = (*wpk_version == 'v' || *wpk_version == 'V') ? wpk_version + 1 : wpk_version;
+
+    if (!isdigit((unsigned char) *digits)) {
+        return true;
+    }
+
+    return compare_wazuh_versions(wpk_version, LEGACY_TASK_CA_MIN_TARGET_VERSION, true) >= 0;
+}
+
+/**
+ * @brief The CA file this manager sends: `remote.https.ca_certificate`, or the built-in default.
+ *
+ * Split from legacy_task_ca_read() so the caller holds a value it can prove is non-NULL without
+ * reasoning through an out-parameter: every failure log below names this path, and _merror()
+ * carries __attribute__((nonnull)) over its variadic arguments.
+ *
+ * No longer feeds the read itself (issue #39319): legacy_task_ca_read() asks the C++ module for the
+ * certificate instead of opening this file, and the module resolves the very same setting. What is
+ * left is the operator-facing half -- naming the file the certificate came from, or should have
+ * come from, in every log line below.
+ *
+ * @return Never NULL.
+ */
+STATIC const char *legacy_task_ca_path(void) {
+    return (logr.https.ca_certificate != NULL && *logr.https.ca_certificate != '\0')
+           ? logr.https.ca_certificate
+           : LEGACY_TASK_CA_DEFAULT_PATH;
+}
+
+/**
+ * @brief Get the CA certificate to send, and confirm it is something an agent could actually trust.
+ *
+ * Does NOT read the file (issue #39319). The bytes come from the C++ module, which hands back the
+ * ONE certificate of `remote.https.ca_certificate` that what the HTTPS listener serves CHAINS to
+ * (C33: a certificate that merely signs it is not one the agent's TLS could use),
+ * re-serialised and with no publication block. That is the whole point: during the overlap of a CA
+ * rotation the bundle on disk legitimately holds two certificates (plus the `##` block the
+ * `wazuh-manager-certs` tool stamps), and the agent-side installer -- src/init/pkg_installer.sh --
+ * REFUSES a `root-ca.pem` drop-in carrying more than one `-----BEGIN CERTIFICATE-----`. Sending the
+ * file as it sits would therefore leave every agent upgrading during a rotation with no anchor at
+ * all, which is the one outcome this feature exists to prevent.
+ *
+ * Rejects an answer that carries no complete PEM certificate block, exactly as the file-reading
+ * version did -- defence in depth against a truncated or non-certificate payload, from a producer
+ * that is not supposed to be able to emit one.
+ *
+ * @param out_length On success, the byte length pushed to the agent.
+ * @return Caller-owned PEM (free with os_free), or NULL. Does not log: the caller wants one message
+ * naming the agent as well as the file.
+ */
+STATIC char *legacy_task_ca_read(unsigned int *out_length) {
+    // Same cap and the same one-byte-past-it buffer as when this read the file. One byte PAST the
+    // cap is offered on purpose, exactly as before: a certificate that takes precisely the cap
+    // cannot be told from one that is larger unless the extra byte is there to come back in. The
+    // buffer carries one more byte again, for the NUL terminator the strstr() checks below need.
+    char *pem;
+    os_calloc(LEGACY_TASK_CA_MAX_BYTES + 2, sizeof(char), pem);
+
+    int written = remoted_module_tls_leaf_signer_pem(pem, LEGACY_TASK_CA_MAX_BYTES + 1);
+
+    if (written <= 0) {
+        // 0: the served certificate chains to nothing in the bundle, the certificate it chains to
+        // is not an installable anchor (not a CA, or outside its validity window -- issue #39319,
+        // C26: a rotation's overlap is exactly where an expired re-issue of the same key still
+        // signs the served leaf, and C33: another subject over the same key signs it without being
+        // its issuer), there is no servable bundle, or the listener is down. -1: the
+        // certificate does not even fit the offered capacity, or the module failed. Nothing to
+        // deliver either way, and the caller continues the upgrade without a CA. Never a truncated
+        // PEM: the export reports -1 rather than writing a prefix.
+        os_free(pem);
+        return NULL;
+    }
+
+    size_t length = (size_t) written;
+
+    if (length > LEGACY_TASK_CA_MAX_BYTES) {
+        // The cap itself, kept where it was: a certificate this size is not a CA, and the caller's
+        // error message promises exactly this bound.
+        os_free(pem);
+        return NULL;
+    }
+
+    pem[length] = '\0';
+
+    // BOTH markers, even though these bytes were serialised by OpenSSL two function calls ago. The
+    // check is not about distrusting the producer: it is that these bytes are written to the agent's
+    // disk and read much later by an installer that pins whatever it finds, so a certificate with no
+    // END line -- the truncated anchor this whole path is careful never to leave behind -- must not
+    // be able to get past here through any future change to how the PEM is produced.
+    //
+    // strstr() stops at the first NUL, so a payload with an embedded one fails these tests too. That
+    // is correct: it is not a PEM.
+    if (length == 0 || !strstr(pem, "-----BEGIN CERTIFICATE-----") ||
+        !strstr(pem, "-----END CERTIFICATE-----")) {
+        os_free(pem);
+        return NULL;
+    }
+
+    *out_length = (unsigned int) length;
+
+    return pem;
+}
+
+/**
+ * @brief Leave a zero-byte file where a partially-written CA would otherwise sit.
+ *
+ * The 4.x `upgrade` command set has no delete primitive, but `open` in "wb" mode truncates -- so an
+ * open/close pair with nothing between it is the cleanup. This matters: a CA cycle that failed
+ * after some writes leaves a TRUNCATED PEM, and an installer that pinned one would produce an
+ * agent that fails every handshake -- worse than an agent with no anchor at all, which is the very
+ * outcome this feature exists to avoid.
+ *
+ * Best-effort by construction. If the agent is unreachable, these two steps fail too; but then the
+ * partial file cannot have been written by a reachable agent either, and the agent-side reader
+ * treats a file with no certificate block as absent regardless (see #39071).
+ */
+STATIC void legacy_task_ca_truncate(const char *agent_id) {
+    cJSON *open_params = cJSON_CreateObject();
+    cJSON_AddStringToObject(open_params, "mode", "wb");
+    cJSON_AddStringToObject(open_params, "file", LEGACY_TASK_CA_FILE_NAME);
+
+    // is_last_attempt=true so a failure here logs at its plain severity rather than debug: there is
+    // no further attempt this is making way for.
+    if (!legacy_task_send_upgrade_step(agent_id, "open", open_params, NULL, NULL, NULL, true)) {
+        mdebug1("legacy_task_delivery: agent '%s': could not truncate a partial '%s' after a failed CA "
+                "transfer; the agent-side installer ignores a file with no certificate block",
+                agent_id, LEGACY_TASK_CA_FILE_NAME);
+        return;
+    }
+
+    cJSON *close_params = cJSON_CreateObject();
+    cJSON_AddStringToObject(close_params, "file", LEGACY_TASK_CA_FILE_NAME);
+    (void) legacy_task_send_upgrade_step(agent_id, "close", close_params, NULL, NULL, NULL, true);
+}
+
+/**
+ * @brief One open/write/close/sha1 cycle for the CA.
+ *
+ * Chunked with the same LEGACY_TASK_WPK_CHUNK_SIZE the WPK uses -- not because a CA needs it (a
+ * root CA PEM is one chunk many times over) but because the agent-side 'write' handler accepts one
+ * buffer per call whatever the payload, so the loop is a property of the wire protocol rather than
+ * of the file.
+ *
+ * @param pem File contents to push.
+ * @param length Byte length of @p pem.
+ * @param expected_sha1 Digest of @p pem, compared against what the agent reports back.
+ * @param is_last_attempt Controls the severity of failures logged by the steps themselves.
+ * @param out_no_response Set to true when a step got no answer at all. Always set.
+ * @return true when every step acked and the digests matched.
+ */
+STATIC bool legacy_task_ca_push(const char *agent_id, const char *pem, unsigned int length, const char *expected_sha1, bool is_last_attempt, bool *out_no_response) {
+    *out_no_response = false;
+
+    {
+        cJSON *params = cJSON_CreateObject();
+        cJSON_AddStringToObject(params, "mode", "wb");
+        cJSON_AddStringToObject(params, "file", LEGACY_TASK_CA_FILE_NAME);
+
+        if (!legacy_task_send_upgrade_step(agent_id, "open", params, NULL, NULL, out_no_response, is_last_attempt)) {
+            return false;
+        }
+    }
+
+    for (unsigned int offset = 0; offset < length; ) {
+        unsigned int chunk = length - offset;
+
+        if (chunk > LEGACY_TASK_WPK_CHUNK_SIZE) {
+            chunk = LEGACY_TASK_WPK_CHUNK_SIZE;
+        }
+
+        char *base64 = encode_base64((int) chunk, pem + offset);
+
+        if (!base64) {
+            merror("legacy_task_delivery: agent '%s': base64 encoding failed writing the CA", agent_id);
+            return false;
+        }
+
+        cJSON *params = cJSON_CreateObject();
+        cJSON_AddStringToObject(params, "buffer", base64);
+        cJSON_AddNumberToObject(params, "length", (double) chunk);
+        cJSON_AddStringToObject(params, "file", LEGACY_TASK_CA_FILE_NAME);
+        os_free(base64);
+
+        if (!legacy_task_send_upgrade_step(agent_id, "write", params, NULL, NULL, out_no_response, is_last_attempt)) {
+            return false;
+        }
+
+        offset += chunk;
+    }
+
+    {
+        cJSON *params = cJSON_CreateObject();
+        cJSON_AddStringToObject(params, "file", LEGACY_TASK_CA_FILE_NAME);
+
+        if (!legacy_task_send_upgrade_step(agent_id, "close", params, NULL, NULL, out_no_response, is_last_attempt)) {
+            return false;
+        }
+    }
+
+    {
+        cJSON *params = cJSON_CreateObject();
+        cJSON_AddStringToObject(params, "file", LEGACY_TASK_CA_FILE_NAME);
+
+        char *reported_sha1 = NULL;
+        bool ok = legacy_task_send_upgrade_step(agent_id, "sha1", params, &reported_sha1, NULL, out_no_response, is_last_attempt);
+
+        if (!ok) {
+            os_free(reported_sha1);
+            return false;
+        }
+
+        if (!reported_sha1 || strcmp(reported_sha1, expected_sha1) != 0) {
+            // Agent-supplied: escape CR/LF so it cannot forge lines in the plain-text log.
+            char *got = escape_newlines(reported_sha1 ? reported_sha1 : "(none)");
+            if (is_last_attempt) {
+                mwarn("legacy_task_delivery: agent '%s': CA sha1 mismatch after transfer (expected '%s', got '%s')",
+                      agent_id, expected_sha1, got);
+            } else {
+                mdebug1("legacy_task_delivery: agent '%s': CA sha1 mismatch after transfer (expected '%s', got '%s')",
+                        agent_id, expected_sha1, got);
+            }
+            os_free(got);
+            os_free(reported_sha1);
+            return false;
+        }
+
+        os_free(reported_sha1);
+    }
+
+    return true;
+}
+
+/**
+ * @brief Push the manager's CA to a pre-v5.0.0 agent, ahead of the `upgrade` command.
+ *
+ * NEVER fails the upgrade. Every refusal and every failure below logs and returns; the caller sends
+ * `upgrade` regardless. An agent off the air is worse than an agent without an anchor, and the
+ * agent-side installer makes its own decision from what it finds on disk -- it is the only party
+ * that knows the address this agent dials and whether the OS trust store already covers it.
+ *
+ * That also means this function's outcome is deliberately not folded into
+ * legacy_task_push_result_t: a CA hiccup must never re-classify the task as RETRYABLE, which would
+ * re-stream the whole WPK (tens of megabytes) to fix a two-kilobyte transfer.
+ *
+ * @param agent_id Target agent identifier.
+ * @param task_id Task identifier, for the log lines only.
+ * @param wpk_version The task payload's `wpk_version`; may be NULL.
+ */
+STATIC void legacy_task_deliver_ca(const char *agent_id, const char *task_id, const char *wpk_version) {
+    if (!logr.legacy_ca_delivery) {
+        // Before any file read and any wire step: with the option off, this push is byte-for-byte
+        // what it was before CA delivery existed.
+        mdebug1("legacy_task_delivery: agent '%s': CA delivery is disabled "
+                "(<remote><legacy><ca_delivery>), not sending the manager CA for task '%s'",
+                agent_id, task_id);
+        return;
+    }
+
+    // The NULL test is repeated here rather than left to the callee, even though
+    // legacy_task_ca_target_speaks_https(NULL) already returns true and this branch is therefore
+    // unreachable with a NULL version. _mdebug1() carries __attribute__((nonnull)), which covers
+    // its variadic arguments too, so the log below must be provably safe WITHOUT reasoning across
+    // a function boundary -- for scan-build, and for the next reader.
+    if (wpk_version != NULL && !legacy_task_ca_target_speaks_https(wpk_version)) {
+        mdebug1("legacy_task_delivery: agent '%s': task '%s' targets '%s', below %s, so no CA is sent "
+                "(nothing on that version would read it)",
+                agent_id, task_id, wpk_version, LEGACY_TASK_CA_MIN_TARGET_VERSION);
+        return;
+    }
+
+    const char *ca_path = legacy_task_ca_path();
+    unsigned int ca_length = 0;
+    char *pem = legacy_task_ca_read(&ca_length);
+
+    if (!pem) {
+        // "no certificate the manager's own certificate chains to" is in this list because, since
+        // #39319, it is the case that lands HERE: the module answers 0 for a bundle the served leaf
+        // cannot build a chain to, so legacy_task_ca_read() returns NULL before the explicit guard
+        // below is ever consulted. Its own, more specific message would otherwise be unreachable in
+        // the one situation CA-18 is about, leaving the reason unsaid. The same is true of "not a CA
+        // within its validity period" (C26, C33): the module only picks an anchor the leaf CHAINS to
+        // and that is ALSO a CA and currently valid, so a bundle whose only signer is an expired
+        // re-issue of the same key -- exactly what a rotation's overlap can leave behind -- or one
+        // holding that key under another subject answers 0 here too, with no more specific guard
+        // below to say why.
+        merror("legacy_task_delivery: agent '%s': the configured CA '%s' is missing, unreadable, larger "
+               "than %d bytes, carries no certificate, carries no certificate that the certificate "
+               "this manager serves chains to, or the one it chains to is not a CA within its "
+               "validity period; continuing the upgrade without it, so the agent will come back "
+               "unverified",
+               agent_id, ca_path, LEGACY_TASK_CA_MAX_BYTES);
+        return;
+    }
+
+    // Kept although the export above already refuses to produce a certificate the served one does
+    // not chain to, so this is redundant by design (02-diseno.md §2.5): it is the guard that
+    // states the rule, and it keeps stating it if the export's contract is ever loosened. Only an
+    // explicit "does not chain" refuses -- unknown (-1: the listener is down, or the file was
+    // unreadable at the last evaluation) proceeds, exactly as GET /cacerts does. Refusing on
+    // unknown would turn one transient read failure into a fleet-wide loss of the trust bootstrap.
+    if (remoted_module_tls_ca_matches_leaf() == 0) {
+        merror("legacy_task_delivery: agent '%s': the certificate this manager serves on the HTTPS "
+               "listener does not chain to the configured CA '%s', so it is not sent -- an agent that "
+               "pinned it would fail every connection afterwards. Continuing the upgrade without it; fix "
+               "the CA and the certificate so they match, then upgrade again",
+               agent_id, ca_path);
+        os_free(pem);
+        return;
+    }
+
+    /* Over the BUFFER being pushed, not over the file on disk: hashing the path again would leave a
+     * window in which a rotation between the read and the hash produces a digest for bytes the
+     * agent never receives, and the sha1 step would then fail for a reason no log could explain.
+     *
+     * Comparable with what the agent reports: its `sha1` handler runs OS_SHA1_File(..., OS_BINARY),
+     * and both are a plain SHA-1 over the raw bytes rendered as lowercase hex. */
+    os_sha1 expected_sha1;
+    OS_SHA1_Str(pem, (ssize_t) ca_length, expected_sha1);
+
+    mdebug1("legacy_task_delivery: agent '%s': sending the manager CA '%s' (%u bytes, sha1 '%s') as '%s' "
+            "for task '%s'", agent_id, ca_path, ca_length, expected_sha1, LEGACY_TASK_CA_FILE_NAME, task_id);
+
+    bool delivered = false;
+    bool no_response = false;
+    int attempts = 0;
+
+    while (attempts < LEGACY_TASK_CA_MAX_ATTEMPTS && !delivered) {
+        attempts++;
+        delivered = legacy_task_ca_push(agent_id, pem, ca_length, expected_sha1,
+                                        attempts == LEGACY_TASK_CA_MAX_ATTEMPTS, &no_response);
+
+        if (no_response) {
+            // Same economics as the WPK loop: a rejection costs milliseconds, a no-response costs a
+            // full response_timeout per attempt, and this thread still has every other agent to
+            // sweep. One is enough to learn the agent is not answering.
+            break;
+        }
+    }
+
+    os_free(pem);
+
+    if (delivered) {
+        minfo("legacy_task_delivery: agent '%s': delivered the manager CA as '%s' for task '%s'; the "
+              "agent can verify this manager after the upgrade", agent_id, LEGACY_TASK_CA_FILE_NAME, task_id);
+        return;
+    }
+
+    // `attempts`, not the cap: a no-response breaks the loop after one try, and reporting three
+    // there would send an operator looking for two retries that never happened.
+    //
+    // Distinct from any WPK failure, and never reported as one -- the upgrade itself is going ahead
+    // on the very next step.
+    mwarn("legacy_task_delivery: agent '%s': could not deliver the manager CA for task '%s' after %d "
+          "attempt(s); continuing the upgrade, so the agent will come back unverified",
+          agent_id, task_id, attempts);
+
+    // Whatever bytes reached the agent must not be left where the installer would read them --
+    // except when the agent stopped answering, where the truncate steps would only time out too and
+    // cost this cycle another two response_timeouts it owes to every other agent in the sweep. An
+    // agent that is not answering is also not about to run its installer.
+    if (!no_response) {
+        legacy_task_ca_truncate(agent_id);
+    }
 }
 
 /**
@@ -547,6 +1038,7 @@ STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *
     cJSON *wpk_file_obj = cJSON_GetObjectItem(payload_obj, "wpk_file");
     cJSON *wpk_sha1_obj = cJSON_GetObjectItem(payload_obj, "wpk_sha1");
     cJSON *installer_obj = cJSON_GetObjectItem(payload_obj, "installer");
+    cJSON *wpk_version_obj = cJSON_GetObjectItem(payload_obj, "wpk_version");
 
     if (!cJSON_IsString(wpk_file_obj) || !cJSON_IsString(wpk_sha1_obj) || !cJSON_IsString(installer_obj)) {
         merror("legacy_task_delivery: agent '%s': invalid or incomplete remote_upgrade payload, not delivered", agent_id);
@@ -557,6 +1049,11 @@ STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *
     const char *wpk_file = wpk_file_obj->valuestring;
     const char *wpk_sha1 = wpk_sha1_obj->valuestring;
     const char *installer = installer_obj->valuestring;
+    /* NOT part of the validity check above: this field is only consulted to decide whether to send
+     * the manager CA, and its absence is a meaningful value there ("unknown, assume 5.x") rather
+     * than a malformed payload. The task manager leaves it empty on the custom-WPK path by design,
+     * and a task written before this field existed simply has none. */
+    const char *wpk_version = cJSON_IsString(wpk_version_obj) ? wpk_version_obj->valuestring : NULL;
 
     // wpk_file is always a bare filename (both the repo-resolved and custom-WPK task-creation
     // paths in wm_agent_upgrade_commands.c only ever emit a basename), so the wire "file" field to
@@ -569,7 +1066,8 @@ STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *
     minfo("legacy_task_delivery: delivering remote_upgrade task '%s' to agent '%s' (wpk: '%s')", task_id, agent_id, wpk_file);
 
     // Step 1: lock_restart (execd, plain-text protocol)
-    if (!legacy_task_send_step(agent_id, "com", "lock_restart -1", NULL, NULL, out_no_response, is_last_attempt)) {
+    if (!legacy_task_send_step(agent_id, "com", "lock_restart -1", NULL, NULL, out_no_response, is_last_attempt,
+                               response_timeout)) {
         // debug1 while attempts remain, warning on the last one -- retryable, and either a later
         // in-cycle attempt recovers, a no-response defers it to legacy_task_retry_list for a future
         // cycle, or every in-cycle attempt is spent and this poller simply logs and drops it (see
@@ -717,13 +1215,16 @@ STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *
 
         if (!reported_sha1 || strcmp(reported_sha1, wpk_sha1) != 0) {
             // debug1/warning ladder -- see the lock_restart step's comment.
+            // Agent-supplied: escape CR/LF so it cannot forge lines in the plain-text log.
+            char *got = escape_newlines(reported_sha1 ? reported_sha1 : "(none)");
             if (is_last_attempt) {
                 mwarn("legacy_task_delivery: agent '%s': sha1 mismatch after transfer (expected '%s', got '%s'), aborting",
-                       agent_id, wpk_sha1, reported_sha1 ? reported_sha1 : "(none)");
+                       agent_id, wpk_sha1, got);
             } else {
                 mdebug1("legacy_task_delivery: agent '%s': sha1 mismatch after transfer (expected '%s', got '%s'), aborting",
-                        agent_id, wpk_sha1, reported_sha1 ? reported_sha1 : "(none)");
+                        agent_id, wpk_sha1, got);
             }
+            os_free(got);
             os_free(reported_sha1);
             // Most likely one-off corruption in transit; a fresh transfer is likely to match.
             return LEGACY_TASK_PUSH_RETRYABLE;
@@ -731,6 +1232,18 @@ STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *
 
         os_free(reported_sha1);
     }
+
+    // Step 5b: the manager CA.
+    //
+    // HERE, and not before the WPK, for two reasons. A CA failure must not re-classify the task as
+    // RETRYABLE -- the caller retries the WHOLE push from lock_restart, so a two-kilobyte hiccup
+    // sitting earlier in the sequence would re-stream the entire package. And the agent tracks
+    // exactly one open file (a static path in wm_agent_upgrade_com.c), so going second bounds how
+    // long a partially-written CA can sit on disk to the gap before the very next step.
+    //
+    // Its outcome is deliberately discarded: whatever happened, `upgrade` is issued below. See
+    // legacy_task_deliver_ca() for why an agent off the air is worse than an unverified one.
+    legacy_task_deliver_ca(agent_id, task_id, wpk_version);
 
     // Step 6: upgrade
     {
@@ -756,8 +1269,11 @@ STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *
         }
 
         if (!exit_status || strncmp("0", exit_status, 1) != 0) {
+            // Agent-supplied: escape CR/LF so it cannot forge lines in the plain-text log.
+            char *status = escape_newlines(exit_status ? exit_status : "unknown");
             merror("legacy_task_delivery: agent '%s': installer script failed (exit status: %s)",
-                   agent_id, exit_status ? exit_status : "unknown");
+                   agent_id, status);
+            os_free(status);
             os_free(exit_status);
             // The agent ran the installer and it affirmatively reported failure (bad package,
             // wrong arch, disk full, etc.) -- retrying the identical WPK will fail the same way.
@@ -826,17 +1342,151 @@ STATIC legacy_task_push_result_t legacy_task_attempt_delivery(const char *agent_
  * (wm_agent_upgrade_check_status(), agent-side, unmodified): on receipt it deletes its local
  * `upgrade_result` file and the loop exits.
  *
+ * Waits at most LEGACY_TASK_ACK_REPLY_TIMEOUT_SEC (or response_timeout, if lower) for the answer,
+ * not the full response_timeout the WPK steps get -- see LEGACY_TASK_ACK_REPLY_TIMEOUT_SEC.
+ *
  * @param agent_id Target agent identifier.
+ * @return true if the agent acknowledged the command.
  */
-STATIC void legacy_task_send_clear_upgrade_result(const char *agent_id) {
-    cJSON *params = cJSON_CreateObject();
+STATIC bool legacy_task_send_clear_upgrade_result(const char *agent_id) {
+    int timeout_sec = response_timeout < LEGACY_TASK_ACK_REPLY_TIMEOUT_SEC ? response_timeout
+                                                                            : LEGACY_TASK_ACK_REPLY_TIMEOUT_SEC;
 
     // Not part of the push-attempt retry loop -- always pass true so a failure here keeps logging
     // at its usual severity regardless of any in-progress task delivery.
-    if (!legacy_task_send_upgrade_step(agent_id, "clear_upgrade_result", params, NULL, NULL, NULL, true)) {
+    if (!legacy_task_send_step(agent_id, "upgrade", "{\"command\":\"clear_upgrade_result\",\"parameters\":{}}",
+                               NULL, NULL, NULL, true, timeout_sec)) {
         mwarn("legacy_task_delivery: agent '%s': failed to deliver 'clear_upgrade_result', "
               "the agent may keep resending its upgrade acknowledgment", agent_id);
+        return false;
     }
+
+    return true;
+}
+
+/**
+ * @brief Remove the entry at the given index from legacy_task_ack_list, keeping it gap-free and
+ * in arrival order. Caller holds legacy_task_ack_mutex.
+ *
+ * @param index Index to remove; must be < legacy_task_ack_count.
+ */
+STATIC void legacy_task_ack_remove_at(size_t index) {
+    os_free(legacy_task_ack_list[index].agent_id);
+
+    for (size_t i = index; i + 1 < legacy_task_ack_count; i++) {
+        legacy_task_ack_list[i] = legacy_task_ack_list[i + 1];
+    }
+
+    legacy_task_ack_count--;
+    memset(&legacy_task_ack_list[legacy_task_ack_count], 0, sizeof(legacy_task_ack_entry_t));
+}
+
+/**
+ * @brief Queue a clear_upgrade_result reply for an agent, unless one is already owed, the agent is
+ * cooling down after a failed reply, or the list is full.
+ *
+ * Runs on a rem_handler worker thread: a linear scan of at most LEGACY_TASK_ACK_LIST_MAX_SIZE short
+ * strings under the mutex, never anything that blocks.
+ *
+ * @param agent_id Agent identifier (copied).
+ * @return What happened to the ack.
+ */
+STATIC legacy_task_ack_offer_t legacy_task_ack_offer(const char *agent_id) {
+    legacy_task_ack_offer_t result = LEGACY_TASK_ACK_QUEUED;
+    time_t now = time(0);
+
+    w_mutex_lock(&legacy_task_ack_mutex);
+
+    size_t i = 0;
+    while (i < legacy_task_ack_count && strcmp(legacy_task_ack_list[i].agent_id, agent_id) != 0) {
+        i++;
+    }
+
+    if (i < legacy_task_ack_count) {
+        legacy_task_ack_entry_t *entry = &legacy_task_ack_list[i];
+
+        if (entry->queued) {
+            result = LEGACY_TASK_ACK_ALREADY_QUEUED;
+        } else if (now < entry->not_before) {
+            result = LEGACY_TASK_ACK_COOLING_DOWN;
+        } else {
+            entry->queued = true;
+        }
+    } else if (legacy_task_ack_count >= LEGACY_TASK_ACK_LIST_MAX_SIZE) {
+        result = LEGACY_TASK_ACK_LIST_FULL;
+    } else {
+        legacy_task_ack_entry_t *entry = &legacy_task_ack_list[legacy_task_ack_count++];
+        os_strdup(agent_id, entry->agent_id);
+        entry->queued = true;
+        entry->not_before = 0;
+    }
+
+    w_mutex_unlock(&legacy_task_ack_mutex);
+
+    return result;
+}
+
+/**
+ * @brief Take the oldest agent still owed a reply, marking it in flight.
+ *
+ * Also drops every entry whose cooldown has ended, so that slots held by agents that went quiet
+ * are given back. The taken entry stays in the list, not queued, with a not_before past the end of
+ * the reply's wait: an ack that arrives while the reply is in flight is not queued a second time.
+ * legacy_task_ack_settle() decides what happens to it once the reply is over.
+ *
+ * @return Caller-owned copy of the agent ID, or NULL if no reply is owed.
+ */
+STATIC char *legacy_task_ack_take_next(void) {
+    char *agent_id = NULL;
+    time_t now = time(0);
+
+    w_mutex_lock(&legacy_task_ack_mutex);
+
+    for (size_t i = 0; i < legacy_task_ack_count; /* no increment: removal shifts i's slot */) {
+        legacy_task_ack_entry_t *entry = &legacy_task_ack_list[i];
+
+        if (!entry->queued && now >= entry->not_before) {
+            legacy_task_ack_remove_at(i);
+        } else if (entry->queued && !agent_id) {
+            entry->queued = false;
+            entry->not_before = now + LEGACY_TASK_ACK_REPLY_TIMEOUT_SEC + LEGACY_TASK_ACK_RETRY_COOLDOWN_SEC;
+            os_strdup(entry->agent_id, agent_id);
+            i++;
+        } else {
+            i++;
+        }
+    }
+
+    w_mutex_unlock(&legacy_task_ack_mutex);
+
+    return agent_id;
+}
+
+/**
+ * @brief Record the outcome of a reply taken with legacy_task_ack_take_next().
+ *
+ * A successful reply removes the entry: the agent has deleted its result file and stops acking.
+ * A failed one keeps it for LEGACY_TASK_ACK_RETRY_COOLDOWN_SEC, during which further acks from the
+ * agent are not answered.
+ *
+ * @param agent_id Agent the reply was sent to.
+ * @param replied Whether the agent acknowledged clear_upgrade_result.
+ */
+STATIC void legacy_task_ack_settle(const char *agent_id, bool replied) {
+    w_mutex_lock(&legacy_task_ack_mutex);
+
+    for (size_t i = 0; i < legacy_task_ack_count; i++) {
+        if (strcmp(legacy_task_ack_list[i].agent_id, agent_id) == 0) {
+            if (replied) {
+                legacy_task_ack_remove_at(i);
+            } else {
+                legacy_task_ack_list[i].not_before = time(0) + LEGACY_TASK_ACK_RETRY_COOLDOWN_SEC;
+            }
+            break;
+        }
+    }
+
+    w_mutex_unlock(&legacy_task_ack_mutex);
 }
 
 /**
@@ -1184,8 +1834,39 @@ bool legacy_task_process_upgrade_ack(const char *agent_id, const char *ack_json)
         return false;
     }
 
+    // Queue rather than reply inline: this function runs on a shared rem_handler worker-pool
+    // thread (secure.c) and must not block it. legacy_task_send_clear_upgrade_result() performs a
+    // synchronous round-trip to the agent -- doing that here, under a burst of acks (e.g. right
+    // after a mass upgrade completes), could occupy every worker thread at once and stall all
+    // other agents' traffic. The poller thread drains the list and performs the actual round-trip
+    // off the shared pool instead.
+    legacy_task_ack_offer_t offer = legacy_task_ack_offer(agent_id);
+
+    if (offer != LEGACY_TASK_ACK_QUEUED) {
+        // Nothing logged above debug for an ack that queues nothing: the agent decides how often
+        // it acks, so anything louder would let it fill the manager's log at will.
+        switch (offer) {
+            case LEGACY_TASK_ACK_ALREADY_QUEUED:
+                mdebug2("legacy_task_delivery: agent '%s' resent its upgrade acknowledgment, a "
+                        "clear_upgrade_result reply is already pending", agent_id);
+                break;
+            case LEGACY_TASK_ACK_COOLING_DOWN:
+                mdebug1("legacy_task_delivery: agent '%s' resent its upgrade acknowledgment, not replying "
+                        "within %ds of the previous clear_upgrade_result", agent_id, LEGACY_TASK_ACK_RETRY_COOLDOWN_SEC);
+                break;
+            default:
+                mdebug1("legacy_task_delivery: agent '%s': too many upgrade acknowledgments pending (%d), not "
+                        "replying to this one, the agent will resend it", agent_id, LEGACY_TASK_ACK_LIST_MAX_SIZE);
+                break;
+        }
+
+        cJSON_Delete(ack);
+        return true;
+    }
+
     cJSON *message_obj = cJSON_GetObjectItem(parameters_obj, "message");
-    const char *message = cJSON_IsString(message_obj) ? message_obj->valuestring : "(no message)";
+    // Agent-supplied free text: escape CR/LF so it cannot forge lines in the plain-text log.
+    char *message = escape_newlines(cJSON_IsString(message_obj) ? message_obj->valuestring : "(no message)");
 
     if (error_obj->valueint == 0) {
         minfo("legacy_task_delivery: agent '%s' reported upgrade result (error %d: %s), replying with "
@@ -1201,37 +1882,29 @@ bool legacy_task_process_upgrade_ack(const char *agent_id, const char *ack_json)
               "clear_upgrade_result", agent_id, error_obj->valueint, message);
     }
 
+    os_free(message);
     cJSON_Delete(ack);
-
-    // Enqueue rather than reply inline: this function runs on a shared rem_handler worker-pool
-    // thread (secure.c) and must not block it. legacy_task_send_clear_upgrade_result() performs a
-    // synchronous round-trip to the agent (up to response_timeout seconds) -- doing that here,
-    // under a burst of acks (e.g. right after a mass upgrade completes), could occupy every
-    // worker thread at once and stall all other agents' traffic. The poller thread drains this
-    // queue and performs the actual round-trip off the shared pool instead.
-    char *agent_id_copy;
-    os_strdup(agent_id, agent_id_copy);
-    linked_queue_push_ex(pending_clear_upgrade_replies, agent_id_copy);
 
     return true;
 }
 
 /**
- * @brief Drain and reply to every agent ID currently queued for a clear_upgrade_result reply.
+ * @brief Reply to the agents owed a clear_upgrade_result, oldest first, until none is left or the
+ * deadline passes.
  *
  * Runs on this module's own poller thread, off the shared rem_handler worker pool -- see
- * pending_clear_upgrade_replies' doc comment. No dedup: the same agent ID may appear more than
- * once (its own backoff loop can resend an ack before this drains), and replying twice is
- * harmless, so each queued entry is answered independently.
+ * legacy_task_ack_list's doc comment. The deadline is checked before every reply, so the next poll
+ * cycle starts at most one LEGACY_TASK_ACK_REPLY_TIMEOUT_SEC late however many replies are owed;
+ * whatever is left stays queued for the next drain.
+ *
+ * @param deadline Moment after which no further reply is started.
  */
-STATIC void legacy_task_drain_clear_upgrade_replies(void) {
+STATIC void legacy_task_drain_clear_upgrade_replies(time_t deadline) {
     char *agent_id;
 
-    // linked_queue_pop_ex() blocks on an empty queue (waits on its condition variable), so
-    // draining must check for a pending node first rather than looping on its NULL return.
-    while (pending_clear_upgrade_replies->first) {
-        agent_id = (char *) linked_queue_pop_ex(pending_clear_upgrade_replies);
-        legacy_task_send_clear_upgrade_result(agent_id);
+    while (time(0) < deadline && (agent_id = legacy_task_ack_take_next()) != NULL) {
+        bool replied = legacy_task_send_clear_upgrade_result(agent_id);
+        legacy_task_ack_settle(agent_id, replied);
         os_free(agent_id);
     }
 }
@@ -1247,16 +1920,17 @@ void *legacy_upgrade_task_delivery(void *arg) {
 
     while (1) {
         legacy_upgrade_poll_cycle();
-        legacy_task_drain_clear_upgrade_replies();
 
-        int slept = 0;
-        while (slept < legacy_task_polling_interval) {
-            int nap = (legacy_task_polling_interval - slept < LEGACY_TASK_ACK_DRAIN_INTERVAL_SEC)
-                      ? (legacy_task_polling_interval - slept)
-                      : LEGACY_TASK_ACK_DRAIN_INTERVAL_SEC;
-            sleep(nap);
-            slept += nap;
-            legacy_task_drain_clear_upgrade_replies();
+        // Time spent replying to acks counts toward the poll interval rather than extending it,
+        // so however many acks are owed, the next cycle starts on schedule (see
+        // legacy_task_drain_clear_upgrade_replies()).
+        time_t next_cycle = time(0) + legacy_task_polling_interval;
+        legacy_task_drain_clear_upgrade_replies(next_cycle);
+
+        for (time_t now = time(0); now < next_cycle; now = time(0)) {
+            sleep((next_cycle - now < LEGACY_TASK_ACK_DRAIN_INTERVAL_SEC) ? (unsigned int) (next_cycle - now)
+                                                                         : LEGACY_TASK_ACK_DRAIN_INTERVAL_SEC);
+            legacy_task_drain_clear_upgrade_replies(next_cycle);
 
 #ifdef WAZUH_UNIT_TESTING
             break;

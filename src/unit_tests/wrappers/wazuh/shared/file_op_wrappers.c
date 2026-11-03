@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -133,6 +133,18 @@ void expect_w_fopen_nofollow(const char * basedir, const char * filename, const 
     will_return(__wrap_w_fopen_nofollow, ret);
 }
 
+FILE *__wrap_w_fopen_regular(const char * pathname, const char * mode) {
+    check_expected(pathname);
+    check_expected(mode);
+    return mock_type(FILE *);
+}
+
+void expect_w_fopen_regular(const char * pathname, const char * mode, FILE *ret) {
+    expect_string(__wrap_w_fopen_regular, pathname, pathname);
+    expect_string(__wrap_w_fopen_regular, mode, mode);
+    will_return(__wrap_w_fopen_regular, ret);
+}
+
 #ifdef WIN32
 // Always-mock wrapper (no __real_w_fopen_r fallback): the only callers in
 // tests are setup_group-wrapped (test_mode=1), and dropping the __real
@@ -159,6 +171,19 @@ void expect_w_fopen_r(const char * file, const char * mode, FILE *ret) {
     will_return(__wrap_w_fopen_r, ret);
 }
 #endif
+
+// No __real_ fallback, for the same reason as w_fopen_nofollow above.
+FILE *__wrap_w_fopen_vetted_follow(const char * path, const char * mode) {
+    check_expected(path);
+    check_expected(mode);
+    return mock_type(FILE *);
+}
+
+void expect_w_fopen_vetted_follow(const char * path, const char * mode, FILE *ret) {
+    expect_string(__wrap_w_fopen_vetted_follow, path, path);
+    expect_string(__wrap_w_fopen_vetted_follow, mode, mode);
+    will_return(__wrap_w_fopen_vetted_follow, ret);
+}
 
 char ** __wrap_wreaddir(const char * name) {
     check_expected(name);

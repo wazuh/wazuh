@@ -1,7 +1,6 @@
 /*
  * Wazuh SCA
- * Copyright (C) 2015, Wazuh Inc.
- * December 1, 2025.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -15,7 +14,7 @@
 #include <idbsync.hpp>
 #include <json.hpp>
 #include <sca_field_decoder.hpp>
-#include <sca_utils.hpp>
+#include <sca_reason_sanitizer.hpp>
 #include <string>
 
 #include "stringHelper.h"
@@ -80,9 +79,9 @@ namespace sca
 
             if (check.contains("reason"))
             {
-                const auto reason = check["reason"].is_string()
-                                    ? sca::SanitizeReason(check["reason"].get<std::string>(), sca::REASON_MAX_LENGTH)
-                                    : std::string {};
+                const auto& reason = check["reason"].is_string()
+                                     ? sca::SanitizeReason(check["reason"].get<std::string>(), sca::REASON_MAX_LENGTH)
+                                     : std::string {};
 
                 if (reason.empty())
                 {

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# MITM tool for Wazuh queue socket
+# MITM tool for the agent's queue socket (bound by wazuh-agentd)
 # June 21, 2022
 
 import argparse
@@ -7,13 +7,14 @@ from socket import socket, AF_UNIX, SOCK_DGRAM, SO_SNDBUF, SOL_SOCKET
 from sys import stderr, exit
 from os import unlink, chmod
 
-ADDR = '/var/wazuh-manager/queue/sockets/queue'
+# The agent's DEFAULTQUEUE: no manager daemon binds a queue socket.
+ADDR = '/var/ossec/queue/sockets/queue'
 BLEN = 212992
 INPUT_LEN = 65536
 
 
 def connect(addr=ADDR, blen=BLEN):
-    """Connect to the Wazuh queue socket as a client."""
+    """Connect to the queue socket as a client."""
     sock = socket(AF_UNIX, SOCK_DGRAM)
     sock.connect(addr)
     oldbuf = sock.getsockopt(SOL_SOCKET, SO_SNDBUF)
@@ -26,7 +27,7 @@ def connect(addr=ADDR, blen=BLEN):
 
 
 def listen(addr=ADDR, blen=BLEN):
-    """Bind and listen on the Wazuh queue socket."""
+    """Bind and listen on the queue socket."""
     try:
         unlink(addr)
     except FileNotFoundError:
@@ -52,24 +53,26 @@ def mitm_loop(input_sock, output_sock, input_len=INPUT_LEN):
             print(buffer.decode(encoding="UTF-8", errors="replace"))
             output_sock.send(buffer)
     except KeyboardInterrupt:
-        print("INFO: Please restart the manager.", file=stderr)
+        print("INFO: Please restart the agent.", file=stderr)
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Intercept communication between Wazuh daemons and the main queue socket.",
+        description="Intercept communication between the agent's daemons and its queue socket.",
         epilog="This tool is intended for debugging and analysis purposes only.",
         add_help=True
     )
+    parser.add_argument('-s', '--socket', default=ADDR,
+                        help=f'Path of the queue socket (default: {ADDR})')
     args = parser.parse_args()
 
     try:
-        output_sock = connect()
-    except ConnectionRefusedError:
-        print("ERROR: Cannot connect to Analysisd.", file=stderr)
+        output_sock = connect(args.socket)
+    except (ConnectionRefusedError, FileNotFoundError):
+        print(f"ERROR: Cannot connect to {args.socket}.", file=stderr)
         exit(1)
 
-    input_sock = listen()
+    input_sock = listen(args.socket)
     mitm_loop(input_sock, output_sock)
 
 

@@ -1,6 +1,5 @@
 /* Agent restarting function
- * Copyright (C) 2015, Wazuh Inc.
- * Aug 23, 2017.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -42,7 +41,7 @@ static bool controlAgent(const char *action) {
 
 	int sock = -1;
 	char sockname[PATH_MAX + 1];
-	const int max_retries = 30;
+	const int max_retries = CONTROL_AGENT_MAX_RETRIES;
 	const int retry_delay_s = 1;
 	int attempt;
 

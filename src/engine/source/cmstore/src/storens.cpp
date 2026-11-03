@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <base/logging.hpp>
 
 #include <cmstore/types.hpp>
@@ -264,7 +265,8 @@ bool CMStoreNS::assetExistsByUUID(const std::string& uuid) const
     }
 
     const auto& [name, rType] = opt.value();
-    if (rType == ResourceType::KVDB)
+    // KVDBs and integrations are stored under a single-part name (no type prefix to cross-check)
+    if (rType == ResourceType::KVDB || rType == ResourceType::INTEGRATION)
     {
         return true;
     }
@@ -307,6 +309,18 @@ std::string CMStoreNS::createResource(const std::string& name, ResourceType type
     {
         throw std::runtime_error(
             fmt::format("Resource with name '{}' and type '{}' already exists", name, resourceTypeToString(type)));
+    }
+
+    // '/' is folded to '_' in file names, so different names can map to the same file (decoder/a_b/0 and
+    // decoder/a/b_0): never overwrite a file another resource owns
+    std::error_code ec;
+    if (std::filesystem::exists(resourcePath, ec) || ec)
+    {
+        throw std::runtime_error(
+            fmt::format("Resource name '{}' of type '{}' collides with an existing resource file '{}'",
+                        name,
+                        resourceTypeToString(type),
+                        resourcePath.filename().string()));
     }
 
     // Store resource to disk

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 FROM rockylinux:8
 
 ENV TERM=xterm-256color \

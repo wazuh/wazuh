@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module (C++ worker bridge)
- * Copyright (C) 2015, Wazuh Inc.
- * July 22, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -64,6 +63,10 @@ namespace remoted::endpoints
     constexpr auto METRIC_AUTH_REJECT_BODY_TOO_LARGE {"remoted.auth.reject.body_too_large"};
     constexpr auto METRIC_AUTH_REJECT_BAD_ENCODING {"remoted.auth.reject.bad_encoding"};
     constexpr auto METRIC_AUTH_REJECT_MALFORMED {"remoted.auth.reject.malformed"};
+    constexpr auto METRIC_AUTH_REJECT_TOKEN_UNKNOWN {"remoted.auth.reject.token_unknown"};
+    constexpr auto METRIC_AUTH_REJECT_TOKEN_EXPIRED {"remoted.auth.reject.token_expired"};
+    constexpr auto METRIC_AUTH_REJECT_TOKEN_REVOKED {"remoted.auth.reject.token_revoked"};
+    constexpr auto METRIC_AUTH_REJECT_AGENT_BUSY {"remoted.auth.reject.agent_busy"};
 
     /**
      * @brief The auth-rejection counter set, pre-resolved from one manager.
@@ -86,10 +89,16 @@ namespace remoted::endpoints
         std::shared_ptr<wazuh::metrics::ICounter> unusableKey;       ///< client.keys entry does not decode.
         std::shared_ptr<wazuh::metrics::ICounter> addressNotAllowed; ///< Peer address outside the agent's ip column.
         std::shared_ptr<wazuh::metrics::ICounter> enrollmentKey; ///< /enroll: the enrollment password key is unusable.
-        std::shared_ptr<wazuh::metrics::ICounter> payloadMismatch; ///< Authenticated agent claimed another id.
-        std::shared_ptr<wazuh::metrics::ICounter> bodyTooLarge;    ///< Over the authenticated-body cap.
-        std::shared_ptr<wazuh::metrics::ICounter> badEncoding;     ///< Unsupported/undecodable Content-Encoding.
-        std::shared_ptr<wazuh::metrics::ICounter> malformed;       ///< Missing/malformed auth or protocol headers.
+        std::shared_ptr<wazuh::metrics::ICounter>
+            payloadMismatch; ///< Authenticated /stateless batch failed the H-line prefix/size check.
+        std::shared_ptr<wazuh::metrics::ICounter> bodyTooLarge; ///< Over the authenticated-body cap.
+        std::shared_ptr<wazuh::metrics::ICounter> badEncoding;  ///< Unsupported/undecodable Content-Encoding.
+        std::shared_ptr<wazuh::metrics::ICounter> malformed;    ///< Missing/malformed auth or protocol headers.
+        std::shared_ptr<wazuh::metrics::ICounter>
+            tokenUnknown; ///< /enroll: the bearer's `kid` names no credential-bearing enrollment token.
+        std::shared_ptr<wazuh::metrics::ICounter> tokenExpired; ///< /enroll: the enrollment token has lapsed.
+        std::shared_ptr<wazuh::metrics::ICounter> tokenRevoked; ///< /enroll: the enrollment token was revoked.
+        std::shared_ptr<wazuh::metrics::ICounter> agentBusy;    ///< The agent already had its cap of open requests.
     };
 
     /// Resolves the remoted.auth.reject.* family on @p manager (creating it on first call;
@@ -130,18 +139,40 @@ namespace remoted::endpoints
                                        "count"),
             manager.getOrCreateCounter(
                 METRIC_AUTH_REJECT_PAYLOAD_MISMATCH,
-                "Rejections: an authenticated agent submitted a payload claiming another agent id (security signal)",
+                "Rejections: an authenticated stateless batch has no H-line prefix or exceeds its 8 KiB limit",
                 "count"),
             manager.getOrCreateCounter(METRIC_AUTH_REJECT_BODY_TOO_LARGE,
-                                       "Rejections: body over 'remoted.auth_max_body_size', or a zstd frame that "
-                                       "did not fit the 'remoted.max_inflight_bytes' budget",
+                                       "Rejections: body over 'remoted.auth_max_body_size', or a zstd body that "
+                                       "would decode past 'remoted.auth_max_decoded_body_size' or did not fit the "
+                                       "'remoted.max_inflight_bytes' budget",
                                        "count"),
             manager.getOrCreateCounter(METRIC_AUTH_REJECT_BAD_ENCODING,
                                        "Rejections: unsupported or undecodable Content-Encoding (zstd)",
                                        "count"),
             manager.getOrCreateCounter(METRIC_AUTH_REJECT_MALFORMED,
                                        "Rejections: missing/malformed authorization or protocol-version headers",
-                                       "count")};
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_AUTH_REJECT_TOKEN_UNKNOWN,
+                                       "Rejections: POST /enroll with an enrollment-token bearer whose kid names no "
+                                       "credential-bearing token in etc/enrollment_tokens.json, even after a "
+                                       "forced re-read (never minted, minted without a credential, or not yet "
+                                       "synchronized to this node)",
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_AUTH_REJECT_TOKEN_EXPIRED,
+                                       "Rejections: POST /enroll with a correctly signed enrollment-token bearer "
+                                       "whose token is past its expiry (mint a new one)",
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_AUTH_REJECT_TOKEN_REVOKED,
+                                       "Rejections: POST /enroll with a correctly signed enrollment-token bearer "
+                                       "whose token was revoked by the operator",
+                                       "count"),
+            manager.getOrCreateCounter(
+                METRIC_AUTH_REJECT_AGENT_BUSY,
+                "Rejections: an authenticated agent already held its share -- "
+                "'remoted.max_requests_per_agent' open requests or 'remoted.max_inflight_bytes_per_agent' "
+                "decoded bytes; answered 503 (never reached by an honest agent with the defaults -- "
+                "investigate the agent)",
+                "count")};
     }
 
     /**
@@ -162,13 +193,15 @@ namespace remoted::endpoints
      *
      * Single source of truth for that response shape, shared by AuthGateway (auth-protocol
      * failures) and any endpoint that raises an AuthError of its own after authentication
-     * succeeds (e.g. stateless::validatePayloadIdentity()'s PayloadAgentMismatch).
+     * succeeds (e.g. stateless::validatePayloadIdentity()'s PayloadAgentMismatch). A 401's `code`
+     * is the public class (string) and its `WWW-Authenticate` challenge names the same class
+     * (PublicError, issue #38993); every other status keeps the numeric status as `code`.
      *
-     * Also the single place every client-visible rejection is logged, with the reason BEFORE
-     * publicErrorFor() collapses it (see endpoint.cpp): operator-actionable causes -- clock skew,
-     * body-cap, unusable key, agent-id mismatch -- become throttled warnings naming the relevant
-     * setting, while client-fault rejections stay at debug so an unauthenticated peer cannot flood
-     * wazuh-manager.log.
+     * Also the single place every client-visible rejection is logged and counted, with the FINE
+     * reason -- finer than the class the wire names (see endpoint.cpp): operator-actionable causes
+     * -- clock skew, body-cap, unusable key, agent-id mismatch -- become throttled warnings naming
+     * the relevant setting, while client-fault rejections stay at debug so an unauthenticated peer
+     * cannot flood wazuh-manager.log.
      *
      * @param err          The rejection reason.
      * @param agentContext Optional authenticated agent id, included in the agent-id-mismatch

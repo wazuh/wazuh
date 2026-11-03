@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Wazuh agent HTTPS client — demo runner.
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # Watches the REAL https_client module talk to a local mock manager over HTTPS:
 # generates a self-signed cert + a shared AES key, starts the Python mock,

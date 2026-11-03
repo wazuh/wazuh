@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <algorithm>
 #include <iostream>
 #include <pthread.h>
@@ -30,7 +31,7 @@ void Scheduler::start()
     {
         return;
     }
-    LOG_DEBUG("[Scheduler] Starting scheduler with %d threads...", m_numThreads);
+    LOG_DEBUG("[Scheduler] Starting scheduler with {} threads...", m_numThreads);
 
     m_running.store(true);
 
@@ -198,7 +199,27 @@ void Scheduler::workerThread()
             {
                 LOG_DEBUG("[Scheduler] Rescheduling recurring task '{}'", task.name);
                 auto updatedTask = task;
-                updatedTask.nextRun = std::chrono::steady_clock::now() + std::chrono::seconds(task.config.interval);
+                std::size_t delay = 0;
+                if (task.config.nextInterval)
+                {
+                    try
+                    {
+                        delay = task.config.nextInterval();
+                    }
+                    catch (const std::exception& e)
+                    {
+                        LOG_WARNING("[Scheduler] Next interval of task '{}' failed, using its regular interval: {}",
+                                    task.name,
+                                    e.what());
+                    }
+                    catch (...)
+                    {
+                        LOG_WARNING("[Scheduler] Next interval of task '{}' failed, using its regular interval",
+                                    task.name);
+                    }
+                }
+                updatedTask.nextRun =
+                    std::chrono::steady_clock::now() + std::chrono::seconds(delay > 0 ? delay : task.config.interval);
                 m_taskQueue.push(updatedTask);
             }
             // else: task was removed while executing — skip re-queue (RC-2 fix)
@@ -254,9 +275,9 @@ void Scheduler::setCurrentThreadPriority(int cpuPriority)
 
     if (setpriority(PRIO_PROCESS, 0, niceValue) != 0)
     {
-        LOG_WARNING("[Scheduler] Failed to set thread CPU priority to %d", niceValue);
+        LOG_WARNING("[Scheduler] Failed to set thread CPU priority to {}", niceValue);
     }
-    LOG_DEBUG("[Scheduler] Set thread CPU priority to %d", niceValue);
+    LOG_DEBUG("[Scheduler] Set thread CPU priority to {}", niceValue);
 }
 
 } // namespace scheduler

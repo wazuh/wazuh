@@ -1,4 +1,4 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -117,3 +117,68 @@ def resource_cache(cache: TTLCache = RESOURCES_CACHE):
         return wrapper
 
     return decorator
+
+
+# Resource types whose ids are integers in their store (rbac.db).
+INTEGER_RESOURCES = ('user:id', 'role:id', 'rule:id', 'policy:id')
+
+# Agent ids are integers in global.db and zero-padded to three digits everywhere else.
+AGENT_RESOURCE = 'agent:id'
+
+
+def canonical_id(resource_type: str, value):
+    """Return the one spelling RBAC compares for a numeric resource id.
+
+    The RBAC decorator matches ids as strings, while the functions behind it cast them to integers
+    or feed them to an INTEGER column. Without a single spelling, `01` and `1` (or `0005` and `005`)
+    name the same object and a `deny` written for one never applies to the other.
+
+    Parameters
+    ----------
+    resource_type : str
+        Resource type, e.g. "role:id".
+    value : Any
+        Resource value.
+
+    Returns
+    -------
+    Any
+        `str(int(value))` for the integer resources, `str(int(value)).zfill(3)` for agents, or the
+        value unchanged when `int()` does not read it as a non-negative integer (wildcards, names,
+        None) or it belongs to any other resource type.
+
+    Notes
+    -----
+    Every string `int()` accepts is rewritten, not only ASCII digits: `int()` also reads surrounding
+    whitespace (`5\\n`), non-ASCII decimal digits, `+` and `_`, and the sinks will cast whatever the
+    decorator lets through. Anything left unchanged here must therefore be something no sink can turn
+    into a non-negative id.
+    """
+    if not isinstance(value, str) or (resource_type != AGENT_RESOURCE and resource_type not in INTEGER_RESOURCES):
+        return value
+    try:
+        number = int(value)
+    except ValueError:
+        return value
+    if number < 0:
+        return value
+    return str(number).zfill(3) if resource_type == AGENT_RESOURCE else str(number)
+
+
+def canonical_resource(resource: str) -> str:
+    """Return a single `type:attribute:value` resource with its value in canonical form.
+
+    Parameters
+    ----------
+    resource : str
+        Resource, e.g. "agent:id:5".
+
+    Returns
+    -------
+    str
+        The resource with `canonical_id` applied to its value, e.g. "agent:id:005".
+    """
+    resource_type, separator, value = resource.rpartition(':')
+    if not separator:
+        return resource
+    return f'{resource_type}:{canonical_id(resource_type, value)}'

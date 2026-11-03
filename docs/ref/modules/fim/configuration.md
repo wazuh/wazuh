@@ -9,13 +9,13 @@ FIM operates in two complementary modes:
 - **Scheduled scans**: Periodic baseline comparisons triggered by the `frequency` setting
 - **Real-time monitoring**: Continuous event-driven monitoring via `realtime` or `whodata` directory attributes
 
-For module overview and architecture, see [File Integrity Monitoring Overview](index.html).
+For module overview and architecture, see [File Integrity Monitoring Overview](README.md).
 
 ---
 
 ## Metadata
 
-**Configuration file:** `/var/ossec/etc/ossec.conf` (agent) or `/var/wazuh-manager/etc/wazuh-manager.conf` (manager)
+**Configuration file:** `/var/ossec/etc/ossec.conf` (agent only; the manager does not run FIM)
 
 **XML Section:** `<syscheck>`
 
@@ -226,7 +226,7 @@ Controls the maximum number of FIM alert events sent to the manager per second. 
 
 - **Default value:** `50`
 - **Allowed values:** Integer `0`–`1000000`
-- **Note:** This is separate from `synchronization > max_eps`, which limits synchronization messages only
+- **Note:** Synchronization messages are not limited by this option
 
 ```xml
 <max_eps>50</max_eps>
@@ -296,6 +296,16 @@ Registry entries to exclude from processing. Ignored keys and values are skipped
 <registry_ignore>HKEY_LOCAL_MACHINE\Security\Policy\Secrets</registry_ignore>
 <registry_ignore type="sregex">\Enum$</registry_ignore>
 ```
+
+Plain entries are matched as a **case-insensitive prefix**, so one entry covers the whole subtree
+below it, and the key is skipped before it is opened. `type="sregex"` uses `OSMatch`, which supports
+only `|` (alternatives), `^` (prefix), `$` (suffix) and plain substrings: there are no character
+classes and no wildcards, and an `sregex` entry applies to **every** monitored registry entry, not
+only to the one it was written for.
+
+The `arch` of an ignore entry must equal the `arch` of the `<windows_registry>` entry it is meant to
+filter, and both default to `32bit`. An ignore written with `arch="64bit"` alone never matches a
+monitored entry left at the default, and nothing warns about it.
 
 ---
 
@@ -408,7 +418,6 @@ Controls how the agent synchronizes its local FIM database with the manager to e
 <synchronization>
   <enabled>yes</enabled>
   <interval>300</interval>
-  <max_eps>75</max_eps>
   <integrity_interval>86400</integrity_interval>
 </synchronization>
 ```
@@ -419,7 +428,6 @@ Controls how the agent synchronizes its local FIM database with the manager to e
 |---|---|---|---|
 | `enabled` | `yes` | `yes`, `no` | Enable or disable FIM synchronization persistence. When disabled, FIM only generates stateless events. |
 | `interval` | `300` (5 minutes) | Any integer ≥ 1, with optional suffix `s`, `m`, `h`, `d` | How often the agent initiates a sync with the manager. |
-| `max_eps` | `75` | Integer `0`–`1000000` (`0` = unlimited) | Maximum synchronization messages per second. |
 | `integrity_interval` | `86400` (24h)| Any integer ≥ 1, with optional suffix `s`, `m`, `h`, `d` | How often the agent performs a full integrity validation by comparing checksums with the manager. |
 
 **Note:** Database files are stored at fixed paths: `queue/fim/db/fim.db` and `queue/fim/db/fim_sync.db`.
@@ -484,7 +492,7 @@ Defines Windows registry paths to monitor. Supports wildcards (`?` and `*`) for 
 |---|---|---|---|
 | `arch` | `32bit` | `32bit`, `64bit`, `both` | Registry view (32-bit or 64-bit hive). |
 | `tags` | N/A | Comma-separated strings | Custom tags for all alerts from this registry path. |
-| `report_changes` | `no` | `yes`, `no` | Report value diffs for supported types: `REG_SZ`, `REG_MULTI_SZ`, `REG_DWORD`, `REG_DWORD_BIG_ENDIAN`, `REG_QWORD`. |
+| `report_changes` | `no` | `yes`, `no` | Report value diffs for supported types: `REG_SZ`, `REG_EXPAND_SZ`, `REG_MULTI_SZ`, `REG_DWORD`, `REG_DWORD_BIG_ENDIAN`, `REG_QWORD`. |
 | `diff_size_limit` | `50MB` | Positive number + `KB`/`MB`/`GB` | Per-entry override for the maximum value size eligible for diff. |
 | `check_all` | `yes` | `yes`, `no` | Master toggle for all `check_*` attributes. |
 | `check_sum` | `yes` | `yes`, `no` | Enable MD5, SHA-1, and SHA-256 hashing. |
@@ -515,42 +523,39 @@ Specific key configurations take precedence over wildcard configurations:
 
 ---
 
+### Deprecated options
+
+**DEPRECATED:** these 4.x options are still recognized, so an upgraded `ossec.conf` keeps loading, but they have no effect. Each one logs `The <option> option is deprecated and no longer has any effect.`, at info level for `scan_on_start`, `max_eps` and `max_interval`, which the 4.x default configuration sets, and as a warning for the rest.
+
+- Under `<syscheck>`: `scan_on_start` (a scan always runs on start), `alert_new_files`, `auto_ignore`, `database`, `prefilter_cmd`, `allow_remote_prefilter_cmd` and `remove_old_diff`.
+- Under `<synchronization>`: `max_eps`, `max_interval`, `response_timeout`, `queue_size`, `registry_enabled` and `thread_pool`.
+
+A `<restart_audit>` directly under `<syscheck>` is still applied, but logs an info message; set it under [`<whodata>`](#whodata) instead. When both are present, the `<whodata>` value is used.
+
+---
+
 ## Internal Options
 
-Internal options for fine-tuning FIM behavior are configured in `/var/ossec/etc/internal_options.conf`. All FIM-related options use the `syscheck.*` prefix.
+FIM reads its internal options with the `syscheck.` prefix. Set them in `local_internal_options.conf`, next to `ossec.conf` (`/var/ossec/etc/` on Linux, `C:\Program Files (x86)\ossec-agent\` on Windows), since an upgrade replaces `internal_options.conf`.
 
-Common internal options include:
-
-- `syscheck.sleep` - Time to sleep between scans
-- `syscheck.debug` - Enable debug-level logging for FIM
-- `syscheck.rt_delay` - Delay before processing real-time events
-
-Refer to the internal options documentation for a complete list of available tuning parameters.
+| Option | Default | Allowed values | Description |
+|---|---|---|---|
+| `syscheck.rt_delay` | `5` | `0`–`1000` (milliseconds) | Delay before a real-time or who-data event is processed, so short-lived files such as editor swap files do not trigger events. |
+| `syscheck.max_fd_win_rt` | `256` | `1`–`1024` | Windows only. Maximum number of directories monitored in real time. |
+| `syscheck.max_audit_entries` | `256` | `1`–`4096` | Linux only. Maximum number of directories monitored with who-data. |
+| `syscheck.default_max_depth` | `256` | `1`–`320` | Recursion level used when a directory sets no `recursion_level`. |
+| `syscheck.symlink_scan_interval` | `600` | `1`–`2592000` (seconds) | Linux and Unix only. How often the directories set with `follow_symbolic_link` are checked for a changed link target. |
+| `syscheck.file_max_size` | `1024` | `0`–`4095` (MB) | Largest file whose hashes are calculated. `0` disables the limit. |
+| `syscheck.sync_flush_batch_size` | `100` | `1`–`100000` | Maximum number of buffered FIM events before an immediate flush to the persistent sync queue database (`fim_sync.db`). Larger values reduce disk write volume at the cost of more data at risk on an abrupt (non-graceful) shutdown. |
+| `syscheck.sync_flush_interval_ms` | `500` | `50`–`3600000` (milliseconds) | Maximum time to wait before flushing a non-full buffer of FIM events to the persistent sync queue database (`fim_sync.db`). Larger values reduce disk write volume at the cost of more data at risk on an abrupt (non-graceful) shutdown. |
+| `syscheck.sync_wal_autocheckpoint_pages` | `1000` | `100`–`1000000` (SQLite pages, ~4 KiB each) | WAL auto-checkpoint threshold of the FIM persistent sync queue database (`fim_sync.db`). Larger values reduce checkpoint write-back at the cost of a larger WAL file (roughly pages × 4 KiB) and a longer recovery on reopen; durability is unaffected. |
+| `syscheck.debug` | `0` | `0`–`2` | FIM debug level. |
 
 ---
 
 ## Configuration Examples
 
-**Note:** These are representative examples. For the exact shipped defaults, refer to `etc/ossec.conf` and `etc/ossec-agent.conf` in the Wazuh installation directory.
-
-### Wazuh Manager
-
-```xml
-<!-- File integrity monitoring -->
-<syscheck>
-  <disabled>no</disabled>
-  <frequency>43200</frequency>
-  <directories>/etc,/usr/bin,/usr/sbin</directories>
-  <ignore>/etc/mtab</ignore>
-  <ignore type="sregex">.log$|.swp$</ignore>
-  <nodiff>/etc/ssl/private.key</nodiff>
-  <process_priority>10</process_priority>
-  <max_eps>50</max_eps>
-  <synchronization>
-    <max_eps>75</max_eps>
-  </synchronization>
-</syscheck>
-```
+**Note:** These are representative examples. For the exact shipped defaults, refer to `etc/templates/config/generic/syscheck.agent.template` in the source tree, from which the agent's `ossec.conf` is generated.
 
 ### Wazuh Agent - Linux/Unix
 
@@ -567,9 +572,6 @@ Refer to the internal options documentation for a complete list of available tun
   <nodiff>/etc/ssl/private.key</nodiff>
   <process_priority>10</process_priority>
   <max_eps>50</max_eps>
-  <synchronization>
-    <max_eps>75</max_eps>
-  </synchronization>
 </syscheck>
 ```
 
@@ -590,9 +592,6 @@ Refer to the internal options documentation for a complete list of available tun
   <windows_audit_interval>300</windows_audit_interval>
   <process_priority>10</process_priority>
   <max_eps>50</max_eps>
-  <synchronization>
-    <max_eps>75</max_eps>
-  </synchronization>
 </syscheck>
 ```
 
@@ -607,9 +606,6 @@ Refer to the internal options documentation for a complete list of available tun
   <ignore type="sregex">.log$|.swp$</ignore>
   <process_priority>10</process_priority>
   <max_eps>50</max_eps>
-  <synchronization>
-    <max_eps>75</max_eps>
-  </synchronization>
 </syscheck>
 ```
 
@@ -631,7 +627,6 @@ For systems with high file change rates (CI/CD nodes, busy web servers):
   <synchronization>
     <enabled>yes</enabled>
     <interval>60</interval>
-    <max_eps>500</max_eps>
     <integrity_interval>43200</integrity_interval>  <!-- Integrity check every 12 hours -->
   </synchronization>
 </syscheck>
@@ -675,7 +670,6 @@ For environments that require full audit trails on critical configuration files:
   <synchronization>
     <enabled>yes</enabled>
     <interval>5m</interval>
-    <max_eps>75</max_eps>
     <integrity_interval>86400</integrity_interval>
   </synchronization>
 </syscheck>
@@ -701,6 +695,14 @@ For environments that require full audit trails on critical configuration files:
   <!-- Ignore noisy or known-changing entries -->
   <registry_ignore>HKEY_LOCAL_MACHINE\Security\Policy\Secrets</registry_ignore>
   <registry_ignore type="sregex">\Enum$</registry_ignore>
+  <registry_ignore type="sregex">\Performance$</registry_ignore>
+
+  <registry_ignore>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\bam\State</registry_ignore>
+  <registry_ignore>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\dam\State</registry_ignore>
+  <registry_ignore>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Tcpip\Parameters\Interfaces</registry_ignore>
+  <registry_ignore>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Tcpip6\Parameters\Interfaces</registry_ignore>
+  <registry_ignore>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\W32Time\SecureTimeLimits</registry_ignore>
+  <registry_ignore>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\SharedAccess\Epoch</registry_ignore>
 
   <registry_limit>
     <enabled>yes</enabled>
@@ -1017,8 +1019,8 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 
 ## See Also
 
-- [File Integrity Monitoring Overview](index.html) - Module overview and architecture
-- [Who-data Monitoring](https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/auditing-whodata.html) - Detailed who-data implementation guide
-- [FIM Alerts Reference](https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/fim-alerts.html) - Alert rules and event types
+- [File Integrity Monitoring Overview](README.md) - Module overview and architecture
+- [Who-data Monitoring](https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/advanced-settings.html#who-data-monitoring) - Detailed who-data implementation guide
+- [Interpreting FIM scans](https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/interpreting-fim-module-analysis.html) - FIM events and how they are shown
 - [Centralized Agent Configuration](https://documentation.wazuh.com/current/user-manual/reference/centralized-configuration.html) - Using agent.conf for FIM
 - [Wazuh Rules Reference](https://documentation.wazuh.com/current/user-manual/ruleset/ruleset-xml-syntax/rules.html) - Rule syntax and customization

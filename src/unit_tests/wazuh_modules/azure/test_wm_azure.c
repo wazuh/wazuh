@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -27,13 +27,23 @@
 #include "../../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
 #include "../../wrappers/externals/pcre2/pcre2_wrappers.h"
+#include "../../wrappers/posix/pthread_wrappers.h"
 
 #define TEST_MAX_DATES 5
 
 
 static wmodule *azure_module;
 static OS_XML *lxml;
+static wmodule *azure_runners_module;
+static OS_XML runners_lxml;
 extern int test_mode;
+extern w_expression_t *azure_script_log_regex;
+
+void wm_setup_logging_capture();
+void wm_integrations_parse_output(char * const output, bool failed);
+bool wm_azure_graphs(wm_azure_api_t *graph);
+bool wm_azure_storage(wm_azure_storage_t *storage);
+cJSON *wm_azure_dump(const wm_azure_t *azure);
 
 static void wmodule_cleanup(wmodule *module){
     wm_azure_t* module_data = (wm_azure_t *)module->data;
@@ -95,6 +105,8 @@ static int setup_test_executions(void **state) {
 static int teardown_test_executions(void **state){
     wm_azure_t* module_data = (wm_azure_t *) *state;
     sched_scan_free(&(module_data->scan_config));
+    // Every module start compiles it again
+    w_free_expression_t(&azure_script_log_regex);
     return 0;
 }
 
@@ -113,6 +125,51 @@ static int teardown_test_read(void **state) {
     sched_scan_free(&(module_data->scan_config));
     wmodule_cleanup(test->module);
     os_free(test);
+    return 0;
+}
+
+static int setup_runners(void **state) {
+    const char *string =
+        "<disabled>no</disabled>\n"
+        "<interval>5m</interval>\n"
+        "<run_on_start>no</run_on_start>\n"
+        "<graph>\n"
+        "    <auth_path>/var/ossec/wodles/azure/credentials.txt</auth_path>\n"
+        "    <tenantdomain>wazuh.onmicrosoft.com</tenantdomain>\n"
+        "    <request>\n"
+        "        <tag>microsoft-entra_id</tag>\n"
+        "        <query>auditLogs/directoryaudits</query>\n"
+        "        <time_offset>1d</time_offset>\n"
+        "    </request>\n"
+        "</graph>\n"
+        "<storage>\n"
+        "    <auth_path>/var/ossec/wodles/azure/credentials.txt</auth_path>\n"
+        "    <tag>azure-storage</tag>\n"
+        "    <container name=\"insights-logs\">\n"
+        "        <blobs>.json</blobs>\n"
+        "        <content_type>json_inline</content_type>\n"
+        "        <time_offset>24h</time_offset>\n"
+        "    </container>\n"
+        "</storage>\n"
+    ;
+    azure_runners_module = calloc(1, sizeof(wmodule));
+    XML_NODE nodes = string_to_xml_node(string, &runners_lxml);
+    int ret = wm_azure_read(&runners_lxml, nodes, azure_runners_module);
+    OS_ClearNode(nodes);
+    w_test_pcre2_wrappers(false);
+    wm_setup_logging_capture();
+    return ret;
+}
+
+static int teardown_runners(void **state) {
+    w_test_pcre2_wrappers(true);
+    wm_azure_t *module_data = (wm_azure_t *)azure_runners_module->data;
+    sched_scan_free(&(module_data->scan_config));
+    // Also frees the script log regex
+    azure_runners_module->context->destroy(module_data);
+    free(azure_runners_module->tag);
+    free(azure_runners_module);
+    OS_ClearXML(&runners_lxml);
     return 0;
 }
 /************************************/
@@ -156,6 +213,48 @@ void test_interval_execution(void **state) {
     will_return(__wrap_StartMQ, 0);
 
     will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
+    will_return(__wrap_FOREVER, 0);
+
+    azure_module->context->start(module_data);
+}
+
+void test_failed_execution_is_not_logged_as_finished(void **state) {
+    wm_azure_t* module_data = (wm_azure_t *)azure_module->data;
+    *state = module_data;
+    module_data->scan_config.next_scheduled_scan_time = 0;
+    module_data->scan_config.scan_day = 0;
+    module_data->scan_config.scan_wday = -1;
+    module_data->scan_config.interval = 1200; // 20min
+    module_data->scan_config.month_interval = false;
+
+    expect_string_count(__wrap__mtinfo, tag, WM_AZURE_LOGTAG, -1);
+    expect_string_count(__wrap__mtwarn, tag, WM_AZURE_LOGTAG, -1);
+    expect_string_count(__wrap__mterror, tag, WM_AZURE_LOGTAG, -1);
+
+    expect_any_count(__wrap_SendMSG, message, 2);
+    expect_string_count(__wrap_SendMSG, locmsg, xml_rootcheck, 2);
+    expect_value_count(__wrap_SendMSG, loc, ROOTCHECK_MQ, 2);
+    will_return_count(__wrap_SendMSG, 1, 2);
+
+    expect_string(__wrap__mtinfo, formatted_msg, "Module started.");
+    expect_any(__wrap_wm_exec, command);
+    expect_any(__wrap_wm_exec, secs);
+    expect_any(__wrap_wm_exec, add_path);
+
+    expect_string(__wrap__mtinfo, formatted_msg, "Starting fetching of logs.");
+    expect_string(__wrap__mtinfo, formatted_msg, "Starting Log Analytics collection for the domain 'wazuh.onmicrosoft.com'.");
+    will_return(__wrap_wm_exec, "Traceback (most recent call last):\nImportError: cannot import name 'ParserError'");
+    will_return(__wrap_wm_exec, 1);
+    will_return(__wrap_wm_exec, 0);
+    expect_string(__wrap__mtwarn, formatted_msg, "Command returned exit code 1");
+    expect_string(__wrap__mterror, formatted_msg, "Traceback (most recent call last):\nImportError: cannot import name 'ParserError'");
+    expect_string(__wrap__mtwarn, formatted_msg, "Log Analytics collection for request 'azure-activity' failed.");
+    expect_string(__wrap__mtwarn, formatted_msg, "Log Analytics collection for the domain 'wazuh.onmicrosoft.com' failed for one or more requests.");
+
+    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
+    expect_value(__wrap_StartMQ, type, WRITE);
+    will_return(__wrap_StartMQ, 0);
+
     will_return(__wrap_FOREVER, 0);
 
     azure_module->context->start(module_data);
@@ -295,19 +394,358 @@ void test_read_scheduling_interval_configuration(void **state) {
     assert_int_equal(module_data->scan_config.scan_wday, -1);
 }
 
+void test_parse_output_success_ignores_unparsed_lines(void **state) {
+    char output[] = "2025/05/28 17:55:00 azure: INFO: info message\nnot valid logline";
+
+    expect_string(__wrap__mtinfo, tag, WM_AZURE_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "info message");
+
+    wm_integrations_parse_output(output, false);
+}
+
+void test_parse_output_logs_critical_lines_as_errors(void **state) {
+    char output[] = "2025/05/28 17:55:00 azure: CRITICAL: critical message";
+
+    expect_string(__wrap__mterror, tag, WM_AZURE_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "critical message");
+
+    wm_integrations_parse_output(output, false);
+}
+
+void test_parse_output_failure_surfaces_unparsed_lines_after_error(void **state) {
+    // Storage's get_blobs() logs the error and re-raises it, so a traceback follows
+    char output[] =
+        "2025/05/28 17:55:00 azure: ERROR: Storage: Error getting blobs from \"insights-logs\": \"boom\".\n"
+        "Traceback (most recent call last):\n"
+        "  File \"/var/ossec/wodles/azure/azure-logs\", line 38, in <module>\n"
+        "azure.core.exceptions.AzureError: boom";
+
+    expect_string_count(__wrap__mterror, tag, WM_AZURE_LOGTAG, 2);
+    expect_string(__wrap__mterror, formatted_msg, "Storage: Error getting blobs from \"insights-logs\": \"boom\".");
+    expect_string(__wrap__mterror, formatted_msg,
+                  "Traceback (most recent call last):\n"
+                  "  File \"/var/ossec/wodles/azure/azure-logs\", line 38, in <module>\n"
+                  "azure.core.exceptions.AzureError: boom");
+
+    wm_integrations_parse_output(output, true);
+}
+
+void test_parse_output_failure_keeps_last_whole_lines_of_oversized_output(void **state) {
+    // 100 lines of 95 characters: with their separators, the last 64 take exactly 6143 bytes
+    char *output = NULL;
+    char *expected = NULL;
+
+    os_calloc(100 * 96, sizeof(char), output);
+    for (int i = 0; i < 100; i++) {
+        char *line = output + i * 96;
+        snprintf(line, 96, "line %02d ", i);
+        memset(line + 8, 'x', 87);
+        line[95] = i < 99 ? '\n' : '\0';
+    }
+    // Copied before parsing, which tokenizes the output in place
+    os_strdup(output + 36 * 96, expected);
+
+    expect_string(__wrap__mterror, tag, WM_AZURE_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, expected);
+
+    wm_integrations_parse_output(output, true);
+
+    os_free(expected);
+    os_free(output);
+}
+
+void test_parse_output_failure_oversized_line_replaces_earlier_lines(void **state) {
+    // A line longer than the buffer leaves no room for the lines kept before it
+    char *output = NULL;
+    char *expected = NULL;
+
+    os_calloc(strlen("earlier line\n") + 7000 + 1, sizeof(char), output);
+    strcpy(output, "earlier line\n");
+    memset(output + strlen("earlier line\n"), 'B', 7000);
+    os_calloc(OS_SIZE_6144, sizeof(char), expected);
+    memset(expected, 'B', OS_SIZE_6144 - 1);
+
+    expect_string(__wrap__mterror, tag, WM_AZURE_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, expected);
+
+    wm_integrations_parse_output(output, true);
+
+    os_free(expected);
+    os_free(output);
+}
+
+void test_parse_output_failure_cuts_oversized_line_on_character_boundary(void **state) {
+    // A single line of 3072 two-byte characters: a 6143-byte tail would start inside the first one
+    char *output = NULL;
+    char *expected = NULL;
+
+    os_calloc(3072 * 2 + 1, sizeof(char), output);
+    for (int i = 0; i < 3072; i++) {
+        memcpy(output + i * 2, "\xc3\xa9", 2);
+    }
+    os_strdup(output + 2, expected);
+
+    expect_string(__wrap__mterror, tag, WM_AZURE_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, expected);
+
+    wm_integrations_parse_output(output, true);
+
+    os_free(expected);
+    os_free(output);
+}
+
+void test_graphs_killed_script_is_not_logged_as_finished(void **state) {
+    wm_azure_t *module_data = (wm_azure_t *)azure_runners_module->data;
+    assert_int_equal(module_data->api_config->type, GRAPHS);
+
+    expect_any(__wrap_wm_exec, command);
+    expect_any(__wrap_wm_exec, secs);
+    expect_any(__wrap_wm_exec, add_path);
+    will_return(__wrap_wm_exec, "");
+    will_return(__wrap_wm_exec, 128 + SIGKILL);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_string_count(__wrap__mtwarn, tag, WM_AZURE_LOGTAG, 2);
+    expect_string(__wrap__mtwarn, formatted_msg, "Command returned exit code 137");
+    expect_string(__wrap__mtwarn, formatted_msg, "Graphs log collection for request 'microsoft-entra_id' failed.");
+
+    assert_false(wm_azure_graphs(module_data->api_config));
+}
+
+void test_storage_timeout_logs_output_and_is_not_logged_as_finished(void **state) {
+    wm_azure_t *module_data = (wm_azure_t *)azure_runners_module->data;
+
+    expect_any(__wrap_wm_exec, command);
+    expect_any(__wrap_wm_exec, secs);
+    expect_any(__wrap_wm_exec, add_path);
+    // What the script wrote before wm_exec() killed it
+    will_return(__wrap_wm_exec,
+                "2025/05/28 17:55:00 azure: INFO: Storage: Authenticated.\n"
+                "urllib3/connectionpool.py:1045: InsecureRequestWarning: Unverified HTTPS request");
+    will_return(__wrap_wm_exec, 128 + SIGTERM);
+    will_return(__wrap_wm_exec, WM_ERROR_TIMEOUT);
+
+    expect_string_count(__wrap__mterror, tag, WM_AZURE_LOGTAG, 2);
+    expect_string(__wrap__mterror, formatted_msg, "Timeout expired at request 'insights-logs'.");
+    expect_string(__wrap__mtinfo, tag, WM_AZURE_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Storage: Authenticated.");
+    expect_string(__wrap__mterror, formatted_msg, "urllib3/connectionpool.py:1045: InsecureRequestWarning: Unverified HTTPS request");
+    expect_string(__wrap__mtwarn, tag, WM_AZURE_LOGTAG);
+    expect_string(__wrap__mtwarn, formatted_msg, "Storage log collection for container 'insights-logs' failed.");
+
+    assert_false(wm_azure_storage(module_data->storage));
+}
+
+void test_storage_unexecutable_script_is_not_fatal(void **state) {
+    wm_azure_t *module_data = (wm_azure_t *)azure_runners_module->data;
+
+    expect_any(__wrap_wm_exec, command);
+    expect_any(__wrap_wm_exec, secs);
+    expect_any(__wrap_wm_exec, add_path);
+    // What wm_exec() reports when the script, or the python3 it runs with, cannot be executed
+    will_return(__wrap_wm_exec, NULL);
+    will_return(__wrap_wm_exec, EXECVE_ERROR);
+    will_return(__wrap_wm_exec, -1);
+
+    expect_string(__wrap__mterror, tag, WM_AZURE_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "Could not execute 'wodles/azure/azure-logs' (exit code 127). Check that it and the python3 interpreter it runs with are installed.");
+    expect_string(__wrap__mtwarn, tag, WM_AZURE_LOGTAG);
+    expect_string(__wrap__mtwarn, formatted_msg, "Storage log collection for container 'insights-logs' failed.");
+
+    // Returning at all means the module thread was not exited
+    assert_false(wm_azure_storage(module_data->storage));
+}
+
+void test_storage_internal_error_exits_the_module(void **state) {
+    wm_azure_t *module_data = (wm_azure_t *)azure_runners_module->data;
+
+    expect_any(__wrap_wm_exec, command);
+    expect_any(__wrap_wm_exec, secs);
+    expect_any(__wrap_wm_exec, add_path);
+    // A failure other than a command that could not be executed, e.g. fork()
+    will_return(__wrap_wm_exec, NULL);
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, -1);
+
+    expect_string(__wrap__mterror, tag, WM_AZURE_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "Internal error. Exiting...");
+
+    expect_assert_failure(wm_azure_storage(module_data->storage));
+}
+
+void test_storage_success_is_logged_as_finished(void **state) {
+    wm_azure_t *module_data = (wm_azure_t *)azure_runners_module->data;
+
+    expect_any(__wrap_wm_exec, command);
+    expect_any(__wrap_wm_exec, secs);
+    expect_any(__wrap_wm_exec, add_path);
+    will_return(__wrap_wm_exec, "");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_string(__wrap__mtinfo, tag, WM_AZURE_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Finished Storage log collection for container 'insights-logs'.");
+
+    assert_true(wm_azure_storage(module_data->storage));
+}
+
+/* The dump only reads the configuration, so it is built on the stack. That
+ * also keeps wm_azure_destroy() and its azure_script_log_regex out of these
+ * tests. The parser no longer accepts inline keys, but the struct still has
+ * them, and the dump must not print them. scan_wday -1 is what
+ * sched_scan_init leaves. */
+static char *azure_dump_text(const wm_azure_t *azure) {
+    cJSON *root = wm_azure_dump(azure);
+    char *text = cJSON_PrintUnformatted(root);
+
+    cJSON_Delete(root);
+    return text;
+}
+
+void test_azure_dump_masks_application_and_account_keys(void **state) {
+    wm_azure_api_t api = {
+        .type = LOG_ANALYTICS,
+        .application_id = "fake-application-id",
+        .application_key = "fakeAzureApplicationKey01",
+        .tenantdomain = "wazuh.onmicrosoft.com",
+    };
+    wm_azure_storage_t storage = {
+        .account_name = "wazuhstorage",
+        .account_key = "fakeAzureAccountKey0001",
+        .tag = "azure-storage",
+    };
+    wm_azure_t azure = { .flags.enabled = 1, .api_config = &api, .storage = &storage, .scan_config.scan_wday = -1 };
+
+    char *text = azure_dump_text(&azure);
+
+    assert_string_equal(text, "{\"azure-logs\":{\"disabled\":\"no\",\"run_on_start\":\"no\",\"timeout\":0,\"content\":["
+                              "{\"type\":\"log_analytics\",\"tenantdomain\":\"wazuh.onmicrosoft.com\","
+                              "\"application_id\":\"fake-application-id\",\"application_key\":\"*****\"},"
+                              "{\"tag\":\"azure-storage\",\"account_name\":\"wazuhstorage\",\"account_key\":\"*****\"}]}}");
+    cJSON_free(text);
+}
+
+void test_azure_dump_never_prints_a_key(void **state) {
+    wm_azure_api_t graph = { .type = GRAPHS, .application_key = "fakeAzureGraphKey0001", .tenantdomain = "wazuh.onmicrosoft.com" };
+    wm_azure_api_t analytics = { .type = LOG_ANALYTICS, .application_key = "fakeAzureAnalyticsKey01",
+                                 .tenantdomain = "wazuh.onmicrosoft.com", .next = &graph };
+    wm_azure_storage_t storage = { .account_key = "fakeAzureAccountKey0002", .tag = "azure-storage" };
+    wm_azure_t azure = { .api_config = &analytics, .storage = &storage, .scan_config.scan_wday = -1 };
+
+    char *text = azure_dump_text(&azure);
+
+    assert_null(strstr(text, "fakeAzureGraphKey0001"));
+    assert_null(strstr(text, "fakeAzureAnalyticsKey01"));
+    assert_null(strstr(text, "fakeAzureAccountKey0002"));
+    cJSON_free(text);
+}
+
+void test_azure_dump_reports_keys_in_clear_when_unmasked(void **state) {
+    wm_azure_api_t api = { .type = LOG_ANALYTICS, .application_key = "fakeAzureAnalyticsKey02", .tenantdomain = "wazuh.onmicrosoft.com" };
+    wm_azure_storage_t storage = { .account_key = "fakeAzureAccountKey0003", .tag = "azure-storage" };
+    wm_azure_t azure = { .api_config = &api, .storage = &storage, .scan_config.scan_wday = -1 };
+
+    wm_unmask_credentials = 1;
+    char *text = azure_dump_text(&azure);
+    wm_unmask_credentials = 0;
+
+    assert_non_null(strstr(text, "\"application_key\":\"fakeAzureAnalyticsKey02\""));
+    assert_non_null(strstr(text, "\"account_key\":\"fakeAzureAccountKey0003\""));
+    cJSON_free(text);
+}
+
+void test_azure_dump_reports_requests_and_containers(void **state) {
+    wm_azure_request_t request = { .tag = "azure-activity", .query = "AzureActivity", .time_offset = "36h", .workspace = "d6b-efa" };
+    wm_azure_api_t api = { .type = LOG_ANALYTICS, .auth_path = "/var/ossec/wodles/azure/credentials.txt",
+                           .tenantdomain = "wazuh.onmicrosoft.com", .request = &request };
+    wm_azure_container_t container = { .name = "insights-logs", .blobs = ".json", .content_type = "json_inline", .time_offset = "24h" };
+    wm_azure_storage_t storage = { .auth_path = "/var/ossec/wodles/azure/credentials.txt", .tag = "azure-storage", .container = &container };
+    wm_azure_t azure = { .flags.enabled = 1, .api_config = &api, .storage = &storage, .scan_config.scan_wday = -1 };
+
+    char *text = azure_dump_text(&azure);
+
+    assert_string_equal(text, "{\"azure-logs\":{\"disabled\":\"no\",\"run_on_start\":\"no\",\"timeout\":0,\"content\":["
+                              "{\"type\":\"log_analytics\",\"tenantdomain\":\"wazuh.onmicrosoft.com\","
+                              "\"auth_path\":\"/var/ossec/wodles/azure/credentials.txt\",\"requests\":["
+                              "{\"tag\":\"azure-activity\",\"query\":\"AzureActivity\",\"time_offset\":\"36h\",\"workspace\":\"d6b-efa\"}]},"
+                              "{\"tag\":\"azure-storage\",\"auth_path\":\"/var/ossec/wodles/azure/credentials.txt\",\"containers\":["
+                              "{\"name\":\"insights-logs\",\"blobs\":\".json\",\"content_type\":\"json_inline\",\"time_offset\":\"24h\"}]}]}}");
+    cJSON_free(text);
+}
+
+void test_dump_requests_and_containers(void **state) {
+    wm_azure_request_t second_request = { .tag = "azure-signin", .query = "SigninLogs", .time_offset = "1d", .timeout = 60 };
+    wm_azure_request_t first_request = { .tag = "azure-activity", .query = "AzureActivity", .time_offset = "36h",
+                                         .workspace = "d6b-efa", .next = &second_request };
+    wm_azure_request_t graph_request = { .tag = "azure-ad-graph", .query = "auditLogs/directoryAudits", .time_offset = "1d" };
+    wm_azure_api_t graph = { .type = GRAPHS, .auth_path = "/var/ossec/wodles/azure/graph.txt",
+                             .tenantdomain = "wazuh.onmicrosoft.com", .request = &graph_request };
+    wm_azure_api_t analytics = { .type = LOG_ANALYTICS, .auth_path = "/var/ossec/wodles/azure/analytics.txt",
+                                 .tenantdomain = "wazuh.onmicrosoft.com", .request = &first_request, .next = &graph };
+    wm_azure_container_t second_container = { .name = "insights-operational-logs", .blobs = "*", .content_type = "file",
+                                              .time_offset = "2d", .path = "logs/", .timeout = 30 };
+    wm_azure_container_t first_container = { .name = "insights-activity-logs", .blobs = ".json", .content_type = "json_inline",
+                                             .time_offset = "24h", .next = &second_container };
+    wm_azure_storage_t storage = { .auth_path = "/var/ossec/wodles/azure/storage.txt", .tag = "azure-storage",
+                                   .container = &first_container };
+    wm_azure_t azure = { .flags.enabled = 1, .api_config = &analytics, .storage = &storage, .scan_config.scan_wday = -1 };
+
+    cJSON *root = wm_azure_dump(&azure);
+    char *text = cJSON_PrintUnformatted(root);
+
+    assert_string_equal(text, "{\"azure-logs\":{\"disabled\":\"no\",\"run_on_start\":\"no\",\"timeout\":0,\"content\":["
+                              "{\"type\":\"log_analytics\",\"tenantdomain\":\"wazuh.onmicrosoft.com\","
+                              "\"auth_path\":\"/var/ossec/wodles/azure/analytics.txt\",\"requests\":["
+                              "{\"tag\":\"azure-activity\",\"query\":\"AzureActivity\",\"time_offset\":\"36h\",\"workspace\":\"d6b-efa\"},"
+                              "{\"tag\":\"azure-signin\",\"query\":\"SigninLogs\",\"time_offset\":\"1d\",\"timeout\":60}]},"
+                              "{\"type\":\"graph\",\"tenantdomain\":\"wazuh.onmicrosoft.com\","
+                              "\"auth_path\":\"/var/ossec/wodles/azure/graph.txt\",\"requests\":["
+                              "{\"tag\":\"azure-ad-graph\",\"query\":\"auditLogs/directoryAudits\",\"time_offset\":\"1d\"}]},"
+                              "{\"tag\":\"azure-storage\",\"auth_path\":\"/var/ossec/wodles/azure/storage.txt\",\"containers\":["
+                              "{\"name\":\"insights-activity-logs\",\"blobs\":\".json\",\"content_type\":\"json_inline\",\"time_offset\":\"24h\"},"
+                              "{\"name\":\"insights-operational-logs\",\"blobs\":\"*\",\"content_type\":\"file\",\"time_offset\":\"2d\","
+                              "\"prefix\":\"logs/\",\"timeout\":30}]}]}}");
+
+    cJSON_free(text);
+    cJSON_Delete(root);
+}
+
 int main(void) {
     const struct CMUnitTest tests_with_startup[] = {
-        cmocka_unit_test_setup_teardown(test_interval_execution, setup_test_executions, teardown_test_executions)
+        cmocka_unit_test_setup_teardown(test_interval_execution, setup_test_executions, teardown_test_executions),
+        cmocka_unit_test_setup_teardown(test_failed_execution_is_not_logged_as_finished, setup_test_executions, teardown_test_executions)
+    };
+    const struct CMUnitTest tests_runners[] = {
+        cmocka_unit_test(test_parse_output_success_ignores_unparsed_lines),
+        cmocka_unit_test(test_parse_output_logs_critical_lines_as_errors),
+        cmocka_unit_test(test_parse_output_failure_surfaces_unparsed_lines_after_error),
+        cmocka_unit_test(test_parse_output_failure_keeps_last_whole_lines_of_oversized_output),
+        cmocka_unit_test(test_parse_output_failure_oversized_line_replaces_earlier_lines),
+        cmocka_unit_test(test_parse_output_failure_cuts_oversized_line_on_character_boundary),
+        cmocka_unit_test(test_graphs_killed_script_is_not_logged_as_finished),
+        cmocka_unit_test(test_storage_timeout_logs_output_and_is_not_logged_as_finished),
+        cmocka_unit_test(test_storage_unexecutable_script_is_not_fatal),
+        cmocka_unit_test(test_storage_internal_error_exits_the_module),
+        cmocka_unit_test(test_storage_success_is_logged_as_finished)
     };
     const struct CMUnitTest tests_without_startup[] = {
         cmocka_unit_test_setup_teardown(test_fake_tag, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_scheduling_monthday_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_scheduling_weekday_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_scheduling_daytime_configuration, setup_test_read, teardown_test_read),
-        cmocka_unit_test_setup_teardown(test_read_scheduling_interval_configuration, setup_test_read, teardown_test_read)
+        cmocka_unit_test_setup_teardown(test_read_scheduling_interval_configuration, setup_test_read, teardown_test_read),
+        cmocka_unit_test(test_dump_requests_and_containers)
+    };
+    const struct CMUnitTest tests_dump[] = {
+        cmocka_unit_test(test_azure_dump_masks_application_and_account_keys),
+        cmocka_unit_test(test_azure_dump_never_prints_a_key),
+        cmocka_unit_test(test_azure_dump_reports_keys_in_clear_when_unmasked),
+        cmocka_unit_test(test_azure_dump_reports_requests_and_containers)
     };
     int result;
     result = cmocka_run_group_tests(tests_with_startup, setup_module, teardown_module);
+    result += cmocka_run_group_tests(tests_runners, setup_runners, teardown_runners);
     result += cmocka_run_group_tests(tests_without_startup, NULL, NULL);
+    result += cmocka_run_group_tests(tests_dump, NULL, NULL);
     return result;
 }

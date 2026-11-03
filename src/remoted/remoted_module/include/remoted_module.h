@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module (C++ worker bridge)
- * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -29,6 +28,7 @@
 #endif
 
 #include <stdbool.h>
+#include <stddef.h> // size_t, for the CA export below
 
 #ifdef __cplusplus
 extern "C"
@@ -36,6 +36,17 @@ extern "C"
 #endif
 
 #include "commonDefs.h" // full_log_fnc_t
+
+    /**
+     * @brief The CA files the module loads when ca_path / ca_certificate_path are left empty.
+     *
+     * Absolute, under the manager's fixed configuration directory (WAZUH_MANAGER_CONF_DIR in defs.h,
+     * Utils::MANAGER_CONF_DIR in C++; httpServerConfig.cpp static_asserts the prefix). Defined here, once,
+     * because remoted's TLS preflight (w_remoted_check_tls_files(), src/remoted/src/secure.c) must probe the
+     * very files the module opens (httpServerConfig.cpp).
+     */
+#define REMOTED_MODULE_DEFAULT_CA_PATH "/etc/wazuh-manager/certs/root-ca.pem"
+#define REMOTED_MODULE_DEFAULT_CA_CERTIFICATE_PATH "/etc/wazuh-manager/certs/root-ca.pem"
 
     /**
      * @brief remote.https.verification_mode values.
@@ -68,6 +79,18 @@ extern "C"
                                                    ///< (see resolveDualStackMode()/RestinioHttpServer.cpp).
         REMOTED_MODULE_HTTPS_DUAL_STACK_YES = 1,   ///< Force dual-stack on (also accept IPv4).
         REMOTED_MODULE_HTTPS_DUAL_STACK_NO = 2     ///< Force IPv6-only.
+    };
+
+    /**
+     * @brief remote.https.<endpoint>_rate_limit "not configured" sentinel.
+     *
+     * Kept in sync by hand with the config-parser mirror in src/config/include/remote-config.h
+     * (REMOTED_HTTPS_RATE_LIMIT_UNSET). Negative because 0 is a meaningful value here ("no rate
+     * limit"), exactly like REMOTED_MODULE_HTTPS_VERIFY_UNSET vs _NONE.
+     */
+    enum
+    {
+        REMOTED_MODULE_RATE_LIMIT_UNSET = -1
     };
 
     /**
@@ -125,7 +148,15 @@ extern "C"
         bool http_content_encoding_enabled;
         long long max_inflight_bytes; ///< Max in-flight request payload bytes; 503 over it (<=0 -> module default).
         int max_parallel_connections; ///< HTTPS max simultaneous connections (<=0 -> module default).
+        int max_handshakes_per_source; ///< Max connections from one address still in the TLS handshake; one more
+                                       ///< is closed at once. remoted.max_handshakes_per_source, 0..65536 (default
+                                       ///< 32). Zero is a VALID setting ("no cap"), so this field is only read when
+                                       ///< max_handshakes_per_source_set is non-zero; otherwise the module default.
+        int max_handshakes_per_source_set; ///< Non-zero when max_handshakes_per_source carries a configured value.
         int max_deferred_requests; ///< Max requests parked awaiting a downstream service; 503 over it (<=0 -> default).
+        int max_requests_per_agent; ///< Max requests one authenticated agent may have open; 503 over it (<=0 -> default).
+        long long max_inflight_bytes_per_agent; ///< Max decoded-body bytes one agent may hold at once; 503 over it
+                                                ///< (<=0 -> half of max_inflight_bytes).
 
         // Downstream (async UDS client to the engine's event ingress) tunables. <=0 -> module default
         // (see remoted.downstream_*).
@@ -136,6 +167,8 @@ extern "C"
                                                      ///< dedicated (longer) deadline: inventory sync sessions are
                                                      ///< validated, indexed and flushed WITHIN the request, unlike
                                                      ///< the enqueue-and-answer endpoints the global default serves.
+        int downstream_stateful_retry_after;         ///< Retry-After (seconds) of the 503 answered when that deadline
+                                                     ///< elapses; 0 = no header, <0 -> module default (20).
         int downstream_io_threads;                   ///< Threads running the downstream client's io_context. <=0 ->
                                                      ///< cpp_get_nproc() (see shared_modules/utils/proc.hpp).
         int downstream_post_process_threads;         ///< Threads running the per-endpoint post-processors. <=0 ->
@@ -154,17 +187,46 @@ extern "C"
         int jwt_clock_skew_set;       ///< Non-zero when jwt_clock_skew carries a configured value (remoted always
                                       ///< sets it). A zeroed struct therefore still means "module defaults".
         long long auth_max_body_size; ///< Hard cap on the authenticated request body, bytes (<=0 -> default).
+        long long auth_max_decoded_body_size; ///< Hard cap on that body once zstd-decoded, bytes (<=0 -> default).
 
         int keystore_refresh_interval; ///< Seconds between client.keys change checks (hot-reload).
                                        ///< <=0 -> module default (10 s)
         char bind_address[256];        ///< HTTPS listen address (empty -> module default).
         char global_prefix[256];       ///< URL path prefix every route is registered under
                                        ///< (empty -> "/", endpoints served unprefixed).
-        char ca_path[512];             ///< CA bundle (PEM) for client-certificate verification (empty -> disabled).
+        char ca_path[512];             ///< CA bundle (PEM) for client-certificate verification, used when
+                                       ///< verification_mode is certificate or full (empty -> module default).
+        char ca_certificate_path[512]; ///< CA that signs the listener certificate (PEM), served on GET /cacerts
+                                       ///< (empty -> module default).
         char ciphers[256];             ///< TLS 1.3 ciphersuite override (SSL_CTX_set_ciphersuites() naming scheme;
                                        ///< empty -> library default).
         int verification_mode;         ///< REMOTED_MODULE_HTTPS_VERIFY_* (client-certificate verification).
         int dual_stack;                ///< REMOTED_MODULE_HTTPS_DUAL_STACK_*; only applies to an IPv6 bind address.
+
+        // Rate limits of the two UNAUTHENTICATED routes. Regular remote.https settings
+        // (wazuh-manager.conf), not internal options: an enrolling agent has no client.keys entry
+        // and a trust-bootstrapping one has no anchor yet, so neither route can sit behind the
+        // bearer-token gateway that bounds every other one. What they bound is the WORK BEHIND the
+        // route (an authd round trip, and on a worker a cluster round trip to the master), not the
+        // transport: the in-flight byte budget and max_parallel_connections remain the memory
+        // bounds.
+        //
+        // The bucket is per ENDPOINT, not per caller: one ceiling for the route as a whole, so
+        // these are fleet-wide budgets -- a single noisy client can spend the route's whole
+        // allowance, and a mass enrollment is paced by the same number. Size them for the fleet.
+        //
+        // Read only when rate_limit_set is non-zero -- 0 is a VALID setting here ("no limit"),
+        // which a zeroed struct could not express, the same problem jwt_clock_skew_set solves.
+        // remoted always sets it, so a zeroed struct (or a NULL configuration) still means "module
+        // defaults" and never an accidental "unlimited".
+        int rate_limit_set;     ///< Non-zero when the two fields below carry configured values.
+        int enroll_rate_limit;  ///< POST /enroll sustained requests/second, whole endpoint.
+                                ///< REMOTED_MODULE_RATE_LIMIT_UNSET -> module default, 0 -> no limit.
+        int cacerts_rate_limit; ///< GET /cacerts sustained requests/second, whole endpoint.
+                                ///< UNSET -> module default, 0 -> no limit.
+                                ///< The bucket depth is NOT part of this ABI: the module derives it
+                                ///< from the rate, so a short burst is absorbed without giving an
+                                ///< operator a second number to reason about.
 
         // Control endpoint configuration. Defaults apply when <=0 or empty.
         char manager_version[64];        ///< Manager version string.
@@ -173,9 +235,11 @@ extern "C"
         int groups_refresh_interval_sec; ///< Group refresh interval in seconds (<=0 -> 60).
         int wdb_request_connections;     ///< Wazuh-DB request connection pool size (<=0 -> 4).
         int wdb_roundtrip_deadline_ms;   ///< Wazuh-DB roundtrip deadline in milliseconds (<=0 -> 2000).
+        int wdb_request_deadline_ms;     ///< Wazuh-DB end-to-end request deadline from enqueue, in
+                                         ///< milliseconds: queue wait + reconnection + round trip (<=0 -> 5000).
         int wdb_max_queue_size;          ///< Wazuh-DB request queue high-water mark; QueueFull over it (<=0 -> 10000).
-        int tm_concurrency;              ///< Task Manager concurrency limit (<=0 -> 10).
-        int tm_deadline_ms;              ///< Task Manager per-request deadline in milliseconds (<=0 -> 200).
+        int tm_concurrency;              ///< Task Manager concurrency limit (<=0 -> 4).
+        int tm_deadline_ms;              ///< Task Manager per-request deadline in milliseconds (<=0 -> 2000).
         int tm_max_queue_size;      ///< Task Manager request queue high-water mark; QueueFull over it (<=0 -> 10000).
         int keepalive_throttle_sec; ///< Minimum seconds between two wazuh-db keepalive writes for the same agent;
                                     ///< notifies arriving faster are absorbed in memory (<=0 -> 60).
@@ -199,7 +263,7 @@ extern "C"
                                               ///< deliberately NOT the allow_higher_versions field
                                               ///< above, which is a separate, independently
                                               ///< configured remote setting used by /control.
-        int enroll_password_refresh_interval; ///< Seconds between etc/authd.pass change checks
+        int enroll_password_refresh_interval; ///< Seconds between /etc/wazuh-manager/authd.pass change checks
                                               ///< (hot-reload poll fallback). <=0 -> module default.
         int authd_connect_timeout;            ///< Seconds to wait for the authd local-socket connect. <=0 -> default.
         int authd_response_timeout;           ///< Seconds to wait for authd's reply to an enrollment request.
@@ -232,6 +296,60 @@ extern "C"
      */
     EXPORTED void remoted_module_stop(void);
 
+    /**
+     * @brief Whether the certificate the HTTPS listener serves CHAINS to `remote.https.ca_certificate`.
+     *
+     * The same judgement `GET /cacerts` makes before handing that CA to a v5.0.0+ agent, read off
+     * the same periodically-refreshed snapshot rather than recomputed -- so a rotated CA is seen
+     * here too, and the two paths can never disagree about the same file.
+     *
+     * Exists for remoted's legacy task poller, which sends the CA to a pre-v5.0.0 agent over the
+     * WPK transfer channel during an upgrade: an agent that pins an anchor which cannot chain to
+     * this listener fails every handshake afterwards, which is worse than having no anchor at all.
+     *
+     * @return 1 the served certificate chains to a CA of that file, 0 it explicitly does not (a CA
+     *         that merely signs it does not count -- the chain, its validity windows and the CA
+     *         bits are all validated, issue #39319 C33), -1 unknown (the
+     *         listener is down, no evaluation has run yet, or the CA file was unreadable at the
+     *         last one).
+     *
+     * @note -1 means PROCEED, not refuse -- matching the /cacerts route, which serves on unknown
+     *       and refuses only on an explicit 0. Refusing on unknown would turn one transient read
+     *       failure into a fleet-wide loss of the trust bootstrap.
+     */
+    EXPORTED int remoted_module_tls_ca_matches_leaf(void);
+
+    /**
+     * @brief Write the ONE certificate of `remote.https.ca_certificate` that the certificate the
+     *        HTTPS listener serves CHAINS to, re-serialised, into @p buffer.
+     *
+     * Exists for remoted's legacy task poller, which drops this file on a pre-v5.0.0 agent as
+     * `etc/certs/root-ca.pem` ahead of the WPK upgrade. That agent's installer
+     * (src/init/pkg_installer.sh) REFUSES a drop-in carrying more than one
+     * `-----BEGIN CERTIFICATE-----`, so during the overlap of a CA rotation -- when the bundle
+     * legitimately holds two, plus the tool's `##` publication block -- handing over the file as it
+     * is on disk would leave every upgrading agent with no anchor at all. What comes out of here is
+     * therefore a single certificate, written back out by this process from the parsed X.509 object:
+     * the first one of the bundle the served leaf builds a valid chain to -- not merely one whose
+     * signature is on it -- with no block and nothing else around it (issue #39319, C33).
+     *
+     * Read off the same snapshot `GET /cacerts` answers from, so a rotation is seen here too and
+     * the two paths can never hand out certificates from different reads of the same file.
+     *
+     * @param buffer Destination. NOT NUL-terminated on return: the return value is the length.
+     * @param capacity Bytes available at @p buffer.
+     * @return Bytes written (> 0); 0 when the served certificate chains to no certificate of the
+     *         bundle (or the one it chains to is not an anchor the agent's installer keeps), when
+     *         there is no servable bundle, or when the listener is down; -1 when @p capacity is too
+     *         small for the certificate, or on an internal error. Nothing is written unless the
+     *         return value is positive.
+     *
+     * @note Unlike remoted_module_tls_ca_matches_leaf(), there is no "unknown that means proceed"
+     *       here: anything other than a positive length is "nothing to deliver", and the caller
+     *       continues the upgrade without a CA rather than shipping bytes it could not produce.
+     */
+    EXPORTED int remoted_module_tls_leaf_signer_pem(char* buffer, size_t capacity);
+
 #ifdef __cplusplus
 }
 #endif
@@ -239,5 +357,7 @@ extern "C"
 // Function-pointer typedefs, useful if the module is ever loaded via dlopen/dlsym.
 typedef void (*remoted_module_start_func)(full_log_fnc_t callbackLog, const remoted_module_config_t* configuration);
 typedef void (*remoted_module_stop_func)(void);
+typedef int (*remoted_module_tls_ca_matches_leaf_func)(void);
+typedef int (*remoted_module_tls_leaf_signer_pem_func)(char* buffer, size_t capacity);
 
 #endif // _REMOTED_MODULE_H

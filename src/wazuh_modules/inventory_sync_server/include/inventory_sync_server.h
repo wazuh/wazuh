@@ -1,7 +1,6 @@
 /*
  * Wazuh inventory sync server module
- * Copyright (C) 2015, Wazuh Inc.
- * July 28, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -66,8 +65,8 @@ extern "C"
 
         /* ---- Transport: the listening socket ---- */
         /**
-         * UDS path to listen on, RELATIVE to the install dir (modulesd chdir()s there and remoted
-         * chroot()s into it, so a relative path is the only form both resolve identically).
+         * UDS path to listen on, RELATIVE to the installation directory, which is the working
+         * directory of remoted and modulesd, so both resolve it identically.
          *
          * NOT CONFIGURABLE, and modulesd always leaves it empty: internal options can only carry
          * ints, so there is no mechanism to set a path. The field stays because it is how a test --
@@ -162,7 +161,6 @@ extern "C"
                                       ///< modulesd warns about if this exceeds it.
                                       ///< Range 0..65536. <=0 -> 1024.
 
-
         /* ---- Sync pipeline (the POST /stateful ingestion path) ---- */
         int sync_workers;                ///< Worker threads applying sessions to the indexer, sharded by
                                          ///< agent id (FIFO per agent). Each worker owns one
@@ -186,6 +184,9 @@ extern "C"
         int vd_scan_queue_slots;         ///< Short admission queue of the scan lane; full -> 503
                                          ///< "scan capacity exhausted". Range 0..256.
                                          ///< <=0 -> 2x vd_workers.
+        int max_sessions_per_agent;      ///< Sessions one agent may have admitted and not yet answered,
+                                         ///< across the pipeline and the scan lane; over it -> 503.
+                                         ///< Range 1..1024. <=0 -> 2.
 
         /* ---- SYNC indexer connector (IndexerConnectorSync) tuning. Overlaid onto the <indexer>
          *      block below by buildSyncConnectorConfig() before construction. This is the same
@@ -276,9 +277,9 @@ extern "C"
          * soon as start() returns. May be NULL, which is treated as {}.
          */
         const cJSON* indexer;
-        /* ---- Route-class admission (QoS): the data plane can shed, the control plane cannot -- APPENDED, never inserted: this struct crosses a C/C++ build boundary and keeping
-         * existing offsets stable makes a stale object a missing-feature bug instead of a
-         * garbage-pointer crash. ---- */
+        /* ---- Route-class admission (QoS): the data plane can shed, the control plane cannot -- APPENDED, never
+         * inserted: this struct crosses a C/C++ build boundary and keeping existing offsets stable makes a stale object
+         * a missing-feature bug instead of a garbage-pointer crash. ---- */
         int reserved_control_connections; ///< Accept headroom the data plane can never consume: the
                                           ///< data class's session cap resolves to
                                           ///< max_parallel_connections minus this, so /stateful alone
@@ -329,6 +330,18 @@ extern "C"
         int indexer_sync_connector_max_bulk_size; ///< NDJSON bytes staged before the connector cuts
                                                   ///< a `_bulk` request. -> `max_bulk_size`.
                                                   ///< <=0 -> 10 MiB.
+
+        /* ---- Vulnerability-detection scan-lane readiness -- APPENDED, same ABI rule as above. ---- */
+        bool vd_configured_enabled; ///< Whether `<vulnerability-detection>` is present and
+                                    ///< enabled in THIS node's own configuration -- read
+                                    ///< directly from the vulnerability_scanner wmodule's
+                                    ///< parsed config, which wm_config() populates before any
+                                    ///< module thread runs, so it is available before that
+                                    ///< module's own start() begins. Lets the scan lane defer
+                                    ///< (retryable 503) a session that arrives in the narrow
+                                    ///< window before the scanner's start() has run, instead
+                                    ///< of treating "hasn't started yet" the same as "will
+                                    ///< never run here".
     } inventory_sync_server_config_t;
 
     /**

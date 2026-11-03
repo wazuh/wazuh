@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Defs
 set(IFACE_DIR ${CMAKE_CURRENT_LIST_DIR}/interface)
 set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
@@ -99,5 +100,6 @@ if(ENGINE_BUILD_TEST)
         fastmetrics::mocks
         rawevtindexer::mocks
     )
-    gtest_discover_tests(router_utest router_ctest)
+    gtest_discover_tests(router_utest)
+    gtest_discover_tests(router_ctest)
 endif(ENGINE_BUILD_TEST)

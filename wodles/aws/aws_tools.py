@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 #
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -9,6 +9,7 @@
 
 import argparse
 import configparser
+import os
 from os import path
 from datetime import datetime
 from typing import Optional
@@ -16,6 +17,10 @@ import sys
 import re
 
 DEFAULT_AWS_CONFIG_PATH = path.join(path.expanduser('~'), '.aws', 'config')
+# wazuh-modulesd passes inline keys through these variables instead of the command line, which
+# any local user can read while the script runs. Kept in sync with wm_aws.h.
+ACCESS_KEY_ENV = 'WAZUH_AWS_ACCESS_KEY'
+SECRET_KEY_ENV = 'WAZUH_AWS_SECRET_KEY'  # nosec B105: name of an environment variable, not a secret
 CREDENTIALS_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html'
 DEPRECATED_MESSAGE = 'The {name} authentication parameter was deprecated in {release}. ' \
                      'Please use another authentication method instead. Check {url} for more information.'
@@ -27,7 +32,7 @@ ALL_REGIONS = (
     'ap-southeast-1', 'ap-southeast-2', 'ap-southeast-3', 'ap-southeast-4', 'ap-southeast-5', 'ap-southeast-7',
     'ca-central-1', 'ca-west-1', 'eu-central-1', 'eu-central-2', 'eu-north-1', 'eu-south-1', 'eu-south-2', 'eu-west-1',
     'eu-west-2', 'eu-west-3', 'il-central-1', 'me-central-1', 'me-south-1', 'mx-central-1', 'sa-east-1', 'us-east-1',
-    'us-east-2', 'us-west-1', 'us-west-2'
+    'us-east-2', 'us-gov-east-1', 'us-gov-west-1', 'us-west-1', 'us-west-2'
 )
 
 RETRY_ATTEMPTS_KEY: str = "max_attempts"
@@ -390,7 +395,7 @@ def get_script_arguments():
     parser.add_argument('-r', '--regions', dest='regions', help='Comma delimited list of AWS regions to parse logs',
                         default='', type=arg_valid_regions)
     parser.add_argument('-e', '--skip_on_error', action='store_true', dest='skip_on_error',
-                        help='If fail to parse a file, error out instead of skipping the file', default=False)
+                        help='If fail to parse a file, skip the file instead of erroring out', default=False)
     parser.add_argument('-o', '--reparse', action='store_true', dest='reparse',
                         help='Parse the log file, even if its been parsed before', default=False)
     parser.add_argument('-t', '--type', dest='type', type=str, help='Bucket type.', default='cloudtrail')
@@ -412,6 +417,12 @@ def get_script_arguments():
                         help='The duration, in seconds, of the role session. Value can range from 900s to the max'
                              ' session duration set for the role.')
     parsed_args = parser.parse_args()
+
+    # A key given on the command line wins over one given through the environment
+    if parsed_args.access_key is None:
+        parsed_args.access_key = os.environ.get(ACCESS_KEY_ENV) or None
+    if parsed_args.secret_key is None:
+        parsed_args.secret_key = os.environ.get(SECRET_KEY_ENV) or None
 
     if parsed_args.iam_role_duration is not None and parsed_args.iam_role_arn is None:
         raise argparse.ArgumentTypeError('Used --iam_role_duration argument but no --iam_role_arn provided.')

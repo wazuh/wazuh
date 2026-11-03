@@ -22,6 +22,7 @@
     "remote": {
         "legacy": {
             "enabled": false,
+            "ca_delivery": true,
             "port": 1514,
             "protocol": [
                 "tcp"
@@ -35,9 +36,15 @@
             "port": 1517,
             "bind_addr": "0.0.0.0",
             "global_prefix": "/wazuh-manager/",
-            "certificate": "etc/certs/remoted.pem",
-            "key": "etc/certs/remoted-key.pem",
-            "ca": ""
+            "certificate": "/etc/wazuh-manager/certs/remoted.pem",
+            "key": "/etc/wazuh-manager/certs/remoted-key.pem",
+            "ca": "",
+            "ca_certificate": "/etc/wazuh-manager/certs/root-ca.pem",
+            "ciphers": "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256",
+            "max_body_size": "10M",
+            "dual_stack": false,
+            "enroll_rate_limit": 100,
+            "cacerts_rate_limit": 50
         },
         "agents": {
             "allow_higher_versions": false
@@ -62,10 +69,9 @@
         "ciphers": "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256",
         "ssl_agent_ca": "",
         "ssl_verify_host": false,
-        "ssl_manager_cert": "etc/certs/remoted.pem",
-        "ssl_manager_key": "etc/certs/remoted-key.pem",
+        "ssl_manager_cert": "/etc/wazuh-manager/certs/remoted.pem",
+        "ssl_manager_key": "/etc/wazuh-manager/certs/remoted-key.pem",
         "remote_enrollment": true,
-        "legacy_enrollment": true,
         "agents": {
             "allow_higher_versions": false
         }

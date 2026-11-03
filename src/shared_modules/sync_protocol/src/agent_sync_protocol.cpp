@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -13,17 +13,74 @@
 #include "persistent_queue.hpp"
 #include "defs.h"
 #include "metadata_provider.h"
+#include "jwt/canonicalAgentId.hpp"
 
 #include <flatbuffers/flatbuffers.h>
+#include "json.hpp"
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
 #include <set>
 
+namespace
+{
+    // The manager's own 409 bodies are not consistent about which key carries the mismatch kind
+    // (vdScanLane.cpp uses "error", sessionProcessor.cpp's checksum path uses "status") -- checked
+    // in that order so both shapes resolve. Never throws: a malformed/unexpected body (a proxy
+    // that strips it, a future manager change) must fall back to the caller's default wording, not
+    // crash the sync thread.
+    std::optional<std::string> jsonMismatchKind(const std::string& body)
+    {
+        try
+        {
+            const auto json = nlohmann::json::parse(body);
+
+            for (const char* key :
+                    {"error", "status"
+                    })
+            {
+                const auto it = json.find(key);
+
+                if (it != json.end() && it->is_string())
+                {
+                    return it->get<std::string>();
+                }
+            }
+        }
+        catch (const nlohmann::json::exception&)
+        {
+            // Not JSON, or not an object -- treated the same as "no recognizable field" below.
+        }
+
+        return std::nullopt;
+    }
+
+    // "current_version" is only meaningful on the version_mismatch shape; absent otherwise.
+    std::optional<uint64_t> jsonCurrentVersion(const std::string& body)
+    {
+        try
+        {
+            const auto json = nlohmann::json::parse(body);
+            const auto it = json.find("current_version");
+
+            if (it != json.end() && it->is_number_unsigned())
+            {
+                return it->get<uint64_t>();
+            }
+        }
+        catch (const nlohmann::json::exception&)
+        {
+        }
+
+        return std::nullopt;
+    }
+} // namespace
+
 // Various synchronization functions write a SyncResult into `m_syncState.lastSyncResult`
 // We use that to generate a std::string message which will be reported as a warning by each module (FIM, SCA, Syscollector, AgentInfo).
-static std::string determineSyncFailureReasonBasedOnSyncResult(SyncResult result)
+static std::string determineSyncFailureReasonBasedOnSyncResult(SyncResult result, bool isFeedBased,
+                                                               const std::string& failureBody)
 {
     std::string failureReason;
 
@@ -54,7 +111,66 @@ static std::string determineSyncFailureReasonBasedOnSyncResult(SyncResult result
             failureReason = "Manager rejected the session as too large (413); it must be split and resent.";
             break;
 
-        // SyncResult::CHECKSUM_ERROR is not returned by either synchronizeModule() or synchronizeMetadataOrGroups()
+        // Reached by synchronizeModule()/synchronizeMetadataOrGroups() themselves, never by the
+        // dedicated Mode::CHECK integrity flow (requiresFullSync(), which tracks its own
+        // isChecksumMismatch locally and only calls this function for the other results). Do NOT
+        // describe this as triggering a full resync -- that retry-budget mechanism belongs to requiresFullSync()
+        // alone and is not what happens here: this session is simply dropped.
+        //
+        // The manager's own body tells us which of the (at least) two distinct causes this is --
+        // a real feed-offset mismatch (VD) or a data-checksum mismatch (FIM/SCA/agent-info/regular
+        // syscollector) -- so read it instead of guessing from isFeedBased, which only says which
+        // protocol instance this is, not what the manager actually rejected. isFeedBased is kept
+        // as a fallback for a body this code does not recognize (older manager, stripped by a
+        // proxy, or a shape introduced after this code was written).
+        case SyncResult::CHECKSUM_ERROR:
+            {
+                const auto kind = jsonMismatchKind(failureBody);
+
+                if (kind == "version_mismatch")
+                {
+                    const auto currentVersion = jsonCurrentVersion(failureBody);
+                    agent_metadata_t metadata {};
+                    const bool haveOwnOffset = metadata_provider_get(&metadata) == 0;
+
+                    failureReason = "Manager reported a feed version mismatch (409) for this session";
+                    std::string separator = ": ";
+
+                    if (haveOwnOffset)
+                    {
+                        failureReason += separator + "agent's feed offset is " + std::to_string(metadata.vd_feed_offset);
+                        separator = ", ";
+                    }
+
+                    if (currentVersion)
+                    {
+                        failureReason += separator + "manager's is " + std::to_string(*currentVersion);
+                    }
+
+                    failureReason += "; it will be retried on the next sync cycle.";
+
+                    // Unconditional and safe regardless of haveOwnOffset: metadata_provider_get()
+                    // only allocates metadata.groups on success (matches every other call site in
+                    // this file, e.g. currentAgentId() above), and metadata_provider_free_metadata()
+                    // is itself a no-op on an already-null groups pointer.
+                    metadata_provider_free_metadata(&metadata);
+                }
+                else if (kind == "checksum_mismatch")
+                {
+                    failureReason = "Manager reported a checksum mismatch (409) for this session.";
+                }
+                else
+                {
+                    // "Checksum mismatch" for the non-feed fallback wording is a deliberate
+                    // simplification, not a literal description of the wire mechanism -- chosen for a
+                    // generic, module-agnostic term shared by FIM/SCA/agent-info alike.
+                    failureReason = isFeedBased
+                                    ? "Manager reported a feed version mismatch (409) for this session; it will be retried on the next sync cycle."
+                                    : "Manager reported a checksum mismatch (409) for this session.";
+                }
+
+                break;
+            }
 
         default:
             break;
@@ -70,6 +186,16 @@ void AgentSyncProtocol::setSessionMaxBytes(size_t maxBytes)
     if (maxBytes > 0)
     {
         s_sessionMaxBytes.store(maxBytes);
+    }
+}
+
+std::atomic<size_t> AgentSyncProtocol::s_maxBlocksPerSync {AgentSyncProtocol::FULLSESSION_MAX_BLOCKS_PER_SYNC};
+
+void AgentSyncProtocol::setMaxBlocksPerSync(size_t maxBlocks)
+{
+    if (maxBlocks > 0)
+    {
+        s_maxBlocksPerSync.store(maxBlocks);
     }
 }
 
@@ -89,8 +215,8 @@ long AgentSyncProtocol::currentAgentId()
     // Ids are validated by OS_IsValidID() before client.keys is written: digits only, at most
     // 8 characters, so the value always fits a long and strtol cannot overflow here. Parse
     // defensively anyway -- anything that is not a plain number reads as unknown, never as a
-    // new identity. Zero-padding ("001") is presentational; the manager compares ids
-    // numerically too (fullSessionValidator.cpp).
+    // new identity. Zero-padding ("001") does not change which agent this is; what the manager
+    // receives in Start.agentid is the canonical spelling (see waitMetadataAndBuildStart()).
     if (metadata.agent_id[0] != '\0')
     {
         char* end = nullptr;
@@ -110,11 +236,17 @@ long AgentSyncProtocol::currentAgentId()
 
 AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, std::optional<std::string> dbPath, LoggerFunc logger,
                                      std::shared_ptr<IPersistentQueue> queue,
-                                     std::shared_ptr<ISyncSessionTransport> syncTransport)
+                                     std::shared_ptr<ISyncSessionTransport> syncTransport,
+                                     bool isFeedBased,
+                                     std::optional<std::size_t> flushBatchSize,
+                                     std::optional<std::chrono::milliseconds> flushInterval,
+                                     std::optional<int32_t> walAutocheckpointPages)
     : m_moduleName(moduleName),
+      m_isFeedBased(isFeedBased),
       m_persistentQueue(nullptr), // Ensure initialized to nullptr
       m_logger(std::move(logger)),
-      m_sessionMaxBytes(s_sessionMaxBytes.load())
+      m_sessionMaxBytes(s_sessionMaxBytes.load()),
+      m_maxBlocksPerSync(s_maxBlocksPerSync.load())
 {
     if (!m_logger)
     {
@@ -129,7 +261,7 @@ AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, std::optiona
         }
         else if (dbPath.has_value())
         {
-            m_persistentQueue = std::make_shared<PersistentQueue>(dbPath.value(), m_logger);
+            m_persistentQueue = std::make_shared<PersistentQueue>(dbPath.value(), m_logger, nullptr, flushBatchSize, flushInterval, walAutocheckpointPages);
         }
 
         // else: m_persistentQueue remains nullptr for in-memory-only operation
@@ -174,6 +306,17 @@ void AgentSyncProtocol::persistDifference(const std::string& id,
 }
 
 SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
+{
+    return synchronizeModuleUpTo(mode, option, m_maxBlocksPerSync);
+}
+
+SyncModuleResult AgentSyncProtocol::synchronizeModuleBounded(Mode mode, size_t maxBlocks)
+{
+    const size_t limit = (maxBlocks > 0 && maxBlocks < m_maxBlocksPerSync) ? maxBlocks : m_maxBlocksPerSync;
+    return synchronizeModuleUpTo(mode, Option::SYNC, limit);
+}
+
+SyncModuleResult AgentSyncProtocol::synchronizeModuleUpTo(Mode mode, Option option, size_t maxBlocks)
 {
     // Validate synchronization mode
     if (mode != Mode::DELTA)
@@ -232,7 +375,7 @@ SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
 
     clearSyncState();
 
-    return synchronizeDeltaByBlocks(option);
+    return synchronizeDeltaByBlocks(option, maxBlocks);
 }
 
 bool AgentSyncProtocol::isUncappedSyncOption(Option option) const
@@ -240,7 +383,7 @@ bool AgentSyncProtocol::isUncappedSyncOption(Option option) const
     return option == Option::VDFIRST || option == Option::VDSYNC;
 }
 
-SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
+SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option, size_t maxBlocks)
 {
     try
     {
@@ -267,7 +410,7 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
     bool sentAny = false;
     size_t blocksSent = 0;
 
-    while (!shouldStop() && blocksSent < FULLSESSION_MAX_BLOCKS_PER_SYNC)
+    while (!shouldStop() && blocksSent < maxBlocks)
     {
         std::vector<PersistedData> dataToSync;
 
@@ -376,7 +519,8 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
         // clearSyncState() below), so reading them without the lock races
         // against a late/duplicate HCRESULT for this session. (CID 562615)
         std::lock_guard<std::mutex> lock(m_syncState.mtx);
-        failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult);
+        failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult, m_isFeedBased,
+                                                                    m_syncState.lastSyncFailureBody);
         managerNotReady = m_syncState.lastSyncManagerNotReady;
         awaitingPrerequisite = m_syncState.lastSyncAwaitingPrerequisite;
     }
@@ -429,12 +573,20 @@ unsigned int AgentSyncProtocol::trackLocalTransportFailure(bool stopped)
     return m_consecutiveLocalTransportFailures.fetch_add(1, std::memory_order_relaxed) + 1;
 }
 
-bool AgentSyncProtocol::requiresFullSync(const std::string& index,
-                                         const std::string& checksum)
+IntegrityCheckResult AgentSyncProtocol::requiresFullSync(const std::string& index,
+                                                         const std::string& checksum)
 {
     if (!m_syncTransport->checkStatus())
     {
-        return false; // Return false as this is not a checksum error from manager
+        // Nothing was sent, so this says nothing about the checksum or the manager.
+        m_logger(LOG_DEBUG, "Module integrity check not performed for index: " + index +
+                 " - sync intake socket unreachable");
+        return {.status = IntegrityCheckStatus::NOT_CHECKED,
+                .failureReason = "Failed to reach the sync intake socket.",
+                .stopped = shouldStop(),
+                .managerNotReady = false,
+                .localTransportUnavailable = true,
+                .mismatchUnconfirmed = false};
     }
 
 #ifdef WAZUH_UNIT_TESTING
@@ -448,9 +600,20 @@ bool AgentSyncProtocol::requiresFullSync(const std::string& index,
 
     for (unsigned int attempt = 1; attempt <= CHECKSUM_MISMATCH_MAX_ATTEMPTS; ++attempt)
     {
+        // Every attempt past the first one is only made after a 409, so stopping now leaves
+        // that mismatch unconfirmed.
+        const bool mismatchPending = attempt > 1;
+
         if (shouldStop())
         {
-            return false;
+            m_logger(LOG_DEBUG, "Module integrity check for index: " + index + " stopped (attempt " +
+                     std::to_string(attempt) + "/" + std::to_string(CHECKSUM_MISMATCH_MAX_ATTEMPTS) + ")");
+            return {.status = IntegrityCheckStatus::NOT_CHECKED,
+                    .failureReason = "Module is stopping.",
+                    .stopped = true,
+                    .managerNotReady = false,
+                    .localTransportUnavailable = false,
+                    .mismatchUnconfirmed = mismatchPending};
         }
 
         clearSyncState();
@@ -467,27 +630,60 @@ bool AgentSyncProtocol::requiresFullSync(const std::string& index,
                      " (attempt " + std::to_string(attempt) + "/" +
                      std::to_string(CHECKSUM_MISMATCH_MAX_ATTEMPTS) + ")");
             clearSyncState();
-            return false; // Integrity is valid, no sync required
+            return {.status = IntegrityCheckStatus::VALID,
+                    .failureReason = {},
+                    .stopped = false,
+                    .managerNotReady = false,
+                    .localTransportUnavailable = false,
+                    .mismatchUnconfirmed = false};
         }
 
         // Only spend the retry budget on an explicit checksum mismatch (409). Any other
-        // failure (communication error, manager offline, timeout) returns false right
-        // away -- it says nothing about whether the checksum actually matches.
+        // failure (communication error, manager offline, timeout, stop) ends the check as
+        // NOT_CHECKED right away -- it says nothing about whether the checksum actually matches.
         bool isChecksumMismatch = false;
+        std::string failureReason;
+        bool managerNotReady = false;
         {
             // Locked for the same reason as synchronizeDeltaByBlocks/
             // synchronizeMetadataOrGroups above: phase is still WaitingResponse
             // until clearSyncState() below, so a late response can still write
-            // this field concurrently. (CID 562605)
+            // these fields concurrently. (CID 562605)
             std::lock_guard<std::mutex> lock(m_syncState.mtx);
             isChecksumMismatch = (m_syncState.lastSyncResult == SyncResult::CHECKSUM_ERROR);
+
+            if (!isChecksumMismatch)
+            {
+                failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult, m_isFeedBased,
+                                                                            m_syncState.lastSyncFailureBody);
+                managerNotReady = m_syncState.lastSyncManagerNotReady;
+            }
         }
         clearSyncState();
 
         if (!isChecksumMismatch)
         {
-            m_logger(LOG_DEBUG, "Module integrity check failed for index: " + index + " - Manager is offline");
-            return false;
+            // A session ended by stop() fails like any other; report it as the stop it is.
+            const bool stopped = shouldStop();
+
+            if (stopped)
+            {
+                failureReason = "Module is stopping.";
+            }
+            else if (failureReason.empty())
+            {
+                failureReason = "Integrity check session did not complete.";
+            }
+
+            m_logger(LOG_DEBUG, "Module integrity check not completed for index: " + index + " (attempt " +
+                     std::to_string(attempt) + "/" + std::to_string(CHECKSUM_MISMATCH_MAX_ATTEMPTS) + "): " +
+                     failureReason);
+            return {.status = IntegrityCheckStatus::NOT_CHECKED,
+                    .failureReason = std::move(failureReason),
+                    .stopped = stopped,
+                    .managerNotReady = !stopped && managerNotReady,
+                    .localTransportUnavailable = false,
+                    .mismatchUnconfirmed = mismatchPending};
         }
 
         if (attempt < CHECKSUM_MISMATCH_MAX_ATTEMPTS)
@@ -508,7 +704,12 @@ bool AgentSyncProtocol::requiresFullSync(const std::string& index,
         }
     }
 
-    return true;
+    return {.status = IntegrityCheckStatus::MISMATCH,
+            .failureReason = {},
+            .stopped = false,
+            .managerNotReady = false,
+            .localTransportUnavailable = false,
+            .mismatchUnconfirmed = false};
 }
 
 SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
@@ -581,7 +782,8 @@ SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
         // Same unlocked-read race as synchronizeDeltaByBlocks(); see the
         // comment there. (CID 562619)
         std::lock_guard<std::mutex> lock(m_syncState.mtx);
-        failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult);
+        failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult, m_isFeedBased,
+                                                                    m_syncState.lastSyncFailureBody);
         managerNotReady = m_syncState.lastSyncManagerNotReady;
         awaitingPrerequisite = m_syncState.lastSyncAwaitingPrerequisite;
     }
@@ -696,7 +898,8 @@ SyncModuleResult AgentSyncProtocol::notifyDataClean(const std::vector<std::strin
     {
         // Same unlocked-read race as synchronizeModule(); see the comment there. (CID 562619)
         std::lock_guard<std::mutex> lock(m_syncState.mtx);
-        failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult);
+        failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult, m_isFeedBased,
+                                                                    m_syncState.lastSyncFailureBody);
         managerNotReady = m_syncState.lastSyncManagerNotReady;
         awaitingPrerequisite = m_syncState.lastSyncAwaitingPrerequisite;
     }
@@ -805,7 +1008,13 @@ flatbuffers::Offset<Wazuh::SyncSchema::Start> AgentSyncProtocol::waitMetadataAnd
         auto osversion = builder.CreateString(metadata.os_version);
         auto agentversion = builder.CreateString(metadata.agent_version);
         auto agentname = builder.CreateString(metadata.agent_name);
-        auto agentid = builder.CreateString(metadata.agent_id);
+        // The manager requires this to be, byte for byte, the id remoted authenticated, and that id is
+        // canonical ("001"): JwtSigner canonicalizes this same client.keys text. A client.keys written
+        // with another spelling ("0001") must still synchronize, so the claim goes out in that same
+        // canonical form. Anything that is not an id goes out verbatim, and the manager rejects it.
+        const auto canonicalAgentId = jwt_profile::v1::CanonicalAgentId::parse(metadata.agent_id);
+        auto agentid =
+            builder.CreateString(canonicalAgentId ? canonicalAgentId->text() : std::string {metadata.agent_id});
         auto clustername = builder.CreateString(metadata.cluster_name);
 
         auto groups = builder.CreateVector(groups_vec);
@@ -1199,11 +1408,11 @@ bool AgentSyncProtocol::applyHttpResult(int httpCode, std::string_view body, uin
         return true;
     }
 
-    // Transport-level session correlation: reject responses that belong to a
-    // previous (timed-out) session.  A zero expectedSession means the caller
-    // comes from the legacy HCRESULT path (no session number) and skips this check.
-    if (expectedSession != 0 && m_syncState.currentSession != 0 &&
-            expectedSession != m_syncState.currentSession)
+    // Transport-level session correlation: reject responses that do not belong to the
+    // session in flight, such as one for a previous (timed-out) session. Every session
+    // id the agent picks is non-zero (nextSessionId()) and the bridge always forwards
+    // it, so a result for session 0 cannot be a real answer and is rejected as well.
+    if (expectedSession != m_syncState.currentSession)
     {
         m_logger(LOG_DEBUG,
                  "Discarded stale HCRESULT: received session " +
@@ -1234,6 +1443,7 @@ bool AgentSyncProtocol::applyHttpResult(int httpCode, std::string_view body, uin
     {
         case 409: // checksum_mismatch: full resync will be triggered by the caller.
             m_syncState.lastSyncResult = SyncResult::CHECKSUM_ERROR;
+            m_syncState.lastSyncFailureBody = std::string(body);
             m_logger(LOG_DEBUG, "Checksum mismatch detected by manager (409): " + std::string(body));
             break;
 

@@ -143,6 +143,16 @@ stages:
    response:
       <<: *permission_denied
 
+ - name: Try get key agent 012, which has agent:read but not agent:read_secrets (Denied)
+   request:
+     verify: False
+     url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/012/key"
+     method: GET
+     headers:
+       Authorization: "Bearer {test_login_token}"
+   response:
+      <<: *permission_denied
+
  - name: Get agent key for 006 (Allowed)
    request:
      verify: False
@@ -1290,15 +1300,20 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         agents_list: "997"
-    response: &empty_response
+    response:
+      # An explicit id is answered even though the request is broadcast
       status_code: 200
       json:
-        error: 0
+        error: 1
         data:
           affected_items: []
-          failed_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - "997"
           total_affected_items: 0
-          total_failed_items: 0
+          total_failed_items: 1
 
   - name: Try to restart agent 010 (Denied)
     request:
@@ -1310,7 +1325,7 @@ stages:
       params:
         agents_list: "010"
     response:
-      <<: *empty_response
+      <<: *permission_denied
 
   - name: Try to restart a list of agents (Partially allowed, user aware)
     request:
@@ -1323,16 +1338,24 @@ stages:
         agents_list: "001,002,004"
         wait_for_complete: true  # Prevent error code 500
     response:
-      # HTTPS Task Manager: Agent restart validation disabled (agents poll asynchronously)
+      # 001 was deleted above, 002 is in the denied group2
       status_code: 200
       json:
-        error: 0
+        error: 2
         data:
           affected_items:
             - '004'
-          failed_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - '001'
+            - error:
+                code: 4000
+              id:
+                - '002'
           total_affected_items: 1
-          total_failed_items: 0
+          total_failed_items: 2
 
   - name: Try to restart all agents (Partially allowed, user agnostic)
     request:
@@ -1350,8 +1373,10 @@ stages:
           affected_items:
             - '004'
           failed_items:
+            # 012 has never connected anywhere, so no node holds a version for it: 1774, not the
+            # 1761 that would blame a version nobody has ever seen.
             - error:
-                code: 1761
+                code: 1774
               id:
                 - '012'
           total_affected_items: 1
@@ -1546,7 +1571,7 @@ stages:
       params:
         agents_list: "003,004"
     response:
-      <<: *empty_response
+      <<: *permission_denied
 
 ---
 test_name: PUT /agents/upgrade_custom
@@ -1564,11 +1589,26 @@ stages:
         agents_list: "007,008"
         file_path: "{custom_wpk_path:s}"
     response:
-      status_code: 400
+      # 007 was deleted above, so every node answers 1701 for it. 008 answers as a failed item,
+      # not as a request-wide error: the outcome is per agent, and a node that answers 1816 for
+      # it yields to the 1824 of the nodes that know it.
+      status_code: 200
       json:
-        error: 1824
-        title: !anystr
-        detail: !anystr
+        error: 1
+        data:
+          affected_items: []
+          total_affected_items: 0
+          total_failed_items: 2
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - '007'
+            - error:
+                code: 1824
+                message: !anystr
+              id:
+                - '008'
 
   - name: Try to customly upgrade agents 003 and 004 (Denied)
     request:
@@ -1581,7 +1621,7 @@ stages:
         agents_list: "003,004"
         file_path: "{custom_wpk_path:s}"
     response:
-      <<: *empty_response
+      <<: *permission_denied
 
 ---
 test_name: GET /agents (deny cluster:read)
@@ -1617,3 +1657,69 @@ stages:
       json:
         message: "User has permission to uninstall agents"
         error: 0
+
+---
+test_name: POST /agents/enrollment-tokens
+
+stages:
+
+  - name: Mint an enrollment token (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/enrollment-tokens"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        address: "wazuh-master"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /agents/enrollment-tokens
+
+stages:
+
+  - name: List enrollment tokens (Allowed)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/enrollment-tokens"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: !anything
+          total_affected_items: !anyint
+          total_failed_items: 0
+          failed_items: []
+
+---
+test_name: DELETE /agents/enrollment-tokens/{token_id}
+
+stages:
+
+  - name: Revoke an enrollment token (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/enrollment-tokens/AAAAAAAAAAAAAAAAAAAAAA"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+  - name: Purge the enrollment tokens (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/enrollment-tokens"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        status: "dead"
+    response:
+      <<: *permission_denied

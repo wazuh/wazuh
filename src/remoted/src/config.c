@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -32,7 +32,8 @@ int worker_pool;
 int merge_shared;
 size_t ctrl_msg_queue_size;
 int keyupdate_interval;
-rlim_t nofile;
+rlim_t nofile;          // remoted.rlimit_nofile as configured; what getconfig reports
+rlim_t nofile_effective; // Soft limit in force once HandleRemote() has raised it
 int sender_pool;
 int rto_sec;
 int rto_msec;
@@ -48,6 +49,8 @@ size_t queue_max_bytes;
 size_t batch_events_max_bytes;
 int enrich_cache_expire_time;
 int legacy_task_polling_interval;
+int unauthenticated_timeout;
+int unauthenticated_max;
 
 /* Manager's module limits instance */
 module_limits_t manager_module_limits;
@@ -87,10 +90,15 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     cfg->port = 0;
     cfg->queue_size = 131072;
     cfg->legacy_enabled = false;
+    cfg->legacy_ca_delivery = true;
     cfg->allow_higher_versions = REMOTED_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT;
     cfg->connection_overtake_time = 60;
     cfg->rids_closing_time = REMOTED_RIDS_CLOSING_TIME_DEFAULT;
     cfg->https.verification_mode = REMOTED_HTTPS_VERIFY_UNSET;
+    /* Not 0: that is "no rate limit", a setting an operator can ask for explicitly. UNSET is what
+     * makes an <https> block that never mentions these fall back to the module's own defaults. */
+    cfg->https.enroll_rate_limit = REMOTED_HTTPS_RATE_LIMIT_UNSET;
+    cfg->https.cacerts_rate_limit = REMOTED_HTTPS_RATE_LIMIT_UNSET;
 
     // Initialize all internal options
     receive_chunk = (unsigned)getDefine_Int_default("remoted", "receive_chunk", 1024, 16384, 4096);
@@ -107,7 +115,8 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     pass_empty_keyfile = getDefine_Int_default("remoted", "pass_empty_keyfile", 0, 1, 1);
     ctrl_msg_queue_size = (size_t)getDefine_Int_default("remoted", "control_msg_queue_size", 4096, 0x1 << 20, 16384);
     keyupdate_interval = getDefine_Int_default("remoted", "keyupdate_interval", 1, 3600, 10);
-    nofile = getDefine_Int_default("remoted", "rlimit_nofile", 1024, 1048576, 458752);
+    nofile = getDefine_Int_default("remoted", "rlimit_nofile", 1024, 1048576, 65536);
+    nofile_effective = nofile;
     sender_pool = getDefine_Int_default("remoted", "sender_pool", 1, 64, 8);
     request_pool = getDefine_Int_default("remoted", "request_pool", 1, 4096, 1024);
     request_timeout = getDefine_Int_default("remoted", "request_timeout", 1, 600, 10);
@@ -125,11 +134,13 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     batch_events_max_bytes = (size_t)getDefine_Int_default("remoted", "batch_events_max_bytes", 0, INT_MAX, 32 * 1024 * 1024);
     enrich_cache_expire_time = getDefine_Int_default("remoted", "enrich_cache_expire_time", 60, 86400, 300);
     legacy_task_polling_interval = getDefine_Int_default("remoted", "legacy_task_polling_interval", 300, 86400, 900);
+    unauthenticated_timeout = getDefine_Int_default("remoted", "unauthenticated_timeout", 10, 3600, 60);
+    unauthenticated_max = getDefine_Int_default("remoted", "unauthenticated_max", 64, 1048576, 16384);
 
     /* Setting default values for global parameters */
     cfg->global.agents_disconnection_time = 900;
 
-    /* etc/wazuh-manager.conf: loaded once per process (schema + defaults applied), then each section
+    /* /etc/wazuh-manager/wazuh-manager.conf: loaded once per process (schema + defaults applied), then each section
      * of the effective document is read as cJSON (mconf-config.h). */
     if (w_mconf_load(cfgfile) < 0) {
         return (OS_INVALID);
@@ -180,7 +191,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
 }
 
 
-/* getconfig "remote": the effective `remote` section of etc/wazuh-manager.conf (schema defaults
+/* getconfig "remote": the effective `remote` section of /etc/wazuh-manager/wazuh-manager.conf (schema defaults
  * applied, native types), exactly what RemotedConfig() loaded. Feeds one endpoint:
  * GET /cluster/.../configuration/request/remote, which asks the daemon over its socket. */
 cJSON *getRemoteConfig(void) {
@@ -231,6 +242,8 @@ cJSON *getRemoteInternalConfig(void) {
     cJSON_AddNumberToObject(remoted,"batch_events_max_bytes",(double)batch_events_max_bytes);
     cJSON_AddNumberToObject(remoted,"enrich_cache_expire_time",enrich_cache_expire_time);
     cJSON_AddNumberToObject(remoted, "legacy_task_polling_interval", legacy_task_polling_interval);
+    cJSON_AddNumberToObject(remoted, "unauthenticated_timeout", unauthenticated_timeout);
+    cJSON_AddNumberToObject(remoted, "unauthenticated_max", unauthenticated_max);
 
     cJSON_AddItemToObject(internals,"remoted",remoted);
     cJSON_AddItemToObject(root,"internal",internals);
@@ -239,7 +252,7 @@ cJSON *getRemoteInternalConfig(void) {
 
 }
 
-/* getconfig "global": the effective `global` section of etc/wazuh-manager.conf. */
+/* getconfig "global": the effective `global` section of /etc/wazuh-manager/wazuh-manager.conf. */
 cJSON *getRemoteGlobalConfig(void) {
     cJSON *root = cJSON_CreateObject();
     cJSON *global = w_mconf_section("global");

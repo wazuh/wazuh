@@ -46,7 +46,7 @@ def test_bin_details(current_bin):
         'FileVersionRaw.Build': file_version_build,
         'FileVersionRaw.Revision': file_version_revision,
         'OriginalFilename': '',
-        'LegalCopyright': 'Copyright (C) Wazuh, Inc.',
+        'LegalCopyright': 'Copyright (C) Wazuh Inc.',
         'Language': 'English (United States)'
     }
 

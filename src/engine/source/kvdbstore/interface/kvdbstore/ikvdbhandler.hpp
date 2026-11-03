@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _KVDB_IKVDBHANDLER_H
 #define _KVDB_IKVDBHANDLER_H
 

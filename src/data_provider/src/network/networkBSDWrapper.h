@@ -1,7 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015, Wazuh Inc.
- * October 26, 2020.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -16,8 +15,6 @@
 #include <net/if.h>
 #include <net/if_types.h>
 #include <net/if_dl.h>
-#include <sstream>
-#include <iomanip>
 #include <net/route.h>
 #include <sys/sysctl.h>
 #include <sys/param.h>
@@ -28,6 +25,7 @@
 #include "makeUnique.h"
 #include "sharedDefs.h"
 #include "stringHelper.h"
+#include "wazuhCommon.hpp"
 
 static const std::map<std::pair<int, int>, std::string> NETWORK_INTERFACE_TYPE =
 {
@@ -38,6 +36,12 @@ static const std::map<std::pair<int, int>, std::string> NETWORK_INTERFACE_TYPE =
     { std::make_pair(IFT_FDDI, IFT_FDDI),                       "FDDI"           },
     { std::make_pair(IFT_PPP, IFT_PPP),                         "point-to-point" },
     { std::make_pair(IFT_ATM, IFT_ATM),                         "ATM"            },
+    { std::make_pair(IFT_GIF, IFT_GIF),                         "tunnel"         },
+    { std::make_pair(IFT_STF, IFT_STF),                         "tunnel"         },
+    { std::make_pair(IFT_L2VLAN, IFT_L2VLAN),                   "vlan"           },
+    { std::make_pair(IFT_BRIDGE, IFT_BRIDGE),                   "bridge"         },
+    { std::make_pair(IFT_CELLULAR, IFT_CELLULAR),               "cellular"       },
+    { std::make_pair(IFT_OTHER, IFT_OTHER),                     "other"          },
 };
 
 class NetworkBSDInterface final : public INetworkInterfaceWrapper
@@ -221,7 +225,6 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
         {
             std::string retVal { "00:00:00:00:00:00" };
             auto sdl { reinterpret_cast<struct sockaddr_dl*>(m_interfaceAddress->ifa_addr) };
-            std::stringstream ss;
 
             if (sdl && MAC_ADDRESS_COUNT_SEGMENTS == sdl->sdl_alen)
             {
@@ -229,18 +232,7 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
 
                 if (macAddress)
                 {
-                    for (auto i = 0ull; i < MAC_ADDRESS_COUNT_SEGMENTS; ++i)
-                    {
-                        ss << std::hex << std::setfill('0') << std::setw(2);
-                        ss << static_cast<int>(static_cast<uint8_t>(macAddress[i]));
-
-                        if (i != MAC_ADDRESS_COUNT_SEGMENTS - 1)
-                        {
-                            ss << ":";
-                        }
-                    }
-
-                    retVal = ss.str();
+                    retVal = wazuh::hex_encode_delimited(macAddress, MAC_ADDRESS_COUNT_SEGMENTS, ':');
                 }
             }
 

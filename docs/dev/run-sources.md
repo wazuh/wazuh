@@ -12,13 +12,15 @@ Before running from sources, ensure you have:
 
 ### Installation
 
-Install the server by running the installation script:
+Install the server by running the installation script as root:
 
 ```bash
-./install.sh
+sudo ./install.sh
 ```
 
-Follow the interactive wizard to install the manager.
+Follow the interactive wizard to install the manager. The manager is installed under `/var/wazuh-manager`, with its configuration in `/etc/wazuh-manager`.
+
+`install.sh` builds before it installs: unless `USER_BINARYINSTALL` is set, it runs `make deps` only when `src/external/` has no subdirectory yet, then `make TARGET=manager INSTALLDIR=<dir> build` in the same build tree (the one whose cache is `src/build/CMakeCache.txt`). Whatever flags that tree has cached (`TEST`, `DEBUG`, `FSANITIZE`, …, see [Build Options](build-sources.md#build-options)) end up in the installed binaries, and with a cached `TEST=1` the build produces no daemons at all: clear them first.
 
 ### Unattended Installation
 
@@ -33,6 +35,8 @@ USER_UPDATE="y" \
 USER_AUTO_START="n" \
 ./install.sh
 ```
+
+`USER_UPDATE="y"` applies only when an installation is found: it is updated in place. Without it, an existing installation makes the script ask what to do.
 
 ### Installing into a Sandbox Directory
 
@@ -60,19 +64,95 @@ USER_REGISTER_SERVICE="n" \
 To move the system service to the new directory on purpose, pass
 `USER_TAKEOVER_SERVICE="y"` instead.
 
-### Starting the Server
+A sandbox install moves only the home: its configuration directory is the same
+`/etc/wazuh-manager` the real installation uses. With `USER_DELETE_DIR="y"`, a run
+that finds the sandbox directory already there deletes it **and**
+`/etc/wazuh-manager`, the manager CA's private key included, so do not run the
+example above again on a host whose real installation you want to keep.
 
-After installation, start the manager:
+### Provision certificates
+
+`install.sh` resolves the manager's credentials at the end of the run: it seeds the Server API passwords, stores
+the indexer password if one was supplied, mints the manager's CA in `/etc/wazuh-manager/ca`, and issues the agent
+listener and Server API pairs into `/etc/wazuh-manager/certs`. When a 5.x indexer runs on the same host it also
+imports the indexer's CA and the client pair it issued for this manager. So a plain source install next to an
+indexer has every certificate it needs, and you can skip this section.
+
+Cases where you supply them instead:
+
+* The indexer runs elsewhere: stage its CA as `indexer-ca.pem` and a client pair it issued for this node (with
+  `extendedKeyUsage` `clientAuth`) as `indexer-connector.pem` / `indexer-connector-key.pem`, and put
+  `WAZUH_INDEXER_MANAGER_PASSWORD` in `/etc/wazuh-manager/local.env`.
+* You want the pairs your deployment actually uses (an E2E environment, a node that has to match certificates
+  issued elsewhere).
+* You passed `USER_RESOLVE_CREDENTIALS="n"` — which you should for any install whose tree is copied somewhere
+  else, since a CA private key generated once and shared by every copy is worse than no certificate at all.
+
+Staged files go under `/etc/wazuh-manager/certs` (`root:wazuh-manager 640`, in a `root:wazuh-manager 0750`
+directory): the agents' bundle `root-ca.pem`, the agent listener pair `remoted.pem` / `remoted-key.pem`, the Server
+API pair `apid.pem` / `apid-key.pem`, and the indexer trust above. The CA that issued the two server pairs goes,
+without its key unless this host should issue pairs, in `/etc/wazuh-manager/ca/root-ca.pem` (`root:root 644`, in a
+`root:root 0700` directory): the credential resolver checks the Server API pair against it at every start. A
+staged file is validated, never replaced. A missing, invalid or wrongly owned one stops `wazuh-manager-control start`
+before any daemon runs, printing `Unresolved credentials. Exiting`, `Invalid credentials. Exiting` or
+`Unsafe credentials. Exiting`, and the resolver's `MISSING|INVALID|UNSAFE <path or variable>: <reason>` line is
+appended to `/var/wazuh-manager/logs/wazuh-manager.log`.
+See [Using certificates issued elsewhere](../ref/getting-started/installation.md#using-certificates-issued-elsewhere)
+and [Credentials](../ref/getting-started/credentials.md).
+
+The repository carries a certificate tool for test PKI, `tools/devContainer/scripts/wazuh-certs-tool.sh`
+(driven by `wazuh-certs-tool.yml` next to it). In the devcontainer, the E2E environment uses it and adds a
+script that deploys its output with the names and ownership above, puts the tool's CA in
+`/etc/wazuh-manager/ca/` (certificate only), and runs `--install` and `--check`. The copy script refuses to
+run while the manager is running, so stop it first:
 
 ```bash
-/var/wazuh-manager/bin/wazuh-manager-control start
+cd $WAZUH_REPO/tools/devContainer/e2e
+./init.sh --certs-only --no-listeners   # issues certs/ (reuses certs/root-ca.pem when present)
+sudo ./wazuh_copy_certs.sh              # -> /etc/wazuh-manager/certs
 ```
+
+Without `--no-listeners`, `init.sh` also edits `/etc/wazuh-manager/wazuh-manager.conf`: it replaces a
+`127.0.0.1` `local_ip`/`bind_addr` in `<remote>` with `0.0.0.0`, for agents in containers, and resets the file
+to `root:wazuh-manager 660`.
+
+For a sandbox install, point the copy script at its directory (the certificates still go to
+`/etc/wazuh-manager/certs`: a custom installation directory moves the home only, so two installs on one
+host share one configuration directory):
+
+```bash
+sudo WAZUH_MANAGER_HOME=/tmp/clean_env/wazuh-manager ./wazuh_copy_certs.sh
+```
+
+Or run the tool directly and stage what it issues as the CI does
+(`.github/workflows/5_testintegration_manager.yml`, steps "Provision TLS certificates" and "Supply the indexer
+credential and resolve"): the listener pair also as `apid.pem` / `apid-key.pem`, the manager node's certificate
+(issued with `clientAuth`) as the indexer client pair, the tool's `root-ca.pem` as `certs/root-ca.pem`,
+`certs/indexer-ca.pem` and `ca/root-ca.pem`, the indexer password in `local.env`, then `--install`:
+
+```bash
+bash $WAZUH_REPO/tools/devContainer/scripts/wazuh-certs-tool.sh -A -c certs.yml -o ./certs
+```
+
+### Starting the Server
+
+After installation, start the manager as root, either through the system service (`sudo systemctl start wazuh-manager`) or with its control script:
+
+```bash
+sudo /var/wazuh-manager/bin/wazuh-manager-control start > /tmp/wazuh-manager-start.log 2>&1
+```
+
+Do not pipe the output of `start`: the daemons inherit it and the command never returns. Redirect it to a file instead.
+
+A fresh installation does not start until the indexer credentials are resolved. Unless a 5.x indexer runs on the same host, `start` stops before any daemon with `Unresolved credentials. Exiting` until the indexer password is in `/etc/wazuh-manager/local.env` and the indexer's CA and client pair are in `/etc/wazuh-manager/certs` (see [Provision certificates](#provision-certificates)). Put the password in `local.env` rather than in your shell: systemd starts the service with a clean environment, and `sudo` resets it too.
 
 To verify the server is running:
 
 ```bash
-/var/wazuh-manager/bin/wazuh-manager-control status
+sudo /var/wazuh-manager/bin/wazuh-manager-control status
 ```
+
+`status` exits 1 when a daemon is not running. It lists `wazuh-manager-apid` only on a master node and `wazuh-manager-authd` only while `auth.disabled` is false, the daemons `start` launches.
 
 ## Agent for UNIX
 
@@ -99,7 +179,17 @@ USER_UPDATE="y" \
 ./install.sh
 ```
 
-**Important**: Set `USER_AGENT_MANAGER_IP` to the correct server address.
+**Important**: Set `USER_AGENT_MANAGER_IP` (or `USER_AGENT_MANAGER_NAME` for a host name) to the manager address. The installer writes it into `<agent><manager><endpoint>`.
+
+### Enrolling the Agent
+
+A source install does not register the agent. Mint an enrollment token on the manager (`sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <host>`), save it to a file on the agent, and enroll with `wazuh-agent-auth`, which installs the manager's CA as the trust anchor, registers the agent and writes the address the token names:
+
+```bash
+sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token
+```
+
+See [Enrolling or re-pointing an agent](../ref/modules/client/README.md#enrolling-or-re-pointing-an-agent) for the other actions and options.
 
 ### Starting the Agent
 
@@ -119,9 +209,9 @@ To verify the agent is running:
 
 ### Requirements
 
-WiX Toolset 3.14 is required to build the Windows installer package.
+WiX Toolset v3 is required to build the Windows installer package (`candle.exe` and `light.exe`). `wazuh-installer-build-msi.bat` adds `C:\Program Files (x86)\WiX Toolset v3.11\bin` to `PATH`; with another 3.x release installed elsewhere, put its `bin` directory on `PATH` first.
 
-Download from: https://github.com/wixtoolset/wix3/releases/tag/wix3141rtm
+Download from: https://github.com/wixtoolset/wix3/releases
 
 ### Build
 
@@ -139,20 +229,20 @@ Copy all files to a Windows machine.
 Navigate to the `src/win32` directory and execute:
 
 ```batch
-wazuh-installer-build-msi.bat
+wazuh-installer-build-msi.bat <version> <revision>
 ```
 
-This will generate the MSI installer package.
+The script asks for the version and the revision when they are not given, and generates `wazuh-agent-<version>-<revision>.msi`. It then signs the package with `signtool sign /a`, which fails without a code-signing certificate available; the MSI is generated before that step either way.
 
 ### Installation
 
-Once the package is generated, install it using the command line with the server address and the required registration password:
+Once the package is generated, install it from the same `src/win32` directory with an enrollment token. Replace `<VERSION>` and `<REVISION>` with the values given to the build script, which names the package `wazuh-agent-<VERSION>-<REVISION>.msi`. `start /wait` returns only when the installer finishes:
 
 ```batch
-wazuh-agent-*.msi /q WAZUH_MANAGER="10.0.0.2" WAZUH_REGISTRATION_PASSWORD="<PASSWORD>"
+start /wait msiexec.exe /i wazuh-agent-<VERSION>-<REVISION>.msi /q WAZUH_ENROLLMENT_TOKEN="<TOKEN>"
 ```
 
-**Important**: Replace `10.0.0.2` with the correct server IP address, and `<PASSWORD>` with the registration password retrieved from the manager (e.g., from `/var/wazuh-manager/etc/authd.pass`).
+**Important**: Replace `<TOKEN>` with an enrollment token minted on the manager (`sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <host>`). The token carries the manager address, so no separate address property is needed. `WAZUH_MANAGER` and `WAZUH_REGISTRATION_PASSWORD` were removed in 5.0: they are ignored, and an install without a token completes with no manager configured.
 
 For more installation options, see the [Installation](../ref/getting-started/installation.md#windows) guide.
 
@@ -161,13 +251,13 @@ For more installation options, see the [Installation](../ref/getting-started/ins
 Start the Wazuh service on Windows:
 
 ```powershell
-Start-Service -Name wazuh
+Start-Service -Name WazuhSvc
 ```
 
 To verify the service is running:
 
 ```powershell
-Get-Service -Name wazuh
+Get-Service -Name WazuhSvc
 ```
 
 ## Configuration
@@ -177,7 +267,7 @@ Get-Service -Name wazuh
 The main server configuration file is located at:
 
 ```
-/var/wazuh-manager/etc/wazuh-manager.conf
+/etc/wazuh-manager/wazuh-manager.conf
 ```
 
 After modifying the configuration, restart the server:
@@ -202,7 +292,7 @@ After modifying the configuration, restart the agent:
 
 **Windows**:
 ```powershell
-Restart-Service -Name wazuh
+Restart-Service -Name WazuhSvc
 ```
 
 ## Stopping Services
@@ -222,7 +312,7 @@ Restart-Service -Name wazuh
 ### Agent on Windows
 
 ```powershell
-Stop-Service -Name wazuh
+Stop-Service -Name WazuhSvc
 ```
 
 ## Logs
@@ -231,9 +321,10 @@ Stop-Service -Name wazuh
 
 Logs are located in `/var/wazuh-manager/logs/`:
 
-- `wazuh-manager.log` - Main Wazuh log
-- `wazuh-manager.json` - Structured Wazuh log
-- Individual component logs in `/var/wazuh-manager/logs/`
+- `wazuh-manager.log` - Log of every C/C++ daemon
+- `wazuh-manager.json` - The same log, in JSON
+- `api.log` - Server API log
+- `cluster.log` - Cluster daemon log
 
 To monitor logs in real-time:
 
@@ -245,9 +336,8 @@ tail -f /var/wazuh-manager/logs/wazuh-manager.log
 
 Logs are located in `/var/ossec/logs/`:
 
-- `ossec.log` - Main Wazuh log
-- `ossec.json` - Structured Wazuh log
-- Individual component logs in `/var/ossec/logs/`
+- `ossec.log` - Main agent log
+- `ossec.json` - The same log, in JSON
 
 To monitor logs in real-time:
 
@@ -263,7 +353,15 @@ Logs are located in `C:\Program Files (x86)\ossec-agent\`:
 
 ## Troubleshooting
 
-### Service Won't Start
+### Manager Won't Start
+
+`wazuh-manager-control start` validates the configuration and resolves the credentials before starting any daemon, and appends the reason it refused to `/var/wazuh-manager/logs/wazuh-manager.log`. Check the configuration on its own with:
+
+```bash
+sudo /var/wazuh-manager/bin/wazuh-manager-conf validate
+```
+
+### Agent Won't Start
 
 Check the logs for error messages:
 
@@ -274,32 +372,28 @@ cat /var/ossec/logs/ossec.log
 Verify the configuration file syntax:
 
 ```bash
-/var/ossec/bin/wazuh-control configtest
+/var/ossec/bin/wazuh-agentd -t
 ```
 
 ### Agent Not Connecting to Server
 
-1. Verify network connectivity:
+1. Verify network connectivity to the manager's agent listener (HTTPS, port 1517 by default):
    ```bash
-   ping <server_ip>
-   telnet <server_ip> 1514
+   curl -sk https://<server_ip>:1517/wazuh-manager/
    ```
 
-2. Check firewall rules allow traffic on port 1514
+2. Check firewall rules allow traffic on port 1517
 
-3. Verify the server address in the agent configuration
+3. Verify the address in `<agent><manager><endpoint>` of the agent configuration
 
-4. Check authentication:
-   ```bash
-   /var/ossec/bin/manage_agents -l
-   ```
+4. Check the agent is enrolled (it holds a key in `/var/ossec/etc/client.keys`), and list it from the manager's side with the Server API, as described in [Verifying the agent connected](../ref/getting-started/installation.md#verifying-the-agent-connected)
 
 ### Permission Errors
 
-Ensure Wazuh is running with appropriate permissions:
+Ensure the agent files keep their ownership:
 
 ```bash
 ls -l /var/ossec/
 ```
 
-Wazuh typically runs as the `ossec` user.
+The agent daemons run as the `wazuh` user; the manager daemons run as `wazuh-manager`.

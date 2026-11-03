@@ -1,12 +1,13 @@
 /*
  * Wazuh - Indexer connector.
- * Copyright (C) 2015, Wazuh Inc.
- * June 2, 2023.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #ifndef _INDEXER_CONNECTOR_HPP
@@ -157,8 +158,9 @@ public:
  */
 struct IndexerBulkRequestStats
 {
-    uint64_t requests {0}; ///< `_bulk` POSTs sent (full buffers and split chunks alike).
-    uint64_t bytes {0};    ///< NDJSON payload bytes those POSTs carried.
+    uint64_t requests {0};        ///< `_bulk` POSTs sent (full buffers and split chunks alike).
+    uint64_t bytes {0};           ///< NDJSON payload bytes those POSTs carried.
+    uint64_t conflictRetries {0}; ///< by-query version conflict waits spent, delete and update alike.
 };
 
 /**
@@ -335,10 +337,18 @@ public:
     /**
      * @brief Bulk index with version.
      *
-     * @param id ID.
+     * Not OpenSearch external versioning: with a non-empty @p version the document is written by a
+     * scripted upsert that replaces it only when its stored `state.document_version` is absent or
+     * less than or equal to @p version, and is a no-op otherwise. OpenSearch's own `_version` is
+     * not involved. An empty @p version falls back to a plain `index` operation.
+     *
+     * @param id ID. Required when @p version is not empty.
      * @param index Index name.
      * @param data Data.
-     * @param version Document version for external versioning.
+     * @param version Document version, compared against the stored `state.document_version`;
+     *                inserted into the script as a number, so it must be a numeric literal.
+     *
+     * @throw IndexerConnectorException if @p version is not empty and @p id is.
      */
     void bulkIndex(std::string_view id, std::string_view index, std::string_view data, std::string_view version);
 
@@ -381,9 +391,22 @@ public:
     [[nodiscard]] std::unique_lock<std::mutex> scopeLock();
 
     /**
-     * @brief Register a callback to be called when the indexer is flushed.
+     * @brief Register a callback to run once the indexer confirms a write.
      *
-     * @param callback Callback to be called when the indexer is flushed.
+     * Registered callbacks become due only after an operation the indexer confirmed: a bulk whose
+     * response validated item by item (a 413 split counts only if every chunk did), a staged
+     * delete by query with no bulk data alongside it, or an executeUpdateByQuery() whose response
+     * confirmed every update (or that had no valid index to target). Due callbacks run once, all
+     * of them, outside the internal mutex, from flush(), from invokePendingCallbacks() or from the
+     * background flush thread, and are then forgotten.
+     *
+     * A failed bulk leaves them registered, to run after a later confirmed write. A failed
+     * executeUpdateByQuery() (an HTTP error, a 409, an unconfirmed update, an exhausted retry
+     * budget) or a stop requested during it discards them without running them.
+     *
+     * This method does not lock; call it under scopeLock().
+     *
+     * @param callback Callback to run after a confirmed write.
      */
     void registerNotify(std::function<void()> callback);
 
@@ -402,6 +425,13 @@ public:
      * @return true if have a server available, false otherwise.
      */
     bool isAvailable() const;
+
+    /**
+     * @brief Check have a server that accepts requests now: available, not merely throttled (HTTP 429).
+     *
+     * @return true if some server is available and not throttled, false otherwise.
+     */
+    bool hasAvailableServer() const;
 
     /**
      * @brief Returns the `_bulk` request counts accumulated since the previous call and resets them.
@@ -532,7 +562,8 @@ public:
     /**
      * @brief Get the total number of dropped events.
      *
-     * @return The number of events that have been dropped.
+     * @return The number of events dropped by queue overflow or discarded after an indexer response
+     * (non-retryable status, or 503 retries exhausted).
      */
     uint64_t getDroppedEvents() const;
 
@@ -605,7 +636,8 @@ public:
      * @param query The query object (must be valid JSON).
      * @param source Optional source filtering configuration (includes/excludes fields).
      * @return The hits object from the search response.
-     * @throws IndexerConnectorException if the search fails.
+     * @throws IndexerConnectorException if the search fails; statusCode() holds the indexer's HTTP
+     *         status (404 for a missing index), 0 or negative if there was none.
      *
      * Example:
      * nlohmann::json query = {{"bool", {{"filter", {{{{"term", {{"space.name", "free"}}}}}}}}};
@@ -628,20 +660,24 @@ public:
      */
     enum class Category
     {
-        Other,            ///< Hard rejection or unexpected state (non-retryable status, bad split).
-        DocumentRejected, ///< The indexer answered but rejected documents, left them undeleted, or
-                          ///< returned a body that confirms nothing.
-        RetryExhausted    ///< The retry budget ran out on a retryable condition (429, transport).
+        Other,             ///< Hard rejection or unexpected state (non-retryable status, bad split).
+        DocumentRejected,  ///< The indexer answered but rejected documents, left them undeleted, or
+                           ///< returned a body that confirms nothing.
+        RetryExhausted,    ///< The retry budget ran out on a retryable condition (429, 502/503/504, transport).
+        ConflictsExhausted ///< A by-query's version-conflict allowance ran out: the documents it
+                           ///< skipped are consistent, a competing writer was still running.
     };
 
 private:
     std::string m_message;
     Category m_category {Category::Other};
+    long m_statusCode {0};
 
 public:
-    explicit IndexerConnectorException(std::string message, Category category = Category::Other)
+    explicit IndexerConnectorException(std::string message, Category category = Category::Other, long statusCode = 0)
         : m_message(std::move(message))
         , m_category(category)
+        , m_statusCode(statusCode)
     {
     }
 
@@ -653,6 +689,15 @@ public:
     Category category() const noexcept
     {
         return m_category;
+    }
+
+    /**
+     * @brief HTTP status the indexer answered with; 0 or negative when there was no HTTP answer (no
+     *        host available, transport failure) or the failure is not an HTTP one.
+     */
+    long statusCode() const noexcept
+    {
+        return m_statusCode;
     }
 };
 

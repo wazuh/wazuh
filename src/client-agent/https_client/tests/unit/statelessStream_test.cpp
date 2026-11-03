@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -16,6 +15,7 @@
 #include "statelessStream.hpp"
 
 #include "external/nlohmann/json.hpp"
+#include "httpsHeaderLine.hpp"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -125,6 +125,7 @@ TEST_F(StatelessStreamTest, FlushOnSizeThresholdSendsHeaderAndEvents)
     {
         sentBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
         EXPECT_EQ("/stateless", spec.target);
+        EXPECT_EQ(SHORT_REPLY_MAX_RESPONSE_BYTES, spec.maxResponseBytes);
         return response(TransportStatus::Ok, 200);
     }));
 
@@ -315,6 +316,96 @@ TEST_F(StatelessStreamTest, HeaderLineIgnoresAMalformedCollectHostResult)
     const auto wazuh = parseWazuhHeader(sentBody);
     EXPECT_EQ("001", wazuh.at("agent").at("id").get<std::string>());
     EXPECT_FALSE(wazuh.at("agent").contains("host"));
+}
+
+TEST_F(StatelessStreamTest, HeaderLineDropsGroupsThatWouldExceedRemotedCap)
+{
+    // 128 groups of 255 bytes, the agent's maximum, is about 33 KiB: remoted
+    // rejects an H line over 8 KiB together with every event of the batch.
+    nlohmann::json host;
+    host["agent"]["name"] = "myagent";
+    host["agent"]["host"]["hostname"] = "h1";
+    host["agent"]["groups"] = nlohmann::json::array();
+
+    for (int i = 0; i < 128; ++i)
+    {
+        host["agent"]["groups"].push_back(std::string(252, 'g') + std::to_string(100 + i));
+    }
+
+    host["cluster"]["name"] = "c1";
+    const auto hostJson = host.dump();
+
+    StatelessStream stream {m_config,
+                            m_performer,
+                            m_signer,
+                            m_clock,
+                            m_random,
+                            m_sink,
+                            m_authGate,
+                            m_compressionGate,
+                            [&hostJson]
+    {
+        return hostJson;
+    }};
+
+    std::string sentBody;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        sentBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+        return response(TransportStatus::Ok, 200);
+    }));
+
+    stream.submit(reinterpret_cast<const uint8_t*>("event"), 5);
+    stream.tick(m_waiter, true);
+
+    const auto headerJson = sentBody.substr(2, sentBody.find('\n') - 2);
+    EXPECT_LE(headerJson.size(), HTTPS_HEADER_LINE_JSON_MAX_BYTES);
+    const auto wazuh = parseWazuhHeader(sentBody);
+    EXPECT_EQ("001", wazuh.at("agent").at("id").get<std::string>());
+    EXPECT_FALSE(wazuh.at("agent").contains("groups"));
+    EXPECT_EQ("h1", wazuh.at("agent").at("host").at("hostname").get<std::string>());
+    EXPECT_EQ("c1", wazuh.at("cluster").at("name").get<std::string>());
+    EXPECT_NE(std::string::npos, sentBody.find("\nE event")) << "the events still go out";
+}
+
+TEST_F(StatelessStreamTest, HeaderLineFallsBackToAgentIdWhenEvenWithoutGroupsItIsTooLarge)
+{
+    nlohmann::json host;
+    host["agent"]["groups"] = {"g1"};
+    host["agent"]["host"]["hostname"] = std::string(9000, 'h');
+    host["cluster"]["name"] = "c1";
+    const auto hostJson = host.dump();
+
+    StatelessStream stream {m_config,
+                            m_performer,
+                            m_signer,
+                            m_clock,
+                            m_random,
+                            m_sink,
+                            m_authGate,
+                            m_compressionGate,
+                            [&hostJson]
+    {
+        return hostJson;
+    }};
+
+    std::string sentBody;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        sentBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+        return response(TransportStatus::Ok, 200);
+    }));
+
+    stream.submit(reinterpret_cast<const uint8_t*>("event"), 5);
+    stream.tick(m_waiter, true);
+
+    const auto wazuh = parseWazuhHeader(sentBody);
+    EXPECT_EQ(nlohmann::json({{"id", "001"}}), wazuh.at("agent"));
+    EXPECT_EQ("c1", wazuh.at("cluster").at("name").get<std::string>());
 }
 
 TEST_F(StatelessStreamTest, HeaderLineIsRefreshedOnEveryFlushNotCachedAtConstruction)
@@ -527,6 +618,24 @@ TEST_F(StatelessStreamTest, Non413PermanentStillDropsTheBatch)
     m_stream.tick(m_waiter, false);
 }
 
+TEST_F(StatelessStreamTest, A404KeepsTheBatch)
+{
+    // The counterpart to the 400 above, and the reason 404 is not Permanent: an
+    // endpoint/global_prefix mismatch rejects every batch this agent will ever
+    // send, so dropping them would discard the whole event stream for as long as
+    // the misconfiguration lasts.
+    EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(response(TransportStatus::Ok, 404)));
+    submit("event-aaaa");
+    submit("event-bbbb");
+    m_stream.tick(m_waiter, false);
+    EXPECT_EQ(0u, m_stream.droppedEvents());
+
+    // Still there once the route is corrected.
+    EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(response(TransportStatus::Ok, 200)));
+    m_stream.tick(m_waiter, true);
+    EXPECT_EQ(0u, m_stream.droppedEvents());
+}
+
 TEST_F(StatelessStreamTest, RetryableKeepsTheBatch)
 {
     EXPECT_CALL(m_performer, perform(_)).WillRepeatedly(Return(response(TransportStatus::Timeout, 0)));
@@ -661,6 +770,53 @@ TEST_F(StatelessStreamTest, AFailedFlushFallsBackToTheBatchInterval)
     }
 
     EXPECT_EQ(std::chrono::milliseconds {m_config.batchIntervalMs}, m_stream.tick(m_waiter, false));
+}
+
+TEST_F(StatelessStreamTest, UnescalatedAuthFailBacksOffInsteadOfTheFixedInterval)
+{
+    // invalid_signature (or any class but unknown_agent): RetrySender returns this outcome
+    // unescalated on every call (#39064), so nothing else may slow the retry cadence except the
+    // Backoff this stream already owns -- not the fixed batch interval (#39601).
+    ScriptedRandom random {{1.0}}; // Jitter always hits the window ceiling.
+    StatelessStream stream {m_config, m_performer, m_signer, m_clock, random, m_sink, m_authGate, m_compressionGate};
+    stream.submit(reinterpret_cast<const uint8_t*>("event-aaaa"), 10); // Submits to `stream`, not m_stream.
+
+    EXPECT_CALL(m_performer, perform(_)).WillRepeatedly(Return(response(TransportStatus::Ok, 401)));
+
+    const auto first = stream.tick(m_waiter, true);
+    // First window: the base, not the (unrelated) fixed batch interval.
+    EXPECT_EQ(std::chrono::milliseconds {m_config.backoffBaseMs}, first);
+    EXPECT_NE(std::chrono::milliseconds {m_config.batchIntervalMs}, first);
+
+    const auto second = stream.tick(m_waiter, true);
+    EXPECT_GT(second, first); // Growing: the exponential ramp, not a fixed interval repeated.
+}
+
+TEST_F(StatelessStreamTest, SuccessAfterUnescalatedAuthFailuresResetsTheBackoff)
+{
+    // The Backoff is shared with this stream's RetrySender, which resets it on
+    // OutcomeClass::Ok -- so a recovered credential returns the cadence to the base window.
+    ScriptedRandom random {{1.0}};
+    StatelessStream stream {m_config, m_performer, m_signer, m_clock, random, m_sink, m_authGate, m_compressionGate};
+    stream.submit(reinterpret_cast<const uint8_t*>("event-aaaa"), 10);
+
+    EXPECT_CALL(m_performer, perform(_))
+    // Each AuthFail tick is 2 calls: RetrySender's one-shot clock-skew grace retry (#39064)
+    // fires unconditionally before the 401 survives unescalated.
+    .WillOnce(Return(response(TransportStatus::Ok, 401)))
+    .WillOnce(Return(response(TransportStatus::Ok, 401)))
+    .WillOnce(Return(response(TransportStatus::Ok, 401)))
+    .WillOnce(Return(response(TransportStatus::Ok, 401)))
+    .WillOnce(Return(response(TransportStatus::Ok, 200))); // Succeeds outright: 1 call.
+
+    stream.tick(m_waiter, true); // Grows the shared backoff.
+    stream.tick(m_waiter, true); // Grows it further.
+    stream.submit(reinterpret_cast<const uint8_t*>("event-bbbb"), 10);
+    stream.tick(m_waiter, true); // Succeeds: resets the shared backoff.
+
+    EXPECT_CALL(m_performer, perform(_)).Times(2).WillRepeatedly(Return(response(TransportStatus::Ok, 401)));
+    stream.submit(reinterpret_cast<const uint8_t*>("event-cccc"), 10);
+    EXPECT_EQ(std::chrono::milliseconds {m_config.backoffBaseMs}, stream.tick(m_waiter, true));
 }
 
 TEST_F(StatelessStreamTest, DrainUsesASingleAttemptWithinTheDrainWindow)

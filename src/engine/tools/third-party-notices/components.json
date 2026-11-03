@@ -1,0 +1,655 @@
+{
+  "components": [
+    {
+      "name": "abseil-cpp",
+      "dependency": "abseil-cpp",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "Apache 2.0 License",
+      "dir": "abseil-cpp",
+      "files": [
+        "abseil-cpp/LICENSE"
+      ]
+    },
+    {
+      "name": "asio",
+      "dependency": "asio",
+      "artefacts": [
+        "manager"
+      ],
+      "readme_license": "Boost Software License 1.0",
+      "dir": "asio",
+      "files": [
+        "asio/LICENSE_1_0.txt"
+      ]
+    },
+    {
+      "name": "bzip2",
+      "dependency": "bzip2",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "BSD License",
+      "dir": "bzip2",
+      "files": [
+        "bzip2/LICENSE"
+      ]
+    },
+    {
+      "name": "cJSON",
+      "dependency": "cJSON",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "MIT License",
+      "dir": "cJSON",
+      "files": [
+        "cJSON/LICENSE"
+      ]
+    },
+    {
+      "name": "concurrentqueue",
+      "dependency": "concurrentqueue",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "BSD 2-Clause or Boost Software License 1.0",
+      "dir": "concurrentqueue",
+      "files": [
+        "concurrentqueue/LICENSE.md"
+      ]
+    },
+    {
+      "name": "cpp-httplib",
+      "dependency": "cpp-httplib",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "MIT License",
+      "dir": "cpp-httplib",
+      "files": [
+        "cpp-httplib/LICENSE"
+      ]
+    },
+    {
+      "name": "cPython",
+      "dependency": "cpython",
+      "artefacts": [
+        "manager"
+      ],
+      "readme_license": "Python Software Foundation License version 2",
+      "tarball": {
+        "archive": "cpython.tar.gz",
+        "member": "./lib/python3.12/LICENSE.txt"
+      },
+      "python-bundle": {
+        "archive": "cpython.tar.gz",
+        "site_packages": "./lib/python3.12/site-packages"
+      }
+    },
+    {
+      "name": "cURL",
+      "dependency": "curl",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "curl License",
+      "dir": "curl",
+      "files": [
+        "curl/COPYING"
+      ]
+    },
+    {
+      "name": "dbus",
+      "dependency": "dbus",
+      "artefacts": [
+        "agent"
+      ],
+      "readme_license": "GNU Public License version 2"
+    },
+    {
+      "name": "expected-lite",
+      "dependency": "expected-lite",
+      "artefacts": [
+        "manager"
+      ],
+      "readme_license": "Boost Software License 1.0",
+      "dir": "expected-lite",
+      "files": [
+        "expected-lite/LICENSE.txt"
+      ]
+    },
+    {
+      "name": "fast_float",
+      "dependency": "fast_float",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "Apache 2.0, Boost 1.0 or MIT License",
+      "dir": "fast_float",
+      "files": [
+        "fast_float/LICENSE-APACHE",
+        "fast_float/LICENSE-BOOST",
+        "fast_float/LICENSE-MIT"
+      ]
+    },
+    {
+      "name": "Flatbuffers",
+      "dependency": "flatbuffers",
+      "artefacts": [
+        "manager"
+      ],
+      "readme_license": "Apache 2.0 License",
+      "dir": "flatbuffers",
+      "files": [
+        "flatbuffers/LICENSE"
+      ]
+    },
+    {
+      "name": "fmt",
+      "dependency": "fmt",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "MIT License",
+      "dir": "fmt",
+      "files": [
+        "fmt/LICENSE.rst"
+      ]
+    },
+    {
+      "name": "Google Benchmark",
+      "dependency": "benchmark",
+      "artefacts": [
+        "readme-only"
+      ],
+      "readme_license": "Apache 2.0 License"
+    },
+    {
+      "name": "GoogleTest",
+      "dependency": "googletest",
+      "artefacts": [
+        "readme-only"
+      ],
+      "readme_license": "3-Clause \"New\" BSD License"
+    },
+    {
+      "name": "Hinnant date",
+      "dependency": "date",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "MIT License",
+      "dir": "date",
+      "files": [
+        "date/LICENSE.txt"
+      ]
+    },
+    {
+      "name": "jemalloc",
+      "dependency": "jemalloc",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "2-Clause \"Simplified\" BSD License",
+      "dir": "jemalloc",
+      "files": [
+        "jemalloc/COPYING"
+      ]
+    },
+    {
+      "name": "jwt-cpp",
+      "dependency": "jwt-cpp",
+      "artefacts": [
+        "manager"
+      ],
+      "readme_license": "MIT License",
+      "dir": "jwt-cpp",
+      "files": [
+        "jwt-cpp/LICENSE"
+      ]
+    },
+    {
+      "name": "libbpf",
+      "dependency": "libbpf-bootstrap",
+      "artefacts": [
+        "agent"
+      ],
+      "readme_license": "GNU Lesser General Public License version 2.1"
+    },
+    {
+      "name": "libdb",
+      "dependency": "libdb",
+      "artefacts": [
+        "agent"
+      ],
+      "readme_license": "Affero GPL v3"
+    },
+    {
+      "name": "libffi",
+      "dependency": "libffi",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "MIT License",
+      "dir": "libffi",
+      "files": [
+        "libffi/LICENSE"
+      ]
+    },
+    {
+      "name": "libgcc_s",
+      "version": "GCC 14",
+      "spdx": "GPL-3.0-or-later WITH GCC-exception-3.1",
+      "author": "Free Software Foundation, Inc.",
+      "homepage": "https://gcc.gnu.org/",
+      "artefacts": [
+        "manager"
+      ],
+      "readme_license": "GNU Public License version 3 or later with the GCC Runtime Library Exception",
+      "inline": [
+        "texts/GPL-3.0.txt",
+        "texts/GCC-exception-3.1.txt"
+      ]
+    },
+    {
+      "name": "libmaxminddb",
+      "dependency": "libmaxminddb",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "Apache 2.0 License",
+      "dir": "libmaxminddb",
+      "files": [
+        "libmaxminddb/LICENSE",
+        "libmaxminddb/NOTICE"
+      ]
+    },
+    {
+      "name": "libpcre2",
+      "dependency": "libpcre2",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "BSD License",
+      "dir": "libpcre2",
+      "files": [
+        "libpcre2/LICENCE"
+      ]
+    },
+    {
+      "name": "libplist",
+      "dependency": "libplist",
+      "artefacts": [
+        "agent"
+      ],
+      "readme_license": "GNU Lesser General Public License version 2.1"
+    },
+    {
+      "name": "libstdc++",
+      "version": "GCC 14",
+      "spdx": "GPL-3.0-or-later WITH GCC-exception-3.1",
+      "author": "Free Software Foundation, Inc.",
+      "homepage": "https://gcc.gnu.org/",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "GNU Public License version 3 or later with the GCC Runtime Library Exception",
+      "inline": [
+        "texts/GPL-3.0.txt",
+        "texts/GCC-exception-3.1.txt"
+      ]
+    },
+    {
+      "name": "libYAML",
+      "dependency": "libyaml",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "MIT License",
+      "dir": "libyaml",
+      "files": [
+        "libyaml/LICENSE"
+      ]
+    },
+    {
+      "name": "Linux Audit userspace",
+      "dependency": "audit-userspace",
+      "artefacts": [
+        "agent"
+      ],
+      "readme_license": "GNU Lesser General Public License version 2.1"
+    },
+    {
+      "name": "llhttp",
+      "dependency": "llhttp",
+      "artefacts": [
+        "manager"
+      ],
+      "readme_license": "MIT License",
+      "dir": "llhttp",
+      "files": [
+        "llhttp/LICENSE",
+        "llhttp/LICENSE-MIT"
+      ]
+    },
+    {
+      "name": "Lua",
+      "dependency": "lua",
+      "artefacts": [
+        "agent"
+      ],
+      "readme_license": "MIT License"
+    },
+    {
+      "name": "nlohmann",
+      "dependency": "nlohmann",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "MIT License",
+      "inline": [
+        "texts/nlohmann-MIT.txt"
+      ],
+      "dir": "nlohmann"
+    },
+    {
+      "name": "OpenSSL",
+      "dependency": "openssl",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "Apache 2.0 License",
+      "dir": "openssl",
+      "files": [
+        "openssl/LICENSE.txt"
+      ]
+    },
+    {
+      "name": "popt",
+      "dependency": "popt",
+      "artefacts": [
+        "agent"
+      ],
+      "readme_license": "MIT License"
+    },
+    {
+      "name": "procps",
+      "dependency": "procps",
+      "artefacts": [
+        "agent"
+      ],
+      "readme_license": "GNU Library General Public License version 2"
+    },
+    {
+      "name": "protobuf",
+      "dependency": "protobuf",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "3-Clause \"New\" BSD License",
+      "dir": "protobuf",
+      "files": [
+        "protobuf/LICENSE"
+      ]
+    },
+    {
+      "name": "pugixml",
+      "dependency": "pugixml",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "MIT License",
+      "dir": "pugixml",
+      "files": [
+        "pugixml/LICENSE.md"
+      ]
+    },
+    {
+      "name": "RapidJSON",
+      "dependency": "rapidjson",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "MIT License",
+      "dir": "rapidjson",
+      "files": [
+        "rapidjson/license.txt"
+      ]
+    },
+    {
+      "name": "RE2",
+      "dependency": "re2",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "3-Clause \"New\" BSD License",
+      "dir": "re2",
+      "files": [
+        "re2/LICENSE"
+      ]
+    },
+    {
+      "name": "RESTinio",
+      "dependency": "restinio",
+      "artefacts": [
+        "manager"
+      ],
+      "readme_license": "BSD 3-Clause, Boost 1.0, MIT and zlib Licenses",
+      "dir": "restinio",
+      "files": [
+        "restinio/LICENSE",
+        "restinio/LICENSE.expected-lite",
+        "restinio/LICENSE.fmtlib",
+        "restinio/LICENSE.llhttp",
+        "restinio/LICENSE.zlib"
+      ]
+    },
+    {
+      "name": "RocksDB",
+      "dependency": "rocksdb",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "Apache 2.0 License",
+      "dir": "rocksdb",
+      "files": [
+        "rocksdb/LICENSE.Apache",
+        "rocksdb/LICENSE.leveldb"
+      ]
+    },
+    {
+      "name": "rpm",
+      "dependency": "rpm",
+      "artefacts": [
+        "agent"
+      ],
+      "readme_license": "GNU Public License version 2"
+    },
+    {
+      "name": "RxCpp",
+      "dependency": "RxCpp",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "Apache 2.0 License",
+      "dir": "RxCpp",
+      "files": [
+        "RxCpp/license.md"
+      ]
+    },
+    {
+      "name": "simdjson",
+      "dependency": "simdjson",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "Apache License 2.0 or MIT License",
+      "dir": "simdjson",
+      "files": [
+        "simdjson/LICENSE",
+        "simdjson/LICENSE-MIT"
+      ]
+    },
+    {
+      "name": "spdlog",
+      "dependency": "spdlog",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "MIT License",
+      "dir": "spdlog",
+      "files": [
+        "spdlog/LICENSE"
+      ]
+    },
+    {
+      "name": "sqlite",
+      "dependency": "sqlite",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "Public Domain (no restrictions)",
+      "inline": [
+        "texts/sqlite-blessing.txt"
+      ],
+      "dir": "sqlite"
+    },
+    {
+      "name": "Taskflow",
+      "dependency": "taskflow",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "MIT License",
+      "dir": "taskflow",
+      "files": [
+        "taskflow/LICENSE"
+      ]
+    },
+    {
+      "name": "IANA tzdata",
+      "dependency": "tzdata",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "Public Domain",
+      "dir": "tzdata",
+      "files": [
+        "tzdata/LICENSE"
+      ]
+    },
+    {
+      "name": "yaml-cpp",
+      "dependency": "yaml-cpp",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "MIT License",
+      "dir": "yaml-cpp",
+      "files": [
+        "yaml-cpp/LICENSE"
+      ]
+    },
+    {
+      "name": "zlib",
+      "dependency": "zlib",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "zlib/libpng License",
+      "dir": "zlib",
+      "files": [
+        "zlib/LICENSE"
+      ]
+    },
+    {
+      "name": "zstd",
+      "dependency": "zstd",
+      "artefacts": [
+        "manager"
+      ],
+      "readme_license": "3-Clause \"New\" BSD License",
+      "dir": "zstd",
+      "files": [
+        "zstd/LICENSE"
+      ]
+    }
+  ],
+  "external_ignore": [
+    {
+      "dir": "audit-userspace",
+      "reason": "agent-only dependency, not shipped by the manager or the standalone bundle"
+    },
+    {
+      "dir": "benchmark",
+      "reason": "build and test only (Google Benchmark)"
+    },
+    {
+      "dir": "cpython",
+      "reason": "CPython built from source when the precompiled bundle is not available (src/Makefile); its license comes from the cPython component"
+    },
+    {
+      "dir": "geo_db",
+      "reason": "data files, not software"
+    },
+    {
+      "dir": "googletest",
+      "reason": "build and test only"
+    },
+    {
+      "dir": "indexer-plugins",
+      "reason": "Wazuh's own code"
+    },
+    {
+      "dir": "procps",
+      "reason": "agent-only dependency, not shipped by the manager or the standalone bundle"
+    },
+    {
+      "dir": "wazuh-credentials",
+      "reason": "Wazuh's own code"
+    },
+    {
+      "dir": "wcs-flat-files",
+      "reason": "data files (Wazuh Common Schema), not software"
+    }
+  ],
+  "python_overrides": {
+    "behave": "texts/pypi-behave.txt",
+    "content_size_limit_asgi": "texts/pypi-content_size_limit_asgi.txt",
+    "defusedxml": "texts/pypi-defusedxml.txt",
+    "flatbuffers": "texts/pypi-flatbuffers.txt",
+    "opensearch_protobufs": "texts/pypi-opensearch_protobufs.txt"
+  }
+}

@@ -6,9 +6,12 @@ on:
     paths:
       - '.github/workflows/5_testunit_wodles.yml'
       - 'wodles/**'
-      - 'src/Makefile'
+      # The suite's dependencies (the -dev file includes the other with -r)
       - 'framework/requirements-wodles.txt'
       - 'framework/requirements-wodles-dev.txt'
+      # .github/actions/upload_s3_artifact only uploads the coverage report: it tests nothing, and a
+      # broken upload fails the job visibly; 5_builderpackage_manager-multiples.yml lists it and
+      # exercises it on every pull request it runs.
   workflow_dispatch:
     inputs:
       generate_report:

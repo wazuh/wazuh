@@ -1,7 +1,6 @@
 /*
  * Wazuh shared UDS HTTP server library - unit tests
- * Copyright (C) 2015, Wazuh Inc.
- * July 28, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -230,6 +229,24 @@ TEST(UdsHttpServerTest, StartThrowsOnAnOverlongSocketPath)
         const std::string message {e.what()};
         EXPECT_NE(std::string::npos, message.find("socket path")) << message;
         EXPECT_NE(std::string::npos, message.find("limit")) << message;
+    }
+}
+
+// Not left to bind(): Linux would autobind an unreachable abstract address and start() would succeed.
+TEST(UdsHttpServerTest, StartThrowsOnAnEmptySocketPath)
+{
+    auto server = makeUdsHttpServer();
+    server->addRoute(Method::Get, "/", echoHandler());
+
+    try
+    {
+        server->start(configFor(""));
+        FAIL() << "an empty socket path must be refused";
+    }
+    catch (const std::runtime_error& e)
+    {
+        const std::string message {e.what()};
+        EXPECT_NE(std::string::npos, message.find("socket path")) << message;
     }
 }
 
@@ -705,11 +722,12 @@ TEST(UdsHttpServerTest, ARouteMayRaiseItsOwnResponseBackstop)
                      wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Control, 0, 0, 30});
     // The control: same class, no override, a responder that is never used. It must still be cut at
     // the server-wide value, or the override would have been a global change wearing a local name.
-    server->addRoute(Method::Post,
-                     "/impatient",
-                     [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
-                     { forever.push_back(std::move(responder)); },
-                     wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Control});
+    server->addRoute(
+        Method::Post,
+        "/impatient",
+        [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+        { forever.push_back(std::move(responder)); },
+        wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Control});
     server->start(config);
 
     const auto patient = sendRaw(path, peerRequest("POST", "/patient", "x"), std::chrono::seconds {20});

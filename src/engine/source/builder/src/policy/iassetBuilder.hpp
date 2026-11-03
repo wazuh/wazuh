@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _BUILDDER_POLICY_IASSETBUILDER_HPP
 #define _BUILDDER_POLICY_IASSETBUILDER_HPP
 

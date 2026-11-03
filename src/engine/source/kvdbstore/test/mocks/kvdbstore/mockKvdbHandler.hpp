@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _MOCKS_KVDBSTORE_KVDB_HANDLER_HPP
 #define _MOCKS_KVDBSTORE_KVDB_HANDLER_HPP
 

@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client bridge (development scaffold)
- * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -18,11 +17,28 @@
 #include "https_client.h" // hc_enroll_result_t
 
 /**
- * @brief Start the HTTPS client module unconditionally. Relies on
- *        client-agent/src/main.c having already refused to start the agent
- *        (a hard exit) unless a validated server address is configured.
+ * @brief Start the HTTPS client module. client-agent/src/main.c already
+ *        refused to start the agent (a hard exit) unless a validated server
+ *        address is configured, but transport options (e.g. the backoff
+ *        base/cap pair) are only validated here, once the module builds its
+ *        config -- so this can still fail after main.c's checks passed.
+ * @return true once the client is created and running; false if the config
+ *         was rejected or the client failed to start (already logged via
+ *         merror by this call). The caller must not treat false as a
+ *         functioning transport.
  */
-void w_https_client_start(void);
+bool w_https_client_start(void);
+
+/**
+ * @brief Make SHAREDCFG_DIR trustworthy before anything reads it.
+ *
+ * Called once at startup, before the HTTPS client starts. If an apply of a
+ * downloaded configuration was interrupted, or the shared agent.conf on disk
+ * does not pass validation, the shared directory and merged.mg are discarded:
+ * the startup gate stays closed and the manager's configuration is downloaded
+ * and validated again, as on a freshly enrolled agent.
+ */
+void w_https_client_reconcile_shared_config(void);
 
 /** @brief Stop and destroy the HTTPS client module if it was started. */
 void w_https_client_stop(void);
@@ -62,6 +78,25 @@ int w_https_client_submit_event(const char *frame, size_t length);
  *         status (the caller interprets 200 vs. 4xx/5xx); false when nothing
  *         was ever sent.
  */
-bool w_https_client_enroll(const char *body_json, const char *password, hc_enroll_result_t *result);
+bool w_https_client_enroll(const char *body_json, const char *password, const char *enroll_kid,
+                           const char *enroll_key_hex, hc_enroll_result_t *result);
+
+/**
+ * @brief Take/release the writer side of the global keystore lock.
+ *
+ * Wraps whatever REPLACES `keys` -- OS_UpdateKeys() and the crypto-method reset that follows it.
+ * OS_UpdateKeys() frees every keyentry, on the re-enrollment thread or on the initial-enrollment
+ * path, while other threads may be copying the agent's identity out of the keystore; the lock
+ * serializes those readers, which copy the identity out instead of borrowing pointers, against
+ * that writer.
+ *
+ * Declared here rather than in keys.h because the readers that need it live here: a lock in the
+ * shared keystore API would imply a guarantee the manager-side users of that API do not get.
+ *
+ * Not recursive: never call these while already holding them. Where the handle lock is also held,
+ * it is taken FIRST.
+ */
+void w_agent_keys_write_lock(void);
+void w_agent_keys_write_unlock(void);
 
 #endif // _HTTPS_CLIENT_BRIDGE_H

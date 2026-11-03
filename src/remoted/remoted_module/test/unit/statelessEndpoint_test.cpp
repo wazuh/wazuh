@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module (C++ worker bridge)
- * Copyright (C) 2015, Wazuh Inc.
- * July 26, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -10,7 +9,7 @@
  */
 
 // Unit-tests the /stateless endpoint policy: the downstream target it builds, how it maps a
-// downstream result to the agent response, and the pre-forward identity check + full handler.
+// downstream result to the agent response, and the pre-forward H-line slice check + full handler.
 // Pure functions where possible -- no sockets, no async -- except the makeHandler() glue tests,
 // which need a (fake) downstream client + a real DeferredForwarder to prove the short-circuit.
 #include "endpoints/statelessEndpoint.hpp"
@@ -23,8 +22,6 @@
 
 #include <gtest/gtest.h>
 
-#include <rapidjson/document.h>
-
 #include <atomic>
 #include <chrono>
 #include <future>
@@ -32,6 +29,7 @@
 #include <mutex>
 #include <string>
 #include <string_view>
+#include <vector>
 
 using remoted::auth::AuthenticatedRequest;
 using remoted::auth::AuthError;
@@ -66,7 +64,7 @@ namespace
 
 TEST(StatelessEndpoint, TargetPointsAtEngineEventIngress)
 {
-    const auto target = stateless::target("queue/sockets/engine-ingest-http.sock");
+    const auto target = stateless::target("queue/sockets/engine-ingest-http.sock", "042");
     EXPECT_EQ(target.socketPath, "queue/sockets/engine-ingest-http.sock");
     EXPECT_EQ(target.method, Method::Post);
     EXPECT_EQ(target.path, "/events/enriched");
@@ -75,6 +73,10 @@ TEST(StatelessEndpoint, TargetPointsAtEngineEventIngress)
     // it stays on the global remoted.downstream_response_timeout. The 0 sentinel is what expresses
     // that -- a future slow endpoint is the one that sets a value here.
     EXPECT_EQ(target.responseTimeoutMs, 0);
+    // The agent the batch belongs to travels outside the agent-written body, as on /stateful.
+    ASSERT_EQ(target.headers.size(), 1U);
+    EXPECT_EQ(target.headers[0].first, "X-Wazuh-Agent-Id");
+    EXPECT_EQ(target.headers[0].second, "042");
 }
 
 TEST(StatelessEndpoint, PostProcessMapsDownstreamResults)
@@ -131,119 +133,70 @@ TEST(StatelessEndpoint, ErrorResponsesCarryNeutralJson)
 
 // --- validatePayloadIdentity() ---------------------------------------------------------------
 
-TEST(ValidatePayloadIdentity, MatchingNumericAgentIdSucceeds)
+TEST(ValidatePayloadIdentity, RejectsMissingLiteralHeaderPrefix)
 {
-    const auto fixture = makeAuthReq("H {\"wazuh\":{\"agent\":{\"id\":\"1001\"}}}\nE some event\n", "1001");
+    for (const auto body : {"", "E some event\n", "H", "H\t{}\n", "h {}\n", "\nH {}\n"})
+    {
+        SCOPED_TRACE(body);
+        const auto fixture = makeAuthReq(body, "001");
+        EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch);
+    }
+}
+
+TEST(ValidatePayloadIdentity, AcceptsHeaderAtByteLimit)
+{
+    for (const auto suffix : {"", "\nE some event\n"})
+    {
+        const auto fixture = makeAuthReq("H " + std::string(8192, 'x') + suffix, "001");
+        EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::None);
+    }
+}
+
+TEST(ValidatePayloadIdentity, RejectsHeaderAboveByteLimit)
+{
+    for (const auto suffix : {"", "\nE some event\n"})
+    {
+        const auto fixture = makeAuthReq("H " + std::string(8193, 'x') + suffix, "001");
+        EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch);
+    }
+}
+
+TEST(ValidatePayloadIdentity, MeasuresOnlyTheFirstHeaderLine)
+{
+    const auto fixture = makeAuthReq("H {}\nE " + std::string(8193, 'x') + "\n", "001");
     EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::None);
 }
 
-TEST(ValidatePayloadIdentity, LeadingZerosNormalizeToTheSameNumber)
+TEST(ValidatePayloadIdentity, LeavesHeaderContentsToEngine)
 {
-    // Header says "001", the authenticated agent id is "1" -- same number, must match.
-    const auto fixture = makeAuthReq("H {\"wazuh\":{\"agent\":{\"id\":\"001\"}}}\nE some event\n", "1");
+    const std::vector<std::string> headers {"",
+                                            "{not json}",
+                                            "{}",
+                                            R"({"wazuh":{"agent":{"id":1}}})",
+                                            R"({"wazuh":{"agent":{"id":"002"}}})",
+                                            R"({"wazuh":{"agent":{"id":"0001"}}})",
+                                            R"({"wazuh":{"agent":{"id":"001","id":"002"}}})",
+                                            R"({"wazuh":{"agent":{"id":"001"}},"wazuh":{"agent":{"id":"002"}}})",
+                                            std::string(1, '\0') + "{}"};
+    for (const auto& header : headers)
+    {
+        SCOPED_TRACE(header);
+        const auto fixture = makeAuthReq("H " + header + "\nE some event\n", "001");
+        EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::None);
+    }
+}
+
+TEST(ValidatePayloadIdentity, AcceptsHeaderOnlySlice)
+{
+    const auto fixture = makeAuthReq("H {}", "001");
     EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::None);
-}
-
-TEST(ValidatePayloadIdentity, HeaderOnlyBodyWithNoTrailingNewlineStillMatches)
-{
-    // No '\n' at all -- an H-line-only body (no events) is still a valid slice.
-    const auto fixture = makeAuthReq("H {\"wazuh\":{\"agent\":{\"id\":\"7\"}}}", "7");
-    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::None);
-}
-
-TEST(ValidatePayloadIdentity, NumericMismatchIsRejected)
-{
-    const auto fixture = makeAuthReq("H {\"wazuh\":{\"agent\":{\"id\":\"1001\"}}}\nE some event\n", "1002");
-    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch);
-}
-
-TEST(ValidatePayloadIdentity, NonNumericAgentIdInPayloadIsRejected)
-{
-    const auto fixture = makeAuthReq("H {\"wazuh\":{\"agent\":{\"id\":\"abc\"}}}\nE some event\n", "1001");
-    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch);
-}
-
-TEST(ValidatePayloadIdentity, NonNumericAuthenticatedAgentIdIsRejected)
-{
-    // Defensive: with the tightened Authorization charset this shouldn't reach the endpoint in the
-    // full pipeline, but validatePayloadIdentity() must still be robust to it on its own contract.
-    const auto fixture = makeAuthReq("H {\"wazuh\":{\"agent\":{\"id\":\"1001\"}}}\nE some event\n", "agent-one");
-    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch);
-}
-
-TEST(ValidatePayloadIdentity, NegativeAgentIdIsRejected)
-{
-    const auto fixture = makeAuthReq("H {\"wazuh\":{\"agent\":{\"id\":\"-1\"}}}\nE some event\n", "1");
-    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch);
-}
-
-TEST(ValidatePayloadIdentity, PartiallyNumericAgentIdIsRejected)
-{
-    const auto fixture = makeAuthReq("H {\"wazuh\":{\"agent\":{\"id\":\"12x\"}}}\nE some event\n", "12");
-    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch);
-}
-
-TEST(ValidatePayloadIdentity, MissingHeaderLineIsRejected)
-{
-    const auto fixture = makeAuthReq("E some event\n", "1001"); // no "H " line at all
-    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch);
-}
-
-TEST(ValidatePayloadIdentity, EmptyBodyIsRejected)
-{
-    const auto fixture = makeAuthReq("", "1001");
-    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch);
-}
-
-TEST(ValidatePayloadIdentity, MalformedJsonIsRejected)
-{
-    const auto fixture = makeAuthReq("H {not json}\nE some event\n", "1001");
-    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch);
-}
-
-TEST(ValidatePayloadIdentity, MissingAgentIdKeyIsRejected)
-{
-    const auto fixture = makeAuthReq("H {\"wazuh\":{\"agent\":{}}}\nE some event\n", "1001");
-    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch);
-}
-
-TEST(ValidatePayloadIdentity, NonStringAgentIdIsRejected)
-{
-    const auto fixture = makeAuthReq("H {\"wazuh\":{\"agent\":{\"id\":1001}}}\nE some event\n", "1001");
-    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch);
-}
-
-TEST(ValidatePayloadIdentity, OversizedHeaderLineIsRejectedWithoutParsing)
-{
-    // Larger than the 8 KiB defensive cap (headerLineJson()) -- rejected before any JSON parsing is
-    // even attempted, same bucket as any other malformed/oversized header.
-    const std::string hugeAgentId(16U * 1024U, '1');
-    const std::string body = "H {\"wazuh\":{\"agent\":{\"id\":\"" + hugeAgentId + "\"}}}\nE some event\n";
-    const auto fixture = makeAuthReq(body, "1001");
-    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch);
-}
-
-TEST(RapidJsonIterativeParse, SurvivesPathologicalNestingWithoutCrashing)
-{
-    // ~500 KB of unterminated nested arrays -- deliberately larger than statelessEndpoint's 8 KiB
-    // H-line cap, so this exercises the iterative parser directly (kParseIterativeFlag), not the
-    // size guard. Without the iterative flag, RapidJSON's default recursive-descent parse would
-    // recurse once per '[' and can overflow the calling thread's stack on input like this.
-    const std::string json(500'000, '[');
-
-    rapidjson::Document doc;
-    doc.Parse<rapidjson::kParseIterativeFlag>(json.data(), json.size());
-
-    // The process survived (no stack overflow); the document is simply invalid (unterminated).
-    EXPECT_TRUE(doc.HasParseError());
 }
 
 // --- makeHandler() ----------------------------------------------------------------------------
 
 namespace
 {
-    // Records whether sendAsync() was called; never fires the callback (not needed by these tests --
-    // they only assert whether the forwarder was reached at all).
+    // Captures the forwarded request and lets each test supply the downstream result.
     class FakeDownstreamClient final : public remoted::downstream::IDownstreamClient
     {
     public:
@@ -310,22 +263,61 @@ namespace
 
 TEST(StatelessMakeHandler, ValidationFailureShortCircuitsBeforeForward)
 {
-    auto client = std::make_shared<FakeDownstreamClient>();
-    auto limiter = std::make_shared<DeferredWorkLimiter>(4);
-    DeferredForwarder forwarder {client, limiter, 1};
+    for (const auto& body : {std::string("E some event\n"), "H " + std::string(8193, 'x') + "\n"})
+    {
+        auto client = std::make_shared<FakeDownstreamClient>();
+        auto limiter = std::make_shared<DeferredWorkLimiter>(4);
+        DeferredForwarder forwarder {client, limiter, 1};
+        auto handler = stateless::makeHandler(forwarder, "queue/sockets/engine-ingest-http.sock");
+        auto fixture = makeAuthReq(body, "001");
+        auto responder = std::make_shared<CapturingResponder>();
+        auto fut = responder->future();
 
-    auto handler = stateless::makeHandler(forwarder, "queue/sockets/engine-ingest-http.sock");
-    auto fixture = makeAuthReq("H {\"wazuh\":{\"agent\":{\"id\":\"1002\"}}}\nE some event\n", "1001");
-    auto responder = std::make_shared<CapturingResponder>();
-    auto fut = responder->future();
+        handler(fixture.req, responder);
 
-    handler(fixture.req, responder);
+        ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);
+        const auto response = fut.get();
+        EXPECT_EQ(response.status, 400);
+        EXPECT_EQ(response.body, R"({"error":"Invalid event batch","code":400})");
+        EXPECT_FALSE(client->called());
+    }
+}
 
-    ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);
-    const auto response = fut.get();
-    EXPECT_EQ(response.status, 400);
-    EXPECT_EQ(response.body, R"({"error":"Invalid event batch","code":400})");
-    EXPECT_FALSE(client->called()); // forward() must never run once validation fails
+TEST(StatelessMakeHandler, ForwardsInvalidHeaderAndRelaysEngineRejection)
+{
+    const std::vector<std::string> headers {R"({"wazuh":{"agent":{"id":"002"}}})",
+                                            R"({"wazuh":{"agent":{"id":"0001"}}})",
+                                            R"({"wazuh":{"agent":{"id":"001","id":"002"}}})",
+                                            R"({"wazuh":{"agent":{"id":"001"}},"wazuh":{"agent":{"id":"002"}}})",
+                                            "{not json}",
+                                            std::string(1, '\0') + "{}"};
+    for (const auto& header : headers)
+    {
+        SCOPED_TRACE(header);
+        auto client = std::make_shared<FakeDownstreamClient>();
+        auto limiter = std::make_shared<DeferredWorkLimiter>(4);
+        DeferredForwarder forwarder {client, limiter, 1};
+        auto handler = stateless::makeHandler(forwarder, "queue/sockets/engine-ingest-http.sock");
+        const std::string body = "H " + header + "\nE some event\n";
+        auto fixture = makeAuthReq(body, "001");
+        auto responder = std::make_shared<CapturingResponder>();
+        auto fut = responder->future();
+
+        handler(fixture.req, responder);
+
+        ASSERT_TRUE(client->called());
+        const auto request = client->request();
+        EXPECT_EQ(request.body, body);
+        ASSERT_EQ(request.headers.size(), 1U);
+        EXPECT_EQ(request.headers[0].first, "X-Wazuh-Agent-Id");
+        EXPECT_EQ(request.headers[0].second, "001");
+        client->fire(DownstreamError::None, DownstreamResponse {400, "engine parser diagnostics"});
+
+        ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);
+        const auto response = fut.get();
+        EXPECT_EQ(response.status, 400);
+        EXPECT_EQ(response.body, R"({"error":"Invalid event batch","code":400})");
+    }
 }
 
 TEST(StatelessMakeHandler, ValidationSuccessForwardsAndPostProcesses)
@@ -352,22 +344,59 @@ TEST(StatelessMakeHandler, ValidationSuccessForwardsAndPostProcesses)
     EXPECT_EQ(fut.get().status, 202); // stateless::postProcess still runs on the success path
 }
 
-// With a metric set wired in, the handler's own pre-forward 400 (payload identity) and the
-// forwarder-delivered 202 each land in the endpoint's responses family -- the family reads as
-// "every response this endpoint sent", whichever code path sent it.
+// The engine learns the batch's agent from the id the gateway verified, never from the request: the
+// downstream request carries exactly one X-Wazuh-Agent-Id, and its value is the authenticated id.
+TEST(StatelessMakeHandler, ForwardsTheVerifiedAgentIdAsTheOnlyIdentityHeader)
+{
+    auto client = std::make_shared<FakeDownstreamClient>();
+    auto limiter = std::make_shared<DeferredWorkLimiter>(4);
+    DeferredForwarder forwarder {client, limiter, 1};
+
+    auto handler = stateless::makeHandler(forwarder, "queue/sockets/engine-ingest-http.sock");
+    auto fixture = makeAuthReq("H {\"wazuh\":{\"agent\":{\"id\":\"042\"}}}\nE some event\n", "042");
+    auto responder = std::make_shared<CapturingResponder>();
+
+    handler(fixture.req, responder);
+
+    ASSERT_TRUE(client->called());
+    const auto req = client->request();
+    std::size_t identityHeaders = 0;
+    for (const auto& [name, value] : req.headers)
+    {
+        if (name == "X-Wazuh-Agent-Id")
+        {
+            ++identityHeaders;
+            EXPECT_EQ(value, "042");
+        }
+    }
+    EXPECT_EQ(identityHeaders, 1U);
+    client->fire(DownstreamError::None, DownstreamResponse {200, ""});
+}
+
+// Local slice failures and relayed engine rejections share the response counter. Only local
+// failures count as remoted.auth.reject.payload_mismatch; the engine owns identity rejections.
 TEST(StatelessMakeHandler, MetricsCountBothTheLocal400AndTheDeliveredStatus)
 {
     wazuh::metrics::Manager manager;
     const auto metrics = remoted::metrics::makeEndpointHttpMetrics(manager, "stateless", /*withLatency=*/true);
+    const auto authMetrics = remoted::endpoints::makeAuthRejectMetrics(manager);
+    remoted::endpoints::installAuthRejectMetrics(authMetrics);
+    struct ResetAuthMetrics
+    {
+        ~ResetAuthMetrics()
+        {
+            remoted::endpoints::installAuthRejectMetrics({});
+        }
+    } resetAuthMetrics;
 
     auto client = std::make_shared<FakeDownstreamClient>();
     auto limiter = std::make_shared<DeferredWorkLimiter>(4);
     DeferredForwarder forwarder {client, limiter, 1};
     auto handler = stateless::makeHandler(forwarder, "queue/sockets/engine-ingest-http.sock", &metrics);
 
-    // Payload identity mismatch: answered 400 by the handler itself, before any forward.
+    // Missing prefix: answered 400 locally, before any forward.
     {
-        auto fixture = makeAuthReq("H {\"wazuh\":{\"agent\":{\"id\":\"1002\"}}}\nE some event\n", "1001");
+        auto fixture = makeAuthReq("E some event\n", "001");
         auto responder = std::make_shared<CapturingResponder>();
         auto fut = responder->future();
         handler(fixture.req, responder);
@@ -375,19 +404,34 @@ TEST(StatelessMakeHandler, MetricsCountBothTheLocal400AndTheDeliveredStatus)
         EXPECT_EQ(fut.get().status, 400);
     }
     EXPECT_EQ(metrics.responses.c400->get(), 1U);
+    EXPECT_EQ(authMetrics.payloadMismatch->get(), 1U);
     EXPECT_FALSE(client->called());
 
-    // Valid request: the forwarder counts the delivered 202 through the target's metric pointer.
+    // Mismatched identity: forwarded unchanged, then rejected by the engine.
     {
-        auto fixture = makeAuthReq("H {\"wazuh\":{\"agent\":{\"id\":\"1001\"}}}\nE some event\n", "1001");
+        auto fixture = makeAuthReq("H {\"wazuh\":{\"agent\":{\"id\":\"002\"}}}\nE some event\n", "001");
         auto responder = std::make_shared<CapturingResponder>();
         auto fut = responder->future();
         handler(fixture.req, responder);
         ASSERT_TRUE(client->called());
+        client->fire(DownstreamError::None, DownstreamResponse {400, "identity mismatch"});
+        ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);
+        EXPECT_EQ(fut.get().status, 400);
+    }
+    EXPECT_EQ(metrics.responses.c400->get(), 2U);
+    EXPECT_EQ(authMetrics.payloadMismatch->get(), 1U);
+
+    // Valid request: the forwarder counts the delivered 202 through the target's metric pointer.
+    {
+        auto fixture = makeAuthReq("H {\"wazuh\":{\"agent\":{\"id\":\"001\"}}}\nE some event\n", "001");
+        auto responder = std::make_shared<CapturingResponder>();
+        auto fut = responder->future();
+        handler(fixture.req, responder);
         client->fire(DownstreamError::None, DownstreamResponse {200, ""});
         ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);
         EXPECT_EQ(fut.get().status, 202);
     }
     EXPECT_EQ(metrics.responses.c2xx->get(), 1U);
-    EXPECT_EQ(metrics.responses.c400->get(), 1U); // untouched by the success
+    EXPECT_EQ(metrics.responses.c400->get(), 2U);
+    EXPECT_EQ(authMetrics.payloadMismatch->get(), 1U);
 }

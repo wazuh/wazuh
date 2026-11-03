@@ -1,0 +1,84 @@
+name: 5.X - API endpoints - Delete old integration test images
+
+# 5_testintegration_api-endpoints.yml pushes one image set per run attempt to the private packages
+# ghcr.io/wazuh/api-its-<image>, tagged pr<number>-<run id>-<attempt> or run-<run id>-<attempt>. This deletes,
+# through 5_operational_ghcr-cleanup.yml, the versions older than max_age_days and the untagged ones, every day,
+# and the versions of a pull request (tag prefix pr<number>-) as soon as it is closed, merged or not.
+#
+# The schedule and workflow_dispatch only work once this file is on the default branch. The closed pull request
+# trigger runs from the pull request's base, so it works on every branch that has this file. A set pushed after its
+# pull request was closed (a run still building at the time) and the newest version of each package, which GitHub
+# refuses to delete, are left to the daily cleanup.
+
+on:
+  pull_request:
+    types: [closed]
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+    inputs:
+      max_age_days:
+        description: 'Delete the versions created more than this many days ago'
+        type: number
+        required: false
+        default: 4
+      dry_run:
+        description: 'Only list the versions that would be deleted'
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+# One group per pull request: a single group would keep only the newest pending run and drop the others
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || 'retention' }}
+  cancel-in-progress: false
+
+jobs:
+  list_packages:
+    # A fork pull request has no images in GHCR (it uses a run artifact) and its token cannot delete
+    if: ${{ github.repository == 'wazuh/wazuh' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    name: List the API endpoints integration test packages
+    outputs:
+      packages: ${{ steps.list.outputs.packages }}
+
+    steps:
+      # On a closed pull request, the tip of its base branch: the merge ref of a closed pull request may be gone, and
+      # base.sha is the base it last synced with, which may predate the IT_IMAGES and IT_REGISTRY this job reads
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref || github.sha }}
+          sparse-checkout: .github/workflows/5_testintegration_api-endpoints.yml
+          sparse-checkout-cone-mode: false
+
+      - name: List the packages
+        id: list
+        run: |
+          set -euo pipefail
+          # From the workflow that pushes them, so the list cannot drift
+          wf=.github/workflows/5_testintegration_api-endpoints.yml
+          images=$(sed -n 's/^  IT_IMAGES: //p' "${wf}")
+          registry=$(sed -n 's/^  IT_REGISTRY: //p' "${wf}")
+          if [ -z "${images}" ] || [[ ! "${registry}" =~ ^ghcr\.io/wazuh/[a-z0-9._-]+$ ]]; then
+            echo "::error::IT_IMAGES or IT_REGISTRY not found in ${wf}: nothing deleted"
+            exit 1
+          fi
+          echo "packages=$(printf "${registry#ghcr.io/wazuh/}%s " ${images})" >> "${GITHUB_OUTPUT}"
+
+  delete_old_images:
+    needs: list_packages
+    name: Delete API endpoints integration test images of the closed pull request or older than the retention
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/5_operational_ghcr-cleanup.yml
+    with:
+      packages: ${{ needs.list_packages.outputs.packages }}
+      max_age_days: ${{ inputs.max_age_days || 4 }}
+      tag_prefix: ${{ github.event_name == 'pull_request' && format('pr{0}-', github.event.pull_request.number) || '' }}
+      dry_run: ${{ inputs.dry_run || false }}

@@ -1,7 +1,6 @@
 /*
  * Wazuh SQLite integration
- * Copyright (C) 2015, Wazuh Inc.
- * June 06, 2016.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -39,10 +38,11 @@ static const char *SQL_METADATA_GET_FRAGMENTATION_DATA = "SELECT key, value FROM
 static const char *SQL_BEGIN = "BEGIN;";
 static const char *SQL_COMMIT = "COMMIT;";
 static const char *SQL_STMT[] = {
-    [WDB_STMT_GLOBAL_INSERT_AGENT] = "INSERT INTO agent (id, name, ip, register_ip, internal_key, date_add, `group`) VALUES (?,?,?,?,?,?,?);",
-    [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_type = ?, os_platform = ?, os_arch = ?, version = ?, last_keepalive = STRFTIME('%s', 'NOW'), connection_status = ?, sync_status = ? WHERE id = ?;",
-    [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION_IP] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_type = ?, os_platform = ?, os_arch = ?, version = ?, last_keepalive = STRFTIME('%s', 'NOW'), ip = ?, connection_status = ?, sync_status = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_INSERT_AGENT] = "INSERT INTO agent (id, name, ip, register_ip, internal_key, reenroll_secret, date_add, `group`) VALUES (?,?,?,?,?,?,?,?);",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_type = ?, os_platform = ?, os_arch = ?, version = ?, last_keepalive = STRFTIME('%s', 'NOW'), connection_status = ?, sync_status = ?, disconnection_time = 0, status_code = 0 WHERE id = ?;",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION_IP] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_type = ?, os_platform = ?, os_arch = ?, version = ?, last_keepalive = STRFTIME('%s', 'NOW'), ip = ?, connection_status = ?, sync_status = ?, disconnection_time = 0, status_code = 0 WHERE id = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE] = "UPDATE agent SET last_keepalive = STRFTIME('%s', 'NOW'), connection_status = ?, sync_status = ?, disconnection_time = 0, status_code = 0 WHERE id = ?;",
+    [WDB_STMT_GLOBAL_SET_AGENT_CREDENTIALS] = "UPDATE agent SET name = ?, register_ip = ?, internal_key = ?, reenroll_secret = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_CONNECTION_STATUS] = "UPDATE agent SET connection_status = ?, sync_status = ?, disconnection_time = ?, status_code = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS_CODE] = "UPDATE agent SET status_code = ?, version = ?, sync_status = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS_CODE_KEEPALIVE] = "UPDATE agent SET status_code = ?, version = ?, sync_status = ?, connection_status = ?, last_keepalive = STRFTIME('%s', 'NOW'), disconnection_time = 0 WHERE id = ?;",
@@ -202,7 +202,10 @@ wdb_t * wdb_open_mitre() {
 
     snprintf(path, sizeof(path), "%s/%s.db", WDB_DIR, WDB_MITRE_NAME);
 
-    if (sqlite3_open_v2(path, &wdb->db, SQLITE_OPEN_READWRITE, NULL)) {
+    // Read-only: the installer builds this database and nothing writes it afterwards, so a
+    // statement that would modify it (`mitre sql` takes any SQL) fails with "attempt to write a
+    // readonly database" instead of changing it
+    if (sqlite3_open_v2(path, &wdb->db, SQLITE_OPEN_READONLY, NULL)) {
         merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(wdb->db));
         wdb_close(wdb, false);
         wdb_pool_leave(wdb);
@@ -561,7 +564,8 @@ void wdb_check_fragmentation() {
             continue;
         }
 
-        if (node->db == NULL) {
+        // The MITRE database is opened read-only (wdb_open_mitre()): it can never be vacuumed
+        if (node->db == NULL || strcmp(node->id, WDB_MITRE_NAME) == 0) {
             wdb_pool_leave(node);
             continue;
         }
@@ -1092,7 +1096,7 @@ cJSON* wdb_get_internal_config() {
     return root;
 }
 
-/* getconfig "wdb": the effective `wdb` section of etc/wazuh-manager.conf (schema defaults applied),
+/* getconfig "wdb": the effective `wdb` section of /etc/wazuh-manager/wazuh-manager.conf (schema defaults applied),
  * exactly what Read_WazuhDB_JSON() loaded into wconfig. */
 cJSON* wdb_get_config() {
     cJSON *root = cJSON_CreateObject();

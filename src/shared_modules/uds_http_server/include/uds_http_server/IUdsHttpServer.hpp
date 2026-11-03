@@ -1,7 +1,6 @@
 /*
  * Wazuh shared UDS HTTP server library
- * Copyright (C) 2015, Wazuh Inc.
- * July 28, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -46,7 +45,8 @@ namespace wazuh::uds_http
      * These types intentionally MIRROR remoted's own
      * src/remoted/remoted_module/src/http_server/IHttpServer.hpp so both sides of the socket read
      * alike. This library is the SHARED UDS-SERVER side, consumed by manager daemons
-     * (inventory_sync_server, vulnerability_scanner, remoted_module's local admin socket).
+     * (inventory_sync_server, remoted_module's local admin socket, wazuh_db, task_manager,
+     * vulnerability_scanner).
      * remoted's agent-facing TCP/TLS server is a protocol PEER, not a layer of this stack, and
      * stays separate on purpose: its HttpServerConfig is TCP/TLS-shaped and a change one side
      * needs must not be a change the other side is forced to take.
@@ -212,17 +212,17 @@ namespace wazuh::uds_http
     };
 
     /**
-     * @brief Server configuration, decoupled from the C-ABI struct.
+     * @brief Server configuration.
      *
-     * The in-struct values below ARE the module defaults; buildServerConfig() only overrides the
-     * ones the caller set. Sentinel rule in the C-ABI, uniform: <=0 / empty -> keep the default.
+     * The in-struct values below ARE the module defaults; a consumer overrides only the ones it
+     * sets.
      */
     struct UdsHttpServerConfig
     {
         /// No default: every consumer names its own socket. Empty makes start() throw with a
-        /// message naming the problem. Consumers use a RELATIVE path on purpose: modulesd
-        /// chdir()s to the install dir and remoted chroot()s into it, so a relative path is the
-        /// only form both resolve to the same file.
+        /// message naming the problem. Consumers use a RELATIVE path on purpose: it is
+        /// relative to the installation directory, which is the working directory of remoted and
+        /// modulesd, so both resolve it to the same file.
         std::string socketPath {};
         /// bind() applies the umask, so an explicit chmod after bind is mandatory, not belt-and-braces.
         std::uint32_t socketMode {0660};

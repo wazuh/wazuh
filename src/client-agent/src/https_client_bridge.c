@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client bridge
- * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -43,6 +42,7 @@
 
 #include "agentd.h" /* pulls defs.h (__wazuh_version), sec.h (keys), client-config.h (agt) */
 #include "https_client.h"
+#include "ca_publication.h"
 #include "sha256_op.h" /* OS_SHA256_File(): config_checksum seed, matching the module's own hash space */
 #include "syscheck_op.h" /* ag_send_syscheck: the FIM leg of the sync answer */
 #include "wmodules.h"    /* wmcom_send: the leg for every other module */
@@ -97,6 +97,69 @@ bool g_https_client_stopping = false;
  * could run long / re-enter). */
 static pthread_mutex_t g_https_client_lock = PTHREAD_MUTEX_INITIALIZER;
 
+/* A condition the running module reported it can never recover from (on_fatal), and the reason
+ * it logged. Its own lock: on_fatal can fire while a caller here holds g_https_client_lock. */
+static pthread_mutex_t g_https_client_fatal_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t g_https_client_fatal_cond = PTHREAD_COND_INITIALIZER;
+static char g_https_client_fatal_reason[OS_SIZE_1024];
+static bool g_https_client_fatal = false;
+
+/* Guards the GLOBAL `keys` keystore against its own reload.
+ *
+ * Distinct from g_https_client_lock, which guards the module HANDLE: bridge_reenroll_thread() takes
+ * that one only AFTER try_enroll_to_server() has already replaced the keystore, so it does not
+ * protect `keys` and cannot be made to without holding it across enrollment.
+ *
+ * Defensive: today no reader runs concurrently with the writer. The writer is OS_UpdateKeys()
+ * (try_enroll_to_server()), whose OS_FreeKeys() frees every keyentry AND the `id`/`raw_key`
+ * strings inside it; the one reader that takes this lock, bridge_copy_agent_identity(), runs on
+ * the re-enrollment thread after that write returns. The lock is kept so that any future reader
+ * outside that thread is serialized against the writer by construction: it copies the strings out
+ * under the lock and keeps no pointer into an entry past the unlock. Other readers of `keys`
+ * (bridge_build_config(), the legacy crypto path) do not take it.
+ *
+ * Lock ORDER, where both are held: g_https_client_lock first, then this one. Nothing takes them
+ * the other way round. */
+static pthread_mutex_t g_agent_keys_lock = PTHREAD_MUTEX_INITIALIZER;
+
+void w_agent_keys_write_lock(void)
+{
+    w_mutex_lock(&g_agent_keys_lock);
+}
+
+void w_agent_keys_write_unlock(void)
+{
+    w_mutex_unlock(&g_agent_keys_lock);
+}
+
+/* Copy the agent's identity out of the keystore into caller-owned buffers, so what the caller goes
+ * on to validate and send cannot be freed underneath it.
+ *
+ * Copies rather than returning the pointers because the pointers are exactly what is unsafe: the
+ * entry can be freed the instant this returns, and a borrowed `raw_key` outliving that free is the
+ * defect this exists to close.
+ *
+ * @return true when a complete identity was copied; false when this agent has no entry at all --
+ *         not an error, just nothing to sign with. */
+static bool bridge_copy_agent_identity(char *id_out, size_t id_size, char *key_out, size_t key_size)
+{
+    bool copied = false;
+
+    w_mutex_lock(&g_agent_keys_lock);
+
+    if (keys.keyentries && keys.keyentries[0] && keys.keyentries[0]->id && keys.keyentries[0]->raw_key) {
+        strncpy(id_out, keys.keyentries[0]->id, id_size - 1);
+        id_out[id_size - 1] = '\0';
+        strncpy(key_out, keys.keyentries[0]->raw_key, key_size - 1);
+        key_out[key_size - 1] = '\0';
+        copied = true;
+    }
+
+    w_mutex_unlock(&g_agent_keys_lock);
+
+    return copied;
+}
+
 /* Reads the stopping flag for callers that are not already holding the lock
  * (the re-enroll retry loop polls it between attempts). Callers that go on to
  * touch the handle must instead read it inside their own critical section --
@@ -126,10 +189,10 @@ static bool bridge_stopping(void)
 void *bridge_reenroll_thread(void *arg)
 {
     hc_handle *handle = (hc_handle *)arg;
-    int enroll_result = -1;
+    w_enroll_status_t enroll_result = W_ENROLL_ERR_TRANSPORT;
     int delay_sleep = 0;
 
-    while (enroll_result != 0) {
+    while (enroll_result != W_ENROLL_OK) {
         if (bridge_stopping()) {
             mdebug1("https_client: agent shutting down; abandoning re-enrollment.");
             return NULL;
@@ -137,7 +200,24 @@ void *bridge_reenroll_thread(void *arg)
 
         enroll_result = try_enroll_to_server();
 
-        if (enroll_result != 0) {
+        if (enroll_result != W_ENROLL_OK) {
+            /* #39064: this loop used to run for ever on any failure, which is exactly the
+             * behaviour the issue exists to remove -- an agent whose credential the manager has
+             * definitively refused would re-ask at the top of the ramp until someone noticed.
+             * Same policy function as the initial-enrollment loop, so the two answer identically;
+             * it also shreds a dead re-enrollment secret, which is what lets the next attempt fall
+             * back to the configured credential. */
+            if (w_enrollment_apply_policy(enroll_result) == W_ENROLL_ACTION_STOP) {
+                /* The agent keeps running: it still holds whatever key it had, and the AuthGate
+                 * keeps traffic paused. That is a state an operator can see and fix -- unlike a
+                 * silent retry loop, and unlike tearing the daemon down over a manager-side
+                 * decision. The gate is deliberately NOT released: nothing has changed that would
+                 * make the paused traffic succeed. */
+                merror("https_client: re-enrollment cannot succeed; giving up until the agent is "
+                       "restarted or an operator intervenes. Traffic stays paused.");
+                return NULL;
+            }
+
             /* Same ramp as the initial-enrollment loop (start_agent.c), from the values
              * ClientConf() resolved, so the two cannot drift apart. */
             if (delay_sleep < agt->enrollment.retry_max) {
@@ -166,8 +246,17 @@ void *bridge_reenroll_thread(void *arg)
      * key (the manager is expected to preserve it for an already-known
      * identity, but the module must not assume that -- signing with a stale
      * id after the key changed would desync from whatever id the manager
-     * now associates with this key). Both move together, never just the key. */
-    const bool identity_ok = hc_set_agent_identity(handle, keys.keyentries[0]->id, keys.keyentries[0]->raw_key);
+     * now associates with this key). Both move together, never just the key.
+     *
+     * Copied out under the keystore lock rather than passed by pointer, so this module never holds
+     * a pointer into an entry a later keystore reload would free (the lock is defensive; see
+     * g_agent_keys_lock).
+     * Lock order as documented at g_agent_keys_lock: handle lock first, this one inside it. */
+    char reloaded_id[HC_MAX_ID] = {0};
+    char reloaded_key[HC_MAX_KEY] = {0};
+    const bool identity_copied =
+        bridge_copy_agent_identity(reloaded_id, sizeof(reloaded_id), reloaded_key, sizeof(reloaded_key));
+    const bool identity_ok = identity_copied && hc_set_agent_identity(handle, reloaded_id, reloaded_key);
 
     if (!identity_ok) {
         merror("https_client: re-enrolled, but the new identity failed validation; traffic stays paused.");
@@ -312,9 +401,9 @@ static void bridge_apply_cluster_identity(const cJSON *root)
     mdebug1("https_client: cluster identity -> name='%s'.", agent_cluster_name);
 }
 
-/* agent_groups: HTTPS nests the array under "agent":{"groups":[...]} (see
- * ControlStream's groupsCsv(), which reads the same object for /download's
- * resource_id) rather than start_agent.c's flat "agent_groups" array.
+/* agent_groups: HTTPS nests the array under "agent":{"groups":[...]}
+ * (ControlStream's rawGroupsCsv() reads it) rather than start_agent.c's flat
+ * "agent_groups" array.
  * Builds the same CSV shape agent_agent_groups already holds for legacy. */
 static void bridge_apply_agent_groups(const cJSON *root)
 {
@@ -974,6 +1063,33 @@ static void bridge_on_remote_upgrade_ready(const char *task_id, const char *wpk_
 #endif
 }
 
+/* A downloaded configuration that failed validation is not downloaded again
+ * while the manager keeps advertising the same hash: the same bytes would fail
+ * the same way. That leaves the agent waiting on the manager, with the modules
+ * on hold if the startup gate is still closed, so it is announced at WARNING
+ * level when it happens and again every BRIDGE_REJECTED_CONFIG_WARN_INTERVAL
+ * seconds for as long as the manager keeps advertising it. Both callbacks that
+ * touch this state run on the module's single dispatcher thread. */
+#define BRIDGE_REJECTED_CONFIG_WARN_INTERVAL 600
+
+static os_sha256 bridge_rejected_config_hash;
+static time_t bridge_rejected_config_warned_at;
+
+static void bridge_warn_rejected_config(time_t now)
+{
+    if (startup_gate_is_ready()) {
+        mwarn("The shared configuration the manager provides (hash=%s) is invalid; the agent keeps "
+              "its current configuration until the manager provides a valid one.",
+              bridge_rejected_config_hash);
+    } else {
+        mwarn("The shared configuration the manager provides (hash=%s) is invalid; the modules stay "
+              "on hold until the manager provides a valid one.",
+              bridge_rejected_config_hash);
+    }
+
+    bridge_rejected_config_warned_at = now;
+}
+
 /* The startup hash gate (client-agent/src/startup_gate.c) holds syscheckd and
  * the other modules until the manager-validated configuration is in place.
  * Fired on every accepted Notify (whether or not it triggers a download), so
@@ -994,6 +1110,18 @@ static void bridge_on_manager_config_hash(const char *config_hash, void *user_da
     w_agentd_state_update(UPDATE_KEEPALIVE, &now);
 
     startup_gate_check_manager_config_hash(config_hash);
+
+    if (bridge_rejected_config_hash[0]) {
+        if (config_hash && strcmp(config_hash, bridge_rejected_config_hash) == 0) {
+            if (now - bridge_rejected_config_warned_at >= BRIDGE_REJECTED_CONFIG_WARN_INTERVAL) {
+                bridge_warn_rejected_config(now);
+            }
+        } else {
+            // The manager moved on; whatever it advertises now is downloaded
+            // and validated on its own.
+            bridge_rejected_config_hash[0] = '\0';
+        }
+    }
 }
 
 /* Notify-driven groups refresh: a group-only change never re-triggers a Startup
@@ -1003,11 +1131,63 @@ static void bridge_on_manager_config_hash(const char *config_hash, void *user_da
  * metadata this republishes -- would go stale forever after the first Startup.
  * Unlike bridge_apply_agent_groups() (Startup-only, walks a cJSON array), this
  * takes the plain CSV the module already built (ControlStream's rawGroupsCsv())
- * -- the RAW value, not /download's "default"-substituted one: empty is
- * meaningful here (see agcom.c's own comment on an empty agent_groups falling
- * back to merged.mg) and must be preserved as empty, not turned into "default".
+ * -- the RAW value: empty is meaningful here (see agcom.c's own comment on an
+ * empty agent_groups falling back to merged.mg) and must be preserved as empty,
+ * not turned into "default".
  * Compares before writing so an unchanged report (the module already dedupes,
  * this is defense in depth) doesn't pay for a metadata republish. */
+/**
+ * @brief Whether @p ca_path names the trust anchor this agent installed and owns.
+ *
+ * Compared by identity rather than by spelling: the resolved default is the literal
+ * AGENT_ANCHOR_CA, but an operator may write the same file as an absolute path, or reach it
+ * through a symlink, and answering "no" to those would quietly switch a perfectly ordinary agent
+ * off from CA rotation. Falls back to the string compare when either stat() fails -- on a fresh
+ * install the anchor does not exist yet, and then the spelling is all there is to go on.
+ */
+static bool bridge_ca_path_is_the_agent_anchor(const char *ca_path) {
+    struct stat configured;
+    struct stat anchor;
+
+    if (ca_path == NULL || ca_path[0] == '\0') {
+        return false;
+    }
+
+    if (strcmp(ca_path, AGENT_ANCHOR_CA) == 0) {
+        return true;
+    }
+
+    if (stat(ca_path, &configured) != 0 || stat(AGENT_ANCHOR_CA, &anchor) != 0) {
+        return false;
+    }
+
+    return configured.st_dev == anchor.st_dev && configured.st_ino == anchor.st_ino;
+}
+
+/**
+ * @brief Installs a CA bundle the module fetched and vetted (#39321).
+ *
+ * The module established that the connection was verified against the CA the agent already
+ * trusts, that the answer was a complete 200, and that the node vouched for the publication
+ * being adopted. What is left is the part that needs X.509, which the module cannot link: parse
+ * the body, and replace the trust store atomically or not at all.
+ *
+ * Writes to agt->ssl.certificate_authorities rather than AGENT_ANCHOR_CA directly, because that
+ * is the file the transport was told to verify against -- an operator pointing
+ * <certificate_authorities> at their own path gets refreshes into that path, not into an anchor
+ * nothing is reading.
+ */
+static bool bridge_on_ca_bundle(const char *pem, size_t pem_len, int64_t generation,
+                                void *user_data) {
+    (void) user_data;
+
+    if (pem == NULL || pem_len == 0 || agt == NULL || agt->ssl.certificate_authorities == NULL) {
+        return false;
+    }
+
+    return w_ca_publication_install(agt->ssl.certificate_authorities, pem, pem_len, generation) == 0;
+}
+
 static void bridge_on_agent_groups(const char *groups_csv, void *user_data)
 {
     (void)user_data;
@@ -1031,17 +1211,178 @@ static void bridge_on_agent_groups(const char *groups_csv, void *user_data)
     }
 }
 
+/* SHAREDCFG_FILE is the only record of what SHAREDCFG_DIR should hold: it is
+ * written only for a bundle that passed validation, and always whole (a copy
+ * renamed into place). While a downloaded bundle is being unmerged and
+ * validated in place, BRIDGE_SHAREDCFG_APPLYING exists; it goes away once the
+ * bundle is committed or SHAREDCFG_DIR is rebuilt from SHAREDCFG_FILE. Found at
+ * startup, it means an apply was interrupted and the directory may hold a mix of
+ * both bundles (see w_https_client_reconcile_shared_config()). */
+#define BRIDGE_SHAREDCFG_APPLYING_NAME  ".applying"
+#define BRIDGE_SHAREDCFG_APPLYING       SHAREDCFG_DIR "/" BRIDGE_SHAREDCFG_APPLYING_NAME
+#define BRIDGE_SHAREDCFG_FILE_TMP_NAME  SHAREDCFG_FILENAME ".tmp"
+#define BRIDGE_SHAREDCFG_FILE_TMP       SHAREDCFG_DIR "/" BRIDGE_SHAREDCFG_FILE_TMP_NAME
+
+/* Unmerges a bundle into SHAREDCFG_DIR and removes whatever the bundle does not
+ * carry, so the directory ends up holding exactly that bundle. A sweep failure
+ * counts as a failure: a leftover file is one a configuration could still
+ * reference. */
+static bool bridge_shared_unmerge(const char *bundle)
+{
+    char **keep;
+    os_calloc(4, sizeof(char *), keep);
+    os_strdup(SHAREDCFG_FILENAME, keep[0]);
+    os_strdup(BRIDGE_SHAREDCFG_FILE_TMP_NAME, keep[1]);
+    os_strdup(BRIDGE_SHAREDCFG_APPLYING_NAME, keep[2]);
+
+    bool ok = UnmergeFiles(bundle, SHAREDCFG_DIR, OS_TEXT, &keep) != 0;
+
+    if (ok && cldir_ex_ignore(SHAREDCFG_DIR, (const char **)keep)) {
+        mwarn("Could not clean up the shared configuration directory.");
+        ok = false;
+    }
+
+    free_strarray(keep);
+    return ok;
+}
+
+/* Rebuilds SHAREDCFG_DIR from SHAREDCFG_FILE after a bundle failed to apply.
+ * Everything but SHAREDCFG_FILE goes first, which also frees the room the
+ * failed bundle took; with no SHAREDCFG_FILE (nothing applied yet) the
+ * directory is left empty. */
+static bool bridge_shared_rollback(void)
+{
+    const char *keep[] = { SHAREDCFG_FILENAME, BRIDGE_SHAREDCFG_APPLYING_NAME, NULL };
+
+    if (cldir_ex_ignore(SHAREDCFG_DIR, keep)) {
+        return false;
+    }
+
+    if (IsFile(SHAREDCFG_FILE) == 0 && !bridge_shared_unmerge(SHAREDCFG_FILE)) {
+        return false;
+    }
+
+    unlink(BRIDGE_SHAREDCFG_APPLYING);
+    return true;
+}
+
+/* A rollback that fails leaves SHAREDCFG_DIR matching no bundle. Dropping
+ * SHAREDCFG_FILE keeps the startup gate from opening on a hash match against
+ * it, and resetting the module's hash downloads the manager's configuration
+ * again, as on a freshly enrolled agent. BRIDGE_SHAREDCFG_APPLYING stays, so a
+ * restart discards the directory before anything reads it. */
+static void bridge_shared_restore(hc_handle *handle)
+{
+    if (bridge_shared_rollback()) {
+        return;
+    }
+
+    merror("Could not restore '%s' from '%s'; discarding it so the manager's configuration is "
+           "downloaded and validated again.", SHAREDCFG_DIR, SHAREDCFG_FILE);
+    unlink(SHAREDCFG_FILE);
+
+    if (handle) {
+        hc_set_config_hash(handle, "");
+    }
+}
+
+/* Unmerge failure: report it to the manager and make the module forget the hash
+ * it optimistically adopted, so the next Notify mismatch downloads it again. */
+static void bridge_handle_unmerge_failure(hc_handle *handle)
+{
+    merror("Failed to unmerge the downloaded configuration into '%s'; "
+           "restoring the previously applied configuration.", SHAREDCFG_DIR);
+
+    /* Manager-visible report, now over /stateless. */
+    char unmerge_fail_msg[OS_MAXSTR];
+    snprintf(unmerge_fail_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", AG_IN_UNMERGE);
+    w_https_client_submit_event(unmerge_fail_msg, strlen(unmerge_fail_msg));
+
+    if (handle) {
+        hc_set_config_hash(handle, "");
+    }
+}
+
+/* Binary mode ('b'): the module already SHA-256-verified these exact bytes
+ * against the manager's config_hash before the callback fired
+ * (configFetcher.cpp). A text-mode copy on Windows would silently rewrite '\n'
+ * as '\r\n', corrupting the file relative to what the hash was computed over --
+ * the SHA-256 recomputed from SHAREDCFG_FILE on the next fresh instance
+ * (bridge_build_config()) would then never match the manager's hash, forcing an
+ * endless re-download/reload loop (observed as a real, Windows-only regression
+ * during real-package validation). Copied next to SHAREDCFG_FILE and renamed
+ * over it, so SHAREDCFG_FILE is always one bundle or the other, never part of
+ * one. */
+static bool bridge_shared_commit(const char *bundle)
+{
+    if (w_copy_file(bundle, BRIDGE_SHAREDCFG_FILE_TMP, 'b', NULL, 0) != 0 ||
+        rename_ex(BRIDGE_SHAREDCFG_FILE_TMP, SHAREDCFG_FILE) != 0) {
+        unlink(BRIDGE_SHAREDCFG_FILE_TMP);
+        return false;
+    }
+
+    unlink(BRIDGE_SHAREDCFG_APPLYING);
+    return true;
+}
+
+void w_https_client_reconcile_shared_config(void)
+{
+    const char *keep[] = { BRIDGE_SHAREDCFG_APPLYING_NAME, NULL };
+    const char *reason = NULL;
+
+    // Left by a commit that stopped between the copy and the rename.
+    unlink(BRIDGE_SHAREDCFG_FILE_TMP);
+
+    if (IsFile(BRIDGE_SHAREDCFG_APPLYING) == 0) {
+        reason = "an update of it was interrupted";
+    } else if (agt->flags.remote_conf && IsFile(SHAREDCFG_FILE) == 0 && verifyRemoteConf()) {
+        reason = "it does not pass validation";
+    }
+
+    if (!reason) {
+        return;
+    }
+
+    mwarn("Discarding the shared configuration in '%s' because %s; the manager's configuration "
+          "will be downloaded and validated again.", SHAREDCFG_DIR, reason);
+
+    // SHAREDCFG_FILE first: whatever is left, nothing can match its hash any more.
+    unlink(SHAREDCFG_FILE);
+
+    if (cldir_ex_ignore(SHAREDCFG_DIR, keep)) {
+        merror("Could not clean up '%s'; it is discarded again on the next start.", SHAREDCFG_DIR);
+        return;
+    }
+
+    unlink(BRIDGE_SHAREDCFG_APPLYING);
+}
+
 /* Applies a downloaded merged configuration and releases the startup gate.
  *
  * file_path is a module-owned temp file valid ONLY until the callback that
- * received it returns (the module deletes it right after) -- so the very
- * first thing this does is copy it into SHAREDCFG_FILE.
+ * received it returns (the module deletes it right after), so every step below
+ * reads it directly and finishes before returning.
  *
- * The apply chain is UnmergeFiles -> cldir_ex_ignore -> verifyRemoteConf ->
- * reloadAgent, and whether that last step runs depends on two things: a
- * blocked startup gate (modules are waiting for this very configuration to
- * start, so they must be started with it) and <auto_restart> (which governs
- * picking up a configuration change on an agent already running).
+ * The bundle is unmerged and validated in place, because agent.conf refers to
+ * the files it ships with by their SHAREDCFG_DIR path (a GCP credentials file,
+ * an SCA policy): validated anywhere else, those references would resolve to
+ * the previous bundle's files. If validation or the unmerge fails,
+ * SHAREDCFG_DIR is rebuilt from SHAREDCFG_FILE, which still holds the previous
+ * bundle. Only a bundle that passed replaces SHAREDCFG_FILE, so its SHA-256 --
+ * what startup_gate_check_manager_config_hash() compares with the manager's
+ * config_hash on every Notify and every agent start, and what
+ * bridge_build_config() seeds the module's local hash from -- never matches a
+ * configuration this agent rejected.
+ *
+ * A bundle that fails validation leaves the gate as it was: the module keeps
+ * the hash it adopted, so it is not downloaded again until the manager
+ * advertises a different one (announced meanwhile, see
+ * bridge_warn_rejected_config()) or the agent restarts.
+ *
+ * Whether reloadAgent() runs depends on two things: a blocked startup gate
+ * (modules are waiting for this very configuration to start, so they must be
+ * started with it) and <auto_restart> (which governs picking up a
+ * configuration change on an agent already running).
  *
  * Anti-race sequencing between reloadAgent() and the gate release: when
  * reloadAgent() dispatches, the gate is deliberately NOT released here --
@@ -1076,69 +1417,61 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
         return;
     }
 
-    /* Binary mode ('b'): the module already SHA-256-verified these exact
-     * bytes against the manager's config_hash before this callback fired
-     * (configFetcher.cpp). A text-mode copy on Windows would silently
-     * rewrite '\n' as '\r\n', corrupting the file relative to what the hash
-     * was computed over -- the SHA-256 recomputed from SHAREDCFG_FILE on the
-     * next fresh instance (bridge_build_config()) would then never match the
-     * manager's hash, forcing an endless re-download/reload loop (observed
-     * as a real, Windows-only regression during real-package validation). */
-    if (w_copy_file(file_path, SHAREDCFG_FILE, 'b', NULL, 0) != 0) {
-        merror("Could not copy the downloaded configuration into '%s'; "
-               "keeping the previously applied one.", SHAREDCFG_FILE);
+    FILE *applying = wfopen(BRIDGE_SHAREDCFG_APPLYING, "w");
+
+    if (!applying) {
+        merror("Could not create '%s'; not applying the downloaded configuration.", BRIDGE_SHAREDCFG_APPLYING);
         if (handle) {
-            /* What's actually on disk is still the old config, not config_hash:
-             * correct the module's optimistic view so the next Notify mismatch
-             * re-triggers the download instead of assuming we are in sync. */
             hc_set_config_hash(handle, "");
         }
         return;
     }
 
-    /* SHAREDCFG_FILE now holds these exact bytes, so its SHA-256 already matches
-     * the manager's config_hash -- startup_gate_check_manager_config_hash() (fired
-     * independently on every accepted Notify) would otherwise race ahead and
-     * release the gate with reason=https_hash_match before the reload this
-     * function is about to (maybe) dispatch actually completes. Mark the download
-     * pending now, before any of that can happen; only startup_gate_release_from_https_apply()
-     * (below, or via reloadAgent()'s own completion) clears it. */
+    fclose(applying);
+
+    if (!bridge_shared_unmerge(file_path)) {
+        bridge_handle_unmerge_failure(handle);
+        bridge_shared_restore(handle);
+        return;
+    }
+
+    if (agt->flags.remote_conf && verifyRemoteConf()) {
+        /* Invalid remote configuration: verifyRemoteConf() already reported it
+         * to the manager (AG_IN_RCON). */
+        bridge_shared_restore(handle);
+        snprintf(bridge_rejected_config_hash, sizeof(bridge_rejected_config_hash), "%s",
+                 config_hash ? config_hash : "?");
+        bridge_warn_rejected_config(time(NULL));
+        return;
+    }
+
+    /* The SHAREDCFG_FILE committed next matches the manager's config_hash, so
+     * startup_gate_check_manager_config_hash() (fired independently on every
+     * accepted Notify) would otherwise race ahead and release the gate with
+     * reason=https_hash_match before the reload this function is about to
+     * (maybe) dispatch actually completes. Mark the download pending now,
+     * before that write; only startup_gate_release_from_https_apply() (below,
+     * or via reloadAgent()'s own completion) clears it. */
     startup_gate_mark_download_pending();
 
-    char **ignore_list;
-    os_calloc(2, sizeof(char *), ignore_list);
-    os_strdup(SHAREDCFG_FILENAME, *ignore_list);
-
-    if (!UnmergeFiles(SHAREDCFG_FILE, SHAREDCFG_DIR, OS_TEXT, &ignore_list)) {
-        merror("Failed to unmerge the downloaded configuration "
-               "('%s'); keeping the previously applied files.", SHAREDCFG_FILE);
-        /* Manager-visible report, now over /stateless. */
-        char unmerge_fail_msg[OS_MAXSTR];
-        snprintf(unmerge_fail_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", AG_IN_UNMERGE);
-        w_https_client_submit_event(unmerge_fail_msg, strlen(unmerge_fail_msg));
-        free_strarray(ignore_list);
+    if (!bridge_shared_commit(file_path)) {
+        merror("Could not write '%s'; the configuration will be downloaded again.", SHAREDCFG_FILE);
+        /* No reload follows, so nothing else would clear it: a stale pending
+         * flag would let a later, unrelated SIGUSR1 open the gate. */
+        startup_gate_clear_download_pending();
+        bridge_shared_restore(handle);
         if (handle) {
+            /* What's actually on disk is not config_hash: correct the module's
+             * optimistic view so the next Notify mismatch re-triggers the
+             * download instead of assuming we are in sync. */
             hc_set_config_hash(handle, "");
         }
         return;
     }
 
-    if (cldir_ex_ignore(SHAREDCFG_DIR, (const char **)ignore_list)) {
-        mwarn("Could not clean up the shared configuration directory.");
-    }
-    free_strarray(ignore_list);
-
     if (!agt->flags.remote_conf) {
-        /* The files are staged either way, but nothing reloads or gates on
+        /* The files are in place either way, but nothing reloads or gates on
          * remote configuration when the agent has opted out of it. */
-        return;
-    }
-
-    if (verifyRemoteConf()) {
-        /* Invalid remote configuration: verifyRemoteConf() already reported it
-         * to the manager (AG_IN_RCON). Do not reload or release the gate with
-         * a configuration known to be broken. */
-        merror("Downloaded configuration failed validation; not reloading.");
         return;
     }
 
@@ -1197,6 +1530,10 @@ static const struct {
     {"sca",             SCA_SYNC_HEADER,            false},
     {"agent-info",      AGENT_INFO_SYNC_HEADER,     false},
 };
+
+/* The largest /stateful answer must fit a frame: header (under 32 bytes) + HCRESULT prefix (under 64). */
+_Static_assert(HC_MAX_STATEFUL_RESPONSE_BODY + 32 + 64 < OS_MAXSTR,
+               "HC_MAX_STATEFUL_RESPONSE_BODY does not leave room for the sync frame header");
 
 /* Session ids arrive as "<module>-<session>". Split on the LAST hyphen, not the
  * first: "agent-info" contains one of its own, and the session is always
@@ -1258,6 +1595,7 @@ static void bridge_on_sync_response(const char *session_id, int result, const ch
 
         char prefix[64];
         int prefix_len = snprintf(prefix, sizeof(prefix), "HCRESULT:%s:%d:", session_num, result);
+        size_t relayed_body_len = body_len;
 
         if (prefix_len <= 0 || (size_t)prefix_len >= sizeof(prefix)) {
             mdebug2("https_client: could not encode sync result for session '%s'; dropping it.",
@@ -1265,13 +1603,23 @@ static void bridge_on_sync_response(const char *session_id, int result, const ch
             return;
         }
 
-        const size_t payload_len = (size_t)prefix_len + body_len;
+        /* A module's local socket takes frames shorter than OS_MAXSTR. Keep that limit on every
+         * platform; a larger answer reaches the module as no answer (code 0, no body). */
+        if (header_len + (size_t)prefix_len + body_len >= OS_MAXSTR) {
+            mwarn("https_client: the /stateful answer for session '%s' is too large to relay "
+                  "(%zu bytes); relaying it as no answer.", session_id, body_len);
+            prefix_len = snprintf(prefix, sizeof(prefix), "HCRESULT:%s:0:", session_num);
+            relayed_body_len = 0;
+        }
+
+        const size_t payload_len = (size_t)prefix_len + relayed_body_len;
+
         char *framed = NULL;
         os_malloc(header_len + payload_len + 1, framed);
         memcpy(framed, SYNC_ROUTES[i].header, header_len);
         memcpy(framed + header_len, prefix, (size_t)prefix_len);
-        if (body_len > 0) {
-            memcpy(framed + header_len + (size_t)prefix_len, body, body_len);
+        if (relayed_body_len > 0) {
+            memcpy(framed + header_len + (size_t)prefix_len, body, relayed_body_len);
         }
         framed[header_len + payload_len] = '\0';
 
@@ -1341,6 +1689,67 @@ static char *bridge_collect_stats(void *user_data)
 {
     (void)user_data;
     return w_agent_collect_stats();
+}
+
+/* Runs on the module thread that hit the condition, so it only records it and wakes
+ * bridge_fatal_exit_thread(): exiting here would run the atexit w_https_client_stop() on a thread
+ * the module's teardown has to join, which aborts. */
+static void bridge_on_fatal(const char *reason, void *user_data)
+{
+    (void)user_data;
+
+    w_mutex_lock(&g_https_client_fatal_lock);
+    snprintf(g_https_client_fatal_reason, sizeof(g_https_client_fatal_reason), "%s", reason);
+    g_https_client_fatal = true;
+    w_cond_signal(&g_https_client_fatal_cond);
+    w_mutex_unlock(&g_https_client_fatal_lock);
+}
+
+/* Stops the agent once the module reports a fatal condition, from a thread the module neither owns
+ * nor joins, and whatever the main thread happens to be blocked on. Started only after hc_start()
+ * succeeds: a configuration hc_start() rejects is left to w_https_client_start()'s caller, which
+ * exits on its own. Not static: tests run it directly. */
+void *bridge_fatal_exit_thread(void *arg)
+{
+    char reason[OS_SIZE_1024];
+
+    (void)arg;
+
+    w_mutex_lock(&g_https_client_fatal_lock);
+    while (!g_https_client_fatal) {
+        w_cond_wait(&g_https_client_fatal_cond, &g_https_client_fatal_lock);
+    }
+    snprintf(reason, sizeof(reason), "%s", g_https_client_fatal_reason);
+    w_mutex_unlock(&g_https_client_fatal_lock);
+
+    merror_exit("%s Exiting.", reason);
+    return NULL;
+}
+
+#ifdef WIN32
+static DWORD WINAPI bridge_fatal_exit_thread_win(LPVOID arg)
+{
+    bridge_fatal_exit_thread(arg);
+    return 0;
+}
+#endif
+
+/* Creates and starts the module, false (already logged) if either step fails. */
+static bool bridge_create_and_start(const hc_config_t *config, const hc_callbacks_t *callbacks)
+{
+    g_https_client = hc_create(config, callbacks);
+    if (!g_https_client) {
+        merror("https_client: failed to create the client instance.");
+        return false;
+    }
+    if (!hc_start(g_https_client)) {
+        merror("https_client: failed to start (configuration rejected).");
+        hc_destroy(g_https_client);
+        g_https_client = NULL;
+        return false;
+    }
+
+    return true;
 }
 
 static void bridge_on_producer_pause(bool paused, const char *reason, void *user_data)
@@ -1485,6 +1894,22 @@ static void bridge_on_collect_host(char *json_out, size_t cap, void *user_data)
     metadata_provider_free_metadata(&metadata);
 }
 
+/* Metadata strings are raw bytes: a hostname in a legacy code page, or a value
+ * cut mid-character into its char[256]. The module parses this JSON strictly,
+ * and one ill-formed byte would drop the whole block, groups included, so the
+ * bad bytes are removed here and only that value changes. */
+static cJSON *bridge_utf8_string(const char *value)
+{
+    if (w_utf8_valid(value)) {
+        return cJSON_CreateString(value);
+    }
+
+    char *filtered = w_utf8_filter(value, false);
+    cJSON *item = cJSON_CreateString(filtered);
+    os_free(filtered);
+    return item;
+}
+
 /* Host metadata source for the /stateless H line. Pulled fresh from the same
  * shared metadata_provider as bridge_on_collect_host() above, but as its own
  * callback (not a reuse) so this endpoint's shape can grow without touching
@@ -1501,8 +1926,10 @@ static void bridge_on_collect_host(char *json_out, size_t cap, void *user_data)
  * on /stateful, so the two transports can never disagree on cluster identity.
  * Writes an empty string when metadata is not yet available, so the module
  * falls back to an H line carrying only agent.id. Runs on the module's
- * stateless sender thread, once per flush (not per event); a shared-memory
- * read, fast and non-blocking. */
+ * stateless sender thread, once per flush (not per event), and on its reporter
+ * thread on every tick; a shared-memory read, fast and non-blocking. Readers
+ * never block each other, and one that overlaps a writer gets "not available"
+ * rather than a mixed record (metadata_provider_get()'s seqlock). */
 static void bridge_on_collect_stateless_host(char *json_out, size_t cap, void *user_data)
 {
     (void)user_data;
@@ -1516,7 +1943,7 @@ static void bridge_on_collect_stateless_host(char *json_out, size_t cap, void *u
     agent_metadata_t metadata = {0};
 
     if (metadata_provider_get(&metadata) != 0) {
-        mdebug2("https_client: host metadata not available yet; /stateless H line carries only agent.id.");
+        mdebug2("https_client: agent metadata not available yet; /stateless H line and reports carry only the agent id.");
         return;
     }
 
@@ -1531,17 +1958,17 @@ static void bridge_on_collect_stateless_host(char *json_out, size_t cap, void *u
     cJSON_AddItemToObject(root, "agent", agent);
 
     if (metadata.agent_name[0]) {
-        cJSON_AddStringToObject(agent, "name", metadata.agent_name);
+        cJSON_AddItemToObject(agent, "name", bridge_utf8_string(metadata.agent_name));
     }
     if (metadata.agent_version[0]) {
-        cJSON_AddStringToObject(agent, "version", metadata.agent_version);
+        cJSON_AddItemToObject(agent, "version", bridge_utf8_string(metadata.agent_version));
     }
 
     if (metadata.groups_count > 0 && metadata.groups != NULL) {
         cJSON *groups = cJSON_CreateArray();
         for (size_t i = 0; i < metadata.groups_count; i++) {
             if (metadata.groups[i] != NULL) {
-                cJSON_AddItemToArray(groups, cJSON_CreateString(metadata.groups[i]));
+                cJSON_AddItemToArray(groups, bridge_utf8_string(metadata.groups[i]));
             }
         }
         cJSON_AddItemToObject(agent, "groups", groups);
@@ -1551,30 +1978,30 @@ static void bridge_on_collect_stateless_host(char *json_out, size_t cap, void *u
     cJSON_AddItemToObject(agent, "host", host);
 
     if (metadata.architecture[0]) {
-        cJSON_AddStringToObject(host, "architecture", metadata.architecture);
+        cJSON_AddItemToObject(host, "architecture", bridge_utf8_string(metadata.architecture));
     }
     if (metadata.hostname[0]) {
-        cJSON_AddStringToObject(host, "hostname", metadata.hostname);
+        cJSON_AddItemToObject(host, "hostname", bridge_utf8_string(metadata.hostname));
     }
 
     cJSON *os = cJSON_CreateObject();
     if (metadata.os_name[0]) {
-        cJSON_AddStringToObject(os, "name", metadata.os_name);
+        cJSON_AddItemToObject(os, "name", bridge_utf8_string(metadata.os_name));
     }
     if (metadata.os_version[0]) {
-        cJSON_AddStringToObject(os, "version", metadata.os_version);
+        cJSON_AddItemToObject(os, "version", bridge_utf8_string(metadata.os_version));
     }
     if (metadata.os_platform[0]) {
-        cJSON_AddStringToObject(os, "platform", metadata.os_platform);
+        cJSON_AddItemToObject(os, "platform", bridge_utf8_string(metadata.os_platform));
     }
     if (metadata.os_type[0]) {
-        cJSON_AddStringToObject(os, "type", metadata.os_type);
+        cJSON_AddItemToObject(os, "type", bridge_utf8_string(metadata.os_type));
     }
     cJSON_AddItemToObject(host, "os", os);
 
     cJSON *cluster = cJSON_CreateObject();
     if (metadata.cluster_name[0]) {
-        cJSON_AddStringToObject(cluster, "name", metadata.cluster_name);
+        cJSON_AddItemToObject(cluster, "name", bridge_utf8_string(metadata.cluster_name));
     }
     cJSON_AddItemToObject(root, "cluster", cluster);
 
@@ -1603,7 +2030,7 @@ static int bridge_map_verify_mode(int agent_verify_mode)
     case AGENT_VERIFY_SYSTEM:
         return HC_VERIFY_SYSTEM;
     case AGENT_VERIFY_UNSET:
-        // ClientConf() always resolves this to system or certificate before returning;
+        // ClientConf() always resolves this to full, certificate or system before returning;
         // reaching here means some other path built agt->ssl without going through that
         // resolution step. Fail closed the same as an unrecognized value would, but say
         // so loudly instead of silently blending into the FULL default below.
@@ -1674,6 +2101,16 @@ static void bridge_build_transport_config(hc_config_t *config)
     config->verify_mode = bridge_map_verify_mode(agt->ssl.verification_mode);
     if (agt->ssl.certificate_authorities) {
         strncpy(config->ca_path, agt->ssl.certificate_authorities, sizeof(config->ca_path) - 1);
+    }
+
+    /* verify_mode=system's local-anchor fallback (#39123): handed over unconditionally on
+     * openability, exactly like w_agent_resolve_ssl_posture() treats the same file for the
+     * full/certificate anchor default -- deeper validation is the same job CurlPerformer
+     * already does at the actual handshake, not this bridge's. Left empty for every other
+     * verify_mode, since the module only ever reads it under 'system' (moduleConfig.cpp,
+     * curlPerformer.cpp). */
+    if (config->verify_mode == HC_VERIFY_SYSTEM && w_is_file(AGENT_ANCHOR_CA)) {
+        strncpy(config->system_fallback_ca_path, AGENT_ANCHOR_CA, sizeof(config->system_fallback_ca_path) - 1);
     }
     if (agt->ssl.certificate) {
         strncpy(config->client_cert, agt->ssl.certificate, sizeof(config->client_cert) - 1);
@@ -1823,6 +2260,34 @@ static bool bridge_build_config(hc_config_t *config)
         strncpy(config->config_checksum, config_sha256, sizeof(config->config_checksum) - 1);
     }
 
+    /* Seeds CaPublicationState the same way: the publication recorded in the trust store the
+     * agent is about to verify against, read from the same path the transport will hand libcurl
+     * so the two can never disagree about which file is meant. Read fresh here rather than
+     * cached, because a fresh module instance is exactly the moment a bundle adopted by the
+     * previous one has to be picked up.
+     *
+     * W_CA_PUBLICATION_UNKNOWN for a store carrying none -- a bootstrapped anchor, one placed
+     * out of band, or one written before #39321 -- which is what makes the agent re-anchor on
+     * the first publication the manager advertises instead of never updating again. */
+    config->ca_publication = w_ca_publication_read(config->ca_path);
+
+    /* A published bundle may replace the trust store only when that store is the anchor this
+     * agent installed and owns. w_agent_resolve_ssl_posture() injects AGENT_ANCHOR_CA as the
+     * default <certificate_authorities>, so the ordinary agent compares equal here and refreshes
+     * as intended.
+     *
+     * An operator who configured their own path does not. Writing a manager's bundle into a file
+     * they manage would be a surprise at best; in the usual case -- a root-owned path outside
+     * etc/certs, which the agent cannot replace after the privilege drop -- every attempt would
+     * fail, and the agent would keep asking for a publication it can never adopt. Declining up
+     * front costs that operator nothing they had: their CA is exactly what they put there. */
+    config->ca_refresh_allowed = bridge_ca_path_is_the_agent_anchor(config->ca_path);
+
+    if (!config->ca_refresh_allowed && config->ca_path[0] != '\0') {
+        minfo("https_client: '%s' is not the agent's own trust anchor, so a CA bundle published "
+              "by the manager will not replace it.", config->ca_path);
+    }
+
     /* Stateful sync sessions arrive on a separate STREAM socket so a whole
      * (multi-MB) session bypasses the 64 KB DGRAM event queue; the module
      * streams it to disk and then to /stateful. Stateless events keep using
@@ -1867,13 +2332,13 @@ static bool bridge_submit_sync_session(const char *session_id, const uint8_t *bu
 }
 #endif
 
-/* No internal-option gate: by the time AgentdStart() (and so this) runs,
- * client-agent/src/main.c has already refused to start the daemon at all
+/* client-agent/src/main.c already refused to start the daemon at all
  * (merror + mlerror_exit, a hard exit) unless agt->server[0] carries a
  * validated address; the port always has a default (DEFAULT_HTTPS_REMOTE_PORT)
- * when unspecified. HTTPS is the only transport on offer, so there is
- * nothing left to gate. */
-void w_https_client_start(void)
+ * when unspecified. That leaves address/port covered, but bridge_build_config()
+ * below still validates the rest of the transport config (e.g. the backoff
+ * base/cap pair), so this can still fail here and the caller must check. */
+bool w_https_client_start(void)
 {
     minfo("https_client: starting.");
 
@@ -1881,14 +2346,23 @@ void w_https_client_start(void)
     g_https_client_stopping = false;
     w_mutex_unlock(&g_https_client_lock);
 
+    w_mutex_lock(&g_https_client_fatal_lock);
+    g_https_client_fatal = false;
+    w_mutex_unlock(&g_https_client_fatal_lock);
+
+    // A fresh client downloads and validates the configuration on its own.
+    bridge_rejected_config_hash[0] = '\0';
+    bridge_rejected_config_warned_at = 0;
+
     hc_config_t config;
     if (!bridge_build_config(&config)) {
-        return; /* bridge_build_config already logged the reason. */
+        return false; /* bridge_build_config already logged the reason. */
     }
 
     hc_callbacks_t callbacks;
     memset(&callbacks, 0, sizeof(callbacks));
     callbacks.log = mtLoggingFunctionsWrapper;
+    callbacks.on_fatal = bridge_on_fatal;
     callbacks.on_startup_result = bridge_on_startup_result;
     callbacks.on_reenroll_required = bridge_on_reenroll_required;
     callbacks.on_task = bridge_on_task;
@@ -1899,6 +2373,7 @@ void w_https_client_start(void)
     callbacks.on_task_failed = bridge_on_task_failed;
     callbacks.on_manager_config_hash = bridge_on_manager_config_hash;
     callbacks.on_agent_groups = bridge_on_agent_groups;
+    callbacks.on_ca_bundle = bridge_on_ca_bundle;
     callbacks.on_config_downloaded = bridge_on_config_downloaded;
     callbacks.on_sync_response = bridge_on_sync_response;
     callbacks.on_state_change = bridge_on_state_change;
@@ -1909,21 +2384,38 @@ void w_https_client_start(void)
     callbacks.on_collect_stateless_host = bridge_on_collect_stateless_host;
     callbacks.on_producer_pause = bridge_on_producer_pause;
 
-    g_https_client = hc_create(&config, &callbacks);
-    if (!g_https_client) {
-        merror("https_client: failed to create the client instance.");
-        return;
-    }
-    if (!hc_start(g_https_client)) {
-        merror("https_client: failed to start (configuration rejected).");
-        hc_destroy(g_https_client);
-        g_https_client = NULL;
-        return;
+#ifndef WIN32
+    /* Every module thread, and any thread one of them starts, inherits this mask, so a stop signal
+     * is always handled on an agent thread: its handler exit()s, and the atexit teardown then has
+     * to join the module's threads. */
+    sigset_t stop_signals;
+    sigset_t previous_mask;
+    sigemptyset(&stop_signals);
+    sigaddset(&stop_signals, SIGTERM);
+    sigaddset(&stop_signals, SIGINT);
+    sigaddset(&stop_signals, SIGQUIT);
+    sigaddset(&stop_signals, SIGALRM);
+    pthread_sigmask(SIG_BLOCK, &stop_signals, &previous_mask);
+#endif
+
+    const bool started = bridge_create_and_start(&config, &callbacks);
+
+#ifndef WIN32
+    pthread_sigmask(SIG_SETMASK, &previous_mask, NULL);
+#endif
+
+    if (!started) {
+        return false;
     }
 
 #ifdef WIN32
+    w_create_thread(NULL, 0, bridge_fatal_exit_thread_win, NULL, 0, NULL);
     asp_set_session_sender(bridge_submit_sync_session);
+#else
+    w_create_thread(bridge_fatal_exit_thread, NULL);
 #endif
+
+    return true;
 }
 
 void w_https_client_stop(void)
@@ -2000,7 +2492,8 @@ int w_https_client_submit_event(const char *frame, size_t length)
  * whether the full client is running (re-enroll, from bridge_reenroll_thread())
  * or does not exist yet (first boot, from start_agent.c, before
  * w_https_client_start() ever runs). */
-bool w_https_client_enroll(const char *body_json, const char *password, hc_enroll_result_t *result)
+bool w_https_client_enroll(const char *body_json, const char *password, const char *enroll_kid,
+                           const char *enroll_key_hex, hc_enroll_result_t *result)
 {
     hc_config_t config;
     bridge_build_transport_config(&config);
@@ -2014,6 +2507,14 @@ bool w_https_client_enroll(const char *body_json, const char *password, hc_enrol
     if (password) {
         strncpy(request.password, password, sizeof(request.password) - 1);
     }
+
+    /* Both or neither: the module mints the keyed bearer only when it has a `kid` AND a key, and
+     * half a credential would silently fall through to the password instead (#39064). */
+    if (enroll_kid && enroll_key_hex) {
+        strncpy(request.enroll_kid, enroll_kid, sizeof(request.enroll_kid) - 1);
+        strncpy(request.enroll_key_hex, enroll_key_hex, sizeof(request.enroll_key_hex) - 1);
+    }
+
     request.log = mtLoggingFunctionsWrapper;
 
     return hc_enroll(&config, &request, result);

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -93,6 +93,7 @@
 #define XML_INVATTR     "(1233): Invalid attribute '%s' in the configuration: '%s'."
 #define XML_VALUENULL   "(1234): Invalid NULL content for element: %s."
 #define XML_VALUEERR    "(1235): Invalid value for element '%s': %s."
+#define XML_DEPRECATED  "The <%s> option is deprecated and no longer has any effect."
 #define INVALID_IP      "(1237): Invalid ip address: '%s'."
 #define INVALID_ELEMENT "(1238): Invalid value for element '%s': %s"
 #define NO_CONFIG       "(1239): Configuration file not found: '%s'."
@@ -295,7 +296,14 @@
 #define AG_REQUEST_FAIL    "(4117): Failed validation request to uninstall Wazuh agent package."
 #define AG_INV_SSL_CA      "(4118): <ssl><verification_mode> is not 'none' but <certificate_authorities> is missing or unreadable: '%s'."
 #define AG_SSL_CA_FORBIDDEN_SYSTEM "(4120): <ssl><verification_mode> is 'system' but <certificate_authorities> is set: '%s'. Remove it, or choose a different verification_mode; the OS trust store is used instead."
-#define AG_SSL_SYSTEM_NO_BUNDLE    "(4121): <ssl><verification_mode> is 'system' but no OS CA bundle was found on this host."
+#define AG_SSL_SYSTEM_NO_BUNDLE    "(4121): <ssl><verification_mode> is 'system' but no OS CA bundle was found on this host, and no local trust anchor is present to fall back to either."
+#define AG_SSL_CA_UNPARSEABLE      "(4123): <certificate_authorities> '%s' is readable but holds no certificate this agent can parse. Nothing would verify against it, so the start is refused here rather than at the first handshake."
+#define AG_SSL_ANCHOR_UNPARSEABLE  "(4124): <ssl><verification_mode> is 'system' and the local trust anchor '%s' is readable but holds no certificate this agent can parse. The https_client module's fallback (#39123) would never verify against it, so the start is refused here rather than at the first handshake that reaches it."
+#define AG_SSL_ANCHOR_VANISHED     "(4125): the trust anchor '%s' is gone but this agent has held " \
+                                   "one ('%s' is still there). Verification would silently fall back " \
+                                   "to 'none', so the start is refused. Restore the anchor, reinstall " \
+                                   "it with 'wazuh-agent-auth --certs-only', or set " \
+                                   "<ssl><verification_mode> explicitly to say what was intended."
 
 /* Rules reading errors */
 #define RL_INV_ROOT     "(5101): Invalid root element: '%s'."
@@ -454,7 +462,6 @@
 #define FIM_ERROR_EBPF_RINGBUFF_CONSUME             "(6977): Consuming ring buffer failed."
 #define FIM_ERROR_EBPF_HEALTHCHECK_TIMEOUT          "(6978): eBPF healthcheck timeout."
 #define FIM_ERROR_EBPF_HEALTHCHECK_FILE_DEL         "(6979): Healthcheck file can't be removed. Path: %s"
-#define FIM_ERROR_EBPF_INVALID_KERNEL               "(6980): Invalid Kernel version detected. Must be +5.8."
 #define FIM_ERROR_EBPF_HEALTHCHECK_ACTION_FAILED    "(6981): eBPF healthcheck action failed: %s. %s"
 #define FIM_ERROR_EBPF_HEALTHCHECK_ACTION_SKIPPED   "(6982): eBPF healthcheck action skipped: %s. %s"
 #define FIM_ERROR_EBPF_OBJ_ATTACH_DETAIL            "(6983): Attaching BPF program '%s' failed (errno=%d: %s)."
@@ -480,6 +487,7 @@
 #define WM_UPGRADE_UNMERGING_FILE_ERROR             "(8133): At %s: Error unmerging file: '%s'"
 #define WM_UPGRADE_CHMOD_ERROR                      "(8134): At %s: Could not chmod '%s'"
 #define WM_UPGRADE_COMMAND_ERROR                    "(8135): At %s: Error executing command [%s]"
+#define WM_UPGRADE_COMMAND_TIMEOUT                  "(8142): At %s: Command [%s] did not finish within %d seconds"
 #define WM_UPGRADE_ERASE_FILE_ERROR                 "(8136): At %s: Could not erase file '%s'"
 #define WM_UPGRADE_TOO_LONG_TEMP_FILE               "(8137): At %s: Too long temp file."
 #define WM_UPGRADE_COMPRESSED_FILE_ERROR            "(8138): At %s: Could not create temporary compressed file."
@@ -505,7 +513,6 @@
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
-#define PRIVSEP_MSG "Chrooted to directory: %s, using user: %s"
 #define MSG_SOCKET_SIZE "(unix_domain) Maximum send buffer set to: '%d'."
 
 #define CONN_TO     "Connected to '%s' (%s queue)"

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -485,9 +485,7 @@ cJSON *getSyscheckConfig(void) {
     cJSON * synchronization = cJSON_CreateObject();
     cJSON_AddStringToObject(synchronization, "enabled", syscheck.enable_synchronization ? "yes" : "no");
     cJSON_AddNumberToObject(synchronization, "interval", syscheck.sync_interval);
-    cJSON_AddNumberToObject(synchronization, "max_eps", syscheck.sync_max_eps);
     cJSON_AddNumberToObject(synchronization, "integrity_interval", syscheck.integrity_interval);
-    cJSON_AddNumberToObject(synchronization, "sync_end_delay", syscheck.sync_end_delay);
 
     cJSON_AddItemToObject(syscfg, "synchronization", synchronization);
 
@@ -512,6 +510,9 @@ cJSON *getSyscheckInternalOptions(void) {
     cJSON_AddNumberToObject(syscheckd,"symlink_scan_interval",syscheck.sym_checker_interval);
     cJSON_AddNumberToObject(syscheckd,"debug",sys_debug_level);
     cJSON_AddNumberToObject(syscheckd,"file_max_size",syscheck.file_max_size);
+    cJSON_AddNumberToObject(syscheckd,"sync_flush_batch_size",syscheck.sync_flush_batch_size);
+    cJSON_AddNumberToObject(syscheckd,"sync_flush_interval_ms",syscheck.sync_flush_interval_ms);
+    cJSON_AddNumberToObject(syscheckd,"sync_wal_autocheckpoint_pages",syscheck.sync_wal_autocheckpoint_pages);
 #ifdef WIN32
     cJSON_AddNumberToObject(syscheckd,"max_fd_win_rt",syscheck.max_fd_win_rt);
 #else

@@ -1,7 +1,6 @@
 /*
  * Wazuh inventory sync server module
- * Copyright (C) 2015, Wazuh Inc.
- * July 30, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -37,9 +36,11 @@ namespace invsync::indexer
     public:
         enum class Cause
         {
-            Other,            ///< Hard rejection or unexpected state.
-            DocumentRejected, ///< The indexer answered but rejected documents or confirmed nothing.
-            RetryExhausted    ///< The retry budget ran out on a retryable condition (429, transport).
+            Other,             ///< Hard rejection or unexpected state.
+            DocumentRejected,  ///< The indexer answered but rejected documents or confirmed nothing.
+            RetryExhausted,    ///< The retry budget ran out on a retryable condition (429, transport).
+            ConflictsExhausted ///< A by-query's version-conflict allowance ran out against a competing
+                               ///< writer: the documents are consistent and the caller may retry later.
         };
 
         ConnectorError(const std::string& what, Cause cause)
@@ -125,8 +126,9 @@ namespace invsync::indexer
          */
         struct BulkRequestStats
         {
-            std::uint64_t requests {0}; ///< `_bulk` POSTs sent.
-            std::uint64_t bytes {0};    ///< NDJSON payload bytes those POSTs carried.
+            std::uint64_t requests {0};        ///< `_bulk` POSTs sent.
+            std::uint64_t bytes {0};           ///< NDJSON payload bytes those POSTs carried.
+            std::uint64_t conflictRetries {0}; ///< conflict waits spent; a cleared one fails no flush.
         };
 
         virtual BulkRequestStats takeBulkRequestStats()

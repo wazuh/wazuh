@@ -1,4 +1,4 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -39,6 +39,25 @@ def test_get_daemons_stats(mock_get_daemons_stats_socket, mock_get_remoted_daemo
     mock_engine_client.close.assert_called_once()
     assert isinstance(response, AffectedItemsWazuhResult), 'The result is not AffectedItemsWazuhResult type'
     assert response.total_affected_items == len(response.affected_items)
+
+
+@patch('wazuh.stats.EngineHTTPClient')
+@patch('wazuh.stats.get_remoted_daemon_stats')
+@patch('wazuh.stats.get_daemons_stats_socket')
+def test_get_daemons_stats_queries_each_daemon_once(mock_get_daemons_stats_socket, mock_get_remoted_daemon_stats,
+                                                    mock_engine_client_cls):
+    """A daemon listed several times is queried, and reported, only once."""
+    mock_engine_client = MagicMock()
+    mock_engine_client.get_metrics_dump.return_value = METRICS_DUMP_DATA
+    mock_engine_client_cls.return_value = mock_engine_client
+
+    response = stats.get_daemons_stats(['wazuh-manager-analysisd'] * 600 + ['wazuh-manager-remoted'] * 2)
+
+    mock_engine_client_cls.assert_called_once_with()
+    mock_engine_client.get_metrics_dump.assert_called_once()
+    mock_get_remoted_daemon_stats.assert_called_once_with()
+    mock_get_daemons_stats_socket.assert_not_called()
+    assert response.total_affected_items == 2
 
 
 @patch('wazuh.core.common.REMOTED_SOCKET', '/var/wazuh-manager/queue/sockets/wrong_socket_name')

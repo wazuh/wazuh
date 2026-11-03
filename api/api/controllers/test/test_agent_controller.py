@@ -1,4 +1,4 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -15,13 +15,13 @@ with patch('wazuh.common.wazuh_uid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
         from api.controllers.agent_controller import (
-            add_agent, delete_agents, delete_groups,
+            add_agent, create_enrollment_token, delete_agents, delete_enrollment_token, delete_enrollment_tokens, delete_groups,
             delete_multiple_agent_single_group,
             delete_single_agent_multiple_groups,
             delete_single_agent_single_group,
             get_agent_fields, get_agent_key, get_agent_no_group, get_agent_outdated,
             get_agents_summary, get_agent_summary_os, get_agent_summary_status,
-            get_agent_uninstall_permission, get_agents, get_agents_in_group,
+            get_agent_uninstall_permission, get_agents, get_agents_in_group, get_enrollment_tokens,
             get_group_config, get_group_file,
             get_group_files, get_list_group, insert_agent, post_group,
             post_new_agent, put_agent_single_group, put_group_config,
@@ -160,7 +160,8 @@ async def test_add_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp,
 async def test_restart_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
     """Verify 'restart_agents' endpoint is working as expected."""
     result = await restart_agents()
-    f_kwargs = {'agent_list': '*'
+    f_kwargs = {'agent_list': '*',
+                'request_time': ANY
                 }
     mock_dapi.assert_called_once_with(f=agent.restart_agents,
                                       f_kwargs=mock_remove.return_value,
@@ -319,7 +320,8 @@ async def test_restart_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
     """Verify 'restart_agent' endpoint is working as expected."""
     result = await restart_agent(
                                  agent_id='001')
-    f_kwargs = {'agent_list': ['001']
+    f_kwargs = {'agent_list': ['001'],
+                'request_time': ANY
                 }
     mock_dapi.assert_called_once_with(f=agent.restart_agents,
                                       f_kwargs=mock_remove.return_value,
@@ -826,7 +828,8 @@ async def test_restart_agents_by_group(mock_aiwr, mock_dapi, mock_remove, mock_d
             assert mock_dapi.call_count == 1
             mock_aiwr.assert_called_once_with(none_msg='Restart command was not sent to any agent')
         else:
-            f_kwargs = {'agent_list': [mock_exc.return_value.affected_items[0]['id']]
+            f_kwargs = {'agent_list': [mock_exc.return_value.affected_items[0]['id']],
+                        'request_time': ANY
                         }
             mock_dapi.assert_has_calls(calls_get_agents,
                                        calls_restart_agents_by_group)
@@ -848,7 +851,7 @@ async def test_restart_agents_by_group(mock_aiwr, mock_dapi, mock_remove, mock_d
 async def test_reload_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
     """Verify 'reload_agents' endpoint is working as expected."""
     result = await reload_agents()
-    f_kwargs = {'agent_list': '*'}
+    f_kwargs = {'agent_list': '*', 'request_time': ANY}
     mock_dapi.assert_called_once_with(f=agent.reload_agents,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',
@@ -873,7 +876,7 @@ async def test_reload_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
 async def test_reload_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
     """Verify 'reload_agent' endpoint is working as expected."""
     result = await reload_agent(agent_id='001')
-    f_kwargs = {'agent_list': ['001']}
+    f_kwargs = {'agent_list': ['001'], 'request_time': ANY}
     mock_dapi.assert_called_once_with(f=agent.reload_agents,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',
@@ -927,7 +930,8 @@ async def test_reload_agents_by_group(mock_aiwr, mock_dapi, mock_remove, mock_df
             assert mock_dapi.call_count == 1
             mock_aiwr.assert_called_once_with(none_msg='Reload command was not sent to any agent')
         else:
-            f_kwargs = {'agent_list': [mock_exc.return_value.affected_items[0]['id']]}
+            f_kwargs = {'agent_list': [mock_exc.return_value.affected_items[0]['id']],
+                        'request_time': ANY}
             mock_dapi.assert_has_calls(calls_get_agents, calls_reload_agents_by_group)
             assert mock_dapi.call_count == 2
             mock_exc.assert_has_calls([call(mock_dfunc.return_value),
@@ -964,20 +968,130 @@ async def test_insert_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_e
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("mock_request", ["agent_controller"], indirect=True)
+@patch('api.controllers.agent_controller.EnrollmentTokenCreateModel.get_kwargs')
+@patch('api.controllers.agent_controller.Body.validate_content_type')
 @patch('api.configuration.api_conf')
 @patch('api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.agent_controller.remove_nones_to_dict')
 @patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_get_agent_no_group(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
+async def test_create_enrollment_token(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp,
+                                       mock_valid, mock_getkwargs, mock_request):
+    """Verify 'create_enrollment_token' endpoint is working as expected."""
+    result = await create_enrollment_token()
+    mock_dapi.assert_called_once_with(f=agent.create_enrollment_token,
+                                      f_kwargs=mock_remove.return_value,
+                                      request_type='local_master',
+                                      is_async=False,
+                                      wait_for_complete=False,
+                                      logger=ANY,
+                                      rbac_permissions=mock_request.context['token_info']['rbac_policies'])
+    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+    mock_remove.assert_called_once_with(mock_getkwargs.return_value)
+    assert isinstance(result, ConnexionResponse)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mock_request", ["agent_controller"], indirect=True)
+@patch('api.configuration.api_conf')
+@patch('api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.agent_controller.remove_nones_to_dict')
+@patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
+async def test_get_enrollment_tokens(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
+    """Verify 'get_enrollment_tokens' endpoint is working as expected."""
+    result = await get_enrollment_tokens()
+    f_kwargs = {'offset': 0,
+                'limit': DATABASE_LIMIT,
+                'sort_by': ['created'],
+                'sort_ascending': True,
+                'search_text': None,
+                'complementary_search': None,
+                'select': None,
+                'q': None
+                }
+    mock_dapi.assert_called_once_with(f=agent.get_enrollment_tokens,
+                                      f_kwargs=mock_remove.return_value,
+                                      request_type='local_master',
+                                      is_async=False,
+                                      wait_for_complete=False,
+                                      logger=ANY,
+                                      rbac_permissions=mock_request.context['token_info']['rbac_policies'])
+    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+    mock_remove.assert_called_once_with(f_kwargs)
+    assert isinstance(result, ConnexionResponse)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mock_request", ["agent_controller"], indirect=True)
+@patch('api.configuration.api_conf')
+@patch('api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.agent_controller.remove_nones_to_dict')
+@patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
+async def test_delete_enrollment_token(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
+    """Verify 'delete_enrollment_token' endpoint is working as expected."""
+    result = await delete_enrollment_token(token_id='AAECAwQFBgcICQoLDA0ODw')
+    mock_dapi.assert_called_once_with(f=agent.delete_enrollment_token,
+                                      f_kwargs=mock_remove.return_value,
+                                      request_type='local_master',
+                                      is_async=False,
+                                      wait_for_complete=False,
+                                      logger=ANY,
+                                      rbac_permissions=mock_request.context['token_info']['rbac_policies'])
+    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+    mock_remove.assert_called_once_with({'token_id': 'AAECAwQFBgcICQoLDA0ODw'})
+    assert isinstance(result, ConnexionResponse)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("scope", ["dead", "all"])
+@pytest.mark.parametrize("mock_request", ["agent_controller"], indirect=True)
+@patch('api.configuration.api_conf')
+@patch('api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.agent_controller.remove_nones_to_dict')
+@patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
+async def test_delete_enrollment_tokens(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request, scope):
+    """Verify 'delete_enrollment_tokens' endpoint is working as expected."""
+    result = await delete_enrollment_tokens(status=scope)
+    mock_dapi.assert_called_once_with(f=agent.delete_enrollment_tokens,
+                                      f_kwargs=mock_remove.return_value,
+                                      request_type='local_master',
+                                      is_async=False,
+                                      wait_for_complete=False,
+                                      logger=ANY,
+                                      rbac_permissions=mock_request.context['token_info']['rbac_policies'])
+    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+    # The query parameter reaches the framework as the scope of the purge.
+    mock_remove.assert_called_once_with({'scope': scope})
+    assert isinstance(result, ConnexionResponse)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mock_request", ["agent_controller"], indirect=True)
+@patch('api.configuration.api_conf')
+@patch('api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.agent_controller.remove_nones_to_dict')
+@patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
+@pytest.mark.parametrize('q, expected_q', [
+    (None, 'group=null'),
+    ('id=001', 'group=null;(id=001)'),
+    ('id=001;name=agent', 'group=null;(id=001;name=agent)'),
+    # An OR in q must not bind across the injected group=null term.
+    ('id=001,id=002', 'group=null;(id=001,id=002)'),
+])
+async def test_get_agent_no_group(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, q, expected_q,
+                                  mock_request):
     """Verify 'get_agent_no_group' endpoint is working as expected."""
-    result = await get_agent_no_group()
+    result = await get_agent_no_group(q=q)
     f_kwargs = {'offset': 0,
                 'limit': DATABASE_LIMIT,
                 'select': None,
                 'sort': None,
                 'search': None,
-                'q': 'group=null'
+                'q': expected_q
                 }
     mock_dapi.assert_called_once_with(f=agent.get_agents,
                                       f_kwargs=mock_remove.return_value,

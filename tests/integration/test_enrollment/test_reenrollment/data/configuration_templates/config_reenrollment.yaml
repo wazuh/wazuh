@@ -1,0 +1,26 @@
+- sections:
+  - section: agent
+    elements:
+        - notify_time:
+            value: 3
+        - auto_restart:
+            value: 'no'
+        - manager:
+            elements:
+            - endpoint:
+                value: '127.0.0.1:1517/wazuh-manager'
+        # RemotedSimulator serves a self-signed certificate, which the default
+        # verification_mode of 'system' rejects. This suite is about what the agent does
+        # with a 401's failure class, not about TLS trust.
+        - ssl:
+            elements:
+            - verification_mode:
+                value: none
+        - enrollment:
+            elements:
+            - enabled:
+                value: 'yes'
+            - agent_name:
+                value: 'reenrolling-agent'
+            - delay_after_enrollment:
+                value: 1

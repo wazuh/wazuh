@@ -1,9 +1,8 @@
 /**
  * @file rbtree_op.h
  * @brief RB tree data structure declaration
- * @date 2019-08-21
  *
- * @copyright Copyright (C) 2015 Wazuh, Inc.
+ * @copyright Copyright (C) Wazuh Inc.
  */
 
 /*

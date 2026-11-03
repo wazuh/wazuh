@@ -1,136 +1,370 @@
 #!/var/wazuh-manager/framework/python/bin/python3
 
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import argparse
+import errno
 import os
+import random
 import signal
+import socket
+import stat
 import sys
+import threading
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from functools import partial
 
 logger = None
 
+# Bind retry budget. The worst case waits 2+4+8+16+32 seconds, i.e. roughly a minute, before
+# giving up on a busy port.
+BIND_MAX_RETRIES = 5
+BIND_BACKOFF_BASE_SECONDS = 2
 
-def assign_wazuh_ownership(filepath: str):
-    """Create a file if it doesn't exist and assign ownership.
+# Exit code uvicorn.run() used when the server never started (uvicorn.main.STARTUP_FAILURE).
+UVICORN_STARTUP_FAILURE = 3
+
+# TLS 1.2 cipher list served when https.ssl_ciphers is empty: AEAD suites with forward secrecy only.
+# uvicorn's own default for an unset cipher string is "TLSv1", which on TLS 1.2 leaves two CBC/SHA-1
+# suites and no GCM one. TLS 1.3 suites are chosen by OpenSSL's ciphersuites list, not by this string.
+DEFAULT_SSL_CIPHERS = 'ECDHE+AESGCM:ECDHE+CHACHA20'
+
+# Set by exit_handler(), so a signal arriving while _bind_listening_sockets() waits to retry
+# aborts the wait instead of running out the backoff clock with the pidfiles already deleted.
+_shutdown_event = threading.Event()
+
+
+def prepare_log_file(filepath: str):
+    """Create the log file if it does not exist, and give it to the service user with mode 0660.
+
+    This runs as root, in `logs/`, a directory the service account can write. Its entries are
+    therefore untrusted: a symbolic link planted there would hand any root file to the service
+    account if it were followed by a chown or chmod by path. The file is opened without following
+    a final symbolic link, checked through the descriptor to be a regular file with a single link,
+    and changed through that same descriptor, so what is checked is what is changed. It is never
+    written here: the handlers open it only after the privilege drop.
 
     Parameters
     ----------
     filepath : str
-        File to assign ownership.
+        Log file path.
+
+    Raises
+    ------
+    OSError
+        The path is a symbolic link, is not a regular file, has more than one link, or cannot be
+        opened or changed.
     """
-    if not os.path.isfile(filepath):
-        f = open(filepath, "w")
-        f.close()
-    if os.stat(filepath).st_gid != common.wazuh_gid() or \
-        os.stat(filepath).st_uid != common.wazuh_uid():
-        os.chown(filepath, common.wazuh_uid(), common.wazuh_gid())
+    # O_NONBLOCK keeps a planted FIFO from blocking the start (it fails with ENXIO instead).
+    flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC
+    try:
+        fd = os.open(filepath, flags, 0o660)
+    except OSError as exc:
+        if exc.errno == errno.ELOOP:
+            raise OSError(errno.ELOOP, 'Refusing a log file that is a symbolic link', filepath) from None
+        raise
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode) or st.st_nlink != 1:
+            raise OSError(errno.EPERM, 'Refusing a log file that is not a regular file with a single link',
+                          filepath)
+        if st.st_uid != common.wazuh_uid() or st.st_gid != common.wazuh_gid():
+            os.fchown(fd, common.wazuh_uid(), common.wazuh_gid())
+        os.fchmod(fd, 0o660)  # nosec B103 - the service group writes the API log
+    finally:
+        os.close(fd)
 
 
 def configure_ssl(params):
-    """Configure https files and permission, and set the uvicorn dictionary configuration keys.
+    """Check the API TLS files, and set the uvicorn dictionary configuration keys.
 
-    Parameters
-    ----------
-    uvicorn_params : dict
-        uvicorn parameter configuration dictionary.
-    """
-    from api.constants import CONFIG_FILE_PATH
-
-    try:
-        # Generate SSL if it does not exist and HTTPS is enabled
-        if not os.path.exists(api_conf['https']['key']) \
-                or not os.path.exists(api_conf['https']['cert']):
-            logger.info('HTTPS is enabled but cannot find the private key and/or certificate. '
-                        'Attempting to generate them')
-            private_key = generate_private_key(api_conf['https']['key'])
-            logger.info(
-                f"Generated private key file in WAZUH_PATH/{to_relative_path(api_conf['https']['key'])}")
-            generate_self_signed_certificate(private_key, api_conf['https']['cert'])
-            logger.info(
-                f"Generated certificate file in WAZUH_PATH/{to_relative_path(api_conf['https']['cert'])}")
-
-        # Check and assign ownership to wazuh user for the API certificate and key files
-        assign_wazuh_ownership(api_conf['https']['key'])
-        assign_wazuh_ownership(api_conf['https']['cert'])
-
-        params['ssl_version'] = ssl.PROTOCOL_TLS_SERVER
-
-        if api_conf['https']['use_ca']:
-            params['ssl_cert_reqs'] = ssl.CERT_REQUIRED
-            params['ssl_ca_certs'] = api_conf['https']['ca']
-
-        params['ssl_certfile'] = api_conf['https']['cert']
-        params['ssl_keyfile'] = api_conf['https']['key']
-
-        # Load SSL ciphers if any has been specified
-        if api_conf['https']['ssl_ciphers']:
-            params['ssl_ciphers'] = api_conf['https']['ssl_ciphers'].upper()
-
-    except ssl.SSLError as exc:
-        error = APIError(
-            2003, details='Private key does not match with the certificate')
-        logger.error(error)
-        raise error from exc
-    except IOError as exc:
-        if exc.errno == 22:
-            error = APIError(2003, details='PEM phrase is not correct')
-            logger.error(error)
-            raise error from exc
-        elif exc.errno == 13:
-            error = APIError(2003,
-                                details='Ensure the certificates have the correct permissions')
-            logger.error(error)
-            raise error from exc
-        else:
-            msg = f'Wazuh API SSL ERROR. Please, ensure ' \
-                    f'if path to certificates is correct in the configuration ' \
-                    f'file WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}'
-            print(msg)
-            logger.error(msg)
-            raise exc from exc
-
-
-def warn_about_default_passwords():
-    """Log a warning for each default API user that still has the password shipped with the package.
-
-    The API is started either way: the default credentials are documented, and refusing to serve
-    would break the deployments that configure them after the first start.
-    """
-    try:
-        users = get_users_with_default_password()
-    except Exception as exc:
-        logger.debug(f'Could not check whether the default API users keep their default password: {exc}')
-        return
-
-    for username in users:
-        logger.warning(f"The '{username}' API user still has its default password. Anyone able to reach the API "
-                       f"can use it. Change it with "
-                       f"'{os.path.join(common.WAZUH_PATH, 'bin', 'rbac_control')} change-password'")
-
-
-def start(params: dict):
-    """Run the Wazuh API.
-
-    If another Wazuh API is running, this function will fail because uvicorn server will
-    not be able to create server processes in the same port.
-    The function creates the pool processes, the AsyncApp instance, setups the API spec.yaml,
-    the middleware classes, the error_handlers, the lifespan, and runs the uvicorn ASGI server.
+    The pair is never generated here: the installer issues it signed by the manager CA. The files
+    are loaded once the way uvicorn will load them (certificate chain, client CA when `use_ca` is
+    set, cipher string as written) with the service's uid/gid: this runs after drop_privileges, before
+    daemonizing, so a missing, unreadable or invalid file is logged by the service user, printed
+    to the terminal and turned into exit code 1 before uvicorn starts.
 
     Parameters
     ----------
     params : dict
         uvicorn parameter configuration dictionary.
+
+    Raises
+    ------
+    APIError
+        Code 2003 when a file is missing, unreadable or invalid, or the cipher string selects nothing.
     """
+    from api.constants import CONFIG_FILE_PATH
+
+    key, cert = api_conf['https']['key'], api_conf['https']['cert']
+    use_ca, ca = api_conf['https']['use_ca'], api_conf['https']['ca']
+    ciphers = api_conf['https']['ssl_ciphers'] or DEFAULT_SSL_CIPHERS
+
+    def _files(paths):
+        # The resolved paths: the certificates live under the configuration directory, outside WAZUH_PATH.
+        return ', '.join(os.path.abspath(path) for path in paths)
+
+    def _not_found(paths):
+        return APIError(2003, details=f'API certificate or key not found: {_files(paths)}. '
+                                      'The installer issues it signed by the manager CA')
+
+    def _fail(error, exc=None):
+        logger.error(error)
+        if exc is None:
+            raise error
+        raise error from exc
+
+    for path in (cert, key):
+        if not os.path.isfile(path):
+            _fail(_not_found([path]))
+    if use_ca and not os.path.isfile(ca):
+        _fail(APIError(2003, details=f'API client CA certificate not found: {_files([ca])}. '
+                                     'It is required by https.use_ca'))
+
+    try:
+        context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        # A callback instead of no password: OpenSSL would otherwise prompt for the passphrase of
+        # an encrypted key on the terminal (-f) and hang there.
+        context.load_cert_chain(certfile=cert, keyfile=key, password=lambda: b'')
+        if use_ca:
+            context.load_verify_locations(cafile=ca)
+    except ssl.SSLError as exc:
+        _fail(APIError(2003, details='Private key does not match with the certificate, or a file is not a '
+                                     f'valid unencrypted PEM: {_files([cert, key] + ([ca] if use_ca else []))}'),
+              exc)
+    except IOError as exc:
+        if exc.errno == 22:
+            _fail(APIError(2003, details='PEM phrase is not correct'), exc)
+        elif exc.errno == 13:
+            _fail(APIError(2003, details='Ensure the certificates have the correct permissions: '
+                                         f'{_files([cert, key] + ([ca] if use_ca else []))}'), exc)
+        elif exc.errno == 2:
+            # A file removed between the check above and the load; ssl gives no filename.
+            _fail(_not_found([exc.filename] if exc.filename else [cert, key] + ([ca] if use_ca else [])), exc)
+        else:
+            msg = f'Wazuh API SSL ERROR. Please, ensure ' \
+                  f'if path to certificates is correct in the configuration ' \
+                  f'file WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}'
+            print(msg)
+            logger.error(msg)
+            raise APIError(2003, details=msg) from exc
+
+    try:
+        context.set_ciphers(ciphers)
+    except ssl.SSLError as exc:
+        # OpenSSL cipher keywords are case-sensitive (`!kRSA`, not `!KRSA`). Earlier releases
+        # uppercased the whole string, so a lowercase list that only ever worked because of that
+        # still starts, uppercased, with a warning.
+        try:
+            context.set_ciphers(ciphers.upper())
+        except ssl.SSLError:
+            _fail(APIError(2003, details=f'No usable cipher in https.ssl_ciphers: {ciphers}'), exc)
+        logger.warning(f'https.ssl_ciphers "{ciphers}" is not an OpenSSL cipher list as written and was '
+                       f'applied as "{ciphers.upper()}". OpenSSL keywords are case-sensitive: write them in '
+                       'their exact case')
+        ciphers = ciphers.upper()
+
+    params['ssl_version'] = ssl.PROTOCOL_TLS_SERVER
+
+    if use_ca:
+        params['ssl_cert_reqs'] = ssl.CERT_REQUIRED
+        params['ssl_ca_certs'] = ca
+
+    params['ssl_certfile'] = cert
+    params['ssl_keyfile'] = key
+    params['ssl_ciphers'] = ciphers
+
+
+def drop_privileges(run_as_root: bool) -> None:
+    """Switch to the service user and group.
+
+    It runs before the logging configuration is applied, so the log handlers open their files as
+    the service user: a root-opened descriptor would survive the switch and keep root's access to
+    whatever the path pointed to. Root's supplementary groups are cleared first: setgid() and
+    setuid() leave them in place, so the dropped process would otherwise keep group access to
+    whatever root's groups can read.
+
+    Parameters
+    ----------
+    run_as_root : bool
+        The API keeps running as root (-r).
+    """
+    if not run_as_root and api_conf['drop_privileges']:
+        os.setgroups([])
+        os.setgid(common.wazuh_gid())
+        os.setuid(common.wazuh_uid())
+
+
+def _bind_listening_sockets(hosts, port: int, retries: int = BIND_MAX_RETRIES,
+                            backoff: int = BIND_BACKOFF_BASE_SECONDS) -> list:
+    """Bind one listening socket per configured host, retrying while the port is still in use.
+
+    The bind is done here rather than inside uvicorn because uvicorn turns a failed bind into
+    sys.exit(1) from within its own startup, leaving nothing to retry: apid stayed down until
+    restarted by hand even when the port freed up seconds later.
+
+    An attempt is all-or-nothing on a real bind failure (the port already in use, or any other
+    error): every socket opened by that attempt is closed before retrying or raising. The one
+    exception is an address whose family isn't available on this system at all: either
+    `socket.socket()` itself fails (a kernel booted with `ipv6.disable=1` refuses to open an
+    `AF_INET6` socket with `EAFNOSUPPORT`) or `bind()` fails with `EADDRNOTAVAIL`/`EAFNOSUPPORT`
+    (IPv6 disabled through `net.ipv6.conf.all.disable_ipv6`). asyncio.loop.create_server(),
+    which bound these sockets before this function existed, tolerates both by skipping that
+    address and proceeding with whatever else binds, and that tolerance is kept here. The whole
+    attempt still fails if every address is skipped this way.
+
+    Parameters
+    ----------
+    hosts : str or list of str
+        Host or hosts to bind on. Each host is resolved with `socket.getaddrinfo()` and one
+        socket is bound per resolved address, the same resolution asyncio.loop.create_server()
+        used before this function existed -- so a hostname with both A and AAAA records is
+        served on both, and one that only has AAAA records is still bound as IPv6, which a
+        literal ':' check on the string would miss.
+    port : int
+        Port to bind on every host.
+    retries : int
+        Number of retries after the first attempt.
+    backoff : int
+        Base wait time, in seconds, for the exponential backoff between attempts.
+
+    Returns
+    -------
+    list of socket.socket
+        The bound sockets, one per resolved address, in the order the hosts were given.
+
+    Raises
+    ------
+    OSError
+        'hosts' is empty, the bind failed for a reason other than the address being in use, or
+        every attempt failed with the address in use.
+    SystemExit
+        A shutdown was requested while waiting to retry.
+    """
+    hosts = [hosts] if isinstance(hosts, str) else list(hosts)
+    if not hosts:
+        # api.yaml's schema accepts an empty 'host' list. asyncio.loop.create_server(), which
+        # bound these sockets before this function existed, raised for it rather than running a
+        # server that listens on nothing; the same message is kept.
+        raise OSError(f'could not bind on any address out of {hosts}')
+
+    for attempt in range(retries + 1):
+        sockets = []
+        bound = set()
+        try:
+            for host in hosts:
+                try:
+                    infos = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM,
+                                               proto=socket.IPPROTO_TCP, flags=socket.AI_PASSIVE)
+                except socket.gaierror as exc:
+                    raise OSError(f"could not resolve host '{host}': {exc}") from exc
+                for family, sock_type, proto, _, sockaddr in infos:
+                    if sockaddr in bound:
+                        # Two hosts resolving to the same address (or a repeated entry) would
+                        # otherwise conflict with each other at listen().
+                        continue
+                    try:
+                        sock = socket.socket(family, sock_type, proto)
+                    except OSError as exc:
+                        # The family isn't available on this system at all: a kernel booted with
+                        # ipv6.disable=1 fails here, with EAFNOSUPPORT, and never reaches bind().
+                        # asyncio.loop.create_server() skips such an address and carries on;
+                        # kept here for the same reason.
+                        logger.warning(f"Skipping {sockaddr[0]}:{port}, its address family is "
+                                       f"not available on this system: {exc}")
+                        continue
+                    # Tracked before it is bound, so the cleanup below also closes the socket
+                    # whose own bind is the one that failed.
+                    sockets.append(sock)
+                    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    if family == socket.AF_INET6:
+                        # asyncio.loop.create_server() -- which bound these sockets before this
+                        # function existed -- sets this for every IPv6 server socket it opens.
+                        # Without it, the IPv6 socket also serves IPv4 clients, and their remote
+                        # address reaches the API as a v4-mapped '::ffff:1.2.3.4' instead of
+                        # '1.2.3.4'.
+                        sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
+                    try:
+                        sock.bind(sockaddr)
+                    except OSError as exc:
+                        if exc.errno in (errno.EADDRNOTAVAIL, errno.EAFNOSUPPORT):
+                            # The family is disabled on this host (e.g. IPv6 through
+                            # net.ipv6.conf.all.disable_ipv6): the socket opens but nothing can
+                            # be bound to it. Skipped for the same reason as above.
+                            logger.warning(f"Skipping {sockaddr[0]}:{port}, its address family "
+                                           f"is not available on this system: {exc}")
+                            sockets.pop()
+                            sock.close()
+                            continue
+                        raise
+                    bound.add(sockaddr)
+            if not sockets:
+                raise OSError(f'could not bind on any address out of {hosts}')
+            return sockets
+        except OSError as exc:
+            for sock in sockets:
+                sock.close()
+            if exc.errno != errno.EADDRINUSE or attempt == retries:
+                raise
+
+            # Exponential backoff with jitter, mirroring create_indexer()'s retry loop in
+            # framework/wazuh/core/indexer/indexer.py.
+            wait_time = (backoff * 2 ** attempt) + random.random()  # nosec B311
+            logger.warning(f'Could not bind {hosts}:{port} (attempt {attempt + 1}/{retries + 1}): '
+                           f'{exc}. Retrying in {wait_time:.2f}s.')
+            if _shutdown_event.wait(wait_time):
+                logger.info('Shutdown requested while waiting to retry the bind. Aborting startup')
+                raise SystemExit(0) from exc
+
+
+def start(params: dict):
+    """Run the Wazuh API.
+
+    The function creates the pool processes, the AsyncApp instance, setups the API spec.yaml,
+    the middleware classes, the error_handlers, the lifespan, binds the listening sockets and
+    runs the uvicorn ASGI server on them.
+
+    Parameters
+    ----------
+    params : dict
+        uvicorn parameter configuration dictionary.
+
+    Raises
+    ------
+    APIError
+        Code 2012 if `rbac.db` is absent or its integrity check fails, or code 2010 if the
+        configured port is still in use after every bind attempt.
+    SystemExit
+        A shutdown was requested before the server started, or the server never started.
+    """
+    # `rbac.db` belongs to the credential resolver, which seeds it through `rbac_control.py seed` and
+    # publishes the two default users' passwords to /etc/wazuh-manager/export/credentials.env.
+    # Creating it here instead -- which `check_database_integrity()` does when the file is absent --
+    # seeds those users with generated passwords that are published NOWHERE: not to the credentials
+    # file, not to the log. The result is an API that starts cleanly and that nobody can authenticate
+    # against, with no record of the credential on the host.
+    #
+    # An empty file is what a failed creation leaves behind, not a database, so it is treated as
+    # absent -- the same test `rbac_control seed` applies.
+    #
+    # Nothing legitimate reaches this with the file missing: `wazuh-manager-control start` runs
+    # `resolvecredentials()` before `start_service()`, and refuses the whole start when a credential
+    # is unresolved. Failing here names the step that owns the file rather than quietly inventing one.
+    if not os.path.exists(DB_FILE) or os.path.getsize(DB_FILE) == 0:
+        raise APIError(
+            2012,
+            details=f"'{DB_FILE}' does not exist. It is created by the credential resolver, not by "
+                    f"the API: start the manager with 'wazuh-manager-control start', or run "
+                    f"'{os.path.join(common.WAZUH_PATH, 'bin', 'wazuh-manager-resolve-credentials')} "
+                    f"--prestart'",
+        )
+
     try:
         check_database_integrity()
     except Exception as db_integrity_exc:
         raise APIError(2012, details=str(db_integrity_exc)) from db_integrity_exc
-
-    warn_about_default_passwords()
 
     pools = common.mp_pools.get()
 
@@ -180,41 +414,12 @@ def start(params: dict):
                 validator_map={'parameter': WazuhParameterValidator}
                 )
 
-    # Maximum body size that the API can accept (bytes). This middleware caps a body by wrapping the
-    # ASGI receive channel, so it must stay above every reader of that body -- request validation
-    # included -- and below the BaseHTTPMiddleware-based middlewares, whose task groups do not let
-    # a ContentSizeExceeded raised inside a receive call reach the exception middleware. Only
-    # BEFORE_VALIDATION satisfies both, and it is what makes the ceiling a 413 rather than a 500.
-    if api_conf['max_upload_size']:
-        app.add_middleware(ContentSizeLimitMiddleware, MiddlewarePosition.BEFORE_VALIDATION,
-                           max_content_size=api_conf['max_upload_size'])
-        app.add_error_handler(ContentSizeExceeded, error_handler.content_size_handler)
-    # CheckRateLimitsMiddleware (wraps SecurityMiddleware) charges the unauthenticated bucket only
-    # once a request has actually failed authentication; CheckAuthenticatedRateLimitMiddleware
-    # (runs right after SecurityMiddleware) charges the authenticated bucket for one that
-    # succeeded. Each is now independent -- neither reserves anything for the other to release.
-    if api_conf['access']['max_unauthenticated_request_per_minute'] > 0:
-        app.add_middleware(CheckRateLimitsMiddleware, MiddlewarePosition.BEFORE_SECURITY)
-    if api_conf['access']['max_request_per_minute'] > 0:
-        app.add_middleware(CheckAuthenticatedRateLimitMiddleware, MiddlewarePosition.BEFORE_VALIDATION)
-    app.add_middleware(CheckExpectHeaderMiddleware)
-    app.add_middleware(CheckBlockedIP, MiddlewarePosition.BEFORE_SECURITY)
-    app.add_middleware(CheckAuthContextSizeMiddleware, MiddlewarePosition.BEFORE_SECURITY)
-    app.add_middleware(WazuhAccessLoggerMiddleware, MiddlewarePosition.BEFORE_EXCEPTION)
-    app.add_middleware(SecureHeadersMiddleware, MiddlewarePosition.BEFORE_EXCEPTION)
-
-    # Enable CORS
-    if api_conf['cors']['enabled']:
-        app.add_middleware(
-            CORSMiddleware,
-            position=MiddlewarePosition.BEFORE_EXCEPTION,
-            allow_origins=api_conf['cors']['source_route'],
-            expose_headers=api_conf['cors']['expose_headers'],
-            allow_headers=api_conf['cors']['allow_headers'],
-            allow_credentials=api_conf['cors']['allow_credentials'],
-        )
+    # The order these are registered in is what keeps an oversized body a 413 rather than a 500.
+    # Every middleware belongs inside setup_middlewares(), never after it -- see its docstring.
+    setup_middlewares(app)
 
     # Add error handlers to format exceptions
+    app.add_error_handler(ContentSizeExceeded, error_handler.content_size_handler)
     app.add_error_handler(ExpectFailedException, error_handler.expect_failed_error_handler)
     app.add_error_handler(Unauthorized, error_handler.unauthorized_error_handler)
     app.add_error_handler(HTTPException, error_handler.http_error_handler)
@@ -226,19 +431,49 @@ def start(params: dict):
     logger.debug(f'Loaded API configuration: {api_conf}')
     logger.debug(f'Loaded security API configuration: {security_conf}')
 
-    # Start uvicorn server
-
+    # Start uvicorn server on sockets this process bound itself, so a transient EADDRINUSE is
+    # retried here instead of ending the process inside uvicorn's own startup.
     try:
-        uvicorn.run(app, **params)
-
+        sockets = _bind_listening_sockets(params['host'], params['port'])
     except OSError as exc:
-        if exc.errno == 98:
+        if exc.errno == errno.EADDRINUSE:
             error = APIError(2010)
             logger.error(error)
-            raise error
-        else:
-            logger.error(exc)
-            raise exc
+            raise error from exc
+        logger.error(exc)
+        raise exc
+
+    if _shutdown_event.is_set():
+        # exit_handler() has already deleted the PID files: a SIGTERM that landed while the
+        # bind itself was in progress, rather than during a retry wait, would otherwise leave
+        # the API serving with wazuh-manager-control unable to see or stop it.
+        for sock in sockets:
+            sock.close()
+        logger.info('Shutdown requested before the API server started. Aborting startup')
+        raise SystemExit(0)
+
+    try:
+        # proxy_headers=False: uvicorn otherwise replaces the client address with X-Forwarded-For
+        # from any peer in FORWARDED_ALLOW_IPS (127.0.0.1 by default), so a local user could pick
+        # the address the login lockout, the rate limits and api.log see. Nothing in front of the
+        # API is a trusted proxy.
+        config = uvicorn.Config(app, **{key: value for key, value in params.items()
+                                        if key not in ('host', 'port')}, proxy_headers=False)
+        server = uvicorn.Server(config)
+        server.run(sockets=sockets)
+    except OSError as exc:
+        # __main__'s handler only print()s, and pyDaemon() has sent stdout to /dev/null by now,
+        # so an OSError raised by uvicorn's own startup (an ssl.SSLError from Config.load(), for
+        # example) has to be logged here to leave any trace in api.log.
+        logger.error(exc)
+        raise
+
+    if not server.started:
+        # uvicorn.run() ended the process with this code when the server never started, for
+        # example because the ASGI lifespan startup raised. Server.run() on its own returns
+        # normally instead, which would make a failed startup look like a clean shutdown.
+        logger.error('The API server did not start')
+        sys.exit(UVICORN_STARTUP_FAILURE)
 
 
 def print_version():
@@ -269,7 +504,13 @@ def version():
 
 
 def exit_handler(signum, frame):
-    """Try to kill API child processes and remove their PID files."""
+    """Release a pending bind retry, then try to kill API child processes and remove their PID files."""
+    # Before the pidfiles go away: a bind retry still waiting would otherwise keep this process
+    # alive and invisible to wazuh-manager-control for the rest of its backoff budget.
+    # Event.set() takes the Event's own condition lock, which Event.wait() holds only while
+    # arming and disarming its waiter, not for the timeout itself -- so replacing this with a
+    # plain flag plus a signal-safe wakeup buys nothing and loses the interruptible wait.
+    _shutdown_event.set()
     api_pid = os.getpid()
     pyDaemonModule.delete_child_pids(pyDaemonModule.API_MAIN_PROCESS, api_pid, logger)
     pyDaemonModule.delete_pid(pyDaemonModule.API_MAIN_PROCESS, api_pid)
@@ -332,30 +573,18 @@ if __name__ == '__main__':
     import uvicorn
     from connexion import AsyncApp
     from connexion.exceptions import HTTPException, ProblemException, Unauthorized
-    from connexion.middleware import MiddlewarePosition
     from connexion.options import SwaggerUIOptions
-    from content_size_limit_asgi import ContentSizeLimitMiddleware
     from content_size_limit_asgi.errors import ContentSizeExceeded
-    from starlette.middleware.cors import CORSMiddleware
     from wazuh.core import common, pyDaemonModule, utils
-    from wazuh.core.security import get_users_with_default_password
-    from wazuh.rbac.orm import check_database_integrity
+    from wazuh.rbac.orm import DB_FILE, check_database_integrity
 
     from api import __path__ as api_path
     from api import error_handler
     from api.alogging import set_logging
     from api.api_exception import APIError, ExpectFailedException
-    from api.configuration import api_conf, generate_private_key, generate_self_signed_certificate, security_conf
+    from api.configuration import api_conf, security_conf
     from api.constants import API_LOG_PATH
-    from api.middlewares import (
-        CheckAuthContextSizeMiddleware,
-        CheckAuthenticatedRateLimitMiddleware,
-        CheckBlockedIP,
-        CheckRateLimitsMiddleware,
-        SecureHeadersMiddleware,
-        WazuhAccessLoggerMiddleware,
-        CheckExpectHeaderMiddleware,
-    )
+    from api.middlewares import setup_middlewares
     from api.parameter_validator import WazuhParameterValidator
     from api.signals import lifespan_handler
     from api.uri_parser import APIUriParser
@@ -384,37 +613,51 @@ if __name__ == '__main__':
         print(f"Error when trying to start the Wazuh API. {api_log_error}")
         sys.exit(1)
 
-    # set permission on log files
-    for handler in uvicorn_params['log_config']['handlers'].values():
-        if 'filename' in handler:
-            assign_wazuh_ownership(handler['filename'])
-            os.chmod(handler['filename'], 0o660)  # nosec B103
-
-    # Configure and create the wazuh-api logger
-    add_debug2_log_level_and_error()
-    logging.config.dictConfig(uvicorn_params['log_config'])
-    logger = logging.getLogger('wazuh-api')
-
-    # Configure ssl files
-    if api_conf['https']['enabled']:
-        configure_ssl(uvicorn_params)
+    # Create the log files and give them to the service user, through descriptors that never
+    # follow a symbolic link: logs/ is writable by the service account.
+    try:
+        for handler in uvicorn_params['log_config']['handlers'].values():
+            if 'filename' in handler:
+                prepare_log_file(handler['filename'])
+    except OSError as e:
+        print(f"Error when trying to start the Wazuh API. {e}")
+        sys.exit(1)
 
     # Check for unused PID files
     utils.clean_pid_files(pyDaemonModule.API_MAIN_PROCESS)
 
-    # Foreground/Daemon
+    # Drop privileges to wazuh before the log handlers open their files and before touching the TLS
+    # files. Nothing is logged if it fails: the logging configuration is not applied yet.
+    try:
+        drop_privileges(args.root)
+    except Exception as e:
+        print(f"Error when trying to start the Wazuh API. {e}")
+        sys.exit(1)
+
+    # Configure and create the wazuh-api logger. dictConfig() opens the log files, now as the
+    # service user.
+    add_debug2_log_level_and_error()
+    logging.config.dictConfig(uvicorn_params['log_config'])
+    logger = logging.getLogger('wazuh-api')
+
+    if args.foreground:
+        logger.info('Starting API in foreground')
+    if args.root:
+        logger.info('Starting API as root')
+
+    # Check the TLS files as the service user while still in the foreground: configure_ssl() logs
+    # the error, and the print and the exit code reach the terminal and wazuh-manager-control.
+    if api_conf['https']['enabled']:
+        try:
+            configure_ssl(uvicorn_params)
+        except APIError as e:
+            print(f"Error when trying to start the Wazuh API. {e}")
+            sys.exit(1)
+
+    # Daemonize unless running in the foreground (pyDaemon exits the parent with 0 and sends stdout
+    # and stderr to /dev/null, so every start-up check must come before it)
     if not args.foreground:
         pyDaemonModule.pyDaemon()
-    else:
-        logger.info('Starting API in foreground')
-
-    # Drop privileges to wazuh
-    if not args.root:
-        if api_conf['drop_privileges']:
-            os.setgid(common.wazuh_gid())
-            os.setuid(common.wazuh_uid())
-    else:
-        logger.info('Starting API as root')
 
     pid = os.getpid()
     pyDaemonModule.create_pid(pyDaemonModule.API_MAIN_PROCESS, pid)

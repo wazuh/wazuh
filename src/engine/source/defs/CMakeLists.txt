@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 add_library(defs_idefinitions INTERFACE)
 target_include_directories(defs_idefinitions INTERFACE
   ${CMAKE_CURRENT_LIST_DIR}/interface

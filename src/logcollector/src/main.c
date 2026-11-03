@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -169,12 +169,10 @@ int main(int argc, char **argv)
     /* Start signal handler */
     StartSIG(ARGV0);
 
-    // Set max open files limit
-    struct rlimit rlimit = { nofile, nofile };
-
-    if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {
-        merror("Could not set resource limit for file descriptors to %d: %s (%d)", (int)nofile, strerror(errno), errno);
-    }
+    // Raise the soft file descriptor limit; the hard limit belongs to whoever started the agent.
+    // nofile keeps the configured value, which is what the configuration report publishes as
+    // logcollector.rlimit_nofile; the limit in force is only used to check max_files against it.
+    w_logcollector_check_max_files(w_raise_nofile_limit((long)nofile, "logcollector.rlimit_nofile"));
 
     if (!run_foreground) {
         /* Going on daemon mode */

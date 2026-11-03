@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module (C++ worker bridge) - local admin socket unit tests
- * Copyright (C) 2015, Wazuh Inc.
- * August 15, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -23,30 +22,49 @@
 #include "testLogRecorder.hpp" // the SHARED process-wide log sink (first-come; see the header)
 #include "testTlsServer.hpp"   // generateTestCertificate + ScratchFileCleanup
 
+#include "json.hpp"
+
 #include <gtest/gtest.h>
 #include <httplib.h>
 
+#include <cerrno>
 #include <chrono>
 #include <cstdarg>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <memory>
 #include <netinet/in.h>
 #include <string>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/un.h>
 #include <unistd.h>
 #include <vector>
 
 namespace
 {
-    // Where the facade binds its admin server: FIXED and RELATIVE (remoted chroot()s into the
-    // install dir; here it simply resolves against the test process's cwd, the same convention
-    // remotedModule_test.cpp's default-TLS-path test relies on). Spelled out literally so a
-    // change of the facade's constant is a conscious test change too.
+    // Where the facade binds its admin server: FIXED and RELATIVE (remoted's cwd is the
+    // installation directory; here it simply resolves against the test process's cwd). Spelled out
+    // literally so a change of the facade's constant is a conscious test change too.
     constexpr auto kAdminSocketPath {"queue/sockets/remote-admin-http.sock"};
+
+    // The module's own defaults for client.keys, authd.pass, enrollment_tokens.json and the CA
+    // bundle are absolute, under the manager's fixed configuration directory, and the C ABI has no
+    // field to move them. Tests that assert those files are ABSENT therefore only hold on a host
+    // without an installed manager (every CI runner); on one with it they are skipped, rather than
+    // reading -- or asserting against -- the host's real secrets.
+    constexpr auto kManagerConfDir {"/etc/wazuh-manager"};
+
+    bool hostHasManagerConfDir()
+    {
+        std::error_code ec;
+        return std::filesystem::exists(kManagerConfDir, ec);
+    }
 
     // A port the OS says is free, asked for right before the module binds it -- same rationale
     // as remotedModule_test.cpp: nothing here asserts on the port, it only has to be free.
@@ -93,10 +111,9 @@ protected:
     void SetUp() override
     {
         // Isolate each test in a fresh, unique scratch directory instead of writing relative to
-        // the test binary's ambient cwd: SetUp() below creates/truncates "queue/sockets" and
-        // "etc/client.keys" relative to cwd, and if that cwd were ever a real install (e.g.
-        // ctest invoked from /var/wazuh-manager), this would wipe a real keystore. A fresh temp
-        // directory can also never contain a leftover, real etc/authd.pass from the host.
+        // the test binary's ambient cwd: SetUp() below creates "queue/sockets" relative to cwd,
+        // and if that cwd were ever a real install (e.g. ctest invoked from /var/wazuh-manager),
+        // this would scrub a real socket.
         m_originalCwd = std::filesystem::current_path();
         m_scratchDir =
             std::filesystem::temp_directory_path() / ("admin_server_test_" + std::to_string(::getpid()) + "_" +
@@ -110,14 +127,6 @@ protected:
         std::error_code ec;
         std::filesystem::remove(kAdminSocketPath, ec);
         remoted::test::LogRecorder::clear();
-
-        // Keystore's default path (etc/client.keys, also relative to cwd) needs to exist and be
-        // readable so the module's startup load succeeds -- otherwise every test in this fixture
-        // would start with a permanently-unreadable keystore, which GetStatusReportsKeystoreAnd-
-        // PasswordReadiness below needs to NOT be the case (an empty, successfully-loaded file is
-        // exactly the state lastLoadOk() exists to distinguish from "never loaded").
-        std::filesystem::create_directories("etc");
-        std::ofstream {"etc/client.keys"};
     }
 
     void TearDown() override
@@ -150,9 +159,15 @@ protected:
      *        enrollment_enabled): whether enrollment itself is administratively enabled.
      *        Defaults to true so existing call sites that pass enrollUsePassword=true keep
      *        exercising Password-mode enrollment being active, as before this parameter existed.
+     * @param serveOwnCertificateAsCa When true, a copy of the throwaway (self-signed) certificate
+     *        is installed at caPath() and configured as remote.https.ca_certificate, so the CA
+     *        bundle GET /tls describes has one certificate that signs the leaf and the test can
+     *        rewrite that file. Otherwise the module's default path (/etc/wazuh-manager/certs/root-ca.pem)
+     *        is left unconfigured and, on a host without an installed manager, never exists.
      * @return The public HTTPS port the module bound (0 when the fixture itself failed).
      */
-    std::uint16_t startModule(bool enrollUsePassword = false, bool enrollmentEnabled = true)
+    std::uint16_t
+    startModule(bool enrollUsePassword = false, bool enrollmentEnabled = true, bool serveOwnCertificateAsCa = false)
     {
         // A second cycle regenerates the SAME pid-derived paths, so the previous cleanup must
         // run BEFORE the new files exist -- destroying it after would delete them again.
@@ -175,9 +190,40 @@ protected:
         std::snprintf(cfg.cluster_name, sizeof(cfg.cluster_name), "%s", "test-cluster");
         std::snprintf(cfg.certificate_path, sizeof(cfg.certificate_path), "%s", certificate->certPath.c_str());
         std::snprintf(cfg.private_key_path, sizeof(cfg.private_key_path), "%s", certificate->keyPath.c_str());
+        if (serveOwnCertificateAsCa)
+        {
+            m_caPath = (m_scratchDir / "root-ca.pem").string();
+            std::ifstream in {certificate->certPath, std::ios::binary};
+            std::ofstream out {m_caPath, std::ios::binary | std::ios::trunc};
+            out << in.rdbuf();
+            std::snprintf(cfg.ca_certificate_path, sizeof(cfg.ca_certificate_path), "%s", m_caPath.c_str());
+        }
 
         remoted_module_start(remoted::test::testLogCallback, &cfg);
         return static_cast<std::uint16_t>(cfg.port);
+    }
+
+    /// The CA bundle startModule(..., /*serveOwnCertificateAsCa=*/true) configured; empty otherwise.
+    const std::string& caPath() const
+    {
+        return m_caPath;
+    }
+
+    /// Replaces the CA bundle atomically (sibling + rename), the way an operator must.
+    void replaceCaBundle(const std::string& pem) const
+    {
+        const auto temporary = m_caPath + ".tmp";
+        {
+            std::ofstream out {temporary, std::ios::binary | std::ios::trunc};
+            out << pem;
+        }
+        ASSERT_EQ(std::rename(temporary.c_str(), m_caPath.c_str()), 0);
+    }
+
+    static std::string contentsOf(const std::string& path)
+    {
+        std::ifstream in {path, std::ios::binary};
+        return std::string {std::istreambuf_iterator<char> {in}, std::istreambuf_iterator<char> {}};
     }
 
     /// A UDS HTTP client pointed at the admin socket, timeouts bounded so a broken server fails
@@ -197,6 +243,7 @@ private:
     std::unique_ptr<remoted::test::ScratchFileCleanup> m_certificateCleanup;
     std::filesystem::path m_originalCwd;
     std::filesystem::path m_scratchDir;
+    std::string m_caPath;
 };
 
 // GET / answers the liveness probe inline, and the socket itself carries the contract: the
@@ -218,7 +265,7 @@ TEST_F(AdminServerTest, GetRootAnswersTheLivenessProbe)
     EXPECT_NE(response->body.find(R"("module":"remoted_module")"), std::string::npos) << response->body;
     EXPECT_EQ(response->get_header_value("Content-Type"), "application/json");
     // The injected identity of a NEW server with no prior wire contract.
-    EXPECT_EQ(response->get_header_value("Server"), "wazuh-remoted");
+    EXPECT_EQ(response->get_header_value("Server"), "wazuh-manager-remoted");
 
     // A default start must be warning-free: the facade sets reservedControlConnections to the
     // value the library's quarter-of-the-cap clamp would pick anyway (16 of 64), so the
@@ -282,19 +329,26 @@ TEST_F(AdminServerTest, GetMetricsDumpsTheModuleFamilies)
                              "remoted.control.wdb.latency",
                              "remoted.control.registry.agents",
                              "remoted.download.started",
-                             "remoted.download.bytes.total"})
+                             "remoted.download.bytes.total",
+                             "remoted.control.no_row",
+                             "remoted.download.no_row",
+                             "remoted.control.registry.push.invalidated",
+                             "remoted.control.registry.push.skipped",
+                             "remoted.control.registry.push.rejected"})
     {
         EXPECT_NE(response->body.find(name), std::string::npos) << name;
     }
+    // A publication only invalidates (only a wazuh-db read establishes a membership): no such outcome.
+    EXPECT_EQ(response->body.find("remoted.control.registry.push.updated"), std::string::npos);
 
     // Live value, not a quiesced 0: the config left max_deferred_requests unset, so the limiter
-    // runs at (and the pull must report) the module's default cap of 256. Scoped to the entry
+    // runs at (and the pull must report) the module's default cap of 128. Scoped to the entry
     // itself (the dump is sorted by name, one compact object per metric) so a stray "256"
     // elsewhere in the body can't satisfy it.
     const auto capacityAt = response->body.find("remoted.forwarder.deferred.capacity");
     ASSERT_NE(capacityAt, std::string::npos);
     const auto capacityEntry = response->body.substr(capacityAt, 200);
-    EXPECT_NE(capacityEntry.find("\"value\":256"), std::string::npos) << capacityEntry;
+    EXPECT_NE(capacityEntry.find("\"value\":128"), std::string::npos) << capacityEntry;
 }
 
 // Routing is exact-match: an unknown path is a 404, and a known path with the wrong verb is a
@@ -318,18 +372,267 @@ TEST_F(AdminServerTest, UnknownRouteAnswers404AndWrongVerb405)
     ASSERT_TRUE(wrongVerbStatus) << "POST /status failed: " << httplib::to_string(wrongVerbStatus.error());
     EXPECT_EQ(wrongVerbStatus->status, 405);
     EXPECT_EQ(wrongVerbStatus->get_header_value("Allow"), "GET");
+
+    // And /tls.
+    const auto wrongVerbTls = client->Post("/tls", "", "application/json");
+    ASSERT_TRUE(wrongVerbTls) << "POST /tls failed: " << httplib::to_string(wrongVerbTls.error());
+    EXPECT_EQ(wrongVerbTls->status, 405);
+    EXPECT_EQ(wrongVerbTls->get_header_value("Allow"), "GET");
+
+    // The membership publication route is POST-only, the other way round.
+    const auto wrongVerbGroups = client->Get("/_internal/agents/groups");
+    ASSERT_TRUE(wrongVerbGroups) << "GET /_internal/agents/groups failed: "
+                                 << httplib::to_string(wrongVerbGroups.error());
+    EXPECT_EQ(wrongVerbGroups->status, 405);
+    EXPECT_EQ(wrongVerbGroups->get_header_value("Allow"), "POST");
+}
+
+namespace
+{
+    /// One metric's value from the admin socket's GET /metrics dump ({"metrics":[{"name":...,
+    /// "value":...}]}); 0 when absent. The facade is a process-lifetime singleton whose metrics
+    /// manager is never reset (totals survive restart cycles on purpose), so the cases below
+    /// assert DELTAS across their own requests, never absolute totals.
+    double metricValue(httplib::Client& client, const std::string& name)
+    {
+        const auto response = client.Get("/metrics");
+        if (!response || response->status != 200)
+        {
+            ADD_FAILURE() << "GET /metrics failed";
+            return -1;
+        }
+        const auto document = nlohmann::json::parse(response->body, nullptr, false);
+        if (document.is_object() && document.contains("metrics"))
+        {
+            for (const auto& metric : document.at("metrics"))
+            {
+                if (metric.value("name", "") == name && metric.contains("value"))
+                {
+                    return metric.at("value").get<double>();
+                }
+            }
+        }
+        return 0;
+    }
+
+    /// Sends only a request HEAD declaring `contentLength` body bytes, never the body, and returns
+    /// the status the server answers (0 on a transport failure). The way to observe a 413 decided
+    /// at headers-complete: a client that also wrote the body would race the server's close and
+    /// take a SIGPIPE, which kills the test binary (httplib does not suppress it on a UDS socket).
+    int postHeadOnly(const std::string& target, std::size_t contentLength)
+    {
+        const int fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
+        if (fd < 0)
+        {
+            return 0;
+        }
+        sockaddr_un address {};
+        address.sun_family = AF_UNIX;
+        std::snprintf(address.sun_path, sizeof(address.sun_path), "%s", kAdminSocketPath);
+        int status = 0;
+        if (::connect(fd, reinterpret_cast<sockaddr*>(&address), sizeof(address)) == 0)
+        {
+            const std::string head = "POST " + target +
+                                     " HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\n"
+                                     "Content-Length: " +
+                                     std::to_string(contentLength) + "\r\n\r\n";
+            timeval timeout {5, 0};
+            ::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+            if (::send(fd, head.data(), head.size(), MSG_NOSIGNAL) == static_cast<ssize_t>(head.size()))
+            {
+                char buffer[256] {};
+                const auto n = ::recv(fd, buffer, sizeof(buffer) - 1, 0);
+                // "HTTP/1.1 413 ..." -- the status is the second token of the status line.
+                if (n > 12 && std::string(buffer, 5) == "HTTP/")
+                {
+                    status = std::atoi(buffer + 9);
+                }
+            }
+        }
+        ::close(fd);
+        return status;
+    }
+} // namespace
+
+// POST /_internal/agents/groups is served over the socket: a freshly started module tracks no agent,
+// so a publication is accepted and every agent in it skipped -- nothing is created -- and the dump
+// counts them. The per-case contract (invalidations only, validation) is agentGroupsRoute_test.cpp's.
+TEST_F(AdminServerTest, PostAgentGroupsSkipsAgentsThisNodeNeverSaw)
+{
+    startModule();
+
+    const auto client = makeAdminClient();
+    const auto skippedBefore = metricValue(*client, "remoted.control.registry.push.skipped");
+    const auto response = client->Post("/_internal/agents/groups", R"({"invalidate":[1,2]})", "application/json");
+    ASSERT_TRUE(response) << "POST /_internal/agents/groups failed: " << httplib::to_string(response.error());
+    EXPECT_EQ(response->status, 200) << response->body;
+    const auto body = nlohmann::json::parse(response->body);
+    EXPECT_FALSE(body.contains("updated")) << response->body;
+    EXPECT_EQ(body.at("invalidated").get<int>(), 0);
+    EXPECT_EQ(body.at("skipped").get<int>(), 2);
+
+    EXPECT_EQ(metricValue(*client, "remoted.control.registry.push.skipped") - skippedBefore, 2.0);
+    EXPECT_EQ(metricValue(*client, "remoted.control.registry.agents"), 0.0) << "a publication creates no entry";
+}
+
+TEST_F(AdminServerTest, PostAgentGroupsRejectsMalformedBodies)
+{
+    startModule();
+
+    const auto client = makeAdminClient();
+    const auto rejectedBefore = metricValue(*client, "remoted.control.registry.push.rejected");
+    const auto response = client->Post("/_internal/agents/groups", "not json", "application/json");
+    ASSERT_TRUE(response) << "POST /_internal/agents/groups failed: " << httplib::to_string(response.error());
+    EXPECT_EQ(response->status, 400);
+    EXPECT_EQ(nlohmann::json::parse(response->body).at("code").get<int>(), 400);
+
+    EXPECT_EQ(metricValue(*client, "remoted.control.registry.push.rejected") - rejectedBefore, 1.0);
+}
+
+// The route's own body cap (256 KiB, above the Control class's 64 KiB) is the transport's to enforce:
+// a larger declared body is a 413 before the handler runs, so the handler never counts it.
+TEST_F(AdminServerTest, PostAgentGroupsOverTheBodyCapIs413)
+{
+    startModule();
+
+    const auto client = makeAdminClient();
+    const auto rejectedBefore = metricValue(*client, "remoted.control.registry.push.rejected");
+    const auto skippedBefore = metricValue(*client, "remoted.control.registry.push.skipped");
+
+    EXPECT_EQ(postHeadOnly("/_internal/agents/groups", 300U * 1024U), 413);
+
+    // Under the cap but over the Control class default: accepted by the transport, parsed by the route.
+    const std::string padded = R"({"invalidate":[1],"pad":")" + std::string(100U * 1024U, 'x') + R"("})";
+    const auto accepted = client->Post("/_internal/agents/groups", padded, "application/json");
+    ASSERT_TRUE(accepted) << "POST /_internal/agents/groups failed: " << httplib::to_string(accepted.error());
+    EXPECT_EQ(accepted->status, 200) << accepted->body;
+
+    EXPECT_EQ(metricValue(*client, "remoted.control.registry.push.rejected") - rejectedBefore, 0.0);
+    EXPECT_EQ(metricValue(*client, "remoted.control.registry.push.skipped") - skippedBefore, 1.0);
+}
+
+TEST_F(AdminServerTest, GetTlsDescribesTheListenerAndTheCaBundle)
+{
+    startModule(/*enrollUsePassword=*/false, /*enrollmentEnabled=*/true, /*serveOwnCertificateAsCa=*/true);
+
+    const auto client = makeAdminClient();
+    const auto response = client->Get("/tls");
+    ASSERT_TRUE(response) << "GET /tls failed: " << httplib::to_string(response.error());
+    EXPECT_EQ(response->status, 200);
+    EXPECT_EQ(response->get_header_value("Content-Type"), "application/json");
+
+    const auto document = nlohmann::json::parse(response->body);
+    const auto& listener = document.at("listener");
+    EXPECT_EQ(listener.at("subject"), "CN=localhost");
+    EXPECT_TRUE(listener.at("sans").is_array());
+    EXPECT_EQ(listener.at("fingerprint").get<std::string>().rfind("x509-sha256:", 0), 0U);
+    EXPECT_EQ(listener.at("fingerprint").get<std::string>().size(), 12U + 64U);
+    EXPECT_FALSE(listener.at("path").get<std::string>().empty());
+    // One clock for the whole document: evaluated now, loaded at (or before) now, expiring later.
+    const auto now = document.at("evaluated_at_ts").get<std::int64_t>();
+    EXPECT_LE(listener.at("loaded_at_ts").get<std::int64_t>(), now);
+    EXPECT_EQ(listener.at("seconds_until_expiry").get<std::int64_t>(),
+              listener.at("not_after_ts").get<std::int64_t>() - now);
+    EXPECT_GT(listener.at("seconds_until_expiry").get<std::int64_t>(), 0);
+
+    const auto& bundle = document.at("ca_bundle");
+    EXPECT_EQ(bundle.at("path"), caPath());
+    EXPECT_EQ(bundle.at("certificates_count"), 1);
+    EXPECT_EQ(bundle.at("certificates_limit"), 6);
+    EXPECT_EQ(bundle.at("serialized_bytes_limit"), 8191);
+    EXPECT_GT(bundle.at("serialized_bytes").get<std::size_t>(), 0U);
+    EXPECT_EQ(bundle.at("content_sha256").get<std::string>().size(), 64U);
+    EXPECT_EQ(bundle.at("chain_valid"), true); // openssl req -x509 stamps CA:TRUE: its own valid anchor
+    EXPECT_FALSE(bundle.contains("last_read_failure"));
+    ASSERT_EQ(bundle.at("certificates").size(), 1U);
+    EXPECT_EQ(bundle.at("certificates")[0].at("signs_active_leaf"), true);
+    EXPECT_EQ(bundle.at("certificates")[0].at("fingerprint"), listener.at("fingerprint")); // self-signed
+    EXPECT_EQ(response->body.find("\"warning\""), std::string::npos);
+    EXPECT_EQ(response->body.find("\"critical\""), std::string::npos);
+}
+
+// The freshness contract, end to end: the CA half changes with the file between two requests --
+// no restart, no monitor tick -- and a bundle that goes missing keeps its last good description
+// with `last_read_failure` counting the failed reads; the leaf half never moves.
+TEST_F(AdminServerTest, GetTlsFollowsTheCaBundleWithoutARestart)
+{
+    startModule(/*enrollUsePassword=*/false, /*enrollmentEnabled=*/true, /*serveOwnCertificateAsCa=*/true);
+    const auto client = makeAdminClient();
+
+    const auto first = nlohmann::json::parse(client->Get("/tls")->body);
+    ASSERT_EQ(first.at("ca_bundle").at("certificates_count"), 1);
+
+    // A second, unrelated CA appended to the bundle.
+    const auto other = remoted::test::generateTestCertificate("rmt_admin_tls_other");
+    ASSERT_TRUE(other.has_value());
+    remoted::test::ScratchFileCleanup otherCleanup {{other->certPath, other->keyPath}};
+    replaceCaBundle(contentsOf(caPath()) + contentsOf(other->certPath));
+
+    const auto second = nlohmann::json::parse(client->Get("/tls")->body);
+    ASSERT_EQ(second.at("ca_bundle").at("certificates_count"), 2);
+    EXPECT_EQ(second.at("ca_bundle").at("certificates")[0].at("signs_active_leaf"), true);
+    EXPECT_EQ(second.at("ca_bundle").at("certificates")[1].at("signs_active_leaf"), false);
+    EXPECT_NE(second.at("ca_bundle").at("content_sha256"), first.at("ca_bundle").at("content_sha256"));
+    EXPECT_EQ(second.at("listener").at("fingerprint"), first.at("listener").at("fingerprint"));
+    EXPECT_EQ(second.at("listener").at("loaded_at_ts"), first.at("listener").at("loaded_at_ts"));
+
+    // The bundle moved away (an operator mid-rotation): last good read, plus the cause, counted.
+    ASSERT_EQ(std::rename(caPath().c_str(), (caPath() + ".away").c_str()), 0);
+    const auto third = nlohmann::json::parse(client->Get("/tls")->body);
+    EXPECT_EQ(third.at("ca_bundle").at("certificates_count"), 2);
+    ASSERT_TRUE(third.at("ca_bundle").contains("last_read_failure"));
+    EXPECT_EQ(third.at("ca_bundle").at("last_read_failure").at("consecutive"), 1);
+    EXPECT_EQ(third.at("ca_bundle").at("last_read_failure").at("errno"), ENOENT);
+    EXPECT_NE(third.at("ca_bundle").at("last_read_failure").at("cause").get<std::string>().find("cannot be opened"),
+              std::string::npos);
+    const auto fourth = nlohmann::json::parse(client->Get("/tls")->body);
+    EXPECT_EQ(fourth.at("ca_bundle").at("last_read_failure").at("consecutive"), 2);
+
+    // Restored: the failure is gone, the same bytes are a cache hit.
+    ASSERT_EQ(std::rename((caPath() + ".away").c_str(), caPath().c_str()), 0);
+    const auto fifth = nlohmann::json::parse(client->Get("/tls")->body);
+    EXPECT_FALSE(fifth.at("ca_bundle").contains("last_read_failure"));
+    EXPECT_EQ(fifth.at("ca_bundle").at("certificates_count"), 2);
+}
+
+// No readable bundle at all (the default path never existed here): the listener is still described,
+// and the CA half says why it is empty instead of reading as "nothing to worry about".
+TEST_F(AdminServerTest, GetTlsWithoutAReadableCaStillDescribesTheListener)
+{
+    if (hostHasManagerConfDir())
+    {
+        GTEST_SKIP() << "this host has a real " << kManagerConfDir << ", where the default CA bundle may exist";
+    }
+    startModule();
+
+    const auto client = makeAdminClient();
+    const auto response = client->Get("/tls");
+    ASSERT_TRUE(response) << "GET /tls failed: " << httplib::to_string(response.error());
+    EXPECT_EQ(response->status, 200);
+
+    const auto document = nlohmann::json::parse(response->body);
+    EXPECT_TRUE(document.contains("listener"));
+    const auto& bundle = document.at("ca_bundle");
+    EXPECT_EQ(bundle.at("path"), "/etc/wazuh-manager/certs/root-ca.pem"); // the module default
+    EXPECT_EQ(bundle.at("certificates_count"), 0);
+    EXPECT_TRUE(bundle.at("chain_valid").is_null());
+    ASSERT_TRUE(bundle.contains("last_read_failure"));
+    EXPECT_EQ(bundle.at("last_read_failure").at("errno"), ENOENT);
 }
 
 // GET /status reports client.keys (informational, under "readable") and, when Password-mode
 // enrollment is enabled, enrollment password readiness (the SOLE gate on top-level "ready"),
 // read directly from Keystore/PasswordKeySource's resident state -- no I/O in the handler
-// itself. The module starts with an empty (but successfully loaded) client.keys, so
-// keystore.readable is true with agents_loaded:0 -- the exact case lastLoadOk() exists to get
-// right (see keystore_test.cpp's EmptyFileIsALoadedStateNotAFailedOne). No real authd.pass exists
-// on disk in this test, so the enrollment password is unavailable and top-level "ready" must
-// track that alone, regardless of keystore.readable being true.
+// itself. Neither file exists at its fixed default path here, so keystore.readable is false with
+// agents_loaded:0 (the empty-but-loaded case lastLoadOk() exists to get right is pinned by
+// keystore_test.cpp's EmptyFileIsALoadedStateNotAFailedOne), the enrollment password is
+// unavailable, and top-level "ready" must track the password alone.
 TEST_F(AdminServerTest, GetStatusReportsKeystoreAndPasswordReadiness)
 {
+    if (hostHasManagerConfDir())
+    {
+        GTEST_SKIP() << "this host has a real " << kManagerConfDir << ", where client.keys/authd.pass may exist";
+    }
     startModule(/*enrollUsePassword=*/true);
 
     const auto client = makeAdminClient();
@@ -343,10 +646,10 @@ TEST_F(AdminServerTest, GetStatusReportsKeystoreAndPasswordReadiness)
     EXPECT_NE(response->body.find("\"agents_loaded\""), std::string::npos) << response->body;
     // Password-mode enabled: the key is unreachable in this test (no real authd.pass on disk), so
     // enrollment_password.ready is false and top-level ready must be false too -- it is the sole
-    // gate, never re-coupled to keystore.readable (which is true here).
+    // gate, never coupled to keystore.readable.
     EXPECT_NE(response->body.find(R"({"ready":false,"enrollment_password":{"ready":false})"), std::string::npos)
         << response->body;
-    EXPECT_NE(response->body.find(R"("keystore":{"readable":true)"), std::string::npos) << response->body;
+    EXPECT_NE(response->body.find(R"("keystore":{"readable":false)"), std::string::npos) << response->body;
     EXPECT_NE(response->body.find(R"("agents_loaded":0)"), std::string::npos) << response->body;
 }
 
@@ -365,7 +668,7 @@ TEST_F(AdminServerTest, GetStatusOmitsEnrollmentPasswordWhenPasswordModeDisabled
 
 // Regression test: a healthy, supported config (enrollment administratively disabled, but
 // <use_password> left at its installer default of "yes") must not construct a PasswordKeySource
-// that waits forever for an etc/authd.pass nothing will ever create -- "ready" must converge
+// that waits forever for an authd.pass nothing will ever create -- "ready" must converge
 // immediately, with `enrollment_password` omitted entirely, the same as the Password-mode-off
 // case above.
 TEST_F(AdminServerTest, GetStatusOmitsEnrollmentPasswordWhenEnrollmentDisabled)
@@ -386,11 +689,12 @@ TEST_F(AdminServerTest, GetStatusOmitsEnrollmentPasswordWhenEnrollmentDisabled)
 // enrollment_password is absent entirely.
 TEST_F(AdminServerTest, GetStatusKeystoreFailureDoesNotAffectReadyWhenPasswordModeDisabled)
 {
-    // Remove the client.keys SetUp() created so the module's initial Keystore load fails
+    // No client.keys at its fixed default path, so the module's initial Keystore load fails
     // (missing file -> Keystore::kReloadUnreadable -> lastLoadOk() == false).
-    std::error_code ec;
-    std::filesystem::remove("etc/client.keys", ec);
-
+    if (hostHasManagerConfDir())
+    {
+        GTEST_SKIP() << "this host has a real " << kManagerConfDir << ", where client.keys may exist";
+    }
     startModule(/*enrollUsePassword=*/false);
 
     const auto client = makeAdminClient();
@@ -400,6 +704,10 @@ TEST_F(AdminServerTest, GetStatusKeystoreFailureDoesNotAffectReadyWhenPasswordMo
     EXPECT_NE(response->body.find(R"({"ready":true,"keystore":{"readable":false)"), std::string::npos)
         << response->body;
     EXPECT_EQ(response->body.find("enrollment_password"), std::string::npos) << response->body;
+    // Enrollment is enabled, so the token store replica reports too -- informational (an empty
+    // replica is the normal state of a manager that minted no token), never folded into `ready`.
+    EXPECT_NE(response->body.find(R"("enrollment_tokens":{"loaded":0,"last_reload_ok":true})"), std::string::npos)
+        << response->body;
 }
 
 // The owner's policy on a failed admin bind: WARN and CONTINUE. A regular file squatting the
@@ -452,5 +760,5 @@ TEST_F(AdminServerTest, StopUnlinksTheSocketAndARestartBringsItBack)
     const auto capacityAt = response->body.find("remoted.forwarder.deferred.capacity");
     ASSERT_NE(capacityAt, std::string::npos) << response->body;
     const auto capacityEntry = response->body.substr(capacityAt, 200);
-    EXPECT_NE(capacityEntry.find("\"value\":256"), std::string::npos) << capacityEntry;
+    EXPECT_NE(capacityEntry.find("\"value\":128"), std::string::npos) << capacityEntry;
 }

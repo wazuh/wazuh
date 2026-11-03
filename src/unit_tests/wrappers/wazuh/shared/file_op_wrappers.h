@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -51,6 +51,11 @@ void expect_wfopen(const char * __filename, const char * __modes, FILE *ret);
 
 FILE *__wrap_w_fopen_nofollow(const char * basedir, const char * filename, const char * mode);
 void expect_w_fopen_nofollow(const char * basedir, const char * filename, const char * mode, FILE *ret);
+FILE *__wrap_w_fopen_vetted_follow(const char * path, const char * mode);
+void expect_w_fopen_vetted_follow(const char * path, const char * mode, FILE *ret);
+
+FILE *__wrap_w_fopen_regular(const char * pathname, const char * mode);
+void expect_w_fopen_regular(const char * pathname, const char * mode, FILE *ret);
 
 #ifdef WIN32
 FILE *__wrap_w_fopen_r(const char * file, const char * mode, BY_HANDLE_FILE_INFORMATION * lpFileInformation);

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _GEO_IDOWNLOADER_HPP
 #define _GEO_IDOWNLOADER_HPP
 
@@ -30,8 +31,7 @@ public:
      * @param outputPath Path where to write the extracted .mmdb file.
      * @return base::OptError An error if extraction failed.
      */
-    virtual base::OptError extractMmdbFromGz(const std::string& gzContent,
-                                                const std::string& outputPath) const = 0;
+    virtual base::OptError extractMmdbFromGz(const std::string& gzContent, const std::string& outputPath) const = 0;
 };
 } // namespace geo
 

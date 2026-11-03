@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef BUILDER2_IBUILDER_HPP
 #define BUILDER2_IBUILDER_HPP
 
@@ -27,9 +28,7 @@ public:
      * @param isTestMode Whether to build the policy in test mode.
      * @return std::shared_ptr<IPolicy> The built policy.
      */
-    virtual std::shared_ptr<IPolicy>
-    buildPolicy(const cm::store::NamespaceId& namespaceId, bool isTestMode) const = 0;
-
+    virtual std::shared_ptr<IPolicy> buildPolicy(const cm::store::NamespaceId& namespaceId, bool isTestMode) const = 0;
 };
 
 } // namespace builder

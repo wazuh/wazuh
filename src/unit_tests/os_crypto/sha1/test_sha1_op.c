@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -16,6 +16,7 @@
 #include "sha1_op.h"
 #include "../../wrappers/libc/stdio_wrappers.h"
 #include "../../wrappers/common.h"
+#include "../../wrappers/wazuh/shared/file_op_wrappers.h"
 
 int OS_SHA1_File_Nbytes(const char *fname, EVP_MD_CTX **c, os_sha1 output, int mode, int64_t nbytes);
 
@@ -61,9 +62,7 @@ void OS_SHA1_File_Nbytes_unable_open_file (void **state)
     expect_string(__wrap_w_fopen_r, mode, "rb");
     will_return(__wrap_w_fopen_r, NULL);
 #else
-    expect_value(__wrap_wfopen, path, path);
-    expect_string(__wrap_wfopen, mode, "rb");
-    will_return(__wrap_wfopen, NULL);
+    expect_w_fopen_vetted_follow(path, "rb", (FILE *) NULL);
 #endif
 
     assert_int_equal(OS_SHA1_File_Nbytes(path, &context, output, mode, nbytes), -1);
@@ -85,9 +84,7 @@ void OS_SHA1_File_Nbytes_ok (void **state)
     expect_string(__wrap_w_fopen_r, mode, "rb");
     will_return(__wrap_w_fopen_r, 1);
 #else
-    expect_value(__wrap_wfopen, path, path);
-    expect_string(__wrap_wfopen, mode, "rb");
-    will_return(__wrap_wfopen, 1);
+    expect_w_fopen_vetted_follow(path, "rb", (FILE *) 1);
 #endif
 
     will_return(__wrap_fread, "test");
@@ -118,9 +115,7 @@ void OS_SHA1_File_Nbytes_num_bytes_exceded (void **state)
     expect_string(__wrap_w_fopen_r, mode, "rb");
     will_return(__wrap_w_fopen_r, 1);
 #else
-    expect_value(__wrap_wfopen, path, path);
-    expect_string(__wrap_wfopen, mode, "rb");
-    will_return(__wrap_wfopen, 1);
+    expect_w_fopen_vetted_follow(path, "rb", (FILE *) 1);
 #endif
 
     will_return(__wrap_fread, "test");
@@ -158,6 +153,39 @@ void OS_SHA1_Stream_buf_null (void **state)
     EVP_DigestInit(context, EVP_sha1());
 
     OS_SHA1_Stream(context, output, buf);
+    EVP_MD_CTX_free(context);
+}
+
+/* OS_SHA1_Stream_Bytes */
+
+void OS_SHA1_Stream_Bytes_hashes_after_nul (void **state)
+{
+    const char buf[] = { 'a', 'b', '\0', 'c', 'd' };
+    os_sha1 output;
+    EVP_MD_CTX *context = EVP_MD_CTX_new();
+
+    EVP_DigestInit(context, EVP_sha1());
+
+    OS_SHA1_Stream_Bytes(context, buf, sizeof(buf));
+    OS_SHA1_Stream(context, output, NULL);
+
+    /* SHA1 of the 5 bytes "ab\0cd", not of the string "ab" */
+    assert_string_equal(output, "cf76bf81edbf067731a98c6b7d2eb28824d38027");
+    EVP_MD_CTX_free(context);
+}
+
+void OS_SHA1_Stream_Bytes_buf_null (void **state)
+{
+    os_sha1 output;
+    EVP_MD_CTX *context = EVP_MD_CTX_new();
+
+    EVP_DigestInit(context, EVP_sha1());
+
+    OS_SHA1_Stream_Bytes(context, NULL, 5);
+    OS_SHA1_Stream(context, output, NULL);
+
+    /* SHA1 of no data */
+    assert_string_equal(output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     EVP_MD_CTX_free(context);
 }
 
@@ -231,6 +259,9 @@ int main(void) {
         // Tests OS_SHA1_Stream
         cmocka_unit_test(OS_SHA1_Stream_ok),
         cmocka_unit_test(OS_SHA1_Stream_buf_null),
+        // Tests OS_SHA1_Stream_Bytes
+        cmocka_unit_test(OS_SHA1_Stream_Bytes_hashes_after_nul),
+        cmocka_unit_test(OS_SHA1_Stream_Bytes_buf_null),
         // Tests OS_SHA1_File
         cmocka_unit_test(test_sha1_string),
         cmocka_unit_test(test_sha1_string2),

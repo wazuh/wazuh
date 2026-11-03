@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # wazuh-control        This shell script takes care of starting
 #                      or stopping Wazuh
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
@@ -21,6 +21,13 @@ DAEMONS="wazuh-modulesd wazuh-logcollector wazuh-syscheckd wazuh-agentd wazuh-ex
 
 # Reverse order of daemons
 SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
+
+# glibc >= 2.43 backs every aarch64 malloc arena with 2 MiB huge pages. Kept if already set:
+# operator choice, or a reload launched by a daemon that inherited it.
+case ":${GLIBC_TUNABLES}:" in
+    *:glibc.malloc.hugetlb=*) ;;
+    *) GLIBC_TUNABLES="glibc.malloc.hugetlb=0${GLIBC_TUNABLES:+:$GLIBC_TUNABLES}"; export GLIBC_TUNABLES ;;
+esac
 
 ## Locking for the start/stop
 LOCK="${DIR}/var/start-script-lock"
@@ -317,6 +324,10 @@ stop_service()
         fi
 
         rm -f ${DIR}/var/run/${i}-*.pid
+        if [ "$i" = "wazuh-agentd" ]; then
+            # Fixed-path PID file, written only for wazuh-agent.service's PIDFile=.
+            rm -f ${DIR}/var/run/wazuh-agentd.pid
+        fi
     done
 
     echo "Wazuh $VERSION Stopped"

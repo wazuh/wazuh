@@ -18,8 +18,8 @@ Defined in `base/expression.hpp`. It is a tree of nodes (`base::Expression = std
 | **And** | `base::And` | Executes its operands sequentially. If any operand fails (returns `false`), execution stops and returns `false` (short-circuit). |
 | **Or** | `base::Or` | Executes its operands sequentially while they fail. If any operand succeeds (returns `true`), execution stops and returns `true` (short-circuit). |
 | **Chain** | `base::Chain` | Executes all its operands sequentially **regardless of each one's result**. Always returns `true`. |
-| **Implication** | `base::Implication` | Has exactly 2 operands: `condition` and `consequence`. If the condition is `true`, the consequence is executed. If the condition is `false`, the consequence is not executed and `false` is returned. |
-| **Broadcast** | `base::Broadcast` | Executes all its operands (potentially in parallel), replicating the event to each one. Always returns `true`. |
+| **Implication** | `base::Implication` | Has exactly 2 operands: `condition` and `consequence`. If the condition is `true`, the consequence is executed and `true` is returned whatever the consequence's result. If the condition is `false`, the consequence is not executed and `false` is returned. |
+| **Broadcast** | `base::Broadcast` | Executes all its operands on the same event regardless of each one's result. Always returns `true`. `bk::rx` runs them in operand order, exactly like Chain; `bk::taskf` forks them as independent branches of the DAG, so their order is not guaranteed (its executor has a single worker, so they never run concurrently). |
 
 ### Event
 
@@ -43,16 +43,17 @@ The atomic processing function. It receives an event, processes it, and returns 
 ### Controller
 
 The central piece of the `bk` module. A `Controller`:
-1. Receives an `Expression` in its constructor
+1. Receives an `Expression`, a set of traceable node names and an optional end callback in its constructor
 2. Internally converts it into an execution graph (observable pipeline or task DAG)
-3. Exposes the `ingest(Event)` / `ingestGet(Event)` methods to process events
-4. Supports tracing: allows subscribing to specific tree nodes to observe their results
+3. Exposes the `ingest(Event)` / `ingestGet(Event)` methods to process events; both block until the event has gone through the whole graph and neither is thread-safe (`interface/bk/icontroller.hpp`)
+4. Invokes the end callback, when one was given, once per processed event
+5. Supports tracing: allows subscribing to specific tree nodes to observe their results
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      Consumer (Router)                      │
+│          Consumer (router::EnvironmentBuilder)              │
 │  Builds the Expression with the Builder and passes it to bk │
 └────────────────────────┬────────────────────────────────────┘
                          │ Expression + traceables
@@ -85,6 +86,10 @@ Both implementations:
 - Produce the same result for a given event
 - Support the same tracing system
 - Fulfill the `IController` interface
+
+Only `bk::rx` is used by the engine: `main.cpp` hands the orchestrator a `bk::rx::ControllerMaker`, and the
+`wazuh-engine` target links `bk::rx` while its `bk::taskf` line is commented out
+(`src/engine/CMakeLists.txt`). Only the component tests (`bk_ctest`) link `bk::taskf`.
 
 ## Directory Structure
 
@@ -127,14 +132,14 @@ Main backend contract. Defined in `interface/bk/icontroller.hpp`.
 
 ```cpp
 class IController {
-    // Process an event (fire-and-forget)
+    // Process an event, discarding the result (blocking, not thread-safe)
     virtual void ingest(base::Event&& event) = 0;
 
-    // Process an event and return the result
+    // Process an event and return the result (blocking, not thread-safe)
     virtual base::Event ingestGet(base::Event&& event) = 0;
 
     // Check whether the backend is available
-    virtual bool isAviable() const = 0;
+    virtual bool isAvailable() const = 0;
 
     // Start / stop the backend
     virtual void start() = 0;
@@ -148,8 +153,8 @@ class IController {
     virtual const std::unordered_set<std::string>& getTraceables() const = 0;
 
     // Subscribe to a traceable node (receive its trace and result)
-    virtual RespOrError<Subscription> subscribe(const std::string& traceable,
-                                                 const Subscriber& subscriber) = 0;
+    virtual base::RespOrError<Subscription> subscribe(const std::string& traceable,
+                                                       const Subscriber& subscriber) = 0;
 
     // Unsubscribe
     virtual void unsubscribe(const std::string& traceable, Subscription subscription) = 0;
@@ -157,9 +162,22 @@ class IController {
 };
 ```
 
+How the two implementations fill the contract:
+
+| Method | `bk::rx::Controller` | `bk::taskf::Controller` |
+|---|---|---|
+| `ingest` / `ingestGet` | Pushes the event into the RxCpp subject; once `stop()` has completed the subject, `ingest` drops the event and `ingestGet` returns it unprocessed | Stores the event in `m_event` and runs the Taskflow graph, waiting for it |
+| `isAvailable` | Always `true` | Always `true` |
+| `start` | No-op | No-op |
+| `stop` | Completes the subject (also called by the destructor); the controller processes nothing afterwards | No-op |
+| `printGraph` | Returns the placeholder string `"TODO"` | `tf::Taskflow::dump()` (DOT) |
+| `subscribe` | `base::Error{"Traceable not found"}` for a name with no tracer | Same |
+| `unsubscribe` | Unknown traceable or subscription is ignored | Same |
+
 ### `IControllerMaker`
 
-Factory that creates `IController` instances:
+Factory that creates `IController` instances; `bk::rx::ControllerMaker` and `bk::taskf::ControllerMaker` construct
+the matching `Controller`:
 
 ```cpp
 class IControllerMaker {
@@ -167,6 +185,10 @@ class IControllerMaker {
         const base::Expression& expression,
         const std::unordered_set<std::string>& traceables,
         const std::function<void()>& endCallback) = 0;
+
+    // Non-virtual convenience overload: create(expression, traceables, nullptr)
+    std::shared_ptr<IController> create(const base::Expression& expression,
+                                        const std::unordered_set<std::string>& traceables);
 };
 ```
 
@@ -198,6 +220,9 @@ Controller::Controller(expression, traceables, endCallback)
     └── Result: execution graph ready to process events
 ```
 
+A null node throws `std::runtime_error("Expression is null")`, and an unknown node type
+`"Unsupported operation type"` / `"Unsupported expression type"`, from the constructor.
+
 ### 2. Event Processing
 
 ```
@@ -219,23 +244,33 @@ The tracing system allows observing the execution of specific tree nodes:
 
 ```
 1. When constructing the Controller, a set of "traceables" (node names) is provided
-2. The ExprBuilder creates a Tracer for each traceable node
+2. The ExprBuilder creates a Tracer for each node whose name is in that set
 3. An external consumer calls controller.subscribe("node_name", callback)
-4. When the event passes through that node, the callback is invoked with (trace_message, success/failure)
-5. Useful for debugging, logging, and rule testing
+4. Only Term nodes publish: every Term built beneath a traceable node invokes that node's subscribers
+   with (trace_message, success/failure) after it runs
+5. The router passes the policy's asset names as traceables; the tester uses them to report
+   per-asset traces
 ```
+
+The publisher is carried in the builders' shared `BuildParams`: a traceable node replaces it for its own subtree,
+and the previous one is restored when the builder leaves that node, so the sibling nodes built after a traceable
+subtree keep publishing to their own ancestor's tracer (`src/rx/exprBuilder.hpp`, `src/taskf/exprBuilder.hpp`).
 
 ## Implementation: RxCpp (`bk::rx`)
 
 The RxCpp implementation builds a pipeline of chained **observables**:
 
-- **Term**: `input.map(fn)` — transforms the event with the `EngineOp`
+- **Term**: `input.map(fn)` — transforms the event with the `EngineOp`. An exception thrown by the operation is
+  caught: it logs a warning (`[BK::pipeline] Unexpected error processing term: …`) and turns the result into a
+  failure with the trace `[<name>] -> Failure: operation throw exception.`
 - **And**: `input.publish().ref_count()` → chains operands with `.filter(success)` between them
 - **Or**: `input.publish().ref_count()` → chains operands with `.filter(failure)` between them
-- **Chain/Broadcast**: `input.publish().ref_count()` → executes all operands, ignores individual results
-- **Implication**: `input.publish().ref_count()` → condition `.filter(success)` → consequence
+- **Chain/Broadcast**: `input.publish().ref_count()` → chains all operands in order, then maps the result status to `true`
+- **Implication**: `input.publish().ref_count()` → condition `.filter(success)` → consequence; the result status is set to the condition's
 
-The event circulates wrapped in `RxEvent = shared_ptr<Result<Event>>` to maintain a shared reference across pipeline branches.
+The event circulates wrapped in `RxEvent = shared_ptr<Result<Event>>` to maintain a shared reference across pipeline
+branches. The rx controller does not keep the source `Expression` alive once built (pinned by
+`RxControllerTest.DoesNotRetainSourceExpression`).
 
 ## Implementation: Taskflow (`bk::taskf`)
 
@@ -254,28 +289,36 @@ Each node type is modeled with an `ITask` class that exposes:
 | Broadcast | `TaskBroadcast` | Forks input to all steps, converges at output. |
 | Implication | `TaskImplication` | Condition → [success] → consequence; [failure] → direct output. |
 
-The event is a `base::Event` stored as a `Controller` member (`m_event`), shared across all tasks via a `void*` pointer.
+The event is a `base::Event` stored as a `Controller` member (`m_event`), shared across all tasks via a `void*`
+pointer. The graph runs on a `tf::Executor` with a single worker, and ends in an `output` task that runs the end
+callback when one was given. As in `bk::rx`, an exception thrown by a Term's operation is caught, logged as a
+warning and turned into a failure with the trace `[<name>] -> Failure: operation throw exception.`
 
 ## Usage from the Router
 
 The `router` module is the primary consumer of `bk`. The typical flow is:
 
 ```cpp
-// 1. The Router has an EnvironmentBuilder with an IControllerMaker
-//    (can be bk::rx::ControllerMaker or bk::taskf::ControllerMaker)
+// 1. The router's EnvironmentBuilder holds an IControllerMaker
+//    (main.cpp passes a bk::rx::ControllerMaker through router::Orchestrator::Options)
 
 // 2. The Builder constructs an Expression from a policy
-auto policy = builder->buildPolicy(namespaceId);
+auto policy = builder->buildPolicy(namespaceId, isTestMode);
 
 // 3. The Controller is created with the Expression and asset names as traceables
-auto controller = controllerMaker->create(policy->expression(), assetNames);
+auto controller = m_controllerMaker->create(policy->expression(), assetNames);
 
 // 4. The Controller is injected into an Environment
 auto env = std::make_unique<Environment>(std::move(controller), std::move(hash));
 
-// 5. For each incoming event, the Router ingests it into the Environment
-auto result = env->ingestGet(std::move(event));
+// 5a. Production: Router::ingest feeds each enabled environment, discarding the result
+env->ingest(std::move(event));
+
+// 5b. Test sessions (router/src/tester.cpp): the processed event is returned
+result->event() = entry.controller()->ingestGet(std::move(event));
 ```
+
+Source: `router/src/environmentBuilder.hpp` (`makeController`), `router/src/router.cpp`, `router/src/tester.cpp`.
 
 ## CMake Targets
 
@@ -286,6 +329,8 @@ auto result = env->ingestGet(std::move(event));
 | `bk_rx` | `bk::rx` | STATIC | RxCpp implementation. Depends on `RxCpp::RxCpp` and `bk::ibk`. |
 | `bk_mocks` | `bk::mocks` | INTERFACE | GMock mocks for external testing. Depends on `GTest::gmock` and `bk::ibk`. |
 | `bk_ctest` | — | EXECUTABLE | Component tests (links both backends). |
+
+`bk_mocks` and `bk_ctest` exist only when `ENGINE_BUILD_TEST` is on.
 
 ## Operation Semantics (Truth Tables)
 
@@ -311,33 +356,42 @@ auto result = env->ingestGet(std::move(event));
 
 ### Broadcast
 ```
-[T, F, T, F] → executes all (order not guaranteed) → true
+[T, F, T, F] → executes all (rx: in order; taskf: order not guaranteed) → true
 ```
 
 ### Implication
 ```
 cond=T, imp=T → executes both → true  (result = condition result)
-cond=T, imp=F → executes both → true  (result = condition result)
+cond=T, imp=F → executes both → true  (result = condition result, not the consequence's)
 cond=F, imp=* → executes condition only → false  (consequence is NOT executed)
 ```
 
 ## Testing
 
-Tests are located in `test/src/component/bk_test.cpp`. They are parameterized tests that **verify both implementations** (rx and taskf) with the same expressions and expected results.
+Tests are located in `test/src/component/bk_test.cpp`:
+
+- `BK/PipelineTest` — parameterized tests that **verify both implementations** (rx and taskf) with the same
+  expressions and expected results (`TfProcessEvent`, `RxProcessEvent`). Its `TfProcessTraces` and
+  `RxProcessTraces` cases are `GTEST_SKIP()` placeholders.
+- `BKTraceTest` — subscribe, unknown traceable, multiple subscribers and unsubscribe, on both backends; plus two
+  rx-only cases pinning that Chain forces success and runs the operand after a failed one.
+- `RxControllerTest.DoesNotRetainSourceExpression`.
 
 ### Test Structure
 
 1. An `Expression` is built using helpers (`build::term`, `And::create`, etc.)
-2. The `getTestExpression()` function replaces null `EngineOp`s with test functions that write their name and result into the event JSON
+2. The `getTestExpression()` function (`bk_test.hpp`) replaces every Term's `EngineOp` with a test function: a Term named `<NAME>:SUCCESS|FAILURE` writes that boolean into the event at a path built from its ancestors' names and returns success or failure accordingly
 3. A `Controller` is created with the expression
 4. An empty event is ingested
 5. The resulting event is verified to contain exactly the expected fields, in the correct order
 
 ### Running Tests
 
+Built only with engine tests enabled (`make -C src TARGET=manager ENGINE_TEST=y`):
+
 ```bash
-# From the engine build directory:
-./bk_ctest
+src/build/engine/source/bk/bk_ctest
+ctest --test-dir src/build/engine -R 'PipelineTest|BKTraceTest|RxControllerTest'
 ```
 
 Test coverage includes:
@@ -348,7 +402,7 @@ Test coverage includes:
 
 ## Relevant Design Decisions
 
-1. **Dual implementation**: Allows comparing and choosing between a reactive model (RxCpp) and a task-graph-based model (Taskflow). Tests validate that both produce identical results.
+1. **Dual implementation**: Allows comparing and choosing between a reactive model (RxCpp) and a task-graph-based model (Taskflow). Tests validate that both produce identical results. The engine currently ships the RxCpp backend only (see [Architecture](#architecture)).
 
 2. **Expression as description, not execution**: The `Expression` is an immutable tree that describes *what* to do. The `bk` module decides *how* to execute it. This decouples rule definition logic from the execution strategy.
 

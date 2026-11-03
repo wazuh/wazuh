@@ -1,12 +1,13 @@
 /*
  * Wazuh - Indexer connector transport settings.
- * Copyright (C) 2015, Wazuh Inc.
- * July 30, 2026.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #ifndef _INDEXER_TRANSPORT_HPP
@@ -32,10 +33,11 @@
  * @param config The `<indexer>` configuration block. Only `ssl.certificate_authorities`,
  *               `ssl.certificate` and `ssl.key` are read; `hosts` is NOT validated here (callers
  *               check it first, since it is the cheaper check).
- * @param logFn Logger used for the "no credentials in the keystore" warnings.
+ * @param logFn Logger for the debug line naming the account the manager authenticates as.
  * @return Transport settings ready to hand to a server selector or an HTTP request.
  *
- * @throw IndexerConnectorException if a single configured CA file does not exist on disk.
+ * @throw IndexerConnectorException if a single configured CA file does not exist on disk, or if the
+ *        keystore holds no indexer username or password (there is no built-in fallback).
  * @throw std::runtime_error from Utils::CertHelper if merging several CA files fails.
  */
 SecureCommunication buildSecureCommunication(const nlohmann::json& config, const LogFn& logFn);

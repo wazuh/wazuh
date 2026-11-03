@@ -48,7 +48,7 @@ auto& factory = SchemaValidator::SchemaValidatorFactory::getInstance();
 
 if (factory.initialize())
 {
-    m_logFunction(LOG_INFO, "Schema validator initialized");
+    m_logFunction(LOG_DEBUG, "Schema validator initialized successfully from embedded resources");
 }
 else
 {
@@ -139,7 +139,7 @@ virtual ValidationResult validate(const std::string& message) = 0;
 
 **Example:**
 ```cpp
-std::string json = R"({"agent": {"id": "001"}})";
+std::string json = R"({"wazuh": {"agent": {"id": "001"}}})";
 auto result = validator->validate(json);
 
 if (result.isValid)
@@ -172,7 +172,7 @@ virtual ValidationResult validate(const nlohmann::json& message) = 0;
 
 **Example:**
 ```cpp
-nlohmann::json json = {{"agent", {{"id", "001"}}}};
+nlohmann::json json = {{"wazuh", {{"agent", {{"id", "001"}}}}}};
 auto result = validator->validate(json);
 ```
 
@@ -242,7 +242,7 @@ bool schema_validator_initialize(void);
 ```c
 if (schema_validator_initialize())
 {
-    minfo("Schema validator initialized successfully");
+    mdebug1("Schema validator initialized successfully from embedded resources");
 }
 else
 {
@@ -287,16 +287,18 @@ bool schema_validator_validate(
 ```
 
 **Parameters:**
-- `index` - Index name for schema lookup (e.g., `"wazuh-states-fim-file"`)
+- `index` - Index name for schema lookup, matched exactly (e.g., `"wazuh-states-fim-files"`)
 - `message` - JSON string to validate
-- `errorMessage` - Output parameter for error message (caller must free)
+- `errorMessage` - Output parameter for error message, errors joined by newlines (caller must free)
 
 **Returns:** `true` if validation passed, `false` if validation failed
+
+A `NULL` `index` or `message` returns `false` without touching `errorMessage`, so initialise it to `NULL`; an internal error returns `false` with no error message. If the factory is not initialized, every message passes (`true`). If it is initialized but has no schema for `index`, every message fails with `No schema validator found for index`; the C++ `getValidator()` returns `nullptr` instead and leaves the decision to the caller.
 
 **Example:**
 ```c
 char* errorMessage = NULL;
-const char* index = "wazuh-states-fim-file";
+const char* index = "wazuh-states-fim-files";
 const char* message = "{\"file\":{\"path\":\"/etc/passwd\",\"size\":1024}}";
 
 if (!schema_validator_validate(index, message, &errorMessage))
@@ -340,7 +342,9 @@ bool validateAndQueue(const std::string& data, const std::string& index)
     auto validator = factory.getValidator(index);
     if (!validator)
     {
-        return true; // No validator for this index
+        // No schema for this index: discard, as SCA and Syscollector do
+        m_logFunction(LOG_WARNING, "No schema validator found for index: " + index + ". Discarding message.");
+        return false;
     }
 
     // Validate
@@ -424,43 +428,49 @@ bool validate_and_persist(const char* index, const char* data, void* item_data)
 
 ## Error Messages
 
-Validation errors follow this format:
+Each error is prefixed with the dotted field path; array elements add `[<i>]`, and a message that is not an object at the top level has an empty path (`: Expected object, got array with value: []`):
 
 ```
-Field '<field_path>' expected type '<expected_type>', got '<actual_type>'
-Required field '<field_path>' is missing
-Field '<field_path>' is not defined in schema (strict mode)
+<path>: Expected <string|integer|number|boolean|object|IP address string>, got <json type> with value: <value>
+<path>: Expected date (number or ISO8601 string), got <json type> with value: <value>
+<path>: Invalid date format. Expected ISO8601, got: <value>
+<path>: Invalid IP address format: <value>
+<path>: Field not allowed in strict mode
+JSON parse error: <parser message>
 ```
 
-**Examples:**
+Every field is optional: there is no missing-field error. `null` passes for any field, and in strict mode an undefined field passes if its value is `null`.
+
+**Examples** (`wazuh-states-fim-files`):
 
 ```
-Field 'package.version' expected type 'keyword', got 'object'
-Required field 'package.name' is missing
-Field 'package.unknown_field' is not defined in schema (strict mode)
-Field 'file.size' expected type 'long', got 'string'
+file.size: Expected integer, got string with value: "1024"
+file.unknown_field: Field not allowed in strict mode
+file.mtime: Invalid date format. Expected ISO8601, got: yesterday
+file.size: Expected integer, got number with value: 1.5
+wazuh.agent.host.ip: Invalid IP address format: 999.1.1.1
+file: Expected object, got string with value: "x"
+file.path[1]: Expected string, got number with value: 2
 ```
 
 ---
 
-## Supported Elasticsearch Types
+## Validated Mapping Types
 
-The validator supports all Elasticsearch data types:
+Only these mapping types are checked. An array in a typed field is checked element by element; a field with `properties` must be a single object, and an array there fails with `Expected object, got array`.
 
-| Type | Description | Example |
-|------|-------------|---------|
-| `text` | Full-text searchable string | `"description": "A long text..."` |
-| `keyword` | Exact-value string | `"status": "active"` |
-| `long` | 64-bit signed integer | `"size": 1024` |
-| `integer` | 32-bit signed integer | `"count": 42` |
-| `short` | 16-bit signed integer | `"priority": 5` |
-| `byte` | 8-bit signed integer | `"level": 3` |
-| `double` | 64-bit floating point | `"score": 98.5` |
-| `float` | 32-bit floating point | `"ratio": 0.75` |
-| `boolean` | Boolean value | `"enabled": true` |
-| `date` | Date/timestamp | `"timestamp": "2024-01-13T10:00:00Z"` |
-| `object` | Nested object | `"agent": {"id": "001"}` |
-| `ip` | IPv4/IPv6 address | `"ip": "192.168.1.1"` |
+| Type | Accepts |
+|------|---------|
+| `keyword`, `text`, `match_only_text` | JSON string |
+| `long`, `integer`, `short`, `unsigned_long` | JSON integer: a number written with a decimal point or exponent (`1024.0`, `1e3`) or outside the 64-bit integer range (below `-9223372036854775808` or above `18446744073709551615`) fails; within it the range is not checked |
+| `scaled_float` | Any JSON number |
+| `boolean` | JSON `true`/`false` |
+| `date` | A number (epoch) or a string `YYYY-MM-DD[THH:MM:SS[.fraction][Z\|±HH:MM]]`, with a fraction of 1 to 9 digits; only the digit layout is checked, so `2024-13-45` passes |
+| `ip` | A string holding an IPv4 or IPv6 address |
+| `object` | JSON object |
+| Field with `properties` | JSON object, validated recursively |
+
+Any other type, including `byte`, `float`, `double`, `half_float` and `geo_point`, is not checked: any value passes. `wazuh-states-vulnerabilities` maps `vulnerability.score.base`, `.environmental` and `.temporal` as `float`, so a non-numeric score passes validation and is only rejected by the indexer.
 
 ---
 

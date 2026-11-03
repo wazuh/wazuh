@@ -52,10 +52,10 @@ flowchart LR
     end
     AG -->|"request + token in the Authorization header"| M
     subgraph M["remoted (same key)"]
-      L2["verifies the token<br/>from the headers alone"] --> C{"valid, fresh,<br/>known agent?"}
-      C -->|"yes"| R{"does the target<br/>match a route?"}
-      R -->|"yes"| OK["202 accepted"]
+      R{"does the target<br/>match a route?"} -->|"yes"| L2["verifies the token<br/>from the headers alone"]
       R -->|"no"| NF["404 not found"]
+      L2 --> C{"valid, fresh,<br/>known agent?"}
+      C -->|"yes"| OK["202 accepted"]
       C -->|"no"| KO["401 rejected"]
     end
 ```
@@ -67,8 +67,9 @@ Two consequences drive every rule on this page:
    exist, and **every** request gets `404`. The operational rule is the same as before — forward
    the target and the body untouched — but the failure you will see is a missing route, never a
    credential error.
-2. **Headers are invisible to the token.** A proxy may add `X-Forwarded-For` freely — and, on the
-   flip side, a header the manager relies on is not protected by it.
+2. **Headers are invisible to the token.** A proxy may add `X-Forwarded-For` freely — remoted never
+   reads it (see [4.8](#48-the-manager-sees-the-balancers-address)) — and, on the flip side, a header
+   the manager relies on is not protected by it.
 
 There is one more property with no way around it: **remoted has no plaintext listener.** The
 connection to it is always TLS.
@@ -114,7 +115,7 @@ not a limitation of any product.
 | Agent gets "stuck" to one manager | yes, while its connection lives | no |
 | Can filter / cap request sizes | ❌ | ✅ |
 | Per-request logs and metrics | ❌ | ✅ |
-| Certificates agents must trust | one **per manager** | **one**, the balancer's |
+| Certificate agents validate | every manager's leaf (one CA), each carrying the agent-facing name | **one**, the balancer's |
 | Agent mTLS (client certificates) | ✅ works | ❌ ends at the balancer |
 | Point where traffic is in the clear | none | inside the balancer |
 | AWS equivalent | NLB | ALB |
@@ -142,15 +143,16 @@ flowchart LR
 ```
 
 To publish remoted under a URL path prefix, configure the SAME prefix on both ends instead:
-[`remote.https.global_prefix`](../configuration.md#httpsglobal_prefix) on the manager (freshly
-generated configurations ship `/wazuh-manager/`) and the matching prefix on the agents. The
+[`remote.https.global_prefix`](../configuration.md#httpsglobal_prefix) on the manager (its default,
+`/wazuh-manager/`, applies even when the option is absent) and the matching prefix on the agents. The
 agent then sends `/wazuh-manager/stateless`, and the proxy's only job is to forward that path
 untouched (passthrough). A prefix mismatch between agent and manager surfaces as `404`, not `401`
 — the bearer token does not bind the path, so authentication is never what fails here.
 
 If you cannot align the prefix end to end, give remoted its **own port or hostname**. Query
-strings, extra headers and repeated slashes are fine — they are forwarded unchanged as long as
-the proxy does not rewrite the target. (Percent-encoded spellings of a path also route — the
+strings and extra headers are fine — they are forwarded unchanged as long as the proxy does not
+rewrite the target. Repeated slashes are not: an empty segment (`/wazuh-manager//stateless`) does
+not route and is answered `404`. (Percent-encoded spellings of a path also route — the
 router decodes ordinary bytes for matching — so this changes nothing for a well-behaved client.)
 
 ### 4.2. The backend connection must be TLS 1.3
@@ -174,9 +176,12 @@ equivalent option on an AWS NLB target group.
 
 ### 4.4. Allow the body size remoted allows
 
-remoted accepts up to 20 MB per request. A proxy with a smaller limit answers `413` to events the
-manager would have accepted. NGINX defaults to 1 MB and must be raised; HAProxy has no limit by
-default.
+remoted has two body caps. An authenticated request body over `remoted.auth_max_body_size` (5 MiB
+by default) is answered with a JSON `413`, which the agent acts on. A body over
+`<remote><https><max_body_size>` (10 MiB by default) makes remoted close the connection without an
+answer, which a proxy reports as `502`. Set the proxy's limit at or above `max_body_size` so that
+the manager decides: a proxy with a smaller limit answers `413` to events the manager would have
+accepted. NGINX defaults to 1 MB and must be raised; HAProxy has no limit by default.
 
 ### 4.5. Align the timeouts
 
@@ -186,25 +191,35 @@ Three different clocks are involved:
 flowchart LR
     A["Agent"] -->|"① idle timeout<br/>(idle connection)"| N["balancer"]
     N -->|"② wait for the manager's answer"| R["remoted"]
-    R -->|"③ internal budget, 30 s"| E["engine"]
+    R -->|"③ request budget, 30 s"| E["engine"]
 ```
 
 * **①** Balancers close idle connections (60 s on an AWS ALB). Agents keep connections open between
   events, so this will happen. The failure is clean and immediate at transport level, nothing was
   consumed, and the agent simply reconnects and resends.
-* **②** Must be **at least 30 s**, remoted's own per-request budget. A shorter value cuts off
-  requests that were still legitimately in progress — and, if the proxy then retries them on
-  another manager, the same event can be processed twice.
-* **③** remoted answers by itself when its budget runs out. Nothing to configure; just do not set
-  ② below it.
+* **②** Must be **above 30 s** (for example 60 s), remoted's own per-request budget. A shorter
+  value cuts off requests that were still legitimately in progress — and, if the proxy then retries
+  them on another manager, the same event can be processed twice. A value exactly equal races
+  remoted's own deadline.
+* **③** `remoted.http_request_timeout` (30 s by default): remoted answers by itself when it runs
+  out. If you raise it, raise ② with it.
+
+One more clock runs on the backend connection itself: remoted closes an idle keep-alive connection
+after `remoted.http_read_timeout` (10 s by default). It also closes the connection after a `404` for a
+path no route matches, the `403` of `verification_mode` `full`, and a `503` shed by its in-flight byte
+budget; every other answer leaves it open. Keep the proxy's idle time for reusable backend connections below 10 s (NGINX:
+`keepalive_timeout 5s;` in the `upstream`), or a request sent on a connection remoted has already
+closed fails with `502`.
 
 ### 4.6. Health checks
 
-remoted answers `GET /` with `200`, unauthenticated and with no body. Use it as the health check
-(on AWS: path `/`, matcher `200`). A plain TCP check also works, since the port only opens once the
-listener is ready.
+remoted answers its health probe — `GET` on the global prefix itself, `GET /wazuh-manager/` by
+default (with or without the trailing slash) — with `200`, unauthenticated, with a small JSON body
+(`{"status":"ok","module":"remoted"}`). Use it as the health check (on AWS: path `/wazuh-manager/`,
+matcher `200`). A bare `GET /` answers `404` unless `global_prefix` is `/`. A plain TCP check also
+works, since the port only opens once the listener is ready.
 
-> **Limitation to be aware of:** `GET /` reports that the process is alive, not that the whole
+> **Limitation to be aware of:** the health probe reports that the process is alive, not that the whole
 > pipeline is working. A manager whose analysis engine is down still answers `200` here while
 > rejecting every event with `503`, and the balancer will keep sending it traffic.
 
@@ -218,7 +233,22 @@ opted into explicitly (`non_idempotent` in NGINX, `retry-on 503` and similar in 
 you have a reason, leave those off.
 
 Never retry on `400`, `401` or `413`: those are deterministic client errors, and retrying them on
-another manager produces the same error while multiplying load.
+another manager produces the same error while multiplying load. A `429` (with `Retry-After`) comes
+only from `POST /enroll` and `GET /cacerts`, whose rate limits are per node;
+the agent already retries it after the delay.
+
+### 4.8. The manager sees the balancer's address
+
+remoted never reads `X-Forwarded-For` or any other forwarding header: every address check uses the
+TCP peer of the connection, which behind a non-transparent balancer is the balancer. Two checks are
+affected:
+
+* the `ip` column of the agent's `client.keys` entry — an agent registered with a fixed address is
+  answered `401 invalid_signature` from any other address (see
+  [Registered address](../https-events-api.md#registered-address-ip-column)). Register agents with
+  `any` (or the balancer's range);
+* enrollment with `use_source_ip`, or with `ip: "src"` in the body, registers the balancer's address.
+  Do not enable it behind a balancer.
 
 ## 5. Certificates
 
@@ -235,14 +265,18 @@ flowchart LR
   verification, which you should. Its subjectAltName must contain the name the balancer uses to
   reach it.
 
-> Certificates generated automatically at install time are a starting point. For a real deployment,
-> replace them with certificates that carry the names actually used, issued by a CA both sides
-> trust.
+> Behind a balancer, the certificate the manager issues for itself is unlikely to carry the right
+> names: it derives them from the host, which does not know the name the balancer presents. Either
+> set `WAZUH_MANAGER_REMOTED_CERT_SANS` so the issued listener pair carries the name the balancer
+> checks *and* the one agents connect to, or issue the pair externally (the Wazuh installation
+> assistant's `wazuh-certs-tool`) from a CA both sides trust. See
+> [Credentials](../../../getting-started/credentials.md#subject-alternative-names).
 
 ## 6. `verification_mode`: read this before enabling it
 
-`<remote><https><verification_mode>` controls whether remoted requires a **client certificate**. It
-has three values: `none` (default), `certificate` and `full`. All three are meant for a manager that
+[`<remote><https><verification_mode>`](../configuration.md#httpsverification_mode) controls whether
+remoted requires a **client certificate**. It has three values: `none`, `certificate` and `full`; when
+it is absent, it is `certificate` if `<remote><https><ca>` is set and `none` otherwise. All three are meant for a manager that
 agents reach **directly**; this section is about what changes once a balancer sits in between.
 
 The key to understanding it: **remoted demands the certificate from whoever opens the connection.**
@@ -301,7 +335,7 @@ flowchart LR
 | Deployment | Address remoted requires in the certificate |
 |---|---|
 | Direct | the agent's |
-| Passthrough | the agent's |
+| Passthrough | the balancer's, unless the balancer preserves the client address (transparent proxying, NLB client-IP preservation) |
 | **Termination** | **the balancer's** |
 
 So under termination `full` is not a stricter check on agents — it is a stricter check on your
@@ -317,21 +351,40 @@ Two consequences worth stating plainly:
 * **`X-Forwarded-For` does not help.** The check reads the transport address of the connection, not a
   header — which is the point, since a header is exactly what an attacker would forge.
 
-Under **passthrough** none of this applies: the agent's own connection reaches remoted, so `full`
-behaves as it does on a direct manager.
+Under **passthrough** the TLS session is the agent's, but the TCP connection is usually the
+balancer's (NGINX `stream` and HAProxy `mode tcp` open their own): `full` then checks the balancer's
+address against the **agent's** certificate and fails. It behaves as on a direct manager only when
+the balancer preserves the client address at network level.
 
 ## 7. In a cluster
 
-Under termination each request is routed independently, so **any manager can receive any request
-from any agent at any time**. Two things must therefore hold across all managers:
+> **Deploying a cluster behind a balancer has its own page.** Topology, port map, which operations
+> require the master, the certificate layout, the deployment procedure and a production checklist
+> live in
+> [A Wazuh server cluster behind a load balancer](../../cluster/lb.md), with symptom-first diagnosis
+> in [Troubleshooting a balanced cluster](../../cluster/lb-troubleshooting.md). This section covers
+> only what a proxy operator has to know.
 
-* **Agent keys must be present everywhere.** A manager without an agent's key answers `401`. Since
-  requests are spread per request, a freshly enrolled agent whose key has not reached every manager
-  yet sees **intermittent** `401`s — correct token, correct configuration, "sometimes it
-  works". If you see that pattern right after enrolling, this is why.
-* **Clocks must be in sync (NTP).** The token carries its issue time and each manager judges it
-  against its own clock, so drift produces the same intermittent `401`s. Keep the related
-  `remoted.jwt_max_age` / `remoted.jwt_clock_skew` internal options identical across managers too.
+Under termination each request is routed independently, so **any manager can receive any request
+from any agent at any time**. Under passthrough the granularity is the **connection**, not the
+request: an agent that keeps one connection open stays on one node for its lifetime. Both models
+are supported; the deployment has to know which one it picked, because it decides how visible
+everything below is.
+
+Everything else about a balanced cluster is on the cluster pages, which own it:
+
+* what is replicated between nodes and what is not (`/etc/wazuh-manager/certs/`, `var/upgrade/`, remoted's
+  in-memory agent registry) — [What the cluster replicates](../../cluster/lb.md#4-what-the-cluster-replicates-and-what-it-does-not);
+* the brief `401`s after enrollment, configuration downloads on a node the agent has not contacted
+  (served from that node's own `wazuh-manager-db`; a `503` while it has no row for the agent yet),
+  and the values that must match across nodes (`global_prefix`, the `limits` internal options,
+  `<cluster><name>`, clocks) —
+  [What an agent observes while the cluster catches up](../../cluster/lb.md#7-what-an-agent-observes-while-the-cluster-catches-up);
+* which CA agents trust, and why `GET /cacerts` must not bootstrap trust under termination with a
+  balancer certificate from another CA — [What agents trust](../../cluster/lb.md#what-agents-trust);
+* a node that answers the health probe but fails `/control` and configuration downloads with
+  `503 dependency_unavailable` —
+  [One node is degraded](../../cluster/lb-troubleshooting.md#9-some-agents-work-some-do-not-with-no-pattern).
 
 ## 8. Checklist before going to production
 
@@ -341,9 +394,11 @@ from any agent at any time**. Two things must therefore hold across all managers
 - [ ] The proxy forwards the request target unchanged
 - [ ] Backend connections negotiate TLS 1.3
 - [ ] Backend certificate verification is enabled, and the certificate has a matching SAN
-- [ ] Body size limit raised to 20 MB
-- [ ] Response timeout ≥ 30 s
-- [ ] Health check against `GET /`
+- [ ] Body size limit at or above the manager's `<remote><https><max_body_size>` (10 MiB by default)
+- [ ] Response timeout above 30 s (`remoted.http_request_timeout`)
+- [ ] Idle time of reusable backend connections below 10 s (`remoted.http_read_timeout`)
+- [ ] Health check against `GET <global_prefix>` (`GET /wazuh-manager/` by default)
+- [ ] Agents registered with `any` (or the balancer's range), `use_source_ip` off
 - [ ] PROXY protocol **disabled**
 - [ ] Response-based retries left off unless duplicates are acceptable
 - [ ] Agent keys synchronised and NTP running on every manager

@@ -1,15 +1,17 @@
 /*
  * Wazuh - Indexer Connector Bulk Queue unit tests.
- * Copyright (C) 2015, Wazuh Inc.
- * July 15, 2026.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #include "indexerBulkQueue.hpp"
+#include "scopedLogCapture.hpp"
 #include <atomic>
 #include <chrono>
 #include <future>
@@ -111,6 +113,78 @@ TEST_F(IndexerBulkQueueTest, RequestBackoffDoesNotDropOrDuplicateData)
     ASSERT_EQ(received.size(), 2U);
     EXPECT_EQ(received[0], "first-batch");
     EXPECT_EQ(received[1], "second-batch");
+}
+
+// An external backoff really pauses the next send for the requested delay. Both timestamps are taken on the dispatch
+// thread: the pause observer runs right before the wait, and the wait (a predicate that only stop() satisfies) cannot
+// end early, so the lower bound does not depend on the scheduler. The second push happens only once the pause has
+// started, so the send it causes is necessarily the one after the pause.
+TEST_F(IndexerBulkQueueTest, ExternalBackoffPausesTheNextSendForTheRequestedDelay)
+{
+    using Clock = std::chrono::steady_clock;
+    std::promise<void> firstSentPromise;
+    std::future<void> firstSentFuture = firstSentPromise.get_future();
+    std::promise<void> secondSentPromise;
+    std::future<void> secondSentFuture = secondSentPromise.get_future();
+    std::promise<void> pausedPromise;
+    std::future<void> pausedFuture = pausedPromise.get_future();
+    std::mutex timesMutex;
+    Clock::time_point pausedAt {};
+    Clock::time_point secondSentAt {};
+    std::chrono::milliseconds pauseDelay {};
+    std::atomic<int> sendCount {0};
+    std::atomic<int> pauseCount {0};
+    std::atomic<uint64_t> firstSequence {0};
+
+    IndexerBulkQueue queue(
+        [&](uint64_t sequence, std::vector<std::string>&)
+        {
+            const auto count = ++sendCount;
+            if (count == 1)
+            {
+                firstSequence.store(sequence);
+                firstSentPromise.set_value();
+            }
+            else if (count == 2)
+            {
+                {
+                    std::lock_guard<std::mutex> lock(timesMutex);
+                    secondSentAt = Clock::now();
+                }
+                secondSentPromise.set_value();
+            }
+        },
+        UNLIMITED_BYTES,
+        SEND_ON_EVERY_PUSH,
+        FLUSH_INTERVAL_SEC,
+        RETRY_DELAY_SEC,
+        MAX_RETRY_DELAY_SEC,
+        [&](std::chrono::milliseconds delay, bool externalRequest)
+        {
+            if (externalRequest && ++pauseCount == 1)
+            {
+                {
+                    std::lock_guard<std::mutex> lock(timesMutex);
+                    pausedAt = Clock::now();
+                    pauseDelay = delay;
+                }
+                pausedPromise.set_value();
+            }
+        });
+
+    queue.push(std::string("first-batch"));
+    ASSERT_EQ(firstSentFuture.wait_for(std::chrono::seconds(5)), std::future_status::ready);
+
+    // The block reported for the first batch: the pause starts at the next loop of the dispatch thread
+    queue.requestBackoff(firstSequence.load());
+    ASSERT_EQ(pausedFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready)
+        << "No external pause after requestBackoff()";
+    queue.push(std::string("second-batch"));
+    ASSERT_EQ(secondSentFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready);
+
+    std::lock_guard<std::mutex> lock(timesMutex);
+    EXPECT_GE(pauseDelay, std::chrono::seconds(RETRY_DELAY_SEC));
+    EXPECT_GE(secondSentAt - pausedAt, pauseDelay) << "the send after an external backoff did not wait for the pause";
 }
 
 // Calling requestBackoff() repeatedly before the dispatch thread gets a chance to send again must
@@ -343,4 +417,39 @@ TEST_F(IndexerBulkQueueTest, DestructorDoesNotHangWhileWaitingOutAnExternalBacko
     const auto elapsed = std::chrono::steady_clock::now() - start;
 
     EXPECT_LT(elapsed, std::chrono::seconds(5)) << "Destructor should not block for the full backoff delay";
+}
+
+// Events discarded after an indexer response (recordDiscarded) count in droppedEvents() but must stay out of the
+// overflow accounting: neither the overflow summary nor the "normalized" line may include them.
+TEST_F(IndexerBulkQueueTest, RecordDiscardedAddsToDroppedEventsOnly)
+{
+    constexpr size_t SMALL_MAX_BYTES {8};
+    constexpr size_t LARGE_BULK_BYTES {1024};
+    constexpr size_t SUMMARY_EVERY_OVERFLOW {0};
+    const std::string oversized(SMALL_MAX_BYTES + 1, 'x');
+
+    // Declared before the queue: its worker logs until ~IndexerBulkQueue.
+    ScopedLogCapture capture;
+
+    IndexerBulkQueue queue([](uint64_t /*sequence*/, std::vector<std::string>& /*batch*/) {},
+                           SMALL_MAX_BYTES,
+                           LARGE_BULK_BYTES,
+                           FLUSH_INTERVAL_SEC,
+                           RETRY_DELAY_SEC,
+                           MAX_RETRY_DELAY_SEC,
+                           {},
+                           SUMMARY_EVERY_OVERFLOW);
+
+    queue.recordDiscarded(5);
+    queue.push(std::string(oversized));
+    queue.push(std::string(oversized));
+    queue.push(std::string("fits"));
+
+    EXPECT_EQ(queue.droppedEvents(), 7U);
+    EXPECT_EQ(capture.countAtLevel(Log::LOGLEVEL_WARNING, "Starting to discard events"), 1U);
+    EXPECT_EQ(capture.countAtLevel(Log::LOGLEVEL_WARNING, "Queue overflow continues: 1 events discarded in the last"),
+              1U);
+    EXPECT_EQ(capture.countAtLevel(Log::LOGLEVEL_WARNING, "total discarded: 2)."), 1U);
+    EXPECT_FALSE(capture.contains("total discarded: 7"));
+    EXPECT_EQ(capture.countAtLevel(Log::LOGLEVEL_INFO, "Resuming event acceptance after 2 discarded events."), 1U);
 }

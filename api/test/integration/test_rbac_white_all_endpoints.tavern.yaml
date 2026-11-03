@@ -5,8 +5,6 @@
 # - GET /security/users/me
 # - POST /security/user/authenticate/run_as
 # - GET /security/users/me/policies
-# - GET /security/actions
-# - GET /security/resources
 
 ---
 test_name: DELETE /agents
@@ -187,7 +185,7 @@ stages:
       params:
         agents_list: 008
     response:
-      <<: *empty_response
+      <<: *permission_denied
 
 ---
 test_name: PUT /agents/upgrade_custom
@@ -217,7 +215,7 @@ stages:
         agents_list: 008
         file_path: "{custom_wpk_path:s}"
     response:
-      <<: *empty_response
+      <<: *permission_denied
 
 ---
 test_name: DELETE /agents/group
@@ -353,7 +351,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      <<: *empty_response
+      <<: *permission_denied
 
 ---
 test_name: GET /agents/stats/distinct
@@ -595,6 +593,20 @@ stages:
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker1/daemons/stats"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /cluster/{node_id}/daemons/remoted/tls
+
+stages:
+  - name: Try to get remoted's TLS certificate validity from a specified node (worker1)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker1/daemons/remoted/tls"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1415,6 +1427,34 @@ stages:
       <<: *permission_denied
 
 ---
+test_name: GET /security/actions
+
+stages:
+  - name: Try to get RBAC actions
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/actions"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /security/resources
+
+stages:
+  - name: Try to get RBAC resources
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/resources"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
 test_name: PUT /security/config
 
 stages:
@@ -1443,3 +1483,204 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       <<: *permission_denied
+
+---
+test_name: PUT /agents/{agent_id}/reload
+
+stages:
+  - name: Try to reload agent 001
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+
+---
+test_name: PUT /agents/group/{group_id}/reload
+
+stages:
+  - name: Try to reload agents from group2
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group/group2/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+
+---
+test_name: PUT /agents/reload
+
+stages:
+  - name: Try to reload all agents (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+  - name: Try to reload agent 001 (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/reload"
+      method: PUT
+      params:
+        agents_list: '001'
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+
+---
+test_name: PUT /agents/scan/vulnerability
+
+stages:
+  - name: Try to scan all agents (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/scan/vulnerability"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+  - name: Try to scan agent 001 (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/scan/vulnerability"
+      method: PUT
+      params:
+        agents_list: '001'
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+
+---
+test_name: GET /agents/enrollment-tokens
+
+stages:
+  - name: Try to list the enrollment tokens
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/enrollment-tokens"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+
+---
+test_name: PUT /cluster/reload
+
+stages:
+  - name: Try to reload all nodes (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+  - name: Try to reload master-node node (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/reload"
+      method: PUT
+      params:
+        nodes_list: master-node
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+
+---
+test_name: GET /mitre/*
+
+stages:
+  - name: Try to read the MITRE metadata
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/mitre/metadata"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+  - name: Try to read the MITRE groups
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/mitre/groups"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+  - name: Try to read the MITRE mitigations
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/mitre/mitigations"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+  - name: Try to read the MITRE references
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/mitre/references"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+  - name: Try to read the MITRE software
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/mitre/software"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+  - name: Try to read the MITRE tactics
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/mitre/tactics"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+  - name: Try to read the MITRE techniques
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/mitre/techniques"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+

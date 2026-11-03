@@ -1,12 +1,13 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015, Wazuh Inc.
- * July 14, 2020.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #ifndef THREAD_SAFE_QUEUE_H
@@ -127,18 +128,11 @@ namespace Utils
                               });
             }
 
-            // If the queue is not canceled, get the elements.
+            // If the queue is not canceled, get the elements. frontQueue throws when the stored keys do not match
+            // what the queue accounts for, and the caller has to see it.
             if (!m_canceled)
             {
-                try
-                {
-                    m_queue.frontQueue(bulkQueue,
-                                       m_queue.size() > elementsQuantity ? elementsQuantity : m_queue.size());
-                }
-                catch (const std::exception& e)
-                {
-                    bulkQueue = {};
-                }
+                m_queue.frontQueue(bulkQueue, m_queue.size() > elementsQuantity ? elementsQuantity : m_queue.size());
             }
 
             return bulkQueue;

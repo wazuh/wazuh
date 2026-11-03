@@ -15,10 +15,10 @@
         </hosts>
         <ssl>
             <certificate_authorities>
-                <ca>/var/wazuh-manager/etc/certs/root-ca.pem</ca>
+                <ca>/etc/wazuh-manager/certs/root-ca.pem</ca>
             </certificate_authorities>
-            <certificate>/var/wazuh-manager/etc/certs/wazuh.manager.pem</certificate>
-            <key>/var/wazuh-manager/etc/certs/wazuh.manager-key.pem</key>
+            <certificate>/etc/wazuh-manager/certs/wazuh.manager.pem</certificate>
+            <key>/etc/wazuh-manager/certs/wazuh.manager-key.pem</key>
         </ssl>
     </indexer>
 

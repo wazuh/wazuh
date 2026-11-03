@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -183,6 +183,8 @@ int main(int argc, char **argv)
     // module was in fact still blocked waiting for the manager's
     // merged.mg hash to validate (issue 36239).
     minfo(STARTUP_MSG, (int)getpid());
+
+    ar_resolve_manager_hosts();
 
     /* The real daemon Now */
     ExecdStart(m_queue);

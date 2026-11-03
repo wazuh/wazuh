@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include "validator.hpp"
 #include "valueValidators.hpp"
 
@@ -29,7 +30,7 @@ void Schema::Validator::registerCompatibles()
                           ValidationInfo {{json::Json::Type::Boolean}, validators::getBoolValidator(), {}});
     m_compatibles.emplace(Type::BYTE,
                           ValidationInfo {{json::Json::Type::Number},
-                                          validators::getShortValidator(),
+                                          validators::getByteValidator(),
                                           {{Type::INTEGER, true}, {Type::LONG, true}, {Type::SHORT, true}}});
     m_compatibles.emplace(Type::SHORT,
                           ValidationInfo {{json::Json::Type::Number},
@@ -153,11 +154,9 @@ void Schema::Validator::registerCompatibles()
                           ValidationInfo {{json::Json::Type::Object}, validators::getObjectValidator(), {}});
     m_compatibles.emplace(Type::FLAT_OBJECT,
                           ValidationInfo {{json::Json::Type::Object}, validators::getObjectValidator(), {}});
-    m_compatibles.emplace(Type::GEO_POINT,
-                          ValidationInfo {{json::Json::Type::Object, json::Json::Type::String},
-                                          validators::getGeoValidator(),
-                                          {},
-                                          true});
+    m_compatibles.emplace(
+        Type::GEO_POINT,
+        ValidationInfo {{json::Json::Type::Object, json::Json::Type::String}, validators::getGeoValidator(), {}, true});
     m_compatibles.emplace(Type::UNSIGNED_LONG,
                           ValidationInfo {{json::Json::Type::Number}, validators::getUnsignedLongValidator(), {}});
     m_compatibles.emplace(Type::COMPLETION,

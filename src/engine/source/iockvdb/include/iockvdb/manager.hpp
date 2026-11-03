@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef IOCKVDB_MANAGER_HPP
 #define IOCKVDB_MANAGER_HPP
 
@@ -52,6 +53,8 @@ public:
     void add(std::string_view dbName) override;
 
     bool exists(std::string_view dbName) const noexcept override;
+
+    bool isRegistered(std::string_view dbName) const noexcept override;
 
     void put(std::string_view dbName, std::string_view key, std::string_view value) override;
 

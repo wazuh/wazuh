@@ -1,12 +1,17 @@
+// SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
 #include "indexerConnectorSyncImpl.hpp"
 #include "mocks/MockHTTPRequest.hpp"
 #include "mocks/MockServerSelector.hpp"
+#include "scopedLogCapture.hpp"
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cstdarg>
+#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <future>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -15,7 +20,10 @@
 #include <mutex>
 #include <set>
 #include <sstream>
+#include <string_view>
 #include <thread>
+#include <variant>
+#include <vector>
 
 using ::testing::_;
 using ::testing::AtLeast;
@@ -32,6 +40,9 @@ using IndexerConnectorSyncImplTest = IndexerConnectorSyncImpl<MockServerSelector
 using IndexerConnectorSyncImplSmallBulk = IndexerConnectorSyncImpl<MockServerSelector, MockHTTPRequest, 1024, 1>; // 1KB
 using IndexerConnectorSyncImplNoFlushInterval =
     IndexerConnectorSyncImpl<MockServerSelector, MockHTTPRequest, 1024, 1, 0>; // 1KB
+/// Conflict paths pin how many times they re-POST, not how long they sleep, so the wait is zero.
+using IndexerConnectorSyncImplNoConflictDelay =
+    IndexerConnectorSyncImpl<MockServerSelector, MockHTTPRequest, 10 * 1024 * 1024, 1, 20, 15, 0>;
 
 // Test fixture using GMock
 class IndexerConnectorSyncTest : public ::testing::Test
@@ -1475,7 +1486,7 @@ TEST_P(IndexerConnectorSyncDeleteByQueryOutcomeTest, ADeleteByQueryReportsWhatIt
                 }
             }));
 
-    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorSyncImplNoConflictDelay connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
     connector.deleteByQuery("wazuh-states-inventory-packages", "007", "cluster01");
 
     if (shouldThrow)
@@ -1501,7 +1512,8 @@ INSTANTIATE_TEST_SUITE_P(
                                    R"("shard":0,"status":500,"reason":{"type":"i_o_exception"}}]})"),
                        true),
         // `conflicts: "proceed"` tallies skipped documents HERE, not in `failures` -- the path the
-        // shard-failure check alone misses.
+        // shard-failure check alone misses. Retried first; this mock never stops conflicting, so
+        // the allowance runs out and the caller is told.
         std::make_pair(std::string(R"({"took":5,"deleted":9,"version_conflicts":3,"failures":[]})"), true),
         // Both at once.
         std::make_pair(std::string(R"({"took":5,"deleted":1,"version_conflicts":2,)"
@@ -1511,6 +1523,110 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_pair(std::string("<html>502 Bad Gateway</html>"), true),
         // Neither does an empty body.
         std::make_pair(std::string(), true)));
+
+/// A write the indexer has acknowledged but not yet refreshed makes the delete that follows it
+/// conflict on every document it touched, and the retry's search reads the refreshed index. The two
+/// rows are the whole rule: the retry clears it (2 POSTs, no throw), or the allowance runs out and
+/// the documents left behind become the caller's problem (3 POSTs, throw).
+class IndexerConnectorSyncConflictRetryTest
+    : public IndexerConnectorSyncTest
+    , public ::testing::WithParamInterface<std::pair<bool, int>>
+{
+};
+
+TEST_P(IndexerConnectorSyncConflictRetryTest, ADeleteByQueryRetriesAVersionConflict)
+{
+    const auto& [retryClearsIt, expectedPosts] = GetParam();
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::atomic<int> postCount {0};
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [retryClearsIt, &postCount](RequestParamsVariant, auto postParams, ConfigurationParameters)
+            {
+                const auto attempt = ++postCount;
+                const std::string body =
+                    (retryClearsIt && attempt > 1)
+                        ? R"({"took":5,"total":300,"deleted":300,"version_conflicts":0,"failures":[]})"
+                        : R"({"took":5,"total":300,"deleted":0,"version_conflicts":300,"failures":[]})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(body);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::string(body));
+                }
+            }));
+
+    IndexerConnectorSyncImplNoConflictDelay connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.deleteByQuery("wazuh-states-inventory-packages", "007", "cluster01");
+
+    if (retryClearsIt)
+    {
+        EXPECT_NO_THROW(connector.flush());
+    }
+    else
+    {
+        try
+        {
+            connector.flush();
+            FAIL() << "an exhausted conflict allowance must fail the flush";
+        }
+        catch (const IndexerConnectorException& e)
+        {
+            EXPECT_EQ(IndexerConnectorException::Category::ConflictsExhausted, e.category())
+                << "the documents are consistent, a competing writer was still running: not a rejection";
+        }
+    }
+    EXPECT_EQ(expectedPosts, postCount.load());
+}
+
+INSTANTIATE_TEST_SUITE_P(ConflictRetry,
+                         IndexerConnectorSyncConflictRetryTest,
+                         ::testing::Values(std::make_pair(true, 2), std::make_pair(false, 3)));
+
+/// A shard failure on the re-run is still a rejection: only the allowance running out is contention.
+TEST_F(IndexerConnectorSyncTest, AShardFailureAfterAClearedConflictIsStillARejection)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::atomic<int> postCount {0};
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&postCount](RequestParamsVariant, auto postParams, ConfigurationParameters)
+            {
+                const std::string body =
+                    (++postCount == 1)
+                        ? R"({"took":5,"total":300,"deleted":0,"version_conflicts":300,"failures":[]})"
+                        : R"({"took":5,"total":300,"deleted":299,"version_conflicts":0,"failures":[{"shard":0}]})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(body);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::string(body));
+                }
+            }));
+
+    IndexerConnectorSyncImplNoConflictDelay connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.deleteByQuery("wazuh-states-inventory-packages", "007", "cluster01");
+
+    try
+    {
+        connector.flush();
+        FAIL() << "a shard failure must fail the flush";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_EQ(IndexerConnectorException::Category::DocumentRejected, e.category());
+    }
+    EXPECT_EQ(2, postCount.load());
+}
 
 TEST_F(IndexerConnectorSyncTest, DeleteByQueryWithoutBulkDataTriggersNotify)
 {
@@ -2039,6 +2155,9 @@ TEST_F(IndexerConnectorSyncTest, BulkIndexWithVersionHandling)
     EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("update")"));
     EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("doc_version":12345)"));
     EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"(state.document_version)"));
+    // The update API only accepts 'none' as a no-op; 'noop' is skipped too but logs a WARN per document.
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"(ctx.op = 'none')"));
+    EXPECT_THAT(capturedBulkData, ::testing::Not(::testing::HasSubstr("'noop'")));
 
     // Verify doc2 does not have version information
     std::size_t doc2_pos = capturedBulkData.find("doc2");
@@ -2428,6 +2547,7 @@ INSTANTIATE_TEST_SUITE_P(
                                    R"("failures":[{"shard":0,"status":500,"reason":{"type":"i_o_exception"}}]})"),
                        true),
         // conflicts=proceed tallies skipped documents in `version_conflicts`, not in `failures`.
+        // Retried first, and raised because this mock keeps conflicting.
         std::make_pair(std::string(R"({"took":5,"updated":7,"total":10,"version_conflicts":3,"failures":[]})"), true),
         // A body without the documented counters is not an _update_by_query response.
         std::make_pair(std::string(R"({"took":5})"), true),
@@ -2435,6 +2555,93 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_pair(std::string("<html>502 Bad Gateway</html>"), true),
         // Neither does an empty body.
         std::make_pair(std::string(), true)));
+
+/// The same rule on _update_by_query, whose conflicts have the same cause.
+TEST_F(IndexerConnectorSyncTest, AnUpdateByQueryRetriesAVersionConflictUntilItClears)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::atomic<int> postCount {0};
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&postCount](RequestParamsVariant, auto postParams, ConfigurationParameters)
+            {
+                const std::string body =
+                    (++postCount == 1)
+                        ? R"({"took":5,"updated":0,"total":10,"version_conflicts":10,"failures":[]})"
+                        : R"({"took":5,"updated":10,"total":10,"noops":0,"version_conflicts":0,"failures":[]})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(body);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::string(body));
+                }
+            }));
+
+    IndexerConnectorSyncImplNoConflictDelay connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    bool notifyCalled = false;
+    connector.registerNotify([&notifyCalled]() { notifyCalled = true; });
+
+    nlohmann::json updateQuery;
+    updateQuery["query"]["match_all"] = nlohmann::json::object();
+
+    EXPECT_NO_THROW(connector.executeUpdateByQuery({"wazuh-states-sca"}, updateQuery));
+    EXPECT_EQ(2, postCount.load());
+    EXPECT_EQ(1U, connector.takeBulkRequestStats().conflictRetries) << "a cleared conflict fails no flush";
+    connector.invokePendingCallbacks();
+    EXPECT_TRUE(notifyCalled) << "the retry that succeeded is the one that completes the session";
+}
+
+/// A writer that keeps conflicting through every attempt is contention, not a rejection: the
+/// caller answers a retryable status and the notify callbacks never fire for this call.
+TEST_F(IndexerConnectorSyncTest, AnUpdateByQueryThatExhaustsItsConflictAllowanceFailsAsContention)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::atomic<int> postCount {0};
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&postCount](RequestParamsVariant, auto postParams, ConfigurationParameters)
+            {
+                ++postCount;
+                const std::string body = R"({"took":5,"updated":0,"total":10,"version_conflicts":10,"failures":[]})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(body);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::string(body));
+                }
+            }));
+
+    IndexerConnectorSyncImplNoConflictDelay connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    bool notifyCalled = false;
+    connector.registerNotify([&notifyCalled]() { notifyCalled = true; });
+
+    nlohmann::json updateQuery;
+    updateQuery["query"]["match_all"] = nlohmann::json::object();
+
+    try
+    {
+        connector.executeUpdateByQuery({"wazuh-states-sca"}, updateQuery);
+        FAIL() << "an exhausted conflict allowance must fail the call";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_EQ(IndexerConnectorException::Category::ConflictsExhausted, e.category());
+    }
+    EXPECT_EQ(3, postCount.load()) << "three attempts: the query and two re-runs";
+    EXPECT_EQ(2U, connector.takeBulkRequestStats().conflictRetries);
+    connector.invokePendingCallbacks();
+    EXPECT_FALSE(notifyCalled) << "nothing completed, so nothing is notified";
+}
 
 TEST_F(IndexerConnectorSyncTest, ExecuteSearchQuerySuccess)
 {
@@ -3683,6 +3890,344 @@ TEST_F(IndexerConnectorSyncTest, BulkResponseValidationVersionConflictWithDiffer
     EXPECT_TRUE(postCalled);
 }
 
+// Answers a bulk POST with `body` through whichever postParams variant the connector used.
+template<typename PostParams>
+static void answerBulkPostSuccess(PostParams& postParams, std::string body)
+{
+    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+    {
+        std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(body);
+    }
+    else
+    {
+        std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(body));
+    }
+}
+
+// A 409 item that validateBulkResponse() accepts.
+static constexpr auto ACCEPTABLE_CONFLICT_ITEM = R"({"index": {
+    "_id": "present",
+    "status": 409,
+    "error": {
+        "type": "version_conflict_engine_exception",
+        "reason": "[present]: version conflict, current version [1] is higher than the one provided [0]"
+    }
+}})";
+
+// Real response of probe 2 (r2), trimmed to the fields the validator reads: delete not_found + index 200 updated +
+// index 409 version conflict.
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationDeleteNotFoundWithVersionConflict)
+{
+    ScopedLogCapture logs;
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [](auto /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                answerBulkPostSuccess(postParams, R"({
+                    "took": 2,
+                    "errors": true,
+                    "items": [
+                        {"delete": {"_index": "del404-40178-b", "_id": "absent2", "_version": 1,
+                                    "result": "not_found", "status": 404}},
+                        {"index": {"_index": "del404-40178-b", "_id": "present", "_version": 1,
+                                   "result": "updated", "status": 200}},
+                        {"index": {
+                            "_index": "del404-40178-b",
+                            "_id": "present",
+                            "status": 409,
+                            "error": {
+                                "type": "version_conflict_engine_exception",
+                                "reason": "[present]: version conflict, current version [1] is higher than the one provided [0]",
+                                "index": "del404-40178-b",
+                                "shard": "0"
+                            }
+                        }}
+                    ]
+                })");
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkDelete("absent2", "test-index");
+    connector.bulkIndex("present", "test-index", R"({"f":"a"})", "1");
+    connector.bulkIndex("present", "test-index", R"({"f":"b"})", "0");
+
+    EXPECT_NO_THROW(connector.flush());
+    EXPECT_FALSE(logs.contains("Indexing failure"));
+    EXPECT_FALSE(logs.containsAtLevel(Log::LOGLEVEL_WARNING, "Bulk operation summary"));
+    EXPECT_TRUE(
+        logs.containsAtLevel(Log::LOGLEVEL_DEBUG_VERBOSE, "1 acceptable version conflicts, 1 already-absent deletes"));
+    EXPECT_TRUE(logs.containsAtLevel(Log::LOGLEVEL_DEBUG_VERBOSE,
+                                     "Delete of document 'absent2' answered 404 not_found: already absent"));
+}
+
+// Real response of probe 2 (r1), trimmed to the fields the validator reads: a lone delete not_found, "errors": false.
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationDeleteNotFoundAloneIsSuccess)
+{
+    ScopedLogCapture logs;
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [](auto /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                answerBulkPostSuccess(postParams, R"({
+                    "took": 1,
+                    "errors": false,
+                    "items": [
+                        {"delete": {"_index": "del404-40178-b", "_id": "absent", "_version": 1,
+                                    "result": "not_found", "status": 404}}
+                    ]
+                })");
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkDelete("absent", "test-index");
+
+    EXPECT_NO_THROW(connector.flush());
+    EXPECT_FALSE(logs.contains("Indexing failure"));
+}
+
+// Items 2 and 4 of probe 1, trimmed to the fields the validator reads: a delete on a missing index
+// (index_not_found_exception) and an index 201.
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationDeleteIndexNotFoundFails)
+{
+    ScopedLogCapture logs;
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [](auto /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                answerBulkPostSuccess(postParams, R"({
+                    "took": 18,
+                    "errors": true,
+                    "items": [
+                        {"delete": {
+                            "_index": "nonexistent-idx-40178",
+                            "_id": "x",
+                            "status": 404,
+                            "error": {
+                                "type": "index_not_found_exception",
+                                "reason": "no such index [nonexistent-idx-40178]",
+                                "index": "nonexistent-idx-40178",
+                                "resource.id": "nonexistent-idx-40178",
+                                "resource.type": "index_expression",
+                                "index_uuid": "_na_"
+                            }
+                        }},
+                        {"index": {"_index": "del404-40178", "_id": "new", "_version": 1,
+                                   "result": "created", "status": 201}}
+                    ]
+                })");
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkDelete("x", "nonexistent-idx-40178");
+    connector.bulkIndex("new", "test-index", R"({"f":"a"})");
+
+    try
+    {
+        connector.flush();
+        FAIL() << "a delete on a missing index must fail the flush";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_EQ(e.category(), IndexerConnectorException::Category::DocumentRejected);
+    }
+    EXPECT_TRUE(logs.containsAtLevel(Log::LOGLEVEL_WARNING,
+                                     "Indexing failure for delete operation (status 404): no such index ["));
+}
+
+// Synthetic: only `delete` items get the not_found exemption.
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationIndexOperationNotFoundFails)
+{
+    ScopedLogCapture logs;
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [](auto /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                answerBulkPostSuccess(postParams,
+                                      std::string(R"({"took":1,"errors":true,"items":[)") +
+                                          R"({"index":{"_id":"x","status":404,"result":"not_found"}},)" +
+                                          ACCEPTABLE_CONFLICT_ITEM + "]}");
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndex("x", "test-index", R"({"f":"a"})");
+    connector.bulkIndex("present", "test-index", R"({"f":"b"})");
+
+    try
+    {
+        connector.flush();
+        FAIL() << "an index item answering 404 not_found must fail the flush";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_EQ(e.category(), IndexerConnectorException::Category::DocumentRejected);
+    }
+}
+
+// Synthetic: a delete 404 not_found that carries an `error` element is a failure.
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationDeleteNotFoundWithErrorFails)
+{
+    ScopedLogCapture logs;
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [](auto /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                answerBulkPostSuccess(postParams,
+                                      std::string(R"({"took":1,"errors":true,"items":[)") +
+                                          R"({"delete":{"_id":"x","status":404,"result":"not_found",)" +
+                                          R"("error":{"type":"some_error","reason":"x"}}},)" +
+                                          ACCEPTABLE_CONFLICT_ITEM + "]}");
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkDelete("x", "test-index");
+    connector.bulkIndex("present", "test-index", R"({"f":"b"})");
+
+    try
+    {
+        connector.flush();
+        FAIL() << "a delete 404 not_found with an error element must fail the flush";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_EQ(e.category(), IndexerConnectorException::Category::DocumentRejected);
+    }
+}
+
+// Synthetic: a delete 404 without "result":"not_found" is a failure.
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationDelete404WithoutNotFoundResultFails)
+{
+    ScopedLogCapture logs;
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [](auto /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                answerBulkPostSuccess(postParams,
+                                      std::string(R"({"took":1,"errors":true,"items":[)") +
+                                          R"({"delete":{"_id":"x","status":404}},)" + ACCEPTABLE_CONFLICT_ITEM + "]}");
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkDelete("x", "test-index");
+    connector.bulkIndex("present", "test-index", R"({"f":"b"})");
+
+    try
+    {
+        connector.flush();
+        FAIL() << "a delete 404 without result not_found must fail the flush";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_EQ(e.category(), IndexerConnectorException::Category::DocumentRejected);
+    }
+}
+
+// Synthetic: an absent delete (without `_id`, logged as '?') next to a real failure; the summary reports both and the
+// delete is not a failure.
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationDeleteNotFoundWithRealFailure)
+{
+    ScopedLogCapture logs;
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [](auto /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                answerBulkPostSuccess(postParams, R"({
+                    "took": 1,
+                    "errors": true,
+                    "items": [
+                        {"delete": {"result": "not_found", "status": 404}},
+                        {"index": {"_id": "y", "status": 500, "error": {"type": "t", "reason": "boom"}}}
+                    ]
+                })");
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkDelete("x", "test-index");
+    connector.bulkIndex("y", "test-index", R"({"f":"a"})");
+
+    try
+    {
+        connector.flush();
+        FAIL() << "a real failure must fail the flush";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_EQ(e.category(), IndexerConnectorException::Category::DocumentRejected);
+    }
+    EXPECT_TRUE(logs.containsAtLevel(Log::LOGLEVEL_WARNING, "1 already-absent deletes, 1 failures"));
+    EXPECT_FALSE(logs.contains("Indexing failure for delete"));
+    EXPECT_TRUE(logs.containsAtLevel(Log::LOGLEVEL_DEBUG_VERBOSE, "Delete of document '?' answered 404 not_found"));
+}
+
+// Synthetic: 413 splits the bulk; every chunk answers a delete not_found plus an acceptable conflict.
+TEST_F(IndexerConnectorSyncTest, SplitBulkDeleteNotFoundIsSuccess)
+{
+    ScopedLogCapture logs;
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::atomic<int> postCount {0};
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(3)
+        .WillRepeatedly(Invoke(
+            [&postCount](auto /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                if (++postCount == 1)
+                {
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onError("Payload Too Large", 413, "");
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Payload Too Large", 413, "");
+                    }
+                    return;
+                }
+                answerBulkPostSuccess(postParams,
+                                      std::string(R"({"took":1,"errors":true,"items":[)") +
+                                          R"({"delete":{"_id":"x","result":"not_found","status":404}},)" +
+                                          ACCEPTABLE_CONFLICT_ITEM + "]}");
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkDelete("a", "test-index");
+    connector.bulkDelete("b", "test-index");
+    connector.bulkDelete("c", "test-index");
+
+    EXPECT_NO_THROW(connector.flush());
+    EXPECT_EQ(postCount.load(), 3);
+}
+
 // Tests for deleteByQuery with 404 response
 TEST_F(IndexerConnectorSyncTest, DeleteByQueryWith404Response)
 {
@@ -4887,6 +5432,44 @@ namespace
         }
         return count;
     }
+
+    /// liveThreadCount() once it settles. A joined thread's tid can linger in /proc/self/task for a
+    /// moment after join() returns, so counts taken after a join or a destructor must wait for it.
+    /// Without `expected` (baseline): polls every 10ms until 5 consecutive equal reads (or the deadline)
+    /// and returns the MINIMUM seen -- a leftover tid can only disappear, never appear.
+    /// With `expected`: polls until it reads `expected` or the deadline passes, and returns the last read.
+    /// Limit: this asserts "the thread ends", not "the thread was joined" -- a detach with the stop
+    /// signalled is indistinguishable.
+    std::size_t waitForStableThreadCount(std::size_t expected = std::string::npos,
+                                         std::chrono::milliseconds deadline = std::chrono::seconds(2))
+    {
+        constexpr std::size_t QUIET_READS = 5;
+        constexpr auto POLL = std::chrono::milliseconds(10);
+        const auto until = std::chrono::steady_clock::now() + deadline;
+
+        auto last = liveThreadCount();
+        if (expected != std::string::npos)
+        {
+            while (last != expected && std::chrono::steady_clock::now() < until)
+            {
+                std::this_thread::sleep_for(POLL);
+                last = liveThreadCount();
+            }
+            return last;
+        }
+
+        auto minimum = last;
+        std::size_t equalReads = 1;
+        while (equalReads < QUIET_READS && std::chrono::steady_clock::now() < until)
+        {
+            std::this_thread::sleep_for(POLL);
+            const auto current = liveThreadCount();
+            equalReads = current == last ? equalReads + 1 : 1;
+            last = current;
+            minimum = std::min(minimum, current);
+        }
+        return minimum;
+    }
 } // namespace
 
 /// flush_interval_seconds = 0 means the CALLER owns every flush: no background thread exists,
@@ -4895,7 +5478,7 @@ TEST_F(IndexerConnectorSyncTest, ZeroFlushIntervalStartsNoBackgroundThread)
 {
     config["flush_interval_seconds"] = 0;
 
-    const auto baseline = liveThreadCount();
+    const auto baseline = waitForStableThreadCount();
     {
         IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest);
         EXPECT_EQ(baseline, liveThreadCount()) << "a zero interval must not start a flush thread";
@@ -4907,7 +5490,7 @@ TEST_F(IndexerConnectorSyncTest, ZeroFlushIntervalStartsNoBackgroundThread)
         }
         connector.flush();
     }
-    EXPECT_EQ(baseline, liveThreadCount()) << "destruction must not leak a thread either";
+    EXPECT_EQ(waitForStableThreadCount(baseline), baseline) << "destruction must not leak a thread either";
     EXPECT_EQ(callCount, 1) << "the explicit flush must have posted the staged document";
 }
 
@@ -4963,12 +5546,13 @@ TEST_F(IndexerConnectorSyncTest, TimerFlushFailureIsReportedToTheOwningCaller)
 /// which pins that liveThreadCount() can tell the two configurations apart.
 TEST_F(IndexerConnectorSyncTest, NonZeroFlushIntervalStartsTheBackgroundThread)
 {
-    const auto baseline = liveThreadCount();
+    const auto baseline = waitForStableThreadCount();
     {
         IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest); // default interval
         EXPECT_EQ(baseline + 1, liveThreadCount()) << "a non-zero interval must start one flush thread";
     }
-    EXPECT_EQ(baseline, liveThreadCount()) << "the destructor must join the flush thread";
+    // Asserts the flush thread ends after destruction (see waitForStableThreadCount's limit).
+    EXPECT_EQ(waitForStableThreadCount(baseline), baseline) << "the destructor must stop the flush thread";
 }
 
 // Empty-buffer guard tests
@@ -5467,7 +6051,7 @@ TEST_F(IndexerConnectorSyncTest, ReducedScaleTimerSoakDeliversEveryDocumentExact
                 respondBulkSuccess(postParams);
             }));
 
-    const auto baseline = liveThreadCount();
+    const auto baseline = waitForStableThreadCount();
     std::vector<std::string> expected;
     {
         IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
@@ -5501,7 +6085,7 @@ TEST_F(IndexerConnectorSyncTest, ReducedScaleTimerSoakDeliversEveryDocumentExact
             thread.join();
         }
 
-        EXPECT_EQ(baseline + 1, liveThreadCount()) << "the soak must not grow threads";
+        EXPECT_EQ(waitForStableThreadCount(baseline + 1), baseline + 1) << "the soak must not grow threads";
         EXPECT_GE(recorder.bodyCount(), static_cast<size_t>(soakSeconds) / 2)
             << "the 1s timer was expected to flush the continuously refilled buffer on most ticks";
 
@@ -5511,7 +6095,7 @@ TEST_F(IndexerConnectorSyncTest, ReducedScaleTimerSoakDeliversEveryDocumentExact
             expected.insert(expected.end(), perStager.begin(), perStager.end());
         }
     }
-    EXPECT_EQ(baseline, liveThreadCount()) << "destruction must join the timer thread";
+    EXPECT_EQ(waitForStableThreadCount(baseline), baseline) << "destruction must stop the timer thread";
     ASSERT_FALSE(expected.empty()) << "the stagers never staged anything; the soak never exercised the timer";
     expectExactlyOnce(recorder.deliveredIds(), expected);
 }
@@ -5966,6 +6550,197 @@ TEST_F(IndexerConnectorSyncTest, ChunkRetryBudgetBoundsSplitRetries)
     }
 
     EXPECT_THROW(connector.flush(), IndexerConnectorException);
+    EXPECT_EQ(postCount.load(), 3) << "full batch once, then the first chunk twice";
+
+    // The split's DEFER consumed the buffer: nothing left for the next flush to resend.
+    EXPECT_NO_THROW(connector.flush());
+    EXPECT_EQ(postCount.load(), 3);
+}
+
+// ============================================================================
+// 502/503/504: a proxy, load balancer or overloaded node answering for the indexer. Transient, so
+// a _bulk -- whole or a chunk of a 413 split -- is retried with the same backoff and budget as a
+// 429; resending is idempotent because every Sync operation carries its _id.
+// ============================================================================
+
+namespace
+{
+    std::string bulkBodyOf(const RequestParamsVariant& requestParams)
+    {
+        if (std::holds_alternative<TRequestParameters<std::string>>(requestParams))
+        {
+            return std::get<TRequestParameters<std::string>>(requestParams).data;
+        }
+        if (std::holds_alternative<TRequestParameters<std::string_view>>(requestParams))
+        {
+            return std::string {std::get<TRequestParameters<std::string_view>>(requestParams).data};
+        }
+        return std::get<TRequestParameters<nlohmann::json>>(requestParams).data.dump();
+    }
+} // namespace
+
+class IndexerConnectorSyncServerUnavailableTest
+    : public IndexerConnectorSyncTest
+    , public ::testing::WithParamInterface<long>
+{
+};
+
+TEST_P(IndexerConnectorSyncServerUnavailableTest, ServerUnavailableRetriesWithinBudget)
+{
+    const long statusCode = GetParam();
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::vector<std::string> bodies;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&bodies, statusCode](auto requestParams, auto postParams, auto)
+            {
+                bodies.push_back(bulkBodyOf(requestParams));
+                if (bodies.size() == 1)
+                {
+                    respondBulkError(postParams, "Server unavailable", statusCode);
+                    return;
+                }
+                respondBulkSuccess(postParams);
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    {
+        auto lock = connector.scopeLock();
+        connector.bulkIndex("id1", "test_index", R"({"v":"x"})");
+    }
+
+    EXPECT_NO_THROW(connector.flush()) << "HTTP " << statusCode << " must be retried, not discarded";
+    ASSERT_EQ(bodies.size(), 2u);
+    EXPECT_EQ(bodies.front(), bodies.back()) << "the retry must resend the exact batch";
+    EXPECT_THAT(bodies.back(), HasSubstr(R"("_id":"id1")"));
+}
+
+INSTANTIATE_TEST_SUITE_P(ServerUnavailable,
+                         IndexerConnectorSyncServerUnavailableTest,
+                         ::testing::Values(502L, 503L, 504L),
+                         [](const ::testing::TestParamInfo<long>& info) { return std::to_string(info.param); });
+
+TEST_F(IndexerConnectorSyncTest, ServerUnavailableStopsAtTheAttemptsCap)
+{
+    config["max_retry_attempts"] = 2;
+    config["max_retry_duration_seconds"] = 0;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::atomic<int> postCount {0};
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&postCount](auto, auto postParams, auto)
+            {
+                ++postCount;
+                respondBulkError(postParams, "Service Unavailable", 503);
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    {
+        auto lock = connector.scopeLock();
+        connector.bulkIndex("id1", "test_index", R"({"v":"x"})");
+    }
+
+    try
+    {
+        connector.flush();
+        FAIL() << "a 503 that never clears must exhaust the retry budget";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_EQ(e.category(), IndexerConnectorException::Category::RetryExhausted);
+    }
+    EXPECT_EQ(postCount.load(), 2) << "a budget of N attempts must produce exactly N POSTs";
+
+    // The exhausted batch was consumed: the caller was told, and re-stages.
+    EXPECT_NO_THROW(connector.flush());
+    EXPECT_EQ(postCount.load(), 2);
+}
+
+TEST_F(IndexerConnectorSyncTest, ChunkServerUnavailableRetriesWithoutResendingFirstHalf)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::vector<std::string> bodies;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&bodies](auto requestParams, auto postParams, auto)
+            {
+                bodies.push_back(bulkBodyOf(requestParams));
+                switch (bodies.size())
+                {
+                    case 1: respondBulkError(postParams, "Payload Too Large", 413); break;
+                    case 2: respondBulkSuccess(postParams); break;
+                    case 3: respondBulkError(postParams, "Service Unavailable", 503); break;
+                    default: respondBulkSuccess(postParams); break;
+                }
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    {
+        auto lock = connector.scopeLock();
+        connector.bulkIndex("id1", "test_index", R"({"v":"x"})");
+        connector.bulkIndex("id2", "test_index", R"({"v":"x"})");
+    }
+
+    EXPECT_NO_THROW(connector.flush()) << "the second chunk's 503 must be retried, not abandon the split";
+
+    // Only the POSTs after the 413: the full batch carried both ids once.
+    const auto postsAfterSplitWith = [&bodies](const std::string& id)
+    {
+        const std::string needle = R"("_id":")" + id + R"(")";
+        return std::count_if(bodies.begin() + 1,
+                             bodies.end(),
+                             [&needle](const std::string& body) { return body.find(needle) != std::string::npos; });
+    };
+    ASSERT_EQ(bodies.size(), 4u) << "full batch, first chunk once, second chunk twice";
+    EXPECT_EQ(postsAfterSplitWith("id1"), 1) << "the first half must not be resent when the second retries";
+    EXPECT_EQ(postsAfterSplitWith("id2"), 2);
+}
+
+TEST_F(IndexerConnectorSyncTest, ChunkServerUnavailableStopsAtTheAttemptsCap)
+{
+    config["max_retry_attempts"] = 2;
+    config["max_retry_duration_seconds"] = 0;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::atomic<int> postCount {0};
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&postCount](auto, auto postParams, auto)
+            {
+                if (++postCount == 1)
+                {
+                    respondBulkError(postParams, "Payload Too Large", 413);
+                    return;
+                }
+                respondBulkError(postParams, "Service Unavailable", 503);
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    {
+        auto lock = connector.scopeLock();
+        connector.bulkIndex("id1", "test_index", R"({"v":"x"})");
+        connector.bulkIndex("id2", "test_index", R"({"v":"x"})");
+    }
+
+    try
+    {
+        connector.flush();
+        FAIL() << "a chunk's 503 that never clears must exhaust the flush's retry budget";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_EQ(e.category(), IndexerConnectorException::Category::RetryExhausted);
+    }
     EXPECT_EQ(postCount.load(), 3) << "full batch once, then the first chunk twice";
 
     // The split's DEFER consumed the buffer: nothing left for the next flush to resend.
@@ -6561,4 +7336,30 @@ TEST_F(IndexerConnectorSyncTest, ReplayingAnAppliedSessionIsANoOpNotADuplicate)
 
     ASSERT_EQ(bodies.size(), 2U);
     EXPECT_EQ(bodies[0], bodies[1]) << "deterministic ids and versions: the replay is byte-identical";
+}
+
+TEST_F(IndexerConnectorSyncTest, TimerFlushWithEveryNodeDownLogsAWarning)
+{
+    ScopedLogCapture logs;
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext())
+        .WillRepeatedly(Invoke(
+            []() -> std::string
+            { throw IndexerConnectorException("No available server. Unavailable nodes: mockserver:9200: down"); }));
+    EXPECT_CALL(mockHttpRequest, post(_, _, _)).Times(0);
+
+    config["flush_interval_seconds"] = 1;
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    {
+        auto lock = connector.scopeLock();
+        connector.bulkIndex("id1", "index1", R"({"field":"value1"})");
+    }
+
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while (!logs.containsAtLevel(Log::LOGLEVEL_WARNING, "Error processing bulk: No available server") &&
+           std::chrono::steady_clock::now() < deadline)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+    EXPECT_TRUE(logs.containsAtLevel(Log::LOGLEVEL_WARNING, "Error processing bulk: No available server"));
 }

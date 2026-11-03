@@ -1,7 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015, Wazuh Inc.
- * December 14, 2020.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -12,6 +11,7 @@
 #ifndef _PACKAGE_INTERFACE_WRAPPER_H
 #define _PACKAGE_INTERFACE_WRAPPER_H
 #include "ipackageInterface.h"
+#include <optional>
 
 class IPackageWrapper
 {
@@ -29,7 +29,11 @@ class IPackageWrapper
         virtual std::string source() const = 0;
         virtual std::string location() const = 0;
         virtual std::string priority() const = 0;
-        virtual int64_t size() const = 0;
+        /// @return The installed size in bytes, or no value when it could not be established.
+        /// An empty result means "unknown", never zero: the caller leaves the field out of the
+        /// package document so the stored value is kept rather than overwritten by a failed
+        /// measurement, which would otherwise churn the package's checksum.
+        virtual std::optional<int64_t> size() const = 0;
         virtual std::string vendor() const = 0;
         virtual std::string install_time() const = 0;
         virtual std::string multiarch() const = 0;

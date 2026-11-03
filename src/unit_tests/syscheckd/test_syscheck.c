@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -101,8 +101,6 @@ static int teardown_group_win(void **state) {
 void test_fim_initialize(void **state)
 {
     syscheck_config *syscheck_conf = *state;
-    syscheck.sync_end_delay = 1;
-    syscheck.sync_max_eps = 3;
 
 #ifdef TEST_WINAGENT
     // fim_initialize() guards its synced_docs counters with synced_docs_mutex; only the
@@ -145,8 +143,11 @@ void test_read_internal(void **state)
     (void) state;
 
     will_return_always(__wrap_getDefine_Int, 1);
+    will_return_always(__wrap_getDefine_Int_default, 1);
 
     read_internal(0);
+
+    assert_int_equal(syscheck.sync_wal_autocheckpoint_pages, 1);
 }
 
 void test_read_internal_debug(void **state)
@@ -154,6 +155,7 @@ void test_read_internal_debug(void **state)
     (void) state;
 
     will_return_always(__wrap_getDefine_Int, 1);
+    will_return_always(__wrap_getDefine_Int_default, 1);
 
     read_internal(1);
 }
@@ -191,6 +193,7 @@ void test_Start_win32_Syscheck_no_config_file(void **state) {
 
     /* Conf file not found */
     will_return_always(__wrap_getDefine_Int, 1);
+    will_return_always(__wrap_getDefine_Int_default, 1);
     expect_string(__wrap_File_DateofChange, file, "ossec.conf");
     will_return(__wrap_File_DateofChange, -1);
     expect_string(__wrap__merror_exit, formatted_msg, "(1239): Configuration file not found: 'ossec.conf'.");
@@ -210,6 +213,7 @@ void test_Start_win32_Syscheck_corrupted_config_file(void **state) {
     syscheck.disabled = 1;
 
     will_return_always(__wrap_getDefine_Int, 1);
+    will_return_always(__wrap_getDefine_Int_default, 1);
     expect_string(__wrap_File_DateofChange, file, "ossec.conf");
     will_return(__wrap_File_DateofChange, 0);
 
@@ -221,8 +225,6 @@ void test_Start_win32_Syscheck_corrupted_config_file(void **state) {
 
     expect_wrapper_fim_db_init(0, 100000, 100000);
 
-    syscheck.sync_end_delay = 1;
-    syscheck.sync_max_eps = 3;
     expect_string(__wrap_asp_create, module, "fim");
     will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
 
@@ -251,6 +253,7 @@ void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
     char info_msg[OS_MAXSTR];
 
     will_return_always(__wrap_getDefine_Int, 1);
+    will_return_always(__wrap_getDefine_Int_default, 1);
 
     expect_string(__wrap_File_DateofChange, file, "ossec.conf");
     will_return(__wrap_File_DateofChange, 0);
@@ -269,8 +272,6 @@ void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg, FIM_DISK_QUOTA_LIMIT_DISABLED);
 
-    syscheck.sync_end_delay = 1;
-    syscheck.sync_max_eps = 3;
     expect_string(__wrap_asp_create, module, "fim");
     will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
 
@@ -300,6 +301,7 @@ void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
     char info_msg[OS_MAXSTR];
 
     will_return_always(__wrap_getDefine_Int, 1);
+    will_return_always(__wrap_getDefine_Int_default, 1);
 
     expect_string(__wrap_File_DateofChange, file, "ossec.conf");
     will_return(__wrap_File_DateofChange, 0);
@@ -318,8 +320,6 @@ void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg, FIM_DISK_QUOTA_LIMIT_DISABLED);
 
-    syscheck.sync_end_delay = 1;
-    syscheck.sync_max_eps = 3;
     expect_string(__wrap_asp_create, module, "fim");
     will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
 
@@ -374,6 +374,7 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
     char info_msg[OS_MAXSTR];
 
     will_return_always(__wrap_getDefine_Int, 1);
+    will_return_always(__wrap_getDefine_Int_default, 1);
 
     expect_string(__wrap_File_DateofChange, file, "ossec.conf");
     will_return(__wrap_File_DateofChange, 0);
@@ -400,8 +401,6 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
 
     expect_wrapper_fim_db_init(0, 100000, 100000);
 
-    syscheck.sync_end_delay = 1;
-    syscheck.sync_max_eps = 3;
     expect_string(__wrap_asp_create, module, "fim");
     will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
 
@@ -450,6 +449,7 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
     char info_msg[OS_MAXSTR];
 
     will_return_always(__wrap_getDefine_Int, 1);
+    will_return_always(__wrap_getDefine_Int_default, 1);
 
     expect_string(__wrap_File_DateofChange, file, "ossec.conf");
     will_return(__wrap_File_DateofChange, 0);
@@ -463,8 +463,6 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
 
     expect_wrapper_fim_db_init(0, 100000, 100000);
 
-    syscheck.sync_end_delay = 1;
-    syscheck.sync_max_eps = 3;
     expect_string(__wrap_asp_create, module, "fim");
     will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
 

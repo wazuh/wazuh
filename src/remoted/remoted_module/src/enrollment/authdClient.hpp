@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module - authd enrollment bridge client
- * Copyright (C) 2015, Wazuh Inc.
- * August 19, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -31,7 +30,34 @@ namespace remoted::enrollment
         std::string ip;
         std::optional<std::string> groups;
         std::optional<std::string> keyHash;
+        /// The enrollment token the request authenticated with (issue #38993): its id, exactly as the
+        /// bearer's `kid` spelled it and as EnrollmentAuthenticator verified it. Forwarded as
+        /// `token_id` so authd consumes one use of that token (and answers 9022/9023/9024 when it
+        /// disagrees with remoted's replica about the token's state). Absent for the password and
+        /// Open paths.
+        std::optional<std::string> tokenId;
+        /// Re-enrollment (issue #38993): the agent id the bearer named (`kid`) and the bearer itself, both
+        /// verbatim and UNVERIFIED -- forwarded as `reenroll` = {kid, bearer} for authd on the master to
+        /// verify against that agent's re-enrollment secret (which only its global.db holds) and, when it
+        /// verifies, to rotate the agent's key and secret in place. Never together with tokenId.
+        struct ReenrollCredential
+        {
+            std::string kid;
+            std::string bearer;
+        };
+        std::optional<ReenrollCredential> reenroll;
+        /// The HTTPS connection's peer address, forwarded as `source` for authd's log line only ("Agent
+        /// key generated for agent 'X' (requested by <source>)"). Distinct from `ip`, which is the
+        /// address to register and is usually "any". Absent: authd logs the request as local.
+        std::optional<std::string> source;
     };
+
+    /// The request never reached authd: stopping, queue full, or connect failure. Safe to retry.
+    inline constexpr int kAuthdRequestNotSentErrorCode = -1;
+
+    /// The request reached authd but no well-formed answer came back. authd may have processed
+    /// it anyway -- not safe to assume it did not.
+    inline constexpr int kAuthdOutcomeUnknownErrorCode = -2;
 
     /**
      * @brief Outcome of an AuthdClient::addAgent() call.
@@ -40,19 +66,24 @@ namespace remoted::enrollment
      *   - 0: success -- id/name/ip/key are populated, message is empty.
      *   - a positive authd error code (e.g. 9008 "Duplicate name"): authd responded with a
      *     well-formed business rejection -- message carries its (prefix-stripped) text.
-     *   - -1: no well-formed answer was obtained at all -- connect/send/receive failure, a
-     *     response timeout, or a malformed/unparseable reply. The endpoint layer maps this to
-     *     the same HTTP status as authd's own 9016 (clustered-forward failure): both mean
-     *     "the bridge did not get a clean answer", not a specific business outcome.
+     *   - kAuthdRequestNotSentErrorCode (-1): the request never reached authd. Safe to retry.
+     *   - kAuthdOutcomeUnknownErrorCode (-2): the request reached authd but no well-formed
+     *     answer came back. authd may have processed it anyway -- not safe to assume it did not.
      */
     struct AuthdResult
     {
-        int errorCode {-1};
+        // Defaults to the more cautious of the two, so a future path that forgets to set this
+        // explicitly doesn't silently claim "safe to retry".
+        int errorCode {kAuthdOutcomeUnknownErrorCode};
         std::string message;
         std::string id;
         std::string name;
         std::string ip;
         std::string key;
+        /// The agent's re-enrollment secret (issue #38993): 64 hex chars authd generated next to the key
+        /// and stored in global.db, handed to the agent once, here. Empty when authd sent none (an authd
+        /// that predates the secret, or a master behind a worker that does) -- the 200 then omits it.
+        std::string reenrollSecret;
     };
 
     /**

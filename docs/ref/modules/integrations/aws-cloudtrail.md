@@ -2,70 +2,86 @@
 
 ## Introduction
 
-The Wazuh AWS module can collect and analyze AWS CloudTrail logs stored in S3 buckets. CloudTrail records API calls and account activity across an AWS infrastructure, providing audit logs for governance, compliance, and security monitoring.
+The AWS module (`<wodle name="aws-s3">`) can read the CloudTrail logs that a trail delivers to an S3
+bucket. CloudTrail records API calls and account activity across an AWS account.
 
-Wazuh retrieves CloudTrail logs from S3, analyzes them using the Wazuh rule engine, and generates alerts for events such as unauthorized API calls, IAM changes, security group modifications, and other suspicious activity.
+It is an agent module, configured in the agent's `ossec.conf`, and is not available on Windows agents
+(see [Integrations](README.md)). On each run the agent's `wazuh-modulesd` invokes the
+`wodles/aws/aws-s3` Python script once per configured bucket; the script lists the new log files,
+and sends each CloudTrail record to the manager with `integration` set to `aws` and the record under
+`aws`.
 
 ## Prerequisites
 
-- An AWS account with CloudTrail enabled and configured to deliver logs to an S3 bucket.
-- AWS credentials (access key and secret key) or an IAM role with permissions to read from the S3 bucket.
-- Python 3 and the `boto3` library installed on the Wazuh agent.
+- An AWS account with a CloudTrail trail delivering logs to an S3 bucket.
+- AWS credentials that can read the bucket (see [Authentication](#authentication)).
+- The `boto3` Python package installed for the agent host's `python3`.
 
 ## Configuration
 
-Configure the AWS module in the Wazuh agent `ossec.conf` file:
+Configure the module in the agent's `ossec.conf`, inside `<ossec_config>`:
 
 ```xml
-  <wodle name="aws-s3">
-    <disabled>no</disabled>
-    <interval>10m</interval>
-    <run_on_start>yes</run_on_start>
-    <skip_on_error>yes</skip_on_error>
-    <bucket type="cloudtrail">
-      <name>my-cloudtrail-bucket</name>
-      <access_key>YOUR_ACCESS_KEY</access_key>
-      <secret_key>YOUR_SECRET_KEY</secret_key>
-      <regions>us-east-1</regions>
-      <path>AWSLogs/</path>
-      <only_logs_after>2024-01-01</only_logs_after>
-      <remove_from_bucket>no</remove_from_bucket>
-    </bucket>
-  </wodle>
+<wodle name="aws-s3">
+  <disabled>no</disabled>
+  <interval>10m</interval>
+  <run_on_start>yes</run_on_start>
+  <skip_on_error>yes</skip_on_error>
+  <bucket type="cloudtrail">
+    <name>my-cloudtrail-bucket</name>
+    <aws_profile>default</aws_profile>
+    <regions>us-east-1</regions>
+    <path>my-prefix/</path>
+    <only_logs_after>2024-JAN-01</only_logs_after>
+    <remove_from_bucket>no</remove_from_bucket>
+  </bucket>
+</wodle>
 ```
 
-### Configuration options
+### Module options
+
+These apply to every `<bucket>`, `<service>` and `<subscriber>` of the `aws-s3` block, and are the
+same on the other AWS pages.
 
 | Option | Required | Default | Description |
 |--------|:--------:|---------|-------------|
 | `disabled` | No | `no` | Disables the AWS module when set to `yes`. |
-| `interval` | No | `5s` | Time interval between S3 bucket scans. |
-| `run_on_start` | No | `yes` | Process logs immediately when the module starts. |
-| `skip_on_error` | No | `yes` | Continue processing on error instead of stopping. |
-| `bucket` | Yes | — | Defines an S3 bucket to monitor. Set `type="cloudtrail"` for CloudTrail logs. |
-| `name` | Yes | — | Name of the S3 bucket. |
-| `access_key` | No | — | AWS access key ID. Not required if using IAM roles. |
-| `secret_key` | No | — | AWS secret access key. Not required if using IAM roles. |
-| `aws_profile` | No | — | AWS CLI profile name for authentication. |
-| `iam_role_arn` | No | — | ARN of an IAM role to assume for cross-account access. |
-| `iam_role_duration` | No | — | Duration in seconds for the assumed IAM role session. |
-| `aws_organization_id` | No | — | AWS organization ID to filter logs by. |
-| `aws_account_id` | No | — | Specific AWS account ID to filter logs by. |
-| `aws_account_alias` | No | — | Alias for the AWS account (used in alert enrichment). |
-| `regions` | No | — | Comma-separated list of AWS regions to monitor. |
-| `path` | No | — | S3 key prefix filter for CloudTrail log files. |
-| `path_suffix` | No | — | S3 key suffix filter. |
-| `only_logs_after` | No | — | Only process logs created after this date (`YYYY-MM-DD`). |
-| `remove_from_bucket` | No | `no` | Delete log files from the bucket after processing. |
-| `discard_regex` | No | — | Regular expression to filter out matching events. Requires `field` attribute specifying JSON field name. Format: `<discard_regex field="fieldName">regex</discard_regex>` |
-| `sts_endpoint` | No | — | Custom AWS STS endpoint URL. |
-| `service_endpoint` | No | — | Custom AWS S3 endpoint URL. |
+| `interval` | No | `5` (seconds) | Time between runs. See [Scheduling](README.md#scheduling) for units and the `day`/`wday`/`time` alternatives. |
+| `run_on_start` | No | `yes` | Run as soon as the module starts instead of waiting for the first `interval`. |
+| `skip_on_error` | No | `no` | `yes`: a log file that cannot be read or parsed is skipped and the run continues. `no`: the run stops at that file with an error. |
 
-### Authentication using IAM role
+### Bucket options
 
-Instead of using access keys, you can authenticate using an IAM role:
+| Option | Required | Default | Description |
+|--------|:--------:|---------|-------------|
+| `bucket` | Yes | — | An S3 bucket to read. Several may be given. The `type` attribute selects the log format: `cloudtrail` here (other values in [Other AWS sources](README.md#other-aws-sources)). |
+| `name` | Yes | — | Name of the S3 bucket. It must follow the S3 bucket naming rules. |
+| `aws_profile` | No | — | Profile from the agent host's AWS credentials and config files used to authenticate. |
+| `iam_role_arn` | No | — | ARN of an IAM role to assume to read the bucket. |
+| `iam_role_duration` | No | — | Session duration of the assumed role, in seconds, from `900` to `3600`. Requires `iam_role_arn`. |
+| `access_key` | No | — | AWS access key ID. Deprecated since 4.4: a warning is logged; use another [authentication](#authentication) method. |
+| `secret_key` | No | — | AWS secret access key. Deprecated since 4.4, as `access_key`. |
+| `aws_organization_id` | No | — | AWS Organizations ID, for an organization trail: the logs are read under `AWSLogs/<organization ID>/`. |
+| `aws_account_id` | No | — | Comma-separated list of 12-digit account IDs to read. By default every account found in the bucket. |
+| `aws_account_alias` | No | — | Alias of the account, added to the events. |
+| `regions` | No | — | Comma-separated list of regions to read (for example `us-east-1,eu-west-1`). By default every region found in the bucket. An unknown region stops the run. |
+| `path` | No | — | Prefix the trail writes under, before `AWSLogs/` (the trail's S3 key prefix). The logs are read from `<path>AWSLogs/<path_suffix>[<organization ID>/]<account ID>/CloudTrail/<region>/`. |
+| `path_suffix` | No | — | Extra path segment right after `AWSLogs/`, in the layout above. |
+| `only_logs_after` | No | — | Only read logs from this date on, in `YYYY-MMM-DD` format (for example `2024-JAN-01`). |
+| `remove_from_bucket` | No | `no` | Delete each log file from the bucket after processing it. |
+| `discard_regex` | No | — | Skip the events whose `field` matches this regular expression: `<discard_regex field="eventName">^Describe</discard_regex>`. The `field` attribute is required (the configuration fails to load without it) and may name a nested field with dots. |
+| `sts_endpoint` | No | — | Custom STS endpoint (for example a VPC endpoint) used to assume `iam_role_arn`. |
+| `service_endpoint` | No | — | Custom S3 endpoint URL. |
 
-```xml
+Any other element makes the configuration fail to load.
+
+### Authentication
+
+Without `aws_profile`, `iam_role_arn` or the deprecated keys, the script uses the default AWS
+credential chain of the agent host (environment, credentials files, instance role). To read through a
+role instead:
+
+```xml,fragment
 <bucket type="cloudtrail">
   <name>my-cloudtrail-bucket</name>
   <aws_profile>default</aws_profile>
@@ -84,7 +100,7 @@ Instead of using access keys, you can authenticate using an IAM role:
 
 ### IAM permissions
 
-The IAM user or role used by Wazuh needs the following permissions on the S3 bucket:
+The IAM user or role used by the module needs the following permissions on the S3 bucket:
 
 ```json
 {
@@ -109,16 +125,12 @@ If using `remove_from_bucket`, add the `s3:DeleteObject` permission.
 
 ## Verify the integration
 
-Restart the Wazuh agent after applying the configuration:
+Restart the agent and look for the module's lines (tag `wazuh-modulesd:aws-s3`):
 
 ```bash
 systemctl restart wazuh-agent
-```
-
-Check the module logs:
-
-```bash
 grep "aws-s3" /var/ossec/logs/ossec.log
 ```
 
-CloudTrail events generate alerts with the `aws` data field containing the original event information.
+Each run logs `Executing Bucket Analysis: (Bucket: <name>, …)` for every bucket; script errors are
+logged under the same tag.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _LOGICEXPR_EVALUATOR_H
 #define _LOGICEXPR_EVALUATOR_H
 

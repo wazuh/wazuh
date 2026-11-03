@@ -1,10 +1,11 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import fcntl
 import hashlib
 import json
+import asyncio
 import os
 import sys
 import threading
@@ -32,7 +33,9 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.exception import WazuhInternalError
         from api.authentication import (generate_keypair, check_user_master, check_user, change_keypair,
                                         _private_key_path, _public_key_path, wazuh_uid, wazuh_gid, get_security_conf,
-                                        generate_token, check_token, decode_token, get_optimized_policies)
+                                        generate_token, check_token, decode_token, get_optimized_policies,
+                                        LoginGate, get_login_gate, LOGIN_PENDING_PER_SLOT)
+        import api.authentication as authentication
         del sys.modules['wazuh.rbac.orm']
 
 
@@ -106,13 +109,138 @@ def test_check_user_master():
 @patch('api.authentication.raise_if_exc', side_effect=None)
 async def test_check_user(mock_raise_if_exc, mock_distribute_function, mock_dapi):
     """Verify if result is as expected"""
-    result = check_user('test_user', 'test_pass')
+    class NewDatetime:
+        def timestamp(self) -> float:
+            return 1.5
 
-    assert result == {'sub': 'test_user', 'active': True}, 'Result is not as expected'
+    def check_not_started(*args, **kwargs):
+        # The credential check must not have run when the issue time is taken.
+        mock_dapi.assert_not_called()
+        return NewDatetime()
+
+    with patch('api.authentication.core_utils.get_utc_now', side_effect=check_not_started):
+        result = await check_user('test_user', 'test_pass')
+
+    assert result == {'sub': 'test_user', 'active': True, 'auth_time_ms': 1500}, 'Result is not as expected'
     mock_dapi.assert_called_once_with(f=ANY, f_kwargs={'user': 'test_user', 'password': 'test_pass'},
                                       request_type='local_master', is_async=False, wait_for_complete=False, logger=ANY)
     mock_distribute_function.assert_called_once_with()
     mock_raise_if_exc.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.__init__', return_value=None)
+@patch('api.authentication.raise_if_exc', side_effect=lambda result: result)
+async def test_check_user_does_not_block_the_event_loop(mock_raise_if_exc, mock_dapi):
+    """A password check in progress must leave the event loop free for other requests."""
+    release = asyncio.Event()
+    other_request_ran = asyncio.Event()
+
+    async def slow_check(self):
+        await release.wait()
+        return {'result': False}
+
+    async def other_request():
+        other_request_ran.set()
+        release.set()
+
+    with patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.distribute_function', new=slow_check), \
+            patch('api.authentication._login_gate', new=LoginGate(slots=1, max_pending=8)):
+        results = await asyncio.wait_for(asyncio.gather(check_user('user', 'wrong'), other_request()), timeout=5)
+
+    assert other_request_ran.is_set()
+    assert results[0] is None
+
+
+@pytest.mark.asyncio
+@patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.__init__')
+async def test_check_user_refused_by_the_login_gate(mock_dapi):
+    """A login the gate refuses is answered 429 (6006) without starting a password check."""
+    gate = MagicMock()
+    gate.admit.return_value.__aenter__.side_effect = authentication.MaxRequestsException(code=6006)
+
+    with patch('api.authentication.get_login_gate', return_value=gate):
+        with pytest.raises(authentication.MaxRequestsException) as exc_info:
+            await check_user('user', 'password')
+
+    assert exc_info.value.status == 429
+    assert exc_info.value.ext['code'] == 6006
+    mock_dapi.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_login_gate_bounds_running_checks():
+    """No more than `slots` checks run at once; the rest wait for a slot."""
+    gate = LoginGate(slots=2, max_pending=10)
+    running = 0
+    peak = 0
+
+    async def check():
+        nonlocal running, peak
+        async with gate.admit():
+            running += 1
+            peak = max(peak, running)
+            await asyncio.sleep(0)
+            await asyncio.sleep(0)
+            running -= 1
+
+    await asyncio.gather(*(check() for _ in range(6)))
+
+    assert peak == 2
+    assert gate._pending == 0
+
+
+@pytest.mark.asyncio
+async def test_login_gate_refuses_beyond_max_pending():
+    """Once `max_pending` checks are running or waiting, a further one is refused with 6006,
+       and the slot it would have taken is not consumed."""
+    gate = LoginGate(slots=1, max_pending=2)
+    release = asyncio.Event()
+
+    async def held():
+        async with gate.admit():
+            await release.wait()
+
+    tasks = [asyncio.create_task(held()) for _ in range(2)]
+    await asyncio.sleep(0)
+
+    with pytest.raises(authentication.MaxRequestsException) as exc_info:
+        async with gate.admit():
+            pass
+    assert exc_info.value.ext['code'] == 6006
+    assert gate._pending == 2
+
+    release.set()
+    await asyncio.gather(*tasks)
+    assert gate._pending == 0
+
+    async with gate.admit():
+        assert gate._pending == 1
+
+
+@pytest.mark.asyncio
+async def test_login_gate_releases_on_error():
+    """A check that raises gives its slot back."""
+    gate = LoginGate(slots=1, max_pending=1)
+
+    with pytest.raises(RuntimeError):
+        async with gate.admit():
+            raise RuntimeError
+
+    async with gate.admit():
+        assert gate._pending == 1
+
+
+@pytest.mark.parametrize('pool_size, expected_slots', [(1, 1), (2, 1), (3, 2), (10, 9)])
+def test_get_login_gate_sizing(pool_size, expected_slots):
+    """The gate leaves one `authentication_pool` worker for token checks, and never has zero slots."""
+    with patch('api.authentication._login_gate', new=None), \
+            patch('api.authentication.conf.api_conf', new={'authentication_pool_size': pool_size}):
+        gate = get_login_gate()
+        assert get_login_gate() is gate
+
+    assert gate._slots._value == expected_slots
+    assert gate._max_pending == expected_slots * LOGIN_PENDING_PER_SLOT
 
 
 @patch('api.authentication._write_new_keypair', return_value=('-----BEGIN PRIVATE KEY-----',
@@ -220,13 +348,11 @@ async def test_generate_token(mock_raise_if_exc, mock_distribute_function, mock_
                         mock_encode, auth_context):
     """Verify if result is as expected"""
 
-    class NewDatetime:
-        def timestamp(self) -> float:
-            return 0
-
     mock_raise_if_exc.return_value = security_conf
-    with patch('api.authentication.core_utils.get_utc_now', return_value=NewDatetime()):
-        result = generate_token(user_id='001', data={'roles': [1]}, auth_context=auth_context)
+    with patch('api.authentication.core_utils.get_utc_now') as mock_now:
+        result = await generate_token(issued_at_ms=0, user_id='001', data={'roles': [1]}, auth_context=auth_context)
+    # The issue time is the one handed in by the credential check, never the signing time.
+    mock_now.assert_not_called()
     assert result == 'test_token', 'Result is not as expected'
 
     # Check all functions are called with expected params
@@ -277,7 +403,29 @@ def test_check_token_runas_revoked_at_user_level(mock_optimize):
                                             run_as=True, origin_node_type='master')
 
     assert result == {'valid': False}
-    tm.is_token_valid.assert_any_call(user_id=101, token_nbf_time=100, run_as=True)
+    tm.is_token_valid.assert_any_call(user_id=101, token_nbf_time=100, run_as=True, hash_auth_context=None)
+
+
+@patch('api.authentication.optimize_resources', return_value={})
+def test_check_token_runas_checks_the_authorization_context(mock_optimize):
+    """A run_as token is validated against the revocation of its own authorization context."""
+    am = MagicMock()
+    am.get_user.return_value = {'id': 2, 'username': 'wazuh-internal-client'}
+    am.user_allow_run_as.return_value = True
+    urm = MagicMock()
+    urm.get_all_roles_from_user.return_value = []
+    tm = MagicMock()
+    tm.is_token_valid.side_effect = lambda **kwargs: kwargs.get('hash_auth_context') != 'revoked'
+
+    with patch('api.authentication.AuthenticationManager', _orm_manager_mock(am)), \
+            patch('api.authentication.UserRolesManager', _orm_manager_mock(urm)), \
+            patch('api.authentication.TokenManager', _orm_manager_mock(tm)):
+        assert check_token(username='wazuh-internal-client', roles=tuple([1]), token_nbf_time=100, run_as=True,
+                           origin_node_type='master', hash_auth_context='revoked') == {'valid': False}
+        assert check_token(username='wazuh-internal-client', roles=tuple([1]), token_nbf_time=100, run_as=True,
+                           origin_node_type='master', hash_auth_context='other')['valid'] is True
+
+    tm.is_token_valid.assert_any_call(user_id=2, token_nbf_time=100, run_as=True, hash_auth_context='revoked')
 
 
 @patch('api.authentication.optimize_resources', return_value={})
@@ -304,7 +452,7 @@ def test_check_token_runas_revoked_dynamic_role(mock_optimize):
     assert result == {'valid': False}
     # The user and run_as rules are checked once, before the loop; the role iterations ask only
     # for the role rule so that they do not re-read the same two rows per role.
-    tm.is_token_valid.assert_any_call(user_id=101, token_nbf_time=200, run_as=True)
+    tm.is_token_valid.assert_any_call(user_id=101, token_nbf_time=200, run_as=True, hash_auth_context=None)
     tm.is_token_valid.assert_any_call(role_id=1, token_nbf_time=200)
 
 
@@ -843,13 +991,13 @@ async def test_decode_token(mock_raise_if_exc, mock_distribute_function, mock_da
     mock_raise_if_exc.side_effect = [WazuhResult({'valid': True, 'policies': {'value': 'test'}}),
                                      WazuhResult(security_conf)]
 
-    result = decode_token('test_token')
+    result = await decode_token('test_token')
     assert result == decoded_payload
 
     # Check all functions are called with expected params
     calls = [call(f=ANY, f_kwargs={'username': original_payload['sub'], 'token_nbf_time': int(original_payload['nbf'] * 1000),
                                    'run_as': False, 'roles': tuple(original_payload['rbac_roles']),
-                                   'origin_node_type': 'master'},
+                                   'origin_node_type': 'master', 'hash_auth_context': None},
                   request_type='local_master', is_async=False, wait_for_complete=False, logger=ANY),
              call(f=ANY, request_type='local_master', is_async=False, wait_for_complete=False, logger=ANY)]
     mock_dapi.assert_has_calls(calls)
@@ -862,6 +1010,41 @@ async def test_decode_token(mock_raise_if_exc, mock_distribute_function, mock_da
 
 
 @pytest.mark.asyncio
+@patch('api.authentication.jwt.decode')
+@patch('api.authentication.generate_keypair', return_value=('-----BEGIN PRIVATE KEY-----',
+                                                            '-----BEGIN PUBLIC KEY-----'))
+@patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.__init__', return_value=None)
+@patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.distribute_function', return_value=True)
+@patch('api.authentication.raise_if_exc', side_effect=None)
+async def test_decode_token_run_as_passes_the_authorization_context(mock_raise_if_exc, mock_distribute_function,
+                                                                    mock_dapi, mock_generate_keypair, mock_decode):
+    """A run_as token is checked with its authorization context hash."""
+    mock_decode.return_value = deepcopy(original_payload) | {'run_as': True, 'hash_auth_context': 'abc'}
+    mock_raise_if_exc.side_effect = [WazuhResult({'valid': True, 'policies': {'value': 'test'}}),
+                                     WazuhResult(security_conf)]
+
+    await decode_token('test_token')
+
+    assert mock_dapi.call_args_list[0].kwargs['f_kwargs']['run_as'] is True
+    assert mock_dapi.call_args_list[0].kwargs['f_kwargs']['hash_auth_context'] == 'abc'
+
+
+@pytest.mark.asyncio
+@patch('api.authentication.jwt.decode')
+@patch('api.authentication.generate_keypair', return_value=('-----BEGIN PRIVATE KEY-----',
+                                                            '-----BEGIN PUBLIC KEY-----'))
+@patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.__init__', return_value=None)
+async def test_decode_token_run_as_without_authorization_context(mock_dapi, mock_generate_keypair, mock_decode):
+    """A run_as token without an authorization context hash could not be logged out, so it is refused."""
+    mock_decode.return_value = deepcopy(original_payload) | {'run_as': True}
+
+    with pytest.raises(Unauthorized):
+        await decode_token('test_token')
+
+    mock_dapi.assert_not_called()
+
+
+@pytest.mark.asyncio
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.distribute_function', side_effect=None)
 @patch('api.authentication.raise_if_exc', side_effect=None)
 @patch('api.authentication.generate_keypair', return_value=('-----BEGIN PRIVATE KEY-----',
@@ -869,7 +1052,7 @@ async def test_decode_token(mock_raise_if_exc, mock_distribute_function, mock_da
 async def test_decode_token_ko(mock_generate_keypair, mock_raise_if_exc, mock_distribute_function):
     """Assert exceptions are handled as expected inside decode_token()"""
     with pytest.raises(Unauthorized):
-        decode_token(token='test_token')
+        await decode_token(token='test_token')
 
     with patch('api.authentication.jwt.decode') as mock_decode:
         with patch('api.authentication.generate_keypair',
@@ -882,11 +1065,11 @@ async def test_decode_token_ko(mock_generate_keypair, mock_raise_if_exc, mock_di
 
                         with pytest.raises(Unauthorized):
                             mock_raise_if_exc.side_effect = [WazuhResult({'valid': False})]
-                            decode_token(token='test_token')
+                            await decode_token(token='test_token')
 
                         with pytest.raises(Unauthorized):
                             mock_raise_if_exc.side_effect = [
                                 WazuhResult({'valid': True, 'policies': {'value': 'test'}}),
                                 WazuhResult({'auth_token_exp_timeout': 900,
                                              'rbac_mode': 'white'})]
-                            decode_token(token='test_token')
+                            await decode_token(token='test_token')

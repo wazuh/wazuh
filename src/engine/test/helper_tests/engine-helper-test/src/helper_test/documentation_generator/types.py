@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 class Metadata:
     def __init__(self, description: str, keywords: list):
         self.description = description
@@ -5,11 +6,13 @@ class Metadata:
 
 
 class Argument:
-    def __init__(self, arg_type, source, generate, restrictions=None):
+    def __init__(self, arg_type, source, generate, restrictions=None, optional=False, accepted_values=None):
         self.arg_type = arg_type
         self.source = source
         self.generate = generate
         self.restrictions = restrictions or {}
+        self.optional = optional
+        self.accepted_values = accepted_values
 
 
 class Output:

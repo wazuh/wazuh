@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include "builders/baseBuilders_test.hpp"
 
 #include "builders/opfilter/opBuilderHelperFilter.hpp"
@@ -106,11 +107,8 @@ INSTANTIATE_TEST_SUITE_P(
                 "target",
                 {makeRef("ref")},
                 SUCCESS()),
-        FilterT(R"({"target": 1, "ref": [1]})",
-                opfilter::opBuilderHelperMatchValue,
-                "target",
-                {makeRef("ref")},
-                SUCCESS()),
+        FilterT(
+            R"({"target": 1, "ref": [1]})", opfilter::opBuilderHelperMatchValue, "target", {makeRef("ref")}, SUCCESS()),
         FilterT(R"({"target": true, "ref": [true]})",
                 opfilter::opBuilderHelperMatchValue,
                 "target",

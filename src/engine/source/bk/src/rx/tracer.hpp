@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _BK_RX_TRACER_HPP
 #define _BK_RX_TRACER_HPP
 

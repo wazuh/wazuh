@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _H_BASE_TYPES
 #define _H_BASE_TYPES
 
@@ -7,9 +8,11 @@
 
 namespace base
 {
-using Event = std::shared_ptr<json::Json>;         ///< Shared pointer to a mutable JSON event.
-using ConstEvent = const std::shared_ptr<const json::Json>&; ///< Reference to a shared pointer to an immutable JSON event.
-using EngineOp = std::function<result::Result<Event>(Event)>; ///< Engine operation: receives an Event and returns a Result.
+using Event = std::shared_ptr<json::Json>; ///< Shared pointer to a mutable JSON event.
+using ConstEvent =
+    const std::shared_ptr<const json::Json>&; ///< Reference to a shared pointer to an immutable JSON event.
+using EngineOp =
+    std::function<result::Result<Event>(Event)>; ///< Engine operation: receives an Event and returns a Result.
 } // namespace base
 
 #endif //_H_BASE_TYPES

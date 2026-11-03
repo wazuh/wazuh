@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -69,7 +69,7 @@ from wazuh import WazuhError
         ("sort param-", _sort_param),
         ("search param3", _search_param),
         # paths
-        ("/var/wazuh-manager/etc/internal_options", _paths),
+        ("/etc/wazuh-manager/internal_options", _paths),
         ("correct.wpk", _wpk_path),
         # version
         ("v4.4.0", _wazuh_version),
@@ -92,6 +92,10 @@ def test_validation_check_exp_ok(exp, regex_name):
         ("543a", _numbers),
         ("number", _numbers_or_all),
         ("2380234all", _numbers_or_all),
+        ("5\n", _numbers),
+        ("all\n", _numbers_or_all),
+        ("\u0665", _numbers),
+        ("\uff15", _numbers_or_all),
         # names
         ("alphanumeric1_$param2", _alphanumeric_param),
         ("all", _group_names),
@@ -108,6 +112,8 @@ def test_validation_check_exp_ok(exp, regex_name):
         # hashes
         ("$$d909c290d0fb1ca068ffaddf22cbd0", _hashes),
         ("449e3b6ffd9b484c5c645321edd4d61$", _wazuh_key),
+        ("\u0664" * 32, _hashes),
+        ("449e3b6ffd9b484c5c645321edd4d610\n", _wazuh_key),
         # date
         ("2021-13-28", _iso8601_date),
         ("2021-10-35", _iso8601_date),
@@ -115,8 +121,9 @@ def test_validation_check_exp_ok(exp, regex_name):
         # time
         ("1j", _timeframe_type),
         ("12x", _timeframe_type),
+        ("\u0661d", _timeframe_type),
         # paths
-        ("/var/wazuh-manager/etc/internal_options$", _paths),
+        ("/etc/wazuh-manager/internal_options$", _paths),
         ("incorrect.txt", _wpk_path),
         (".wpk", _wpk_path),
         # version
@@ -124,6 +131,7 @@ def test_validation_check_exp_ok(exp, regex_name):
         ("4.4", _wazuh_version),
         ("wazuh 4.4", _wazuh_version),
         ("wazuh v4.4", _wazuh_version),
+        ("4.4.\u0660", _wazuh_version),
         # miscellaneous
         ("aDhjasdh3=", _base64),
     ],

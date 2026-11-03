@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <base/managerConfig.hpp>
 
 #include <memory>
@@ -7,20 +8,9 @@
 #include <manager_config/manager_config.hpp>
 #include <rapidjson/document.h>
 
-#include <base/libwazuhshared.hpp>
-
 namespace
 {
 std::unique_ptr<manager_config::Document> g_document;
-
-/// cJSON_Parse of libwazuhext.so (dependency of libwazuhshared.so), resolved by registerSharedHook().
-using ParseFn = void* (*)(const char*);
-ParseFn g_parseFn = nullptr;
-
-std::filesystem::path filePath(const std::filesystem::path& home)
-{
-    return home / std::string(base::managerConfig::FILE_RELATIVE_PATH);
-}
 
 manager_config::LoadOptions loadOptions(const std::filesystem::path& home, bool checkFiles)
 {
@@ -39,27 +29,19 @@ std::string stringMember(const rapidjson::Document& object, const char* key)
     }
     return std::string(it->value.GetString(), it->value.GetStringLength());
 }
-
-// Section provider handed to libwazuhshared.so: the cJSON it returns is allocated by the shared
-// library's own cJSON (libwazuhext.so), which is what its callers release with cJSON_Delete().
-void* sectionProvider(const char* section)
-{
-    if (g_parseFn == nullptr || section == nullptr)
-    {
-        return nullptr;
-    }
-
-    const auto json = base::managerConfig::sectionJson(section);
-    return json.empty() ? nullptr : g_parseFn(json.c_str());
-}
 } // namespace
 
 namespace base::managerConfig
 {
 
-void load(const std::filesystem::path& home)
+std::filesystem::path filePath()
 {
-    auto result = manager_config::Document::load(filePath(home), loadOptions(home, false));
+    return std::filesystem::path(std::string(MANAGER_CONF_DIR)) / std::string(FILE_NAME);
+}
+
+void load(const std::filesystem::path& home, const std::filesystem::path& file)
+{
+    auto result = manager_config::Document::load(file, loadOptions(home, false));
     if (const auto* error = std::get_if<manager_config::Error>(&result))
     {
         throw std::runtime_error(error->what());
@@ -68,9 +50,9 @@ void load(const std::filesystem::path& home)
     g_document = std::make_unique<manager_config::Document>(std::move(std::get<manager_config::Document>(result)));
 }
 
-std::optional<std::string> validate(const std::filesystem::path& home)
+std::optional<std::string> validate(const std::filesystem::path& home, const std::filesystem::path& file)
 {
-    if (const auto error = manager_config::validateFile(filePath(home), loadOptions(home, true)))
+    if (const auto error = manager_config::validateFile(file, loadOptions(home, true)))
     {
         return error->what();
     }
@@ -108,12 +90,47 @@ std::pair<std::string, std::string> clusterNames()
     return {stringMember(cluster, "name"), stringMember(cluster, "node_name")};
 }
 
-void registerSharedHook()
+LogFormat logFormat()
 {
-    using HookSetFn = void (*)(void* (*)(const char*));
-    const auto hookSet = base::libwazuhshared::getFunction<HookSetFn>("w_mconf_hook_set");
-    g_parseFn = base::libwazuhshared::getFunction<ParseFn>("cJSON_Parse");
-    hookSet(&sectionProvider);
+    constexpr LogFormat DEFAULT_FORMAT {true, false};
+
+    const auto json = sectionJson("logging");
+    if (json.empty())
+    {
+        return DEFAULT_FORMAT;
+    }
+
+    rapidjson::Document section;
+    if (section.Parse(json.c_str()).HasParseError() || !section.IsObject())
+    {
+        return DEFAULT_FORMAT;
+    }
+
+    const auto it = section.FindMember("log_format");
+    if (it == section.MemberEnd() || !it->value.IsArray())
+    {
+        return DEFAULT_FORMAT;
+    }
+
+    LogFormat format {false, false};
+    for (const auto& value : it->value.GetArray())
+    {
+        if (!value.IsString())
+        {
+            continue;
+        }
+        const std::string_view name(value.GetString(), value.GetStringLength());
+        if (name == "plain")
+        {
+            format.plain = true;
+        }
+        else if (name == "json")
+        {
+            format.json = true;
+        }
+    }
+
+    return (format.plain || format.json) ? format : DEFAULT_FORMAT;
 }
 
 void reset()

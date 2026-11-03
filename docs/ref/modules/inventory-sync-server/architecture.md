@@ -23,11 +23,13 @@ flowchart TB
             SYNCR["POST /stateful"] -->|non-VD sessions| PIPE[SyncPipeline\nworkers sharded by agent id\none IndexerConnectorSync each\ngroup commit]
             SYNCR -->|"vulnerability-detection sessions\n(queue full ⇒ 503)"| LANE[[VD scan lane\nbounded queue + vd_workers\nscan → ok → index → respond]]
             DELR["POST /_internal/agents/delete\n(manager-internal, UDS-local)"] -->|"enqueue on the agent's shard\nanswers 200 after the flush"| PIPE
+            SCANR["POST /_internal/vd/scan\n(manager-internal, UDS-local)"] -->|"enqueue on the lane\nanswers after the scan"| LANE
             PIPE <-.->|in-flight agent registry| LANE
         end
         REME -->|"POST /stateful over UDS\n+ X-Wazuh-Agent-Id"| SYNCR
         SYNCR -.->|HTTP response| REME
         TM[Task Manager dispatcher\nmodulesd] -->|"POST /_internal/agents/delete (UDS)"| DELR
+        TM -->|"POST /_internal/vd/scan (UDS)"| SCANR
         subgraph VD["vulnerability_scanner (same process)"]
             ORCH[ScanOrchestrator]
         end
@@ -41,9 +43,10 @@ flowchart TB
     ORCH -->|its own connector| IDX
 ```
 
-Every hop is HTTP/1.1. The two ingestion-side routes are independent: `POST /stateful` (the only
-one remoted relays for agents) and `POST /_internal/agents/delete` (manager-internal, UDS-local —
-remoted has no downstream route to it, by design).
+Every hop is HTTP/1.1. Remoted relays only the agent-facing routes (`POST /stateful`, `POST /stats`,
+`POST /config`); the two `_internal` routes are manager-internal and UDS-local — remoted has no
+downstream route to them, by design. `/stats` and `/config` (not drawn) index one document per agent
+through the asynchronous connector.
 
 ## The request pipeline
 
@@ -62,9 +65,11 @@ sequenceDiagram
     R->>S: POST /stateful (headers)
     Note over S: admission: in-flight byte budget / connection cap → 503<br/>a session declaring more than the TOTAL budget → 413
     R->>S: body (FlatBuffer)
-    Note over S: Verifier + FullSession type + identity + mode×payload matrix<br/>(O(bytes), CPU only — no I/O on the strand)
+    Note over S: Verifier + FullSession type + identity + mode×payload matrix<br/>+ Start list caps + reachable-bytes budget + UTF-8 Start strings<br/>(O(bytes), CPU only — no I/O on the strand)
     alt validation fails
         S-->>R: 400 / 403
+    else the agent already has max_sessions_per_agent sessions pending
+        S-->>R: 503 (nothing processed)
     else VD session and the CVE feed is still downloading
         S-->>R: 503 + Retry-After (nothing processed)
     else VD session and the scan lane queue is full
@@ -79,7 +84,7 @@ sequenceDiagram
         Q-->>R: 200 {"status":"ok"} · 409 {"status":"checksum_mismatch"} · 503/500
     else VD session
         S->>VQ: enqueue on the scan lane (deferred response)
-        Note over VQ: lane worker: re-check feed → check Start.feed_offset<br/>against the node's current VD feed offset
+        Note over VQ: lane worker: re-check indexer availability (503) → re-check feed<br/>(503 + Retry-After) → check Start.feed_offset against the node's current VD feed offset
         alt feed_offset mismatch
             VQ-->>R: 409 {"error":"version_mismatch","current_version":N}
         else offset matches: run the vulnerability scan SYNCHRONOUSLY
@@ -106,7 +111,7 @@ What runs where, and what it can block:
 
 ## The sync pipeline
 
-`SyncPipeline` (`src/sync/`) owns N workers, each with its own private `IndexerConnectorSync`. A
+`SyncPipeline` (`src/wazuh_modules/inventory_sync_server/src/sync/`) owns N workers, each with its own private `IndexerConnectorSync`. A
 session lands on `hash(agentId) % N`, which makes **per-agent ordering a property of the
 topology** instead of a lock: two requests of the same agent — a cleans and the delta that
 re-populates it, a delta and its checksum — are applied in arrival order because they traverse
@@ -173,8 +178,8 @@ the indexer never delays the strand that is deciding whether to admit the next s
 
 Sessions whose `Start.option` is `VDFirst` or `VDSync` carry data the vulnerability scanner must
 evaluate. They run through a dedicated lane so that the scan can GATE the response: a `200` for a
-VD session guarantees the scan ran AND the inventory was flushed; a failed scan answers `500`
-with **nothing indexed**.
+VD session guarantees the scan ran (unless this node runs no scanner — see the table below) AND the
+inventory was flushed; a failed scan answers `500` with **nothing indexed**.
 
 ```mermaid
 flowchart LR
@@ -183,6 +188,7 @@ flowchart LR
     S -->|CVE feed still downloading| RA[503 + Retry-After]
     S -->|lane queue full| E503[503 scan capacity exhausted]
     L --> W["lane worker: build scan views →\nrun scan → (ok) index + flush → 200"]
+    W -->|feed_offset mismatch| C409[409 version_mismatch]
     W -->|scan throws| E500[500 — nothing indexed]
     P <-.->|in-flight agent registry\ncross-lane per-agent ordering| L
     W --> IDX[(indexer)]
@@ -193,35 +199,45 @@ The gates, in order:
 
 | Situation | Answer | Why |
 |---|---|---|
-| CVE feed still downloading | `503` + `Retry-After` | Rejected WITHOUT processing, so the re-POST applies scan and ingest together and nothing ever blocks waiting for the feed. The delay is `inventory_sync_server_vd_feed_retry_after_seconds`. |
+| CVE feed still downloading, or the scanner is enabled here but still starting up | `503` + `Retry-After` | Rejected WITHOUT processing, so the re-POST applies scan and ingest together and nothing ever blocks waiting for the feed or the scanner. The delay is `inventory_sync_server_vd_feed_retry_after_seconds`. |
 | Lane queue full | `503` `{"error":"scan capacity exhausted","code":503}` | The queue is deliberately short (`vd_scan_queue_slots`): scans are slow, and an early 503 beats a late timeout — a timed-out agent re-POSTs and re-does scan+ingest in full. |
+| No healthy indexer host when a lane worker picks the session up | `503` (generic body) | Checked before the scan: a scan whose inventory could never land would waste minutes to answer the same `503`. The feed gate above is also re-checked here, answering `503` + `Retry-After` again if the feed became unready while the session waited. |
+| `Start.feed_offset` differs from this node's current feed offset (only while this node runs a scanner) | `409` `{"error":"version_mismatch","current_version":N}` | Counted as `vd.offset_mismatch.total`; the agent rebuilds the session against `current_version`. |
 | Scan succeeded | index + flush → `200` | The strong contract: 200 = scanned AND ingested. |
 | Scan threw | `500` `{"error":"vulnerability scan failed","code":500}` | Zero documents indexed; the agent retries next cycle and the re-POST redoes both halves. |
-| Scan legitimately skipped (scanner disabled) | index + `200` | Inventory must keep flowing even with the scanner off. |
-| VD session on a node running no scanner | admitted with no version check, then index + `200` | With no scanner there is no feed version to disagree about, and an agent still carrying an offset from before the module was disabled would otherwise be rejected on every cycle, forever. A feed that is merely still loading is answered `503` above, so packages and vulnerabilities keep going together whenever the module is up. |
+| Scan legitimately skipped (scanner disabled, or enabled but failed to start) | index + `200` | Inventory must keep flowing even with the scanner off or broken. |
+| VD session on a node running no scanner | admitted with no version check, then index + `200` | With no scanner there is no feed version to disagree about, and an agent still carrying an offset from before the module was disabled would otherwise be rejected on every cycle, forever. A scanner that is enabled here but still starting is answered `503` above instead, so packages and vulnerabilities keep going together whenever the module is up. |
 | Shutdown | `503` to everything queued | The lane joins its workers; a scan in flight finishes (there is no cancellation point inside the scanner). |
 
 Two pieces coordinate the lane with the rest of the system:
 
-- **The in-flight agent registry** (`src/vd/agentInFlightRegistry.hpp`) is a per-agent,
+- **The in-flight agent registry** (`src/wazuh_modules/inventory_sync_server/src/vd/agentInFlightRegistry.hpp`) is a per-agent,
   lane-aware exclusion map both dispatchers consult. The sync pipeline **parks** items of an
   agent whose scan is in flight (they stay queued, in order, without head-of-line blocking the
   shard's other agents), and the lane will not start a second scan for an agent that already has
   one running. Pipeline holds are reentrant (group commit holds several staged sessions of one
   agent at once); lane holds are not. Releases are lane-checked, so one lane can never free the
   other's hold.
-- **The scan coordinator** (`src/vd/serverScanCoordinator.hpp`) registers with the scanner's
-  coordination registry so a feed-update rescan (per-agent, on-demand via `/scan/vd`, or the
-  master-only sweep over disconnected agents — see
+- **The scan coordinator** (`src/wazuh_modules/inventory_sync_server/src/vd/serverScanCoordinator.hpp`)
+  registers with the scanner's coordination registry so a feed-update rescan (per-agent, on-demand
+  via `/scan/vd`, or the master-only sweep over disconnected agents — see
   [vulnerability-scanner's architecture.md](../vulnerability-scanner/architecture.md#feed-update-rescan-scanvd--rescandisconnectedagents))
-  and a session scan for the SAME agent never race: the scanner can ask which agents have sessions
-  in flight, pause new dispatches for an agent, and drain what is already running before it
-  rescans that agent. There is no fleet-wide coordination — each feed-update rescan fences only
-  the one agent it is about to scan.
+  and a session scan for the SAME agent never race: the scanner can pause new dispatches for an
+  agent and wait (up to 30 s) for what is already running to drain before it rescans that agent.
+  There is no fleet-wide coordination — each feed-update rescan fences only the one agent it is
+  about to scan.
 
 The scanner itself stays behind a **neutral view interface** — flat `string_view`/span structs —
 so the boundary between the two modules carries no FlatBuffers types in either direction. The
-production adapter is confined to a single translation unit (`src/vd/vdScannerAdapter.cpp`).
+production adapter is confined to a single translation unit
+(`src/wazuh_modules/inventory_sync_server/src/vd/vdScannerAdapter.cpp`).
+
+The same lane also runs **on-demand rescans** (`POST /_internal/vd/scan`): one agent, no session and
+no inventory — the scanner reads the agent's stored packages and writes its findings itself, so the
+answer is the scan's own outcome. Running it here is what puts it under the same per-agent exclusion
+as the agent's sessions. A request for an agent that already has a scan in flight is refused at once
+with `409 scan_in_progress` instead of waiting behind it. Statuses are in the
+[API reference](api-reference.md#on-demand-vulnerability-scans).
 
 ## Agent deletion
 
@@ -231,9 +247,6 @@ Manager's dispatcher, executing a durable `agent_delete_indexer` task that `wazu
 created right after removing the agent from `client.keys` and Wazuh DB. The agent id travels in the
 body (`{"agent_id":"7"}`), because the dispatcher forwards a task row's payload verbatim and sets no
 headers of its own.
-
-**It answers at COMPLETION**: the `200` means the delete-by-query ran and flushed, which is what
-lets the task row read `completed` and have that mean purged rather than "accepted".
 
 **Two halves, one per writer.** A document can only be deleted in the right ORDER by the connector
 that writes it, and this module writes through two, so the scope is split accordingly
@@ -263,18 +276,22 @@ as retryable.
 The `200` still promises only that the by-id half was **queued**: that connector is a buffering FIFO
 with nothing to wait on, which is precisely the property that orders it behind an accepted report.
 
-Nothing waits on `client.keys` any more. The route used to answer at admission because authd relayed
-deletions from the one thread that persists that file, and on populated `wazuh-states-*` a single
-delete-by-query legitimately outlives any request budget worth setting — it timed out, retried into
-the very same running purge, and blocked every key write in between, so no agent could enroll until
-the batch drained. What waits now is a dispatcher lane, which is built to.
+Answering at completion is safe because nothing waits on `client.keys` any more: the caller is a
+dispatcher lane built to wait, not authd's key-writing thread (why the earlier admission-answered
+routes were removed is recorded in the developer README's *What replaced what*).
 
 A deletion has to be complete when it runs: an index that does not exist counts as success (so
 repeating a deletion is harmless), while a per-shard failure or a skipped document (a version
 conflict, which `conflicts: "proceed"` counts separately) fails it instead of passing as success,
-because with the agent gone nothing would ever overwrite what was missed. A failure is answered as a
-non-2xx, and the dispatcher retries it — against a task type with no attempt budget, so it retries
-until it succeeds.
+because with the agent gone nothing would ever overwrite what was missed. A version conflict clears
+itself once the index refreshes, so it is first retried inside an allowance shared by the whole
+flush — bounded by an attempt count and by the same wall clock as the rest of the flush — and only
+fails the deletion if it survives that; see the [connector reference](../indexer_connector/README.md)
+for the allowance. That is why a deletion can take a few seconds longer than the single POST per
+index this lane otherwise implies. A failure is answered as a
+non-2xx — an exhausted conflict allowance specifically as `503` `indexer contention` with
+`Retry-After` (counted as `sync.indexer.conflict.exhausted`) — and the dispatcher retries it,
+against a task type with no attempt budget, so it retries until it succeeds.
 
 One window this does NOT cover on its own, which leaves a document behind while still reporting
 success:
@@ -290,12 +307,12 @@ success:
 
 ## The transport
 
-The transport (`src/http_server/`) is a hand-written HTTP/1.1 server over `asio` and `llhttp`,
-behind the module's own `IUdsHttpServer` interface. Each accepted connection becomes a `Session`
-whose socket handlers are bound to its own strand. That binding is load-bearing rather than
-incidental: an accepted socket inherits the executor of the acceptor that produced it, and the
-acceptor lives on a single shared strand, so without it every connection's I/O would serialize
-onto that one strand and the configured I/O thread count would buy no parallelism at all.
+The transport is the shared [UDS HTTP server](../utils/uds-http-server/README.md) library
+(`src/shared_modules/uds_http_server/`), a hand-written HTTP/1.1 server over `asio` and `llhttp`
+behind its `IUdsHttpServer` interface; this module only builds its configuration
+(`src/wazuh_modules/inventory_sync_server/src/http_server/udsHttpServerConfig.cpp`) and registers the
+routes. The library's own internals — per-connection strands, the accept loop, route classes —
+are documented on its page; what this module's requests meet is summarized here.
 
 Admission control runs at headers-complete, before any body byte is read:
 
@@ -303,7 +320,10 @@ Admission control runs at headers-complete, before any body byte is read:
    exists under another verb.
 2. The declared `Content-Length` plus a per-request overhead is reserved from the in-flight byte
    budget. Over the available budget means `503`; a request that declares more than the TOTAL
-   budget could never be admitted and is answered `413`.
+   budget could never be admitted and is answered `413`. This applies to the data-class routes
+   (`/stateful`, `/stats`, `/config`); the two `_internal` routes (control class) are exempt from
+   the budget and bounded instead by `control_max_body_bytes` (`413`) and `control_max_sessions`
+   (`503`), and the liveness routes (`GET /`, `GET /metrics`) by the transport's fixed liveness caps.
 3. Only then is the body read.
 
 The per-request overhead is DERIVED from the configured header limits rather than being a
@@ -315,17 +335,13 @@ Responses are **deferred by contract**: a handler receives an `IHttpResponder` i
 any thread, long after the handler returned. The byte reservation is released when the request is
 answered, so backpressure covers the whole life of a session, not just its read phase.
 
-An `accept()` that fails for a transient reason — descriptor exhaustion, most likely, since the
-limit is shared with every other module — is logged (throttled) and the accept chain is re-armed.
-A chain that returned without re-arming would leave the socket bound and the listener permanently
-deaf.
-
 ## The startup gate
 
-Before the socket opens, three objects are built in order: the shared indexer session, the
-synchronous connector and the asynchronous connector. Each is built at most once and memoised,
-because a successful construction is a "configuration is valid" signal that cannot change without
-a restart.
+Before the socket opens, the facade builds, in order: the shared indexer session, the synchronous
+connector, the asynchronous connector, the sync pipeline and the VD scan lane. Each stage is built at
+most once per start and memoised, so a retry never rebuilds what already works: for the indexer
+objects, a successful construction is a "configuration is valid" signal that cannot change without a
+restart.
 
 The gate is "did construction throw", never "is the indexer reachable". The constructors validate
 configuration synchronously and throw on failure, while a host that is merely unreachable does
@@ -339,10 +355,11 @@ could never be bound, an exception before the worker thread was launched, and a
 an operator does at runtime fixes any of them, and running without ingress while looking healthy
 is worse than not running.
 
-Once the gate passes, the facade builds the processing stages in dependency order: the in-flight
-agent registry first (it must outlive both consumers), then the sync pipeline with one connector
-per worker, then — when the scanner is linked in — the scan lane with its own connectors and the
-coordinator registration. The HTTP routes are registered with **weak** references to all of it,
+The processing stages follow the indexer objects in dependency order: the in-flight agent registry
+first (it must outlive both consumers), then the sync pipeline with one connector per worker (worker
+0 reuses the synchronous connector above), then the scan lane with its own `vd_workers` connectors,
+the scanner adapter and the coordinator registration. The HTTP routes are registered with **weak**
+references to all of it,
 which is what makes shutdown destructive-by-construction: once `stop()` resets a stage, a late
 request finds an expired pointer and answers `503` instead of touching freed state.
 
@@ -355,11 +372,12 @@ unregisters (feed scans stop consulting a dying module), the scan lane stops (qu
 answered `503`, the in-flight scan finishes and is answered), the pipeline stops (an OPEN batch
 is answered `503` WITHOUT flushing — shutdown must not wait on indexer I/O, and the agents simply
 re-POST on their next cycle), the registry is dropped, then the connectors and the session, and
-finally `stop()` on the transport drains what is outstanding, force-closes the remainder and
-joins the I/O threads.
+finally the transport is released: it drains what is outstanding for up to `drain_timeout`,
+force-closes the remainder and joins the I/O threads.
 
-Every wait in that path is bounded and named, and they are sized to add up to well under the
-budget the init script gives the whole daemon before it escalates to `SIGKILL`.
+Every wait in that path is bounded and named — sized to fit inside the 30 s modulesd gives all of
+its modules to stop — with one exception: a vulnerability scan already running cannot be aborted, so
+the lane waits for it to finish.
 
 ## Observability
 
@@ -387,12 +405,13 @@ by stage:
 
 | Stage | Metrics |
 |---|---|
-| Responses | `sync.requests.total.<code>` — one counter per handler-sent status (`200/400/403/409/500/503` + an `other` catch-all), counted exactly once at the send site (endpoint rejection, pipeline, or scan lane). Transport-level answers — the contract's `413`, `504`, malformed-HTTP rejections, and the byte-budget/connection-cap 503s — are sent before any handler runs and are **not** in this family |
-| Pipeline | `sync.pipeline.shed.total` (byte-cap refusals), `sync.shard.<i>.depth`/`.bytes` (live gauges per worker shard), `sync.session.duration.bulk`/`.immediate` (enqueue-to-response histograms, µs) |
-| Group commit | `sync.bulk.flushes`, `sync.bulk.bytes.total`, `sync.bulk.sessions.total` |
+| Responses | `sync.requests.total.<code>` — one counter per handler-sent status of the `/stateful` and `_internal` routes (`200/400/403/409/500/503` + an `other` catch-all), counted exactly once at the send site (endpoint rejection, pipeline, or scan lane). Transport-level answers — the contract's `413`, `504`, malformed-HTTP rejections, and the byte-budget/connection-cap 503s — are sent before any handler runs and are **not** in this family |
+| Pipeline | `sync.pipeline.shed.total` (byte-cap refusals), `sync.agent_busy.total` (per-agent cap refusals, pipeline and lane alike), `sync.shard.<i>.depth`/`.bytes` (live gauges per worker shard), `sync.session.duration.bulk`/`.immediate` (enqueue-to-response histograms, µs) |
+| Group commit | `sync.bulk.flushes`, `sync.bulk.bytes.total`, `sync.bulk.sessions.total`, `sync.bulk.sessions.failed`, `sync.bulk.flush.failures.{documents,exhausted,other}` |
+| Indexer requests | `sync.indexer.bulk.requests`, `sync.indexer.bulk.bytes.total`, `sync.indexer.conflict.retries`, `sync.indexer.conflict.exhausted` |
 | Documents | `sync.docs.indexed`, `sync.docs.skipped`, `sync.bytes.ingested` |
 | VD lane | `vd.lane.depth` (gauge), `vd.lane.time` (enqueue-to-response histogram, all outcomes), `vd.capacity.503.total`, `vd.retry_after.total`, `vd.offset_mismatch.total`, `vd.scan.duration` (histogram), `vd.scans.ok`/`.failed`/`.skipped` |
-| Transport | `server.budget.{available.bytes, inflight.bytes, inflight.requests}` and `server.sessions.{live, data, control, liveness}` — pull metrics over the shared transport's diagnostics, the only visibility into the transport-side 503 gates |
+| Transport | `server.budget.{available.bytes, inflight.bytes, inflight.requests}`, `server.sessions.{live, data, control, liveness}` and `server.rejected.{budget, session_cap, shutdown, no_response}` — pull metrics over the shared transport's diagnostics, the only visibility into the transport-side 503 gates |
 
 Counters survive the module's internal restart retries on purpose (the registry is created once
 per process and never reset), so totals read across a retry are cumulative.
@@ -400,7 +419,7 @@ per process and never reset), so totals read across a retry are cumulative.
 ## Design decisions
 
 The decisions that shape the module, and what each one buys. This is the narrative distillation;
-the complete numbered catalog (D1–D23, plus the functional and non-functional requirements it
+the complete numbered catalog (D1–D30, plus the functional and non-functional requirements it
 answers to) lives in the module's in-tree developer README,
 `src/wazuh_modules/inventory_sync_server/README.md`:
 
@@ -434,7 +453,7 @@ paths (cleans, whole-agent deletion, metadata/group updates) are re-runnable by 
 That is what makes every recovery in this module safe: a `500`/`503` answered to a whole batch, a
 partially auto-flushed session, a group commit that died halfway — in all cases the agent re-POSTs
 and the replay converges to the same indexed state
-(`ReplayingAnAppliedSessionIsANoOpNotADuplicate` enforces the replay half). The contract's flip
+(`test_re_post_is_idempotent` in the module's integration QA pins the replay half). The contract's flip
 side binds future work: an operation that is NOT idempotent — an increment, an append, anything
 whose replay double-applies — cannot ride this pipeline as it is; adding one requires partial
 acknowledgments or session-id deduplication first, i.e. a design change, not just a new handler.

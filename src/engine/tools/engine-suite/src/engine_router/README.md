@@ -24,6 +24,9 @@ The script is packaged along the `engine-suite` python package. To install, simp
 pip install tools/engine-suite
 ```
 
+(from `src/engine/`, after installing `tools/api-communication`; see the
+[engine-suite installation](../../README.md#installation)).
+
 To verify it's working:
 
 ```bash
@@ -34,7 +37,7 @@ engine-router --version
 
 ```console
 
-usage: engine-router [-h] [--version] [--api-socket API_SOCKET] {get,delete,add,reload,update,list,ingest} ...
+usage: engine-router [-h] [--version] [--api-socket API_SOCKET] {get,delete,add,reload,update,list} ...
 
 options:
   -h, --help            show this help message and exit
@@ -43,12 +46,15 @@ options:
                         Path to the Wazuh API socket
 
 subcommands:
-  {get,delete,add,reload,update,list,ingest}
+  {get,delete,add,reload,update,list}
     get                 Get a route details
     delete              Delete a route
     add                 Add a route
     reload              Reload/rebuild a route
     update              Update a route. it only supports the update of the priority
     list                Get routes table
-    ingest              Ingest an event
 ```
+
+`--api-socket` defaults to `/var/wazuh-manager/queue/sockets/engine-api-http.sock`. The commands call the
+engine's `_internal/router/*` endpoints (`route/post`, `route/delete`, `route/get`, `route/reload`,
+`route/patchPriority`, `table/get`).

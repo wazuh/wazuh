@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module (C++ worker bridge)
- * Copyright (C) 2015, Wazuh Inc.
- * July 21, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -38,6 +37,8 @@ namespace remoted::http
      * in secure.c):
      *   - certificate/private key/ca default to `etc/certs/remoted.pem`, `etc/certs/remoted-key.pem`,
      *     and `etc/certs/root-ca.pem`.
+     *   - ca_certificate (the CA that signs the listener certificate, served on GET /cacerts) defaults
+     *     to `etc/certs/root-ca.pem`; independent from `ca`, which verifies agent (client) certificates.
      *   - ciphers defaults to `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`.
      *   - verification_mode's C-ABI UNSET sentinel (-1, "operator never configured it") resolves
      *     to disabled, distinct from an explicit `none` (0) -- both end up as

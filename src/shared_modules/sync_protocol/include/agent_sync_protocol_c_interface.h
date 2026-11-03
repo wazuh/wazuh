@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -29,6 +29,15 @@ extern "C" {
 /// @param max_session_bytes Maximum bytes per session, or 0 to keep the default.
 void asp_set_session_max_bytes(uint64_t max_session_bytes);
 
+/// @brief Sets how many blocks one DELTA sync cycle may send before the rest waits for the next cycle.
+///
+/// The value belongs to the agent.sync_max_blocks_per_cycle internal option. Like
+/// asp_set_session_max_bytes(), the daemon hosting the modules reads it and calls this before
+/// any module builds its protocol instance. Zero leaves the built-in default in place.
+///
+/// @param max_blocks Maximum blocks per sync cycle, or 0 to keep the default.
+void asp_set_max_blocks_per_sync(uint32_t max_blocks);
+
 /// @brief Returns the agent id this process is currently synchronizing under.
 ///
 /// Reads the shared-memory metadata provider -- the same source, through the same call, that
@@ -51,8 +60,17 @@ long asp_get_agent_id(void);
 /// @param module Name of the module associated with this instance.
 /// @param db_path Optional full path to the SQLite database file (nullptr for in-memory only).
 /// @param logger Callback function used for logging messages.
+/// @param flush_batch_size Persistent queue flush batch size override, or 0 to use the built-in default.
+/// @param flush_interval_ms Persistent queue flush interval override in milliseconds, or 0 to use the built-in default.
+/// @param wal_autocheckpoint_pages WAL auto-checkpoint threshold override, in pages, for this instance's own
+///        database connection, or 0 to keep SQLite's own default (1000 pages) instead of overriding it.
+///
+/// Each override accepts 0 (use the default) or up to INT32_MAX; a larger value is not applied, the
+/// default is used instead and a warning is logged.
 /// @return A pointer to an opaque AgentSyncProtocol handle, or NULL on failure.
-AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, asp_logger_t logger);
+AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, asp_logger_t logger,
+                                    uint64_t flush_batch_size, uint64_t flush_interval_ms,
+                                    uint64_t wal_autocheckpoint_pages);
 
 /// @brief Destroys an AgentSyncProtocol instance.
 ///
@@ -82,15 +100,31 @@ void asp_persist_diff(AgentSyncProtocolHandle* handle,
 SyncModuleResult_t asp_sync_module(AgentSyncProtocolHandle* handle,
                                    Mode_t mode);
 
+/// @brief asp_sync_module() with a tighter block limit for this one call.
+///
+/// For callers that synchronize while holding locks other threads wait on, so the time they
+/// hold them stays bounded. Whatever is left stays queued for the next regular cycle.
+///
+/// @param handle Pointer to the AgentSyncProtocol handle.
+/// @param mode Synchronization mode.
+/// @param max_blocks Most blocks this call may send. Zero, or a value above the configured
+///                   per-cycle limit, uses that limit.
+/// @return Same as asp_sync_module().
+SyncModuleResult_t asp_sync_module_bounded(AgentSyncProtocolHandle* handle,
+                                           Mode_t mode,
+                                           uint32_t max_blocks);
+
 /// @brief Checks if a module index requires full synchronization.
 ///
 /// @param handle Pointer to the AgentSyncProtocol handle.
 /// @param index The index/table to check.
 /// @param checksum The calculated checksum for the index.
-/// @return true if full sync is required (checksum mismatch); false if integrity is valid.
-bool asp_requires_full_sync(AgentSyncProtocolHandle* handle,
-                            const char* index,
-                            const char* checksum);
+/// @return IntegrityCheckResult_t: INTEGRITY_CHECK_MISMATCH if full sync is required,
+///         INTEGRITY_CHECK_VALID if the manager confirmed the checksum, INTEGRITY_CHECK_NOT_CHECKED
+///         (with the reason) if the check did not complete.
+IntegrityCheckResult_t asp_requires_full_sync(AgentSyncProtocolHandle* handle,
+                                              const char* index,
+                                              const char* checksum);
 
 /// @brief Parses a response buffer encoded in FlatBuffer format.
 /// @param handle Protocol handle.

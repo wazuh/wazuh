@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -27,11 +27,18 @@
 /* Execd select timeout -- in seconds */
 #define EXECD_TIMEOUT   1
 
+/* Repeated offenders table: maximum entries, rows and purge interval (seconds) */
+#define REPEATED_OFFENDERS_MAX      10000
+#define REPEATED_OFFENDERS_ROWS     2048
+#define REPEATED_OFFENDERS_PURGE    60
+
 extern int repeated_offenders_timeout[];
 extern time_t pending_upg;
 extern int is_disabled;
 extern int req_timeout;
 extern int max_restart_lock;
+extern os_ip **ar_allowlist;
+extern char **ar_manager_hosts;
 
 /** Function prototypes **/
 
@@ -39,6 +46,19 @@ cJSON *getARConfig(void);
 cJSON *getExecdInternalOptions(void);
 cJSON *getClusterConfig(void);
 int ExecdConfig(const char *cfgfile) __attribute__((nonnull));
+
+/**
+ * @brief Tell whether an active response must not target this address.
+ *
+ * @param srcip The response's source.ip, in any numeric form getaddrinfo() accepts.
+ * @return true if it is in ar_allowlist or is one of the manager's addresses.
+ */
+bool ar_source_allowlisted(const char *srcip);
+
+/**
+ * @brief Resolve ar_manager_hosts and add any new address to the known manager addresses.
+ */
+void ar_resolve_manager_hosts(void);
 
 #ifdef WIN32
 int WinExecdStart(void);
@@ -69,7 +89,6 @@ size_t wcom_getconfig(const char * section, char ** output);
  * @return Length of *output.
  */
 size_t wcom_getallconfig(char ** output);
-size_t wcom_check_manager_config(char **output);
 
 #ifndef WIN32
 // Com request thread dispatcher
@@ -84,6 +103,12 @@ typedef struct _timeout_data {
     char *parameters;
     char *rkey;
 } timeout_data;
+
+/* Repeated offender entry */
+typedef struct _repeated_offender {
+    int count;
+    time_t release_at;  // When the last block applied to this key ends
+} repeated_offender;
 
 void FreeTimeoutEntry(timeout_data *timeout_entry);
 void FreeTimeoutList();

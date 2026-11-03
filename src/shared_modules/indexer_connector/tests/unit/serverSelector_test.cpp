@@ -1,12 +1,13 @@
 /*
  * Wazuh Indexer Connector - ServerSelector tests
- * Copyright (C) 2015, Wazuh Inc.
- * September 08, 2023.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #include "serverSelector_test.hpp"
@@ -245,7 +246,7 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeAndAfterHealthCheck)
     }
 
     // After health check all servers are down
-    EXPECT_THROW(nextServer = selector->getNext(), std::runtime_error);
+    EXPECT_THROW(nextServer = selector->getNext(), IndexerConnectorException);
 
     phase = 3;
     callCount = 0;
@@ -282,8 +283,121 @@ TEST_F(ServerSelectorTest, TestGetNextWhenThereAreNoAvailableServers)
         selector = std::make_shared<TestServerSelector>(
             servers, SERVER_SELECTOR_HEALTH_CHECK_INTERVAL, SecureCommunication {}, m_mockHttpRequest.get()));
 
-    // Test that exception is thrown when no servers are available
-    EXPECT_THROW(selector->getNext(), std::runtime_error);
+    try
+    {
+        selector->getNext();
+        FAIL() << "getNext() returned with every server down";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_THAT(e.what(), ::testing::HasSubstr("No available server"));
+        EXPECT_THAT(e.what(), ::testing::HasSubstr(hostRedServer));
+        EXPECT_EQ(e.statusCode(), 0);
+    }
+}
+
+/**
+ * @brief A host whose health check answers 429 is busy, not gone: getNext() still returns it.
+ */
+TEST_F(ServerSelectorTest, GetNextReturnsAHostThatAnswered429)
+{
+    const std::string server {"http://localhost:9212"};
+    setupProbeAnswers({{"9212", {429, R"({"error":{"type":"circuit_breaking_exception"},"status":429})"}}});
+
+    const auto selector = std::make_shared<TestServerSelector>(std::vector<std::string> {server},
+                                                               SERVER_SELECTOR_HEALTH_CHECK_INTERVAL,
+                                                               SecureCommunication {},
+                                                               m_mockHttpRequest.get());
+
+    EXPECT_EQ(selector->getNext(), server);
+    EXPECT_TRUE(selector->isAvailable());
+}
+
+/**
+ * @brief With a healthy host available, a throttled one gets no traffic.
+ */
+TEST_F(ServerSelectorTest, GetNextPrefersAnAvailableHostOverAThrottledOne)
+{
+    const std::string throttled {"http://localhost:9213"};
+    const std::string available {"http://localhost:9214"};
+    setupProbeAnswers(
+        {{"9213", {429, R"({"error":{"type":"circuit_breaking_exception"},"status":429})"}}, {"9214", {200, ""}}});
+
+    const auto selector = std::make_shared<TestServerSelector>(std::vector<std::string> {throttled, available},
+                                                               SERVER_SELECTOR_HEALTH_CHECK_INTERVAL,
+                                                               SecureCommunication {},
+                                                               m_mockHttpRequest.get());
+
+    for (int call = 0; call < 20; ++call)
+    {
+        EXPECT_EQ(selector->getNext(), available);
+    }
+}
+
+/**
+ * @brief With nothing available, throttled hosts share the traffic and a down host gets none.
+ */
+TEST_F(ServerSelectorTest, GetNextFallsBackToThrottledWhenNothingIsAvailable)
+{
+    const std::string throttled1 {"http://localhost:9215"};
+    const std::string down {"http://localhost:9216"};
+    const std::string throttled2 {"http://localhost:9217"};
+    const std::string breaker {R"({"error":{"type":"circuit_breaking_exception"},"status":429})"};
+    setupProbeAnswers({{"9215", {429, breaker}}, {"9216", {503, ""}}, {"9217", {429, breaker}}});
+
+    const auto selector = std::make_shared<TestServerSelector>(std::vector<std::string> {throttled1, down, throttled2},
+                                                               SERVER_SELECTOR_HEALTH_CHECK_INTERVAL,
+                                                               SecureCommunication {},
+                                                               m_mockHttpRequest.get());
+
+    std::map<std::string, int> hits;
+    for (int call = 0; call < 20; ++call)
+    {
+        std::string_view server;
+        ASSERT_NO_THROW(server = selector->getNext());
+        ++hits[std::string {server}];
+    }
+
+    EXPECT_GT(hits[throttled1], 0);
+    EXPECT_GT(hits[throttled2], 0);
+    EXPECT_EQ(hits.count(down), 0u);
+}
+
+/**
+ * @brief Throttled and down hosts only: the selector still serves, but has no available server.
+ */
+TEST_F(ServerSelectorTest, HasAvailableServerIsFalseWhenEveryHostIsThrottledOrDown)
+{
+    const std::string throttled {"http://localhost:9218"};
+    const std::string down {"http://localhost:9219"};
+    setupProbeAnswers(
+        {{"9218", {429, R"({"error":{"type":"circuit_breaking_exception"},"status":429})"}}, {"9219", {503, ""}}});
+
+    const auto selector = std::make_shared<TestServerSelector>(std::vector<std::string> {throttled, down},
+                                                               SERVER_SELECTOR_HEALTH_CHECK_INTERVAL,
+                                                               SecureCommunication {},
+                                                               m_mockHttpRequest.get());
+
+    EXPECT_TRUE(selector->isAvailable());
+    EXPECT_FALSE(selector->hasAvailableServer());
+}
+
+/**
+ * @brief One available host is enough, whatever the others answer.
+ */
+TEST_F(ServerSelectorTest, HasAvailableServerIsTrueWithOneAvailableHost)
+{
+    const std::string throttled {"http://localhost:9220"};
+    const std::string available {"http://localhost:9221"};
+    setupProbeAnswers(
+        {{"9220", {429, R"({"error":{"type":"circuit_breaking_exception"},"status":429})"}}, {"9221", {200, ""}}});
+
+    const auto selector = std::make_shared<TestServerSelector>(std::vector<std::string> {throttled, available},
+                                                               SERVER_SELECTOR_HEALTH_CHECK_INTERVAL,
+                                                               SecureCommunication {},
+                                                               m_mockHttpRequest.get());
+
+    EXPECT_TRUE(selector->hasAvailableServer());
 }
 
 // =============================================================================

@@ -1,6 +1,5 @@
 /* Durable task_id registry client (agentd side)
- * Copyright (C) 2015, Wazuh Inc.
- * July 28, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -13,6 +12,7 @@
 
 #include "os_net.h"
 #include "cJSON.h"
+#include "module_query_errors.h"
 
 #ifdef WIN32
 #include "wmodules.h"
@@ -22,6 +22,28 @@
  * must never hang indefinitely on it -- a stalled/dead modulesd must not
  * stall the /control notify cycle for longer than this. */
 #define TASK_REGISTRY_RECV_TIMEOUT_S 5
+
+/* Same rationale/constants as vd_offset_client.c (both platforms -- see that file's longer
+ * comment): the very first Notify after agentd starts races modulesd's own startup, over
+ * WM_LOCAL_SOCK on POSIX or, on Windows, over agent-info's own in-process object construction
+ * (its query function pointers are wired up only once that finishes -- the module itself is
+ * already in wm_find_module()'s list well before this can ever run, so "module not found" is not
+ * the transient case there; "module not running" is), and task registry checks are dispatched
+ * from the same "tasks first" ordering in handleNotifyBody() -- so a brand-new agent's very
+ * first task check hits the same one-shot-drop window as the VD feed offset delivery does, just
+ * for a different registry. Bounded, same reasoning on both platforms: a genuinely-unavailable
+ * agent-info still costs only a small, known, one-shot-comparable tax; the loop breaks on the
+ * first success, so the steady-state case pays nothing extra. */
+#define TASK_REGISTRY_CONNECT_RETRIES 10
+#define TASK_REGISTRY_CONNECT_RETRY_DELAY_US 300000 /* 300 ms; ~2.7s worst case across all retries */
+
+#ifdef WIN32
+/* Same bounded budget as the POSIX constants above -- see vd_offset_client.c's matching
+ * constant: the window here is agent-info's own in-process construction, not a socket or
+ * module-discovery delay. */
+#define TASK_REGISTRY_WIN_LOOKUP_RETRIES 10
+#define TASK_REGISTRY_WIN_LOOKUP_RETRY_DELAY_US 300000
+#endif
 
 /* Parses a response of the standard module-query envelope
  * (module_query_errors.h, src/wazuh_modules/src/wm_agent_info.c's
@@ -76,16 +98,27 @@ static task_registry_result_t task_registry_check_and_record_posix(const char *t
     int sock = -1;
     char response[OS_MAXSTR + 1] = {0};
     ssize_t recv_len;
+    int attempt;
 
     snprintf(query, sizeof(query),
              "query agent-info {\"command\":\"task_check_and_record\",\"task_id\":\"%s\"}",
              task_id);
 
-    sock = OS_ConnectUnixDomain(WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
+    for (attempt = 0; attempt < TASK_REGISTRY_CONNECT_RETRIES; attempt++) {
+        sock = OS_ConnectUnixDomain(WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
+        if (sock >= 0) {
+            break;
+        }
+
+        if (attempt + 1 < TASK_REGISTRY_CONNECT_RETRIES) {
+            usleep(TASK_REGISTRY_CONNECT_RETRY_DELAY_US);
+        }
+    }
+
     if (sock < 0) {
-        mdebug1("task_registry_client: could not connect to '%s': %s (%d); "
+        mdebug1("task_registry_client: could not connect to '%s' after %d attempt(s): %s (%d); "
                 "treating task %s as non-dispatchable (fail closed).",
-                WM_LOCAL_SOCK, strerror(errno), errno, task_id);
+                WM_LOCAL_SOCK, TASK_REGISTRY_CONNECT_RETRIES, strerror(errno), errno, task_id);
         return TASK_REGISTRY_RESULT_ERROR;
     }
 
@@ -119,19 +152,59 @@ static task_registry_result_t task_registry_check_and_record_posix(const char *t
  * call through the same generic query path used elsewhere in-process
  * (wm_module_query_json_ex -> wm_find_module("agent-info") ->
  * module->context->query(...)), no socket involved. */
+
+/* True only for the specific, transient "agent-info is not ready to answer queries yet" answers
+ * (see the TASK_REGISTRY_CONNECT_RETRIES comment above: module missing from the list entirely,
+ * or present but not yet wired up) -- never for a genuine, lasting error, which the retry below
+ * must not loop on. */
+static bool task_registry_is_transient_unavailable(const char *json) {
+    cJSON *root = cJSON_Parse(json);
+    if (!root) {
+        return false;
+    }
+
+    int error_code = -1;
+    bool transient = mq_parse_error_field(root, &error_code) &&
+                      (error_code == MQ_ERR_MODULE_NOT_FOUND || error_code == MQ_ERR_MODULE_NOT_RUNNING);
+    cJSON_Delete(root);
+    return transient;
+}
+
 static task_registry_result_t task_registry_check_and_record_win(const char *task_id) {
     char command[OS_MAXSTR];
     char *output = NULL;
     task_registry_result_t result;
+    int attempt;
 
     snprintf(command, sizeof(command),
              "{\"command\":\"task_check_and_record\",\"task_id\":\"%s\"}", task_id);
 
-    wm_module_query_json_ex("agent-info", command, &output);
+    for (attempt = 0; attempt < TASK_REGISTRY_WIN_LOOKUP_RETRIES; attempt++) {
+        os_free(output);
+
+        wm_module_query_json_ex("agent-info", command, &output);
+
+        if (!output || !task_registry_is_transient_unavailable(output)) {
+            break;
+        }
+
+        if (attempt + 1 < TASK_REGISTRY_WIN_LOOKUP_RETRIES) {
+            w_time_delay(TASK_REGISTRY_WIN_LOOKUP_RETRY_DELAY_US / 1000);
+        }
+    }
 
     if (!output) {
-        merror("task_registry_client: agent-info query returned no output for task %s; "
-               "treating as non-dispatchable (fail closed).", task_id);
+        merror("task_registry_client: agent-info query returned no output for task %s after "
+               "%d attempt(s); treating as non-dispatchable (fail closed).",
+               task_id, TASK_REGISTRY_WIN_LOOKUP_RETRIES);
+        return TASK_REGISTRY_RESULT_ERROR;
+    }
+
+    if (task_registry_is_transient_unavailable(output)) {
+        mdebug1("task_registry_client: agent-info not ready yet for task %s after %d "
+                "attempt(s); treating as non-dispatchable (fail closed).",
+                task_id, TASK_REGISTRY_WIN_LOOKUP_RETRIES);
+        os_free(output);
         return TASK_REGISTRY_RESULT_ERROR;
     }
 

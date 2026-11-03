@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -699,6 +700,9 @@ TEST_F(CrudServiceUpsertIntegrationTest, UpsertIntegration_UpdateWhenUUIDExists)
     EXPECT_CALL(*validator, softIntegrationValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
 
     EXPECT_CALL(*nsPtr, assetExistsByUUID("5c1df6b6-1458-4b2e-9001-96f67a8b12c8")).Times(1).WillOnce(Return(true));
+    EXPECT_CALL(*nsPtr, resolveNameFromUUID("5c1df6b6-1458-4b2e-9001-96f67a8b12c8"))
+        .Times(1)
+        .WillOnce(Return(std::make_tuple("windows", ResourceType::INTEGRATION)));
 
     EXPECT_CALL(*nsPtr, updateResourceByUUID("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", _)).Times(1);
     EXPECT_CALL(*nsPtr, createResource("windows", ResourceType::INTEGRATION, _)).Times(0);
@@ -736,6 +740,30 @@ TEST_F(CrudServiceUpsertIntegrationTest, UpsertIntegration_AcceptsJsonPayloadAnd
     EXPECT_NO_THROW(service->upsertResource(nsId, ResourceType::INTEGRATION, makeJsonPayload(kIntegrationJson)));
 }
 
+TEST_F(CrudServiceUpsertIntegrationTest, UpsertIntegration_UUIDOfAnotherTypeIsRejected)
+{
+    const NamespaceId nsId {"dev"};
+    auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
+
+    ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(testing::ReturnRef(nsId));
+    EXPECT_CALL(*store, getNS(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
+        .Times(1)
+        .WillOnce(Return(nsPtr));
+
+    EXPECT_CALL(*validator, softIntegrationValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
+
+    EXPECT_CALL(*nsPtr, assetExistsByUUID("5c1df6b6-1458-4b2e-9001-96f67a8b12c8")).Times(1).WillOnce(Return(true));
+    EXPECT_CALL(*nsPtr, resolveNameFromUUID("5c1df6b6-1458-4b2e-9001-96f67a8b12c8"))
+        .Times(1)
+        .WillOnce(Return(std::make_tuple("some_kvdb", ResourceType::KVDB)));
+
+    EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+
+    EXPECT_THROW(service->upsertResource(nsId, ResourceType::INTEGRATION, makeJsonPayload(kIntegrationJson)),
+                 std::runtime_error);
+}
+
 // ---------------------------------------------------------------------
 // upsertResource - KVDB (create vs update)
 // ---------------------------------------------------------------------
@@ -767,11 +795,35 @@ TEST_F(CrudServiceUpsertKVDBTest, UpsertKVDB_UpdateWhenUUIDExists)
         .WillOnce(Return(nsPtr));
 
     EXPECT_CALL(*nsPtr, assetExistsByUUID("82e215c4-988a-4f64-8d15-b98b2fc03a4f")).Times(1).WillOnce(Return(true));
+    EXPECT_CALL(*nsPtr, resolveNameFromUUID("82e215c4-988a-4f64-8d15-b98b2fc03a4f"))
+        .Times(1)
+        .WillOnce(Return(std::make_tuple("windows_kerberos_status_code_to_code_name", ResourceType::KVDB)));
 
     EXPECT_CALL(*nsPtr, updateResourceByUUID("82e215c4-988a-4f64-8d15-b98b2fc03a4f", _)).Times(1);
     EXPECT_CALL(*nsPtr, createResource("windows_kerberos_status_code_to_code_name", ResourceType::KVDB, _)).Times(0);
 
     EXPECT_NO_THROW(service->upsertResource(nsId, ResourceType::KVDB, makeJsonPayload(kKVDBJson)));
+}
+
+// A KVDB payload carrying a decoder's UUID must not overwrite the decoder
+TEST_F(CrudServiceUpsertKVDBTest, UpsertKVDB_UUIDOfAnotherTypeIsRejected)
+{
+    const NamespaceId nsId {"dev"};
+    auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
+
+    EXPECT_CALL(*store, getNS(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
+        .Times(1)
+        .WillOnce(Return(nsPtr));
+
+    EXPECT_CALL(*nsPtr, assetExistsByUUID("82e215c4-988a-4f64-8d15-b98b2fc03a4f")).Times(1).WillOnce(Return(true));
+    EXPECT_CALL(*nsPtr, resolveNameFromUUID("82e215c4-988a-4f64-8d15-b98b2fc03a4f"))
+        .Times(1)
+        .WillOnce(Return(std::make_tuple("decoder/syslog/0", ResourceType::DECODER)));
+
+    EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+
+    EXPECT_THROW(service->upsertResource(nsId, ResourceType::KVDB, makeJsonPayload(kKVDBJson)), std::runtime_error);
 }
 
 // ---------------------------------------------------------------------
@@ -1506,6 +1558,73 @@ TEST_F(CrudServiceImportNsFromVectorTest, SoftValidationFalse_ValidatesPolicy)
 
     EXPECT_NO_THROW(
         service->importNamespace(nsId, {}, {}, {}, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/false));
+}
+
+// softValidation=false → a failed decoder validation fails the import before the resource is stored
+
+TEST_F(CrudServiceImportNsFromVectorTest, SoftValidationFalse_InvalidDecoder_Throws)
+{
+    std::vector<json::Json> decoders = {makeJsonPayload(kDecoderJson)};
+
+    EXPECT_CALL(*validator, validateAsset(_, _)).WillOnce(Return(base::Error {"bad decoder"}));
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(0);
+
+    try
+    {
+        service->importNamespace(nsId, {}, decoders, {}, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/false);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Asset validation failed"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("bad decoder"));
+    }
+}
+
+// softValidation=false → a failed filter validation fails the import before the resource is stored
+
+TEST_F(CrudServiceImportNsFromVectorTest, SoftValidationFalse_InvalidFilter_Throws)
+{
+    std::vector<json::Json> filters = {makeJsonPayload(kFilterJson)};
+
+    EXPECT_CALL(*validator, validateAsset(_, _)).WillOnce(Return(base::Error {"bad filter"}));
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(0);
+
+    try
+    {
+        service->importNamespace(nsId, {}, {}, filters, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/false);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Asset validation failed"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("bad filter"));
+    }
+}
+
+// softValidation=false → a failed integration validation fails the import before the resource is stored
+
+TEST_F(CrudServiceImportNsFromVectorTest, SoftValidationFalse_InvalidIntegration_Throws)
+{
+    std::vector<json::Json> integrations = {makeJsonPayload(kIntegrationJson)};
+
+    EXPECT_CALL(*validator, softIntegrationValidate(_, _)).WillOnce(Return(base::Error {"bad integration"}));
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(0);
+
+    try
+    {
+        service->importNamespace(
+            nsId, {}, {}, {}, integrations, makeJsonPayload(kPolicyJson), /*softValidation=*/false);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Integration validation failed"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("bad integration"));
+    }
 }
 
 // softValidation=true → no validator calls at all

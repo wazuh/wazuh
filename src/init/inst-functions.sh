@@ -1,8 +1,7 @@
 #!/bin/sh
 
 # Wazuh Installer Functions
-# Copyright (C) 2015, Wazuh Inc.
-# November 18, 2016.
+# Copyright (C) Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -74,13 +73,13 @@ DisableAuthd()
     echo "    <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256</ciphers>" >> $NEWCONFIG
     echo "    <!-- <ssl_agent_ca></ssl_agent_ca> -->" >> $NEWCONFIG
     echo "    <ssl_verify_host>no</ssl_verify_host>" >> $NEWCONFIG
-    # Unified manager certificate (see GenerateHttpsManagerCert()): authd no longer generates or
-    # owns its own cert/key pair, so even in this <disabled>yes</disabled> block these point at
-    # remoted's, keeping the value valid in the (rare) case an operator later flips <disabled> back
-    # to "no" by hand instead of regenerating the whole file. Same custom-certificate override as
-    # the enabled path (see WriteAuthd's AUTH_TEMPLATE substitution above), for the same reason.
-    echo "    <ssl_manager_cert>${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/certs/remoted.pem}</ssl_manager_cert>" >> $NEWCONFIG
-    echo "    <ssl_manager_key>${WAZUH_REMOTE_HTTPS_KEY:-etc/certs/remoted-key.pem}</ssl_manager_key>" >> $NEWCONFIG
+    # Unified manager certificate (see SetCertsOwnership()): authd does not own a cert/key pair
+    # of its own, so even in this <disabled>yes</disabled> block these point at remoted's,
+    # keeping the value valid in the (rare) case an operator later flips <disabled> back to "no"
+    # by hand instead of regenerating the whole file. Same custom-certificate override as the
+    # enabled path (see WriteAuthd's AUTH_TEMPLATE substitution above), for the same reason.
+    echo "    <ssl_manager_cert>${WAZUH_REMOTE_HTTPS_CERTIFICATE:-${CONF_DIR}/certs/remoted.pem}</ssl_manager_cert>" >> $NEWCONFIG
+    echo "    <ssl_manager_key>${WAZUH_REMOTE_HTTPS_KEY:-${CONF_DIR}/certs/remoted-key.pem}</ssl_manager_key>" >> $NEWCONFIG
     echo "  </auth>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 }
@@ -164,81 +163,31 @@ InstallSecurityConfigurationAssessmentFiles()
 }
 
 ##########
-# GenerateHttpsManagerCert()
+# SetCertsOwnership()
 ##########
-# Self-signed certificate for the HTTPS agent server (remoted_module). Manager
-# only -- the listener doesn't exist on agents. Uses wazuh-manager-remoted's own
-# -C/-B/-K/-X/-S flags (same generate_cert() used for authd's cert/key, now in
-# shared/). This is now the manager's ONLY self-signed cert/key pair: authd no
-# longer generates or owns one of its own (its <ssl_manager_cert>/<ssl_manager_key>
-# point here too -- see auth.template and DisableAuthd() above), since /enroll's
-# mTLS mode treats "this certificate validated" as the enrollment credential and
-# both listeners must therefore present the same manager identity.
-GenerateHttpsManagerCert()
+# ${ETC_DIR}/certs holds the manager's TLS material: the agent listener pair (remoted and authd),
+# the Server API pair, the manager CA and the indexer trust material. The credential resolver
+# (bin/wazuh-manager-resolve-credentials --install) issues or imports them later in this same
+# installation; the operator may also stage them beforehand. Nothing writes here at run time, so the
+# directory and every file in it are root's, readable through ${WAZUH_GROUP}: the daemons and the
+# Server API read them after dropping privileges and cannot replace them. Applied unconditionally
+# so re-runs and upgrades correct earlier ownerships. Manager only.
+#
+# No notice when a pair is absent: the resolver reports for itself, and the service then refuses to
+# start naming the file.
+SetCertsOwnership()
 {
     if [ "X${INSTYPE}" = "Xagent" ]; then
         return
     fi
 
-    # Custom certificate/key paths supplied through the WAZUH_REMOTE_HTTPS_*
-    # installation variables mean the admin manages these files: nothing to
-    # generate at the default location.
-    if [ -n "${WAZUH_REMOTE_HTTPS_CERTIFICATE}" ] || [ -n "${WAZUH_REMOTE_HTTPS_KEY}" ]; then
-        return
-    fi
-
-    if [ "X$SSL_CERT" = "Xyes" ]; then
-        # Unified certificate directory: root-owned and sticky (drwxrwx--T). The server
-        # daemons run as ${WAZUH_USER} and regenerate their own self-signed certs here
-        # (group write), while the sticky bit keeps them from replacing the root-owned
-        # indexer trust material that shares the directory. Created here (rather than in a
-        # separate authd-specific step, now removed) since this is the first cert-generating
-        # step that runs on a manager install.
-        ${INSTALL} -d -m 1770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/certs
-
-        # Generation auto-signed certificate if not exists
-        if [ ! -f "${INSTALLDIR}/etc/certs/remoted-key.pem" ] && [ ! -f "${INSTALLDIR}/etc/certs/remoted.pem" ]; then
-            if [ ! "X${USER_GENERATE_AUTHD_CERT}" = "Xn" ]; then
-                    echo "Generating self-signed certificate for the HTTPS agent server..."
-                    ${INSTALLDIR}/bin/wazuh-manager-remoted -C 365 -B 2048 -K ${INSTALLDIR}/etc/certs/remoted-key.pem -X ${INSTALLDIR}/etc/certs/remoted.pem -S "/C=US/ST=California/CN=wazuh/"
-            fi
-        fi
-
-        # Owned by ${WAZUH_USER}: remoted drops to that user and regenerates these files at
-        # runtime. Re-applied unconditionally so upgrades from installs that left them
-        # root-owned also get corrected.
-        if [ -f "${INSTALLDIR}/etc/certs/remoted-key.pem" ] && [ -f "${INSTALLDIR}/etc/certs/remoted.pem" ]; then
-            chown ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/etc/certs/remoted-key.pem
-            chown ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/etc/certs/remoted.pem
-            chmod 640 ${INSTALLDIR}/etc/certs/remoted-key.pem
-            chmod 640 ${INSTALLDIR}/etc/certs/remoted.pem
-        fi
-    fi
-}
-
-##########
-# SetIndexerCertsOwnership()
-##########
-# etc/certs holds two kinds of material: the server certificates each daemon self-generates
-# (owned by ${WAZUH_USER}, since the daemon must write them) and the indexer trust material
-# provisioned externally (root-owned, the manager only reads it). The directory is root-owned
-# and sticky so the daemons can (re)generate their own certs but cannot replace the root-owned
-# indexer material; the indexer certs are group-readable by ${WAZUH_GROUP} so the engine and
-# the framework read them after dropping privileges. Applied unconditionally so upgrades and
-# re-runs correct earlier ownerships.
-SetIndexerCertsOwnership()
-{
-    if [ "X${INSTYPE}" = "Xagent" ]; then
-        return
-    fi
-
-    ${INSTALL} -d -m 1770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/certs
-    chown root:${WAZUH_GROUP} ${INSTALLDIR}/etc/certs
-    chmod 1770 ${INSTALLDIR}/etc/certs
-    for CERT_FILE in root-ca.pem indexer-connector.pem indexer-connector-key.pem; do
-        if [ -f "${INSTALLDIR}/etc/certs/${CERT_FILE}" ]; then
-            chown root:${WAZUH_GROUP} ${INSTALLDIR}/etc/certs/${CERT_FILE}
-            chmod 640 ${INSTALLDIR}/etc/certs/${CERT_FILE}
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${ETC_DIR}/certs
+    chown root:${WAZUH_GROUP} ${ETC_DIR}/certs
+    chmod 0750 ${ETC_DIR}/certs
+    for CERT_FILE in ${ETC_DIR}/certs/*.pem; do
+        if [ -f "${CERT_FILE}" ] && [ ! -L "${CERT_FILE}" ]; then
+            chown -h root:${WAZUH_GROUP} "${CERT_FILE}"
+            chmod 640 "${CERT_FILE}"
         fi
     done
 }
@@ -331,22 +280,62 @@ WriteLogs()
 }
 
 ##########
+# ReplaceAll <text> <from> <to>
+# Sets REPLACE_ALL_RESULT to <text> with every occurrence of <from> replaced by <to>, left to right.
+# Plain strings: nothing in <from> or <to> is a pattern. The package scripts run the configuration
+# generator on hosts that may not have sed, so its substitutions are done here, in the shell.
+##########
+ReplaceAll()
+{
+    _ra_rest="$1"
+    _ra_done=""
+    if [ -n "$2" ]; then
+        while :; do
+            case "$_ra_rest" in
+                *"$2"*)
+                    _ra_done="${_ra_done}${_ra_rest%%"$2"*}$3"
+                    _ra_rest="${_ra_rest#*"$2"}"
+                    ;;
+                *)
+                    break
+                    ;;
+            esac
+        done
+    fi
+    REPLACE_ALL_RESULT="${_ra_done}${_ra_rest}"
+}
+
+##########
+# SubstituteFile <file> [<from> <to>]...
+# Prints <file> with each pair replaced in turn, as `sed -e 's|from|to|g' ... <file>` printed it,
+# trailing newlines included (the content never goes through a command substitution on the way out).
+##########
+SubstituteFile()
+{
+    _sf_text=$(cat "$1" && echo x) || return 1
+    _sf_text="${_sf_text%x}"
+    shift
+    while [ "$#" -ge 2 ]; do
+        ReplaceAll "$_sf_text" "$1" "$2"
+        _sf_text="$REPLACE_ALL_RESULT"
+        shift 2
+    done
+    printf '%s' "$_sf_text"
+}
+
+##########
 # SetHeaders() 1-agent|manager
 ##########
 SetHeaders()
 {
-    HEADERS_TMP="/tmp/wazuh-headers.tmp"
     if [ "$DIST_VER" = "0" ]; then
-        sed -e "s/TYPE/$1/g; s/DISTRIBUTION/${DIST_NAME}/g; s/VERSION//g" "$HEADER_TEMPLATE" > $HEADERS_TMP
+        HEADER_DIST_VERSION=""
+    elif [ "$DIST_SUBVER" = "0" ]; then
+        HEADER_DIST_VERSION="${DIST_VER}"
     else
-      if [ "$DIST_SUBVER" = "0" ]; then
-        sed -e "s/TYPE/$1/g; s/DISTRIBUTION/${DIST_NAME}/g; s/VERSION/${DIST_VER}/g" "$HEADER_TEMPLATE" > $HEADERS_TMP
-      else
-        sed -e "s/TYPE/$1/g; s/DISTRIBUTION/${DIST_NAME}/g; s/VERSION/${DIST_VER}.${DIST_SUBVER}/g" "$HEADER_TEMPLATE" > $HEADERS_TMP
-      fi
+        HEADER_DIST_VERSION="${DIST_VER}.${DIST_SUBVER}"
     fi
-    cat $HEADERS_TMP
-    rm -f $HEADERS_TMP
+    SubstituteFile "$HEADER_TEMPLATE" TYPE "$1" DISTRIBUTION "${DIST_NAME}" VERSION "${HEADER_DIST_VERSION}"
 }
 
 ##########
@@ -363,156 +352,6 @@ GenerateService()
         sed "s|WAZUH_HOME_TMP|${INSTALLDIR}|g" ${SERVICE_TEMPLATE}
     fi
 }
-
-##########
-# ParseManagerEndpoint() $1=WAZUH_MANAGER_ENDPOINT's value
-#
-# Splits the combined connection target (#38624) into MEP_HOST / MEP_PORT /
-# MEP_ENDPOINT, the three tags the agent still reads:
-#
-#   [https://] host [:port] [/[prefix]]
-#
-# Only the host is mandatory. Note that "no '/' at all" means "default prefix" while
-# "a trailing '/' with nothing after it" is the deliberate opt-out (#38614) and must
-# come out as an empty <endpoint></endpoint>.
-#
-# Byte-for-byte the same logic as parse_manager_endpoint() in
-# register_configure_agent.sh and ParseManagerEndpoint() in
-# src/win32/InstallerScripts.vbs -- a change in one belongs in all three. It is
-# duplicated rather than shared because register_configure_agent.sh ships inside the
-# packages and cannot source this file (the relative . ./src/init/template-select.sh
-# here assumes a repo checkout at CWD, which a post-install script does not have).
-##########
-DEFAULT_MANAGER_PORT="1517"
-DEFAULT_MANAGER_ENDPOINT="/wazuh-manager/"
-
-ParseManagerEndpoint()
-{
-    mep_raw="$1"
-    mep_rest="$mep_raw"
-    MEP_HOST=""
-    MEP_PORT="${DEFAULT_MANAGER_PORT}"
-    MEP_ENDPOINT="${DEFAULT_MANAGER_ENDPOINT}"
-
-    if [ "X${mep_raw}" = "X" ]; then
-        echo "Invalid WAZUH_MANAGER_ENDPOINT '${mep_raw}': a manager address is required." >&2
-        return 1
-    fi
-
-    case "${mep_rest}" in
-        *"://"*)
-            mep_scheme="${mep_rest%%://*}"
-            case "${mep_scheme}" in
-                */*) ;;
-                *)
-                    mep_rest="${mep_rest#*://}"
-                    case "${mep_scheme}" in
-                        [Hh][Tt][Tt][Pp][Ss]) ;;
-                        *)
-                            echo "Invalid WAZUH_MANAGER_ENDPOINT '${mep_raw}': unsupported scheme '${mep_scheme}://'; only https is served." >&2
-                            return 1
-                            ;;
-                    esac
-                    ;;
-            esac
-            ;;
-    esac
-
-    case "${mep_rest}" in
-        */*)
-            mep_authority="${mep_rest%%/*}"
-            mep_path="${mep_rest#*/}"
-            mep_path_given="yes"
-            ;;
-        *)
-            mep_authority="${mep_rest}"
-            mep_path=""
-            mep_path_given="no"
-            ;;
-    esac
-
-    mep_port_given=""
-    case "${mep_authority}" in
-        "["*)
-            case "${mep_authority}" in
-                *"]"*) ;;
-                *)
-                    echo "Invalid WAZUH_MANAGER_ENDPOINT '${mep_raw}': unterminated '[' in the address; a bracketed IPv6 literal needs a closing ']'." >&2
-                    return 1
-                    ;;
-            esac
-            MEP_HOST="${mep_authority#[}"
-            MEP_HOST="${MEP_HOST%%]*}"
-            mep_after="${mep_authority#*]}"
-            case "${mep_after}" in
-                "") ;;
-                ":"*) mep_port_given="${mep_after#:}" ;;
-                *)
-                    echo "Invalid WAZUH_MANAGER_ENDPOINT '${mep_raw}': unexpected '${mep_after}' after the bracketed address." >&2
-                    return 1
-                    ;;
-            esac
-            # A zone id (%25<iface>) stays part of the host: the agent resolves it
-            # with if_nametoindex() at startup (#38624).
-            ;;
-        *:*:*)
-            echo "Invalid WAZUH_MANAGER_ENDPOINT '${mep_raw}': an IPv6 address must be bracketed, e.g. [2001:db8::1]:${DEFAULT_MANAGER_PORT}." >&2
-            return 1
-            ;;
-        *:*)
-            MEP_HOST="${mep_authority%:*}"
-            mep_port_given="${mep_authority##*:}"
-            ;;
-        *)
-            MEP_HOST="${mep_authority}"
-            ;;
-    esac
-
-    if [ "X${MEP_HOST}" = "X" ]; then
-        echo "Invalid WAZUH_MANAGER_ENDPOINT '${mep_raw}': a manager address is required." >&2
-        return 1
-    fi
-
-    if [ "X${mep_port_given}" != "X" ]; then
-        case "${mep_port_given}" in
-            ''|*[!0-9]*)
-                echo "Invalid WAZUH_MANAGER_ENDPOINT '${mep_raw}': port '${mep_port_given}' is not a number." >&2
-                return 1
-                ;;
-        esac
-        if [ "${mep_port_given}" -lt 1 ] || [ "${mep_port_given}" -gt 65535 ]; then
-            echo "Invalid WAZUH_MANAGER_ENDPOINT '${mep_raw}': port '${mep_port_given}' is outside 1-65535." >&2
-            return 1
-        fi
-        MEP_PORT="${mep_port_given}"
-    elif [ "${mep_authority}" != "${mep_authority%:}" ]; then
-        echo "Invalid WAZUH_MANAGER_ENDPOINT '${mep_raw}': trailing ':' with no port." >&2
-        return 1
-    fi
-
-    if [ "${mep_path_given}" = "yes" ]; then
-        while : ; do
-            case "${mep_path}" in
-                /*) mep_path="${mep_path#/}" ;;
-                *) break ;;
-            esac
-        done
-        while : ; do
-            case "${mep_path}" in
-                */) mep_path="${mep_path%/}" ;;
-                *) break ;;
-            esac
-        done
-        if [ "X${mep_path}" = "X" ]; then
-            MEP_ENDPOINT=""
-        else
-            MEP_ENDPOINT="/${mep_path}/"
-        fi
-    fi
-
-    return 0
-}
-
 ##########
 # WriteAgent() $1="no_locafiles" or empty
 ##########
@@ -529,49 +368,23 @@ WriteAgent()
     echo "  <agent>" >> $NEWCONFIG
     echo "    <manager>" >> $NEWCONFIG
 
-    # <endpoint> carries the whole connection target (#38624). WAZUH_MANAGER_ENDPOINT
-    # supplies it directly when set; otherwise it is composed from install.sh's own
-    # $SERVER_IP/$HNAME prompt, which is the only address this path has. Tested with
-    # ${VAR+x} rather than -n so an explicitly empty value is rejected instead of
-    # silently read as unset: "" used to be the prefix opt-out (#38614). A rejected
-    # value falls back to the prompted address, with the reason already on stderr --
-    # this path must still emit a usable template, and the operator is present to see
-    # the message.
-    # $SERVER_IP/$HNAME come from install.sh's own prompt and are the base. WAZUH_MANAGER
-    # (with WAZUH_MANAGER_PORT) still composes a value, and WAZUH_MANAGER_ENDPOINT
-    # overrides everything when set.
+    # <endpoint> carries the whole connection target, composed from install.sh's own
+    # $SERVER_IP/$HNAME prompt. A source install therefore names its manager here and is
+    # registered afterwards by running wazuh-agent-auth with a token (install.sh prints the
+    # command): the install itself carries none, and a token is the only registration path
+    # there is.
     AGENT_ENDPOINT="$SERVER_IP"
     if [ "X${HNAME}" != "X" ]; then
       AGENT_ENDPOINT="$HNAME"
     fi
 
-    if [ "X${WAZUH_MANAGER}" != "X" ]; then
-      AGENT_ENDPOINT="${WAZUH_MANAGER}"
-    fi
-
-    # A bare IPv6 literal needs bracketing once it shares a value with the port.
+    # A bare IPv6 literal needs bracketing, or its trailing group reads as a port. Already
+    # bracketed values must be left alone, or "[2001:db8::1]" becomes "[[2001:db8::1]]" and the
+    # agent will not start.
     case "${AGENT_ENDPOINT}" in
-      # Already bracketed values must be left alone, or "[2001:db8::1]" becomes
-      # "[[2001:db8::1]]" and the agent will not start. Matches the guard in
-      # InstallerScripts.vbs.
       \[*) ;;
       *:*:*) AGENT_ENDPOINT="[${AGENT_ENDPOINT}]" ;;
     esac
-
-    if [ "X${WAZUH_MANAGER_PORT}" != "X" ]; then
-      AGENT_ENDPOINT="${AGENT_ENDPOINT}:${WAZUH_MANAGER_PORT}"
-    fi
-
-    # WAZUH_MANAGER_ENDPOINT wins outright once it is set, even if it fails validation:
-    # it carries the whole URL and the operator asked for it specifically, so falling back
-    # to a value composed from WAZUH_MANAGER would silently point the agent at a different
-    # manager. A bad value is reported here and written through, so the agent refuses it
-    # loudly at startup instead -- same rule as register_configure_agent.sh and
-    # InstallerScripts.vbs, which write no <manager> block at all in that case.
-    if [ "X${WAZUH_MANAGER_ENDPOINT+x}" != "X" ]; then
-      ParseManagerEndpoint "${WAZUH_MANAGER_ENDPOINT}"
-      AGENT_ENDPOINT="${WAZUH_MANAGER_ENDPOINT}"
-    fi
 
     echo "      <endpoint>${AGENT_ENDPOINT}</endpoint>" >> $NEWCONFIG
     echo "    </manager>" >> $NEWCONFIG
@@ -814,8 +627,8 @@ ValidateRemoteVars()
     REMOTE_VARS_VALIDATED="yes"
 
     for REMOTE_VAR_NAME in WAZUH_REMOTE_HTTPS_CERTIFICATE WAZUH_REMOTE_HTTPS_KEY \
-                           WAZUH_REMOTE_HTTPS_CA WAZUH_REMOTE_HTTPS_CIPHERS \
-                           WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX; do
+                           WAZUH_REMOTE_HTTPS_CA WAZUH_REMOTE_HTTPS_CA_CERTIFICATE \
+                           WAZUH_REMOTE_HTTPS_CIPHERS WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX; do
         eval "REMOTE_VAR_VALUE=\${${REMOTE_VAR_NAME}}"
         CheckRemoteXmlSafe "$REMOTE_VAR_NAME" "$REMOTE_VAR_VALUE"
     done
@@ -831,8 +644,8 @@ ValidateRemoteVars()
         *) RemoteVarError "WAZUH_REMOTE_HTTPS_VERIFICATION_MODE" "${WAZUH_REMOTE_HTTPS_VERIFICATION_MODE}" "expected 'none', 'certificate' or 'full'";;
     esac
 
-    # Either path alone disables the self-signed generation while the other keeps its
-    # default location, which nothing creates.
+    # Both paths travel together: the listener loads the pair as a unit, so a custom
+    # certificate with the default key location (or vice versa) is a misconfiguration.
     if [ -n "${WAZUH_REMOTE_HTTPS_CERTIFICATE}" ] && [ -z "${WAZUH_REMOTE_HTTPS_KEY}" ]; then
         RemoteVarError "WAZUH_REMOTE_HTTPS_CERTIFICATE" "${WAZUH_REMOTE_HTTPS_CERTIFICATE}" "WAZUH_REMOTE_HTTPS_KEY is required when a custom certificate is provided"
     fi
@@ -895,8 +708,9 @@ WriteRemote()
     echo "      <port>${WAZUH_REMOTE_HTTPS_PORT:-1517}</port>" >> $NEWCONFIG
     echo "      <bind_addr>${WAZUH_REMOTE_HTTPS_BIND_ADDR:-0.0.0.0}</bind_addr>" >> $NEWCONFIG
     echo "      <global_prefix>${WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX:-/wazuh-manager/}</global_prefix>" >> $NEWCONFIG
-    echo "      <certificate>${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/certs/remoted.pem}</certificate>" >> $NEWCONFIG
-    echo "      <key>${WAZUH_REMOTE_HTTPS_KEY:-etc/certs/remoted-key.pem}</key>" >> $NEWCONFIG
+    echo "      <certificate>${WAZUH_REMOTE_HTTPS_CERTIFICATE:-${CONF_DIR}/certs/remoted.pem}</certificate>" >> $NEWCONFIG
+    echo "      <key>${WAZUH_REMOTE_HTTPS_KEY:-${CONF_DIR}/certs/remoted-key.pem}</key>" >> $NEWCONFIG
+    echo "      <ca_certificate>${WAZUH_REMOTE_HTTPS_CA_CERTIFICATE:-${CONF_DIR}/certs/root-ca.pem}</ca_certificate>" >> $NEWCONFIG
     if [ -n "${WAZUH_REMOTE_HTTPS_CA}" ]; then
         echo "      <ca>${WAZUH_REMOTE_HTTPS_CA}</ca>" >> $NEWCONFIG
     fi
@@ -977,29 +791,25 @@ WriteManager()
     # Writting auth configuration
     if [ "X${AUTHD}" = "Xyes" ]; then
         # Same custom-certificate override WriteRemote()'s <https> block already honors (see
-        # GenerateHttpsManagerCert() above): authd's <ssl_manager_cert>/<ssl_manager_key> must
-        # point at whatever file the manager's HTTPS listener actually loads, or authd fails to
-        # start (ENOENT) whenever a custom certificate is supplied -- GenerateHttpsManagerCert()
-        # correctly skips generating the default etc/certs/remoted.pem in that case, but
-        # auth.template's cert paths used to stay hardcoded to it regardless.
-        WAZUH_AUTHD_SSL_MANAGER_CERT="${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/certs/remoted.pem}"
-        WAZUH_AUTHD_SSL_MANAGER_KEY="${WAZUH_REMOTE_HTTPS_KEY:-etc/certs/remoted-key.pem}"
-        sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" \
-            -e "s|\${WAZUH_AUTHD_SSL_MANAGER_CERT}|$WAZUH_AUTHD_SSL_MANAGER_CERT|g" \
-            -e "s|\${WAZUH_AUTHD_SSL_MANAGER_KEY}|$WAZUH_AUTHD_SSL_MANAGER_KEY|g" \
-            "${AUTH_TEMPLATE}" >> $NEWCONFIG
+        # SetCertsOwnership() above): authd's <ssl_manager_cert>/<ssl_manager_key> must point
+        # at whatever file the manager's HTTPS listener actually loads, or authd fails to start
+        # (ENOENT) whenever a custom certificate is supplied -- auth.template's cert paths used
+        # to stay hardcoded to the default certs/remoted.pem regardless.
+        WAZUH_AUTHD_SSL_MANAGER_CERT="${WAZUH_REMOTE_HTTPS_CERTIFICATE:-${CONF_DIR}/certs/remoted.pem}"
+        WAZUH_AUTHD_SSL_MANAGER_KEY="${WAZUH_REMOTE_HTTPS_KEY:-${CONF_DIR}/certs/remoted-key.pem}"
+        SubstituteFile "${AUTH_TEMPLATE}" \
+            '${INSTALLDIR}' "$INSTALLDIR" \
+            '${WAZUH_AUTHD_SSL_MANAGER_CERT}' "$WAZUH_AUTHD_SSL_MANAGER_CERT" \
+            '${WAZUH_AUTHD_SSL_MANAGER_KEY}' "$WAZUH_AUTHD_SSL_MANAGER_KEY" >> $NEWCONFIG
         echo "" >> $NEWCONFIG
     else
         DisableAuthd
     fi
 
-    if command -v openssl >/dev/null 2>&1; then
-        CLUSTER_KEY=$(openssl rand -hex 16)
-    else
-        CLUSTER_KEY=$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')
-    fi
+    # 16 random bytes as 32 hex digits, with coreutils only.
+    CLUSTER_KEY=$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')
     # Writting cluster configuration
-    sed -e "s|\${CLUSTER_KEY}|$CLUSTER_KEY|g" "${CLUSTER_TEMPLATE}" >> $NEWCONFIG
+    SubstituteFile "${CLUSTER_TEMPLATE}" '${CLUSTER_KEY}' "$CLUSTER_KEY" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     echo "</wazuh_config>" >> $NEWCONFIG
@@ -1020,6 +830,14 @@ InstallCommon()
   elif [ ${INSTYPE} = 'agent' ]; then
       WAZUH_CONTROL_SRC='./init/wazuh-client.sh'
       WAZUH_CONF_SRC='../etc/ossec-agent.conf'
+  fi
+
+  # The configuration directory: fixed for the manager (CONF_DIR, see shared.sh), under the
+  # installation directory for the agent.
+  if [ ${INSTYPE} = 'manager' ]; then
+      ETC_DIR="${CONF_DIR}"
+  else
+      ETC_DIR="${INSTALLDIR}/etc"
   fi
 
   if [ ${INSTYPE} = 'manager' ]; then
@@ -1358,18 +1176,21 @@ InstallCommon()
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/wodles
   fi
 
-  ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc
+  ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${ETC_DIR}
 
+  # The manager reads the system's time zone directly; only the agent keeps its copy.
+  if [ "X${INSTYPE}" = "Xagent" ]; then
     if [ -f /etc/localtime ]
     then
          ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /etc/localtime ${INSTALLDIR}/etc
     fi
 
-  ${INSTALL} -d -m 1770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/tmp
-
     if [ -f /etc/TIMEZONE ]; then
          ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /etc/TIMEZONE ${INSTALLDIR}/etc/
     fi
+  fi
+
+  ${INSTALL} -d -m 1770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/tmp
 
     if [ "X${INSTYPE}" = "Xagent" ]; then
         ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} -b ../etc/internal_options.conf ${INSTALLDIR}/etc/
@@ -1378,25 +1199,27 @@ InstallCommon()
             ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../etc/local_internal_options.conf ${INSTALLDIR}/etc/local_internal_options.conf
         fi
     else
-        if [ ! -f ${INSTALLDIR}/etc/wazuh-manager-internal-options.conf ]; then
-            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../etc/wazuh-manager-internal-options.conf ${INSTALLDIR}/etc/wazuh-manager-internal-options.conf
+        if [ ! -f ${ETC_DIR}/wazuh-manager-internal-options.conf ]; then
+            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../etc/wazuh-manager-internal-options.conf ${ETC_DIR}/wazuh-manager-internal-options.conf
         fi
     fi
 
     if [ "X${INSTYPE}" = "Xmanager" ]; then
-        # JSON Schema of etc/wazuh-manager.conf: product (always refreshed), consumed by the Python framework.
-        ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} shared_modules/manager_config/schema/wazuh-manager.schema.json ${INSTALLDIR}/etc/wazuh-manager.schema.json
+        # JSON Schema of etc/wazuh-manager.conf, consumed by the Python framework. Written on every run, but an
+        # upgrade restores the previous /etc/wazuh-manager after this (RestoreUpgradePreserve, DEB postinst,
+        # RPM %posttrans), so an upgraded manager keeps the previous release's copy; only a fresh install gets this one.
+        ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} shared_modules/manager_config/schema/wazuh-manager.schema.json ${ETC_DIR}/wazuh-manager.schema.json
     fi
 
-    if [ ! -f ${INSTALLDIR}/etc/client.keys ]; then
+    if [ ! -f ${ETC_DIR}/client.keys ]; then
         if [ "X${INSTYPE}" = "Xagent" ]; then
-            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/etc/client.keys
+            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /dev/null ${ETC_DIR}/client.keys
         else
-            ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/etc/client.keys
+            ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${ETC_DIR}/client.keys
         fi
     fi
 
-    if [ ! -f ${INSTALLDIR}/etc/${WAZUH_CONF} ]; then
+    if [ ! -f ${ETC_DIR}/${WAZUH_CONF} ]; then
         if [ ! -f ../etc/wazuh.mc ]; then
             echo "WARNING: missing ../etc/wazuh.mc. Regenerating configuration template."
             if ! ./init/gen_wazuh.sh conf "${INSTYPE}" "${DIST_NAME}" "${DIST_VER}.${DIST_SUBVER}" "${INSTALLDIR}" > ../etc/wazuh.mc; then
@@ -1408,25 +1231,26 @@ InstallCommon()
         if [ -f ../etc/wazuh.mc ]; then
             if [ "X${INSTYPE}" = "Xmanager" ]; then
                 # The generated etc/wazuh-manager.conf must validate against the embedded schema before it is
-                # installed (file existence is not checked: the certificates are generated later in the installation).
+                # installed (file existence is not checked: the certificates are issued later in the installation by
+                # the credential resolver, or deployed by the operator -- see SetCertsOwnership()).
                 if ! build/bin/wazuh-manager-conf --skip-file-checks validate -f ../etc/wazuh.mc; then
                     echo "ERROR: the generated ${WAZUH_CONF} is not a valid manager configuration."
                     exit 1
                 fi
             fi
-            ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ../etc/wazuh.mc ${INSTALLDIR}/etc/${WAZUH_CONF}
+            ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ../etc/wazuh.mc ${ETC_DIR}/${WAZUH_CONF}
         else
             if [ "X${INSTYPE}" = "Xmanager" ]; then
                 echo "ERROR: unable to generate ${WAZUH_CONF}; ${WAZUH_CONF_SRC} is a template, not an installable configuration."
                 exit 1
             fi
             echo "WARNING: unable to generate ${WAZUH_CONF} with desired configurations, using default configurations from ${WAZUH_CONF_SRC}"
-            ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ${WAZUH_CONF_SRC} ${INSTALLDIR}/etc/${WAZUH_CONF}
+            ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ${WAZUH_CONF_SRC} ${ETC_DIR}/${WAZUH_CONF}
         fi
     fi
 
 
-  ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/shared
+  ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${ETC_DIR}/shared
   if [ "X${INSTYPE}" = "Xagent" ]; then
     # Active response scripts and helpers are agent runtime assets.
     ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/active-response
@@ -1437,7 +1261,15 @@ InstallCommon()
 
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var
   ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/run
-  ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/upgrade
+
+  if [ "X${INSTYPE}" = "Xagent" ]; then
+    # Only root writes here on an agent (wazuh-modulesd unpacks the verified WPK, and root runs the
+    # installer it holds), so the group gets no write: it could otherwise swap a file between the
+    # signature check and its use.
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/upgrade
+  else
+    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/upgrade
+  fi
 
   if [ "X${INSTYPE}" = "Xagent" ]; then
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/selinux
@@ -1455,7 +1287,7 @@ InstallCommon()
 installIndexerTemplates()
 {
     local SRC_DIR="external/indexer-plugins"
-    local DEST_DIR="${INSTALLDIR}/etc/indexer-plugins"
+    local DEST_DIR="${ETC_DIR}/indexer-plugins"
     local STREAMS="metrics-agents.json metrics-comms.json metrics-normalization.json"
 
     if [ ! -d "${SRC_DIR}" ]; then
@@ -1533,7 +1365,7 @@ installEngineStore()
     echo "Engine store installed successfully."
 
     # Copy default output configuration files
-    local OUTPUTS_PATH=${INSTALLDIR}/etc/outputs
+    local OUTPUTS_PATH=${ETC_DIR}/outputs
     local DEFAULT_OUTPUTS_PATH=${OUTPUTS_PATH}/default
     ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${DEFAULT_OUTPUTS_PATH}
     cp "${ENGINE_SRC_PATH}/ruleset/outputs/"*.yml "${DEFAULT_OUTPUTS_PATH}/"
@@ -1642,6 +1474,7 @@ InstallLocal()
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/api
 
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/verify-agent-conf ${INSTALLDIR}/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/wazuh-manager-certs ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/wazuh-manager-conf ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-db ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 build/engine/wazuh-engine ${INSTALLDIR}/bin/wazuh-manager-analysisd
@@ -1712,22 +1545,18 @@ InstallLocal()
 
 TransferShared()
 {
-    rm -f ${INSTALLDIR}/etc/shared/merged.mg
-    find ${INSTALLDIR}/etc/shared -maxdepth 1 -type f -exec mv -f {} ${INSTALLDIR}/etc/shared/default \;
+    rm -f ${ETC_DIR}/shared/merged.mg
+    for SHARED_FILE in ${ETC_DIR}/shared/* ${ETC_DIR}/shared/.[!.]* ${ETC_DIR}/shared/..?*; do
+        if [ -f "${SHARED_FILE}" ] && [ ! -L "${SHARED_FILE}" ]; then
+            mv -f "${SHARED_FILE}" ${ETC_DIR}/shared/default
+        fi
+    done
 }
 
 InstallServer()
 {
 
     InstallLocal
-    if [ -f build/lib/libwazuhshared.so ]
-    then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libwazuhshared.so ${INSTALLDIR}/lib
-
-        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
-            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libwazuhshared.so
-        fi
-    fi
     if [ -f external/jemalloc/lib/libjemalloc.so.2 ]
     then
         ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} external/jemalloc/lib/libjemalloc.so.2 ${INSTALLDIR}/lib
@@ -1766,7 +1595,7 @@ InstallServer()
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/cluster
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/cluster
 
-    ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/shared/default
+    ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${ETC_DIR}/shared/default
 
     TransferShared
 
@@ -1781,16 +1610,15 @@ InstallServer()
 
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/backup/db
 
-    if [ ! -f ${INSTALLDIR}/etc/shared/default/agent.conf ]; then
-        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../etc/agent.conf ${INSTALLDIR}/etc/shared/default
+    if [ ! -f ${ETC_DIR}/shared/default/agent.conf ]; then
+        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../etc/agent.conf ${ETC_DIR}/shared/default
     fi
 
-    if [ ! -f ${INSTALLDIR}/etc/shared/agent-template.conf ]; then
-        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../etc/agent.conf ${INSTALLDIR}/etc/shared/agent-template.conf
+    if [ ! -f ${ETC_DIR}/shared/agent-template.conf ]; then
+        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../etc/agent.conf ${ETC_DIR}/shared/agent-template.conf
     fi
 
-    GenerateHttpsManagerCert
-    SetIndexerCertsOwnership
+    SetCertsOwnership
 
     # authd's durable state: the agent deletions whose indexer purge is still pending
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/authd
@@ -1798,6 +1626,37 @@ InstallServer()
     # Keystore
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/keystore
     ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-keystore ${INSTALLDIR}/bin/wazuh-manager-keystore
+
+    # Credential resolver. Installed inside the prefix, next to the binaries it drives, which also keeps
+    # it inside the tree .github/actions/check_files/manager_base.csv pins. What it resolves lives in the
+    # fixed /etc/wazuh-manager, so installs under different USER_DIR values share those credentials.
+    #
+    # The resolver is INSTALLED here; whether install.sh then RUNS it is decided by
+    # USER_RESOLVE_CREDENTIALS, which the DEB and RPM recipes set to "n". They invoke install.sh at
+    # *package build* time and ship the resulting tree wholesale (`cp -r $(INSTALLATION_DIR)/.` in
+    # debian/rules), so resolving there would seed one rbac.db, one bootstrap CA private key and one
+    # certificate set inside the package, and every installation in the world would share them.
+    # Their postinst/%post resolves on the target host instead.
+    #
+    # The resolver is one Python file run by the bundled interpreter in isolated mode, named on its
+    # first line. That line names the default home; any other installation directory gets its own
+    # interpreter there, written by the shell (the package scripts never need sed for this).
+    RESOLVER_SRC="init/credentials/wazuh-manager-resolve-credentials.py"
+    RESOLVER_DST="${INSTALLDIR}/bin/wazuh-manager-resolve-credentials"
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} "${RESOLVER_SRC}" "${RESOLVER_DST}"
+    if [ "${INSTALLDIR}" != "/var/wazuh-manager" ]; then
+        {
+            echo "#!${INSTALLDIR}/framework/python/bin/python3 -I"
+            RESOLVER_FIRST_LINE="yes"
+            while IFS= read -r RESOLVER_LINE || [ -n "${RESOLVER_LINE}" ]; do
+                if [ "${RESOLVER_FIRST_LINE}" = "yes" ]; then
+                    RESOLVER_FIRST_LINE="no"
+                    continue
+                fi
+                printf '%s\n' "${RESOLVER_LINE}"
+            done < "${RESOLVER_SRC}"
+        } > "${RESOLVER_DST}"
+    fi
 }
 
 InstallAgent()
@@ -1809,6 +1668,10 @@ InstallAgent()
 
     ${INSTALL} -m 0750 -o root -g 0 build/bin/manage_agents ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-agentd ${INSTALLDIR}/bin
+    # Standalone enrollment-token consumer. 0750 root:root like wazuh-agentd: it reads a
+    # credential and installs the trust anchor, so the unprivileged account the agent runs as
+    # must not be able to run it.
+    ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-agent-auth ${INSTALLDIR}/bin
 
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/rids
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/incoming

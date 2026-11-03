@@ -1,12 +1,13 @@
 /*
  * Wazuh keystore
- * Copyright (C) 2015, Wazuh Inc.
- * January 25, 2024.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #ifndef _CMD_ARGS_PARSER_HPP_
@@ -49,6 +50,7 @@ public:
         , m_key {paramValueOf(argc, argv, "-k")}
         , m_value {paramValueOf(argc, argv, "-v", std::make_pair(false, ""))}
         , m_valuePath {paramValueOf(argc, argv, "-vp", std::make_pair(false, ""))}
+        , m_get {hasSwitch(argc, argv, "-g")}
     {
     }
 
@@ -90,28 +92,54 @@ public:
     }
 
     /**
+     * @brief Whether the value is to be read back rather than written.
+     * @return True when -g was given.
+     */
+    bool isGet() const
+    {
+        return m_get;
+    }
+
+    /**
      * @brief Shows the help to the user.
      */
     static void showHelp()
     {
-        std::cout << "\nUsage: wazuh-manager-keystore <option(s)>\n"
-                  << "Options:\n"
-                  << "\t-h \t\t\tShow this help message\n"
-                  << "\t-f COLUMN_FAMILY\tSpecifies the target column family for the insertion.\n"
-                  << "\t-k KEY\t\t\tSpecifies the key for the key-value pair.\n"
-                  << "\t-v VALUE\t\tSpecifies the value associated with the key. Only use one value option at the time.\n"
-                  << "\t-vp VALUE_PATH\t\tPath to a file containing the value to read (single line). Only use one value option at the time.\n"
-                  << "\tNOTE: if both value parameters are empty, stdin will be read.\n"
-                  << "\nExample:"
-                  << "\n\t./wazuh-manager-keystore -f indexer -k username -v wazuh-manager\n"
-                  << "\n\t./wazuh-manager-keystore -f indexer -k password -vp /path/to/file.txt\n"
-                  << "\n\t./wazuh-manager-keystore -f indexer -k password < /path/to/file.txt\n"
-                  << "\n\techo 'pass' | ./wazuh-manager-keystore -f indexer -k password\n"
-                  << "\n\tcat /path/to/file.txt | ./wazuh-manager-keystore -f indexer -k password\n"
-                  << std::endl;
+        std::cout
+            << "\nUsage: wazuh-manager-keystore <option(s)>\n"
+            << "Options:\n"
+            << "\t-h \t\t\tShow this help message\n"
+            << "\t-f COLUMN_FAMILY\tSpecifies the target column family for the insertion.\n"
+            << "\t-k KEY\t\t\tSpecifies the key for the key-value pair.\n"
+            << "\t-v VALUE\t\tSpecifies the value associated with the key. Only use one value option at the time.\n"
+            << "\t-vp VALUE_PATH\t\tPath to a file containing the value to read (single line). Only use one value "
+               "option at the time.\n"
+            << "\tNOTE: if both value parameters are empty, stdin will be read.\n"
+            << "\t-g \t\t\tPrint the value of the key instead of writing one, and exit non-zero when it is not set.\n"
+            << "\nExample:"
+            << "\n\t./wazuh-manager-keystore -f indexer -k username -v wazuh-manager\n"
+            << "\n\t./wazuh-manager-keystore -f indexer -k password -vp /path/to/file.txt\n"
+            << "\n\t./wazuh-manager-keystore -f indexer -k password < /path/to/file.txt\n"
+            << "\n\techo 'pass' | ./wazuh-manager-keystore -f indexer -k password\n"
+            << "\n\tcat /path/to/file.txt | ./wazuh-manager-keystore -f indexer -k password\n"
+            << "\n\t./wazuh-manager-keystore -f indexer -k password -g\n"
+            << std::endl;
     }
 
 private:
+    static bool hasSwitch(int argc, char* argv[], const std::string& switchValue)
+    {
+        for (auto i = 1; i < argc; ++i)
+        {
+            if (std::string {argv[i]} == switchValue)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     static std::string paramValueOf(int argc,
                                     char* argv[],
                                     const std::string& switchValue,
@@ -151,6 +179,7 @@ private:
     const std::string m_key;
     const std::string m_value;
     const std::string m_valuePath;
+    const bool m_get;
 };
 
 #endif // _CMD_ARGS_PARSER_HPP_

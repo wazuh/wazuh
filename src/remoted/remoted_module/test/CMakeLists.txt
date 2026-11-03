@@ -42,7 +42,11 @@ target_link_libraries(
   wazuh_metrics
   # jwtCppSpike_test.cpp (and the JWT auth tests) include <jwt-cpp/jwt.h> directly; remoted_module
   # links ext_jwt_cpp PRIVATE, so this target needs its own link too.
-  ext_jwt_cpp)
+  ext_jwt_cpp
+  # caCertificateSource_test.cpp/httpServer_test.cpp call ca_bundle::parseBundle() and the X509Ptr
+  # re-exported by tlsCertificateStatus.hpp; remoted_module links shared_modules/ca_bundle PRIVATE,
+  # so this target needs its own link (which also propagates its include directory).
+  ca_bundle)
 
 target_include_directories(
   remoted_module_utest
@@ -61,7 +65,11 @@ target_include_directories(
           ${SRC_FOLDER}/external/nlohmann
           # vdClient_test.cpp's fakeVdServer.hpp spins up a real httplib::Server over a UDS socket
           # to stand in for the VD module; remoted_module gets cpp-httplib PRIVATE, same gap as above.
-          ${SRC_FOLDER}/external/cpp-httplib)
+          ${SRC_FOLDER}/external/cpp-httplib
+          # agentGroupsRoute_test.cpp drives the admin route handler directly (HttpRequest,
+          # IHttpResponder); remoted_module links wazuh_uds_http_server PRIVATE, same gap -- the
+          # header needs only the standard library, so no second copy of the archive is linked.
+          ${SRC_FOLDER}/shared_modules/uds_http_server/include)
 
 add_test(NAME remoted_module_utest COMMAND remoted_module_utest)
 # The suite normally finishes in well under a minute; the TIMEOUT is a backstop so a parked

@@ -103,7 +103,6 @@ src/win32/netsh-win-2016.cmd
 src/win32/route-null-2012.cmd
 src/win32/netsh.cmd
 src/win32/VERSION.json
-src/libwazuhshared.*
 src/libwazuhext.*
 
 # Eclipse files
@@ -177,6 +176,7 @@ src/result-*.txt
 # Tool files
 tools/repository_bumper_*
 src/build-tsan/*
+src/build-e2a/*
 src/build-e6a/*
 # Runtime artifacts of daemons/testtools run from src/ during development
 src/queue/

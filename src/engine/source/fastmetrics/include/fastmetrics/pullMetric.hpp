@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef FASTMETRICS_PULL_METRIC_HPP
 #define FASTMETRICS_PULL_METRIC_HPP
 
@@ -53,7 +54,6 @@ public:
     PullMetric(PullMetric&&) = delete;
     PullMetric& operator=(PullMetric&&) = delete;
 
-
     /// \copydoc fastmetrics::IMetric::name()
     const std::string& name() const override { return m_name; }
 
@@ -106,7 +106,7 @@ public:
     {
         if (!m_enabled.load(std::memory_order_relaxed) || !m_getter)
         {
-            return T{};
+            return T {};
         }
 
         try
@@ -115,7 +115,7 @@ public:
         }
         catch (...)
         {
-            return T{};
+            return T {};
         }
     }
 };

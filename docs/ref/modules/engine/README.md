@@ -4,13 +4,41 @@
 > This documentation uses the term “engine” to refer to the decoding and enrichment engine;
 > this is the `wazuh-manager-analysisd` daemon.
 
+>[!IMPORTANT]
+> The engine (`src/engine/`, including the standalone bundle, the `wazuh-internal-tools` package and the
+> `engine-suite`/`engine-metrics` tools) is licensed under the GNU Affero General Public License, version 3 or
+> (at your option) any later version — see `src/engine/COPYING-engine` and `src/engine/LICENSE-engine`. The shared
+> libraries it links with the rest of the manager (`src/shared_modules/utils`, `manager_config`, `keystore`,
+> `indexer_connector`, `common` and the `http-request` submodule) are dual-licensed
+> `GPL-2.0-only OR AGPL-3.0-or-later`; the rest of the manager is GPLv2.
+
 ## Introduction
 The engine is responsible for transforming raw data into standardized schema documents, enriching it with threat
 intelligence, and forwarding it to designated destinations (`wazuh-indexer`).
 
+## Event ingestion identity
+
+`POST /events/enriched` on `engine-ingest-http.sock` requires exactly one canonical
+`X-Wazuh-Agent-Id`, supplied by the local producer. The H-line `/wazuh/agent/id` must be a string
+with that value, and every member along its path must occur exactly once. Literal `wazuh.agent`
+and `wazuh.agent.id` members at the root, and `agent.id` under `wazuh`, are rejected after name
+decoding, regardless of their values: these dotted names resolve to the same indexed identity path.
+Names with trailing dots along this path (including `wazuh.`, `agent.`, `id.` and dotted aliases
+with trailing dots) are rejected as well. Dotted names in unrelated paths remain accepted.
+Violations return 400 before enqueueing. The cache validates once per distinct (id, exact header bytes) pair.
+
+The socket is `0660 wazuh-manager`; the engine performs no peer-credential or JWT verification.
+Processes allowed to write to it are trusted to author the carrier from authenticated or server-side
+identity. External local writers must add the header; the H line is never an identity fallback.
+The agent-facing HTTPS protocol is unchanged: remoted verifies the JWT and writes the carrier.
+The tester's separate `agent_metadata` path does not enforce this ingestion contract.
+See the [events specification](spec-events.yaml) for canonical ids, error cases and both content types.
+
 ## Data flow
 
-Events are received from `wazuh-manager-remoted`, which is responsible for receiving events from the agents.
+Events are received from `wazuh-manager-remoted`, which is responsible for receiving events from the agents, and
+from the vulnerability scanner of `wazuh-manager-modulesd`, both over the engine's ingest socket
+`/var/wazuh-manager/queue/sockets/engine-ingest-http.sock` (`POST /events/enriched`).
 The data flow begins when an event enters the orchestrator and continues until it is processed by the security policy.
 Below is a high-level flowchart illustrating this process.
 
@@ -68,7 +96,7 @@ Each event travels through the following ordered stages inside a policy:
 1. **Pre-filter** *(optional)*: Evaluated before decoding. If configured, events that do not satisfy the filter
    conditions are discarded immediately, avoiding unnecessary decoding work. If no pre-filter is configured,
    all events proceed to the decoding stage unconditionally.
-2. **Decoders**: Normalize and extract fields from the raw event, mapping them to the [Wazuh Common Schema](#).
+2. **Decoders**: Normalize and extract fields from the raw event, mapping them to the [Wazuh Common Schema](../../glossary.md).
    This stage is mandatory — every event must traverse the decoder tree.
 3. **Enrichment** *(optional)*: Plugins that augment the normalized event with additional context after decoding.
    Built-in plugins include GeoIP geolocation and Indicator of Compromise (IOC) matching. Enrichment can be
@@ -124,7 +152,7 @@ Input event example:
     }
   },
   "event": {
-    "original": "{\"version\":\"1.100000\",\"account_id\":\"123456789023\",\"region\":\"us-east-1\",\"vpc_id\":\"vpc-0000000\",\"query_timestamp\":\"2025-12-11T22:22:22Z\",\"query_name\":\"amazonlinux-2-repos-us-east-1.s3.dualstack.us-east-1.amazonaws.com.\",\"query_type\":\"AAAA\",\"query_class\":\"IN\",\"rcode\":\"NOERROR\",\"answers\":[{\"Rdata\":\"s3-r-w.dualstack.us-east-1.amazonaws.com.\",\"Type\":\"CNAME\",\"Class\":\"IN\"},{\"Rdata\":\"2a02:cf40:add:4444:9191:a9a9:aaaa:cccc\",\"Type\":\"AAAA\",\"Class\":\"IN\"}],\"srcaddr\":\"8.8.8.8\",\"srcport\":\"8010\",\"transport\":\"UDP\",\"srcids\":{}}",
+    "original": "{\"version\":\"1.100000\",\"account_id\":\"123456789023\",\"region\":\"us-east-1\",\"vpc_id\":\"vpc-0000000\",\"query_timestamp\":\"2025-12-11T22:22:22Z\",\"query_name\":\"amazonlinux-2-repos-us-east-1.s3.dualstack.us-east-1.amazonaws.com.\",\"query_type\":\"AAAA\",\"query_class\":\"IN\",\"rcode\":\"NOERROR\",\"answers\":[{\"Rdata\":\"s3-r-w.dualstack.us-east-1.amazonaws.com.\",\"Type\":\"CNAME\",\"Class\":\"IN\"},{\"Rdata\":\"2a02:cf40:add:4444:9191:a9a9:aaaa:cccc\",\"Type\":\"AAAA\",\"Class\":\"IN\"}],\"srcaddr\":\"8.8.8.8\",\"srcport\":\"8010\",\"transport\":\"UDP\",\"srcids\":{}}"
   }
 }
 
@@ -551,11 +579,13 @@ Temporary variables are fields whose names start with `_` (e.g., `_raw_message`,
 a scratch space that decoders can write to and read from as an event travels through the decoder tree, enabling
 intermediate values to be shared across decoders during processing.
 
-Once the decoding stage is complete, temporary variables have served their purpose and must be removed. This
-cleanup step is **mandatory** and always runs at the end of pre-enrichment — it is not configurable by the user.
+Once the decoding stage is complete, temporary variables have served their purpose and are removed at the end of
+pre-enrichment: every root key of the event whose name starts with `_` is deleted. The cleanup is controlled by the
+policy's `cleanup_decoder_variables` flag, which defaults to `true`; with `false` the step is skipped and the
+temporary variables reach the enrichment and output stages.
 
-After cleanup, every field present in the event is guaranteed to belong to the WCS. This invariant is what
-allows the event to be correctly indexed in the Wazuh Indexer, since only schema-conformant fields are accepted.
+After cleanup, every field present in the event belongs to the WCS. This invariant is what allows the event to be
+correctly indexed in the Wazuh Indexer, since only schema-conformant fields are accepted.
 
 #### Enrichment
 
@@ -684,22 +714,21 @@ Depending on the observed field and the configured IOC types, this enrichment ma
 
 In particular, network IOC matching is not limited to plain IP values. For connection-based enrichment, the observed value is built from the relevant event fields as a connection key, typically combining IP address and port.
 
-If a match is found, the event is enriched with threat-related context associated with the matched indicator.
-
-Conceptually:
+If a match is found, one entry is appended to the `wazuh.threat.enrichments` array for each matched
+indicator. The entry carries the stored indicator document under `indicator` and, under
+`matched.field`, the event field the value was read from — for a connection match, both fields,
+comma-separated. For example (the `indicator` content is the document stored for that IOC; its
+shape is shown only as a placeholder):
 
 ```json
 {
   "wazuh": {
     "threat": {
-      "indicator": {
-        "type": "ipv4-addr",
-        "ip": "203.0.113.10"
-      },
       "enrichments": [
         {
+          "indicator": { "...": "stored IOC document" },
           "matched": {
-            "field": "destination.ip"
+            "field": "destination.ip, destination.port"
           }
         }
       ]
@@ -787,16 +816,16 @@ Once an event has completed the full processing pipeline — decoding, optional 
 it is forwarded to the **output stage**. Outputs are responsible for delivering the decoded event to one or more
 configured destinations, such as the Wazuh Indexer or a local file.
 
-Unlike decoders and enrichment assets, which are downloaded from the content distribution infrastructure,
+Unlike decoders, filters, integrations and KVDBs, which are synchronized from `wazuh-indexer`,
 **outputs are bundled with the `wazuh-manager` installation** and stored locally on the manager host. They do not
 originate from the Wazuh Indexer.
 
 #### Output directory structure
 
-Outputs are stored under `/var/wazuh-manager/etc/outputs/` and organized by space name:
+Outputs are stored under `/etc/wazuh-manager/outputs/` and organized by space name:
 
 ```
-/var/wazuh-manager/etc/outputs/
+/etc/wazuh-manager/outputs/
 ├── default/                          # Fallback outputs, applied to all spaces unless overridden
 │   ├── indexer.yml                   # Sends decoded events to the Wazuh Indexer (enabled)
 │   └── file-output-integrations.yml  # Writes decoded events to a local file (disabled)
@@ -937,9 +966,10 @@ For example, a network event log structured according to the schema might look l
 
 ### Configuration
 The schema configuration for the engine follows a structured format where each field is defined.
-It's called the Wazuh Common Schema (WCS) and it's fetched (synched) from the wazuh indexer repository
-([original yaml source](https://raw.githubusercontent.com/wazuh/wazuh-indexer-plugins/refs/heads/main/wcs/stateless/events/main/docs/wcs_flat.yml)).
-It's not intended to be modified by the user and it consists of a JSON object with the following key elements:
+It's called the Wazuh Common Schema (WCS): `make deps` downloads its flat definition (`wcs_flat.yml`) from the
+`wazuh-indexer-plugins` repository, and the installer generates the engine schema from it with `engine-schema` and
+stores it as `schema/engine-schema/0` in the engine store. It is not intended to be modified by the user and it
+consists of a JSON object with the following key elements:
 
 - Fields Definition:
   - The fields object contains a list of field names as keys.
@@ -1003,6 +1033,16 @@ two-step process for each:
 2. **Content fetch**: If the hashes differ, CMSync downloads the full content for that space from the Wazuh
    Indexer and applies it to the Engine's local store. The Engine then rebuilds the affected operational graphs.
 
+Both steps run against a **Point-in-Time snapshot** of the indexer, and the CTI consumer that publishes the
+content is verified as `ready` from inside that same snapshot. A consumer that is mid-update therefore cannot
+have half-written content read as if it were complete; the cycle is deferred instead and retried shortly
+after (`analysisd.content_consumer_retry_interval`), rather than waiting for the next full
+`analysisd.cm_sync_interval` tick.
+
+A synchronization can also be triggered out of band with `POST /content/ruleset/update`. It returns as soon as
+the request is queued — progress is read from `GET /status` — and a space whose hash has not moved still costs
+only the hash comparison.
+
 The content synchronized per space includes:
 
 - **Policy configuration** — List of integration (order by priority of evaluation) and policy-level settings
@@ -1036,6 +1076,33 @@ subsequent synchronization cycles run periodically to keep the local state up to
 
 When both spaces are available and synchronized, the Engine processes all incoming events through each active
 operational graph.
+
+### Where content is validated
+
+Editing and validation happen in two different places, by design. The Wazuh Indexer keeps user content in an
+editable draft that accepts content which would not build yet, so a user can work in steps. The Engine checks
+that content once, as a whole, when the user promotes it: the Wazuh Indexer sends the full policy to
+`POST /content/validate/policy` (see the [Public API Reference](public-api-reference.md)), and the Engine
+imports it into a temporary namespace and builds it exactly as it would run. A promotion succeeds only if
+that build does. Nothing is checked earlier, so a mistake made while editing the draft surfaces only at
+promotion.
+
+The checks that most often refuse a promotion, with the error the Engine returns:
+
+| Cause | Error |
+|-------|-------|
+| Two assets of the same type and name in the space (for example, a second root decoder created with the name of an existing one) | `Failed to import namespace 'logtest_<hex>': Resource with name '<name>' and type '<type>' already exists` |
+| The same decoder listed by two integrations | `Decoder '<name>' [id: '<id>'] from integration '<integration>' [id: '<id>'] was already defined by another integration` |
+| The policy has no root decoder | `Missing root decoder` |
+| No enabled integration contributes a decoder | `Policy must have at least a decoders` |
+| The root decoder is disabled, or not part of any enabled integration | `The root decoder '<name>' [id: '<id>'] is disabled; enable it before using this policy`, or `... is required by the policy decoders but is not part of its enabled content ...` |
+
+`logtest_<hex>` is the temporary namespace of that one validation request, not a space the user created.
+
+Because promotion always builds the whole space, removing content by promoting an empty or incomplete space
+is refused by the same checks. To stop using a space's content, disable the space's policy in the Wazuh
+Indexer instead: on its next synchronization cycle CMSync removes the space's route and namespace and logs
+`Policy for space '<space>' is disabled in indexer or has nothing to build (no integrations or no root decoder), removing route and namespace`.
 
 ## Assets
 
@@ -1096,6 +1163,10 @@ classDef AttributesClass min-width: 200px
 Attributes are configuration details and metadata about the asset. Every asset shares the following common attributes:
 
 - **`name`**: Uniquely identifies the asset using the pattern `<asset_type>/<name>/<version>` (e.g. `decoder/aws-cloudtrail/0`).
+  The name is unique **per type within one space**: the Standard and Custom spaces may each hold an asset
+  with the same name, but one space cannot hold two. The Engine enforces this when it imports the space,
+  not when the asset is created in the Wazuh Indexer — see
+  [Where content is validated](#where-content-is-validated).
 - **`id`**: A string that uniquely identifies the asset across the system. It is opaque to the Engine:
   any UUID version or other format is accepted, and one is generated (UUIDv4) when the asset does not carry it.
   The only constraints are that it must be non-empty, at most 256 characters long and free of control
@@ -1105,8 +1176,8 @@ Attributes are configuration details and metadata about the asset. Every asset s
   The policy's root decoder is the one exception: because it anchors the whole decoder tree, the build
   fails with an explicit error if it is disabled, belongs only to disabled integrations, or is not
   referenced by any integration of the policy.
-- **`metadata`**: Descriptive information about the asset. Common sub-fields include `module`, `title`, `description`,
-  `compatibility`, `versions`, `author`, and `references`.
+- **`metadata`**: Descriptive information about the asset. The accepted sub-fields depend on the asset type (see
+  [Decoders](#decoders), [Outputs](#outputs) and [Filters](#filters)).
 - **`parents`**: Lists the parent asset names that define the asset's position in the asset graph.
   The traversal behavior depends on the asset type.
 - **`definitions`**: Build-time typed macros. Each definition is a named value substituted wherever it is referenced in
@@ -1194,6 +1265,9 @@ The key syntax is `parse|<source_field>: [<expr1>, <expr2>, ...]`.
 - **`parse|<field>`** *(optional)*: Parse step within the block.
 - **`map`** *(optional)*: Array of field assignments in the form `{target_field: value_or_expression}`. Maps and transforms values into the event.
 
+Within a block the sub-stages must appear in this order (`check`, then `parse|<field>`, then `map`), and a block can hold
+at most one `parse|<field>`; any other order, or a second parse, makes the asset fail to build.
+
 *Available in*: decoders.
 
 ---
@@ -1227,14 +1301,14 @@ Each integration has the following fields:
 | `id` | Yes | Identifier that uniquely identifies the integration (opaque; any UUID version or format) |
 | name | Yes | Human-readable title of the integration (stored under `metadata.title`) |
 | `enabled` | Yes | Boolean. Disabled integrations are skipped when building the policy |
-| `category` | Yes | One of the seven allowed categories (see below) |
-| `decoders` | Yes | Ordered list of decoder identifiers that belong to this integration (no duplicates) |
-| `kvdbs` | Yes | List of KVDB identifiers used by this integration's decoders (no duplicates) |
+| `category` | Yes | One of the allowed categories (see below) |
+| `decoders` | No (empty when absent) | Ordered list of decoder identifiers that belong to this integration (no duplicates) |
+| `kvdbs` | No (empty when absent) | List of KVDB identifiers used by this integration's decoders (no duplicates) |
 | `default_parent` | No | Identifier of the fallback parent decoder. Used for decoders in this integration that do not declare an explicit parent |
 
 #### Integration categories
 
-Every integration must declare one of the following seven categories:
+Every integration must declare one of the following eight categories:
 
 | Category | Description |
 |----------|-------------|
@@ -1245,6 +1319,7 @@ Every integration must declare one of the following seven categories:
 | `security` | Security platform and tooling events (EDR, SIEM feeds, scanners, etc.) |
 | `system-activity` | Operating system and host-level events (audit logs, syslog, etc.) |
 | `other` | Events that do not fit any of the above categories |
+| `unclassified` | The catch-all integration whose decoder accepts events no other integration matched (see [Unclassified events](#unclassified-events)) |
 
 The category assigned to an integration propagates to all events decoded by that integration's decoders. It is recorded in `wazuh.integration.category` on every processed event and is used by the output stage to route events to the correct data stream (e.g. `wazuh-events-v5-cloud-services`).
 
@@ -1369,7 +1444,7 @@ Invalid escape sequences will always fail.
 
 For example:
 ```yaml
-target.field: helper_name('string', $reference, 123, {"key": "value"})
+target.field: "helper_name('string', $reference, 123, {\"key\": \"value\"})"
 ```
 
 This call applies `helper_name` to the `target.field` with arguments:
@@ -1389,7 +1464,7 @@ is expected for the helper, specifying the target field:
 check: helper_name($target.field, args…)
 ```
 
-Added we can specify comparison helpers as operators:
+Comparison helpers can also be written as operators; the left side must be a reference:
 ```yaml
 check: $target.field <op> <value>
 ```
@@ -1404,7 +1479,7 @@ Where op is any of the following:
 - `>`
 - `>=`
 
-When using any operator that is not the equality operator only string or integer values are allowed.
+When using any operator other than `==`, only string or number values are allowed.
 
 When using the default map or filter functions for string operations, values are parsed according to standard YAML
 (or JSON) types. If a value is a string and begins with the reference symbol `$`, it is treated as a potential
@@ -1420,13 +1495,13 @@ Below are some usage examples:
 
 ```yaml
 # Example 1: Simple equality check
-check: http.method == "GET"
+check: $http.request.method == "GET"
 
 # Example 2: Comparison with an integer value
 check: $event.severity > 3
 
 # Example 3: Using a helper function in check
-check: cidr_match($source.ip, "192.168.0.0", 24)
+check: ip_cidr_match($source.ip, '192.168.0.0', '24')
 
 ```
 
@@ -1435,18 +1510,18 @@ check: cidr_match($source.ip, "192.168.0.0", 24)
 To facilitate the reuse of constructors when building large assets—such as parsing code for events with common headers or repeated constructs like IP/port definitions—definitions can be introduced at the specification level. For example:
 ```yaml
 definitions:
-  header: <timestamp> <host.hostname> <daemon>:
-  source: <source.ip>:<source.port>
-  destination: <destination.ip>:<destination.port>
-  a-list:
+  header: "<@timestamp/%b %d %T> <host.hostname> <process.name>:"
+  src_endpoint: <source.ip>:<source.port>
+  dst_endpoint: <destination.ip>:<destination.port>
+  a_list:
     - item1: value1
     - item2: value2
 ```
 
 These definitions can then be referenced elsewhere:
 ```yaml
-parse|field:
-    - <$header> from <$source> to <$destination> deny
+parse|message:
+    - $header from $src_endpoint to $dst_endpoint deny
 ```
 
 This approach enables text reuse within an asset. Definitions are applied at build time through interpolation and do not function as runtime variables, i.e., cannot be modified once declared.
@@ -1456,11 +1531,18 @@ This approach enables text reuse within an asset. Definitions are applied at bui
 > numeric value and use it as an argument for helper functions, not just strings for parsing.
 
 #### Restrictions
-- **Naming Conflicts**: Definitions cannot have the same name as a schema field. Doing so will result in a failure to build the asset.
-- **Precedence**: Definitions take precedence over custom fields. If a definition exists with the same name as a custom field, all references to the field will be replaced by the definition's value.
-- **Chaining Definitions**: Definitions can use other definitions in their values as long as they are defined beforehand.
+- **Naming**: A definition name cannot start with `$`; a name that does makes the asset fail to build.
+- **Precedence**: A definition name is not checked against the schema, and a definition wins over an event field of
+  the same name. In `parse|<field>` expressions and conditional-expression `check` strings, definitions are
+  substituted as text before the stage is built: every `$name` not followed by a letter, digit or `_` is replaced, so
+  with a definition `source`, `$source.ip` becomes the definition's value followed by `.ip`. In a helper argument, a
+  `$reference` that names a definition takes the definition's typed value instead of the event field. Give
+  definitions names that no field uses; write `\$name` to keep a literal `$name` in a substituted string.
+- **Chaining Definitions**: Definitions can use other definitions in their values, in any order of declaration, with
+  the same `$name` rule as in stages; a circular reference makes the asset fail to build.
 - **Context**: Definitions can only appear on the right side of operations, meaning we can't define the structure of the document with definitions or be used inside non operational stages.
 - **Scope**: Definitions are scoped to the asset where they are defined. They cannot be shared across assets.
+- **Limits**: A chain of definitions referencing definitions can be at most 256 deep, a definition can expand to at most 64 KiB once its references are replaced, and the text added by expanding definitions in one asset (in other definitions and in the stages that use them) can total at most 1 MiB. An asset beyond any of them fails to build, naming the definition and the limit. These are compile-time constants, not settings.
 
 #### Use Cases
 - **Parsing Complex Logs**
@@ -1489,14 +1571,15 @@ This makes them useful for passing intermediate values between decoders without 
 non-schema fields.
 
 Once the decoder tree has finished processing, all variables are removed from the event before it enters the enrichment
-stage (see [Cleanup of decoder temporary variables](#cleanup-of-decoder-temporary-variables)). After this point,
-every field in the event belongs to the Wazuh Common Schema (WCS).
+stage, unless the policy disables the cleanup (see
+[Cleanup of decoder temporary variables](#cleanup-of-decoder-temporary-variables)). After this point, every field
+in the event belongs to the Wazuh Common Schema (WCS).
 
 Key characteristics:
 - **Decoder-tree scoped** — Variables persist across the entire decoder tree traversal; any decoder that runs after the
   one that wrote a variable can read it.
 - **Removed before enrichment** — Variables do not reach the enrichment stage or the output stage. They are cleaned up
-  as part of the mandatory pre-enrichment cleanup step.
+  by the pre-enrichment cleanup step, which a policy can disable with `cleanup_decoder_variables: false`.
 - **Runtime modifiable** — Unlike definitions, which are resolved at build time, variables can be written and
 overwritten during event processing.
 
@@ -1505,7 +1588,7 @@ overwritten during event processing.
 Log parsing transforms raw log entries into structured data using parser expressions. These expressions serve as an
 alternative to regex: field types are predefined in the schema, so no explicit type declarations are needed.
 
-For the complete syntax reference — literals, schema fields, custom fields, optional fields, field choices, wildcards,
+For the complete syntax reference — literals, schema fields, temporary fields, optional fields, field choices, wildcards,
 and optional groups — see the [Parse stage](#parse) in the Stage reference section, and the full
 [Parsers](ref-parser.md) reference.
 
@@ -1538,33 +1621,35 @@ Use a KVDB to keep mappings such as status codes, protocol names, or bitmask tab
 
 At a high level, helpers identify a KVDB by name and then resolve keys inside its `content` map.
 
-For example:
+Each KVDB is a single document. For example:
 
 ```yaml
-kvdbs:
-  - id: b162e527-c155-43a3-8780-854350880f54
-    metadata:
-      title: example_kvdb
-      description: description of the kvdb
-    enabled: true
-    content:
-      key_1: value_1
-      key_2: 123
-      key_3: true
-      key_4:
-        nested_field: nested_value
-      key_5:
-        - item_1
-        - item_2
+id: b162e527-c155-43a3-8780-854350880f54
+metadata:
+  title: example_kvdb
+  description: description of the kvdb
+enabled: true
+content:
+  key_1: value_1
+  key_2: 123
+  key_3: true
+  key_4:
+    nested_field: nested_value
+  key_5:
+    - item_1
+    - item_2
 ```
 
 In this example:
 
-- the KVDB name is `example_kvdb`
+- the KVDB name is `example_kvdb` (`metadata.title`); it may contain only letters, digits, `_` and `-`
 - the lookup keys are `key_1`, `key_2`, `key_3`, `key_4`, and `key_5`
 - each key stores a JSON value that can later be retrieved, matched, or merged by a helper
 
-Additional descriptive metadata can be included when useful, but the important part for helper resolution is the KVDB name and its `content` entries.
+`id`, `metadata.title`, `enabled` and `content` are required, and `content` must be an object. Additional descriptive
+metadata can be included when useful, but the important part for helper resolution is the KVDB name and its `content`
+entries. A decoder can only use a KVDB that is listed, and enabled, in the `kvdbs` of its own
+[integration](#integrations); otherwise the decoder fails to build (`KVDB '<name>' is not declared in the integration`).
 
 #### Example: merge defaults into an event
 
@@ -1605,7 +1690,7 @@ Use this section as the conceptual overview of the asset itself, and refer to th
 
 ### Decoders
 
-Decoders are the assets responsible for normalizing raw events into structured documents that conform to the [Wazuh Common Schema](#). All events enter the decoder tree through the root decoder and traverse a branch of child decoders, each contributing progressively more specialized field extraction and normalization.
+Decoders are the assets responsible for normalizing raw events into structured documents that conform to the [Wazuh Common Schema](../../glossary.md). All events enter the decoder tree through the root decoder and traverse a branch of child decoders, each contributing progressively more specialized field extraction and normalization.
 
 The decoder tree is evaluated depth-first. After a decoder successfully processes an event, the engine evaluates that decoder's child decoders in order; only the first child that accepts the event is followed (logical OR among siblings). See [Execution Graph Summary](#execution-graph-summary) for traversal order details.
 
@@ -1627,24 +1712,22 @@ kanban
 - **Name**: Identifies the decoder and follows the pattern `<asset_type>/<name>/<version>`. The component type is
   `decoder`, and the version must be 0, since versioning is not implemented.
 
-- **Metadata**: Provides descriptive information about the decoder. Common fields include:
-    - `module` (string): The associated module (e.g., `syslog`, `windows`, `apache`).
+- **Metadata**: Provides descriptive information about the decoder. The decoder schema
+  (`src/engine/ruleset/schemas/wazuh-decoders.json`, `metadata`) accepts only these fields; `title`, `author` and
+  `description` are required:
     - `title` (string): Human-readable label (e.g., `Windows Event Log Decoder`).
+    - `author` (string): Author of the decoder (e.g., `Wazuh, Inc.`).
     - `description` (string): Brief description of the decoder.
-    - `compatibility` (string): Compatible products, versions, and formats.
-    - `version` (array): Tested and supported versions (e.g., `2.2.x`, `3.x`).
-    - `author` (object): Author information:
-        ```yaml
-        name: Wazuh, Inc.
-        email: info@wazuh.com
-        url: https://wazuh.com
-        date: 2022-11-15
-        ```
-    - `reference` (array): Links to product documentation:
+    - `compatibility` (array of strings): Compatible products, versions, and formats.
+    - `supports` (array of strings): Tested and supported versions (e.g., `2.2.x`, `3.x`).
+    - `references` (array of strings): Links to product documentation:
       ```yaml
       - https://httpd.apache.org/docs/2.2/logs.html
       - https://httpd.apache.org/docs/2.4/logs.html
       ```
+    - `documentation` (string): Further documentation for the decoder.
+    - `date` and `modified` (string): Creation and last-modification dates, ISO 8601 (`2022-11-15` or
+      `2022-11-15T10:00:00Z`).
 
 - **Parents**: Defines the position of this decoder in the decoder tree. A decoder can declare multiple parents,
   meaning it can appear as a potential child under each of them. The engine evaluates sibling decoders under a parent
@@ -1674,8 +1757,9 @@ event processing and indexing. For the full list of supported formats and parame
 Decoders can enrich events with geographic location and ASN data using the
 [MaxMind GeoLite databases](https://www.maxmind.com/). The `geoip` helper function is used inside a `map` stage to
 look up an IP address field and write location context into the event. For usage and parameters, see the
-[geoip helper documentation](ref-helper-functions.md#geoip). The databases themselves are registered through the
-Engine API.
+[geoip helper documentation](ref-helper-functions.md#geoip). The databases themselves are downloaded and refreshed
+by the engine's GeoIP synchronization (the `analysisd.geo_*` settings in
+[Geo](configuration.md#geo)).
 
 #### Example Decoder
 
@@ -1754,13 +1838,13 @@ normalize:
   # --- Block 6: sudo commands ---
   - check:
       - process.name: "sudo"
+    parse|message:
+      - "<user.name> : <_system.auth.sudo.error> ; TTY=<_system.auth.sudo.tty> ; PWD=<_system.auth.sudo.pwd> ; USER=<user.effective.name> ; COMMAND=<_system.auth.sudo.command>"
+      - "<user.name> : TTY=<_system.auth.sudo.tty> ; PWD=<_system.auth.sudo.pwd> ; USER=<user.effective.name> ; COMMAND=<_system.auth.sudo.command>"
     map:
       - event.action: "sudo"
       - event.category: "array_append(authentication, process)"
       - event.type: "array_append(start)"
-    parse|message:
-      - "<user.name> : <_system.auth.sudo.error> ; TTY=<_system.auth.sudo.tty> ; PWD=<_system.auth.sudo.pwd> ; USER=<user.effective.name> ; COMMAND=<_system.auth.sudo.command>"
-      - "<user.name> : TTY=<_system.auth.sudo.tty> ; PWD=<_system.auth.sudo.pwd> ; USER=<user.effective.name> ; COMMAND=<_system.auth.sudo.command>"
 
   # --- Block 7–8: session open / close (generic) ---
   - check:
@@ -1777,20 +1861,20 @@ normalize:
   # --- Block 9: PAM authentication ---
   - check:
       - message: "contains(pam_unix)"
+    parse|message:
+      - "pam_unix\\(<~>:<~>\\): authentication <_system.auth.pam.session.action>; logname=<?_system.auth.pam.foruser.name> uid=<?user.id> euid=<?user.effective.id> tty=<?_system.auth.pam.tty> ruser=<?_system.auth.pam.remote.user> rhost=<?source.ip>  user=<?user.name>"
     map:
       - event.category: "array_append(authentication)"
       - event.type: "array_append(info)"
-    parse|message:
-      - "pam_unix\\(<~>:<~>\\): authentication <_system.auth.pam.session.action>; logname=<?_system.auth.pam.foruser.name> uid=<?user.id> euid=<?user.effective.id> tty=<?_system.auth.pam.tty> ruser=<?_system.auth.pam.remote.user> rhost=<?source.ip>  user=<?user.name>"
 
   # --- Block 10: PAM session open/close ---
   - check:
       - message: "contains(pam_unix)"
-    map:
-      - event.category: "array_append(session)"
     parse|message:
       - "pam_unix\\(<~>:<~>\\): session <_system.auth.pam.session.action> for user <_system.auth.pam.foruser.name> by <_system.auth.pam.byuser.name>\\(uid=<user.id>\\)"
       - "pam_unix\\(<~>:<~>\\): session <_system.auth.pam.session.action> for user <_system.auth.pam.foruser.name>"
+    map:
+      - event.category: "array_append(session)"
 
   # --- Block 11: user/group management ---
   - check: "$process.name == groupadd OR $process.name == useradd"
@@ -1863,10 +1947,10 @@ kanban
 
 Filters are assets with a single stage (`check`) used to evaluate conditions without modifying the event. They do not support `parse|*` or `normalize` stages.
 
-The filters are used to:
-
-1. Route events to the correct policy in the orchestrator (Most common use case).
-2. Filter events between parent assets and child assets.
+A policy lists its filters in its `filters` array. Each filter's `type` places it in the pipeline: `pre-filter`
+filters decide whether an event reaches the decoders, `post-filter` filters whether it reaches the outputs. When a
+policy has several filters of the same type, the event passes if any of them accepts it. An event a filter rejects is
+counted in `space.<space>.events.discarded.prefilter` or `space.<space>.events.discarded.postfilter`.
 
 
 ```mermaid
@@ -1885,8 +1969,7 @@ kanban
 ```
 
 - **Name**: Identifies the filter and follows the pattern `<asset_type>/<name>/<version>`. The name is unique and cannot
-  be repeated. The naming convention for components is `<type>/<name>/<version>`. The component type is `filter`, and
-  the version must be 0, since versioning is not implemented:
+  be repeated. The component type is `filter`, and the version must be 0, since versioning is not implemented.
 
 - **ID**: Unique identifier for the filter. It is opaque to the Engine: any UUID version or other format is accepted (non-empty, at most 256 characters, no control characters).
 
@@ -1894,10 +1977,12 @@ kanban
 
 - **Type**: Defines when the filter is executed in the pipeline:
   - `pre-filter`: evaluated before decoders.
-  - `post-filter`: evaluated after decoders.
+  - `post-filter`: evaluated after enrichment, before the outputs.
 
-- **Metadata**: Provides descriptive information about the filter (module, title, description, compatibility, versions,
-  author, references). This metadata does not affect processing stages.
+- **Metadata**: Provides descriptive information about the filter. The filter schema
+  (`src/engine/ruleset/schemas/wazuh-filters.json`) requires `title`, `author` and `description` and also accepts
+  `date` and `modified` (ISO 8601 date-time, `2024-01-31T00:00:00Z`), `references`, `documentation`,
+  `compatibility` and `supports`. This metadata does not affect processing stages.
 
 - **Check**: Evaluates conditions against the event without modifying it. If the check fails, the event is blocked.
   See the [Check/Allow stage](#checkallow) for syntax details.
@@ -1910,23 +1995,22 @@ id: fef71314-00c6-41f5-ab26-15e271e9f913
 enabled: true
 type: pre-filter
 metadata:
-  module: wazuh
   title: Platform filter
   description: Filter events by platform
-  compatibility: Wazuh 5.*
-  versions:
+  compatibility:
     - Wazuh 5.*
-  author:
-    name: Wazuh, Inc.
-    url: https://wazuh.com
-    date: 2024-01-31
+  supports:
+    - Wazuh 5.*
+  author: Wazuh, Inc.
+  date: "2024-01-31T00:00:00Z"
   references:
     - https://documentation.wazuh.com/
 check: $host.os.platform == 'ubuntu'
 ```
 
 > [!NOTE]
-> When filter assets are used in the orchestrator, they don't have parents; they are a check stage that is evaluated before or after decoders depending on the `type` field.
+> Filters normally declare no parents: the policy evaluates them before the decoders or before the outputs
+> depending on the `type` field.
 
 ## Stage reference
 
@@ -1948,16 +2032,18 @@ Depending on the value, the condition to test is:
 Example checklist:
 ```yaml
 check:
-  - event.format: text
-  - user.name: $root_user
+  - event.kind: event
+  - user.name: $user.effective.name
   - event.original: exists()
-  - event.id: 1234
+  - process.pid: 1234
 ```
 
 All conditions must be met for the event to pass through the check stage. If any condition fails, the event is not processed further.
 
 > [!NOTE]
-> `event.id: 1234` is not the same as `event.id: "1234"` because the first one is a number and the second one is a string.
+> `process.pid: 1234` is not the same as `process.pid: "1234"`: the first one is a number and the second one is a
+> string. A literal is validated against the field's schema type when the asset is built, so `process.pid: "1234"`
+> (a string for a `long` field) makes the asset fail to build.
 
 #### Conditional expression
 For scenarios requiring complex conditions, a conditional expression allows for more nuanced logic. This string uses a subset of first-order logic language, including logical connectives and support for grouping through parentheses.
@@ -1985,7 +2071,7 @@ check: int_less($http.response.status_code, 400)
 ```
 
 ```yaml
-check: $wazuh.origin == /var/log/apache2/access.log OR $wazuh.origin == /var/log/httpd/access_log
+check: $wazuh.protocol.location == /var/log/apache2/access.log OR $wazuh.protocol.location == /var/log/httpd/access_log
 ```
 
 ### Parse
@@ -2007,20 +2093,21 @@ The parser expressions are composed of various tokens or expressions, where thes
   - **Schema fields**: Directly correspond to fields defined in the schema, with the engine automatically applying the appropriate parser and can have parameters depending on the parser.
 
      E.g.: `<source.ip>` will match any IPv4 or IPv6 and map it to the field `source.ip`.
-  - **Custom fields**: Are those that are not in the schema, in contrast to schema fields, custom fields use the text parser unless specified otherwise by the parameters. These are intended for temporary/auxiliary use.
+  - **Temporary fields**: Fields that are not in the schema must be temporary fields, whose first path segment starts
+    with `_` (see [Variables](#variables)); any other non-schema name makes the asset fail to build. They use the text
+    parser unless the first parameter names another parser, and they are removed before enrichment (unless the
+    policy disables the cleanup), so they do not reach the index.
 
-    Custom fields are indexed as text by default in open search, depending on the configuration open search may try to detect and index as other types.
-
-    E.g.: `<custom_field/long>` will match any number and map it to the field `custom_field`.
+    E.g.: `<_custom_field/long>` will match any number and map it to the field `_custom_field`.
   - **Optional fields**: we indicate that a field parse expression is optional writing the interrogation symbol `?` at the beginning of the expression. If the parsing fails it will continue with the next expressions.
 
-    E.g.: `<field1>|<?field2>|<field3>` will match anything between `|` symbols three times, and the second may be empty or not.
+    E.g.: `<_field1>|<?_field2>|<_field3>` will match anything between `|` symbols three times, and the second may be empty or not.
   - **Field choice**: Expresses a choice between two field expressions, meaning one of the fields must match. We write two field expressions split by the interrogation symbol `?`. As the first choice we can only use parsers that do not require end token, if we use one that does the expression will fail to compile because the end tokens are not sent to the parser.
 
     E.g.: `<source.ip>?<~/literal/->` will match an IP and map it to source ip or a hyphen, skipping it.
 
     Note: `?` only needs to be scaped when it appears right after a field expression: `<source.ip>\?...`
-- `Wildcards`, follows the same syntax and behaves the same as a custom field but has no name and does not map to any field. It is used to parse some pattern without extracting. Can be a optional or in a field choice also.
+- `Wildcards`, follows the same syntax and behaves the same as a temporary field but has no name and does not map to any field. It is used to parse some pattern without extracting. Can be a optional or in a field choice also.
 
   E.g.:`<~/byte>` will parse a byte value and continue.
 
@@ -2051,9 +2138,9 @@ Apache error parser:
 parse|event.original:
     - "[<@timestamp/Mon Dec 26 16:22:00 2016>] [<log.level>] [client <source.address>(?:<source.port>)] <message>"
 
-    - "[<@timestamp/%a %b %d %T %Y/en_US.UTF-8>] [<~apache.error.module>:<log.level>] [pid <process.pid>(?:tid <process.thread.id>)] [client <source.address>(?:<source.port>)] <message>"
+    - "[<@timestamp/%a %b %d %T %Y/en_US.UTF-8>] [<~>:<log.level>] [pid <process.pid>(?:tid <process.thread.id>)] [client <source.address>(?:<source.port>)] <message>"
 
-    - "[<@timestamp/%a %b %d %T %Y/en_US.UTF-8>] [<~apache.error.module>:<log.level>] [pid <process.pid>(?:tid <process.thread.id>)] <message>"
+    - "[<@timestamp/%a %b %d %T %Y/en_US.UTF-8>] [<~>:<log.level>] [pid <process.pid>(?:tid <process.thread.id>)] <message>"
 ```
 
 #### Schema fields and parsers
@@ -2061,22 +2148,22 @@ Fields within the schema are bound to specific parsers that ensure the data matc
 
 For standard fields defined in the schema, each field type has an associated parser. For instance, a field of type long (like `event.severity`) will utilize a numeric parser.
 
-Custom fields not defined in the schema default to using the text parser, which continues parsing until a specified delimiter or the end of the log entry. Fields at the end of a parser expression are interpreted as catch-all, capturing all remaining text in the log entry. This approach facilitates partial parsing where full matching is not required, ensuring flexibility in log analysis.
+Temporary fields (not defined in the schema, first segment starting with `_`) default to using the text parser, which continues parsing until a specified delimiter or the end of the log entry. Fields at the end of a parser expression are interpreted as catch-all, capturing all remaining text in the log entry. This approach facilitates partial parsing where full matching is not required, ensuring flexibility in log analysis.
 
-For example,  the case of `<tmp_field>c` this will parse everything until character `c` is found. It is possible to specify the parser name as the first argument, for example `<tmp_field/ip>c` will use the ip parser instead of the text parser. It is also possible to pass parameters to the parser, for example `<tmp_field/date/RFC822>c` parses the timestamp using the RFC822 format.
+For example,  the case of `<_tmp_field>c` this will parse everything until character `c` is found. It is possible to specify the parser name as the first argument, for example `<_tmp_field/ip>c` will use the ip parser instead of the text parser. It is also possible to pass parameters to the parser, for example `<_tmp_field/date/RFC822>c` parses the timestamp using the RFC822 format.
 
 #### End tokens and field expressions
-Some parsers need an anchor token to stop parsing, i.e. the text parser used by default in all custom fields will parse any character until the end token is found. The end token is the literal following the field expression, or if the field expression is at the end it will parse the remaining string.
+Some parsers need an anchor token to stop parsing, i.e. the text parser used by default in all temporary fields will parse any character until the end token is found. The end token is the literal following the field expression, or if the field expression is at the end it will parse the remaining string.
 
-E.g.:`<header>:<message>` will parse and capture any text up to a double dots in the header field, and the remaining of the log will be captured in the message field.
+E.g.:`<_header>:<message>` will parse and capture any text up to a double dots in the `_header` field, and the remaining of the log will be captured in the message field.
 
-This implicates that two field expressions must be split by a literal unless the first one does not need an end token, while `<custom/long><~>` is valid, as the long parsers does not need end token, `<text><~>` will be invalid.
+This implicates that two field expressions must be split by a literal unless the first one does not need an end token, while `<_custom/long><~>` is valid, as the long parsers does not need end token, `<_text><~>` will be invalid.
 
-In choice expressions the end token is the same for both field expressions, it is the literal right after the second field expression. E.g, `<custom_ip>?<~>|` will be valid, as both parsers require an end token, in this case the literal `|`. This implies the same as before, if one of the choices needs an end token, it must be followed by a literal.
+In choice expressions the end token is the same for both field expressions, it is the literal right after the second field expression. E.g, `<_custom_ip>?<~>|` will be valid, as both parsers require an end token, in this case the literal `|`. This implies the same as before, if one of the choices needs an end token, it must be followed by a literal.
 
 In optional group expressions, i.e. when a field is followed by an optional group, there are multiple end tokens. The literal at the beginning of the optional group and the literal right after the group, meaning if a field needs an end token and is followed by an optional group, the group must start with a literal and a literal must appear right after the group.
 
-E.g.: `<custom_text>(?|<opt/long>):`, in this case the text parser will try to search for a `|`, so the optional group can be parsed, and if the optional group fails, then the text parser will use the symbol `:` as end token.
+E.g.: `<_custom_text>(?|<_opt/long>):`, in this case the text parser will try to search for a `|`, so the optional group can be parsed, and if the optional group fails, then the text parser will use the symbol `:` as end token.
 
 
 ### Map
@@ -2085,7 +2172,9 @@ Executes each operation of the list in order until the last operation. If any op
 If all operations fail the stage is not marked as failed and continues to the next stage.
 
 **Type Validation**:
-- When mapping a custom field (not defined in the schema), it can store any value without additional type checks.
+- The target must be a schema field or a temporary field (first segment starting with `_`, see
+  [Variables](#variables)); any other target makes the asset fail to build. A temporary field can store any value
+  without additional type checks.
 - When mapping a field that belongs to the schema, a validation is performed based on the field’s type (e.g.,
   `source.ip` → IP, `event.start` → timestamp).
   - If a fixed value is provided at build time and its type is invalid, the asset build fails immediately.
@@ -2106,7 +2195,7 @@ Example:
 
 
 ### Normalize/Enrichment
-The normalize stage is where the event undergoes transformations and adjustments after passing through the check and parse stages successfully. Composed of a list of sub-stages that are executed in the specified order. These sub-stages can include operations such as check, map, and parse.
+The normalize stage is where the event undergoes transformations and adjustments after passing through the check and parse stages successfully. Composed of a list of sub-stages that are executed in the specified order. These sub-stages can include operations such as check, parse, and map, and must appear in that order within a block (see [Stages](#stages)).
 - **Check**: Applies conditional checks within the normalize context to determine if subsequent mappings or parsing should be executed.
 - **Parse**: Further decomposes and extracts fields from the event data if required.
 - **Map**: Transforms and assigns new values to fields in the event based on predefined rules.
@@ -2117,7 +2206,6 @@ Example:
 ```yaml
 normalize:
   - map:
-      - wazuh.decoders: array_append(windows-sysmon)
       - event.dataset: sysmon
       - event.kind: event
 
@@ -2126,12 +2214,12 @@ normalize:
     map:
       - network.protocol: dns
 
-  # Only maps resources if the check and parse stages succeeded
+  # Only maps related.user if the check and parse stages succeeded
   - check: $event.outcome == failure
     parse|message:
-      - "[<error.code/int>]<details>"
+      - "[<error.code>] <_affected_users>"
     map:
-      - resources: split($details, ",")
+      - related.user: split($_affected_users, ',')
 ```
 
 ### Output
@@ -2192,7 +2280,9 @@ Metrics help answer questions such as:
 - What is the recent event throughput?
 - How is each space behaving independently?
 
-For implementation details and API usage, see the **Metrics API** documentation:
+Metrics are read through the engine API (`/metrics/list`, `/metrics/get`, `/metrics/dump`, `/metrics/enable`),
+described in the [Public API Reference](public-api-reference.md); see
+[Performance metrics](configuration.md#performance-metrics) for ready-to-use calls.
 
 ---
 
@@ -2349,7 +2439,7 @@ Current indexer output queue byte utilization as a percentage of the configured 
 
 ##### `indexer.events.dropped`
 
-Total number of events dropped in the indexer path.
+Total number of events dropped in the indexer path: events refused by a full queue, plus events of batches discarded after an indexer response for their `_bulk` status (500, 502, 504 or any other status the connector does not retry, or 503 retries exhausted). A `413` batch the async connector can no longer shrink (bulk threshold at its minimum), and failed items inside a successful response, are not counted.
 
 **Used for:** detecting loss conditions and overload situations.
 
@@ -2449,13 +2539,53 @@ Total number of events received by the server.
 
 #### Agent cache metrics
 
-These metrics track the agent metadata cache, which deduplicates the per-batch agent header JSON so it is parsed only once per agent instead of once per batch.
+These metrics track the agent metadata cache, which deduplicates the per-batch agent header JSON and reuses previously validated (trusted id, exact header bytes) pairs.
 
 ##### `agent.cache.entries`
 
 Current number of agent metadata entries held in the cache (one per agent).
 
 **Used for:** observing cache footprint and how many distinct agents are active.
+
+---
+
+##### `agent.cache.bytes`
+
+Pull metric: accounted bytes retained by the cache. This includes raw header and ID lengths,
+allocated JSON pool capacity and a fixed entry overhead. It excludes allocator rounding, spare
+string capacity, map buckets, pool bookkeeping, concurrent parsing, and documents kept alive by
+queued events or callers after removal. It is not an RSS or process-memory bound.
+
+**Used for:** comparing retention against `agent.cache.max_bytes` and tuning the byte limit.
+
+---
+
+##### `agent.cache.max_entries` and `agent.cache.max_bytes`
+
+Pull metrics reporting the configured entry and accounted-byte limits. Each `0` independently
+means unlimited. See [Agent metadata cache settings](configuration.md#agent-metadata-cache).
+
+---
+
+##### `agent.cache.bypass.max_entries` and `agent.cache.bypass.max_bytes`
+
+Counters of valid header admissions that did not fit the respective limit. Both increment when
+both constraints fail. A replacement that exceeds the byte limit increments the byte counter and
+releases the agent's old entry. No unrelated entry is evicted, and a bypass is not a TTL eviction.
+Invalid JSON and identity failures do not increment these counters.
+
+The parsed header is still returned for normal batch processing; capacity does not reject the
+request. Continued bypasses mean repeated parsing and validation for headers that cannot be
+retained, trading CPU savings for bounded retention. Increase the corresponding limit when that
+tradeoff warrants more retained memory.
+
+While bypasses happen, the engine also logs at most one warning every 90 seconds, with the number of
+headers parsed without being retained since the previous report, the occupancy against both limits
+(`0` limits show as `unlimited`) and the setting that refused them:
+
+```text
+WARNING: [AgentMetadataCache] Cache full: 1532 agent header(s) parsed without being retained since the previous report (entries 50000/50000, accounted bytes 127550000/134217728). Each such batch parses and validates its header again. Consider raising 'analysisd.agent_metadata_cache_max_entries'.
+```
 
 ---
 
@@ -2491,6 +2621,19 @@ Total number of entries removed by the periodic TTL cleanup.
 
 ---
 
+##### `agent.cache.rejected.identity`
+
+Number of HTTP batches rejected for a missing, repeated or noncanonical identity carrier, or a
+missing, ambiguous, non-string or mismatched H-line identity. Each rejected batch increments once,
+including when the cache is warm. Malformed JSON, other framing errors and hook failures are not
+identity rejections. Capacity is unrelated to this counter.
+
+Warnings are emitted immediately and then at most once per 90 seconds across the ingress handler's
+threads; suppression does not suppress the counter. Query it with `POST /metrics/dump` on the API
+socket. A successful batch leaves this counter unchanged.
+
+---
+
 #### Per-space metrics
 
 These metrics are created dynamically per space.
@@ -2514,9 +2657,12 @@ Total number of unclassified events for a given space.
 
 ##### `space.<space>.events.discarded`
 
-Total number of discarded events for a given space.
+Total number of events of a given space dropped by the discarded events filter in pre-enrichment: events a
+decoder marked with the `discard_events` helper while the policy's `index_discarded_events` is `false`. Events
+marked while it is `true` are indexed and not counted; events rejected by pre- or post-filters are counted only in
+the two metrics below.
 
-**Used for:** measuring overall event loss at the space level.
+**Used for:** measuring how many events the space's decoders deliberately discard.
 
 ---
 
@@ -2549,32 +2695,31 @@ Wazuh components:
 ```
 
 Each log line follows the format `YYYY/MM/DD HH:MM:SS <component>: LEVEL: message`.
-Most Engine messages use the `wazuh-manager-analysisd` component tag, but some subsystems
-(such as the Indexer Connector) use their own tag:
+Engine messages, including those of the Indexer Connector, use the `wazuh-manager-analysisd` component tag:
 
 ```
-2026/04/14 20:07:43 IndexerConnector: WARNING: No username and password found in the keystore, using default values.
-2026/04/14 20:07:44 wazuh-manager-analysisd: INFO: Indexer Connector initialized.
-2026/04/14 20:09:16 wazuh-manager-analysisd: INFO: Archiver initialized.
-2026/04/14 20:09:16 wazuh-manager-analysisd: INFO: Remote engine's server initialized and started.
-2026/04/14 20:09:16 wazuh-manager-analysisd: INFO: Engine started.
+2026/09/28 16:39:34 wazuh-manager-analysisd: INFO: Indexer Connector initialized
+2026/09/28 16:39:34 wazuh-manager-analysisd: INFO: Stream logger initialized
+2026/09/28 16:39:34 wazuh-manager-analysisd: INFO: Orchestrator initialized and started with event queue size: 131072, events per second: unlimited, max bytes: 33554432.
+2026/09/28 16:39:34 wazuh-manager-analysisd: INFO: Remote engine's server initialized and started
+2026/09/28 16:39:34 wazuh-manager-analysisd: INFO: Engine started
 ```
 
 Warning and error lines include a context tag in brackets that identifies the internal
 component that produced the message:
 
 ```
-2026/04/14 20:09:16 wazuh-manager-analysisd: WARNING: [CMSync::exist()] Check 'standard' space in wazuh-indexer - Attempt 1/3: No available server
-2026/04/14 20:09:26 wazuh-manager-analysisd: WARNING: [CMSync] Failed to synchronize namespace for space 'standard': No available server
+2026/09/28 19:42:00 wazuh-manager-analysisd: WARNING: [CMSync] Check 'custom' space in wazuh-indexer - Attempt 3/3: No available server. Unavailable nodes: https://127.0.0.1:9200: Could not connect to server
+2026/09/28 19:42:00 wazuh-manager-analysisd: WARNING: [CM::Sync] Failed to synchronize namespace for space 'custom': Check 'custom' space in wazuh-indexer::CMSync failed after 3 attempts: No available server. Unavailable nodes: https://127.0.0.1:9200: Could not connect to server
 2026/04/14 20:09:46 wazuh-manager-analysisd: WARNING: [IOC::Sync] Synchronization cycle failed: No available server
 ```
 
-When debug level is active, additional diagnostic messages appear with the same format:
+When debug level is active, additional diagnostic messages appear and **every** line (not only the
+debug ones) carries the source location: the `<component>:` tag is replaced by
+`<component>[<pid>] <file>:<line> at <function>():`, followed by `LEVEL: message`:
 
 ```
-2026/04/14 20:09:16 wazuh-manager-analysisd: DEBUG: Geo sync scheduled with interval: 360 seconds.
-2026/04/14 20:09:16 wazuh-manager-analysisd: DEBUG: Remote configuration synchronize scheduled with interval: 120 seconds.
-2026/04/14 20:09:16 wazuh-manager-analysisd: DEBUG: IOC Sync task scheduled with interval: 360 seconds, 3 max retries.
+2026/04/14 20:09:16 wazuh-manager-analysisd[<pid>] <file>:<line> at <function>(): DEBUG: <message>
 ```
 
 ### Log types
@@ -2591,9 +2736,14 @@ are written to the log file.
 | `ERROR`    | Something went wrong and may have affected event processing. |
 | `CRITICAL` | A serious failure. The Engine may have stopped. |
 
+> [!NOTE]
+> In manager mode the Engine writes only `DEBUG`, `INFO`, `WARNING` and `ERROR` to
+> `wazuh-manager.log`: its `TRACE` messages are written as `DEBUG` and its `CRITICAL` messages
+> as `ERROR`, so the six-level table above does not apply as is.
+
 ### How to enable debug logging
 
-Open the file `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf` and find
+Open the file `/etc/wazuh-manager/wazuh-manager-internal-options.conf` and find
 (or add) the `analysisd.debug` line:
 
 ```ini
@@ -2605,17 +2755,14 @@ analysisd.debug=1
 ```
 
 Save the file and restart the `wazuh-manager` service for the change to take effect.
+`wazuh-manager-control enable debug` does not change the engine's level: `start` launches
+`wazuh-manager-analysisd` without its `-d` option (see
+[Command-line options](configuration.md#command-line-options)).
 
 > [!NOTE]
 > Use `debug` (1) for day-to-day troubleshooting. Only switch to `trace` (2) when
 > you need to follow a specific event step by step — it produces a large volume of
 > output.
-
-### Logging
-
-| Setting | Description | Default |
-|:--------|:------------|:-------:|
-| `analysisd.debug` | Log verbosity level. `0` = normal, `1` = debug, `2` = trace. | `0` |
 
 ### Traces
 
@@ -2757,55 +2904,7 @@ output:
       name: standard
 ```
 
-## Internal options reference
+## Engine settings
 
-All of the following settings live in `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`.
-Edit the file and restart the `wazuh-manager` service for changes to take effect.
-
-### Event queue
-
-| Setting | Description | Default |
-|:--------|:------------|:-------:|
-| `analysisd.event_queue_size` | Maximum number of events waiting in the router input queue. Events can be dropped when this queue is full. | `131072` |
-| `analysisd.event_queue_eps` | Maximum event ingestion rate. `0` means unlimited. | `0` |
-| `analysisd.event_queue_max_bytes` | Maximum total byte size of events waiting in the router input queue. Events are dropped when this quota is full. `0` means unlimited. | `32 MB` |
-
-## Agent metadata cache
-
-| Setting | Description | Default |
-|:--------|:------------|:-------:|
-| `analysisd.agent_metadata_cache_ttl` | Time-to-live in seconds for cached agent metadata. | `300` |
-| `analysisd.agent_metadata_cache_clean_interval` | Interval in seconds between best-effort evictions of stale agent metadata cache entries. | `60` |
-
-
-### Indexer connector
-
-| Setting | Description | Default |
-|:--------|:------------|:-------:|
-| `analysisd.indexer_queue_max_bytes` | Maximum number of bytes of events waiting in the indexer output queue. Events can be dropped when this queue is full. | `64MB` |
-| `analysisd.indexer_bulk_max_bytes` | Maximum byte size of the bulk payload accumulated before a `_bulk` request is dispatched to `wazuh-indexer`. When the buffered data reaches this threshold, a batch is flushed. Allowed range: `64KB` to `100MB`. | `8MB` |
-| `analysisd.indexer_flush_interval` | Seconds between periodic flushes of the asynchronous indexer bulk buffer. Drives the background timer that forwards buffered events to `wazuh-indexer` when the byte threshold has not been reached. Allowed range: `1` to `3600`. | `20` |
-| `analysisd.indexer_logger_queue_size` | Maximum number of `_bulk` responses (with their payloads) that can wait in the indexer error-logger queue. Only responses whose bulk reported item errors are queued; when the queue is full the error details are dropped and a warning is logged. Allowed range: `1` to `1024`. | `8` |
-| `analysisd.indexer_logger_threads` | Number of worker threads that parse `_bulk` error responses to log per-item failures. Allowed range: `1` to `16`. | `1` |
-| `analysisd.indexer_max_retry_delay` | Maximum exponential-backoff delay in seconds between retries of a failed `_bulk` request (e.g. `429 Too Many Requests`, connection errors). See [Indexer Connector - Retry and backoff behavior](../indexer_connector/README.md#retry-and-backoff-behavior) for how the delay scales. Allowed range: `1` to `3600`. | `15` |
-| `analysisd.indexer_request_timeout` | Upper bound in seconds for one data request against `wazuh-indexer`. Catches a host that accepted the connection and then never answers; a timed-out bulk request is retried with backoff, not discarded. Allowed range: `0` to `3600` (`0` disables the bound). | `60` |
-| `analysisd.indexer_monitoring_interval` | Polling period in seconds of the indexer health monitor that marks each `wazuh-indexer` host as available or unavailable for the connector. Allowed range: `1` to `3600`. | `10` |
-
-### Synchronization settings
-
-| Setting | Description | Default |
-|:--------|:------------|:-------:|
-| `analysisd.remote_conf_sync_interval` | Seconds between remote engine configuration synchronization cycles. | `120` |
-| `analysisd.remote_conf_indexer_connector_max_retries` | Maximum retry attempts for remote configuration requests to the Wazuh Indexer. | `3` |
-| `analysisd.remote_conf_indexer_connector_retry_interval` | Seconds between retry attempts for remote configuration synchronization. | `5` |
-| `analysisd.cm_sync_interval` | Seconds between content synchronization cycles from the Wazuh Indexer. | `120` |
-| `analysisd.cmsync_indexer_connector_sync_batch_size` | Maximum number of content documents requested per Wazuh Indexer page during content synchronization. | `100` |
-| `analysisd.cmsync_indexer_connector_max_retries` | Maximum retry attempts for content synchronization requests to the Wazuh Indexer. | `3` |
-| `analysisd.cmsync_indexer_connector_retry_interval` | Seconds between retry attempts for content synchronization. | `5` |
-| `analysisd.ioc_sync_interval` | Seconds between IoC database synchronization cycles. `0` disables IoC sync. | `360` |
-| `analysisd.ioc_indexer_connector_max_retries` | Maximum retry attempts for IoC synchronization requests to the Wazuh Indexer. | `3` |
-| `analysisd.ioc_indexer_connector_retry_interval` | Seconds between retry attempts for IoC synchronization. | `5` |
-| `analysisd.ioc_indexer_connector_sync_batch_size` | Maximum number of IoC documents streamed per Wazuh Indexer page while synchronizing IoC databases. | `1000` |
-| `analysisd.geo_sync_interval` | Seconds between GeoIP database synchronization cycles. `0` disables GeoIP sync. | `360` |
-
-## F.A.Q
+The engine's settings (`analysisd.*` internal options and their `WAZUH_*` environment variables), its command-line
+options and its process limits are described in [Engine Configuration Reference](configuration.md).

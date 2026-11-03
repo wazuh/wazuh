@@ -8,6 +8,8 @@ COMPONENT="${4:-manager}"
 OLD_PACKAGE_URL="${5:-}"
 EXTRACT_DIR=""
 INSTALL_DIR=""
+# The configuration directory: fixed for the manager, under INSTALL_DIR for the agent.
+ETC_DIR=""
 MARKER=""
 MARKED_FILES_LIST=""
 DELETED_ETC_REL=""
@@ -31,6 +33,7 @@ configure_component() {
     case "$COMPONENT" in
         manager)
             INSTALL_DIR="/var/wazuh-manager"
+            ETC_DIR="/etc/wazuh-manager"
             MARKER="WAZUH_UPGRADE_RULES_MARKER"
             MARKED_FILES_LIST="/tmp/wazuh-manager-upgrade-rules-marked-files.list"
             DELETED_ETC_REL="etc/outputs/default/indexer.yml"
@@ -59,6 +62,7 @@ configure_component() {
             ;;
         agent)
             INSTALL_DIR="/var/ossec"
+            ETC_DIR="/var/ossec/etc"
             MARKER="WAZUH_AGENT_UPGRADE_RULES_MARKER"
             DELETED_ETC_REL="etc/internal_options.conf"
             DELETED_DATA_REL=""
@@ -91,9 +95,13 @@ require_file() {
     [ -f "$path" ] || fail "Missing file: $path"
 }
 
+# Paths are named relative to the installation directory; "etc/..." ones live in ETC_DIR.
 path_for() {
     local relative_path="$1"
-    printf '%s/%s' "$INSTALL_DIR" "$relative_path"
+    case "$relative_path" in
+        etc/*) printf '%s/%s' "$ETC_DIR" "${relative_path#etc/}" ;;
+        *) printf '%s/%s' "$INSTALL_DIR" "$relative_path" ;;
+    esac
 }
 
 stop_component_if_running() {
@@ -157,7 +165,7 @@ assert_not_contains_marker() {
 package_root_path() {
     local relative_path="$1"
 
-    printf '%s%s/%s' "$EXTRACT_DIR" "$INSTALL_DIR" "$relative_path"
+    printf '%s%s' "$EXTRACT_DIR" "$(path_for "$relative_path")"
 }
 
 assert_matches_package() {
@@ -280,13 +288,13 @@ prepare_manager_outputs() {
     deleted_etc_file="$(path_for "$DELETED_ETC_REL")"
     : > "$MARKED_FILES_LIST"
 
-    if [ -d "${INSTALL_DIR}/etc/outputs/default" ]; then
+    if [ -d "${ETC_DIR}/outputs/default" ]; then
         while IFS= read -r output_file; do
             [ "$output_file" = "$deleted_etc_file" ] && continue
             append_marker_commented "$output_file" "outputs" "# " ""
             printf '%s\n' "$output_file" >> "$MARKED_FILES_LIST"
             outputs_found="yes"
-        done < <(find "${INSTALL_DIR}/etc/outputs/default" -maxdepth 1 -type f -name '*.yml' | sort)
+        done < <(find "${ETC_DIR}/outputs/default" -maxdepth 1 -type f -name '*.yml' | sort)
     fi
 
     [ "$outputs_found" = "yes" ] || fail "No output .yml files found to mark"
@@ -322,9 +330,9 @@ prepare() {
     log "Prepared $COMPONENT upgrade rule markers"
     log "Marker locations before upgrade:"
     if [ "$COMPONENT" = "manager" ]; then
-        grep -RHn "$MARKER" "${INSTALL_DIR}/etc" "${INSTALL_DIR}/data" 2>/dev/null || true
+        grep -RHn "$MARKER" "${ETC_DIR}" "${INSTALL_DIR}/data" 2>/dev/null || true
     else
-        grep -RHn "$MARKER" "${INSTALL_DIR}/etc" 2>/dev/null || true
+        grep -RHn "$MARKER" "${ETC_DIR}" 2>/dev/null || true
     fi
     log "Files staged as 'should be reinstalled by package':"
     [ -n "$DELETED_ETC_REL" ] && printf '  %s\n' "$(path_for "$DELETED_ETC_REL")"
@@ -372,15 +380,15 @@ validate() {
     trap 'cleanup_extract' EXIT
 
     log "Post-upgrade etc/ contents:"
-    ls -laR "${INSTALL_DIR}/etc" 2>/dev/null | head -120 || true
+    ls -laR "${ETC_DIR}" 2>/dev/null | head -120 || true
     if [ "$COMPONENT" = "manager" ]; then
         log "Post-upgrade data/ top-level contents:"
         ls -la "${INSTALL_DIR}/data" 2>/dev/null || true
         log "Post-upgrade marker matches under etc/ and data/:"
-        grep -RHn "$MARKER" "${INSTALL_DIR}/etc" "${INSTALL_DIR}/data" 2>/dev/null || true
+        grep -RHn "$MARKER" "${ETC_DIR}" "${INSTALL_DIR}/data" 2>/dev/null || true
     else
         log "Post-upgrade marker matches under etc/:"
-        grep -RHn "$MARKER" "${INSTALL_DIR}/etc" 2>/dev/null || true
+        grep -RHn "$MARKER" "${ETC_DIR}" 2>/dev/null || true
     fi
 
     validate_common_markers

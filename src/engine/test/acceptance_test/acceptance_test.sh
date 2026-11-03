@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # =============================================================================
 # acceptance_test.sh – Engine benchmark harness
 #
@@ -159,9 +160,10 @@ wait_for_ready() {
     local deadline=$((SECONDS + READY_TIMEOUT))
     log "Waiting for engine readiness (timeout ${READY_TIMEOUT}s)..."
 
-    # 1. Wait for the "ready" log line
+    # 1. Wait for the "ready" log line ("Engine started" ends the line; the standalone build appends
+    #    " in standalone mode")
     while [[ $SECONDS -lt $deadline ]]; do
-        if grep -q "Engine started." "${ANALYSISD_LOG}" 2>/dev/null; then
+        if grep -qE "Engine started( in standalone mode)?$" "${ANALYSISD_LOG}" 2>/dev/null; then
             log "Engine ready (log detected)."
             break
         fi

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -13,6 +13,7 @@
 #include "https_client_bridge.h"
 #include "os_net.h"
 #include "state.h"
+#include "token_bootstrap.h"
 
 bool needs_config_reload = false;
 void reload_handler(int signum) {
@@ -20,6 +21,89 @@ void reload_handler(int signum) {
         mdebug1("SIGNAL [(%d)-(%s)] Received. Reload agentd.", signum, strsignal(signum));
         needs_config_reload = true;
     }
+}
+
+/* A signalled stop is not a failure: systemd tracks this process through PIDFile=.
+ * Not HandleSIG(), whose exit(1) is shared with the manager daemons. */
+void agentd_shutdown(int sig)
+{
+    minfo(SIGNAL_RECV, sig, strsignal(sig));
+
+    exit(0);
+}
+
+#define SYSTEMD_PIDFILE_NAME "wazuh-agentd.pid"
+
+/* Replaces @p path with a 0640 file holding this process's PID, owned by @p uid:@p gid. When the
+ * bootstrap retries this runs as root, in a directory the agent's group can write: the old file is
+ * unlinked and the new one created exclusively, so a symlink planted there cannot redirect the
+ * write, and a stale file from a killed run is replaced whoever owns it. */
+static int write_pid_file(const char *path, uid_t uid, gid_t gid)
+{
+    char pid[32];
+    int len = snprintf(pid, sizeof(pid), "%d\n", (int)getpid());
+    int fd;
+
+    unlink(path);
+
+    if ((fd = open(path, O_WRONLY | O_CREAT | O_EXCL, 0640)) < 0) {
+        merror("Could not write PID file '%s': %s (%d)", path, strerror(errno), errno);
+        return -1;
+    }
+
+    if ((geteuid() == 0 && fchown(fd, uid, gid) != 0) || fchmod(fd, 0640) != 0 ||
+            write(fd, pid, len) != len) {
+        merror("Could not write PID file '%s': %s (%d)", path, strerror(errno), errno);
+        close(fd);
+        unlink(path);
+        return -1;
+    }
+
+    return close(fd);
+}
+
+/* CreatePID()'s file embeds the PID in its name, so it can't back a static PIDFile=;
+ * write one with a fixed name so systemd tracks this daemon instead of the whole cgroup. */
+static void write_systemd_pidfile(uid_t uid, gid_t gid)
+{
+    char path[256];
+    snprintf(path, sizeof(path), "%s/%s", OS_PIDFILE, SYSTEMD_PIDFILE_NAME);
+    write_pid_file(path, uid, gid);
+}
+
+/* Covers exit()-driven shutdown (normal SIGTERM/SIGINT via HandleSIG, and any merror_exit()
+ * path, this one included) -- same reach atexit(w_https_client_stop) below already has.
+ * Like any pidfile, a SIGKILL or a crash leaves it stale until the next start overwrites it. */
+static void remove_systemd_pidfile(void)
+{
+    char path[256];
+    snprintf(path, sizeof(path), "%s/%s", OS_PIDFILE, SYSTEMD_PIDFILE_NAME);
+    unlink(path);
+}
+
+/* The PID file is what tells wazuh-control that agentd started, and what lets it stop one that
+ * is still retrying. Published once the token bootstrap is about to retry, since its retries can
+ * outlast wazuh-control's start deadline; otherwise only after startup's own checks, so any exit
+ * before that point still ends the start as "did not start" and never gets the other daemons
+ * launched. */
+static void publish_pid_files(uid_t uid, gid_t gid)
+{
+    static bool published = false;
+    char path[256];
+
+    if (published) {
+        return;
+    }
+
+    /* The name CreatePID() would give it, which is what wazuh-control looks for. */
+    snprintf(path, sizeof(path), "%s/%s-%d.pid", OS_PIDFILE, ARGV0, (int)getpid());
+
+    if (write_pid_file(path, uid, gid) < 0) {
+        merror_exit(PID_ERROR);
+    }
+    write_systemd_pidfile(uid, gid);
+    atexit(remove_systemd_pidfile);
+    published = true;
 }
 
 /* Start the agent daemon */
@@ -40,6 +124,68 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     if (!run_foreground) {
         nowDaemon();
         goDaemon();
+    }
+
+    /* Once the PID file is out, which can be while the bootstrap is still retrying, wazuh-control
+     * reload can SIGUSR1 this process before the reload handler is installed below, and the
+     * default action would kill it. Ignored rather than handled: there is nothing to reload yet,
+     * and a flag left pending would release the startup gate ahead of the first configuration
+     * download. */
+    signal(SIGUSR1, SIG_IGN);
+
+    /* Enrollment-token bootstrap: must run while still root, since it writes AGENT_ANCHOR_CA
+     * and (on success) client.keys and needs to fix their ownership before the privilege drop
+     * just below.
+     *
+     * A permanent failure ends the start, deliberately: carrying on would reach
+     * start_agent_prepare(), which enrolls over whatever posture is left -- 'none', because no
+     * anchor was written -- so a CA the agent had just refused would be followed by an
+     * unverified enrollment against that same manager. Failing here is what #38940 means by
+     * attempting no enrollment.
+     *
+     * A transient failure (the manager unreachable, a 5xx from /cacerts or /enroll, or the
+     * verified enroll's own transport failing) is retried in place, using the same backoff ramp
+     * the legacy enrollment loop below uses (agt->enrollment.retry_delta/retry_max, see
+     * w_agentd_keys_init()) -- rather than falling through to that loop, which enrolls
+     * unverified and would defeat the whole point of the token path. A token the manager does
+     * not accept yet (W_TOKEN_BOOTSTRAP_PENDING) is retried the same way, but only for
+     * W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S.
+     *
+     * Only a token that was present and (after any transient retries) still failed does this.
+     * An install with no token at all returns W_TOKEN_BOOTSTRAP_DONE from the gate, so the
+     * legacy password/mTLS enrollment loop still gets its normal chance -- as do an agent
+     * already holding an anchor and one already enrolled. */
+    const bool anchor_before = (IsFile(AGENT_ANCHOR_CA) == 0);
+    int token_bootstrap_delay = 0;
+    time_t token_pending_since = 0;
+    w_token_bootstrap_result_t token_bootstrap_result;
+
+    while ((token_bootstrap_result =
+                w_token_bootstrap_bound_pending(w_agent_token_bootstrap(uid, gid), &token_pending_since,
+                                                w_get_monotonic_time())) == W_TOKEN_BOOTSTRAP_TRANSIENT) {
+        if (token_bootstrap_delay < agt->enrollment.retry_max) {
+            token_bootstrap_delay += agt->enrollment.retry_delta;
+        }
+        mdebug1("Token bootstrap: transient failure, retrying in %d seconds.", token_bootstrap_delay);
+        publish_pid_files((uid_t)uid, (gid_t)gid);
+        sleep(token_bootstrap_delay);
+    }
+
+    if (token_bootstrap_result == W_TOKEN_BOOTSTRAP_PERMANENT) {
+        merror_exit("Enrollment-token bootstrap failed; refusing to enroll unverified.");
+    }
+
+    /* Only when this boot is the one that created the anchor. ClientConf() resolved the TLS
+     * posture back in main(), before the bootstrap ran and so before the anchor existed,
+     * settling on 'none'; the bootstrap's own enrollment is unaffected, since it builds a
+     * verified configuration of its own, but everything sent afterwards reads agt->ssl through
+     * bridge_build_transport_config() and would spend the rest of the boot unverified against
+     * an anchor already on disk. Resolving again closes that window. Conditional rather than
+     * unconditional so a boot that had nothing to bootstrap does not re-run a resolution that
+     * can only reach the same answer -- and, when the operator has asked for 'none' outright,
+     * log its warning about that a second time. */
+    if (!anchor_before && IsFile(AGENT_ANCHOR_CA) == 0) {
+        w_agent_resolve_ssl_posture(agt);
     }
 
     /* Set group ID */
@@ -83,10 +229,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
 
     maxfd = agt->m_queue + 1;
 
-    /* Create PID file */
-    if (CreatePID(ARGV0, getpid()) < 0) {
-        merror_exit(PID_ERROR);
-    }
+    publish_pid_files((uid_t)uid, (gid_t)gid);
 
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
@@ -116,8 +259,12 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     start_agent_prepare();
 
     /* HTTPS client: the agent's only transport. It owns the connection
-     * lifecycle, the keepalives, the buffering and the shutdown notification. */
-    w_https_client_start();
+     * lifecycle, the keepalives, the buffering and the shutdown notification.
+     * Its own failure paths already logged the reason via merror; exit here
+     * rather than run on with no way to ever reach the manager. */
+    if (!w_https_client_start()) {
+        merror_exit("https_client: startup failed. Exiting.");
+    }
 
     /* Note: Whatever the drain touches must outlive this: exit() unwinds atexit LIFO, so
      * a C++ static lazily initialized on a module thread registers after this line

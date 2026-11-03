@@ -2,13 +2,10 @@ run-name: Package - Upload pkg_${{ inputs.system }}_manager_builder_${{ inputs.a
 name: 5.X - Package - Upload manager images
 
 on:
-  push:
-    branches:
-      - '5.[0-9]+.[0-9]+'
-      - 'main'
-    paths:
-      - 'packages/**'
-
+  # Dispatch-only. architecture, system and source_reference are required, and a push carries none (the job built
+  # `pkg__manager_builder_` with an empty tag and failed on every push touching packages/**).
+  # 5_builderprecompiled_docker-images-upload.yml is the push entry point: it dispatches this
+  # workflow once per (system, architecture) whose image inputs changed.
   workflow_dispatch:
     inputs:
       docker_image_tag:

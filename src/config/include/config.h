@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -39,7 +39,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2);
 void PrintErrorAcordingToModules(int modules, const char *cfgfile);
 
 #ifndef CLIENT
-/* Readers of the effective document (etc/wazuh-manager.conf, see mconf-config.h): the cJSON
+/* Readers of the effective document (/etc/wazuh-manager/wazuh-manager.conf, see mconf-config.h): the cJSON
  * argument is the section returned by w_mconf_section(); NULL/absent keys keep the caller defaults.
  * File-scope forward declaration: a `struct` first named inside a prototype would have prototype scope. */
 struct cJSON;
@@ -50,7 +50,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_Rootcheck(XML_NODE node, void *d1, void *d2);
 int Read_Localfile(XML_NODE node, void *d1, void *d2);
 int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
-int Read_Legacy_Client_Address(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
+int Read_Legacy_Client(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 int Read_SCA(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 int Read_AGENT_INFO(const OS_XML* xml, xml_node* node, void* d1);
@@ -88,7 +88,7 @@ int Read_Authd_JSON(const struct cJSON *auth, void *d1);
 #endif
 int Read_LogCollecSocket(XML_NODE node, void *d1, void *d2);
 #ifndef CLIENT
-/* Readers of the effective document (etc/wazuh-manager.conf, see mconf-config.h) used by modulesd:
+/* Readers of the effective document (/etc/wazuh-manager/wazuh-manager.conf, see mconf-config.h) used by modulesd:
  * `vulnerability-detection` (d1 = wmodule **; a NULL section creates no module) and `indexer` (sets
  * indexer_config; a NULL section or an empty host list leaves it NULL). */
 int Read_Vulnerability_Detection_JSON(const struct cJSON *vd, void *d1);

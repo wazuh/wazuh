@@ -1,7 +1,6 @@
 /*
  * Wazuh inventory sync server module - unit tests
- * Copyright (C) 2015, Wazuh Inc.
- * July 29, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -441,7 +440,7 @@ TEST_F(IndexerGatingTest, TheLaneRetriesWithAUsableConnectorConfig)
     // lane's own connectors, so attempt 1 fails the lane stage without consuming the sync config.
     auto scannerAttempts = std::make_shared<std::atomic<int>>(0);
     invsync::test_hooks::setVdScannerFactoryForTests(
-        [events, scannerAttempts]() -> std::shared_ptr<invsync::vd::IVdScanner>
+        [events, scannerAttempts](bool) -> std::shared_ptr<invsync::vd::IVdScanner>
         {
             if (scannerAttempts->fetch_add(1) == 0)
             {

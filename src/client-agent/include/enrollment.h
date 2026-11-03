@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -21,28 +21,23 @@
 #ifndef ENROLLMENT_H
 #define ENROLLMENT_H
 
-#include "https_client.h" /* hc_enroll_result_t */
+#include "enrollment_status.h" /* w_enroll_status_t, w_enroll_action_t */
+#include "https_client.h"  /* hc_enroll_result_t */
 
 /** @brief One built /enroll request, ready for w_https_client_enroll(). */
 typedef struct w_enroll_request_t {
     char *body_json; /**< Heap-allocated JSON body. Freed by w_enroll_request_destroy(). */
     char *password;  /**< Heap-allocated password, or NULL for mTLS/open mode
                        *   (no bearer token). Freed by w_enroll_request_destroy(). */
+    /** Re-enrollment credential (#39064), both NULL unless this agent holds a
+     *  re-enrollment secret: the `kid` is the agent's own canonical id and the key is
+     *  the HKDF (label WAZUH-REENROLL-KEY) of the stored secret, as 64 hex characters.
+     *  When set they take priority over `password` inside the transport module, which
+     *  is where every bearer is minted. Freed -- and the key wiped -- by
+     *  w_enroll_request_destroy(). */
+    char *enroll_kid;
+    char *enroll_key_hex;
 } w_enroll_request_t;
-
-/** @brief Outcome of parsing an /enroll response (#38465 R12). */
-typedef enum {
-    W_ENROLL_OK = 0,              /**< 200: keys parsed and written to client.keys. */
-    W_ENROLL_ERR_TRANSPORT,       /**< No HTTP response at all (invalid transport
-                                    *   config, connect/TLS failure). */
-    W_ENROLL_ERR_INVALID_REQUEST, /**< 400: malformed request. */
-    W_ENROLL_ERR_AUTH,            /**< 401: invalid or missing credential. */
-    W_ENROLL_ERR_DISABLED,        /**< 403: enrollment administratively disabled
-                                    *   on the manager -- distinct from a transport
-                                    *   error, do not blind-retry the same way. */
-    W_ENROLL_ERR_DUPLICATE,       /**< 409: duplicate agent. */
-    W_ENROLL_ERR_SERVER           /**< 500/503, or any other/malformed response. */
-} w_enroll_status_t;
 
 /**
  * @brief Validates the local enrollment config and builds the /enroll JSON
@@ -56,6 +51,13 @@ typedef enum {
  * of the current client.keys entry (w_get_key_hash()), present only when one
  * exists (absent on first enrollment).
  *
+ * Credentials, in the order they are preferred (#39064): this agent's own
+ * re-enrollment secret if it holds one, otherwise the configured
+ * authorization_pass_path. The narrow, per-agent credential beats the
+ * fleet-wide one; the enrollment token's own credential is not read here at
+ * all, because that path (token_bootstrap.c) only ever runs when no
+ * client.keys and no secret exist yet.
+ *
  * @param out Filled on success; the caller owns it via w_enroll_request_destroy().
  * @return 0 on success; -1 on a local validation failure (e.g. an invalid
  *         configured agent name or agent_address) -- nothing is sent in that case.
@@ -64,6 +66,32 @@ int w_enrollment_build_request(w_enroll_request_t *out);
 
 /** @brief Frees the heap fields of a w_enroll_request_t. NULL-safe. */
 void w_enroll_request_destroy(w_enroll_request_t *request);
+
+/**
+ * @brief What a refused /enroll response says about why, whichever error envelope carried it.
+ *
+ * Read once, by w_enrollment_parse_error(), for every consumer: the log line
+ * w_enrollment_process_response() writes and the reason wazuh-agent-auth (and the Windows
+ * enrollment dialog that reads it) shows must not disagree about what the manager said.
+ */
+typedef struct w_enroll_error_t {
+    char message[256];     /**< The manager's reason, "" when it gave none. */
+    char auth_class[64];   /**< The nested envelope's string `code` (a 401's class), or "". */
+    int authd_code;        /**< The nested envelope's numeric `code`, 0 when absent. */
+    bool has_numeric_code; /**< Whether the nested envelope carried a numeric `code`, 0 included. */
+} w_enroll_error_t;
+
+/**
+ * @brief Reads the manager's reason out of a non-200 /enroll response.
+ *
+ * Understands both envelopes the manager sends on this route: the /enroll handler's nested
+ * {"error":{"code":N,"message":"..."}} and the HTTPS server's flat {"error":"<msg>","code":N}.
+ * Never fails: an unreadable body leaves @p out empty.
+ *
+ * @param result The /enroll outcome. Only http_code and body are read.
+ * @param out Filled in; zeroed first.
+ */
+void w_enrollment_parse_error(const hc_enroll_result_t *result, w_enroll_error_t *out);
 
 /**
  * @brief Parses one /enroll HTTP outcome and, on success, writes client.keys
@@ -76,6 +104,6 @@ void w_enroll_request_destroy(w_enroll_request_t *request);
  * crypto method: that stays the orchestrator's job (start_agent.c's
  * try_enroll_to_server()), same as it is today.
  */
-w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result);
+w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result, const char *enroll_kid);
 
 #endif /* ENROLLMENT_H */

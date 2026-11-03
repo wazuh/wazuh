@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module (C++ worker bridge)
- * Copyright (C) 2015, Wazuh Inc.
- * July 29, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -10,12 +9,13 @@
  */
 
 #include "downloadEndpoint.hpp"
+#include "common/logThrottle.hpp"
+#include "control/groupConfigPath.hpp"
+#include "control/groupSelector.hpp"
 
 #include "loggerHelper.h"
 
 #include <rapidjson/document.h>
-
-#include <openssl/evp.h>
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -38,7 +38,7 @@ namespace
         return instance;
     }
 
-    /// Longest accepted resource id. MAX_GROUP_NAME for a group; also a sane bound for a filename.
+    /// Longest accepted WPK filename.
     constexpr std::size_t MAX_RESOURCE_ID_SIZE {255};
 
     /// Wire spellings of ResourceType.
@@ -49,37 +49,14 @@ namespace
     /// Separator wazuh uses between groups in a multigroup selector (MULTIGROUP_SEPARATOR).
     constexpr char GROUP_SEPARATOR {','};
 
-    /**
-     * @brief Hex characters in a multigroup directory name.
-     *
-     * Must equal wazuh-db's WDB_GROUP_HASH_SIZE (8). Note that is 8 HEX CHARACTERS -- the first
-     * four digest bytes -- not the first eight bytes.
-     */
-    constexpr std::size_t MULTIGROUP_HASH_HEX_CHARS {8};
-
     /// Cap on a whole multigroup selector, mirroring wazuh's own multigroup length allowance.
     constexpr std::size_t MAX_MULTIGROUP_SELECTOR_SIZE {4096};
 
-    /// Basename of a merged centralized configuration (SHAREDCFG_FILENAME).
-    constexpr auto MERGED_CONFIG_FILENAME {"merged.mg"};
-
-    /// Characters wazuh accepts in a single group name (w_validate_group_name's set, minus comma).
-    bool isGroupNameChar(char c)
-    {
-        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '.' || c == ':' ||
-               c == ';' || c == '_' || c == '-' || c == '=' || c == '+' || c == '!' || c == '@' || c == '(' || c == ')';
-    }
-
-    /// Stricter set for a value that gets joined into a path.
+    /// Characters of a WPK filename, a value that gets joined into a path.
     bool isWpkNameChar(char c)
     {
         return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '.' || c == '_' ||
                c == '-';
-    }
-
-    bool isDotOrDotDot(std::string_view value)
-    {
-        return value == "." || value == "..";
     }
 
     bool endsWith(std::string_view value, std::string_view suffix)
@@ -136,24 +113,6 @@ namespace remoted::endpoints::download
     // Request parsing and grammars
     // -----------------------------------------------------------------------
 
-    bool isValidGroupName(std::string_view group)
-    {
-        if (group.empty() || group.size() > MAX_RESOURCE_ID_SIZE || isDotOrDotDot(group))
-        {
-            return false;
-        }
-
-        for (const char c : group)
-        {
-            if (!isGroupNameChar(c))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
     bool isValidGroupSelector(std::string_view selector)
     {
         if (selector.empty() || selector.size() > MAX_MULTIGROUP_SELECTOR_SIZE)
@@ -171,7 +130,7 @@ namespace remoted::endpoints::download
             const auto entry = selector.substr(
                 start, separator == std::string_view::npos ? std::string_view::npos : separator - start);
 
-            if (!isValidGroupName(entry))
+            if (!remoted::control::isValidGroupName(entry))
             {
                 return false;
             }
@@ -221,49 +180,68 @@ namespace remoted::endpoints::download
             return RequestError::Malformed;
         }
 
-        // `additionalProperties: false`, so an unexpected member is a rejection rather than
-        // something to skip: accepting it would let a future field be silently ignored by an older
-        // manager, which only surfaces in production.
-        if (doc.MemberCount() != 2)
+        // `additionalProperties: false`: `resource_type` alone or with `resource_id`, nothing else.
+        // An unexpected member is a rejection rather than something to skip: accepting it would let
+        // a future field be silently ignored by an older manager, which only surfaces in production.
+        const auto memberCount = doc.MemberCount();
+        if (memberCount != 1 && memberCount != 2)
         {
             return RequestError::Malformed;
         }
 
         const auto* typeValue = stringMember(doc, "resource_type");
-        const auto* idValue = stringMember(doc, "resource_id");
-
-        if (typeValue == nullptr || idValue == nullptr)
+        if (typeValue == nullptr)
         {
             return RequestError::Malformed;
         }
 
+        const rapidjson::Value* idValue = nullptr;
+        if (memberCount == 2)
+        {
+            idValue = stringMember(doc, "resource_id");
+            if (idValue == nullptr)
+            {
+                return RequestError::Malformed;
+            }
+        }
+
         const std::string_view typeText {typeValue->GetString(), typeValue->GetStringLength()};
-        const std::string_view idText {idValue->GetString(), idValue->GetStringLength()};
 
         DownloadRequest request;
 
         if (typeText == RESOURCE_TYPE_CONFIG)
         {
             request.type = ResourceType::Config;
-            if (!isValidGroupSelector(idText))
+            if (idValue != nullptr)
             {
-                return RequestError::InvalidResourceId;
+                // An empty selector is rejected here, never taken as a request to derive one.
+                const std::string_view idText {idValue->GetString(), idValue->GetStringLength()};
+                if (!isValidGroupSelector(idText))
+                {
+                    return RequestError::InvalidResourceId;
+                }
+                request.resourceId.emplace(idText);
             }
         }
         else if (typeText == RESOURCE_TYPE_WPK)
         {
             request.type = ResourceType::Wpk;
+            if (idValue == nullptr)
+            {
+                return RequestError::Malformed;
+            }
+            const std::string_view idText {idValue->GetString(), idValue->GetStringLength()};
             if (!isValidWpkFilename(idText))
             {
                 return RequestError::InvalidResourceId;
             }
+            request.resourceId.emplace(idText);
         }
         else
         {
-            return RequestError::UnknownResourceType;
+            return idValue != nullptr ? RequestError::UnknownResourceType : RequestError::Malformed;
         }
 
-        request.resourceId.assign(idText);
         return request;
     }
 
@@ -285,6 +263,25 @@ namespace remoted::endpoints::download
         return remoted::http::HttpResponse::json(400, R"({"error":"Invalid request format","code":400})");
     }
 
+    /// The answer to every authorization failure, whatever its cause: the agent asked for a
+    /// selector that is not its own, the group source cannot vouch for its id, or no source is wired.
+    /// One shape for all three on purpose -- a caller must not be able to tell "not yours" from
+    /// "does not exist", which is what removes the 200-vs-404 group enumeration oracle.
+    remoted::http::HttpResponse forbiddenResponse()
+    {
+        return remoted::http::HttpResponse::json(403, R"({"error":"Forbidden","code":403})");
+    }
+
+    /// The answer when the agent's membership cannot be established right now: the local wazuh-db
+    /// did not answer the fallback lookup in time, too many requests already wait on lookups, or it
+    /// has no row for the agent yet. The same body and status as /control's, and for the same
+    /// reason: remoted is fine, a dependency is not (or not synchronized), and the agent's
+    /// back-pressure class retries a 503. The two causes are told apart by metrics and logs only.
+    remoted::http::HttpResponse unavailableResponse()
+    {
+        return remoted::http::HttpResponse::json(503, R"({"error":"dependency_unavailable","dependency":"wazuh-db"})");
+    }
+
     remoted::http::HttpResponse errorResponseFor(LocateError error)
     {
         if (error == LocateError::Internal)
@@ -299,50 +296,17 @@ namespace remoted::endpoints::download
     // Resolution
     // -----------------------------------------------------------------------
 
-    std::string multigroupDirName(const std::string& groupSelector)
-    {
-        unsigned char digest[EVP_MAX_MD_SIZE] {};
-        unsigned int digestLength {0};
-
-        if (EVP_Digest(groupSelector.data(), groupSelector.size(), digest, &digestLength, EVP_sha256(), nullptr) != 1)
-        {
-            throw std::runtime_error("SHA-256 is unavailable; cannot resolve a multigroup directory");
-        }
-
-        static constexpr char HEX_DIGITS[] = "0123456789abcdef";
-
-        std::string name;
-        name.reserve(MULTIGROUP_HASH_HEX_CHARS);
-
-        for (unsigned int i = 0; i < MULTIGROUP_HASH_HEX_CHARS / 2 && i < digestLength; ++i)
-        {
-            name.push_back(HEX_DIGITS[(digest[i] >> 4) & 0x0F]);
-            name.push_back(HEX_DIGITS[digest[i] & 0x0F]);
-        }
-
-        return name;
-    }
-
     LocateResult locateResource(const DownloadRequest& request, const ResourcePaths& paths)
     {
-        // Safe to join directly: the grammars have already rejected any name containing a
-        // separator, equal to "." or "..", or beginning with a dot, and openRegularFile()'s
-        // O_NOFOLLOW stops the single remaining component being a symlink.
-        if (request.type == ResourceType::Wpk)
+        if (request.type != ResourceType::Wpk || !request.resourceId)
         {
-            return LocateResult {joinPath(paths.wpkDir, request.resourceId), LocateError::None};
+            return LocateResult {{}, LocateError::NotFound};
         }
 
-        // Several groups -> the effective (multigroup) configuration, whose directory is the hash
-        // of the selector verbatim. Hashed rather than joined, so no database is needed and the
-        // directory name is hex by construction.
-        const bool isMultigroup = request.resourceId.find(GROUP_SEPARATOR) != std::string::npos;
-
-        const std::string directory = isMultigroup
-                                          ? joinPath(paths.multigroupsDir, multigroupDirName(request.resourceId))
-                                          : joinPath(paths.sharedDir, request.resourceId);
-
-        return LocateResult {joinPath(directory, MERGED_CONFIG_FILENAME), LocateError::None};
+        // Safe to join directly: isValidWpkFilename() has already rejected any name containing a
+        // separator or beginning with a dot, and openRegularFile()'s O_NOFOLLOW stops the single
+        // remaining component being a symlink.
+        return LocateResult {joinPath(paths.wpkDir, *request.resourceId), LocateError::None};
     }
 
     // -----------------------------------------------------------------------
@@ -511,39 +475,36 @@ namespace remoted::endpoints::download
     // Handler
     // -----------------------------------------------------------------------
 
-    remoted::endpoints::AuthenticatedHandler makeHandler(ResourcePaths paths, DownloadMetrics metrics)
+    namespace
     {
-        return [paths = std::move(paths),
-                metrics = std::move(metrics)](std::shared_ptr<const remoted::auth::AuthenticatedRequest> request,
-                                              std::shared_ptr<remoted::http::IHttpResponder> responder)
+        remoted::common::LogThrottle& unavailableThrottle()
         {
-            const auto parsed = parseRequest(request->payload.bytes());
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
 
-            if (const auto* error = std::get_if<RequestError>(&parsed))
-            {
-                // Client fault, fully attacker-controlled in volume: debug only.
-                LOGFN_DEBUG2(logFn(), "Rejected a /download request from agent '%s'.", request->agentId.c_str());
-                incRejected(metrics);
-                responder->send(errorResponseFor(*error));
-                return;
-            }
+        // Its own window: a missing row is not a failing dependency, and an operator reading the
+        // log must be able to tell "wazuh-db is down" from "this node has not received the agent".
+        remoted::common::LogThrottle& noRowThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
 
-            const auto& downloadRequest = std::get<DownloadRequest>(parsed);
-            const std::string agentId = request->agentId;
-
-            const auto located = locateResource(downloadRequest, paths);
-
-            // The body has served its purpose. Releasing here -- rather than letting the request die
-            // with the handler -- returns its in-flight byte reservation before a transfer that may
-            // run for minutes begins.
-            request->payload.release();
-            request.reset();
-
+        // Everything after authorization and path resolution: open, stream. Runs on the HTTP worker
+        // for a fresh registry hit or a WPK, and on a lookup worker when the verdict needed wazuh-db --
+        // IHttpResponder is thread-safe and exactly-once, and the payload is already released.
+        void serve(ResourceType type,
+                   const std::string& path,
+                   const std::string& agentId,
+                   const DownloadMetrics& metrics,
+                   const std::shared_ptr<remoted::http::IHttpResponder>& responder)
+        {
             // Opened BEFORE the response starts: once a 200 and a chunk are on the wire the status
             // can no longer be corrected, so a missing file has to be discovered here to be a clean
             // 404 rather than a truncated 200.
             errno = 0;
-            auto source = openRegularFile(located.path);
+            auto source = openRegularFile(path);
 
             if (!source)
             {
@@ -555,7 +516,7 @@ namespace remoted::endpoints::download
                     incOpenError(metrics);
                     LOGFN_ERROR(logFn(),
                                 "Could not open '%s' to serve a /download request from agent '%s': %s.",
-                                located.path.c_str(),
+                                path.c_str(),
                                 agentId.c_str(),
                                 std::strerror(openErrno));
                 }
@@ -566,7 +527,7 @@ namespace remoted::endpoints::download
                     incNotFound(metrics);
                     LOGFN_DEBUG2(logFn(),
                                  "Resource '%s' is unavailable for agent '%s': %s.",
-                                 located.path.c_str(),
+                                 path.c_str(),
                                  agentId.c_str(),
                                  std::strerror(openErrno));
                 }
@@ -577,10 +538,10 @@ namespace remoted::endpoints::download
 
             LOGFN_DEBUG1(logFn(),
                          "Serving '%s' (%llu byte(s)) to agent '%s' for a '%s' download.",
-                         located.path.c_str(),
+                         path.c_str(),
                          static_cast<unsigned long long>((*source)->size()),
                          agentId.c_str(),
-                         resourceTypeName(downloadRequest.type));
+                         resourceTypeName(type));
 
             // Counted at start (bytes = the size being offered), BEFORE the pump runs: the
             // per-chunk loop stays uninstrumented by design (see downloadMetrics.hpp).
@@ -592,6 +553,143 @@ namespace remoted::endpoints::download
             response.source = std::move(*source);
 
             responder->stream(std::move(response));
+        }
+    } // namespace
+
+    remoted::endpoints::AuthenticatedHandler
+    makeHandler(ResourcePaths paths, DownloadMetrics metrics, std::shared_ptr<const IAgentGroupSource> groups)
+    {
+        return [paths = std::move(paths), metrics = std::move(metrics), groups = std::move(groups)](
+                   std::shared_ptr<const remoted::auth::AuthenticatedRequest> request,
+                   std::shared_ptr<remoted::http::IHttpResponder> responder)
+        {
+            auto parsed = parseRequest(request->payload.bytes());
+
+            if (const auto* error = std::get_if<RequestError>(&parsed))
+            {
+                // Client fault, fully attacker-controlled in volume: debug only.
+                LOGFN_DEBUG2(logFn(), "Rejected a /download request from agent '%s'.", request->agentId.c_str());
+                incRejected(metrics);
+                responder->send(errorResponseFor(*error));
+                return;
+            }
+
+            auto downloadRequest = std::get<DownloadRequest>(std::move(parsed));
+            std::string agentId = request->agentId;
+
+            // The body has served its purpose. Releasing it here -- before an authorization that may
+            // wait on wazuh-db and a transfer that may run for minutes -- returns its in-flight byte
+            // reservation at once. DownloadRequest owns its strings.
+            request->payload.release();
+            request.reset();
+
+            // WPK requests are deliberately not authorized here: their authority is the agent's
+            // pending upgrade task, which /control does not carry (see the header's note).
+            if (downloadRequest.type != ResourceType::Config)
+            {
+                serve(downloadRequest.type, locateResource(downloadRequest, paths).path, agentId, metrics, responder);
+                return;
+            }
+
+            // Authorization, before ANY filesystem access. A config download serves the selector
+            // this agent's own groups produce, derived here rather than taken from the request; a
+            // `resource_id`, when sent, must equal it. A fresh registry entry answers inline;
+            // anything else asks the local wazuh-db without holding this worker (the verdict may
+            // arrive on another thread).
+            auto onVerdict = [downloadRequest, agentId, paths, metrics, responder](GroupVerdict verdict)
+            {
+                if (verdict.kind == GroupVerdictKind::Unavailable)
+                {
+                    incUnavailable(metrics);
+                    if (const auto throttle = unavailableThrottle().record())
+                    {
+                        LOGFN_WARN(logFn(),
+                                   "Cannot authorize /download: the agent's groups could not be read from "
+                                   "wazuh-manager-db in time (%llu request(s) in the last %d s). Agents are being "
+                                   "told to retry; check that wazuh-manager-db is running.",
+                                   throttle.total,
+                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                    }
+                    responder->send(unavailableResponse());
+                    return;
+                }
+
+                if (verdict.kind == GroupVerdictKind::NoRow)
+                {
+                    // Same answer as a failed lookup -- the agent retries both alike -- but never a
+                    // denial: the row may simply not have reached this node's database yet.
+                    incNoRow(metrics);
+                    if (const auto throttle = noRowThrottle().record())
+                    {
+                        LOGFN_WARN(logFn(),
+                                   "Cannot authorize /download for agent '%s': the local wazuh-manager-db has no "
+                                   "row for it (%llu such request(s) in the last %d s). Agents are being told to "
+                                   "retry until their row reaches this node's database.",
+                                   agentId.c_str(),
+                                   throttle.total,
+                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                    }
+                    responder->send(unavailableResponse());
+                    return;
+                }
+
+                if (verdict.kind == GroupVerdictKind::Superseded)
+                {
+                    // The membership changed while it was being read (an invalidation, or a push
+                    // this node could not place): the read may predate a revocation, so it never
+                    // authorizes. Counted as a membership that could not be established now; not a
+                    // warning -- nothing is wrong, the agent's next request reads it again.
+                    incUnavailable(metrics);
+                    LOGFN_DEBUG2(logFn(),
+                                 "Deferred a /download request from agent '%s': its membership changed while it "
+                                 "was being read; it is told to retry.",
+                                 agentId.c_str());
+                    responder->send(unavailableResponse());
+                    return;
+                }
+
+                // An empty selector is denied rather than resolved: fromGroupsCsv("") is no groups,
+                // which resolveMergedConfigPath() would turn into "default".
+                if (verdict.kind != GroupVerdictKind::Selector || verdict.selector.empty() ||
+                    (downloadRequest.resourceId && *downloadRequest.resourceId != verdict.selector))
+                {
+                    // Computed outside the macro, which skips its arguments when no sink is installed.
+                    const char* resource =
+                        downloadRequest.resourceId ? downloadRequest.resourceId->c_str() : "(derived)";
+                    // Debug only: any enrolled agent can trigger this at will, so a per-request
+                    // warning would be a log-flood vector. The operator-facing signal is
+                    // remoted.download.denied.
+                    LOGFN_DEBUG2(logFn(),
+                                 "Denied a /download request from agent '%s' for resource '%s': not its own.",
+                                 agentId.c_str(),
+                                 resource);
+                    incDenied(metrics);
+                    responder->send(forbiddenResponse());
+                    return;
+                }
+
+                const auto path = remoted::control::resolveMergedConfigPath(
+                    remoted::control::fromGroupsCsv(verdict.selector), paths.sharedDir, paths.multigroupsDir);
+                if (path.empty())
+                {
+                    incNotFound(metrics);
+                    LOGFN_DEBUG2(logFn(),
+                                 "The groups '%s' of agent '%s' name no shared configuration.",
+                                 verdict.selector.c_str(),
+                                 agentId.c_str());
+                    responder->send(errorResponseFor(LocateError::NotFound));
+                    return;
+                }
+
+                serve(downloadRequest.type, path, agentId, metrics, responder);
+            };
+
+            if (groups == nullptr)
+            {
+                onVerdict(GroupVerdict {GroupVerdictKind::Deny, {}});
+                return;
+            }
+            groups->resolveSelector(agentId, std::move(onVerdict));
         };
     }
 

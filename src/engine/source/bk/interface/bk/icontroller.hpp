@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _BK_ICONTROLLER_HPP
 #define _BK_ICONTROLLER_HPP
 
@@ -50,7 +51,7 @@ public:
      *
      * @return true if the backend is available to ingest data. false otherwise.
      */
-    virtual bool isAviable() const = 0;
+    virtual bool isAvailable() const = 0;
 
     /**
      * @brief Start the backend.

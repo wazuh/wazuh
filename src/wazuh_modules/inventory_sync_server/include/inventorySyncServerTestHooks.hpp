@@ -1,7 +1,6 @@
 /*
  * Wazuh inventory sync server module
- * Copyright (C) 2015, Wazuh Inc.
- * July 29, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -54,7 +53,7 @@ namespace invsync::test_hooks
         const nlohmann::json&, const invsync::indexer::IIndexerSession&, LoggingContext)>;
     using IndexerConnectorAsyncFactory = std::function<std::unique_ptr<invsync::indexer::IIndexerConnectorAsync>(
         const nlohmann::json&, const invsync::indexer::IIndexerSession&, LoggingContext)>;
-    using VdScannerFactory = std::function<std::shared_ptr<invsync::vd::IVdScanner>()>;
+    using VdScannerFactory = std::function<std::shared_ptr<invsync::vd::IVdScanner>(bool)>;
 
     /*
      * Override how each of the three indexer objects is constructed, so a test can drive the startup

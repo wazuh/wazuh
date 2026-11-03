@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Purge script for Wazuh
 #
 # Usage:
@@ -7,13 +7,16 @@
 #
 # Behavior:
 #   1. If wazuh-agent or wazuh-manager packages are installed, purge them.
-#   2. Always perform a final cleanup of service units, users/groups and
-#      installation directories.
+#   2. Always perform a final cleanup of service units, users/groups,
+#      installation directories and the manager configuration directory
+#      (/etc/wazuh-manager).
 #   3. If no packages are installed, treat the system as a source/manual
 #      installation and perform the same full cleanup directly.
 
 readonly DEFAULT_WAZUH_AGENT_DIR="/var/ossec"
 readonly DEFAULT_WAZUH_MANAGER_DIR="/var/wazuh-manager"
+# The manager configuration directory is fixed, outside every installation directory.
+readonly WAZUH_MANAGER_CONF_DIR="/etc/wazuh-manager"
 
 PKG_MANAGER=""
 INSTALL_DIRS=()
@@ -237,6 +240,16 @@ remove_misc_files() {
     [ -e /etc/ossec-init.conf ] && rm -f /etc/ossec-init.conf
 }
 
+# The manager keeps its configuration (wazuh-manager.conf, client.keys, certs/, shared/...) outside
+# its installation directory, so remove_install_dirs never reaches it.
+remove_manager_conf_dir() {
+    if [ -d "${WAZUH_MANAGER_CONF_DIR}" ]; then
+        echo " - Removing ${WAZUH_MANAGER_CONF_DIR}"
+        rm -rf -- "${WAZUH_MANAGER_CONF_DIR}"
+    fi
+}
+
+
 remove_users_groups() {
     local user_name=""
     local group_name=""
@@ -259,6 +272,7 @@ remove_users_groups() {
 cleanup_system() {
     unmount_dev_proc
     remove_install_dirs
+    remove_manager_conf_dir
     remove_service_units
     remove_misc_files
     remove_users_groups

@@ -1,12 +1,13 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015, Wazuh Inc.
- * May 1, 2023.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #include "socketServer_test.hpp"
@@ -235,6 +236,51 @@ TEST_F(SocketServerTest, RemoveClient)
 
     // Verify that the client was removed successfully
     EXPECT_FALSE(server.getClient(1));
+
+    EXPECT_CALL(*server.m_epoll, deleteDescriptor(testing::_)).Times(1);
+    EXPECT_CALL(*server.m_listenSocket, closeSocket()).Times(1);
+}
+
+TEST_F(SocketServerTest, ProcessEventRemovesClientWhenReadFails)
+{
+    SocketServer<MockSocket, MockEpollWrapper> server("test");
+
+    int clientFD = 123;
+    auto clientSocket = std::make_shared<MockSocket>(clientFD);
+    server.addClient(clientFD, clientSocket);
+
+    auto onRead = [](const int, const char*, uint32_t, const char*, uint32_t)
+    {
+        // Not used
+    };
+
+    // A malformed packet (or a disconnect) makes read() throw: the stream can no longer be framed.
+    EXPECT_CALL(*clientSocket, read(testing::_)).WillOnce(testing::Throw(std::runtime_error("Invalid packet size.")));
+
+    EXPECT_NO_THROW(server.processEvent(EPOLLIN, clientFD, onRead));
+    EXPECT_FALSE(server.getClient(clientFD));
+
+    EXPECT_CALL(*server.m_epoll, deleteDescriptor(testing::_)).Times(1);
+    EXPECT_CALL(*server.m_listenSocket, closeSocket()).Times(1);
+}
+
+TEST_F(SocketServerTest, ProcessEventKeepsClientWhenReadSucceeds)
+{
+    SocketServer<MockSocket, MockEpollWrapper> server("test");
+
+    int clientFD = 123;
+    auto clientSocket = std::make_shared<MockSocket>(clientFD);
+    server.addClient(clientFD, clientSocket);
+
+    auto onRead = [](const int, const char*, uint32_t, const char*, uint32_t)
+    {
+        // Not used
+    };
+
+    EXPECT_CALL(*clientSocket, read(testing::_)).Times(1);
+
+    EXPECT_NO_THROW(server.processEvent(EPOLLIN, clientFD, onRead));
+    EXPECT_EQ(server.getClient(clientFD), clientSocket);
 
     EXPECT_CALL(*server.m_epoll, deleteDescriptor(testing::_)).Times(1);
     EXPECT_CALL(*server.m_listenSocket, closeSocket()).Times(1);

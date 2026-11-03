@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -59,5 +59,15 @@ void __wrap_uhttp_client_set_response_buffer(uhttp_client_t* c, char* buf, size_
  * the HTTP status to report in `out`.
  */
 int __wrap_uhttp_post(uhttp_client_t* c, const void* data, size_t len, uhttp_result_t* out);
+
+/**
+ * @brief Mocked header reset. Queue the value to return.
+ */
+int __wrap_uhttp_client_reset_headers(uhttp_client_t* c);
+
+/**
+ * @brief Mocked header addition. `header_line` is checked with expect_string(); queue the value to return.
+ */
+int __wrap_uhttp_client_add_header(uhttp_client_t* c, const char* header_line);
 
 #endif

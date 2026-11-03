@@ -1,17 +1,17 @@
 #!/usr/bin/env python
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import datetime
 import os
+import re
 from collections.abc import KeysView
 from io import StringIO
 from shutil import copyfile
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from unittest.mock import call, MagicMock, Mock, mock_open, patch, ANY, sentinel
 from xml.etree.ElementTree import Element
-from wazuh.core.common import WAZUH_LOCALTIME_PATH
 
 import pytest
 from defusedxml.ElementTree import parse
@@ -20,7 +20,7 @@ from freezegun import freeze_time
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         from wazuh import WazuhException
-        from wazuh.core.agent import WazuhDBQueryAgents
+        from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroup
         from wazuh.core import utils, exception
         from wazuh.core.common import WAZUH_PATH
 
@@ -399,12 +399,32 @@ def test_get_values(object, fields):
     assert isinstance(result[0], str)
 
 
+@pytest.mark.parametrize('object, expected', [
+    ({'revoked': True}, ['true']),
+    ({'revoked': False}, ['false']),
+    ({'count': 3}, ['3']),
+    # None renders as '', not the string 'none' -- otherwise search=no/none would match
+    # every record with a null field.
+    ({'description': None}, [''])
+])
+def test_get_values_non_str(object, expected):
+    """Test that get_values lowercases non-str values, which search_array compares against a
+    lowercased query, and that a None value never becomes a searchable substring."""
+    assert utils.get_values(o=object) == expected
+
+
 @pytest.mark.parametrize('array, text, negation, length', [
     (['test', 'name'], 'e', False, 2),
     (['test', 'name'], 'name', False, 1),
     (['test', 'name'], 'unknown', False, 0),
     (['test', 'name'], 'test', True, 1),
-    (['test', 'name'], 'unknown', True, 2)
+    (['test', 'name'], 'unknown', True, 2),
+    # Boolean field values: search_array lowercases the query, so the candidates must be
+    # lowercased too for a bool to be searchable at all.
+    ([{'revoked': True}, {'revoked': False}], 'true', False, 1),
+    ([{'revoked': True}, {'revoked': False}], 'True', False, 1),
+    ([{'revoked': True}, {'revoked': False}], 'false', False, 1),
+    ([{'revoked': True}, {'revoked': False}], 'true', True, 1)
 ])
 def test_search_array(array, text, negation, length):
     """Test search_array function."""
@@ -806,6 +826,34 @@ def test_load_wazuh_xml():
 
         assert elements_equal(original, result.find('dummy_tag'))
 
+def test_load_wazuh_xml_sanitizes_only_comment_bodies():
+    """Test load_wazuh_xml replaces -- inside each comment and leaves text matching a comment body untouched."""
+    data = '<!-- a--b --><item>a--b</item><!------><other>-- a--b --</other>'
+    result = utils.load_wazuh_xml(None, data)
+
+    assert result.find('item').text == 'a--b'
+    assert result.find('other').text == '-- a--b --'
+
+
+@pytest.mark.parametrize('data, expected', [
+    ('<item>a < b</item>', 'a < b'),
+    ('<item>a < b > c</item>', 'a < b > c'),
+    ('<item>\n<\n</item>', '\n<\n'),
+    ('<item>a <!b</item>', 'a <!b'),
+])
+def test_load_wazuh_xml_escapes_lt_outside_tags(data, expected):
+    """Test load_wazuh_xml escapes a < that does not start a tag or a comment."""
+    assert utils.load_wazuh_xml(None, data).find('item').text == expected
+
+
+def test_load_wazuh_xml_many_comments_and_tags():
+    """Test load_wazuh_xml keeps every element of a document with many comments and a long single line."""
+    data = ''.join(f'<!-- comment {i} -- -->\n' for i in range(20000)) + '<item/>' * 20000
+    result = utils.load_wazuh_xml(None, data)
+
+    assert len(result.findall('item')) == 20000
+
+
 @pytest.mark.parametrize('expected_exception', [
     (1113)
 ])
@@ -905,24 +953,38 @@ def test_WazuhVersion__ge__(version1, version2):
     assert not current_version >= new_version
 
 
-@pytest.mark.parametrize('time', [
-    '10s',
-    '20m',
-    '30h',
-    '5d',
-    '10'
+@pytest.mark.parametrize('time, expected_seconds', [
+    ('10s', 10),
+    ('20m', 1200),
+    ('30h', 108000),
+    ('5d', 432000),
+    ('10', 10),
+    ('0s', 0),
+    ('1d2h3m4s', 93784)
 ])
-def test_get_timeframe_in_seconds(time):
+def test_get_timeframe_in_seconds(time, expected_seconds):
     """Test get_timeframe_in_seconds function."""
     result = utils.get_timeframe_in_seconds(time)
 
-    assert isinstance(result, int)
+    assert result == expected_seconds
 
 
-def test_failed_test_get_timeframe_in_seconds():
+@pytest.mark.parametrize('time', [
+    'error',
+    'soon',
+    'yesterday',
+    '1x',
+    'm',
+    '',
+    '1d2x',
+    '1d ',
+    '1D',
+    '-1d'
+])
+def test_failed_test_get_timeframe_in_seconds(time):
     """Test get_timeframe_in_seconds function exceptions."""
     with pytest.raises(exception.WazuhException, match=".* 1411 .*"):
-        utils.get_timeframe_in_seconds('error')
+        utils.get_timeframe_in_seconds(time)
 
 
 @pytest.mark.parametrize('query_filter, expected_query_filter, expected_wef', [
@@ -1052,6 +1114,26 @@ def test_WazuhDBQuery_protected_add_search_to_query(mock_socket_conn, mock_conn_
 
     query._add_search_to_query()
     mock_conn_db.assert_called_once_with()
+
+
+@patch('wazuh.core.utils.path.exists', return_value=True)
+@patch('glob.glob', return_value=True)
+@patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_protected_add_search_to_query_skips_extra_fields(mock_socket_conn, mock_conn_db, mock_glob,
+                                                                       mock_exists):
+    """Test WazuhDBQuery._add_search_to_query function does not search on extra fields."""
+    query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
+                               search={"negation": False, "value": "1"}, select=None,
+                               filters=None, fields={'1': 'one', '2': 'two', 'secret': 'secret_col'},
+                               default_sort_field=None, query=None,
+                               backend=utils.WazuhDBBackend(agent_id=1),
+                               count=5, get_data=None, extra_fields={'secret'})
+
+    query._add_search_to_query()
+    assert '(one LIKE :search AND one IS NOT NULL)' in query.query
+    assert '(two LIKE :search AND two IS NOT NULL)' in query.query
+    assert 'secret_col' not in query.query
 
 
 @pytest.mark.parametrize('selector_fields, error, expected_exception', [
@@ -1203,8 +1285,12 @@ def test_WazuhDBQuery_protected_parse_query_regex(mock_backend_connect, mock_exi
 
 @pytest.mark.parametrize('q, error, expected_exception', [
     ('os.name=ubuntu;os.version>12e', False, None),
-    ('os.name=debian;os.version>12e),(os.name=ubuntu;os.version>12e)', False, None),
+    ('(os.name=debian;os.version>12e),(os.name=ubuntu;os.version>12e)', False, None),
+    ('os.name=debian;os.version>12e),(os.name=ubuntu;os.version>12e)', True, 1407),
+    ('(os.name=debian;os.version>12e', True, 1407),
     ('bad_query', True, 1407),
+    ('os.name=Amazon Linux, 2023', True, 1407),
+    ('os.name=ubuntu;', True, 1407),
     ('os.bad_field=ubuntu', True, 1408),
     ('os.name=!ubuntu', True, 1409),
     ('internal_key=test', True, 1408)
@@ -1403,6 +1489,67 @@ def test_WazuhDBQuery_protected_add_filters_to_query_final_query(mock_conn_db, m
     assert query.query.rstrip(' ') == expected_query
 
 
+@pytest.mark.parametrize('q, valid', [
+    ('id=001', True),
+    ('(id=001,id=002);status=active', True),
+    ('((id=001),(id=002))', True),
+    ('name=Mozilla Firefox 53.0 (x64 en-US)', True),
+    ('id=001),(id=002', False),
+    ('(id=001', False),
+    ('id=001)', False),
+    ('(id=001));(status=active', False),
+    ('name~Amazon Linux', True),
+    ('name=[a,b];id=001', True),
+    ('name~Amazon Linux, 2023', False),
+    ('name=agent-1,foo', False),
+    ('name~ux;foo', False),
+    ('name~ux(,id~ux(', False),
+    ('id=001,', False),
+    ('id=001;', False),
+    ('(id=001)(id=002)', False),
+    (' id=001', False),
+    ('bad_query', False),
+])
+def test_validate_query(q, valid):
+    """Test that validate_query rejects a q that is not a sequence of terms joined by separators, or whose groups
+    are not closed after being opened."""
+    if valid:
+        utils.validate_query(q)
+    else:
+        with pytest.raises(exception.WazuhError, match='.* 1407 .*'):
+            utils.validate_query(q)
+
+
+@pytest.mark.parametrize('filters, q, expected_where', [
+    # An OR in q stays inside the q group instead of splitting the legacy filters off
+    ({'status': 'active'}, 'id=001,id=002',
+     "(status = :status$0 COLLATE NOCASE) AND ((id = :id$0 COLLATE NOCASE) OR (id = :id$1 COLLATE NOCASE))"),
+    # A level drop of two that stays above zero opens its own parenthesis
+    ({'status': 'active'}, '(((id=001,id=002)),id=003)',
+     "(status = :status$0 COLLATE NOCASE) AND (((((id = :id$0 COLLATE NOCASE) OR (id = :id$1 COLLATE NOCASE))) "
+     "OR (id = :id$2 COLLATE NOCASE)))"),
+    # Without legacy filters q is still one group
+    (None, 'id=001,id=002', "((id = :id$0 COLLATE NOCASE) OR (id = :id$1 COLLATE NOCASE))"),
+    # Without q nothing is added
+    ({'status': 'active'}, '', "(status = :status$0 COLLATE NOCASE)"),
+])
+@patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
+@patch('wazuh.core.utils.path.exists', return_value=True)
+def test_WazuhDBQuery_protected_add_filters_to_query_groups_q(mock_conn_db, mock_file_exists,
+                                                              filters, q, expected_where):
+    """Test that the q filters are rendered as one balanced group ANDed with the legacy filters."""
+    query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None, search=None, select=None,
+                               fields={'id': 'id', 'status': 'status'}, filters=filters,
+                               default_sort_field=None, query=q, backend=utils.WazuhDBBackend(agent_id=0),
+                               count=5, get_data=None)
+
+    query._add_filters_to_query()
+
+    where = query.query.split(' WHERE ', 1)[1].rstrip()
+    assert where == expected_where
+    assert where.count('(') == where.count(')')
+
+
 @patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
@@ -1459,6 +1606,59 @@ def test_WazuhDBQuery_substitute_params(mock_socket_conn, mock_conn_db, mock_glo
     query._get_total_items()
 
     mock_conn_db.assert_called_once_with()
+
+
+@patch('wazuh.core.utils.path.exists', return_value=True)
+@patch('glob.glob', return_value=True)
+@patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_substitute_params_values(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
+    """Strings are quoted, ints and floats are not, whether scalar or inside a list."""
+    backend = utils.WazuhDBBackend(agent_id=0)
+    assert backend._substitute_params("a = :a AND b = :b", {'a': 'hello', 'b': 5}) == "a = 'hello' AND b = 5"
+    assert backend._substitute_params("id IN (:ids)", {'ids': ['001', '002', 'abc']}) == "id IN ('001','002','abc')"
+    assert backend._substitute_params("name IN (:names)", {'names': ['007']}) == "name IN ('007')"
+    assert backend._substitute_params("name NOT IN (:names)", {'names': ['00', '0123']}) == "name NOT IN ('00','0123')"
+    assert backend._substitute_params("id IN (:ids)", {'ids': ['007', 5, 1.5]}) == "id IN ('007',5,1.5)"
+    assert backend._substitute_params("no placeholders", {}) == "no placeholders"
+    with pytest.raises(TypeError):
+        backend._substitute_params("x = :x", {'x': object()})
+
+
+@patch('wazuh.core.utils.path.exists', return_value=True)
+@patch('glob.glob', return_value=True)
+@patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_substitute_params_prefix_collision(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
+    """A placeholder that is a prefix of another is not matched partially."""
+    backend = utils.WazuhDBBackend(agent_id=0)
+    result = backend._substitute_params("name LIKE :search OR id LIKE :search_id",
+                                        {'search': '%foo%', 'search_id': 'foo'})
+    assert result == "name LIKE '%foo%' OR id LIKE 'foo'"
+
+
+@patch('wazuh.core.utils.path.exists', return_value=True)
+@patch('glob.glob', return_value=True)
+@patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_substitute_params_single_pass(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
+    """A value equal to another placeholder name is not substituted a second time."""
+    backend = utils.WazuhDBBackend(agent_id=0)
+    # A key with '$' (as the query builder produces) whose value looks like the ':b' placeholder.
+    result = backend._substitute_params("x = :a$0 AND y = :b", {'a$0': ':b', 'b': 'value_b'})
+    # ':a$0' resolves to the literal ':b'; the replacement text is not scanned again for :b.
+    assert result == "x = ':b' AND y = 'value_b'"
+
+
+@patch('wazuh.core.utils.path.exists', return_value=True)
+@patch('glob.glob', return_value=True)
+@patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_substitute_params_quote_escaping(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
+    """Single quotes in a value are escaped by doubling so a value cannot terminate its literal."""
+    backend = utils.WazuhDBBackend(agent_id=0)
+    assert backend._substitute_params("name = :n", {'n': "O'Brien"}) == "name = 'O''Brien'"
+    assert backend._substitute_params("name = :n", {'n': "a'b'c"}) == "name = 'a''b''c'"
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
@@ -1548,25 +1748,111 @@ def test_WazuhDBQuery_general_run(mock_socket_conn, execute_value, expected_resu
         assert query.general_run() == expected_result
 
 
-@pytest.mark.parametrize('execute_value, rbac_ids, negate, final_rbac_ids, expected_result', [
-    ([{'id': 99}, {'id': 100}], ['001', '099', '101'], False, [{'id': 99}],
+@pytest.mark.parametrize('execute_value, rbac_ids, negate, expected_ids, final_rbac_ids, expected_result', [
+    ([{'id': 99}, {'id': 100}], ['001', '099', '101'], False, [99], [{'id': 99}],
      {'items': [{'id': '099'}], 'totalItems': 1}),
-    ([{'id': 1}], [], True, [{'id': 1}], {'items': [{'id': '001'}], 'totalItems': 1}),
+    ([{'id': 1}], [], True, [1], [{'id': 1}], {'items': [{'id': '001'}], 'totalItems': 1}),
     ([{'id': i} for i in range(30000)], [str(i).zfill(3) for i in range(15001)], True,
-     [{'id': i} for i in range(15001, 30000)],
+     list(range(15001, 30000)), [{'id': i} for i in range(15001, 30000)],
      {'items': [{'id': str(i).zfill(3)} for i in range(15001, 30000)], 'totalItems': 14999})
 ])
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_oversized_run(mock_socket_conn, execute_value, rbac_ids, negate,
+def test_WazuhDBQuery_oversized_run(mock_socket_conn, execute_value, rbac_ids, negate, expected_ids,
                                     final_rbac_ids, expected_result):
-    """Test utils.WazuhDBQuery.oversized_run function."""
-    with patch('wazuh.core.utils.WazuhDBBackend.execute', side_effect=[execute_value, final_rbac_ids]):
+    """Test utils.WazuhDBQuery.oversized_run function.
+
+    The second pass must select the allowed ids with IN, whatever the original filter was.
+    """
+    with patch('wazuh.core.utils.WazuhDBBackend.execute', side_effect=[execute_value, final_rbac_ids]) as execute:
         query = WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select={'id'},
                                    query=None, count=True, get_data=True, remove_extra_fields=False)
         query.legacy_filters['rbac_ids'] = rbac_ids
         query.rbac_negate = negate
 
         assert query.oversized_run() == expected_result
+
+        second_query, second_request = execute.call_args_list[1].args
+        assert 'id IN (:rbac_id)' in second_query
+        assert 'NOT IN' not in second_query
+        assert second_request['rbac_id'] == expected_ids
+        assert query.rbac_negate == negate
+
+
+@pytest.mark.parametrize('data, expected_result', [
+    (True, {'items': [], 'totalItems': 0}),
+    (False, {'totalItems': 0}),
+])
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_oversized_run_nothing_allowed(mock_socket_conn, data, expected_result):
+    """Test utils.WazuhDBQuery.oversized_run returns nothing when every resource is denied.
+
+    An empty RBAC filter is dropped from the query, so running the second pass would return every agent.
+    """
+    with patch('wazuh.core.utils.WazuhDBBackend.execute', side_effect=[[{'id': 1}, {'id': 2}]]) as execute:
+        query = WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select={'id'},
+                                   query=None, count=True, get_data=data, remove_extra_fields=False)
+        query.legacy_filters['rbac_ids'] = ['001', '002']
+        query.rbac_negate = True
+
+        assert query.oversized_run() == expected_result
+        execute.assert_called_once()
+
+
+@pytest.mark.parametrize('negate, rbac_ids', [
+    (False, [str(i).zfill(3) for i in range(2, 10)]),
+    (True, ['000', '001']),
+])
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_oversized_run_offset(mock_socket_conn, negate, rbac_ids):
+    """Test utils.WazuhDBQuery.oversized_run keeps every allowed id up to the end of the requested page."""
+    with patch('wazuh.core.utils.WazuhDBBackend.execute',
+               side_effect=[[{'id': i} for i in range(10)], [{'id': 5}, {'id': 6}]]) as execute:
+        query = WazuhDBQueryAgents(offset=3, limit=2, sort=None, search=None, select={'id'},
+                                   query=None, count=True, get_data=True, remove_extra_fields=False)
+        query.legacy_filters['rbac_ids'] = rbac_ids
+        query.rbac_negate = negate
+
+        assert query.oversized_run() == {'items': [{'id': '005'}, {'id': '006'}], 'totalItems': 8}
+
+        _, second_request = execute.call_args_list[1].args
+        # Agent ids are sent to wazuh-db as integers, not as zero-padded strings
+        assert second_request['rbac_id'] == [2, 3, 4, 5, 6]
+        assert second_request['offset'] == 3
+        assert second_request['limit'] == 2
+
+
+@pytest.mark.parametrize('negate, rbac_ids', [
+    (False, ['cd']),
+    (True, ['ab']),
+])
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_oversized_run_groups(mock_socket_conn, negate, rbac_ids):
+    """Test utils.WazuhDBQuery.oversized_run on groups, whose names must not be zero-padded."""
+    with patch('wazuh.core.utils.WazuhDBBackend.execute',
+               side_effect=[[{'name': 'ab', 'count': 1}, {'name': 'cd', 'count': 2}],
+                            [{'name': 'cd', 'count': 2}]]) as execute:
+        query = WazuhDBQueryGroup(count=True, get_data=True)
+        query.legacy_filters['rbac_ids'] = rbac_ids
+        query.rbac_negate = negate
+
+        assert query.oversized_run() == {'items': [{'name': 'cd', 'count': 2}], 'totalItems': 1}
+
+        second_query, second_request = execute.call_args_list[1].args
+        assert 'name IN (:rbac_name)' in second_query
+        assert 'NOT IN' not in second_query
+        assert second_request['rbac_name'] == ['cd']
+
+
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_oversized_run_unsupported(mock_socket_conn):
+    """Test utils.WazuhDBQuery.oversized_run raises 1123 on a query with no RBAC field."""
+    query = WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select={'id'},
+                               query=None, count=True, get_data=True, remove_extra_fields=False)
+    query.oversized_rbac_field = None
+    query.legacy_filters['rbac_ids'] = ['001']
+
+    with pytest.raises(exception.WazuhInternalError, match='.* 1123 .*'):
+        query.oversized_run()
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
@@ -1778,6 +2064,245 @@ def test_filter_array_by_query(q, return_length):
     assert (len(result) == return_length)
 
 
+# Array whose `created` field is a real `datetime`, the shape enrollment tokens' `created`/`expires`
+# reach filter_array_by_query with.
+typed_input_array = [
+    {
+        'id': 'first',
+        'created': datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc)
+    },
+    {
+        'id': 'second',
+        'created': datetime.datetime(2026, 6, 1, tzinfo=datetime.timezone.utc)
+    }]
+
+
+@pytest.mark.parametrize('q, expected_ids', [
+    ('created>2026-03-01', ['second']),
+    ('created<2026-03-01', ['first']),
+    ('created=2026-01-01', ['first']),
+    ('created!=2026-01-01', ['second']),
+    ('created>2026-01-01T00:00:00Z', ['second'])
+])
+def test_filter_array_by_query_typed_fields(q, expected_ids):
+    """Test filtering by query on a field whose value is a real datetime object."""
+    result = utils.filter_array_by_query(q, typed_input_array)
+
+    assert [item['id'] for item in result] == expected_ids
+
+
+@pytest.mark.parametrize('q, expected_ids', [
+    # The shape a response body renders a timestamp in, passed back as-is.
+    ('created=2026-01-01T00:00:00+00:00', ['first']),
+    ('created!=2026-01-01T00:00:00+00:00', ['second']),
+    ('created>2026-01-01T00:00:00+00:00', ['second']),
+    ('created<2026-06-01T00:00:00+00:00', ['first']),
+    ('created=2026-01-01T00:00:00.000000+00:00', ['first']),
+    ('created=2026-01-01 00:00:00+0000', ['first']),
+    # A non-UTC offset is converted to UTC, not relabelled: 2025-12-31T21:00:00-03:00 is midnight UTC.
+    ('created=2025-12-31T21:00:00-03:00', ['first']),
+    ('created>2025-12-31T21:00:00-03:00', ['second']),
+    ('created=2026-01-01T02:00:00+02:00', ['first']),
+    ('created<2026-01-01T02:00:00+02:00', []),
+])
+def test_filter_array_by_query_typed_fields_offset_literal(q, expected_ids):
+    """Test that a date literal with a numeric UTC offset is compared as an aware datetime by every operator."""
+    result = utils.filter_array_by_query(q, typed_input_array)
+
+    assert [item['id'] for item in result] == expected_ids
+
+
+def test_filter_array_by_query_offset_literal_against_string_dates():
+    """Test that offset-bearing literals and stored strings in either form compare as the same instant."""
+    array = [{'id': 'first', 'created': '2026-01-01T00:00:00Z'},
+             {'id': 'second', 'created': '2026-06-01T03:00:00+03:00'}]
+
+    assert [item['id'] for item in utils.filter_array_by_query('created=2026-06-01T00:00:00Z', array)] == ['second']
+    assert [item['id'] for item in utils.filter_array_by_query('created<2026-01-01T01:00:00+01:00', array)] == []
+    assert [item['id'] for item in utils.filter_array_by_query('created>2025-12-31T23:00:00-01:00', array)] == \
+        ['second']
+
+
+# Array whose `revoked` field is a real `bool`, the shape enrollment tokens' `revoked`/`credential`
+# reach filter_array_by_query with. Also carries `created` so a combined date+bool query can be
+# exercised without needing a third fixture.
+bool_typed_input_array = [
+    {
+        'id': 'first',
+        'created': datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc),
+        'revoked': False
+    },
+    {
+        'id': 'second',
+        'created': datetime.datetime(2026, 6, 1, tzinfo=datetime.timezone.utc),
+        'revoked': True
+    }]
+
+
+@pytest.mark.parametrize('q, expected_ids', [
+    ('revoked=true', ['second']),
+    ('revoked=false', ['first']),
+    ('revoked!=true', ['first']),
+    ('revoked=1', ['second']),
+    ('revoked=0', ['first']),
+    ('revoked=true;created>2026-03-01', ['second']),
+    # A date-shaped literal is parsed as a date before the boolean coercion, so it matches
+    # nothing at all -- but it no longer raises.
+    ('revoked=2026-01-01', [])
+])
+def test_filter_array_by_query_typed_fields_bool(q, expected_ids):
+    """Test filtering by query on a field whose value is a real bool object."""
+    result = utils.filter_array_by_query(q, bool_typed_input_array)
+
+    assert [item['id'] for item in result] == expected_ids
+
+
+def test_filter_array_by_query_typed_fields_bool_rejects_unrecognized_literal():
+    """A literal other than true/false/1/0 against a bool field raises WazuhError(1407) instead
+    of silently being read as false (the complement of what was asked)."""
+    with pytest.raises(exception.WazuhError, match='.* 1407 .*'):
+        utils.filter_array_by_query('revoked=maybe', bool_typed_input_array)
+
+
+@pytest.mark.parametrize('q, array, expected_ids', [
+    # A date-shaped literal against a field that is not itself a date falls through to Python's
+    # own cross-type comparison: `!=` is unconditionally True, so every record matches.
+    ('revoked!=2026-01-01', bool_typed_input_array, ['first', 'second']),
+    # Same mismatch, a None field this time (e.g. `description`, nullable per the API schema).
+    ('description!=2026-01-01',
+     [{'id': 'first', 'description': None}, {'id': 'second', 'description': 'x'}],
+     ['first', 'second']),
+])
+def test_filter_array_by_query_date_shaped_literal_ne_mismatched_field(q, array, expected_ids):
+    """`!=` with a date-shaped literal against a non-date field matches every record. A literal
+    whose type the field cannot address is not on its own a malformed query: it only becomes one
+    when no record in the array can evaluate the clause at all."""
+    result = utils.filter_array_by_query(q, array)
+
+    assert [item['id'] for item in result] == expected_ids
+
+
+def test_filter_array_by_query_date_shaped_literal_eq_mismatched_field():
+    """The `=` side of the same mismatch is a silent no-match, as documented in api-reference.md:
+    operator.eq on mismatched types is unconditionally False."""
+    result = utils.filter_array_by_query('revoked=2026-01-01', bool_typed_input_array)
+
+    assert result == []
+
+
+@pytest.mark.parametrize('q, array, expected_ids', [
+    # `~` only cast an int value to str; a bool or datetime value raised TypeError
+    # (`value2 in val` on a non-iterable) instead of matching or not.
+    ('revoked~True', [{'id': 'a', 'revoked': True}, {'id': 'b', 'revoked': False}], ['a']),
+    ('revoked~alse', [{'id': 'a', 'revoked': True}, {'id': 'b', 'revoked': False}], ['b']),
+    ('created~2026-01',
+     [{'id': 'a', 'created': datetime.datetime(2026, 1, 1)},
+      {'id': 'b', 'created': datetime.datetime(2027, 1, 1)}],
+     ['a']),
+])
+def test_filter_array_by_query_contains_non_str(q, array, expected_ids):
+    """Test that `~` renders a bool or datetime value as text before the substring match, the way
+    it already does for an int; a dict or a list keeps its own membership semantics."""
+    result = utils.filter_array_by_query(q, array)
+
+    assert [item['id'] for item in result] == expected_ids
+
+
+# Array whose `created` (datetime) and `uses` (int) fields mirror an enrollment token, to exercise
+# a `q` literal that doesn't match either field's type.
+type_mismatch_input_array = [{
+    'id': 'first',
+    'created': datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc),
+    'uses': 0
+}]
+
+
+@pytest.mark.parametrize('q', ['uses>=1', 'uses<=5', 'uses==0', 'uses<>1'])
+def test_filter_array_by_query_unsupported_operator(q):
+    """The clause regex matches any two operator characters, so `>=`, `<=`, `==` and `<>` parse as
+    an operator `check_clause` has no entry for. That is a malformed query, reported as
+    WazuhError(1407) whatever the collection holds, not a KeyError escaping as a 500."""
+    with pytest.raises(exception.WazuhError, match='.* 1407 .*'):
+        utils.filter_array_by_query(q, [{'id': 'first', 'uses': 0}])
+
+
+@pytest.mark.parametrize('q', [
+    'created>foo',
+    'created>1',
+    'created>2026-13-01',
+    'uses=abc',
+    'uses=2026-01-01',
+])
+def test_filter_array_by_query_type_mismatch(q):
+    """Test that a `q` literal incompatible with the target field's type raises WazuhError(1407)
+    instead of an unhandled TypeError/ValueError."""
+    with pytest.raises(exception.WazuhError, match='.* 1407 .*'):
+        utils.filter_array_by_query(q, type_mismatch_input_array)
+
+
+# One record has a null `description`; the other has a real one. Used to check that a present-but-
+# null field under an ordering operator doesn't poison the whole query -- it should just not match,
+# the same as a record missing the field entirely, instead of raising WazuhError(1407) for every
+# record because ONE of them can't satisfy the comparison.
+null_field_input_array = [
+    {'id': 'null_description', 'description': None},
+    {'id': 'has_description', 'description': 'b'},
+]
+
+
+@pytest.mark.parametrize('q, expected_ids', [
+    ('description>a', ['has_description']),
+    ('description<c', ['has_description']),
+    # `=`/`!=` never raise on None to begin with (operator.eq/ne accept any types), so a null
+    # field already behaved correctly for these -- kept here to pin that it still does.
+    ('description=b', ['has_description']),
+    ('description!=b', ['null_description']),
+])
+def test_filter_array_by_query_null_field_ordering(q, expected_ids):
+    """A null field under `<`/`>` is excluded like a missing field, not a query-wide 400."""
+    result = utils.filter_array_by_query(q, null_field_input_array)
+
+    assert [item['id'] for item in result] == expected_ids
+
+
+def test_filter_array_by_query_nested_falsy_candidate():
+    """A nested field's `False`/`0`/`''` value must still reach check_clause -- only a `None`
+    candidate (the nested field is itself null) should be dropped before comparing."""
+    array = [
+        {'id': 'disabled', 'config': {'enabled': False}},
+        {'id': 'enabled', 'config': {'enabled': True}},
+        {'id': 'null_nested', 'config': {'enabled': None}},
+    ]
+
+    result = utils.filter_array_by_query('config.enabled=false', array)
+
+    assert [item['id'] for item in result] == ['disabled']
+
+
+@pytest.mark.parametrize('array', [
+    # matching candidate first
+    [{'id': 'a', 'x': [{'y': 'abc'}, {'y': 0}]}],
+    # matching candidate last
+    [{'id': 'a', 'x': [{'y': 0}, {'y': 'abc'}]}],
+])
+def test_filter_array_by_query_nested_mixed_type_candidates_matches(array):
+    """A sibling candidate the literal's type cannot address (int vs. a str literal) must not
+    abort a match still reachable through another, differently-typed candidate, regardless of
+    which one is evaluated first."""
+    result = utils.filter_array_by_query('x.y=abc', array)
+
+    assert [item['id'] for item in result] == ['a']
+
+
+def test_filter_array_by_query_nested_mixed_type_candidates_no_match_still_raises():
+    """When every non-null candidate's type mismatches the literal, the clause is still
+    malformed -- WazuhError(1407) is raised rather than silently excluding the record."""
+    array = [{'id': 'a', 'x': [{'y': 0}, {'y': 5}]}]
+
+    with pytest.raises(exception.WazuhError, match='.* 1407 .*'):
+        utils.filter_array_by_query('x.y=abc', array)
+
+
 @pytest.mark.parametrize('select, required_fields, expected_result', [
     (['single_select', 'nested1.nested12.nested121'], {'required'}, {'required': None,
                                                                      'single_select': None,
@@ -1823,6 +2348,57 @@ def test_select_array(select, required_fields, expected_result):
             assert element == expected_result
     except utils.WazuhError as e:
         assert e.code == 1724
+
+
+@pytest.mark.parametrize('select, invalid', [
+    (['tag.x0', 'tag.x1'], 'tag.x0, tag.x1'),
+    (['level', 'tag.x0'], 'tag.x0'),
+    (['bad', 'bad.x0'], 'bad, bad.x0'),
+])
+def test_select_array_rejects_nested_fields_outside_the_allowed_ones(select, invalid):
+    """A nested select field must hang from an allowed field; the error lists only the invalid ones."""
+    array = [{'timestamp': 't', 'level': 'info', 'description': {'x0': 'd'}}]
+
+    with pytest.raises(utils.WazuhError, match=f'.* 1724 .*: {invalid}$'):
+        utils.select_array(array, select=select, allowed_select_fields=['timestamp', 'level', 'description'])
+
+
+def test_select_array_accepts_nested_fields_of_allowed_ones():
+    """A nested field of an allowed field, or one allowed by its full name, is selected."""
+    array = [{'timestamp': 't', 'level': 'info', 'description': {'x0': 'd'}, 'os': {'name': 'n'}}]
+
+    result = utils.select_array(array, select=['description.x0', 'os.name'],
+                                allowed_select_fields=['timestamp', 'description', 'os.name'])
+
+    assert result == [{'description': {'x0': 'd'}, 'os': {'name': 'n'}}]
+
+
+@pytest.mark.parametrize('q, array', [
+    ('name=a,nameGfirewall', [{'name': 'a'}]),
+    ('nameGfirewall', []),
+    ('name>=1', []),
+])
+def test_filter_array_by_query_malformed_clause_is_reported_whatever_the_array_holds(q, array):
+    """The query is parsed before the array is walked: a malformed clause is reported even when the
+    array is empty or every element already matched an earlier OR clause."""
+    with pytest.raises(exception.WazuhError, match='.* 1407 .*'):
+        utils.filter_array_by_query(q, array)
+
+
+def test_filter_array_by_query_parses_each_clause_once():
+    """Each clause is matched once, however many elements the array holds."""
+    real_compile = re.compile
+    compiled = []
+
+    def spying_compile(*args, **kwargs):
+        compiled.append(MagicMock(wraps=real_compile(*args, **kwargs)))
+        return compiled[-1]
+
+    with patch('wazuh.core.utils.re.compile', side_effect=spying_compile):
+        result = utils.filter_array_by_query('name=a;id=1,name=b', [{'name': 'c', 'id': '1'} for _ in range(50)])
+
+    assert result == []
+    assert sum(regex.match.call_count for regex in compiled) == 3
 
 
 def test_to_relative_path():
@@ -1902,30 +2478,19 @@ def test_get_utc_strptime(mock_get_localtime, is_at_utc):
         assert date == datetime.datetime(2026, 1, 28, 6, 30, 15, tzinfo=datetime.timezone.utc)
 
 @pytest.mark.parametrize(
-    'wazuh_localtime, system_localtime',
+    'system_localtime',
     [
-        pytest.param(None, sentinel.system_tz, id='system_fallback'),
-        pytest.param(sentinel.wazuh_tz, sentinel.system_tz, id='wazuh'),
-        pytest.param(None, None, id='utc_fallback'),
+        pytest.param(sentinel.system_tz, id='system'),
+        pytest.param(None, id='utc_fallback'),
     ]
 )
 @patch('wazuh.core.utils.gettz')
-def test_get_localtime(mock_gettz, wazuh_localtime, system_localtime):
-    """Test if the result is the expected timezone."""
+def test_get_localtime(mock_gettz, system_localtime):
+    """Test that the system timezone is returned, or UTC when none is found."""
 
-    mock_gettz.side_effect = [wazuh_localtime, system_localtime]
+    mock_gettz.return_value = system_localtime
 
-    timezone = utils.get_localtime()
+    result = utils.get_localtime()
 
-    calls = [call(WAZUH_LOCALTIME_PATH)]
-
-    if wazuh_localtime is None:
-        calls.append(call())
-
-    mock_gettz.assert_has_calls(calls)
-
-    assert timezone is (
-        wazuh_localtime
-        if wazuh_localtime is not None
-        else system_localtime or timezone.utc
-    )
+    mock_gettz.assert_called_once_with()
+    assert result is (system_localtime if system_localtime is not None else datetime.timezone.utc)

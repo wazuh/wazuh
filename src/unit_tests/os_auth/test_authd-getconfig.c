@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -39,17 +39,21 @@ static void test_authd_read_config_loads_auth_section(void **state) {
     (void) state;
     memset(&config, 0, sizeof(config));
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Reading configuration 'etc/wazuh-manager.conf'");
+    expect_string(__wrap__mdebug2, formatted_msg, "Reading configuration '" WAZUHCONF "'");
     expect_string(__wrap_w_mconf_load, cfgfile, WAZUHCONF);
     will_return(__wrap_w_mconf_load, 0);
     expect_string(__wrap_w_mconf_section, section, "auth");
     will_return(__wrap_w_mconf_section, cJSON_Parse("{\"disabled\":false,\"port\":1516,\"use_password\":true}"));
+    expect_string(__wrap_w_mconf_section, section, "remote");
+    will_return(__wrap_w_mconf_section, cJSON_Parse("{\"legacy\":{\"enabled\":false},\"https\":{\"port\":1517}}"));
     will_return(__wrap_getDefine_Int_default, 1);     // auth.timeout_seconds
     will_return(__wrap_getDefine_Int_default, 0);     // auth.timeout_microseconds
     will_return(__wrap_getDefine_Int_default, 7);     // authd.max_agents
     will_return(__wrap_getDefine_Int_default, 120);   // authd.purge_delay
     will_return(__wrap_getDefine_Int_default, 10);    // authd.wdb_timeout
     will_return(__wrap_getDefine_Int_default, 20000); // wazuh_modules.manager_task_max_pending_deletes
+    will_return(__wrap_getDefine_Int_default, 60);    // remoted.jwt_max_age (the re-enrollment bearer's window, #38993)
+    will_return(__wrap_getDefine_Int_default, 30);    // remoted.jwt_clock_skew
 
     assert_int_equal(authd_read_config(WAZUHCONF), 0);
 
@@ -57,13 +61,16 @@ static void test_authd_read_config_loads_auth_section(void **state) {
     assert_int_equal(config.flags.use_password, 1);
     assert_int_equal(config.flags.disabled, 0);
     assert_int_equal(config.flags.remote_enrollment, 1); // reader default
+    assert_int_equal(config.flags.legacy_enrollment, 0); // unset: follows remote.legacy.enabled
     assert_string_equal(config.ciphers, DEFAULT_CIPHERS);
-    assert_string_equal(config.manager_cert, "etc/certs/remoted.pem");
+    assert_string_equal(config.manager_cert, "/etc/wazuh-manager/certs/remoted.pem");
     assert_int_equal(config.timeout_sec, 1);
     assert_int_equal(config.max_agents, 7);
     assert_int_equal(config.purge_delay, 120);
     assert_int_equal(config.wdb_timeout, 10);
     assert_int_equal(config.max_pending_deletes, 20000);
+    assert_int_equal(config.jwt_max_age, 60);
+    assert_int_equal(config.jwt_clock_skew, 30);
 }
 
 static void test_authd_read_config_fails_when_load_fails(void **state) {

@@ -1,17 +1,19 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015, Wazuh Inc.
- * May 11, 2023.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #ifndef _OSPRIMITIVES_IMPL_MAC_H
 #define _OSPRIMITIVES_IMPL_MAC_H
 
+#include <libproc.h>
 #include "osPrimitivesInterfaceMac.h"
 
 class OsPrimitivesMac : public IOsPrimitivesMac
@@ -30,6 +32,26 @@ class OsPrimitivesMac : public IOsPrimitivesMac
         int sysctlbyname(const char* name, void* oldp, size_t* oldlenp, void* newp, size_t newlen) const
         {
             return ::sysctlbyname(name, oldp, oldlenp, newp, newlen);
+        }
+
+        int proc_listallpids(void* buffer, int buffersize) const
+        {
+            return ::proc_listallpids(buffer, buffersize);
+        }
+
+        kern_return_t host_statistics64(host_t hostPriv, host_flavor_t flavor, host_info64_t hostInfo64Out, mach_msg_type_number_t* hostInfo64OutCnt) const
+        {
+            return ::host_statistics64(hostPriv, flavor, hostInfo64Out, hostInfo64OutCnt);
+        }
+
+        mach_port_t mach_host_self() const
+        {
+            return ::mach_host_self();
+        }
+
+        kern_return_t mach_port_deallocate(ipc_space_t task, mach_port_name_t name) const
+        {
+            return ::mach_port_deallocate(task, name);
         }
 
         CFMutableDictionaryRef IOServiceMatching(const char* name) const

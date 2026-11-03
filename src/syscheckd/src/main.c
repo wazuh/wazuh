@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -284,6 +284,15 @@ int main(int argc, char **argv)
     if (batch.size > 0) {
         mdebug1("Sync sessions bounded to %lld bytes by <agent><batch><size>.", batch.size);
     }
+
+    /* agent.sync_max_blocks_per_cycle is handed down the same way: how many of those
+     * sessions one sync cycle may send before the rest waits for the next cycle. */
+    const int sync_max_blocks = getDefine_Int_default("agent", "sync_max_blocks_per_cycle", 1, 1000, 0);
+    asp_set_max_blocks_per_sync((uint32_t)sync_max_blocks);
+
+    if (sync_max_blocks > 0) {
+        mdebug1("Sync cycles bounded to %d blocks by agent.sync_max_blocks_per_cycle.", sync_max_blocks);
+    }
 #endif
 
     /* Read syscheck config */
@@ -479,12 +488,10 @@ int main(int argc, char **argv)
 
     // Launch Whodata ebpf real-time thread
     if (!syscheck.disabled && syscheck.enable_whodata && syscheck.whodata_provider == EBPF_PROVIDER) {
-#ifdef __linux__
-#ifdef ENABLE_AUDIT
+#if defined(__linux__) && defined(ENABLE_AUDIT)
         check_ebpf_availability();
 #else
         merror(FIM_ERROR_EBPF_NOT_SUPPORTED);
-#endif
 #endif
     }
 
@@ -534,6 +541,11 @@ int main(int argc, char **argv)
         merror(FIM_ERROR_WHODATA_AUDIT_SUPPORT);
 #endif
     }
+#ifdef ENABLE_AUDIT
+    else {
+        audit_remove_plugin_config();
+    }
+#endif
 
     /* Start the daemon */
     start_daemon();

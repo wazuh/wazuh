@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module - Per-endpoint HTTP response metrics
- * Copyright (C) 2015, Wazuh Inc.
- * August 19, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -32,7 +31,10 @@
  * transport's I/O thread BEFORE any route handler runs, so it is counted ONLY by
  * `remoted.server.budget.rejected.total` -- it never reaches these per-endpoint cells. A 503
  * shed by the deferred-work limiter happens inside the endpoint's forward path and therefore
- * counts here (responses.503) AND in `remoted.forwarder.deferred.rejected.total`.
+ * counts here (responses.503) AND in `remoted.forwarder.deferred.rejected.total`. A 429 from the
+ * endpoint rate limiter sits with the second group, not the first: the gate wrapping the route
+ * (endpoints/rateLimitGate.hpp) counts it here AND in `remoted.<endpoint>.rate_limited`, even
+ * though the handler itself never ran.
  */
 
 #include <chrono>
@@ -70,16 +72,22 @@ namespace remoted::metrics
         std::shared_ptr<wazuh::metrics::ICounter> c403;
         std::shared_ptr<wazuh::metrics::ICounter> c409;
         std::shared_ptr<wazuh::metrics::ICounter> c413;
+        std::shared_ptr<wazuh::metrics::ICounter> c429; ///< Rate-limit refusals (the two unauthenticated
+                                                        ///< routes only; structurally zero everywhere
+                                                        ///< else).
         std::shared_ptr<wazuh::metrics::ICounter> c500; ///< Includes "the PostProcessor threw" fallback.
         std::shared_ptr<wazuh::metrics::ICounter> c503; ///< Downstream failures and limiter sheds -- NOT budget sheds.
         std::shared_ptr<wazuh::metrics::ICounter> other;
 
         /// Resolves the family for @p endpoint (e.g. "stateless") on @p manager (creating it on
         /// first call; totals carry over on later calls because getOrCreateCounter dedupes by name).
-        static ResponseCounters make(wazuh::metrics::IManager& manager, const char* endpoint)
+        /// @p method only labels the description ("POST /stateless", "GET /cacerts"); it is not part
+        /// of the metric name, which stays `remoted.http.<endpoint>.responses.<code>`.
+        static ResponseCounters
+        make(wazuh::metrics::IManager& manager, const char* endpoint, const char* method = "POST")
         {
             const std::string prefix = std::string {HTTP_METRIC_PREFIX} + endpoint + ".responses.";
-            const std::string description = std::string {"POST /"} + endpoint + " responses sent with this status";
+            const std::string description = std::string {method} + " /" + endpoint + " responses sent with this status";
             const auto counter = [&](const char* code)
             {
                 return manager.getOrCreateCounter(prefix + code, description, "count");
@@ -89,6 +97,7 @@ namespace remoted::metrics
                                      counter("403"),
                                      counter("409"),
                                      counter("413"),
+                                     counter("429"),
                                      counter("500"),
                                      counter("503"),
                                      counter("other")};
@@ -109,6 +118,7 @@ namespace remoted::metrics
                     case 403: return c403;
                     case 409: return c409;
                     case 413: return c413;
+                    case 429: return c429;
                     case 500: return c500;
                     case 503: return c503;
                     default: return other;
@@ -137,15 +147,18 @@ namespace remoted::metrics
     };
 
     /// Resolves the remoted.http.<endpoint>.* family. @p withLatency additionally resolves the
-    /// latency histogram (see EndpointHttpMetrics).
-    inline EndpointHttpMetrics
-    makeEndpointHttpMetrics(wazuh::metrics::IManager& manager, const char* endpoint, bool withLatency)
+    /// latency histogram (see EndpointHttpMetrics). @p method labels the descriptions only (every
+    /// agent-facing route is a POST except GET /cacerts).
+    inline EndpointHttpMetrics makeEndpointHttpMetrics(wazuh::metrics::IManager& manager,
+                                                       const char* endpoint,
+                                                       bool withLatency,
+                                                       const char* method = "POST")
     {
-        EndpointHttpMetrics m {ResponseCounters::make(manager, endpoint), nullptr};
+        EndpointHttpMetrics m {ResponseCounters::make(manager, endpoint, method), nullptr};
         if (withLatency)
         {
             m.latency = manager.getOrCreateHistogram(std::string {HTTP_METRIC_PREFIX} + endpoint + ".latency",
-                                                     std::string {"POST /"} + endpoint +
+                                                     std::string {method} + " /" + endpoint +
                                                          " end-to-end time, request receipt to response delivery",
                                                      "microseconds");
         }

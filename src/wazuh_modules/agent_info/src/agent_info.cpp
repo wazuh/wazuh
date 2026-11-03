@@ -48,6 +48,11 @@ static std::unique_ptr<AgentInfoImpl> g_agent_info_impl;
 // cleanup itself now runs automatically from within AgentInfoImpl::start()'s own loop,
 // not a separate thread here.
 
+// True once agent_info_ensure_database() has settled g_agent_info_impl (built or reset on
+// failure). The query entry points read it before their null check, so a true value means
+// that check sees the settled pointer, not a startup transient.
+static std::atomic<bool> g_database_init_attempted {false};
+
 // Global callback function pointers
 static report_callback_t g_report_callback = nullptr;
 static log_callback_t g_log_callback = nullptr;
@@ -280,6 +285,8 @@ void agent_info_ensure_database(void)
 
         g_agent_info_impl.reset();
     }
+
+    g_database_init_attempted = true;
 }
 
 void agent_info_start(const struct wm_agent_info_t* agent_info_config)
@@ -376,6 +383,7 @@ void agent_info_stop()
 void agent_info_cleanup()
 {
     g_agent_info_impl.reset();
+    g_database_init_attempted = false;
 }
 
 void agent_info_release_resources()
@@ -425,6 +433,28 @@ void agent_info_task_registry_init(uint32_t max_entries, uint32_t ttl_seconds)
     }
 }
 
+static void agent_info_log_unavailable(const char* caller, bool initAttempted)
+{
+    if (!g_log_callback)
+    {
+        return;
+    }
+
+    std::string msg = caller;
+
+    if (!initAttempted)
+    {
+        msg += " called before agent_info's database is available";
+        g_log_callback(LOG_DEBUG, msg.c_str(), "agent-info");
+        return;
+    }
+
+    // Also dropped when the sync protocol or module loop fails to start; the earlier ERROR names the cause.
+    msg += " rejected: agent_info is not available";
+    const bool shuttingDown = g_is_shutting_down_callback && g_is_shutting_down_callback();
+    g_log_callback(shuttingDown ? LOG_DEBUG : LOG_WARNING, msg.c_str(), "agent-info");
+}
+
 int agent_info_task_check_and_record(const char* task_id)
 {
     if (!task_id || !*task_id)
@@ -432,14 +462,11 @@ int agent_info_task_check_and_record(const char* task_id)
         return -1;
     }
 
+    const bool initAttempted = g_database_init_attempted;
+
     if (!g_agent_info_impl)
     {
-        if (g_log_callback)
-        {
-            g_log_callback(LOG_WARNING,
-                           "task_check_and_record called before agent_info's database is available",
-                           "agent-info");
-        }
+        agent_info_log_unavailable("task_check_and_record", initAttempted);
 
         return -1;
     }
@@ -449,14 +476,11 @@ int agent_info_task_check_and_record(const char* task_id)
 
 int agent_info_vd_offset_observe(uint64_t offset, int* out_changed, int* out_pending, uint64_t* out_pending_offset)
 {
+    const bool initAttempted = g_database_init_attempted;
+
     if (!g_agent_info_impl)
     {
-        if (g_log_callback)
-        {
-            g_log_callback(LOG_WARNING,
-                           "vd_offset_observe called before agent_info's database is available",
-                           "agent-info");
-        }
+        agent_info_log_unavailable("vd_offset_observe", initAttempted);
 
         return -1;
     }
@@ -483,14 +507,11 @@ int agent_info_vd_offset_observe(uint64_t offset, int* out_changed, int* out_pen
 
 int agent_info_vd_offset_clear_pending(uint64_t offset)
 {
+    const bool initAttempted = g_database_init_attempted;
+
     if (!g_agent_info_impl)
     {
-        if (g_log_callback)
-        {
-            g_log_callback(LOG_WARNING,
-                           "vd_offset_clear_pending called before agent_info's database is available",
-                           "agent-info");
-        }
+        agent_info_log_unavailable("vd_offset_clear_pending", initAttempted);
 
         return -1;
     }
@@ -503,14 +524,11 @@ int agent_info_vd_offset_get_state(int* out_has_offset,
                                    int* out_pending,
                                    uint64_t* out_pending_offset)
 {
+    const bool initAttempted = g_database_init_attempted;
+
     if (!g_agent_info_impl)
     {
-        if (g_log_callback)
-        {
-            g_log_callback(LOG_WARNING,
-                           "vd_offset_get_state called before agent_info's database is available",
-                           "agent-info");
-        }
+        agent_info_log_unavailable("vd_offset_get_state", initAttempted);
 
         return -1;
     }

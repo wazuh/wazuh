@@ -1,0 +1,184 @@
+# Login blocking and request rate limits, with env/configurations/ratelimit/manager/config/api/configuration/api.yaml:
+# max_login_attempts 3, block_time 60, max_request_per_minute 5, max_unauthenticated_request_per_minute 5.
+#
+# Every limit counts per client address over a 60-second window, so each test uses the address whose
+# bucket nothing else touches:
+#
+# - Failed logins and failed-auth requests go straight to the master (master_port, the docker gateway
+#   address). The only other traffic from that address is the login conftest.py runs before each
+#   test, which succeeds: it releases its login attempt and is charged to the authenticated bucket.
+#   HAProxy's address cannot be used for these: its own HEALTHCHECK (base/haproxy-lb/Dockerfile)
+#   sends an unauthenticated GET / through it every 5 seconds, which keeps that bucket spent.
+# - Authenticated requests go through HAProxy (balanced_port, TCP mode, so the API sees the HAProxy
+#   container's address), whose authenticated bucket the health check never charges, while
+#   conftest.py's login is charged to the master address.
+#
+# Each test waits for the windows (and the block) to expire before the next one starts, so the next
+# conftest.py login is never refused. The workflow runs this file without reruns: a rerun would start
+# with the limits already spent.
+
+---
+test_name: A client address is blocked after max_login_attempts failed logins
+
+stages:
+  - name: First failed login
+    request: &bad_login
+      verify: False
+      url: "{protocol:s}://{host:s}:{master_port:d}/security/user/authenticate"
+      method: POST
+      auth: ["{user}", "not-the-password"]
+    response: &bad_credentials
+      status_code: 401
+      json:
+        title: Unauthorized
+
+  - name: Second failed login
+    request:
+      <<: *bad_login
+    response:
+      <<: *bad_credentials
+
+  - name: Third failed login, which reaches max_login_attempts
+    request:
+      <<: *bad_login
+    response:
+      <<: *bad_credentials
+
+  - name: Once blocked, even the right credentials are refused
+    request: &good_login
+      verify: False
+      url: "{protocol:s}://{host:s}:{master_port:d}/security/user/authenticate"
+      method: POST
+      auth: ["{user}", "{pass}"]
+    response:
+      status_code: 403
+      json:
+        error: 6000
+    delay_after: 65
+
+  - name: After block_time the address can log in again
+    request:
+      <<: *good_login
+    response:
+      status_code: 200
+
+  - name: A successful login does not count as an attempt
+    request:
+      <<: *good_login
+    response:
+      status_code: 200
+
+  - name: Neither does another one
+    request:
+      <<: *good_login
+    response:
+      status_code: 200
+    delay_after: 65
+
+---
+test_name: max_request_per_minute refuses the authenticated requests over the limit
+
+stages:
+  - name: Request 1
+    request: &authenticated_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response: &ok
+      status_code: 200
+
+  - name: Request 2
+    request:
+      <<: *authenticated_request
+    response:
+      <<: *ok
+
+  - name: Request 3
+    request:
+      <<: *authenticated_request
+    response:
+      <<: *ok
+
+  - name: Request 4
+    request:
+      <<: *authenticated_request
+    response:
+      <<: *ok
+
+  - name: Request 5
+    request:
+      <<: *authenticated_request
+    response:
+      <<: *ok
+
+  - name: Request 6 is over the limit
+    request:
+      <<: *authenticated_request
+    response:
+      status_code: 429
+      json:
+        error: 6001
+    delay_after: 65
+
+  - name: The next window serves the address again
+    request:
+      <<: *authenticated_request
+    response:
+      <<: *ok
+    delay_after: 65
+
+---
+test_name: max_unauthenticated_request_per_minute refuses the failed-auth requests over the limit
+
+stages:
+  - name: Request 1 without a token
+    request: &unauthenticated_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{master_port:d}/"
+      method: GET
+    response: &unauthorized
+      status_code: 401
+
+  - name: Request 2 without a token
+    request:
+      <<: *unauthenticated_request
+    response:
+      <<: *unauthorized
+
+  - name: Request 3 without a token
+    request:
+      <<: *unauthenticated_request
+    response:
+      <<: *unauthorized
+
+  - name: Request 4 without a token
+    request:
+      <<: *unauthenticated_request
+    response:
+      <<: *unauthorized
+
+  - name: Request 5 without a token
+    request:
+      <<: *unauthenticated_request
+    response:
+      <<: *unauthorized
+
+  - name: Request 6 without a token is over the limit
+    request:
+      <<: *unauthenticated_request
+    response:
+      status_code: 429
+      json:
+        error: 6005
+
+  - name: The failed-auth noise does not refuse an authenticated request from the same address
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{master_port:d}/"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200

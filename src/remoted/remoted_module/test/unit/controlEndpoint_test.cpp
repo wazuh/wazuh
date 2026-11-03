@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module - controlEndpoint unit tests
- * Copyright (C) 2015, Wazuh Inc.
- * July 31, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -155,7 +154,7 @@ namespace
                                                         [](const std::string& req) -> std::string
                                                         {
                                                             if (req.find("global select-agent-group") == 0)
-                                                                return "ok {\"group\":\"default\"}";
+                                                                return "ok [{\"group\":\"default\"}]";
                                                             return "ok";
                                                         });
             taskServer = std::make_unique<FakeUdsServer>(

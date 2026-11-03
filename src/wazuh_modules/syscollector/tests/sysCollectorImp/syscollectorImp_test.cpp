@@ -1,13 +1,13 @@
 /*
  * Wazuh SyscollectorImp
- * Copyright (C) 2015, Wazuh Inc.
- * November 9, 2020.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstdio>
@@ -64,7 +64,10 @@ void populateTestDb()
         auto callbackErrorLogWrapper = [](const std::string& /*data*/) {};
         // Ensure DBSync is initialized with our dummy logger
         DBSync::initialize(callbackErrorLogWrapper);
-        DBSync dbSync(HostType::AGENT, DbEngineType::SQLITE3, SYSCOLLECTOR_TEST_DB_PATH, sql, DbManagement::PERSISTENT);
+        // With the upgrade statements, as Syscollector::init() does: the schema above is the
+        // latest one, so the database must be stamped with the latest version too.
+        DBSync dbSync(HostType::AGENT, DbEngineType::SQLITE3, SYSCOLLECTOR_TEST_DB_PATH, sql, DbManagement::PERSISTENT,
+                      UPGRADE_SQL_STATEMENTS);
     }
 
     sqlite3* db = nullptr;
@@ -114,7 +117,7 @@ void populateTestDb()
 
 // Defines to replace inline JSON in EXPECT_CALLs
 #define EXPECT_CALL_HARDWARE_JSON R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "memory_free":1000000,"memory_total":4000000,"memory_used":3000000})"
-#define EXPECT_CALL_OS_JSON R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601","os_type":"windows"})"
+#define EXPECT_CALL_OS_JSON R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_display_version":"sp1","os_full":"Microsoft Windows 7 sp1","os_version":"6.1.7601","os_kernel_release":"6.1.7601","os_type":"windows"})"
 #define EXPECT_CALL_NETWORKS_JSON R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":0,"network_metric":"75","network_netmask":"255.0.0.0","network_type":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":0,"network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":0,"network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})"
 #define EXPECT_CALL_PORTS_JSON R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])"
 #define EXPECT_CALL_PORTS_ALL_JSON R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"udp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"","host_network_egress_queue":0},{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])"
@@ -132,7 +135,7 @@ const auto expected_dbsync_hwinfo
 };
 const auto expected_dbsync_osinfo
 {
-    R"({"collector":"dbsync_osinfo","data":{"event":{"changed_fields":[],"type":"created"},"host":{"architecture":"x86_64","hostname":"UBUNTU","os":{"build":"7601","codename":null,"distribution":{"release":"sp1"},"full":null,"kernel":{"name":null,"release":null,"version":null},"major":"6","minor":"1","name":"Microsoft Windows 7","patch":null,"platform":null,"type":"windows","version":"6.1.7601"}}},"module":"inventory"})"
+    R"({"collector":"dbsync_osinfo","data":{"event":{"changed_fields":[],"type":"created"},"host":{"architecture":"x86_64","hostname":"UBUNTU","os":{"build":"7601","codename":null,"display_version":"sp1","full":"Microsoft Windows 7 sp1","kernel":"6.1.7601","major":"6","minor":"1","name":"Microsoft Windows 7","patch":null,"platform":null,"type":"windows","version":"6.1.7601"}}},"module":"inventory"})"
 };
 const auto expected_dbsync_network_iface
 {
@@ -357,7 +360,7 @@ static const auto expectedPersistHW
 };
 static const auto expectedPersistOS
 {
-    R"({"checksum":{"hash":{"sha1":"5f16f23e53a4549d34861187bf592a76bee51282"}},"host":{"architecture":"x86_64","hostname":"UBUNTU","os":{"build":"7601","codename":null,"distribution":{"release":"sp1"},"full":null,"kernel":{"name":null,"release":null,"version":null},"major":"6","minor":"1","name":"Microsoft Windows 7","patch":null,"platform":null,"type":"windows","version":"6.1.7601"}}})"
+    R"({"checksum":{"hash":{"sha1":"d320a2a019f99d06b7019020bdf710ba4d609088"}},"host":{"architecture":"x86_64","hostname":"UBUNTU","os":{"build":"7601","codename":null,"display_version":"sp1","full":"Microsoft Windows 7 sp1","kernel":"6.1.7601","major":"6","minor":"1","name":"Microsoft Windows 7","patch":null,"platform":null,"type":"windows","version":"6.1.7601"}}})"
 };
 static const auto expectedPersistNetIface
 {
@@ -393,7 +396,7 @@ static const auto expectedPersistProcess
 };
 static const auto expectedPersistPackage
 {
-    R"({"checksum":{"hash":{"sha1":"403cf592e642409153762c635d50c05415f74dc0"}},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":null,"priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}})"
+    R"({"checksum":{"hash":{"sha1":"ca4acded6b5f748d7b812b535877b56fc2f9365e"}},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":null,"priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}})"
 };
 static const auto expectedPersistHotfix
 {
@@ -2594,7 +2597,7 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                       R"({"serial_number":" Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":" Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz ", "memory_free":1000000,"memory_total":4000000,"memory_used":3000000})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                R"({"architecture":" x86_64", "hostname":" UBUNTU ","os_build":"  7601","os_major":"6  ","os_minor":"  1  ","os_name":" Microsoft Windows 7 ","os_distribution_release":"   sp1","os_version":"6.1.7601   ","os_type":" windows "})")));
+                                                                R"({"architecture":" x86_64", "hostname":" UBUNTU ","os_build":"  7601","os_major":"6  ","os_minor":"  1  ","os_name":" Microsoft Windows 7 ","os_display_version":"   sp1","os_full":" Microsoft Windows 7 sp1  ","os_version":"6.1.7601   ","os_kernel_release":"  6.1.7601 ","os_kernel_name":" Windows_NT ","os_kernel_version":" 6.1 ","os_type":" windows "})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                       R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"   ethernet", "interface_state":"up   ", "network_dhcp":0,"interface_mtu":1500,"host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":0,"network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":0,"network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
@@ -2704,6 +2707,66 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
                                           "",
                                           "",
                                           3600, true, true, true, true, true, true, true, true, true, true, true, true, true, true);
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+}
+
+TEST_F(SyscollectorImpTest, sanitizeJsonValuesReplacesInvalidUtf8)
+{
+    // A process can set its name to arbitrary bytes, which then reach the ports inventory.
+    auto ports = nlohmann::json::parse(
+                     R"([{"file_inode":43481,"source_ip":"0.0.0.0","source_port":47748,"process_pid":1234,"network_transport":"udp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"","host_network_egress_queue":0}])");
+    ports[0]["process_name"] = std::string {"evil\xFF"};
+
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(ports));
+
+    CallbackMock wrapper;
+    std::function<void(const std::string&)> callbackData
+    {
+        [&wrapper](const std::string & data)
+        {
+            wrapper.callbackMock(data);
+        }
+    };
+
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
+        {
+            wrapperPersist.callbackMock(id, operation, index, data, version);
+        }
+    };
+
+    const std::string expectedName {R"("name":"evil)" "\xEF\xBF\xBD" R"(")"};
+
+    EXPECT_CALL(wrapper, callbackMock(testing::HasSubstr(expectedName))).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, testing::HasSubstr(expectedName), testing::_)).Times(1);
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackData, &callbackDataPersist]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackData,
+                                          callbackDataPersist,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, true, false, false, false, false, true, true, false, false, false, false, false, false, true);
 
             Syscollector::instance().start();
         }
@@ -4217,6 +4280,81 @@ TEST_F(SyscollectorImpTest, networkCollectorDisabledThreeIndices)
     Syscollector::instance().destroy();
 }
 
+TEST_F(SyscollectorImpTest, invalidUtf8DoesNotAbortScan)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    auto badProcess = R"({"name":"","pid":"1","parent_pid":0,"state":"S"})"_json;
+    badProcess["name"] = std::string{"bad\xff"};
+    const auto goodProcess = R"({"name":"good","pid":"2","parent_pid":0,"state":"S"})"_json;
+
+    auto badPort =
+        R"({"file_inode":1,"source_ip":"127.0.0.1","source_port":631,"process_pid":1,"process_name":"","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0})"_json;
+    badPort["process_name"] = std::string{"bad\xff"};
+    const auto goodPort =
+        R"({"file_inode":2,"source_ip":"127.0.0.1","source_port":632,"process_pid":2,"process_name":"good","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0})"_json;
+
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::array({badPort, goodPort})));
+    EXPECT_CALL(*spInfoWrapper, processes(_))
+    .Times(::testing::AtLeast(1))
+    .WillOnce(::testing::DoAll(::testing::InvokeArgument<0>(badProcess),
+                               ::testing::InvokeArgument<0>(goodProcess)));
+
+    std::mutex insertedMutex;
+    std::vector<std::string> inserted;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&inserted, &insertedMutex](const std::string & data)
+        {
+            const auto delta = nlohmann::json::parse(data);
+            const auto namePointer = nlohmann::json::json_pointer("/data/process/name");
+
+            if (delta.contains("collector") && delta.contains(namePointer))
+            {
+                std::lock_guard<std::mutex> lock(insertedMutex);
+                inserted.push_back(delta.at("collector").get<std::string>() + ":" +
+                                   delta.at(namePointer).get<std::string>());
+            }
+        }
+    };
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          persistFunction,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, true, false, false, false, false, true, false, true, false, false, false, false, false, true);
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds{2});
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    std::sort(inserted.begin(), inserted.end());
+    const std::vector<std::string> expected
+    {
+        "dbsync_ports:bad\xEF\xBF\xBD",
+        "dbsync_ports:good",
+        "dbsync_processes:bad\xEF\xBF\xBD",
+        "dbsync_processes:good",
+    };
+    EXPECT_EQ(inserted, expected);
+}
+
 TEST_F(SyscollectorImpTest, destroyWaitsForSyncLoopCompletion)
 {
     auto spInfoWrapper
@@ -4618,6 +4756,426 @@ TEST_F(SyscollectorImpTest, schemaValidationWithCorrectedDataTypes)
     {
         t.join();
     }
+
+    // Reset factory after test
+    SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+}
+
+TEST_F(SyscollectorImpTest, packageWithoutSizeKeepsTheStoredSizeInThePersistedDocument)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    // First scan measures the package. Later scans fail to measure it and, in the same scan, the
+    // vendor changes. The row is therefore modified, and the document sent to the inventory is
+    // built only from what that scan carried. Without the stored size being put back, the document
+    // would report no size while the database still holds 4558446240, and no later scan would
+    // correct it because the measurement then matches what is stored.
+    const std::string measured =
+        R"({"architecture":"amd64","category":"x11","name":"xserver-xorg","priority":"optional","size":4558446240,"source":"xorg","vendor":"before","version_":"1:7.7+19ubuntu14","type":"deb","path":" "})";
+    const std::string unmeasuredAndChanged =
+        R"({"architecture":"amd64","category":"x11","name":"xserver-xorg","priority":"optional","source":"xorg","vendor":"after","version_":"1:7.7+19ubuntu14","type":"deb","path":" "})";
+
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, ports()).Times(0);
+    std::atomic<int> scanCount{0};
+    EXPECT_CALL(*spInfoWrapper, packages(_))
+    .WillOnce(testing::Invoke([&measured, &scanCount](std::function<void(nlohmann::json&)> callback)
+    {
+        ++scanCount;
+        auto item = nlohmann::json::parse(measured);
+        callback(item);
+    }))
+    .WillRepeatedly(testing::Invoke([&unmeasuredAndChanged, &scanCount](std::function<void(nlohmann::json&)> callback)
+    {
+        ++scanCount;
+        auto item = nlohmann::json::parse(unmeasuredAndChanged);
+        callback(item);
+    }));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json{}));
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string & data)
+        {
+            wrapperDelta.callbackMock(data);
+        }
+    };
+
+    CallbackMockPersist wrapperPersist;
+    std::mutex sizesMutex;
+    std::vector<nlohmann::json> reportedSizes;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist, &sizesMutex, &reportedSizes](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
+        {
+            if (index == "wazuh-states-inventory-packages")
+            {
+                auto jsonData = nlohmann::json::parse(data);
+                std::lock_guard<std::mutex> lock{sizesMutex};
+                reportedSizes.push_back(jsonData["package"]["size"]);
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, data, version);
+        }
+    };
+
+    EXPECT_CALL(wrapperDelta, callbackMock(testing::_)).Times(testing::AnyNumber());
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, testing::_, testing::_)).Times(testing::AnyNumber());
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          1, true, false, false, false, true, false, false, false, false, false, false, false, false, false);
+
+            Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400);
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    {
+        std::lock_guard<std::mutex> lock{sizesMutex};
+        // Without a second report the check would pass by never having exercised the case.
+        ASSERT_GE(scanCount.load(), 2) << "only " << scanCount.load() << " scan(s) ran";
+        ASSERT_GE(reportedSizes.size(), 2u)
+                << "the package was reported " << reportedSizes.size()
+                << " time(s); the scan that omits the size must still report the modified row";
+
+        for (size_t i = 0; i < reportedSizes.size(); ++i)
+        {
+            EXPECT_FALSE(reportedSizes[i].is_null())
+                    << "report " << i << " carries no size, although the stored one was 4558446240";
+            EXPECT_EQ(reportedSizes[i], 4558446240)
+                    << "report " << i << " carries " << reportedSizes[i].dump()
+                    << " instead of the stored size";
+        }
+    }
+
+    SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+}
+
+TEST_F(SyscollectorImpTest, packageWithoutSizeRaisesNoChangeEvent)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    // First scan measures the package. Every later scan fails to measure it and leaves the key
+    // out, which is what a collector does when the walk cannot establish a size. Nothing about
+    // the package changed, so no change event may be raised: the size takes no part in the
+    // checksum, and an absent column is not compared.
+    const std::string withSize =
+        R"({"architecture":"amd64","category":"x11","name":"xserver-xorg","priority":"optional","size":4558446240,"source":"xorg","version_":"1:7.7+19ubuntu14","type":"deb","path":" "})";
+    const std::string withoutSize =
+        R"({"architecture":"amd64","category":"x11","name":"xserver-xorg","priority":"optional","source":"xorg","version_":"1:7.7+19ubuntu14","type":"deb","path":" "})";
+
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, ports()).Times(0);
+    std::atomic<int> scanCount{0};
+    EXPECT_CALL(*spInfoWrapper, packages(_))
+    .WillOnce(testing::Invoke([&withSize, &scanCount](std::function<void(nlohmann::json&)> callback)
+    {
+        ++scanCount;
+        auto item = nlohmann::json::parse(withSize);
+        callback(item);
+    }))
+    .WillRepeatedly(testing::Invoke([&withoutSize, &scanCount](std::function<void(nlohmann::json&)> callback)
+    {
+        ++scanCount;
+        auto item = nlohmann::json::parse(withoutSize);
+        callback(item);
+    }));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json{}));
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string & data)
+        {
+            wrapperDelta.callbackMock(data);
+        }
+    };
+
+    CallbackMockPersist wrapperPersist;
+    std::mutex versionsMutex;
+    std::vector<uint64_t> packageVersions;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist, &versionsMutex, &packageVersions](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
+        {
+            if (index == "wazuh-states-inventory-packages")
+            {
+                std::lock_guard<std::mutex> lock{versionsMutex};
+                packageVersions.push_back(version);
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, data, version);
+        }
+    };
+
+    EXPECT_CALL(wrapperDelta, callbackMock(testing::_)).Times(testing::AnyNumber());
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, testing::_, testing::_)).Times(testing::AnyNumber());
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          1, true, false, false, false, true, false, false, false, false, false, false, false, false, false);
+
+            Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400);
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    {
+        std::lock_guard<std::mutex> lock{versionsMutex};
+        // Without several scans the check would pass by never having exercised the omission.
+        ASSERT_GE(scanCount.load(), 2) << "only " << scanCount.load() << " scan(s) ran";
+        // The package is reported once, when it is inserted. Every later scan omits the size and
+        // changes nothing else, so it must not be reported again.
+        EXPECT_EQ(packageVersions.size(), 1u)
+                << "the package was reported " << packageVersions.size()
+                << " times across " << scanCount.load() << " scans: omitting the size modified it";
+    }
+
+    SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+}
+
+TEST_F(SyscollectorImpTest, packageSizeZeroIsReportedAsNull)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    // A package never occupies 0 bytes: collectors store 0 when the size is unknown, and it
+    // has to reach the document as null rather than as a misleading 0.
+    const std::string packagesJson =
+        R"([{"architecture":"amd64","category":"x11","name":"xserver-xorg","priority":"optional","size":0,"source":"xorg","version_":"1:7.7+19ubuntu14","type":"deb","path":" "}])";
+
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, ports()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, packages(_)).WillRepeatedly(testing::Invoke(
+                                                                [&packagesJson](std::function<void(nlohmann::json&)> callback)
+    {
+        for (auto& item : nlohmann::json::parse(packagesJson))
+        {
+            callback(item);
+        }
+    }));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json{}));
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string & data)
+        {
+            wrapperDelta.callbackMock(data);
+        }
+    };
+
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
+        {
+            if (index == "wazuh-states-inventory-packages")
+            {
+                auto jsonData = nlohmann::json::parse(data);
+
+                // A stored 0 must reach the document as null, not as a literal 0
+                EXPECT_TRUE(jsonData["package"]["size"].is_null());
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, data, version);
+        }
+    };
+
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-packages"), testing::_, testing::_)).Times(1);
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, true, false, false, false, true, false, false, false, false, false, false, false, false, false);
+
+            // Initialize sync protocol to enable schema validation
+            Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                     );
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    // Reset factory after test
+    SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+}
+
+TEST_F(SyscollectorImpTest, serviceArrayFieldsDecodeJsonArrayStrings)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    // launchd stores plist arrays as JSON array strings. Elements may contain spaces, commas and
+    // quotes, and each one must reach the document as its own array entry. A value that is not a
+    // JSON string array, such as one stored by an older agent, is kept as a single entry.
+    const std::string servicesJson = R"([
+        {"service_id":"com.example.encoded","service_name":"encoded","process_executable":"/Applications/My App.app/Contents/MacOS/My App",
+         "process_args":"[\"/Applications/My App.app/Contents/MacOS/My App\",\"--x=a,b\",\"say \\\"hi\\\"\",\"\"]",
+         "service_starts_on_path_modified":"[\"/Applications/\",\"/Applications/Utilities/\"]",
+         "service_starts_on_not_empty_directory":"[\"/var/spool/my queue\"]","file_path":"/Library/LaunchDaemons/com.example.encoded.plist"},
+        {"service_id":"com.example.legacy","service_name":"legacy","process_executable":"/usr/bin/tool",
+         "process_args":"/usr/bin/tool --flag","service_starts_on_path_modified":"[1,2]",
+         "service_starts_on_not_empty_directory":" ","file_path":"/Library/LaunchDaemons/com.example.legacy.plist"}
+    ])";
+
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, ports()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, packages(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(servicesJson)));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json{}));
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string & data)
+        {
+            wrapperDelta.callbackMock(data);
+        }
+    };
+
+    std::map<std::string, nlohmann::json> documents;
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist, &documents](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
+        {
+            if (index == "wazuh-states-inventory-services")
+            {
+                auto jsonData = nlohmann::json::parse(data);
+                documents[jsonData["service"]["id"].get<std::string>()] = jsonData;
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, data, version);
+        }
+    };
+
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-services"), testing::_, testing::_)).Times(2);
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, true, false, false, false, false, false, false, false, false, false, false, true, false, false);
+
+            // Initialize sync protocol to enable schema validation
+            Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                     );
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    ASSERT_EQ(documents.count("com.example.encoded"), 1u);
+    const auto& encoded = documents["com.example.encoded"];
+    EXPECT_EQ(encoded["process"]["args"],
+              nlohmann::json::parse(R"(["/Applications/My App.app/Contents/MacOS/My App","--x=a,b","say \"hi\"",""])"));
+    EXPECT_EQ(encoded["service"]["starts"]["on_path_modified"], nlohmann::json::parse(R"(["/Applications/","/Applications/Utilities/"])"));
+    EXPECT_EQ(encoded["service"]["starts"]["on_not_empty_directory"], nlohmann::json::parse(R"(["/var/spool/my queue"])"));
+
+    ASSERT_EQ(documents.count("com.example.legacy"), 1u);
+    const auto& legacy = documents["com.example.legacy"];
+    EXPECT_EQ(legacy["process"]["args"], nlohmann::json::parse(R"(["/usr/bin/tool --flag"])"));
+    EXPECT_EQ(legacy["service"]["starts"]["on_path_modified"], nlohmann::json::parse(R"(["[1,2]"])"));
+    EXPECT_TRUE(legacy["service"]["starts"]["on_not_empty_directory"].is_null());
 
     // Reset factory after test
     SchemaValidator::SchemaValidatorFactory::getInstance().reset();
@@ -6298,6 +6856,136 @@ TEST_F(SyscollectorImpTest, SyncModule_LocalTransportUnavailablePastToleranceLog
     EXPECT_TRUE(logCapture->contains(LOG_WARNING,
                                      "Syscollector synchronization failed " + std::to_string(streak) +
                                      " times in a row: Local sync intake is unreachable."));
+
+    Syscollector::instance().destroy();
+}
+
+// --- Generic-failure (e.g. 409 checksum/version mismatch) log-level decision (issue #39543) ----
+// A session rejection that isn't stopped/awaitingPrerequisite/managerNotReady/
+// localTransportUnavailable -- most commonly a 409 on synchronizeModule() (CHECKSUM_ERROR,
+// see determineSyncFailureReasonBasedOnSyncResult()) -- used to always log at WARNING, even on
+// the very first occurrence. A fresh agent's first VD sync racing the manager's already-loaded
+// feed hits exactly this path every time, which made a self-healing, one-cycle condition look
+// like a persistent failure. Same grace as the managerNotReady/localTransportUnavailable tests
+// above: INFO while within SYNC_MANAGER_NOT_READY_TOLERANCE, WARNING only once it persists.
+
+namespace
+{
+    // Regular sync isn't the subject of the VD-focused tests below; make it succeed trivially,
+    // mirroring expectVDSyncSucceeds() above.
+    void expectRegularSyncSucceeds(MockAgentSyncProtocol& mockSyncProtocol)
+    {
+        EXPECT_CALL(mockSyncProtocol, synchronizeModule(testing::_, testing::_))
+        .WillOnce(testing::Return(SyncModuleResult{true}));
+    }
+}
+
+/// Same shape as INIT_SYSCOLLECTOR_WITH_MOCKED_SYNC, but wires the VD protocol to `result` and
+/// lets the regular one succeed trivially -- for exercising the VD-sync branch of syncModule().
+#define INIT_SYSCOLLECTOR_WITH_MOCKED_VD_SYNC(spInfoWrapper, ...)                                                    \
+    auto logCapture = std::make_unique<LogCapture>();                                                               \
+    auto captureLogFunction = [logCapturePtr = logCapture.get()](modules_log_level_t level, const std::string & log) \
+    {                                                                                                                 \
+        logCapturePtr->capture(level, log);                                                                          \
+    };                                                                                                                \
+    Syscollector::instance().init(spInfoWrapper,                                                                     \
+                                  reportFunction,                                                                     \
+                                  persistFunction,                                                                    \
+                                  captureLogFunction,                                                                 \
+                                  SYSCOLLECTOR_DB_PATH,                                                               \
+                                  "",                                                                                 \
+                                  "",                                                                                 \
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false); \
+    Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400);                        \
+    auto mockSyncProtocol = std::make_unique<MockAgentSyncProtocol>();                                               \
+    expectRegularSyncSucceeds(*mockSyncProtocol);                                                                     \
+    Syscollector::instance().m_spSyncProtocol = std::move(mockSyncProtocol);                                         \
+    auto mockSyncProtocolVD = std::make_unique<MockAgentSyncProtocol>();                                             \
+    EXPECT_CALL(*mockSyncProtocolVD, synchronizeModule(testing::_, testing::_))                                      \
+    .WillOnce(testing::Return(__VA_ARGS__));                                                                         \
+    Syscollector::instance().m_spSyncProtocolVD = std::move(mockSyncProtocolVD)
+
+TEST_F(SyscollectorImpTest, SyncModule_GenericFailureWithinToleranceLogsDeferred)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    INIT_SYSCOLLECTOR_WITH_MOCKED_SYNC(
+        spInfoWrapper,
+        SyncModuleResult{.failureReason = "Manager reported a checksum/version mismatch (409).",
+                         .consecutiveFailures = 1u});
+
+    Syscollector::instance().syncModule(Mode::DELTA);
+
+    EXPECT_TRUE(logCapture->contains(LOG_INFO,
+                                     "Syscollector synchronization deferred: Manager reported a checksum/version "
+                                     "mismatch (409). Will retry next cycle."));
+    EXPECT_FALSE(logCapture->contains(LOG_WARNING, "Syscollector synchronization failed"));
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, SyncModule_GenericFailurePastToleranceLogsWarning)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
+    INIT_SYSCOLLECTOR_WITH_MOCKED_SYNC(
+        spInfoWrapper,
+        SyncModuleResult{.failureReason = "Manager reported a checksum/version mismatch (409).",
+                         .consecutiveFailures = streak});
+
+    Syscollector::instance().syncModule(Mode::DELTA);
+
+    EXPECT_TRUE(logCapture->contains(LOG_WARNING,
+                                     "Syscollector synchronization failed " + std::to_string(streak) +
+                                     " times in a row: Manager reported a checksum/version mismatch (409)."));
+
+    Syscollector::instance().destroy();
+}
+
+// The exact #39543 shape: a fresh agent's first VD sync, offset 0 racing the manager's
+// already-loaded feed -- one 409, consecutiveFailures == 1, logged at INFO, not WARNING.
+TEST_F(SyscollectorImpTest, SyncModule_VDGenericFailureWithinToleranceLogsDeferred)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    INIT_SYSCOLLECTOR_WITH_MOCKED_VD_SYNC(
+        spInfoWrapper,
+        SyncModuleResult{.failureReason =
+                             "Manager reported a feed version mismatch (409) for this session; it will be "
+                             "retried on the next sync cycle.",
+                         .consecutiveFailures = 1u});
+
+    Syscollector::instance().syncModule(Mode::DELTA);
+
+    EXPECT_TRUE(logCapture->contains(
+                    LOG_INFO,
+                    "Syscollector VD synchronization deferred: Manager reported a feed version mismatch (409) for "
+                    "this session; it will be retried on the next sync cycle. Will retry next cycle."));
+    EXPECT_FALSE(logCapture->contains(LOG_WARNING, "Syscollector VD synchronization failed"));
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, SyncModule_VDGenericFailurePastToleranceLogsWarning)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
+    INIT_SYSCOLLECTOR_WITH_MOCKED_VD_SYNC(
+        spInfoWrapper,
+        SyncModuleResult{.failureReason = "Manager reported a feed version mismatch (409) for this session.",
+                         .consecutiveFailures = streak});
+
+    Syscollector::instance().syncModule(Mode::DELTA);
+
+    EXPECT_TRUE(logCapture->contains(LOG_WARNING,
+                                     "Syscollector VD synchronization failed " + std::to_string(streak) +
+                                     " times in a row: Manager reported a feed version mismatch (409) for this session."));
 
     Syscollector::instance().destroy();
 }

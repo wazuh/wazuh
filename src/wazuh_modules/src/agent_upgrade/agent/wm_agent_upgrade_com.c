@@ -1,7 +1,6 @@
 /*
  * Wazuh Module for Agent Upgrading
- * Copyright (C) 2015, Wazuh Inc.
- * July 30, 2020.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -37,7 +36,8 @@ typedef enum _command_error_codes {
     ERROR_CLEAN_DIRECTORY,
     ERROR_UNMERGE,
     ERROR_CHMOD,
-    ERROR_EXEC
+    ERROR_EXEC,
+    ERROR_EXEC_TIMEOUT
 } command_error_codes;
 
 STATIC const char * error_messages[] = {
@@ -51,7 +51,8 @@ STATIC const char * error_messages[] = {
     [ERROR_CLEAN_DIRECTORY] = "Could not clean up upgrade directory",
     [ERROR_UNMERGE] = "Error unmerging file",
     [ERROR_CHMOD] = "Could not chmod",
-    [ERROR_EXEC] = "Error executing command"
+    [ERROR_EXEC] = "Error executing command",
+    [ERROR_EXEC_TIMEOUT] = "Timeout executing command"
 };
 
 // Variable used to allow new upgrades after confirming the result of the previous upgrade
@@ -135,7 +136,10 @@ STATIC char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) {
     const cJSON *package_obj = cJSON_GetObjectItem(json_object, "file");
     const cJSON *installer_obj = cJSON_GetObjectItem(json_object, "installer");
     int status = 0;
-    char *out;
+    // wm_exec() only sets the output on a non-negative return, so it must start as NULL
+    // for the os_free() below to be a no-op on the failure paths.
+    char *out = NULL;
+    int exec_result;
 
     int req_timeout = getDefine_Int("execd", "request_timeout", 1, 3600);
 
@@ -158,8 +162,8 @@ STATIC char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) {
         return wm_agent_upgrade_command_ack(ERROR_CLEAN_DIRECTORY, error_messages[ERROR_CLEAN_DIRECTORY]);
     }
 
-    //Unmerge
-    if (UnmergeFiles(merged, UPGRADE_DIR, OS_BINARY, NULL) == 0) {
+    // Unmerge, requiring every file of the package
+    if (UnmergeFiles(merged, UPGRADE_DIR, OS_BINARY, NULL) != UNMERGE_COMPLETE) {
         unlink(merged);
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNMERGING_FILE_ERROR, "upgrade", merged);
         return wm_agent_upgrade_command_ack(ERROR_UNMERGE, error_messages[ERROR_UNMERGE]);
@@ -181,21 +185,30 @@ STATIC char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) {
     }
 #endif
 
-    if (wm_exec(installer_j, &out, &status, req_timeout, NULL) < 0) {
+    exec_result = wm_exec(installer_j, &out, &status, req_timeout, NULL);
+    os_free(out);
+
+    if (exec_result < 0) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMMAND_ERROR, "upgrade", installer_j);
-        os_free(out);
         return wm_agent_upgrade_command_ack(ERROR_EXEC, error_messages[ERROR_EXEC]);
+    } else if (exec_result == WM_ERROR_TIMEOUT) {
+        // The installer only stages the upgrade in the background and returns at once, so not
+        // returning within the request timeout means it did not run as expected.
+        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMMAND_TIMEOUT, "upgrade", installer_j, req_timeout);
+        return wm_agent_upgrade_command_ack(ERROR_EXEC_TIMEOUT, error_messages[ERROR_EXEC_TIMEOUT]);
     } else {
         char status_str[5];
         sprintf(status_str, "%d", status);
-        os_free(out);
         return wm_agent_upgrade_command_ack(ERROR_OK, status_str);
     }
 }
 
 STATIC int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename) {
 
-    if (w_ref_parent_folder(filename)) {
+    // A bare file name is all that is ever legitimate here. Rejecting separators also keeps the
+    // directory-relative open in w_fopen_nofollow() confined to basedir, since a separator-containing
+    // or absolute name would otherwise be resolved ignoring the directory descriptor.
+    if (!w_is_bare_filename(filename)) {
         return -1;
     }
 
@@ -235,6 +248,9 @@ STATIC int _unsign(const char * source, char dest[PATH_MAX + 1]) {
 #ifndef WIN32
     int fd;
 
+    // mkstemp() creates the file 0600 and fchmod(fd) below sets its final mode, so no umask() is
+    // needed -- and umask() is process-wide, which would race every other thread creating files.
+    // coverity[secure_temp]
     if (fd = mkstemp(dest), fd >= 0) {
         // Not chmod(dest, ...): between mkstemp() creating dest and a name-based chmod() looking
         // it up again, dest could be unlinked and replaced with a symlink, making chmod() follow
@@ -261,7 +277,7 @@ STATIC int _unsign(const char * source, char dest[PATH_MAX + 1]) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNSIGN_FILE_ERROR, "unsign()", source_j);
         output = -1;
     }
-    unlink(source);
+    unlink(source_j);
     return output;
 }
 
@@ -320,6 +336,8 @@ STATIC int _uncompress(const char * source, const char *package, char dest[PATH_
     // name-based open that would reintroduce the same race.
 #ifndef WIN32
     {
+        // Same as in _unsign(): created 0600, final mode set through fd, no process-wide umask().
+        // coverity[secure_temp]
         int fd = mkstemp(dest);
 
         if (fd < 0) {

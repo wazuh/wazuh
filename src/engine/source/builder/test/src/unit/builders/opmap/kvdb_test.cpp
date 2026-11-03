@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include "builders/baseBuilders_test.hpp"
 
 #include "builders/opmap/kvdb.hpp"
@@ -518,7 +519,7 @@ auto kvdbNotDeclared(const std::string& dbName)
         static Context ctx;
         ctx.assetName = "test/asset";
         ctx.policyName = "test/policy";
-        ctx.integration.availableKvdbs= std::unordered_map<std::string, bool> {};
+        ctx.integration.availableKvdbs = std::unordered_map<std::string, bool> {};
 
         ON_CALL(*mocks.ctx, context()).WillByDefault(testing::ReturnRef(ctx));
         ON_CALL(*mocks.ctx, isKvdbAvailable(testing::_)).WillByDefault(testing::Return(std::make_pair(false, false)));

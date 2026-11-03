@@ -1,0 +1,8 @@
+{
+  "name": "wazuh-docs-tools",
+  "private": true,
+  "description": "Dependencies of docs/tools/check-mermaid.js",
+  "dependencies": {
+    "jsdom": "24.1.3"
+  }
+}

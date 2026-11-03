@@ -1,12 +1,13 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015, Wazuh Inc.
- * October 14, 2020.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #ifdef WIN32
@@ -81,12 +82,25 @@ namespace Utils
 
             bool dword(const std::string& valueName, DWORD& value) const
             {
+                // The type has to be requested and checked: without it a REG_SZ short enough to
+                // fit the buffer is read as raw bytes and returned as a plausible number, so
+                // "123" comes back as 3355185. The read lands in a local so a rejected value
+                // never reaches the caller's variable, and the payload has to be a whole DWORD.
+                DWORD type{};
+                DWORD data{};
                 DWORD size{sizeof(DWORD)};
                 const auto result
                 {
-                    RegQueryValueEx(m_registryKey, valueName.c_str(), nullptr, nullptr, reinterpret_cast<LPBYTE>(&value), &size)
+                    RegQueryValueEx(m_registryKey, valueName.c_str(), nullptr, &type, reinterpret_cast<LPBYTE>(&data), &size)
                 };
-                return result == ERROR_SUCCESS;
+
+                if (ERROR_SUCCESS != result || REG_DWORD != type || sizeof(DWORD) != size)
+                {
+                    return false;
+                }
+
+                value = data;
+                return true;
             }
 
             std::vector<std::string> enumerate() const
@@ -535,7 +549,7 @@ namespace Utils
                     const auto entryName {baseDir.empty() ? entry : R"(\)" + entry};
 
                     // If the entry name matches the pattern, then expand the path.
-                    if (Utils::patternMatch(entryName, pattern))
+                    if (std::string::npos == entry.find_first_of("*?") && Utils::patternMatch(entryName, pattern))
                     {
                         // If the next directory position is npos, then there is no next directory.
                         // Otherwise, the next directory is the part of the path after the next '\'.

@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module (C++ worker bridge)
- * Copyright (C) 2015, Wazuh Inc.
- * July 26, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -11,10 +10,8 @@
 
 #include "statelessEndpoint.hpp"
 
-#include <rapidjson/document.h>
-#include <rapidjson/pointer.h>
+#include "httpsHeaderLine.hpp"
 
-#include <charconv>
 #include <optional>
 #include <string_view>
 #include <utility>
@@ -22,10 +19,13 @@
 namespace remoted::endpoints::stateless
 {
 
-    remoted::downstream::DownstreamTarget target(const std::string& socketPath)
+    remoted::downstream::DownstreamTarget target(const std::string& socketPath, const std::string& agentId)
     {
         remoted::downstream::DownstreamTarget result {
             socketPath, remoted::http::Method::Post, "/events/enriched", "application/x-ndjson"};
+        // Written by us, never by the agent: the value comes from the Authorization header the
+        // gateway already authenticated, so it cannot be used to inject headers downstream.
+        result.headers.emplace_back("X-Wazuh-Agent-Id", agentId);
         result.serviceName = "engine event ingress";
         return result;
     }
@@ -62,11 +62,10 @@ namespace remoted::endpoints::stateless
 
     namespace
     {
-        // H-line is metadata (agent id, name, cluster labels, ...), never bulk event data -- a real
-        // one is realistically a few hundred bytes. Capped well before parsing so a pathologically
-        // large/nested JSON blob (still comfortably inside the 10 MiB body cap) is rejected outright
-        // instead of costing CPU/heap proportional to its size.
-        constexpr std::size_t kMaxHeaderLineJsonSize = 8U * 1024U;
+        // Bound the H-line metadata on the HTTPS path without parsing JSON. The engine validates
+        // its contents and identity before enqueueing any events. The agent trims its H line to the
+        // same shared limit, so the two cannot drift apart.
+        constexpr std::size_t kMaxHeaderLineJsonSize = HTTPS_HEADER_LINE_JSON_MAX_BYTES;
 
         // Slices the H-line's JSON substring out of the whole H/E body. Per the event-protocol's own
         // parsing rule ("split by \n, check first char, extract payload after space (index 2)"): the
@@ -89,69 +88,13 @@ namespace remoted::endpoints::stateless
             return result;
         }
 
-        // Non-negative integer, fully consuming the string. from_chars<AgentId> (unsigned) already
-        // rejects a leading '-'; checking ptr against the end also rejects a partial match (e.g. "12x").
-        std::optional<remoted::auth::AgentId> parseAgentId(std::string_view s)
-        {
-            remoted::auth::AgentId value = 0;
-            const auto [ptr, ec] = std::from_chars(s.data(), s.data() + s.size(), value);
-            if (s.empty() || ec != std::errc {} || ptr != s.data() + s.size())
-            {
-                return std::nullopt;
-            }
-            return value;
-        }
-
-        std::optional<std::string_view> getString(const rapidjson::Document& doc, const rapidjson::Pointer& pointer)
-        {
-            const auto* value = pointer.Get(doc);
-            if (!value || !value->IsString())
-            {
-                return std::nullopt;
-            }
-            return std::string_view {value->GetString(), value->GetStringLength()};
-        }
     } // namespace
 
     remoted::auth::AuthError validatePayloadIdentity(const remoted::auth::AuthenticatedRequest& req)
     {
         using remoted::auth::AuthError;
-        static const rapidjson::Pointer kAgentIdPointer("/wazuh/agent/id");
 
-        const auto headerJson = headerLineJson(req.payload.bytes());
-        if (!headerJson)
-        {
-            return AuthError::PayloadAgentMismatch;
-        }
-
-        rapidjson::Document doc;
-        // Length-based, non-in-situ parse: the payload is a string_view into a shared buffer that is
-        // neither mutable nor NUL-terminated, so it cannot be parsed in place or as a C-string.
-        // kParseIterativeFlag: bounds the parser's C-stack usage to a constant regardless of input
-        // nesting depth (it uses an explicit heap stack instead of recursive descent) -- without it,
-        // a deeply-nested H-line (still well inside kMaxHeaderLineJsonSize) could overflow this
-        // worker thread's stack. Only changes how the DOM is built, not its shape: Pointer::Get()
-        // below is unaffected.
-        doc.Parse<rapidjson::kParseIterativeFlag>(headerJson->data(), headerJson->size());
-        if (doc.HasParseError())
-        {
-            return AuthError::PayloadAgentMismatch;
-        }
-
-        const auto payloadAgentIdStr = getString(doc, kAgentIdPointer);
-        if (!payloadAgentIdStr)
-        {
-            return AuthError::PayloadAgentMismatch;
-        }
-
-        const auto payloadAgentId = parseAgentId(*payloadAgentIdStr);
-        const auto authenticatedAgentId = parseAgentId(req.agentId);
-        if (!payloadAgentId || !authenticatedAgentId || *payloadAgentId != *authenticatedAgentId)
-        {
-            return AuthError::PayloadAgentMismatch;
-        }
-
-        return AuthError::None;
+        return headerLineJson(req.payload.bytes()) ? AuthError::None : AuthError::PayloadAgentMismatch;
     }
 
     remoted::endpoints::AuthenticatedHandler makeHandler(remoted::downstream::DeferredForwarder& forwarder,
@@ -178,7 +121,7 @@ namespace remoted::endpoints::stateless
                 responder->send(std::move(rejection));
                 return;
             }
-            auto downstreamTarget = target(socketPath);
+            auto downstreamTarget = target(socketPath, authReq->agentId);
             downstreamTarget.httpMetrics = metrics;
             forwarder.forward(std::move(authReq), std::move(responder), std::move(downstreamTarget), postProcess);
         };

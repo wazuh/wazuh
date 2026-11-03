@@ -8,8 +8,7 @@ Homepage: http://www.wazuh.com
 
 Package: wazuh-manager
 Architecture: any
-Depends: ${shlibs:Depends}, libc6 (>= 2.7), curl
-Suggests: expect
+Depends: libc6 (>= 2.18), passwd
 Conflicts: ossec-hids-agent, ossec-hids, wazuh-api
 Replaces: wazuh-api
 Description: Wazuh manager

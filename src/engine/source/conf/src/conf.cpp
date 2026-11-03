@@ -1,8 +1,10 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <conf/conf.hpp>
 
 #include <filesystem>
 #include <unistd.h>
 
+#include <base/managerConfig.hpp>
 #include <base/process.hpp>
 #include <fmt/format.h>
 
@@ -36,30 +38,32 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     // Store module
     addUnit<std::string>(key::STORE_PATH, "WAZUH_STORE_PATH", (wazuhRoot / "data/store").c_str());
 
-    // Default outputs
-    addUnit<std::string>(key::OUTPUTS_PATH, "WAZUH_OUTPUTS_PATH", (wazuhRoot / "etc/outputs/").c_str());
+    // Default outputs: in the fixed configuration directory on a manager; relative to the cwd standalone.
+    const std::filesystem::path outputsPath =
+        base::process::isStandaloneModeEnable()
+            ? wazuhRoot / "etc/outputs/"
+            : std::filesystem::path(std::string(base::managerConfig::MANAGER_CONF_DIR)) / "outputs/";
+    addUnit<std::string>(key::OUTPUTS_PATH, "WAZUH_OUTPUTS_PATH", outputsPath.c_str());
 
     // Default kvdb ioc
     addUnit<std::string>(key::KVDB_IOC_PATH, "WAZUH_KVDB_IOC_PATH", (wazuhRoot / "data/kvdb-ioc").c_str());
+    addUnit<std::string>(key::KVDB_IOC_INPUT_PATH, "WAZUH_KVDB_IOC_INPUT_PATH", (wazuhRoot / "data/ioc-input").c_str());
 
     // Content Manager
     addUnit<std::string>(key::CM_RULESET_PATH, "WAZUH_CM_RULESET_PATH", (wazuhRoot / "data/ruleset").c_str());
     addUnit<size_t>(key::CM_SYNC_INTERVAL, "WAZUH_CM_SYNC_INTERVAL", 120);
+    addUnit<size_t>(key::CM_SYNC_RETRY_INTERVAL, "WAZUH_CM_SYNC_RETRY_INTERVAL", 30);
     addUnit<size_t>(key::IOC_SYNC_INTERVAL, "WAZUH_IOC_SYNC_INTERVAL", 360);
 
     // Geo module
     addUnit<size_t>(key::GEO_SYNC_INTERVAL, "WAZUH_GEO_SYNC_INTERVAL", 360);
     addUnit<std::string>(key::GEO_DB_PATH, "WAZUH_GEO_DB_PATH", (wazuhRoot / "data/mmdb").c_str());
     addUnit<std::string>(
-        key::GEO_MANIFEST_URL,
-        "WAZUH_GEO_MANIFEST_URL",
-        "https://api.pre.cloud.wazuh.com/maxmind_geoip/manifest.json");
+        key::GEO_MANIFEST_URL, "WAZUH_GEO_MANIFEST_URL", "https://api.pre.cloud.wazuh.com/maxmind_geoip/manifest.json");
     addUnit<size_t>(key::GEO_DOWNLOAD_TIMEOUT, "WAZUH_GEO_DOWNLOAD_TIMEOUT", 60000);
 
     // Indexer connector
     addUnit<std::vector<std::string>>(key::INDEXER_HOST, "WAZUH_INDEXER_HOSTS", {"http://localhost:9200"});
-    addUnit<std::string>(key::INDEXER_USER, "WAZUH_INDEXER_USER", "wazuh-manager");
-    addUnit<std::string>(key::INDEXER_PASSWORD, "WAZUH_INDEXER_PASSWORD", "wazuh-manager");
     addUnit<std::vector<std::string>>(key::INDEXER_SSL_CA_BUNDLE, "WAZUH_INDEXER_SSL_CA_BUNDLE", {});
     addUnit<std::string>(key::INDEXER_SSL_CERTIFICATE, "WAZUH_INDEXER_SSL_CERTIFICATE", "");
     addUnit<std::string>(key::INDEXER_SSL_KEY, "WAZUH_INDEXER_SSL_KEY", "");
@@ -80,6 +84,10 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     // CM Sync
     addUnit<size_t>(key::CMSYNC_INDEXER_CONNECTOR_MAX_RETRIES, "WAZUH_CMSYNC_INDEXER_CONNECTOR_MAX_RETRIES", 3);
     addUnit<size_t>(key::CMSYNC_INDEXER_CONNECTOR_RETRY_INTERVAL, "WAZUH_CMSYNC_INDEXER_CONNECTOR_RETRY_INTERVAL", 5);
+    // Content manager (shared by the ruleset and IOC topics)
+    addUnit<std::string>(key::CONTENT_PIT_KEEP_ALIVE, "WAZUH_CONTENT_PIT_KEEP_ALIVE", "5m");
+    addUnit<size_t>(key::CONTENT_CONSUMER_CACHE_SECONDS, "WAZUH_CONTENT_CONSUMER_CACHE_SECONDS", 5);
+    addUnit<size_t>(key::CONTENT_CONSUMER_RETRY_INTERVAL, "WAZUH_CONTENT_CONSUMER_RETRY_INTERVAL", 60);
     // Remote Configuration Sync
     addUnit<size_t>(
         key::REMOTE_CONF_INDEXER_CONNECTOR_MAX_RETRIES, "WAZUH_REMOTE_CONF_INDEXER_CONNECTOR_MAX_RETRIES", 3);
@@ -95,6 +103,8 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<size_t>(key::EVENT_QUEUE_MAX_BYTES, "WAZUH_EVENT_QUEUE_MAX_BYTES", 0x1 << 25); // 0 = unlimited
 
     // Agent Metadata Cache
+    addUnit<size_t>(key::AGENT_METADATA_CACHE_MAX_ENTRIES, "WAZUH_AGENT_METADATA_CACHE_MAX_ENTRIES", 50000);
+    addUnit<size_t>(key::AGENT_METADATA_CACHE_MAX_BYTES, "WAZUH_AGENT_METADATA_CACHE_MAX_BYTES", 134217728);
     addUnit<size_t>(key::AGENT_METADATA_CACHE_TTL, "WAZUH_AGENT_METADATA_CACHE_TTL", 300); // 5 minutes
     addUnit<size_t>(
         key::AGENT_METADATA_CACHE_CLEAN_INTERVAL, "WAZUH_AGENT_METADATA_CACHE_CLEAN_INTERVAL", 60); // 1 minute
@@ -170,7 +180,25 @@ void Conf::validate(const OptionMap& config) const
                 std::size_t pos = 0;
                 try
                 {
-                    auto v = std::stoll(valueStr, &pos);
+                    if (unit->isUnsigned())
+                    {
+                        // stoull accepts a leading '-' and wraps it ("-1" becomes SIZE_MAX), so a negative
+                        // value is refused first; then the full unsigned range is accepted, not only up to
+                        // LLONG_MAX.
+                        const auto first = valueStr.find_first_not_of(" \t\n\v\f\r");
+                        if (first != std::string::npos && valueStr[first] == '-')
+                        {
+                            throw std::runtime_error(fmt::format(
+                                "Invalid configuration type for key '{}'. Unsigned value expected, got '{}'.",
+                                key,
+                                valueStr));
+                        }
+                        [[maybe_unused]] auto u = std::stoull(valueStr, &pos);
+                    }
+                    else
+                    {
+                        [[maybe_unused]] auto v = std::stoll(valueStr, &pos);
+                    }
 
                     if (pos != valueStr.size())
                     {

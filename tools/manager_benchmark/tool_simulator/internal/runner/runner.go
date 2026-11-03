@@ -9,16 +9,34 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/control"
+	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/engine"
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/metrics"
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/pacing"
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/scenario"
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/source"
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/wire"
+)
+
+// How an agent-mode fleet obtains the identities it runs under (issue #39054).
+// Both end in a `client.keys` entry the manager will authenticate; they differ in
+// which credential buys it, and therefore in what the manager under test has to
+// be configured as.
+const (
+	// BootstrapEnrollToken is POST /enroll on the HTTPS port with an
+	// enrollment-token bearer -- what a 5.x agent handed a token does, and the
+	// only bootstrap that works against a manager whose <use_password> is the
+	// installed default.
+	BootstrapEnrollToken = "enroll-token"
+	// Bootstrap1515 is authd's legacy TCP listener, kept for comparing the two
+	// first-contact paths. It carries no credential, so it needs an authd opened
+	// with <use_password>no</use_password> (prepare_manager.sh --open-1515).
+	Bootstrap1515 = "1515"
 )
 
 // Config is everything the runner needs that is not in the scenario.
@@ -47,6 +65,16 @@ type Config struct {
 	// in main(). "" means unprefixed. Agent mode only: NewUDSClient takes no prefix, so
 	// a uds run ignores it by construction.
 	GlobalPrefix string
+	// EnrollToken is the enrollment token text an `enroll_https` step presents
+	// (issue #38993), as the operator pasted it -- from --enroll-token-file or
+	// WAZUH_ENROLLMENT_TOKEN. Environment config like Cluster: a credential minted
+	// on the manager under test, never a scenario field. "" is fine for scenarios
+	// without the step; a scenario WITH it and no token is refused before any traffic.
+	EnrollToken string
+	// Bootstrap selects how the fleet is enrolled in agent mode:
+	// BootstrapEnrollToken (the default) or Bootstrap1515. Ignored in uds mode,
+	// which synthesizes identities instead of enrolling them.
+	Bootstrap string
 	// VDFeedOffset overrides Start.feed_offset for every VDFirst/VDSync step
 	// that doesn't set its own (environment config, like Cluster). 0 means "no
 	// override" -- defer to the step, then to what agent mode's keepalive loop
@@ -80,6 +108,12 @@ type Runner struct {
 
 	enrolled int
 	failed   int
+
+	// The decoded enrollment token and its HS256 key, resolved once by
+	// prepareEnrollToken(); nil when the run needs none (neither the
+	// enroll-token bootstrap nor an enroll_https step).
+	enrollToken *wire.EnrollmentToken
+	enrollKey   []byte
 }
 
 // New builds a runner and its metric registry from the scenario's fleets/lanes.
@@ -124,6 +158,11 @@ func (r *Runner) Run(ctx context.Context) int {
 	ctx, r.cancel = context.WithCancel(ctx)
 	defer r.cancel()
 
+	if err := r.prepareEnrollToken(); err != nil {
+		fmt.Fprintf(os.Stderr, "setup: %v\n", err)
+		return 2
+	}
+
 	agents, err := r.buildAgents(ctx)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "setup: %v\n", err)
@@ -153,23 +192,12 @@ func (r *Runner) Run(ctx context.Context) int {
 		defer timer.Stop()
 	}
 
-	sem := make(chan struct{}, r.concurrency(len(agents)))
 	var wg sync.WaitGroup
-	for i := range agents {
-		select {
-		case <-ctx.Done():
-		default:
-		}
-		sem <- struct{}{}
-		wg.Add(1)
-		go func(a *agent) {
-			defer wg.Done()
-			defer func() { <-sem }()
-			atomic.AddInt64(&r.agentsActive, 1)
-			defer atomic.AddInt64(&r.agentsActive, -1)
-			a.run(ctx)
-		}(agents[i])
-	}
+	admitAgents(ctx, len(agents), r.concurrency(len(agents)), &wg, func(i int) {
+		atomic.AddInt64(&r.agentsActive, 1)
+		defer atomic.AddInt64(&r.agentsActive, -1)
+		agents[i].run(ctx)
+	})
 
 	// A one-pass run ends when every agent finishes; a repeat/duration run ends
 	// when the context is cancelled (its timer or a signal), after which drain
@@ -202,6 +230,38 @@ func (r *Runner) Run(ctx context.Context) int {
 	return 0
 }
 
+// admitAgents starts run(0..n-1), each on its own goroutine tracked by wg, with
+// at most limit running at once. It stops admitting as soon as ctx is cancelled
+// (the run's deadline, a signal, or a run-invalidating error): an agent not yet
+// started never starts, so the drain covers only the agents already running.
+// It returns how many it started, once the last one has been started.
+func admitAgents(ctx context.Context, n, limit int, wg *sync.WaitGroup, run func(i int)) int {
+	sem := make(chan struct{}, limit)
+	for i := 0; i < n; i++ {
+		// Checked first: when a slot and the cancellation are both ready, select
+		// picks at random, and a cancelled run must not admit anyone.
+		if ctx.Err() != nil {
+			return i
+		}
+		select {
+		case <-ctx.Done():
+			return i
+		case sem <- struct{}{}:
+		}
+		if ctx.Err() != nil {
+			<-sem
+			return i
+		}
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			run(i)
+		}(i)
+	}
+	return n
+}
+
 // buildAgents enrolls (agent mode) or synthesizes (uds mode) every agent.
 func (r *Runner) buildAgents(ctx context.Context) ([]*agent, error) {
 	var agents []*agent
@@ -214,22 +274,55 @@ func (r *Runner) buildAgents(ctx context.Context) ([]*agent, error) {
 			ag := &agent{r: r, fleet: fleet, id: id, name: name}
 
 			if r.mode == "agent" {
-				ident, err := wire.Enroll(r.cfg.Manager, r.cfg.RegPort, name, r.cfg.Timeout)
+				if r.enrollToken != nil {
+					// One identity-less client per agent, like the authenticated one: the
+					// bootstrap's and an enroll_https lane's connections stay this agent's
+					// own (docu/08).
+					ag.enroll = wire.NewEnrollClient(r.cfg.Manager, r.cfg.Port, r.cfg.Timeout, r.cfg.Reuse, r.cfg.GlobalPrefix)
+				}
+				ident, err := r.bootstrap(ag)
 				if err != nil {
 					r.failed++
-					return nil, fmt.Errorf("enroll %s: %w", name, err)
+					return nil, err
 				}
 				ag.id = ident.ID
 				ag.client = wire.NewAgentClient(ident, r.cfg.Manager, r.cfg.Port, r.cfg.Timeout, r.cfg.Reuse, r.cfg.GlobalPrefix)
 				r.enrolled++
 			} else {
+				// Canonical form ("001"): both uds receivers, inventory-sync and the
+				// engine, accept only the canonical spelling of an agent id.
+				ag.id = canonicalAgentID(fleet.FirstID + i)
 				ag.client = wire.NewUDSClient(ag.id, r.cfg.Socket, r.cfg.Timeout)
 				r.enrolled++ // synthetic identity: "ready" is the uds-mode equivalent of enrolled
 			}
+			ag.headerInfo = agentHeaderInfo(r.scn, fleet, ag.name)
 			agents = append(agents, ag)
 		}
 	}
 	return agents, nil
+}
+
+// agentHeaderInfo is the metadata a real agent of fleet would report in its H
+// line: the fleet's start block, the scenario's cluster name, the agent's name
+// as its hostname, and the "default" group every agent belongs to.
+func agentHeaderInfo(scn *scenario.Scenario, fleet scenario.Fleet, name string) engine.AgentInfo {
+	version := fleet.Start.AgentVersion
+	if version != "" && !strings.HasPrefix(version, "v") {
+		version = "v" + version
+	}
+	return engine.AgentInfo{
+		Name: name, Version: version, Groups: []string{"default"},
+		Architecture: fleet.Start.Architecture, Hostname: name,
+		OSName: fleet.Start.OSName, OSPlatform: fleet.Start.OSPlatform,
+		OSType: fleet.Start.OSType, OSVersion: fleet.Start.OSVersion,
+		ClusterName: scn.Defaults.ClusterName,
+	}
+}
+
+// canonicalAgentID spells an agent id the way the manager does: zero-padded to
+// at least three digits, wider ids unchanged.
+func canonicalAgentID(id int) string {
+	return fmt.Sprintf("%03d", id)
 }
 
 func (r *Runner) concurrency(total int) int {
@@ -242,7 +335,14 @@ func (r *Runner) concurrency(total int) int {
 	return total
 }
 
+// drainTimeout resolves the drain window: the --drain-timeout flag when set
+// (> 0), else the scenario's pacing.drain_timeout when set, else 60 s. The CLI
+// wins, like --cluster and --compression, so one scenario can be run with a
+// different window without editing it.
 func (r *Runner) drainTimeout() time.Duration {
+	if d := r.cfg.DrainTimeout; d > 0 {
+		return d
+	}
 	if d := r.scn.Pacing.DrainTimeout.D(); d > 0 {
 		return d
 	}
@@ -250,6 +350,19 @@ func (r *Runner) drainTimeout() time.Duration {
 }
 
 func (r *Runner) controlEnabled() bool { return r.scn.Defaults.Control.Enabled }
+
+// defaultKeepaliveInterval is the notify interval when the scenario sets none
+// (or a non-positive one): a real agent's.
+const defaultKeepaliveInterval = 10 * time.Second
+
+// keepaliveInterval is the interval the keepalive loop actually uses, and so
+// the one meta records.
+func (r *Runner) keepaliveInterval() time.Duration {
+	if d := r.scn.Defaults.Control.KeepaliveInterval.D(); d > 0 {
+		return d
+	}
+	return defaultKeepaliveInterval
+}
 
 // readinessBudget is how long an agent keeps retrying a 401'd startup while it
 // waits for remoted to load its key. It reuses the enroll-settle budget, with a
@@ -344,13 +457,19 @@ func (r *Runner) Meta() metrics.Meta {
 	for _, f := range r.scn.Fleets {
 		requested += f.Agents
 	}
-	ki := r.scn.Defaults.Control.KeepaliveInterval.D()
+	// Only an agent-mode run bootstraps anything: a uds run synthesizes its
+	// identities, so it records no bootstrap rather than a misleading one.
+	bootstrap := ""
+	if r.mode == "agent" {
+		bootstrap = r.cfg.Bootstrap
+	}
 	return metrics.Meta{
 		ScenarioName: r.scn.Name, ScenarioPath: r.cfg.ScenarioPath, Mode: r.mode,
 		Manager: r.cfg.Manager, Port: r.cfg.Port, RegPort: r.cfg.RegPort, Target: target, GlobalPrefix: r.cfg.GlobalPrefix,
+		Bootstrap:   bootstrap,
 		ClusterName: r.clusterName(), AgentsRequested: requested, AgentsEnrolled: r.enrolled, AgentsFailed: r.failed,
 		ConcurrentAgents: r.scn.Pacing.ConcurrentAgents, RPSTarget: r.scn.Pacing.RequestsPerSecond,
-		KeepaliveInterval: ki.String(), ControlEnabled: r.controlEnabled(), ConnectionReuse: r.cfg.Reuse, Compression: r.compression(),
+		KeepaliveInterval: r.keepaliveInterval().String(), ControlEnabled: r.controlEnabled(), ConnectionReuse: r.cfg.Reuse, Compression: r.compression(),
 		DocumentSeed: r.seed, StartTime: r.start.UTC().Format(time.RFC3339), EndTime: end.UTC().Format(time.RFC3339),
 		DurationSec: end.Sub(r.start).Seconds(), SenderVersion: r.cfg.SenderVer, GoVersion: runtime.Version(),
 	}

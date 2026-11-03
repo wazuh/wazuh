@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module (C++ worker bridge)
- * Copyright (C) 2015, Wazuh Inc.
- * July 26, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -30,8 +29,16 @@ namespace remoted::endpoints::stateless
      * (path + content-type) and the response mapping.
      */
 
-    /// @brief The engine event-ingress target reached over @p socketPath.
-    remoted::downstream::DownstreamTarget target(const std::string& socketPath);
+    /**
+     * @brief The engine event-ingress target reached over @p socketPath, carrying @p agentId as
+     *        `X-Wazuh-Agent-Id`.
+     *
+     * @p agentId is the canonical id the gateway verified (AuthenticatedRequest::agentId, the token's
+     * `sub`), never a value read from the agent's request: it tells the engine which agent the batch
+     * belongs to outside the agent-written H line, the same way /stateful, /stats and /config already
+     * do for their downstreams.
+     */
+    remoted::downstream::DownstreamTarget target(const std::string& socketPath, const std::string& agentId);
 
     /**
      * @brief Map the downstream result to the agent response.
@@ -44,20 +51,18 @@ namespace remoted::endpoints::stateless
                                             const remoted::downstream::DownstreamResponse& response);
 
     /**
-     * @brief Cross-checks the payload's claimed identity against the authenticated identity.
+     * @brief Checks the H-line prefix and byte limit before forwarding an authenticated batch.
      *
-     * Parses the body's `H <json>` line (RapidJSON, non-in-situ length-based Parse -- the payload is
-     * a view into a shared, non-null-terminated buffer) and compares `/wazuh/agent/id` (a JSON
-     * string, parsed as a non-negative integer) against @p req.agentId (also parsed as one). Pure
-     * function, no side effects -- unit-tested directly, no sockets, no forwarding.
+     * The body must start with literal "H ". The following bytes, up to the first LF or the end
+     * of the body, must fit within 8 KiB. This is a length-aware slice, with no JSON parsing or
+     * identity lookup. Empty, malformed and header-only slices are left for the engine to validate.
      *
-     * Any of the following collapses to the same AuthError::PayloadAgentMismatch: the body doesn't
-     * start with "H ", the JSON after it doesn't parse, `/wazuh/agent/id` is missing or not a string,
-     * either side fails to parse as a non-negative integer, or the two integers differ. There is no
-     * partial-validation bypass: a missing/malformed header is rejected exactly like a real mismatch.
+     * The gateway already verified the JWT. The caller sends req.agentId as X-Wazuh-Agent-Id;
+     * the engine checks that the H-line identity path is unique and equals that trusted id on a
+     * cache miss. A cache hit reuses validation of the same id and exact header bytes.
      *
      * @param req Verified request; payload.bytes() must still be valid (call before any release()).
-     * @return AuthError::None on match, AuthError::PayloadAgentMismatch otherwise.
+     * @return AuthError::None for an in-limit H-line slice, AuthError::PayloadAgentMismatch otherwise.
      */
     remoted::auth::AuthError validatePayloadIdentity(const remoted::auth::AuthenticatedRequest& req);
 
@@ -66,7 +71,7 @@ namespace remoted::endpoints::stateless
      *
      * On validation failure, answers via the same {"error","code"} shape every other auth rejection
      * uses (remoted::endpoints::errorResponseFor) and never calls forward(). On success, delegates to
-     * forwarder.forward(req, responder, target(socketPath), postProcess).
+     * forwarder.forward(req, responder, target(socketPath, req->agentId), postProcess).
      *
      * @warning The returned handler stores a reference to @p forwarder. The caller must guarantee
      * forwarder outlives every route registered with it -- i.e. the HTTP server (which owns the route

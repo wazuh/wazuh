@@ -1,7 +1,6 @@
 /*
  * SQL Schema all denied tests
- * Copyright (C) 2015, Wazuh Inc.
- * February 12, 2021.
+ * Copyright (C) Wazuh Inc.
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.
  */

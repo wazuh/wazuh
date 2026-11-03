@@ -3,10 +3,27 @@ on:
   workflow_dispatch:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
+    # The union of the four builds' closures; detect-targets below decides which ones a change needs.
+    # Each job runs `make TARGET=<t> DEBUG=1` (no TEST) under scan-build: the daemons and libraries
+    # of that target, no test trees.
     paths:
       - "src/**"
       - ".github/workflows/5_codeanalysis_scanbuild.yml"
       - ".github/actions/reinstall_cmake/**"
+      # .github/actions/upload_s3_artifact only uploads the report of a failed analysis and cannot
+      # change the result; 5_builderpackage_manager-multiples.yml exercises it on every pull request.
+      # Installer scripts: make never reads src/init.
+      - "!src/init/**"
+      # Agent build tooling (src/build.py and its src/ci/ helpers), never run here
+      - "!src/build.py"
+      - "!src/ci/**"
+      # The cmocka project and the wrappers src/shared/CMakeLists.txt:111-171 compiles only under
+      # UNIT_TEST, which no job here sets
+      - "!src/unit_tests/**"
+      # qa/ harnesses are pytest suites driving test tools, run by their own workflows
+      - "!src/**/qa/**"
+      # Prose: nothing compiles Markdown
+      - "!src/**/*.md"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -17,14 +34,158 @@ permissions:
   contents: read
 
 jobs:
-  scan-build-linux:
+  # A matrix leg cannot carry its own `paths`, so this job applies each build's closure to the pull
+  # request's diff: a manager-only change (the engine, remoted, wazuh-db, ...) must not run the
+  # agent, mingw and macOS analyses, and an agent-only change must not run the manager one.
+  detect-targets:
+    name: Select scan-build targets
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      linux: ${{ steps.select.outputs.linux }}
+      winagent: ${{ steps.select.outputs.winagent }}
+      macos: ${{ steps.select.outputs.macos }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Select targets from the changed files
+        id: select
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: python
+        run: |
+          import json, os, re, subprocess
+
+          def to_regex(glob):
+              # GitHub `paths` semantics: `**` spans directories (and `**/` may match none),
+              # `*` and `?` stay inside one path segment.
+              out, i = "", 0
+              while i < len(glob):
+                  if glob.startswith("**/", i):
+                      out, i = out + "(?:.*/)?", i + 3
+                  elif glob.startswith("**", i):
+                      out, i = out + ".*", i + 2
+                  elif glob[i] == "*":
+                      out, i = out + "[^/]*", i + 1
+                  elif glob[i] == "?":
+                      out, i = out + "[^/]", i + 1
+                  else:
+                      out, i = out + re.escape(glob[i]), i + 1
+              return re.compile(out + r"\Z")
+
+          def fires(path, patterns):
+              # Ordered like a `paths` list: the last matching pattern decides.
+              hit = False
+              for pattern in patterns:
+                  negated = pattern.startswith("!")
+                  if to_regex(pattern.lstrip("!")).match(path):
+                      hit = not negated
+              return hit
+
+          SRC = ["src/**", "!src/init/**", "!src/build.py", "!src/ci/**", "!src/unit_tests/**",
+                 "!src/**/qa/**"]
+          # Manager-only trees: src/CMakeLists.txt:276-293 and src/wazuh_modules/CMakeLists.txt:97-102
+          # add them only when TARGET is not an agent. The include/ directories stay in the agent
+          # closure: agent code compiles against them (shared/src/agent_op.c ->
+          # os_auth/include/auth.h, shared/src/agent_validate_op.c -> wazuh_db/include/wdb.h, and
+          # wazuh_modules/src/wm_{content_manager,inventory_sync_server,keystore_server,
+          # vulnerability_scanner}.c, globbed for every target at wazuh_modules/CMakeLists.txt:110-119,
+          # -> each module's include/).
+          MANAGER_ONLY = [
+              "!src/engine/**",
+              "!src/remoted/**",
+              "!src/util/**",
+              "!src/shared_modules/ca_bundle/**",
+              "!src/shared_modules/indexer_connector/**",
+              "!src/shared_modules/keystore/**",
+              "!src/shared_modules/manager_certs/**",
+              "!src/shared_modules/manager_config/**",
+              "!src/shared_modules/metrics/**",
+              "!src/shared_modules/uds_http_server/**",
+              "!src/os_auth/**", "src/os_auth/include/**",
+              "!src/wazuh_db/**", "src/wazuh_db/include/**",
+              "!src/shared_modules/content_manager/**", "src/shared_modules/content_manager/include/**",
+              "!src/wazuh_modules/inventory_sync_server/**", "src/wazuh_modules/inventory_sync_server/include/**",
+              "!src/wazuh_modules/keystore_server/**", "src/wazuh_modules/keystore_server/include/**",
+              "!src/wazuh_modules/task_manager/**", "src/wazuh_modules/task_manager/include/**",
+              "!src/wazuh_modules/vulnerability_scanner/**", "src/wazuh_modules/vulnerability_scanner/include/**",
+          ]
+          # Agent-only trees (src/CMakeLists.txt:258-274, src/wazuh_modules/CMakeLists.txt:103-108).
+          # Their include/ directories stay in the manager closure: shared/include/shared.h ->
+          # dbsync/include, shared/include/syscheck_op.h -> syscheckd/include, shared/src/agent_op.c
+          # -> data_provider/include, shared/src/log_builder.c -> client-agent/include,
+          # util/src/verify-agent-conf.c -> logcollector/include, wm_{agent_info,sca,syscollector}.c
+          # -> each module's include/ -> sync_protocol/include. active-response stays whole:
+          # shared/CMakeLists.txt:89 compiles active-response/src/active_responses.c for every target.
+          AGENT_ONLY = [
+              "!src/rootcheck/**",
+              "!src/addagent/**",
+              "!src/os_execd/**",
+              "!src/client-agent/**", "src/client-agent/include/**",
+              "!src/data_provider/**", "src/data_provider/include/**",
+              "!src/logcollector/**", "src/logcollector/include/**",
+              "!src/syscheckd/**", "src/syscheckd/include/**",
+              "!src/shared_modules/agent_metadata/**", "src/shared_modules/agent_metadata/include/**",
+              "!src/shared_modules/dbsync/**", "src/shared_modules/dbsync/include/**",
+              "!src/shared_modules/sync_protocol/**", "src/shared_modules/sync_protocol/include/**",
+              "!src/wazuh_modules/agent_info/**", "src/wazuh_modules/agent_info/include/**",
+              "!src/wazuh_modules/sca/**", "src/wazuh_modules/sca/include/**",
+              "!src/wazuh_modules/syscollector/**", "src/wazuh_modules/syscollector/include/**",
+              # src/Makefile forces USE_SELINUX=no for the manager
+              "!src/selinux/**",
+          ]
+          # Windows-only: src/CMakeLists.txt:271-273 adds win32 only for winagent.
+          WINDOWS_ONLY = ["!src/win32/**"]
+          MD = ["!src/**/*.md"]
+          WORKFLOW = [".github/workflows/5_codeanalysis_scanbuild.yml"]
+          CMAKE = [".github/actions/reinstall_cmake/**"]  # not run by the macOS job
+          BUILDS = {
+              "agent":    SRC + MANAGER_ONLY + WINDOWS_ONLY + MD + WORKFLOW + CMAKE,
+              "manager":  SRC + AGENT_ONLY + WINDOWS_ONLY + MD + WORKFLOW + CMAKE,
+              "winagent": SRC + MANAGER_ONLY + MD + WORKFLOW + CMAKE,
+              "macos":    SRC + MANAGER_ONLY + WINDOWS_ONLY + MD + WORKFLOW,
+          }
+
+          event_name = os.environ.get("EVENT_NAME", "")
+          base_sha = os.environ.get("BASE_SHA", "").strip()
+          head_sha = os.environ.get("HEAD_SHA", "").strip()
+
+          selected = set(BUILDS)
+          if event_name == "pull_request" and base_sha and head_sha:
+              diff = subprocess.run(["git", "diff", "--name-only", f"{base_sha}...{head_sha}"],
+                                    capture_output=True, text=True)
+              if diff.returncode == 0:
+                  changed = [line for line in diff.stdout.splitlines() if line]
+                  selected = {build for build, patterns in BUILDS.items()
+                              if any(fires(path, patterns) for path in changed)}
+              else:
+                  print("::warning::Could not diff the pull request; running every build.")
+
+          linux = [t for t in ("agent", "manager") if t in selected]
+          print(f"Linux: {linux}; mingw: {'winagent' in selected}; macOS: {'macos' in selected}")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"linux={json.dumps(linux)}\n")
+              out.write(f"winagent={str('winagent' in selected).lower()}\n")
+              out.write(f"macos={str('macos' in selected).lower()}\n")
+
+  scan-build-linux:
+    needs: detect-targets
+    if: >
+      (github.event_name != 'pull_request' || !github.event.pull_request.draft) &&
+      needs.detect-targets.outputs.linux != '[]'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        target: ['agent', 'manager']
+        target: ${{ fromJSON(needs.detect-targets.outputs.linux) }}
     steps:
       - uses: actions/checkout@v3
         with:
@@ -56,7 +217,10 @@ jobs:
         run: exit 1
 
   scan-build-ubuntu-mingw-windows:
-    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    needs: detect-targets
+    if: >
+      (github.event_name != 'pull_request' || !github.event.pull_request.draft) &&
+      needs.detect-targets.outputs.winagent == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -92,7 +256,10 @@ jobs:
         run: exit 1
 
   scan-build-macos-agent:
-    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    needs: detect-targets
+    if: >
+      (github.event_name != 'pull_request' || !github.event.pull_request.draft) &&
+      needs.detect-targets.outputs.macos == 'true'
     runs-on: macos-15
     timeout-minutes: 30
     steps:

@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -129,6 +128,10 @@ typedef struct hc_config_t
     ///< `wazuh-agent+jwt` bearer token is signed with.
     int verify_mode;               ///< hc_verify_mode_t; 0 = full (fail closed).
     char ca_path[HC_MAX_PATH];     ///< certificate_authorities file path.
+    char system_fallback_ca_path[HC_MAX_PATH]; ///< verify_mode=system only (#39123): the
+    ///< agent's own trust anchor, tried only once the OS trust store has actually
+    ///< failed to verify the manager. Empty -> the fallback never engages (today's
+    ///< behavior). Ignored for every other verify_mode.
     char client_cert[HC_MAX_PATH]; ///< Optional mTLS certificate (FR11.3).
     char client_key[HC_MAX_PATH];  ///< Optional mTLS private key.
     char ciphers[HC_MAX_CIPHERS];  ///< Optional cipher list.
@@ -160,6 +163,21 @@ typedef struct hc_config_t
     ///< against the manager-reported
     ///< agent.config_hash on every Notify;
     ///< a mismatch triggers /download.
+
+    bool ca_refresh_allowed;      ///< Whether a published CA bundle may replace the file named
+    ///< by ca_path. Set only when that file is the agent's own
+    ///< trust anchor: an operator who points
+    ///< <certificate_authorities> at their own CA manages it
+    ///< themselves, and the agent must neither surprise them by
+    ///< rewriting it nor retry an install it can never complete.
+
+    int64_t ca_publication;       ///< Publication recorded with the installed CA bundle, or -1
+    ///< when it carries none (a fresh install, a store placed
+    ///< out of band, or one written before #39321). Compared
+    ///< against the manager-reported ca_generation on every
+    ///< Notify; a higher one triggers a verified /cacerts
+    ///< refresh. The seed only: the module tracks it from
+    ///< here on, since it changes when a bundle is adopted.
 
     uint32_t request_timeout_ms;  ///< Per request; 0 -> 10000.
     uint32_t stateful_timeout_ms; ///< Large transfers (/stateful, /download);
@@ -257,6 +275,15 @@ typedef int (*hc_vd_offset_clear_pending_fn)(uint64_t offset, void* user_data);
 typedef struct hc_callbacks_t
 {
     full_log_fnc_t log;
+    /// The running module hit a condition it can never recover from: what it would
+    /// otherwise log at critical level, which the agent's log callback turns into exit().
+    /// The reason is logged at error level instead and reported here, at most once per
+    /// hc_create(), from whichever module thread hit it. Record it and stop the process
+    /// from a thread the module does not own: exiting on this one would run an atexit
+    /// hc_destroy() on a thread it has to join. Before hc_start() and after hc_stop(), a
+    /// critical message still reaches log unchanged (before start, startup is single
+    /// threaded). Optional: when null, every critical message reaches log unchanged.
+    void (*on_fatal)(const char* reason, void* user_data);
     void (*on_startup_result)(bool accepted, const char* handshake_json, void* user_data);
     /// The signing credential was rejected (401 on any endpoint), so the
     /// module has paused all outbound traffic and entered HC_STATE_AUTH_ERROR.
@@ -320,6 +347,24 @@ typedef struct hc_callbacks_t
     /// unrelated to the configuration download, which the manager addresses on its
     /// own with the opaque agent.config_token.
     void (*on_agent_groups)(const char* groups_csv, void* user_data);
+
+    /// Install @p pem as the agent's trust store, recording @p generation with it, or refuse.
+    ///
+    /// The module has already established everything it can about the body: the connection was
+    /// verified against the CA the agent currently trusts, the response was a 200, it was not
+    /// truncated, and the node's Wazuh-CA-Generation matched the publication being adopted. What
+    /// it cannot judge is the PEM itself -- parsing X.509 lives on the C side (the module links
+    /// no libwazuh by design) -- so the consumer validates the bytes and owns the write.
+    ///
+    /// Wholesale: the bundle replaces the trust store rather than merging into it, which is how
+    /// an operator retires a CA. The write must be atomic, since a torn store is one the agent
+    /// cannot verify anything against.
+    ///
+    /// @return true when the store now holds @p pem at @p generation. False on any refusal --
+    ///         a body that is not certificates, a write that failed -- and the module then
+    ///         leaves its own notion of the installed publication alone, so the next
+    ///         advertisement retries rather than believing something that never landed.
+    bool (*on_ca_bundle)(const char* pem, size_t pem_len, int64_t generation, void* user_data);
     /// The HTTP outcome for a /stateful session. Unlike every other outcome in this
     /// header, `result` here is the RAW HTTP status code the manager answered with
     /// (200, 400, 403, 409, 413, 500, 503...), not an hc_result_t - the /stateful
@@ -339,9 +384,10 @@ typedef struct hc_callbacks_t
     /// functions. Return either NULL (skip this cycle) or a NUL-terminated
     /// JSON OBJECT allocated with malloc() from the module's C runtime; the
     /// module takes ownership and frees it. Before sending, the module stamps
-    /// "agent_id" and the manager-authoritative "cluster" {"name"} into
-    /// the object (overwriting same-named members). A non-object return is
-    /// logged and the cycle skipped.
+    /// "agent_id", the manager-authoritative "cluster" {"name"} and the
+    /// "agent" object of on_collect_stateless_host into the object
+    /// (overwriting same-named members; "agent" is dropped when that callback
+    /// has nothing). A non-object return is logged and the cycle skipped.
     char* (*collect_stats)(void* user_data);
     char* (*collect_config)(void* user_data);
 
@@ -370,8 +416,12 @@ typedef struct hc_callbacks_t
     /// risking the other's already-shipped contract. Write an empty string
     /// when metadata is not yet available; the H line then carries only
     /// agent.id, as it always has. Called on the stateless sender thread
-    /// before each flush (not the dispatcher), so it must be a fast,
-    /// non-blocking read. Null means the H line carries only agent.id.
+    /// before each flush and on the reporter thread on every tick (never the
+    /// dispatcher), possibly at the same time, so it must be a fast,
+    /// non-blocking read that is safe on both threads and never returns a
+    /// record a writer was changing (write "" instead). cap is large enough for
+    /// the maximum group list. Null means the H line carries only agent.id and
+    /// the reports carry no "agent" object.
     void (*on_collect_stateless_host)(char* json_out, size_t cap, void* user_data);
 
     /// /control has been unreachable at the TRANSPORT level for a threshold
@@ -507,6 +557,22 @@ typedef struct hc_enroll_request_t
     ///< (mTLS/open enrollment): a client cert (if `config` carries one) and
     ///< a password may both be set; there is no precedence between them,
     ///< each authenticates independently (confirmed with the server team).
+    /// `kid` of a keyed `wazuh-enroll+jwt` bearer, or empty for password/open mode.
+    /// Two credentials travel through this one pair of fields, and the profile tells
+    /// them apart by the SHAPE of the `kid` alone (jwtEnrollProfileV1.hpp; the manager
+    /// classifies it the same way, in JwtEnrollTokenVerifier::peekKid()):
+    ///   - an enrollment token: 22 canonical base64url characters, the token's id;
+    ///   - a re-enrolling agent: its own canonical agent id ("001", <= 10 digits).
+    /// Both this and enroll_key_hex must be non-empty for the bearer to be minted; it
+    /// then takes priority over `password` (a keyed enrollment must not also sign with
+    /// a possibly-unrelated configured authd.pass).
+    char enroll_kid[24];
+    /// The credential's HKDF-derived 32-byte key, as 64 lowercase hex characters + NUL
+    /// -- same hex convention as hc_config_t::agent_key. The label the key was derived
+    /// under is the caller's business and is implied by the `kid`'s shape
+    /// (WAZUH-ENROLL-TOKEN-KEY for a token, WAZUH-REENROLL-KEY for an agent); this
+    /// field carries only the result. Empty means no keyed bearer (see enroll_kid).
+    char enroll_key_hex[65];
     full_log_fnc_t log; ///< This call's log sink. hc_enroll() may run before
     ///< hc_create() ever does (first-boot enrollment has no handle yet), so
     ///< it cannot rely on a sink already being assigned.
@@ -544,6 +610,95 @@ typedef struct hc_enroll_result_t
  */
 HC_EXPORTED bool hc_enroll(const hc_config_t* config, const hc_enroll_request_t* request,
                            hc_enroll_result_t* result);
+
+/* ---- POST /stateful ---- */
+
+/// Limit on a /stateful answer. The bridge relays it to its module as one local frame
+/// (header + "HCRESULT:<n>:<code>:" + body), which must stay under OS_MAXSTR.
+#define HC_MAX_STATEFUL_RESPONSE_BODY (63 * 1024)
+
+/* ---- GET /cacerts (unverified bootstrap fetch) ---- */
+
+/// Sized for a small chain (leaf + one intermediate) of PEM certificates;
+/// generous compared to HC_MAX_ENROLL_BODY (4096) since a CA bundle is
+/// larger than an /enroll JSON reply.
+#define HC_MAX_CACERTS_BODY 8192
+
+/**
+ * @brief One GET /cacerts request, built entirely by the C caller.
+ *        Handle-less, exactly like hc_enroll_request_t: this fetch step runs
+ *        before any hc_handle exists (the same first-boot bootstrap moment
+ *        /enroll runs at).
+ */
+typedef struct hc_cacerts_request_t
+{
+    full_log_fnc_t log; ///< This call's log sink; may run before hc_create() ever does.
+} hc_cacerts_request_t;
+
+/** @brief Result of one GET /cacerts attempt. */
+typedef struct hc_cacerts_result_t
+{
+    long http_code;                     ///< 0 = no HTTP response at all (transport/config
+    ///< failure -- see hc_fetch_cacerts()'s return value).
+    char body[HC_MAX_CACERTS_BODY];     ///< Raw response body (the CA bundle on 200).
+    /// Whether the manager's body did not fit in `body` and was cut short. Reported rather
+    /// than left to be inferred: the certificate the token pins can sit past the cut, and a
+    /// caller that just hashed what arrived would call that a pin mismatch -- announcing an
+    /// attack when the real fault is a buffer this end chose.
+    bool body_truncated;
+    /// Same contract as hc_enroll_result_t::transport_error.
+    char transport_error[HC_MAX_TRANSPORT_ERROR];
+} hc_cacerts_result_t;
+
+/**
+ * @brief Perform exactly one GET /cacerts HTTP request, UNVERIFIED: the
+ *        whole point of this call is to fetch a trust anchor the agent does
+ *        not have yet, so there is nothing to verify the connection against.
+ *        This function forces the transport's TLS verification off for this
+ *        one request regardless of what `config->verify_mode` carries --
+ *        callers must treat the returned body as untrusted input until a
+ *        separate pin-compare step (not part of this function) validates it
+ *        against the enrollment token's pin.
+ * @param config Only the transport half is read (host, port, timeout,
+ *        compression toggle, and the client_cert/client_key/ciphers identity,
+ *        which a manager that requires client certificates checks on this
+ *        request too); verify_mode/ca_path are ignored, since this call always
+ *        fetches unverified.
+ * @return true once a request was actually sent and answered, whatever the
+ *         HTTP status. false when nothing was ever sent (an invalid
+ *         transport config -- e.g. a mismatched client cert/key pair -- or a
+ *         NULL argument); result->http_code stays 0 in that case.
+ */
+HC_EXPORTED bool hc_fetch_cacerts(const hc_config_t* config, const hc_cacerts_request_t* request,
+                                  hc_cacerts_result_t* result);
+
+/**
+ * @brief Extracts, from a /cacerts PEM bundle, the single certificate whose SPKI matches an
+ *        enrollment token's pin -- the only certificate in that body a caller may trust.
+ *
+ * Deliberately not a "does it match" predicate. hc_fetch_cacerts() answers over a connection
+ * nothing has verified yet, so every byte of that body was chosen by whoever replied; the pin
+ * vouches for one certificate in it and says nothing about the rest. A caller that installed
+ * the whole body as its trust anchor would take a second anchor from an attacker who simply
+ * appended the genuine certificate -- which is published at /cacerts, so it is no secret --
+ * and could then present a chain of its own that verifies. Returning the matched certificate
+ * on its own is what keeps the anchor to exactly what the token named.
+ *
+ * @param cacerts_body The raw /cacerts response body (hc_cacerts_result_t::body).
+ * @param body_len Its length. Must be built with strnlen(body, HC_MAX_CACERTS_BODY), never
+ *        strlen(): the buffer is a fixed char[] with no length field of its own.
+ * @param pin_b64url The token's pin, as 43 canonical unpadded base64url characters.
+ * @param matched_pem Receives the matched certificate alone, re-encoded as PEM and NUL
+ *        terminated. Untouched unless this returns true.
+ * @param matched_pem_size Size of @a matched_pem. HC_MAX_CACERTS_BODY is always enough: one
+ *        certificate cannot exceed the bundle it came from.
+ * @return true when exactly the pinned certificate was found and written. false on no match, a
+ *         malformed pin, an unparseable bundle, a destination too small, or a NULL argument --
+ *         fail closed in every case.
+ */
+HC_EXPORTED bool hc_spki_pinned_certificate(const char* cacerts_body, size_t body_len,
+                                            const char* pin_b64url, char* matched_pem,
+                                            size_t matched_pem_size);
 
 #ifdef __cplusplus
 }

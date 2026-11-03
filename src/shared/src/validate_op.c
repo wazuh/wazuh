@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -30,7 +30,7 @@
 static char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
 static void _init_masks(void);
 static const char *__gethour(const char *str, char *ossec_hour, const size_t ossec_hour_len) __attribute__((nonnull));
-static int parse_define_int_value(const char *high_name, const char *low_name, const char *value, int min, int max) __attribute__((nonnull));
+static int parse_define_int_value(const char *high_name, const char *low_name, char *value, int min, int max) __attribute__((nonnull));
 
 /**
  * @brief Convert the netmask from an integer value, valid from 0 to 128.
@@ -289,21 +289,34 @@ int getDefine_Int(const char *high_name, const char *low_name, int min, int max)
     return (ret);
 }
 
-static int parse_define_int_value(const char *high_name, const char *low_name, const char *value, int min, int max)
+static int parse_define_int_value(const char *high_name, const char *low_name, char *value, int min, int max)
 {
     int ret;
+    int valid = 1;
     const char *pt = value;
 
-    while (*pt != '\0') {
-        if (!isdigit((int)*pt)) {
-            merror_exit(INV_DEF, high_name, low_name, value);
-        }
+    /* A leading '-' is accepted so that options declared with a negative minimum can take a
+     * negative value; the range check below rejects it everywhere else. */
+    if (*pt == '-') {
         pt++;
+        if (*pt == '\0') {
+            valid = 0;
+        }
+    }
+
+    for (; valid && *pt != '\0'; pt++) {
+        if (!isdigit((int)*pt)) {
+            valid = 0;
+        }
     }
 
     ret = atoi(value);
-    if ((ret < min) || (ret > max)) {
-        merror_exit(INV_DEF, high_name, low_name, value);
+    if (!valid || (ret < min) || (ret > max)) {
+        /* Free the value before exiting: the message needs a copy of it. */
+        char shown[OS_SIZE_256];
+        snprintf(shown, sizeof(shown), "%s", value);
+        free(value);
+        merror_exit(INV_DEF, high_name, low_name, shown);
     }
 
     return ret;
@@ -337,6 +350,14 @@ int getDefine_Int_default(const char *high_name, const char *low_name, int min, 
     return (ret);
 }
 
+/* Whether the entry can be compared against an address of the given family.
+ * "any" is stored as a zeroed os_ipv6 with is_ipv6 unset and matches both families.
+ */
+static bool os_ip_family_matches(const os_ip *entry, bool query_is_ipv6)
+{
+    return (entry->is_ipv6 == query_is_ipv6) || (strcmp(entry->ip, "any") == 0);
+}
+
 /* Check if IP_address is present at that_IP
  * Returns 1 on success or 0 on failure
  */
@@ -359,6 +380,11 @@ int OS_IPFound(const char *ip_address, const os_ip *that_ip)
     /* If negate is set */
     if (that_ip->ip[0] == '!') {
         _true = 0;
+    }
+
+    /* An entry of the other family has no matching union arm to read */
+    if (!os_ip_family_matches(that_ip, is_ipv6)) {
+        return (!_true);
     }
 
     /* Check if IP is in thatip & netmask */
@@ -409,6 +435,12 @@ int OS_IPFoundList(const char *ip_address, os_ip **list_of_ips)
 
         if (l_ip->ip[0] == '!') {
             _true = 0;
+        }
+
+        /* An entry of the other family has no matching union arm to read */
+        if (!os_ip_family_matches(l_ip, is_ipv6)) {
+            list_of_ips++;
+            continue;
         }
 
         /* Check if IP is in thatip & netmask */

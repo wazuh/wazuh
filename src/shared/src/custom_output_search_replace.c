@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * Contributed by Dan Parriott (@ddpbsd)
  *
  * This program is free software; you can redistribute it
@@ -13,7 +13,7 @@
 
 char *searchAndReplace(const char *orig, const char *search, const char *value)
 {
-    char *p;
+    const char *p;
     const size_t orig_len = strlen(orig);
     const size_t search_len = strlen(search);
     const size_t value_len = strlen(value);
@@ -112,7 +112,7 @@ char *escape_newlines(const char *orig)
             retptr += 2;
         } else if (*ptr == '\r') {
             *retptr = '\\';
-            *(retptr + 1) = 'n';
+            *(retptr + 1) = 'r';
             retptr += 2;
         } else {
             *retptr = *ptr;

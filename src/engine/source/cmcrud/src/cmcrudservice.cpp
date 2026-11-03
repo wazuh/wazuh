@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <fmt/format.h>
 
 #include <base/logging.hpp>
@@ -64,6 +65,30 @@ base::Name assetNameFromJson(const json::Json& jsonDoc)
     }
 
     return base::Name {name};
+}
+
+/**
+ * @brief Whether a resource with this UUID exists, refusing one of a different type.
+ *
+ * The store updates by UUID whatever resource owns it, so without this check a KVDB payload carrying a decoder's UUID
+ * would overwrite the decoder's file.
+ */
+bool existsByUUIDWithType(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
+                          const std::string& uuid,
+                          cm::store::ResourceType type)
+{
+    if (uuid.empty() || !nsReader->assetExistsByUUID(uuid))
+    {
+        return false;
+    }
+
+    const auto [name, existingType] = nsReader->resolveNameFromUUID(uuid);
+    if (existingType != type)
+    {
+        throw std::runtime_error(fmt::format(
+            "UUID '{}' already belongs to {} '{}'", uuid, cm::store::resourceTypeToString(existingType), name));
+    }
+    return true;
 }
 
 } // namespace
@@ -373,7 +398,6 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
                                   bool softValidation)
 {
     const auto store = getStore();
-    const auto validator = getValidator();
     // Reject if destination namespace already exists
     if (store->existsNamespace(nsId))
     {
@@ -412,7 +436,7 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
 
         if (!softValidation)
         {
-            validator->validateAsset(nsReader, assetJson);
+            validateAsset(nsReader, assetJson);
         }
         ns->createResource(name.toStr(), cm::store::ResourceType::DECODER, assetJson);
     }
@@ -431,7 +455,7 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
 
         if (!softValidation)
         {
-            validator->validateAsset(nsReader, assetJson);
+            validateAsset(nsReader, assetJson);
         }
         ns->createResource(name.toStr(), cm::store::ResourceType::FILTER, assetJson);
     }
@@ -448,7 +472,7 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
         }
         if (!softValidation)
         {
-            validator->softIntegrationValidate(nsReader, integ);
+            validateIntegration(nsReader, integ);
         }
         ns->createResource(integ.getName(), cm::store::ResourceType::INTEGRATION, integ.toJson());
     }
@@ -589,7 +613,7 @@ void CrudService::upsertResource(const cm::store::NamespaceId& nsId,
                 const std::string& uuid = integ.getUUID();
                 const std::string& name = integ.getName();
 
-                if (!uuid.empty() && nsReader->assetExistsByUUID(uuid))
+                if (existsByUUIDWithType(nsReader, uuid, type))
                 {
                     ns->updateResourceByUUID(uuid, integ.toJson());
                 }
@@ -608,7 +632,7 @@ void CrudService::upsertResource(const cm::store::NamespaceId& nsId,
                 const std::string& uuid = kvdb.getUUID();
                 const std::string& name = kvdb.getName();
 
-                if (!uuid.empty() && nsReader->assetExistsByUUID(uuid))
+                if (existsByUUIDWithType(nsReader, uuid, type))
                 {
                     ns->updateResourceByUUID(uuid, kvdbJson);
                 }

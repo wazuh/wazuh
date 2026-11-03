@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -220,6 +220,17 @@ int OS_ReadXML_Ex(const char *file, OS_XML *_lxml, bool flag_truncate) {
 
 int OS_ReadXML(const char *file, OS_XML *_lxml) {
     return OS_ReadXML_Ex(file, _lxml, false);
+}
+
+/* Read XML from a stream the caller opened; ParseXML() closes it */
+int OS_ReadXMLFromStream(FILE *fp, OS_XML *_lxml) {
+    /* Initialize xml structure */
+    memset(_lxml, 0, sizeof(OS_XML));
+
+    _lxml->fp = fp;
+    _lxml->string = NULL;
+
+    return ParseXML(_lxml, false);
 }
 
 static int _oscomment(OS_XML *_lxml, int delim)

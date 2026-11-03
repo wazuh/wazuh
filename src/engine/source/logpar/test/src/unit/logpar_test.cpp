@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include "logpar_test.hpp"
 
 #include <memory>
@@ -29,6 +30,12 @@ TEST_F(LogparTest, Builds)
     EXPECT_CALL(*schema, hasField(testing::StrEq(logpar_test::TEXT_FIELD_OVERRIDE))).WillOnce(::testing::Return(true));
     EXPECT_CALL(*schema, hasField(testing::StrEq(logpar_test::LONG_FIELD_OVERRIDE))).WillOnce(::testing::Return(true));
     ASSERT_NO_THROW(logpar::Logpar logpar(config, schema));
+}
+
+TEST_F(LogparTest, BuildsMaxGroupRecursionOverLimit)
+{
+    auto config = logpar_test::getConfig();
+    ASSERT_THROW(logpar::Logpar logpar(config, schema, logp::MAX_GROUP_NESTING + 1), std::runtime_error);
 }
 
 TEST_F(LogparTest, BuildsNotObjectConfig)
@@ -94,7 +101,8 @@ INSTANTIATE_TEST_SUITE_P(Parses,
                                            ParseExprT("lit<~>(?<~>:)|", false),
                                            ParseExprT("lit(?lit)(?lit)", false), // Must build if limit >= 2
                                            ParseExprT("lit(?(?lit)lit)", false), // Must build if limit >= 2
-                                           ParseExprT("<~>(?(?a)(?b))", false),  // Children are groups with no trailing literal
+                                           ParseExprT("<~>(?(?a)(?b))",
+                                                      false), // Children are groups with no trailing literal
                                            ParseExprT("<~opt>?lit", false),
                                            ParseExprT("lit(?lit", false),
                                            ParseExprT("literal<text><_custom/long><~>", false),
@@ -410,6 +418,30 @@ INSTANTIATE_TEST_SUITE_P(
                        logp::Literal {" "},
                        logp::Group {{logp::Choice {{{"long"}, {}, false}, {{"~"}, {"literal", "-"}, false}}}}}},
                      39)));
+
+TEST(LogparGroupParserDepthTest, RespectsMaxDepth)
+{
+    ASSERT_TRUE(logp::pGroup(3)("(?(?(?a)))", 0).success());
+    ASSERT_FALSE(logp::pGroup(2)("(?(?(?a)))", 0).success());
+    ASSERT_FALSE(logp::pGroup(0)("(?a)", 0).success());
+}
+
+TEST(LogparGroupParserDepthTest, DeepNestingFailsWithoutExhaustingTheStack)
+{
+    // Far deeper than the stack allowed before the cap was checked on descent
+    constexpr size_t levels = 100000;
+    std::string text;
+    text.reserve(levels * 3 + 1);
+    for (size_t i = 0; i < levels; ++i)
+    {
+        text += "(?";
+    }
+    text += "a";
+    text.append(levels, ')');
+
+    ASSERT_FALSE(logp::pGroup()(text, 0).success());
+    ASSERT_FALSE(logp::pLogpar()(text, 0).success());
+}
 
 using LogparParserT = std::tuple<bool, std::string, std::list<logp::ParserInfo>, size_t>;
 class LogparLogparParserTest : public ::testing::TestWithParam<LogparParserT>

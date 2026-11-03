@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -58,6 +58,15 @@ os_info *get_win_version();
 
 
 /**
+ * @brief Translate a Windows PROCESSOR_ARCHITECTURE value into the reported architecture.
+ *
+ * @param processor_arch Value of PROCESSOR_ARCHITECTURE (e.g. "AMD64", "ARM64", "x86").
+ * @return Architecture name, or NULL if the value is not recognized.
+ */
+const char *win_processor_arch_to_machine(const char *processor_arch);
+
+
+/**
  * @brief Get the version information. (UNIX based systems).
  *
  * @return Pointer to allocated os_info struct.
@@ -81,7 +90,9 @@ void free_osinfo(os_info * osinfo);
 int get_nproc();
 
 /**
- * Compare two versions with format v4.0.0
+ * Compare two versions with format v4.0.0. Each side is read as up to three dot-separated numbers after
+ * the first 'v' (or from the start): missing or non-numeric parts are 0, a suffix such as "-rc1" is
+ * ignored and there is no length limit. Reentrant: safe to call from several threads at once.
  * @param version1 char * with the string version
  * @param version2 char * with the string version
  * @param compare_patch bool to compare or not patch version

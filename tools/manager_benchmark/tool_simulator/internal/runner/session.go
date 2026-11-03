@@ -276,17 +276,27 @@ func (a *agent) checksumValue(lane string, step scenario.Step, index string) str
 	}
 }
 
-// runEngine ships the step's sample file to /stateless in batches of
-// events_per_batch H/E events (0 = the whole file at once). This agent's own
+// runEngine ships the step's sample file in batches of events_per_batch H/E
+// events (0 = the whole file at once): to remoted's POST /stateless in agent
+// mode, or straight to the engine's POST /events/enriched in uds mode, where
+// the client stamps X-Wazuh-Agent-Id as remoted would. This agent's own
 // events_per_second limiter charges each batch its REAL cost in events
 // (WaitN), so the configured rate holds no matter how the events are grouped;
 // each agent paces itself independently, so the manager-side total scales
 // with how many agents run the lane. One call always covers the entire file;
-// a 503'd batch is counted and dropped, never retried -- an agent's events
-// are lost the same way.
+// a 503'd batch is counted and dropped, never retried. That is the default
+// "count" batching; "agent" batching (runEngineAgent) follows the real agent
+// instead, which sizes batches by bytes and time and retries a 503.
 func (a *agent) runEngine(ctx context.Context, lane string, step scenario.Step) {
+	if step.AgentBatching() {
+		a.runEngineAgent(ctx, lane, step)
+		return
+	}
 	lines := a.r.engineLines(step.Engine)
 	if len(lines) == 0 {
+		return
+	}
+	if err := a.applyStartJitter(ctx, a.engineStream(lane), step.ResolvedStartJitter()); err != nil {
 		return
 	}
 	batch := step.EventsPerBatch
@@ -304,19 +314,76 @@ func (a *agent) runEngine(ctx context.Context, lane string, step scenario.Step) 
 		if err := limiter.WaitN(ctx, len(chunk)); err != nil {
 			return
 		}
-		body := engine.Batch(a.id, "1", step.Location, chunk)
-		a.r.requestStarted()
-		resp, err := a.client.Do("POST", "/stateless", body, "", "", now(), false)
-		a.r.requestFinished()
-		if err != nil {
-			a.r.reg.RecordTransportError(a.fleet.Name, lane)
+		body := engine.BatchWithHeader(a.engineHeader(step.Header), "1", step.Location, chunk)
+		if out := a.postEngineBatch(lane, body, "", uint64(len(chunk))); out.stop || out.transportErr {
 			return
 		}
-		if resp.Status == 400 {
-			a.r.fatalf("agent %s engine batch answered 400: %s", a.id, truncate(resp.Body))
-		}
-		a.r.reg.RecordStateless(a.fleet.Name, lane, resp.Status, uint64(len(chunk)), us(resp.Latency))
 	}
+}
+
+// engineOutcome is what one engine batch request came back with.
+type engineOutcome struct {
+	status       int           // 202 for the engine's 200 too
+	retryAfter   time.Duration // Retry-After, when the answer carried one
+	transportErr bool          // no HTTP answer at all
+	stop         bool          // the run was invalidated; the lane must stop
+}
+
+// postEngineBatch sends one engine batch -- to remoted's POST /stateless in
+// agent mode, or straight to the engine's POST /events/enriched in uds mode,
+// where the client stamps X-Wazuh-Agent-Id as remoted would -- and records the
+// outcome, counting events toward events_sent. A 400 (the batch itself is
+// wrong) and, in uds mode, a 404 (wrong --socket) invalidate the run.
+func (a *agent) postEngineBatch(lane string, body []byte, encoding string, events uint64) engineOutcome {
+	a.r.requestStarted()
+	var resp wire.Response
+	var err error
+	if a.r.mode == "uds" {
+		resp, err = a.client.Do("POST", "/events/enriched", body, "application/x-ndjson", "", now(), true)
+	} else {
+		resp, err = a.client.Do("POST", "/stateless", body, "", encoding, now(), false)
+	}
+	a.r.requestFinished()
+	if err != nil {
+		a.r.reg.RecordTransportError(a.fleet.Name, lane)
+		return engineOutcome{transportErr: true}
+	}
+	if resp.Status == 400 {
+		a.r.fatalf("agent %s engine batch answered 400: %s", a.id, truncate(resp.Body))
+		return engineOutcome{status: resp.Status, stop: true}
+	}
+	if a.r.mode == "uds" && resp.Status == 404 {
+		// One --socket serves a uds run: a 404 means it is not the engine ingest
+		// socket (the default is inventory-sync's), so every batch would be lost.
+		a.r.fatalf("agent %s engine batch answered 404 on %s: uds engine lanes need --socket set to the engine ingest socket",
+			a.id, a.r.cfg.Socket)
+		return engineOutcome{status: resp.Status, stop: true}
+	}
+	status := resp.Status
+	if a.r.mode == "uds" && status == 200 {
+		// The engine answers 200 where remoted answers 202 for the same accepted
+		// batch; one success bucket keeps agent and uds runs comparable.
+		status = 202
+	}
+	a.r.reg.RecordStateless(a.fleet.Name, lane, status, events, us(resp.Latency))
+	out := engineOutcome{status: status}
+	if resp.RetryAfter != "" {
+		out.retryAfter = retryAfterDelay(resp.RetryAfter)
+	}
+	return out
+}
+
+// engineHeader returns the H-line JSON of this agent's next engine batch. The
+// batch counter is the agent's own and survives repeated passes over the
+// sample file, so a header set to change every N batches keeps changing for
+// the whole run instead of cycling through the same values each pass.
+func (a *agent) engineHeader(spec *engine.HeaderSpec) string {
+	n := a.engineBatches.Add(1) - 1
+	seq := 0
+	if spec != nil && spec.ChangeEvery > 0 {
+		seq = int(n / uint64(spec.ChangeEvery))
+	}
+	return engine.HeaderLineFor(a.id, &a.headerInfo, spec, seq)
 }
 
 func (a *agent) runDelete(ctx context.Context, lane string) {

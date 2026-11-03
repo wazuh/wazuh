@@ -1,12 +1,13 @@
 /*
  * Wazuh keystore
- * Copyright (C) 2015, Wazuh Inc.
- * January 25, 2024.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #include "argsParser.hpp"
@@ -24,42 +25,42 @@
 
 namespace
 {
-constexpr auto RUNTIME_USER = "wazuh-manager";
-constexpr auto RUNTIME_GROUP = "wazuh-manager";
+    constexpr auto RUNTIME_USER = "wazuh-manager";
+    constexpr auto RUNTIME_GROUP = "wazuh-manager";
 
-void dropPrivilegesIfAvailable()
-{
-    if (geteuid() != 0)
+    void dropPrivilegesIfAvailable()
     {
-        return;
-    }
+        if (geteuid() != 0)
+        {
+            return;
+        }
 
-    const auto* user = getpwnam(RUNTIME_USER);
-    if (user == nullptr)
-    {
-        // Standalone build-tree QA environments do not install runtime accounts.
-        return;
-    }
-    const uid_t uid = user->pw_uid;
+        const auto* user = getpwnam(RUNTIME_USER);
+        if (user == nullptr)
+        {
+            // Standalone build-tree QA environments do not install runtime accounts.
+            return;
+        }
+        const uid_t uid = user->pw_uid;
 
-    const auto* group = getgrnam(RUNTIME_GROUP);
-    if (group == nullptr)
-    {
-        return;
-    }
-    const gid_t gid = group->gr_gid;
-    if (initgroups(RUNTIME_USER, gid) != 0 || setgid(gid) != 0 || setuid(uid) != 0)
-    {
-        throw std::runtime_error {"Cannot drop privileges to wazuh-manager."};
-    }
+        const auto* group = getgrnam(RUNTIME_GROUP);
+        if (group == nullptr)
+        {
+            return;
+        }
+        const gid_t gid = group->gr_gid;
+        if (initgroups(RUNTIME_USER, gid) != 0 || setgid(gid) != 0 || setuid(uid) != 0)
+        {
+            throw std::runtime_error {"Cannot drop privileges to wazuh-manager."};
+        }
 
-    if (getuid() != uid || geteuid() != uid || getgid() != gid || getegid() != gid)
-    {
-        throw std::runtime_error {"Cannot verify wazuh-manager identity."};
-    }
+        if (getuid() != uid || geteuid() != uid || getgid() != gid || getegid() != gid)
+        {
+            throw std::runtime_error {"Cannot verify wazuh-manager identity."};
+        }
 
-    umask(0007);
-}
+        umask(0007);
+    }
 } // namespace
 
 int main(int argc, char* argv[])
@@ -99,6 +100,33 @@ int main(int argc, char* argv[])
         key = args.getKey();
         value = args.getValue();
         valuePath = args.getValuePath();
+
+        // Reading back is what gives a caller a definite answer to "is this credential already in
+        // our own store?". The credential resolver needs exactly that to decide whether a key is
+        // already resolved, and inferring it from anything else -- a config file, a shipped
+        // default -- makes every restart a guess.
+        if (args.isGet())
+        {
+            if (!value.empty() || !valuePath.empty())
+            {
+                throw CmdLineArgsException("-g does not take a value.");
+            }
+
+            dropPrivilegesIfAvailable();
+
+            std::string stored;
+            Keystore::get(family, key, stored);
+
+            if (stored.empty())
+            {
+                // Absent and empty are the same thing here, and both mean "not set". Exiting
+                // non-zero rather than printing nothing is what lets a shell test it directly.
+                return 1;
+            }
+
+            std::cout << stored << "\n";
+            return 0;
+        }
 
         std::string secret;
         if (value.empty() && valuePath.empty())

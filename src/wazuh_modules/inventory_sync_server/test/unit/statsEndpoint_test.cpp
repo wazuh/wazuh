@@ -1,7 +1,6 @@
 /*
  * Wazuh inventory sync server module - unit tests
- * Copyright (C) 2015, Wazuh Inc.
- * July 30, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -10,10 +9,12 @@
  */
 
 #include "common/clusterIdentity.hpp"
+#include "common/jsonNestingDepth.hpp"
 #include "endpoints/statsEndpoint.hpp"
 
 #include <gtest/gtest.h>
 
+#include <cstddef>
 #include <json.hpp>
 #include <memory>
 #include <optional>
@@ -316,6 +317,62 @@ TEST(StatsEndpointTest, NothingTheAgentClaimsAboutItsIdentityIsIndexed)
 }
 
 /**
+ * The agent's groups and host are the one thing the report contributes beyond its statistics: they
+ * land under `wazuh.agent`, next to the authenticated id, and nothing else from the `agent` block
+ * follows them.
+ */
+TEST(StatsEndpointTest, CopiesReportedGroupsAndHostUnderWazuhAgent)
+{
+    const auto document =
+        indexedDocument(R"({"modules":{"agent":{"messages":{"count":1}}},"agent_id":"001",)"
+                        R"("agent":{"id":"999","name":"web-01","groups":["default","linux"],)"
+                        R"("host":{"architecture":"x86_64","hostname":"web-01",)"
+                        R"("os":{"name":"Ubuntu","platform":"ubuntu","type":"linux","version":"24.04"}}}})",
+                        "001");
+
+    const auto& agent = document["/wazuh/agent"_json_pointer];
+    EXPECT_EQ("001", agent.at("id").get<std::string>()) << "claimed 999";
+    EXPECT_EQ(nlohmann::json::parse(R"(["default","linux"])"), agent.at("groups"));
+    EXPECT_EQ("web-01", agent.at("host").at("hostname").get<std::string>());
+    EXPECT_EQ("24.04", agent.at("host").at("os").at("version").get<std::string>());
+    EXPECT_FALSE(agent.contains("name"));
+    EXPECT_EQ(1, agent.at("statistics").at("agent").at("messages").at("count").get<int>());
+    EXPECT_FALSE(document.contains("agent"));
+}
+
+/// An agent that predates the metadata sends no `agent` block: its document is indexed exactly as
+/// before, without empty groups or host standing in for values it never reported.
+TEST(StatsEndpointTest, AReportWithoutAgentMetadataIndexesNoGroupsOrHost)
+{
+    const auto document = indexedDocument(kAgentReport, "001");
+
+    EXPECT_FALSE(document["/wazuh/agent"_json_pointer].contains("groups"));
+    EXPECT_FALSE(document["/wazuh/agent"_json_pointer].contains("host"));
+}
+
+/// Bad metadata is left empty, never a 400: the agent would resend it every cycle and stop reporting.
+TEST(StatsEndpointTest, InvalidAgentMetadataIsLeftEmptyNotRejected)
+{
+    const auto document =
+        indexedDocument(R"({"modules":{"agent":{"messages":{"count":1}}},)"
+                        R"("agent":{"groups":["default",1],"host":{"hostname":42,"architecture":"x86_64"}}})",
+                        "001");
+
+    EXPECT_EQ(nlohmann::json::array(), document["/wazuh/agent/groups"_json_pointer]);
+    EXPECT_EQ("", document["/wazuh/agent/host/hostname"_json_pointer].get<std::string>());
+    EXPECT_EQ("x86_64", document["/wazuh/agent/host/architecture"_json_pointer].get<std::string>());
+    EXPECT_EQ(1, document["/wazuh/agent/statistics/agent/messages/count"_json_pointer].get<int>());
+}
+
+TEST(StatsEndpointTest, AnAgentBlockThatIsNotAnObjectStillIndexesTheReport)
+{
+    const auto document = indexedDocument(R"({"modules":{"agent":{"messages":{"count":1}}},"agent":["g"]})", "001");
+
+    EXPECT_FALSE(document["/wazuh/agent"_json_pointer].contains("groups"));
+    EXPECT_EQ(1, document["/wazuh/agent/statistics/agent/messages/count"_json_pointer].get<int>());
+}
+
+/**
  * The time field is `state.modified_at` and not `@timestamp`: this index follows the schema's
  * stateful convention, because the document id is stable and every push replaces the previous state.
  * Its shape is what makes the document indexable, so pin it rather than just its presence:
@@ -367,6 +424,31 @@ TEST(StatsEndpointTest, MalformedJsonIsRejected)
 }
 
 /**
+ * dump() recurses once per level: a deep enough report would overflow the I/O thread's stack and crash
+ * the whole of modulesd. The cap is checked on the raw body, so the deepest legal report still goes
+ * through and one level more never reaches the parser or the indexer. The attack-sized body would
+ * crash this test binary without the cap.
+ */
+TEST(StatsEndpointTest, ReportsNestedPastTheLimitAreRejectedBeforeParsing)
+{
+    // root, modules and the module body are three levels; the rest is arrays under one field.
+    const auto nested = [](std::size_t depth)
+    {
+        const std::size_t arrays = depth - 3;
+        return R"({"modules":{"m":{"x":)" + std::string(arrays, '[') + std::string(arrays, ']') + "}}}";
+    };
+
+    auto connector = std::make_shared<FakeAsyncConnector>();
+    EXPECT_EQ(200, run(makeRequest(nested(invsync::common::MAX_JSON_NESTING_DEPTH), "001"), connector).status);
+    EXPECT_EQ(1U, connector->indexed.size());
+
+    connector = std::make_shared<FakeAsyncConnector>();
+    EXPECT_EQ(400, run(makeRequest(nested(invsync::common::MAX_JSON_NESTING_DEPTH + 1), "001"), connector).status);
+    EXPECT_EQ(400, run(makeRequest(nested(1'000'000), "001"), connector).status);
+    EXPECT_TRUE(connector->indexed.empty());
+}
+
+/**
  * A request without the header did not come through remoted's authenticated route, so it is a
  * contract violation rather than agent input. Rejecting it is what stops the endpoint from inventing
  * an identity.
@@ -382,6 +464,21 @@ TEST(StatsEndpointTest, AMissingAgentIdHeaderIsRejected)
 TEST(StatsEndpointTest, AnEmptyAgentIdHeaderIsRejected)
 {
     EXPECT_EQ(400, run(makeRequest(kAgentReport, "")).status);
+}
+
+/// The header is the document id and `wazuh.agent.id`, so it must be the one canonical spelling the
+/// whole-agent deletion matches. remoted only ever sends that form; a caller that bypasses it with
+/// another spelling, or an id out of range, would index a document no deletion reaches.
+TEST(StatsEndpointTest, ANonCanonicalAgentIdHeaderIsRejected)
+{
+    for (const auto* agentId : {"1", "07", "0007", "agent-one", "4294967297"})
+    {
+        auto connector = std::make_shared<FakeAsyncConnector>();
+        const auto response = run(makeRequest(kAgentReport, agentId), connector);
+
+        EXPECT_EQ(400, response.status) << "header '" << agentId << "'";
+        EXPECT_TRUE(connector->indexed.empty()) << "header '" << agentId << "'";
+    }
 }
 
 /// The protocol's acknowledgment: an empty object, so the agent has nothing to parse out of it.

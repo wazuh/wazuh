@@ -19,7 +19,9 @@ For module overview and architecture, see [Agent Upgrade Module](README.md).
 
 **XML Section:** `<agent-upgrade>`
 
-**Internal Options:** None
+**Internal Options:** `execd.request_timeout` (seconds, `1`–`3600`, default `60` in
+`etc/internal_options.conf`) bounds how long the installer may run; override it in
+`etc/local_internal_options.conf`.
 
 The agent-side configuration controls whether the agent accepts remote upgrades and how the incoming WPK is validated.
 
@@ -47,21 +49,45 @@ Verify the WPK package digital signature before running the installer.
 
 #### ca_store
 
-Path to a CA certificate file used to verify the WPK signature. The tag can be repeated to accept multiple CAs.
+Path to a CA certificate used to verify the WPK signature. The tag can be repeated to accept several
+CAs.
 
-- **Default value:** the packaged Wazuh CA certificate.
-- **Allowed values:** valid absolute paths.
-- **Note:** Only effective when `ca_verification` is enabled.
+- **Default value:** `etc/wpk_root.pem` (`wpk_root.pem` on Windows): the packaged Wazuh CA, relative
+  to the installation directory.
+- **Allowed values:** a file path, absolute or relative to the installation directory.
+- **Note:** the `<ca_store>` entries of a `<ca_verification>` block **replace** the default: list
+  `etc/wpk_root.pem` as well to keep accepting Wazuh's own WPKs. With no `<ca_store>` in the block,
+  `etc/wpk_root.pem` is used. Only effective when `ca_verification` is enabled.
 
 Complete `ca_verification` block:
 
 ```xml
 <ca_verification>
   <enabled>yes</enabled>
-  <ca_store>/etc/ssl/certs/wazuh_ca.pem</ca_store>
+  <ca_store>etc/wpk_root.pem</ca_store>
   <ca_store>/etc/ssl/certs/internal_ca.pem</ca_store>
 </ca_verification>
 ```
+
+### CA settings under `<active-response>`
+
+The agent installer writes the CA settings under `<active-response>`, not under `<agent-upgrade>`:
+
+```xml
+<active-response>
+  <disabled>no</disabled>
+  <ca_store>etc/wpk_root.pem</ca_store>
+  <ca_verification>yes</ca_verification>
+</active-response>
+```
+
+They are still read: when the module starts, `<active-response><ca_store>` and
+`<active-response><ca_verification>` set the CA list and the verification flag, and an
+`<agent-upgrade><ca_verification>` block, when present, then replaces the CA list (and the flag, when
+it carries `<enabled>`).
+
+`<agent-upgrade>` is read only from the local `ossec.conf`; a block in a group's `agent.conf` is
+ignored.
 
 ### Deprecated options
 
@@ -100,13 +126,15 @@ Prevent this specific agent from being upgraded remotely:
 
 ### Custom CA Store
 
-Use one or more custom CAs to sign WPK packages:
+Accept WPKs signed by your own CA as well as Wazuh's (drop the first `<ca_store>` to accept only
+yours):
 
 ```xml
 <agent-upgrade>
   <enabled>yes</enabled>
   <ca_verification>
     <enabled>yes</enabled>
+    <ca_store>etc/wpk_root.pem</ca_store>
     <ca_store>/etc/ssl/certs/wazuh_internal_ca.pem</ca_store>
   </ca_verification>
 </agent-upgrade>

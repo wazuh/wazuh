@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -316,18 +316,27 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
     unsigned int msg_global = 0;
     unsigned int msg_local = 0;
     char *f_msg;
+    crypt_method method;
 
     w_mutex_lock(&keys->keyentries[id]->mutex);
+
+    /* The "#AES" prefix travels in clear, so it only selects the cipher for
+     * this message. The manager records it on the key entry (used to encrypt
+     * the replies) once the message has been decrypted and authenticated. The
+     * agent always uses its configured method and records nothing. */
+#ifdef CLIENT
+    method = keys->keyentries[id]->crypto_method;
+#endif
 
     if(strncmp(buffer, "#AES", 4)==0){
         buffer+=4;
         #ifndef CLIENT
-            keys->keyentries[id]->crypto_method = W_METH_AES;
+            method = W_METH_AES;
         #endif
     }
     else{
         #ifndef CLIENT
-            keys->keyentries[id]->crypto_method = W_METH_BLOWFISH;
+            method = W_METH_BLOWFISH;
         #endif
     }
 
@@ -340,7 +349,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
     }
 
     /* Decrypt message */
-    switch((crypt_method)keys->keyentries[id]->crypto_method){
+    switch(method){
         case W_METH_BLOWFISH:
             if (!OS_BF_Str(buffer, cleartext, keys->keyentries[id]->encryption_key,
                         buffer_size, OS_DECRYPT)) {
@@ -438,9 +447,8 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
                 rcv_count = 0;
             }
             rcv_count++;
-            w_mutex_unlock(&keys->keyentries[id]->mutex);
             *output = f_msg;
-            return KS_VALID;
+            goto authenticated;
         }
 
         if (rcv_count >= _s_recv_flush) {
@@ -458,9 +466,8 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
                 rcv_count = 0;
             }
             rcv_count++;
-            w_mutex_unlock(&keys->keyentries[id]->mutex);
             *output = f_msg;
-            return KS_VALID;
+            goto authenticated;
         }
 
         /* Check if it is a duplicated message */
@@ -520,8 +527,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
                 f_msg++;
                 *final_size = buffer_size - (f_msg - cleartext);
                 *output = f_msg;
-                w_mutex_unlock(&keys->keyentries[id]->mutex);
-                return KS_VALID;
+                goto authenticated;
             } else {
                 w_mutex_unlock(&keys->keyentries[id]->mutex);
                 merror(ENCFORMAT_ERROR, keys->keyentries[id]->id, srcip);
@@ -541,8 +547,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
                 f_msg++;
                 *final_size = buffer_size - (f_msg - cleartext);
                 *output = f_msg;
-                w_mutex_unlock(&keys->keyentries[id]->mutex);
-                return KS_VALID;
+                goto authenticated;
             } else {
                 w_mutex_unlock(&keys->keyentries[id]->mutex);
                 merror(ENCFORMAT_ERROR, keys->keyentries[id]->id, srcip);
@@ -572,6 +577,15 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
     }
     mwarn(ENCKEY_ERROR, keys->keyentries[id]->id, srcip);
     return KS_ENCKEY;
+
+authenticated:
+    /* Every message accepted above ends here: decrypted, its checksum and counters checked, the
+     * entry's mutex still held. Only the manager records the cipher, to answer the agent with it. */
+#ifndef CLIENT
+    keys->keyentries[id]->crypto_method = method;
+#endif
+    w_mutex_unlock(&keys->keyentries[id]->mutex);
+    return KS_VALID;
 }
 
 /* Create an encrypted message

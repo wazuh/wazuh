@@ -1,4 +1,4 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -17,7 +17,7 @@ from sqlalchemy.sql import text
 
 from wazuh.core.utils import get_utc_now
 from wazuh.rbac.tests.utils import init_db
-from wazuh.rbac.orm import WAZUH_USER_ID, WAZUH_WUI_USER_ID, MAX_ID_RESERVED, User
+from wazuh.rbac.orm import WAZUH_USER_ID, WAZUH_INTERNAL_CLIENT_USER_ID, MAX_ID_RESERVED, User
 
 test_path = os.path.dirname(os.path.realpath(__file__))
 test_data_path = os.path.join(test_path, 'data')
@@ -123,6 +123,79 @@ def test_token_valid_after_revoke_same_second_ms(db_setup):
         assert tm.is_token_valid(user_id=user_id, token_nbf_time=revoke_ts + 1)
 
 
+def test_token_issued_at_credential_check_precedes_password_change_rule(db_setup):
+    """A token issued at the time its credentials were checked is ordered before a later password change.
+
+    The token's issue time is taken before the credential check (`api.authentication.check_user`),
+    so it is no later than the user token rule a password change writes after committing the new
+    hash, even when both land in the same millisecond.
+    """
+    with db_setup.AuthenticationManager() as am:
+        am.add_user(username='in_flight_user', password='testingA1!')
+        user_id = am.get_user('in_flight_user')['id']
+
+    change_time = 1609459200.100
+    auth_time_ms = int(change_time * 1000)
+
+    # The login's credential check reads the old hash before the change commits.
+    with db_setup.AuthenticationManager() as am:
+        assert am.check_user('in_flight_user', 'testingA1!')
+
+    # The password change commits and then stamps its rule, in the same millisecond at worst.
+    with db_setup.AuthenticationManager() as am:
+        assert am.update_user(user_id, 'Changed.Pass1!')
+    with patch('wazuh.rbac.orm.time', return_value=change_time):
+        with db_setup.TokenManager() as tm:
+            assert tm.add_user_roles_rules(users={user_id})
+
+    with db_setup.TokenManager() as tm:
+        # The token carries the pre-check time and falls under the rule.
+        assert not tm.is_token_valid(user_id=user_id, token_nbf_time=auth_time_ms)
+        # A token issued after the rule is not affected by it.
+        assert tm.is_token_valid(user_id=user_id, token_nbf_time=auth_time_ms + 1)
+
+
+def test_run_as_context_revocation_is_scoped_to_the_context(db_setup):
+    """Revoking one run_as authorization context leaves the other contexts and the account's own tokens valid.
+
+    Every run_as token names the account that called the run_as login, so revoking by that account
+    on one end user's logout used to end every dashboard session.
+    """
+    with db_setup.AuthenticationManager() as am:
+        am.add_user(username='runas_account', password='testingA1!')
+        user_id = am.get_user('runas_account')['id']
+
+    revoke_time = 1609459200.100
+    token_nbf_ms = int(revoke_time * 1000) - 1
+    with patch('wazuh.rbac.orm.time', return_value=revoke_time):
+        with db_setup.TokenManager() as tm:
+            assert tm.add_user_roles_rules(contexts={'logged_out'}) is True
+
+    with db_setup.TokenManager() as tm:
+        assert not tm.is_token_valid(user_id=user_id, token_nbf_time=token_nbf_ms, run_as=True,
+                                     hash_auth_context='logged_out')
+        assert tm.is_token_valid(user_id=user_id, token_nbf_time=token_nbf_ms, run_as=True,
+                                 hash_auth_context='still_logged_in')
+        assert tm.is_token_valid(user_id=user_id, token_nbf_time=token_nbf_ms)
+        # A later login of the same end user is not affected.
+        assert tm.is_token_valid(user_id=user_id, token_nbf_time=int(revoke_time * 1000) + 1, run_as=True,
+                                 hash_auth_context='logged_out')
+
+
+def test_run_as_context_rules_are_cleaned(db_setup):
+    """Context rules are purged once expired and by a full reset."""
+    with patch('wazuh.rbac.orm.time', return_value=0):
+        with db_setup.TokenManager() as tm:
+            assert tm.add_user_roles_rules(contexts={'expired'}) is True
+    with db_setup.TokenManager() as tm:
+        assert tm.add_user_roles_rules(contexts={'alive'}) is True
+        remaining = {rule.hash_auth_context for rule in tm.session.query(db_setup.RunAsContextTokenBlacklist)}
+        assert remaining == {'alive'}
+
+        tm.delete_all_rules()
+        assert tm.session.query(db_setup.RunAsContextTokenBlacklist).count() == 0
+
+
 def test_delete_all_rules(db_setup):
     """Check that rules are correctly deleted"""
     add_token(db_setup)
@@ -136,6 +209,67 @@ def test_delete_all_expired_rules(db_setup):
         add_token(db_setup)
     with db_setup.TokenManager() as tm:
         assert tm.delete_all_expired_rules()
+
+
+@pytest.fixture
+def raised_token_timeout(tmp_path):
+    """Write a security.yaml raising the token lifetime to 3600s while the in-memory copy still says 900s.
+
+    This is the state left by `PUT /security/config` in the process that creates revocation rules:
+    the file is updated and the `security_conf` imported at start-up is not.
+    """
+    security_file = tmp_path / 'security.yaml'
+    security_file.write_text(yaml.dump({'auth_token_exp_timeout': 3600}))
+    with patch('wazuh.rbac.orm.SECURITY_CONFIG_PATH', new=str(security_file)), \
+            patch('api.configuration.SECURITY_CONFIG_PATH', new=str(security_file)), \
+            patch.dict('api.configuration.security_conf', {'auth_token_exp_timeout': 900}):
+        yield 3600
+
+
+@pytest.mark.parametrize('kind, table', [
+    ('users', 'UsersTokenBlacklist'),
+    ('roles', 'RolesTokenBlacklist'),
+    ('run_as', 'RunAsTokenBlacklist'),
+    ('contexts', 'RunAsContextTokenBlacklist'),
+])
+def test_token_rules_sized_from_security_file(db_setup, raised_token_timeout, kind, table):
+    """Check that every revocation rule lasts the timeout in security.yaml, not the stale in-memory one."""
+    user_ids, role_ids = add_token(db_setup)
+    rule_kwargs = {'users': {'users': {user_ids[0]}}, 'roles': {'roles': {role_ids[0]}},
+                   'run_as': {'run_as': True}, 'contexts': {'contexts': {'abc'}}}[kind]
+
+    with patch('wazuh.rbac.orm.time', return_value=1609459200.0):
+        with db_setup.TokenManager() as tm:
+            tm.delete_all_rules()
+            assert tm.add_user_roles_rules(**rule_kwargs) is True
+            rules = tm.session.query(getattr(db_setup, table)).all()
+
+    assert len(rules) == 1
+    assert rules[0].is_valid_until - rules[0].nbf_invalid_until == raised_token_timeout * 1000
+
+
+def test_revocation_outlives_stale_token_timeout(db_setup, raised_token_timeout):
+    """Check that a revocation is not purged at the previous, shorter timeout while the revoked token is alive."""
+    with db_setup.AuthenticationManager() as am:
+        am.add_user(username='revoked_user', password='testingA1!')
+        user_id = am.get_user('revoked_user')['id']
+
+    revoke_time = 1609459200.0
+    token_nbf_ms = int(revoke_time * 1000) - 1000
+    with patch('wazuh.rbac.orm.time', return_value=revoke_time):
+        with db_setup.TokenManager() as tm:
+            assert tm.add_user_roles_rules(users={user_id})
+
+    # Past the old 900s timeout, the token (valid for 3600s) must still be revoked.
+    with patch('wazuh.rbac.orm.time', return_value=revoke_time + 901):
+        with db_setup.TokenManager() as tm:
+            tm.delete_all_expired_rules()
+            assert not tm.is_token_valid(user_id=user_id, token_nbf_time=token_nbf_ms)
+
+    # Past the configured timeout the token has expired on its own, and the rule may go.
+    with patch('wazuh.rbac.orm.time', return_value=revoke_time + raised_token_timeout + 1):
+        with db_setup.TokenManager() as tm:
+            assert tm.delete_all_expired_rules() == ([user_id], [])
 
 
 def test_add_user(db_setup):
@@ -201,6 +335,24 @@ def test_add_rule(db_setup):
         # Obtain not existent role
         assert rum.get_rule(999) == db_setup.SecurityError.RULE_NOT_EXIST
         assert rum.get_rule_by_name('not_exists') == db_setup.SecurityError.RULE_NOT_EXIST
+
+
+@pytest.mark.parametrize('rule', [
+    {'MATCH': {'user': ["r'^a|b"]}},
+    {'MATCH': {"r'^user": ['admin']}},
+    {'FIND': {'user': "r'"}},
+    {'MATCH': {'user': ["r'^(a'"]}},
+])
+def test_add_and_update_rule_reject_malformed_regex(db_setup, rule):
+    """Rules holding an unclosed or non-compiling r'...' expression must not be stored."""
+    with db_setup.RulesManager() as rum:
+        assert rum.add_rule(name='malformed_rule', rule=rule) == db_setup.SecurityError.INVALID
+        assert rum.get_rule_by_name('malformed_rule') == db_setup.SecurityError.RULE_NOT_EXIST
+
+        assert rum.add_rule(name='valid_rule', rule={'MATCH': {'user': ["r'^a|b'"]}}) is True
+        rule_id = rum.get_rule_by_name('valid_rule')['id']
+        assert rum.update_rule(rule_id=rule_id, name='valid_rule', rule=rule) == db_setup.SecurityError.INVALID
+        assert rum.get_rule(rule_id)['rule'] == {'MATCH': {'user': ["r'^a|b'"]}}
 
 
 def test_get_user(db_setup):
@@ -660,6 +812,61 @@ def test_databasemanager_insert_default_resources(fresh_in_memory_db):
                == len(default_rules[next(iter(default_rules))])
 
 
+def test_generate_password_meets_the_policy(fresh_in_memory_db):
+    """Every generated password must satisfy the Server API policy on the first attempt.
+
+    The classes are placed by construction rather than by generate-and-retry, so this holds for
+    every draw rather than for most of them -- hence the repetition.
+    """
+    seen = set()
+    for _ in range(200):
+        password = fresh_in_memory_db.generate_password()
+        seen.add(password)
+
+        assert len(password) == fresh_in_memory_db._PASSWORD_LENGTH
+        assert any(c.islower() for c in password)
+        assert any(c.isupper() for c in password)
+        assert any(c.isdigit() for c in password)
+        assert any(c in fresh_in_memory_db._PASSWORD_SYMBOLS for c in password)
+        assert set(password) <= set(fresh_in_memory_db._PASSWORD_ALPHABET)
+
+    # Two installations must never end up with the same credential.
+    assert len(seen) == 200
+
+
+def test_databasemanager_insert_default_resources_uses_supplied_passwords(fresh_in_memory_db):
+    """A supplied password is what the user is seeded with; the rest are generated, never shipped."""
+    supplied = 'Suppli3d.Password'
+    fresh_in_memory_db.db_manager.insert_default_resources(in_memory_db_path, passwords={'wazuh': supplied})
+
+    with fresh_in_memory_db.AuthenticationManager(
+            fresh_in_memory_db.db_manager.sessions[in_memory_db_path]) as auth:
+        assert auth.check_user('wazuh', supplied)
+
+        # The shipped default this change removes: the password must no longer be the username,
+        # and `users.yaml` must no longer carry one at all.
+        assert not auth.check_user('wazuh-internal-client', 'wazuh-internal-client')
+
+    with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                           'default', 'users.yaml')) as f:
+        default_users = yaml.safe_load(f)['default_users']
+    assert all('password' not in payload for payload in default_users.values())
+
+
+def test_databasemanager_insert_default_resources_generates_when_absent(fresh_in_memory_db):
+    """With nothing supplied, each default user still gets a unique password rather than a default."""
+    with patch('wazuh.rbac.orm.generate_password', side_effect=['Gener4ted.One!', 'Gener4ted.Two!']) as gen_mock:
+        fresh_in_memory_db.db_manager.insert_default_resources(in_memory_db_path)
+
+    assert gen_mock.call_count == 2
+
+    with fresh_in_memory_db.AuthenticationManager(
+            fresh_in_memory_db.db_manager.sessions[in_memory_db_path]) as auth:
+        assert auth.check_user('wazuh', 'Gener4ted.One!')
+        assert auth.check_user('wazuh-internal-client', 'Gener4ted.Two!')
+        assert not auth.check_user('wazuh', 'wazuh')
+
+
 def test_databasemanager_get_table(fresh_in_memory_db):
     """Test `get_table` method for class `DatabaseManager`."""
     class EnhancedUser(fresh_in_memory_db.User):
@@ -714,13 +921,15 @@ def test_check_database_integrity(chmod_mock, chown_mock, remove_mock, safe_move
                 # DB exists and a migration is needed
                 fresh_in_memory_db.check_database_integrity()
                 db_mock.assert_has_calls([
+                    # Tables added since the database was created are created in place.
+                    call.create_database(fresh_in_memory_db.DB_FILE),
                     call.connect(fresh_in_memory_db.DB_FILE_TMP),
                     call.get_database_version(fresh_in_memory_db.DB_FILE),
                     call.create_database(fresh_in_memory_db.DB_FILE_TMP),
                     call.insert_default_resources(fresh_in_memory_db.DB_FILE_TMP),
                     call.migrate_data(source=fresh_in_memory_db.DB_FILE, target=fresh_in_memory_db.DB_FILE_TMP,
                                       from_id=fresh_in_memory_db.WAZUH_USER_ID,
-                                      to_id=fresh_in_memory_db.WAZUH_WUI_USER_ID),
+                                      to_id=fresh_in_memory_db.WAZUH_INTERNAL_CLIENT_USER_ID),
                     call.migrate_data(source=fresh_in_memory_db.DB_FILE, target=fresh_in_memory_db.DB_FILE_TMP,
                                       from_id=fresh_in_memory_db.CLOUD_RESERVED_RANGE,
                                       to_id=fresh_in_memory_db.MAX_ID_RESERVED),
@@ -740,7 +949,7 @@ def test_check_database_integrity(chmod_mock, chown_mock, remove_mock, safe_move
         db_mock.assert_has_calls([
             call.connect(fresh_in_memory_db.DB_FILE),
             call.create_database(fresh_in_memory_db.DB_FILE),
-            call.insert_default_resources(fresh_in_memory_db.DB_FILE),
+            call.insert_default_resources(fresh_in_memory_db.DB_FILE, passwords=None),
             call.set_database_version(fresh_in_memory_db.DB_FILE, fresh_in_memory_db.CURRENT_ORM_VERSION),
             call.close_sessions()
         ], any_order=True)
@@ -766,9 +975,9 @@ def test_check_database_integrity_exceptions(remove_mock, close_sessions_mock, e
             remove_mock.assert_called_with(fresh_in_memory_db.DB_FILE_TMP)
 
 @pytest.mark.parametrize('from_id, to_id, users', [
-    (WAZUH_USER_ID, WAZUH_WUI_USER_ID, [
+    (WAZUH_USER_ID, WAZUH_INTERNAL_CLIENT_USER_ID, [
         User('wazuh', 'test', user_id=WAZUH_USER_ID),
-        User('wazuh-wui', 'test2', user_id=WAZUH_WUI_USER_ID)
+        User('wazuh-internal-client', 'test2', user_id=WAZUH_INTERNAL_CLIENT_USER_ID)
     ]),
     (MAX_ID_RESERVED + 1, None, [
         User('custom', 'test', user_id=110),
@@ -780,7 +989,7 @@ def test_migrate_data(db_setup, from_id, to_id, users):
 
     NOTE: To correctly test this procedure, use the RBAC database migration integration tests."""
     # This test case updates the default user passwords and omits the rest of the migration
-    if to_id == WAZUH_WUI_USER_ID:
+    if to_id == WAZUH_INTERNAL_CLIENT_USER_ID:
         with patch("wazuh.rbac.orm.db_manager.get_data", return_value=users):
             with patch("wazuh.rbac.orm.AuthenticationManager.update_user") as mock_update_user:
                 db_setup.db_manager.migrate_data(source=db_setup.DB_FILE, target=db_setup.DB_FILE,
@@ -845,7 +1054,7 @@ def test_check_database_integrity_missing_default_policy(chmod_mock, chown_mock,
                     call.insert_default_resources(fresh_in_memory_db.DB_FILE_TMP),
                     call.migrate_data(source=fresh_in_memory_db.DB_FILE, target=fresh_in_memory_db.DB_FILE_TMP,
                                       from_id=fresh_in_memory_db.WAZUH_USER_ID,
-                                      to_id=fresh_in_memory_db.WAZUH_WUI_USER_ID),
+                                      to_id=fresh_in_memory_db.WAZUH_INTERNAL_CLIENT_USER_ID),
                     call.migrate_data(source=fresh_in_memory_db.DB_FILE, target=fresh_in_memory_db.DB_FILE_TMP,
                                       from_id=fresh_in_memory_db.CLOUD_RESERVED_RANGE,
                                       to_id=fresh_in_memory_db.MAX_ID_RESERVED),
@@ -888,7 +1097,7 @@ def test_check_database_integrity_modified_default_policy(chmod_mock, chown_mock
                     call.insert_default_resources(fresh_in_memory_db.DB_FILE_TMP),
                     call.migrate_data(source=fresh_in_memory_db.DB_FILE, target=fresh_in_memory_db.DB_FILE_TMP,
                                       from_id=fresh_in_memory_db.WAZUH_USER_ID,
-                                      to_id=fresh_in_memory_db.WAZUH_WUI_USER_ID),
+                                      to_id=fresh_in_memory_db.WAZUH_INTERNAL_CLIENT_USER_ID),
                     call.migrate_data(source=fresh_in_memory_db.DB_FILE, target=fresh_in_memory_db.DB_FILE_TMP,
                                       from_id=fresh_in_memory_db.CLOUD_RESERVED_RANGE,
                                       to_id=fresh_in_memory_db.MAX_ID_RESERVED),

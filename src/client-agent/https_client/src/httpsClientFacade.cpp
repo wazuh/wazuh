@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -12,6 +11,7 @@
 #include "httpsClientFacade.hpp"
 
 #include "curlHandle.hpp"
+#include "metadataCollector.hpp"
 
 #include <exception>
 #include <functional>
@@ -19,39 +19,43 @@
 
 namespace
 {
-    /// Wraps a `void(char*, size_t, void*)`-shaped C metadata callback as the
-    /// `std::function<std::string()>` pull-source both ControlStream (Notify's
-    /// host block) and StatelessStream (the H line's host block) take. Returns
-    /// "" when fn is null, so an unset callback degrades to "no extra metadata"
-    /// rather than a crash.
-    std::function<std::string()> makeMetadataCollector(void (*fn)(char*, size_t, void*), void* userData)
-    {
-        return [fn, userData]() -> std::string
-        {
-            if (fn == nullptr)
-            {
-                return {};
-            }
-
-            char buffer[4096] = {};
-            fn(buffer, sizeof(buffer), userData);
-            buffer[sizeof(buffer) - 1] = '\0';
-            return std::string(buffer);
-        };
-    }
-
     std::function<std::string()> makeHostCollector(const hc_callbacks_t& callbacks)
     {
-        return makeMetadataCollector(callbacks.on_collect_host, callbacks.user_data);
+        return makeMetadataCollector(callbacks.on_collect_host, callbacks.user_data, HOST_METADATA_JSON_MAX_BYTES);
     }
 
     /// Pull-source for the /stateless H line's host block -- a separate C
     /// callback from on_collect_host (Notify's), so the two endpoints' host
     /// blocks can carry different fields and evolve independently without
-    /// either risking the other's already-shipped contract.
+    /// either risking the other's already-shipped contract. The /stats and
+    /// /config reporter stamps the same block on its documents.
     std::function<std::string()> makeStatelessHostCollector(const hc_callbacks_t& callbacks)
     {
-        return makeMetadataCollector(callbacks.on_collect_stateless_host, callbacks.user_data);
+        return makeMetadataCollector(
+                   callbacks.on_collect_stateless_host, callbacks.user_data, AGENT_METADATA_JSON_MAX_BYTES);
+    }
+
+    /// Hands a vetted CA bundle to the consumer, which parses it and owns the write. Called
+    /// straight from the control thread rather than through the dispatcher, like
+    /// check_and_record_task: the answer decides whether the module updates its own notion of
+    /// the installed publication, so it cannot be deferred.
+    CaBundleFetcher::InstallFn makeCaBundleInstaller(const hc_callbacks_t& callbacks)
+    {
+        auto* const callback = callbacks.on_ca_bundle;
+        auto* const userData = callbacks.user_data;
+
+        return [callback, userData](const std::string & pem, std::int64_t generation) -> bool
+        {
+            // No bridge wired (a test harness, say): refuse rather than report an install that
+            // never happened, which would leave the module believing a publication it does not
+            // hold and stop it retrying.
+            if (callback == nullptr)
+            {
+                return false;
+            }
+
+            return callback(pem.c_str(), pem.size(), generation, userData);
+        };
     }
 } // namespace
 
@@ -63,9 +67,10 @@ HttpsClientFacade::HttpsClientFacade(const hc_config_t& config, const hc_callbac
     , m_performer(m_config, defaultCurlHandleFactory(), m_fsProbe)
     , m_dispatcher(callbacks)
     , m_configHash(m_config.configChecksum)
+    , m_caPublication(m_config.caPublication)
     , m_taskStore(callbacks.check_and_record_task, callbacks.user_data)
     , m_vdOffsetStore(callbacks.vd_offset_observe, callbacks.vd_offset_clear_pending, callbacks.user_data)
-    , m_collectors(callbacks)
+    , m_collectors(callbacks, makeStatelessHostCollector(callbacks))
     , m_stateless(m_config,
                   m_performer,
                   m_signer,
@@ -93,12 +98,21 @@ HttpsClientFacade::HttpsClientFacade(const hc_config_t& config, const hc_callbac
                 m_dispatcher,
                 m_spoolFactory,
                 m_configHash,
+                m_caPublication,
                 m_cluster,
                 m_authGate,
                 m_compressionGate,
                 m_taskStore,
                 m_vdOffsetStore,
                 makeHostCollector(callbacks))
+    , m_caFetcher(m_config,
+                  m_performer,
+                  m_fsProbe,
+                  m_clock,
+                  m_random,
+                  m_caPublication,
+                  makeCaBundleInstaller(callbacks),
+                  HTTPS_CLIENT_LOGTAG)
     , m_reporter(
           m_config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate, m_cluster, m_collectors)
 {
@@ -292,7 +306,26 @@ void HttpsClientFacade::controlLoop()
             m_gate.open();
         }
 
-        const auto interval = m_control.consumeFastFollowup() ? FAST_FOLLOWUP_INTERVAL : controlInterval();
+        // After the step, so a publication this very Notify advertised is already pending. Cheap
+        // when nothing is: a load of one atomic and a return.
+        m_caFetcher.tick(m_controlWaiter);
+
+        std::chrono::milliseconds interval;
+
+        if (m_control.consumeFastFollowup())
+        {
+            interval = FAST_FOLLOWUP_INTERVAL;
+        }
+        else if (const auto backoff = m_control.unescalatedAuthFailBackoff())
+        {
+            // A 401 the AuthGate did not latch (not unknown_agent): back off instead of
+            // retrying on the plain notify cadence forever (#39601).
+            interval = *backoff;
+        }
+        else
+        {
+            interval = controlInterval();
+        }
 
         if (!m_controlWaiter.waitFor(interval))
         {

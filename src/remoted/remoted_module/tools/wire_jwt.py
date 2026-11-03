@@ -2,7 +2,7 @@
 """
 The `wazuh-agent+jwt` bearer token every remoted HTTPS request carries, in pure stdlib -- the shared
 signer behind send_stateless.py, send_control.py, send_agent_json.py, send_scan_vd.py,
-send_download.py and load_balancer/send_signed_request.py -- plus the sibling `wazuh-enroll+jwt`
+send_download.py and the load_balancer/ lab probes -- plus the sibling `wazuh-enroll+jwt`
 bearer of send_enroll.py (HKDF-SHA256 of the enrollment password, no identity claims).
 
   protocol-version: 1
@@ -52,7 +52,7 @@ CLOCK_SKEW_SECONDS = 30
 EXPIRED_IAT_OFFSET = -(MAX_AGE_SECONDS + CLOCK_SKEW_SECONDS + 5)   # older than max_age + skew
 FUTURE_IAT_OFFSET = CLOCK_SKEW_SECONDS + 5                          # issued further ahead than skew
 
-DEFAULT_CLIENT_KEYS = "/var/wazuh-manager/etc/client.keys"
+DEFAULT_CLIENT_KEYS = "/etc/wazuh-manager/client.keys"
 
 # The sibling profile POST /enroll requires in Password mode (jwtEnrollProfileV1.hpp): same HS256
 # core, key = HKDF-SHA256 of authd's enrollment password, header exactly {alg, typ} (no kid), claims

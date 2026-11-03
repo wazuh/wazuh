@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Test script for wazuh-internal-tools package
 # Verifies that all installed tools respond correctly to -h flag
 

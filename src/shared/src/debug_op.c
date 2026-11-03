@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -17,7 +17,6 @@
 #endif
 
 static int dbg_flag = 0;
-static int chroot_flag = 0;
 static int daemon_flag = 0;
 static int pid;
 
@@ -58,11 +57,7 @@ static void print_stderr_msg(char* timestamp, const char *tag, const char * file
     } else {
         (void)fprintf(stderr, "%s", msg);
     }
-#ifdef WIN32
-    (void)fprintf(stderr, "\r\n");
-#else
     (void)fprintf(stderr, "\n");
-#endif
 }
 
 static void _log_function(int level, const char *tag, const char * file, int line, const char * func, const char *msg, bool plain_only, va_list args)
@@ -73,7 +68,7 @@ static void _log_function(int level, const char *tag, const char * file, int lin
     char jsonstr[OS_MAXSTR];
     char *output;
     char logfile[PATH_MAX + 1];
-    char * filename;
+    const char * filename;
     char *timestamp = w_get_timestamp(time(NULL));
 
     const char *strlevel[5]={
@@ -190,7 +185,7 @@ static void _log_function(int level, const char *tag, const char * file, int lin
     }
 
     if (flags.log_plain) {
-      /* If under chroot, log directly to /logs/<wazuh log file> */
+      /* Log directly to the plain log file (LOGFILE, relative to the installation directory) */
 
 #ifndef WIN32
         int oldmask;
@@ -279,9 +274,9 @@ void w_logging_init(){
 }
 
 #ifndef CLIENT
-/* Manager: `logging.log_format` of the effective etc/wazuh-manager.conf, through the hook libconfig
- * registers (mconf_hook.h). Without a provider or a document (libwazuhshared.so as the engine loads it,
- * unit tests) the format is plain -- not fatal: the daemon reports the configuration error when it loads
+/* Manager: `logging.log_format` of the effective /etc/wazuh-manager/wazuh-manager.conf, through the hook libconfig
+ * registers (mconf_hook.h). Without a provider or a document (unit tests)
+ * the format is plain -- not fatal: the daemon reports the configuration error when it loads
  * the file itself. The schema already restricts the list to "plain"/"json". */
 void os_logging_config(){
   cJSON * logging = w_mconf_hook_section("logging");
@@ -674,11 +669,6 @@ void _mlerror_exit(const int level, const char * file, int line, const char * fu
     exit(1);
 }
 
-void nowChroot()
-{
-    chroot_flag = 1;
-}
-
 void nowDaemon()
 {
     daemon_flag = 1;
@@ -691,12 +681,7 @@ void print_out(const char *msg, ...)
 
     /* Print to stderr */
     (void)vfprintf(stderr, msg, args);
-
-#ifdef WIN32
-    (void)fprintf(stderr, "\r\n");
-#else
     (void)fprintf(stderr, "\n");
-#endif
 
     va_end(args);
 }
@@ -709,11 +694,6 @@ void nowDebug()
 int isDebug(void)
 {
     return dbg_flag;
-}
-
-int isChroot()
-{
-    return (chroot_flag);
 }
 
 #ifdef WIN32

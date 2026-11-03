@@ -374,36 +374,3 @@ if(UNIT_TEST)
   # Link with wazuhext
   target_link_libraries(wazuh_test PUBLIC wazuhext)
 endif()
-
-# Create shared library (Linux/server only — used by the engine)
-if(NOT IS_AGENT AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  # Linux: libwazuhshared.so
-  add_library(wazuhshared SHARED ${LIBWAZUH_SRC})
-
-  set_target_properties(
-    wazuhshared
-    PROPERTIES OUTPUT_NAME "wazuhshared"
-               LIBRARY_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/lib
-               BUILD_WITH_INSTALL_RPATH TRUE
-               INSTALL_RPATH "$ORIGIN"
-               POSITION_INDEPENDENT_CODE ON)
-
-  target_compile_definitions(wazuhshared PRIVATE ARGV0="wazuh")
-  # Link with wazuhext using -Wl,--whole-archive (Linux linker flag)
-  target_link_libraries(wazuhshared PUBLIC -Wl,--whole-archive wazuhext
-                                           -Wl,--no-whole-archive)
-
-  # Apply common compile definitions to shared library
-  if(CA_NAME)
-    target_compile_definitions(wazuhshared PRIVATE CA_NAME="${CA_NAME}")
-  endif()
-
-  if(IMAGE_TRUST_CHECKS)
-    target_compile_definitions(wazuhshared
-                               PRIVATE IMAGE_TRUST_CHECKS=${IMAGE_TRUST_CHECKS})
-  endif()
-
-  if(ENABLE_AUDIT)
-    target_compile_definitions(wazuhshared PRIVATE ENABLE_AUDIT)
-  endif()
-endif()

@@ -87,7 +87,6 @@ runs:
           "/i"
           "`"${{ env.PACKAGE_PATH }}`""
           "/q"
-          "WAZUH_MANAGER=`"1.2.3.4`""
           "/l installer.log"
         )
         Start-Process msiexec.exe -ArgumentList $arguments -Wait -NoNewWindow
@@ -98,6 +97,14 @@ runs:
           Write-Output "The installation could not be completed."
           exit 1
         }
+
+    - name: Configure Windows manager address
+      if: inputs.platform == 'windows'
+      shell: pwsh
+      run: |
+        $conf = "C:\Program Files (x86)\ossec-agent\ossec.conf"
+        (Get-Content $conf) -replace '0\.0\.0\.0:1517/wazuh-manager/', '1.2.3.4' | Set-Content $conf
+        Write-Output "Manager address configured"
 
     - name: Start Windows agent service
       if: inputs.platform == 'windows'
@@ -151,7 +158,6 @@ runs:
       if: inputs.platform == 'macos'
       shell: bash
       run: |
-        echo "WAZUH_MANAGER='1.2.3.4'" > /tmp/wazuh_envs
         set -o pipefail
         sudo installer -pkg "${{ env.PACKAGE_PATH }}" -target / | sudo tee installer.log
         if grep -q "The install was successful" "installer.log"; then
@@ -160,6 +166,13 @@ runs:
           echo "The installation could not be completed."
           exit 1
         fi
+
+    - name: Configure macOS manager address
+      if: inputs.platform == 'macos'
+      shell: bash
+      run: |
+        sudo sed -i '' 's/MANAGER_IP/1.2.3.4/g' /Library/Ossec/etc/ossec.conf
+        echo "Manager address configured"
 
     - name: Test macOS daemons with -t flag
       if: inputs.platform == 'macos'

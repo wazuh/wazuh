@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include "policy.hpp"
 
 #include <fmt/format.h>
@@ -77,15 +78,16 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
         {
             auto discardedCounter = fastmetrics::manager().getOrCreateCounter(
                 fastmetrics::names::space_events_discarded(policyData.getOriginSpace()));
-            auto [exp, traceable] = builders::enrichment::getDiscardedEventsFilter(policyData, isTestMode, discardedCounter);
+            auto [exp, traceable] =
+                builders::enrichment::getDiscardedEventsFilter(policyData, isTestMode, discardedCounter);
             preEnrichmentOps.push_back(exp);
             m_assets.insert(base::Name(traceable));
         }
 
         // Cleanup decoder temporary variables (enabled/disabled according to policy)
         {
-            auto [cleanupVars, traceable] =
-                builders::enrichment::getCleanupDecoderVariables(policyData.shouldCleanupDecoderVariables(), isTestMode);
+            auto [cleanupVars, traceable] = builders::enrichment::getCleanupDecoderVariables(
+                policyData.shouldCleanupDecoderVariables(), isTestMode);
             preEnrichmentOps.push_back(cleanupVars);
             m_assets.insert(base::Name(traceable));
         }

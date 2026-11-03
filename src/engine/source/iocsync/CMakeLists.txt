@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Defs
 set(IFACE_DIR ${CMAKE_CURRENT_LIST_DIR}/interface)
 set(SRC_DIR   ${CMAKE_CURRENT_LIST_DIR}/src)
@@ -22,8 +23,9 @@ target_include_directories(iocsync_iocsync
 target_link_libraries(iocsync_iocsync
     PUBLIC
     iocsync::iiocsync
-    PRIVATE
-    wIndexerConnector::iwIndexerConnector
+    # PUBLIC because iocsync.hpp names the types these headers declare: the topic it holds per IOC
+    # type, and the sink that feeds it.
+    cmcontent::cmcontent
     store::istore
     iockvdb::ikvdb
 )
@@ -37,7 +39,7 @@ set(UNIT_SRC_DIR   ${TEST_SRC_DIR}/unit)
 
 # Unit tests
 add_executable(iocsync_utest
-    ${UNIT_SRC_DIR}/iocsync_status_test.cpp
+    ${UNIT_SRC_DIR}/iocsync_test.cpp
 )
 target_link_libraries(iocsync_utest
     PRIVATE
@@ -45,8 +47,8 @@ target_link_libraries(iocsync_utest
         GTest::gmock
         iocsync::iocsync
         store::mocks
-        wIndexerConnector::mocks
         iockvdb::mocks
+        cmcontent::mocks
 )
 target_include_directories(iocsync_utest PRIVATE ${SRC_DIR})
 gtest_discover_tests(iocsync_utest)

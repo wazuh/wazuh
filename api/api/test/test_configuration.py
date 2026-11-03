@@ -1,4 +1,4 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -15,6 +15,7 @@ custom_api_configuration = {
     "port": 55000,
     "drop_privileges": True,
     "max_upload_size": 10485760,
+    "auth_context_max_payload_size": 65536,
     "authentication_pool_size": 2,
     "https": {
         "enabled": True,
@@ -22,7 +23,7 @@ custom_api_configuration = {
         "cert": "manager.crt",
         "use_ca": False,
         "ca": "rootCA.pem",
-        "ssl_ciphers": ""
+        "ssl_ciphers": "ECDHE+AESGCM:!kRSA"
     },
     "logs": {
         "level": "info",
@@ -86,9 +87,11 @@ def test_read_configuration(mock_open, mock_exists, read_config):
         for section, subsection in [('https', 'key'), ('https', 'cert'), ('https', 'ca')]:
             config[section][subsection] = config[section][subsection].replace(f'{api.constants.CERTS_PATH}/', '')
 
-        # SSL paths (key, cert, ca) must preserve their original case
+        # SSL paths (key, cert, ca) and the OpenSSL cipher list must preserve their original case
         if 'https' in read_config and 'ca' in read_config['https']:
             assert config['https']['ca'] == read_config['https']['ca']
+        if 'https' in read_config and 'ssl_ciphers' in read_config['https']:
+            assert config['https']['ssl_ciphers'] == read_config['https']['ssl_ciphers']
 
         check_config_values(config, {}, read_config)
 
@@ -102,6 +105,9 @@ def test_read_configuration(mock_open, mock_exists, read_config):
     {'port': 'invalid_type'},
     {'drop_privileges': 'invalid_type'},
     {'max_upload_size': 'invalid_type'},
+    {'auth_context_max_payload_size': 'invalid_type'},
+    {'auth_context_max_payload_size': 0},
+    {'auth_context_max_payload_size': 2097152},
     {'authentication_pool_size': 'invalid_type'},
     {'authentication_pool_size': 0},
     {'authentication_pool_size': 100},
@@ -118,6 +124,7 @@ def test_read_configuration(mock_open, mock_exists, read_config):
     {'logs': {'invalid_subkey': 'value'}},
     {'cors': {'enabled': 'invalid_type'}},
     {'cors': {'source_route': 12345}},
+    {'cors': {'source_route': [12345]}},
     {'cors': {'expose_headers': 12345}},
     {'cors': {'allow_headers': 12345}},
     {'cors': {'allow_credentials': 12345}},
@@ -155,27 +162,6 @@ def test_read_cache_configuration(mock_exists, config, expected_msg):
             patch('builtins.open'):
         m.return_value = config
         configuration.read_yaml_config()
-
-@patch('os.chmod')
-@patch('builtins.open')
-def test_generate_private_key(mock_open, mock_chmod):
-    """Verify that genetare_private_key returns expected key and 'open' method is called with expected parameters"""
-    result_key = configuration.generate_private_key('test_path.crt', 65537, 2048)
-
-    assert result_key.key_size == 2048
-    mock_open.assert_called_once_with('test_path.crt', 'wb')
-    mock_chmod.assert_called_once()
-
-
-@patch('os.chmod')
-@patch('builtins.open')
-def test_generate_self_signed_certificate(mock_open, mock_chmod):
-    """Verify that genetare_private_key returns expected key and 'open' method is called with expected parameters"""
-    result_key = configuration.generate_private_key('test_path.crt', 65537, 2048)
-    configuration.generate_self_signed_certificate(result_key, 'test_path.crt')
-
-    assert mock_open.call_count == 2, 'Not expected number of calls'
-    assert mock_chmod.call_count == 2, 'Not expected number of calls'
 
 
 def test_fill_dict():

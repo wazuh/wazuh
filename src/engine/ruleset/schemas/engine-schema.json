@@ -769,7 +769,7 @@
       "type": "keyword"
     },
     "email.message_id": {
-      "type": "keyword"
+      "type": "text"
     },
     "email.origination_timestamp": {
       "type": "date"
@@ -796,10 +796,10 @@
       "type": "keyword"
     },
     "error.message": {
-      "type": "keyword"
+      "type": "text"
     },
     "error.stack_trace": {
-      "type": "keyword"
+      "type": "text"
     },
     "error.type": {
       "type": "keyword"
@@ -1606,7 +1606,7 @@
       "type": "long"
     },
     "http.request.body.content": {
-      "type": "keyword"
+      "type": "text"
     },
     "http.request.bytes": {
       "type": "long"
@@ -1627,7 +1627,7 @@
       "type": "long"
     },
     "http.response.body.content": {
-      "type": "keyword"
+      "type": "text"
     },
     "http.response.bytes": {
       "type": "long"
@@ -1717,7 +1717,7 @@
       "type": "keyword"
     },
     "message": {
-      "type": "keyword"
+      "type": "text"
     },
     "mitre.subtechnique": {
       "type": "object"
@@ -2116,7 +2116,7 @@
       "type": "boolean"
     },
     "process.command_line": {
-      "type": "keyword"
+      "type": "text"
     },
     "process.elf.architecture": {
       "type": "keyword"
@@ -2254,7 +2254,7 @@
       "type": "keyword"
     },
     "process.entry_leader.command_line": {
-      "type": "keyword"
+      "type": "text"
     },
     "process.entry_leader.entity_id": {
       "type": "keyword"
@@ -2386,7 +2386,7 @@
       "type": "long"
     },
     "process.group_leader.command_line": {
-      "type": "keyword"
+      "type": "text"
     },
     "process.group_leader.entity_id": {
       "type": "keyword"
@@ -2509,7 +2509,7 @@
       "type": "boolean"
     },
     "process.io.text": {
-      "type": "keyword"
+      "type": "text"
     },
     "process.io.total_bytes_captured": {
       "type": "long"
@@ -2611,7 +2611,7 @@
       "type": "boolean"
     },
     "process.parent.command_line": {
-      "type": "keyword"
+      "type": "text"
     },
     "process.parent.elf.architecture": {
       "type": "keyword"
@@ -3058,7 +3058,7 @@
       "type": "long"
     },
     "process.previous.command_line": {
-      "type": "keyword"
+      "type": "text"
     },
     "process.previous.executable": {
       "type": "keyword"
@@ -3106,7 +3106,7 @@
       "type": "long"
     },
     "process.session_leader.command_line": {
-      "type": "keyword"
+      "type": "text"
     },
     "process.session_leader.entity_id": {
       "type": "keyword"
@@ -3271,7 +3271,7 @@
       "type": "keyword"
     },
     "registry.data.strings": {
-      "type": "keyword"
+      "type": "text"
     },
     "registry.data.type": {
       "type": "keyword"
@@ -4204,7 +4204,7 @@
       "type": "keyword"
     },
     "threat.enrichments.indicator.registry.data.strings": {
-      "type": "keyword"
+      "type": "text"
     },
     "threat.enrichments.indicator.registry.data.type": {
       "type": "keyword"
@@ -4255,16 +4255,16 @@
       "type": "keyword"
     },
     "threat.enrichments.indicator.url.full": {
-      "type": "keyword"
+      "type": "text"
     },
     "threat.enrichments.indicator.url.original": {
-      "type": "keyword"
+      "type": "text"
     },
     "threat.enrichments.indicator.url.password": {
       "type": "keyword"
     },
     "threat.enrichments.indicator.url.path": {
-      "type": "keyword"
+      "type": "text"
     },
     "threat.enrichments.indicator.url.port": {
       "type": "long"
@@ -4873,7 +4873,7 @@
       "type": "keyword"
     },
     "threat.indicator.registry.data.strings": {
-      "type": "keyword"
+      "type": "text"
     },
     "threat.indicator.registry.data.type": {
       "type": "keyword"
@@ -4909,16 +4909,16 @@
       "type": "keyword"
     },
     "threat.indicator.url.full": {
-      "type": "keyword"
+      "type": "text"
     },
     "threat.indicator.url.original": {
-      "type": "keyword"
+      "type": "text"
     },
     "threat.indicator.url.password": {
       "type": "keyword"
     },
     "threat.indicator.url.path": {
-      "type": "keyword"
+      "type": "text"
     },
     "threat.indicator.url.port": {
       "type": "long"
@@ -5305,16 +5305,16 @@
       "type": "keyword"
     },
     "url.full": {
-      "type": "keyword"
+      "type": "text"
     },
     "url.original": {
-      "type": "keyword"
+      "type": "text"
     },
     "url.password": {
       "type": "keyword"
     },
     "url.path": {
-      "type": "keyword"
+      "type": "text"
     },
     "url.port": {
       "type": "long"
@@ -6316,7 +6316,7 @@
       "type": "keyword"
     },
     "wazuh.threat.enrichments.indicator.registry.data.strings": {
-      "type": "keyword"
+      "type": "text"
     },
     "wazuh.threat.enrichments.indicator.registry.data.type": {
       "type": "keyword"
@@ -6943,7 +6943,7 @@
       "type": "keyword"
     },
     "wazuh.threat.indicator.registry.data.strings": {
-      "type": "keyword"
+      "type": "text"
     },
     "wazuh.threat.indicator.registry.data.type": {
       "type": "keyword"

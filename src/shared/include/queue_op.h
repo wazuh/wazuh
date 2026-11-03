@@ -1,7 +1,6 @@
 /*
  * Queue (abstract data type)
- * Copyright (C) 2015, Wazuh Inc.
- * October 2, 2017
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -63,7 +62,7 @@ int queue_full(const w_queue_t * queue);
  * @param queue
  * @return 1 if true, 0 if false
  * */
-int queue_full_ex(const w_queue_t * queue);
+int queue_full_ex(w_queue_t * queue);
 
 /**
  * @brief Evaluates whether the queue is empty or not
@@ -88,7 +87,7 @@ int queue_empty_ex(w_queue_t * queue);
  * @return float value between 0 and 1 representing the percentage of the queue filled
  * @return -1 if requested queue is NULL
  */
-float queue_get_percentage_ex(const w_queue_t * queue);
+float queue_get_percentage_ex(w_queue_t * queue);
 
 /**
  * @brief Tries to insert an element into the queue

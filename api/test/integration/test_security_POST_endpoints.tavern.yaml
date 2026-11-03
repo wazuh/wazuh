@@ -809,7 +809,7 @@ stages:
     response:
       status_code: 200
 
-  - name: Create a new user (secure password 2)
+  - name: Create a new user (password with non-ASCII characters)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users"
@@ -820,7 +820,9 @@ stages:
         password: "new_user1A!@#~½¬?¿ñàÀ"
       method: POST
     response:
-      status_code: 200
+      status_code: 400
+      json:
+        error: 5007
 
   - name: Add a too long named user
     request:
@@ -1055,7 +1057,7 @@ stages:
 test_name: POST /security/user/authenticate/run_as
 
 stages:
-  - name: Log in with wazuh-wui and default rules and expect admin permissions (1/2)
+  - name: Log in with wazuh-internal-client and default rules and expect admin permissions (1/2)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate/run_as"
@@ -1071,7 +1073,7 @@ stages:
         extra_kwargs:
           expected_roles: [1]
 
-  - name: Log in with wazuh-wui and default rules and expect admin permissions (2/2)
+  - name: Log in with wazuh-internal-client and default rules and expect admin permissions (2/2)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate/run_as"
@@ -1087,7 +1089,7 @@ stages:
         extra_kwargs:
           expected_roles: [1]
 
-  - name: Log in with wazuh-wui and default rules and expect readonly permissions (wazuh-demo)
+  - name: Log in with wazuh-internal-client and default rules and expect readonly permissions (wazuh-demo)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate/run_as"
@@ -1103,7 +1105,7 @@ stages:
         extra_kwargs:
           expected_roles: [2]
 
-  - name: Log in with wazuh-wui and default rules and expect readonly permissions (wazuh-readonly)
+  - name: Log in with wazuh-internal-client and default rules and expect readonly permissions (wazuh-readonly)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate/run_as"
@@ -1119,7 +1121,7 @@ stages:
         extra_kwargs:
           expected_roles: [2]
 
-  - name: Log in with wazuh-wui and default rules and expect wazuh_indexer_admin permissions (wazuh-admin)
+  - name: Log in with wazuh-internal-client and default rules and expect wazuh_indexer_admin permissions (wazuh-admin)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate/run_as"
@@ -1135,7 +1137,7 @@ stages:
         extra_kwargs:
           expected_roles: [8]
 
-  - name: Log in with wazuh-wui and no matching rule
+  - name: Log in with wazuh-internal-client and no matching rule
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate/run_as"
@@ -1151,7 +1153,7 @@ stages:
         extra_kwargs:
           expected_roles: []
 
-  - name: Log in with wazuh-wui and an empty auth context
+  - name: Log in with wazuh-internal-client and an empty auth context
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate/run_as"
@@ -1169,7 +1171,7 @@ stages:
         json:
           login_token: data.token
 
-  - name: Log in with wazuh-wui and an empty auth context (raw)
+  - name: Log in with wazuh-internal-client and an empty auth context (raw)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate/run_as"
@@ -1269,6 +1271,19 @@ stages:
     response:
       status_code: 400
 
+  - name: Try to authenticate with an oversized auth_context payload (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate/run_as"
+      headers:
+        Authorization: "Basic {basic_auth_context:s}"
+      method: POST
+      json:
+        username: "elastic"
+        padding: "{oversized_auth_context_padding:s}"
+    response:
+      status_code: 413
+
 ---
 test_name: POST /security/user/authenticate
 
@@ -1300,3 +1315,110 @@ stages:
       method: GET
     response:
       status_code: 200
+
+---
+test_name: POST /security/user/authenticate bad parameters
+
+stages:
+
+  - name: raw is not a boolean
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate"
+      method: POST
+      auth: ["{user}", "{pass}"]
+      params:
+        raw: wrong
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+---
+test_name: POST security relations bad parameters
+
+stages:
+
+  - name: Link roles to a user, invalid role id
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/100/roles"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        role_ids: wrong!
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+  - name: Link roles to a user, negative position
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/100/roles"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        role_ids: 100
+        position: -1
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+  - name: Link policies to a role, invalid policy id
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles/100/policies"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        policy_ids: wrong!
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+  - name: Link policies to a role, negative position
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles/100/policies"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        policy_ids: 100
+        position: -1
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+  - name: Link rules to a role, invalid rule id
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles/100/rules"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        rule_ids: wrong!
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+  - name: Link roles to a user, no role ids
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/100/roles"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        title: Bad Request

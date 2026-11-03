@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _API_CMCRUD_HANDLERS_HPP
 #define _API_CMCRUD_HANDLERS_HPP
 

@@ -1,43 +1,51 @@
 # Output Reference
 
-The output stage is responsible for sending alerts to different destinations. This stage is only supported by
-`outputs assets` and can have multiple outputs. Each output can have its own configuration.
+The `outputs` stage sends events to their destinations. It is the stage of the output assets (`output/<name>/<version>`)
+and holds a non-empty list of outputs. Each item is an object with exactly one key, the output type, whose value is
+that output's configuration. Every output of the list receives the event, whatever the result of the others.
 
+The output types are `file`, `wazuh-indexer` and `first_of`, which chooses among outputs.
 
 ## First of
 
 To choose between the different output methods the `first_of` stage can be used.
-This acts as an if else block. The first `check` that returns true will execute what's inside the `then` block, this block can be filled with `File` or `Indexer` blocks.
+This acts as an if-else block: the `check` blocks are evaluated in order, and the first one that succeeds sends the event
+to the outputs of its `then` block; the remaining items are not evaluated. If no `check` succeeds, the event is not
+sent anywhere by this stage. A `then` block can only contain `file` and `wazuh-indexer` outputs.
 
 ### Signature
 
 ```yaml
 outputs:
   - first_of:
-    - check: A
+    - check: <condition-a>
       then:
         - wazuh-indexer:
-            index: "A"
+            index: "wazuh-events-v5-a"
 
-    - check: B
+    - check: <condition-b>
       then:
         - wazuh-indexer:
-            index: "B"
-
-    - check: true
-      then:
-        - wazuh-indexer:
-            file: "C"
+            index: "wazuh-events-v5-b"
+        - file: "c"
 ```
 
 ### Parameters
 
-Accepts any array of `check` `then` blocks in each item the order is mandatory and will be respected as an order of execution. Ideally the last option should act as a fallback case.
+A non-empty array of items. Each item has exactly two keys, in this order:
+
+| Name | type | required | Description |
+|------|------|----------|-------------|
+| check | string or array | yes | A condition with the syntax of the `check` stage. A condition that is always true, such as a check on a field every event has, makes the item a fallback; place it last. |
+| then | array | yes | A non-empty list of `file` and `wazuh-indexer` outputs. All of them receive the event. |
 
 ### Asset example
 
+The indexer output asset shipped with the engine:
+
 ```yaml
 name: output/indexer/0
+enabled: true
 
 metadata:
   module: wazuh
@@ -46,39 +54,23 @@ metadata:
 
 outputs:
   - first_of:
-    - check: >-
-        $wazuh.integration.category != "cloud-services" OR
-        (NOT starts_with($wazuh.integration.name, "aws")
-        AND NOT starts_with($wazuh.integration.name, "azure")
-        AND NOT starts_with($wazuh.integration.name, "gcp"))
+    - check: index_unclassified_events($wazuh.integration.category)
+      then:
+        - wazuh-indexer:
+            index: "wazuh-events-v5-unclassified"
 
+    - check: string_not_equal($wazuh.integration.category, "unclassified")
       then:
         - wazuh-indexer:
             index: "wazuh-events-v5-${wazuh.integration.category}"
-
-    - check: starts_with($wazuh.integration.name, "gcp")
-      then:
-        - wazuh-indexer:
-            index: "wazuh-events-v5-${wazuh.integration.category}-gcp"
-
-    - check: starts_with($wazuh.integration.name, "azure")
-      then:
-        - wazuh-indexer:
-            index: "wazuh-events-v5-${wazuh.integration.category}-azure"
-
-    - check: starts_with($wazuh.integration.name, "aws")
-      then:
-        - wazuh-indexer:
-            index: "wazuh-events-v5-${wazuh.integration.category}-aws"
-
 ```
 
 
 ## File
 
-The `file` output sends events to a file. This output supports compression and rotation.
-Each policy's `originSpace` is prepended to the channel name so that different spaces
-write to isolated streamlog channels (e.g., `standard-wazuh-events-v5`).
+The `file` output appends each event, as one JSON document per line, to a file managed by the engine's stream logger, which
+rotates and compresses it. Each policy's origin space is prepended to the channel name so that different spaces write to
+isolated channels (e.g., `standard-wazuh-events-v5`).
 
 ### Signature
 
@@ -88,13 +80,35 @@ file: "wazuh-events-v5"
 
 ### Parameters
 
-The parameter is a base channel name. The effective streamlog channel is derived as
-`{originSpace}-{channelName}`, where `originSpace` comes from the policy definition.
+The parameter is a non-empty base channel name. The effective channel is `{originSpace}-{channelName}`, where
+`originSpace` comes from the policy definition. The effective channel may only contain letters, digits, `_` and `-`,
+and at most 255 characters; otherwise the asset fails to build.
+
+### Files
+
+With the default settings, the events of a channel are written to:
+
+```text
+/var/wazuh-manager/logs/<channel>/<YYYY>/<MMM>/wazuh-<channel>-<DD>.json
+```
+
+for example `/var/wazuh-manager/logs/standard-wazuh-events-v5/2026/Oct/wazuh-standard-wazuh-events-v5-22.json`, and
+`/var/wazuh-manager/logs/<channel>/<channel>.json` is a hard link to the file being written. The file rotates when the
+local date changes; a rotated file is compressed to `.gz`, and old files are deleted beyond 90 files or 20 GiB per channel.
+
+These settings are the `analysisd.streamlog_*` internal options ([Stream log](configuration.md#stream-log)): base directory
+`analysisd.streamlog_base_path`, path pattern `analysisd.streamlog_events_pattern`, size-based rotation
+`analysisd.streamlog_events_max_size` (0, disabled, by default), compression `analysisd.streamlog_compress` and
+`analysisd.streamlog_compression_level`, and retention `analysisd.streamlog_max_files` and
+`analysisd.streamlog_max_accumulated_size`.
 
 ### Asset example
 
+The file output asset shipped with the engine, disabled by default:
+
 ```yaml
 name: output/file-output-integrations/0
+enabled: false
 
 metadata:
   module: wazuh
@@ -116,47 +130,44 @@ outputs:
 
 ## Indexer
 
-The `indexer` output sends alerts to `wazuh-indexer` for indexing.
+The `wazuh-indexer` output sends events to `wazuh-indexer` for indexing.
 
 ### Signature
 
 ```yaml
 wazuh-indexer:
-    index: ${INDEX}
+    index: "wazuh-events-v5-<name>"
 ```
 
 ### Parameters
 
 | Name | type | required | Description |
 |------|------|----------|-------------|
-| index | string | yes | Data Stream name where the alerts will be indexed. Should be a valid wazuh-indexer data stream name and start with `wazuh-events-v5-`. |
+| index | string | yes | Data stream where the events are indexed. Must follow the index name rules below. It is the only key accepted. |
 
-Index name can be expanded with placeholders like `index-name-${PH1}-${PH2}`. If PHX results in an existing string reference to the event it will be replaced in runtime if not will be fail and the alert will not be sent to the indexer.
-The replacement text is not sanitized, so referenced field values must already contain only valid index characters.
+#### Index name rules
+
+- The name must start with `wazuh-events-v5-`.
+- After the prefix it may only contain lowercase letters, digits, `.`, `-` and `${field}` placeholders, for example
+  `wazuh-events-v5-${wazuh.integration.category}-custom`. A name that breaks these rules makes the asset fail to build.
+- Each `${field}` placeholder is replaced, for every event, with the value of that event field. The field must exist and
+  hold a string; otherwise the event is not indexed (trace: `Couldn't get field ${field} from event`).
+- The replacement is not sanitized: referenced field values must already contain only valid index-name characters.
+- After the replacement the name must be at most 255 characters; a longer name is not indexed (trace:
+  `Index name '<name>' exceeds 255 characters limit`).
+- There is no date placeholder: apart from the `${field}` replacement, the name is used as written.
 
 ### Asset example
 
 ```yaml
-name: output/indexer/0
+name: output/custom-indexer/0
 
 metadata:
   module: wazuh
   title: Indexer output event
   description: Output integrations events to wazuh-indexer
-  compatibility: >
-    This decoder has been tested on Wazuh version 5.0
-  versions:
-    - ""
-  author:
-    name: Wazuh, Inc.
-    date: 2025/12/01
-  references:
-    - ""
 
 outputs:
   - wazuh-indexer:
-      index: "wazuh-events-v5-${wazuh.integration.category}"
+      index: "wazuh-events-v5-${wazuh.integration.category}-custom"
 ```
-
-> [!TIP]
-> The `$(DATE)` is special placeholder and replaced by the current date in the format `YYYY.MM.DD` when the alert is indexed.

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -20,6 +20,7 @@
 #include "os_net.h"
 #include "dll_load_notify.h"
 #include "startup_gate_op.h"
+#include "token_bootstrap.h"
 #include "agent_sync_protocol_c_interface.h"
 #include "os_win.h"
 
@@ -389,6 +390,64 @@ int local_start()
         mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }
 
+    /* Enrollment-token bootstrap, the Windows half of AgentdStart()'s (agentd.c). Same slot
+     * relative to the steps both platforms share: after the configuration is read and the
+     * configured CA is validated, before the key read and start_agent_prepare() below, so a
+     * token enrollment has already written client.keys by the time OS_CheckKeys() looks.
+     *
+     * A permanent failure ends the start, and deliberately so. Carrying on would reach
+     * start_agent_prepare(), which enrolls over whatever posture is left -- 'none', because no
+     * anchor was written -- so a CA the agent had just refused would be followed by an
+     * unverified enrollment against that same manager.
+     *
+     * A transient failure (the manager unreachable, a 5xx from /cacerts or /enroll, or the
+     * verified enroll's own transport failing) is retried in place, using the same backoff ramp
+     * the legacy enrollment loop uses on POSIX (agt->enrollment.retry_delta/retry_max) -- mirrors
+     * agentd.c's own gate exactly, since w_agent_token_bootstrap()'s classification is shared
+     * across both platforms and this caller must not collapse TRANSIENT and PERMANENT into the
+     * same outcome the way a bare "!= 0" check would. A token the manager does not accept yet
+     * (W_TOKEN_BOOTSTRAP_PENDING) is retried the same way, but only for
+     * W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S.
+     *
+     * Only a token that was present and (after any transient retries) still failed does this. An
+     * install with no token at all returns W_TOKEN_BOOTSTRAP_DONE from the gate, so the normal
+     * enrollment loop still gets its chance -- as do an agent already holding an anchor and one
+     * already enrolled.
+     *
+     * 0/0 for uid/gid: Windows runs the service as one account from start to finish, so
+     * neither file the bootstrap writes is handed over to a second user (token_bootstrap.c). */
+    const bool anchor_before = (IsFile(AGENT_ANCHOR_CA) == 0);
+    int token_bootstrap_delay = 0;
+    time_t token_pending_since = 0;
+    w_token_bootstrap_result_t token_bootstrap_result;
+
+    while ((token_bootstrap_result =
+                w_token_bootstrap_bound_pending(w_agent_token_bootstrap(0, 0), &token_pending_since,
+                                                w_get_monotonic_time())) == W_TOKEN_BOOTSTRAP_TRANSIENT) {
+        if (token_bootstrap_delay < agt->enrollment.retry_max) {
+            token_bootstrap_delay += agt->enrollment.retry_delta;
+        }
+        mdebug1("Token bootstrap: transient failure, retrying in %d seconds.", token_bootstrap_delay);
+        sleep(token_bootstrap_delay);
+    }
+
+    if (token_bootstrap_result == W_TOKEN_BOOTSTRAP_PERMANENT) {
+        merror_exit("Enrollment-token bootstrap failed; refusing to enroll unverified.");
+    }
+
+    /* Only when this boot is the one that created the anchor. ClientConf() resolved the TLS
+     * posture above, before the bootstrap ran and so before the anchor existed, settling on
+     * 'none'; the bootstrap's own enrollment is unaffected, since it builds a verified
+     * configuration of its own, but everything sent afterwards reads agt->ssl through
+     * bridge_build_transport_config() and would spend the rest of the boot unverified against
+     * an anchor already on disk. Resolving again closes that window. Conditional rather than
+     * unconditional so a boot that had nothing to bootstrap does not re-run a resolution that
+     * can only reach the same answer -- and, when the operator has asked for 'none' outright,
+     * log its warning about that a second time. */
+    if (!anchor_before && IsFile(AGENT_ANCHOR_CA) == 0) {
+        w_agent_resolve_ssl_posture(agt);
+    }
+
     if (agt->notify_time == 0) {
         agt->notify_time = NOTIFY_TIME;
     }
@@ -410,6 +469,15 @@ int local_start()
 
     if (agt->batch.size > 0) {
         mdebug1("Sync sessions bounded to %lld bytes by <agent><batch><size>.", agt->batch.size);
+    }
+
+    /* agent.sync_max_blocks_per_cycle is handed down the same way: how many of those
+     * sessions one sync cycle may send before the rest waits for the next cycle. */
+    const int sync_max_blocks = getDefine_Int_default("agent", "sync_max_blocks_per_cycle", 1, 1000, 0);
+    asp_set_max_blocks_per_sync((uint32_t)sync_max_blocks);
+
+    if (sync_max_blocks > 0) {
+        mdebug1("Sync cycles bounded to %d blocks by agent.sync_max_blocks_per_cycle.", sync_max_blocks);
     }
 
     if(agt->enrollment.enabled) {
@@ -452,8 +520,12 @@ int local_start()
      * the Windows startup path is separate). Started before any producer
      * thread: on Windows the modules call SendMSG in-process, so an event
      * emitted before the accumulator exists is dropped outright rather than
-     * waiting in a queue as it would on POSIX. */
-    w_https_client_start();
+     * waiting in a queue as it would on POSIX. Its own failure paths already
+     * logged the reason via merror; exit here rather than run on with no way
+     * to ever reach the manager. */
+    if (!w_https_client_start()) {
+        merror_exit("https_client: startup failed. Exiting.");
+    }
     atexit(w_https_client_stop);
 
     /* Start syscheck thread */

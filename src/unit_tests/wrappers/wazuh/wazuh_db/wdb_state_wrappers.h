@@ -1,7 +1,6 @@
 /*
  * Wazuh Shared Configuration Manager
- * Copyright (C) 2015, Wazuh Inc.
- * Jun 1, 2022.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -38,6 +37,10 @@ void __wrap_w_inc_global_vacuum();
 
 void __wrap_w_inc_global_vacuum_time(__attribute__((unused)) struct timeval diff);
 
+void __wrap_w_inc_global_commit();
+
+void __wrap_w_inc_global_commit_time(__attribute__((unused)) struct timeval diff);
+
 void __wrap_w_inc_global_get_fragmentation();
 
 void __wrap_w_inc_global_get_fragmentation_time(__attribute__((unused)) struct timeval diff);
@@ -55,6 +58,10 @@ void __wrap_w_inc_global_agent_update_agent_data_time(__attribute__((unused)) st
 void __wrap_w_inc_global_agent_update_keepalive();
 
 void __wrap_w_inc_global_agent_update_keepalive_time(__attribute__((unused)) struct timeval diff);
+
+void __wrap_w_inc_global_agent_set_agent_credentials();
+
+void __wrap_w_inc_global_agent_set_agent_credentials_time(__attribute__((unused)) struct timeval diff);
 
 void __wrap_w_inc_global_agent_update_connection_status();
 

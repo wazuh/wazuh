@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module (C++ worker bridge)
- * Copyright (C) 2015, Wazuh Inc.
- * July 21, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -16,6 +15,7 @@
 
 #include <openssl/x509.h>
 
+#include <cstddef>
 #include <memory>
 #include <optional>
 #include <string>
@@ -60,6 +60,11 @@ namespace remoted::http
                       ResponseMode mode = ResponseMode::Buffered) override;
         std::optional<InFlightBudget::Reservation> tryReserveInFlightBytes(std::size_t bytes) override;
         TransportDiagnostics diagnostics() const override;
+        TlsCertificateSnapshot certificateStatus() const override;
+        CaCertificateSnapshot caCertificateSnapshot() const override;
+        CaCertificateSource::CaDescriptor caDescriptor() const override;
+        int caLeafSignerPem(char* buffer, std::size_t capacity) const override;
+        TlsInventory tlsInventory() const override;
         void start(const HttpServerConfig& config) override;
         void stopAccepting() noexcept override;
         void stop() noexcept override;

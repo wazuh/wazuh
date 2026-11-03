@@ -26,13 +26,13 @@ test:
   - target_field: -- Hi wazuh! --
     should_pass: true
     expected: ""
-    description: Success erase custom file
+    description: A string target has no keys to erase
   - target_field:
       key: value
     should_pass: true
     expected: ""
-    description: Success erase custum file
+    description: Erases the keys of the object target that are not in the schema
   - target_field: [1,2,3,4]
     should_pass: true
     expected: ""
-    description: Success erase custom file
+    description: An array target has no keys to erase

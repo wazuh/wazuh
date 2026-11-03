@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <logicexpr/logicexpr.hpp>
 
 #include "gtest/gtest.h"

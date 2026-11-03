@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
 #include "rocksDBQueue.hpp"
 #include <benchmark/benchmark.h>
 #include <filesystem>

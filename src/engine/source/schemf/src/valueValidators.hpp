@@ -1,12 +1,19 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef SCHEMF_VALIDATORS_HPP
 #define SCHEMF_VALIDATORS_HPP
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <cmath>
+#include <locale>
 #include <sstream>
+#include <string>
 #include <string_view>
 
+#include <arpa/inet.h>
+
+#include <date/date.h>
 #include <hlp/hlp.hpp>
 #include <schemf/ivalidator.hpp>
 
@@ -30,8 +37,8 @@ inline ValueValidator getBoolValidator()
     };
 }
 
-/** @brief Validator that checks if a JSON value is a short (int8 range). */
-inline ValueValidator getShortValidator()
+/** @brief Validator that checks if a JSON value is a byte (int8 range). */
+inline ValueValidator getByteValidator()
 {
     return [](const json::Json& value) -> base::OptError
     {
@@ -45,6 +52,27 @@ inline ValueValidator getShortValidator()
         if (val < std::numeric_limits<int8_t>::min() || val > std::numeric_limits<int8_t>::max())
         {
             return base::Error {"Value not in range for byte"};
+        }
+
+        return base::noError();
+    };
+}
+
+/** @brief Validator that checks if a JSON value is a short (int16 range). */
+inline ValueValidator getShortValidator()
+{
+    return [](const json::Json& value) -> base::OptError
+    {
+        if (!value.isInt() || !value.isInt64())
+        {
+            return base::Error {"Value is not an integer"};
+        }
+
+        auto val = value.getInt().value();
+
+        if (val < std::numeric_limits<int16_t>::min() || val > std::numeric_limits<int16_t>::max())
+        {
+            return base::Error {"Value not in range for short"};
         }
 
         return base::noError();
@@ -135,14 +163,93 @@ inline ValueValidator getStringValidator()
     };
 }
 
+namespace detail
+{
+
+/** @brief Checks that val starts with layout, where 'D' stands for a digit and any other char for itself. */
+inline bool matchesLayout(std::string_view val, std::string_view layout)
+{
+    if (val.size() < layout.size())
+    {
+        return false;
+    }
+
+    for (std::size_t i = 0; i < layout.size(); ++i)
+    {
+        const auto isDigit = std::isdigit(static_cast<unsigned char>(val[i])) != 0;
+        if (layout[i] == 'D' ? !isDigit : val[i] != layout[i])
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/** @brief Checks a numeric zone offset of the exact form [+-]HH:MM, with hours up to 14 and minutes below 60. */
+inline bool isNumericOffset(std::string_view zone)
+{
+    if (zone.size() != 6 || (zone[0] != '+' && zone[0] != '-') || !matchesLayout(zone.substr(1), "DD:DD"))
+    {
+        return false;
+    }
+
+    const auto hours = (zone[1] - '0') * 10 + (zone[2] - '0');
+    const auto minutes = (zone[4] - '0') * 10 + (zone[5] - '0');
+    return hours <= 14 && minutes < 60;
+}
+
+/**
+ * @brief Checks the exact layout YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS[.fraction]<zone>, with two-digit fields and nothing
+ * after the zone. Returns the part without the zone, or an empty view if the layout does not match.
+ *
+ * The zone is 'Z', 'Zulu' or a numeric offset [+-]HH:MM: the index mapping accepts them, and 'Zulu' is the only zone
+ * id that starts with 'Z'. A date without time takes no zone.
+ *
+ * The date library accepts single-digit fields and ignores trailing text, while the index mapping rejects both.
+ * The fraction is capped at 9 digits here, as the mapping does: the date library would stop reading after 9 digits and
+ * ignore the rest, since the zone is not part of the parsed text.
+ */
+inline std::string_view isoDateTimePart(std::string_view val)
+{
+    constexpr std::string_view DATE_LAYOUT {"DDDD-DD-DD"};
+    constexpr std::string_view LAYOUT {"DDDD-DD-DDTDD:DD:DD"};
+    if (val.size() == DATE_LAYOUT.size())
+    {
+        return matchesLayout(val, DATE_LAYOUT) ? val : std::string_view {};
+    }
+
+    if (val.size() <= LAYOUT.size() || !matchesLayout(val, LAYOUT))
+    {
+        return {};
+    }
+
+    auto pos = LAYOUT.size();
+    if (val[pos] == '.')
+    {
+        const auto fractionStart = ++pos;
+        while (pos < val.size() && std::isdigit(static_cast<unsigned char>(val[pos])) != 0)
+        {
+            ++pos;
+        }
+
+        if (pos == fractionStart || pos - fractionStart > 9)
+        {
+            return {};
+        }
+    }
+
+    const auto zone = val.substr(pos);
+    return zone == "Z" || zone == "Zulu" || isNumericOffset(zone) ? val.substr(0, pos) : std::string_view {};
+}
+
+} // namespace detail
+
 /** @brief Validator that checks if a JSON value is a valid date string. */
 inline ValueValidator getDateValidator()
 {
     // TODO parametrize date format
-    auto params = hlp::Params {};
-    params.options.emplace_back("%Y-%m-%dT%H:%M:%SZ");
-    auto dateParser = hlp::parsers::getDateParser(params);
-    return [dateParser](const json::Json& value) -> base::OptError
+    return [](const json::Json& value) -> base::OptError
     {
         if (!value.isString())
         {
@@ -151,8 +258,26 @@ inline ValueValidator getDateValidator()
 
         std::string_view val;
         value.getString(val);
-        auto res = dateParser(val);
-        if (!res.success())
+        const auto dateTime = detail::isoDateTimePart(val);
+        if (dateTime.empty())
+        {
+            return base::Error {"Invalid date"};
+        }
+
+        std::istringstream stream {std::string(dateTime)};
+        stream.imbue(std::locale::classic());
+        date::fields<std::chrono::nanoseconds> fields {};
+        std::string abbrev {};
+        std::chrono::minutes offset {0};
+        stream >> date::parse(dateTime.size() == 10 ? "%Y-%m-%d" : "%Y-%m-%dT%H:%M:%S", fields, abbrev, offset);
+        if (stream.fail())
+        {
+            return base::Error {"Invalid date"};
+        }
+
+        // The date library does not check ranges: month 13, February 31 or hour 25 parse fine
+        if (!fields.ymd.ok() || fields.tod.hours() >= std::chrono::hours {24}
+            || fields.tod.minutes() >= std::chrono::minutes {60} || fields.tod.seconds() >= std::chrono::seconds {60})
         {
             return base::Error {"Invalid date"};
         }
@@ -164,8 +289,7 @@ inline ValueValidator getDateValidator()
 /** @brief Validator that checks if a JSON value is a valid IP address string. */
 inline ValueValidator getIpValidator()
 {
-    auto ipParser = hlp::parsers::getIPParser({});
-    return [ipParser](const json::Json& value) -> base::OptError
+    return [](const json::Json& value) -> base::OptError
     {
         if (!value.isString())
         {
@@ -174,9 +298,30 @@ inline ValueValidator getIpValidator()
 
         std::string_view val;
         value.getString(val);
-        auto res = ipParser(val);
 
-        if (!res.success() || !res.remaining().empty())
+        // inet_pton reads a C string, so anything after an embedded NUL would be ignored
+        if (val.find('\0') != std::string_view::npos)
+        {
+            return base::Error {"Invalid IP"};
+        }
+
+        std::string address {val};
+
+        // The mapping takes an IPv6 address followed by '%' and any non-empty zone, but no zone on an embedded IPv4
+        const auto zone = address.find('%');
+        if (zone != std::string::npos)
+        {
+            if (zone + 1 == address.size() || address.find('.') < zone)
+            {
+                return base::Error {"Invalid IP"};
+            }
+            address.resize(zone);
+        }
+
+        in_addr ipv4 {};
+        in6_addr ipv6 {};
+        if ((zone != std::string::npos || inet_pton(AF_INET, address.c_str(), &ipv4) != 1)
+            && inet_pton(AF_INET6, address.c_str(), &ipv6) != 1)
         {
             return base::Error {"Invalid IP"};
         }
@@ -200,7 +345,7 @@ inline ValueValidator getBinaryValidator()
         value.getString(val);
         auto res = binaryParser(val);
 
-        if (!res.success())
+        if (!res.success() || !res.remaining().empty())
         {
             return base::Error {"Invalid binary"};
         }

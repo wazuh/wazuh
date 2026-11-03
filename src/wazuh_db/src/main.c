@@ -1,7 +1,6 @@
 /*
  * Wazuh Database Daemon
- * Copyright (C) 2015, Wazuh Inc.
- * January 03, 2018.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -56,6 +55,13 @@ int main(int argc, char ** argv)
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
 
+    // Keep SQLite's temporary files (sorts, VACUUM) under the installation directory's tmp/ instead of the
+    // host's /var/tmp or /tmp. SQLite reads the variable once, on its first initialization, so this must run
+    // before any sqlite3 call; the path is relative because the working directory stays here.
+    if (setenv("SQLITE_TMPDIR", "tmp", 1) != 0) {
+        mwarn("Could not set SQLITE_TMPDIR: %s (%d). SQLite will use the system temporary directory.", strerror(errno), errno);
+    }
+
     // Get options
 
     {
@@ -102,7 +108,7 @@ int main(int argc, char ** argv)
     wconfig.commit_time_min = getDefine_Int_default("wazuh_db", "commit_time_min", 1, 3600, 10);
     wconfig.commit_time_max = getDefine_Int_default("wazuh_db", "commit_time_max", 1, 3600, 60);
     wconfig.open_db_limit = getDefine_Int_default("wazuh_db", "open_db_limit", 1, 4096, 64);
-    nofile = getDefine_Int_default("wazuh_db", "rlimit_nofile", 1024, 1048576, 458752);
+    nofile = getDefine_Int_default("wazuh_db", "rlimit_nofile", 1024, 1048576, 65536);
 
     wconfig.fragmentation_threshold = getDefine_Int_default("wazuh_db", "fragmentation_threshold", 0, 100, 75);
     wconfig.fragmentation_delta = getDefine_Int_default("wazuh_db", "fragmentation_delta", 0, 100, 5);
@@ -115,7 +121,7 @@ int main(int argc, char ** argv)
     // Allocating memory for configuration structures and setting default values
     wdb_init_conf();
 
-    // Read the manager configuration (etc/wazuh-manager.conf): loaded once, then the `wdb` section as cJSON.
+    // Read the manager configuration (/etc/wazuh-manager/wazuh-manager.conf): loaded once, then the `wdb` section as cJSON.
     if (w_mconf_load(cfg) < 0) {
         merror_exit("Invalid configuration block for Wazuh-DB.");
     }
@@ -157,12 +163,9 @@ int main(int argc, char ** argv)
         nowDaemon();
     }
 
-    // Set max open files limit
-    struct rlimit rlimit = { nofile, nofile };
-
-    if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {
-        merror("Could not set resource limit for file descriptors to %d: %s (%d)", (int)nofile, strerror(errno), errno);
-    }
+    // Raise the soft file descriptor limit; the hard limit belongs to whoever started the manager.
+    // nofile keeps the configured value; a lower limit in force is logged by w_raise_nofile_limit().
+    w_raise_nofile_limit((long)nofile, "wazuh_db.rlimit_nofile");
 
     // Set user and group
 
@@ -178,11 +181,8 @@ int main(int argc, char ** argv)
             merror_exit(SETGID_ERROR, GROUPGLOBAL, errno, strerror(errno));
         }
 
-        // Change root
-
-        if (Privsep_Chroot(home_path) < 0) {
-            merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
-        }
+        // The working directory is the installation directory since the chdir() above, like the other
+        // daemons, and every path below is relative to it.
 
         if (Privsep_SetUser(uid) < 0) {
             merror_exit(SETUID_ERROR, USER, errno, strerror(errno));

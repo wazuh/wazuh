@@ -1,17 +1,19 @@
 /*
  * Wazuh - Indexer Connector exponential backoff unit tests.
- * Copyright (C) 2015, Wazuh Inc.
- * July 16, 2026.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #include "exponentialBackoff.hpp"
 #include <chrono>
 #include <gtest/gtest.h>
+#include <set>
 #include <thread>
 
 class IndexerExponentialBackoffTest : public ::testing::Test
@@ -33,26 +35,48 @@ TEST_F(IndexerExponentialBackoffTest, AppliesExponentialCapsAndReset)
 {
     IndexerExponentialBackoff backoff(BASE_DELAY, MAX_DELAY);
 
-    expectDelayInRange(backoff.nextDelay(), std::chrono::milliseconds {0}, std::chrono::milliseconds {10});
+    expectDelayInRange(backoff.nextDelay(), std::chrono::milliseconds {10}, std::chrono::milliseconds {15});
     expectDelayInRange(backoff.nextDelay(), std::chrono::milliseconds {10}, std::chrono::milliseconds {20});
     expectDelayInRange(backoff.nextDelay(), std::chrono::milliseconds {20}, std::chrono::milliseconds {40});
     expectDelayInRange(backoff.nextDelay(), std::chrono::milliseconds {20}, std::chrono::milliseconds {40});
 
     backoff.reset();
-    expectDelayInRange(backoff.nextDelay(), std::chrono::milliseconds {0}, BASE_DELAY);
+    expectDelayInRange(backoff.nextDelay(), BASE_DELAY, BASE_DELAY * 3 / 2);
 }
 
-// First failure must sleep exactly the base delay (no jitter), so a caller configuring e.g.
-// RetryDelay=1s never waits less than that on its very first retry. Only the second consecutive
-// failure onward introduces the randomized backoff step between the previous and current cap.
-TEST_F(IndexerExponentialBackoffTest, FirstFailureSleepsExactlyBaseDelay)
+// First failure never sleeps less than the base delay, so a caller configuring e.g. RetryDelay=1s
+// never retries sooner than that, but it is spread over up to half the base again: connectors that
+// failed in the same instant (one 429 seen by all of them) must not retry in lockstep.
+TEST_F(IndexerExponentialBackoffTest, FirstFailureSleepsBetweenBaseAndOneAndAHalfBase)
 {
     IndexerExponentialBackoff backoff(BASE_DELAY, MAX_DELAY);
 
-    EXPECT_EQ(backoff.nextDelay(), BASE_DELAY);
+    expectDelayInRange(backoff.nextDelay(), BASE_DELAY, BASE_DELAY * 3 / 2);
     expectDelayInRange(backoff.nextDelay(), BASE_DELAY, BASE_DELAY * 2);
 
     backoff.reset();
+    expectDelayInRange(backoff.nextDelay(), BASE_DELAY, BASE_DELAY * 3 / 2);
+}
+
+TEST_F(IndexerExponentialBackoffTest, FirstDelaysOfIndependentBackoffsAreSpread)
+{
+    constexpr std::chrono::milliseconds baseDelay {1000};
+    std::set<int64_t> firstDelays;
+    for (int instance = 0; instance < 50; ++instance)
+    {
+        IndexerExponentialBackoff backoff(baseDelay, std::chrono::milliseconds {15000});
+        firstDelays.insert(backoff.nextDelay().count());
+    }
+
+    EXPECT_GT(firstDelays.size(), 1u);
+    EXPECT_GE(*firstDelays.begin(), 1000);
+    EXPECT_LE(*firstDelays.rbegin(), 1500);
+}
+
+TEST_F(IndexerExponentialBackoffTest, FirstDelayNeverExceedsTheCap)
+{
+    IndexerExponentialBackoff backoff(BASE_DELAY);
+
     EXPECT_EQ(backoff.nextDelay(), BASE_DELAY);
 }
 
@@ -60,7 +84,7 @@ TEST_F(IndexerExponentialBackoffTest, ConsecutiveFailuresDoNotExceedMaxDelay)
 {
     IndexerExponentialBackoff backoff(BASE_DELAY, MAX_DELAY);
 
-    expectDelayInRange(backoff.nextDelay(), std::chrono::milliseconds {0}, BASE_DELAY);
+    expectDelayInRange(backoff.nextDelay(), BASE_DELAY, BASE_DELAY * 3 / 2);
     expectDelayInRange(backoff.nextDelay(), BASE_DELAY, BASE_DELAY * 2);
 
     for (size_t attempt = 0; attempt < 18; ++attempt)
@@ -75,7 +99,7 @@ TEST_F(IndexerExponentialBackoffTest, MaxDelayUsesPreviousExponentialStepAsLower
     constexpr std::chrono::milliseconds maxDelay {15000};
     IndexerExponentialBackoff backoff(baseDelay, maxDelay);
 
-    expectDelayInRange(backoff.nextDelay(), std::chrono::milliseconds {0}, std::chrono::milliseconds {1000});
+    expectDelayInRange(backoff.nextDelay(), std::chrono::milliseconds {1000}, std::chrono::milliseconds {1500});
     expectDelayInRange(backoff.nextDelay(), std::chrono::milliseconds {1000}, std::chrono::milliseconds {2000});
     expectDelayInRange(backoff.nextDelay(), std::chrono::milliseconds {2000}, std::chrono::milliseconds {4000});
     expectDelayInRange(backoff.nextDelay(), std::chrono::milliseconds {4000}, std::chrono::milliseconds {8000});

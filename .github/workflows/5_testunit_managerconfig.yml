@@ -5,16 +5,67 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/5_testunit_managerconfig.yml"
+      # Library, schema (embedded at configure time, MANAGER_CONFIG_SCHEMA_FILE in CMakeLists.txt), CLI, GTest, vectors,
+      # tests/cli/manager_conf_cli_test.sh and tests/parity.py.
       - "src/shared_modules/manager_config/**"
+      # bin/wazuh-manager-conf re-spells error_messages.h's NO_CONFIG/CONFIG_INVALID (cli/manager-conf.cpp);
+      # manager_config_cli asserts those (1244)/(1239) texts.
+      - "src/shared/include/error_messages/error_messages.h"
       # The end-to-end suite (manager_config_cli) runs the real generator and asserts that the
-      # configuration the installer writes is accepted by the strict loader, so a change to the
-      # generator or to its templates must trigger this workflow too.
-      - "src/init/**"
-      - "etc/templates/**"
+      # configuration the installer writes is accepted by the strict loader. Exactly what it executes:
+      # the mirror holds only src/init/*.sh, etc/ and VERSION.json (MIRROR in manager_conf_cli_test.sh);
+      # gen_wazuh.sh sources shared.sh and inst-functions.sh (its `conf` branch), which sources
+      # template-select.sh (at the top of inst-functions.sh); shared.sh reads VERSION.json (VERSION,
+      # REVISION); WriteManager() reads only the seven generic templates below (inst-functions.sh's *_TEMPLATE).
+      - "src/init/gen_wazuh.sh"
+      - "src/init/shared.sh"
+      - "src/init/inst-functions.sh"
+      - "src/init/template-select.sh"
+      - "etc/templates/config/generic/header-comments.template"
+      - "etc/templates/config/generic/global.template"
+      - "etc/templates/config/generic/logging.template"
+      - "etc/templates/config/generic/wodle-vulnerability-detection.manager.template"
+      - "etc/templates/config/generic/wodle-indexer.manager.template"
+      - "etc/templates/config/generic/auth.template"
+      - "etc/templates/config/generic/cluster.template"
+      # The installer-scripts suite runs the shell helpers that replaced sed/grep/awk in the scripts
+      # above, in dist-detect.sh (RPM %post) and in the two Python wrappers, each beside the command it
+      # replaced.
+      - "src/init/dist-detect.sh"
+      - "src/init/tests/test_installer_text_tools.sh"
+      - "framework/wrappers/generic_wrapper.sh"
+      - "api/wrappers/generic_wrapper.sh"
+      # Configure path: build_target_cpp configures src/ as one tree -- src/CMakeLists.txt (registers
+      # this module with add_subdirectory(shared_modules/manager_config), includes src/cmake/*.cmake by
+      # include(WazuhRpath)/include(WazuhJemalloc) -- wazuh_set_runtime_rpath comes from WazuhRpath.cmake --
+      # and reads VERSION.json into VERSION_JSON) and src/external/CMakeLists.txt,
+      # which defines ext_pugixml/ext_rapidjson linked here.
+      - "src/CMakeLists.txt"
+      - "src/cmake/**"
+      - "src/external/CMakeLists.txt"
+      - "VERSION.json"
+      # build_external_deps runs `make deps`/`make build-external` (src/Makefile; its ref list comes
+      # from tools/get_git_refs.sh, GIT_REFS_LIST in src/Makefile) and builds the http-request submodule
+      # (its "Build http-request" step, also configured by add_subdirectory(shared_modules/http-request)
+      # in src/CMakeLists.txt). A submodule bump changes only
+      # the gitlink path, which `http-request/**` would never match.
+      - "src/Makefile"
+      - "src/deps.lock.mk"
+      - "tools/get_git_refs.sh"
+      - "src/shared_modules/http-request"
+      # Result-affecting actions this workflow executes (reinstall_cmake runs the devContainer script,
+      # its `sudo tools/devContainer/reinstall-cmake.sh` step). upload_s3_artifact is left out on purpose: coverage_cpp calls
+      # it with continue-on-error (coverage_cpp's "Uploading coverage report" step), so it can only report, and the
+      # agent package and -rtr lanes exercise it on PRs.
       - ".github/actions/build_external_deps/**"
       - ".github/actions/build_target_cpp/**"
       - ".github/actions/coverage_cpp/**"
       - ".github/actions/test_cpp/**"
+      - ".github/actions/reinstall_cmake/**"
+      - "tools/devContainer/reinstall-cmake.sh"
+      - ".github/actions/setup-sccache/**"
+      # Prose: no build or test reads it.
+      - "!src/shared_modules/manager_config/README.md"
   workflow_dispatch:
 
 concurrency:
@@ -32,7 +83,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Cancel previous runs
-        uses: fkirc/skip-duplicate-actions@master
+        uses: fkirc/skip-duplicate-actions@v5.3.2
         with:
           cancel_others: 'true'
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -42,6 +93,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+
+      # No build needed, so it runs first: the installer's text handling without sed, grep or awk,
+      # checked against those tools under both shells the packages may use.
+      - name: Installer scripts - text handling (dash and bash)
+        run: |
+          sh src/init/tests/test_installer_text_tools.sh
+          bash src/init/tests/test_installer_text_tools.sh
 
       - name: Install a compatible CMake
         uses: ./.github/actions/reinstall_cmake
@@ -93,6 +151,22 @@ jobs:
           target: "wazuh-manager-conf"
           test: "true"
           asan: "false"
+
+      # manager_config_parity is registered only when find_program() finds python3
+      # (find_program(MANAGER_CONFIG_PYTHON) in tests/unit/CMakeLists.txt, HINTS $ENV{TMP_PY_VENV}/bin with NO_DEFAULT_PATH, so it
+      # resolves through /bin only by luck of the runner layout), and ctest -L passes over a test that
+      # was never registered. Fail here instead of running 2 of 3 suites green.
+      - name: Manager config - Fail if a suite is not registered
+        shell: bash
+        run: |
+          set -euo pipefail
+          registered=$(cd src/build && ctest -N -L manager_config)
+          for t in manager_config_utest manager_config_cli manager_config_parity; do
+            if ! printf '%s\n' "$registered" | grep -qE "Test +#[0-9]+: ${t}\$"; then
+              echo "::error::ctest test '${t}' is not registered under the manager_config label"
+              exit 1
+            fi
+          done
 
       # `manager_config` is the module-wide ctest label: it selects the GTest, the CLI end-to-end
       # suite and the jsonschema parity check (tests/unit/CMakeLists.txt).

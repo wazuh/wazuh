@@ -1,7 +1,6 @@
 /*
  * Wazuh Module for the inventory sync server (HTTP over Unix domain socket)
- * Copyright (C) 2015, Wazuh Inc.
- * July 28, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -13,6 +12,7 @@
 #include "indexer-config.h"
 #include "inventory_sync_server.h"
 #include "sym_load.h"
+#include "wm_vulnerability_scanner.h"
 #include <cJSON.h>
 
 static void* wm_inventory_sync_server_main(wm_inventory_sync_server_t* data);
@@ -74,12 +74,14 @@ static void wm_inventory_sync_server_log_config(const inventory_sync_server_conf
 
     mtdebug1(WM_INVENTORY_SYNC_SERVER_LOGTAG,
              "sync pipeline: sync_workers=%d, sync_queue_bytes=%lld, vd_feed_retry_after_seconds=%d, vd_workers=%d, "
-             "vd_scan_queue_slots=%d",
+             "vd_scan_queue_slots=%d, max_sessions_per_agent=%d, vd_configured_enabled=%s",
              config->sync_workers,
              config->sync_queue_bytes,
              config->vd_feed_retry_after_seconds,
              config->vd_workers,
-             config->vd_scan_queue_slots);
+             config->vd_scan_queue_slots,
+             config->max_sessions_per_agent,
+             config->vd_configured_enabled ? "yes" : "no");
 
     /* Split from the line above so the two indexer families stay visually distinct in the log, the
      * same way they are in the configuration: their key names are NOT interchangeable. */
@@ -199,20 +201,24 @@ static void wm_inventory_sync_server_read_tunables(inventory_sync_server_config_
         config->max_inflight_bytes = (long long)inflight;
     }
 
+#ifndef WIN32
     /* Not a tunable of this module, but the ceiling that makes max_parallel_connections meaningful:
      * every live connection and every deferred reply costs a descriptor, out of a limit shared by all of
      * modulesd. Configuring more connections than descriptors guarantees EMFILE long before the cap is
-     * reached. Same key and range as wm_setup() so the two cannot disagree. */
-    const int nofile = getDefine_Int_default("wazuh_modules", "rlimit_nofile", 8192, 1048576, 8192);
-    if (config->max_parallel_connections > nofile)
+     * reached. main() has already raised the soft limit, so the effective value is the one that counts. */
+    struct rlimit nofile;
+    if (getrlimit(RLIMIT_NOFILE, &nofile) == 0 && nofile.rlim_cur != RLIM_INFINITY
+        && (rlim_t)config->max_parallel_connections > nofile.rlim_cur)
     {
         mtwarn(WM_INVENTORY_SYNC_SERVER_LOGTAG,
-               "'inventory_sync_server_max_parallel_connections' is %d but modulesd's descriptor limit "
-               "('wazuh_modules.rlimit_nofile') is %d, and that limit is shared with every other module. "
-               "Connections will fail with 'too many open files' well before the configured cap.",
+               "'inventory_sync_server_max_parallel_connections' is %d but modulesd's descriptor limit is %lu "
+               "('wazuh_modules.rlimit_nofile', capped by the limit the process is started with), and that limit "
+               "is shared with every other module. Connections will fail with 'too many open files' well before "
+               "the configured cap.",
                config->max_parallel_connections,
-               nofile);
+               (unsigned long)nofile.rlim_cur);
     }
+#endif
 
     /* ---- Sync pipeline (the POST /stateful ingestion path). sync_workers keeps the 0 sentinel
      * (0 -> half the cores, resolved by the module); the other two carry real defaults because
@@ -230,6 +236,11 @@ static void wm_inventory_sync_server_read_tunables(inventory_sync_server_config_
     config->vd_workers = getDefine_Int_default("wazuh_modules", "inventory_sync_server_vd_workers", 0, 64, 0);
     config->vd_scan_queue_slots =
         getDefine_Int_default("wazuh_modules", "inventory_sync_server_vd_scan_queue_slots", 0, 256, 0);
+    /* Sessions one agent may have pending (admitted, not yet answered). remoted frees its own
+     * per-agent slot when it stops waiting, but this module keeps working on the session; 2 is the
+     * session being applied plus one re-send after such a timeout. */
+    config->max_sessions_per_agent =
+        getDefine_Int_default("wazuh_modules", "inventory_sync_server_max_sessions_per_agent", 1, 1024, 2);
 
     /* ---- Indexer connector tunables. Unlike the transport options above these carry real
      * ranges and defaults rather than the 0 sentinel, because they are forwarded to a shared
@@ -419,6 +430,43 @@ void* wm_inventory_sync_server_main(wm_inventory_sync_server_t* data)
              * thread runs -- wm_config() reads the configuration before main() creates them. */
             cJSON* indexer_json = indexer_config ? cJSON_Duplicate(indexer_config, TRUE) : cJSON_CreateObject();
             config.indexer = indexer_json;
+
+            /* Race-free to read here: wm_vulnerability_scanner_main() only ever reads
+             * data->vulnerability_detection (never mutates it in place -- see
+             * wm_vulnerability_scanner_apply_config_defaults()'s comment), so this object is
+             * write-once from wm_config() time on, regardless of which of the two module threads
+             * gets here first. Absent module -> not configured (defensive only: on a manager the
+             * effective document always carries the section, so the module always exists).
+             * Present with no "enabled" key -> defaults enabled, matching the scanner's
+             * own default. A string value w_parse_bool() does not recognize as "yes" -> treated as
+             * disabled: the scanner's own Utils::parseStrToBool() throws on the same input, which
+             * leaves it permanently failed rather than started, so this must not wait on it. This
+             * decision tree mirrors VulnerabilityScannerFacade::start()'s vdEnabled lambda
+             * (vulnerabilityScannerFacade.cpp) -- consulted instead of this value once that
+             * module's start() has begun -- if this vocabulary ever changes, check that lambda
+             * stays in step: they interpret the same config key for two different arrival-time
+             * windows around this node's own scanner startup. */
+            config.vd_configured_enabled = false;
+            const wmodule* vd_module = wm_find_module(WM_VULNERABILITY_SCANNER_CONTEXT.name);
+            if (vd_module && vd_module->data)
+            {
+                const wm_vulnerability_scanner_t* vd_data = (const wm_vulnerability_scanner_t*)vd_module->data;
+                const cJSON* vd_enabled = vd_data->vulnerability_detection
+                                              ? cJSON_GetObjectItem(vd_data->vulnerability_detection, "enabled")
+                                              : NULL;
+                if (!vd_enabled || cJSON_IsBool(vd_enabled))
+                {
+                    config.vd_configured_enabled = !vd_enabled || cJSON_IsTrue(vd_enabled);
+                }
+                else if (cJSON_IsString(vd_enabled))
+                {
+                    config.vd_configured_enabled = w_parse_bool(vd_enabled->valuestring) == 1;
+                }
+                else
+                {
+                    config.vd_configured_enabled = true;
+                }
+            }
 
             wm_inventory_sync_server_log_config(&config);
             const int status = inventory_sync_server_start_ptr(mtLoggingFunctionsWrapper, &config);

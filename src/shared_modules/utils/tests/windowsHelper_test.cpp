@@ -1,12 +1,13 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015, Wazuh Inc.
- * November 10, 2020.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 #ifdef WIN32
 #include "windowsHelper_test.h"
@@ -384,6 +385,28 @@ TEST_F(WindowsHelperTest, getIpV6AddressZeroLengthBufferReturnsEmptyString)
 {
     std::array<uint8_t, 0> emptyAddr;
     EXPECT_EQ(Utils::NetworkWindowsHelper::getIpV6Address(emptyAddr.data()), "");
+}
+
+TEST_F(WindowsHelperTest, isLocalFixedPathAcceptsLocalDrive)
+{
+    EXPECT_TRUE(Utils::isLocalFixedPath(R"(C:\Python312\)"));
+    EXPECT_TRUE(Utils::isLocalFixedPath("C:/Program Files/nodejs"));
+}
+
+TEST_F(WindowsHelperTest, isLocalFixedPathRejectsNetworkAndDevicePaths)
+{
+    EXPECT_FALSE(Utils::isLocalFixedPath(R"(\\h\s\)"));
+    EXPECT_FALSE(Utils::isLocalFixedPath("//h/s/"));
+    EXPECT_FALSE(Utils::isLocalFixedPath(R"(/\h\s)"));
+    EXPECT_FALSE(Utils::isLocalFixedPath(R"(\\?\UNC\h\s)"));
+    EXPECT_FALSE(Utils::isLocalFixedPath("//?/UNC/h/s"));
+    EXPECT_FALSE(Utils::isLocalFixedPath(R"(\\.\pipe\x)"));
+    EXPECT_FALSE(Utils::isLocalFixedPath(R"(\??\UNC\h)"));
+    EXPECT_FALSE(Utils::isLocalFixedPath(R"(\\?\C:\Python312)"));
+    EXPECT_FALSE(Utils::isLocalFixedPath("C:"));
+    EXPECT_FALSE(Utils::isLocalFixedPath("C:Python"));
+    EXPECT_FALSE(Utils::isLocalFixedPath(R"(1:\x)"));
+    EXPECT_FALSE(Utils::isLocalFixedPath(""));
 }
 
 #endif

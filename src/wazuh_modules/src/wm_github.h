@@ -1,7 +1,6 @@
 /*
  * Wazuh Module for GitHub logs
- * Copyright (C) 2015, Wazuh Inc.
- * May 3, 2021.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

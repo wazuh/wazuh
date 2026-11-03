@@ -1,7 +1,6 @@
 /*
  * Wazuh task manager module
- * Copyright (C) 2015, Wazuh Inc.
- * September 3, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -111,7 +110,7 @@ namespace task_manager::upgrade
     /**
      * @brief Build the directory, file name and `versions` URL for one agent.
      *
-     * Six shapes, selected by platform and by two version epochs -- v3.4.0, when Linux moved to a
+     * Seven shapes, selected by platform and by two version epochs -- v3.4.0, when Linux moved to a
      * flat "linux/<arch>/" tree, and v4.9.0, when both Linux and macOS moved to
      * "<os>/<package_type>/<arch>/" with the package type in the file name:
      *

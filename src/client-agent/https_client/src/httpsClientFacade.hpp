@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -17,6 +16,8 @@
 #include "clusterIdentity.hpp"
 #include "collectorSource.hpp"
 #include "compressionGate.hpp"
+#include "caBundleFetcher.hpp"
+#include "caPublicationState.hpp"
 #include "configHashState.hpp"
 #include "controlStream.hpp"
 #include "curlPerformer.hpp"
@@ -105,6 +106,7 @@ class HttpsClientFacade final
         CurlPerformer m_performer;
         CallbackDispatcher m_dispatcher;
         ConfigHashState m_configHash;
+        CaPublicationState m_caPublication;
         ClusterIdentity m_cluster;
         TaskIdStoreAdapter m_taskStore;
         VdOffsetStoreAdapter m_vdOffsetStore;
@@ -124,6 +126,7 @@ class HttpsClientFacade final
         StatelessStream m_stateless;
         StatefulStream m_stateful;
         ControlStream m_control;
+        CaBundleFetcher m_caFetcher;
         ReporterStream m_reporter;
 
         // One waiter per stream thread; the stop flag doubles as the abort flag.

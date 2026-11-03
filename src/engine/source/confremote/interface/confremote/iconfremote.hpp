@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef CONFREMOTE_ICONFREMOTE_HPP
 #define CONFREMOTE_ICONFREMOTE_HPP
 
@@ -22,7 +23,6 @@ public:
      * @brief Requests graceful shutdown for in-flight or future sync operations.
      */
     virtual void requestShutdown() = 0;
-
 };
 
 } // namespace confremote

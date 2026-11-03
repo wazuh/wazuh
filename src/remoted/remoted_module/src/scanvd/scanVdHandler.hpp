@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module - VD Scan handler
- * Copyright (C) 2015, Wazuh Inc.
- * August 6, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -12,6 +11,7 @@
 #ifndef SCANVD_HANDLER_HPP
 #define SCANVD_HANDLER_HPP
 
+#include "common/installPaths.hpp"
 #include "common/vdClient.hpp"
 #include "endpoints/scanVdEndpoint.hpp"
 #include "scanvd/scanVdMetrics.hpp"
@@ -56,7 +56,7 @@ namespace remoted::scanvd
 
         /**
          * @param vdModulesdSocketPath VD module UDS endpoint used to trigger scans, as a raw
-         * filesystem path (e.g. "/queue/sockets/vd-http.sock") -- NOT a "unix://" URI; see
+         * filesystem path (e.g. remoted::paths::kVdSocket, relative to remoted's cwd) -- NOT a "unix://" URI; see
          * vdClient.cpp for why. The same socket VdClient uses for /offset, passed separately
          * because remoted and VD are independent binaries. Defaults to the real socket;
          * overridable so tests can point this at a fake server instead.
@@ -65,7 +65,7 @@ namespace remoted::scanvd
          */
         ScanVdHandlerImpl(std::shared_ptr<remoted::common::VdClient> vdClient,
                           ScanVdMetrics& metrics,
-                          std::string vdModulesdSocketPath = "/queue/sockets/vd-http.sock",
+                          std::string vdModulesdSocketPath = remoted::paths::kVdSocket,
                           long readTimeoutSeconds = VD_SCAN_READ_TIMEOUT_SECONDS,
                           long writeTimeoutSeconds = VD_SCAN_WRITE_TIMEOUT_SECONDS);
         ~ScanVdHandlerImpl() override;

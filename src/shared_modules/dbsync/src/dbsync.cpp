@@ -1,7 +1,6 @@
 /*
  * Wazuh DBSYNC
- * Copyright (C) 2015, Wazuh Inc.
- * June 11, 2020.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -17,7 +16,7 @@
 #include "dbsyncPipelineFactory.h"
 #include "cjsonSmartDeleter.hpp"
 #include "hashHelper.h"
-#include "stringHelper.h"
+#include "wazuhCommon.hpp"
 
 #ifdef __cplusplus
 extern "C" {
@@ -70,6 +69,7 @@ DBSYNC_HANDLE dbsync_create_(const HostType     host_type,
             }
 
             retVal = DBSyncImplementation::instance().initialize(host_type, db_type, path, sql_statement, db_management, upgradeStatements);
+            log_message(DBSyncImplementation::instance().recreateReason(retVal));
         }
         catch (const DbSync::dbsync_error& ex)
         {
@@ -743,6 +743,11 @@ DBSync::DBSync(const DBSYNC_HANDLE dbsyncHandle)
     , m_shouldBeRemoved{ false }
 { }
 
+std::string DBSync::recreateReason() const
+{
+    return DBSyncImplementation::instance().recreateReason(m_dbsyncHandle);
+}
+
 DBSync::~DBSync()
 {
     // Only release context if we own it AND the singleton is not being destroyed
@@ -891,7 +896,7 @@ std::string DBSync::calculateTableChecksum(const std::string& tableName, const s
 
     hash.update(concatenated_checksums.c_str(), concatenated_checksums.length());
     const std::vector<unsigned char> hashResult = hash.hash();
-    final_checksum = Utils::asciiToHex(hashResult);
+    final_checksum = wazuh::hex_encode(hashResult.data(), hashResult.size());
 
     return final_checksum;
 }

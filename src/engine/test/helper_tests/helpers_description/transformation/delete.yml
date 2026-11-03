@@ -26,13 +26,13 @@ test:
   - target_field: -- Hi wazuh! --
     should_pass: true
     expected: ""
-    description: Success delete
+    description: Deletes a string target field
   - target_field:
       key: value
     should_pass: true
     expected: ""
-    description: Success delete
+    description: Deletes an object target field
   - target_field: [1,2,3,4]
     should_pass: true
     expected: ""
-    description: Success delete
+    description: Deletes an array target field

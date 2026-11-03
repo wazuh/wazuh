@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module - authd enrollment bridge client - unit tests
- * Copyright (C) 2015, Wazuh Inc.
- * August 19, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -98,6 +97,71 @@ TEST(AuthdClientTest, SuccessfulAddReturnsAgentData)
     EXPECT_EQ(result.ip, "any");
     EXPECT_EQ(result.key, "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915");
     EXPECT_TRUE(result.message.empty());
+    EXPECT_TRUE(result.reenrollSecret.empty()); // not in this answer: empty, never a default
+}
+
+TEST(AuthdClientTest, SuccessfulAddCarriesTheReenrollSecretWhenAuthdSendsIt)
+{
+    // The fifth field of authd's answer (issue #38993): parsed verbatim when present, empty when an
+    // authd that predates it answers with the four classic fields (the test above).
+    const std::string path = makeUniqueSocketPath("authd_client_reenroll_secret");
+    FakeUdsServer server(
+        path,
+        [](const std::string&)
+        {
+            return R"({"error":0,"data":{"id":"003","name":"agent1","ip":"any","key":"k",)"
+                   R"("reenroll_secret":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}})";
+        });
+    server.setCloseAfterReply(true);
+
+    AuthdClient client(path);
+    ResultWaiter waiter;
+    client.addAgent(makeRequest(), waiter.callback());
+
+    const auto result = waiter.wait();
+    EXPECT_EQ(result.errorCode, 0);
+    EXPECT_EQ(result.reenrollSecret, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+}
+
+TEST(AuthdClientTest, ReenrollCredentialTravelsAsArgumentsReenroll)
+{
+    // Re-enrollment (issue #38993): the agent id the bearer named and the bearer itself go to authd
+    // verbatim as `reenroll` = {kid, bearer} -- the master verifies them, this client only forwards --
+    // and a re-enrollment never carries a token_id (the two credentials are exclusive on authd's side).
+    const std::string path = makeUniqueSocketPath("authd_client_reenroll");
+    std::string captured;
+    std::mutex mu;
+    FakeUdsServer server(
+        path,
+        [&](const std::string& request)
+        {
+            std::lock_guard<std::mutex> lock(mu);
+            captured = request;
+            return std::string(
+                R"({"error":0,"data":{"id":"001","name":"agent1","ip":"any","key":"k2",)"
+                R"("reenroll_secret":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}})");
+        });
+    server.setCloseAfterReply(true);
+
+    AuthdClient client(path);
+    ResultWaiter waiter;
+    auto request = makeRequest();
+    request.reenroll = AuthdAddRequest::ReenrollCredential {"001", "eyJhbGciOiJIUzI1NiJ9.claims.signature"};
+    client.addAgent(request, waiter.callback());
+
+    const auto result = waiter.wait();
+    EXPECT_EQ(result.errorCode, 0);
+    EXPECT_EQ(result.id, "001");
+    EXPECT_EQ(result.key, "k2");
+    EXPECT_EQ(result.reenrollSecret, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+
+    std::lock_guard<std::mutex> lock(mu);
+    const auto wire = nlohmann::json::parse(captured);
+    EXPECT_EQ(wire["function"], "add");
+    EXPECT_EQ(wire["arguments"]["reenroll"]["kid"], "001");
+    EXPECT_EQ(wire["arguments"]["reenroll"]["bearer"], "eyJhbGciOiJIUzI1NiJ9.claims.signature");
+    EXPECT_FALSE(wire["arguments"].contains("token_id"));
+    EXPECT_FALSE(wire["arguments"].contains("id"));
 }
 
 TEST(AuthdClientTest, BusinessRejectionPreservesCodeAndStripsPrefix)
@@ -133,7 +197,7 @@ TEST(AuthdClientTest, ServerAbsentIsATransportFailure)
     // Well under the response timeout: proves this resolves via the fast connect failure, not by
     // waiting the deadline out.
     const auto result = waiter.wait(std::chrono::milliseconds(500));
-    EXPECT_EQ(result.errorCode, -1);
+    EXPECT_EQ(result.errorCode, kAuthdRequestNotSentErrorCode);
     EXPECT_NE(result.message.find("Could not connect"), std::string::npos);
 }
 
@@ -177,7 +241,7 @@ TEST(AuthdClientTest, SaturatedAcceptBacklogIsAFastConnectFailureNotAHang)
     client.addAgent(makeRequest(), waiter.callback());
 
     const auto result = waiter.wait(std::chrono::milliseconds(500));
-    EXPECT_EQ(result.errorCode, -1);
+    EXPECT_EQ(result.errorCode, kAuthdRequestNotSentErrorCode);
     EXPECT_NE(result.message.find("Could not connect"), std::string::npos);
 
     for (const int fd : fillers)
@@ -200,7 +264,8 @@ TEST(AuthdClientTest, ServerDroppingTheResponseTimesOut)
     client.addAgent(makeRequest(), waiter.callback());
 
     const auto result = waiter.wait(std::chrono::seconds(2));
-    EXPECT_EQ(result.errorCode, -1);
+    // The request was already sent when this fires: authd may have processed it anyway.
+    EXPECT_EQ(result.errorCode, kAuthdOutcomeUnknownErrorCode);
     EXPECT_NE(result.message.find("Timed out"), std::string::npos);
 }
 
@@ -215,7 +280,9 @@ TEST(AuthdClientTest, MalformedResponseIsATransportFailure)
     client.addAgent(makeRequest(), waiter.callback());
 
     const auto result = waiter.wait();
-    EXPECT_EQ(result.errorCode, -1);
+    // A reply DID come back, just not a parseable one: authd answered, so this is "outcome
+    // unknown", not "never sent".
+    EXPECT_EQ(result.errorCode, kAuthdOutcomeUnknownErrorCode);
 }
 
 TEST(AuthdClientTest, MissingDataOnSuccessIsATransportFailure)
@@ -231,7 +298,7 @@ TEST(AuthdClientTest, MissingDataOnSuccessIsATransportFailure)
     client.addAgent(makeRequest(), waiter.callback());
 
     const auto result = waiter.wait();
-    EXPECT_EQ(result.errorCode, -1);
+    EXPECT_EQ(result.errorCode, kAuthdOutcomeUnknownErrorCode);
 }
 
 TEST(AuthdClientTest, RequestOmitsForceIdAndKeyAndIncludesOptionalFieldsWhenProvided)
@@ -255,6 +322,7 @@ TEST(AuthdClientTest, RequestOmitsForceIdAndKeyAndIncludesOptionalFieldsWhenProv
     req.ip = "10.0.0.15";
     req.groups = "default,web-servers";
     req.keyHash = "abc123";
+    req.source = "192.168.60.71";
 
     ResultWaiter waiter;
     client.addAgent(req, waiter.callback());
@@ -272,6 +340,7 @@ TEST(AuthdClientTest, RequestOmitsForceIdAndKeyAndIncludesOptionalFieldsWhenProv
     EXPECT_EQ(arguments.at("ip"), "10.0.0.15");
     EXPECT_EQ(arguments.at("groups"), "default,web-servers");
     EXPECT_EQ(arguments.at("key_hash"), "abc123");
+    EXPECT_EQ(arguments.at("source"), "192.168.60.71");
     EXPECT_FALSE(arguments.contains("force"));
     EXPECT_FALSE(arguments.contains("id"));
     EXPECT_FALSE(arguments.contains("key"));
@@ -306,6 +375,7 @@ TEST(AuthdClientTest, OptionalFieldsAreOmittedWhenNotProvided)
     const auto& arguments = json.at("arguments");
     EXPECT_FALSE(arguments.contains("groups"));
     EXPECT_FALSE(arguments.contains("key_hash"));
+    EXPECT_FALSE(arguments.contains("source")); // authd then logs the request as local
 }
 
 TEST(AuthdClientTest, QueueFullRejectsBeyondCapacity)
@@ -334,7 +404,7 @@ TEST(AuthdClientTest, QueueFullRejectsBeyondCapacity)
     client.addAgent(makeRequest(), third.callback());           // queue already full -> rejected now
 
     const auto thirdResult = third.wait();
-    EXPECT_EQ(thirdResult.errorCode, -1);
+    EXPECT_EQ(thirdResult.errorCode, kAuthdRequestNotSentErrorCode);
     EXPECT_NE(thirdResult.message.find("queue is full"), std::string::npos);
 
     // The queue diagnostics behind remoted.enroll.authd.queue.*: capacity is what was configured,
@@ -380,7 +450,7 @@ TEST(AuthdClientTest, StoppingRejectionsAreNotCountedAsSaturation)
     ResultWaiter afterStop;
     client.addAgent(makeRequest(), afterStop.callback());
     const auto result = afterStop.wait();
-    EXPECT_EQ(result.errorCode, -1); // refused, like a full queue...
+    EXPECT_EQ(result.errorCode, kAuthdRequestNotSentErrorCode); // refused, like a full queue...
 
     diag = client.queueDiagnostics();
     EXPECT_EQ(diag.rejectedTotal, 0U); // ...but NOT as saturation
@@ -416,7 +486,7 @@ TEST(AuthdClientTest, StopFailsQueuedRequestsAndIsIdempotent)
     client->stop(); // must not crash or double-join
 
     const auto queuedResult = queued.wait();
-    EXPECT_EQ(queuedResult.errorCode, -1);
+    EXPECT_EQ(queuedResult.errorCode, kAuthdRequestNotSentErrorCode);
     EXPECT_NE(queuedResult.message.find("stopping"), std::string::npos);
 
     inFlight.wait(); // times out on the drop-response server; just must not hang the fixture

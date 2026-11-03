@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include "cmstore/icmstore.hpp"
 #include <algorithm>
 #include <memory>
@@ -734,7 +735,8 @@ adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& teste
         auto futureResult = tester->ingestTest(std::move(event), opt);
         event = nullptr;
 
-        if (futureResult.wait_for(std::chrono::seconds(5)) != std::future_status::ready)
+        // Bounded by analysisd.server_api_timeout (milliseconds)
+        if (futureResult.wait_for(std::chrono::milliseconds(tester->getTestTimeout())) != std::future_status::ready)
         {
             res = adapter::userErrorResponse<ResponseType>("Timeout waiting for ingestTest");
             return;
@@ -905,7 +907,8 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
         auto futureResult = tester->ingestTest(std::move(event), opt);
         event = nullptr;
 
-        if (futureResult.wait_for(std::chrono::seconds(5)) != std::future_status::ready)
+        // Bounded by analysisd.server_api_timeout (milliseconds)
+        if (futureResult.wait_for(std::chrono::milliseconds(tester->getTestTimeout())) != std::future_status::ready)
         {
             res = adapter::userErrorResponse<ResponseType>("Timeout waiting for ingestTest");
             return;

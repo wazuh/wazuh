@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _CONF_KEYS_HPP
 #define _CONF_KEYS_HPP
 
@@ -12,11 +13,13 @@ constexpr std::string_view LOGGING_LEVEL = "analysisd.debug";
 constexpr std::string_view STORE_PATH = "analysisd.store_path";
 
 constexpr std::string_view KVDB_IOC_PATH = "analysisd.kvdb_ioc_path";
+constexpr std::string_view KVDB_IOC_INPUT_PATH = "analysisd.kvdb_ioc_input_path";
 
 constexpr std::string_view OUTPUTS_PATH = "analysisd.output_path";
 
 constexpr std::string_view CM_RULESET_PATH = "analysisd.cm_ruleset_path";
 constexpr std::string_view CM_SYNC_INTERVAL = "analysisd.cm_sync_interval";
+constexpr std::string_view CM_SYNC_RETRY_INTERVAL = "analysisd.cm_sync_retry_interval";
 
 constexpr std::string_view IOC_SYNC_INTERVAL = "analysisd.ioc_sync_interval";
 
@@ -26,8 +29,6 @@ constexpr std::string_view GEO_MANIFEST_URL = "analysisd.geo_manifest_url";
 constexpr std::string_view GEO_DOWNLOAD_TIMEOUT = "analysisd.geo_download_timeout";
 
 constexpr std::string_view INDEXER_HOST = "analysisd.indexer_hosts";
-constexpr std::string_view INDEXER_USER = "analysisd.indexer_username";
-constexpr std::string_view INDEXER_PASSWORD = "analysisd.indexer_password";
 constexpr std::string_view INDEXER_SSL_CA_BUNDLE = "analysisd.indexer_ssl_certificate_authorities";
 constexpr std::string_view INDEXER_SSL_CERTIFICATE = "analysisd.indexer_ssl_certificate";
 constexpr std::string_view INDEXER_SSL_KEY = "analysisd.indexer_ssl_key";
@@ -48,6 +49,13 @@ constexpr std::string_view CMSYNC_INDEXER_CONNECTOR_RETRY_INTERVAL =
     "analysisd.cmsync_indexer_connector_retry_interval";
 constexpr std::string_view CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE =
     "analysisd.cmsync_indexer_connector_sync_batch_size";
+// Content manager: settings shared by every content topic the engine registers (ruleset and IOC).
+// The per-consumer page size keeps its existing *_indexer_connector_sync_batch_size key, so there is
+// no second knob for the same thing.
+constexpr std::string_view CONTENT_PIT_KEEP_ALIVE = "analysisd.content_pit_keep_alive";
+constexpr std::string_view CONTENT_CONSUMER_CACHE_SECONDS = "analysisd.content_consumer_cache_seconds";
+constexpr std::string_view CONTENT_CONSUMER_RETRY_INTERVAL = "analysisd.content_consumer_retry_interval";
+
 constexpr std::string_view REMOTE_CONF_INDEXER_CONNECTOR_MAX_RETRIES =
     "analysisd.remote_conf_indexer_connector_max_retries";
 constexpr std::string_view REMOTE_CONF_INDEXER_CONNECTOR_RETRY_INTERVAL =
@@ -59,6 +67,8 @@ constexpr std::string_view EVENT_QUEUE_SIZE = "analysisd.event_queue_size";
 constexpr std::string_view EVENT_QUEUE_EPS = "analysisd.event_queue_eps";
 constexpr std::string_view EVENT_QUEUE_MAX_BYTES = "analysisd.event_queue_max_bytes";
 
+constexpr std::string_view AGENT_METADATA_CACHE_MAX_ENTRIES = "analysisd.agent_metadata_cache_max_entries";
+constexpr std::string_view AGENT_METADATA_CACHE_MAX_BYTES = "analysisd.agent_metadata_cache_max_bytes";
 constexpr std::string_view AGENT_METADATA_CACHE_TTL = "analysisd.agent_metadata_cache_ttl";
 constexpr std::string_view AGENT_METADATA_CACHE_CLEAN_INTERVAL = "analysisd.agent_metadata_cache_clean_interval";
 

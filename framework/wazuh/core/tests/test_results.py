@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -358,3 +358,213 @@ def test_results_merge(iterables, criteria, ascending, types, expected_result):
         Expected results after merge.
     """
     assert merge(*iterables, criteria=criteria, ascending=ascending, types=types) == expected_result
+
+
+def _node_result(affected=(), failed=()):
+    """One node's answer, shaped as a distributed operation builds it."""
+    result = AffectedItemsWazuhResult(all_msg='all ok', some_msg='some failed', none_msg='none ok')
+    for item_id in affected:
+        result.affected_items.append(item_id)
+        result.total_affected_items += 1
+    for item_id, code in failed:
+        result.add_failed_item(id_=item_id, error=WazuhError(code))
+    return result
+
+
+def test_node_attribution_survives_the_success_wins_reconciliation():
+    """The node that could not serve must stay visible after the merge resolves the item.
+
+    `__or__` lets a success override a failure for the same item, which is right for the stale-view
+    case it exists for and wrong for a node-local fact: an agent whose upgrade task was created on
+    two nodes and not on a third merges to a clean success, leaving the operator with no way to
+    learn which node could not serve it (#39428).
+
+    Attribution is recorded per node BEFORE the merge and unioned, so it survives that.
+    """
+    master = _node_result(affected=['001'])
+    worker1 = _node_result(affected=['001'])
+    worker2 = _node_result(failed=[('001', 1824)])
+    for name, result in (('master', master), ('worker1', worker1), ('worker2', worker2)):
+        result.attribute_to_node(name)
+
+    merged = (master | worker1) | worker2
+    rendered = merged.render()
+
+    # The item's own outcome is still reconciled: it WAS scheduled, and that is what matters to it.
+    assert rendered['data']['affected_items'] == ['001']
+    assert rendered['data']['failed_items'] == []
+
+    # And the node breakdown is what the merge can no longer erase.
+    assert rendered['data']['nodes'] == {
+        'master': {'affected_items': ['001']},
+        'worker1': {'affected_items': ['001']},
+        'worker2': {'failed_items': {1824: ['001']}},
+    }
+
+
+def test_node_attribution_is_absent_when_nothing_attributed():
+    """A result nobody attributed must render exactly as before: no new key.
+
+    Every endpoint shares this class, so the field has to stay invisible unless DAPI populated it.
+    """
+    result = _node_result(affected=['001'])
+
+    assert 'nodes' not in result.render()['data']
+
+
+def test_node_attribution_ignores_document_shaped_affected_items():
+    """Endpoints whose affected items are documents must contribute no attribution.
+
+    `GET /cluster/{node_id}/daemons/stats` puts a whole metrics dump per daemon in
+    `affected_items`, and `/logs` puts log entries. Recording those per node would duplicate the
+    entire payload once per node, and the API's own response validator rejects them outright --
+    it answered `500 Response body does not conform to specification ... is not of type 'string'
+    - 'data.nodes.worker2.affected_items.0'` when this recorded them.
+
+    "Which items did this node apply" is only a question for identifier-shaped results.
+    """
+    result = AffectedItemsWazuhResult()
+    result.affected_items.append({'name': 'wazuh-manager-analysisd', 'uptime': '2026-09-22T20:48:15.257Z'})
+    result.total_affected_items = 1
+
+    result.attribute_to_node('worker2')
+
+    assert result.node_attribution == {}, 'a document is not an identifier'
+    assert 'nodes' not in result.render()['data']
+
+
+def test_node_attribution_records_a_failure_even_for_document_shaped_results():
+    """A failure is keyed by identifier, so it is recorded whatever the affected items look like."""
+    result = AffectedItemsWazuhResult()
+    result.affected_items.append({'name': 'wazuh-manager-analysisd'})
+    result.total_affected_items = 1
+    result.add_failed_item(id_='001', error=WazuhError(1824))
+
+    result.attribute_to_node('worker2')
+
+    assert result.node_attribution == {'worker2': {'failed_items': {1824: ['001']}}}
+
+
+def test_node_attribution_keeps_every_item_of_a_code_raised_with_per_item_messages():
+    """Same code, different extra_message, must not drop the earlier exception's items.
+
+    `_failed_items` is keyed by exception and a WazuhException's identity includes its message,
+    so 1824 raised once per agent with the task manager's own text is one key per agent. The
+    per-node entry is keyed by code alone and must union them, matching the top-level count.
+    """
+    result = AffectedItemsWazuhResult(all_msg='all ok', some_msg='some failed', none_msg='none ok')
+    result.affected_items.append('004')
+    result.total_affected_items = 1
+    result.add_failed_item(id_='003', error=WazuhError(1824, cmd_error=True,
+                                                       extra_message='WPK file does not exist: windows 5.0.1'))
+    result.add_failed_item(id_='005', error=WazuhError(1824, cmd_error=True,
+                                                       extra_message='WPK file does not exist: macos 5.0.1'))
+
+    result.attribute_to_node('worker01')
+
+    rendered = result.render()['data']
+    assert rendered['total_failed_items'] == 2
+    assert rendered['nodes'] == {'worker01': {'affected_items': ['004'], 'failed_items': {1824: ['003', '005']}}}
+
+
+def test_uninformative_failure_yields_to_a_real_verdict():
+    """1774 must not double-list an agent some other node did report on.
+
+    Every node an agent has never connected to answers 1774 for it, which says the node has nothing
+    to say rather than anything about the agent. Once the merge has collected the nodes that do
+    know it, keeping that placeholder lists the agent twice -- and counts it twice, so a request
+    for three agents comes back with more failures than agents.
+    """
+    master = _node_result(affected=['001'], failed=[('002', 1761)])
+    worker = _node_result(failed=[('001', 1774), ('002', 1774), ('003', 1774)])
+
+    merged = master | worker
+    merged.drop_uninformative_failures(1774)
+
+    rendered = merged.render()['data']
+    assert rendered['affected_items'] == ['001']
+    # 002 keeps the only answer that explains anything, and 003 keeps the placeholder: no node has
+    # ever seen it, so "no node has information about this agent" IS the outcome.
+    assert [(item['error']['code'], item['id']) for item in rendered['failed_items']] == \
+           [(1761, ['002']), (1774, ['003'])]
+    assert rendered['total_failed_items'] == 2, 'the placeholder must not be counted twice'
+
+
+def test_uninformative_failure_survives_in_the_per_node_breakdown():
+    """Dropping the placeholder from the merge must not erase it from `nodes`.
+
+    That breakdown is each node's own answer, and there "this node has no information about the
+    agent" is the point: it names the node that could not serve the agent (#39428).
+    """
+    master = _node_result(affected=['001'])
+    master.attribute_to_node('master')
+    worker = _node_result(failed=[('001', 1774)])
+    worker.attribute_to_node('worker1')
+
+    merged = master | worker
+    merged.drop_uninformative_failures(1774)
+
+    assert merged.render()['data']['failed_items'] == []
+    assert merged.node_attribution['worker1'] == {'failed_items': {1774: ['001']}}
+
+
+def test_upgrade_placeholder_yields_and_stands_alone():
+    """1816 is dropped where another node answered, and kept where no node did.
+
+    The Task Manager answers 1816 on every node for an agent whose OS information is incomplete, so
+    for such an agent it is the only outcome there is and must reach the top level -- skipping it on
+    the node is what made the refusal invisible. Every entry carrying the code is reconciled, not
+    the first: errors are keyed by their text, so two wordings make two entries.
+    """
+    def upgrade_error(code, message):
+        return WazuhError(code, cmd_error=True, extra_message=message)
+
+    master = _node_result(affected=['001'])
+    master.add_failed_item(id_='002', error=upgrade_error(1824, 'The WPK file does not exist'))
+    master.add_failed_item(id_='003', error=upgrade_error(1816, 'Agent information not found in database'))
+    worker = _node_result()
+    worker.add_failed_item(id_='001', error=upgrade_error(1816, 'Agent information not found in database'))
+    worker.add_failed_item(id_='002', error=upgrade_error(1816, 'Agent information not found'))
+    worker.add_failed_item(id_='003', error=upgrade_error(1816, 'Agent information not found in database'))
+
+    merged = master | worker
+    merged.drop_uninformative_failures(1816)
+
+    rendered = merged.render()['data']
+    assert rendered['affected_items'] == ['001']
+    failed = {}
+    for item in rendered['failed_items']:
+        failed.setdefault(item['error']['code'], set()).update(item['id'])
+    # 002's second-wording 1816 is the entry a first-match drop would have left behind.
+    assert failed == {1824: {'002'}, 1816: {'003'}}
+    assert rendered['total_failed_items'] == 2
+
+
+def test_lagging_1701_yields_before_the_placeholders_are_judged():
+    """The order DistributedAPI drops in: 1701 first, then 1774.
+
+    A worker its client.keys copy has not reached answers 1701 for an agent the master knows but
+    that has never connected (1774). Dropped in the other order, 1701 would be the real answer
+    that removes the 1774 and the agent would come back as non-existent. An agent no node knows
+    keeps its 1701.
+    """
+    master = _node_result(failed=[('001', 1774), ('999', 1701)])
+    worker = _node_result(failed=[('001', 1701), ('999', 1701)])
+
+    merged = master | worker
+    merged.drop_uninformative_failures(1701)
+    merged.drop_uninformative_failures(1774)
+
+    rendered = merged.render()['data']
+    assert [(item['error']['code'], item['id']) for item in rendered['failed_items']] == \
+           [(1701, ['999']), (1774, ['001'])]
+    assert rendered['total_failed_items'] == 2
+
+
+def test_drop_uninformative_failures_is_a_no_op_without_the_code():
+    """A result that never carried the placeholder must come out untouched."""
+    result = _node_result(affected=['001'], failed=[('002', 1761)])
+
+    result.drop_uninformative_failures(1774)
+
+    assert result.render()['data']['total_failed_items'] == 1

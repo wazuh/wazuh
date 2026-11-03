@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -25,13 +25,14 @@ char* cluster_name;
 /* Handle remote connections */
 void HandleRemote(int uid)
 {
-    // Set resource limit for file descriptors
+    // Raise the soft file descriptor limit; the hard limit belongs to whoever started the manager
 
+    // nofile keeps the configured value, which is what getconfig reports as remoted.rlimit_nofile
     {
-        struct rlimit rlimit = { nofile, nofile };
+        const long effective = w_raise_nofile_limit((long)nofile, "remoted.rlimit_nofile");
 
-        if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {
-            merror("Could not set resource limit for file descriptors to %d: %s (%d)", (int)nofile, strerror(errno), errno);
+        if (effective >= 0) {
+            nofile_effective = (rlim_t)effective;
         }
     }
 
@@ -40,6 +41,9 @@ void HandleRemote(int uid)
 
     /* If TCP is enabled then bind the TCP socket */
     if (logr.proto & REMOTED_NET_PROTOCOL_TCP) {
+
+        // Against the effective limit, now that it is known
+        rem_check_unauthenticated_cap();
 
         logr.tcp_sock = OS_Bindporttcp(logr.port, logr.lip, logr.ipv6);
 
@@ -74,6 +78,10 @@ void HandleRemote(int uid)
     if (Privsep_SetUser(uid) < 0) {
         merror_exit(SETUID_ERROR, USER, errno, strerror(errno));
     }
+
+    /* Probe the HTTPS listener's TLS files as the service user before the PID file exists: a remoted
+     * that is going to exit must never look running to `wazuh-manager-control status`. */
+    w_remoted_preflight_tls_files();
 
     /* Create PID */
     if (CreatePID(ARGV0, getpid()) < 0) {

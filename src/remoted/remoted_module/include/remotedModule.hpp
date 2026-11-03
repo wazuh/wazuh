@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module (C++ worker bridge)
- * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -21,6 +20,7 @@
 #include "remoted_module.h"
 #include "singleton.hpp"
 #include <cstdarg>
+#include <cstddef>
 #include <functional>
 
 /**
@@ -52,6 +52,26 @@ public:
      * @brief Stop the module.
      */
     void stop() const;
+
+    /**
+     * @brief Whether the configured CA signs the certificate the HTTPS listener serves.
+     *
+     * @return 1 signs it, 0 explicitly does not, -1 unknown. See RemotedModuleFacade::tlsCaMatchesLeaf()
+     *         for why -1 must be treated as "proceed" rather than as a refusal.
+     */
+    int tlsCaMatchesLeaf() const;
+
+    /**
+     * @brief The one CA certificate that signs the certificate the HTTPS listener serves,
+     *        re-serialised into @p buffer -- a single certificate, no publication block.
+     *
+     * @param buffer Destination. Not NUL-terminated: the return value is the length.
+     * @param capacity Bytes available at @p buffer.
+     * @return Bytes written (> 0), 0 when there is nothing to deliver, -1 when @p capacity is too
+     *         small. See RemotedModuleFacade::tlsCaLeafSignerPem() for why the legacy WPK delivery
+     *         needs one certificate rather than the bundle.
+     */
+    int tlsCaLeafSignerPem(char* buffer, std::size_t capacity) const;
 };
 
 #endif // _REMOTED_MODULE_HPP

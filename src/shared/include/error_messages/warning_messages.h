@@ -13,11 +13,21 @@
 
 /* Active Response */
 #define AR_SERVER_AGENT "(1306): Invalid agent ID. Use location=server to run AR on the manager."
+#define AR_REPEATED_FULL "(1308): Tracking the maximum of %d repeated offenders. New offenders get the base timeout until older entries expire."
 
 /* Agent */
-#define AG_UNUSED_SSL_CA "(4119): <ssl><certificate_authorities> is not a readable file: '%s'. " \
-                         "It is unused while <verification_mode> is 'none'; enabling verification " \
-                         "would stop the agent from starting."
+#define AG_SSL_NONE_IGNORES_ANCHOR "(4122): <ssl><verification_mode> is 'none' and the trust anchor '%s' is " \
+                                   "present: TLS verification stays disabled, as configured, and the anchor is " \
+                                   "not used. Remove <verification_mode>none</verification_mode> to verify " \
+                                   "against it."
+#define AG_SSL_DELIVERED_CA_PENDING "(4126): TLS verification is disabled: there is no trust anchor at '%s', " \
+                                    "but a CA delivered by the manager during a remote upgrade is waiting at " \
+                                    "'%s' and was never installed (logs/upgrade.log says why; usually the " \
+                                    "'openssl' command is missing). Stop the agent and run 'wazuh-agent-auth " \
+                                    "--certs-only' with an enrollment token to install the anchor."
+#define AG_SSL_NONE_TOKEN_ENROLL_VERIFIED "(4127): <ssl><verification_mode> is 'none', but that only applies once the " \
+                                          "agent is enrolled: token enrollment still verifies the manager's " \
+                                          "certificate against the enrollment token's CA."
 
 /* File integrity monitoring warning messages*/
 #define FIM_WARN_ACCESS                         "(6900): Accessing  '%s': [(%d) - (%s)]"
@@ -82,6 +92,7 @@
 #define FIM_ERROR_EBPF_HEALTHCHECK              "(6959): The eBPF healthcheck has failed. Switching all whodata eBPF configuration to audit."
 #define FIM_WARN_INODE_WRONG_TYPE               "(6960): Inode field received with a wrong type, it must be a string."
 #define FIM_WARN_SYMLINK_NOFOLLOW               "(6961): Configured path '%s' is a symbolic link to '%s'. Without 'follow_symbolic_link' enabled, only the symlink itself will be monitored, not the directory contents. Consider monitoring '%s' directly or enabling 'follow_symbolic_link'."
+#define FIM_WARN_WHODATA_PROVIDER_UNSUPPORTED   "(6967): The whodata 'provider' option is only available on Linux. Ignoring it."
 
 /* Log rotation warning messages. Unused -- no emitter on either product -- and kept only because
  * the codes are published. Rotation itself lives in shared/src/log_rotate.c.
@@ -134,6 +145,7 @@
 #define LOGCOLLECTOR_JOURNAL_CONFG_EMPTY_FILTER_EXPR  "(8020): The expression for the journal filter cannot be empty."
 #define LOGCOLLECTOR_JOURNAL_CONFG_FILTER_EXP_FAIL    "(8021): Error compiling the PCRE2 expression '%s' for field '%s' in journal filter."
 #define LOGCOLLECTOR_JOURNAL_CONFG_DISABLE_FILTER    "(8022): The filters of the journald log will be disabled in the merge, because one of the configuration does not have filters."
+#define LOGCOLLECTOR_STATUS_PARSE_FAIL "(8023): Could not parse the last read positions in '%s'. Files will be read from their end."
 
 /* Remoted */
 #define REMOTED_NET_PROTOCOL_ERROR              "(9000): Error getting protocol. Default value (%s) will be used."

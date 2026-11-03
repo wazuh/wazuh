@@ -41,19 +41,21 @@ build_wazuh_unit_tests() {
     elif [[ $target == "manager" ]]; then
         cmake -DTARGET=${target} -DGCOV_PATH="${gcov_path}" ..
     elif [[ $target == "winagent" ]]; then
-        # winagent is cross-compiled with mingw 10.3; the matching gcov is the
+        # winagent is cross-compiled with mingw GCC 13 (the 13-posix runtime
+        # WINEPATH points at below); the matching gcov is the
         # cross tool, not the host's GCC 14.x. We pin to the -posix variant
         # because that's what `g++-mingw-w64-i686-posix` (the toolchain's
         # default in winagent.cmake) was built with.
         #
         # lcov 2.x detects the gcov version by parsing `<gcov> --version` with
         # a `[0-9.]+` regex. The mingw cross-gcov prints
-        #   gcov (GCC) 10-posix YYYYMMDD
+        #   gcov (GCC) 13-posix YYYYMMDD
         # The `-posix` suffix breaks the regex, lcov silently falls back to
-        # GCOV 4.2 format and can't parse the GCOV 10 .gcno files (every file
+        # GCOV 4.2 format and can't parse the GCOV 13 .gcno files (every file
         # ends up as "no functions found"). We wrap the cross-gcov so
-        # `--version` emits a parseable banner; all other invocations pass
-        # through unchanged.
+        # `--version` emits a parseable banner (its fixed "10.3.0" only has to
+        # select lcov's modern .gcno reader, not match the toolchain); all
+        # other invocations pass through unchanged.
         local win_gcov_wrapper="${PWD}/winagent-gcov-wrapper.sh"
         cat > "${win_gcov_wrapper}" <<'EOF'
 #!/bin/bash
@@ -110,6 +112,16 @@ format_display_test_results() {
     } | tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}"
     if grep -q "FAILED" test_results.txt; then
         cat test_results.txt
+        exit 1
+    fi
+    # run_wazuh_unit_tests masks ctest's exit code (`|| true`) so the table above is always
+    # printed; the FAILED grep catches failed, crashed, timed-out and "Not Run" tests, but not a
+    # run with nothing in it: ctest prints "No tests were found!!!" and exits 0 when nothing is
+    # registered, and prints no summary at all when it dies before running. Require the summary of
+    # a run that executed at least one test.
+    if ! grep -Eq '[0-9]+% tests passed, [0-9]+ tests? failed out of [1-9][0-9]*' test_results.txt; then
+        cat test_results.txt
+        echo "::error::ctest executed no tests: no 'N% tests passed, M tests failed out of K' summary (K >= 1) in test_results.txt"
         exit 1
     fi
 }

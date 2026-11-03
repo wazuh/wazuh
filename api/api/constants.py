@@ -1,4 +1,4 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -13,4 +13,4 @@ RELATIVE_CONFIG_FILE_PATH = os.path.relpath(CONFIG_FILE_PATH, common.WAZUH_PATH)
 SECURITY_PATH = os.path.join(CONFIG_PATH, 'security')
 SECURITY_CONFIG_PATH = os.path.join(SECURITY_PATH, 'security.yaml')
 API_LOG_PATH = os.path.join(common.WAZUH_PATH, 'logs', 'api')
-CERTS_PATH = os.path.join(common.WAZUH_PATH, 'etc', 'certs')
+CERTS_PATH = common.CERTS_PATH

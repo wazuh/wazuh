@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _GET_EXCEPTION_STACK_HPP
 #define _GET_EXCEPTION_STACK_HPP
 

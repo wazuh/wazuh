@@ -1,8 +1,13 @@
 # wazuh_metrics — shared lock-free metrics
 
-A small, dependency-free metric library for manager daemons: counters, gauges,
-histograms, pull metrics and a sliding-window rate, behind a thread-safe
-registry (`Manager`) and a rapidjson-based JSON dump. C++17, STL-only core.
+A small metric library for manager daemons: counters, gauges, histograms and
+pull metrics behind a thread-safe registry (`Manager`), a rapidjson-based JSON
+dump, and a standalone sliding-window rate helper. STL-only public headers;
+rapidjson is a private dependency of one translation unit.
+
+Consumers (each links the `wazuh_metrics` STATIC archive and serves the dump on
+its own UDS socket): `inventory_sync_server`, `task_manager` and
+`vulnerability_scanner` (all in modulesd), and `remoted_module`.
 
 Derived from the engine's `fastmetrics` (same metric semantics, same hot-path
 discipline) with three deliberate differences:
@@ -31,9 +36,9 @@ wazuh::metrics;` and dropping its copy — additive API changes only.
 
 | # | Requirement | Status |
 |---|---|---|
-| RF-1 | Counter / gauge / histogram / pull / sliding-window-rate types behind `IMetric` interfaces, each registered with optional `description`/`unit` metadata | kept |
+| RF-1 | Counter / gauge / histogram / pull types behind `IMetric` interfaces, each registered through `IManager` with optional `description`/`unit` metadata. `SlidingWindowRate` is a standalone helper: not an `IMetric`, never in the registry or the dump | kept |
 | RF-2 | Thread-safe registry: `getOrCreate*` is idempotent (same name → same instance); re-registering a name under a **different type** throws | kept |
-| RF-3 | Histograms answer p50/p90/p99 snapshots with bounded relative error (~12.5%, 128 log-linear buckets); min/max are exact and the percentiles are clamped into `[min, max]`, so `min <= p50 <= p90 <= p99 <= max` always holds within a snapshot; percentiles are computed only on `snapshot()` | kept |
+| RF-3 | Histograms answer p50/p90/p99 snapshots with bounded relative error (~12.5%, 128 log-linear buckets: 32 octaves × 4 sub-buckets, so an observation of 2^32 or more lands in the last bucket and only the exact `max` still reports it); min/max are exact and the percentiles are clamped into `[min, max]`, so `min <= p50 <= p90 <= p99 <= max` always holds within a snapshot; percentiles are computed only on `snapshot()` | kept |
 | RF-4 | `dumpJson()` is deterministic: entries sorted by name, exact unsigned integers for counters/counts, `description`/`unit` omitted when not registered, envelope with daemon name + ISO-8601 UTC timestamp | kept |
 | RF-5 | Scalar entries carry the engine-compatible `{name, type, enabled, value}` shape so tooling treats both dumps alike | kept |
 
@@ -44,7 +49,7 @@ wazuh::metrics;` and dropping its copy — additive API changes only.
 | RNF-1 | No singleton — the manager is injected (`shared_ptr<IManager>`); nothing touches the engine's `base` utilities | kept |
 | RNF-2 | Hot path is one relaxed atomic op on a cached pointer; `getOrCreate*` (shared lock + hash) is cold-path only | kept |
 | RNF-3 | Public headers are STL-only; rapidjson exists in exactly one TU (`src/jsonDump.cpp`) | kept |
-| RNF-4 | C++17 | kept |
+| RNF-4 | C++17 floor: `target_compile_features(wazuh_metrics PUBLIC cxx_std_17)`. Nothing pins the archive or `wazuh_metrics_utest` to 17, so both compile at the tree default C++20 and a C++20-ism is not caught by this module's CI (`5_testunit_metrics.yml` says so) | kept, not enforced |
 
 ## Design decisions
 
@@ -59,63 +64,16 @@ wazuh::metrics;` and dropping its copy — additive API changes only.
 
 ## Usage contract
 
-**Resolve once, mutate lock-free.** `getOrCreate*` costs a shared lock and a
-hash lookup; call it in constructors (cold path) and cache the returned
-`shared_ptr`. Every subsequent update is one relaxed atomic op:
-
-```cpp
-class Worker
-{
-    std::shared_ptr<wazuh::metrics::ICounter> m_processed;
-
-public:
-    explicit Worker(wazuh::metrics::IManager& metrics)
-        : m_processed(metrics.getOrCreateCounter("module.worker.processed",
-                                                 "Items processed", "count"))
-    {
-    }
-
-    void onItem()
-    {
-        m_processed->add(); // hot path: one relaxed fetch_add
-    }
-};
-```
-
-**No labels.** Dimensions are encoded in the metric name
-(`sync.requests.total.200`). For a closed set (HTTP codes, worker ids),
-pre-create one metric per member and select with a `switch` — never format a
-name per event.
-
-**Pull metrics capture lifetimes.** There is no `remove()`: a pull metric's
-getter must outlive the manager, so never register one over an object that is
-torn down earlier (a worker, a pipeline). Use a gauge the object updates
-instead — that is why shard depths in `inventory_sync_server` are gauges.
-
-**Durations are histograms of integers.** Pick a unit (microseconds, bytes),
-say it in the registration `unit`, and `observe()` raw integers. `snapshot()`
-computes percentiles only when asked (a dump), never per event.
-
-## Dump format
-
-```json
-{
-  "name": "inventory_sync_server",
-  "timestamp": "2026-08-06T12:00:00Z",
-  "metrics": [
-    {"name": "sync.bulk.flushes", "type": "counter", "enabled": true, "value": 41,
-     "description": "Group-commit flushes", "unit": "count"},
-    {"name": "sync.session.duration", "type": "histogram", "enabled": true, "value": 41,
-     "unit": "microseconds",
-     "summary": {"count": 41, "sum": 5150000, "min": 900, "max": 410000,
-                  "p50": 98304, "p90": 229376, "p99": 393216}}
-  ]
-}
-```
-
-Entries are sorted by name (deterministic output), counters and histogram
-counts are exact unsigned integers, `description`/`unit` appear only when
-registered, and a histogram's `value` is its observation count.
+How a consumer instruments itself — resolve once and mutate lock-free, no labels, names in a
+catalog header beside the owning subsystem, pull-metric lifetimes, durations as integer
+histograms, serving and documenting the dump — is published as the
+[integration guide](../../../docs/ref/modules/utils/metrics/integration-guide.md), and the dump
+format an operator reads as the
+[Metrics Library page](../../../docs/ref/modules/utils/metrics/README.md#querying-a-modules-metrics).
+They are the single copy; the requirements and decisions above say why. Two details of the dump
+that only a developer needs: the envelope `name` is `DumpOptions::daemonName`, and an empty
+`DumpOptions::timestampISO` means the current UTC time, formatted `%Y-%m-%dT%H:%M:%SZ`; a pull
+metric's `value` is a double, a gauge's is signed.
 
 ## Layout
 
@@ -128,7 +86,7 @@ metrics/
 │   ├── atomicGauge.hpp        # relaxed set/add/sub gauge
 │   ├── atomicHistogram.hpp    # 128 log-linear buckets, percentile snapshots
 │   ├── pullMetric.hpp         # callback-backed read-only metric
-│   ├── slidingWindowRate.hpp  # per-second EPS over a 31-minute ring
+│   ├── slidingWindowRate.hpp  # per-second EPS over a 31-minute ring (standalone, not an IMetric)
 │   ├── manager.hpp            # the registry (double-checked getOrCreate)
 │   └── jsonDump.hpp           # dumpJson() declaration -- no rapidjson types
 ├── src/
@@ -142,11 +100,11 @@ adding `shared_modules/metrics/test/mocks` to their include path.
 
 ## Tests
 
-`test/unit/` builds `wazuh_metrics_utest` (GTest) under
-`cmake -S src -B src/build -DUNIT_TEST=ON`. CI runs it on every PR touching
+`test/unit/` builds `wazuh_metrics_utest` (GTest, ctest label `wazuh_metrics_utest`)
+under `cmake -S src -B src/build -DUNIT_TEST=ON`. CI runs it on every PR touching
 `src/shared_modules/metrics/**` via `.github/workflows/5_testunit_metrics.yml`: a
 coverage job (line coverage over `src/` + `include/`; function coverage is not gated,
-since the pure-interface headers dominate the function count) and an ASAN/UBSAN job.
+since the pure-interface headers dominate the function count) and an ASAN/UBSAN/LSan job.
 Valgrind is deliberately off — the rate tests assert over wall-clock windows and the
 concurrency tests are 16 threads x 100k atomic adds.
 

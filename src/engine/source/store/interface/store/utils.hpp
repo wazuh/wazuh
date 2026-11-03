@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _STORE_UTILS_H
 #define _STORE_UTILS_H
 

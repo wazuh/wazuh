@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -13,6 +12,7 @@
 
 #include "digest.hpp"
 #include "loggerHelper.h"
+#include "requestTarget.hpp"
 #include "taskBatch.hpp"
 
 #include "external/nlohmann/json.hpp"
@@ -26,6 +26,7 @@ namespace
         spec.contentType = "application/json";
         spec.body = reinterpret_cast<const uint8_t*>(body.data());
         spec.bodyLength = body.size();
+        spec.maxResponseBytes = CONTROL_MAX_RESPONSE_BYTES;
         spec.timeoutMs = timeoutMs;
         return spec;
     }
@@ -43,11 +44,10 @@ namespace
     }
 
     /// The agent's groups, comma-joined in the exact order the manager reports them
-    /// (never re-sorted -- see groupsCsv() below for why order matters) and, unlike
-    /// groupsCsv(), left EMPTY when the agent has none. Empty is meaningful to
-    /// downstream consumers (agcom.c: "Empty agent_groups is allowed - fallback to
-    /// merge.mg will be used"), so this must not carry /download's own "default"
-    /// substitution.
+    /// (never re-sorted: the manager keys a multi-group agent by all its groups in that
+    /// order) and left EMPTY when the agent has none. Empty is meaningful to downstream
+    /// consumers (agcom.c: "Empty agent_groups is allowed - fallback to merge.mg will be
+    /// used"), so it must never be replaced by a placeholder group.
     std::string rawGroupsCsv(const nlohmann::json& agent)
     {
         const auto groups = agent.find("groups");
@@ -77,33 +77,13 @@ namespace
         return csv;
     }
 
-    /// FALLBACK ONLY -- the /download config resource_id now comes from the manager, in
-    /// agent.config_token (see handleNotifyBody()). This reconstructs the selector the way
-    /// the agent had to before that field existed, and is used only when a manager does not
-    /// report one, so such a manager keeps working byte-for-byte as it did.
-    ///
-    /// The manager's own config_hash (controlHandler.cpp's toGroupsCsv) and merged.mg
-    /// resolution (hashCache.cpp's getMergedMgPath) both key a multi-group agent by ALL its
-    /// groups, comma-joined, in the exact order it reports them -- never just the first.
-    /// Preserving that same order (as reported here, not re-sorted) is what reproduces the
-    /// manager's own CSV byte-for-byte; the download endpoint natively accepts this selector
-    /// (downloadEndpoint.cpp's isValidGroupSelector). Unlike rawGroupsCsv(), "no groups
-    /// reported" falls back to "default" here: /download needs some group to ask for, and
-    /// every agent is implicitly in it.
-    std::string groupsCsv(const nlohmann::json& agent)
-    {
-        const std::string csv = rawGroupsCsv(agent);
-        return csv.empty() ? "default" : csv;
-    }
-
     /// The Notify batch after dedup: fresh, identifiable tasks only.
     /// Deliberately deduped BEFORE planning, against the DURABLE registry,
     /// so a task dropped as redundant by planTaskBatch is still
     /// marked seen (recorded before this function returns) and an
     /// at-least-once redelivery -- even across a restart, notably the one a
     /// remote_upgrade itself triggers -- stays dropped.
-    std::vector<NotifyTask> collectFreshTasks(const nlohmann::json& parsed, ITaskIdStore& taskStore,
-                                              const LogFn& logFn)
+    std::vector<NotifyTask> collectFreshTasks(const nlohmann::json& parsed, ITaskIdStore& taskStore, const LogFn& logFn)
     {
         std::vector<NotifyTask> batch;
         const auto tasks = parsed.find("tasks");
@@ -153,7 +133,8 @@ namespace
 ControlStream::ControlStream(const ModuleConfig& config, IHttpPerformer& performer,
                              const ISigner& signer, IClock& clock, IRandom& random,
                              ICallbackSink& sink, ISpoolFileFactory& spoolFactory,
-                             ConfigHashState& configHash, ClusterIdentity& cluster,
+                             ConfigHashState& configHash, CaPublicationState& caPublication,
+                             ClusterIdentity& cluster,
                              AuthGate& authGate, CompressionGate& compressionGate,
                              ITaskIdStore& taskStore, IVdOffsetStore& vdOffsetStore,
                              std::function<std::string()> collectHost)
@@ -166,12 +147,14 @@ ControlStream::ControlStream(const ModuleConfig& config, IHttpPerformer& perform
     , m_fetcher(config, performer, signer, clock, random, spoolFactory, authGate, compressionGate)
     , m_wpkFetcher(config, performer, signer, clock, random, spoolFactory, authGate, compressionGate)
     , m_configHash(configHash)
+    , m_caPublication(caPublication)
     , m_cluster(cluster)
     , m_authGate(authGate)
     , m_taskStore(taskStore)
     , m_vdOffsetStore(vdOffsetStore)
     , m_rescanRequester(config, performer, signer, clock, random, authGate, compressionGate, vdOffsetStore)
     , m_collectHost(std::move(collectHost))
+    , m_certVerificationLimiter(clock)
 {
 }
 
@@ -183,6 +166,7 @@ ControlStream::~ControlStream()
 bool ControlStream::step(Waiter& waiter)
 {
     const OutcomeClass outcome = runStep(waiter);
+    m_lastOutcome = outcome;
     updateProducerPause(outcome);
     return isRegistered();
 }
@@ -191,13 +175,17 @@ OutcomeClass ControlStream::runStep(Waiter& waiter)
 {
     // The 401 pause converges the machine to AUTH_ERROR from the control
     // thread only (whichever stream saw the first 401 woke this loop); once a
-    // new key clears the pause, recover and re-register.
-    if (m_authGate.paused())
+    // new key clears the pause, recover and re-register (even if it was already cleared).
+    if (takeAuthIncident())
     {
         applyEffects(m_machine.onEvent(ControlStateMachine::Event::AuthFailed), {});
-        // Nothing is sent while the gate is latched, so the cycle itself is what
-        // gets observed: the credential is still rejected.
-        return OutcomeClass::AuthFail;
+
+        if (m_authGate.paused())
+        {
+            // Nothing is sent while the gate is latched, so the cycle itself is what
+            // gets observed: the credential is still rejected.
+            return OutcomeClass::AuthFail;
+        }
     }
 
     if (m_machine.state() == ControlStateMachine::State::AuthError)
@@ -353,8 +341,7 @@ OutcomeClass ControlStream::sendNotify(Waiter& waiter)
     return result.outcome;
 }
 
-void ControlStream::applyEffects(const ControlStateMachine::Effects& effects,
-                                 const std::string& handshake)
+void ControlStream::applyEffects(const ControlStateMachine::Effects& effects, const std::string& handshake)
 {
     if (effects.stateChanged)
     {
@@ -458,18 +445,35 @@ void ControlStream::handleNotifyBody(const std::string& body, Waiter& waiter)
         // hashes already agree, no download fires to tell it so.
         m_sink.onManagerConfigHash(managerHash);
 
-        // The manager names the configuration resource; the agent never derives it. The token
-        // is OPAQUE here -- passed to /download verbatim, never parsed, never re-joined, never
-        // "default"-substituted -- so the manager can change what it addresses (and how) with
-        // no agent change at all. groupsCsv() is the pre-config_token path, kept only so a
-        // manager that reports no token behaves exactly as it did before the field existed.
-        const std::string configToken = jsonField(*agent, "config_token");
-        maybeDownloadConfig(
-            managerHash, configToken.empty() ? groupsCsv(*agent) : configToken, waiter);
+        // The token is opaque: relayed verbatim as resource_id, never parsed or rebuilt from
+        // agent.groups. A manager that still publishes it may require it (every 5.0.x one
+        // does); one that stops publishing it derives the selector from the agent itself.
+        maybeDownloadConfig(managerHash, jsonField(*agent, "config_token"), waiter);
 
-        // Deliberately NOT the token: this is the agent's group identity (agcom's gethandshake,
-        // /stats and /config tagging), which stays the manager-reported group list itself.
+        // The agent's group identity (agcom's gethandshake, /stats and /config tagging) is
+        // the manager-reported group list itself.
         maybeReportAgentGroups(rawGroupsCsv(*agent));
+    }
+
+    // Top-level (not nested under "agent"), like settings_hash: the publication of the CA
+    // bundle this node serves and vouches for. Absent means a manager predating #39321, which
+    // is a different thing from a manager reporting 0 (a bundle nobody published) -- the first
+    // says nothing about CA bundles at all, so both are inaction but neither is an error.
+    const auto caGeneration = parsed.find("ca_generation");
+
+    if (caGeneration == parsed.end() || caGeneration->is_null())
+    {
+        maybeAdoptCaPublication(std::nullopt);
+    }
+    else if (caGeneration->is_number_integer())
+    {
+        maybeAdoptCaPublication(caGeneration->get<std::int64_t>());
+    }
+    else
+    {
+        // Present but not an integer: not something to guess a publication out of, and treated
+        // as the absence it effectively is rather than as a reason to stop reading the body.
+        maybeAdoptCaPublication(std::nullopt);
     }
 
     // Top-level (not nested under "agent"): the manager's current VD feed
@@ -483,6 +487,21 @@ void ControlStream::handleNotifyBody(const std::string& body, Waiter& waiter)
     {
         maybeRequestVdRescan(vdFeedOffset->get<uint64_t>(), waiter);
     }
+}
+
+void ControlStream::maybeAdoptCaPublication(std::optional<std::int64_t> advertised)
+{
+    if (!m_caPublication.observe(advertised))
+    {
+        return;
+    }
+
+    // Logged on the observation that arms the refresh, not on every notify that raises the
+    // target: at the keepalive cadence the latter would be a line every ten seconds for as long
+    // as a rotation is in flight.
+    LOGFN_INFO(m_logFn, "Manager advertises CA bundle publication %lld; the agent holds %lld. A refresh is due.",
+               static_cast<long long>(m_caPublication.pending()),
+               static_cast<long long>(m_caPublication.local()));
 }
 
 void ControlStream::maybeRequestVdRescan(uint64_t offset, Waiter& waiter)
@@ -499,24 +518,23 @@ void ControlStream::maybeRequestVdRescan(uint64_t offset, Waiter& waiter)
     }
 }
 
-void ControlStream::maybeDownloadConfig(const std::string& managerHash,
-                                        const std::string& resourceId, Waiter& waiter)
+void ControlStream::maybeDownloadConfig(const std::string& managerHash, const std::string& configToken,
+                                        Waiter& waiter)
 {
     const std::string localHash = m_configHash.get();
 
-    if (managerHash.empty() || managerHash == localHash)
+    if (managerHash.empty() || managerHash == "0" || managerHash == localHash)
     {
         // Every notify reports a hash, so this is the steady state: DEBUG2 to
         // keep DEBUG1 for the notifies that actually make something happen.
         LOGFN_DEBUG2(m_logFn, "Shared agent configuration unchanged (manager=%s local=%s); "
                      "nothing to download.", managerHash.c_str(), localHash.c_str());
-        return; // Nothing reported, or already in sync.
+        return; // Nothing reported, not resolved yet, or already in sync.
     }
 
     LOGFN_DEBUG1(m_logFn, "Manager config hash %s differs from the local one (%s); downloading "
-                 "the new configuration (resource '%s').", managerHash.c_str(), localHash.c_str(),
-                 resourceId.c_str());
-    auto file = m_fetcher.fetch(managerHash, resourceId, waiter);
+                 "the new configuration.", managerHash.c_str(), localHash.c_str());
+    auto file = m_fetcher.fetch(managerHash, configToken, waiter);
 
     if (!file)
     {
@@ -552,8 +570,7 @@ void ControlStream::maybeReportAgentGroups(const std::string& csv)
 
 void ControlStream::maybeArmSettingsRefresh(const std::string& incoming)
 {
-    LOGFN_DEBUG2(m_logFn, "settings_hash check: manager=%s local=%s",
-                 incoming.c_str(), m_settingsHash.c_str());
+    LOGFN_DEBUG2(m_logFn, "settings_hash check: manager=%s local=%s", incoming.c_str(), m_settingsHash.c_str());
 
     if (incoming.empty())
     {
@@ -608,6 +625,29 @@ void ControlStream::updateProducerPause(OutcomeClass outcome)
     {
         m_undeliverableStreak = 0;
 
+        // Pairs with the 404 error below, which is otherwise a one-shot line an
+        // operator cannot date: without a matching recovery the log never says
+        // whether the route is still broken or was fixed weeks ago. Clearing the
+        // latch here also means a route that breaks again is reported again.
+        if (m_routeNotFoundReported)
+        {
+            m_routeNotFoundReported = false;
+            const std::string target = prefixedTarget(m_config.serverEndpoint, "/control");
+            LOGFN_INFO(m_logFn, "The request target '%s' is being served again; the HTTP 404 "
+                       "condition is cleared.", target.c_str());
+        }
+
+        // Pairs with the WARNING below, on the same reasoning as the 404 recovery
+        // just above: without this, an operator has no way to tell a certificate-
+        // trust failure reported an hour ago from one still ongoing right now.
+        if (m_certVerificationReported)
+        {
+            m_certVerificationReported = false;
+            m_certVerificationLimiter.reset();
+            LOGFN_INFO(m_logFn, "The manager's certificate is verifying successfully again; "
+                       "the TLS verification failure is cleared.");
+        }
+
         if (m_producersPaused)
         {
             m_producersPaused = false;
@@ -620,19 +660,68 @@ void ControlStream::updateProducerPause(OutcomeClass outcome)
         return;
     }
 
-    // Undeliverable with nothing already in motion to change it. AuthFail only
-    // surfaces once the timestamp-corrected retry has also failed, so the key is
-    // genuinely bad and only re-enrollment can recover it; VersionRejected needs
-    // one side upgraded. Excluded: answers that clear on their own (5xx,
-    // 429/503, 413) and a plain 400.
+    // /control is only ever sent to the one target, so a 404 here can only mean the
+    // configured path and the manager's global prefix disagree -- the one failure the
+    // log had no trace of at any verbosity. Reported before the pause bookkeeping
+    // below and independently of it, so it is emitted even while a pause armed by
+    // some other cause is still latched.
+    if (outcome == OutcomeClass::RouteNotFound && !m_routeNotFoundReported)
+    {
+        m_routeNotFoundReported = true;
+        const std::string target = prefixedTarget(m_config.serverEndpoint, "/control");
+        LOGFN_ERROR(m_logFn, "The manager answered HTTP 404 to the request target '%s': it "
+                    "serves no such route. The path in <endpoint> must match the global "
+                    "prefix the manager serves.", target.c_str());
+    }
+
+    // A cert-trust TLS failure gets its own report, on the same "before the pause
+    // bookkeeping, independent of it" footing as the 404 block above: this must not
+    // wait producerPauseThreshold cycles for its first line (a repro against a real
+    // manager confirmed ~30s of true silence otherwise), and it must keep reminding
+    // the operator for as long as the failure persists rather than latch into a
+    // single one-shot line the way the 404 case does -- a persistent MITM/rotation
+    // is exactly the case that must not go quiet again.
+    if (outcome == OutcomeClass::Unreachable && m_lastCertVerificationFailed)
+    {
+        const auto decision = m_certVerificationLimiter.record();
+        m_certVerificationReported = true;
+
+        if (decision)
+        {
+            // The full wire URL, not just the routed path: unlike the 404 line above (which is
+            // about routing, so the path alone identifies the problem), this WARNING is the
+            // only per-incident line naming the failure at all, and it must not depend on the
+            // reader still having the one-time startup INFO line in view to know which manager
+            // is being rejected.
+            const std::string url = m_config.baseUrl() + prefixedTarget(m_config.serverEndpoint, "/control");
+            const std::string suffix = decision.suppressed > 0
+                                       ? " (" + std::to_string(decision.suppressed) +
+                                       " more suppressed in the last " +
+                                       std::to_string(LogRateLimiter::kDefaultWindowSeconds) + "s)"
+                                       : std::string();
+            LOGFN_WARN(m_logFn, "Could not verify the manager's certificate at '%s': %s%s",
+                       url.c_str(), m_lastCurlError.c_str(), suffix.c_str());
+        }
+    }
+
+    // Undeliverable with nothing already in motion to change it. AuthFail only surfaces once the
+    // timestamp-corrected retry has also failed, so the manager is refusing this credential and
+    // nothing the stream can do by itself will change that; VersionRejected needs one side
+    // upgraded. Deliberately ALL eight 401 classes, not just the identity-fatal one: the back
+    // pressure is about whether /control is getting through, which it is not either way, so a
+    // retryable class still has to hold the producers rather than let the queues grow behind a
+    // channel that is refusing everything. What the class decides is whether the identity is
+    // thrown away (eventFor()), not whether the data is flowing. Excluded: answers that clear on
+    // their own (5xx, 429/503, 413), a plain 400, and a 404 -- which does not clear on its own but
+    // is left to the buffer's own cap rather than the producer lock.
     const bool blocksDelivery = outcome == OutcomeClass::Unreachable ||
                                 outcome == OutcomeClass::AuthFail ||
                                 outcome == OutcomeClass::VersionRejected;
 
     if (!blocksDelivery)
     {
-        // Clears on its own, so it breaks the run. It does not lift an existing
-        // pause: only a success does.
+        // Not a pause condition, so it breaks the run. It does not lift an
+        // existing pause: only a success does.
         m_undeliverableStreak = 0;
         return;
     }
@@ -645,7 +734,7 @@ void ControlStream::updateProducerPause(OutcomeClass outcome)
         return;
     }
 
-    // Only Unreachable has a transport reason behind it: the other two mean the
+    // Only Unreachable has a transport reason behind it: the others mean the
     // manager answered, so a stored curl error there is from an earlier and
     // unrelated incident -- and the auth-gate path reaches here having sent
     // nothing at all.
@@ -778,9 +867,10 @@ void ControlStream::updateConnectionInfo(const HttpResponse& response)
     // outcome reaches updateProducerPause() -- so the pause never quotes a reason
     // from an earlier incident.
     m_lastCurlError = response.curlError;
+    m_lastCertVerificationFailed = isCertificateVerificationFailure(response);
 }
 
-ControlStateMachine::Event ControlStream::eventFor(OutcomeClass outcome) const
+ControlStateMachine::Event ControlStream::eventFor(OutcomeClass outcome)
 {
     if (outcome == OutcomeClass::Ok)
     {
@@ -789,7 +879,23 @@ ControlStateMachine::Event ControlStream::eventFor(OutcomeClass outcome) const
 
     if (outcome == OutcomeClass::AuthFail)
     {
-        return ControlStateMachine::Event::AuthFailed;
+        // Since #39064 only `unknown_agent` costs the agent its identity, and the AuthGate is where
+        // that decision is made (RetrySender::send reads the class off the body). So the gate, not
+        // the status, is what says whether this 401 was fatal: OutcomeClass::AuthFail is still
+        // "a 401 was observed" for all eight classes.
+        //
+        // A 401 the gate did not latch is retryable -- the credential is intact and the very next
+        // attempt may work -- and must NOT reach AuthError, which sends nothing (nextAction() is
+        // Idle there), slows the cadence, drops an armed settings refresh, and can only be left
+        // through CredentialRenewed: an event meaning "a new key is in place", which would be a
+        // lie when nothing was renewed. The net effect was a full re-registration and an
+        // AUTH_ERROR -> REGISTERED flap on every retryable 401 -- the disruption #39064 set out to
+        // remove for exactly these classes.
+        //
+        // "Latched" is the incident count, not only paused(): a key renewed from inside
+        // on_reenroll_required can already have released the gate here (#38329).
+        return takeAuthIncident() ? ControlStateMachine::Event::AuthFailed
+               : ControlStateMachine::Event::TransientFailure;
     }
 
     if (outcome == OutcomeClass::VersionRejected)
@@ -798,4 +904,15 @@ ControlStateMachine::Event ControlStream::eventFor(OutcomeClass outcome) const
     }
 
     return ControlStateMachine::Event::TransientFailure;
+}
+
+bool ControlStream::takeAuthIncident()
+{
+    // paused() first: a release() it observes was preceded by its incident's count (see
+    // AuthGate::reportAuthFailure()), so this read order cannot miss a renewed incident.
+    const bool paused = m_authGate.paused();
+    const uint64_t incidents = m_authGate.incidents();
+    const bool unhandled = incidents != m_authIncidentsSeen;
+    m_authIncidentsSeen = incidents;
+    return paused || unhandled;
 }

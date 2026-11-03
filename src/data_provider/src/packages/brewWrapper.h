@@ -1,7 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015, Wazuh Inc.
- * December 14, 2020.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -13,10 +12,11 @@
 #define _BREW_WRAPPER_H
 
 #include "ipackageWrapper.h"
+#include <optional>
 #include "sharedDefs.h"
 #include "stringHelper.h"
+#include "packageMetadataFile.hpp"
 #include <filesystem_wrapper.hpp>
-#include <file_io_utils.hpp>
 
 class BrewWrapper final : public IPackageWrapper
 {
@@ -31,7 +31,7 @@ class BrewWrapper final : public IPackageWrapper
             , m_source{"homebrew"}
             , m_location{ctx.filePath}
             , m_priority{UNKNOWN_VALUE}
-            , m_size{0}
+            , m_size{std::nullopt}
             , m_vendor{UNKNOWN_VALUE}
             , m_installTime{UNKNOWN_VALUE}
         {
@@ -40,65 +40,81 @@ class BrewWrapper final : public IPackageWrapper
             const std::string legacyBrewPath = packagePath + "/.brew/" + ctx.package + ".rb";
 
             const file_system::FileSystemWrapper fs;
-            const file_io::FileIOUtils ioUtils;
+            // PackageMetadataFile skips oversized and non-regular files
+            std::string content;
+
+            // An empty result means the walk could not establish a size: an error, the entry cap
+            // or the deadline. It stays unknown rather than becoming zero, so a scan that fails to
+            // measure does not overwrite the size a previous scan established.
+            const auto measured {fs.directory_size(packagePath, PACKAGE_SIZE_MAX_ENTRIES, PACKAGE_SIZE_DEADLINE)};
+
+            if (measured.has_value())
+            {
+                m_size = static_cast<int64_t>(*measured);
+            }
 
             // Try modern INSTALL_RECEIPT.json format first (Homebrew 2.0+)
             if (fs.is_regular_file(installReceiptPath))
             {
-                try
+                if (PackageMetadataFile::read(installReceiptPath, content))
                 {
-                    const auto jsonContent { ioUtils.getFileContent(installReceiptPath) };
-                    const auto jsonData = nlohmann::json::parse(jsonContent);
-
-                    // Extract architecture (e.g., "arm64", "x86_64")
-                    if (jsonData.contains("arch") && !jsonData["arch"].is_null())
+                    try
                     {
-                        m_architecture = jsonData["arch"].get<std::string>();
-                    }
+                        const auto jsonData = nlohmann::json::parse(content);
 
-                    // Extract install time (Unix timestamp)
-                    if (jsonData.contains("time") && !jsonData["time"].is_null())
-                    {
-                        m_installTime = std::to_string(jsonData["time"].get<int64_t>());
-                    }
-
-                    // Extract vendor/tap information
-                    if (jsonData.contains("source") && jsonData["source"].contains("tap") && !jsonData["source"]["tap"].is_null())
-                    {
-                        m_vendor = jsonData["source"]["tap"].get<std::string>();
-                    }
-
-                    // Extract version from source if available (more accurate than directory name)
-                    if (jsonData.contains("source") && jsonData["source"].contains("version") && !jsonData["source"]["version"].is_null())
-                    {
-                        const auto sourceVersion = jsonData["source"]["version"].get<std::string>();
-
-                        if (!sourceVersion.empty())
+                        // Extract architecture (e.g., "arm64", "x86_64")
+                        if (jsonData.contains("arch") && !jsonData["arch"].is_null())
                         {
-                            m_version = sourceVersion;
+                            m_architecture = jsonData["arch"].get<std::string>();
+                        }
+
+                        // Extract install time (Unix timestamp)
+                        if (jsonData.contains("time") && !jsonData["time"].is_null())
+                        {
+                            m_installTime = std::to_string(jsonData["time"].get<int64_t>());
+                        }
+
+                        // Extract vendor/tap information
+                        if (jsonData.contains("source") && jsonData["source"].contains("tap") && !jsonData["source"]["tap"].is_null())
+                        {
+                            m_vendor = jsonData["source"]["tap"].get<std::string>();
+                        }
+
+                        // Extract version from source if available (more accurate than directory name)
+                        if (jsonData.contains("source") && jsonData["source"].contains("version") && !jsonData["source"]["version"].is_null())
+                        {
+                            const auto sourceVersion = jsonData["source"]["version"].get<std::string>();
+
+                            if (!sourceVersion.empty())
+                            {
+                                m_version = sourceVersion;
+                            }
                         }
                     }
-                }
-                catch (const std::exception& e)
-                {
-                    // If JSON parsing fails, continue with default values
+                    catch (const std::exception& e)
+                    {
+                        // If JSON parsing fails, continue with default values
+                    }
                 }
             }
             // Fallback to legacy .brew/*.rb format for older Homebrew versions
             else if (fs.is_regular_file(legacyBrewPath))
             {
-                const auto rows { Utils::split(ioUtils.getFileContent(legacyBrewPath), '\n')};
-
-                for (const auto& row : rows)
+                if (PackageMetadataFile::read(legacyBrewPath, content))
                 {
-                    auto rowParsed { Utils::trim(row) };
+                    const auto rows { Utils::split(content, '\n')};
 
-                    if (Utils::startsWith(rowParsed, "desc "))
+                    for (const auto& row : rows)
                     {
-                        Utils::replaceFirst(rowParsed, "desc ", "");
-                        Utils::replaceAll(rowParsed, "\"", "");
-                        m_description = rowParsed;
-                        break;
+                        auto rowParsed { Utils::trim(row) };
+
+                        if (Utils::startsWith(rowParsed, "desc "))
+                        {
+                            Utils::replaceFirst(rowParsed, "desc ", "");
+                            Utils::replaceAll(rowParsed, "\"", "");
+                            m_description = rowParsed;
+                            break;
+                        }
                     }
                 }
             }
@@ -165,7 +181,7 @@ class BrewWrapper final : public IPackageWrapper
             return m_priority;
         }
 
-        int64_t size() const override
+        std::optional<int64_t> size() const override
         {
             return m_size;
         }
@@ -190,7 +206,7 @@ class BrewWrapper final : public IPackageWrapper
         const std::string m_source;
         const std::string m_location;
         std::string m_priority;
-        int64_t m_size;
+        std::optional<int64_t> m_size;
         std::string m_vendor;
         std::string m_installTime;
         std::string m_multiarch;

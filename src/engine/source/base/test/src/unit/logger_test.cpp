@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
@@ -540,10 +541,9 @@ TEST_F(DailyRotatingFileSinkTest, SingleRotationWhenTimeAndSizeCoincide)
 {
     auto sink = std::make_shared<logging::daily_rotating_file_sink>(logging::daily_rotating_file_sink::Config {
         .filePath = m_logFile,
-        .maxFileSize = 5 * 1024,     // 5KB
+        .maxFileSize = 5 * 1024,      // 5KB
         .rotationIntervalSeconds = 1, // Deterministic test-only time rotation
-        .compressionEnabled = false
-    });
+        .compressionEnabled = false});
 
     auto logger = std::make_shared<spdlog::logger>("test", sink);
 
@@ -1273,8 +1273,7 @@ TEST_F(DailyRotatingFileSinkTest, RequestShutdownSkipsPendingCompressions)
     // takes measurable time and the queue is not drained before requestShutdown().
     constexpr std::size_t ROT_SIZE = 128 * 1024; // 128 KB per rotated file
     std::string payload(ROT_SIZE - 1024, '\0');
-    for (std::size_t i = 0; i < payload.size(); ++i)
-        payload[i] = static_cast<char>((i * 6364136223846793005ULL) >> 56);
+    for (std::size_t i = 0; i < payload.size(); ++i) payload[i] = static_cast<char>((i * 6364136223846793005ULL) >> 56);
 
     auto sink = std::make_shared<logging::daily_rotating_file_sink>(
         logging::daily_rotating_file_sink::Config {.filePath = m_logFile, .maxFileSize = ROT_SIZE});
@@ -1319,8 +1318,7 @@ TEST_F(DailyRotatingFileSinkTest, RequestShutdownPreservesAllRotatedData)
 
     constexpr std::size_t ROT_SIZE = 64 * 1024;
     std::string payload(ROT_SIZE - 512, '\0');
-    for (std::size_t i = 0; i < payload.size(); ++i)
-        payload[i] = static_cast<char>((i * 6364136223846793005ULL) >> 56);
+    for (std::size_t i = 0; i < payload.size(); ++i) payload[i] = static_cast<char>((i * 6364136223846793005ULL) >> 56);
 
     auto sink = std::make_shared<logging::daily_rotating_file_sink>(
         logging::daily_rotating_file_sink::Config {.filePath = m_logFile, .maxFileSize = ROT_SIZE});
@@ -1363,8 +1361,7 @@ TEST_F(DailyRotatingFileSinkTest, RequestShutdownMakesDestructorFast)
 
     constexpr std::size_t ROT_SIZE = 256 * 1024;
     std::string payload(ROT_SIZE - 1024, '\0');
-    for (std::size_t i = 0; i < payload.size(); ++i)
-        payload[i] = static_cast<char>((i * 6364136223846793005ULL) >> 56);
+    for (std::size_t i = 0; i < payload.size(); ++i) payload[i] = static_cast<char>((i * 6364136223846793005ULL) >> 56);
 
     auto sink = std::make_shared<logging::daily_rotating_file_sink>(
         logging::daily_rotating_file_sink::Config {.filePath = m_logFile, .maxFileSize = ROT_SIZE});
@@ -1390,6 +1387,6 @@ TEST_F(DailyRotatingFileSinkTest, RequestShutdownMakesDestructorFast)
     // Without requestShutdown(), compressing 8 × 256 KB of incompressible data
     // would take hundreds of ms.  With requestShutdown(), the destructor should
     // return in well under 2 seconds (the in-progress chunk finishes, then exit).
-    EXPECT_LT(dt.count(), 2000)
-        << "Destructor took " << dt.count() << " ms after requestShutdown(); expected < 2000 ms";
+    EXPECT_LT(dt.count(), 2000) << "Destructor took " << dt.count()
+                                << " ms after requestShutdown(); expected < 2000 ms";
 }

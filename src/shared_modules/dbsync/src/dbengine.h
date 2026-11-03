@@ -1,7 +1,6 @@
 /*
  * Wazuh DBSYNC
- * Copyright (C) 2015, Wazuh Inc.
- * June 11, 2020.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -66,6 +65,15 @@ namespace DbSync
             virtual void addTableRelationship(const nlohmann::json& data) = 0;
 
             virtual void closeAndDeleteDatabase(const std::string& path) = 0;
+
+            /**
+             * @brief Why opening the persistent database deleted it and created it again, or empty
+             *        when it did not.
+             */
+            virtual std::string recreateReason() const
+            {
+                return {};
+            }
 
         protected:
             IDbEngine() = default;

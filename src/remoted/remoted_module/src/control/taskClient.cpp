@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module - Task client
- * Copyright (C) 2015, Wazuh Inc.
- * July 31, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -119,7 +118,7 @@ namespace remoted::control
             }
             while (!pending.empty())
             {
-                pending.front().callback(SocketError::Io, {});
+                pending.front().callback(SocketError::Stopping, {});
                 pending.pop();
             }
         }
@@ -147,12 +146,13 @@ namespace remoted::control
             }
             if (reject)
             {
-                incTaskFetchError(m_metrics);
-
                 if (stopping)
                 {
                     // A drain is not saturation: as a full queue it would point the operator at
-                    // control_tm_max_queue_size. Io is what stop()'s own drain answers.
+                    // control_tm_max_queue_size, and it is not a fetch error either, so it stays out
+                    // of task_fetch_error. Stopping is what stop()'s own drain answers, kept
+                    // distinct from Io so a caller (controlHandler.cpp) can tell a clean shutdown
+                    // apart from a genuine transport failure instead of warning on every restart.
                     if (const auto throttle = stoppingThrottle().record())
                     {
                         LOGFN_DEBUG1(logFn(),
@@ -160,10 +160,11 @@ namespace remoted::control
                                      throttle.total,
                                      remoted::common::LogThrottle::kDefaultWindowSeconds);
                     }
-                    reject(SocketError::Io, {});
+                    reject(SocketError::Stopping, {});
                     return;
                 }
 
+                incTaskFetchError(m_metrics);
                 if (const auto throttle = queueFullThrottle().record())
                 {
                     LOGFN_WARN(logFn(),

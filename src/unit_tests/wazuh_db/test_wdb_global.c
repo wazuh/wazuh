@@ -1972,7 +1972,7 @@ void test_wdb_global_insert_agent_transaction_fail(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, NULL, group, date_add);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -1992,7 +1992,7 @@ void test_wdb_global_insert_agent_cache_fail(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, NULL, group, date_add);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -2017,7 +2017,7 @@ void test_wdb_global_insert_agent_bind1_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
 
-    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, NULL, group, date_add);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -2045,7 +2045,7 @@ void test_wdb_global_insert_agent_bind2_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, NULL, group, date_add);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -2076,7 +2076,7 @@ void test_wdb_global_insert_agent_bind3_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, NULL, group, date_add);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -2110,7 +2110,7 @@ void test_wdb_global_insert_agent_bind4_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, NULL, group, date_add);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -2147,7 +2147,7 @@ void test_wdb_global_insert_agent_bind5_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, NULL, group, date_add);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -2160,6 +2160,7 @@ void test_wdb_global_insert_agent_bind6_fail(void **state)
     char *ip = "test_ip";
     char *register_ip = "0.0.0.0";
     char *internal_key = "test_key";
+    char *reenroll_secret = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
     char *group = "test_group";
     int date_add = 100;
 
@@ -2180,14 +2181,15 @@ void test_wdb_global_insert_agent_bind6_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 5);
     expect_value(__wrap_sqlite3_bind_text, buffer, internal_key);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_int, index, 6);
-    expect_value(__wrap_sqlite3_bind_int, value, date_add);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
+    // The re-enrollment secret (#38993) is bound sixth, as text, right after the key.
+    expect_value(__wrap_sqlite3_bind_text, pos, 6);
+    expect_value(__wrap_sqlite3_bind_text, buffer, reenroll_secret);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, reenroll_secret, group, date_add);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -2220,17 +2222,61 @@ void test_wdb_global_insert_agent_bind7_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 5);
     expect_value(__wrap_sqlite3_bind_text, buffer, internal_key);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_int, index, 6);
+    expect_value(__wrap_sqlite3_bind_text, pos, 6); // reenroll_secret: NULL here (the wrapper checks no NULL buffer)
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 7);
+    expect_value(__wrap_sqlite3_bind_int, value, date_add);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
+
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, NULL, group, date_add);
+
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_global_insert_agent_bind8_fail(void **state)
+{
+    int result = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *name = "test_name";
+    char *ip = "test_ip";
+    char *register_ip = "0.0.0.0";
+    char *internal_key = "test_key";
+    char *group = "test_group";
+    int date_add = 100;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_value(__wrap_sqlite3_bind_text, buffer, name);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_value(__wrap_sqlite3_bind_text, buffer, ip);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 4);
+    expect_value(__wrap_sqlite3_bind_text, buffer, register_ip);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 5);
+    expect_value(__wrap_sqlite3_bind_text, buffer, internal_key);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 6); // reenroll_secret: NULL here (the wrapper checks no NULL buffer)
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 7);
     expect_value(__wrap_sqlite3_bind_int, value, date_add);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_text, pos, 7);
+    expect_value(__wrap_sqlite3_bind_text, pos, 8);
     expect_value(__wrap_sqlite3_bind_text, buffer, group);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
 
-    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, NULL, group, date_add);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -2263,16 +2309,18 @@ void test_wdb_global_insert_agent_step_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 5);
     expect_value(__wrap_sqlite3_bind_text, buffer, internal_key);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_int, index, 6);
+    expect_value(__wrap_sqlite3_bind_text, pos, 6); // reenroll_secret: NULL here (the wrapper checks no NULL buffer)
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 7);
     expect_value(__wrap_sqlite3_bind_int, value, date_add);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_text, pos, 7);
+    expect_value(__wrap_sqlite3_bind_text, pos, 8);
     expect_value(__wrap_sqlite3_bind_text, buffer, group);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
 
     will_return(__wrap_wdb_exec_stmt_silent, OS_INVALID);
 
-    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, NULL, group, date_add);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -2305,16 +2353,18 @@ void test_wdb_global_insert_agent_success(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 5);
     expect_value(__wrap_sqlite3_bind_text, buffer, internal_key);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_int, index, 6);
+    expect_value(__wrap_sqlite3_bind_text, pos, 6); // reenroll_secret: NULL here (the wrapper checks no NULL buffer)
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 7);
     expect_value(__wrap_sqlite3_bind_int, value, date_add);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_text, pos, 7);
+    expect_value(__wrap_sqlite3_bind_text, pos, 8);
     expect_value(__wrap_sqlite3_bind_text, buffer, group);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
 
     will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
 
-    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, NULL, group, date_add);
 
     assert_int_equal(result, OS_SUCCESS);
 }
@@ -2335,7 +2385,7 @@ void test_wdb_global_insert_agent_invalid_group_parent_dir(void **state)
     expect_string(__wrap__mwarn, formatted_msg, "Invalid group name. '..' represents the parent directory in unix systems");
     expect_string(__wrap__merror, formatted_msg, "Invalid group name '..' in multigroup '..' for agent 1");
 
-    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, NULL, group, date_add);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -2354,7 +2404,7 @@ void test_wdb_global_insert_agent_invalid_group_current_dir(void **state)
     expect_string(__wrap__mwarn, formatted_msg, "Invalid group name. '.' represents the current directory in unix systems");
     expect_string(__wrap__merror, formatted_msg, "Invalid group name '.' in multigroup '.' for agent 1");
 
-    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, NULL, group, date_add);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -2373,7 +2423,7 @@ void test_wdb_global_insert_agent_invalid_multigroup_with_parent_dir(void **stat
     expect_string(__wrap__mwarn, formatted_msg, "Invalid group name. '..' represents the parent directory in unix systems");
     expect_string(__wrap__merror, formatted_msg, "Invalid group name '..' in multigroup '..,default' for agent 1");
 
-    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, NULL, group, date_add);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -2396,7 +2446,7 @@ void test_wdb_global_insert_agent_invalid_group_too_long(void **state)
         "Invalid group name. The group 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' exceeds the maximum length of 255 characters permitted");
     expect_string(__wrap__merror, formatted_msg, "Invalid group name 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' in multigroup 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' for agent 1");
 
-    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, NULL, group, date_add);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -2415,7 +2465,7 @@ void test_wdb_global_insert_agent_invalid_group_with_slash(void **state)
     expect_string(__wrap__mwarn, formatted_msg, "Invalid group name. 'group/subgroup' contains invalid characters");
     expect_string(__wrap__merror, formatted_msg, "Invalid group name 'group/subgroup' in multigroup 'group/subgroup' for agent 1");
 
-    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, NULL, group, date_add);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -2448,16 +2498,18 @@ void test_wdb_global_insert_agent_valid_multigroup(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 5);
     expect_value(__wrap_sqlite3_bind_text, buffer, internal_key);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_int, index, 6);
+    expect_value(__wrap_sqlite3_bind_text, pos, 6); // reenroll_secret: NULL here (the wrapper checks no NULL buffer)
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 7);
     expect_value(__wrap_sqlite3_bind_int, value, date_add);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_text, pos, 7);
+    expect_value(__wrap_sqlite3_bind_text, pos, 8);
     expect_value(__wrap_sqlite3_bind_text, buffer, group);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
 
     will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
 
-    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, NULL, group, date_add);
 
     assert_int_equal(result, OS_SUCCESS);
 }
@@ -3417,6 +3469,121 @@ void test_wdb_global_update_agent_keepalive_success(void **state)
     result = wdb_global_update_agent_keepalive(data->wdb, 1, connection_status, status);
 
     assert_int_equal(result, OS_SUCCESS);
+}
+
+/* Tests wdb_global_set_agent_credentials (re-enrollment, #38993) */
+
+#define SAC_NAME   "agent1"
+#define SAC_IP     "any"
+#define SAC_KEY    "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915"
+#define SAC_SECRET "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+
+// The four text binds in order (name, register_ip, internal_key, reenroll_secret), the first `ok` of them
+// succeeding; `failing` is the 1-based position that fails, or 0 for none.
+static void expect_set_agent_credentials_text_binds(int failing)
+{
+    const char *values[] = { SAC_NAME, SAC_IP, SAC_KEY, SAC_SECRET };
+    for (int pos = 1; pos <= 4; pos++) {
+        expect_value(__wrap_sqlite3_bind_text, pos, pos);
+        expect_string(__wrap_sqlite3_bind_text, buffer, values[pos - 1]);
+        will_return(__wrap_sqlite3_bind_text, pos == failing ? SQLITE_ERROR : SQLITE_OK);
+        if (pos == failing) {
+            return;
+        }
+    }
+}
+
+void test_wdb_global_set_agent_credentials_transaction_fail(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
+
+    assert_int_equal(wdb_global_set_agent_credentials(data->wdb, 1, SAC_NAME, SAC_IP, SAC_KEY, SAC_SECRET), OS_INVALID);
+}
+
+void test_wdb_global_set_agent_credentials_cache_fail(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
+
+    assert_int_equal(wdb_global_set_agent_credentials(data->wdb, 1, SAC_NAME, SAC_IP, SAC_KEY, SAC_SECRET), OS_INVALID);
+}
+
+void test_wdb_global_set_agent_credentials_bind1_fail(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_set_agent_credentials_text_binds(1);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
+
+    assert_int_equal(wdb_global_set_agent_credentials(data->wdb, 1, SAC_NAME, SAC_IP, SAC_KEY, SAC_SECRET), OS_INVALID);
+}
+
+void test_wdb_global_set_agent_credentials_bind4_fail(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_set_agent_credentials_text_binds(4);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
+
+    assert_int_equal(wdb_global_set_agent_credentials(data->wdb, 1, SAC_NAME, SAC_IP, SAC_KEY, SAC_SECRET), OS_INVALID);
+}
+
+void test_wdb_global_set_agent_credentials_bind5_fail(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_set_agent_credentials_text_binds(0);
+    expect_value(__wrap_sqlite3_bind_int, index, 5);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
+
+    assert_int_equal(wdb_global_set_agent_credentials(data->wdb, 1, SAC_NAME, SAC_IP, SAC_KEY, SAC_SECRET), OS_INVALID);
+}
+
+void test_wdb_global_set_agent_credentials_step_fail(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_set_agent_credentials_text_binds(0);
+    expect_value(__wrap_sqlite3_bind_int, index, 5);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt_silent, OS_INVALID);
+
+    assert_int_equal(wdb_global_set_agent_credentials(data->wdb, 1, SAC_NAME, SAC_IP, SAC_KEY, SAC_SECRET), OS_INVALID);
+}
+
+void test_wdb_global_set_agent_credentials_success(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_set_agent_credentials_text_binds(0);
+    expect_value(__wrap_sqlite3_bind_int, index, 5);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
+
+    assert_int_equal(wdb_global_set_agent_credentials(data->wdb, 1, SAC_NAME, SAC_IP, SAC_KEY, SAC_SECRET), OS_SUCCESS);
 }
 
 /* Tests wdb_global_update_agent_connection_status */
@@ -5178,7 +5345,7 @@ void test_wdb_global_delete_group_success(void **state)
     cJSON *sql_agents_id = cJSON_Parse("[{\"id_agent\":1}]");
     int agent_id = 1;
     cJSON* j_priority_resp = cJSON_Parse("[{\"id\":0}]");
-    char hash[] = "19dcd0dd"; //"GROUP" hash
+    char hash[] = "19dcd0dd3a4354caf10d7df393630c70"; //"GROUP" hash
 
     //wdb_is_group_empty
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_BELONG_FIND);
@@ -6438,10 +6605,91 @@ void test_wdb_global_restore_backup_pre_restore_failed(void **state) {
     expect_string(__wrap__merror, formatted_msg, "Creating pre-restore Global DB snapshot failed. Backup restore stopped: "
                                                  "err Cannot commit current transaction to create backup");
 
-    result = wdb_global_restore_backup(&data->wdb, "global.db-backup-TIMESTAMP", true, data->output);
+    result = wdb_global_restore_backup(&data->wdb, "global.db-backup-TIMESTAMP.gz", true, data->output);
 
     assert_string_equal(data->output, "err Cannot commit current transaction to create backup");
     assert_int_equal(result, OS_INVALID);
+}
+
+static void restore_backup_rejects(test_struct_t *data, char *snapshot, const char *logged) {
+    char expected_log[OS_SIZE_512];
+
+    snprintf(expected_log, sizeof(expected_log), "Invalid snapshot name to restore: '%s'", logged);
+    expect_string(__wrap__mdebug1, formatted_msg, expected_log);
+
+    // save_pre_restore_state is true: no commit, VACUUM or decompression is mocked, so reaching any of
+    // them fails the test — a refused name must not even take the pre-restore backup
+    int result = wdb_global_restore_backup(&data->wdb, snapshot, true, data->output);
+
+    assert_string_equal(data->output, "err Invalid snapshot name");
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_global_restore_backup_invalid_name_traversal(void **state) {
+    restore_backup_rejects(*state, "global.db-backup/../../../tmp/evil.gz", "global.db-backup/../../../tmp/evil.gz");
+}
+
+void test_wdb_global_restore_backup_invalid_name_dotdot(void **state) {
+    restore_backup_rejects(*state, "global.db-backup..gz", "global.db-backup..gz");
+}
+
+void test_wdb_global_restore_backup_invalid_name_absolute(void **state) {
+    restore_backup_rejects(*state, "/tmp/global.db-backup-x.gz", "/tmp/global.db-backup-x.gz");
+}
+
+void test_wdb_global_restore_backup_invalid_name_prefix(void **state) {
+    restore_backup_rejects(*state, "evil.gz", "evil.gz");
+}
+
+void test_wdb_global_restore_backup_invalid_name_suffix(void **state) {
+    restore_backup_rejects(*state, "global.db-backup-TIMESTAMP", "global.db-backup-TIMESTAMP");
+}
+
+void test_wdb_global_restore_backup_invalid_name_bare_prefix(void **state) {
+    restore_backup_rejects(*state, "global.db-backup.gz", "global.db-backup.gz");
+}
+
+void test_wdb_global_restore_backup_invalid_name_charset(void **state) {
+    restore_backup_rejects(*state, "global.db-backup-a b.gz", "global.db-backup-a b.gz");
+}
+
+void test_wdb_global_restore_backup_invalid_name_too_long(void **state) {
+    char snapshot[OS_SIZE_512];
+    char logged[65];
+
+    // Valid shape, but "backup/db/" + name does not fit the path buffer: refused, never truncated
+    snprintf(snapshot, sizeof(snapshot), "global.db-backup-%0*d.gz", 250, 0);
+    snprintf(logged, sizeof(logged), "%s", snapshot);
+    restore_backup_rejects(*state, snapshot, logged);
+}
+
+void test_wdb_global_restore_backup_invalid_most_recent_name(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    struct dirent* entry = calloc(1, sizeof(struct dirent));
+    struct stat* file_info = calloc(1, sizeof(struct stat));
+    int result = OS_INVALID;
+
+    // wdb_global_get_most_recent_backup picks a prefixed file that no backup run would have created
+    test_mode = 1;
+    snprintf(entry->d_name, OS_SIZE_256, "%s", "global.db-backup-planted");
+    will_return(__wrap_opendir, (DIR*)1);
+    will_return(__wrap_readdir, entry);
+    will_return(__wrap_readdir, NULL);
+    file_info->st_mtime = 123;
+    expect_string(__wrap_stat, __file, "backup/db/global.db-backup-planted");
+    will_return(__wrap_stat, file_info);
+    will_return(__wrap_stat, OS_SUCCESS);
+    will_return(__wrap_closedir, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid snapshot name to restore: 'global.db-backup-planted'");
+
+    result = wdb_global_restore_backup(&data->wdb, NULL, false, data->output);
+
+    assert_string_equal(data->output, "err Invalid snapshot name");
+    assert_int_equal(result, OS_INVALID);
+    os_free(entry);
+    os_free(file_info);
+    test_mode = 0;
 }
 
 void test_wdb_global_restore_backup_no_snapshot(void **state) {
@@ -7467,7 +7715,7 @@ void test_wdb_global_set_agent_groups_override_success(void **state) {
     const char * agent_name = "agent001";
     int group_id = 1;
     char group_name[] = "GROUP";
-    char hash[] = "19dcd0dd"; //"GROUP" hash
+    char hash[] = "19dcd0dd3a4354caf10d7df393630c70"; //"GROUP" hash
     char sync_status[] = "synced";
     wdb_groups_set_mode_t mode = WDB_GROUP_OVERRIDE;
     cJSON* j_group_array = __real_cJSON_CreateArray();
@@ -7519,7 +7767,7 @@ void test_wdb_global_set_agent_groups_override_delete_error(void **state) {
     const char * agent_name = "agent001";
     int group_id = 1;
     char group_name[] = "GROUP";
-    char hash[] = "19dcd0dd"; //"GROUP" hash
+    char hash[] = "19dcd0dd3a4354caf10d7df393630c70"; //"GROUP" hash
     char sync_status[] = "synced";
     wdb_groups_set_mode_t mode = WDB_GROUP_OVERRIDE;
     cJSON* j_group_array = __real_cJSON_CreateArray();
@@ -7573,7 +7821,7 @@ void test_wdb_global_set_agent_groups_add_modes_assign_error(void **state) {
     int agent_id = 1;
     const char * agent_name = "agent001";
     char group_name[] = "GROUP";
-    char hash[] = "19dcd0dd"; //"GROUP" hash
+    char hash[] = "19dcd0dd3a4354caf10d7df393630c70"; //"GROUP" hash
     char sync_status[] = "synced";
     wdb_groups_set_mode_t mode = WDB_GROUP_OVERRIDE;
     cJSON* j_group_array = __real_cJSON_CreateArray();
@@ -7628,7 +7876,7 @@ void test_wdb_global_set_agent_groups_add_modes_assign_error_worker(void **state
     int agent_id = 1;
     const char * agent_name = "agent001";
     char group_name[] = "GROUP";
-    char hash[] = "19dcd0dd"; //"GROUP" hash
+    char hash[] = "19dcd0dd3a4354caf10d7df393630c70"; //"GROUP" hash
     char sync_status[] = "synced";
     wdb_groups_set_mode_t mode = WDB_GROUP_OVERRIDE;
     cJSON* j_group_array = __real_cJSON_CreateArray();
@@ -7683,7 +7931,7 @@ void test_wdb_global_set_agent_groups_append_success(void **state) {
     int agent_id = 1;
     int group_id = 1;
     char group_name[] = "GROUP";
-    char hash[] = "19dcd0dd"; //"GROUP" hash
+    char hash[] = "19dcd0dd3a4354caf10d7df393630c70"; //"GROUP" hash
     char sync_status[] = "synced";
     wdb_groups_set_mode_t mode = WDB_GROUP_APPEND;
     cJSON* j_group_array = __real_cJSON_CreateArray();
@@ -7735,7 +7983,7 @@ void test_wdb_global_set_agent_groups_empty_only_success(void **state) {
     int agent_id = 1;
     int group_id = 1;
     char group_name[] = "GROUP";
-    char hash[] = "19dcd0dd"; //"GROUP" hash
+    char hash[] = "19dcd0dd3a4354caf10d7df393630c70"; //"GROUP" hash
     char sync_status[] = "synced";
     wdb_groups_set_mode_t mode = WDB_GROUP_EMPTY_ONLY;
     cJSON* j_group_array = __real_cJSON_CreateArray();
@@ -7817,7 +8065,7 @@ void test_wdb_global_set_agent_groups_remove_success(void **state) {
     int agent_id = 1;
     int group_id = 1;
     char group_name[] = "GROUP";
-    char hash[] = "19dcd0dd"; //"GROUP" hash
+    char hash[] = "19dcd0dd3a4354caf10d7df393630c70"; //"GROUP" hash
     char sync_status[] = "synced";
     wdb_groups_set_mode_t mode = WDB_GROUP_REMOVE;
     cJSON* j_group_array = __real_cJSON_CreateArray();
@@ -7863,7 +8111,7 @@ void test_wdb_global_set_agent_groups_remove_unassign_error(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     char group_name[] = "GROUP";
-    char hash[] = "19dcd0dd"; //"GROUP" hash
+    char hash[] = "19dcd0dd3a4354caf10d7df393630c70"; //"GROUP" hash
     char sync_status[] = "synced";
     wdb_groups_set_mode_t mode = WDB_GROUP_REMOVE;
     cJSON* j_group_array = __real_cJSON_CreateArray();
@@ -8349,10 +8597,12 @@ void test_wdb_global_assign_agent_group_agent_not_exists_success(void **state) {
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_text, pos, 5); // key
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_int, index, 6); // date_add
+    expect_value(__wrap_sqlite3_bind_text, pos, 6); // reenroll_secret (NULL: not enrolled through authd)
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 7); // date_add
     expect_value(__wrap_sqlite3_bind_int, value, 0);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_text, pos, 7); // group
+    expect_value(__wrap_sqlite3_bind_text, pos, 8); // group
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
 
@@ -8440,10 +8690,12 @@ void test_wdb_global_assign_agent_group_agent_not_exists_insert_fail(void **stat
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_text, pos, 5); // key
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_int, index, 6); // date_add
+    expect_value(__wrap_sqlite3_bind_text, pos, 6); // reenroll_secret (NULL: not enrolled through authd)
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 7); // date_add
     expect_value(__wrap_sqlite3_bind_int, value, 0);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_text, pos, 7); // group
+    expect_value(__wrap_sqlite3_bind_text, pos, 8); // group
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
 
@@ -8564,6 +8816,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_bind5_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_bind6_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_bind7_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_bind8_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_step_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_invalid_group_parent_dir, test_setup, test_teardown),
@@ -8601,6 +8854,14 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_keepalive_bind3_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_keepalive_step_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_keepalive_success, test_setup, test_teardown),
+        /* Tests wdb_global_set_agent_credentials */
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_credentials_transaction_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_credentials_cache_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_credentials_bind1_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_credentials_bind4_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_credentials_bind5_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_credentials_step_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_credentials_success, test_setup, test_teardown),
         /* Tests wdb_global_update_agent_connection_status */
         cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_connection_status_transaction_fail,
                                         test_setup,
@@ -8815,6 +9076,15 @@ int main()
         /* Tests wdb_global_restore_backup */
         cmocka_unit_test_setup_teardown(test_wdb_global_restore_backup_pre_restore_failed, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_restore_backup_no_snapshot, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_restore_backup_invalid_name_traversal, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_restore_backup_invalid_name_dotdot, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_restore_backup_invalid_name_absolute, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_restore_backup_invalid_name_prefix, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_restore_backup_invalid_name_suffix, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_restore_backup_invalid_name_bare_prefix, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_restore_backup_invalid_name_charset, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_restore_backup_invalid_name_too_long, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_restore_backup_invalid_most_recent_name, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_restore_backup_compression_failed, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_restore_backup_success, test_setup, test_teardown),
         /* Tests wdb_global_get_most_recent_backup */
