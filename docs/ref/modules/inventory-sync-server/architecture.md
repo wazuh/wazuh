@@ -387,7 +387,7 @@ the lane waits for it to finish.
 
 Every per-request failure condition keeps one throttled log line (90 s window; the first
 occurrence always emits, so transitions are visible immediately): handler throws (answered
-`500`), limit rejections (`411`/`413`/`414`/`431`), unknown routes (`404`/`405` — the trace that
+`500`), limit rejections (`413`/`414`/`431`, and `400` for a chunked request), unknown routes (`404`/`405` — the trace that
 catches a route mismatch with remoted), malformed HTTP, budget and connection-cap rejections,
 identity mismatches (`403` on an authenticated channel is operator-relevant), feed-not-ready and
 scan-capacity rejections, accept and session-bring-up failures, response write failures, and

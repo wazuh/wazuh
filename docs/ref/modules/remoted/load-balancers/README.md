@@ -214,7 +214,7 @@ path no route matches, the `403` of `verification_mode` `full`, and a `503` shed
 budget; every other answer leaves it open. Keep the proxy's idle time for reusable backend connections below 10 s (NGINX:
 `keepalive_timeout 5s;` in the `upstream`; HAProxy: `http-reuse never`, see
 [HAProxy 3.7](haproxy.md#37-backend-connection-reuse-http-reuse-never)), or a request sent on a connection remoted has already
-closed fails with `502`.
+closed can fail with `502` (a race; not reproduced in testing).
 
 ### 4.6. Health checks
 

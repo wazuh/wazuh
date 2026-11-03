@@ -391,7 +391,7 @@ chown -R wazuh-manager:wazuh-manager /etc/wazuh-manager/shared/
 Group membership came with `global.db`: an agent assigned to a group from the dashboard, the API
 or `agent_groups` in 4.x is in the same group on 5.0, even though its `ossec.conf` never mentioned
 it. Review every `agent.conf` against the 5.0 agent configuration reference before starting: a
-deprecated option makes the group's configuration fail to compile. Do the extraction with the
+removed option such as `scan_on_start`, `check_files` or a `<labels>` entry only produces a warning (`verify-agent-conf` still returns OK), but invalid content in the group's `<client>` section is rejected (`(1230): Invalid element in the configuration`) and the configuration does not compile. Do the extraction with the
 manager stopped: `wazuh-manager-modulesd` drops a group whose directory it cannot open, and between
 the extraction and the `chown` these carry the 4.x owner, which is exactly that. The group comes
 back on the next synchronization, after a `delete-group` has already gone out to its agents.
@@ -399,7 +399,7 @@ back on the next synchronization, after a `delete-group` has already gone out to
 ### Enrollment password
 
 ```bash
-install -m 640 -o wazuh-manager -g wazuh-manager /root/wazuh-4x-backup/authd.pass /etc/wazuh-manager/authd.pass
+install -m 660 -o wazuh-manager -g wazuh-manager /root/wazuh-4x-backup/authd.pass /etc/wazuh-manager/authd.pass
 ```
 
 **This step is conditional.** Carry the password only if 4.x agents will still have to enroll
@@ -546,7 +546,7 @@ grep -E "client-keys|authd" /var/wazuh-manager/logs/wazuh-manager.log | tail
 ```
 
 Expected: every daemon running, `wazuh-manager-remoted:client-keys: INFO: Loaded N agent key(s)
-from '/etc/wazuh-manager/client.keys'.` with your agent count, and authd `Accepting connections on port 1515.
+from '/etc/wazuh-manager/client.keys'.` with your agent count (a later reload of the file prints `Reloaded N agent key(s)` instead), and authd `Accepting connections on port 1515.
 Shared-password enrollment is required.`
 Then confirm the registry through the API, with the `wazuh` password published in
 `/etc/wazuh-manager/export/credentials.env`, or the 4.x one if you carried `rbac.db`:

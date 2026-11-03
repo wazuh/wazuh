@@ -297,23 +297,28 @@ You can define multiple command wodles in the same configuration:
 
 Command output is forwarded to the manager as events. The manager can analyze the output with custom rules.
 
-**Output format:**
-```
-ossec: output: 'command-tag': <command output>
-```
+**Output format:** one JSON event per execution, with the complete output (all lines, newlines preserved) in `process.io.text`. See [Event format](README.md#event-format) for the full document.
 
-**Example:**
+**Example** (command `tag` `system-check`, output of two lines):
+```json
+{
+  "event": {"module": "wazuh-wodle-cmd", "start": "2026-05-11T12:00:00Z"},
+  "tags": ["system-check"],
+  "process": {
+    "name": "check.sh",
+    "exit_code": 0,
+    "io": {"text": "Disk usage: 75%\nMemory available: 2.5GB\n"}
+  }
+}
 ```
-ossec: output: 'system-check': Disk usage: 75%
-ossec: output: 'system-check': Memory available: 2.5GB
-ossec: output: 'audit-check': WARNING: Unusual login pattern detected
-```
+(Other `process.*` fields omitted for brevity.)
 
 **Processing:**
-- Each line of command output generates a separate event
-- Events include the `tag` value for identification
-- Manager rules can parse and alert on command output
-- Output is logged in both agent and manager logs
+- Each execution generates one event; multi-line output stays in a single `process.io.text` value
+- Events carry the configured `tag` in the `tags` array
+- Manager rules can parse and alert on the event
+- If the output does not fit in a single message, it is truncated; if it still does not fit, a metadata-only event is sent (empty `process.io.text`)
+- With `ignore_output` set to `yes`, no event is sent
 
 ---
 

@@ -141,7 +141,7 @@ systemctl start wazuh-agent
 During enrollment the agent sends its configured group to the manager, which records the assignment in `global.db`. On the following keepalive the manager compiles and pushes the matching group's shared configuration.
 
 > [!WARNING]
-> If an agent declares a group that does not exist on the manager, **enrollment is rejected** and the agent cannot connect (`wazuh-manager-authd` logs `ERROR: Invalid group: <group>`). See [Workaround: agent fails to connect (missing group)](#workaround-agent-fails-to-connect-missing-group) to resolve it.
+> If an agent declares a group that does not exist on the manager, **enrollment is rejected** and the agent cannot connect (`wazuh-manager-authd` logs `WARNING: Invalid group: <group>`; a 5.0 agent enrolling over HTTPS on `1517` sees HTTP `400`, authd code `9014`). See [Workaround: agent fails to connect (missing group)](#workaround-agent-fails-to-connect-missing-group) to resolve it.
 
 To verify, view the group assignments from the Wazuh dashboard under **Agents management -> Summary**.
 

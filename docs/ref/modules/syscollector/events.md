@@ -47,6 +47,9 @@ All Syscollector events share a common structure:
 | `memory_total` | `host.memory.total` |
 | `memory_free` | `host.memory.free` |
 | `memory_used` | `host.memory.used` |
+| *(derived, not stored)* | `host.memory.usage` |
+
+Memory values are in bytes. `host.memory.usage` is computed by Syscollector as `memory_used / memory_total`, a fraction between `0` and `1` (not a percentage), and is `null` when the total is unknown.
 
 ```json
 {
@@ -65,9 +68,10 @@ All Syscollector events share a common structure:
                 "speed": 2904
             },
             "memory": {
-                "free": 2257872,
-                "total": 4972208,
-                "used": 54
+                "free": 2311041024,
+                "total": 5091541000,
+                "usage": 0.5461,
+                "used": 2780499976
             },
             "serial_number": "Intel Corporation"
         }

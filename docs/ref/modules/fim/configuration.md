@@ -175,7 +175,7 @@ Disables or enables the entire syscheck module.
 
 ### file_limit
 
-Sets a hard cap on the number of files FIM can monitor. Once the database reaches this limit, newly discovered files are ignored until the count drops below it.
+Sets a hard cap on the number of files FIM can monitor. Once the database reaches this limit, newly discovered files are not added to the database until the count drops below it (events for them may still be generated).
 
 ```xml
 <file_limit>
@@ -187,7 +187,7 @@ Sets a hard cap on the number of files FIM can monitor. Once the database reache
 | Sub-element | Default | Allowed values | Description |
 |---|---|---|---|
 | `enabled` | `yes` | `yes`, `no` | Enable or disable the file limit |
-| `entries` | `100000` | Integer `1`–`2147483647` | Maximum number of files to monitor |
+| `entries` | `100000` | Integer `1`–`2147483647` | Maximum number of files to monitor. Values outside this range are accepted silently (not rejected at validation) |
 
 ---
 
@@ -196,7 +196,7 @@ Sets a hard cap on the number of files FIM can monitor. Once the database reache
 Sets how often syscheck runs a full scheduled scan, in seconds.
 
 - **Default value:** `43200` (12 hours)
-- **Allowed values:** Any positive integer (seconds)
+- **Allowed values:** Any positive integer (seconds). A value of `0` or an absurdly large one is accepted silently, not rejected
 
 ```xml
 <frequency>43200</frequency>
@@ -749,7 +749,7 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 3. Modify the content of `test.txt`.
 4. Wait for the next scheduled scan.
 
-**Expected result:** An alert with rule ID `550` (integrity checksum changed) is generated. The alert includes the modified file path, the changed attributes (hash, size, mtime), and the agent name.
+**Expected result:** A modified event is generated. The event includes the modified file path, the changed attributes (hash, size, mtime), and the agent name.
 
 ### UC-02: Detect new file creation
 
@@ -769,7 +769,7 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 2. Create a new file `newfile.txt` inside `/tmp/fim-test`.
 3. Wait for the next scheduled scan.
 
-**Expected result:** An alert with rule ID `554` (file added to the system) is generated with the new file's path and attributes.
+**Expected result:** An added event is generated with the new file's path and attributes.
 
 ### UC-03: Detect file deletion
 
@@ -780,7 +780,7 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 2. Delete the file.
 3. Wait for the next scheduled scan.
 
-**Expected result:** An alert with rule ID `553` (file deleted) is generated.
+**Expected result:** A deleted event is generated.
 
 ### UC-04: Real-time monitoring - immediate change detection
 
@@ -814,7 +814,7 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 1. Create `/tmp/fim-whodata` and wait for FIM to begin monitoring.
 2. As a specific user (e.g., `www-data`), modify a file inside the directory.
 
-**Expected result:** The generated alert includes `audit.effective_user.name`, `audit.process.name`, and `audit.process.id` fields identifying the user and process that made the change.
+**Expected result:** The generated alert includes `data.file.audit.effective_name`, `data.file.audit.process_name`, and `data.file.audit.process_id` fields (all who-data fields live under `data.file.audit.*`) identifying the user and process that made the change.
 
 ### UC-06: nodiff - sensitive file content not leaked
 
@@ -873,7 +873,7 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 2. Create an 11th file.
 3. Wait for the next scheduled scan.
 
-**Expected result:** No alert is generated for the 11th file. A warning log entry indicates the database limit has been reached.
+**Expected result:** Events are still generated for all the files found, including the 11th, even though the database holds only 10 entries. A warning log entry indicates the database limit has been reached.
 
 ### UC-09: Windows registry change detection
 

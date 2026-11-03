@@ -76,7 +76,7 @@ UUID in `wazuh.event.id`. There is no rootcheck-specific object: the detection i
 
 ## Detection example: file in /dev
 
-**Message:** `File '/dev/shm/e2etest' present on /dev. Possible hidden file.`
+**Message:** `File '/dev/e2etest' present on /dev. Possible hidden file.`
 
 The detection fields the engine adds to the common structure above (`wazuh.*` omitted):
 
@@ -84,7 +84,7 @@ The detection fields the engine adds to the common structure above (`wazuh.*` om
 {
   "@timestamp": "2026-10-27T18:09:03.483127506Z",
   "event": {
-    "original": "File '/dev/shm/e2etest' present on /dev. Possible hidden file.",
+    "original": "File '/dev/e2etest' present on /dev. Possible hidden file.",
     "dataset": "wazuh.rootcheck",
     "kind": "event",
     "type": ["info", "indicator"],
@@ -96,7 +96,7 @@ The detection fields the engine adds to the common structure above (`wazuh.*` om
     "type": "logs"
   },
   "file": {
-    "path": "/dev/shm/e2etest"
+    "path": "/dev/e2etest"
   },
   "threat": {
     "indicator": {
@@ -133,13 +133,13 @@ event keeps the whole message in `event.original`. The ECS classification (`even
 | `wazuh.agent.id`, `wazuh.agent.name`, `wazuh.agent.version` | Reporting agent | `001`, `tomas`, `v5.0.0` |
 | `wazuh.agent.host.os.*` | Agent operating system | `Ubuntu` |
 | `wazuh.event.id` | Per-event UUID | `52a4b9a7-…` |
-| `event.original` | Full detection message | `File '/dev/shm/e2etest' present on /dev. …` |
+| `event.original` | Full detection message | `File '/dev/e2etest' present on /dev. …` |
 | `event.dataset` | Dataset | `wazuh.rootcheck` |
 | `event.kind` | Event kind | `event` |
 | `event.type` | `["info", "indicator"]` for a detection; the scan markers carry `info` and the scan phase (`end` for the end marker) | `["info", "indicator"]` |
 | `event.category` | Categories | `["malware", "file"]` |
 | `threat.indicator.type` | Kind of indicator | `file` |
-| `file.path`, `file.owner`, `process.pid`, `destination.port`, `observer.ingress.interface.name` | Detection-specific, see the table above | `/dev/shm/e2etest` |
+| `file.path`, `file.owner`, `process.pid`, `destination.port`, `observer.ingress.interface.name` | Detection-specific, see the table above | `/dev/e2etest` |
 
 ## Viewing Alerts
 

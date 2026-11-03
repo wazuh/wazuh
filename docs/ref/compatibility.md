@@ -15,7 +15,7 @@ The supported operating systems and architectures are listed once, per package:
   [`<remote><legacy><enabled>`](modules/remoted/configuration.md#legacyenabled) is on (the configuration the
   installer generates turns it on); with it off, only 5.x agents can connect. They enroll through
   `wazuh-manager-authd`'s TLS port 1515, gated by `<auth><legacy_enrollment>`, which follows
-  `<remote><legacy><enabled>` when it is not set. On that channel a 4.x agent's events, keep-alives,
+  `<remote><legacy><enabled>` when it is not set (the follow-through is resolved when authd starts: `wazuh-manager-conf get auth.legacy_enrollment` still reports the option as not set while port 1515 listens). On that channel a 4.x agent's events, keep-alives,
   centralized configuration and remote upgrade work, but not active response or its state: the manager discards its
   inventory (`s:`) and dbsync (`5:`) messages, so it has no inventory and no FIM or SCA state on a 5.x
   manager, and with no package inventory it gets **no vulnerability detection** (an on-demand scan of an

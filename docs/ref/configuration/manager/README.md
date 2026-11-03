@@ -11,7 +11,7 @@ parser).
 | `wazuh-manager.conf` | `/etc/wazuh-manager` | 660 `root:wazuh-manager` | Main configuration: a single `<wazuh_config>` root with one element per section (see [the generated reference](reference.md)) |
 | `wazuh-manager.schema.json` | `/etc/wazuh-manager` | 640 `root:wazuh-manager` | JSON Schema (draft-04) the file is validated against; installed copy of `src/shared_modules/manager_config/schema/wazuh-manager.schema.json`, replaced on every install and upgrade (product, not configuration) |
 | `wazuh-manager-internal-options.conf` | `/etc/wazuh-manager` | 640 `root:wazuh-manager` | Internal tuning parameters (`key=value`); ships with comments only, the defaults are compiled in, and an existing file is kept |
-| `api.yaml` | `/var/wazuh-manager/api/configuration/` | 660 `root:wazuh-manager` | REST API configuration (see [Server API configuration](../../modules/server-api/configuration.md)) |
+| `api.yaml` | `/var/wazuh-manager/api/configuration/` | 660 `root:wazuh-manager` | REST API configuration (see [Server API configuration](../../modules/server-api/configuration.md)). Also installed (660) on a worker, which runs no API and never reads it |
 
 `wazuh-manager.conf` is **generated, not shipped**: the installer and the packages write it once
 (`src/init/gen_wazuh.sh conf manager <dist> <version>` prints the same document) from the templates in
@@ -24,7 +24,7 @@ nesting. An XML declaration (`<?xml …?>`), a processing instruction or a `<!DO
 ignored without a message; nothing declared in a DOCTYPE is applied, and a reference to an entity it declares
 is refused as a raw `&`. The predefined XML entities (`&amp;`, `&lt;`…) and character references are decoded
 into the values. Values are typed by the schema:
-booleans are written `yes`/`no` (any case; `true`/`false` are rejected), numbers as digits, enumerated
+booleans are written `yes`/`no` (any case; `true`/`false` are rejected), numbers as digits (an optional leading `-` or `+` is accepted: `<port>+1515</port>` is read as `1515`; leading zeros, decimals, hex and surrounding spaces are refused), enumerated
 values in any case, and lists in any of three forms: one child per item
 (`<hosts><host>…</host></hosts>`), a comma-separated value (`<protocol>tcp,udp</protocol>`), or the
 element repeated (`<log_format>plain</log_format><log_format>json</log_format>`). Any other repeated
@@ -88,7 +88,8 @@ element is rejected as a duplicate.
       `authd.debug` and `wazuh_db.debug` are not read at all, by `-t` or by the start;
     - memory: `remote.legacy.queue_size` is judged by type and range (at most 134217728, which asks for
       1 GiB of queue slots at start), not against what the host can allocate — see the option in
-      [the reference](reference.md);
+      [the reference](reference.md). A value above 262144 is not reported by `wazuh-manager-conf validate`
+      or `check`: only `wazuh-manager-remoted` logs the warning ("Queue size is very high"), at start;
     - what the cluster protocol can carry: the schema only requires `cluster.name` and `cluster.node_name`
       to be non-empty — the names the handshake cannot carry are listed in
       [Cluster configuration](../../modules/cluster/configuration.md).
@@ -108,12 +109,16 @@ element is rejected as a duplicate.
   CRITICAL `(1202): Configuration error at '<file>'.`, `wazuh-manager-db` the CRITICAL
   `Invalid configuration block for Wazuh-DB.`. The engine prints
   `Error loading configuration: <pointer>: <reason>` on stderr instead.
+  `WAZUH_CONF` (a file name under `/etc/wazuh-manager`, default `wazuh-manager.conf`) moves only the two
+  validations of `wazuh-server.sh`: the credential check and every daemon's `-t` read the live
+  `wazuh-manager.conf`, so a copy named by `WAZUH_CONF` that passes `check` may still be refused at a
+  real start, and a TLS path outside `certs/` in the copy goes unnoticed.
 - The API serves the effective sections as JSON (`GET /cluster/{node_id}/configuration`, optional
   `section`/`field`, `raw=true` for the XML text) and replaces the file with an XML document
   (`PUT /cluster/{node_id}/configuration`, `application/xml` or `application/octet-stream`); a
   malformed document is refused with error 1131 and an invalid one with error 1130 and the same JSON
   pointer. A new `<cluster><key>`, or any change to `<indexer>`, needs `cluster:read_secrets` over the
-  node (error 1132 otherwise); the masked `*****` the `GET` returns keeps the current key. After a `PUT` the file keeps its mode and
+  node (error 1132 otherwise); the `GET` returns the key masked as `*****` only to a caller without `cluster:read_secrets` over the node (one holding it, such as `administrator`, reads it in clear), and the masked value keeps the current key. After a `PUT` the file keeps its mode and
   is owned by `wazuh-manager:wazuh-manager` (the API runs as that user).
   `GET /cluster/{node_id}/configuration/{component}/{configuration}` returns what a running daemon
   reports instead (for example `request/internal` for remoted's `remoted.*` internal options).

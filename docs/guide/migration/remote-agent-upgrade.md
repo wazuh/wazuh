@@ -144,7 +144,7 @@ ID    Name                                Version
 Total outdated agents: 1
 ```
 
-The `-l` flag lists all outdated agents with their current version. Agents on v4.14.x or later can be upgraded directly to 5.0 in a single step. Agents below v4.14.0 must go through the path described in [Two-step upgrade path (agents below v4.14.0)](#two-step-upgrade-path-agents-below-v4140).
+The `-l` flag lists all outdated agents with their current version. When no agent is outdated it prints `All agents are updated.` instead. Agents on v4.14.x or later can be upgraded directly to 5.0 in a single step. Agents below v4.14.0 must go through the path described in [Two-step upgrade path (agents below v4.14.0)](#two-step-upgrade-path-agents-below-v4140).
 
 ### 3. Confirm manager has WPK repository access
 

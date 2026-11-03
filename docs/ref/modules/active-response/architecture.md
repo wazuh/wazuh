@@ -113,7 +113,9 @@ from an in-process queue and the agent's main thread runs the timeout check ever
    Response disabled on the agent) the task is dropped at debug level.
 6. **Validation**: `wazuh-execd` parses the message, reads `wazuh.active_response.executable`,
    `type` and `stateful_timeout` (see [What wazuh-execd reads](#what-wazuh-execd-reads)), and drops
-   the message when `source.ip` is the manager, loopback or an `<allowlist>` entry.
+   the message when `source.ip` is the manager, loopback or an `<allowlist>` entry, or when `executable`
+   references a parent folder (`../`; logged as `Active response command '<name>' vulnerable to directory
+   traversal attack. Ignoring.`).
 7. **Execution**: execd appends `"command": "enable"`, starts
    `active-response/bin/<executable>` and writes the message, one line, to its stdin.
 8. **Keys**: the executable answers on stdout with one `check_keys` line naming its keys (for
@@ -167,7 +169,8 @@ and adds three things of its own:
 
 `AR_SCHEMA` is the first thing a document meets, and it states the contract above: `event.index`
 matching `EVENT_INDEX_PATTERN` and `event.doc_id` a non-empty string; `wazuh.active_response` with `executable`,
-`extra_arguments`, `location`, `name` and `type`, typed and enumerated as above and with no unknown
+`extra_arguments`, `location`, `name` and `type`, typed and enumerated as above (`extra_arguments` is a
+string or `null`, nothing else: an array such as `[]` fails with `is not of type 'string', 'null'`) and with no unknown
 keys; `stateful_timeout` when `type` is `stateful`; a non-empty `agent_id` when `location` is
 `defined-agent`; and a non-empty `wazuh.agent.id` when `location` is `local`. A document that fails
 it is discarded there, once, with its `_id` in the WARNING. What the schema cannot reach is the

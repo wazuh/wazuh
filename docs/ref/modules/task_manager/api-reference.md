@@ -79,7 +79,7 @@ and `504` when a handler has not answered within the transport's 300 s response 
 
 | Field | Required | Rule |
 |---|---|---|
-| `agent_id` | yes | non-empty string |
+| `agent_id` | yes | non-empty JSON **string** (a number such as `1` is refused as `agent_id is required`; send `"001"`) |
 | `task_type` | yes | non-empty string |
 | `create_time` | yes | integer, Unix seconds, within `[now - 1 year, now + 60 s]` — otherwise `Timestamp is too old (>1 year)` / `Timestamp is in the future`; a fraction, string, `null` or a value outside the signed 64-bit range is `create_time must be an integer within range` |
 | `payload` | yes | any JSON value; stored serialized, capped at `max_payload_bytes` |

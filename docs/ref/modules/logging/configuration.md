@@ -89,10 +89,10 @@ health monitor, the HTTP server) appends its name in parentheses to the tag of w
 |---|---|
 | `wazuh-manager-modulesd:control` | a modulesd module |
 | `wazuh-manager-remoted:client-keys` | a component of remoted's agent-facing module |
-| `wazuh-manager-remoted:endpoints(cacerts)` | an endpoint of remoted's agent-facing listener |
+| `wazuh-manager-remoted:endpoints(ratelimit)` | the rate limiter of remoted's agent-facing endpoints |
 | `wazuh-manager-modulesd:vulnerability-scanner:server` | a part of a modulesd module |
 | `wazuh-manager-modulesd:inventory-sync-server:async(indexer-connector)` | the indexer connector, called by a part of a module |
-| `wazuh-manager-analysisd(monitoring)` | the indexer connector's node health monitor, inside the engine |
+| `wazuh-manager-analysisd(monitoring)` | the indexer connector's node health monitor, inside the engine; it appears only when the monitor has something to log, so a healthy default-level log may not contain it |
 
 Two manager programs that are not
 daemons write to the same file under their own name: `wazuh-manager-control` (a refused start, restart, reload or

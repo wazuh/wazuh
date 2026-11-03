@@ -346,7 +346,7 @@ deliberately coarser than the manager's own diagnosis (which stays in its log an
 
 On a cluster, `unknown_agent` can also be **transient**: a worker answers it for an agent enrolled a
 few seconds earlier (on the master, or forwarded by any node), until the new `client.keys` reaches
-that worker through the cluster's integrity sync — about 10 seconds, occasionally a few more. An agent
+that worker through the cluster's integrity sync — typically 10 to 35 seconds (20-35 seconds observed on a two-node cluster). An agent
 that lands on such a worker right after enrolling (for example behind a round-robin load balancer)
 recovers on its own once the key has arrived — by retrying, or, where it took the answer for the loss
 of its identity, by enrolling again; nothing has to be done on the manager.
@@ -950,7 +950,7 @@ Control-specific conditions:
 | ------------------------------------------ | ----- | ---------------------- |
 | Body empty or exceeds 64 KiB               | `400` | `invalid_body`         |
 | Malformed JSON body                        | `400` | `invalid_json`         |
-| Invalid agent ID format                    | `400` | `invalid_agent_id`     |
+| Invalid agent ID format (defensive: the ID comes from the verified `kid`, so a client cannot reach it) | `400` | `invalid_agent_id`     |
 | Unknown message type                       | `400` | `unknown_message_type` |
 | Malformed agent version (startup only)     | `400` | `invalid_version`      |
 | Agent version higher than allowed (startup only) | `409` | `invalid_version` |
@@ -1030,7 +1030,7 @@ take the `/stateless` shape described in [Error responses](#error-responses).
 | ------------------------------------------------ | ----- | ------------------------------------------------------------- |
 | Body empty or exceeds 4 KiB                      | `400` | `invalid_body`                                                |
 | Malformed JSON body                              | `400` | `invalid_json`                                                |
-| Invalid agent ID format                          | `400` | `invalid_agent_id`                                            |
+| Invalid agent ID format (defensive: the ID comes from the verified `kid`, so a client cannot reach it) | `400` | `invalid_agent_id`                                            |
 | Missing or non-string `type`                     | `400` | `missing_type`                                                |
 | `type` other than `"feed_update"`                | `400` | `invalid_type`                                                |
 | Missing or non-unsigned `feed_offset`            | `400` | `missing_feed_offset`                                         |

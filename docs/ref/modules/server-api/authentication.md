@@ -113,7 +113,7 @@ RBAC is enforced **before** any core logic is executed.
 - Framework functions are decorated with `expose_resources` from `rbac/decorators.py`
 - RBAC policies can allow or deny access even with valid tokens
 - Two RBAC modes: **white** (deny by default) and **black** (allow by default)
-- A `403 Forbidden` usually indicates RBAC blocking, not auth failure
+- A `403 Forbidden` on a mutating or single-resource call usually means RBAC blocked it, but RBAC also *filters* lists: a user with no role gets `200` with empty results from list endpoints (`/agents`, `/groups`, `/security/users`, `/cluster/nodes`, `/overview/agents`). `403` also answers a blocked client IP (`6000`) and a denied `run_as` login (`6004`)
 - Current user, RBAC mode, and cluster context are stored in `contextvars` for request-scoped access
 - The actions, resources and default roles are described in [RBAC](../rbac/README.md); the files that implement it in [RBAC Sub-module](architecture.md#rbac-sub-module)
 
@@ -192,7 +192,7 @@ mask is not served.
 
 ## Rate Limiting & Brute-Force Protection
 
-- **Brute-force protection**: every request to `POST /security/user/authenticate` or `POST /security/user/authenticate/run_as` counts as a login attempt for its client IP and the user named in its Basic credentials, and a successful login gives its attempt back. When a user reaches `access.max_login_attempts` (50) failed attempts from one IP (an IPv6 client by its `/64`), its logins from that IP answer `403` with error `6000` until `access.block_time` (300 seconds) has passed since the first attempt counted. Other users logging in from the same IP are not affected until the IP reaches ten times `access.max_login_attempts` failed attempts across all users, which blocks it for every user. Failures for one account therefore do not lock the dashboard out; failures for `wazuh-internal-client` itself still do, from any client that shares its address. Keep untrusted processes off the dashboard host, and do not put a reverse proxy there that hides the client addresses from the API.
+- **Brute-force protection**: every request to `POST /security/user/authenticate` or `POST /security/user/authenticate/run_as` counts as a login attempt for its client IP and the user named in its Basic credentials, and a successful login gives its attempt back. The attempt is counted before authentication, so a login the rate limiter answered `429` (`6005`, ten unauthenticated requests per minute) is counted too: a burst of 50 or more requests from one client reaches the lockout although only ten of them were answered `401`. The `403` message says "the current IP has been blocked", but only that user is blocked from that IP (below). When a user reaches `access.max_login_attempts` (50) failed attempts from one IP (an IPv6 client by its `/64`), its logins from that IP answer `403` with error `6000` until `access.block_time` (300 seconds) has passed since the first attempt counted. Other users logging in from the same IP are not affected until the IP reaches ten times `access.max_login_attempts` failed attempts across all users, which blocks it for every user. Failures for one account therefore do not lock the dashboard out; failures for `wazuh-internal-client` itself still do, from any client that shares its address. Keep untrusted processes off the dashboard host, and do not put a reverse proxy there that hides the client addresses from the API.
 - **Login queue**: password checks are bounded per API process by [`authentication_pool_size`](configuration.md#authentication_pool_size); a login that finds the queue full answers `429` with error `6006`, and one that waits in it longer than `intervals.request_timeout` answers `500` with error `3021`.
 - **Request rate**: each client address may make `access.max_request_per_minute` (300) authenticated requests per minute, and `access.max_unauthenticated_request_per_minute` (10) unauthenticated or failed-authentication ones. Beyond them the API answers `429` with error `6001` or `6005`. A request whose path or method matches no API operation never reaches authentication, so it counts as unauthenticated even when it carries a valid token. See [Configuration](configuration.md#request-rate-limiting).
 - The state is kept in memory by `api/api/middlewares.py`, so it is lost when `wazuh-manager-apid` restarts.
@@ -223,7 +223,7 @@ library (pinned at `0.3.0` in `framework/requirements.txt`): `Server`, `Content-
 ## Best Practices
 
 - Handle token expiration gracefully — re-authenticate before the token expires
-- Treat `403` as RBAC errors, not authentication failures
+- Treat `403` on a mutating or single-resource call as an RBAC error, not an authentication failure; an empty `200` list may mean RBAC filtered it
 - Never embed credentials in scripts — use environment variables or secret managers
 - In cluster deployments, send every request to the master node: workers do not run the API
 - Use the `rbac_mode` setting appropriate for your security posture (`white` for strict environments)

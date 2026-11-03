@@ -73,7 +73,7 @@ Addresses the API listens on.
 ### port
 
 - **Default value:** `55000`
-- **Allowed values:** Number
+- **Allowed values:** Number. `-t` does not range-check it: `0`, `-1` or `70000` pass the check (the schema type is `number`) and fail only at bind
 
 ### drop_privileges
 
@@ -138,7 +138,9 @@ Maximum time in seconds for API request processing.
 ### https
 
 TLS settings of the listener. File names are resolved under `/etc/wazuh-manager/certs/` and may
-contain only letters, digits, `_`, `-` and `.`.
+contain only letters, digits, `_`, `-` and `.`. The defaults below are the file names; the resolved
+configuration, as `GET /cluster/api/config` returns it, shows the absolute paths
+(`/etc/wazuh-manager/certs/apid-key.pem`).
 
 | Option | Default | Description |
 |--------|---------|-------------|
@@ -178,7 +180,7 @@ configured pair before every start and refuses a path outside that directory
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `level` | `info` | `debug2`, `debug`, `info`, `warning`, `error` or `critical`. It applies to the framework's messages too (the `wazuh` logger: the restart fallback, upgrade exclusions, indexer warnings), which the API writes to the same files. `debug2` also writes each request's headers, with credential values (`Authorization`, `Proxy-Authorization`, `Cookie`, API keys) masked |
+| `level` | `info` | (`-t` does not check the value against this list; any string passes) `debug2`, `debug`, `info`, `warning`, `error` or `critical`. It applies to the framework's messages too (the `wazuh` logger: the restart fallback, upgrade exclusions, indexer warnings), which the API writes to the same files. `debug2` also writes each request's headers, with credential values (`Authorization`, `Proxy-Authorization`, `Cookie`, API keys) masked |
 | `format` | `plain` | `plain` (`logs/api.log`), `json` (`logs/api.json`), or both: `plain,json` / `json,plain` |
 | `max_size.enabled` | `false` | Rotate by size instead of at midnight |
 | `max_size.size` | `1M` | `<number>K` or `<number>M`, at least `1M` (error `2011` otherwise) |
@@ -196,6 +198,8 @@ Cross-origin resource sharing, applied with Starlette's `CORSMiddleware`.
 | `allow_credentials` | `false` | Allow credentials |
 
 ### access
+
+`-t` checks only that these four values are integers: a negative value is not rejected.
 
 | Option | Default | Description |
 |--------|---------|-------------|

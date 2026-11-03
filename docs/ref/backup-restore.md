@@ -23,7 +23,7 @@ The following components should be included in your Wazuh manager backup strateg
 
 - **SSL/TLS certificates**: `/etc/wazuh-manager/certs/`
   - Manager certificates and keys, the agents' CA bundle, the indexer's CA and client pair
-  - The import markers `.indexer-ca.imported` and `.indexer-connector.imported` (keep them with the files)
+  - The import markers `.indexer-ca.imported` and `.indexer-connector.imported` (keep them with the files). They exist only when the manager imported the files from a co-located indexer's export; with credentials staged by hand or from `local.env` they are absent, which is normal
 
 - **Credentials**: `/etc/wazuh-manager/ca/`, `/etc/wazuh-manager/export/`, `/etc/wazuh-manager/local.env`
   - `ca/root-ca.key` is the manager's CA private key: protect the backup accordingly
@@ -78,6 +78,17 @@ Before creating a backup, verify:
 2. Backup destination is accessible
 3. You have appropriate permissions
 4. Consider stopping the manager for consistent backups (optional)
+5. `sqlite3` is installed on the manager host. The manager packages do not depend on it and a default install does not have it, so install it from the distribution first (`apt install sqlite3` or `dnf install sqlite`). Without it every `sqlite3 ... ".backup"` command below fails with `command not found`, the loop carries on and `db/` is left empty. If you cannot install it, copy a database with the Python `sqlite3` module bundled with the manager, which implements the same online backup API:
+
+```bash
+# Replace SRC and DEST with the same paths the `.backup` commands below use
+sudo /var/wazuh-manager/framework/python/bin/python3 -I -c '
+import sqlite3, sys
+src = sqlite3.connect("file:%s?mode=ro" % sys.argv[1], uri=True)
+dst = sqlite3.connect(sys.argv[2]); src.backup(dst); dst.close(); src.close()' SRC DEST
+```
+
+The same interpreter can run the `PRAGMA integrity_check` and `SELECT count(*)` verification queries. After any backup, confirm that `$BACKUP_DIR/db/` holds the copies before relying on it.
 
 #### Creating a Full Manager Backup
 
@@ -106,6 +117,7 @@ sudo tar -czf $BACKUP_DIR/wazuh-state.tar.gz -C /var/wazuh-manager \
 # these directories are not readable unprivileged -- because sqlite3 creates a
 # database when handed a path that does not exist.
 sudo mkdir -p $BACKUP_DIR/db
+command -v sqlite3 > /dev/null || echo "sqlite3 is not installed - the databases below will NOT be backed up"
 for DB in queue/db/global.db queue/tasks/tasks.db api/configuration/security/rbac.db; do
     SRC="/var/wazuh-manager/$DB"
     if sudo test -f "$SRC"; then
@@ -245,6 +257,8 @@ GLOBAL_DB="/var/wazuh-manager/queue/db/global.db"
 
 # Create backup directory
 mkdir -p $BACKUP_DIR/db
+
+command -v sqlite3 > /dev/null || { echo "$(date): Manager backup FAILED - sqlite3 is not installed" >> $LOG_FILE; exit 1; }
 
 # Refuse to run if the global database is not where it is expected: sqlite3 would
 # create the missing source and back up an empty database, which the verification
@@ -523,7 +537,7 @@ done
 sudo chmod -R go-rwx $BACKUP_DIR
 ```
 
-The API users, roles and policies live on the master, so `rbac.db` is part of the master backup only.
+The API users, roles and policies are authoritative on the master, so `rbac.db` is part of the master backup only. A worker also has an `api/configuration/security/rbac.db` (its API daemon does not run), but its content is not the source of truth, so do not back it up as one.
 
 #### Worker Node Backup
 
@@ -937,9 +951,9 @@ sudo tail -100 /var/wazuh-manager/logs/wazuh-manager.log
 sudo ls -l /etc/wazuh-manager/client.keys
 
 # Check global database (guarded: sqlite3 would create a missing one)
-sudo sh -c '[ -f /var/wazuh-manager/queue/db/global.db ] \
-  && sqlite3 /var/wazuh-manager/queue/db/global.db "SELECT id, name FROM agent" \
-  || echo "MISSING: /var/wazuh-manager/queue/db/global.db"'
+sudo sh -c 'if [ ! -f /var/wazuh-manager/queue/db/global.db ]; then echo "MISSING: /var/wazuh-manager/queue/db/global.db"; \
+  elif ! command -v sqlite3 > /dev/null; then echo "sqlite3 is not installed (see the pre-backup checklist)"; \
+  else sqlite3 /var/wazuh-manager/queue/db/global.db "SELECT id, name FROM agent"; fi'
 
 # Restart manager
 sudo systemctl restart wazuh-manager
@@ -952,9 +966,9 @@ sudo tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep remoted
 
 ```bash
 # Check database integrity (guarded: sqlite3 would create a missing one)
-sudo sh -c '[ -f /var/wazuh-manager/queue/db/global.db ] \
-  && sqlite3 /var/wazuh-manager/queue/db/global.db "PRAGMA integrity_check" \
-  || echo "MISSING: /var/wazuh-manager/queue/db/global.db"'
+sudo sh -c 'if [ ! -f /var/wazuh-manager/queue/db/global.db ]; then echo "MISSING: /var/wazuh-manager/queue/db/global.db"; \
+  elif ! command -v sqlite3 > /dev/null; then echo "sqlite3 is not installed (see the pre-backup checklist)"; \
+  else sqlite3 /var/wazuh-manager/queue/db/global.db "PRAGMA integrity_check"; fi'
 
 # If corrupted, restore from backup again. Copy over the live database rather than
 # removing it first, and only once the replacement is known to be there: an unset

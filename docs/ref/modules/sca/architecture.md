@@ -157,10 +157,10 @@ The function is called during module startup in `wm_sca_main()` when `data->enab
 
 ```c
 if (data->enabled) {
-    minfo("SCA module enabled.");
+    mdebug1("Module enabled.");
 } else {
     wm_handle_sca_disable_and_notify_data_clean();
-    minfo("SCA module disabled. Exiting.");
+    mdebug1("Module disabled. Exiting.");   // debug-level only
     pthread_exit(NULL);
 }
 ```
