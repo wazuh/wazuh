@@ -171,19 +171,19 @@ is_systemd() {
 # the agent ends up stopped right after "Completed.". Through systemctl the unit runs them with
 # its own ExecStop, ExecStart and ExecReload, which call this script again from inside the unit.
 #
-# Those calls from systemd's own ExecStart, ExecStop and ExecReload must stay here: systemctl
-# would queue a job behind the one running them and wait until the unit times out. The unit's
-# ControlPID is the process systemd started for the line it is running (this script, or a shell
-# that runs it), so a call from inside the unit's cgroup is one of them when its pid or its
-# parent's is the ControlPID. Any other call from there comes from something the daemons
-# launched, such as an upgrade's installer, and is handled like a call from outside.
+# Those calls from systemd's own ExecStart, ExecStop, ExecStopPost and ExecReload must stay
+# here: systemctl would queue a job behind the one running them and wait until the unit times
+# out. The unit's ControlPID is the process systemd started for the line it is running (this
+# script, or a shell that runs it), so a call from inside the unit's cgroup is one of them when
+# its pid or its parent's is the ControlPID. Any other call from there comes from something the
+# daemons launched, such as an upgrade's installer, and is handled like a call from outside.
 #
 # Every other call waits while the unit is starting or reloading. A stop or restart job issued
-# then skips ExecStop (systemd runs it only after a successful start) and, with KillMode=process,
-# only signals wazuh-agentd, leaving the other daemons running outside any supervision; and a
-# reload issued during a start is folded into it and returns 0 without reloading anything. Once
-# the unit is active, all three are handed over. While it is stopping, stop and restart are
-# handed over too, and run after that stop.
+# then cuts the start or reload short: systemd skips ExecStop (it runs it only after a
+# successful start) and, with KillMode=process, only signals wazuh-agentd, so the other daemons
+# are left to ExecStopPost. A reload issued during a start is folded into it and returns 0
+# without reloading anything. Once the unit is active, all three are handed over. While it is
+# stopping, stop and restart are handed over too, and run after that stop.
 #
 # Left to this script:
 # - a unit that runs another installation of the agent, whose PIDFile= is not in this one.
@@ -392,7 +392,8 @@ start_service()
                 echo "${i} did not start; see ${OSSEC_LOG} for the reason";
                 log_since ${i} 'ERROR|CRITICAL' | tail -n 5
                 # Stop what this start brought up, so the agent is not left half started; daemons
-                # that were already running stay. A reload keeps wazuh-agentd up, so it stops nothing.
+                # that were already running stay, though under the unit its ExecStopPost then stops
+                # them too. A reload keeps wazuh-agentd up, so it stops nothing.
                 # The deadline already took most of the unit's TimeoutSec: one second per daemon.
                 if [ -z "${RELOADING}" ]; then
                     DAEMONS="${STARTED} ${i}"

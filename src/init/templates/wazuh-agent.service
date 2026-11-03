@@ -11,6 +11,13 @@ PIDFile=WAZUH_HOME_TMP/var/run/wazuh-agentd.pid
 
 ExecStart=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-control start
 ExecStop=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-control stop
+# A restart that arrives during a reload makes systemd skip ExecStop and, with KillMode=process,
+# signal only wazuh-agentd and the reload script. This stops the daemons left behind, so the
+# start that follows brings up every one of them. systemd 233 and later also skip ExecStop when
+# wazuh-agentd dies (crash or failed exit): this then stops the other daemons too, as ExecStop
+# does on older systemd, and the unit stays failed.
+# Each stop command gets its own TimeoutSec.
+ExecStopPost=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-control stop
 ExecReload=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-control reload
 
 KillMode=process
