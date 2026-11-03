@@ -108,9 +108,9 @@ STATIC wm_office365_fail* wm_office365_get_fail_by_tenant_and_subscription(wm_of
  * @param tenant_id Tenant ID to search
  * @param subscription_name Subscription name to search
  * @param error_msg Error message to send
- * @param queue_fd Socket ID
+ * @param queue_fd Socket ID, replaced if the queue has to be reopened
  */
-STATIC void wm_office365_scan_failure_action(wm_office365_fail** current_fails, char* tenant_id, char* subscription_name, char *error_msg, int queue_fd);
+STATIC void wm_office365_scan_failure_action(wm_office365_fail** current_fails, char* tenant_id, char* subscription_name, char *error_msg, int *queue_fd);
 
 /* Context definition */
 const wm_context WM_OFFICE365_CONTEXT = {
@@ -322,7 +322,7 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
         // Get access token
         if (!initial_scan || !office365_config->only_future_events) {
             if (access_token = wm_office365_get_access_token(current_auth, office365_config->curl_max_size, &error_msg), !access_token) {
-                wm_office365_scan_failure_action(&office365_config->fails, current_auth->tenant_id, NULL, error_msg, office365_config->queue_fd);
+                wm_office365_scan_failure_action(&office365_config->fails, current_auth->tenant_id, NULL, error_msg, &office365_config->queue_fd);
                 current_auth = next_auth;
                 os_free(error_msg);
                 continue;
@@ -375,7 +375,7 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
             // Start subscription
             if (wm_office365_manage_subscription(current_subscription, current_auth->management_fqdn, current_auth->client_id, access_token, 1, office365_config->curl_max_size, &error_msg)) {
                 wm_office365_scan_failure_action(&office365_config->fails, current_auth->tenant_id,
-                    current_subscription->subscription_name, error_msg, office365_config->queue_fd);
+                    current_subscription->subscription_name, error_msg, &office365_config->queue_fd);
                 current_subscription = next_subscription;
                 os_free(error_msg);
                 continue;
@@ -452,8 +452,8 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
 
                                             mtdebug2(WM_OFFICE365_LOGTAG, "Sending Office365 log: '%s'", payload);
 
-                                            if (wm_sendmsg(WM_OFFICE365_MSG_DELAY, office365_config->queue_fd,
-                                                payload, WM_OFFICE365_CONTEXT.name, LOCALFILE_MQ) < 0) {
+                                            if (wm_sendmsg_with_reconnect(WM_OFFICE365_MSG_DELAY, &office365_config->queue_fd,
+                                                payload, WM_OFFICE365_CONTEXT.name, LOCALFILE_MQ, WM_OFFICE365_LOGTAG) < 0) {
                                                 mterror(WM_OFFICE365_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
                                             }
 
@@ -503,7 +503,7 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
 
                 if (fail) {
                     wm_office365_scan_failure_action(&office365_config->fails, current_auth->tenant_id,
-                        current_subscription->subscription_name, error_msg, office365_config->queue_fd);
+                        current_subscription->subscription_name, error_msg, &office365_config->queue_fd);
                     os_free(error_msg);
                     break;
                 } else {
@@ -797,7 +797,7 @@ STATIC wm_office365_fail* wm_office365_get_fail_by_tenant_and_subscription(wm_of
     return current;
 }
 
-STATIC void wm_office365_scan_failure_action(wm_office365_fail** current_fails, char* tenant_id, char* subscription_name, char *error_msg, int queue_fd) {
+STATIC void wm_office365_scan_failure_action(wm_office365_fail** current_fails, char* tenant_id, char* subscription_name, char *error_msg, int *queue_fd) {
     char *payload;
     wm_office365_fail *tenant_fail = NULL;
 
@@ -852,7 +852,7 @@ STATIC void wm_office365_scan_failure_action(wm_office365_fail** current_fails, 
 
             mtwarn(WM_OFFICE365_LOGTAG, "Sending Office365 internal message: '%s'", payload);
 
-            if (wm_sendmsg(WM_OFFICE365_MSG_DELAY, queue_fd, payload, WM_OFFICE365_CONTEXT.name, LOCALFILE_MQ) < 0) {
+            if (wm_sendmsg_with_reconnect(WM_OFFICE365_MSG_DELAY, queue_fd, payload, WM_OFFICE365_CONTEXT.name, LOCALFILE_MQ, WM_OFFICE365_LOGTAG) < 0) {
                 mterror(WM_OFFICE365_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
             }
 
