@@ -75,6 +75,10 @@ All notable changes to this project will be documented in this file.
 - Fixed the rootcheck hidden-process check taking hours and filling the agent's memory limit on Linux hosts with many threads, and skipping PIDs above 32768. ([#40913](https://github.com/wazuh/wazuh/pull/40913))
 - Fixed the Windows agent not monitoring the registry keys that match a `windows_registry` wildcard and are created after the agent starts. ([#40978](https://github.com/wazuh/wazuh/pull/40978))
 
+#### Changed
+
+- FIM eBPF whodata now drops events for unmonitored paths in the kernel. ([#40633](https://github.com/wazuh/wazuh/pull/40633))
+
 ## [v4.14.10]
 
 ### Manager

@@ -83,6 +83,7 @@
 #define FIM_WARN_REG_WILDCARD_LIST              "(6963): Could not list every key matching the registry wildcard '%s'. Its monitored keys are kept until they are removed."
 #define FIM_WARN_REG_WILDCARD_ROOT              "(6964): Registry wildcard '%s' does not start with a supported root key. It is not monitored."
 #define FIM_WARN_WHODATA_PROVIDER_UNSUPPORTED   "(6967): The whodata 'provider' option is only available on Linux. Ignoring it."
+#define FIM_WARN_EBPF_DIRS_MAP_FULL             "(6984): eBPF monitored directories map is full. Events for every path will be sent to user space."
 
 /* Monitord warning messages */
 #define ROTATE_LOG_LONG_PATH                    "(7500): The path of the rotated log is too long."
