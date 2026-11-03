@@ -27,7 +27,7 @@ base/
 │   ├── timer.hpp, syncStatus.hpp, statusSnapshot.hpp, ymlFormat.hpp, baseTypes.hpp
 │   └── utils/                  # stringUtils, ipUtils, timeUtils, communityId, singletonLocator, ...
 ├── src/                        # Implementations (managerLogSink.cpp, process.cpp, logging.cpp, ...)
-├── test/include/               # base::test INTERFACE include directory (test helpers)
+├── test/include/               # base::test INTERFACE include directory (test helpers, incl. logCapture.hpp)
 ├── test/src/unit/              # GoogleTest unit tests
 └── benchmark/                  # base_benchmark (eventParser, json)
 ```
@@ -75,13 +75,14 @@ Injection: `ProcessSysCalls` groups 13 system calls (`fork`, `setsid`, `umask`, 
 
 ## Testing
 
-Three binaries are built with `ENGINE_TEST=y` (see [CMakeLists.txt](CMakeLists.txt)):
+Four binaries are built with `ENGINE_TEST=y` (see [CMakeLists.txt](CMakeLists.txt)):
 
 | Binary | Content |
 |---|---|
-| `base_utest` | The files listed in [CMakeLists.txt](CMakeLists.txt): `test/src/unit/*_test.cpp` and `test/src/unit/utils/*_test.cpp` except the two below, including [process_test.cpp](test/src/unit/process_test.cpp) |
+| `base_utest` | The files listed in [CMakeLists.txt](CMakeLists.txt): `test/src/unit/*_test.cpp` and `test/src/unit/utils/*_test.cpp` except the three below, including [process_test.cpp](test/src/unit/process_test.cpp) |
 | `base_manager_utest` | Only [managerLogSink_test.cpp](test/src/unit/managerLogSink_test.cpp): the sink (`ManagerLogSinkTest.*`, `ManagerLogSinkDeathTest.*`) and the manager home (`ManagerHome.*`, `ManagerHomeAbsolute.*`). The sink and the manager mode are global process state, hence the separate binary. The fixtures work in their own `mkdtemp` directory (the child of a death test inherits it); `ManagerHomeAbsolute` touches no disk. |
 | `base_logger_utest` | [logger_test.cpp](test/src/unit/logger_test.cpp) |
+| `base_json_log_utest` | [jsonSanitizeLog_test.cpp](test/src/unit/jsonSanitizeLog_test.cpp): `Json::str()` warns about the first document it had to sanitize and logs the rest at debug, a decision taken once per process, so telling the first occurrence from the rest needs a binary of its own. [logCapture_test.cpp](test/src/unit/logCapture_test.cpp) rides along in the same binary: `LogCapture.*` covers the helper itself (the level it holds and restores, what it selects, `clear()`, nesting and the sink it takes off), which no test asserting on logs would notice breaking. |
 
 ```bash
 $ENGINE_BUILD/source/base/base_utest --gtest_filter='DropToUser.*'
@@ -98,6 +99,7 @@ Where each contract is exercised:
 | Manager home | `ManagerHome.*` (incl. the exits `ManagerHomeEnvNotDirectoryExits`, `ExeNotDirectoryExits`), `ManagerHomeAbsolute.*` |
 | Log sink | `ManagerLogSinkTest.*`, `ManagerLogSinkDeathTest.*` |
 | JSON allocation failure | `JsonAllocationInjectionTest.*` (`json::BaseAllocator::failAt` fails the n-th allocation; every mutation is swept through its allocation points and the document must stay usable), `JsonAllocationFailureTest.*` (`RLIMIT_AS` death tests, skipped under the sanitizers) |
+| `Json::str()` sanitization log | `JsonSanitizeLog.WarnsOnceThenDebugsAndNeverLogsTheEvent` (warning once, debug afterwards, and no part of the event in either line) |
 
 `ctest` discovers the cases with `gtest_discover_tests`; names are `<Suite>.<Test>`, without a binary prefix.
 
@@ -108,3 +110,15 @@ To run the unprivileged pass:
 ```bash
 cd /tmp && setpriv --reuid 65534 --regid 65534 --clear-groups env TMPDIR=/tmp <binary>
 ```
+
+### Asserting on log output
+
+[test/include/base/logCapture.hpp](test/include/base/logCapture.hpp) gives any test linking `base::test` a `base::test::LogCapture`: it adds a sink to the logger `logging::testInit()` starts, holds the level it is built with while it lives, and hands back the records (level plus message, no header) with `records()` or `records(level)`. It takes the sink off again and restores the level on destruction, so production logging is untouched and a test that builds no capture logs as before. Only standalone mode reaches that logger, so a test that forces manager mode has to read the manager sink instead; the constructor throws there rather than hand back a capture that would stay silently empty.
+
+```cpp
+base::test::LogCapture capture {logging::Level::Debug};
+somethingThatLogs();
+ASSERT_EQ(capture.records(logging::Level::Warn).size(), 1);
+```
+
+The helper's own contract is checked by `LogCapture.*` in `base_json_log_utest`.
