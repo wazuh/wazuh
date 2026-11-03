@@ -150,6 +150,7 @@
         "packages/debs/SPECS/wazuh-manager/**",
         "src/Makefile",
         "tests/integration/conftest.py",
+        "tests/integration/unit_control.py",
         "tests/integration/pytest.ini",
         "tests/integration/start_lock.py",
         "tests/integration/test_manager_control/**"
