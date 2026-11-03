@@ -198,6 +198,15 @@ void win_startel();
 void win_readel();
 void win_read_vista_sec();
 int win_start_event_channel(char *evt_log, char future, char *query, int reconnect_time);
+
+/**
+ * @brief Retry, in its own thread, the subscription of an event channel that could not be subscribed when the agent started
+ * @param evt_log Channel name
+ * @param future Read only future events
+ * @param query Channel query, may be NULL
+ * @param reconnect_time Seconds between attempts
+ */
+void win_retry_event_channel(char *evt_log, char future, char *query, int reconnect_time);
 void win_format_event_string(char *string);
 #endif
 

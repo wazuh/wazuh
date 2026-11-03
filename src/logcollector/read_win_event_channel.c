@@ -80,8 +80,18 @@ typedef struct _os_channel {
     EVT_HANDLE subscription;
 } os_channel;
 
+/* A channel whose subscription failed when the agent started, retried by its own thread */
+typedef struct _os_channel_retry {
+    char *evt_log;
+    char future;
+    char *query;
+    int reconnect_time;
+} os_channel_retry;
+
 STATIC char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags);
 STATIC EVT_HANDLE read_bookmark(os_channel *channel);
+STATIC int win_subscribe_event_channel(char *evt_log, char future, char *query, int reconnect_time, int log_error);
+STATIC DWORD WINAPI win_retry_event_channel_thread(LPVOID arg);
 
 wchar_t *convert_unix_string(char *string)
 {
@@ -594,6 +604,56 @@ DWORD WINAPI event_channel_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, os_chann
 
 int win_start_event_channel(char *evt_log, char future, char *query, int reconnect_time)
 {
+    return win_subscribe_event_channel(evt_log, future, query, reconnect_time, 1);
+}
+
+/* Retry a subscription that failed at startup: on boot the agent can start before the
+   channel's publisher is registered, and EvtSubscribe() returns ERROR_EVT_CHANNEL_NOT_FOUND
+   (15007). Without this the channel stayed unmonitored until the agent was restarted. */
+void win_retry_event_channel(char *evt_log, char future, char *query, int reconnect_time)
+{
+    os_channel_retry *retry = NULL;
+
+    os_calloc(1, sizeof(os_channel_retry), retry);
+    os_strdup(evt_log, retry->evt_log);
+    if (query) {
+        os_strdup(query, retry->query);
+    }
+    retry->future = future;
+    retry->reconnect_time = reconnect_time;
+
+    mwarn("Could not subscribe to '%s' channel. Trying again every %i seconds until it is available.",
+          evt_log, reconnect_time);
+
+    w_create_thread(NULL, 0, win_retry_event_channel_thread, retry, 0, NULL);
+}
+
+STATIC DWORD WINAPI win_retry_event_channel_thread(LPVOID arg)
+{
+    os_channel_retry *retry = (os_channel_retry *)arg;
+    unsigned int attempts = 0;
+
+    for (;;) {
+        sleep(retry->reconnect_time);
+        attempts++;
+
+        /* The strings become the channel's, as in the first attempt */
+        if (win_subscribe_event_channel(retry->evt_log, retry->future, retry->query, retry->reconnect_time, 0) == 0) {
+            break;
+        }
+
+        mdebug1("Could not subscribe to '%s' channel (attempt %u). Trying again in %i seconds.",
+                retry->evt_log, attempts, retry->reconnect_time);
+    }
+
+    minfo("'%s' channel has been subscribed successfully after %u failed attempts.", retry->evt_log, attempts);
+    free(retry);
+
+    return 0;
+}
+
+STATIC int win_subscribe_event_channel(char *evt_log, char future, char *query, int reconnect_time, int log_error)
+{
     wchar_t *wchannel = NULL;
     wchar_t *wquery = NULL;
     char *filtered_query = NULL;
@@ -686,10 +746,17 @@ int win_start_event_channel(char *evt_log, char future, char *query, int reconne
     if (channel->subscription == NULL) {
         unsigned long id = GetLastError();
         if (id != RPC_S_SERVER_UNAVAILABLE && id != RPC_S_UNKNOWN_IF) {
-            merror(
-                "Could not EvtSubscribe() for (%s) which returned (%lu)",
-                channel->evt_log,
-                id);
+            if (log_error) {
+                merror(
+                    "Could not EvtSubscribe() for (%s) which returned (%lu)",
+                    channel->evt_log,
+                    id);
+            } else {
+                mdebug1(
+                    "Could not EvtSubscribe() for (%s) which returned (%lu)",
+                    channel->evt_log,
+                    id);
+            }
         }
         goto cleanup;
     }
