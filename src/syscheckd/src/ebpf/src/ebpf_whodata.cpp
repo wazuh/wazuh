@@ -17,6 +17,7 @@
 #include <iostream>
 #include <memory>
 #include <pwd.h>
+#include <set>
 
 #include <mutex>
 #include <string>
@@ -39,12 +40,23 @@
 #define LSM_LIST_FILE        "/sys/kernel/security/lsm"
 #define LIBBPF_DEBUG         2 // enum libbpf_print_level
 #define LIBBPF_LOG_MAX       4096
+#define MAX_DIR_PREFIX_LEN   256
 
 // Global
 volatile bool event_received = false;
 static bpf_object* global_obj = nullptr;
 static bool g_bpf_lsm_active = false;
 static std::vector<struct bpf_link*> global_links;
+
+/* Directories in the monitored_dirs map */
+static std::mutex g_dirs_mutex;
+static std::set<std::string> g_dirs_map;
+
+struct dir_prefix
+{
+    uint32_t prefixlen;
+    char path[MAX_DIR_PREFIX_LEN];
+};
 
 /*
  * Returns true if the running kernel has "bpf" in its active LSM list.
@@ -92,8 +104,48 @@ static void destroy_global_links()
     global_links.clear();
 }
 
+static int update_dir_prefix(int fd, const std::string& path, bool add)
+{
+    dir_prefix key {};
+    const uint8_t value = 1;
+
+    key.prefixlen = path.size() * 8;
+    memcpy(key.path, path.data(), path.size());
+    return add ? bpf_helpers->bpf_map_update_elem(fd, &key, &value, 0) : bpf_helpers->bpf_map_delete_elem(fd, &key);
+}
+
+static void sync_monitored_dirs(const std::set<std::string>& dirs)
+{
+    const std::lock_guard<std::mutex> lock(g_dirs_mutex);
+    const int fd = global_obj ? bpf_helpers->bpf_object_find_map_fd_by_name(global_obj, "monitored_dirs") : -1;
+    if (fd < 0)
+    {
+        return;
+    }
+
+    for (const auto& dir : dirs)
+    {
+        if (!g_dirs_map.count(dir) && update_dir_prefix(fd, dir, true) != 0)
+        {
+            fimebpf::instance().m_loggingFunction(LOG_WARNING, FIM_WARN_EBPF_DIRS_MAP_FULL);
+            break;
+        }
+    }
+
+    for (const auto& dir : g_dirs_map)
+    {
+        if (!dirs.count(dir))
+        {
+            update_dir_prefix(fd, dir, false);
+        }
+    }
+
+    g_dirs_map = dirs;
+}
+
 static void release_bpf()
 {
+    const std::lock_guard<std::mutex> lock(g_dirs_mutex);
     destroy_global_links();
     bpf_helpers->bpf_object_close(global_obj);
     global_obj = nullptr;
@@ -203,6 +255,41 @@ static int get_login_gid(unsigned int uid)
                           });
 }
 
+static void queue_event(std::unique_ptr<dynamic_file_event> event)
+{
+    if (!kernelEventQueue.push(std::move(event)) && !ebpf_kernel_queue_full_reported)
+    {
+        fimebpf::instance().m_loggingFunction(LOG_WARNING, FIM_FULL_EBPF_KERNEL_QUEUE);
+        ebpf_kernel_queue_full_reported = 1;
+    }
+}
+
+/*
+ * Events of setattr, unlink and rename are sent before the operation runs. They wait here, by thread, for the
+ * OP_DONE record sent when it returns, so FIM sees the final state, and are dropped if it failed. Events whose
+ * OP_DONE never arrives (missed exit probe) are processed when the ring buffer goes idle, as if they had no wait.
+ */
+static std::unordered_multimap<uint32_t, std::unique_ptr<dynamic_file_event>> g_pending;
+
+static void flush_pending()
+{
+    for (auto& [tid, event] : g_pending)
+    {
+        queue_event(std::move(event));
+    }
+    g_pending.clear();
+}
+
+static void complete_pending(const op_done* done)
+{
+    const auto range = g_pending.equal_range(done->tid);
+    for (auto it = range.first; done->ret == 0 && it != range.second; ++it)
+    {
+        queue_event(std::move(it->second));
+    }
+    g_pending.erase(range.first, range.second);
+}
+
 /* Callback for normal whodata events */
 int handle_event(void* ctx, void* data, size_t data_sz)
 {
@@ -217,12 +304,22 @@ int handle_event(void* ctx, void* data, size_t data_sz)
         return 0;
     }
 
-    if (confFn(e->filename))
+    if (e->op == OP_DONE)
+    {
+        complete_pending(static_cast<op_done*>(data));
+        return 0;
+    }
+
+    const char* filename = e->paths;
+    const char* cwd = filename + strlen(filename) + 1;
+    const char* parent_cwd = cwd + strlen(cwd) + 1;
+
+    if (confFn(filename))
     {
         auto event =
-            std::make_unique<dynamic_file_event>(dynamic_file_event {.filename = std::string(e->filename),
-                                                                     .cwd = std::string(e->cwd),
-                                                                     .parent_cwd = std::string(e->parent_cwd),
+            std::make_unique<dynamic_file_event>(dynamic_file_event {.filename = std::string(filename),
+                                                                     .cwd = std::string(cwd),
+                                                                     .parent_cwd = std::string(parent_cwd),
                                                                      .comm = std::string(e->comm),
                                                                      .parent_comm = std::string(e->parent_comm),
                                                                      .pid = e->pid,
@@ -233,13 +330,13 @@ int handle_event(void* ctx, void* data, size_t data_sz)
                                                                      .login_uid = e->login_uid,
                                                                      .inode = e->inode,
                                                                      .dev = e->dev});
-        if (!kernelEventQueue.push(std::move(event)))
+        if (e->op == OP_OPEN)
         {
-            if (!ebpf_kernel_queue_full_reported)
-            {
-                logFn(LOG_WARNING, FIM_FULL_EBPF_KERNEL_QUEUE);
-                ebpf_kernel_queue_full_reported = 1;
-            }
+            queue_event(std::move(event));
+        }
+        else
+        {
+            g_pending.emplace(e->tid, std::move(event));
         }
     }
 
@@ -253,7 +350,7 @@ int healthcheck_event(void* ctx, void* data, size_t data_sz)
     (void)data_sz;
     auto e = static_cast<file_event*>(data);
 
-    if (strstr(e->filename, EBPF_HC_FILE))
+    if (e->op != OP_DONE && strstr(e->paths, EBPF_HC_FILE))
     {
         event_received = true;
     }
@@ -490,6 +587,10 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load)
         (bpf_program__name_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_program__name");
     bpf_helpers->libbpf_set_print =
         (libbpf_set_print_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "libbpf_set_print");
+    bpf_helpers->bpf_map_update_elem =
+        (bpf_map_update_elem_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_map_update_elem");
+    bpf_helpers->bpf_map_delete_elem =
+        (bpf_map_delete_elem_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_map_delete_elem");
 
     /* Load all required symbols (C++17 fold expression) */
     const auto all_loaded = [](auto... ptrs)
@@ -517,7 +618,9 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load)
                     bpf_helpers->bpf_object_load_skeleton,
                     bpf_helpers->bpf_object_attach_skeleton,
                     bpf_helpers->bpf_object_detach_skeleton,
-                    bpf_helpers->libbpf_set_print))
+                    bpf_helpers->libbpf_set_print,
+                    bpf_helpers->bpf_map_update_elem,
+                    bpf_helpers->bpf_map_delete_elem))
     {
         logFn(LOG_ERROR, FIM_ERROR_EBPF_LIB_LOAD);
         local_sym_load->freeLibrary(bpf_helpers->module);
@@ -845,6 +948,21 @@ extern "C"
                                        syscheckQueueSize);
     }
 
+    void fimebpf_set_monitored_dirs(char** paths)
+    {
+        std::set<std::string> dirs;
+        for (size_t i = 0; paths && paths[i]; i++)
+        {
+            const std::string dir(paths[i], strnlen(paths[i], MAX_DIR_PREFIX_LEN - 1));
+            if (!dir.empty())
+            {
+                dirs.insert(dir);
+            }
+        }
+
+        sync_monitored_dirs(dirs);
+    }
+
     int ebpf_whodata_healthcheck()
     {
         ring_buffer* rb = nullptr;
@@ -883,6 +1001,8 @@ extern "C"
 
         event_received = false;
         abspathFn(EBPF_HC_FILE, ebpf_hc_abs_path, sizeof(ebpf_hc_abs_path));
+
+        sync_monitored_dirs({ebpf_hc_abs_path});
 
         if (std::remove(ebpf_hc_abs_path) == 0)
         {
@@ -943,6 +1063,10 @@ extern "C"
             {
                 logFn(LOG_ERROR, FIM_ERROR_EBPF_RINGBUFF_CONSUME);
                 break;
+            }
+            if (ret == 0)
+            {
+                flush_pending();
             }
         }
 
