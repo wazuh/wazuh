@@ -210,7 +210,7 @@ The API sets the following security headers on all responses:
 | `X-Frame-Options` | `deny` |
 | `X-XSS-Protection` | `0` |
 | `X-Content-Type-Options` | `nosniff` |
-| `Content-Security-Policy` | `none` |
+| `Content-Security-Policy` | `default-src 'none'; frame-ancestors 'none'` |
 | `Referrer-Policy` | `no-referrer, strict-origin-when-cross-origin` |
 | `Cache-Control` | `no-store` |
 
