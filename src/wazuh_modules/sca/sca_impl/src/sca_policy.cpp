@@ -3,6 +3,7 @@
 #include <check_condition_evaluator.hpp>
 #include <sca_utils.hpp>
 
+#include "defer.hpp"
 #include "logging_helper.hpp"
 
 #include <stringHelper.h>
@@ -36,8 +37,13 @@ SCAPolicy::SCAPolicy(SCAPolicy&& other) noexcept
 void SCAPolicy::Run(std::function<void(const CheckResult&)> reportCheckResult)
 {
     m_scanInProgress = true;
+
+    DEFER([this]()
+    {
+        m_scanInProgress = false;
+    });
+
     Scan(reportCheckResult);
-    m_scanInProgress = false;
 }
 
 void SCAPolicy::Scan(

@@ -34,6 +34,12 @@ class SCAPolicy : public ISCAPolicy
         /// @copydoc ISCAPolicy::Stop
         void Stop() override;
 
+        /// @copydoc ISCAPolicy::GetId
+        const std::string& GetId() const override
+        {
+            return m_id;
+        }
+
     private:
         /// @brief Runs the policy checks
         /// @param reportCheckResult Function to report check result

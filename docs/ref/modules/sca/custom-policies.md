@@ -72,6 +72,14 @@ checks:
 
   - id: 3001
     name: "SSH Hardening: Protocol should be set to 2"
+    description: "The SSH protocol should not be set to version 1, which is insecure."
+    rationale: "Version 1 of the SSH protocol has known security weaknesses."
+    remediation: "Change the Protocol option value in the sshd_config file."
+    compliance:
+      pci_dss: ["4.1"]
+    condition: none
+    rules:
+      - 'f:$sshd_file -> !r:^# && r:Protocol\s+1'
 ```
 
 > **Note**  
@@ -97,7 +105,7 @@ checks:
 |------------|-----------|------------------|----------------|
 | name       | Yes       | String           | Any string     |
 | description| Yes       | String           | Any string     |
-| condition  | Yes       | String           | Any string     |
+| condition  | Yes       | String           | all, any, none |
 | rules      | Yes       | Array of strings | Any string     |
 
 ---
@@ -152,6 +160,8 @@ Checks define what actions the agent performs and how results are evaluated.
 | references  | No        | Array of strings          | Any string            |
 | condition   | Yes       | String                    | all, any, none        |
 | rules       | Yes       | Array of strings          | Any string            |
+
+A check without a valid `id` or `condition` is skipped: the agent logs the policy file and the check, and scans the rest of the policy. A `requirements` section with `rules` but without a valid `condition` makes the agent skip the whole policy file.
 
 SCA rules are evaluated with PCRE2. Custom policies migrated from 4.x must not rely on OSRegex syntax. See [SCA policies from 4.x to 5.x](../../../guide/migration/sca-policies-4x-to-5x.md) for migration guidance.
 

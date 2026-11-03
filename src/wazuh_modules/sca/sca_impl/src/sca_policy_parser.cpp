@@ -141,6 +141,13 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
                 requirements.condition = requirementsNode["condition"].get<std::string>();
                 ValidateConditionString(requirements.condition);
             }
+            else if (requirementsNode.contains("rules") && requirementsNode["rules"].is_array() &&
+                     !requirementsNode["rules"].empty())
+            {
+                // Requirements rules cannot be evaluated without a condition, so the policy is rejected here
+                // instead of failing when the scan reaches it.
+                throw std::invalid_argument("Missing or invalid condition");
+            }
 
             nlohmann::json requirementsOutput;
 
@@ -191,7 +198,9 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
         }
         catch (const std::exception& e)
         {
-            LoggingHelper::getInstance().log(LOG_ERROR, std::string("Failed to parse requirements. Error: ") + e.what());
+            LoggingHelper::getInstance().log(LOG_ERROR,
+                                             "Failed to parse the requirements of policy file '" + m_filename.string() +
+                                             "'. Error: " + e.what());
             return nullptr;
         }
     }
@@ -200,31 +209,37 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
     {
         for (const auto& checkNode : m_jsonDocument["checks"])
         {
+            std::string checkLabel = "without a valid id";
+
             try
             {
                 Check check;
 
-                if (checkNode.contains("id"))
+                // The scan reports every result under the check id and evaluates the check with its condition, so a
+                // check missing either one is skipped here rather than reaching the scan.
+                if (checkNode.contains("id") && checkNode["id"].is_string())
                 {
-                    if (checkNode["id"].is_string())
-                    {
-                        check.id = checkNode["id"].get<std::string>();
-                    }
-                    else if (checkNode["id"].is_number())
-                    {
-                        check.id = std::to_string(checkNode["id"].get<int>());
-                    }
-                    else
-                    {
-                        // Log what type we actually got to help debug
-                        LoggingHelper::getInstance().log(LOG_WARNING, "Check ID is not a string or number, unexpected type found");
-                    }
+                    check.id = checkNode["id"].get<std::string>();
                 }
+                else if (checkNode.contains("id") && checkNode["id"].is_number())
+                {
+                    check.id = std::to_string(checkNode["id"].get<int>());
+                }
+                else
+                {
+                    throw std::invalid_argument("Missing or invalid id");
+                }
+
+                checkLabel = "'" + check.id.value() + "'";
 
                 if (checkNode.contains("condition") && checkNode["condition"].is_string())
                 {
                     check.condition = checkNode["condition"].get<std::string>();
                     ValidateConditionString(check.condition);
+                }
+                else
+                {
+                    throw std::invalid_argument("Missing or invalid condition");
                 }
 
                 // Create a copy of the check node for output with valid rules only
@@ -268,7 +283,9 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
             }
             catch (const std::exception& e)
             {
-                LoggingHelper::getInstance().log(LOG_ERROR, std::string("Failed to parse a check. Skipping it. Error: ") + e.what());
+                LoggingHelper::getInstance().log(LOG_ERROR,
+                                                 "Failed to parse check " + checkLabel + " of policy file '" +
+                                                 m_filename.string() + "'. Skipping it. Error: " + e.what());
                 continue;
             }
         }

@@ -634,6 +634,78 @@ TEST_F(ScaTest, Run_SetsFirstScanCompletedAfterFirstSuccessfulScan)
     EXPECT_TRUE(scaMock->getFirstScanCompletedForTest());
 }
 
+// A policy whose scan throws must not stop the scan of the other policies nor the scan loop: before, the
+// exception reached sca_start() and the whole module (periodic scans and synchronization) stopped.
+TEST_F(ScaTest, Run_PolicyThatThrowsDoesNotStopTheScan)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockFileSystem = std::make_shared<MockFileSystemWrapper>();
+    auto scaMock = std::make_shared<SCAMock>(mockDBSync, mockFileSystem);
+
+    std::vector<sca::PolicyData> policyData = {{"failing_policy.yaml", true, false}, {"next_policy.yaml", true, false}};
+
+    EXPECT_CALL(*mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(true));
+
+    std::atomic<bool> nextPolicyReached {false};
+
+    // Reporting the first policy's check throws, as any unexpected error during a policy scan would.
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([&nextPolicyReached](const nlohmann::json & query,
+                                                           std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    {
+        const auto queryText = query.dump();
+
+        if (queryText.find("id = 'failing_check'") != std::string::npos)
+        {
+            throw std::runtime_error("unexpected failure");
+        }
+
+        if (queryText.find("id = 'next_check'") != std::string::npos)
+        {
+            nextPolicyReached = true;
+        }
+
+        nlohmann::json result = {{"count", 0}};
+        callback(SELECTED, result);
+    }));
+
+    EXPECT_CALL(*mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(nullptr));
+    EXPECT_CALL(*mockDBSync, syncRow(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    auto yamlToJsonFunc = [](const std::string & path) -> nlohmann::json
+    {
+        const bool failing = path.find("failing_policy") != std::string::npos;
+        nlohmann::json result;
+        result["policy"] = {{"id", failing ? "failing_policy" : "next_policy"}, {"name", "Test Policy"}};
+        result["checks"] = nlohmann::json::array({
+            {   {"id", failing ? "failing_check" : "next_check"}, {"title", "Test Check"}, {"condition", "all"},
+                {"rules", nlohmann::json::array({"f:/etc/passwd exists"})}
+            }
+        });
+        return result;
+    };
+
+    scaMock->Setup(true, true, std::chrono::seconds(100), 30, false, policyData, yamlToJsonFunc);
+
+    std::thread runThread([&scaMock]()
+    {
+        scaMock->Run();
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+
+    scaMock->Stop();
+    runThread.join();
+
+    EXPECT_NE(m_logOutput.find("Scan of policy 'failing_policy' stopped: unexpected failure"), std::string::npos);
+    EXPECT_TRUE(nextPolicyReached);
+    EXPECT_NE(m_logOutput.find("Scan ended."), std::string::npos);
+    EXPECT_TRUE(scaMock->getFirstScanCompletedForTest());
+}
+
 // issue 38428: first_scan_completed is write-once for the installation's whole
 // lifetime, so on an agent already past its first-ever scan it must NOT be
 // the thing that decides whether a scan_on_start retry is still owed --

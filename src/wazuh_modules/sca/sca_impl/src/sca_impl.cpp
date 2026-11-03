@@ -376,7 +376,17 @@ void SecurityConfigurationAssessment::Run()
                 // LCOV_EXCL_STOP
             }
 
-            policy->Run(reportCheckResult);
+            // A policy that fails during its scan must not stop the other policies, the periodic scans or the
+            // synchronization: log it and continue with the next one.
+            try
+            {
+                policy->Run(reportCheckResult);
+            }
+            catch (const std::exception& e)
+            {
+                LoggingHelper::getInstance().log(LOG_ERROR,
+                                                 "Scan of policy '" + policy->GetId() + "' stopped: " + e.what());
+            }
         }
 
         firstScan = false;
