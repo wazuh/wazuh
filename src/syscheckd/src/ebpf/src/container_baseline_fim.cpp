@@ -1137,7 +1137,7 @@ namespace
     /// @return the ids that still hold rows once the sweep has run, or nothing
     ///         when a gate below declined to sweep at all. A caller that needs
     ///         that list anyway has to ask the database for it.
-    std::optional<std::set<std::string>> SweepUnlisted(BaselineDriver& driver, const NodeReconcile& reconcile)
+    [[nodiscard]] std::optional<std::set<std::string>> SweepUnlisted(BaselineDriver& driver, const NodeReconcile& reconcile)
     {
         const ContainerListing& listing = reconcile.listing;
 
@@ -1196,7 +1196,8 @@ namespace
         auto reply = fetchContainerAdmission();
         std::lock_guard<std::recursive_mutex> lock(container_state_mutex);
         auto out = ApplyListing(reply);
-        SweepUnlisted(driver, out);
+        // Without a walk, no surviving container frees budget for another promotion pass.
+        static_cast<void>(SweepUnlisted(driver, out));
         return out;
     }
 

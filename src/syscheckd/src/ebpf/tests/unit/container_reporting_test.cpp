@@ -2418,6 +2418,69 @@ namespace
     }
 } // namespace
 
+TEST_F(ContainerReportingTest, ScheduledSweepRemovesAnAbsentContainersRowsAndContext)
+{
+    files = {{"a", {"/etc/one"}}, {"b", {"/etc/one"}}};
+    fim_run_container_baseline();
+    ASSERT_EQ(syncFlag("b", "/etc/one"), 1);
+    ASSERT_TRUE(hasContext("b"));
+
+    admission.erase("b");
+    files.erase("b");
+    listed = false;
+    fim_container_sweep_absent();
+
+    EXPECT_EQ(fim_db_count_container_rows("b", nullptr), 0);
+    EXPECT_FALSE(hasContext("b"));
+    EXPECT_EQ(syncFlag("a", "/etc/one"), 1);
+    EXPECT_TRUE(hasContext("a"));
+}
+
+TEST_F(ContainerReportingTest, ScheduledSweepKeepsAllRowsAndContextsWhenTheConnectorIsUnreachable)
+{
+    files = {{"a", {"/etc/one"}}, {"b", {"/etc/one"}}};
+    fim_run_container_baseline();
+    ASSERT_EQ(syncFlag("a", "/etc/one"), 1);
+    ASSERT_EQ(syncFlag("b", "/etc/one"), 1);
+    ASSERT_TRUE(hasContext("a"));
+    ASSERT_TRUE(hasContext("b"));
+
+    connector_available = false;
+    admission.clear();
+    files.clear();
+    listed = false;
+    persisted.clear();
+    fim_container_sweep_absent();
+
+    EXPECT_EQ(syncFlag("a", "/etc/one"), 1);
+    EXPECT_EQ(syncFlag("b", "/etc/one"), 1);
+    EXPECT_TRUE(hasContext("a"));
+    EXPECT_TRUE(hasContext("b"));
+    EXPECT_TRUE(persisted.empty());
+}
+
+TEST_F(ContainerReportingTest, ScheduledSweepKeepsListedContainersIncludingStoppedOnes)
+{
+    files = {{"a", {"/etc/one"}}, {"b", {"/etc/one"}}};
+    fim_run_container_baseline();
+    ASSERT_EQ(syncFlag("a", "/etc/one"), 1);
+    ASSERT_EQ(syncFlag("b", "/etc/one"), 1);
+    ASSERT_TRUE(hasContext("a"));
+    ASSERT_TRUE(hasContext("b"));
+
+    // A stopped container produces no walk rows but is still in the runtime's list.
+    files.erase("b");
+    listed = false;
+    persisted.clear();
+    fim_container_sweep_absent();
+
+    EXPECT_EQ(syncFlag("a", "/etc/one"), 1);
+    EXPECT_EQ(syncFlag("b", "/etc/one"), 1);
+    EXPECT_TRUE(hasContext("a"));
+    EXPECT_TRUE(hasContext("b"));
+    EXPECT_TRUE(persisted.empty());
+}
+
 TEST_F(ContainerReportingTest, UnreadableContainerIdsSkipThePruneToo)
 {
     files = {{"a", {"/etc/one"}}, {"b", {"/etc/one"}}};
