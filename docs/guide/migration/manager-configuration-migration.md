@@ -585,6 +585,7 @@ manager is still up and leaves it running. Remove these 4.x options:
 |--------|-------|
 | `https.ssl_protocol` | No longer configurable |
 | `experimental_features` | Experimental features toggle removed |
+| `drop_privileges` | The API always runs as `wazuh-manager`; only `wazuh-manager-apid -r` keeps root |
 | `upload_configuration.integrations` (`virustotal.public_key`) | VirusTotal is no longer configured in the manager — see [VirusTotal migration](virustotal-migration.md) |
 
 ```yaml

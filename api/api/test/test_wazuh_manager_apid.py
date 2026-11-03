@@ -597,7 +597,6 @@ def test_drop_privileges_clears_supplementary_groups_before_switching_ids(apid):
     apid.common = MagicMock()
     apid.common.wazuh_gid.return_value = 998
     apid.common.wazuh_uid.return_value = 997
-    apid.api_conf = {'drop_privileges': True}
     calls = MagicMock()
     with patch.object(apid.os, 'setgroups', calls.setgroups), \
             patch.object(apid.os, 'setgid', calls.setgid), \
@@ -666,7 +665,6 @@ def ssl_apid(apid, tmp_path):
     apid.api_conf = {
         'https': {'key': str(tmp_path / 'apid-key.pem'), 'cert': str(tmp_path / 'apid.pem'),
                   'use_ca': False, 'ca': str(tmp_path / 'ca.pem'), 'ssl_ciphers': ''},
-        'drop_privileges': True,
     }
     apid.common = MagicMock()
     apid.common.wazuh_uid.return_value = 1001
@@ -947,10 +945,11 @@ def test_drop_privileges_keeps_root_when_asked(ssl_apid):
     assert _drop_privileges_calls(ssl_apid, run_as_root=True) == []
 
 
-def test_drop_privileges_honours_drop_privileges_false(ssl_apid):
-    """drop_privileges: false in api.yaml keeps the current user."""
-    ssl_apid.api_conf['drop_privileges'] = False
-    assert _drop_privileges_calls(ssl_apid, run_as_root=False) == []
+def test_drop_privileges_does_not_read_api_conf(ssl_apid):
+    """The drop does not depend on api.yaml, even one that still sets the removed key: only -r keeps root."""
+    ssl_apid.api_conf = {'drop_privileges': False}
+    assert _drop_privileges_calls(ssl_apid, run_as_root=False) == [
+        call.setgroups([]), call.setgid(1002), call.setuid(1001)]
 
 
 # --- prepare_log_file ------------------------------------------------------------------------------

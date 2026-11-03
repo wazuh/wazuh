@@ -13,7 +13,6 @@ from api import configuration, api_exception
 custom_api_configuration = {
     "host": ["0.0.0.0", "::"],
     "port": 55000,
-    "drop_privileges": True,
     "max_upload_size": 10485760,
     "auth_context_max_payload_size": 65536,
     "authentication_pool_size": 2,
@@ -103,7 +102,7 @@ def test_read_configuration(mock_open, mock_exists, read_config):
     {'invalid_key': 'value'},
     {'host': 1234},
     {'port': 'invalid_type'},
-    {'drop_privileges': 'invalid_type'},
+    {'drop_privileges': True},  # removed in 5.0: only -r keeps root
     {'max_upload_size': 'invalid_type'},
     {'auth_context_max_payload_size': 'invalid_type'},
     {'auth_context_max_payload_size': 0},

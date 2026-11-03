@@ -326,10 +326,9 @@ int main(int argc, char* argv[])
 
     try
     {
-        // Dropping privileges only if not in standalone mode. The group must be
-        // changed before the user: once the process is no longer root, setgid()
-        // is not permitted anymore.
-        if (!base::process::isStandaloneModeEnable() && confManager.get<bool>(conf::key::DROP_PRIVILEGES))
+        // Always drop privileges in manager mode; standalone mode keeps the launcher's user and group. The group
+        // must be changed before the user: once the process is no longer root, setgid() is not permitted anymore.
+        if (!base::process::isStandaloneModeEnable())
         {
             const auto gid = base::process::lookupGid(base::process::WAZUH_GROUP);
             base::process::dropToGroup(gid);

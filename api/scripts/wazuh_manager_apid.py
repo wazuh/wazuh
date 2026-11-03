@@ -186,12 +186,14 @@ def drop_privileges(run_as_root: bool) -> None:
     setuid() leave them in place, so the dropped process would otherwise keep group access to
     whatever root's groups can read.
 
+    Only the command line (-r) keeps root; api.yaml has no option for it.
+
     Parameters
     ----------
     run_as_root : bool
         The API keeps running as root (-r).
     """
-    if not run_as_root and api_conf['drop_privileges']:
+    if not run_as_root:
         os.setgroups([])
         os.setgid(common.wazuh_gid())
         os.setuid(common.wazuh_uid())

@@ -467,30 +467,6 @@ TEST(ConfGet, badKey)
 }
 
 /************************************************************************
- *                       Privilege drop key
- ************************************************************************/
-TEST(ConfDropPrivileges, DefaultsToTrue)
-{
-    logging::testInit();
-    unsetenv("WAZUH_ENGINE_DROP_PRIVILEGES");
-
-    conf::Conf conf(std::make_shared<conf::mocks::MockFileLoader>());
-
-    EXPECT_TRUE(conf.get<bool>(conf::key::DROP_PRIVILEGES));
-}
-
-TEST(ConfDropPrivileges, EnvOverride)
-{
-    logging::testInit();
-    setEnv("WAZUH_ENGINE_DROP_PRIVILEGES", "false");
-
-    conf::Conf conf(std::make_shared<conf::mocks::MockFileLoader>());
-
-    EXPECT_FALSE(conf.get<bool>(conf::key::DROP_PRIVILEGES));
-
-    unsetEnv("WAZUH_ENGINE_DROP_PRIVILEGES");
-}
-/************************************************************************
  *                       Ranged units
  ************************************************************************/
 TEST(ConfRange, AddUnitRejectsABadRange)

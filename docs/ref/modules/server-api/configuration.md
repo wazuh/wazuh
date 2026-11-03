@@ -52,7 +52,7 @@ runs and debugging:
 | Option | Effect |
 |--------|--------|
 | `-f` | Run in the foreground, logging to the console as well as to the log files |
-| `-r` | Run as root: do not drop privileges to `wazuh-manager` (otherwise governed by [`drop_privileges`](#drop_privileges)) |
+| `-r` | Run as root: do not drop privileges to `wazuh-manager`. `api.yaml` has no option for it |
 | `-c <file>` | Use this API configuration file (merged over the built-in defaults) instead of `api.yaml`; when starting, a file that does not exist is error `2004` |
 | `-t` | Validate the configuration file given with `-c` (without `-c`, only the built-in defaults, never `api.yaml`) and exit: `0` when it is valid, otherwise `Configuration not valid. ERROR: <reason>` (no error code; a missing `-c` file included) and exit `1` |
 | `-V` | Print the version and exit |
@@ -74,13 +74,10 @@ Addresses the API listens on.
 
 - **Default value:** `55000`
 - **Allowed values:** Number. `-t` does not range-check it: `0`, `-1` or `70000` pass the check (the schema type is `number`) and fail only at bind
-
-### drop_privileges
-
-Run the API as the `wazuh-manager` user after it has read its configuration and certificates.
-
-- **Default value:** `true`
-- **Allowed values:** `true`, `false`. Ignored when `wazuh-manager-apid` is started with `-r`.
+- **Note:** Use a port of `1024` or higher. The API binds its sockets after it has switched to the `wazuh-manager`
+  user, so a privileged port (below `1024`, such as `443`) fails at start with `EACCES` and the API does not start.
+  To serve the API on such a port, keep it on its own port and put a reverse proxy or a port redirect (for example
+  an `iptables` `REDIRECT` rule) in front of it.
 
 ### max_upload_size
 
@@ -278,7 +275,6 @@ The values the API uses when `api.yaml` sets nothing:
 ```yaml
 host: ["0.0.0.0", "::"]
 port: 55000
-drop_privileges: true
 max_upload_size: 10485760  # 10 MB
 auth_context_max_payload_size: 65536  # 64 KB
 authentication_pool_size: 2
@@ -345,7 +341,6 @@ https:
 Relaxed settings for development and testing:
 
 ```yaml
-drop_privileges: false
 max_upload_size: 52428800  # 50 MB
 auth_context_max_payload_size: 262144  # Room for large AD/LDAP group lists
 authentication_pool_size: 4
