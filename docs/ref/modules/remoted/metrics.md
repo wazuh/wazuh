@@ -90,7 +90,7 @@ never in the per-endpoint `remoted.http.*.responses.*` cells (see
 | Metric | Type | Unit | Meaning | Tuning |
 |---|---|---|---|---|
 | `remoted.server.budget.available.bytes` | gauge (pull) | bytes | Bytes the budget can still admit | [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes) |
-| `remoted.server.budget.inflight.bytes` | gauge (pull) | bytes | Bytes currently reserved (request payloads plus zstd decompression scratch) | [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes) |
+| `remoted.server.budget.inflight.bytes` | gauge (pull) | bytes | Bytes currently reserved (request payloads, zstd decompression scratch and response compressor memory) | [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes) |
 | `remoted.server.budget.inflight.requests` | gauge (pull) | requests | Admitted requests currently resident — exactly one per request, compressed or not | [`remoted.max_parallel_connections`](configuration.md#remotedmax_parallel_connections), [`https.max_body_size`](configuration.md#httpsmax_body_size) |
 | `remoted.server.budget.rejected.total` | counter (pull) | requests | Requests the budget refused to admit (503, admission only) — cumulative | [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes) |
 | `remoted.server.connections.open` | gauge (pull) | connections | Connections currently open on the listener, counted from the start of the TLS handshake. **Not** the same as `budget.inflight.requests`: a connection is held from accept to close, which on a streamed `POST /download` is the whole transfer | [`remoted.max_parallel_connections`](configuration.md#remotedmax_parallel_connections) |
