@@ -296,13 +296,16 @@ namespace wazuh::container_instances
         std::size_t m_expectedSources {0};
 
         /// A source arrived after the verdict was already settled, so the next
-        /// settlement must rank the whole node from scratch rather than
-        /// re-confirm one made without that source.
+        /// settlement must re-rank provisional slots rather than re-confirm
+        /// one made without that source. Still-known, previously publishing
+        /// incumbents retain their slots unless they have been written off:
+        /// their documents must not be withdrawn just because a source arrived.
         ///
         /// Deferred rather than acted on at arrival because a source that has
         /// only just enumerated has had no resolver pass: its containers exist
-        /// but cannot publish, so ranking against them immediately evicts the
-        /// other source's incumbents without admitting any of the newcomers.
+        /// but may not publish yet. Comparing provisional slots at that instant
+        /// would favour whichever source happened to resolve first instead of
+        /// giving the newly enumerated containers time to compete.
         bool m_rerankOnSettle {false};
         std::set<SourceId> m_enumeratedSources;
         std::optional<TimePoint> m_settleDeadline;

@@ -439,10 +439,10 @@ namespace
         // their documents. Worst of both, and it is exactly what the barrier
         // exists to stop a cold start doing.
         //
-        // Re-opening alone is not enough either: incumbency survives it, so the
-        // half-a-node verdict would simply be re-confirmed when the barrier
-        // settles. The incumbency is dropped THEN, not now -- see
-        // m_rerankOnSettle.
+        // Re-opening alone is not enough either: provisional incumbency would
+        // simply re-confirm a half-a-node verdict when the barrier settles.
+        // Those slots are re-ranked THEN, not now, while containers that have
+        // published retain their protection -- see m_rerankOnSettle.
         if (firstFromThisSource && m_admissionSettled && m_expectedSources != 0)
         {
             m_admissionSettled = false;
@@ -1000,13 +1000,19 @@ namespace
         // armOrExpireSettleDeadlineLocked(), which runs before this and leaves
         // the branch above skipped.
         //
-        // Dropping the incumbents HERE is what makes the next line rank the
-        // whole node as a cold start would, instead of re-confirming a verdict
-        // made when half of it was invisible.
+        // Only provisional slots are offered again. A container that has
+        // published already has documents on the manager, so clearing its
+        // incumbency would withdraw them merely because a late source brought
+        // a lower id. Keep that protection while the container still exists
+        // and has not been written off; everything else can compete afresh.
         if (m_admissionSettled && m_rerankOnSettle)
         {
             m_rerankOnSettle = false;
-            m_admitted.clear();
+            for (auto it = m_admitted.begin(); it != m_admitted.end();)
+            {
+                it = (sets.known.count(*it) != 0 && m_everPublished.count(*it) != 0 &&
+                      m_writtenOffUnkeyed.count(*it) == 0) ? std::next(it) : m_admitted.erase(it);
+            }
         }
 
         auto admitted =

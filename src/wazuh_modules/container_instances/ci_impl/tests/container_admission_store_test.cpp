@@ -581,8 +581,9 @@ TEST(ContainerAdmissionStoreTest, ARestartingContainerNeverEntersTheUnkeyedTally
 // that was protecting their documents. Worst of both, and it is the failure the
 // barrier exists to prevent a cold start committing.
 //
-// So the arrival RE-OPENS the barrier and the ranking waits. The node is ranked
-// once it is actually in view, exactly as a cold start would rank it.
+// So the arrival RE-OPENS the barrier and the ranking waits. Provisional slots
+// are ranked once the node is in view, while an incumbent that has published
+// keeps the documents the manager already holds.
 TEST(ContainerAdmissionStoreTest, ALateSourceWithUnkeyedContainersDoesNotRankAgainstThemYet)
 {
     auto store = MakeStore();
@@ -604,13 +605,13 @@ TEST(ContainerAdmissionStoreTest, ALateSourceWithUnkeyedContainersDoesNotRankAga
     EXPECT_FALSE(AdmissionKnown(store))
         << "the node just got bigger, so the verdict about it is withheld again rather than re-made blind";
 
-    // "a" keys. Now the whole node is in view and it is ranked as a cold start
-    // would: "a" sorts below "m".
+    // "a" keys. The whole node is in view, but the lower id is not a reason
+    // to withdraw documents from the container already using the only slot.
     store.applySnapshot(kCri, Snapshot({"a"}), {}, start + ADMISSION_SETTLE_GRACE + std::chrono::seconds {3});
 
     EXPECT_TRUE(AdmissionKnown(store));
-    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"a"}))
-        << "ranking the whole node is the point; incumbency from the half-node verdict must not survive it";
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"m"}))
+        << "settlement must retain the incumbent that has already published";
 }
 
 // ...and the re-opened barrier is still bounded by the grace, so a late source
@@ -639,18 +640,9 @@ TEST(ContainerAdmissionStoreTest, AReopenedBarrierStillSettlesOnTheGrace)
         << "and the slot goes to the only container that can use it";
 }
 
-// A source slower than the grace must not lose the node for ever.
-//
-// The deadline is armed by the first call that carries a clock, so a Kubernetes
-// list slower than ADMISSION_SETTLE_GRACE settles admission over Docker alone.
-// Incumbency is sticky, so that half-a-node verdict then stood for the life of
-// the process: the Kubernetes containers arrive to find every slot taken and
-// never get one, however long they run.
-//
-// Arming the deadline on source readiness instead is the fix NOT taken -- the
-// deadline exists precisely for a source that never starts, which is what
-// AdmissionSettlesOnTheGraceWhenSnapshotsStop pins.
-TEST(ContainerAdmissionStoreTest, ASourceEnumeratingAfterTheGraceReopensTheRanking)
+// A late source must get a chance at provisional slots without taking a slot
+// that another container has already been using to publish documents.
+TEST(ContainerAdmissionStoreTest, ASourceEnumeratingAfterTheGracePreservesPublishedIncumbents)
 {
     auto store = MakeStore();
     store.setExpectedSources(2);
@@ -668,18 +660,38 @@ TEST(ContainerAdmissionStoreTest, ASourceEnumeratingAfterTheGraceReopensTheRanki
     ASSERT_TRUE(AdmissionKnown(store));
     ASSERT_EQ(store.admittedIds(), (std::set<std::string> {"m"}));
 
-    // Kubernetes finally lists, and it holds the lower id. Without the re-open
-    // "m" keeps the only slot by incumbency and "a" never reports at all.
+    // Kubernetes finally lists with the lower id. The existing publication
+    // must survive even when the new source is immediately ready to publish.
     store.applySnapshot(kCri, Snapshot({"a"}), {}, start + ADMISSION_SETTLE_GRACE + std::chrono::seconds {2});
 
-    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"a"}))
-        << "the whole node is ranked once the whole node is in view";
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"m"}))
+        << "a late source does not evict a container with published documents";
 
     // Once. From here incumbency is back in force, so a later snapshot from
     // either source does not re-open anything.
     store.applySnapshot(kDocker, Snapshot({"m"}), {}, start + ADMISSION_SETTLE_GRACE + std::chrono::seconds {3});
     store.applySnapshot(kCri, Snapshot({"a"}), {}, start + ADMISSION_SETTLE_GRACE + std::chrono::seconds {4});
-    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"a"})) << "a re-rank every pass would be churn, not a fix";
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"m"})) << "the published incumbent keeps its slot";
+}
+
+TEST(ContainerAdmissionStoreTest, ASourceEnumeratingAfterTheGraceReranksProvisionalSlots)
+{
+    auto store = MakeStore();
+    store.setExpectedSources(2);
+    store.setSyncLimit(1);
+    const auto start = Now();
+    store.applySnapshot(kDocker, {MakeRecord("m", 0)}, {}, start);
+    store.settleAdmissionIfDue(start + ADMISSION_SETTLE_GRACE + std::chrono::seconds {1});
+    ASSERT_EQ(store.admittedIds(), (std::set<std::string> {"m"}));
+
+    const auto reopened = start + ADMISSION_SETTLE_GRACE + std::chrono::seconds {2};
+    store.applySnapshot(kCri, {MakeRecord("a", 0)}, {}, reopened);
+    ASSERT_FALSE(AdmissionKnown(store));
+    store.settleAdmissionIfDue(reopened + ADMISSION_SETTLE_GRACE + std::chrono::seconds {1});
+
+    EXPECT_TRUE(AdmissionKnown(store));
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"a"}))
+        << "never-published incumbency must not outrank another unkeyed container with a lower id";
 }
 
 // The leftover slot, and the fact that resolving the container that wants
