@@ -612,12 +612,15 @@ class EXPORTED Syscollector final
          * @brief Updates sync flag for items in database
          *
          * This helper function updates the sync flag (0 or 1) for all items in the vector.
-         * It uses a DBSync transaction to ensure all updates are atomic and properly committed to disk.
+         * Deletion and reinsertion use separate DBSync transactions. Callers that owe
+         * a reporting transition must retain that obligation when either step fails,
+         * rather than assuming a logged error means the flag was changed.
          *
          * @param itemsToUpdate Vector of (table_name, json_data) pairs to update
          * @param syncValue Value to set for sync flag (0 or 1)
+         * @return True when every requested flag update succeeded, including an empty request.
          */
-        void updateSyncFlagInDB(const std::vector<std::pair<std::string, nlohmann::json>>& itemsToUpdate, int syncValue) const;
+        bool updateSyncFlagInDB(const std::vector<std::pair<std::string, nlohmann::json>>& itemsToUpdate, int syncValue) const;
 
         /**
          * @brief Promotes unsynced items with deterministic ordering

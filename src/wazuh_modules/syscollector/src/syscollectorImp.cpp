@@ -5324,7 +5324,7 @@ void Syscollector::retractDeAdmittedContainers()
 {
     std::lock_guard<std::mutex> lock(m_limitsMutex);
 
-    if ((m_pendingRetractions.empty() && !m_globalReconcilePending) || !m_spDBSync)
+    if (m_admissionPending || (m_pendingRetractions.empty() && !m_globalReconcilePending) || !m_spDBSync)
     {
         return;
     }
@@ -5340,30 +5340,12 @@ void Syscollector::retractDeAdmittedContainers()
         return;
     }
 
-    // Taken before the work, and cleared only here, so a container retracted now is
-    // not asked for again next pass. On the failure path above neither is touched.
+    // Keep the obligations armed until their flags have actually been written.
+    // A failed read or demotion leaves reported rows for a later pass, even if
+    // admission never changes again. A pending verdict above defers the same
+    // work without interpreting its temporary refusal as a node-wide retraction.
     const bool globalPass = m_globalReconcilePending;
-    std::set<std::string> owed;
-    owed.swap(m_pendingRetractions);
-    m_globalReconcilePending = false;
-
-    // ONLY the global pass may set this. It is what says "the stored sync flags
-    // have been checked against admission in this process", and a per-container
-    // retraction has checked one container's rows, not every container's.
-    //
-    // Setting it here regardless disarmed the restart pass before it ever ran.
-    // The way in is a DEPARTURE rather than a de-admission: a container the cap
-    // turns down leaves m_containerAdmissionWithholding set, which arms the
-    // global pass in the same call, but a container that simply stops owes a
-    // per-container retraction with nothing armed. One of those, before the cap
-    // ever bit, used to close the door for the life of the process -- and the
-    // rows the global pass exists for are exactly the ones nothing else can
-    // find: reported by a previous process, for a container this one has never
-    // admitted and so never watched lose anything.
-    if (globalPass)
-    {
-        m_admissionReconciled = true;
-    }
+    const auto owed = m_pendingRetractions;
 
     // One scoped read per container that actually owes something. The global form
     // survives for the restart case alone: there the stored flags, not the admitted
@@ -5384,38 +5366,75 @@ void Syscollector::retractDeAdmittedContainers()
         }
     }
 
-    for (const auto& [table, index] : INDEX_MAP)
+    bool reconciled = true;
+    try
     {
-        std::vector<nlohmann::json> records;
-
-        for (const auto& rowFilter : rowFilters)
+        for (const auto& [table, index] : INDEX_MAP)
         {
-            auto query = SelectQuery::builder()
-                         .table(table)
-                         .columnList({"*"})
-                         .rowFilter(rowFilter)
-                         .build();
-            m_spDBSync->selectRows(query.query(),
-                                   [&records, this](ReturnTypeCallback type, const nlohmann::json & row)
+            std::vector<nlohmann::json> records;
+
+            for (const auto& rowFilter : rowFilters)
             {
-                if (type == SELECTED &&
-                        !isContainerAdmittedLocked(row.at(CONTAINER_ID_COLUMN).get<std::string>()))
+                auto query = SelectQuery::builder()
+                             .table(table)
+                             .columnList({"*"})
+                             .rowFilter(rowFilter)
+                             .build();
+                m_spDBSync->selectRows(query.query(),
+                                       [&records, &reconciled, this](ReturnTypeCallback type, const nlohmann::json & row)
                 {
-                    records.push_back(row);
-                }
-            });
+                    if (type == DB_ERROR)
+                    {
+                        reconciled = false;
+                    }
+                    else if (type == SELECTED &&
+                            !isContainerAdmittedLocked(row.at(CONTAINER_ID_COLUMN).get<std::string>()))
+                    {
+                        records.push_back(row);
+                    }
+                });
+            }
+
+            std::vector<std::pair<std::string, nlohmann::json>> demoted;
+
+            for (const auto& record : records)
+            {
+                // A global pass can discover rows this process never admitted, so
+                // remember those ids too if their demotion needs another attempt.
+                m_pendingRetractions.insert(record.at(CONTAINER_ID_COLUMN).get<std::string>());
+                auto [data, version] = ecsData(record, table);
+                m_persistDiffFunction(calculateHashId(record, table), OPERATION_DELETE, index, data.dump(), version);
+                demoted.emplace_back(table, record);
+            }
+
+            if (!updateSyncFlagInDB(demoted, 0))
+            {
+                reconciled = false;
+            }
         }
-
-        std::vector<std::pair<std::string, nlohmann::json>> demoted;
-
-        for (const auto& record : records)
+    }
+    catch (const std::exception& ex)
+    {
+        if (m_logFunction)
         {
-            auto [data, version] = ecsData(record, table);
-            m_persistDiffFunction(calculateHashId(record, table), OPERATION_DELETE, index, data.dump(), version);
-            demoted.emplace_back(table, record);
+            m_logFunction(LOG_ERROR, "Failed to retract container inventory: " + std::string(ex.what()));
         }
+        return;
+    }
 
-        updateSyncFlagInDB(demoted, 0);
+    if (!reconciled)
+    {
+        return;
+    }
+
+    m_pendingRetractions.clear();
+    m_globalReconcilePending = false;
+    // A successful per-container pass checked only those ids. Only the global
+    // pass can acknowledge that every stored reporting flag has been reconciled
+    // in this process, and a failed global pass must remain reachable.
+    if (globalPass)
+    {
+        m_admissionReconciled = true;
     }
 
     for (auto it = m_containerDocumentCounts.begin(); it != m_containerDocumentCounts.end();)
@@ -7751,13 +7770,18 @@ void Syscollector::deleteFailedItemsFromDB(const std::vector<std::pair<std::stri
     }
 }
 
-void Syscollector::updateSyncFlagInDB(const std::vector<std::pair<std::string, nlohmann::json>>& itemsToUpdate, int syncValue) const
+bool Syscollector::updateSyncFlagInDB(const std::vector<std::pair<std::string, nlohmann::json>>& itemsToUpdate, int syncValue) const
 {
-    if (itemsToUpdate.empty() || !m_spDBSync)
+    if (itemsToUpdate.empty())
     {
-        return;
+        return true;
+    }
+    if (!m_spDBSync)
+    {
+        return false;
     }
 
+    bool success = true;
     try
     {
         // Strategy: Delete rows, then re-insert with new sync value
@@ -7765,7 +7789,10 @@ void Syscollector::updateSyncFlagInDB(const std::vector<std::pair<std::string, n
 
         // Step 1: Delete all rows in a transaction
         {
-            const auto txnCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
+            const auto txnCallback = [&success](ReturnTypeCallback type, const nlohmann::json&)
+            {
+                if (type == DB_ERROR) success = false;
+            };
             DBSyncTxn deleteTxn{m_spDBSync->handle(), nlohmann::json::array(), 0, 1, txnCallback};
 
             for (const auto& [tableName, data] : itemsToUpdate)
@@ -7782,6 +7809,7 @@ void Syscollector::updateSyncFlagInDB(const std::vector<std::pair<std::string, n
                 }
                 catch (const std::exception& e)
                 {
+                    success = false;
                     if (m_logFunction)
                     {
                         m_logFunction(LOG_ERROR, "Failed to delete row: " + std::string(e.what()));
@@ -7794,7 +7822,10 @@ void Syscollector::updateSyncFlagInDB(const std::vector<std::pair<std::string, n
 
         // Step 2: Re-insert rows with new sync value in a transaction to force commit
         {
-            const auto txnCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
+            const auto txnCallback = [&success](ReturnTypeCallback type, const nlohmann::json&)
+            {
+                if (type == DB_ERROR) success = false;
+            };
             DBSyncTxn insertTxn{m_spDBSync->handle(), nlohmann::json::array(), 0, 1, txnCallback};
 
             for (const auto& [tableName, data] : itemsToUpdate)
@@ -7812,6 +7843,7 @@ void Syscollector::updateSyncFlagInDB(const std::vector<std::pair<std::string, n
                 }
                 catch (const std::exception& e)
                 {
+                    success = false;
                     if (m_logFunction)
                     {
                         m_logFunction(LOG_ERROR, "Failed to insert row for table " + tableName + ": " + std::string(e.what()));
@@ -7823,7 +7855,7 @@ void Syscollector::updateSyncFlagInDB(const std::vector<std::pair<std::string, n
             insertTxn.getDeletedRows(txnCallback);
         }
 
-        if (m_logFunction)
+        if (success && m_logFunction)
         {
             m_logFunction(LOG_DEBUG_VERBOSE, "Updated sync=" + std::to_string(syncValue) +
                           " for " + std::to_string(itemsToUpdate.size()) + " item(s) in DBSync");
@@ -7831,11 +7863,13 @@ void Syscollector::updateSyncFlagInDB(const std::vector<std::pair<std::string, n
     }
     catch (const std::exception& e)
     {
+        success = false;
         if (m_logFunction)
         {
             m_logFunction(LOG_ERROR, "Failed to update sync flag: " + std::string(e.what()));
         }
     }
+    return success;
 }
 
 std::string Syscollector::getFirstPrimaryKeyField(const std::string& tableName) const

@@ -7331,6 +7331,190 @@ TEST_F(SyscollectorImpTest, AnUnheardContainerVerdictFiltersSyncAndContextRows)
     module.m_containerDocumentCounts.clear();
 }
 
+TEST_F(SyscollectorImpTest, APendingVerdictDefersOwedRetractions)
+{
+    const auto info = std::make_shared<MockSysInfo>();
+    EXPECT_CALL(*info, releaseThreadResources()).Times(testing::AnyNumber());
+    auto& module = Syscollector::instance();
+    std::vector<Operation_t> events;
+    module.init(
+        info,
+        reportFunction,
+        [&events](const std::string&, Operation_t op, const std::string&, const std::string&, uint64_t)
+    {
+        events.push_back(op);
+    },
+    logFunction,
+    SYSCOLLECTOR_DB_PATH,
+    "",
+    "",
+    3600,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false);
+    module.m_admissionKnown = false;
+    module.m_admissionPending = false;
+    module.m_admissionReconciled = false;
+    module.m_globalReconcilePending = false;
+    module.m_pendingRetractions.clear();
+    module.m_admittedContainers.clear();
+    module.m_containerAdmissionWithholding = false;
+    module.setAdmittedContainers({{"a", true}, {"b", true}});
+    for (const std::string id : {"a", "b"})
+    {
+        const nlohmann::json row = {{"container_id", id}, {"pid", "123"}, {"name", "worker"},
+            {"checksum", "sum"}, {"version", 1}, {"sync", 1}};
+        auto query = SyncRowQuery::builder().table(PROCESSES_TABLE).data(row).build();
+        module.m_spDBSync->syncRow(query.query(), [](ReturnTypeCallback, const nlohmann::json&) {});
+    }
+    module.setAdmittedContainers({{"a", true}, {"b", false}});
+    module.m_admissionPending = true;
+    module.retractDeAdmittedContainers();
+
+    EXPECT_TRUE(events.empty());
+    EXPECT_EQ(module.m_pendingRetractions, (std::set<std::string> {"b"}));
+    EXPECT_TRUE(module.m_globalReconcilePending);
+    EXPECT_FALSE(module.m_admissionReconciled);
+    EXPECT_EQ(module.unsyncedCountFor(PROCESSES_TABLE, Syscollector::LimitScope::container, "a"), 0u);
+    EXPECT_EQ(module.unsyncedCountFor(PROCESSES_TABLE, Syscollector::LimitScope::container, "b"), 0u);
+
+    module.m_admissionPending = false;
+    module.retractDeAdmittedContainers();
+    EXPECT_EQ(events, (std::vector<Operation_t> {OPERATION_DELETE}));
+    EXPECT_EQ(module.unsyncedCountFor(PROCESSES_TABLE, Syscollector::LimitScope::container, "a"), 0u);
+    EXPECT_EQ(module.unsyncedCountFor(PROCESSES_TABLE, Syscollector::LimitScope::container, "b"), 1u);
+    EXPECT_TRUE(module.m_pendingRetractions.empty());
+    EXPECT_FALSE(module.m_globalReconcilePending);
+    EXPECT_TRUE(module.m_admissionReconciled);
+    module.destroy();
+    module.m_containerBaseline = false;
+    module.m_admissionKnown = false;
+    module.m_admissionPending = false;
+    module.m_admissionReconciled = false;
+    module.m_globalReconcilePending = false;
+    module.m_pendingRetractions.clear();
+    module.m_admittedContainers.clear();
+    module.m_containerAdmissionWithholding = false;
+    module.m_containerDocumentCounts.clear();
+}
+
+TEST_F(SyscollectorImpTest, FailedRetractionsRemainOwedUntilTheirFlagsAreWritten)
+{
+    class FailingFlagDBSync : public DBSync
+    {
+        public:
+            using DBSync::DBSync;
+            bool rejectWrites {true};
+
+            void deleteRows(const nlohmann::json& input) override
+            {
+                if (rejectWrites) throw std::runtime_error("reporting flag delete failed");
+                DBSync::deleteRows(input);
+            }
+
+            void insertData(const nlohmann::json& input) override
+            {
+                if (rejectWrites) throw std::runtime_error("reporting flag insert failed");
+                DBSync::insertData(input);
+            }
+    };
+    const auto info = std::make_shared<MockSysInfo>();
+    EXPECT_CALL(*info, releaseThreadResources()).Times(testing::AnyNumber());
+    auto& module = Syscollector::instance();
+    std::vector<Operation_t> events;
+    module.init(
+        info,
+        reportFunction,
+        [&events](const std::string&, Operation_t op, const std::string&, const std::string&, uint64_t)
+    {
+        events.push_back(op);
+    },
+    logFunction,
+    SYSCOLLECTOR_DB_PATH,
+    "",
+    "",
+    3600,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false);
+    module.m_admissionKnown = false;
+    module.m_admissionPending = false;
+    module.m_admissionReconciled = false;
+    module.m_globalReconcilePending = false;
+    module.m_pendingRetractions.clear();
+    module.m_admittedContainers.clear();
+    module.m_containerAdmissionWithholding = false;
+    auto db = std::make_unique<FailingFlagDBSync>(HostType::AGENT, DbEngineType::SQLITE3,
+                                                SYSCOLLECTOR_DB_PATH, module.getCreateStatement(),
+                                                DbManagement::PERSISTENT, UPGRADE_SQL_STATEMENTS);
+    auto* failingDb = db.get();
+    module.m_spDBSync = std::move(db);
+    const nlohmann::json row = {{"container_id", "b"}, {"pid", "123"}, {"name", "worker"},
+        {"checksum", "sum"}, {"version", 1}, {"sync", 1}};
+
+    for (const bool globalPass : {false, true})
+    {
+        auto query = SyncRowQuery::builder().table(PROCESSES_TABLE).data(row).build();
+        module.m_spDBSync->syncRow(query.query(), [](ReturnTypeCallback, const nlohmann::json&) {});
+        failingDb->rejectWrites = false;
+        module.updateSyncFlagInDB({{PROCESSES_TABLE, row}}, 1);
+        failingDb->rejectWrites = true;
+        module.m_admissionKnown = true;
+        module.m_admissionReconciled = false;
+        module.m_pendingRetractions = globalPass ? std::set<std::string> {} : std::set<std::string> {"b"};
+        module.m_globalReconcilePending = globalPass;
+        events.clear();
+
+        module.retractDeAdmittedContainers();
+        EXPECT_EQ(module.m_pendingRetractions, (std::set<std::string> {"b"}));
+        EXPECT_EQ(module.m_globalReconcilePending, globalPass);
+        EXPECT_FALSE(module.m_admissionReconciled);
+        EXPECT_EQ(module.unsyncedCountFor(PROCESSES_TABLE, Syscollector::LimitScope::container, "b"), 0u);
+
+        // No new admission transition arrives. Retrying the obligation alone
+        // must finish demotion, and only a successful global pass closes the
+        // restart reconciliation for the process.
+        failingDb->rejectWrites = false;
+        module.retractDeAdmittedContainers();
+        EXPECT_EQ(module.unsyncedCountFor(PROCESSES_TABLE, Syscollector::LimitScope::container, "b"), 1u);
+        EXPECT_TRUE(module.m_pendingRetractions.empty());
+        EXPECT_FALSE(module.m_globalReconcilePending);
+        EXPECT_EQ(module.m_admissionReconciled, globalPass);
+    }
+    module.destroy();
+    module.m_containerBaseline = false;
+    module.m_admissionKnown = false;
+    module.m_admissionPending = false;
+    module.m_admissionReconciled = false;
+    module.m_globalReconcilePending = false;
+    module.m_pendingRetractions.clear();
+    module.m_admittedContainers.clear();
+    module.m_containerAdmissionWithholding = false;
+    module.m_containerDocumentCounts.clear();
+}
+
 TEST_F(SyscollectorImpTest, AdmissionRetractsAndRestoresRetainedRows)
 {
     const auto info = std::make_shared<MockSysInfo>();
