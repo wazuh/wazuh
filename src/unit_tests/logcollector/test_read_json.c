@@ -227,12 +227,86 @@ void test_long_line_ignored_next_lines_sent(void **state) {
     run_long_line(true);
 }
 
+/* Reads one complete line with the given labels and checks the message that is sent */
+static void run_labels(wlabel_t *labels, const char *line, const char *expected) {
+    logreader lf = { .file = "test", .labels = labels };
+    int rc;
+    const int64_t end = strlen(line);
+
+    maximum_lines = 0;
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 0);
+
+    will_return(__wrap_w_get_hash_context, false);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 0);
+
+    expect_line(line, end);
+    expect_sent(expected, end);
+
+    will_return(__wrap_can_read, 0);
+
+    read_json(&lf, &rc, 0);
+}
+
+/*
+ * Input: a line with members named like the configured labels, in any case.
+ * The configured labels replace them, and the other members are kept.
+ */
+void test_labels_take_precedence(void **state) {
+    wlabel_t labels[] = {
+        { .key = "env", .value = "production" },
+        { .key = "tags.team", .value = "blue" },
+        { .key = NULL }
+    };
+
+    run_labels(labels,
+               "{\"ENV\":\"test\",\"msg\":\"hello\",\"tags\":{\"team\":\"red\",\"id\":1}}\n",
+               "{\"msg\":\"hello\",\"tags\":{\"id\":1,\"team\":\"blue\"},\"env\":\"production\"}");
+}
+
+/*
+ * Input: a line with a member whose name holds the dotted label key.
+ * It is removed, so it cannot shadow the nested label once analysisd flattens the event.
+ */
+void test_labels_dotted_member_name(void **state) {
+    wlabel_t labels[] = {
+        { .key = "tags.team", .value = "blue" },
+        { .key = NULL }
+    };
+
+    run_labels(labels,
+               "{\"tags.team\":\"red\",\"msg\":\"hello\"}\n",
+               "{\"msg\":\"hello\",\"tags\":{\"team\":\"blue\"}}");
+}
+
+/*
+ * Input: a line with an "app" object, and the labels "app" and "app.env", which collide with each other.
+ * The line's member is replaced, and the first label wins over the second, as when the line has no such member.
+ */
+void test_labels_colliding_first_wins(void **state) {
+    wlabel_t labels[] = {
+        { .key = "app", .value = "x" },
+        { .key = "app.env", .value = "prod" },
+        { .key = NULL }
+    };
+
+    run_labels(labels,
+               "{\"app\":{\"env\":\"line\",\"v\":1},\"msg\":\"m\"}\n",
+               "{\"msg\":\"m\",\"app\":\"x\"}");
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_long_line_not_json_next_lines_sent),
         cmocka_unit_test(test_long_line_ignored_next_lines_sent),
         cmocka_unit_test(test_long_line_incomplete_waits),
         cmocka_unit_test(test_long_line_incomplete_hash_rolled_back),
+        cmocka_unit_test(test_labels_take_precedence),
+        cmocka_unit_test(test_labels_dotted_member_name),
+        cmocka_unit_test(test_labels_colliding_first_wins),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

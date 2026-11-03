@@ -154,6 +154,11 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
 
         const char *jsonErrPtr;
         if (obj = cJSON_ParseWithOpts(str, &jsonErrPtr, 0), obj && cJSON_IsObject(obj)) {
+          // Configured labels take precedence over members of the same name in the log line
+          for (i = 0; lf->labels && lf->labels[i].key; i++) {
+              W_JSON_RemoveField(obj, lf->labels[i].key);
+          }
+
           for (i = 0; lf->labels && lf->labels[i].key; i++) {
               W_JSON_AddField(obj, lf->labels[i].key, lf->labels[i].value);
           }
