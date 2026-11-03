@@ -109,6 +109,9 @@ def test_validation_check_exp_ok(exp, regex_name):
         # query parameters
         ("sort param@", _sort_param),
         ("search param;", _search_param),
+        ("search\r\nX:1", _search_param),
+        ("search\n", _search_param),
+        ("search\x00x", _search_param),
         # hashes
         ("$$d909c290d0fb1ca068ffaddf22cbd0", _hashes),
         ("449e3b6ffd9b484c5c645321edd4d61$", _wazuh_key),

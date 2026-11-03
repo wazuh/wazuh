@@ -12,7 +12,7 @@ options, each of which can be overridden by an environment variable. For what th
 | What | Where it comes from |
 |------|---------------------|
 | Indexer hosts and TLS material | The `<indexer>` section of `/etc/wazuh-manager/wazuh-manager.conf` (`hosts` and `ssl`). See [`indexer`](../../configuration/manager/reference.md#indexer). |
-| Indexer username and password | The manager keystore only (`wazuh-manager-keystore -f indexer -k username` / `-k password`). See [Store the credentials in the keystore](../../../guide/migration/filebeat-to-indexer-connector.md#3-store-the-credentials-in-the-keystore). |
+| Indexer username and password | The manager keystore only (entries `username` and `password` in family `indexer`; read one with `wazuh-manager-keystore -f indexer -k username -g`, write with the forms in the [Keystore](../keystore/README.md) page — a command without `-g` and without `-v`/`-vp` **writes** whatever arrives on stdin). See [Store the credentials in the keystore](../../../guide/migration/filebeat-to-indexer-connector.md#3-store-the-credentials-in-the-keystore). |
 | Every other engine setting | `analysisd.*` lines in `/etc/wazuh-manager/wazuh-manager-internal-options.conf` — see [Settings reference](#settings-reference). |
 | Overrides | Each `analysisd.*` setting has a `WAZUH_*` environment variable that takes precedence over the file. |
 | Process behaviour for one run | The [command-line options](#command-line-options) of `wazuh-manager-analysisd`. |

@@ -144,7 +144,7 @@ async def get_agents(lc: local_client.LocalClient, filter_status=None):
 
     input_json = {'f': Agent.get_agents_overview,
                   'f_kwargs': {
-                      'filters': {'status': ','.join(filter_status)},
+                      'filters': {'status': list(filter_status)},
                       'limit': None,
                       'select': list(select_fields)
                   },

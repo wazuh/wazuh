@@ -221,8 +221,9 @@ closed fails with `502`.
 remoted answers its health probe — `GET` on the global prefix itself, `GET /wazuh-manager/` by
 default (with or without the trailing slash) — with `200`, unauthenticated, with a small JSON body
 (`{"status":"ok","module":"remoted"}`). Use it as the health check (on AWS: path `/wazuh-manager/`,
-matcher `200`). A bare `GET /` answers `404` unless `global_prefix` is `/`. A plain TCP check also
-works, since the port only opens once the listener is ready.
+matcher `200`). A bare `GET /` answers `404` unless `global_prefix` is `/`. A plain TCP check only proves that
+the port is open: a hung (frozen) remoted keeps accepting connections and never answers them, so a TCP check keeps
+sending it traffic. Under TLS passthrough, probe over TLS (HAProxy `check-ssl`, see [HAProxy](haproxy.md#36-active-health-checks-and-their-limitation)).
 
 > **Limitation to be aware of:** the health probe reports that the process is alive, not that the whole
 > pipeline is working. A manager whose analysis engine is down still answers `200` here while

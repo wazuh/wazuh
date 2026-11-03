@@ -350,7 +350,7 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
     if body_read and (log_body or path == RUN_AS_LOGIN_ENDPOINT):
         try:
             body = await request.json()
-        except (ClientDisconnect, json.JSONDecodeError, RecursionError):
+        except (ClientDisconnect, ValueError, RecursionError):
             body = {}
 
     # Neither the query nor the body is masked here. `custom_logging` redacts both, recursively

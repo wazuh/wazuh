@@ -94,8 +94,17 @@ backend remoted_nodes_tcp
     # The default is round-robin over connections. A 5.x agent opens one connection per
     # request, so its requests alternate between managers just as under termination.
     # 'balance source' pins each agent address to one manager instead (optional).
-    server node1 10.0.0.11:1517 check
-    server node2 10.0.0.12:1517 check
+    #
+    # Health check: an HTTPS probe, not a bare TCP connect. A plain 'check' only proves the kernel accepts
+    # connections, which a frozen (SIGSTOP, deadlocked) remoted still does: its share of the agents would time
+    # out. 'check-ssl' makes the probe speak TLS to the backend and 'option httpchk' asks the unauthenticated
+    # health route. Agent traffic stays layer 4; only the probe is HTTP. 'verify none' is limited to the
+    # probe, which carries no secret.
+    option httpchk
+    http-check send meth GET uri /wazuh-manager/
+    http-check expect status 200
+    server node1 10.0.0.11:1517 check check-ssl verify none
+    server node2 10.0.0.12:1517 check check-ssl verify none
 
     # [!] DO NOT add 'send-proxy' or 'send-proxy-v2' to those server lines -- see 3.3.
 
@@ -232,6 +241,10 @@ flowchart LR
     H["HAProxy<br/>GET /wazuh-manager/ every 2 s"] -->|"200 → in rotation"| N1["manager 1"]
     H -.->|"no answer → out of rotation"| N2["manager 2"]
 ```
+
+Under passthrough, a plain `check` (TCP connect) is **not** enough: a frozen remoted keeps its listener socket, so the
+connect succeeds and the balancer keeps sending it agent connections that time out. Use the `check-ssl` HTTPS probe shown
+in the passthrough backend of [§2](#2-complete-configuration).
 
 The limitation is remoted's, not HAProxy's: the health probe reports that the process is alive, not that the
 pipeline works. A manager whose analysis engine is down still answers `200` and stays in rotation.

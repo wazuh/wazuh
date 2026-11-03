@@ -260,10 +260,10 @@ stages:
     response:
       status_code: 400
       json:
-        # wazuh-db's raw backend error text (e.g. SQL fragments) must never reach the caller;
-        # only the generic wazuhdb-request message is expected here.
-        error: 2003
-        detail: 'Error in wazuhdb request'
+        # Control characters are refused by the `search` validator before the value can reach wazuh-db, so
+        # neither its raw backend error text (SQL fragments) nor error 2003 is produced.
+        title: 'Bad Request'
+        detail: "Invalid value for query parameter 'search': must match the 'search' format"
 
   - name: Try to show agents with a stray semicolon in q
     request:

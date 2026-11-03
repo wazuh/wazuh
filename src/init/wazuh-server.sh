@@ -665,6 +665,39 @@ wait_for_wazuh_engine_ready()
 }
 
 # Start function
+# start_failed <daemon>: ends a start in which <daemon> did not come up (it refused to launch, or died right
+# after). Reports it, leaves the verdict `status` reads, stops what this run started and exits 1.
+start_failed()
+{
+    i=$1
+    if [ $USE_JSON = true ]; then
+        # Closes the document: the exit below leaves no later point to do it.
+        echo -n '{"daemon":"'${i}'","status":"error"}]}'
+    else
+        echo "${i} did not start correctly.";
+    fi
+    rm -f ${DIR}/var/run/${i}.start
+    # Same marker the framework reads as 'failed'; the content tells status why.
+    echo "start" | service_write ${DIR}/var/run/${i}.failed replace
+    rm -f ${DIR}/var/run/*.start
+    rm -f ${DIR}/var/run/.restart
+    # Leave the manager stopped, not half started: under the unit (KillMode=process) systemd
+    # kills only this script, so the daemons it already launched would keep running inside a
+    # failed unit -- authd answering enrollments, wazuh-db serving a manager that is down. Stop
+    # what this run started, the failed daemon included (it may have left a process behind);
+    # daemons that were already running (remoted across a reload) stay. With -j its report is
+    # dropped: the document above is the only one. stop_service() reuses $i, so it runs last.
+    DAEMONS="${STARTED} ${i}"
+    MAX_KILL_TRIES=10
+    if [ $USE_JSON = true ]; then
+        stop_service > /dev/null 2>&1
+    else
+        stop_service
+    fi
+    unlock;
+    exit 1;
+}
+
 start_service()
 {
 
@@ -731,32 +764,7 @@ start_service()
                 failed=true
             fi
             if [ $failed = true ]; then
-                if [ $USE_JSON = true ]; then
-                    # Closes the document: the exit below leaves no later point to do it.
-                    echo -n '{"daemon":"'${i}'","status":"error"}]}'
-                else
-                    echo "${i} did not start correctly.";
-                fi
-                rm -f ${DIR}/var/run/${i}.start
-                # Same marker the framework reads as 'failed'; the content tells status why.
-                echo "start" | service_write ${DIR}/var/run/${i}.failed replace
-                rm -f ${DIR}/var/run/*.start
-                rm -f ${DIR}/var/run/.restart
-                # Leave the manager stopped, not half started: under the unit (KillMode=process) systemd
-                # kills only this script, so the daemons it already launched would keep running inside a
-                # failed unit -- authd answering enrollments, wazuh-db serving a manager that is down. Stop
-                # what this run started, the failed daemon included (it may have left a process behind);
-                # daemons that were already running (remoted across a reload) stay. With -j its report is
-                # dropped: the document above is the only one. stop_service() reuses $i, so it runs last.
-                DAEMONS="${STARTED} ${i}"
-                MAX_KILL_TRIES=10
-                if [ $USE_JSON = true ]; then
-                    stop_service > /dev/null 2>&1
-                else
-                    stop_service
-                fi
-                unlock;
-                exit 1;
+                start_failed ${i}
             fi
             STARTED="${STARTED} ${i}"
             if [ $USE_JSON = true ]; then
@@ -770,6 +778,25 @@ start_service()
             else
                 echo "${i} already running..."
             fi
+        fi
+    done
+
+    # A daemon forks and returns 0 before it has validated its own settings: one that then dies (an
+    # out-of-range internal option, say) would leave a start reporting success over a dead manager. Each
+    # daemon this run launched must show a live process, given up to 10 s to write its PID file.
+    for i in ${STARTED}; do
+        waited=0
+        while [ $waited -lt 10 ]; do
+            pstatus ${i} quiet
+            if [ $? = 1 ]; then
+                break
+            fi
+            sleep 1
+            waited=`expr $waited + 1`
+        done
+        pstatus ${i} quiet
+        if [ $? = 0 ]; then
+            start_failed ${i}
         fi
     done
 
