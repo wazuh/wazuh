@@ -12,7 +12,9 @@
 
 #include <gtest/gtest.h>
 
+#include <atomic>
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <thread>
 #include <utility>
@@ -394,6 +396,150 @@ TEST(InFlightBudget, ConcurrentGrowNeverOvershootsTheBudget)
     EXPECT_EQ(budget.availableBytes(), 0U);
 
     reservations.clear(); // release them all
+    EXPECT_EQ(budget.availableBytes(), total);
+    EXPECT_EQ(budget.inFlightCount(), 0U);
+}
+
+// tryReserveUncountedKeeping() is the compressor's path: optional memory that must never take the
+// budget below the room one new admission needs (the floor, `keep`).
+TEST(InFlightBudget, TryReserveUncountedKeepingGrantsDownToTheFloor)
+{
+    InFlightBudget budget(1000);
+
+    auto granted = budget.tryReserveUncountedKeeping(800, 200);
+    ASSERT_TRUE(granted.has_value());
+    EXPECT_EQ(granted->bytes(), 800U);
+    EXPECT_EQ(budget.availableBytes(), 200U); // exactly the floor is left
+
+    // 0 bytes fit, but 201 would not stay free: ignoring `keep` would grant it.
+    EXPECT_FALSE(budget.tryReserveUncountedKeeping(0, 201).has_value());
+}
+
+TEST(InFlightBudget, TryReserveUncountedKeepingRefusesBelowTheFloorAndChangesNothing)
+{
+    InFlightBudget budget(1000);
+    auto granted = budget.tryReserveUncountedKeeping(800, 200);
+    ASSERT_TRUE(granted.has_value());
+    ASSERT_EQ(budget.availableBytes(), 200U);
+
+    EXPECT_FALSE(budget.tryReserveUncountedKeeping(1, 200).has_value());
+    EXPECT_EQ(budget.availableBytes(), 200U); // no transient reservation is left behind
+
+    InFlightBudget other(1000);
+    EXPECT_FALSE(other.tryReserveUncountedKeeping(801, 200).has_value());
+    EXPECT_EQ(other.availableBytes(), 1000U);
+}
+
+TEST(InFlightBudget, TryReserveUncountedKeepingNeverCountsARequest)
+{
+    InFlightBudget budget(1000);
+
+    auto granted = budget.tryReserveUncountedKeeping(500, 200);
+    ASSERT_TRUE(granted.has_value());
+    EXPECT_FALSE(budget.tryReserveUncountedKeeping(400, 200).has_value());
+
+    EXPECT_EQ(budget.inFlightCount(), 0U);
+    EXPECT_EQ(budget.rejectedTotal(), 0U); // a refused optional reservation is not a shed
+}
+
+TEST(InFlightBudget, TryReserveUncountedKeepingOnADisabledBudgetGrantsZeroBytes)
+{
+    InFlightBudget budget(0);
+
+    auto granted = budget.tryReserveUncountedKeeping(1000, 200);
+    ASSERT_TRUE(granted.has_value());
+    EXPECT_EQ(granted->bytes(), 0U);
+}
+
+TEST(InFlightBudget, TryReserveUncountedKeepingHasNoArithmeticOverflow)
+{
+    InFlightBudget budget(1000);
+
+    // bytes + keep wraps around to a small value in each case.
+    EXPECT_FALSE(budget.tryReserveUncountedKeeping(SIZE_MAX, 5).has_value());
+    EXPECT_FALSE(budget.tryReserveUncountedKeeping(1, SIZE_MAX).has_value());
+    EXPECT_FALSE(budget.tryReserveUncountedKeeping(0, SIZE_MAX).has_value());
+    EXPECT_EQ(budget.availableBytes(), 1000U);
+}
+
+TEST(InFlightBudget, TryReserveUncountedKeepingWithAFloorAboveTheBudgetRefusesEverything)
+{
+    InFlightBudget budget(100);
+
+    EXPECT_FALSE(budget.tryReserveUncountedKeeping(0, 200).has_value());
+}
+
+TEST(InFlightBudget, TryReserveUncountedKeepingConcurrentUsersNeverSeeTheBudgetBelowTheFloor)
+{
+    constexpr std::size_t total = 1000;
+    constexpr std::size_t floor = 400;
+    constexpr std::size_t step = 100;
+    // 7 x 100 from a single thread would leave 300 free: the 7th attempt is always refused by the
+    // floor, however many threads overlap.
+    constexpr int attemptsPerIteration = 7;
+    constexpr int threadCount = 8;
+    constexpr int itersPerThread = 2000;
+    InFlightBudget budget(total);
+
+    std::atomic<std::uint64_t> grants {0};
+    std::atomic<std::uint64_t> refusals {0};
+    std::atomic<std::uint64_t> violations {0};
+    std::atomic<bool> done {false};
+
+    std::thread observer(
+        [&]
+        {
+            while (!done.load(std::memory_order_acquire))
+            {
+                if (budget.availableBytes() < floor)
+                {
+                    violations.fetch_add(1, std::memory_order_relaxed);
+                }
+            }
+        });
+
+    std::vector<std::thread> threads;
+    threads.reserve(threadCount);
+    for (int t = 0; t < threadCount; ++t)
+    {
+        threads.emplace_back(
+            [&]
+            {
+                std::vector<InFlightBudget::Reservation> held;
+                held.reserve(attemptsPerIteration);
+                for (int i = 0; i < itersPerThread; ++i)
+                {
+                    for (int attempt = 0; attempt < attemptsPerIteration; ++attempt)
+                    {
+                        auto reservation = budget.tryReserveUncountedKeeping(step, floor);
+                        if (reservation.has_value())
+                        {
+                            grants.fetch_add(1, std::memory_order_relaxed);
+                            held.push_back(std::move(*reservation));
+                        }
+                        else
+                        {
+                            refusals.fetch_add(1, std::memory_order_relaxed);
+                        }
+                        if (budget.availableBytes() < floor)
+                        {
+                            violations.fetch_add(1, std::memory_order_relaxed);
+                        }
+                    }
+                    held.clear();
+                }
+            });
+    }
+    for (auto& thread : threads)
+    {
+        thread.join();
+    }
+    done.store(true, std::memory_order_release);
+    observer.join();
+
+    EXPECT_EQ(violations.load(), 0U);
+    EXPECT_GT(grants.load(), 0U);
+    EXPECT_GT(refusals.load(), 0U);
     EXPECT_EQ(budget.availableBytes(), total);
     EXPECT_EQ(budget.inFlightCount(), 0U);
 }
