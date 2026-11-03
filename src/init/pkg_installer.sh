@@ -302,7 +302,8 @@ probe_server() {
     else
         echo "$(date +"%Y/%m/%d %H:%M:%S") - Neither curl nor wget found, falling back to a TCP connectivity check." >> ./logs/upgrade.log
     fi
-    ( exec 3<>"/dev/tcp/${1}/${2}" ) > /dev/null 2>&1 &
+    # No fixed fd: macOS keeps the resolver's guarded fd on 3, and dup'ing onto it kills bash (EXC_GUARD).
+    ( : <>"/dev/tcp/${1}/${2}" ) > /dev/null 2>&1 &
     PROBE_PID=$!
     WAITED=0
     while kill -0 ${PROBE_PID} 2>/dev/null && [ ${WAITED} -lt ${PROBE_TIMEOUT} ]; do
