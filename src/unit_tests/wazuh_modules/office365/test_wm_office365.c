@@ -2353,7 +2353,7 @@ void test_wm_office365_scan_failure_action_null(void **state) {
     int queue_fd = 0;
     char *error_msg = NULL;
 
-    wm_office365_scan_failure_action(&fails, tenant_id, subscription_name, error_msg, queue_fd);
+    wm_office365_scan_failure_action(&fails, tenant_id, subscription_name, error_msg, &queue_fd);
     assert_string_equal(fails->next->tenant_id, tenant_id);
     assert_string_equal(fails->next->subscription_name, subscription_name);
 
@@ -2373,7 +2373,7 @@ void test_wm_office365_scan_failure_action_no_fail(void **state) {
     int queue_fd = 0;
     char *error_msg = NULL;
 
-    wm_office365_scan_failure_action(&fails, tenant_id, subscription_name, error_msg, queue_fd);
+    wm_office365_scan_failure_action(&fails, tenant_id, subscription_name, error_msg, &queue_fd);
     assert_string_equal(fails->tenant_id, tenant_id);
     assert_string_equal(fails->subscription_name, subscription_name);
 
@@ -2398,7 +2398,7 @@ void test_wm_office365_scan_failure_action_null_mult_next(void **state) {
     int queue_fd = 0;
     char *error_msg = NULL;
 
-    wm_office365_scan_failure_action(&fails, tenant_id, subscription_name, error_msg, queue_fd);
+    wm_office365_scan_failure_action(&fails, tenant_id, subscription_name, error_msg, &queue_fd);
     assert_string_equal(fails->next->next->tenant_id, tenant_id);
     assert_string_equal(fails->next->next->subscription_name, subscription_name);
 
@@ -2428,17 +2428,18 @@ void test_wm_office365_scan_failure_action_not_null(void **state) {
     expect_string(__wrap__mtwarn, formatted_msg, "Sending Office365 internal message: '{\"integration\":\"office365\",\"office365\":{\"actor\":\"wazuh\",\"tenant_id\":\"tenant_id\",\"subscription_name\":\"subscription_name\",\"response\":\"Unknown error\"}}'");
 
     int result = -1;
-    expect_value(__wrap_wm_sendmsg, usec, 1000000);
-    expect_value(__wrap_wm_sendmsg, queue, queue_fd);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"office365\",\"office365\":{\"actor\":\"wazuh\",\"tenant_id\":\"tenant_id\",\"subscription_name\":\"subscription_name\",\"response\":\"Unknown error\"}}");
-    expect_string(__wrap_wm_sendmsg, locmsg, "office365");
-    expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
-    will_return(__wrap_wm_sendmsg, result);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, queue, queue_fd);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, message, "{\"integration\":\"office365\",\"office365\":{\"actor\":\"wazuh\",\"tenant_id\":\"tenant_id\",\"subscription_name\":\"subscription_name\",\"response\":\"Unknown error\"}}");
+    expect_string(__wrap_wm_sendmsg_with_reconnect, locmsg, "office365");
+    expect_value(__wrap_wm_sendmsg_with_reconnect, loc, LOCALFILE_MQ);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, tag, WM_OFFICE365_LOGTAG);
+    will_return(__wrap_wm_sendmsg_with_reconnect, result);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:office365");
     expect_string(__wrap__mterror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'Success'");
 
-    wm_office365_scan_failure_action(&fails, tenant_id, subscription_name, error_msg, queue_fd);
+    wm_office365_scan_failure_action(&fails, tenant_id, subscription_name, error_msg, &queue_fd);
 
     os_free(fails);
 }
@@ -2462,17 +2463,18 @@ void test_wm_office365_scan_failure_action_not_null_error_msg(void **state) {
     expect_string(__wrap__mtwarn, formatted_msg, "Sending Office365 internal message: '{\"integration\":\"office365\",\"office365\":{\"actor\":\"wazuh\",\"tenant_id\":\"tenant_id\",\"subscription_name\":\"subscription_name\",\"response\":\"{\\\"response\\\":\\\"test\\\"}\"}}'");
 
     int result = -1;
-    expect_value(__wrap_wm_sendmsg, usec, 1000000);
-    expect_value(__wrap_wm_sendmsg, queue, queue_fd);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"office365\",\"office365\":{\"actor\":\"wazuh\",\"tenant_id\":\"tenant_id\",\"subscription_name\":\"subscription_name\",\"response\":\"{\\\"response\\\":\\\"test\\\"}\"}}");
-    expect_string(__wrap_wm_sendmsg, locmsg, "office365");
-    expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
-    will_return(__wrap_wm_sendmsg, result);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, queue, queue_fd);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, message, "{\"integration\":\"office365\",\"office365\":{\"actor\":\"wazuh\",\"tenant_id\":\"tenant_id\",\"subscription_name\":\"subscription_name\",\"response\":\"{\\\"response\\\":\\\"test\\\"}\"}}");
+    expect_string(__wrap_wm_sendmsg_with_reconnect, locmsg, "office365");
+    expect_value(__wrap_wm_sendmsg_with_reconnect, loc, LOCALFILE_MQ);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, tag, WM_OFFICE365_LOGTAG);
+    will_return(__wrap_wm_sendmsg_with_reconnect, result);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:office365");
     expect_string(__wrap__mterror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'Success'");
 
-    wm_office365_scan_failure_action(&fails, tenant_id, subscription_name, error_msg, queue_fd);
+    wm_office365_scan_failure_action(&fails, tenant_id, subscription_name, error_msg, &queue_fd);
 
     os_free(fails);
 }
@@ -2948,12 +2950,13 @@ void test_wm_office365_execute_scan_all(void **state) {
 
     int result = 1;
     int queue_fd = 0;
-    expect_value(__wrap_wm_sendmsg, usec, 1000000);
-    expect_value(__wrap_wm_sendmsg, queue, queue_fd);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"office365\",\"office365\":{\"contentUri\":\"https://manage.office.com/contentUri1\",\"Subscription\":\"test_subscription_name\"}}");
-    expect_string(__wrap_wm_sendmsg, locmsg, "office365");
-    expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
-    will_return(__wrap_wm_sendmsg, result);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, queue, queue_fd);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, message, "{\"integration\":\"office365\",\"office365\":{\"contentUri\":\"https://manage.office.com/contentUri1\",\"Subscription\":\"test_subscription_name\"}}");
+    expect_string(__wrap_wm_sendmsg_with_reconnect, locmsg, "office365");
+    expect_value(__wrap_wm_sendmsg_with_reconnect, loc, LOCALFILE_MQ);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, tag, WM_OFFICE365_LOGTAG);
+    will_return(__wrap_wm_sendmsg_with_reconnect, result);
 
     expect_string(__wrap_wm_state_io, tag, "office365-test_tenant_id-test_subscription_name");
     expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
@@ -3143,12 +3146,13 @@ void test_wm_office365_execute_scan_skips_oversize_blob(void **state) {
     expect_string(__wrap__mtdebug2, formatted_msg, "Sending Office365 log: '{\"integration\":\"office365\",\"office365\":{\"id\":1,\"Subscription\":\"test_subscription_name\"}}'");
 
     int queue_fd = 0;
-    expect_value(__wrap_wm_sendmsg, usec, 1000000);
-    expect_value(__wrap_wm_sendmsg, queue, queue_fd);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"office365\",\"office365\":{\"id\":1,\"Subscription\":\"test_subscription_name\"}}");
-    expect_string(__wrap_wm_sendmsg, locmsg, "office365");
-    expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
-    will_return(__wrap_wm_sendmsg, 1);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, queue, queue_fd);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, message, "{\"integration\":\"office365\",\"office365\":{\"id\":1,\"Subscription\":\"test_subscription_name\"}}");
+    expect_string(__wrap_wm_sendmsg_with_reconnect, locmsg, "office365");
+    expect_value(__wrap_wm_sendmsg_with_reconnect, loc, LOCALFILE_MQ);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, tag, WM_OFFICE365_LOGTAG);
+    will_return(__wrap_wm_sendmsg_with_reconnect, 1);
 
     // Skipping the blob does not fail the scan: the bookmark advances past the window
     expect_string(__wrap_wm_state_io, tag, "office365-test_tenant_id-test_subscription_name");
