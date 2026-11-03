@@ -169,7 +169,7 @@ tail -f /var/ossec/logs/ossec.log | grep agent-info
 **Force metadata collection:**
 ```bash
 # Restart agent to trigger immediate scan
-/var/ossec/bin/wazuh-control restart
+systemctl restart wazuh-agent
 ```
 
 ### High Resource Usage

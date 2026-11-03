@@ -530,6 +530,14 @@ Agent is reloading due to shared configuration changes.
 
 This is expected, not a crash: `systemctl status` shows the reload, and the service stays active. With `<auto_restart>no</auto_restart>` the first reload still happens and logs `Agent is reloading to apply startup hash validated configuration.` instead. See [`auto_restart`](../modules/client/configuration.md#auto_restart).
 
+#### Controlling the agent on systemd hosts
+
+Start, stop, restart and reload the agent with `systemctl` (`sudo systemctl restart wazuh-agent`). While `wazuh-agent.service` is running, `/var/ossec/bin/wazuh-control stop`, `restart` and `reload` hand the action to `systemctl` and print `wazuh-agent.service is managed by systemd: running 'systemctl <action> wazuh-agent.service'.`. That way systemd keeps tracking the daemons. Otherwise systemd would stop the agent right after `wazuh-control restart` printed `Completed.`. `wazuh-control restart` still tests the configuration first, and if the test fails it leaves the running agent untouched. `wazuh-control start` and `status` always run in `wazuh-control`.
+
+Don't start the agent with `wazuh-control start` and then with `systemctl start`. The daemons are already running outside the unit, so systemd refuses their PID file and marks the unit `failed`, while the daemons keep running without systemd. To move an agent started that way under systemd, stop it with `wazuh-control stop` and then run `systemctl start wazuh-agent`.
+
+Set `WAZUH_CONTROL_SKIP_SYSTEMD=1` to keep every action in `wazuh-control`.
+
 ### macOS
 
 Install the agent:

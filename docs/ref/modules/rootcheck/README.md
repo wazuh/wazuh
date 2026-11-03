@@ -62,7 +62,7 @@ grep rootcheck /var/ossec/logs/ossec.log
 
 Force an immediate scan:
 ```bash
-/var/ossec/bin/wazuh-control restart
+systemctl restart wazuh-agent
 ```
 
 ## Detection Capabilities
