@@ -16,6 +16,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
+#include <stdexcept>
 
 #if defined(__linux__)
 #include <ctime>
@@ -35,7 +36,7 @@ public:
 
         if (pthread_condattr_init(&attr) != 0)
         {
-            return;
+            throw std::runtime_error {"pthread_condattr_init failed"};
         }
 
         if (pthread_condattr_setclock(&attr, CLOCK_MONOTONIC) == 0)
@@ -43,13 +44,19 @@ public:
             m_clock = CLOCK_MONOTONIC;
         }
 
-        pthread_cond_init(&m_cond, &attr);
+        const auto rc {pthread_cond_init(&m_cond, &attr)};
         pthread_condattr_destroy(&attr);
+
+        if (rc != 0)
+        {
+            throw std::runtime_error {"pthread_cond_init failed"};
+        }
     }
 
     ~MonotonicCondition()
     {
-        pthread_cond_destroy(&m_cond);
+        // Destructors must not throw; a failure here is a programming error.
+        [[maybe_unused]] const auto rc {pthread_cond_destroy(&m_cond)};
     }
 
     MonotonicCondition(const MonotonicCondition&) = delete;
@@ -87,7 +94,8 @@ public:
 
     void notifyOne()
     {
-        pthread_cond_signal(&m_cond);
+        // Only fails with EINVAL (invalid condvar), a programming error.
+        [[maybe_unused]] const auto rc {pthread_cond_signal(&m_cond)};
     }
 
     /// The clock this instance's waits are actually bound to; CLOCK_REALTIME
