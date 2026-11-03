@@ -64,6 +64,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `agent-auth` failing at random with `SSL error (2)` because it did not set the receive timeout of its enrollment socket. ([#40468](https://github.com/wazuh/wazuh/pull/40468))
 - Fixed the macOS agent package not monitoring the active response log. ([#40799](https://github.com/wazuh/wazuh/pull/40799))
 - Fixed whodata dropping `chmod`, `chown` and write events without `O_CREAT` on paths under a symbolic link not configured with `follow_symbolic_link`. ([#39763](https://github.com/wazuh/wazuh/issues/39763))
+- Hardened agent PID file and Auditd plugin socket creation. ([#41045](https://github.com/wazuh/wazuh/pull/41045))
 - Fixed `wazuh-execd` keeping a local request connection open when the request could not be read, and not terminating a request of the maximum size. ([#40529](https://github.com/wazuh/wazuh/pull/40529))
 - Fixed FIM `<diff>` options parsing, whodata event loss, audit socket leak and bookmark double fclose. ([#39812](https://github.com/wazuh/wazuh/pull/39812))
 - Fixed `wazuh-logcollector` dropping a later line after an oversized `json` or `multi-line` line. ([#40826](https://github.com/wazuh/wazuh/pull/40826))
