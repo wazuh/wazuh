@@ -23,7 +23,8 @@
 
 /* Audit defs */
 #define WDATA_DEFAULT_INTERVAL_SCAN 300
-#define AUDIT_SOCKET                "queue/sockets/audit"
+// Root-owned directory; only root creates this socket and connects to it.
+#define AUDIT_SOCKET                "queue/audit"
 #define MAX_CONN_RETRIES            5          // Max retries to reconnect to Audit socket
 #define AUDIT_CONF_FILE             "tmp/af_wazuh.conf"
 #define AUDIT_HEALTHCHECK_DIR       "tmp"
