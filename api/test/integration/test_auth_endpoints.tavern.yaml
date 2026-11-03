@@ -471,7 +471,7 @@ stages:
       headers: &security_headers
         x-content-type-options: nosniff
         x-frame-options: deny
-        content-security-policy: none
+        content-security-policy: "default-src 'none'; frame-ancestors 'none'"
         cache-control: no-store
         referrer-policy: no-referrer, strict-origin-when-cross-origin
         strict-transport-security: max-age=63072000; includeSubdomains

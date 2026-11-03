@@ -60,7 +60,7 @@ AUTH_CONTEXT_NOT_LOGGED = '<authorization context not logged; see hash_auth_cont
 
 # API secure headers
 server = Server().set("Wazuh")
-csp = ContentSecurityPolicy().set('none')
+csp = ContentSecurityPolicy().default_src("'none'").frame_ancestors("'none'")
 xfo = XFrameOptions().deny()
 secure_headers = Secure(server=server, csp=csp, xfo=xfo)
 
