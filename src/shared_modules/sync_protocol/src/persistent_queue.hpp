@@ -46,12 +46,15 @@ class PersistentQueue : public IPersistentQueue
         /// @param flushInterval Maximum time to wait before flushing a non-full buffer. If unset, DEFAULT_FLUSH_INTERVAL is used.
         /// @param walAutocheckpointPages Optional override for the default storage backend's WAL auto-checkpoint
         ///                               threshold, in pages. Ignored when an explicit @p storage is given.
+        /// @param cacheSizeKiB Optional override for the default storage backend's page cache size, in KiB.
+        ///                     Ignored when an explicit @p storage is given.
         explicit PersistentQueue(const std::string& dbPath,
                                  LoggerFunc logger,
                                  std::shared_ptr<IPersistentQueueStorage> storage = nullptr,
                                  std::optional<std::size_t> flushBatchSize = std::nullopt,
                                  std::optional<std::chrono::milliseconds> flushInterval = std::nullopt,
-                                 std::optional<int32_t> walAutocheckpointPages = std::nullopt);
+                                 std::optional<int32_t> walAutocheckpointPages = std::nullopt,
+                                 std::optional<int32_t> cacheSizeKiB = std::nullopt);
 
         /// @brief Destructor.
         ~PersistentQueue() override;

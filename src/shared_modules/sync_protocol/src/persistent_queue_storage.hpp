@@ -47,8 +47,11 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         /// @param fileSystemWrapper Filesystem wrapper for operations (for testing). If nullptr, uses default implementation.
         /// @param walAutocheckpointPages Optional override for the WAL auto-checkpoint threshold, in pages.
         ///                               If unset, SQLite's own default (1000 pages) is used.
+        /// @param cacheSizeKiB Optional override for the page cache size of this connection, in KiB.
+        ///                     If unset or not positive, SQLite's own default (2000 KiB) is used.
         explicit PersistentQueueStorage(const std::string& dbPath, LoggerFunc logger, std::shared_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr,
-                                        std::optional<int32_t> walAutocheckpointPages = std::nullopt);
+                                        std::optional<int32_t> walAutocheckpointPages = std::nullopt,
+                                        std::optional<int32_t> cacheSizeKiB = std::nullopt);
 
         /// @brief Default destructor.
         ~PersistentQueueStorage() override = default;
@@ -94,6 +97,10 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         /// @brief Returns the WAL auto-checkpoint threshold currently configured on this connection.
         /// @return The configured threshold, in WAL pages.
         int32_t getWalAutocheckpoint() const;
+
+        /// @brief Returns the page cache size currently configured on this connection.
+        /// @return The raw PRAGMA cache_size value (negative means KiB, positive means pages), or nullopt if SQLite returns no row.
+        std::optional<int32_t> getCacheSize() const;
 
     private:
         /// @brief Active SQLite database connection.

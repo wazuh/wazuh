@@ -110,7 +110,7 @@ extern "C" {
 
     AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, asp_logger_t logger,
                                         uint64_t flush_batch_size, uint64_t flush_interval_ms,
-                                        uint64_t wal_autocheckpoint_pages)
+                                        uint64_t wal_autocheckpoint_pages, uint64_t cache_size_kib)
     {
         try
         {
@@ -127,6 +127,7 @@ extern "C" {
             const auto flushBatchSize = validQueueOption(flush_batch_size, "flush_batch_size", logger_wrapper);
             const auto flushInterval = validQueueOption(flush_interval_ms, "flush_interval_ms", logger_wrapper);
             const auto walAutocheckpointPages = validQueueOption(wal_autocheckpoint_pages, "wal_autocheckpoint_pages", logger_wrapper);
+            const auto cacheSizeKiB = validQueueOption(cache_size_kib, "cache_size_kib", logger_wrapper);
 
             std::optional<std::size_t> flushBatchSizeOpt =
                 flushBatchSize ? std::make_optional(static_cast<std::size_t>(*flushBatchSize)) : std::nullopt;
@@ -134,9 +135,11 @@ extern "C" {
                 flushInterval ? std::make_optional(std::chrono::milliseconds(*flushInterval)) : std::nullopt;
             std::optional<int32_t> walAutocheckpointPagesOpt =
                 walAutocheckpointPages ? std::make_optional(static_cast<int32_t>(*walAutocheckpointPages)) : std::nullopt;
+            std::optional<int32_t> cacheSizeKiBOpt =
+                cacheSizeKiB ? std::make_optional(static_cast<int32_t>(*cacheSizeKiB)) : std::nullopt;
 
             return reinterpret_cast<AgentSyncProtocolHandle*>(new AgentSyncProtocolWrapper(module, std::move(dbPathOpt), std::move(logger_wrapper), flushBatchSizeOpt, flushIntervalOpt,
-                                                                                           walAutocheckpointPagesOpt));
+                                                                                           walAutocheckpointPagesOpt, cacheSizeKiBOpt));
         }
         catch (const std::exception& ex)
         {

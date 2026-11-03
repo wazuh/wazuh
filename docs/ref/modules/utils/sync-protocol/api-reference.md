@@ -284,7 +284,8 @@ AgentSyncProtocolHandle* asp_create(const char* module,
                                    asp_logger_t logger,
                                    uint64_t flush_batch_size,
                                    uint64_t flush_interval_ms,
-                                   uint64_t wal_autocheckpoint_pages)
+                                   uint64_t wal_autocheckpoint_pages,
+                                   uint64_t cache_size_kib)
 ```
 
 Creates a new Agent Sync Protocol instance.
@@ -296,8 +297,9 @@ Creates a new Agent Sync Protocol instance.
 - `flush_batch_size`: Persistent queue flush batch size override, or `0` to use the built-in default
 - `flush_interval_ms`: Persistent queue flush interval override in milliseconds, or `0` to use the built-in default
 - `wal_autocheckpoint_pages`: WAL auto-checkpoint threshold override, in pages, for this instance's own database connection, or `0` to keep SQLite's own default (1000 pages)
+- `cache_size_kib`: Page cache size override, in KiB, for this instance's own database connection, or `0` to keep SQLite's own default (2000 KiB)
 
-Each of the three overrides accepts `0` (use the default) or a value up to `2147483647` (`INT32_MAX`). A larger value is not applied: the built-in default is used instead and a warning is logged through `logger`.
+Each of the four overrides accepts `0` (use the default) or a value up to `2147483647` (`INT32_MAX`). A larger value is not applied: the built-in default is used instead and a warning is logged through `logger`.
 
 **Returns:** Opaque handle to the protocol instance, or NULL on failure
 

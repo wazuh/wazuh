@@ -22,11 +22,14 @@ struct AgentSyncProtocolWrapper
     /// @param flush_interval Optional override for the persistent queue's flush interval.
     /// @param wal_autocheckpoint_pages Optional override for the persistent queue's default storage backend's
     ///                                 WAL auto-checkpoint threshold, in pages.
+    /// @param cache_size_kib Optional override for the persistent queue's default storage backend's
+    ///                       page cache size, in KiB.
     AgentSyncProtocolWrapper(const std::string& module, std::optional<std::string> db_path, LoggerFunc logger,
                              std::optional<std::size_t> flush_batch_size = std::nullopt,
                              std::optional<std::chrono::milliseconds> flush_interval = std::nullopt,
-                             std::optional<int32_t> wal_autocheckpoint_pages = std::nullopt)
+                             std::optional<int32_t> wal_autocheckpoint_pages = std::nullopt,
+                             std::optional<int32_t> cache_size_kib = std::nullopt)
         : impl(std::make_unique<AgentSyncProtocol>(module, db_path, std::move(logger), nullptr, nullptr, /*isFeedBased=*/false,
-                                                   flush_batch_size, flush_interval, wal_autocheckpoint_pages)) {}
+                                                   flush_batch_size, flush_interval, wal_autocheckpoint_pages, cache_size_kib)) {}
 };
 

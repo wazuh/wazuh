@@ -93,6 +93,7 @@ void read_internal(int debug_level)
     syscheck.sync_flush_batch_size = getDefine_Int_default("syscheck", "sync_flush_batch_size", 1, 100000, 100);
     syscheck.sync_flush_interval_ms = getDefine_Int_default("syscheck", "sync_flush_interval_ms", 50, 3600000, 500);
     syscheck.sync_wal_autocheckpoint_pages = getDefine_Int_default("syscheck", "sync_wal_autocheckpoint_pages", 100, 1000000, 1000);
+    syscheck.sync_cache_size_kib = getDefine_Int_default("syscheck", "sync_cache_size_kib", 64, 1048576, 256);
 
 #ifndef WIN32
     syscheck.max_audit_entries = getDefine_Int("syscheck", "max_audit_entries", 1, 4096);
@@ -563,7 +564,7 @@ void fim_initialize() {
     // 0 would select the built-in default; FIM always passes its configured values.
     syscheck.sync_handle = asp_create("fim", FIM_SYNC_PROTOCOL_DB_PATH, loggingFunction,
                                       (uint64_t)syscheck.sync_flush_batch_size, (uint64_t)syscheck.sync_flush_interval_ms,
-                                      (uint64_t)syscheck.sync_wal_autocheckpoint_pages);
+                                      (uint64_t)syscheck.sync_wal_autocheckpoint_pages, (uint64_t)syscheck.sync_cache_size_kib);
     if (!syscheck.sync_handle) {
         merror_exit("Failed to initialize AgentSyncProtocol");
     }

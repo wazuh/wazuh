@@ -323,6 +323,27 @@ TEST_F(PersistentQueueStorageTest, ConstructorHonorsWalAutocheckpointOverride)
     EXPECT_EQ(overriddenStorage->getWalAutocheckpoint(), 4000);
 }
 
+TEST_F(PersistentQueueStorageTest, ConstructorKeepsSqliteDefaultCacheSizeWithoutOverride)
+{
+    EXPECT_EQ(storage->getCacheSize(), -2000);
+}
+
+TEST_F(PersistentQueueStorageTest, ConstructorHonorsCacheSizeOverride)
+{
+    auto overriddenStorage = std::make_unique<PersistentQueueStorage>(":memory:", testLogger, nullptr, std::nullopt, 256);
+    EXPECT_EQ(overriddenStorage->getCacheSize(), -256);
+    EXPECT_EQ(overriddenStorage->getWalAutocheckpoint(), 1000);
+}
+
+TEST_F(PersistentQueueStorageTest, ConstructorIgnoresNonPositiveCacheSizeOverride)
+{
+    auto zeroStorage = std::make_unique<PersistentQueueStorage>(":memory:", testLogger, nullptr, std::nullopt, 0);
+    EXPECT_EQ(zeroStorage->getCacheSize(), -2000);
+
+    auto negativeStorage = std::make_unique<PersistentQueueStorage>(":memory:", testLogger, nullptr, std::nullopt, -512);
+    EXPECT_EQ(negativeStorage->getCacheSize(), -2000);
+}
+
 TEST_F(PersistentQueueStorageTest, RemoveByIndexDeletesOnlySpecifiedIndex)
 {
     // Insert items with different indices
