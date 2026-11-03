@@ -9,7 +9,7 @@ LimitNOFILE=65536
 TimeoutSec=45
 # Start waits up to ~130 s for analysisd's engine API (wait_for_wazuh_engine_ready in
 # wazuh-manager-control); a shorter start timeout would report a systemd timeout instead of the
-# script's own error. Stop keeps the 45 s above.
+# script's own error. Stop keeps the 45 s above, for ExecStop and again for ExecStopPost.
 TimeoutStartSec=180
 
 # Sandboxing. No manager daemon chroots into the installation directory any more: the unit confines all
@@ -45,6 +45,10 @@ SystemCallErrorNumber=EPERM
 
 ExecStart=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-manager-control start
 ExecStop=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-manager-control stop
+# A restart that arrives during a reload makes systemd skip ExecStop and, with KillMode=process,
+# signal only the reload script. This stops the daemons left behind, so the start that follows
+# brings up every one of them.
+ExecStopPost=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-manager-control stop
 ExecReload=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-manager-control reload
 
 KillMode=process

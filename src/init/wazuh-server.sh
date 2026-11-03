@@ -685,8 +685,9 @@ start_failed()
     # kills only this script, so the daemons it already launched would keep running inside a
     # failed unit -- authd answering enrollments, wazuh-db serving a manager that is down. Stop
     # what this run started, the failed daemon included (it may have left a process behind);
-    # daemons that were already running (remoted across a reload) stay. With -j its report is
-    # dropped: the document above is the only one. stop_service() reuses $i, so it runs last.
+    # daemons that were already running (remoted across a reload) stay, though when a start fails
+    # under the unit its ExecStopPost then stops them too. With -j its report is dropped: the
+    # document above is the only one. stop_service() reuses $i, so it runs last.
     DAEMONS="${STARTED} ${i}"
     MAX_KILL_TRIES=10
     if [ $USE_JSON = true ]; then
@@ -724,7 +725,8 @@ start_service()
     fi
 
     # We actually start them now. STARTED lists the daemons this run brought up, so that a failure stops
-    # those and only those: a daemon that was already running stays.
+    # those and only those: a daemon that was already running stays (until the unit's ExecStopPost, when a
+    # start under the unit fails).
     first=true
     STARTED=""
     if [ $USE_JSON = true ]; then
