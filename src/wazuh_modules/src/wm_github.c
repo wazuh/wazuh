@@ -67,9 +67,9 @@ STATIC wm_github_fail* wm_github_get_fail_by_org_and_type(wm_github_fail *fails,
  * @param org_name Organization name to search
  * @param subscription_name Event type to search
  * @param error_msg Error message to send
- * @param queue_fd Socket ID
+ * @param queue_fd Socket ID, replaced if the queue has to be reopened
  */
-STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *org_name, char* event_type, char *error_msg, int queue_fd);
+STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *org_name, char* event_type, char *error_msg, int *queue_fd);
 
 /* Context definition */
 const wm_context WM_GITHUB_CONTEXT = {
@@ -347,7 +347,7 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
 
                                         mtdebug2(WM_GITHUB_LOGTAG, "Sending GitHub log: '%s'", payload);
 
-                                        if (wm_sendmsg(WM_GITHUB_MSG_DELAY, github_config->queue_fd, payload, WM_GITHUB_CONTEXT.name, LOCALFILE_MQ) < 0) {
+                                        if (wm_sendmsg_with_reconnect(WM_GITHUB_MSG_DELAY, &github_config->queue_fd, payload, WM_GITHUB_CONTEXT.name, LOCALFILE_MQ, WM_GITHUB_LOGTAG) < 0) {
                                             mterror(WM_GITHUB_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
                                         }
 
@@ -391,7 +391,7 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                 }
 
                 if (fail) {
-                    wm_github_scan_failure_action(&github_config->fails, current->org_name, event_types[event_types_it], error_msg, github_config->queue_fd);
+                    wm_github_scan_failure_action(&github_config->fails, current->org_name, event_types[event_types_it], error_msg, &github_config->queue_fd);
                 } else {
                     org_state_struc.last_log_time = new_scan_time;
                     if (wm_state_io(org_state_name, WM_IO_WRITE, &org_state_struc, sizeof(org_state_struc)) < 0) {
@@ -442,7 +442,7 @@ STATIC wm_github_fail* wm_github_get_fail_by_org_and_type(wm_github_fail *fails,
     return current;
 }
 
-STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *org_name, char* event_type, char *error_msg, int queue_fd) {
+STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *org_name, char* event_type, char *error_msg, int *queue_fd) {
     char *payload;
     wm_github_fail *org_fail;
 
@@ -499,7 +499,7 @@ STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *
 
             mtwarn(WM_GITHUB_LOGTAG, "Sending GitHub internal message: '%s'", payload);
 
-            if (wm_sendmsg(WM_GITHUB_MSG_DELAY, queue_fd, payload, WM_GITHUB_CONTEXT.name, LOCALFILE_MQ) < 0) {
+            if (wm_sendmsg_with_reconnect(WM_GITHUB_MSG_DELAY, queue_fd, payload, WM_GITHUB_CONTEXT.name, LOCALFILE_MQ, WM_GITHUB_LOGTAG) < 0) {
                 mterror(WM_GITHUB_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
             }
 

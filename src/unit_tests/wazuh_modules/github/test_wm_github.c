@@ -256,7 +256,7 @@ void test_github_scan_failure_action_1(void **state) {
     char *error_msg = "test_error";
     int queue_fd = 1;
 
-    wm_github_scan_failure_action(&data->github_config->fails, org_name, event_type, error_msg, queue_fd);
+    wm_github_scan_failure_action(&data->github_config->fails, org_name, event_type, error_msg, &queue_fd);
 
     assert_string_equal(data->github_config->fails->org_name, "test_org");
     assert_string_equal(data->github_config->fails->event_type, "test_event");
@@ -279,7 +279,7 @@ void test_github_scan_failure_action_2(void **state) {
     char *error_msg = "test_error";
     int queue_fd = 1;
 
-    wm_github_scan_failure_action(&data->github_config->fails, org_name, event_type, error_msg, queue_fd);
+    wm_github_scan_failure_action(&data->github_config->fails, org_name, event_type, error_msg, &queue_fd);
 
     assert_string_equal(data->github_config->fails->org_name, "test_org");
     assert_string_equal(data->github_config->fails->event_type, "test_event");
@@ -307,17 +307,18 @@ void test_github_scan_failure_action_3(void **state) {
 
     int result = 0;
 
-    expect_value(__wrap_wm_sendmsg, usec, 1000000);
-    expect_value(__wrap_wm_sendmsg, queue, 1);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"event_type\":\"test_event\",\"response\":\"Unknown error\"}}");
-    expect_string(__wrap_wm_sendmsg, locmsg, "github");
-    expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
-    will_return(__wrap_wm_sendmsg, result);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, queue, 1);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, message, "{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"event_type\":\"test_event\",\"response\":\"Unknown error\"}}");
+    expect_string(__wrap_wm_sendmsg_with_reconnect, locmsg, "github");
+    expect_value(__wrap_wm_sendmsg_with_reconnect, loc, LOCALFILE_MQ);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, tag, WM_GITHUB_LOGTAG);
+    will_return(__wrap_wm_sendmsg_with_reconnect, result);
 
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mtwarn, formatted_msg, "Sending GitHub internal message: '{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"event_type\":\"test_event\",\"response\":\"Unknown error\"}}'");
 
-    wm_github_scan_failure_action(&data->github_config->fails, org_name, event_type, error_msg, queue_fd);
+    wm_github_scan_failure_action(&data->github_config->fails, org_name, event_type, error_msg, &queue_fd);
 
     assert_string_equal(data->github_config->fails->org_name, "test_org");
     assert_string_equal(data->github_config->fails->event_type, "test_event");
@@ -339,17 +340,18 @@ void test_github_scan_failure_action_4(void **state) {
 
     int result = 0;
 
-    expect_value(__wrap_wm_sendmsg, usec, 1000000);
-    expect_value(__wrap_wm_sendmsg, queue, 1);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"event_type\":\"test_event\",\"response\":\"{\\\"test\\\":\\\"test_error\\\"}\"}}");
-    expect_string(__wrap_wm_sendmsg, locmsg, "github");
-    expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
-    will_return(__wrap_wm_sendmsg, result);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, queue, 1);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, message, "{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"event_type\":\"test_event\",\"response\":\"{\\\"test\\\":\\\"test_error\\\"}\"}}");
+    expect_string(__wrap_wm_sendmsg_with_reconnect, locmsg, "github");
+    expect_value(__wrap_wm_sendmsg_with_reconnect, loc, LOCALFILE_MQ);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, tag, WM_GITHUB_LOGTAG);
+    will_return(__wrap_wm_sendmsg_with_reconnect, result);
 
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mtwarn, formatted_msg, "Sending GitHub internal message: '{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"event_type\":\"test_event\",\"response\":\"{\\\"test\\\":\\\"test_error\\\"}\"}}'");
 
-    wm_github_scan_failure_action(&data->github_config->fails, org_name, event_type, error_msg, queue_fd);
+    wm_github_scan_failure_action(&data->github_config->fails, org_name, event_type, error_msg, &queue_fd);
 
     assert_string_equal(data->github_config->fails->org_name, "test_org");
     assert_string_equal(data->github_config->fails->event_type, "test_event");
@@ -371,12 +373,13 @@ void test_github_scan_failure_action_error(void **state) {
 
     int result = -1;
 
-    expect_value(__wrap_wm_sendmsg, usec, 1000000);
-    expect_value(__wrap_wm_sendmsg, queue, 1);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"event_type\":\"test_event\",\"response\":\"Unknown error\"}}");
-    expect_string(__wrap_wm_sendmsg, locmsg, "github");
-    expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
-    will_return(__wrap_wm_sendmsg, result);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, queue, 1);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, message, "{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"event_type\":\"test_event\",\"response\":\"Unknown error\"}}");
+    expect_string(__wrap_wm_sendmsg_with_reconnect, locmsg, "github");
+    expect_value(__wrap_wm_sendmsg_with_reconnect, loc, LOCALFILE_MQ);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, tag, WM_GITHUB_LOGTAG);
+    will_return(__wrap_wm_sendmsg_with_reconnect, result);
 
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mtwarn, formatted_msg, "Sending GitHub internal message: '{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"event_type\":\"test_event\",\"response\":\"Unknown error\"}}'");
@@ -384,7 +387,7 @@ void test_github_scan_failure_action_error(void **state) {
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mterror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'Success'");
 
-    wm_github_scan_failure_action(&data->github_config->fails, org_name, event_type, error_msg, queue_fd);
+    wm_github_scan_failure_action(&data->github_config->fails, org_name, event_type, error_msg, &queue_fd);
 
     assert_string_equal(data->github_config->fails->org_name, "test_org");
     assert_string_equal(data->github_config->fails->event_type, "test_event");
@@ -400,7 +403,7 @@ void test_github_scan_failure_action_org_null(void **state) {
     int queue_fd = 1;
     wm_max_eps = 1;
 
-    wm_github_scan_failure_action(&data->github_config->fails, org_name, event_type, error_msg, queue_fd);
+    wm_github_scan_failure_action(&data->github_config->fails, org_name, event_type, error_msg, &queue_fd);
 
     assert_string_equal(data->github_config->fails->org_name, "test_org");
     assert_string_equal(data->github_config->fails->event_type, "test_event");
@@ -657,12 +660,13 @@ void test_github_execute_scan_status_code_200_null(void **state) {
     expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, data->response);
 
-    expect_value(__wrap_wm_sendmsg, usec, 1000000);
-    expect_value(__wrap_wm_sendmsg, queue, 0);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\"}}");
-    expect_string(__wrap_wm_sendmsg, locmsg, "github");
-    expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
-    will_return(__wrap_wm_sendmsg, 0);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, queue, 0);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, message, "{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\"}}");
+    expect_string(__wrap_wm_sendmsg_with_reconnect, locmsg, "github");
+    expect_value(__wrap_wm_sendmsg_with_reconnect, loc, LOCALFILE_MQ);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, tag, WM_GITHUB_LOGTAG);
+    will_return(__wrap_wm_sendmsg_with_reconnect, 0);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mtdebug2, formatted_msg, "Sending GitHub log: '{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\"}}'");
@@ -901,12 +905,13 @@ void test_github_execute_scan_max_size_reached_follows_next_page(void **state) {
 
     expect_any(__wrap__mtdebug2, tag);
     expect_any(__wrap__mtdebug2, formatted_msg);
-    expect_any(__wrap_wm_sendmsg, usec);
-    expect_any(__wrap_wm_sendmsg, queue);
-    expect_any(__wrap_wm_sendmsg, message);
-    expect_any(__wrap_wm_sendmsg, locmsg);
-    expect_any(__wrap_wm_sendmsg, loc);
-    will_return(__wrap_wm_sendmsg, 0);
+    expect_any(__wrap_wm_sendmsg_with_reconnect, usec);
+    expect_any(__wrap_wm_sendmsg_with_reconnect, queue);
+    expect_any(__wrap_wm_sendmsg_with_reconnect, message);
+    expect_any(__wrap_wm_sendmsg_with_reconnect, locmsg);
+    expect_any(__wrap_wm_sendmsg_with_reconnect, loc);
+    expect_any(__wrap_wm_sendmsg_with_reconnect, tag);
+    will_return(__wrap_wm_sendmsg_with_reconnect, 0);
 
     expect_string(__wrap_wm_state_io, tag, "github-test_org-web");
     expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
@@ -1625,12 +1630,13 @@ void test_github_execute_scan_next_page_out_of_host(void **state) {
 
     expect_any_count(__wrap__mtdebug2, tag, ITEM_PER_PAGE);
     expect_any_count(__wrap__mtdebug2, formatted_msg, ITEM_PER_PAGE);
-    expect_any_count(__wrap_wm_sendmsg, usec, ITEM_PER_PAGE);
-    expect_any_count(__wrap_wm_sendmsg, queue, ITEM_PER_PAGE);
-    expect_any_count(__wrap_wm_sendmsg, message, ITEM_PER_PAGE);
-    expect_any_count(__wrap_wm_sendmsg, locmsg, ITEM_PER_PAGE);
-    expect_any_count(__wrap_wm_sendmsg, loc, ITEM_PER_PAGE);
-    will_return_count(__wrap_wm_sendmsg, 0, ITEM_PER_PAGE);
+    expect_any_count(__wrap_wm_sendmsg_with_reconnect, usec, ITEM_PER_PAGE);
+    expect_any_count(__wrap_wm_sendmsg_with_reconnect, queue, ITEM_PER_PAGE);
+    expect_any_count(__wrap_wm_sendmsg_with_reconnect, message, ITEM_PER_PAGE);
+    expect_any_count(__wrap_wm_sendmsg_with_reconnect, locmsg, ITEM_PER_PAGE);
+    expect_any_count(__wrap_wm_sendmsg_with_reconnect, loc, ITEM_PER_PAGE);
+    expect_any_count(__wrap_wm_sendmsg_with_reconnect, tag, ITEM_PER_PAGE);
+    will_return_count(__wrap_wm_sendmsg_with_reconnect, 0, ITEM_PER_PAGE);
 
     expect_string(__wrap_OSRegex_Compile, pattern, GITHUB_NEXT_PAGE_REGEX);
     will_return(__wrap_OSRegex_Compile, 1);
