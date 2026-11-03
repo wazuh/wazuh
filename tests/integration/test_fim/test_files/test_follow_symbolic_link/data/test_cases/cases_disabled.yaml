@@ -1,6 +1,6 @@
 - name: Symlink follow disabled - Real-time
-  description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log.
+  description: When a real-time monitored directory is deleted
+               or added FIM immediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join
           args: [!!python/object/apply:os.getcwd [], test_dir, symlink]
@@ -19,8 +19,8 @@
     fim_mode: realtime
 
 - name: Symlink follow disabled - Real-time
-  description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log.
+  description: When a real-time monitored directory is deleted
+               or added FIM immediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join
           args: [!!python/object/apply:os.getcwd [], test_dir, symlink]
@@ -39,8 +39,8 @@
     fim_mode: realtime
 
 - name: Symlink follow disabled - Who-data
-  description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log.
+  description: When a real-time monitored directory is deleted
+               or added FIM immediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join
           args: [!!python/object/apply:os.getcwd [], test_dir, symlink]
@@ -59,8 +59,8 @@
     fim_mode: whodata
 
 - name: Symlink follow disabled - Who-data
-  description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log.
+  description: When a real-time monitored directory is deleted
+               or added FIM immediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join
           args: [!!python/object/apply:os.getcwd [], test_dir, symlink]
@@ -79,8 +79,8 @@
     fim_mode: whodata
 
 - name: Symlink follow disabled - Schedule
-  description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log.
+  description: When a real-time monitored directory is deleted
+               or added FIM immediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join
           args: [!!python/object/apply:os.getcwd [], test_dir, symlink]
@@ -99,8 +99,8 @@
     fim_mode: scheduled
 
 - name: Symlink follow disabled - Schedule
-  description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log.
+  description: When a real-time monitored directory is deleted
+               or added FIM immediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join
           args: [!!python/object/apply:os.getcwd [], test_dir, symlink]

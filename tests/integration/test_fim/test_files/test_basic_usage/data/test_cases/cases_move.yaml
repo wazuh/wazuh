@@ -1,6 +1,6 @@
 - name: Move file - Real-time
   description: When a real-time monitored directory es moved
-               FIM inmediately raises a log.
+               FIM immediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/, test_dir]
     FREQUENCY: 43200 # As default 12 hs
@@ -29,7 +29,7 @@
 
 - name: Move folder - Real-time
   description: When a real-time monitored directory es moved
-               FIM inmediately raises a log.
+               FIM immediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/, test_dir]
     FREQUENCY: 43200 # As default 12 hs
