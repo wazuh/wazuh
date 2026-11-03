@@ -13997,7 +13997,7 @@ zstd 1.5.7
 ==============================================================================
 License:     BSD-3-Clause
 Homepage:    https://github.com/facebook/zstd
-Included in: manager
+Included in: manager, standalone
 
 ------------------------------------------------------------------------------
 [ zstd/LICENSE ]

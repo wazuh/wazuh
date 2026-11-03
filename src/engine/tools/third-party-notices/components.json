@@ -611,7 +611,8 @@
       "name": "zstd",
       "dependency": "zstd",
       "artefacts": [
-        "manager"
+        "manager",
+        "standalone"
       ],
       "readme_license": "3-Clause \"New\" BSD License",
       "dir": "zstd",
