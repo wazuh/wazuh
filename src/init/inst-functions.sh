@@ -1235,7 +1235,7 @@ TransferShared()
 
 checkDownloadContent()
 {
-    VD_FILENAME='vd_1.0.0_vd_4.13.0.tar.xz'
+    VD_FILENAME='vd_1.0.0_vd_4.14.0.tar.xz'
     VD_FULL_PATH=${INSTALLDIR}/tmp/${VD_FILENAME}
 
     if [ "X${DOWNLOAD_CONTENT}" = "Xy" ]; then

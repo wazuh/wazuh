@@ -336,7 +336,7 @@ if [ $1 = 2 ]; then
   fi
 fi
 
-%define _vdfilename vd_1.0.0_vd_4.13.0.tar.xz
+%define _vdfilename vd_1.0.0_vd_4.14.0.tar.xz
 
 # Fresh install code block
 if [ $1 = 1 ]; then
