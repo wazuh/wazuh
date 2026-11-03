@@ -1227,6 +1227,14 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
     memset(cleartext_msg, '\0', OS_MAXSTR + 1);
     memset(srcmsg, '\0', OS_FLSIZE + 1);
     tmp_msg = NULL;
+    if (recv_b > OS_MAXSTR) {
+        mwarn("Message size (%d) exceeds maximum allowed (%d) from '%s'", recv_b, OS_MAXSTR, srcip);
+        if (message->sock >= 0) {
+            _close_sock(&keys, message->sock);
+        }
+        rem_inc_recv_unknown();
+        return;
+    }
     memcpy(buffer, message->buffer, recv_b);
 
     /* Get a valid agent id */
@@ -1603,6 +1611,10 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         } else {
             key_unlock();
             rem_inc_recv_dequeued();
+            mwarn("Dropping message with out-of-order counter from '%s'. Closing socket to avoid agent hang.", srcip);
+            if (message->sock >= 0) {
+                _close_sock(&keys, message->sock);
+            }
         }
         return;
     }
