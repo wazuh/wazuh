@@ -172,6 +172,11 @@ lock()
         fi
         exit 1
     fi
+    # A restart or reload killed holding the lock leaves its marker (see restart_service), and its start
+    # markers if killed while starting daemons: whoever takes the lock next drops them, or the API would
+    # keep reporting every daemon as restarting, or a stopped one as starting.
+    rm -f ${DIR}/var/run/.restart
+    rm -f ${DIR}/var/run/*.start
 }
 
 # Releases the lock if this run holds it: a run refused before it took the lock must not remove the
@@ -183,12 +188,13 @@ unlock()
     fi
 }
 
-# Drops the start markers and releases the lock of a refused run, if it holds the lock. A run refused
-# before it took the lock leaves those of the run that holds it.
+# Drops the start and restart markers and releases the lock of a refused run, if it holds the lock. A run
+# refused before it took the lock leaves those of the run that holds it.
 release_refused_run()
 {
     if holds_lock; then
         rm -f ${DIR}/var/run/*.start
+        rm -f ${DIR}/var/run/.restart
         unlock
     fi
 }
@@ -268,7 +274,6 @@ clear_verdicts()
 abort_start()
 {
     if [ "${CHECK_ONLY}" != true ]; then
-        rm -f ${DIR}/var/run/.restart
         release_refused_run
     fi
     exit 1;
@@ -582,7 +587,6 @@ resolvecredentials()
         # integration tests) look for it.
         log_lines ERROR "${CREDENTIALS_VERDICT}"
         refuse 21 "Unresolved credentials"
-        rm -f ${DIR}/var/run/.restart
         # A start runs this before lock(), a restart or reload holding the lock: only the latter has
         # start markers and a lock of its own to drop.
         release_refused_run
@@ -762,6 +766,8 @@ start_service()
         else
             echo "Invalid cluster configuration, check the ${CONF_DIR}/${WAZUH_CONF} file."
         fi
+        # A restart or reload has already stopped the daemons: it is over, so is its marker.
+        rm -f ${DIR}/var/run/.restart
         unlock;
         exit 1;
     fi
@@ -1023,11 +1029,14 @@ check_service()
 
 restart_service()
 {
-    service_write ${DIR}/var/run/.restart replace < /dev/null
     validateconfig --skip-file-checks
     checkcredentials
     testconfig
     lock
+    # The marker the API reports as 'restarting' is written and removed only while holding the lock, and a
+    # run killed holding it (a systemctl restart merged into a reload kills the reload's script) leaves it
+    # for the next lock() to drop.
+    service_write ${DIR}/var/run/.restart replace < /dev/null
     if [ $USE_JSON = true ]; then
         stop_service > /dev/null 2>&1
     else
