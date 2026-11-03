@@ -7183,6 +7183,15 @@ TEST_F(SyscollectorImpTest, DocumentLimits_EndToEnd_Summary)
             << "Expected hotfixes limit to be set to 10";
 }
 
+#if defined(__linux__)
+
+// Container admission is a Linux-only feature -- scanContainerBaseline() and
+// pollContainerAdmission() are both compiled out elsewhere, so m_containerBaseline
+// can never be set on another platform and these four have nothing to observe
+// there. The last of them also stands up a second DBSync over the module's own
+// database to make a flag write fail, and that aborted the whole suite under
+// wine rather than failing a case.
+
 TEST_F(SyscollectorImpTest, StartupLimitsLeaveWithheldRowsUntilAdmissionIsKnown)
 {
     const auto info = std::make_shared<MockSysInfo>();
@@ -7533,6 +7542,8 @@ TEST_F(SyscollectorImpTest, FailedRetractionsRemainOwedUntilTheirFlagsAreWritten
     module.m_containerAdmissionWithholding = false;
     module.m_containerDocumentCounts.clear();
 }
+
+#endif
 
 TEST_F(SyscollectorImpTest, AdmissionRetractsAndRestoresRetainedRows)
 {
