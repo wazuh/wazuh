@@ -424,7 +424,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* aut
 
                                         payload = cJSON_PrintUnformatted(full_log);
                                         mtdebug2(WM_MS_GRAPH_LOGTAG, "Sending log: '%s'", payload);
-                                        if (wm_sendmsg(1000000 / wm_max_eps, queue_fd, payload, WM_MS_GRAPH_CONTEXT.name, LOCALFILE_MQ) < 0) {
+                                        if (wm_sendmsg_with_reconnect(1000000 / wm_max_eps, &queue_fd, payload, WM_MS_GRAPH_CONTEXT.name, LOCALFILE_MQ, WM_MS_GRAPH_LOGTAG) < 0) {
                                             mterror(WM_MS_GRAPH_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
                                         }
 

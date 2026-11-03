@@ -3058,12 +3058,13 @@ void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
 
     int result = 1;
     queue_fd = 0;
-    expect_value(__wrap_wm_sendmsg, usec, 1000000);
-    expect_value(__wrap_wm_sendmsg, queue, queue_fd);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"security\",\"relationship\":\"alerts_v2\"}}");
-    expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
-    expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
-    will_return(__wrap_wm_sendmsg, result);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, queue, queue_fd);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"security\",\"relationship\":\"alerts_v2\"}}");
+    expect_string(__wrap_wm_sendmsg_with_reconnect, locmsg, "ms-graph");
+    expect_value(__wrap_wm_sendmsg_with_reconnect, loc, LOCALFILE_MQ);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, tag, WM_MS_GRAPH_LOGTAG);
+    will_return(__wrap_wm_sendmsg_with_reconnect, result);
 
     expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
     expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
@@ -3172,16 +3173,17 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
 #endif
 
     queue_fd = 0;
-    expect_value(__wrap_wm_sendmsg, usec, 1000000);
-    expect_value(__wrap_wm_sendmsg, queue, queue_fd);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, queue, queue_fd);
 #ifdef TEST_WINAGENT
-    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
+    expect_string(__wrap_wm_sendmsg_with_reconnect, message, "{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
 #else
-    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
+    expect_string(__wrap_wm_sendmsg_with_reconnect, message, "{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
 #endif
-    expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
-    expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
-    will_return(__wrap_wm_sendmsg, -1);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, locmsg, "ms-graph");
+    expect_value(__wrap_wm_sendmsg_with_reconnect, loc, LOCALFILE_MQ);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, tag, WM_MS_GRAPH_LOGTAG);
+    will_return(__wrap_wm_sendmsg_with_reconnect, -1);
 
     will_return(__wrap_strerror, "Error");
 
@@ -3219,16 +3221,17 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"id\":\"12345\",\"managedDevices\":[{\"id\":\"2345\"},{\"name\":\"test\"},{\"id\":\"3456\"}],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}'");
 #endif
 
-    expect_value(__wrap_wm_sendmsg, usec, 1000000);
-    expect_value(__wrap_wm_sendmsg, queue, queue_fd);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, queue, queue_fd);
 #ifdef TEST_WINAGENT
-    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"id\":\"12345\",\"managedDevices\":[{\"id\":\"2345\"},{\"name\":\"test\"},{\"id\":\"3456\"}],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
+    expect_string(__wrap_wm_sendmsg_with_reconnect, message, "{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"id\":\"12345\",\"managedDevices\":[{\"id\":\"2345\"},{\"name\":\"test\"},{\"id\":\"3456\"}],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
 #else
-    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"id\":\"12345\",\"managedDevices\":[{\"id\":\"2345\"},{\"name\":\"test\"},{\"id\":\"3456\"}],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
+    expect_string(__wrap_wm_sendmsg_with_reconnect, message, "{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"id\":\"12345\",\"managedDevices\":[{\"id\":\"2345\"},{\"name\":\"test\"},{\"id\":\"3456\"}],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
 #endif
-    expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
-    expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
-    will_return(__wrap_wm_sendmsg, 1);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, locmsg, "ms-graph");
+    expect_value(__wrap_wm_sendmsg_with_reconnect, loc, LOCALFILE_MQ);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, tag, WM_MS_GRAPH_LOGTAG);
+    will_return(__wrap_wm_sendmsg_with_reconnect, 1);
 
     wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
@@ -3321,16 +3324,17 @@ void test_wm_ms_graph_scan_relationships_single_success_two_pages(void **state) 
 #endif
 
     queue_fd = 0;
-    expect_value(__wrap_wm_sendmsg, usec, 1000000);
-    expect_value(__wrap_wm_sendmsg, queue, queue_fd);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, queue, queue_fd);
 #ifdef TEST_WINAGENT
-    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
+    expect_string(__wrap_wm_sendmsg_with_reconnect, message, "{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
 #else
-    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
+    expect_string(__wrap_wm_sendmsg_with_reconnect, message, "{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
 #endif
-    expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
-    expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
-    will_return(__wrap_wm_sendmsg, -1);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, locmsg, "ms-graph");
+    expect_value(__wrap_wm_sendmsg_with_reconnect, loc, LOCALFILE_MQ);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, tag, WM_MS_GRAPH_LOGTAG);
+    will_return(__wrap_wm_sendmsg_with_reconnect, -1);
 
     will_return(__wrap_strerror, "Error");
 
@@ -3344,16 +3348,17 @@ void test_wm_ms_graph_scan_relationships_single_success_two_pages(void **state) 
     expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}'");
 #endif
 
-    expect_value(__wrap_wm_sendmsg, usec, 1000000);
-    expect_value(__wrap_wm_sendmsg, queue, queue_fd);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, queue, queue_fd);
 #ifdef TEST_WINAGENT
-    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
+    expect_string(__wrap_wm_sendmsg_with_reconnect, message, "{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
 #else
-    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
+    expect_string(__wrap_wm_sendmsg_with_reconnect, message, "{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
 #endif
-    expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
-    expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
-    will_return(__wrap_wm_sendmsg, 1);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, locmsg, "ms-graph");
+    expect_value(__wrap_wm_sendmsg_with_reconnect, loc, LOCALFILE_MQ);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, tag, WM_MS_GRAPH_LOGTAG);
+    will_return(__wrap_wm_sendmsg_with_reconnect, 1);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/next_page'");
@@ -3375,16 +3380,17 @@ void test_wm_ms_graph_scan_relationships_single_success_two_pages(void **state) 
 #endif
 
     queue_fd = 0;
-    expect_value(__wrap_wm_sendmsg, usec, 1000000);
-    expect_value(__wrap_wm_sendmsg, queue, queue_fd);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, queue, queue_fd);
 #ifdef TEST_WINAGENT
-    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log3\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
+    expect_string(__wrap_wm_sendmsg_with_reconnect, message, "{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log3\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
 #else
-    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log3\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
+    expect_string(__wrap_wm_sendmsg_with_reconnect, message, "{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log3\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
 #endif
-    expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
-    expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
-    will_return(__wrap_wm_sendmsg, 1);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, locmsg, "ms-graph");
+    expect_value(__wrap_wm_sendmsg_with_reconnect, loc, LOCALFILE_MQ);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, tag, WM_MS_GRAPH_LOGTAG);
+    will_return(__wrap_wm_sendmsg_with_reconnect, 1);
 
     wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
@@ -3447,12 +3453,13 @@ void test_wm_ms_graph_scan_relationships_next_page_out_of_host(void **state) {
     expect_any(__wrap__mtdebug2, formatted_msg);
 
     queue_fd = 0;
-    expect_value(__wrap_wm_sendmsg, usec, 1000000);
-    expect_value(__wrap_wm_sendmsg, queue, queue_fd);
-    expect_any(__wrap_wm_sendmsg, message);
-    expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
-    expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
-    will_return(__wrap_wm_sendmsg, 1);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, queue, queue_fd);
+    expect_any(__wrap_wm_sendmsg_with_reconnect, message);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, locmsg, "ms-graph");
+    expect_value(__wrap_wm_sendmsg_with_reconnect, loc, LOCALFILE_MQ);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, tag, WM_MS_GRAPH_LOGTAG);
+    will_return(__wrap_wm_sendmsg_with_reconnect, 1);
 
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtwarn, formatted_msg, "Ignoring next page URL out of 'graph.microsoft.com'.");
@@ -3568,12 +3575,13 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"identityProtection\",\"relationship\":\"riskDetections\"}}'");
 
     queue_fd = 0;
-    expect_value(__wrap_wm_sendmsg, usec, 1000000);
-    expect_value(__wrap_wm_sendmsg, queue, queue_fd);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"identityProtection\",\"relationship\":\"riskDetections\"}}");
-    expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
-    expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
-    will_return(__wrap_wm_sendmsg, 1);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, queue, queue_fd);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"identityProtection\",\"relationship\":\"riskDetections\"}}");
+    expect_string(__wrap_wm_sendmsg_with_reconnect, locmsg, "ms-graph");
+    expect_value(__wrap_wm_sendmsg_with_reconnect, loc, LOCALFILE_MQ);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, tag, WM_MS_GRAPH_LOGTAG);
+    will_return(__wrap_wm_sendmsg_with_reconnect, 1);
 
     expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-identityProtection-riskDetections");
     expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
@@ -3626,12 +3634,13 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1_resource_2\",\"resource\":\"deviceManagement\",\"relationship\":\"auditEvents\"}}'");
 
     queue_fd = 0;
-    expect_value(__wrap_wm_sendmsg, usec, 1000000);
-    expect_value(__wrap_wm_sendmsg, queue, queue_fd);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1_resource_2\",\"resource\":\"deviceManagement\",\"relationship\":\"auditEvents\"}}");
-    expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
-    expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
-    will_return(__wrap_wm_sendmsg, 1);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, queue, queue_fd);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1_resource_2\",\"resource\":\"deviceManagement\",\"relationship\":\"auditEvents\"}}");
+    expect_string(__wrap_wm_sendmsg_with_reconnect, locmsg, "ms-graph");
+    expect_value(__wrap_wm_sendmsg_with_reconnect, loc, LOCALFILE_MQ);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, tag, WM_MS_GRAPH_LOGTAG);
+    will_return(__wrap_wm_sendmsg_with_reconnect, 1);
 
     expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-deviceManagement-auditEvents");
     expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
@@ -3772,12 +3781,13 @@ void test_wm_ms_graph_scan_relationships_renew_token(void **state) {
 
     int result = 1;
     queue_fd = 0;
-    expect_value(__wrap_wm_sendmsg, usec, 1000000);
-    expect_value(__wrap_wm_sendmsg, queue, queue_fd);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"security\",\"relationship\":\"alerts_v2\"}}");
-    expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
-    expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
-    will_return(__wrap_wm_sendmsg, result);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, queue, queue_fd);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"security\",\"relationship\":\"alerts_v2\"}}");
+    expect_string(__wrap_wm_sendmsg_with_reconnect, locmsg, "ms-graph");
+    expect_value(__wrap_wm_sendmsg_with_reconnect, loc, LOCALFILE_MQ);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, tag, WM_MS_GRAPH_LOGTAG);
+    will_return(__wrap_wm_sendmsg_with_reconnect, result);
 
     expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
     expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
