@@ -151,6 +151,7 @@
         "src/Makefile",
         "tests/integration/conftest.py",
         "tests/integration/pytest.ini",
+        "tests/integration/start_lock.py",
         "tests/integration/test_manager_control/**"
       ],
       "_comment_paths": "test_unsafe_credentials_file drives checkcredentials() in wazuh-server.sh, which runs the resolver (src/init/credentials/) in --check mode. This is also the install-and-start smoke for the .deb every suite installs: the package recipe (install.sh, inst-functions.sh, the DEB maintainer scripts) and the systemd unit `systemctl start` runs. Only the .deb is installed (5_testintegration_manager.yml dpkg -i), so the RPM spec is not listed."
