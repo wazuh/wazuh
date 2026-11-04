@@ -55,13 +55,13 @@ sudo rpm -e wazuh-manager
 ```
 
 `rpm -e` disables the service at boot if you enabled it, and deletes the `wazuh-manager` user and group and the state directories under `/var/wazuh-manager`
-(`queue/`, `var/`, `logs/`, `data/`, `api/`, `bin/` and the rest). Under `/etc/wazuh-manager`, RPM removes the
-files the package lists (`wazuh-manager.conf`, `client.keys`, `wazuh-manager-internal-options.conf`,
-`shared/agent-template.conf` and the `default` group's files included), and the files it does not own, such as
-the certificates under `certs/`, the credentials under `ca/` and `export/`, `local.env` and the files of the
-groups you created under `shared/`, are kept renamed to `<name>.save` (only a file whose name contains `shared`
-keeps its name). That renaming runs only when `shared/` is still there after the package's own files are
-gone, which it is whenever it holds anything the package did not install. Everything kept, in
+(`queue/`, `var/`, `logs/`, `data/`, `api/`, `bin/` and the rest), and keeps `/etc/wazuh-manager` with every
+file renamed to `<name>.save`, as on Debian: `wazuh-manager.conf`, `client.keys`,
+`wazuh-manager-internal-options.conf` and the `default` group's `shared/default/agent.conf` are set aside
+before RPM deletes the package's files and come back as `.save` with the rest (the certificates under `certs/`,
+the credentials under `ca/` and `export/`, `local.env`, the groups you created under `shared/`; only a file
+whose name contains `shared` keeps its name). `api.yaml` is kept as `api/configuration/api.yaml.save`; the
+schema copy and `shared/agent-template.conf` are not kept. Everything kept, in
 `/etc/wazuh-manager` and in `/var/wazuh-manager`, is handed to `root:root` with no group or other access,
 because the account that owned part of it no longer exists. Back up anything you want to keep before running
 it, and delete `/etc/wazuh-manager` and `/var/wazuh-manager` by hand when the leftovers are no longer needed.

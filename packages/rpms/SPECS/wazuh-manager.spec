@@ -628,6 +628,29 @@ if [ $1 = 0 ]; then
     chkconfig --del wazuh-manager > /dev/null 2>&1 || true
   fi
 
+  # Keep the configuration aside for %%postun, which renames it to *.save as the DEB postrm does.
+  # RPM deletes every file the package lists between %%preun and %%postun: wazuh-manager.conf
+  # (%%ghost), client.keys, the internal options, shared/default/agent.conf and api.yaml (whose
+  # *.rpmsave %%postun deletes with api/) are gone by the time %%postun runs. The staging
+  # directory sits in the installation directory, which the service account cannot write, so
+  # nothing can be planted in it; whatever is there from an interrupted erase goes first. A link
+  # among the files to save is not ours: skipped, and -P keeps one swapped in meanwhile a link.
+  CONF_DIR="%{_sysconfdir}/wazuh-manager"
+  CONF_SAVE_DIR="%{_localstatedir}/.uninstall-conffiles"
+  rm -rf "${CONF_SAVE_DIR}"
+  if mkdir -m 0700 "${CONF_SAVE_DIR}" 2> /dev/null && mkdir -p "${CONF_SAVE_DIR}/conf/shared/default"; then
+    for CONF_FILE in client.keys wazuh-manager-internal-options.conf wazuh-manager.conf shared/default/agent.conf; do
+      if [ -f "${CONF_DIR}/${CONF_FILE}" ] && [ ! -L "${CONF_DIR}/${CONF_FILE}" ]; then
+        cp -pP "${CONF_DIR}/${CONF_FILE}" "${CONF_SAVE_DIR}/conf/${CONF_FILE}" || true
+      fi
+    done
+    if [ -f %{_localstatedir}/api/configuration/api.yaml ] && [ ! -L %{_localstatedir}/api/configuration/api.yaml ]; then
+      cp -pP %{_localstatedir}/api/configuration/api.yaml "${CONF_SAVE_DIR}/api.yaml" || true
+    fi
+  else
+    echo "WARNING: could not create ${CONF_SAVE_DIR}; the configuration files will not be kept as .save." >&2
+  fi
+
 fi
 
 %postun
@@ -670,8 +693,22 @@ if [ $1 = 0 ];then
     groupdel wazuh-manager >/dev/null 2>&1
   fi
 
-  # Backup agents centralized configuration (shared/)
-  if [ -d ${CONF_DIR}/shared ] && [ ! -L ${CONF_DIR} ]; then
+  # Put back what %%preun kept aside, under its own name: the drop pass below would delete a *.save
+  # written here, and the rename pass adds the suffix. ${CONF_DIR} was writable by the service
+  # account: --remove-destination replaces a link planted at a destination instead of writing
+  # through it, and cp refuses to copy a directory onto a link. RPM has removed shared/default
+  # (and shared/ when no agent group was left), so the copy recreates them.
+  CONF_SAVE_DIR="%{_localstatedir}/.uninstall-conffiles"
+  if [ -d "${CONF_SAVE_DIR}" ] && [ ! -L "${CONF_SAVE_DIR}" ]; then
+    if [ -d ${CONF_DIR} ] && [ ! -L ${CONF_DIR} ]; then
+      cp -Rpf --remove-destination "${CONF_SAVE_DIR}/conf/." ${CONF_DIR} \
+        || echo "WARNING: some configuration files could not be kept in ${CONF_DIR}." >&2
+    fi
+  fi
+
+  # Rename the kept configuration to *.save. Not gated on shared/ (the removal of the package's
+  # own files takes it when no agent group is left): every erase keeps the same set.
+  if [ -d ${CONF_DIR} ] && [ ! -L ${CONF_DIR} ]; then
     save_conf drop ${CONF_DIR}
     save_conf rename ${CONF_DIR}
   fi
@@ -685,6 +722,13 @@ if [ $1 = 0 ];then
   rm -rf %{_localstatedir}/logs/
   rm -rf %{_localstatedir}/tmp
   rm -rf %{_localstatedir}/data
+
+  # api.yaml is kept like the DEB keeps it: back in the api/ just removed, renamed to *.save.
+  if [ -f "${CONF_SAVE_DIR}/api.yaml" ] && [ ! -L "${CONF_SAVE_DIR}/api.yaml" ]; then
+    mkdir -p %{_localstatedir}/api/configuration
+    mv -f "${CONF_SAVE_DIR}/api.yaml" %{_localstatedir}/api/configuration/api.yaml.save
+  fi
+  rm -rf "${CONF_SAVE_DIR}"
 
   # What is kept (the saved configuration, backups) is an archive of a removed installation: it
   # goes to root, private to root. Part of it belonged to the removed account, whose numeric IDs
