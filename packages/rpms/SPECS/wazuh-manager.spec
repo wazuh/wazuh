@@ -543,7 +543,7 @@ if [ -x %{_localstatedir}/bin/wazuh-manager-resolve-credentials ]; then
     CRED_NEEDS_INSTALL="yes"
   fi
   # A CA staged without its key: --install keeps it and cannot issue the server pairs, so repeating
-  # it changes nothing until the key (or the pairs) is staged.
+  # it changes nothing; the node's pairs are staged instead (it never needs the key).
   if printf '%%s\n' "${CRED_ERR}" | grep -q -E "^MISSING ${CONF_DIR}/certs/(remoted|apid)\.pem: no CA key"; then
     CRED_NEEDS_CA_KEY="yes"
   fi
@@ -571,14 +571,14 @@ rmdir %{_localstatedir}/packages_files 2> /dev/null || true
 # this node a worker, which publishes nothing (the Server API runs on the master). When the resolver
 # reported a problem, the manager refuses to start until it is fixed. Only --install issues the CA and
 # the server pairs, so it is the command to repeat when one of those is missing or the run stopped
-# early -- once the CA key is in place, when the CA was staged without it; what else is missing (the
-# indexer's password and files) the start resolves, once supplied.
+# early -- except when the CA was staged without its key: then the node's pairs are staged, never the
+# key; what else is missing (the indexer's password and files) the start resolves, once supplied.
 print_credential_steps() {
   if [ "${CRED_INCOMPLETE}" = "yes" ]; then
     echo "Credential resolution is incomplete: the manager does not start until every MISSING, INVALID or UNSAFE entry reported above is resolved."
     if [ "${CRED_NEEDS_CA_KEY}" = "yes" ]; then
-      echo "The CA in ${CONF_DIR}/ca has no key, so no server certificate could be issued. Stage its key as ${CONF_DIR}/ca/root-ca.key (owned by root, mode 0400 or 0600), then run: %{_localstatedir}/bin/wazuh-manager-resolve-credentials --install -H %{_localstatedir}"
-      echo "Or stage the server certificate pairs it reports missing in ${CONF_DIR}/certs, then start the manager."
+      echo "The CA in ${CONF_DIR}/ca was staged without its key, so no server certificate was issued here. Place this node's certificate pairs it reports missing in ${CONF_DIR}/certs (for example from wazuh-certificates.tar), then start the manager: no new --install is needed."
+      echo "This node does not need the root CA private key: do not copy it here."
     elif [ "${CRED_NEEDS_INSTALL}" = "yes" ]; then
       echo "Fix them, then run: %{_localstatedir}/bin/wazuh-manager-resolve-credentials --install -H %{_localstatedir}"
     else
