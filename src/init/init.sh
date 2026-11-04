@@ -176,6 +176,8 @@ runInit()
         chown root:root ${SERVICE_UNIT_PATH}
         chmod 0644 ${SERVICE_UNIT_PATH}
         systemctl daemon-reload
+        # Read by install.sh's closing hints: the start command it prints is the unit's.
+        SERVICE_SYSTEMD_UNIT="wazuh-$type"
 
         rm -f /etc/rc.d/init.d/${service}
 

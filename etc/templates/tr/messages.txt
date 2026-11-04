@@ -89,7 +89,6 @@ configurationdone="Yapılandırma doğru olarak tamamlandı"
 tostart="Wazuh'i başlatmak için"
 tostop="Wazuh'i durdurmak için"
 configat="Yapılandırma buradan görülebilir veya değiştirilebilir:"
-addserveragent="Her bir aracıyı/istemciyi erişim için yetkilendirmeden önce eklemeniz gerekmektedir."
 presskey="Devam etmek için ENTER tuşuna basınız"
 
 # Update
