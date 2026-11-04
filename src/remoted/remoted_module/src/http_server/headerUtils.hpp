@@ -21,6 +21,26 @@
 namespace remoted::http
 {
 
+    namespace detail
+    {
+        /// ASCII case-insensitive equality against an already lowercase @p lower.
+        inline bool equalsIgnoreCase(std::string_view text, std::string_view lower)
+        {
+            if (text.size() != lower.size())
+            {
+                return false;
+            }
+            for (std::size_t i = 0; i < text.size(); ++i)
+            {
+                if (static_cast<char>(std::tolower(static_cast<unsigned char>(text[i]))) != lower[i])
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+    } // namespace detail
+
     /**
      * @brief Case-insensitive header lookup.
      *
@@ -44,20 +64,7 @@ namespace remoted::http
     {
         for (const auto& [name, value] : headers)
         {
-            if (name.size() != lowerName.size())
-            {
-                continue;
-            }
-            bool equal = true;
-            for (std::size_t i = 0; i < name.size(); ++i)
-            {
-                if (static_cast<char>(std::tolower(static_cast<unsigned char>(name[i]))) != lowerName[i])
-                {
-                    equal = false;
-                    break;
-                }
-            }
-            if (equal)
+            if (detail::equalsIgnoreCase(name, lowerName))
             {
                 return value;
             }
@@ -89,22 +96,6 @@ namespace remoted::http
                 text.remove_suffix(1);
             }
             return text;
-        }
-
-        inline bool equalsIgnoreCase(std::string_view text, std::string_view lower)
-        {
-            if (text.size() != lower.size())
-            {
-                return false;
-            }
-            for (std::size_t i = 0; i < text.size(); ++i)
-            {
-                if (static_cast<char>(std::tolower(static_cast<unsigned char>(text[i]))) != lower[i])
-                {
-                    return false;
-                }
-            }
-            return true;
         }
 
         /// RFC 9110 12.4.2 qvalue. Sets @p positive when the weight is above zero.

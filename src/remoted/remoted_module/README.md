@@ -2057,9 +2057,9 @@ before the pump runs; the per-chunk loop is deliberately uninstrumented) — cat
     is on and its `Accept-Encoding` offers `zstd`: `acceptsZstd()` (`http_server/headerUtils.hpp`)
     reads the comma-separated list, matches the token case-insensitively and applies `q` per
     RFC 9110 §12.4.2. `zstd;q=0`, a malformed weight, any parameter other than `q`, or an invalid `zstd`
-    element next to a valid one means "not offered"; `gzip`, `identity` and `*` never offer it. With
-    several `Accept-Encoding` lines of different spelling one of them is used (the conservative
-    reading).
+    element next to a valid one means "not offered"; `gzip`, `identity` and `*` never offer it.
+    Several `Accept-Encoding` lines are joined with `, ` by `makeHttpRequest()` and read as one list
+    (RFC 9110 §5.3), so a `zstd;q=0` on any of them withdraws the offer.
   - **Installed per request, on `Streamable` routes only.** The lambda in
     `RestinioHttpServer::buildRouter()` wraps the route's `RestinioStreamableResponder` in a
     `CompressingResponder` when the offer is there. The decorator is stateless, so one per request is
@@ -3120,7 +3120,7 @@ without the offer, the flag off serves plain and still rejects `zstd` requests, 
 is charged while streaming and released after, an empty config is a valid empty frame, compressed
 downloads never take more than half of the budget while others are active, an aborted transfer
 leaves a truncated frame), and in the existing files: `inFlightBudget_test.cpp` (`tryReserveUncountedKeeping` and
-its floor), `httpServer_test.cpp` (`HttpServerConfigTest.ContentEncoding*` and `CompressionWiringTest`, including the budget at its minimum, just above the floor and the half-budget limit;
+its floor), `httpServer_test.cpp` (`HttpServerConfigTest.ContentEncoding*` and `CompressionWiringTest`, including the budget at its minimum, just above the floor, the half-budget limit and repeated `Accept-Encoding` lines;
 `testTlsServer.hpp` takes an `extraHeaders` parameter to send `Accept-Encoding`).
 
 Control-plane coverage: `controlEndpoint_test.cpp` (empty/oversized bodies, non-JSON, non-object
