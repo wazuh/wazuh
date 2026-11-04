@@ -1355,10 +1355,17 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
 
             snprintf(report->manager_message, sizeof(report->manager_message), "%s", error.message);
 
+            /* The manager refusing the token itself: the one verdict on which the caller discards
+             * the token, so the same call decides both that and the line telling the operator. Not
+             * keyed on the status: a malformed request, a disabled enrollment or a duplicate agent
+             * is just as final for this attempt, yet may succeed later with the same token. */
+            refusal = w_enrollment_token_refusal(enroll_result.http_code, &error, reason, sizeof(reason));
+            report->token_rejected = (refusal != NULL);
+
             /* The manager's own message cannot name the token, and for an expired or revoked one
              * it does not even say which of the two. The class or code stays in the log, for the
              * operator; the person reading this line only needs what happened and what to do. */
-            if ((refusal = w_enrollment_token_refusal(enroll_result.http_code, &error, reason, sizeof(reason))) != NULL) {
+            if (refusal != NULL) {
                 snprintf(report->token_refusal, sizeof(report->token_refusal),
                          "enrollment token %s %s. Create a new enrollment token on the manager.",
                          w_enrollment_token_id_or_unknown(enroll_request.enroll_kid), refusal);
@@ -1373,8 +1380,8 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
     /* The kid this request actually signed with is the one on enroll_request: the enrollment
      * token's, derived and set above. built_request.enroll_kid is the RE-ENROLLMENT secret's, which
      * w_enrollment_build_request() leaves NULL whenever there is no secret on disk. Passing it
-     * named "unknown" in the one 403 an operator most needs to act on: the one telling them which
-     * enrollment token to re-mint. */
+     * named "unknown" in the one refusal an operator most needs to act on: the one telling them
+     * which enrollment token to re-mint. */
     w_enroll_status_t enroll_status = w_enrollment_process_response(&enroll_result,
                                                                    enroll_request.enroll_kid);
 
@@ -1384,17 +1391,10 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
          * answer is one that repeating this exact request cannot change -- a malformed request, a
          * bad credential, enrollment disabled, a duplicate agent, or a 403 refusing the connection
          * itself (a client certificate that does not list the peer address stays that way until it
-         * is reissued) -- except for report->pending, set above. */
+         * is reissued) -- except for report->pending and report->token_rejected, set above. */
         if (report != NULL) {
             report->transient = (enroll_status == W_ENROLL_ERR_TRANSPORT ||
                                  enroll_status == W_ENROLL_ERR_SERVER);
-            /* Keyed on the status, deliberately, and NOT on `transient`: every fatal refusal is
-             * permanent, but so is a malformed request, an enrollment the manager has disabled,
-             * and a duplicate agent -- all of which may succeed later with the same token. This
-             * is the manager's verdict on a token whose signature it already verified: unknown,
-             * expired, revoked, or out of uses. Only the caller acts on it, because only the
-             * caller owns the token. */
-            report->token_rejected = (enroll_status == W_ENROLL_ERR_AUTH_FATAL);
         }
 
         w_enroll_request_destroy(&built_request);
@@ -1616,8 +1616,9 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
 
         /* The token file is kept, so a retry within this boot -- or a later one -- still has
          * something to enroll with. The one exception is a token the manager has finally refused:
-         * unknown, expired, revoked, or out of uses. Nothing on this path clears it (the anchor is never
-         * installed and client.keys never written, so neither latch above trips next boot), so
+         * expired, revoked, out of uses, or unknown to the master. Nothing on this path clears it
+         * (the anchor is never installed and client.keys never written, so neither latch above
+         * trips next boot), so
          * keeping it would hand the same dead credential to the same refusal on every restart.
          * Disposal is the caller's business, which is why the core only reports the verdict. */
         if (report.token_rejected) {

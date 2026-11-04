@@ -95,7 +95,8 @@ void w_enrollment_parse_error(const hc_enroll_result_t *result, w_enroll_error_t
 
 /**
  * @brief Tells whether a refused /enroll is the manager refusing the enrollment token itself:
- *        expired, revoked, unknown or out of uses. Re-presenting that token cannot succeed.
+ *        expired, revoked, out of uses, or unknown to the master (authd's 9022; a worker's
+ *        `token_unknown` is not one). Re-presenting that token cannot succeed.
  *
  * @param http_code The /enroll HTTP status.
  * @param error The reason w_enrollment_parse_error() read from the same response.

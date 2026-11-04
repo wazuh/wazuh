@@ -118,9 +118,9 @@ typedef struct {
      *  needs to decide between retrying and giving up (see w_token_bootstrap_result_t); an
      *  operator driving a single attempt from a terminal has no use for it. */
     bool transient;
-    /** The manager finally refused the token itself: unknown, expired, revoked, or out of uses
-     *  (w_enrollment_token_refusal()). Its signature verified, so this is a verdict on the
-     *  credential rather than on the request, and re-presenting it cannot change the answer.
+    /** The manager finally refused the token itself: expired, revoked, out of uses, or unknown to
+     *  the master (w_enrollment_token_refusal()). Its signature verified, so this is a verdict on
+     *  the credential rather than on the request, and re-presenting it cannot change the answer.
      *  Acted on only by the caller, which is the only party that owns the token and can dispose
      *  of it. */
     bool token_rejected;
