@@ -40,7 +40,10 @@ checked before any session counter or budget is charged. Routing matches the tar
 path before `?`; the handler receives the raw target, query string included, and header
 names lower-cased. A repeated header name keeps its last value and is listed in `duplicateHeaders`. With
 `expectContinue` on, the interim `100 Continue` for `Expect: 100-continue` is written at this point —
-after admission, and only while the body is still outstanding.
+after admission, and only while the body is still outstanding. A final response ready during
+the interim write waits for it to complete. The first final response is preserved, whether it
+comes from the handler or the response backstop; later attempts cannot replace it. A handler
+whose response is already waiting does not produce an unanswered-handler timeout warning.
 
 While a reply is deferred there is no read pending, so a one-byte read watches the socket:
 a peer that gives up (EOF) or violates the one-request-per-connection contract (any byte)
