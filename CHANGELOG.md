@@ -77,6 +77,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the rootcheck hidden-process check taking hours and filling the agent's memory limit on Linux hosts with many threads, and skipping PIDs above 32768. ([#40913](https://github.com/wazuh/wazuh/pull/40913))
 - Fixed the Windows agent not monitoring the registry keys that match a `windows_registry` wildcard and are created after the agent starts. ([#40978](https://github.com/wazuh/wazuh/pull/40978))
 - Fixed `wazuh-logcollector` skipping the newer journald entries of a read when one entry could not be formatted. ([#41068](https://github.com/wazuh/wazuh/pull/41068))
+- Fixed `wazuh-logcollector` keeping a field of the log line instead of the label configured with the same name for `json` localfiles. ([#41072](https://github.com/wazuh/wazuh/pull/41072))
 
 ## [v4.14.10]
 
