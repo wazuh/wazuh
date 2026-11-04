@@ -17,6 +17,7 @@
 #include <base/logging.hpp>
 #include <fastmetrics/registry.hpp>
 #include <httpsrv/apiServer.hpp>
+#include <proc.hpp>
 
 using namespace std::chrono_literals;
 using httpsrv::ApiRouteRegistrar;
@@ -181,12 +182,45 @@ TEST_F(ApiServerTest, OptionsKeepTheApiTransportShape)
     const auto options = httpsrv::apiServerOptions();
 
     EXPECT_FALSE(options.byteBudget) << "no API route charges a byte budget";
-    EXPECT_EQ(4U, options.executorThreads);
+    EXPECT_EQ(httpsrv::apiWorkerCount(cpp_get_nproc()), options.executorThreads);
     EXPECT_EQ(64U, options.executorQueue);
     EXPECT_EQ(10U, options.bodyTimeoutSec);
     EXPECT_TRUE(options.answerBodyTimeout);
     EXPECT_TRUE(options.expectContinue);
 }
+
+namespace
+{
+struct WorkerCountCase
+{
+    unsigned int cpus;
+    std::size_t workers;
+};
+} // namespace
+
+class ApiWorkerCountTest : public ::testing::TestWithParam<WorkerCountCase>
+{
+};
+
+// One fewer than the processors, as the cpp-httplib pool the API used to run on, never below 4 (tester calls hold
+// a worker for seconds) nor above that pool's 16.
+TEST_P(ApiWorkerCountTest, IsOneFewerThanTheProcessorsWithinTheBounds)
+{
+    EXPECT_EQ(GetParam().workers, httpsrv::apiWorkerCount(GetParam().cpus));
+}
+
+INSTANTIATE_TEST_SUITE_P(Processors,
+                         ApiWorkerCountTest,
+                         ::testing::Values(WorkerCountCase {0, 4},
+                                           WorkerCountCase {1, 4},
+                                           WorkerCountCase {2, 4},
+                                           WorkerCountCase {5, 4},
+                                           WorkerCountCase {6, 5},
+                                           WorkerCountCase {8, 7},
+                                           WorkerCountCase {17, 16},
+                                           WorkerCountCase {64, 16}),
+                         [](const ::testing::TestParamInfo<WorkerCountCase>& info)
+                         { return "Cpus" + std::to_string(info.param.cpus); });
 
 // An unlimited payload is not an unlimited allocation: a declared length no buffer can hold is refused at once,
 // and the server goes on serving.
