@@ -8,16 +8,27 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdarg>
+#include <cstdio>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <future>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
 
 #include <base/logging.hpp>
 #include <httpsrv/udsServer.hpp>
+
+namespace Log
+{
+// The transport's log hook, defined by the engine's logging module; the tests below capture it.
+extern std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
+    GLOBAL_LOG_FUNCTION;
+} // namespace Log
 
 using namespace std::chrono_literals;
 using httpsrv::Method;
@@ -260,6 +271,121 @@ TEST_F(UdsServerTest, ConnectionCapRejectCountsAsAConnectionShed)
     ::close(first);
     ::close(second);
     server.shutdown(1s);
+}
+
+namespace
+{
+/// Captures the transport's log lines for the lifetime of the object, then restores the previous hook.
+class TransportLogCapture
+{
+public:
+    TransportLogCapture()
+        : m_previous {Log::GLOBAL_LOG_FUNCTION}
+    {
+        Log::GLOBAL_LOG_FUNCTION =
+            [this](const int, const char*, const char*, const int, const char*, const char* msg, va_list args)
+        {
+            char line[2048];
+            std::vsnprintf(line, sizeof(line), msg, args);
+            std::lock_guard<std::mutex> lock {m_mutex};
+            m_lines.emplace_back(line);
+        };
+    }
+
+    ~TransportLogCapture() { Log::GLOBAL_LOG_FUNCTION = m_previous; }
+
+    bool contains(const std::string& needle)
+    {
+        std::lock_guard<std::mutex> lock {m_mutex};
+        for (const auto& line : m_lines)
+        {
+            if (line.find(needle) != std::string::npos)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+private:
+    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)> m_previous;
+    std::mutex m_mutex;
+    std::vector<std::string> m_lines;
+};
+} // namespace
+
+// The connection-limit line names the setting that raises the limit, as given in the options.
+TEST_F(UdsServerTest, ConnectionLimitLogNamesTheConfiguredSetting)
+{
+    TransportLogCapture log;
+    const auto path = socketPath("caphint");
+    auto opts = options();
+    opts.maxConnections = 2;
+    opts.connectionCapOptionHint = "test.max_connections";
+    UdsServer server {opts};
+    server.addRoute(Method::POST, "/events", [](const Request&, Response&) {});
+    server.start(path);
+
+    const int first = connectTo(path);
+    const int second = connectTo(path);
+    ASSERT_GE(first, 0);
+    ASSERT_GE(second, 0);
+    const auto deadline = std::chrono::steady_clock::now() + 5s;
+    while (server.stats().sessions < 2 && std::chrono::steady_clock::now() < deadline)
+    {
+        std::this_thread::sleep_for(1ms);
+    }
+    ASSERT_EQ(2U, server.stats().sessions);
+
+    EXPECT_EQ(503, statusOf(roundTrip(path, post(path, "/events", "x"))));
+    ::close(first);
+    ::close(second);
+    server.shutdown(1s);
+
+    EXPECT_TRUE(log.contains("raising 'test.max_connections'"));
+}
+
+// The budget-exhausted line names the setting that raises the budget, as given in the options.
+TEST_F(UdsServerTest, BudgetLogNamesTheConfiguredSetting)
+{
+    TransportLogCapture log;
+    const auto path = socketPath("budgethint");
+    auto opts = options();
+    opts.maxBodySize = 64 * 1024;
+    // Room for one 60 KiB request and its per-request overhead, not for two.
+    opts.maxInFlightBytes = 400 * 1024;
+    opts.budgetOptionHint = "test.max_inflight_bytes";
+    std::promise<void> release;
+    auto released = release.get_future().share();
+    std::atomic<int> started {0};
+    UdsServer server {opts};
+    httpsrv::RouteOptions data; // only Data routes are charged to the byte budget
+    data.cls = httpsrv::RouteClass::Data;
+    server.addRoute(
+        Method::POST,
+        "/events",
+        [&](const Request&, Response&)
+        {
+            ++started;
+            released.wait();
+        },
+        data);
+    server.start(path);
+
+    const std::string body(60 * 1024, 'x');
+    auto held = std::async(std::launch::async, [&] { return roundTrip(path, post(path, "/events", body)); });
+    while (started.load() == 0)
+    {
+        std::this_thread::sleep_for(1ms);
+    }
+    const auto refused = roundTrip(path, post(path, "/events", body));
+    release.set_value();
+    held.get();
+    server.shutdown(1s);
+
+    EXPECT_EQ(503, statusOf(refused));
+    EXPECT_EQ(1U, server.stats().shedBudget);
+    EXPECT_TRUE(log.contains("raising 'test.max_inflight_bytes'"));
 }
 
 TEST_F(UdsServerTest, HandlerExceptionAnswers500Text)

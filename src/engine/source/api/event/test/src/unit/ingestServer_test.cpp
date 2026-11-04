@@ -180,6 +180,15 @@ INSTANTIATE_TEST_SUITE_P(
         LimitsCase {"InFlightAboveMaximum", IngestLimits {64 * MIB, 1024, 8192 * MIB + 1}, MAX_INFLIGHT_KEY}),
     [](const ::testing::TestParamInfo<LimitsCase>& info) { return std::get<0>(info.param); });
 
+// The transport's 503 lines name the settings an operator raises: the byte budget and the connection cap.
+TEST_F(IngestServerTest, OptionsNameTheSettingsThatRaiseItsLimits)
+{
+    const auto options = ingestServerOptions(limits());
+
+    EXPECT_EQ("analysisd.server_enriched_events_max_inflight_bytes", options.budgetOptionHint);
+    EXPECT_EQ("analysisd.server_enriched_events_max_connections", options.connectionCapOptionHint);
+}
+
 TEST_F(IngestServerTest, AcceptsABatchOnTheSocket)
 {
     EXPECT_CALL(*router, postEvent(testing::_)).Times(1);
