@@ -515,6 +515,44 @@ stages:
         detail: Invalid token
 
 ---
+test_name: An Expect header does not tell an undeclared route from a declared one
+
+marks:
+  - parametrize:
+      key: path
+      vals:
+        - /agents
+        - /nope
+
+stages:
+  - name: Without a token
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}{path}"
+      method: GET
+      headers:
+        Expect: foo
+    response:
+      status_code: 401
+      json:
+        title: Unauthorized
+        detail: No authorization token provided
+
+  - name: With an invalid token
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}{path}"
+      method: GET
+      headers:
+        Expect: foo
+        Authorization: "Bearer invalid"
+    response:
+      status_code: 401
+      json:
+        title: Unauthorized
+        detail: Invalid token
+
+---
 test_name: Security headers on success and error responses
 
 stages:

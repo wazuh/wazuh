@@ -1790,13 +1790,17 @@ async def test_check_block_ip_middleware(endpoint, method, call_check, mock_req)
         dispatch_mock.assert_awaited_once_with(mock_req)
         assert ret_response == response
 
+# A request the router matched to an operation, as `CheckExpectHeaderMiddleware` expects to judge one
+ROUTED_SCOPE = {'extensions': {'connexion_routing': {'operation_id': 'api.controllers.agent_controller.get_agents'}}}
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("expect_value", ['test-value', '100-continue'])
 async def test_check_expect_header_middleware(expect_value):
     """Test expect header."""
     middleware = CheckExpectHeaderMiddleware(AsyncApp(__name__))
 
-    mock_request = MagicMock(headers={'Expect': expect_value})
+    mock_request = MagicMock(scope=ROUTED_SCOPE, headers={'Expect': expect_value})
 
     response = Response("Success")
 
@@ -1816,7 +1820,7 @@ async def test_check_expect_header_middleware_uses_runtime_max_upload_size():
     """Check Expect header uses current api configuration upload size limit."""
     middleware = CheckExpectHeaderMiddleware(AsyncApp(__name__))
 
-    mock_request = MagicMock(headers={
+    mock_request = MagicMock(scope=ROUTED_SCOPE, headers={
         'Expect': '100-continue',
         'Content-Length': '10'
     }, scope={'path': '/agents'})
@@ -1857,7 +1861,7 @@ async def test_check_expect_header_middleware_no_limit():
     """A `max_upload_size` of 0 disables the ceiling, so no declared length is refused at the header."""
     middleware = CheckExpectHeaderMiddleware(AsyncApp(__name__))
 
-    mock_request = MagicMock(headers={
+    mock_request = MagicMock(scope=ROUTED_SCOPE, headers={
         'Expect': '100-continue',
         'Content-Length': str(10 * 1024 * 1024 * 1024)
     })
@@ -1869,6 +1873,33 @@ async def test_check_expect_header_middleware_no_limit():
 
     call_next_mock.assert_called_once_with(mock_request)
     assert returned_response == response
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('headers', [
+    {'Expect': 'test-value'},
+    {'Expect': '100-continue', 'Content-Length': str(10 * 1024 * 1024 * 1024)},
+], ids=['unmeetable', 'oversized'])
+@pytest.mark.parametrize('scope, refused', [
+    ({'extensions': {'connexion_routing': {'operation_id': 'api.controllers.agent_controller.get_agents'}}}, True),
+    ({'extensions': {'connexion_routing': {'operation_id': None}}}, False),
+    ({}, False),
+], ids=['operation', 'no-operation', 'no-routing'])
+async def test_check_expect_header_middleware_skips_a_request_with_no_operation(headers, scope, refused):
+    """A request that matched no operation skipped security, so it is not refused 417 or 413 here."""
+    middleware = CheckExpectHeaderMiddleware(AsyncApp(__name__))
+    mock_request = MagicMock(headers=headers, scope=scope)
+    response = Response("Success")
+    call_next_mock = AsyncMock(return_value=response)
+
+    with patch('api.middlewares.configuration.api_conf', new={'max_upload_size': 5}):
+        if refused:
+            with pytest.raises((ExpectFailedException, PayloadTooLargeException)):
+                await middleware.dispatch(mock_request, call_next_mock)
+            call_next_mock.assert_not_called()
+        else:
+            assert await middleware.dispatch(mock_request, call_next_mock) == response
+            call_next_mock.assert_called_once_with(mock_request)
 
 
 @pytest.mark.asyncio

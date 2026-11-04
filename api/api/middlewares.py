@@ -940,6 +940,10 @@ class CheckExpectHeaderMiddleware(BaseHTTPMiddleware):
         the body it announces that is too large, and 413 is the status every other size ceiling in
         this API answers with.
 
+        A request that matched no operation is not judged: it skipped the security handler and nothing
+        reads its body, so refusing it here would answer an unauthenticated caller 417 or 413 where a
+        declared route answers 401.
+
         Parameters
         ----------
             request : Request
@@ -959,7 +963,8 @@ class CheckExpectHeaderMiddleware(BaseHTTPMiddleware):
             If the request declares a body above `max_upload_size`.
         """
 
-        if 'Expect' not in request.headers:
+        operation_id = request.scope.get('extensions', {}).get('connexion_routing', {}).get('operation_id')
+        if 'Expect' not in request.headers or operation_id is None:
             response = await call_next(request)
             return response
         else:
