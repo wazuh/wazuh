@@ -2703,6 +2703,115 @@ TEST(HandshakeGuardTest, FailedHandshakesDoNotUnderflowTheConnectionLevel)
     server->stop();
 }
 
+// Connections created at the same moment on several I/O threads, all from one address -- what a
+// fleet behind one load-balancer address sends. Each of them must leave the handshake counters
+// exactly as it found them: once the storm is over nothing may still be counted as handshaking, the
+// handshaking level may never exceed the open one, and the address must get its whole per-source share
+// back. A connection id shared by two live connections broke all three, one handshake slot at a time,
+// until the address was refused for good.
+TEST(HandshakeGuardTest, ConnectionStormLeavesNoHandshakeCounted)
+{
+    constexpr std::size_t kCap = 64;
+    constexpr std::size_t kClientThreads = 16;
+    constexpr std::size_t kRounds = 1000;
+
+    TempCert cert;
+    auto server = makeHttpServer();
+    addHealthRoute(*server);
+
+    auto config = handshakeGuardConfig(cert, static_cast<std::uint16_t>(30500 + (::getpid() % 2000)));
+    config.ioThreads = 4;
+    config.concurrentAccepts = 16;
+    config.maxParallelConnections = 1024;
+    config.maxHandshakesPerSource = kCap; // above the 2 * kClientThreads the storm holds at once
+    config.readTimeoutSec = 10;
+    ASSERT_NO_THROW(server->start(config));
+
+    // The storm: each round holds two connections at once, then closes both, so the server's
+    // handshake fails on EOF. A sampler watches the two levels meanwhile.
+    std::atomic<bool> storming {true};
+    std::atomic<std::uint64_t> samples {0};
+    std::atomic<std::uint64_t> violations {0};
+    std::thread sampler(
+        [&]
+        {
+            while (storming)
+            {
+                const auto d = server->diagnostics();
+                ++samples;
+                if (d.connectionsHandshaking > d.connectionsOpen)
+                {
+                    ++violations;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds {1});
+            }
+        });
+
+    std::vector<std::thread> clients;
+    for (std::size_t t = 0; t < kClientThreads; ++t)
+    {
+        clients.emplace_back(
+            [port = config.port]
+            {
+                for (std::size_t r = 0; r < kRounds; ++r)
+                {
+                    StalledConnection first {port};
+                    StalledConnection second {port};
+                    first.close();
+                    second.close();
+                }
+            });
+    }
+    for (auto& client : clients)
+    {
+        client.join();
+    }
+    storming = false;
+    sampler.join();
+
+    const bool drained = eventually(
+        [&]
+        {
+            const auto d = server->diagnostics();
+            return d.connectionsOpen == 0U && d.connectionsHandshaking == 0U;
+        },
+        std::chrono::seconds {10});
+    const auto afterStorm = server->diagnostics();
+
+    // The address's share: kCap handshakes from 127.0.0.1 must be let in at once. Every unit the storm
+    // left behind refuses one of them.
+    std::vector<std::unique_ptr<StalledConnection>> held;
+    for (std::size_t i = 0; i < kCap; ++i)
+    {
+        held.push_back(std::make_unique<StalledConnection>(config.port));
+    }
+    const auto settled = [&]
+    {
+        const auto d = server->diagnostics();
+        const auto admitted =
+            d.connectionsHandshaking - std::min(d.connectionsHandshaking, afterStorm.connectionsHandshaking);
+        const auto refused = d.handshakeRejectedPerSourceTotal - afterStorm.handshakeRejectedPerSourceTotal;
+        return admitted + refused >= kCap;
+    };
+    eventually(settled);
+    const auto refusedAfterStorm =
+        server->diagnostics().handshakeRejectedPerSourceTotal - afterStorm.handshakeRejectedPerSourceTotal;
+    for (auto& connection : held)
+    {
+        connection->close();
+    }
+
+    EXPECT_TRUE(drained) << "after " << kClientThreads * kRounds * 2 << " connections, handshaking "
+                         << afterStorm.connectionsHandshaking << " and open " << afterStorm.connectionsOpen
+                         << " instead of 0 and 0";
+    EXPECT_EQ(violations.load(), 0U) << "connections.handshaking exceeded connections.open in " << violations.load()
+                                     << " of " << samples.load() << " samples";
+    EXPECT_EQ(refusedAfterStorm, 0U) << refusedAfterStorm << " of " << kCap
+                                     << " handshakes from the address were refused after the storm";
+
+    server->stop();
+}
+
 // ---------------------------------------------------------------------------
 // Async responder contract (independent of the transport library)
 // ---------------------------------------------------------------------------
