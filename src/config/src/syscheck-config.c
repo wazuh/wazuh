@@ -723,7 +723,7 @@ char *format_path(char *dir) {
         wm_strcat(&dir, "\\", '\0');
     }
 
-    // FIM paths are UTF-8 internally, whatever the encoding of the configured value.
+    // FIM paths are UTF-8 internally.
     wchar_t *wdir = auto_to_wide(dir);
     DWORD len = wdir ? GetFullPathNameW(wdir, MAX_PATH, buffer, NULL) : 0;
     os_free(wdir);
