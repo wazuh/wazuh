@@ -12,7 +12,7 @@
 namespace httpsrv
 {
 
-/// Body cap of the API's liveness routes (/status, /metrics/*): their requests are a few bytes of JSON.
+/// Body cap of the API's liveness routes (GET /status): their requests are a few bytes, if any.
 constexpr std::size_t API_LIVENESS_BODY_CAP {4096};
 
 /**

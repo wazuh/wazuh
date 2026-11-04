@@ -45,6 +45,9 @@ adapter::RouteHandler dumpMetrics(const std::shared_ptr<fastmetrics::IManager>& 
                                   const std::string& daemonName,
                                   const std::string& uptimeISO);
 
+/// Body cap of the metrics routes: their requests are a few bytes of JSON.
+constexpr std::size_t METRICS_BODY_CAP {4U * 1024U};
+
 /**
  * @brief Register all metrics API handlers
  */
@@ -53,16 +56,19 @@ inline void registerHandlers(const std::shared_ptr<fastmetrics::IManager>& metri
                              const std::string& daemonName,
                              const std::string& uptimeISO)
 {
-    // Liveness routes answered on the I/O thread (they only touch the in-memory registry), so metrics stay
-    // readable while long API requests hold every worker.
-    httpsrv::RouteOptions liveness;
-    liveness.cls = httpsrv::RouteClass::Liveness;
-    liveness.runInline = true;
-    server->addRoute(httpsrv::Method::POST, "/metrics/enable", enableMetric(metricsManager), liveness);
-    server->addRoute(httpsrv::Method::POST, "/metrics/get", getMetric(metricsManager), liveness);
-    server->addRoute(httpsrv::Method::POST, "/metrics/list", listMetrics(metricsManager), liveness);
+    // Control routes run by the request workers, not inline: reading a metric can wait, since the registry is
+    // read under its lock and pull metrics call into other modules (the indexer connector, the agent cache), so
+    // they must not hold a transport I/O thread nor the Liveness sessions GET /status relies on. Under a
+    // saturated executor they wait or get 503 like any other API call.
+    httpsrv::RouteOptions metrics;
+    metrics.cls = httpsrv::RouteClass::Control;
+    metrics.runInline = false;
+    metrics.maxBodyBytes = METRICS_BODY_CAP;
+    server->addRoute(httpsrv::Method::POST, "/metrics/enable", enableMetric(metricsManager), metrics);
+    server->addRoute(httpsrv::Method::POST, "/metrics/get", getMetric(metricsManager), metrics);
+    server->addRoute(httpsrv::Method::POST, "/metrics/list", listMetrics(metricsManager), metrics);
     server->addRoute(
-        httpsrv::Method::POST, "/metrics/dump", dumpMetrics(metricsManager, daemonName, uptimeISO), liveness);
+        httpsrv::Method::POST, "/metrics/dump", dumpMetrics(metricsManager, daemonName, uptimeISO), metrics);
 }
 
 } // namespace api::metrics::handlers
