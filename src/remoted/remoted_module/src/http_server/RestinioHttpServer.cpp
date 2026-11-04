@@ -13,8 +13,10 @@
 #include "caPublicationRecord.hpp"
 #include "caRecordEvents.hpp"
 #include "common/logThrottle.hpp"
+#include "compressingResponder.hpp"
 #include "guardedTlsSocket.hpp"
 #include "handshakeLedger.hpp"
+#include "headerUtils.hpp"
 #include "httpServerConfig.hpp"
 #include "httpServerFactory.hpp"
 #include "inFlightBudget.hpp"
@@ -42,6 +44,7 @@
 #include <limits>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -547,7 +550,9 @@ namespace
         // MUST NOT rely on the order of duplicated fields). Those two are therefore collected
         // case-insensitively and, when duplicated (identical or case-variant names), stored as an
         // EMPTY value under the first spelling seen: the auth layer already treats empty as "absent
-        // or duplicated" and rejects. Every other header keeps today's first-wins behaviour.
+        // or duplicated" and rejects. Accept-Encoding lines are joined into one list (RFC 9110 §5.3),
+        // so a `zstd;q=0` on any of them withdraws the offer. Every other header keeps today's
+        // first-wins behaviour.
         struct Guarded
         {
             std::string name;
@@ -555,9 +560,23 @@ namespace
             int count {0};
         };
         std::vector<Guarded> guarded;
+        std::optional<std::pair<std::string, std::string>> acceptEncoding; // first spelling, joined value
         req->header().for_each_field(
-            [&request, &guarded](const restinio::http_header_field_t& field)
+            [&request, &guarded, &acceptEncoding](const restinio::http_header_field_t& field)
             {
+                if (remoted::http::detail::equalsIgnoreCase(field.name(), "accept-encoding"))
+                {
+                    if (acceptEncoding)
+                    {
+                        acceptEncoding->second += ", ";
+                        acceptEncoding->second += field.value();
+                    }
+                    else
+                    {
+                        acceptEncoding.emplace(std::string {field.name()}, std::string {field.value()});
+                    }
+                    return;
+                }
                 if (!isAuthHeader(field.name()))
                 {
                     request.headers.emplace(std::string {field.name()}, std::string {field.value()});
@@ -584,6 +603,10 @@ namespace
         for (auto& g : guarded)
         {
             request.headers.emplace(std::move(g.name), g.count == 1 ? std::move(g.value) : std::string {});
+        }
+        if (acceptEncoding)
+        {
+            request.headers.emplace(std::move(acceptEncoding->first), std::move(acceptEncoding->second));
         }
 
         return request;
@@ -1380,6 +1403,16 @@ namespace remoted::http
                 const auto countAgainstBudget = route.countAgainstBudget;
                 const auto responseMode = route.mode;
                 const auto streamChunkSize = m_config.streamChunkSize;
+                const auto contentEncodingEnabled = m_config.contentEncodingEnabled;
+                // A compressor never takes the half of the budget that admitting and decoding requests
+                // rely on (one agent's default byte share), nor the room one maximum request needs to
+                // be admitted (the minimum start() enforces).
+                const auto compressionFloor =
+                    std::max<std::size_t>(m_config.maxBodySize + PER_REQUEST_OVERHEAD, budget->maxBytes() / 2);
+                CompressingResponder::ReserveFn compressionReserve = [budget, compressionFloor](std::size_t bytes)
+                {
+                    return budget->tryReserveUncountedKeeping(bytes, compressionFloor);
+                };
 
                 // The pattern actually handed to the router is the route's logical path served
                 // under the global prefix. The "/" route (the health probe) is registered as the
@@ -1405,6 +1438,8 @@ namespace remoted::http
                      countAgainstBudget,
                      responseMode,
                      streamChunkSize,
+                     contentEncodingEnabled,
+                     compressionReserve,
                      rejectedConnections](auto request, auto) -> restinio::request_handling_status_t
                     {
                         // Transport-level exception barrier, covering every registered route at
@@ -1483,6 +1518,18 @@ namespace remoted::http
                                 // only routes whose requests are tiny should ever stream.
                                 responder =
                                     std::make_shared<RestinioStreamableResponder>(request, streamGate, streamChunkSize);
+                                if (contentEncodingEnabled &&
+                                    acceptsZstd(headerValue(context->request.headers, "accept-encoding")))
+                                {
+                                    // Wraps a copy: if this throws, the barrier below still holds
+                                    // the transport responder to answer 500.
+                                    responder = std::make_shared<CompressingResponder>(
+                                        responder,
+                                        compressionReserve,
+                                        CompressingResponder::SourceFactory {},
+                                        [](const char* reason)
+                                        { LOGFN_DEBUG1(logFn(), "Serving a response uncompressed: %s.", reason); });
+                                }
                             }
                             else
                             {
