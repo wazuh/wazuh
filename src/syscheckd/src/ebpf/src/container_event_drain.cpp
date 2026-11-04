@@ -112,6 +112,46 @@ namespace fim_container_events
 
     } // namespace
 
+    namespace
+    {
+        using AdmissionClock = std::chrono::steady_clock;
+        std::optional<AdmissionClock::time_point> unavailable_since;
+#ifdef WAZUH_UNIT_TESTING
+        std::optional<AdmissionClock::time_point> admission_test_now;
+#endif
+
+        AdmissionClock::time_point admissionNow()
+        {
+#ifdef WAZUH_UNIT_TESTING
+            if (admission_test_now) return *admission_test_now;
+#endif
+            return AdmissionClock::now();
+        }
+    }
+
+    bool noteAdmissionListing(bool available)
+    {
+        // Shared by both writers and serialized with snapshot application. A
+        // successful pending reply is availability too: settlement is allowed to
+        // reopen for a late source and is never timed out by this policy.
+        if (available)
+        {
+            unavailable_since.reset();
+            return false;
+        }
+
+        const auto now = admissionNow();
+        if (!unavailable_since) unavailable_since = now;
+        if (!fim_container_admission_snapshot_known() && now - *unavailable_since <= kConsumerOutageBudget)
+        {
+            return false;
+        }
+
+        const bool released = fim_container_admission_pending();
+        fim_container_set_admission_pending(0);
+        return released;
+    }
+
     /* The admission view a list refresh leaves behind.
      *
      * Rebuilt rather than merged: a full list is the whole truth, so a container
@@ -611,6 +651,7 @@ namespace fim_container_events
         int stop_event_fd{-1};
 
         std::atomic<bool> stop{false};
+        std::atomic<bool> admission_stop{false};
 
         /* Set when the BPF object predates per-cgroup drop accounting. Only then may
          * an event's in-band RT_F_DROPS_BEFORE flag be treated as loss: with the
@@ -787,17 +828,41 @@ namespace fim_container_events
             LogWarn(line);
         }
 
+        void startResolver()
+        {
+            // Notifications and admission do not need an engine handle. An
+            // unbound socket simply retains the periodic polling fallback.
+            if (!notify.bind(CI_NOTIFY_SYSCHECK))
+            {
+                LogDebug("Container eBPF drain: could not bind the container lifecycle notification socket; "
+                         "container discovery falls back to polling every " +
+                         std::to_string(config.resolver_interval_ms) + " ms.");
+            }
+            stop_event_fd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+            resolver_thread = std::thread([this] { resolverLoop(); });
+        }
+
+        void wakeResolver()
+        {
+            if (stop_event_fd >= 0)
+            {
+                const std::uint64_t one = 1;
+                static_cast<void>(::write(stop_event_fd, &one, sizeof(one)));
+            }
+        }
+
         void resolverLoop()
         {
             auto next_list = std::chrono::steady_clock::now();
 
-            while (!stop.load(std::memory_order_relaxed))
+            while (!admission_stop.load(std::memory_order_relaxed))
             {
                 const auto now = std::chrono::steady_clock::now();
 
                 if (now >= next_list)
                 {
                     refreshContainerList();
+                    if (admission_stop.load(std::memory_order_relaxed)) return;
                     reportShedWork();
                     next_list = now + std::chrono::milliseconds(config.resolver_interval_ms);
                 }
@@ -895,21 +960,32 @@ namespace fim_container_events
         {
             const auto admissionGeneration = fim_container_admission_generation();
             const auto delta = client.listContainersSince(cursor_epoch, cursor_seq);
+            // Fetch above, apply below. Publication synchronously reconciles
+            // file_entry, so the state lock must cover the install as well as
+            // reconciliation, but must never cover connector I/O. Keep THIS
+            // reply (including late pending) while waiting for a baseline or
+            // recovery transaction. Shutdown can abandon it without queuing
+            // behind that transaction for the length of a filesystem walk.
+            while (!fim_container_state_trylock())
+            {
+                if (admission_stop.load(std::memory_order_relaxed)) return;
+                std::this_thread::sleep_for(std::chrono::milliseconds {10});
+            }
+            struct StateUnlock
+            {
+                ~StateUnlock() { fim_container_state_unlock(); }
+            } stateUnlock;
+            if (admission_stop.load(std::memory_order_relaxed)) return;
+
+            const bool releasedHold = noteAdmissionListing(delta.available);
             auto plan = planListRefresh(delta, admission_view, router.mappedContainerIds(), admission_unkeyed);
 
             if (!plan.act)
             {
-                /* Unavailability withdraws the promise of a verdict, not the
-                 * last verdict itself. Keep the snapshot, map and cursor, but
-                 * release a hold the baseline may have armed. Reconciliation
-                 * still owes the rows stored during that hold a promotion pass;
-                 * before release it must wait for the walk's transaction.
-                 *
-                 * The next reachable reply must publish even if its view is
-                 * unchanged: the baseline may have installed a different answer
-                 * while this resolver could not reach the connector. */
-                admission_reconcile_pending = admission_reconcile_pending || fim_container_admission_pending();
-                fim_container_set_admission_pending(0);
+                // Retain the snapshot, map and cursor on failure. A cold-start
+                // hold survives transient failures; the consumer outage budget
+                // releases it eventually, even on a host with no BPF object.
+                admission_reconcile_pending = admission_reconcile_pending || releasedHold;
                 admission_unpublished = true;
 
                 if (staging.released() && admission_reconcile_pending)
@@ -1150,7 +1226,7 @@ namespace fim_container_events
 
             for (const auto cgroup_id : pending)
             {
-                if (stop.load(std::memory_order_relaxed)) return;
+                if (admission_stop.load(std::memory_order_relaxed)) return;
 
                 if (attempted++ >= config.max_resolves_per_cycle)
                 {
@@ -1262,12 +1338,14 @@ namespace fim_container_events
          * Impl they reference must outlive them: deleting it here would turn a tidy
          * exit into a use-after-free. The OS reclaims it a moment later.
          *
-         * fim_container_events_stop() remains the way to tear the drain down
-         * properly, where blocking until the threads are actually gone is the
-         * point. */
+         * The shutdown waiter explicitly joins admission before resource teardown.
+         * fim_container_events_stop() remains the way to tear the whole drain
+         * down where waiting for filesystem walks too is the point. */
         if (m_impl != nullptr)
         {
             m_impl->stop.store(true, std::memory_order_relaxed);
+            m_impl->admission_stop.store(true, std::memory_order_relaxed);
+            m_impl->wakeResolver();
             m_impl->staging.stop();
             m_impl = nullptr;
         }
@@ -1275,12 +1353,26 @@ namespace fim_container_events
 
     bool ContainerEventDrain::running() const
     {
+        std::lock_guard<std::mutex> lock(m_lifecycle_mutex);
         return m_impl != nullptr && m_impl->handle != nullptr;
     }
 
     bool ContainerEventDrain::start(const DrainConfig& config, ReconcileHandler handler)
     {
-        if (m_impl != nullptr) return true;
+        std::lock_guard<std::mutex> lock(m_lifecycle_mutex);
+        if (m_admission_stopped) return false;
+        if (m_impl != nullptr) return m_impl->handle != nullptr;
+
+        auto impl = new Impl(config);
+        const auto admissionOnly = [this, impl]()
+        {
+            // Only drainLoop needs the ring, and there is no file-event batch
+            // for a consumer without it. Keep the one resolver alive indefinitely
+            // to own generation checks, publication and reconciliation.
+            m_impl = impl;
+            impl->startResolver();
+            return false;
+        };
 
         /* The record is exchanged by raw memory reinterpretation, so a major
          * mismatch is silent corruption rather than an error. rt_engine.h requires
@@ -1290,10 +1382,8 @@ namespace fim_container_events
             LogError("Container eBPF drain: engine ABI major " + std::to_string(rt_abi_major()) +
                      " does not match this build's " + std::to_string(RT_ABI_MAJOR) +
                      "; refusing to start the event-driven reconcile.");
-            return false;
+            return admissionOnly();
         }
-
-        auto impl = new Impl(config);
 
         rt_filter filter;
         std::memset(&filter, 0, sizeof(filter));
@@ -1364,8 +1454,7 @@ namespace fim_container_events
              * configured; the detail stays here at debug level. */
             LogDebug("Container eBPF drain: the eBPF engine is unavailable (no rt_file.bpf.o, or the "
                      "kernel/capabilities do not permit loading it).");
-            delete impl;
-            return false;
+            return admissionOnly();
         }
 
         if (rt_host_cgroup_v1(impl->handle) != 0)
@@ -1402,8 +1491,8 @@ namespace fim_container_events
                          "that can identify a container, so an event's cgroup_id cannot be attributed; "
                          "disabling the event-driven reconcile.");
                 rt_close(impl->handle);
-                delete impl;
-                return false;
+                impl->handle = nullptr;
+                return admissionOnly();
             }
 
             /* The name as well as the index: the engine prefers the kernel's own
@@ -1419,8 +1508,8 @@ namespace fim_container_events
                          "it; disabling the event-driven reconcile. See the preceding eBPF message for the "
                          "reason -- a loaded rt_file.bpf.o older than this agent is the usual one.");
                 rt_close(impl->handle);
-                delete impl;
-                return false;
+                impl->handle = nullptr;
+                return admissionOnly();
             }
 
             /* Worth a line on the healthy path: "which hierarchy did the agent
@@ -1442,8 +1531,8 @@ namespace fim_container_events
             LogError("Container eBPF drain: the engine reports no usable container identifier; "
                      "disabling the event-driven reconcile.");
             rt_close(impl->handle);
-            delete impl;
-            return false;
+            impl->handle = nullptr;
+            return admissionOnly();
         }
 
         /* The two sides choose their key independently -- the producer from the
@@ -1502,8 +1591,8 @@ namespace fim_container_events
                          "Disabling the event-driven reconcile rather than running with a key space the "
                          "producer does not serve.");
                 rt_close(impl->handle);
-                delete impl;
-                return false;
+                impl->handle = nullptr;
+                return admissionOnly();
             }
         }
         else
@@ -1558,26 +1647,10 @@ namespace fim_container_events
         impl->refreshContainerList();
         impl->router.setFiltering(impl->allowlist_active);
 
-        /* Bound before the resolver thread starts, so a container created during
-         * the baseline walk is announced rather than waiting out an interval.
-         *
-         * Failure here is not a startup failure. Without it the resolver polls as
-         * it always did and nothing is lost but latency — and refusing to start
-         * container FIM because a convenience socket could not be bound would trade
-         * a bounded delay for an outage. */
-        if (!impl->notify.bind(CI_NOTIFY_SYSCHECK))
-        {
-            LogDebug("Container eBPF drain: could not bind the container lifecycle notification socket; "
-                     "container discovery falls back to polling every " +
-                     std::to_string(config.resolver_interval_ms) + " ms.");
-        }
-
-        impl->stop_event_fd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-
         m_impl = impl;
 
-        impl->drain_thread    = std::thread([impl] { impl->drainLoop(); });
-        impl->resolver_thread = std::thread([impl] { impl->resolverLoop(); });
+        impl->drain_thread = std::thread([impl] { impl->drainLoop(); });
+        impl->startResolver();
         impl->consumer_thread = std::thread([impl] { impl->consumerLoop(); });
 
         LogDebug("Container eBPF drain: started; staging container file events until the baseline walk "
@@ -1587,30 +1660,43 @@ namespace fim_container_events
 
     void ContainerEventDrain::release()
     {
-        if (m_impl == nullptr) return;
+        std::lock_guard<std::mutex> lock(m_lifecycle_mutex);
+        if (m_admission_stopped || m_impl == nullptr) return;
 
         m_impl->staging.release();
         LogDebug("Container eBPF drain: baseline walk committed; the reconcile consumer is now live.");
     }
 
+    void ContainerEventDrain::stopAdmission()
+    {
+        // Serialize with start/release/full stop. Never join under the state
+        // mutex: an in-flight publication needs it to finish. The latch also
+        // covers shutdown before startup reaches start(), rather than merely
+        // stopping whichever thread happens to exist right now.
+        std::lock_guard<std::mutex> lock(m_lifecycle_mutex);
+        m_admission_stopped = true;
+        if (m_impl == nullptr) return;
+        m_impl->admission_stop.store(true, std::memory_order_relaxed);
+        m_impl->wakeResolver();
+        if (m_impl->resolver_thread.joinable()) m_impl->resolver_thread.join();
+    }
+
     void ContainerEventDrain::stop()
     {
+        std::lock_guard<std::mutex> lock(m_lifecycle_mutex);
         if (m_impl == nullptr) return;
 
         Impl* impl = m_impl;
         m_impl     = nullptr;
 
         impl->stop.store(true, std::memory_order_relaxed);
+        impl->admission_stop.store(true, std::memory_order_relaxed);
         impl->staging.stop();
 
         /* Wakes the resolver out of poll() immediately rather than at the end of
          * whatever remained of its interval. Written after the stop flag so the
          * thread cannot wake, see no stop, and go back to waiting. */
-        if (impl->stop_event_fd >= 0)
-        {
-            const std::uint64_t one = 1;
-            static_cast<void>(::write(impl->stop_event_fd, &one, sizeof(one)));
-        }
+        impl->wakeResolver();
 
         if (impl->drain_thread.joinable()) impl->drain_thread.join();
 
@@ -1620,7 +1706,7 @@ namespace fim_container_events
 
         /* After the threads, never before: rt_close() detaches and frees everything
          * the handle owns, and the drain thread is inside rt_poll() on it. */
-        rt_close(impl->handle);
+        if (impl->handle != nullptr) rt_close(impl->handle);
         impl->handle = nullptr;
 
         if (impl->stop_event_fd >= 0)
@@ -1633,6 +1719,24 @@ namespace fim_container_events
     }
 
 #ifdef WAZUH_UNIT_TESTING
+    void ContainerEventDrainTestPeer::reset()
+    {
+        auto& drain = ContainerEventDrain::instance();
+        drain.stop();
+        drain.m_admission_stopped = false;
+        unavailable_since.reset();
+        admission_test_now = AdmissionClock::time_point {};
+        fim_container_admission_reset_for_test();
+    }
+
+    void ContainerEventDrainTestPeer::advanceAdmissionTime(std::chrono::milliseconds elapsed)
+    {
+        fim_container_state_lock();
+        if (!admission_test_now) admission_test_now = AdmissionClock::now();
+        *admission_test_now += elapsed;
+        fim_container_state_unlock();
+    }
+
     void ContainerEventDrainTestPeer::initialize(const DrainConfig& config)
     {
         auto& drain = ContainerEventDrain::instance();

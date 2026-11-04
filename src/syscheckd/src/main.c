@@ -89,6 +89,15 @@ static void *fim_shutdown_waiter(__attribute__((unused)) void *arg)
 
     minfo(SK_SHUTDOWN);
 
+#ifdef __linux__
+    /* The resolver installs admission synchronously and reconciles file_entry.
+     * _exit() below bypasses static destructors, so explicitly join that work
+     * before destroying either its sync handle or its FIM database. This also
+     * serializes with startup and prevents a late start after shutdown. The
+     * event consumer may be in a long walk; it is deliberately not joined here. */
+    fim_container_events_stop_admission();
+#endif
+
     /* Abort any in-flight synchronization so the join below is short */
     if (syscheck.sync_handle)
     {

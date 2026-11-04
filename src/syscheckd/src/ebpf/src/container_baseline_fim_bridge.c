@@ -851,6 +851,35 @@ int fim_container_admission_pending(void)
     return pending;
 }
 
+int fim_container_admission_snapshot_known(void)
+{
+    synced_docs_lock();
+    const int known = container_admission_known;
+    synced_docs_unlock();
+    return known;
+}
+
+#ifdef WAZUH_UNIT_TESTING
+void fim_container_admission_reset_for_test(void)
+{
+    synced_docs_lock();
+    if (container_known != NULL) {
+        OSHash_Free(container_known);
+    }
+    if (container_admitted != NULL) {
+        OSHash_Free(container_admitted);
+    }
+    container_known = NULL;
+    container_admitted = NULL;
+    container_admission_known = 0;
+    container_admission_pending = 0;
+    container_sources_pending = 0;
+    container_cleanup_deferral_logged = 0;
+    ++container_admission_generation;
+    synced_docs_unlock();
+}
+#endif
+
 void fim_container_set_admitted(const char** container_ids, size_t count)
 {
     /* Everything this caller knows of, it admits. */

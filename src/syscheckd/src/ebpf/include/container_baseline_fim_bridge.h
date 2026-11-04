@@ -158,6 +158,14 @@ void fim_container_reconcile_admission(void);
  */
 void fim_container_state_lock(void);
 void fim_container_state_unlock(void);
+int fim_container_state_trylock(void);
+
+/* Whether a verdict has ever been installed, independently of a pending hold. */
+int fim_container_admission_snapshot_known(void);
+
+#ifdef WAZUH_UNIT_TESTING
+void fim_container_admission_reset_for_test(void);
+#endif
 
 /**
  * @brief Record which containers may report to the manager.

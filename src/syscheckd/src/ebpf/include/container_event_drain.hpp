@@ -46,13 +46,24 @@
 
 #include "container_reconcile_plan.hpp"
 
+#include <chrono>
 #include <cstddef>
 #include <functional>
+#include <mutex>
 #include <set>
 #include <string>
 
 namespace fim_container_events
 {
+
+    /* CONSUMER OUTAGE policy: tolerate brief connector failures before the first
+     * verdict, but never hold a node indefinitely when the connector is down.
+     * This is independent of the producer's admission settlement bound. */
+    constexpr auto kConsumerOutageBudget = std::chrono::seconds {60};
+
+    /* Both listing writers call this under the container state lock, including
+     * successful pending replies. Returns true only when it releases a hold. */
+    bool noteAdmissionListing(bool available);
 
     struct DrainConfig
     {
@@ -127,17 +138,21 @@ namespace fim_container_events
         public:
             static ContainerEventDrain& instance();
 
-            /* Opens the engine and starts the drain and resolver threads. Returns
-             * false and changes nothing if the engine is unavailable, its ABI does
-             * not match, or the host is cgroup v1 — all of which are degradations to
-             * "no event-driven reconcile", never a reason to fail startup.
-             *
-             * The consumer thread starts here too, but parked. */
+            /* Starts the resolver unless shutdown has already closed startup,
+             * including when the engine is unavailable.
+             * Returns whether event-driven change detection is available; false
+             * still leaves admission polling live. The consumer starts parked,
+             * and is omitted entirely in admission-only mode. */
             bool start(const DrainConfig& config, ReconcileHandler handler);
 
             /* The baseline walk has committed; the consumer may now touch
              * file_entry. Safe to call when start() failed. */
             void release();
+
+            /* Permanently closes admission startup and joins only the resolver.
+             * The shutdown waiter calls this before database teardown; joining a
+             * consumer in a filesystem walk would unnecessarily delay exit. */
+            void stopAdmission();
 
             /* Stops all three threads and closes the engine. Idempotent. */
             void stop();
@@ -154,6 +169,8 @@ namespace fim_container_events
             friend struct ContainerEventDrainTestPeer;
             struct Impl;
             Impl* m_impl{nullptr};
+            mutable std::mutex m_lifecycle_mutex;
+            bool m_admission_stopped{false};
     };
 
 #ifdef WAZUH_UNIT_TESTING
@@ -164,6 +181,8 @@ namespace fim_container_events
     {
         static void initialize(const DrainConfig& config);
         static void refresh();
+        static void reset();
+        static void advanceAdmissionTime(std::chrono::milliseconds elapsed);
         static std::set<std::string> mappedContainers();
     };
 #endif
