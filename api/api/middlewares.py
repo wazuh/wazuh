@@ -919,9 +919,11 @@ def setup_middlewares(app: AsyncApp):
     # ContentSizeExceeded for the endpoints request validation does not read -- the XML and
     # octet-stream configuration uploads, the very requests max_upload_size exists to bound.
     app.add_middleware(CheckExpectHeaderMiddleware, MiddlewarePosition.BEFORE_VALIDATION)
-    app.add_middleware(StripTrailingSlashMiddleware, MiddlewarePosition.BEFORE_ROUTING)
     app.add_middleware(CheckBlockedIP, MiddlewarePosition.BEFORE_SECURITY)
     app.add_middleware(CheckAuthContextSizeMiddleware, MiddlewarePosition.BEFORE_SECURITY)
+    # Outermost, so that the access log and the error handlers see the same path as every layer
+    # below, which compare it with the login endpoints
+    app.add_middleware(StripTrailingSlashMiddleware, MiddlewarePosition.BEFORE_EXCEPTION)
     app.add_middleware(WazuhAccessLoggerMiddleware, MiddlewarePosition.BEFORE_EXCEPTION)
     app.add_middleware(SecureHeadersMiddleware, MiddlewarePosition.BEFORE_EXCEPTION)
 
