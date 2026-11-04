@@ -103,7 +103,8 @@ set to `wazuh-manager` when it is not set, and, while the keystore holds no pass
 `WAZUH_INDEXER_MANAGER_PASSWORD` (see [Credentials](../../getting-started/credentials.md#the-keys) for where it
 is looked up). There is no default password: when the keystore holds none and no source supplies one, the start
 is refused with `MISSING WAZUH_INDEXER_MANAGER_PASSWORD`. A password already in the keystore is never replaced
-from those sources, so changing `local.env` afterwards changes nothing.
+from the environment or `local.env`, so changing `local.env` afterwards changes nothing; it is replaced only when it
+comes from a co-located indexer's `/etc/wazuh-indexer/export/credentials.env` and differs (a reinstalled indexer).
 
 To change them by hand (as root):
 

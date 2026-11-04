@@ -693,8 +693,8 @@ resolve-credentials: cleared; the next --install resolves from nothing
 
 ## Upgrades and removal
 
-An upgrade (`--upgrade`) never reseeds an existing `rbac.db`, never replaces a stored indexer password, and never
-mints a CA or issues a pair. It completes what this host never had and imports the indexer's files when they
+An upgrade (`--upgrade`) never reseeds an existing `rbac.db`, never replaces a stored indexer password with one
+from the environment or `local.env`, and never mints a CA or issues a pair. It completes what this host never had and imports the indexer's files when they
 changed. A pair you replaced with your own PKI's survives every upgrade.
 
 | Command | `/etc/wazuh-manager` |
@@ -716,6 +716,19 @@ sudo /var/wazuh-manager/bin/rbac_control change-password
 
 Neither `rbac_control` nor the Server API (`PUT /security/users/{user_id}`) updates `<CONF>/export/credentials.env`,
 so the value there is stale after a change: `rbac.db` is the only authority once it is seeded.
+
+The indexer password follows a co-located indexer: when `WAZUH_INDEXER_MANAGER_PASSWORD` is taken from
+`/etc/wazuh-indexer/export/credentials.env` (neither the environment nor `local.env` sets it) and differs from the
+one in the keystore — the indexer was reinstalled, or published a new password — every writing run (`--prestart`
+on each start, `--install`, `--upgrade`) replaces the stored one and prints `replaced the indexer password in the
+keystore with the one from …`. A value from the environment or `local.env` only fills an empty keystore and is
+looked up before the export; to rotate from there, write it yourself with the manager stopped:
+
+```bash
+printf '%s' '<new password>' | sudo /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password
+```
+
+Each daemon reads the keystore once, so restart the manager after either change.
 Rotating the manager's CA means staging the new one in `ca/`, adding it to `certs/root-ca.pem` for the agents,
 and reissuing the server pairs (`remoted.pem` and `apid.pem`) from it on every node — the start checks
 refuse an `apid.pem` that does not chain to `ca/`. The order and every step are in the

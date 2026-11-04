@@ -606,6 +606,10 @@ class Lookup:
             return self.indexer[name][0], f"{self.indexer_path}:{self.indexer[name][1]}"
         return None
 
+    def from_indexer(self, source: str) -> bool:
+        """Whether a `source` returned by `get` is the indexer's export."""
+        return source.startswith(f"{self.indexer_path}:")
+
 
 def conf_spec(paths: Paths) -> Spec:
     """<CONF> is root:<service group>, group-writable by design (authd, remoted and the API write there), never
@@ -887,15 +891,38 @@ def keystore_set(paths: Paths, key: str, value: str) -> bool:
                      stdin=(value + "\n").encode()).returncode == 0
 
 
+def keystore_get(paths: Paths, key: str) -> Optional[str]:
+    """The stored value, or None when the keystore holds none. Read into memory only, never printed."""
+    result = run_wazuh(paths, [paths.keystore_bin, "-f", "indexer", "-k", key, "-g"], want_stdout=True)
+    if result.returncode != 0 or not result.stdout:
+        return None
+    value = result.stdout.decode("utf-8", "replace")
+    return value[:-1] if value.endswith("\n") else value
+
+
 def step_indexer_password(paths: Paths, lookup: Lookup, report: Report) -> None:
+    """Store the indexer password when the keystore has none. A stored one is kept, except when the value the
+    lookup resolves comes from the co-located indexer's export and differs: the indexer published a new password
+    (it was reinstalled, or rotated it), and the stored one no longer authenticates. A value from the environment
+    or local.env is an operator's seed and never replaces a stored password."""
     if not os.access(paths.keystore_bin, os.X_OK):
         report.problem(MISSING, INDEXER_VAR, f"cannot reach the keystore ({paths.keystore_bin} is missing)")
         return
-    if keystore_has(paths, "password"):
+    stored = keystore_get(paths, "password")
+    if stored is not None:
         if not keystore_has(paths, "username") and not keystore_set(paths, "username", INDEXER_USERNAME):
             report.problem(MISSING, INDEXER_VAR, "the keystore did not accept the indexer username")
             return
-        report.progress("the indexer password is in the keystore")
+        found = lookup.get(INDEXER_VAR)
+        if found is None or not lookup.from_indexer(found[1]) or found[0] == stored \
+                or password_problem(found[0]) is not None:
+            report.progress("the indexer password is in the keystore")
+            return
+        if not keystore_set(paths, "password", found[0]):
+            report.problem(INVALID, INDEXER_VAR, f"the keystore did not accept the new password from {found[1]}; "
+                                                 "the stored one differs and no longer matches the indexer's")
+            return
+        report.progress(f"replaced the indexer password in the keystore with the one from {found[1]}")
         return
     state, value, source = supplied_password(lookup, INDEXER_VAR, report)
     if state == "invalid":
