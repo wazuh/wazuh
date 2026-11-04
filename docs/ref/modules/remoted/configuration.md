@@ -1117,8 +1117,10 @@ Maximum in-flight (unprocessed) request payload bytes before the HTTPS server sh
 - **Compressed downloads:** a zstd-compressed `POST /download` response reserves the compressor's
   memory from this same budget for the whole transfer (about 0.65 MiB for a 20 KiB file and about
   3.7 MiB from 10 MiB up, with the compressor's two buffers included). The compressor is used only if,
-  after reserving, at least one maximum request (`https.max_body_size` plus 4 KiB) is still free;
-  otherwise the response is sent uncompressed. There is no option for this floor.
+  after reserving, at least half of the budget (an agent's default byte share) is still free, and never
+  less than one maximum request (`https.max_body_size` plus 4 KiB); otherwise the response is sent
+  uncompressed. With the default 256 MiB, compressed downloads hold at most 128 MiB between them. There
+  is no option for this floor.
 
 #### remoted.max_parallel_connections
 

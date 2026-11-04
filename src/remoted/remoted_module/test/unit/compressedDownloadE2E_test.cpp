@@ -597,13 +597,15 @@ TEST(CompressedDownloadE2E, ARequestStillFitsWhileCompressedDownloadsAreActive)
 {
     constexpr std::size_t kFileSize = 32 * kMiB;
     constexpr std::size_t kMaxBody = 64 * 1024;
-    constexpr std::size_t kFloor = kMaxBody + 4096;
+    // Each active download holds the admission of its request next to the compressor's memory.
+    constexpr std::size_t kAdmission = std::char_traits<char>::length(kConfigRequest) + 4096;
     const auto required = zstdRequirement(kFileSize);
+    // Compressors may take up to half of the budget: two downloads fit under that, a third does not.
     DownloadServer server(true,
                           [&](HttpServerConfig& config)
                           {
                               config.maxBodySize = kMaxBody;
-                              config.maxInFlightBytes = kFloor + 3 * required - 1;
+                              config.maxInFlightBytes = 5 * (required + kAdmission);
                           });
     SKIP_WITHOUT_SERVER(server);
     const auto file = incompressible(kFileSize, 5);

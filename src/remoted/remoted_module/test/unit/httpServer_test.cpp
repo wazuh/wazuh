@@ -3541,6 +3541,27 @@ TEST_F(CompressionWiringTest, ABudgetJustAboveTheFloorCompressesAndOneByteLessDo
     expectPlain(post(oneLess, OFFER_ZSTD));
 }
 
+TEST_F(CompressionWiringTest, CompressionNeverTakesMoreThanHalfTheBudget)
+{
+    // A small body cap keeps the admission minimum (maxBodySize + 4096) below the half of the budget, so
+    // the half is the floor: after reserving, as many bytes as were taken must remain free.
+    const auto admission = std::size_t {2} + 4096;
+    const auto reservation = compressorReservation(m_payload.size());
+
+    auto exact = baseConfig();
+    exact.maxBodySize = 4096;
+    exact.maxInFlightBytes = 2 * (reservation + admission);
+    ASSERT_GT(exact.maxInFlightBytes / 2, exact.maxBodySize + 4096);
+    startStreaming(exact);
+    expectCompressed(post(exact, OFFER_ZSTD));
+
+    auto twoLess = baseConfig();
+    twoLess.maxBodySize = 4096;
+    twoLess.maxInFlightBytes = exact.maxInFlightBytes - 2;
+    startStreaming(twoLess);
+    expectPlain(post(twoLess, OFFER_ZSTD));
+}
+
 // ---------------------------------------------------------------------------
 // Global endpoint prefix (issue #38491)
 // ---------------------------------------------------------------------------
