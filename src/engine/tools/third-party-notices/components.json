@@ -26,6 +26,19 @@
       ]
     },
     {
+      "name": "Brotli",
+      "dependency": "brotli",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "MIT License",
+      "dir": "brotli",
+      "files": [
+        "brotli/LICENSE"
+      ]
+    },
+    {
       "name": "bzip2",
       "dependency": "bzip2",
       "artefacts": [
@@ -598,7 +611,8 @@
       "name": "zstd",
       "dependency": "zstd",
       "artefacts": [
-        "manager"
+        "manager",
+        "standalone"
       ],
       "readme_license": "3-Clause \"New\" BSD License",
       "dir": "zstd",

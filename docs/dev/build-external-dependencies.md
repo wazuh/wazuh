@@ -247,6 +247,7 @@ A ref no branch uses stays in the pool. Every week the manager scan of internal-
 |------------|----|----|----|----|------|
 | cJSON, openssl, zlib, sqlite, libyaml, curl, libpcre2, flatbuffers, zstd | x | x | x | x | bin |
 | bzip2 | x | x | x | x | bin on linux and darwin; Windows uses only the header |
+| brotli | x | x | - | - | bin; Linux only, curl links it |
 | nlohmann, jwt-cpp, rapidjson | x | x | x | x | src (header-only) |
 | googletest, benchmark | x | x | x | x | src (built only for tests) |
 | audit-userspace, procps | x | - | - | - | bin; the manager uses only the headers |
