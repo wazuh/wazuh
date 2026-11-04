@@ -27,6 +27,16 @@ For module overview and architecture, see [File Integrity Monitoring Overview](R
 
 ## Configuration Options
 
+### sregex patterns
+
+Every FIM option that takes `type="sregex"` (`nodiff`, `ignore`, `registry_nodiff`, `registry_ignore`) and the `restrict`, `restrict_key` and `restrict_value` attributes compile the pattern with `OSMatch`. It is not POSIX or PCRE regex:
+
+- Only `|` (alternatives), `^` (anchor at the start), `$` (anchor at the end) and a leading `!` (negate the whole pattern) are special. Everything else is literal text: `.` is a dot, `\` is a backslash, and there are no escapes, character classes or wildcards. Write `.pem$`, not `\.pem$`: the backslashed form only matches a path ending in a literal `\.pem`.
+- Matching is case-insensitive, on every platform.
+- File patterns are matched against the full path, so `^` anchors at the start of the path, not of the file name: `^id_rsa` never matches `/home/u/.ssh/id_rsa`, `id_rsa$` does.
+- An empty alternative matches every path. A stray `|` (`.log$|`, `.key$||.pem$`) makes an `ignore` skip everything or a `nodiff` hide every diff, with no warning.
+- A pattern that matches nothing is not an error. A wrong `restrict` drops every file in the directory, and the only trace is a `syscheck.debug=2` message.
+
 ### diff
 
 Configures diff-related settings for change reporting. This block contains sub-elements.
@@ -68,11 +78,11 @@ Limits the maximum individual file size eligible for diff reporting. Files excee
 List of files (one per line) for which diff content must never be computed or sent in alerts. This prevents sensitive data — such as private keys, credentials, or database config files — from leaking through alerts.
 
 - **Allowed values:** Any file path
-- **Attribute: `type`** — `sregex` to use a regex pattern to match multiple files
+- **Attribute: `type`** — `sregex` to match multiple files with an `OSMatch` pattern, not a regex (see [sregex patterns](#sregex-patterns)): `.key$`, not `\.key$`
 
 ```xml
 <nodiff>/etc/ssl/private.key</nodiff>
-<nodiff type="sregex">\.key$|\.pem$|password</nodiff>
+<nodiff type="sregex">.key$|.pem$|password</nodiff>
 ```
 
 #### diff > registry_nodiff (Windows only)
@@ -80,7 +90,7 @@ List of files (one per line) for which diff content must never be computed or se
 Same as `nodiff` but for Windows registry values. The path must include the value name.
 
 - **Allowed values:** Any registry path including the value name
-- **Attribute: `type`** — `sregex` to use a regex pattern to match multiple registry values
+- **Attribute: `type`** — `sregex` to match multiple registry values with an `OSMatch` pattern (see [sregex patterns](#sregex-patterns))
 - **Attribute: `arch`** — `32bit`, `64bit`, `both` to select the Windows registry view to monitor
 
 ```xml
@@ -133,7 +143,7 @@ Defines which directories to monitor. This is the primary configuration element 
 | `check_mtime` | `yes` | `yes`, `no` | Check the file modification time. |
 | `check_inode` | `yes` | `yes`, `no` | Check the file inode. Available on UNIX. On Windows, inode is always `0`. |
 | `check_device` | `yes` | `yes`, `no` | Check the file device identifier. Available on UNIX only. |
-| `restrict` | N/A | `sregex` | Limit monitoring to files whose names match the given regex. |
+| `restrict` | N/A | `sregex` | Limit monitoring to files whose full path matches the given `OSMatch` pattern, not a regex (see [sregex patterns](#sregex-patterns)): `.txt$`, not `\.txt$`. A pattern that matches no file leaves the directory with nothing monitored. |
 | `tags` | N/A | Comma-separated strings | Attach custom tags to all alerts from this directory. |
 | `recursion_level` | `256` | Integer `0`–`320` | Maximum recursion depth. `0` means only the top-level directory is monitored. |
 | `follow_symbolic_link` | `no` | `yes`, `no` | UNIX only. When enabled, symbolic links are followed and the linked content is monitored. When disabled, the link itself is monitored. |
@@ -210,7 +220,7 @@ Files or directories to exclude from monitoring and scanning. Paths that match i
 
 - **Default value:** Varies by OS
 - **Allowed values:** Any file or directory path
-- **Attribute: `type`** — `sregex` to use a regex pattern
+- **Attribute: `type`** — `sregex` to match with an `OSMatch` pattern, not a regex (see [sregex patterns](#sregex-patterns)): `.tmp$`, not `\.tmp$`. A directory whose path matches is skipped with everything below it
 
 ```xml
 <ignore>/etc/mtab</ignore>
@@ -290,7 +300,7 @@ On Linux, `-20` is highest priority and `19` is lowest. On Windows, values are m
 Registry entries to exclude from processing. Ignored keys and values are skipped during enumeration, so no events are generated for them and no further processing is performed.
 
 - **Attribute: `arch`** — `32bit` (default), `64bit`, `both`
-- **Attribute: `type`** — `sregex` to use a regex pattern
+- **Attribute: `type`** — `sregex` to match with an `OSMatch` pattern (see [sregex patterns](#sregex-patterns))
 
 ```xml
 <registry_ignore>HKEY_LOCAL_MACHINE\Security\Policy\Secrets</registry_ignore>
@@ -298,9 +308,9 @@ Registry entries to exclude from processing. Ignored keys and values are skipped
 ```
 
 Plain entries are matched as a **case-insensitive prefix**, so one entry covers the whole subtree
-below it, and the key is skipped before it is opened. `type="sregex"` uses `OSMatch`, which supports
-only `|` (alternatives), `^` (prefix), `$` (suffix) and plain substrings: there are no character
-classes and no wildcards, and an `sregex` entry applies to **every** monitored registry entry, not
+below it, and the key is skipped before it is opened. `type="sregex"` uses `OSMatch` (see
+[sregex patterns](#sregex-patterns)): there are no escapes, character classes or wildcards, and an
+`sregex` entry applies to **every** monitored registry entry, not
 only to the one it was written for.
 
 The `arch` of an ignore entry must equal the `arch` of the `<windows_registry>` entry it is meant to
@@ -505,8 +515,8 @@ Defines Windows registry paths to monitor. Supports wildcards (`?` and `*`) for 
 | `check_perm` | `yes` | `yes`, `no` | Permissions check (allowed/denied per user or group). |
 | `check_mtime` | `yes` | `yes`, `no` | Modification time check. |
 | `check_type` | `yes` | `yes`, `no` | Value type check. Detects changes for `REG_NONE`, `REG_SZ`, `REG_EXPAND_SZ`, `REG_BINARY`, `REG_DWORD`, `REG_DWORD_BIG_ENDIAN`, `REG_LINK`, `REG_MULTI_SZ`, `REG_RESOURCE_LIST`, `REG_FULL_RESOURCE_DESCRIPTOR`, `REG_RESOURCE_REQUIREMENTS_LIST`, `REG_QWORD`. |
-| `restrict_key` | N/A | `sregex` | Limit checks to registry keys whose name matches the pattern. |
-| `restrict_value` | N/A | `sregex` | Limit checks to registry values whose name matches the pattern. |
+| `restrict_key` | N/A | `sregex` | Limit checks to registry keys whose name matches the `OSMatch` pattern (see [sregex patterns](#sregex-patterns)). |
+| `restrict_value` | N/A | `sregex` | Limit checks to registry values whose name matches the `OSMatch` pattern (see [sregex patterns](#sregex-patterns)). |
 | `recursion_level` | `512` | Integer `0`–`512` | Maximum recursion depth. |
 
 #### Registry Precedence
@@ -650,7 +660,7 @@ For environments that require full audit trails on critical configuration files:
   <!-- Protect private key from diff leaking -->
   <diff>
     <nodiff>/etc/ssl/private.key</nodiff>
-    <nodiff type="sregex">\.pem$|\.key$</nodiff>
+    <nodiff type="sregex">.pem$|.key$</nodiff>
     <disk_quota>
       <enabled>yes</enabled>
       <limit>2GB</limit>
@@ -966,7 +976,7 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 
 **Use `tags` to enrich alerts.** Adding descriptive tags to directory and registry entries (e.g., `tags="critical-config,pci-dss"`) makes downstream alert triage and SIEM correlation significantly faster.
 
-**Test `ignore` rules with regex carefully.** The `sregex` type uses POSIX extended regex. Always validate patterns against real file paths before deploying to production to avoid accidentally suppressing genuine alerts.
+**Test `sregex` patterns carefully.** The `sregex` type is `OSMatch`, not POSIX or PCRE regex (see [sregex patterns](#sregex-patterns)). Always validate patterns against real file paths before deploying to production to avoid accidentally suppressing genuine alerts.
 
 ---
 
