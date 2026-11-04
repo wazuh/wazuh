@@ -240,7 +240,8 @@ AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, std::optiona
                                      bool isFeedBased,
                                      std::optional<std::size_t> flushBatchSize,
                                      std::optional<std::chrono::milliseconds> flushInterval,
-                                     std::optional<int32_t> walAutocheckpointPages)
+                                     std::optional<int32_t> walAutocheckpointPages,
+                                     std::optional<int32_t> cacheSizeKiB)
     : m_moduleName(moduleName),
       m_isFeedBased(isFeedBased),
       m_persistentQueue(nullptr), // Ensure initialized to nullptr
@@ -261,7 +262,8 @@ AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, std::optiona
         }
         else if (dbPath.has_value())
         {
-            m_persistentQueue = std::make_shared<PersistentQueue>(dbPath.value(), m_logger, nullptr, flushBatchSize, flushInterval, walAutocheckpointPages);
+            m_persistentQueue = std::make_shared<PersistentQueue>(dbPath.value(), m_logger, nullptr, flushBatchSize, flushInterval, walAutocheckpointPages,
+                                                                  cacheSizeKiB);
         }
 
         // else: m_persistentQueue remains nullptr for in-memory-only operation

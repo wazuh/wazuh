@@ -126,6 +126,27 @@ This represents only **~7% of total scan time** (4s / 57s ≈ 7%), demonstrating
 2. **Primary bottleneck is filesystem I/O and hashing** - Not database transactions
 
 
+## Persistence Strategy
+
+Each module that syncs through the protocol owns one persistent queue database (`fim_sync.db` for FIM). Events reach it in three stages:
+
+1. **In-memory buffer.** `PersistentQueue` appends each event to an in-memory buffer and returns immediately.
+2. **Batched flush.** A background thread writes the buffer to the database in one transaction when it holds `flush_batch_size` events or when `flush_interval_ms` has passed, whichever comes first. A graceful shutdown flushes whatever is left; an abrupt one loses the events still buffered, which the module's integrity check resends.
+3. **WAL checkpoint.** Committed transactions are appended to the WAL file and copied back into the database by SQLite's auto-checkpoint once the WAL reaches `wal_autocheckpoint_pages` pages.
+
+The database connection stays open for the life of the module. When the module passes `cache_size_kib`, its page cache is capped at that size; otherwise it keeps SQLite's default of 2000 KiB. Only FIM sets it today.
+
+### Tunables
+
+Only FIM overrides the defaults, through these internal options (see [FIM internal options](../../fim/configuration.md#internal-options)). Every other module keeps the built-in values.
+
+| FIM internal option | Default | Range | Trade-off |
+|---|---|---|---|
+| `syscheck.sync_flush_batch_size` | `100` | `1`–`100000` events | Larger batches mean fewer transactions and less disk write volume, but more events at risk on an abrupt shutdown. |
+| `syscheck.sync_flush_interval_ms` | `500` | `50`–`3600000` ms | A longer interval means fewer small transactions under low load, but more events at risk on an abrupt shutdown. |
+| `syscheck.sync_wal_autocheckpoint_pages` | `1000` | `100`–`1000000` pages (~4 KiB each) | A higher threshold means less checkpoint write-back, but a larger WAL file and a longer recovery on reopen. Durability is unaffected. |
+| `syscheck.sync_cache_size_kib` | `256` | `64`–`1048576` KiB | A larger page cache may speed up syncing a large backlog, at the cost of resident memory in `wazuh-syscheckd`. SQLite's own default is 2000 KiB. |
+
 ## Configuration Details
 
 ### Current SQLite PRAGMA Settings
@@ -133,6 +154,8 @@ This represents only **~7% of total scan time** (4s / 57s ≈ 7%), demonstrating
 ```cpp
 PRAGMA synchronous = OFF;  // Never fsync(), not even at checkpoints
 PRAGMA journal_mode = WAL; // Write-Ahead Logging mode
+PRAGMA wal_autocheckpoint = <pages>; // Only when the module passes an override (FIM does)
+PRAGMA cache_size = -<KiB>;          // Only when the module passes an override (FIM does)
 ```
 
 ### Configuration Rationale
@@ -147,6 +170,12 @@ PRAGMA journal_mode = WAL; // Write-Ahead Logging mode
   - Sequential append-only writes to `.wal` file
   - Automatic checkpointing when WAL grows
   - Better performance for write-heavy workloads
+
+- **cache_size**:
+  - The queue is written in batches and read back only during sync sessions, so a large page cache brings little
+  - With SQLite's default (2000 KiB), the page cache filled during a sync stays resident in the agent process
+  - FIM caps it at 256 KiB, which saved about 0.55 MiB of private memory in `wazuh-syscheckd` under a sustained 100 events/s load with no measurable CPU or delivery cost
+  - The cap can cost CPU when the queue holds a large backlog: once the queue table and its primary-key index outgrow the cache, both the per-event lookup by `id` when an event is persisted and the reads of a sync session fetch their pages again from the OS page cache. In four runs with 50 000- and 200 000-file baselines, where the first sync carried as many documents as the manager's default FIM file limit allows (30 000), the measured cost was 0 to 5% more CPU from start through the first sync, left its duration unchanged and kept about 1.9 MB less private memory afterwards. Agents that sync larger backlogs can raise `syscheck.sync_cache_size_kib` if sync time matters more than memory
 
 
 ## Conclusion

@@ -549,6 +549,7 @@ FIM reads its internal options with the `syscheck.` prefix. Set them in `local_i
 | `syscheck.sync_flush_batch_size` | `100` | `1`–`100000` | Maximum number of buffered FIM events before an immediate flush to the persistent sync queue database (`fim_sync.db`). Larger values reduce disk write volume at the cost of more data at risk on an abrupt (non-graceful) shutdown. |
 | `syscheck.sync_flush_interval_ms` | `500` | `50`–`3600000` (milliseconds) | Maximum time to wait before flushing a non-full buffer of FIM events to the persistent sync queue database (`fim_sync.db`). Larger values reduce disk write volume at the cost of more data at risk on an abrupt (non-graceful) shutdown. |
 | `syscheck.sync_wal_autocheckpoint_pages` | `1000` | `100`–`1000000` (SQLite pages, ~4 KiB each) | WAL auto-checkpoint threshold of the FIM persistent sync queue database (`fim_sync.db`). Larger values reduce checkpoint write-back at the cost of a larger WAL file (roughly pages × 4 KiB) and a longer recovery on reopen; durability is unaffected. |
+| `syscheck.sync_cache_size_kib` | `256` | `64`–`1048576` (KiB) | SQLite page cache size of the FIM persistent sync queue database (`fim_sync.db`). Larger values may speed up syncing a large backlog at the cost of more resident memory in `wazuh-syscheckd`; SQLite's own default is 2000 KiB. |
 | `syscheck.debug` | `0` | `0`–`2` | FIM debug level. |
 
 ---

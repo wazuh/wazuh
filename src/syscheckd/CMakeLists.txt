@@ -169,6 +169,10 @@ elseif(NOT UNIT_TEST)
     wazuh-syscheckd PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY
                                                    ${SRC_FOLDER}/build/bin)
   target_link_libraries(wazuh-syscheckd PRIVATE syscheckd_lib)
+  # config drags in the agent module libraries; keep only the ones FIM uses
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_options(wazuh-syscheckd PRIVATE "LINKER:--as-needed")
+  endif()
 
   wazuh_set_runtime_rpath(wazuh-syscheckd)
 endif()
