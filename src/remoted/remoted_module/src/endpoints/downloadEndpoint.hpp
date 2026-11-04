@@ -16,6 +16,7 @@
 #include "endpoint.hpp"                // AuthenticatedHandler
 #include "http_server/IHttpServer.hpp" // HttpResponse, IByteSource
 #include "iAgentGroupSource.hpp"       // IAgentGroupSource
+#include "iWpkAuthorizer.hpp"          // IWpkAuthorizer
 
 #include <cstddef>
 #include <cstdint>
@@ -197,8 +198,9 @@ namespace remoted::endpoints::download
      * @note This function is deliberately identity-free: it maps a resource id to a path and
      * nothing else, which is what keeps the containment argument above about the id GRAMMARS and
      * O_NOFOLLOW alone. Authorization happens ABOVE it, in makeHandler(): a config request is
-     * served only when `resource_id` equals the selector the agent's own groups produce, so by the
-     * time a path is resolved here the caller is entitled to it. Do not add an identity check to
+     * served only when `resource_id` equals the selector the agent's own groups produce, and a WPK
+     * only when the agent has an open upgrade task for that file, so by the time a path is resolved
+     * here the caller is entitled to it. Do not add an identity check to
      * this layer, and do not remove the one above it.
      *
      * `/control` must report `config_hash` over the file this resolves to for the selector it hands
@@ -334,9 +336,15 @@ namespace remoted::endpoints::download
      * default: a config download is authorized against it, so silently defaulting it would mean
      * "serve anything to anyone". A null pointer, and an agent the source does not know, are both
      * DENIED (403) -- there is no fallback to the id the request itself carries.
+     *
+     * @param wpkAuthorizer Decides every WPK request before anything is opened. Required, with no
+     * default, for the same reason as @p groups. A denial answers the same 404 a missing file does;
+     * a null pointer or an authorizer that cannot answer gives 503, which the agent retries.
      */
-    remoted::endpoints::AuthenticatedHandler
-    makeHandler(ResourcePaths paths, DownloadMetrics metrics, std::shared_ptr<const IAgentGroupSource> groups);
+    remoted::endpoints::AuthenticatedHandler makeHandler(ResourcePaths paths,
+                                                         DownloadMetrics metrics,
+                                                         std::shared_ptr<const IAgentGroupSource> groups,
+                                                         std::shared_ptr<const IWpkAuthorizer> wpkAuthorizer);
 
 } // namespace remoted::endpoints::download
 

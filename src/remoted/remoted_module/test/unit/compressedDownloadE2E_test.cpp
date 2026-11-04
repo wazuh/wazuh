@@ -182,6 +182,17 @@ namespace
         bool m_allow;
     };
 
+    /// Every WPK request is authorized: these tests are about how a granted transfer is encoded.
+    class GrantingWpkAuthorizer final : public IWpkAuthorizer
+    {
+    public:
+        void
+        authorize(const std::string&, const std::string&, std::function<void(WpkAuthorization)> done) const override
+        {
+            done(WpkAuthorization::Granted);
+        }
+    };
+
     /// TLS client that reads on demand, so a transfer stays in flight while the test looks at the server.
     class SlowTlsClient
     {
@@ -329,7 +340,8 @@ namespace
                 download::makeHandler(
                     download::ResourcePaths {m_root + "/shared", m_root + "/multigroups", m_root + "/upgrade"},
                     m_metrics,
-                    std::make_shared<const FixedGroupSource>(allowGroup)),
+                    std::make_shared<const FixedGroupSource>(allowGroup),
+                    std::make_shared<const GrantingWpkAuthorizer>()),
                 ResponseMode::Streamable);
             try
             {
