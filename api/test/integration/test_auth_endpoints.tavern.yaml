@@ -440,20 +440,40 @@ stages:
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
-    response: &not_found
+    response:
       status_code: 404
       json:
         title: Not Found
       verify_response_with:
         - function: tavern_utils:test_no_internal_details
 
-  - name: Without a token, the same answer
+  - name: Without a token, the route is not disclosed
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}{path}"
       method: GET
     response:
-      <<: *not_found
+      status_code: 401
+      json:
+        title: Unauthorized
+        detail: No authorization token provided
+      verify_response_with:
+        - function: tavern_utils:test_no_internal_details
+
+  - name: With an invalid token, the route is not disclosed
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}{path}"
+      method: GET
+      headers:
+        Authorization: "Bearer invalid"
+    response:
+      status_code: 401
+      json:
+        title: Unauthorized
+        detail: Invalid token
+      verify_response_with:
+        - function: tavern_utils:test_no_internal_details
 
 ---
 test_name: Security headers on success and error responses
