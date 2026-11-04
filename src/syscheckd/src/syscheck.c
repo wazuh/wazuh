@@ -421,7 +421,7 @@ void persist_sync_documents(char* table_name, cJSON* docs, Operation_t operation
 #endif
 
         if (stateful_event) {
-            char item_desc[PATH_MAX + 128];
+            char item_desc[FIM_PATH_MAX + 128];
             // Use same description format as transaction callbacks
             if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
                 snprintf(item_desc, sizeof(item_desc), "file %s", path);

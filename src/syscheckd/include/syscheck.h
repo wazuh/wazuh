@@ -20,6 +20,13 @@
 
 #define MAX_LINE PATH_MAX + 256
 
+#ifdef WIN32
+// Bytes of a MAX_PATH-character path in UTF-8 (up to 3 bytes per UTF-16 unit).
+#define FIM_PATH_MAX (MAX_PATH * 3)
+#else
+#define FIM_PATH_MAX PATH_MAX
+#endif
+
 /* Notify list size */
 #define NOTIFY_LIST_SIZE 32
 

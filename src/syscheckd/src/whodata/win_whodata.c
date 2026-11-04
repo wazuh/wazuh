@@ -1652,9 +1652,9 @@ char *get_whodata_path(const short unsigned int *win_path) {
     char *path = NULL;
     int error = -1;
 
-    if (count = WideCharToMultiByte(CP_ACP, 0, win_path, -1, NULL, 0, NULL, NULL), count > 0) {
+    if (count = WideCharToMultiByte(CP_UTF8, 0, win_path, -1, NULL, 0, NULL, NULL), count > 0) {
         os_calloc(count + 1, sizeof(char), path);
-        if (count = WideCharToMultiByte(CP_ACP, 0, win_path, -1, path, count, NULL, NULL), count > 0) {
+        if (count = WideCharToMultiByte(CP_UTF8, 0, win_path, -1, path, count, NULL, NULL), count > 0) {
             path[count] = '\0';
         } else {
             error = GetLastError();
