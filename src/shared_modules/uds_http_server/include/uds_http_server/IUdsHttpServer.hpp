@@ -277,6 +277,10 @@ namespace wazuh::uds_http
 
         std::size_t headerTimeoutSec {10}; ///< Accept -> full request head received.
         std::size_t bodyTimeoutSec {30};   ///< Head received -> full body received.
+        /// Answer a request whose body did not arrive within bodyTimeoutSec with 400 before closing,
+        /// instead of closing without a response. Off by default, which keeps the silent close the
+        /// existing consumers' peers handle; for a consumer whose peers expect a status.
+        bool answerBodyTimeout {false};
         /// Dispatch -> send(). A LEAK BACKSTOP, not a quality-of-service deadline: the peer sets
         /// its own, shorter, per-target deadline and gives up first. Its only job is to guarantee
         /// that a handler which loses a responder cannot hold an fd forever. A route whose peer
