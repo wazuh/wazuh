@@ -2699,13 +2699,13 @@ Cumulative `413` answers: the request declared (or sent) a body larger than `ana
 
 ---
 
-The `server.api.*` metrics describe the engine API server (`engine-api-http.sock`), with the same meaning as their `server.ingest.*` namesakes. The API server has one request worker per CPU but one, between 4 and 16, and a 64-request queue; `GET /status` and `POST /metrics/*` are answered outside them, so they never wait behind other API calls. It has no in-flight byte budget: `server.api.inflight.bytes`, `server.api.inflight.requests` and `server.api.shed.budget` always read `0`.
+The `server.api.*` metrics describe the engine API server (`engine-api-http.sock`), with the same meaning as their `server.ingest.*` namesakes. The API server has one request worker per CPU but one, between 4 and 16, and a 64-request queue; `GET /status` is answered outside them, so the readiness check never waits behind other API calls; the `POST /metrics/*` routes run on the workers like the other calls. It has no in-flight byte budget: `server.api.inflight.bytes`, `server.api.inflight.requests` and `server.api.shed.budget` always read `0`.
 
 | Metric | Meaning |
 |---|---|
 | `server.api.sessions` | Open connections |
 | `server.api.queue.depth` | Requests admitted but not started (limit 64) |
-| `server.api.running` | Requests being handled by the request workers (at most their count); `GET /status` and `POST /metrics/*` run outside them and are not counted |
+| `server.api.running` | Requests being handled by the request workers (at most their count); `GET /status` runs outside them and is not counted |
 | `server.api.shed.connections` | Cumulative `503`: no connection slot was free |
 | `server.api.shed.executor_full` | Cumulative `503 {"error":"Server busy","code":503}`: every worker busy and the queue full |
 | `server.api.shed.shutdown` | Cumulative `503`: the request arrived or was still queued while the engine was stopping |
