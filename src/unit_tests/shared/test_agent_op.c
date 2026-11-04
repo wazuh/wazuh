@@ -824,9 +824,14 @@ static void test_os_read_agent_profile_no_config(void **state) {
 
 static void test_os_read_agent_profile_success(void **state) {
     const char *config = "<" WAZUHCONFIG "><agent><config-profile>profA</config-profile></agent></" WAZUHCONFIG ">";
+    /* fgetc() and fclose() are mocked; only fileno() in w_file_cloexec() needs a real stream */
+#ifdef WIN32
+    FILE *fp = (FILE *)0x1234;
+#else
     FILE *fp = tmpfile();
-
     assert_non_null(fp);
+#endif
+
     test_mode = 1;
 
     expect_string(__wrap__mdebug2, formatted_msg, "Calling os_read_agent_profile().");
@@ -847,7 +852,9 @@ static void test_os_read_agent_profile_success(void **state) {
     char *profile = os_read_agent_profile();
 
     test_mode = 0;
+#ifndef WIN32
     fclose(fp);
+#endif
     assert_string_equal(profile, "profA");
     free(profile);
 }
