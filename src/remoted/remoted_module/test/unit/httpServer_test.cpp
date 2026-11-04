@@ -3541,6 +3541,18 @@ TEST_F(CompressionWiringTest, ABudgetJustAboveTheFloorCompressesAndOneByteLessDo
     expectPlain(post(oneLess, OFFER_ZSTD));
 }
 
+TEST_F(CompressionWiringTest, RepeatedAcceptEncodingLinesAreReadAsOneList)
+{
+    auto config = baseConfig();
+    startStreaming(config);
+
+    // A zstd;q=0 on any line withdraws the offer, whatever its position or the spelling of the name.
+    expectPlain(post(config, "Accept-Encoding: zstd\r\nAccept-Encoding: zstd;q=0\r\n"));
+    expectPlain(post(config, "Accept-Encoding: zstd\r\naccept-encoding: zstd;q=0\r\n"));
+    // An offer on a later line counts as well.
+    expectCompressed(post(config, "Accept-Encoding: gzip\r\nAccept-Encoding: zstd\r\n"));
+}
+
 TEST_F(CompressionWiringTest, CompressionNeverTakesMoreThanHalfTheBudget)
 {
     // A small body cap keeps the admission minimum (maxBodySize + 4096) below the half of the budget, so
