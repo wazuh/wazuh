@@ -193,6 +193,23 @@ touch "${WORK}/reload_fail/fail-wazuh-manager-modulesd"
 check "reload fails when a daemon does not start" "1" "$(control reload_fail reload)"
 check "a failed reload leaves only remoted running" "wazuh-manager-remoted" "$(running reload_fail)"
 
+# A restart refused by its checks has not taken the lock yet: the lock, and the start markers, belong to
+# the run that holds it.
+new_tree refused_while_locked
+sleep 300 &
+holder=$!
+mkdir "${WORK}/refused_while_locked/var/start-script-lock"
+echo "${holder}" > "${WORK}/refused_while_locked/var/start-script-lock/pid"
+: > "${WORK}/refused_while_locked/var/run/wazuh-manager-db.start"
+printf 'Invalid configuration\n' > "${WORK}/refused_while_locked/testfail-wazuh-manager-analysisd"
+check "a restart refused by a daemon's -t fails" "1" "$(control refused_while_locked restart)"
+check "the refused restart leaves the holder's lock" "${holder}" \
+    "$(cat "${WORK}/refused_while_locked/var/start-script-lock/pid")"
+check "the refused restart leaves the holder's start markers" "yes" \
+    "$([ -e "${WORK}/refused_while_locked/var/run/wazuh-manager-db.start" ] && echo yes || echo no)"
+kill "${holder}"
+wait "${holder}" 2>/dev/null
+
 # A daemon's -t refuses the check that the service-control helper runs before an API restart: the
 # refusal and its reason (the last line of the test's output) reach the manager log, since the
 # helper's own output reaches no log.
