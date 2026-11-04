@@ -68,6 +68,9 @@ struct RouteOptions
     std::string payloadTooLargeBody {};
     /// Content-Type of payloadTooLargeBody; ignored while that body is empty.
     std::string payloadTooLargeContentType {"text/plain"};
+    /// Seconds this route's handler has to answer before the transport answers 504 for it; 0 keeps the server's
+    /// 300 s. Raise it on a route whose peer legitimately waits longer, rather than for every route.
+    std::size_t responseTimeoutSec {0};
 };
 
 /**

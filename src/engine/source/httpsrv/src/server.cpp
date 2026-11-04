@@ -267,6 +267,7 @@ void Server::addRoute(Method method, const std::string& path, RouteHandler handl
         options.maxBodyBytes == UNLIMITED_BODY ? uds::UdsHttpServerConfig::UNLIMITED_BODY_SIZE : options.maxBodyBytes;
     routeOptions.payloadTooLargeBody = std::move(options.payloadTooLargeBody);
     routeOptions.payloadTooLargeContentType = std::move(options.payloadTooLargeContentType);
+    routeOptions.responseTimeoutSec = options.responseTimeoutSec;
     m_impl->transport->addRoute(
         toTransport(method), path, m_impl->adapt(std::move(handler), options.runInline), routeOptions);
 }
