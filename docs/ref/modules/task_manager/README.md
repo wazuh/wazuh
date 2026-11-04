@@ -51,6 +51,9 @@ them `delivered` and remoted logs `legacy_task_delivery: task type '<type>' not 
 agents, not delivered (task '<task_id>', agent '<agent_id>')` at INFO; on the other nodes they
 expire after `task_ttl`.
 
+`task_ttl` also bounds how long a `remote_upgrade` task authorizes the download of its WPK (a
+delivered task until the cleanup pass deletes it, 24 h after delivery).
+
 Manager tasks are described in [Manager tasks](manager-tasks.md); the three recurring ones in [Recurring manager tasks](schedules.md).
 
 ---
@@ -64,7 +67,7 @@ per-route contract (fields, limits, status codes, the upgrade envelope) is the
 
 | Group | Routes | Used for |
 | --- | --- | --- |
-| Agent tasks | `POST /v1/tasks`, `/v1/tasks/bulk`, `/v1/tasks/pending` | storing tasks for agents and handing them out on a poll |
+| Agent tasks | `POST /v1/tasks`, `/v1/tasks/bulk`, `/v1/tasks/pending`, `/v1/tasks/wpk-authorization` | storing tasks for agents, handing them out on a poll and looking up the task that authorizes a WPK download |
 | Manager tasks | `POST /v1/manager-tasks`, `/get`, `/by-agent`, `/list`, `/count` | creating manager tasks and looking them up |
 | Agent upgrades | `POST /v1/agents/upgrade`, `/v1/agents/upgrade-custom` | the manager side of remote agent upgrades |
 | Operations | `GET /v1/health`, `GET /v1/metrics` | liveness and the metrics dump |
@@ -130,7 +133,7 @@ workers (`manager_task_executor_threads`) + 1 scheduler + `cores / 2` upgrade ba
 
 | Table | Holds |
 | --- | --- |
-| `TASKS` | Agent tasks: `pending` → `delivered`, or `pending` → `expired` after `task_ttl`; a delivered task is removed 24 h after delivery, an expired one once it is 24 h old |
+| `TASKS` | Agent tasks: `pending` → `delivered`, or `pending` → `expired` after `task_ttl`; a delivered task is removed 24 h after delivery, an expired one once it is 24 h old; `task_ttl` also bounds how long a `remote_upgrade` task authorizes the download of its WPK (a delivered task until its removal 24 h after delivery) |
 | `MANAGER_TASKS` | Manager tasks and their outcomes |
 | `MANAGER_TASK_SCHEDULES` | The mutable half of each recurring schedule |
 | `metadata` | Module bookkeeping |
