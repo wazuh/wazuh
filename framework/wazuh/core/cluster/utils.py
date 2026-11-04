@@ -73,6 +73,57 @@ def read_cluster_config(config_file=None) -> typing.Dict:
     return config_cluster
 
 
+def restart_in_progress() -> bool:
+    """Tell whether wazuh-manager-control is restarting or reloading the manager.
+
+    The control script writes var/run/.restart only while it holds var/start-script-lock, and removes it before
+    releasing the lock. A marker whose lock holder is gone was left by a run that was killed, for example a reload
+    that systemd timed out, so it does not count.
+
+    Returns
+    -------
+    bool
+        True if the marker exists and the process holding the start-script lock is alive.
+    """
+    if not os.path.exists(os.path.join(common.WAZUH_PATH, 'var', 'run', '.restart')):
+        return False
+
+    try:
+        with open(os.path.join(common.WAZUH_PATH, 'var', 'start-script-lock', 'pid')) as pid_file:
+            pid = int(pid_file.read().strip())
+    except (OSError, ValueError):
+        # ValueError: not a number, or bytes that aren't text.
+        return False
+
+    return pid > 0 and process_exists(pid)
+
+
+def process_exists(pid: int) -> bool:
+    """Tell whether a process exists, whoever runs it.
+
+    Signal 0 checks without signalling. Unlike looking for /proc/<pid>, it also sees a process of another user
+    when /proc is mounted with hidepid, as the control script runs as root and the API does not.
+
+    Parameters
+    ----------
+    pid : int
+        Process ID.
+
+    Returns
+    -------
+    bool
+        True if the process exists.
+    """
+    try:
+        os.kill(pid, 0)
+    except PermissionError:
+        return True
+    except (ProcessLookupError, OverflowError):
+        return False
+
+    return True
+
+
 @temporary_cache()
 def get_manager_status(cache=False) -> typing.Dict:
     """Get the current status of each process of the manager.
@@ -103,11 +154,12 @@ def get_manager_status(cache=False) -> typing.Dict:
         processes.append('wazuh-manager-apid')
 
     data, pidfile_regex, run_dir = {}, re.compile(r'.+\-(\d+)\.pid$'), os.path.join(common.WAZUH_PATH, "var", "run")
+    restarting = restart_in_progress()
     for process in processes:
         pidfile = glob(os.path.join(run_dir, f"{process}-*.pid"))
         if os.path.exists(os.path.join(run_dir, f"{process}.failed")):
             data[process] = 'failed'
-        elif os.path.exists(os.path.join(run_dir, ".restart")):
+        elif restarting:
             data[process] = 'restarting'
         elif os.path.exists(os.path.join(run_dir, f"{process}.start")):
             data[process] = 'starting'
