@@ -22,9 +22,9 @@ event ingest server.
                     │                                              │
      ┌──────────────▼───────────────┐              ┌───────────────▼──────────────┐
      │ httpsrv::Server "API services"│             │ httpsrv::Server "Event ingest"│
-     │ inline: GET /status,         │              │ BoundedExecutor max(2,nproc/4)│
-     │         POST /metrics/*      │              │ queue = max connections       │
-     │ BoundedExecutor 4, queue 64  │              └───────────────┬──────────────┘
+     │ inline: GET /status          │              │ BoundedExecutor max(2,nproc/4)│
+     │ BoundedExecutor 4..16,       │              │ queue = max connections       │
+     │ queue 64                     │              └───────────────┬──────────────┘
      └──────────────┬───────────────┘                              │
                     │ RouteHandler(const Request&, Response&)       │
      ┌──────────────▼───────────────┐              ┌───────────────▼──────────────┐
@@ -63,8 +63,10 @@ implements it; the API modules register through `ApiRouteRegistrar` (below).
 - **Executor** (`BoundedExecutor`): except for inline routes, the transport's I/O threads never run a handler.
   Each admitted request becomes a job of a fixed pool with a bounded queue (`executorThreads`, `executorQueue`).
 - **Inline routes** (`RouteOptions::runInline`): the handler runs on the transport's I/O thread instead of the
-  executor, so the route answers even when every worker is busy. Only for handlers that never block; the API's
-  `GET /status` and `POST /metrics/*` use it.
+  executor, so the route answers even when every worker is busy. Only for handlers that never wait (no I/O, no
+  lock another module may hold, no call into other modules); the API's `GET /status` uses it. The API's
+  `POST /metrics/*` routes do not: reading a metric takes the registry lock and runs pull getters in other
+  modules, so they are Control routes on the workers, with a 4 KiB body cap.
 - **Answers the server writes itself**: executor queue full ⇒ `503 {"error":"Server busy","code":503}`;
   stopping ⇒ `503 {"error":"Server shutting down","code":503}`; handler threw ⇒ `500` `Internal server error`
   (`text/plain`). The transport adds its own `404/405/411/413/414/431/503/504` (see
