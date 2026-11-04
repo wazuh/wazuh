@@ -145,6 +145,7 @@ alter an existing table, any change to a table's shape needs a real step in the 
 | Client | Uses |
 | --- | --- |
 | `wazuh-manager-remoted` (legacy C poller and the C++ `TaskClient` behind `POST /control`) | `/v1/tasks/pending` |
+| `wazuh-manager-remoted` (`POST /download` for a WPK) | `/v1/tasks/wpk-authorization` |
 | `wazuh-manager-clusterd` (active-response poller) | `/v1/tasks`, via `wazuh.core.task_http` |
 | Server API / framework (agent restart and reload) | `/v1/tasks/bulk`, same client |
 | Server API / framework (the `agent_upgrade` CLI calls the same framework function) | `/v1/agents/upgrade`, `/v1/agents/upgrade-custom`, same client |
