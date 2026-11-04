@@ -4,7 +4,7 @@
 
 import json
 from datetime import datetime
-from unittest.mock import patch, MagicMock
+from unittest.mock import AsyncMock, patch, MagicMock
 import pytest
 
 from freezegun import freeze_time
@@ -87,6 +87,66 @@ async def test_http_error_handler(detail, mock_request):
     assert body == problem
     assert response.status_code == 401
     assert response.content_type == ERROR_CONTENT_TYPE
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('status_code, reason', [(404, 'Not Found'), (405, 'Method Not Allowed')])
+@pytest.mark.parametrize('path', ['/nope', LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT])
+@pytest.mark.parametrize('headers', [{}, {'Authorization': 'Basic dXNlcjpwYXNz'}, {'Authorization': 'Bearer'}])
+async def test_http_error_handler_no_token(headers, path, status_code, reason, mock_request):
+    """Test that a 404 or 405 without a bearer token is answered with the 401 of a protected route."""
+    mock_request.configure_mock(scope={'path': path}, headers=headers)
+    mock_request.method = 'GET'
+    with patch('api.error_handler.decode_token', new=AsyncMock()) as decode_mock:
+        response = await http_error_handler(mock_request, HTTPException(status_code=status_code, detail=reason))
+
+    decode_mock.assert_not_awaited()
+    assert response.status_code == 401
+    assert response.content_type == ERROR_CONTENT_TYPE
+    body = json.loads(response.body)
+    assert body['title'] == 'Unauthorized'
+    assert body['detail'] == ('Invalid authorization header' if headers.get('Authorization') == 'Bearer'
+                              else 'No authorization token provided')
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('status_code, reason', [(404, 'Not Found'), (405, 'Method Not Allowed')])
+@pytest.mark.parametrize('detail', ['Invalid token', 'Token expired'])
+async def test_http_error_handler_rejected_token(detail, status_code, reason, mock_request):
+    """Test that a 404 or 405 with a bearer token `decode_token` rejects is answered with its 401."""
+    mock_request.headers = {'Authorization': 'Bearer token'}
+    with patch('api.error_handler.decode_token', new=AsyncMock(side_effect=Unauthorized(detail))) as decode_mock:
+        response = await http_error_handler(mock_request, HTTPException(status_code=status_code, detail=reason))
+
+    decode_mock.assert_awaited_once_with('token')
+    assert response.status_code == 401
+    assert json.loads(response.body) == {'title': 'Unauthorized', 'detail': detail}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('status_code, reason', [(404, 'Not Found'), (405, 'Method Not Allowed')])
+async def test_http_error_handler_valid_token(status_code, reason, mock_request):
+    """Test that a 404 or 405 with a valid bearer token keeps its original answer."""
+    mock_request.headers = {'Authorization': 'bearer token'}
+    with patch('api.error_handler.decode_token', new=AsyncMock(return_value={})) as decode_mock:
+        response = await http_error_handler(mock_request, HTTPException(status_code=status_code, detail=reason))
+
+    decode_mock.assert_awaited_once_with('token')
+    assert response.status_code == status_code
+    assert json.loads(response.body) == {'title': reason, 'detail': f"{status_code}: {reason}"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('status_code, reason', [(403, 'Forbidden'), (429, 'Too Many Requests')])
+async def test_http_error_handler_other_status_not_authenticated(status_code, reason, mock_request):
+    """Test that a status other than 404 and 405 is answered without checking the token."""
+    mock_request.headers = {}
+    with patch('api.error_handler.decode_token', new=AsyncMock()) as decode_mock:
+        response = await http_error_handler(mock_request, HTTPException(status_code=status_code, detail=reason))
+
+    decode_mock.assert_not_awaited()
+    assert response.status_code == status_code
+    assert json.loads(response.body) == {'title': reason, 'detail': f"{status_code}: {reason}"}
 
 
 @pytest.mark.asyncio

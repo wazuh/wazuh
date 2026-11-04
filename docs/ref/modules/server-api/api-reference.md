@@ -583,8 +583,8 @@ Errors follow a structured JSON response format.
 | 400       | Bad Request       | Invalid parameters       |
 | 401       | Unauthorized      | Invalid credentials, or an invalid or expired token |
 | 403       | Forbidden         | RBAC denied a single-resource or mutating call (list endpoints answer `200` with empty results instead), or the client IP is blocked after too many failed logins (`6000`) |
-| 404       | Not Found         | Invalid endpoint, or the named resource does not exist: a group (`1710`), a file in a group (`1006`), a cluster node (`1730`), an enrollment token (`1767`) |
-| 405       | Method Not Allowed | Invalid HTTP method     |
+| 404       | Not Found         | Invalid endpoint, or the named resource does not exist: a group (`1710`), a file in a group (`1006`), a cluster node (`1730`), an enrollment token (`1767`). A request without a valid token to an invalid endpoint gets `401` |
+| 405       | Method Not Allowed | Invalid HTTP method. A request without a valid token gets `401` |
 | 413       | Payload Too Large | Request body too large. The body carries `"error": 413` (the HTTP status, not an error code) |
 | 415       | Unsupported Media Type | A body sent with no `Content-Type` at all carries error `6002`, on every operation that takes a body, the `run_as` login included; `PUT /cluster/{node_id}/configuration` accepts `application/octet-stream`, but a body with no `Content-Type` is still refused there, not read as one. A `Content-Type` the operation's specification does not list is refused earlier, by the request validator: the body has only `title` and `detail` (`Unsupported Media Type`), with no Wazuh error code |
 | 417       | Expectation Failed | An `Expect` header other than `100-continue` |
