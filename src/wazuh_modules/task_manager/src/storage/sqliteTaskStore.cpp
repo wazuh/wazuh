@@ -538,6 +538,35 @@ namespace task_manager::storage
                              });
     }
 
+    std::vector<AgentTask>
+    SqliteTaskStore::openAgentTasks(const std::string& agentId, const std::string& taskType, const Timestamp notBefore)
+    {
+        return inRead(
+            [&](Session& session)
+            {
+                std::vector<AgentTask> tasks;
+
+                auto& statement {session.stmt(Stmt::AgentTaskOpenByType)};
+                statement.bind(1, agentId);
+                statement.bind(2, taskType);
+                statement.bind(3, static_cast<std::int64_t>(notBefore));
+                statement.bind(4, static_cast<std::int64_t>(notBefore));
+
+                while (statement.step() == SQLITE_ROW)
+                {
+                    AgentTask task;
+                    task.taskId = statement.value<std::string>(0);
+                    task.agentId = agentId;
+                    task.taskType = statement.value<std::string>(1);
+                    task.payload = statement.value<std::string>(2);
+                    task.createTime = static_cast<Timestamp>(statement.value<std::int64_t>(3));
+                    tasks.push_back(std::move(task));
+                }
+
+                return tasks;
+            });
+    }
+
     // ---- manager tasks -----------------------------------------------------------------------
 
     CreateManagerTaskOutcome SqliteTaskStore::createManagerTask(const CreateManagerTaskRequest& request)

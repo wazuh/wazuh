@@ -28,9 +28,6 @@
 
 namespace task_manager::upgrade
 {
-    /// @brief The agent-task type an upgrade produces. PERSISTED, and read by both remoted pollers.
-    constexpr const char* REMOTE_UPGRADE_TASK_TYPE {"remote_upgrade"};
-
     /**
      * @brief Runs one upgrade request end to end.
      *

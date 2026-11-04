@@ -26,7 +26,11 @@ are read once, when `wazuh-manager-modulesd` starts.
 
 Time-to-live for a **pending** agent task, measured from its `create_time`. On each cleanup pass
 (every `cleanup_interval`), pending tasks older than `task_ttl` are moved to `expired` and are never
-handed out. Manager tasks are never expired by age.
+handed out. `task_ttl` also bounds how long a `remote_upgrade` task authorizes the download of its
+WPK: a pending task does while it was created within the last `task_ttl` seconds, and a delivered
+task while it was delivered within the last `task_ttl` seconds. A delivered task also stops once the
+cleanup pass deletes it, which happens 24 h after delivery.
+Manager tasks are never expired by age.
 
 - **Default value:** `3600` (1 hour)
 - **Allowed values:** integer ≥ 0 (seconds). `0` means "use default".
