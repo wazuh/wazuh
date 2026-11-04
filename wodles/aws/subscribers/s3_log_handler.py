@@ -355,7 +355,7 @@ class AWSSLSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler)
         """
         aws_tools.debug(f'Processing file {log_path!r} in {bucket!r}', 2)
         events = []
-        raw_parquet = io.BytesIO(self.client.get_object(Bucket=bucket, Key=log_path)['Body'].read())
+        raw_parquet = io.BytesIO(self.get_object_content(bucket, log_path))
         pfile = pq.ParquetFile(raw_parquet)
         for i in pfile.iter_batches():
             for j in i.to_pylist():
