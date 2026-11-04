@@ -26,6 +26,7 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#40657](https://github.com/wazuh/wazuh/issues/40657) | Preserved the first final HTTP response while `100 Continue` is being written, preventing a response timeout or late handler answer from replacing it. A handler whose answer is already pending no longer produces a response-timeout warning. |
 | [#39590](https://github.com/wazuh/wazuh/issues/39590) | Aligned enriched-event examples, response documentation and developer comments with engine-side identity validation, and grouped cache operation metrics in the engine dashboard's Cache section. |
 | [#39590](https://github.com/wazuh/wazuh/issues/39590) | Updated the standalone enriched-event senders to derive raw identity headers from each H line, preserve complete batches from raw files, and support an explicit expected agent ID. |
 | [#39590](https://github.com/wazuh/wazuh/issues/39590) | Rejected dotted aliases of the agent identity in enriched-event metadata before enqueueing, including escaped member names. |

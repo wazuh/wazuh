@@ -72,6 +72,10 @@ the knobs, and those are documented on the consumer's own pages.
 | `diagnostics()` instead of built-in metrics | Keeps the library free of the metrics dependency; each consumer publishes through its own `wazuh::metrics::IManager` as pull metrics |
 | A second, instrumented archive (`wazuh_uds_http_server_tsan`) under the engine's ThreadSanitizer build (`ENGINE_ENABLE_TSAN`) | TSAN only sees the synchronization of instrumented code: the plain archive linked into the instrumented engine makes it report races in asio's strand and scheduler that do not exist. The engine (`httpsrv`) links the instrumented copy; every other consumer keeps the plain archive, since it is not built with the sanitizer and could not link an instrumented one. Both come from one CMake function, so their settings cannot drift |
 
+A final response ready during the interim `100 Continue` write is parked until that write
+completes. The first final response wins: neither a response timeout nor a late handler answer
+replaces it. A parked handler answer does not trigger an unanswered-handler timeout warning.
+
 ## Architecture
 
 Request pipeline — one connection, from accept to reply (deferred path included):
@@ -173,7 +177,7 @@ with its own `main()` (`testMain.cpp`) that owns the binary's log sink; no modul
 | `requestParser_test.cpp` | The parser alone, byte-by-byte split boundaries, every limit, chunked ⇒ 411, repeated header names recorded (and a name split across reads is not a repeat) |
 | `inFlightBudget_test.cpp` | Reservation RAII, move semantics, concurrent exactness |
 | `routeClasses_test.cpp` | The QoS model end to end: data saturation not shedding Control/Liveness, class body caps (413 at headers), class session caps releasing on close, the reserved headroom under a flood (and its documented residual), the bool-shim mapping, per-route overrides, per-class diagnostics |
-| `expectContinueOverlap_test.cpp` | A final answer ready while the interim `100 Continue` write is in flight — held open through the test seam (`testHooks.{hpp,cpp}`: a strong definition of `detail::interceptInterimWrite()` that overrides, in this binary only, the library's weak default that always writes at once) — is parked and written after it: an inline answer, a deferred answer from another thread, a `stopAccepting()` `503` (and `stopAccepting()` returning once it is out), and a peer leaving (parked answer dropped, session freed). Each stream: the interim first, exactly one final, body exactly its `Content-Length` |
+| `expectContinueOverlap_test.cpp` | A final answer ready while the interim `100 Continue` write is in flight — held open through the test seam (`testHooks.{hpp,cpp}`: a strong definition of `detail::interceptInterimWrite()` that overrides, in this binary only, the library's weak default that always writes at once) — is parked and written after it: an inline answer, a deferred answer from another thread, a `stopAccepting()` `503` (and `stopAccepting()` returning once it is out), and a peer leaving (parked answer dropped, session freed). The first final answer wins in both handler-before-timeout and timeout-before-handler order, without a false timeout warning for a parked handler answer. Each stream: the interim first, exactly one final, body exactly its `Content-Length` |
 | `transportDiagnostics_test.cpp` | `diagnostics()` before/during/after; each rejection counted under its own cause (body caps, the server-wide connection limit at accept); identity injection rendering the consumer vocabulary byte-for-byte; the capacity-hint sentence appearing only when configured |
 | `serverDiagnostics_test.cpp` | Operator-visible (throttled) lines per rejection class |
 | `logThrottle_test.cpp`, `socketPathCheck_test.cpp` | The helpers |
