@@ -1918,6 +1918,45 @@ void test_RTCallBack_acquired_changes(void **state) {
 
     RTCallBack(ERROR_SUCCESS, 1, &ov);
 }
+
+void test_RTCallBack_acquired_changes_non_ascii_name(void **state) {
+    win32rtfim *rt = *state;
+    OVERLAPPED ov;
+    PFILE_NOTIFY_INFORMATION pinfo;
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    // "İş.txt": characters outside the ANSI code page must reach FIM as UTF-8.
+    pinfo = (PFILE_NOTIFY_INFORMATION) rt->buffer;
+    wcscpy(pinfo->FileName, L"\u0130\u015f.txt");
+    pinfo->FileNameLength = wcslen(pinfo->FileName) * sizeof(WCHAR);
+    pinfo->NextEntryOffset = 0;
+
+    rt->dir = strdup("C:\\a\\path");
+    rt->watch_status = 1;
+
+    ov.hEvent = "C:\\a\\path";
+
+    expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Get_ex, key, "C:\\a\\path");
+    will_return(__wrap_OSHash_Get_ex, rt);
+
+    expect_string(__wrap_fim_configuration_directory, path, "C:\\a\\path");
+    will_return(__wrap_fim_configuration_directory, 0);
+
+    expect_string(__wrap_fim_configuration_directory, path, "c:\\a\\path\\\xc4\xb0\xc5\x9f.txt");
+    will_return(__wrap_fim_configuration_directory, 0);
+
+    expect_string(__wrap_fim_realtime_event, file, "c:\\a\\path\\\xc4\xb0\xc5\x9f.txt");
+
+    will_return(wrap_ReadDirectoryChangesW, 1);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    RTCallBack(ERROR_SUCCESS, 1, &ov);
+}
 #endif
 
 static void test_fim_realtime_get_queue_overflow(void **state) {
@@ -2035,6 +2074,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_RTCallBack_no_bytes_returned, setup_RTCallBack, teardown_RTCallBack),
         cmocka_unit_test_setup_teardown(test_RTCallBack_acquired_changes_null_dir, setup_RTCallBack, teardown_RTCallBack),
         cmocka_unit_test_setup_teardown(test_RTCallBack_acquired_changes, setup_RTCallBack, teardown_RTCallBack),
+        cmocka_unit_test_setup_teardown(test_RTCallBack_acquired_changes_non_ascii_name, setup_RTCallBack, teardown_RTCallBack),
 #endif
 
         /* realtime_sanitize_watch_map */
