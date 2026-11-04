@@ -65,6 +65,8 @@ namespace wazuh::uds_http
         /// @brief Limits applied while parsing. Mirrors the matching UdsHttpServerConfig fields.
         struct Limits
         {
+            /// Largest body accepted. UdsHttpServerConfig::UNLIMITED_BODY_SIZE means none, which also
+            /// switches resume() to the bounded initial reserve below.
             std::size_t maxBodySize {16U * 1024U * 1024U};
             std::size_t maxUrlSize {2048};
             std::size_t maxHeaderNameSize {256};
@@ -94,13 +96,22 @@ namespace wazuh::uds_http
          */
         Feed feed(const char* data, std::size_t length);
 
+        /// Initial body reserve when Limits::maxBodySize is unlimited. Not a body limit: the body grows
+        /// past it as bytes arrive, up to the declared length.
+        static constexpr std::size_t UNBOUNDED_INITIAL_RESERVE {1024U * 1024U};
+
         /**
          * @brief Accept the request after HeadersReady and continue parsing its body.
          *
-         * Reserves room for the declared body (bounded: the caller has already compared
-         * declaredContentLength() against its cap) and drains whatever body bytes arrived in the
-         * same read as the head. Calling this in any state other than HeadersReady is a no-op that
-         * returns the current verdict.
+         * Reserves the body buffer, then drains whatever body bytes arrived in the same read as the
+         * head. With a finite Limits::maxBodySize the whole declared length is reserved at once: it
+         * is at most one permitted body, and the caller's byte budget, when it has one, already
+         * charged it. With no limit, only min(declared, UNBOUNDED_INITIAL_RESERVE) is reserved and
+         * the buffer grows with the bytes received, never past the declared length -- a declared
+         * length alone never makes the parser allocate it. A reserve that fails turns the request
+         * into Reject: 413 when the length cannot be represented, 500 when memory is exhausted.
+         * Calling this in any state other than HeadersReady is a no-op that returns the current
+         * verdict.
          */
         Feed resume();
 

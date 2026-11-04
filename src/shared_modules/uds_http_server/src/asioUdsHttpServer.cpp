@@ -341,6 +341,7 @@ namespace wazuh::uds_http
             LogThrottle peerGoneThrottle;
             LogThrottle classBodyCapThrottle;
             LogThrottle classSessionCapThrottle;
+            LogThrottle requestErrorThrottle;
 
             /// Connections answered 503 because stopAccepting() found them pre-handler; reported in
             /// the shutdown INFO so the third source of 503 (besides budget and cap) is accounted for.
@@ -639,6 +640,47 @@ namespace wazuh::uds_http
                     return;
                 }
 
+                // Exception barrier for parsing and admission (dispatch() has its own). Without it an
+                // allocation failure here escapes to the I/O thread's run() loop, and the session is
+                // left with no read pending and nobody to answer it until a phase timer reaps it.
+                try
+                {
+                    processRead(bytes);
+                }
+                catch (const std::exception& e)
+                {
+                    failRequest(e.what());
+                }
+                // LCOV_EXCL_START -- nothing on this path throws a non-std exception
+                catch (...)
+                {
+                    failRequest("non-standard exception");
+                }
+                // LCOV_EXCL_STOP
+            }
+
+            /// Answer 500 and close through the normal path, which releases the session's counters
+            /// and, with the session, its byte reservation.
+            void failRequest(const char* reason)
+            {
+                if (m_finished)
+                {
+                    return;
+                }
+                if (const auto decision = m_state->requestErrorThrottle.record())
+                {
+                    LOGFN_ERROR(m_state->log,
+                                "Answered %llu request(s) with 500 %s: the request could not be "
+                                "read or admitted (last: %s).",
+                                static_cast<unsigned long long>(decision.total),
+                                decision.period().c_str(),
+                                reason);
+                }
+                deliver(errorResponse(500, rejectMessage(500)));
+            }
+
+            void processRead(std::size_t bytes)
+            {
                 auto verdict = m_parser.feed(m_readBuffer.data(), bytes);
 
                 if (verdict == RequestParser::Feed::HeadersReady)
@@ -651,6 +693,12 @@ namespace wazuh::uds_http
                     case RequestParser::Feed::Incomplete: doRead(); return;
                     case RequestParser::Feed::Complete: dispatch(); return;
                     case RequestParser::Feed::Reject:
+                        if (m_parser.rejectStatus() == 500)
+                        {
+                            // Not a limit: the parser could not allocate what the request needed.
+                            failRequest("out of memory while buffering the request");
+                            return;
+                        }
                         // These four statuses are decided by limits an operator can tune, and the
                         // peer's write-then-read pattern often means it never reads the status either
                         // (see the interop note below deliver()) -- so this line is the only record
