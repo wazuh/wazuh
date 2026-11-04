@@ -415,14 +415,15 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
     const char *auth_class = error.auth_class[0] != '\0' ? error.auth_class : NULL;
     const int authd_code = error.authd_code;
     char token_reason[32];
+    const char *token_refusal = w_enrollment_token_refusal(result->http_code, &error, token_reason,
+                                                           sizeof(token_reason));
 
-    if (w_enrollment_token_refusal(result->http_code, &error, token_reason, sizeof(token_reason)) != NULL) {
+    if (token_refusal != NULL) {
         /* Named with the token id: the operator has to replace this token, and a fleet
-         * mid-rollout may be using several. */
-        merror("Enrollment token %s refused by the manager (%s)%s%s. Retrying will not help: a new "
-               "enrollment token is needed.",
-               w_enrollment_token_id_or_unknown(enroll_kid), token_reason,
-               manager_message ? ": " : "", manager_message ? manager_message : "");
+         * mid-rollout may be using several. The manager's message is left out: it only restates
+         * the class or code. */
+        merror("Enrollment token %s %s (%s). A new enrollment token is needed.",
+               w_enrollment_token_id_or_unknown(enroll_kid), token_refusal, token_reason);
         return W_ENROLL_ERR_AUTH_FATAL;
     }
 

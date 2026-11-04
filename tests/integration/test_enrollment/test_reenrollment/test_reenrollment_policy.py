@@ -330,19 +330,21 @@ def test_an_invalid_signature_on_enroll_retries_instead_of_giving_up(
 # ------------------------------------------------------------------ enrollments the manager refuses
 
 @pytest.mark.parametrize('test_configuration', test_configuration, ids=['reenrollment'])
-@pytest.mark.parametrize('forced, code', [('authd_token_not_found', 9022),
-                                          ('authd_token_expired', 9023),
-                                          ('authd_token_exhausted', 9024)])
+@pytest.mark.parametrize('forced, code, verdict', [
+    ('authd_token_not_found', 9022, 'is unknown to the manager or was revoked'),
+    ('authd_token_expired', 9023, 'has expired'),
+    ('authd_token_exhausted', 9024, 'has no uses left')],
+    ids=['authd_token_not_found-9022', 'authd_token_expired-9023', 'authd_token_exhausted-9024'])
 def test_a_403_on_enroll_stops_immediately_and_names_the_code(
         test_configuration, set_wazuh_configuration, truncate_monitored_files, enrolled_agent,
-        manager, forced, code, restart_agentd):
+        manager, forced, code, verdict, restart_agentd):
     '''
     description: authd's verdict on a bearer whose signature the manager already verified. A `403`
                  and not a `401` precisely because re-signing fixes nothing: only a new enrollment
                  token can, so the agent must stop rather than climb the retry ramp.
 
     assertions:
-        - The agent logs the numeric code and that retrying will not help.
+        - The agent logs what happened to the token, the numeric code, and that a new token is needed.
         - It sends no further /enroll.
     '''
     manager.mode = 'REJECT_AUTH'
@@ -353,7 +355,7 @@ def test_a_403_on_enroll_stops_immediately_and_names_the_code(
     # A re-enrollment bearer's kid is the agent's own id, never a token id, so the guard in
     # w_enrollment_token_id_or_unknown() renders '(id unknown)' here. Asserting it in full keeps
     # an agent id from ever being reported to an operator as the token to re-mint.
-    expect_log(f'Enrollment token (id unknown) refused by the manager (code {code})')
+    expect_log(f'Enrollment token (id unknown) {verdict} (code {code}). A new enrollment token is needed.')
     expect_log('https_client: re-enrollment cannot succeed; giving up')
 
     attempted = len(enroll_requests(manager))
@@ -362,17 +364,19 @@ def test_a_403_on_enroll_stops_immediately_and_names_the_code(
 
 
 @pytest.mark.parametrize('test_configuration', test_configuration, ids=['reenrollment'])
-@pytest.mark.parametrize('failure_class', ['token_expired', 'token_revoked'])
+@pytest.mark.parametrize('failure_class, verdict', [('token_expired', 'has expired'),
+                                                     ('token_revoked', 'was revoked')],
+                         ids=['token_expired', 'token_revoked'])
 def test_a_401_refusing_the_token_stops_immediately_and_names_the_class(
         test_configuration, set_wazuh_configuration, truncate_monitored_files, enrolled_agent,
-        manager, failure_class, restart_agentd):
+        manager, failure_class, verdict, restart_agentd):
     '''
     description: remoted refuses an expired or revoked token itself, with a 401 that names it, so
                  authd's 403 never follows. That 401 is just as final: the agent must stop and say
                  which token, as it does for the 403.
 
     assertions:
-        - The agent logs the class and that retrying will not help.
+        - The agent logs what happened to the token, the class, and that a new token is needed.
         - It sends no further /enroll.
     '''
     manager.mode = 'REJECT_AUTH'
@@ -381,7 +385,7 @@ def test_a_401_refusing_the_token_stops_immediately_and_names_the_class(
 
     assert wait_for(lambda: enroll_requests(manager), timeout=SETTLE)
     # Same '(id unknown)' as the 403 case: this bearer is the agent's re-enrollment secret.
-    expect_log(f'Enrollment token (id unknown) refused by the manager ({failure_class})')
+    expect_log(f'Enrollment token (id unknown) {verdict} ({failure_class}). A new enrollment token is needed.')
     expect_log('https_client: re-enrollment cannot succeed; giving up')
 
     attempted = len(enroll_requests(manager))

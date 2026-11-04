@@ -546,17 +546,15 @@ static void test_process_response_401_token_expired_or_revoked_is_fatal(void **s
 
     set_error_body(&result, 401, "\"token_expired\"", "Invalid client authentication");
     expect_string(__wrap__merror, formatted_msg,
-                  "Enrollment token AAECAwQFBgcICQoLDA0ODw refused by the manager (token_expired): "
-                  "Invalid client authentication. Retrying will not help: a new enrollment token is "
-                  "needed.");
+                  "Enrollment token AAECAwQFBgcICQoLDA0ODw has expired (token_expired). A new "
+                  "enrollment token is needed.");
     assert_int_equal(w_enrollment_process_response(&result, "AAECAwQFBgcICQoLDA0ODw"),
                      W_ENROLL_ERR_AUTH_FATAL);
 
     set_error_body(&result, 401, "\"token_revoked\"", "Invalid client authentication");
     expect_string(__wrap__merror, formatted_msg,
-                  "Enrollment token AAECAwQFBgcICQoLDA0ODw refused by the manager (token_revoked): "
-                  "Invalid client authentication. Retrying will not help: a new enrollment token is "
-                  "needed.");
+                  "Enrollment token AAECAwQFBgcICQoLDA0ODw was revoked (token_revoked). A new "
+                  "enrollment token is needed.");
     assert_int_equal(w_enrollment_process_response(&result, "AAECAwQFBgcICQoLDA0ODw"),
                      W_ENROLL_ERR_AUTH_FATAL);
 }
@@ -648,8 +646,8 @@ static void test_process_response_403_names_the_refused_token(void **state) {
     set_error_body(&result, 403, "9024", "uses exhausted");
 
     expect_string(__wrap__merror, formatted_msg,
-                  "Enrollment token AAECAwQFBgcICQoLDA0ODw refused by the manager (code 9024): "
-                  "uses exhausted. Retrying will not help: a new enrollment token is needed.");
+                  "Enrollment token AAECAwQFBgcICQoLDA0ODw has no uses left (code 9024). A new "
+                  "enrollment token is needed.");
 
     assert_int_equal(w_enrollment_process_response(&result, "AAECAwQFBgcICQoLDA0ODw"),
                      W_ENROLL_ERR_AUTH_FATAL);
@@ -663,8 +661,8 @@ static void test_process_response_403_without_a_token_id_still_reads(void **stat
     set_error_body(&result, 403, "9022", "not found");
 
     expect_string(__wrap__merror, formatted_msg,
-                  "Enrollment token (id unknown) refused by the manager (code 9022): not found. "
-                  "Retrying will not help: a new enrollment token is needed.");
+                  "Enrollment token (id unknown) is unknown to the manager or was revoked (code 9022). "
+                  "A new enrollment token is needed.");
 
     assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_AUTH_FATAL);
 }
@@ -684,8 +682,8 @@ static void test_process_response_403_never_names_an_agent_id_as_a_token(void **
         set_error_body(&result, 403, "9023", "expired");
 
         expect_string(__wrap__merror, formatted_msg,
-                      "Enrollment token (id unknown) refused by the manager (code 9023): expired. "
-                      "Retrying will not help: a new enrollment token is needed.");
+                      "Enrollment token (id unknown) has expired (code 9023). A new enrollment token "
+                      "is needed.");
 
         assert_int_equal(w_enrollment_process_response(&result, not_token_ids[i]),
                          W_ENROLL_ERR_AUTH_FATAL);

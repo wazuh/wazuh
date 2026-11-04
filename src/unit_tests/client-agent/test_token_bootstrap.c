@@ -1298,9 +1298,8 @@ static void expect_enroll_401(const char *auth_class) {
              "{\"error\":{\"code\":\"%s\",\"message\":\"Invalid client authentication\"}}", auth_class);
     if (final_class) {
         /* The token write_token_file() mints has an id of sixteen 0x01 bytes. */
-        snprintf(line, sizeof(line),
-                 "Enrollment token AQEBAQEBAQEBAQEBAQEBAQ refused by the manager (%s): Invalid client "
-                 "authentication. Retrying will not help: a new enrollment token is needed.", auth_class);
+        snprintf(line, sizeof(line), "Enrollment token AQEBAQEBAQEBAQEBAQEBAQ %s (%s). A new enrollment token is needed.",
+                 strcmp(auth_class, "token_expired") == 0 ? "has expired" : "was revoked", auth_class);
     } else {
         snprintf(line, sizeof(line), "Enrollment rejected by the manager: %s: Invalid client authentication. Retrying.",
                  auth_class);
