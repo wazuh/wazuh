@@ -112,6 +112,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /_internal/router/route/delete:
     post:
       tags:
@@ -150,6 +152,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /_internal/router/route/get:
     post:
       tags:
@@ -201,6 +205,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /_internal/router/route/reload:
     post:
       tags:
@@ -244,6 +250,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /_internal/router/route/patchPriority:
     post:
       tags:
@@ -297,6 +305,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /_internal/router/table/get:
     post:
       tags:
@@ -333,6 +343,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /_internal/tester/session/post:
     post:
       tags:
@@ -392,6 +404,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /_internal/tester/session/delete:
     post:
       tags:
@@ -430,6 +444,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /_internal/tester/session/get:
     post:
       tags:
@@ -472,6 +488,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /_internal/tester/session/reload:
     post:
       tags:
@@ -515,6 +533,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /_internal/tester/run/post:
     post:
       tags:
@@ -666,6 +686,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /_internal/tester/table/get:
     post:
       tags:
@@ -693,6 +715,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /_internal/geo/db/get:
     post:
       tags:
@@ -762,6 +786,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /_internal/geo/db/list:
     post:
       tags:
@@ -813,6 +839,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /_internal/event-dumper/activate:
     post:
       tags:
@@ -836,6 +864,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /_internal/event-dumper/deactivate:
     post:
       tags:
@@ -859,6 +889,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /_internal/event-dumper/status:
     post:
       tags:
@@ -897,6 +929,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /_internal/raweventindexer/status:
     post:
       tags:
@@ -935,6 +969,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /_internal/content/namespace/list:
     post:
       tags:
@@ -967,6 +1003,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /_internal/content/namespace/create:
     post:
       tags:
@@ -990,6 +1028,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /_internal/content/namespace/delete:
     post:
       tags:
@@ -1013,6 +1053,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /_internal/content/namespace/import:
     post:
       tags:
@@ -1040,6 +1082,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /_internal/content/policy/upsert:
     post:
       tags:
@@ -1063,6 +1107,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /_internal/content/policy/delete:
     post:
       tags:
@@ -1086,6 +1132,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /_internal/content/list:
     post:
       tags:
@@ -1115,6 +1163,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /_internal/content/get:
     post:
       tags:
@@ -1146,6 +1196,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /_internal/content/upsert:
     post:
       tags:
@@ -1169,6 +1221,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /_internal/content/delete:
     post:
       tags:
@@ -1192,6 +1246,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
 components:
   schemas:
     TransportError:
@@ -1792,7 +1848,7 @@ components:
       description: |
         Answered by the server before the request reaches a handler: `404` unknown path, `405` known path with
         another method (with an `Allow` header), `411` chunked body, `414` target too long, `431` headers too large,
-        `400` malformed HTTP, `504` no answer within 300 s.
+        `400` malformed HTTP or a body that did not arrive within 10 s, `504` no answer within 300 s.
       content:
         application/json:
           schema:

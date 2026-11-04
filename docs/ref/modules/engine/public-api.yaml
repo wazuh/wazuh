@@ -204,6 +204,8 @@ paths:
               example: Internal Server Error
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /content/validate/policy:
     post:
       tags:
@@ -435,6 +437,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /logtest:
     post:
       tags:
@@ -726,6 +730,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
     delete:
       tags:
       - Logtest
@@ -790,6 +796,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /content/ioc/update:
     post:
       tags:
@@ -879,6 +887,8 @@ paths:
                     error: Scheduler is not available
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /content/ioc/state:
     get:
       tags:
@@ -951,6 +961,8 @@ paths:
           $ref: '#/components/responses/PayloadTooLarge_413'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /content/validate/resource:
     post:
       tags:
@@ -1102,6 +1114,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /metrics/enable:
     post:
       tags:
@@ -1183,6 +1197,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /metrics/get:
     post:
       tags:
@@ -1259,6 +1275,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /metrics/list:
     post:
       tags:
@@ -1354,6 +1372,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
   /metrics/dump:
     post:
       tags:
@@ -1468,6 +1488,8 @@ paths:
           $ref: '#/components/responses/InternalServerError_500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable_503'
+        default:
+          $ref: '#/components/responses/TransportError'
 components:
   schemas:
     TransportError:
@@ -1919,7 +1941,7 @@ components:
       description: |
         Answered by the server before the request reaches a handler: `404` unknown path, `405` known path with
         another method (with an `Allow` header), `411` chunked body, `414` target too long, `431` headers too large,
-        `400` malformed HTTP, `504` no answer within 300 s.
+        `400` malformed HTTP or a body that did not arrive within 10 s, `504` no answer within 300 s.
       content:
         application/json:
           schema:
