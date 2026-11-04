@@ -32,7 +32,7 @@ The `<location>` field supports static paths, date-based patterns (`strftime` fo
 
 ## json — JSON log files
 
-Reads JSON-encoded log files one line at a time. Each line must be a valid JSON object; lines that fail to parse are silently discarded. If `<labels>` are configured, they are injected into each JSON object before the event is forwarded.
+Reads JSON-encoded log files one line at a time. Each line must be a valid JSON object; any other line, whether it fails to parse or is valid JSON that is not an object (an array or a scalar), is discarded and only logged at debug level 1 (`is not a JSON object`). A line that starts with a JSON object followed by other text is not discarded: the object is forwarded and the rest of the line is dropped without any log. If `<label>` elements are configured, they are added to each JSON object before the event is forwarded, without overwriting a field the event already carries; see [`label`](configuration.md#label) for the rules.
 
 ```xml
 <localfile>

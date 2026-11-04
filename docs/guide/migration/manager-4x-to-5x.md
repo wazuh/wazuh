@@ -390,11 +390,18 @@ chown -R wazuh-manager:wazuh-manager /etc/wazuh-manager/shared/
 
 Group membership came with `global.db`: an agent assigned to a group from the dashboard, the API
 or `agent_groups` in 4.x is in the same group on 5.0, even though its `ossec.conf` never mentioned
-it. Review every `agent.conf` against the 5.0 agent configuration reference before starting: a
-removed option such as `scan_on_start`, `check_files` or a `<labels>` entry only produces a warning (`verify-agent-conf` still returns OK), but invalid content in the group's `<client>` section is rejected (`(1230): Invalid element in the configuration`) and the configuration does not compile. Do the extraction with the
-manager stopped: `wazuh-manager-modulesd` drops a group whose directory it cannot open, and between
-the extraction and the `chown` these carry the 4.x owner, which is exactly that. The group comes
-back on the next synchronization, after a `delete-group` has already gone out to its agents.
+it. Review every `agent.conf` against the 5.0 agent configuration reference before starting.
+A removed option such as `scan_on_start` or `check_files`, or a top-level `<labels>` block (the
+4.x agent labels), only produces a warning, and `verify-agent-conf` still returns OK. A `<labels>`
+wrapper inside a `<localfile>` is different: like invalid content in the group's `<client>`
+section, it is rejected (`(1230): Invalid element in the configuration`) and the configuration
+does not compile; see [`label`](../../ref/modules/logcollector/configuration.md#label). A
+`<label>` key starting with `_` inside a `<localfile>` does not fail the check either:
+`verify-agent-conf` never returns on it, so a check that seems stuck points to such a key.
+Do the extraction with the manager stopped: `wazuh-manager-modulesd` drops a group whose
+directory it cannot open, and between the extraction and the `chown` these carry the 4.x owner,
+which is exactly that. The group comes back on the next synchronization, after a `delete-group`
+has already gone out to its agents.
 
 ### Enrollment password
 
