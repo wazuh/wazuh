@@ -44,6 +44,7 @@
 #include <limits>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -549,7 +550,9 @@ namespace
         // MUST NOT rely on the order of duplicated fields). Those two are therefore collected
         // case-insensitively and, when duplicated (identical or case-variant names), stored as an
         // EMPTY value under the first spelling seen: the auth layer already treats empty as "absent
-        // or duplicated" and rejects. Every other header keeps today's first-wins behaviour.
+        // or duplicated" and rejects. Accept-Encoding lines are joined into one list (RFC 9110 §5.3),
+        // so a `zstd;q=0` on any of them withdraws the offer. Every other header keeps today's
+        // first-wins behaviour.
         struct Guarded
         {
             std::string name;
@@ -557,9 +560,23 @@ namespace
             int count {0};
         };
         std::vector<Guarded> guarded;
+        std::optional<std::pair<std::string, std::string>> acceptEncoding; // first spelling, joined value
         req->header().for_each_field(
-            [&request, &guarded](const restinio::http_header_field_t& field)
+            [&request, &guarded, &acceptEncoding](const restinio::http_header_field_t& field)
             {
+                if (remoted::http::detail::equalsIgnoreCase(field.name(), "accept-encoding"))
+                {
+                    if (acceptEncoding)
+                    {
+                        acceptEncoding->second += ", ";
+                        acceptEncoding->second += field.value();
+                    }
+                    else
+                    {
+                        acceptEncoding.emplace(std::string {field.name()}, std::string {field.value()});
+                    }
+                    return;
+                }
                 if (!isAuthHeader(field.name()))
                 {
                     request.headers.emplace(std::string {field.name()}, std::string {field.value()});
@@ -586,6 +603,10 @@ namespace
         for (auto& g : guarded)
         {
             request.headers.emplace(std::move(g.name), g.count == 1 ? std::move(g.value) : std::string {});
+        }
+        if (acceptEncoding)
+        {
+            request.headers.emplace(std::move(acceptEncoding->first), std::move(acceptEncoding->second));
         }
 
         return request;

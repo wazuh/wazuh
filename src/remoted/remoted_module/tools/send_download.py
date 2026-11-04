@@ -236,6 +236,9 @@ def post_download(base_url, agent_id, agent_key, body: bytes, timeout=120, accep
     if decoder is not None and not decoder.eof:
         result.error = "transfer interrupted: truncated zstd frame"
         return result
+    if decoder is not None and decoder.unused_data:
+        result.error = f"{len(decoder.unused_data)} bytes after the end of the zstd frame"
+        return result
 
     result.sha256 = digest.hexdigest()
     if error_body is not None:
@@ -514,12 +517,11 @@ def simulate(base_url, agents, repeat, expected):
     total_bytes = 0
     wire_total = 0
     plain_count = 0
+    compressed_count = 0
     for agent_id, result, want in results:
         total_bytes += result.bytes_received
         wire_total += result.wire_bytes
         problem = None if result.error else encoding_problem(result, OFFER_ZSTD, "config", allow_plain=True)
-        if not result.error and result.status == 200:
-            plain_count += result.content_encoding in ("", "identity")
         if result.error:
             failures.append(f"agent {agent_id}: {result.error}")
         elif result.status != 200:
@@ -531,13 +533,17 @@ def simulate(base_url, agents, repeat, expected):
         elif want["sha256"] and result.sha256 != want["sha256"]:
             failures.append(f"agent {agent_id}: body mismatch -- got {result.sha256[:16]}, "
                             f"expected {want['sha256'][:16]} ({want['path']})")
+        elif result.content_encoding in ("", "identity"):
+            plain_count += 1
+        else:
+            compressed_count += 1
 
     rate = (total_bytes / (1024 * 1024) / elapsed) if elapsed > 0 else 0
     print(f"  {len(results) - len(failures)}/{len(results)} succeeded in {elapsed:.2f}s "
           f"({total_bytes / (1024 * 1024):.1f} MiB, {wire_total / (1024 * 1024):.1f} MiB on the wire, "
           f"{rate:.1f} MiB/s)")
     if OFFER_ZSTD:
-        print(f"  {len(results) - len(failures) - plain_count} compressed, {plain_count} plain (budget)")
+        print(f"  {compressed_count} compressed, {plain_count} plain (budget)")
     for failure in failures[:20]:
         print(f"  [FAIL] {failure}")
     return not failures
