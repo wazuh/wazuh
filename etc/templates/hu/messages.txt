@@ -89,7 +89,6 @@ configurationdone="A konfiguráció sikeresen befejeződött"
 tostart="Az Wazuh indítása"
 tostop="Az Wazuh leállítása"
 configat="A konfigurációs fájl megtekinthető vagy módosítható itt: "
-addserveragent="A kliens és szerver összekapcsolásához, minden egyes klienst
    hozzá kell adnia a szerverhez."
 presskey="A folytatáshoz nyomja meg az ENTER-t"
 

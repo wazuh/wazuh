@@ -1246,12 +1246,27 @@ main()
     echo ""
     echo " - ${configurationdone}."
     echo ""
-    echo " - ${tostart}:"
-    echo "      $INSTALLDIR/bin/${control_script} start"
-    echo ""
-    echo " - ${tostop}:"
-    echo "      $INSTALLDIR/bin/${control_script} stop"
-    echo ""
+    # A manager whose unit runInit() just registered is started through systemd, as the
+    # documentation and the packages tell operators to: the control script would put the
+    # daemons outside the unit's cgroup and sandbox. runInit() never enables the manager, so the
+    # hint enables it too. Any other case (no systemd, a refused registration, the agent) keeps
+    # the control script.
+    if [ "X$INSTYPE" = "Xmanager" ] && [ "X${notmodified}" != "Xyes" ] && \
+       [ "X${SERVICE_SYSTEMD_UNIT}" = "Xwazuh-manager" ]; then
+        echo " - ${tostart}:"
+        echo "      systemctl daemon-reload && systemctl enable --now wazuh-manager"
+        echo ""
+        echo " - ${tostop}:"
+        echo "      systemctl stop wazuh-manager"
+        echo ""
+    else
+        echo " - ${tostart}:"
+        echo "      $INSTALLDIR/bin/${control_script} start"
+        echo ""
+        echo " - ${tostop}:"
+        echo "      $INSTALLDIR/bin/${control_script} stop"
+        echo ""
+    fi
     echo " - ${configat} $(InstalledEtcDir)/${WAZUH_CONF}"
     echo ""
     if [ "X${INSTALLER_BRIEF_FLOW}" != "Xyes" ]; then
@@ -1287,8 +1302,12 @@ main()
 
 
     if [ "X$INSTYPE" = "Xmanager" ]; then
+        # 5.x agents enroll with a token minted here; nobody adds them to the manager. Printed
+        # directly rather than as a ${message} for the same reason as the agent's notice below.
         echo ""
-        echo " - ${addserveragent}"
+        echo " - To enroll agents, create an enrollment token (as root, with the manager running):"
+        echo ""
+        echo "      ${INSTALLDIR}/bin/wazuh-manager-authd --create-enrollment-token --address <WAZUH_MANAGER_ADDRESS>"
         echo ""
         echo "   ${moreinfo}"
         echo "   https://documentation.wazuh.com/"

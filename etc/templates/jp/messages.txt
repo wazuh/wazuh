@@ -93,7 +93,6 @@ configurationdone="設定が完全に終了しました"
 tostart="Wazuh を開始させます"
 tostop="Wazuh を停止させます"
 configat="以下のファイルで設定についての確認と変更ができます"
-addserveragent="エージェントを追加する前にアクセスするための認証が必要になります．"
 presskey="続けるには ENTER を押してください"
 
 # Update

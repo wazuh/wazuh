@@ -89,7 +89,6 @@ configurationdone="Konfiguracija je dobro završena"
 tostart="Da se započne Wazuh"
 tostop="Da se zaustavi Wazuh"
 configat="Konfiguracija se može videti ili modifikovati na"
-addserveragent="Da bi se agent povezao sa serverom, treba da dodaš svakog od tvojih agenata
 serveru."
 presskey="Pritisni ENTER da nastaviš"
 
