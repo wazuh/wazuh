@@ -178,7 +178,11 @@ namespace task_manager
             schedulerOptions.wakeBackstop = std::chrono::seconds {valueOr(config.wake_backstop, 60)};
             schedulerOptions.sweepInterval = std::chrono::seconds {valueOr(config.sweep_interval, 60)};
             schedulerOptions.cleanupInterval = std::chrono::seconds {valueOr(config.cleanup_interval, 300)};
-            schedulerOptions.agentTaskTtl = std::chrono::seconds {valueOr(config.task_ttl, 3600)};
+            // One value for both: a pending task that retention would expire must not still
+            // authorize a WPK download. A delivered one also stops once the cleanup pass
+            // deletes it, 24 h after delivery.
+            const std::chrono::seconds agentTaskTtl {valueOr(config.task_ttl, 3600)};
+            schedulerOptions.agentTaskTtl = agentTaskTtl;
             schedulerOptions.retentionDays = valueOr(config.retention_days, 7);
             schedulerOptions.deadLetterRetentionDays = valueOr(config.dead_letter_retention_days, 30);
             schedulerOptions.historyPerSchedule = valueOr(config.history_per_schedule, 20);
@@ -209,7 +213,8 @@ namespace task_manager
                 },
                 m_metrics,
                 valueOr(config.max_payload_bytes, 1048576),
-                valueOr(config.max_tasks_per_poll, 100));
+                valueOr(config.max_tasks_per_poll, 100),
+                agentTaskTtl);
 
             m_executor->start();
             m_scheduler->start();

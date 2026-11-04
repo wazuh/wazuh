@@ -197,6 +197,14 @@ namespace task_manager::storage
         /// @return Rows removed.
         virtual std::int64_t deleteOldAgentTasks(Timestamp before) = 0;
 
+        /// @brief Read an agent's open tasks of one type without changing them: pending rows created
+        ///        at or after `notBefore`, and delivered rows delivered at or after it. Newest first.
+        ///
+        /// Read-only on purpose. It answers whether a task still authorizes something, so marking
+        /// rows here would hand the task to nobody while hiding it from the next poll.
+        virtual std::vector<AgentTask>
+        openAgentTasks(const std::string& agentId, const std::string& taskType, Timestamp notBefore) = 0;
+
         // ---- manager tasks -------------------------------------------------------------------
 
         /// @brief Coalesce probe, admission bound and insert, in one transaction. Commits.
