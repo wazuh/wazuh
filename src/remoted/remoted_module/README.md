@@ -251,12 +251,16 @@ src/http_server/
        1.5.7: 3 663 393 bytes with no size, 640 209 for 20 KiB, 2 614 817 for 1 MiB and 3 663 393
        again from 10 MiB up; the two buffers are 131 072 and 131 591 bytes, bounded to
        `max(size, 4096)` when the size is known. **A compressor never takes the budget below
-       `maxBodySize + 4 KiB` free** (the minimum `start()` enforces, enough to admit one maximum
-       request): `InFlightBudget::tryReserveUncountedKeeping(bytes, keep)` checks that floor and
-       reserves in one atomic step, and a response that does not fit goes out plain. The floor exists
-       because the reservation comes out of the budget that admits every request: without it, about 68
-       simultaneous downloads with no size hint (256 MiB / 3 926 056 bytes each) would exhaust the
-       default 256 MiB and every other route would answer `503`. There is no option for it. Like the
+       `max(maxBodySize + 4 KiB, maxBytes / 2)` free**: the first term is the minimum `start()` enforces,
+       enough to admit one maximum request; the second is an agent's default byte share, what admitting
+       and decoding requests need (`BodyDecoder` reserves its window and output from the same budget, and
+       a refusal there is a `413` the agent reads as "too large"). `InFlightBudget::tryReserveUncountedKeeping(bytes, keep)`
+       checks that floor and reserves in one atomic step, and a response that does not fit goes out
+       plain. The floor exists because the reservation comes out of the budget that admits every request:
+       without it, about 68 simultaneous downloads with no size hint (256 MiB / 3 926 056 bytes each)
+       would exhaust the default 256 MiB and every other route would answer `503`; with it, compressed
+       downloads hold at most half of it, and a slow reader that keeps its transfer open cannot push
+       ingestion out of the other half. There is no option for it. Like the
        decoder's, the reservation is uncounted, so it does not move `budget.inflight.requests` or
        `budget.rejected.total`.
     2. **`maxBodySize`** — per-request read-phase cap (RESTinio rejects an oversized `Content-Length`
@@ -3068,10 +3072,10 @@ refused reservation or a throwing factory, `compressible = false` or an existing
 forwarded untouched, the reservation is the encoder estimate plus buffers), `compressedDownloadE2E_test.cpp` (over real TLS:
 the decoded body hashes to the file, no offer or a WPK is plain, error bodies are identical with and
 without the offer, the flag off serves plain and still rejects `zstd` requests, the compressor's memory
-is charged while streaming and released after, an empty config is a valid empty frame, the budget
-floor keeps a maximum request admissible while compressed downloads are active, an aborted transfer
+is charged while streaming and released after, an empty config is a valid empty frame, compressed
+downloads never take more than half of the budget while others are active, an aborted transfer
 leaves a truncated frame), and in the existing files: `inFlightBudget_test.cpp` (`tryReserveUncountedKeeping` and
-its floor), `httpServer_test.cpp` (`HttpServerConfigTest.ContentEncoding*` and `CompressionWiringTest`, including the budget at its minimum and just above the floor;
+its floor), `httpServer_test.cpp` (`HttpServerConfigTest.ContentEncoding*` and `CompressionWiringTest`, including the budget at its minimum, just above the floor and the half-budget limit;
 `testTlsServer.hpp` takes an `extraHeaders` parameter to send `Accept-Encoding`).
 
 Control-plane coverage: `controlEndpoint_test.cpp` (empty/oversized bodies, non-JSON, non-object

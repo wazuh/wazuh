@@ -169,8 +169,9 @@ Answer these once per deployment; they decide which of the knobs above you will 
   The manager side also covers responses: a `config` download is compressed when the agent offers
   `zstd`, and each compressed download holds the compressor's memory (up to about 3.7 MiB) from
   `remoted.max_inflight_bytes` for the whole transfer, so a mass configuration refresh spends budget
-  as well as bandwidth; when less than one maximum request would remain free, the manager serves
-  those downloads uncompressed. Turning the option off to stop response compression also triggers
+  as well as bandwidth; compressed downloads never take more than half of the budget, so when the
+  other half would not remain free the manager serves those downloads uncompressed, and the requests
+  that need the budget to be admitted and decoded are not displaced. Turning the option off to stop response compression also triggers
   the agent's `415` latch on its next compressed request.
 - **Cluster shape.** Internal options are per node. An agent that alternates between nodes is
   throttled independently on each, so its worst-case wazuh-db write rate is one write per window
