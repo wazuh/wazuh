@@ -26,8 +26,10 @@ from starlette.testclient import TestClient
 from api import middlewares
 from api.api_exception import ExpectFailedException
 from api.error_handler import content_size_handler, expect_failed_error_handler, problem_error_handler
-from api.middlewares import CORS_ALLOW_METHODS, StripTrailingSlashMiddleware, cors_list, setup_middlewares
+from api.middlewares import CORS_ALLOW_METHODS, StripTrailingSlashMiddleware, WazuhAccessLoggerMiddleware, \
+    cors_list, setup_middlewares
 from connexion.exceptions import ProblemException
+from connexion.middleware.exceptions import ExceptionMiddleware
 from connexion.middleware.routing import RoutingMiddleware
 from content_size_limit_asgi.errors import ContentSizeExceeded
 
@@ -298,12 +300,30 @@ async def test_strip_trailing_slash_middleware_ignores_non_http_scopes():
     assert seen == [scope]
 
 
-def test_setup_middlewares_strips_the_slash_before_routing():
-    """Check that the slash is removed above the router, which redirects before security runs."""
-    classes = middleware_classes(build_app(build_api_conf()))
+@pytest.mark.parametrize('cors', [False, True])
+def test_setup_middlewares_strips_the_slash_above_every_layer_that_reads_the_path(cors):
+    """Check that the slash is removed above the router, which redirects before security runs, and above
+    the access logger and the error handlers, which compare the path with the login endpoints."""
+    classes = middleware_classes(build_app(build_api_conf(cors=cors)))
 
     assert StripTrailingSlashMiddleware in classes
-    assert classes.index(StripTrailingSlashMiddleware) < classes.index(RoutingMiddleware)
+    strip = classes.index(StripTrailingSlashMiddleware)
+    assert strip < classes.index(WazuhAccessLoggerMiddleware)
+    assert strip < classes.index(ExceptionMiddleware)
+    assert strip < classes.index(RoutingMiddleware)
+
+
+def test_access_log_sees_the_path_without_the_trailing_slash(clean_rate_limit_state):
+    """Check that the access log reports a trailing-slash request under the path every layer routes."""
+    api_conf = build_api_conf()
+
+    with patch.object(middlewares.configuration, 'api_conf', new=api_conf), \
+         patch('api.middlewares.access_log') as access_log:
+        with TestClient(build_app(api_conf)) as client:
+            response = client.post('/groups/', json={'group_id': 'x'}, follow_redirects=False)
+
+    assert response.status_code == 200
+    assert access_log.await_args.args[0].scope['path'] == '/groups'
 
 
 @pytest.mark.parametrize('path, method, content_type, body, expected', [
