@@ -25,28 +25,40 @@ OPTIONS:
     -h, --help     Show this help message and exit
 
 OUTPUT (one per line, in priority order):
-    refs/heads/<branch>    Current branch (from git or .git/HEAD)
-    refs/tags/<tag>        Current tag (from git or .git/packed-refs)
-    refs/heads/<version>   Branch name from VERSION.json
-    refs/tags/v<version>   Tag with 'v' prefix from VERSION.json
+    refs/heads/<branch>          Current branch (from git or .git/HEAD)
+    refs/tags/<tag>              Current tag (from git or .git/packed-refs)
+    refs/heads/<version>         Branch name from VERSION.json
+    refs/tags/v<version>-<stage> Tag from VERSION.json, when it has a stage
+    refs/tags/v<version>         Tag with 'v' prefix from VERSION.json
+
+    In a tree without .git (a release tarball), the VERSION.json tags
+    come before the version branch, so the tarball gets its own release's files.
 
 METHODS (executed in order):
     1. Git command OR .git directory: Returns current branch and/or tag
        - Method 1 and 2 are mutually exclusive (git command takes precedence)
-    2. VERSION.json: Always executed, returns branch and tag based on version
+    2. VERSION.json: Always executed, returns branch and tags based on version and stage
        - Special case: version 5.0.0 also returns refs/heads/main as fallback
 
 EXAMPLES:
     $ $(basename "$0")
     refs/heads/enhancement/32855-checkout-indexer-templates
     refs/heads/5.0.0
-    refs/tags/v5.0.0
     refs/heads/main
+    refs/tags/v5.0.0-rc3
+    refs/tags/v5.0.0
 
-    $ $(basename "$0")  # On a tagged commit with version 4.14.0
+    $ $(basename "$0")  # On a tagged commit with version 4.14.0, stage rc1
     refs/tags/v4.14.0-rc1
     refs/heads/4.14.0
+    refs/tags/v4.14.0-rc1
     refs/tags/v4.14.0
+
+    $ $(basename "$0")  # Release tarball (no .git), version 5.0.0, stage rc2
+    refs/tags/v5.0.0-rc2
+    refs/tags/v5.0.0
+    refs/heads/5.0.0
+    refs/heads/main
 
 EXIT CODES:
     0    Success (at least one reference found)
@@ -186,28 +198,47 @@ try_git_directory() {
 }
 
 # Option 3: Use VERSION.json
-# Always outputs both branch (without 'v') and tag (with 'v' prefix)
+# Outputs the version tags (v<version>-<stage> when a stage is set, then v<version>) and the
+# version branch (plus main for 5.0.0).
+#
+# $1 = "tags-first" when the tree has no .git (a release tarball). The tree is then a
+# snapshot of a release, so its own tag must win over a branch head that keeps moving. With git
+# information the branch comes first, as before: a development tree tracks the branch, not the last
+# release candidate tagged from it.
 get_version_json_refs() {
+    local order="$1"
+
     if [ ! -f "$REPO_ROOT/VERSION.json" ]; then
         return 1
     fi
 
-    local version
+    local version stage
     version=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' "$REPO_ROOT/VERSION.json" | sed 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
-    if [ -n "$version" ]; then
-        echo "refs/heads/$version"
+    stage=$(grep -o '"stage"[[:space:]]*:[[:space:]]*"[^"]*"' "$REPO_ROOT/VERSION.json" | sed 's/.*"stage"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
 
-        # Special case: for version 5.0.0, also try main branch as fallback
-        if [ "$version" = "5.0.0" ]; then
-            echo "refs/heads/main"
-        fi
-
-        echo "refs/tags/v$version"
-
-        return 0
+    if [ -z "$version" ]; then
+        return 1
     fi
 
-    return 1
+    local tags=""
+    if [ -n "$stage" ]; then
+        tags="refs/tags/v$version-$stage"$'\n'
+    fi
+    tags+="refs/tags/v$version"
+
+    local branches="refs/heads/$version"
+    # Special case: for version 5.0.0, also try main branch as fallback
+    if [ "$version" = "5.0.0" ]; then
+        branches+=$'\n'"refs/heads/main"
+    fi
+
+    if [ "$order" = "tags-first" ]; then
+        printf '%s\n%s\n' "$tags" "$branches"
+    else
+        printf '%s\n%s\n' "$branches" "$tags"
+    fi
+
+    return 0
 }
 
 # Main execution
@@ -242,8 +273,13 @@ main() {
         fi
     fi
 
-    # Always get VERSION.json references
-    if get_version_json_refs; then
+    # Always get VERSION.json references. A tree with no .git at all (file or directory) is a
+    # release tarball, so the version tags come first; a git worktree keeps the branch first.
+    local order="branch-first"
+    if [ ! -e "$REPO_ROOT/.git" ]; then
+        order="tags-first"
+    fi
+    if get_version_json_refs "$order"; then
         has_output=1
     fi
 
