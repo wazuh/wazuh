@@ -14,6 +14,7 @@ on:
       - "src/init/tests/test_register_configure_agent.sh"
       - "src/init/tests/test_pkg_installer_ca.sh"
       - "src/init/tests/test_pkg_installer_state.sh"
+      - "src/init/tests/test_pkg_installer_probe.sh"
       # The default <localfile> blocks the packages add to ossec.conf: add_localfiles.sh and the
       # scripts it sources, run on a copy of them and of the localfile-logs templates.
       - "src/init/inst-functions.sh"
@@ -58,6 +59,10 @@ jobs:
 
       - name: Agent state file (pkg_installer.sh)
         run: bash src/init/tests/test_pkg_installer_state.sh
+
+      # Needs python3 for the local listener; the runner image ships it.
+      - name: Manager TCP probe fallback (pkg_installer.sh)
+        run: bash src/init/tests/test_pkg_installer_probe.sh
 
       # The deb postinst runs it under dash, the rpm %post under bash.
       - name: Default log files under dash (inst-functions.sh WriteLogs, add_localfiles.sh)
