@@ -953,6 +953,43 @@ static void test_unreadable_5xx_says_it_did_not_go_through(void **state) {
     assert_int_equal(FileSize(KEYS_FILE), (int64_t) strlen(EXISTING_KEY_LINE));
 }
 
+/* The manager's own 404 for a route it does not serve: the operator is pointed at the path, not at
+ * a load balancer, and it stays a refusal -- trying again with the same path cannot help. */
+static void test_not_found_404_points_at_the_path(void **state) {
+    (void) state;
+    agent_auth_opts_t opts;
+    char out_buf[1024] = {0};
+    char err_buf[2048] = {0};
+    char token[] = TOKEN_PIN_ONLY;
+    FILE *in = fmemopen(token, strlen(token), "r");
+    FILE *out = fmemopen(out_buf, sizeof(out_buf), "w");
+    FILE *err = fmemopen(err_buf, sizeof(err_buf), "w");
+
+    write_file(KEYS_FILE, EXISTING_KEY_LINE);
+    write_file(AGENT_ANCHOR_CA, "OLD-CA");
+    w_agent_auth_opts_init(&opts);
+    opts.force_enroll = true;
+
+    allow_any_logging(LOG_INFO | LOG_ERROR);
+    will_return(__wrap_hc_spki_pinned_certificate, 1);
+    will_return(__wrap_hc_enroll, 404);
+    will_return(__wrap_hc_enroll, "{\"error\":\"not_found\"}");
+    will_return(__wrap_hc_enroll, 1);
+
+    assert_int_equal(w_agent_auth_run(&opts, in, out, err), AGENT_AUTH_ERR_ENROLL);
+
+    fclose(in);
+    fclose(out);
+    fclose(err);
+
+    assert_string_equal(err_buf,
+                        "wazuh-agent-auth: the manager refused the enrollment.\n"
+                        "  /enroll answered HTTP 404: nothing serves /enroll under the path '/wazuh-manager'. That path must "
+                        "match the prefix the manager serves.\n"
+                        "  Nothing was changed.\n");
+    assert_int_equal(FileSize(KEYS_FILE), (int64_t) strlen(EXISTING_KEY_LINE));
+}
+
 /* token_unknown is both a token still on its way to this node and one that is not there at all
  * (purged, from an earlier install, another manager's): the reason is shown as before, and the hint
  * names both instead of promising that waiting will help. */
@@ -1898,6 +1935,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_unreadable_5xx_says_it_did_not_go_through, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_token_unknown_says_the_token_is_not_known_yet, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_stale_token_points_at_the_clock, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_not_found_404_points_at_the_path, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_rewrite_refuses_when_the_node_is_absent, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_rewrite_never_follows_a_swapped_staging_file, setup_test,
                                         teardown_test),

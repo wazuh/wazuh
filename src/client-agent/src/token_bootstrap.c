@@ -1382,7 +1382,17 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
              * fact left that tells "the manager said no" from "something in front of it failed".
              * A refused token is not that case even without a message: its class or code came
              * from the manager, and the refusal line already says what to do. */
-            if (refusal == NULL && error.message[0] == '\0' && report->detail[0] == '\0') {
+            if (error.message[0] == '\0' && report->detail[0] == '\0' && enroll_result.http_code == 404) {
+                /* Except a 404, which points at the path, not at what sits in front of the manager:
+                 * the manager always serves /enroll, and its router answers a route it does not
+                 * serve with a bare {"error":"not_found"}, which carries no reason. With an
+                 * embedded-CA token /cacerts is skipped, so a wrong prefix is first met here. The
+                 * path is capped so the text always fits the field. */
+                snprintf(report->detail, sizeof(report->detail),
+                         "/enroll answered HTTP 404: nothing serves /enroll under the path '/%.*s'. That path must "
+                         "match the prefix the manager serves.",
+                         100, report->endpoint);
+            } else if (refusal == NULL && error.message[0] == '\0' && report->detail[0] == '\0') {
                 snprintf(report->detail, sizeof(report->detail),
                          "/enroll answered HTTP %ld with no message the agent could read; it may not "
                          "have come from the manager itself (for example, a load balancer or proxy).",

@@ -2106,6 +2106,41 @@ static void test_enroll_unreadable_5xx_body_reports_the_status(void **state) {
     os_free(token);
 }
 
+/* The manager's router answers a route it does not serve with a bare {"error":"not_found"}, whose
+ * message is dropped on purpose. That 404 is a path that does not match the manager's prefix, so
+ * the detail names the path the request used rather than a load balancer. */
+static void test_enroll_404_not_found_reports_the_path(void **state) {
+    (void) state;
+    w_token_enroll_opts_t opts = {0};
+    w_token_enroll_report_t report;
+    char *token = make_token(false, true, "FAKE-EMBEDDED-CA");
+
+    opts.token_text = token;
+    opts.uid = -1;
+    opts.gid = -1;
+
+    will_return(__wrap_hc_enroll, 404L);
+    will_return(__wrap_hc_enroll, "{\"error\":\"not_found\"}");
+    will_return(__wrap_hc_enroll, 1);
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__minfo, formatted_msg);
+    expect_any(__wrap__merror, formatted_msg);
+
+    assert_int_equal(w_agent_token_enroll(&opts, &report), W_TOKEN_ENROLL_ERR_ENROLL);
+    assert_int_equal(report.http_code, 404);
+    assert_string_equal(report.manager_message, "");
+    assert_string_equal(report.detail,
+                        "/enroll answered HTTP 404: nothing serves /enroll under the path '/wazuh-manager'. That path must "
+                        "match the prefix the manager serves.");
+    /* The longest path the text can carry still leaves room for the terminator. */
+    assert_true(sizeof("/enroll answered HTTP 404: nothing serves /enroll under the path '/'. That path must "
+                       "match the prefix the manager serves.") + 100
+                <= sizeof(report.detail));
+    assert_false(report.pending);
+
+    os_free(token);
+}
+
 /* When the manager did say something, that is the cause: the status line is not added. */
 static void test_enroll_5xx_with_a_manager_message_adds_no_detail(void **state) {
     (void) state;
@@ -2921,6 +2956,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_enroll_5xx_with_a_manager_message_adds_no_detail,
                                         setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_token_refusal_without_a_message_adds_no_detail,
+                                        setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_enroll_404_not_found_reports_the_path,
                                         setup_test, teardown_test),
         cmocka_unit_test(test_tls_rejection_classifier),
         cmocka_unit_test_setup_teardown(test_certs_only_embedded_ca_ignores_a_broken_client_identity,
