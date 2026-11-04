@@ -1,23 +1,43 @@
+# Name of the helper function
 name: int_calculate
 
 metadata:
   description: |
-    The function `int_calculate` performs basic arithmetic operations on integers.
-    The function receives an operator and two or more operands.
-    The function applies the operator to the first two operands and then applies the result to the next operand.
-    The result of the operation is stored in the field `field`.
-    The function supports the following operators: `sum` (addition), `sub` (subtraction), `mul` (multiplication), and `div` (division).
-  keywords:
-    - math
+    Applies an arithmetic operator to two or more integer operands, from left to right, and maps the
+    64-bit integer result to the target field.
+
+    Behavior:
+    - `operator` is one of the literals `sum`, `sub`, `mul` and `div`; it is applied to the first two
+      operands, then to that result and the next operand, and so on.
+    - An operand literal must be a JSON integer; an operand reference must hold an integer at runtime.
+    - `sum`, `sub` and `mul` fail when the result overflows the signed 64-bit range.
+    - `div` is integer division truncating toward zero: `7 / 2` gives `3` and `-7 / 2` gives `-3`;
+      `-2^63 / -1` fails.
+
+    Build errors:
+    - `operator` is not a literal or is not one of the four names.
+    - An operand literal that is not an integer (`1.0`, `1.1` or `true`).
+    - An operand schema field whose type is not `integer`, `short` or `long` (`byte`,
+      `unsigned_long` and `float` are rejected).
+    - With `div`, a literal `0` in any position after the first operand.
+
+    Notes:
+    - The result is an integer: a `float` or `double` target rejects it at runtime.
+    - `float_calculate` computes in double precision and accepts floating-point operands.
+  group: number
+  fails_when:
+    - "an operand reference is missing or does not hold an integer"
+    - "a divisor read from a reference is 0"
+    - "the result overflows the signed 64-bit range"
 
 helper_type: map
 
-is_variadic: True
+is_variadic: true
 
 arguments:
   operator:
-    type: string  # Accept only string
-    source: value # Includes values or references (their names start with $)
+    type: string
+    source: value
     generate: string
     restrictions:
       allowed:
@@ -26,13 +46,13 @@ arguments:
         - sub
         - sum
   operand_left:
-    type: number # Accept only object
+    type: number
     generate: integer
-    source: both # Includes only values
+    source: both
   operand_right:
-    type: number # Accept only object
+    type: number
     generate: integer
-    source: both # Includes only values
+    source: both
 
 skipped:
   - different_type
@@ -55,47 +75,75 @@ test:
       operand_left: 1
       operand_right: 9223372036854775807
     should_pass: false
-    description: Sum that produces overflow. the limit for a 64-bit integer is exceeded
+    description: Fail on a sum that overflows the 64-bit integer limit
   - arguments:
       operator: sum
       operand_left: -1
       operand_right: -9223372036854775808
     should_pass: false
-    description: Sum that produces overflow. the limit for a 64-bit integer is exceeded
+    description: Fail on a sum that overflows the 64-bit integer limit
   - arguments:
       operator: sub
       operand_left: 9223372036854775807
       operand_right: -1
     should_pass: false
-    description: Sub that produces overflow. the limit for a 64-bit integer is exceeded
+    description: Fail on a subtraction that overflows the 64-bit integer limit
   - arguments:
       operator: sub
       operand_left: -9223372036854775808
       operand_right: 1
     should_pass: false
-    description: Sub that produces overflow. the limit for a 64-bit integer is exceeded
+    description: Fail on a subtraction that overflows the 64-bit integer limit
   - arguments:
       operator: mul
       operand_left: 4611686018427387904
       operand_right: 2
     should_pass: false
-    description: Mul that produces overflow. the limit for a 64-bit integer is exceeded
+    description: Fail on a multiplication that overflows the 64-bit integer limit
   - arguments:
       operator: mul
       operand_left: 3074457345618258603
       operand_right: -3
     should_pass: false
-    description: Mul that produces overflow. the limit for a 64-bit integer is exceeded
+    description: Fail on a multiplication that overflows the 64-bit integer limit
   - arguments:
       operator: div
       operand_left: 0
       operand_right: 8
     should_pass: true
     expected: 0
-    description: Any division with a numerator equal to zero results in zero as long as the denominator is different from 0.
+    description: Divide a zero numerator, which gives zero as long as the divisor is not zero
   - arguments:
       operator: div
       operand_left: 5
       operand_right: 0
     should_pass: false
-    description: Any division with a denominator equal to zero is an indeterminate operation.
+    description: Fail on a division by zero
+  - arguments:
+      operator: div
+      operand_left: 7
+      operand_right: 2
+    should_pass: true
+    expected: 3
+    description: Truncate the quotient of a positive division toward zero
+  - arguments:
+      operator: div
+      operand_left: -7
+      operand_right: 2
+    should_pass: true
+    expected: -3
+    description: Truncate the quotient of a negative division toward zero
+  - arguments:
+      operator: div
+      operand_left: -9223372036854775808
+      operand_right: -1
+    should_pass: false
+    description: Fail on the division of the minimum integer by -1, which overflows
+  - arguments:
+      operator: sum
+      operand_left: 1
+      operand_right: 2
+      operand_right_1: 3
+    should_pass: true
+    expected: 6
+    description: Apply the operator from left to right over more than two operands

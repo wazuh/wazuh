@@ -41,20 +41,12 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
 TransformBuilder getOpBuilderKVDBGet(std::shared_ptr<IKVDBManager> kvdbManager);
 
 /**
- * @brief Builds KVDB extract and merge function helper.
+ * @brief Builds KVDB extract and merge function helper (`kvdb_get_merge(db, key[, 'deep'])`).
  *
  * @param kvdbManager KVDB manager instance.
  * @return Builder.
  */
 TransformBuilder getOpBuilderKVDBGetMerge(std::shared_ptr<IKVDBManager> kvdbManager);
-
-/**
- * @brief Builds KVDB extract and merge recursive function helper.
- *
- * @param kvdbManager KVDB manager instance.
- * @return Builder.
- */
-TransformBuilder getOpBuilderKVDBGetMergeRecursive(std::shared_ptr<IKVDBManager> kvdbManager);
 
 /**
  * @brief Get the KVDB match function helper builder.

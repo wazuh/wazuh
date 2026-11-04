@@ -1,0 +1,70 @@
+# Name of the helper function
+name: regex_match
+
+metadata:
+  description: |
+    Checks whether the target string matches the regular expression `regex`.
+
+    Behavior:
+    - `regex` is a literal pattern compiled with RE2 (syntax: https://github.com/google/re2/wiki/Syntax) with
+      the default options: UTF-8, case-sensitive, `.` does not match a newline.
+    - The match is unanchored: the pattern may match anywhere in the string. Use `^` and `$` to require a
+      match of the whole string.
+    - An empty pattern matches every string.
+
+    Build errors:
+    - `regex` is not a valid RE2 pattern.
+    - `regex` is a reference or a literal that is not a string.
+    - The target is a schema field whose type is not a string type.
+
+    Notes:
+    - Quote the pattern when it contains a comma, a closing parenthesis or a space, and mind the YAML escaping
+      rules for backslashes.
+    - `contains`, `starts_with` and `ends_with` are the literal (non-pattern) alternatives.
+  group: string
+  fails_when:
+    - The target field does not exist.
+    - The target field is not a string.
+    - The pattern does not match the target string.
+
+helper_type: check
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  regex:
+    type: string
+    generate: regex
+    source: value # only literal values, not references
+
+# the generated success cases use a pattern that does not match the generated target
+skipped:
+  - success_cases
+
+target_field:
+  type: string
+  generate: string
+
+test:
+  - arguments:
+      regex: "^(bye pcre\\d)$"
+    target_field: bye pcre2
+    should_pass: true
+    description: The anchored pattern matches the whole string.
+  - arguments:
+      regex: "^(bye pcre\\d)$"
+    target_field: ye pcre2
+    should_pass: false
+    description: The anchored pattern does not match the string.
+  - arguments:
+      regex: "pcre\\d"
+    target_field: say bye pcre2 now
+    should_pass: true
+    description: An unanchored pattern matches anywhere in the string.
+  - arguments:
+      regex: "^bye"
+    target_field: 42
+    should_pass: false
+    description: The target field is a number, not a string.

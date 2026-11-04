@@ -77,7 +77,7 @@ auto getBuilder_KVDBGetExpectHandlerError(const std::string& dbName)
 }
 
 // ---------------------------------------------------------------------
-// Builders for kvdb_get_merge
+// Builders for kvdb_get_merge (the optional third argument 'deep' selects the recursive merge)
 // ---------------------------------------------------------------------
 auto mergeTargetSchemaNotMergeableExpected(const std::string& ref, schemf::Type type)
 {
@@ -157,64 +157,14 @@ auto getBuilder_KVDBGetMergeExpectHandlerError(const std::string& dbName)
     };
 }
 
-// ---------------------------------------------------------------------
-// Builders for kvdb_get_merge_recursive
-// ---------------------------------------------------------------------
-auto getBuilder_KVDBGetMergeRecursive()
+// The arguments of kvdb_get_merge(db, key, 'deep'), the former kvdb_get_merge_recursive
+std::vector<OpArg> deepMergeArgs(const OpArg& key)
 {
-    return []()
-    {
-        auto kvdbManager = std::make_shared<MockIKVDBManager>();
-        auto kvdbHandler = std::make_shared<MockIKVDBHandler>();
-        (void)kvdbHandler;
-        return getOpBuilderKVDBGetMergeRecursive(kvdbManager);
-    };
-}
-
-auto getBuilder_KVDBGetMergeRecursiveExpectHandler(const std::string& dbName)
-{
-    return [=]()
-    {
-        auto kvdbManager = std::make_shared<MockIKVDBManager>();
-        auto kvdbHandler = std::make_shared<MockIKVDBHandler>();
-
-        EXPECT_CALL(*kvdbManager, getKVDBHandler(_, StrEq(dbName))).WillOnce(Return(kvdbHandler));
-
-        return getOpBuilderKVDBGetMergeRecursive(kvdbManager);
-    };
-}
-
-template<typename Behaviour>
-auto getBuilder_KVDBGetMergeRecursiveExpectHandler(const std::string& dbName, Behaviour&& behaviour)
-{
-    return [=]()
-    {
-        auto kvdbManager = std::make_shared<MockIKVDBManager>();
-        auto kvdbHandler = std::make_shared<MockIKVDBHandler>();
-
-        EXPECT_CALL(*kvdbManager, getKVDBHandler(_, StrEq(dbName))).WillOnce(Return(kvdbHandler));
-
-        behaviour(kvdbHandler);
-
-        return getOpBuilderKVDBGetMergeRecursive(kvdbManager);
-    };
-}
-
-auto getBuilder_KVDBGetMergeRecursiveExpectHandlerError(const std::string& dbName)
-{
-    return [=]()
-    {
-        auto kvdbManager = std::make_shared<MockIKVDBManager>();
-
-        EXPECT_CALL(*kvdbManager, getKVDBHandler(_, StrEq(dbName)))
-            .WillOnce(Throw(std::runtime_error("getKVDBHandler error")));
-
-        return getOpBuilderKVDBGetMergeRecursive(kvdbManager);
-    };
+    return {makeValue(R"("dbname")"), key, makeValue(R"("deep")")};
 }
 
 // ---------------------------------------------------------------------
-// Builders for kvdb_get_array
+// Builders for kvdb_get_append
 // ---------------------------------------------------------------------
 auto getBuilder_KVDBGetArray()
 {
@@ -343,7 +293,7 @@ auto expectKvdbGetMap(const std::string& mapKey, const std::string& jsonMapStr)
 }
 
 // ---------------------------------------------------------------------
-// Builders for filters: kvdb_match / kvdb_not_match
+// Builders for filters: in_kvdb / not_in_kvdb
 // ---------------------------------------------------------------------
 
 // Plain getters (no behaviour). Useful for arity/type errors or handler-throw scenarios.
@@ -491,6 +441,18 @@ auto jTypeRefExpected(const std::string& ref, json::Json::Type jType)
     };
 }
 
+// Neither the key reference nor the target field are in the schema
+auto noSchemaExpected()
+{
+    return [](const BuildersMocks& mocks)
+    {
+        EXPECT_CALL(*mocks.ctx, validator()).Times(AtLeast(1));
+        EXPECT_CALL(*mocks.validator, hasField(_)).WillRepeatedly(testing::Return(false));
+
+        return None {};
+    };
+}
+
 auto expectKvdbGetValue(const std::string& key, const std::string& jsonStr)
 {
     return [=](const std::shared_ptr<MockIKVDBHandler>& kvdbHandler)
@@ -577,6 +539,8 @@ INSTANTIATE_TEST_SUITE_P(KVDBGet_Builder,
                              TransformDepsT({makeValue(R"("dbname")"), makeRef("ref"), makeValue(R"("value")")},
                                             getBuilder_KVDBGet(),
                                             FAILURE()),
+                             // kvdb_get takes exactly two arguments: the 'deep' mode belongs to kvdb_get_merge
+                             TransformDepsT(deepMergeArgs(makeValue(R"("key")")), getBuilder_KVDBGet(), FAILURE()),
 
                              // Second argument not string
                              TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
@@ -617,7 +581,34 @@ INSTANTIATE_TEST_SUITE_P(
         // Invalid number of arguments
         TransformDepsT({}, getBuilder_KVDBGetMerge(), FAILURE()),
         TransformDepsT({makeValue(R"("dbname")")}, getBuilder_KVDBGetMerge(), FAILURE()),
+        TransformDepsT(
+            {makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"("deep")"), makeValue(R"("deep")")},
+            getBuilder_KVDBGetMerge(),
+            FAILURE()),
+
+        // Optional third argument: only the literal 'deep' is accepted
         TransformDepsT({makeValue(R"("dbname")"), makeRef("ref"), makeValue(R"("value")")},
+                       getBuilder_KVDBGetMerge(),
+                       FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"("DEEP")")},
+                       getBuilder_KVDBGetMerge(),
+                       FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"("recursive")")},
+                       getBuilder_KVDBGetMerge(),
+                       FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"("")")},
+                       getBuilder_KVDBGetMerge(),
+                       FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"(true)")},
+                       getBuilder_KVDBGetMerge(),
+                       FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"(1)")},
+                       getBuilder_KVDBGetMerge(),
+                       FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"(null)")},
+                       getBuilder_KVDBGetMerge(),
+                       FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("deep")},
                        getBuilder_KVDBGetMerge(),
                        FAILURE()),
 
@@ -663,53 +654,55 @@ INSTANTIATE_TEST_SUITE_P(
                        FAILURE())),
     testNameFormatter<TransformBuilderWithDepsTest>("KVDBGetMerge"));
 
+// kvdb_get_merge(db, key, 'deep'): the former kvdb_get_merge_recursive
 INSTANTIATE_TEST_SUITE_P(
-    KVDBGetMergeRecursive_Builder,
+    KVDBGetMergeDeep_Builder,
     TransformBuilderWithDepsTest,
     testing::Values(
-        // Invalid number of arguments
-        TransformDepsT({}, getBuilder_KVDBGetMergeRecursive(), FAILURE()),
-        TransformDepsT({makeValue(R"("dbname")")}, getBuilder_KVDBGetMergeRecursive(), FAILURE()),
-        TransformDepsT({makeValue(R"("dbname")"), makeRef("ref"), makeValue(R"("extra")")},
-                       getBuilder_KVDBGetMergeRecursive(),
-                       FAILURE()),
-
         // First argument is not a string
-        TransformDepsT({makeRef("ref"), makeValue(R"("key")")}, getBuilder_KVDBGetMergeRecursive(), FAILURE()),
-        TransformDepsT({makeRef("ref"), makeRef("ref")}, getBuilder_KVDBGetMergeRecursive(), FAILURE()),
+        TransformDepsT({makeRef("ref"), makeValue(R"("key")"), makeValue(R"("deep")")},
+                       getBuilder_KVDBGetMerge(),
+                       FAILURE()),
+        TransformDepsT({makeRef("ref"), makeRef("ref"), makeValue(R"("deep")")}, getBuilder_KVDBGetMerge(), FAILURE()),
 
         // Second argument is a reference but schema type is not string
-        TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
-                       getBuilder_KVDBGetMergeRecursive(),
+        TransformDepsT(deepMergeArgs(makeRef("ref")),
+                       getBuilder_KVDBGetMerge(),
                        FAILURE(jTypeRefExpected("ref", json::Json::Type::Number))),
-        TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
-                       getBuilder_KVDBGetMergeRecursive(),
+        TransformDepsT(deepMergeArgs(makeRef("ref")),
+                       getBuilder_KVDBGetMerge(),
                        FAILURE(jTypeRefExpected("ref", json::Json::Type::Boolean))),
-        TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
-                       getBuilder_KVDBGetMergeRecursive(),
+        TransformDepsT(deepMergeArgs(makeRef("ref")),
+                       getBuilder_KVDBGetMerge(),
                        FAILURE(jTypeRefExpected("ref", json::Json::Type::Array))),
-        TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
-                       getBuilder_KVDBGetMergeRecursive(),
+        TransformDepsT(deepMergeArgs(makeRef("ref")),
+                       getBuilder_KVDBGetMerge(),
                        FAILURE(jTypeRefExpected("ref", json::Json::Type::Object))),
-        TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
-                       getBuilder_KVDBGetMergeRecursive(),
+        TransformDepsT(deepMergeArgs(makeRef("ref")),
+                       getBuilder_KVDBGetMerge(),
                        FAILURE(jTypeRefExpected("ref", json::Json::Type::Null))),
 
         // Target field in schema is not object/array -> build error
-        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")")},
-                       getBuilder_KVDBGetMergeRecursive(),
+        TransformDepsT(deepMergeArgs(makeValue(R"("key")")),
+                       getBuilder_KVDBGetMerge(),
                        FAILURE(mergeTargetSchemaNotMergeableExpected("targetField", schemf::Type::KEYWORD))),
 
         // Error getting KVDB handler -> build error
-        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")")},
-                       getBuilder_KVDBGetMergeRecursiveExpectHandlerError("dbname"),
+        TransformDepsT(deepMergeArgs(makeValue(R"("key")")),
+                       getBuilder_KVDBGetMergeExpectHandlerError("dbname"),
                        FAILURE()),
 
         // Successful build when target field is not present in schema
-        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")")},
-                       getBuilder_KVDBGetMergeRecursive(),
-                       SUCCESS(customRefExpected("targetField")))),
-    testNameFormatter<TransformBuilderWithDepsTest>("KVDBGetMergeRecursive"));
+        TransformDepsT(deepMergeArgs(makeValue(R"("key")")),
+                       getBuilder_KVDBGetMerge(),
+                       SUCCESS(customRefExpected("targetField"))),
+        TransformDepsT(deepMergeArgs(makeRef("ref")), getBuilder_KVDBGetMerge(), SUCCESS(noSchemaExpected())),
+
+        // Successful build with targetField typed as object in schema
+        TransformDepsT(deepMergeArgs(makeValue(R"("key")")),
+                       getBuilder_KVDBGetMerge(),
+                       SUCCESS(mergeTargetObjectSchemaExpected("targetField")))),
+    testNameFormatter<TransformBuilderWithDepsTest>("KVDBGetMergeDeep"));
 
 INSTANTIATE_TEST_SUITE_P(
     KVDBGetArray_Builder,
@@ -868,6 +861,14 @@ INSTANTIATE_TEST_SUITE_P(
                        std::vector<OpArg> {makeValue(R"("dbname")"), makeValue(R"("k_obj")")},
                        SUCCESS(customRefExpected("targetField", makeEvent(R"({"targetField":{"a":1,"b":2}})")))),
 
+        // Shallow merge: a nested object from the DB replaces the one in the target (compare with the 'deep' mode)
+        TransformDepsT(
+            R"({"targetField":{"a":1,"nested":{"x":10}}})",
+            getBuilder_KVDBGetMergeExpectHandler("dbname", expectKvdbGetValue("k_obj", R"({"b":2,"nested":{"y":20}})")),
+            "targetField",
+            std::vector<OpArg> {makeValue(R"("dbname")"), makeValue(R"("k_obj")")},
+            SUCCESS(customRefExpected("targetField", makeEvent(R"({"targetField":{"a":1,"b":2,"nested":{"y":20}}})")))),
+
         // Target exists as array, DB value is array -> merge ok
         TransformDepsT(R"({"targetField":[1,2]})",
                        getBuilder_KVDBGetMergeExpectHandler("dbname", expectKvdbGetValue("k_arr", R"([3,4])")),
@@ -917,83 +918,90 @@ INSTANTIATE_TEST_SUITE_P(
                        FAILURE(customRefExpected("targetField")))),
     testNameFormatter<TransformOperationWithDepsTest>("KVDBGetMerge"));
 
+// kvdb_get_merge(db, key, 'deep'): the former kvdb_get_merge_recursive
 INSTANTIATE_TEST_SUITE_P(
-    KVDBGetMergeRecursive_Operation,
+    KVDBGetMergeDeep_Operation,
     TransformOperationWithDepsTest,
     testing::Values(
         // Key as value. Recursive merge into an existing object.
         TransformDepsT(R"({"targetField":{"a":1}})",
-                       getBuilder_KVDBGetMergeRecursiveExpectHandler("dbname", expectKvdbGetValue("k1", R"({"b":2})")),
+                       getBuilder_KVDBGetMergeExpectHandler("dbname", expectKvdbGetValue("k1", R"({"b":2})")),
                        "targetField",
-                       std::vector<OpArg> {makeValue(R"("dbname")"), makeValue(R"("k1")")},
+                       deepMergeArgs(makeValue(R"("k1")")),
                        SUCCESS(customRefExpected("targetField", makeEvent(R"({"targetField":{"a":1,"b":2}})")))),
 
         // Key as reference. Recursive merge into an existing object.
         TransformDepsT(R"({"ref":"k1","targetField":{"a":1}})",
-                       getBuilder_KVDBGetMergeRecursiveExpectHandler("dbname", expectKvdbGetValue("k1", R"({"b":2})")),
+                       getBuilder_KVDBGetMergeExpectHandler("dbname", expectKvdbGetValue("k1", R"({"b":2})")),
                        "targetField",
-                       std::vector<OpArg> {makeValue(R"("dbname")"), makeRef("ref")},
+                       deepMergeArgs(makeRef("ref")),
                        SUCCESS(eventOnlyExpected(makeEvent(R"({"ref":"k1","targetField":{"a":1,"b":2}})")))),
 
         // Both target and DB value have nested objects -> recursive merge
         TransformDepsT(
             R"({"targetField":{"a":1,"nested":{"x":10}}})",
-            getBuilder_KVDBGetMergeRecursiveExpectHandler("dbname",
-                                                          expectKvdbGetValue("k1", R"({"b":2,"nested":{"y":20}})")),
+            getBuilder_KVDBGetMergeExpectHandler("dbname", expectKvdbGetValue("k1", R"({"b":2,"nested":{"y":20}})")),
             "targetField",
-            std::vector<OpArg> {makeValue(R"("dbname")"), makeValue(R"("k1")")},
+            deepMergeArgs(makeValue(R"("k1")")),
             SUCCESS(customRefExpected("targetField",
                                       makeEvent(R"({"targetField":{"a":1,"b":2,"nested":{"x":10,"y":20}}})")))),
 
         // Both target and DB value have nested arrays -> recursive merge
         TransformDepsT(
             R"({"targetField":{"a":1,"arr":[1,2]}})",
-            getBuilder_KVDBGetMergeRecursiveExpectHandler("dbname", expectKvdbGetValue("k1", R"({"b":2,"arr":[3,4]})")),
+            getBuilder_KVDBGetMergeExpectHandler("dbname", expectKvdbGetValue("k1", R"({"b":2,"arr":[3,4]})")),
             "targetField",
-            std::vector<OpArg> {makeValue(R"("dbname")"), makeValue(R"("k1")")},
+            deepMergeArgs(makeValue(R"("k1")")),
             SUCCESS(customRefExpected("targetField", makeEvent(R"({"targetField":{"a":1,"b":2,"arr":[1,2,3,4]}})")))),
 
         // Both target and DB value have nested object and array -> recursive merge
-        TransformDepsT(R"({"targetField":{"obj":{"k":"v"},"arr":[1]}})",
-                       getBuilder_KVDBGetMergeRecursiveExpectHandler(
-                           "dbname", expectKvdbGetValue("k1", R"({"obj":{"new_k":"new_v"},"arr":[2,3]})")),
-                       "targetField",
-                       std::vector<OpArg> {makeValue(R"("dbname")"), makeValue(R"("k1")")},
-                       SUCCESS(customRefExpected(
-                           "targetField",
-                           makeEvent(R"({"targetField":{"obj":{"k":"v","new_k":"new_v"},"arr":[1,2,3]}})")))),
+        TransformDepsT(
+            R"({"targetField":{"obj":{"k":"v"},"arr":[1]}})",
+            getBuilder_KVDBGetMergeExpectHandler("dbname",
+                                                 expectKvdbGetValue("k1", R"({"obj":{"new_k":"new_v"},"arr":[2,3]})")),
+            "targetField",
+            deepMergeArgs(makeValue(R"("k1")")),
+            SUCCESS(customRefExpected(
+                "targetField", makeEvent(R"({"targetField":{"obj":{"k":"v","new_k":"new_v"},"arr":[1,2,3]}})")))),
 
         // Both target and DB value are empty object/array
         TransformDepsT(R"({"targetField":{}})",
-                       getBuilder_KVDBGetMergeRecursiveExpectHandler("dbname", expectKvdbGetValue("k1", R"({})")),
+                       getBuilder_KVDBGetMergeExpectHandler("dbname", expectKvdbGetValue("k1", R"({})")),
                        "targetField",
-                       std::vector<OpArg> {makeValue(R"("dbname")"), makeValue(R"("k1")")},
+                       deepMergeArgs(makeValue(R"("k1")")),
                        SUCCESS(customRefExpected("targetField", makeEvent(R"({"targetField":{}})")))),
 
         // Key as reference. Both target and DB value have nested arrays
         TransformDepsT(
             R"({"ref":"k1","targetField":{"a":1,"arr":[1,2]}})",
-            getBuilder_KVDBGetMergeRecursiveExpectHandler("dbname", expectKvdbGetValue("k1", R"({"b":2,"arr":[3,4]})")),
+            getBuilder_KVDBGetMergeExpectHandler("dbname", expectKvdbGetValue("k1", R"({"b":2,"arr":[3,4]})")),
             "targetField",
-            std::vector<OpArg> {makeValue(R"("dbname")"), makeRef("ref")},
+            deepMergeArgs(makeRef("ref")),
             SUCCESS(eventOnlyExpected(makeEvent(R"({"ref":"k1","targetField":{"a":1,"b":2,"arr":[1,2,3,4]}})")))),
 
         // Target field does not exist in the event -> operation failure (nothing merged)
         TransformDepsT(R"({"other":42})",
-                       getBuilder_KVDBGetMergeRecursiveExpectHandler("dbname", expectKvdbGetValue("k1", R"({"b":2})")),
+                       getBuilder_KVDBGetMergeExpectHandler("dbname", expectKvdbGetValue("k1", R"({"b":2})")),
                        "targetField",
-                       std::vector<OpArg> {makeValue(R"("dbname")"), makeValue(R"("k1")")},
+                       deepMergeArgs(makeValue(R"("k1")")),
                        FAILURE()),
+
+        // Type mismatch between target and DB value -> operation failure
+        TransformDepsT(R"({"targetField":[1]})",
+                       getBuilder_KVDBGetMergeExpectHandler("dbname", expectKvdbGetValue("k1", R"({"b":2})")),
+                       "targetField",
+                       deepMergeArgs(makeValue(R"("k1")")),
+                       FAILURE(customRefExpected("targetField"))),
 
         // KVDB get throws std::out_of_range -> operation failure
         TransformDepsT(R"({"targetField":{"a":1}})",
-                       getBuilder_KVDBGetMergeRecursiveExpectHandler("dbname", expectKvdbGetOutOfRange("missing")),
+                       getBuilder_KVDBGetMergeExpectHandler("dbname", expectKvdbGetOutOfRange("missing")),
                        "targetField",
-                       std::vector<OpArg> {makeValue(R"("dbname")"), makeValue(R"("missing")")},
+                       deepMergeArgs(makeValue(R"("missing")")),
                        FAILURE(customRefExpected("targetField")))
 
             ),
-    testNameFormatter<TransformOperationWithDepsTest>("KVDBGetMergeRecursive"));
+    testNameFormatter<TransformOperationWithDepsTest>("KVDBGetMergeDeep"));
 
 INSTANTIATE_TEST_SUITE_P(
     KVDBGetArray_Operation,
@@ -1218,54 +1226,55 @@ INSTANTIATE_TEST_SUITE_P(KVDBFilters_Operation,
 namespace transformbuildtest
 {
 
-INSTANTIATE_TEST_SUITE_P(KVDBAvailability_Builder,
-                         TransformBuilderWithDepsTest,
-                         testing::Values(
-                             // Test: KVDB not found in context
-                             TransformDepsT({makeValue(R"("nonexistent_db")"), makeValue(R"("key")")},
-                                            getBuilder_KVDBGet(),
-                                            FAILURE(kvdbNotDeclared("nonexistent_db"))),
-                             // Test: KVDB exists but is disabled
-                             TransformDepsT({makeValue(R"("disabled_db")"), makeValue(R"("key")")},
-                                            getBuilder_KVDBGet(),
-                                            FAILURE(kvdbDisabled("disabled_db"))),
-                             // Test: KVDB exists and is enabled (with handler mock)
-                             TransformDepsT({makeValue(R"("enabled_db")"), makeValue(R"("key")")},
-                                            getBuilder_KVDBGetExpectHandler("enabled_db"),
-                                            SUCCESS(kvdbEnabled("enabled_db"))),
-                             // Test: kvdb_get_merge with non-existent KVDB
-                             TransformDepsT({makeValue(R"("nonexistent_db")"), makeValue(R"("key")")},
-                                            getBuilder_KVDBGetMerge(),
-                                            FAILURE(kvdbNotDeclared("nonexistent_db"))),
-                             // Test: kvdb_get_merge with disabled KVDB
-                             TransformDepsT({makeValue(R"("disabled_db")"), makeValue(R"("key")")},
-                                            getBuilder_KVDBGetMerge(),
-                                            FAILURE(kvdbDisabled("disabled_db"))),
-                             // Test: kvdb_get_merge_recursive with non-existent KVDB
-                             TransformDepsT({makeValue(R"("nonexistent_db")"), makeValue(R"("key")")},
-                                            getBuilder_KVDBGetMergeRecursive(),
-                                            FAILURE(kvdbNotDeclared("nonexistent_db"))),
-                             // Test: kvdb_get_merge_recursive with disabled KVDB
-                             TransformDepsT({makeValue(R"("disabled_db")"), makeValue(R"("key")")},
-                                            getBuilder_KVDBGetMergeRecursive(),
-                                            FAILURE(kvdbDisabled("disabled_db"))),
-                             // Test: kvdb_get_array with non-existent KVDB
-                             TransformDepsT({makeValue(R"("nonexistent_db")"), makeRef("array")},
-                                            getBuilder_KVDBGetArray(),
-                                            FAILURE(kvdbNotDeclared("nonexistent_db"))),
-                             // Test: kvdb_get_array with disabled KVDB
-                             TransformDepsT({makeValue(R"("disabled_db")"), makeRef("array")},
-                                            getBuilder_KVDBGetArray(),
-                                            FAILURE(kvdbDisabled("disabled_db"))),
-                             // Test: kvdb_decode_bitmask with non-existent KVDB
-                             TransformDepsT({makeValue(R"("nonexistent_db")"), makeValue(R"("key")"), makeRef("mask")},
-                                            getBuilder_KVDBDecodeBitmask(),
-                                            FAILURE(kvdbNotDeclared("nonexistent_db"))),
-                             // Test: kvdb_decode_bitmask with disabled KVDB
-                             TransformDepsT({makeValue(R"("disabled_db")"), makeValue(R"("key")"), makeRef("mask")},
-                                            getBuilder_KVDBDecodeBitmask(),
-                                            FAILURE(kvdbDisabled("disabled_db")))),
-                         testNameFormatter<TransformBuilderWithDepsTest>("KVDBAvailability"));
+INSTANTIATE_TEST_SUITE_P(
+    KVDBAvailability_Builder,
+    TransformBuilderWithDepsTest,
+    testing::Values(
+        // Test: KVDB not found in context
+        TransformDepsT({makeValue(R"("nonexistent_db")"), makeValue(R"("key")")},
+                       getBuilder_KVDBGet(),
+                       FAILURE(kvdbNotDeclared("nonexistent_db"))),
+        // Test: KVDB exists but is disabled
+        TransformDepsT({makeValue(R"("disabled_db")"), makeValue(R"("key")")},
+                       getBuilder_KVDBGet(),
+                       FAILURE(kvdbDisabled("disabled_db"))),
+        // Test: KVDB exists and is enabled (with handler mock)
+        TransformDepsT({makeValue(R"("enabled_db")"), makeValue(R"("key")")},
+                       getBuilder_KVDBGetExpectHandler("enabled_db"),
+                       SUCCESS(kvdbEnabled("enabled_db"))),
+        // Test: kvdb_get_merge with non-existent KVDB
+        TransformDepsT({makeValue(R"("nonexistent_db")"), makeValue(R"("key")")},
+                       getBuilder_KVDBGetMerge(),
+                       FAILURE(kvdbNotDeclared("nonexistent_db"))),
+        // Test: kvdb_get_merge with disabled KVDB
+        TransformDepsT({makeValue(R"("disabled_db")"), makeValue(R"("key")")},
+                       getBuilder_KVDBGetMerge(),
+                       FAILURE(kvdbDisabled("disabled_db"))),
+        // Test: kvdb_get_merge(.., 'deep') with non-existent KVDB
+        TransformDepsT({makeValue(R"("nonexistent_db")"), makeValue(R"("key")"), makeValue(R"("deep")")},
+                       getBuilder_KVDBGetMerge(),
+                       FAILURE(kvdbNotDeclared("nonexistent_db"))),
+        // Test: kvdb_get_merge(.., 'deep') with disabled KVDB
+        TransformDepsT({makeValue(R"("disabled_db")"), makeValue(R"("key")"), makeValue(R"("deep")")},
+                       getBuilder_KVDBGetMerge(),
+                       FAILURE(kvdbDisabled("disabled_db"))),
+        // Test: kvdb_get_append with non-existent KVDB
+        TransformDepsT({makeValue(R"("nonexistent_db")"), makeRef("array")},
+                       getBuilder_KVDBGetArray(),
+                       FAILURE(kvdbNotDeclared("nonexistent_db"))),
+        // Test: kvdb_get_append with disabled KVDB
+        TransformDepsT({makeValue(R"("disabled_db")"), makeRef("array")},
+                       getBuilder_KVDBGetArray(),
+                       FAILURE(kvdbDisabled("disabled_db"))),
+        // Test: kvdb_decode_bitmask with non-existent KVDB
+        TransformDepsT({makeValue(R"("nonexistent_db")"), makeValue(R"("key")"), makeRef("mask")},
+                       getBuilder_KVDBDecodeBitmask(),
+                       FAILURE(kvdbNotDeclared("nonexistent_db"))),
+        // Test: kvdb_decode_bitmask with disabled KVDB
+        TransformDepsT({makeValue(R"("disabled_db")"), makeValue(R"("key")"), makeRef("mask")},
+                       getBuilder_KVDBDecodeBitmask(),
+                       FAILURE(kvdbDisabled("disabled_db")))),
+    testNameFormatter<TransformBuilderWithDepsTest>("KVDBAvailability"));
 
 } // namespace transformbuildtest
 
@@ -1276,23 +1285,23 @@ INSTANTIATE_TEST_SUITE_P(
     KVDBAvailability_Filter,
     FilterBuilderWithDepsTest,
     testing::Values(
-        // Test: kvdb_match with non-existent KVDB
+        // Test: in_kvdb with non-existent KVDB
         FilterDepsT({makeValue(R"("nonexistent_db")")},
                     getBuilder_KVDBMatch(),
                     FAILURE(kvdbNotDeclared("nonexistent_db"))),
-        // Test: kvdb_match with disabled KVDB
+        // Test: in_kvdb with disabled KVDB
         FilterDepsT({makeValue(R"("disabled_db")")}, getBuilder_KVDBMatch(), FAILURE(kvdbDisabled("disabled_db"))),
-        // Test: kvdb_match with enabled KVDB (with handler mock)
+        // Test: in_kvdb with enabled KVDB (with handler mock)
         FilterDepsT({makeValue(R"("enabled_db")")},
                     getBuilder_KVDBMatchExpectHandler("enabled_db", [](auto) {}),
                     SUCCESS(kvdbEnabled("enabled_db"))),
-        // Test: kvdb_not_match with non-existent KVDB
+        // Test: not_in_kvdb with non-existent KVDB
         FilterDepsT({makeValue(R"("nonexistent_db")")},
                     getBuilder_KVDBNotMatch(),
                     FAILURE(kvdbNotDeclared("nonexistent_db"))),
-        // Test: kvdb_not_match with disabled KVDB
+        // Test: not_in_kvdb with disabled KVDB
         FilterDepsT({makeValue(R"("disabled_db")")}, getBuilder_KVDBNotMatch(), FAILURE(kvdbDisabled("disabled_db"))),
-        // Test: kvdb_not_match with enabled KVDB (with handler mock)
+        // Test: not_in_kvdb with enabled KVDB (with handler mock)
         FilterDepsT({makeValue(R"("enabled_db")")},
                     getBuilder_KVDBNotMatchExpectHandler("enabled_db", [](auto) {}),
                     SUCCESS(kvdbEnabled("enabled_db")))),

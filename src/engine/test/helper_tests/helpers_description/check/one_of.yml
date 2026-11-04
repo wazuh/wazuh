@@ -1,0 +1,93 @@
+# Name of the helper function
+name: one_of
+
+metadata:
+  description: |
+    Checks whether the target value is one of the elements of `values`.
+
+    Behavior:
+    - The target may hold any JSON type, `null` included.
+    - `values` is an array literal, a definition or a reference to an array field.
+    - Each element is compared with the target using deep JSON equality: the types must match (`"1"` is not
+      `1`), numbers compare by value (`1` equals `1.0`), strings byte by byte, arrays element by element in
+      order, and objects member by member regardless of the member order.
+
+    Build errors:
+    - `values` is a literal that is not an array.
+
+    Notes:
+    - `array_contains_all` and `array_contains_any` are the reverse check: the target is the array and the
+      arguments are the candidates.
+    - `string_eq`, `number_eq` and `int_eq` compare against a single candidate with type-specific rules.
+  group: array
+  fails_when:
+    - The target field does not exist.
+    - The reference given as `values` does not exist or is not an array.
+    - No element of `values` is equal to the target value.
+
+helper_type: check
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  values:
+    type: array
+    generate: all
+    source: both # includes values or references (their names start with $)
+
+# the generated success cases use an array that does not contain the generated target
+skipped:
+  - success_cases
+
+target_field:
+  type:
+    - number
+    - string
+    - boolean
+    - array
+    - object
+
+test:
+  - arguments:
+      values:
+        source: reference
+        value: null
+    target_field: 10
+    should_pass: false
+    description: The reference given as values does not exist.
+  - arguments:
+      values: [1,2,3,4]
+    target_field: 10
+    should_pass: false
+    description: The target value is not in the array.
+  - arguments:
+      values: [hello]
+    target_field: wazuh
+    should_pass: false
+    description: The target string is not in the array.
+  - arguments:
+      values:
+        - key: value
+    target_field:
+      key: value
+    should_pass: true
+    description: The target object equals an element of the array.
+  - arguments:
+      values:
+        - [true, hello, 2]
+    target_field:
+      [true, hello, 2]
+    should_pass: true
+    description: The target array equals an element of the array.
+  - arguments:
+      values: [1, 2, 3]
+    target_field: 2.0
+    should_pass: true
+    description: Numbers are compared by value, so 2.0 equals the element 2.
+  - arguments:
+      values: ["1", "2"]
+    target_field: 1
+    should_pass: false
+    description: The types must match, so the number 1 does not equal the string "1".

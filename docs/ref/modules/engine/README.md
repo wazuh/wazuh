@@ -540,7 +540,7 @@ This behavior depends on the policy configuration:
 This makes the discarded-events decision part of pre-enrichment, before any configured enrichment is evaluated.
 
 > [!NOTE]
-> See the [helper functions reference](ref-helper-functions.md#discard_events) for the condition used to determine whether discarded events should continue in the pipeline.
+> See the [helper functions reference](ref-helper-functions.md#discard_event) for the condition used to determine whether discarded events should continue in the pipeline.
 
 ```mermaid
 flowchart TD
@@ -884,7 +884,7 @@ outputs:
         - wazuh-indexer:
             index: "wazuh-events-v5-unclassified"
 
-    - check: string_not_equal($wazuh.integration.category, "unclassified")
+    - check: string_ne($wazuh.integration.category, "unclassified")
       then:
         - wazuh-indexer:
             index: "wazuh-events-v5-${wazuh.integration.category}"
@@ -895,7 +895,7 @@ The routing logic uses a `first_of` block that evaluates two conditions in order
 1. If `index_unclassified_events` returns `true` — meaning the policy has unclassified-events indexing enabled
    **and** `wazuh.integration.category` equals `"unclassified"` — the event is sent to
    `wazuh-events-v5-unclassified`.
-2. If `string_not_equal` succeeds — meaning the category is not `"unclassified"` — the event is classified
+2. If `string_ne` succeeds — meaning the category is not `"unclassified"` — the event is classified
    and sent to the data stream corresponding to its integration category:
    `wazuh-events-v5-${wazuh.integration.category}`.
 
@@ -912,7 +912,7 @@ classDef skip fill:#9e9e9e,stroke-width:1px,color:#fff
 
 start["Output stage (indexer.yml)"]:::cond
 check1["index_unclassified_events($wazuh.integration.category)"]:::cond
-check2["string_not_equal($wazuh.integration.category, 'unclassified')"]:::cond
+check2["string_ne($wazuh.integration.category, 'unclassified')"]:::cond
 unclassified["wazuh-events-v5-unclassified"]:::yes
 classified["wazuh-events-v5-${wazuh.integration.category}"]:::alt
 dropped["Event not indexed"]:::skip
@@ -1365,7 +1365,7 @@ Where the operation can be:
 When building an asset, the process can fail if there is any operation that contains a:
 - **Syntax Error**: Errors in the target_field or operation syntax.
 - **Schema Validation Failure**: Errors such as mapping a boolean into a keyword field, which violates the schema validation rules.
-- **Semantic Error**: Incorrect usage, such as using a conditional helper in a map stage.
+- **Semantic Error**: Incorrect usage, such as using a check helper in a map stage.
 These errors will be notified when trying to upload the asset to the catalog.
 
 ### Execution Graph Summary
@@ -1416,38 +1416,36 @@ There are two intrinsic operations which do not require additional syntax:
 
 All other operations are accessed through the helper functions.
 
-The syntax for calling a helper function is `helper_name(args…)`. They can be used in both check operations and map operations. Helper functions are classified into three categories:
-- **Conditionals**: Used in check operations to test complex conditions.
-- **Transformational**: Used in map operations to transform data.
-- **Mapping**: A subset of transformational operations scoped to modifying only the target field.
+The syntax for calling a helper function is `helper_name(args…)`. Helper functions come in two categories, named after the stage that uses them:
+- **Check helpers**: used in `check` stages — in the checklist form or inside a conditional expression — and in `first_of` branches. They test a condition on the target field: the operation succeeds when the condition holds and fails otherwise, and the event is never modified.
+- **Map helpers**: used in `map` operations. They compute a value for the target field; some of them instead read the target field and modify it in place (for example `array_append_all`, `trim`, `merge` or `delete`).
 
-Check the [helper standard library](ref-helper-functions.md) for a complete list of available helper functions.
+The complete list of helpers, grouped by topic, is in the [helper functions reference](ref-helper-functions.md). Their names follow one convention:
 
-#### Condition Helpers
-When using conditional helpers, the syntax is:
+- Names are `snake_case` English words; the only abbreviations are `ip`, `ipv4`, `ipv6`, `cidr`, `json`, `xml`, `csv`, `dsv`, `kv`, `kvdb`, `regex`, `uri`, `fqdn`, `sha1`, `hex`, `iana`, `asn`, `epoch`, `int`, `bool` and the comparison operators `eq`, `ne`, `gt`, `gte`, `lt`, `lte`.
+- A check helper reads as a sentence about the target field: `exists($f)`, `contains($f, 'x')`, `one_of($f, [...])`, `is_key_of($f, $table)`, `in_kvdb($f, 'db')`, `in_cidr($f, '10.0.0.0/8')`, `is_string($f)`. A negated check puts `not` right before the verb: `not_exists`, `is_not_string`, `not_in_kvdb`, `regex_not_match`.
+- Typed comparisons are `string_`, `number_` or `int_` followed by `eq`, `ne`, `gt`, `gte`, `lt` or `lte`; for a literal value prefer the operators (`$f >= 5`), the helpers are for comparing two fields.
+- When a helper takes several values, its name says how many must be usable: `_all` (every one) or `_any` (at least one), as in `array_contains_all` / `array_contains_any`, `array_excludes_any` / `array_excludes_all`, `array_append_all` / `array_append_any`, `concat_all` / `concat_any`.
+- A helper that produces a value is named after what it produces: `to_int`, `parse_json`, `hex_to_int`, `epoch_to_date`, `now`, `geoip`, `asn`, `sha1`, `community_id`, `syslog_facility`, `iana_protocol_number`. A helper that modifies the event is a verb: `delete`, `rename`, `merge`, `replace`, `split`, `trim`, `lookup`, `snake_case_keys`, `discard_event`.
+- An option is a trailing quoted word, not a separate helper: `merge($src, 'deep')`, `lookup_merge($table, $key, 'deep')`, `kvdb_get_merge('db', $key, 'deep')`, `to_int($n, 'round')`, `parse_xml($s, 'windows')`, `array_to_object($arr, 'Name', 'Value', 'raw_keys')`.
+
+#### Check helpers
+When using a check helper, the syntax is:
 ```yaml
-target_field: condition_helper(args)
+target_field: check_helper(args)
 ```
 
-The helper will always test a condition on *target_field*. If the condition passes, the operation succeeds; otherwise, it fails.
+The helper always tests a condition on *target_field*. If the condition passes, the operation succeeds; otherwise, it fails. A negated helper (`not_exists`, `is_not_string`, `not_in_kvdb`, `regex_not_match`, ...) is also false when *target_field* is missing or has the wrong type: it is not the same as `NOT helper(...)`.
 
-#### Mapping Helpers
-When using mapping helpers, the syntax is:
+#### Map helpers
+When using a map helper, the syntax is:
 ```yaml
 target_field: map_helper(args)
 ```
 
-The helper will always map the *target_field* if the operation succeeds. If the operation fails, the *target_field* remains unchanged.
+The helper maps the *target_field* if the operation succeeds. If the operation fails, the *target_field* remains unchanged.
 
-#### Transform Helpers
-When using transformational helpers, the syntax is:
-```yaml
-target_field: transform_helper(args)
-```
-
-The helper will transform the *target_field* if the operation succeeds. If the operation fails, the *target_field* remains unchanged.
-
-A transformational helper may fail due to implicit conditions, such as expecting a specific type for the target field, missing a reference passed as an argument, etc.
+Some map helpers do not compute a value from their arguments alone: they read the current value of *target_field* and modify it in place. `array_append_all` and `array_append_any` add elements to the array stored in the target, `trim` removes characters from the string stored in it, `merge` merges another object into it, `rename` and `delete` move or remove it, and so on; the reference entry of each helper states whether it works in place. Such a helper also fails when the target does not have the type it expects (for example `array_append_all` on a field that holds a string), on top of the reasons any map helper may fail for: a missing reference passed as an argument, an argument of the wrong type, etc.
 
 ***It is important to understand that every operation can succeed or fail, and this is the foundation for defining the operation graph.***
 
@@ -1506,7 +1504,9 @@ Where op is any of the following:
 
 When using any operator other than `==`, only string or number values are allowed.
 
-When using the default map or filter functions for string operations, values are parsed according to standard YAML
+`==` compares the field with the value whatever its type (the value may also be a reference). Every other operator desugars to the typed comparison helper selected by the type of the value: `string_<op>` for a string and `number_<op>` for a number, where `<op>` is `ne` (`!=`), `lt` (`<`), `lte` (`<=`), `gt` (`>`) or `gte` (`>=`) — `check: $event.severity > 3` is `number_gt($event.severity, 3)`. The same helpers, together with `string_eq`, `number_eq` and the exact-integer `int_eq`, `int_ne`, `int_gt`, `int_gte`, `int_lt` and `int_lte`, are the form to use when the right side is a reference (`number_gt($a, $b)`).
+
+When using the default map or check operations for string values, values are parsed according to standard YAML
 (or JSON) types. If a value is a string and begins with the reference symbol `$`, it is treated as a potential
 reference. If the reference is invalid the operation building fails.
 ```yaml
@@ -1526,7 +1526,7 @@ check: $http.request.method == "GET"
 check: $event.severity > 3
 
 # Example 3: Using a helper function in check
-check: ip_cidr_match($source.ip, '192.168.0.0', '24')
+check: in_cidr($source.ip, '192.168.0.0/24')
 
 ```
 
@@ -1694,21 +1694,20 @@ This pattern is useful for allowlists, blocklists, or IoC-style checks.
 
 ```yaml
 check:
-  - source.ip: kvdb_match('known_malicious_ips')
+  - source.ip: in_kvdb('known_malicious_ips')
 ```
 
 The check succeeds only if the current value of `source.ip` exists as a key in the KVDB.
 
 #### Available helper functions
 
-The KVDB helper reference includes functions for direct lookups, array lookups, merges, recursive merges, membership checks, and bitmask decoding:
+The KVDB helper reference includes functions for direct lookups, lookups of several keys at once, merges (shallow, or recursive with the optional `deep` mode), membership checks, and bitmask decoding:
 
 - [`kvdb_get`](ref-helper-functions.md#kvdb_get)
-- [`kvdb_get_array`](ref-helper-functions.md#kvdb_get_array)
-- [`kvdb_get_merge`](ref-helper-functions.md#kvdb_get_merge)
-- [`kvdb_get_merge_recursive`](ref-helper-functions.md#kvdb_get_merge_recursive)
-- [`kvdb_match`](ref-helper-functions.md#kvdb_match)
-- [`kvdb_not_match`](ref-helper-functions.md#kvdb_not_match)
+- [`kvdb_get_append`](ref-helper-functions.md#kvdb_get_append)
+- [`kvdb_get_merge`](ref-helper-functions.md#kvdb_get_merge) (with the optional `deep` mode)
+- [`in_kvdb`](ref-helper-functions.md#in_kvdb)
+- [`not_in_kvdb`](ref-helper-functions.md#not_in_kvdb)
 - [`kvdb_decode_bitmask`](ref-helper-functions.md#kvdb_decode_bitmask)
 
 Use this section as the conceptual overview of the asset itself, and refer to the helper reference for function-specific behavior and examples.
@@ -1840,25 +1839,25 @@ normalize:
   - check: "$_system.auth.ssh.event == Accepted OR $_system.auth.ssh.event == USER_PROCESS"
     map:
       - event.action: "logged-in"
-      - event.category: "array_append(authentication, session)"
+      - event.category: "array_append_all(authentication, session)"
       - event.outcome: "success"
-      - event.type: "array_append(info)"
+      - event.type: "array_append_all(info)"
 
   # --- Block 4: SSH logout / session end ---
   - check: "$_system.auth.ssh.event == DEAD_PROCESS OR $_system.auth.ssh.event == disconnect"
     map:
       - event.action: "logged-out"
-      - event.category: "array_append(authentication, session)"
+      - event.category: "array_append_all(authentication, session)"
       - event.outcome: "success"
-      - event.type: "array_append(end)"
+      - event.type: "array_append_all(end)"
 
   # --- Block 5: SSH authentication failure ---
   - check: "$_system.auth.ssh.event == Invalid OR $_system.auth.ssh.event == Failed OR $_system.auth.ssh.event == failures OR $_system.auth.ssh.event == fatal"
     map:
       - event.action: "authentication-failure"
-      - event.category: "array_append(authentication)"
+      - event.category: "array_append_all(authentication)"
       - event.outcome: "failure"
-      - event.type: "array_append(info)"
+      - event.type: "array_append_all(info)"
 
   # --- Block 6: sudo commands ---
   - check:
@@ -1868,20 +1867,20 @@ normalize:
       - "<user.name> : TTY=<_system.auth.sudo.tty> ; PWD=<_system.auth.sudo.pwd> ; USER=<user.effective.name> ; COMMAND=<_system.auth.sudo.command>"
     map:
       - event.action: "sudo"
-      - event.category: "array_append(authentication, process)"
-      - event.type: "array_append(start)"
+      - event.category: "array_append_all(authentication, process)"
+      - event.type: "array_append_all(start)"
 
   # --- Block 7–8: session open / close (generic) ---
   - check:
       - message: "contains(\"session opened\")"
     map:
       - event.action: "logged-in"
-      - event.type: "array_append(start)"
+      - event.type: "array_append_all(start)"
   - check:
       - message: "contains(\"session closed\")"
     map:
       - event.action: "logged-out"
-      - event.type: "array_append(end)"
+      - event.type: "array_append_all(end)"
 
   # --- Block 9: PAM authentication ---
   - check:
@@ -1889,8 +1888,8 @@ normalize:
     parse|message:
       - "pam_unix\\(<~>:<~>\\): authentication <_system.auth.pam.session.action>; logname=<?_system.auth.pam.foruser.name> uid=<?user.id> euid=<?user.effective.id> tty=<?_system.auth.pam.tty> ruser=<?_system.auth.pam.remote.user> rhost=<?source.ip>  user=<?user.name>"
     map:
-      - event.category: "array_append(authentication)"
-      - event.type: "array_append(info)"
+      - event.category: "array_append_all(authentication)"
+      - event.type: "array_append_all(info)"
 
   # --- Block 10: PAM session open/close ---
   - check:
@@ -1899,7 +1898,7 @@ normalize:
       - "pam_unix\\(<~>:<~>\\): session <_system.auth.pam.session.action> for user <_system.auth.pam.foruser.name> by <_system.auth.pam.byuser.name>\\(uid=<user.id>\\)"
       - "pam_unix\\(<~>:<~>\\): session <_system.auth.pam.session.action> for user <_system.auth.pam.foruser.name>"
     map:
-      - event.category: "array_append(session)"
+      - event.category: "array_append_all(session)"
 
   # --- Block 11: user/group management ---
   - check: "$process.name == groupadd OR $process.name == useradd"
@@ -1911,13 +1910,13 @@ normalize:
       - "<~> user '<user.name>'"
   - check: "$process.name == groupadd OR $process.name == groupdel OR $process.name == groupmod OR $process.name == useradd OR $process.name == userdel OR $process.name == usermod"
     map:
-      - event.category: "array_append(iam)"
+      - event.category: "array_append_all(iam)"
   - check: "$process.name == useradd OR $process.name == userdel OR $process.name == usermod"
     map:
-      - event.type: "array_append(user)"
+      - event.type: "array_append_all(user)"
   - check: "$process.name == groupadd OR $process.name == groupdel OR $process.name == groupmod"
     map:
-      - event.type: "array_append(group)"
+      - event.type: "array_append_all(group)"
 
   # --- Block 12: final field cleanup and catch-all mappings ---
   - map:
@@ -1927,7 +1926,7 @@ normalize:
       - user.effective.name: "replace(\"'\", '')"
       - source.address: "$source.ip"
       - related.user: "array_append_any($user.name, $user.effective.name)"
-      - related.ip: "array_append($source.ip)"
+      - related.ip: "array_append_all($source.ip)"
       - process.command_line: "$_system.auth.sudo.command"
       - process.working_directory: "$_system.auth.sudo.pwd"
   - check: "exists($source.address) AND NOT is_ipv4($source.address) AND NOT is_ipv6($source.address) AND contains($source.address, \".\")"
@@ -2092,7 +2091,7 @@ check: $event.category=="registry" AND $event.type=="change" AND ($registry.path
 ```
 
 ```yaml
-check: int_less($http.response.status_code, 400)
+check: int_lt($http.response.status_code, 400)
 ```
 
 ```yaml
@@ -2212,7 +2211,7 @@ Example:
 - map:
     - event.kind: event
     - event.dataset: apache.access
-    - event.category: array_append('web')
+    - event.category: array_append_all('web')
     - event.module: apache
     - service.type: apache
     - event.outcome: success
@@ -2643,7 +2642,7 @@ Total number of unclassified events for a given space.
 ##### `space.<space>.events.discarded`
 
 Total number of events of a given space dropped by the discarded events filter in pre-enrichment: events a
-decoder marked with the `discard_events` helper while the policy's `index_discarded_events` is `false`. Events
+decoder marked with the `discard_event` helper while the policy's `index_discarded_events` is `false`. Events
 marked while it is `true` are indexed and not counted; events rejected by pre- or post-filters are counted only in
 the two metrics below.
 
@@ -2812,7 +2811,7 @@ applied and processed it:
 ```
 traces:
 [🟢] decoder/core-wazuh-message/0 -> success
-  ↳ @timestamp: get_date -> Success
+  ↳ @timestamp: now -> Success
 [🟢] decoder/integrations/0 -> success
   ↳ event.original: exists -> Success
   ↳ _tmp_json: parse_json($event.original) -> Success

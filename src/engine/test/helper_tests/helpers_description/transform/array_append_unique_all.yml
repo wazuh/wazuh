@@ -1,0 +1,113 @@
+# Name of the helper function
+name: array_append_unique_all
+
+metadata:
+  description: |
+    Appends to the array stored in the target field the arguments that are not already in it.
+
+    Behavior:
+    - The target field must be an array or be missing; a missing target is created as an empty array first.
+    - Each argument is a literal of any JSON type or a reference to a field, and is appended as one element,
+      in argument order.
+    - An argument equal to an element already in the array (the elements appended by the same call included)
+      is skipped silently. Equality is deep JSON equality: object member order is ignored and numbers compare
+      numerically, so `1` equals `1.0`.
+    - A reference that does not exist in the event fails the whole operation.
+    - Every element must share one JSON type: the schema type of the target field when it has one, otherwise
+      the type of the first element already in the array, otherwise the type of the first argument that
+      resolves. Integers and floating-point values count as the same type (number).
+    - The operation fails when no new element was added.
+    - The operation is all-or-nothing: the array is rewritten only after every argument has been accepted,
+      so a failure leaves the target field unchanged.
+
+    Build errors:
+    - No arguments, or more than 150 arguments.
+    - A literal argument whose JSON type differs from the element type of a schema target field.
+    - The target field is not a schema field and does not start with `_`.
+
+    Notes:
+    - A duplicate does not fail the operation by itself: `array_append_unique_all(5, 6)` on `[1, 5]` succeeds
+      and adds `6`; only a call that adds nothing fails.
+    - A target field that exists and is not an array makes the operation fail; it is never overwritten.
+  group: array
+  fails_when:
+    - The target field exists and is not an array.
+    - Any reference argument does not exist in the event.
+    - An argument has a JSON type different from the element type of the array.
+    - No new element was added because every argument is already in the array.
+    - The resulting array is rejected by the schema validation of the target field.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: true
+
+# Arguments expected by the helper function
+arguments:
+  value:
+    type:
+      - number
+      - string
+      - object
+      - boolean
+      - array
+    source: both
+
+# adding elements of different type of target_field is not allowed
+skipped:
+  - success_cases
+
+target_field:
+  type: array
+  generate: all
+
+test:
+  - arguments:
+      value:
+        source: reference
+        value: null
+      value_1:
+        source: value
+        value: 9
+    target_field: [1,2]
+    should_pass: false
+    expected: [1,2]
+    description: A missing reference fails the whole operation and nothing is appended
+  - arguments:
+      value: hello
+    target_field: [hola, hello, salut, ciao]
+    should_pass: false
+    expected: [hola, hello, salut, ciao]
+    description: Fails because the only argument is already in the array
+  - arguments:
+      value: 5
+    target_field: [1,2,3,4,5]
+    should_pass: false
+    expected: [1,2,3,4,5]
+    description: Fails because the only argument is already in the array
+  - arguments:
+      value: 5
+    target_field: [1,2,3,4]
+    should_pass: true
+    expected: [1,2,3,4,5]
+    description: A new value is appended
+  - arguments:
+      value: 5
+      value_1: 6
+    target_field: [1,2,3,4,5]
+    should_pass: true
+    expected: [1,2,3,4,5,6]
+    description: The value already present is skipped and the new one is appended
+  - arguments:
+      value: 7
+      value_1: 7
+    target_field: [1]
+    should_pass: true
+    expected: [1,7]
+    description: A value repeated in the same call is appended once
+  - arguments:
+      value: 1.0
+    target_field: [1,2]
+    should_pass: false
+    expected: [1,2]
+    description: Numbers compare numerically, so 1.0 counts as the 1 already in the array

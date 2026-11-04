@@ -1,0 +1,94 @@
+# Name of the helper function
+name: split
+
+metadata:
+  description: |
+    Splits the string referenced by `input` on `separator` and stores the parts as an array of strings in the
+    target field.
+
+    Behavior:
+    - `input` is a reference to a string field; `separator` is a literal string of one or more characters,
+      matched literally and case-sensitively.
+    - The parts are stored in order and unchanged (the spaces around them are kept).
+    - The target field is set to the new array: any previous value, an existing array included, is replaced.
+
+    Build errors:
+    - `input` is not a reference, or references a schema field that is not a string.
+    - `separator` is not a literal string.
+    - A number of arguments other than 2.
+    - The target field is a schema field whose elements are not strings.
+
+    Notes:
+    - `join` is the inverse operation.
+    - `parse_csv` and `parse_dsv` handle quoted values and write named fields.
+  group: string
+  fails_when:
+    - The input field does not exist or is not a string.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  input:
+    type: string
+    generate: string
+    source: reference
+  separator:
+    type: string
+    generate: string
+    source: value
+
+# the previous value of the target is replaced whatever its type; string generation is random
+skipped:
+  - success_cases
+  - different_target_field_type
+
+target_field:
+  type: array
+  generate: string
+
+test:
+  - arguments:
+      input:
+        source: reference
+        value: null
+      separator:
+        source: value
+        value: ","
+    target_field: [old]
+    should_pass: false
+    expected: [old]
+    description: Fails and keeps the target unchanged when the input field does not exist
+  - arguments:
+      input: "val 1 | val 2 | val 3"
+      separator: '|'
+    target_field: ""
+    should_pass: true
+    expected:
+      - "val 1 "
+      - " val 2 "
+      - " val 3"
+    description: The parts keep the spaces around them
+  - arguments:
+      input: "a,b,c"
+      separator: ','
+    target_field: [old, values]
+    should_pass: true
+    expected:
+      - a
+      - b
+      - c
+    description: An existing array in the target field is replaced by the new parts
+  - arguments:
+      input: "a, b, c"
+      separator: ', '
+    target_field: ""
+    should_pass: true
+    expected:
+      - a
+      - b
+      - c
+    description: The separator may have more than one character

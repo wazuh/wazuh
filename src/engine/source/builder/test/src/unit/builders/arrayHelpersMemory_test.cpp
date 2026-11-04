@@ -78,7 +78,7 @@ std::string makeEventText(const std::string& field, size_t count, ElementFn make
 }
 
 /******************************************************************************/
-// array_append: {"appendTarget":[<objects>],"appendValue":<object>}, +array_append/$appendValue
+// array_append_all: {"appendTarget":[<objects>],"appendValue":<object>}, array_append_all($appendValue)
 /******************************************************************************/
 
 std::string makeArrayAppendText(size_t count)
@@ -114,7 +114,7 @@ EventCheck buildArrayAppend(const BuildersMocks& mocks, size_t count)
 }
 
 /******************************************************************************/
-// join: {"joinArray":["<300 B>",...]}, +join/$joinArray/,
+// join: {"joinArray":["<300 B>",...]}, join($joinArray, ',')
 /******************************************************************************/
 
 std::string makeJoinText(size_t count)
@@ -146,7 +146,7 @@ EventCheck buildJoin(const BuildersMocks& mocks, size_t count)
 }
 
 /******************************************************************************/
-// array_obj_to_mapkv: {"mapkvArray":[{"name":"key_<i>","value":<object>},...]}, +array_obj_to_mapkv/$mapkvArray/...
+// array_to_object: {"mapkvArray":[{"name":"key_<i>","value":<object>},...]}, array_to_object($mapkvArray, 'name', ...)
 /******************************************************************************/
 
 std::string makeArrayObjToMapkvText(size_t count)
@@ -163,8 +163,9 @@ EventCheck buildArrayObjToMapkv(const BuildersMocks& mocks, size_t count)
     EXPECT_CALL(*mocks.ctx, validator()).Times(testing::AnyNumber());
     EXPECT_CALL(*mocks.validator, hasField(DotPath("mapkvArray"))).WillOnce(testing::Return(false));
 
+    // The key and value paths are dot paths relative to each element
     const auto op = opBuilderHelperArrayObjToMapkv(
-        {makeRef("mapkvArray"), makeValue(R"("/name")"), makeValue(R"("/value")")}, mocks.ctx);
+        {makeRef("mapkvArray"), makeValue(R"("name")"), makeValue(R"("value")")}, mocks.ctx);
 
     return [op, count](const base::Event& event)
     {
@@ -180,7 +181,7 @@ EventCheck buildArrayObjToMapkv(const BuildersMocks& mocks, size_t count)
 }
 
 /******************************************************************************/
-// array_extract_key_obj: {"extractArray":[{"name":"key_<i>","new":<object>,"old":"..."},...]}
+// array_to_object_changes: {"extractArray":[{"name":"key_<i>","new":<object>,"old":"..."},...]}
 /******************************************************************************/
 
 std::string makeArrayExtractKeyObjText(size_t count)
@@ -201,8 +202,9 @@ EventCheck buildArrayExtractKeyObj(const BuildersMocks& mocks, size_t count)
     EXPECT_CALL(*mocks.ctx, validator()).Times(testing::AnyNumber());
     EXPECT_CALL(*mocks.validator, hasField(DotPath("extractArray"))).WillOnce(testing::Return(false));
 
+    // The key, new value and old value paths are dot paths relative to each element
     const auto op = opBuilderHelperArrayExtractKeyObj(
-        {makeRef("extractArray"), makeValue(R"("/name")"), makeValue(R"("/new")"), makeValue(R"("/old")")}, mocks.ctx);
+        {makeRef("extractArray"), makeValue(R"("name")"), makeValue(R"("new")"), makeValue(R"("old")")}, mocks.ctx);
 
     return [op, count](const base::Event& event)
     {
@@ -231,7 +233,7 @@ class ArrayHelpersMemoryTest : public BaseBuilderTest
 // current size plus F x the event text. The event is parsed before the cap; the operation is built in the parent.
 /******************************************************************************/
 
-// array_append copies the target array, appends one object and writes the array back
+// array_append_all copies the target array, appends one object and writes the array back
 TEST_F(ArrayHelpersMemoryTest, ArrayAppendLargeArrayUnderAddressSpaceCap)
 {
     SKIP_UNDER_SANITIZER();
@@ -277,7 +279,7 @@ TEST_F(ArrayHelpersMemoryTest, JoinLargeArrayUnderAddressSpaceCap)
         "");
 }
 
-// array_obj_to_mapkv copies the array of objects and builds an object with one member per element
+// array_to_object copies the array of objects and builds an object with one member per element
 TEST_F(ArrayHelpersMemoryTest, ArrayObjToMapkvLargeArrayUnderAddressSpaceCap)
 {
     SKIP_UNDER_SANITIZER();
@@ -300,7 +302,7 @@ TEST_F(ArrayHelpersMemoryTest, ArrayObjToMapkvLargeArrayUnderAddressSpaceCap)
         "");
 }
 
-// array_extract_key_obj copies the array of objects and builds an object with one {new, old} member per element
+// array_to_object_changes copies the array of objects and builds an object with one {new, old} member per element
 TEST_F(ArrayHelpersMemoryTest, ArrayExtractKeyObjLargeArrayUnderAddressSpaceCap)
 {
     SKIP_UNDER_SANITIZER();

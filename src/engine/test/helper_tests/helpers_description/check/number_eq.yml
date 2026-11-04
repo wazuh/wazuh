@@ -1,0 +1,78 @@
+# Name of the helper function
+name: number_eq
+
+metadata:
+  description: |
+    Checks whether the target number is equal to `value`.
+
+    Behavior:
+    - Both operands are converted to double before the comparison, so `2` equals `2.0`.
+    - `value` is a literal integer or floating-point number, or a reference to a numeric field.
+    - Integers above 2^53 lose precision in the conversion: `9007199254740993` compares equal to
+      `9007199254740992`.
+
+    Build errors:
+    - `value` is a literal that is not a number (a quoted number, a boolean or null), or an integer above 2^63-1.
+    - `value` is a reference to a schema field whose type is not numeric.
+    - The target is a schema field whose type is not numeric.
+
+    Notes:
+    - `int_eq` compares exact 64-bit integers and tells `2` from `2.0`.
+    - `one_of` compares the target against several candidates with the same numeric equality.
+    - `number_ne` is not the negation of this helper: both are false for a missing or non-number target.
+  group: comparison
+  fails_when:
+    - The target field does not exist.
+    - The target field is not a number, or is an integer above 2^63-1.
+    - The reference given as `value` does not exist or is not a number.
+    - The two numbers differ.
+
+helper_type: check
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  value:
+    type: number
+    generate:
+      - integer
+      - float
+      - double
+    source: both # includes values or references (their names start with $)
+
+# do not compare with target field to avoid failure
+skipped:
+  - success_cases
+
+target_field:
+  type: number
+  generate: number
+
+test:
+  - arguments:
+      value: 2.6
+    target_field: 2
+    should_pass: false
+    description: The two numbers differ.
+  - arguments:
+      value: 6
+    target_field: 5.5
+    should_pass: false
+    description: The two numbers differ.
+  - arguments:
+      value: 2.3
+    target_field: 2.3
+    should_pass: true
+    description: The two floating-point numbers are equal.
+  - arguments:
+      value: 2
+    target_field: 2.0
+    should_pass: true
+    description: An integer and a floating-point number with the same value are equal.
+  - arguments:
+      value: 2
+    target_field: "2"
+    should_pass: false
+    description: The target field is a string, not a number.

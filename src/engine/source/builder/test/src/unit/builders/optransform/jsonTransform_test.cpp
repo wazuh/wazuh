@@ -79,11 +79,22 @@ INSTANTIATE_TEST_SUITE_P(
                                .WillOnce(testing::Return(false));
                            return None {};
                        })),
-        /*** Merge ***/
+        /*** merge($source[, 'deep']) ***/
         TransformT({}, opBuilderHelperMerge, FAILURE()),
         TransformT({makeValue(R"("value")")}, opBuilderHelperMerge, FAILURE()),
         TransformT({makeRef("ref")}, opBuilderHelperMerge, SUCCESS()),
+        TransformT({makeRef("ref"), makeValue(R"("deep")")}, opBuilderHelperMerge, SUCCESS()),
         TransformT({makeRef("ref"), makeRef("ref")}, opBuilderHelperMerge, FAILURE()),
+        TransformT({makeValue(R"("deep")"), makeRef("ref")}, opBuilderHelperMerge, FAILURE()),
+        TransformT({makeRef("ref"), makeValue(R"("deep")"), makeValue(R"("deep")")}, opBuilderHelperMerge, FAILURE()),
+        /*** The optional second argument of merge must be the literal 'deep' ***/
+        TransformT({makeRef("ref"), makeValue(R"("shallow")")}, opBuilderHelperMerge, FAILURE()),
+        TransformT({makeRef("ref"), makeValue(R"("DEEP")")}, opBuilderHelperMerge, FAILURE()),
+        TransformT({makeRef("ref"), makeValue(R"("")")}, opBuilderHelperMerge, FAILURE()),
+        TransformT({makeRef("ref"), makeValue("true")}, opBuilderHelperMerge, FAILURE()),
+        TransformT({makeRef("ref"), makeValue("1")}, opBuilderHelperMerge, FAILURE()),
+        TransformT({makeRef("ref"), makeValue("null")}, opBuilderHelperMerge, FAILURE()),
+        TransformT({makeRef("ref"), makeValue(R"(["deep"])")}, opBuilderHelperMerge, FAILURE()),
         TransformT({makeRef("ref")},
                    opBuilderHelperMerge,
                    FAILURE(
@@ -93,13 +104,8 @@ INSTANTIATE_TEST_SUITE_P(
                                .WillOnce(testing::Return(false));
                            return None {};
                        })),
-        /*** Merge Recursive ***/
-        TransformT({}, opBuilderHelperMergeRecursively, FAILURE()),
-        TransformT({makeValue(R"("value")")}, opBuilderHelperMergeRecursively, FAILURE()),
-        TransformT({makeRef("ref")}, opBuilderHelperMergeRecursively, SUCCESS()),
-        TransformT({makeRef("ref"), makeRef("ref")}, opBuilderHelperMergeRecursively, FAILURE()),
-        TransformT({makeRef("ref")},
-                   opBuilderHelperMergeRecursively,
+        TransformT({makeRef("ref"), makeValue(R"("deep")")},
+                   opBuilderHelperMerge,
                    FAILURE(
                        [](const auto& mocks)
                        {
@@ -107,30 +113,27 @@ INSTANTIATE_TEST_SUITE_P(
                                .WillOnce(testing::Return(false));
                            return None {};
                        })),
-        /*** Erase Custom Fields ***/
-        TransformT({},
-                   opBuilderHelperEraseCustomFields,
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           EXPECT_CALL(*mocks.ctx, validatorPtr()).WillOnce(testing::Return(nullptr));
-                           return None {};
-                       })),
+        /*** delete_custom_fields(): only the root '.' is accepted, and this harness targets 'targetField' ***/
+        TransformT({}, opBuilderHelperEraseCustomFields, FAILURE()),
         TransformT({makeValue(R"("value")")}, opBuilderHelperEraseCustomFields, FAILURE()),
         TransformT({makeRef("ref")}, opBuilderHelperEraseCustomFields, FAILURE()),
-        /*** Sanitize Fields ***/
+        /*** snake_case_keys(['deep']) ***/
         TransformT({}, opBuilderHelperSanitizeFields, SUCCESS()),
-        TransformT({makeValue(R"("value")")}, opBuilderHelperSanitizeFields, FAILURE()),
-        TransformT({makeValue("true")}, opBuilderHelperSanitizeFields, SUCCESS()),
-        TransformT({makeValue("false")}, opBuilderHelperSanitizeFields, SUCCESS()),
+        TransformT({makeValue(R"("deep")")}, opBuilderHelperSanitizeFields, SUCCESS()),
         TransformT({makeRef("ref")}, opBuilderHelperSanitizeFields, FAILURE()),
-        /*** Non-bool value types must fail ***/
+        TransformT({makeValue(R"("deep")"), makeValue(R"("deep")")}, opBuilderHelperSanitizeFields, FAILURE()),
+        /*** Anything but the literal 'deep' is a build error, the pre-5.0.0 boolean included ***/
+        TransformT({makeValue(R"("value")")}, opBuilderHelperSanitizeFields, FAILURE()),
+        TransformT({makeValue(R"("DEEP")")}, opBuilderHelperSanitizeFields, FAILURE()),
+        TransformT({makeValue(R"("")")}, opBuilderHelperSanitizeFields, FAILURE()),
+        TransformT({makeValue("true")}, opBuilderHelperSanitizeFields, FAILURE()),
+        TransformT({makeValue("false")}, opBuilderHelperSanitizeFields, FAILURE()),
         TransformT({makeValue(R"(1)")}, opBuilderHelperSanitizeFields, FAILURE()),
         TransformT({makeValue(R"(1.5)")}, opBuilderHelperSanitizeFields, FAILURE()),
         TransformT({makeValue(R"(null)")}, opBuilderHelperSanitizeFields, FAILURE()),
         TransformT({makeValue(R"([1,2])")}, opBuilderHelperSanitizeFields, FAILURE()),
         TransformT({makeValue(R"({"a":1})")}, opBuilderHelperSanitizeFields, FAILURE()),
-        /*** Discard Events (target field is always "targetField" -> mismatch -> FAILURE) ***/
+        /*** discard_event() (the harness targets 'targetField' -> mismatch -> FAILURE) ***/
         TransformT({}, opBuilderHelperDiscardEvents, FAILURE()),
         TransformT({makeValue(R"("value")")}, opBuilderHelperDiscardEvents, FAILURE()),
         TransformT({makeRef("ref")}, opBuilderHelperDiscardEvents, FAILURE())),
@@ -449,7 +452,7 @@ INSTANTIATE_TEST_SUITE_P(
                    "target",
                    {makeRef("ref")},
                    FAILURE()),
-        /*** Merge ***/
+        /*** merge($source) ***/
         TransformT(R"({"target": [1, 3], "ref": [2, 4]})",
                    opBuilderHelperMerge,
                    "target",
@@ -497,56 +500,110 @@ INSTANTIATE_TEST_SUITE_P(
                                .WillOnce(testing::Return(false));
                            return None {};
                        })),
-        /*** Merge Recursive ***/
-        TransformT(R"({"target": [1, 3], "ref": [2, 4]})",
-                   opBuilderHelperMergeRecursively,
+        /*** Arrays merge as a de-duplicated union, and a shallow merge replaces the nested values ***/
+        TransformT(R"({"target": [1, 2], "ref": [2, 3]})",
+                   opBuilderHelperMerge,
                    "target",
                    {makeRef("ref")},
+                   SUCCESS(makeEvent(R"({"target":[1,2,3]})"))),
+        TransformT(R"({"target": {"a": [1, 2]}, "ref": {"a": [2, 3]}})",
+                   opBuilderHelperMerge,
+                   "target",
+                   {makeRef("ref")},
+                   SUCCESS(makeEvent(R"({"target":{"a":[2,3]}})"))),
+        TransformT(R"({"target": {"a": "x"}, "ref": {"a": {"b": "c"}}})",
+                   opBuilderHelperMerge,
+                   "target",
+                   {makeRef("ref")},
+                   SUCCESS(makeEvent(R"({"target":{"a":{"b":"c"}}})"))),
+        /*** merge($source, 'deep') ***/
+        TransformT(R"({"target": [1, 3], "ref": [2, 4]})",
+                   opBuilderHelperMerge,
+                   "target",
+                   {makeRef("ref"), makeValue(R"("deep")")},
                    SUCCESS(makeEvent(R"({"target":[1,3,2,4]})"))),
         TransformT(R"({"target": [[1], [3]], "ref": [[2], [4]]})",
-                   opBuilderHelperMergeRecursively,
+                   opBuilderHelperMerge,
                    "target",
-                   {makeRef("ref")},
+                   {makeRef("ref"), makeValue(R"("deep")")},
                    SUCCESS(makeEvent(R"({"target":[[1],[3],[2],[4]]})"))),
         TransformT(R"({"target": {"a": "b"}, "ref": {"c": "d"}})",
-                   opBuilderHelperMergeRecursively,
+                   opBuilderHelperMerge,
                    "target",
-                   {makeRef("ref")},
+                   {makeRef("ref"), makeValue(R"("deep")")},
                    SUCCESS(makeEvent(R"({"target":{"a":"b","c":"d"}})"))),
+        // A scalar in the source overwrites a nested object of the target
         TransformT(R"({"target": {"a": {"b": "c"}}, "ref": {"a": "d"}})",
-                   opBuilderHelperMergeRecursively,
+                   opBuilderHelperMerge,
                    "target",
-                   {makeRef("ref")},
+                   {makeRef("ref"), makeValue(R"("deep")")},
                    SUCCESS(makeEvent(R"({"target":{"a":"d"}})"))),
         TransformT(R"({"target": {"a": {"b": "c"}}, "ref": {"a": {"d": "e"}}})",
-                   opBuilderHelperMergeRecursively,
+                   opBuilderHelperMerge,
                    "target",
-                   {makeRef("ref")},
+                   {makeRef("ref"), makeValue(R"("deep")")},
                    SUCCESS(makeEvent(R"({"target":{"a":{"b":"c","d":"e"}}})"))),
+        // Nested arrays merge as a de-duplicated union too
+        TransformT(R"({"target": {"a": [1, 2]}, "ref": {"a": [2, 3]}})",
+                   opBuilderHelperMerge,
+                   "target",
+                   {makeRef("ref"), makeValue(R"("deep")")},
+                   SUCCESS(makeEvent(R"({"target":{"a":[1,2,3]}})"))),
         TransformT(R"({"target": {}, "ref": {"a": "d"}})",
-                   opBuilderHelperMergeRecursively,
+                   opBuilderHelperMerge,
                    "notTarget",
-                   {makeRef("ref")},
+                   {makeRef("ref"), makeValue(R"("deep")")},
                    FAILURE()),
         TransformT(R"({"target": {}, "ref": {"a": "d"}})",
-                   opBuilderHelperMergeRecursively,
+                   opBuilderHelperMerge,
                    "target",
-                   {makeRef("notRef")},
+                   {makeRef("notRef"), makeValue(R"("deep")")},
                    FAILURE()),
-        TransformT(
-            R"({"target": {}, "ref": []})", opBuilderHelperMergeRecursively, "target", {makeRef("ref")}, FAILURE()),
-        TransformT(
-            R"({"target": 1, "ref": {}})", opBuilderHelperMergeRecursively, "target", {makeRef("ref")}, FAILURE()),
-        TransformT(
-            R"({"target": 1.1, "ref": {}})", opBuilderHelperMergeRecursively, "target", {makeRef("ref")}, FAILURE()),
-        TransformT(
-            R"({"target": true, "ref": {}})", opBuilderHelperMergeRecursively, "target", {makeRef("ref")}, FAILURE()),
-        TransformT(
-            R"({"target": null, "ref": {}})", opBuilderHelperMergeRecursively, "target", {makeRef("ref")}, FAILURE()),
-        TransformT(R"({"target": {"a": {"b": "c"}}, "ref": {"a": {"d": "e"}}})",
-                   opBuilderHelperMergeRecursively,
+        TransformT(R"({"target": {}, "ref": []})",
+                   opBuilderHelperMerge,
                    "target",
-                   {makeRef("ref")},
+                   {makeRef("ref"), makeValue(R"("deep")")},
+                   FAILURE()),
+        TransformT(R"({"target": 1, "ref": {}})",
+                   opBuilderHelperMerge,
+                   "target",
+                   {makeRef("ref"), makeValue(R"("deep")")},
+                   FAILURE()),
+        TransformT(R"({"target": 1.1, "ref": {}})",
+                   opBuilderHelperMerge,
+                   "target",
+                   {makeRef("ref"), makeValue(R"("deep")")},
+                   FAILURE()),
+        TransformT(R"({"target": true, "ref": {}})",
+                   opBuilderHelperMerge,
+                   "target",
+                   {makeRef("ref"), makeValue(R"("deep")")},
+                   FAILURE()),
+        TransformT(R"({"target": null, "ref": {}})",
+                   opBuilderHelperMerge,
+                   "target",
+                   {makeRef("ref"), makeValue(R"("deep")")},
+                   FAILURE()),
+        /*** A nested type conflict in deep mode fails and leaves the event untouched ***/
+        TransformT(R"({"target": {"a": "x"}, "ref": {"a": {"b": "c"}}})",
+                   opBuilderHelperMerge,
+                   "target",
+                   {makeRef("ref"), makeValue(R"("deep")")},
+                   FAILURE()),
+        TransformT(R"({"target": {"a": [1]}, "ref": {"a": {"b": "c"}}})",
+                   opBuilderHelperMerge,
+                   "target",
+                   {makeRef("ref"), makeValue(R"("deep")")},
+                   FAILURE()),
+        TransformT(R"({"target": {"a": {"b": "c"}}, "ref": {"a": [1]}})",
+                   opBuilderHelperMerge,
+                   "target",
+                   {makeRef("ref"), makeValue(R"("deep")")},
+                   FAILURE()),
+        TransformT(R"({"target": {"a": {"b": "c"}}, "ref": {"a": {"d": "e"}}})",
+                   opBuilderHelperMerge,
+                   "target",
+                   {makeRef("ref"), makeValue(R"("deep")")},
                    FAILURE(
                        [](const auto& mocks)
                        {
@@ -556,7 +613,7 @@ INSTANTIATE_TEST_SUITE_P(
                                .WillOnce(testing::Return(false));
                            return None {};
                        })),
-        /*** Erase Custom Fields ***/
+        /*** delete_custom_fields() ***/
         TransformT(R"({"target": "value"})",
                    opBuilderHelperEraseCustomFields,
                    ".",
@@ -591,17 +648,20 @@ INSTANTIATE_TEST_SUITE_P(
                            EXPECT_CALL(*mocks.validator, hasField(DotPath("t2"))).WillOnce(testing::Return(false));
                            return makeEvent(R"({"t1": "value"})");
                        })),
-        TransformT(R"({"target": "value"})",
+        // Temporary '_' fields are custom fields too, and the members of a schema field are not visited
+        TransformT(R"({"_tmp": "value", "t1": {"custom": "value"}})",
                    opBuilderHelperEraseCustomFields,
-                   "notTarget",
+                   ".",
                    {},
                    SUCCESS(
                        [](const BuildersMocks& mocks)
                        {
                            EXPECT_CALL(*mocks.ctx, validatorPtr()).WillOnce(testing::Return(mocks.validator));
-                           return makeEvent(R"({"target": "value"})");
+                           EXPECT_CALL(*mocks.validator, hasField(DotPath("_tmp"))).WillOnce(testing::Return(false));
+                           EXPECT_CALL(*mocks.validator, hasField(DotPath("t1"))).WillOnce(testing::Return(true));
+                           return makeEvent(R"({"t1": {"custom": "value"}})");
                        })),
-        /*** Sanitize Fields ***/
+        /*** snake_case_keys(['deep']) ***/
         TransformT(R"({"target":{"Full Name":"Ana","e-mail":"x","Pais":"AR"}})",
                    opBuilderHelperSanitizeFields,
                    "target",
@@ -643,17 +703,23 @@ INSTANTIATE_TEST_SUITE_P(
                    {},
                    SUCCESS(makeEvent(R"({"target":["hello_world",{"full_name":"Ana"}]})"))),
         TransformT(R"({"target":[1, {"a":1}]})", opBuilderHelperSanitizeFields, "target", {}, FAILURE()),
+        // With 'deep' the keys of the nested objects are renamed too; without it they are kept
         TransformT(R"({"target":{"a":{"B-C":{"D E":1}}}})",
                    opBuilderHelperSanitizeFields,
                    "target",
-                   {makeValue("true")},
+                   {makeValue(R"("deep")")},
                    SUCCESS(makeEvent(R"({"target":{"a":{"b_c":{"d_e":1}}}})"))),
+        TransformT(R"({"target":{"a":{"B-C":{"D E":1}}}})",
+                   opBuilderHelperSanitizeFields,
+                   "target",
+                   {},
+                   SUCCESS(makeEvent(R"({"target":{"a":{"B-C":{"D E":1}}}})"))),
         TransformT(R"({"target":{"a":{"X Y":1},"b":{"Z W":2}}})",
                    opBuilderHelperSanitizeFields,
                    "target.a",
                    {},
                    SUCCESS(makeEvent(R"({"target":{"a":{"x_y":1},"b":{"Z W":2}}})"))),
-        /*** Discard Events ***/
+        /*** discard_event() ***/
         // Test with index_discarded_events = true (should clean all fields and set discard flag)
         TransformT(R"({"field1":"value1","field2":"value2"})",
                    opBuilderHelperDiscardEvents,
@@ -679,3 +745,47 @@ INSTANTIATE_TEST_SUITE_P(
                        }))),
     testNameFormatter<TransformOperationTest>("JsonTransform"));
 } // namespace transformoperatestest
+
+class JsonTransformBuildTest : public BaseBuilderTest
+{
+};
+
+// delete_custom_fields() builds only with the root target '.': below the root, the bare key names of the target
+// would be looked up as top-level schema fields
+TEST_F(JsonTransformBuildTest, DeleteCustomFieldsAcceptsOnlyTheRootTarget)
+{
+    EXPECT_CALL(*mocks->ctx, context()).Times(testing::AtLeast(1));
+    EXPECT_CALL(*mocks->ctx, isTestMode()).Times(testing::AtLeast(1));
+    EXPECT_CALL(*mocks->ctx, validatorPtr()).WillOnce(testing::Return(mocks->validator));
+
+    ASSERT_NO_THROW(opBuilderHelperEraseCustomFields(Reference {"."}, {}, mocks->ctx));
+
+    for (const std::string target : {"target", "target.sub", "_tmp"})
+    {
+        try
+        {
+            opBuilderHelperEraseCustomFields(Reference {target}, {}, mocks->ctx);
+            FAIL() << "the target '" << target << "' is not the root and must be rejected";
+        }
+        catch (const std::runtime_error& e)
+        {
+            EXPECT_THAT(e.what(), testing::HasSubstr("root target field '.'")) << target;
+            EXPECT_THAT(e.what(), testing::HasSubstr("'" + target + "'"));
+        }
+    }
+}
+
+// discard_event() names itself in the build error of a wrong target
+TEST_F(JsonTransformBuildTest, DiscardEventRejectsAnyOtherTarget)
+{
+    try
+    {
+        opBuilderHelperDiscardEvents(Reference {"target"}, {}, mocks->ctx);
+        FAIL() << "a target other than wazuh.space.event_discarded must be rejected";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(e.what(), testing::HasSubstr("discard_event helper can only be used with target field"));
+        EXPECT_THAT(e.what(), testing::HasSubstr("'wazuh.space.event_discarded', got 'target'"));
+    }
+}

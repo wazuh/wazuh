@@ -19,7 +19,7 @@ namespace builder::builders::opfilter
 //*************************************************
 
 /**
- * @brief Create `string_equal` helper function that filters events with a string
+ * @brief Create `string_eq` helper function that filters events with a string
  * field equals to a value.
  *
  * The filter checks if a field in the JSON event is equal to a value.
@@ -27,7 +27,7 @@ namespace builder::builders::opfilter
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
  * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @return Expression The lifter with the `string_equal` filter.
+ * @return Expression The lifter with the `string_eq` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
 FilterOp opBuilderHelperStringEqual(const Reference& targetField,
@@ -35,7 +35,7 @@ FilterOp opBuilderHelperStringEqual(const Reference& targetField,
                                     const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
- * @brief Create `string_not_equal` helper function that filters events with a string
+ * @brief Create `string_ne` helper function that filters events with a string
  * field not equals to a value.
  *
  * The filter checks if a field in the JSON event is not  equal to a value.
@@ -44,7 +44,7 @@ FilterOp opBuilderHelperStringEqual(const Reference& targetField,
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
  * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @return Expression The lifter with the `string_not_equal` filter.
+ * @return Expression The lifter with the `string_ne` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
 FilterOp opBuilderHelperStringNotEqual(const Reference& targetField,
@@ -52,7 +52,7 @@ FilterOp opBuilderHelperStringNotEqual(const Reference& targetField,
                                        const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
- * @brief Create `string_greater` helper function that filters events with a string
+ * @brief Create `string_gt` helper function that filters events with a string
  * field greater than a value.
  *
  * The filter checks if the JSON event field <field> is greater than a <value>
@@ -61,7 +61,7 @@ FilterOp opBuilderHelperStringNotEqual(const Reference& targetField,
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
  * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @return Expression The lifter with the `string_greater` filter.
+ * @return Expression The lifter with the `string_gt` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
 FilterOp opBuilderHelperStringGreaterThan(const Reference& targetField,
@@ -69,7 +69,7 @@ FilterOp opBuilderHelperStringGreaterThan(const Reference& targetField,
                                           const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
- * @brief Create `string_greater_or_equal` helper function that filters events with a string
+ * @brief Create `string_gte` helper function that filters events with a string
  * field less or equals than a value.
  *
  * The filter checks if the JSON event field <field> is greater or equals than a <value>
@@ -78,7 +78,7 @@ FilterOp opBuilderHelperStringGreaterThan(const Reference& targetField,
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
  * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @return Expression The lifter with the `string_greater_or_equal` filter.
+ * @return Expression The lifter with the `string_gte` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
 FilterOp opBuilderHelperStringGreaterThanEqual(const Reference& targetField,
@@ -86,7 +86,7 @@ FilterOp opBuilderHelperStringGreaterThanEqual(const Reference& targetField,
                                                const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
- * @brief Create `string_less` helper function that filters events with a string
+ * @brief Create `string_lt` helper function that filters events with a string
  * field less than a value.
  *
  * The filter checks if the JSON event field <field> is less than a <value>
@@ -95,7 +95,7 @@ FilterOp opBuilderHelperStringGreaterThanEqual(const Reference& targetField,
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
  * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @return Expression The lifter with the `string_less` filter.
+ * @return Expression The lifter with the `string_lt` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
 FilterOp opBuilderHelperStringLessThan(const Reference& targetField,
@@ -103,7 +103,7 @@ FilterOp opBuilderHelperStringLessThan(const Reference& targetField,
                                        const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
- * @brief Create `string_less_or_equal` helper function that filters events with a string
+ * @brief Create `string_lte` helper function that filters events with a string
  * field less or equals than a value.
  *
  * The filter checks if the JSON event field <field> is less or equals than a <value>
@@ -112,7 +112,7 @@ FilterOp opBuilderHelperStringLessThan(const Reference& targetField,
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
  * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @return Expression The lifter with the `string_less_or_equal` filter.
+ * @return Expression The lifter with the `string_lte` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
 FilterOp opBuilderHelperStringLessThanEqual(const Reference& targetField,
@@ -263,7 +263,7 @@ FilterOp opBuilderHelperNumberGreaterThanEqual(const Reference& targetField,
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
  * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @return Expression The lifter with the `int_equal` filter.
+ * @return Expression The lifter with the `int_eq` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
 FilterOp opBuilderHelperIntEqual(const Reference& targetField,
@@ -279,7 +279,7 @@ FilterOp opBuilderHelperIntEqual(const Reference& targetField,
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
  * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @return Expression The lifter with the `int_not_equal` filter.
+ * @return Expression The lifter with the `int_ne` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
 FilterOp opBuilderHelperIntNotEqual(const Reference& targetField,
@@ -295,7 +295,7 @@ FilterOp opBuilderHelperIntNotEqual(const Reference& targetField,
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
  * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @return Expression The lifter with the `int_less` filter.
+ * @return Expression The lifter with the `int_lt` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
 FilterOp opBuilderHelperIntLessThan(const Reference& targetField,
@@ -311,7 +311,7 @@ FilterOp opBuilderHelperIntLessThan(const Reference& targetField,
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
  * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @return Expression The lifter with the `int_less_or_equal` filter.
+ * @return Expression The lifter with the `int_lte` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
 FilterOp opBuilderHelperIntLessThanEqual(const Reference& targetField,
@@ -327,7 +327,7 @@ FilterOp opBuilderHelperIntLessThanEqual(const Reference& targetField,
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
  * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @return Expression The lifter with the `int_greater` filter.
+ * @return Expression The lifter with the `int_gt` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
 
@@ -344,7 +344,7 @@ FilterOp opBuilderHelperIntGreaterThan(const Reference& targetField,
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
  * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @return Expression The lifter with the `int_greater_or_equal` filter.
+ * @return Expression The lifter with the `int_gte` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
 FilterOp opBuilderHelperIntGreaterThanEqual(const Reference& targetField,
@@ -359,7 +359,7 @@ FilterOp opBuilderHelperIntGreaterThanEqual(const Reference& targetField,
  * @param targetField target field of the helper
  * @param opArgs  vector of parameters as present in the raw definition
  * @param buildCtx handler with definitions
- * @return FilterOp The lifter with the `binary_and` filter.
+ * @return FilterOp The lifter with the `has_any_bit` filter.
  */
 FilterOp opBuilderHelperBinaryAnd(const Reference& targetField,
                                   const std::vector<OpArg>& opArgs,
@@ -392,13 +392,13 @@ FilterOp opBuilderHelperRegexNotMatch(const Reference& targetField,
                                       const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
- * @brief Create `ip_cidr_match` helper function that filters events if the field
+ * @brief Create `in_cidr` helper function that filters events if the field
  * is in the specified CIDR range.
  *
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
  * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @return Expression The lifter with the `ip_cidr_match` filter.
+ * @return Expression The lifter with the `in_cidr` filter.
  */
 FilterOp opBuilderHelperIPCIDR(const Reference& targetField,
                                const std::vector<OpArg>& opArgs,
@@ -422,8 +422,8 @@ FilterOp opBuilderHelperPublicIP(const Reference& targetField,
                                  const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
- * @brief Create `array_contains` helper function that filters events if the field
- * is an array and contains one of the specified values.
+ * @brief Create the `array_contains_all` helper function: passes when the target field is an array that
+ * contains every one of the given values (a missing reference argument makes it fail).
  *
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
@@ -437,8 +437,8 @@ FilterOp opBuilderHelperContains(const Reference& targetField,
                                  const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
- * @brief Create the helper function `array_contains` that filters events if the field
- * is an array and contains at least one of the specified values.
+ * @brief Create the `array_contains_any` helper function: passes when the target field is an array that
+ * contains at least one of the given values (missing reference arguments are skipped).
  *
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
@@ -452,8 +452,8 @@ FilterOp opBuilderHelperContainsAny(const Reference& targetField,
                                     const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
- * @brief Create `array_not_contains` helper function that filters events if the field
- * is an array and does not contains any of the specified values.
+ * @brief Create the `array_excludes_any` helper function: passes when the target field is an array and at
+ * least one of the given values is NOT an element of it (missing reference arguments are skipped).
  *
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
@@ -509,8 +509,8 @@ FilterOp opBuilderHelperIsIpv6(const Reference& targetField,
                                const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
- * @brief Create the helper function `array_not_contains_any` that filters events if the field
- * is an array and does not contain at least one of the specified values.
+ * @brief Create the `array_excludes_all` helper function: passes when the target field is an array that
+ * contains none of the given values (a missing reference argument makes it fail).
  *
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
@@ -688,9 +688,9 @@ FilterOp opBuilderHelperIsNotNull(const Reference& targetField,
 //*************************************************
 
 /**
- * @brief Create `match_value` helper function that filters events which field
+ * @brief Create `one_of` helper function that filters events which field
  * value is present in the specified definition array.
- * <field>: +match_value/$<definition_array>|$<array_reference>
+ * <field>: +one_of/$<definition_array>|$<array_reference>
  *
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
@@ -702,9 +702,9 @@ FilterOp opBuilderHelperMatchValue(const Reference& targetField,
                                    const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
- * @brief Create `exists_key_in` helper function that filters events which field
+ * @brief Create `is_key_of` helper function that filters events which field
  * value is present as a key in the specified definition object.
- * <field>: +exists_key_in/$<definition_object>|$<object_reference>
+ * <field>: +is_key_of/$<definition_object>|$<object_reference>
  *
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
@@ -716,14 +716,10 @@ FilterOp opBuilderHelperMatchKey(const Reference& targetField,
                                  const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
- * @brief Checks if all the specified keys from the target field (an object) are present in the given list.
- * It verifies whether the elements in the list are included as keys in the target object.
- * If any key from the target object is missing in the list, the validation fails.
- * The function does not require that all keys in the list be present in the target field,
- * but all keys from the target field must be in the list.
- * If any element in the list is not a string, or if the target object is missing any keys from the list, the validation
- * fails. This helper is particularly useful for ensuring that all required keys are present in the object and are
- * strictly enforced in the list.
+ * @brief Create the `has_only_keys` helper function: passes when every top-level key of the target object is in
+ * the given list of strings (the list may contain keys the object does not have; an empty object passes).
+ * Fails when the target is missing or not an object, when the list reference is missing or not an array of
+ * strings, or when the object has a key outside the list.
  *
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing the list of keys to be evaluated

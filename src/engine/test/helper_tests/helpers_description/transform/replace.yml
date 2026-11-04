@@ -1,0 +1,87 @@
+# Name of the helper function
+name: replace
+
+metadata:
+  description: |
+    Replaces every occurrence of `old` with `new` in the target string.
+
+    Behavior:
+    - `old` and `new` are literal strings; `old` must not be empty, `new` may be empty.
+    - The match is literal (not a regular expression) and case-sensitive.
+    - Occurrences are replaced from left to right without overlapping, and the inserted text is not scanned
+      again.
+    - The result is written back to the target field; the operation succeeds even when nothing was replaced.
+
+    Build errors:
+    - `old` is empty, or `old` or `new` is not a literal string.
+    - A number of arguments other than 2.
+
+    Notes:
+    - `trim` removes characters at the ends of the string only.
+  group: string
+  fails_when:
+    - The target field does not exist or is not a string.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  old:
+    type: string
+    generate: string
+    source: value
+  new:
+    type: string
+    generate: string
+    source: value
+
+target_field:
+  type: string
+  generate: string
+
+test:
+  - arguments:
+      old: hello
+      new: hi
+    target_field: hello world!
+    should_pass: true
+    expected: hi world!
+    description: Replaces the occurrence of old with new
+  - arguments:
+      old: non exist
+      new: hi
+    target_field: hello world!
+    should_pass: true
+    expected: hello world!
+    description: Succeeds without changes when old does not occur
+  - arguments:
+      old: Hello
+      new: hi
+    target_field: hello world!
+    should_pass: true
+    expected: hello world!
+    description: The match is case-sensitive
+  - arguments:
+      old: "-"
+      new: "+"
+    target_field: a-b-c
+    should_pass: true
+    expected: a+b+c
+    description: Every occurrence is replaced
+  - arguments:
+      old: o
+      new: ""
+    target_field: hello world
+    should_pass: true
+    expected: hell wrld
+    description: An empty new string removes every occurrence of old
+  - arguments:
+      old: aa
+      new: b
+    target_field: aaa
+    should_pass: true
+    expected: ba
+    description: Occurrences are replaced from left to right without overlapping

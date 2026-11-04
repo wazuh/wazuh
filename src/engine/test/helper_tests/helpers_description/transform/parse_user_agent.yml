@@ -1,0 +1,53 @@
+# Name of the helper function
+name: parse_user_agent
+
+metadata:
+  description: |
+    Copies the input user agent string to the `original` member of the target object.
+
+    Behavior:
+    - The whole non-empty input is stored, unchanged, in `<target>.original`; any other member of the target
+      is kept, and a target that is not an object becomes one.
+    - Nothing else is extracted: no name, version, operating system or device.
+
+    Build errors:
+    - `input` is not a reference, or references a schema field that is not a string.
+    - A number of arguments other than 1.
+    - The target field is a schema field that is not an object.
+
+    Notes:
+    - It is equivalent to mapping `<target>.original: $input`, except that an empty input fails.
+  group: parse
+  fails_when:
+    - The input field does not exist or is not a string.
+    - The input is empty.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  input:
+    type: string
+    generate: string
+    source: reference
+
+# a target of another type is turned into an object
+skipped:
+  - success_cases
+  - different_target_field_type
+
+target_field:
+  type: object
+  generate: object
+
+test:
+  - arguments:
+      input: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110"
+    target_field: any_value
+    should_pass: true
+    expected:
+      original: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110"
+    description: The user agent string is stored unchanged in the original member

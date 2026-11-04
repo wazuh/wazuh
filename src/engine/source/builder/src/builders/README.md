@@ -24,12 +24,13 @@ and the underlying schema that defines the event structure.
 10. [Type Compatibility Matrix](#type-compatibility-matrix)
 11. [Value Validators](#value-validators)
 12. [Examples by Registration Pattern](#examples-by-registration-pattern)
+13. [Naming Convention](#naming-convention)
 
 ---
 
 ## Overview
 
-Every helper function (e.g. `int_equal`, `parse_ip`, `map`, `concat`) is registered with a
+Every helper function (e.g. `int_eq`, `parse_ip`, `map`, `concat_all`) is registered with a
 **validation intent** and an **operation builder**. The validation intent declares what type
 constraints the helper imposes on the target field. When a decoder uses a helper on a specific
 field, the engine validates – at **build time** if possible, otherwise at **runtime** – that
@@ -101,7 +102,7 @@ include:
 | Factory | Token Type | Meaning |
 |---------|-----------|---------|
 | `schemf::runtimeValidation()` | `nullptr` | Skip build-time validation entirely; only validate at runtime. |
-| `schemf::elementValidationToken()` | `BaseToken` (no type) | Array-element-level validation. Used by `array_contains`, `array_append`, etc. |
+| `schemf::elementValidationToken()` | `BaseToken` (no type) | Array-element-level validation. Used by `array_contains_all`, `array_append_all`, etc. |
 | `schemf::JTypeToken::create(json::Json::Type::Number)` | `JTypeToken` | Target field must map to JSON `Number`. |
 | `schemf::JTypeToken::create(json::Json::Type::String)` | `JTypeToken` | Target field must map to JSON `String`. |
 | `schemf::JTypeToken::create(json::Json::Type::Object)` | `JTypeToken` | Target field must map to JSON `Object`. |
@@ -207,7 +208,7 @@ The flow is:
 
 ### `JTypeToken` dispatch
 Checks that the JSON type expected by the helper is one the schema field accepts (one JSON type per schema type,
-except `GEO_POINT`, which accepts `Object` and `String`). For example, `int_equal` creates `JTypeToken(Number)`.
+except `GEO_POINT`, which accepts `Object` and `String`). For example, `int_eq` creates `JTypeToken(Number)`.
 If the target field is of schema type `IP` (which maps to JSON `String`), the build **fails** with
 `Operation expects a JSON type 'number', but field '<name>' does not accept it. Accepted types: [string]`.
 
@@ -267,8 +268,8 @@ JSON value. When the target field is an array, the validator is wrapped via `asA
 the element validator to each element individually.
 
 Filter and transform operations do **not** get runtime type wrapping: `runType()` returns any builder that is not a
-`MapBuilder` unchanged, even when the `ValidationResult` carries a validator. So `int_equal` (a filter),
-`parse_ip` and `array_append` (transforms) are checked only at build time.
+`MapBuilder` unchanged, even when the `ValidationResult` carries a validator. So `int_eq` (a check helper),
+`parse_ip` and `array_append_all` (transforms) are checked only at build time.
 
 ---
 
@@ -454,18 +455,18 @@ Defined in `schemf/src/valueValidators.hpp`, each validator checks the concrete 
 
 ## Examples by Registration Pattern
 
-### 1. Static `JTypeToken` — `int_equal`
+### 1. Static `JTypeToken` — `int_eq`
 
 ```cpp
 registry->template add<builders::OpBuilderEntry>(
-    "int_equal",
+    "int_eq",
     {schemf::JTypeToken::create(json::Json::Type::Number), builders::opfilter::opBuilderHelperIntEqual});
 ```
 
 - **Build-time**: Checks that the target field's JSON type is `Number`.
 - **Runtime**: None. The dispatch returns the target type's validator (e.g. `LONG` → `getLongValidator()`), but
-  `int_equal` is a `FilterBuilder`, which `runType()` does not wrap. A `MapBuilder` registered with a
-  `JTypeToken` (e.g. `concat`, `to_string`) would have its output validated per element (for arrays) or directly.
+  `int_eq` is a `FilterBuilder`, which `runType()` does not wrap. A `MapBuilder` registered with a
+  `JTypeToken` (e.g. `concat_all`, `to_string`) would have its output validated per element (for arrays) or directly.
 
 ### 2. Static `STypeToken` — `parse_ip`
 
@@ -491,11 +492,11 @@ registry->template add<builders::OpBuilderEntry>("exists",
 - **Runtime**: None. The target type's validator is returned, but `exists` is a filter; only a map helper
   registered with `runtimeValidation()` would be wrapped.
 
-### 4. `elementValidationToken()` — `array_append`
+### 4. `elementValidationToken()` — `array_append_all`
 
 ```cpp
 registry->template add<builders::OpBuilderEntry>(
-    "array_append", {schemf::elementValidationToken(), builders::optransform::getArrayAppendBuilder(false, false)});
+    "array_append_all", {schemf::elementValidationToken(), builders::optransform::getArrayAppendBuilder(false, false)});
 ```
 
 - **Build-time**: `BaseToken` — only the target field classification runs.
@@ -521,6 +522,43 @@ registry->template add<builders::OpBuilderEntry>("map",
 `map` is a `MapBuilder`, so it is the one helper in this list whose runtime validator is actually applied.
 
 ---
+
+## Naming Convention
+
+Every helper name registered in `register.hpp` follows these rules (the engine README under
+`docs/ref/modules/engine/` repeats them for content authors). A name that is not registered fails the build with
+`Operation builder '<name>' not found`.
+
+1. `snake_case`, ASCII, complete English words. Accepted abbreviations: `ip ipv4 ipv6 cidr json xml csv dsv kv
+   kvdb regex uri fqdn sha1 hex iana asn epoch int bool eq ne gt gte lt lte`.
+2. **Check helpers read as a sentence whose subject is the target**: `exists`, `contains`, `one_of`, `is_key_of`,
+   `in_kvdb`, `in_cidr`, `is_string`. `is_<x>` is a predicate on the target's class or relation. Negation puts `not`
+   right before the verb: `not_exists`, `is_not_string`, `not_in_kvdb`, `regex_not_match`. Every negated helper is
+   false on a missing or wrong-type field (it is not `NOT x(...)`), and its description says so.
+3. **Quantifiers are explicit suffixes on variadic helpers**: `_all` (every argument) and `_any` (at least one):
+   `array_contains_all/any`, `array_excludes_any/all`, `array_append_all/any`, `array_append_unique_all/any`,
+   `concat_all/any`. `_any` on an appending/concatenating helper means "use the arguments that resolve; fail only
+   if none does".
+4. **Typed comparisons** are `<type>_<op>`, `type ∈ {string, number, int}`, `op ∈ {eq, ne, gt, gte, lt, lte}`.
+   The `!= < <= > >=` operators desugar to the `string_*`/`number_*` forms (`helperParser.hpp`).
+5. **Map helpers are named by what they produce**: `to_<type>`, `parse_<format>` (same names as the parse-stage
+   parsers), `<x>_to_<y>` (`hex_to_int`, `epoch_to_date`, `array_to_object`), `decode_<enc>`, `now`/`now_epoch`,
+   or the domain noun when the output is that thing (`geoip`, `asn`, `sha1`, `community_id`, `syslog_facility`).
+6. **Transform helpers are imperative verbs**: `delete`, `rename`, `merge`, `replace`, `split`, `trim`, `lookup`,
+   `array_append_all`, `snake_case_keys`, `discard_event`.
+7. **Variants**: on a fixed-arity helper a mode is a trailing literal (`merge($src, 'deep')`,
+   `to_int($n, 'round')`, `parse_xml($s, 'windows')`, `decode_hex($s, 'quoted')`, `snake_case_keys('deep')`,
+   `array_to_object(..., 'raw_keys')`); on a variadic helper it is a name suffix (rule 3). The only named-sibling
+   exception is `trim`/`trim_start`/`trim_end`, where a mode literal would be ambiguous with the optional `chars`.
+8. **A type noun prefixes a verb only when the same verb would mean something else on another target type**
+   (`array_contains_all` vs `contains`, `number_gte` vs `string_gte`); a domain noun appears when the helper reads
+   something that is not the target (`kvdb_get`, `in_kvdb`, `iana_*`, `syslog_*`). Otherwise the verb is bare.
+9. **Argument order**: data input first (`$reference`), then options (literals). Documented argument names are
+   meaningful (`substring`, `prefix`, `regex`, `separator`, `cidr`, `key_path`), never C++ identifiers.
+
+User-facing categories are **check helpers** (used in `check` and `first_of` branches) and **map helpers** (used in
+`map`; a transform is a map helper that reads or modifies the target in place). The word "filter" is reserved for
+the asset type and the implicit `==` builder.
 
 ## Summary
 

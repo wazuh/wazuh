@@ -670,11 +670,11 @@ inline parsec::Parser<HelperToken> OpToHelperTokenMonadic(const OperationToken& 
 
         switch (opToken.op)
         {
-            case Operator::GREATER_THAN: helperToken.name += "_greater"; break;
-            case Operator::GREATER_THAN_OR_EQUAL: helperToken.name += "_greater_or_equal"; break;
-            case Operator::LESS_THAN: helperToken.name += "_less"; break;
-            case Operator::LESS_THAN_OR_EQUAL: helperToken.name += "_less_or_equal"; break;
-            case Operator::NOT_EQUAL: helperToken.name += "_not_equal"; break;
+            case Operator::GREATER_THAN: helperToken.name += "_gt"; break;
+            case Operator::GREATER_THAN_OR_EQUAL: helperToken.name += "_gte"; break;
+            case Operator::LESS_THAN: helperToken.name += "_lt"; break;
+            case Operator::LESS_THAN_OR_EQUAL: helperToken.name += "_lte"; break;
+            case Operator::NOT_EQUAL: helperToken.name += "_ne"; break;
         }
 
         helperToken.args.emplace_back(opToken.value);
