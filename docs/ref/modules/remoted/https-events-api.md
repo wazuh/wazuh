@@ -579,6 +579,29 @@ Change detection hashes the file's content (not mtime, which is only second-gran
 `reload()` re-checks the hash before and after parsing, discarding and retrying a parse caught
 mid-write rather than adopting a torn read.
 
+#### Adoption of a just-issued key
+
+A reload alone leaves a window: `authd` answers `POST /enroll` as soon as it has queued the new
+entry for its writer thread, so the agent holds its key before `client.keys` is written, and on a
+worker the file arrives with the next cluster synchronization, seconds later. An agent that uses
+the key inside that window is refused with `401 unknown_agent` by the very node that issued it.
+To close it, the node that served `POST /enroll` adopts the accepted `id`, `ip` column and key
+into its `Keystore` **before** sending the `200` — for a first enrollment and for a re-enrollment
+(where the file still carries the previous key until the writer pass). The columns are validated
+exactly like a file line; an entry that does not parse is not adopted, the enrollment still
+answers `200`, and a warning names the agent.
+
+An adopted entry is kept **beside** the file's table, not in it: `lookup()` consults it first,
+and it survives reloads until the file carries the same `id`, key and `ip` column (then the file's
+copy takes over) or until a 60 s grace expires (then it is dropped and counted in
+`remoted.auth.keystore.adoption_expiries.total`). Two consequences follow. `agents` on
+[`GET /metrics`](metrics.md#keystore-health--remotedauthkeystore) and `agents_loaded` on
+[`GET /status`](README.md) keep describing the file only; the adoptions have their own
+`adoptions_pending` level. And an entry *removed* from the file inside those 60 s keeps
+authenticating until the grace ends, on that node only — the price of not losing a key the file
+has not caught up with yet. Any node the agent reaches that did not serve its enrollment still
+waits for the file: see [§7.1 of the cluster page](../cluster/lb.md#71-replicated-state-brief-401s-after-enrollment).
+
 ## Diagnosing rejections and capacity problems
 
 Every condition where a setting may need changing is logged to `wazuh-manager.log` and names the setting.

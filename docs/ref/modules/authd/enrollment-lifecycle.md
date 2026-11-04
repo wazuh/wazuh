@@ -537,13 +537,18 @@ The full phase ordering of the deletion half is in
 
 ## Step 12: The agent becomes usable
 
-remoted authenticates agents by reading `client.keys`, and reloads it on its own cadence. Until that
-reload lands, the new key can receive `401`: an unknown agent for a fresh id, or an invalid signature
-when the previous key is still loaded after a rotation.
+The node that served `POST /enroll` honors the key at once: remoted adopts the accepted id, address
+and key into its own keystore before it answers the agent, for a first enrollment and for a rotation
+alike (see [adoption of a just-issued key](../remoted/https-events-api.md#adoption-of-a-just-issued-key)).
+That entry lives beside the file until `client.keys` carries it, or for at most 60 s.
 
-**Time until the key becomes usable depends on the writer's pass and remoted's reload**, and on a
-worker also on the cluster sync that carries `client.keys` down from the master. Slow work in the
-writer can delay that availability; see [the two stores](architecture.md#the-two-stores).
+Every **other** node authenticates agents by reading `client.keys`, reloaded on its own cadence.
+Until that reload lands there, the new key can receive `401`: an unknown agent for a fresh id, or an
+invalid signature when the previous key is still loaded after a rotation.
+
+**On those nodes, the time until the key becomes usable depends on the writer's pass and remoted's
+reload**, and on a worker also on the cluster sync that carries `client.keys` down from the master.
+Slow work in the writer can delay that availability; see [the two stores](architecture.md#the-two-stores).
 
 Once the key is in place, ordinary authenticated agent routes use `wazuh-agent+jwt`. A later
 re-enrollment still uses `wazuh-enroll+jwt`, signed from the re-enrollment secret; probes and CA

@@ -6913,7 +6913,7 @@ paths:
                           inventory-sync: { available: true }
                           content-manager: { available: true }
                           task-manager: { available: true }
-                      wazuh-manager-remoted: { ready: true, running: true, enrollment_password: { ready: true }, keystore: { readable: true, agents_loaded: 12, entries_skipped: 0 } }
+                      wazuh-manager-remoted: { ready: true, running: true, enrollment_password: { ready: true }, keystore: { readable: true, agents_loaded: 12, entries_skipped: 0, adoptions_pending: 0 } }
                       wazuh-manager-db: { ready: true, running: true }
                       wazuh-manager-authd: { ready: false, running: false }
                       wazuh-manager-clusterd: { ready: true, running: true }
@@ -7252,6 +7252,7 @@ paths:
                           keystore:
                             agents: 34
                             entries_skipped: 0
+                            adoptions_pending: 0
                             reloads_total: 3
                             reload_failures_total: 0
                           downstream:

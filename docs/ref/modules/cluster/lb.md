@@ -266,15 +266,17 @@ Measured on a three-node cluster:
 
 | File | Master accepts after | Workers accept after | Rejection while waiting |
 |---|---|---|---|
-| `/etc/wazuh-manager/client.keys` | 0.04 s | 8.4 – 13.0 s | `401`, code `unknown_agent` |
+| `/etc/wazuh-manager/client.keys` | immediately (adopted by the node that served `/enroll`) | 8.4 – 13.0 s (immediately on the worker that served `/enroll`) | `401`, code `unknown_agent` |
 | `/etc/wazuh-manager/authd.pass` | immediately | ~23 s | `401`, code `enrollment_key_unavailable` |
 | `/etc/wazuh-manager/enrollment_tokens.json` | 0.13 s | up to ~13 s | `401`, code `token_unknown` |
 
 **The agent recovers on its own**, in every case, without intervention.
 
-The `client.keys` row is the one every new agent meets. For about 10 seconds after an enrollment (until the
-workers' next `client.keys` synchronization; up to about 13 s was measured), any request the balancer sends to a
-worker is answered `401 unknown_agent`, and because a 5.x agent opens a new connection per request, a `mode tcp`
+The `client.keys` row is the one every new agent meets. The node that served `POST /enroll` adopts the key before
+it answers, so a request that lands on that same node is accepted at once (see
+[adoption of a just-issued key](../remoted/https-events-api.md#adoption-of-a-just-issued-key)). For about 10 seconds
+after an enrollment (until the workers' next `client.keys` synchronization; up to about 13 s was measured), any
+request the balancer sends to a **different** worker is answered `401 unknown_agent`, and because a 5.x agent opens a new connection per request, a `mode tcp`
 front end routes its requests to the workers in that window as readily as an HTTP one does (see
 [§5](#5-tls-choose-a-model-before-issuing-certificates)). The agent recovers on its own once the key has
 arrived: by retrying, or, where it takes the `unknown_agent` answer for the loss of its identity, by enrolling

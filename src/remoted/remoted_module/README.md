@@ -24,7 +24,7 @@ remoted_module/
 │   │   ├── authTypes.hpp/.cpp          # shared contract: AuthenticatedRequest/Payload/AuthError/AuthConfig
 │   │   ├── authMiddleware.hpp/.cpp     # AuthMiddleware::authenticate() + publicErrorFor() (the 401 classes)
 │   │   ├── iAgentKeystore.hpp          # key-lookup interface
-│   │   ├── keystore.hpp/.cpp           # client.keys reader + hot-reload watcher
+│   │   ├── keystore.hpp/.cpp           # client.keys reader + hot-reload watcher + adoption of keys issued by /enroll
 │   │   ├── addressRule.hpp/.cpp        # the client.keys ip column as an address rule
 │   │   ├── passwordKeySource.hpp/.cpp  # /etc/wazuh-manager/authd.pass -> HKDF key of the shared-key wazuh-enroll+jwt, see Agent enrollment below
 │   │   └── tokenKeySource.hpp/.cpp     # /etc/wazuh-manager/enrollment_tokens.json -> per-token HKDF keys (read-only replica of authd's store)
