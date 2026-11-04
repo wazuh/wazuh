@@ -61,7 +61,8 @@ struct RouteOptions
     /// UNLIMITED_BODY means none.
     std::size_t maxBodyBytes {0};
     /// Run the handler on the transport's I/O thread instead of the executor, so the route answers even when
-    /// every worker is busy. Only for handlers that never block (they read state already in memory).
+    /// every worker is busy. Only for handlers that never wait -- no I/O, no lock another module may hold, no
+    /// call into other modules -- such as one that reads snapshots already published (GET /status).
     bool runInline {false};
     /// Body of the 413 this route answers when maxBodyBytes (or the class cap) refuses the declared length;
     /// empty keeps the transport's JSON body.
