@@ -186,6 +186,13 @@ struct HttpRequestSpec
     std::string contentType;           ///< Emitted as Content-Type when non-empty; empty
     ///< leaves libcurl's default (non-JSON endpoints).
     std::vector<std::string> headers;  ///< Extra headers (auth headers included).
+    std::string acceptEncoding;        ///< One coding to offer. Sent as Accept-Encoding only when
+    ///< the agent's libcurl decodes it, and libcurl then decodes a
+    ///< reply in one coding, any it was built with; one
+    ///< naming more is refused (contentDecodingFailed). A reply cut
+    ///< short in a properly ended body decodes to a prefix without
+    ///< error, so the caller verifies what it got. Empty sends no
+    ///< header and decodes nothing.
     const uint8_t* body {nullptr};     ///< In-memory body (nullptr when file-backed).
     size_t bodyLength {0};
     std::string bodyFilePath;          ///< When non-empty: stream the body from this file.
@@ -242,6 +249,12 @@ struct HttpResponse
     /// after startup (config.c parses it only once) stops the agent with a named reason
     /// instead of being retried forever as if it were a network failure.
     bool caFileLoadFailed {false};
+    /// The reply's Content-Encoding couldn't be decoded, or named more than one coding (#38514).
+    /// It usually comes back the same on the next attempt, so callers can tell it apart from a
+    /// network failure in what they log. On a 2xx, RetrySender still retries it like any transport
+    /// failure: a manager short of memory for its encoder answers the retry plain. An error reply
+    /// is judged by its status instead (classifyOutcome()).
+    bool contentDecodingFailed {false};
 };
 
 /// Name of a TransportStatus, for the printer below and for logs, on the same reasoning as

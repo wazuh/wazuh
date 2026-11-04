@@ -36,6 +36,7 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#38514](https://github.com/wazuh/wazuh/issues/38514) | Added zstd decoding of `POST /download` configuration responses: the agent offers `Accept-Encoding: zstd` and libcurl decodes the reply. |
 
 #### Changed
 
@@ -51,6 +52,7 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#38514](https://github.com/wazuh/wazuh/issues/38514) | Fixed the Windows agent leaving a temporary file behind after a failed `/stateful` body compression, and a failed `fclose()` passing a truncated compressed body as complete. |
 
 ## Prior versions
 

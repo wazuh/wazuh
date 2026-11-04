@@ -14,10 +14,12 @@
  * the abort wiring are asserted as exact option calls with zero network.
  */
 
+#include "contentCodingGuard.hpp"
 #include "curlPerformer.hpp"
 #include "fakeSysSeams.hpp"
 #include "mockCurlHandle.hpp"
 #include "mockFsProbe.hpp"
+#include "moduleLogCapture.hpp"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -269,6 +271,181 @@ TEST(CurlPerformerTest, NoContentTypeWhenUnset)
     performer.perform(spec);
 }
 
+// The offer goes through curl's own option, never a hand-written header: libcurl only decodes a
+// reply when CURLOPT_ACCEPT_ENCODING is set (#38514).
+TEST(CurlPerformerTest, AcceptEncodingIsHandedToCurlWhenSet)
+{
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+
+    HttpRequestSpec spec;
+    spec.target = "/download";
+    spec.acceptEncoding = "zstd";
+
+    EXPECT_CALL(*handle, setOptionString(CurlOption::AcceptEncoding, "zstd"));
+    EXPECT_CALL(*handle, appendHeader(::testing::StartsWith("Accept-Encoding:"))).Times(0);
+    EXPECT_CALL(*handle, perform()).WillOnce(Return(TransportStatus::Ok));
+
+    auto performer = makePerformer(makeConfig(HC_VERIFY_NONE), std::move(mock));
+    performer.perform(spec);
+}
+
+// ...and left alone otherwise, so every other request neither offers a coding nor decodes one.
+TEST(CurlPerformerTest, NoAcceptEncodingWhenUnset)
+{
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+
+    HttpRequestSpec spec;
+    spec.target = "/download";
+
+    EXPECT_CALL(*handle, setOptionString(CurlOption::AcceptEncoding, _)).Times(0);
+    EXPECT_CALL(*handle, perform()).WillOnce(Return(TransportStatus::Ok));
+
+    auto performer = makePerformer(makeConfig(HC_VERIFY_NONE), std::move(mock));
+    performer.perform(spec);
+}
+
+// With an offer, the header capture holds the reply to it; without one, curl decodes nothing, so
+// there is nothing to hold.
+TEST(CurlPerformerTest, TheReplyCodingIsCheckedOnlyWhenOneWasOffered)
+{
+    for (const std::string offered :
+            {"zstd", ""
+            })
+    {
+        auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+        auto* handle = mock.get();
+        allowOtherOptions(*handle);
+
+        HttpRequestSpec spec;
+        spec.target = "/download";
+        spec.acceptEncoding = offered;
+
+        HeaderCapture capture;
+        EXPECT_CALL(*handle, captureResponseHeaders(_)).WillOnce(DoAll(SaveArg<0>(&capture), Return(true)));
+        EXPECT_CALL(*handle, perform()).WillOnce(Return(TransportStatus::Ok));
+
+        auto performer = makePerformer(makeConfig(HC_VERIFY_NONE), std::move(mock));
+        performer.perform(spec);
+        EXPECT_EQ(offered.empty(), capture.contentCoding == nullptr) << "offered '" << offered << "'";
+    }
+}
+
+// The header callback aborts a reply coded more than once; the attempt then says so, and counts as
+// a decoding failure rather than a network one.
+TEST(CurlPerformerTest, ARefusedReplyCodingFailsTheAttemptAsADecodingFailure)
+{
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+
+    HttpRequestSpec spec;
+    spec.target = "/download";
+    spec.acceptEncoding = "zstd";
+
+    HeaderCapture capture;
+    EXPECT_CALL(*handle, captureResponseHeaders(_)).WillOnce(DoAll(SaveArg<0>(&capture), Return(true)));
+    EXPECT_CALL(*handle, perform()).WillOnce(Invoke([&capture]
+    {
+        EXPECT_TRUE(capture.contentCoding->admitHeader("HTTP/1.1 200 OK\r\n"));
+        EXPECT_FALSE(capture.contentCoding->admitHeader("Content-Encoding: zstd, zstd\r\n"));
+        return TransportStatus::OtherError;
+    }));
+    EXPECT_CALL(*handle, curlError()).WillOnce(Return("(23) Failed writing header"));
+
+    auto performer = makePerformer(makeConfig(HC_VERIFY_NONE), std::move(mock));
+    const auto response = performer.perform(spec);
+
+    EXPECT_TRUE(response.contentDecodingFailed);
+    EXPECT_EQ("(23) Failed writing header; refused Content-Encoding 'zstd, zstd': more than one coding",
+              response.curlError);
+}
+
+TEST(CurlPerformerTest, ACodingCurlCouldNotDecodeIsADecodingFailure)
+{
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+
+    HttpRequestSpec spec;
+    spec.target = "/download";
+    spec.acceptEncoding = "zstd";
+
+    EXPECT_CALL(*handle, perform()).WillOnce(Return(TransportStatus::OtherError));
+    EXPECT_CALL(*handle, contentDecodingFailed()).WillOnce(Return(true));
+
+    auto performer = makePerformer(makeConfig(HC_VERIFY_NONE), std::move(mock));
+    EXPECT_TRUE(performer.perform(spec).contentDecodingFailed);
+}
+
+// curl sends an offer for any coding, then fails every reply in one it can't decode: a libcurl built
+// without the coding doesn't offer it, so the reply comes plain and there is no coding to hold.
+TEST(CurlPerformerTest, ACodingLibcurlCannotDecodeIsNotOffered)
+{
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+
+    HttpRequestSpec spec;
+    spec.target = "/download";
+    spec.acceptEncoding = "zstd";
+
+    HeaderCapture capture;
+    EXPECT_CALL(*handle, decodes("zstd")).WillOnce(Return(false));
+    EXPECT_CALL(*handle, setOptionString(CurlOption::AcceptEncoding, _)).Times(0);
+    EXPECT_CALL(*handle, captureResponseHeaders(_)).WillOnce(DoAll(SaveArg<0>(&capture), Return(true)));
+    EXPECT_CALL(*handle, perform()).WillOnce(Return(TransportStatus::Ok));
+
+    auto performer = makePerformer(makeConfig(HC_VERIFY_NONE), std::move(mock));
+    performer.perform(spec);
+    EXPECT_EQ(nullptr, capture.contentCoding);
+}
+
+// The build doesn't change between requests, so one warning covers all of them.
+TEST(CurlPerformerTest, AnOfferLibcurlCannotDecodeIsWarnedAboutOnce)
+{
+    captureTheModuleLog();
+    CurlPerformer performer {makeConfig(HC_VERIFY_NONE), []() -> std::unique_ptr<ICurlHandle>
+        {
+            auto handle = std::make_unique<NiceMock<MockCurlHandle>>();
+            ON_CALL(*handle, decodes(_)).WillByDefault(Return(false));
+            ON_CALL(*handle, perform()).WillByDefault(Return(TransportStatus::Ok));
+            return handle;
+        }};
+
+    HttpRequestSpec spec;
+    spec.target = "/download";
+    spec.acceptEncoding = "zstd";
+    performer.perform(spec);
+    performer.perform(spec);
+
+    EXPECT_EQ(1u, loggedAt(WARNING_LEVEL, "built without 'zstd' decoding").size());
+    stopCapturingTheModuleLog();
+}
+
+// A curl that rejects the option still sends the request: without the offer the manager answers
+// plain, so failing it would only lose a download that would have worked.
+TEST(CurlPerformerTest, RejectedAcceptEncodingStillPerforms)
+{
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+
+    HttpRequestSpec spec;
+    spec.target = "/download";
+    spec.acceptEncoding = "zstd";
+
+    EXPECT_CALL(*handle, setOptionString(CurlOption::AcceptEncoding, "zstd")).WillOnce(Return(false));
+    EXPECT_CALL(*handle, perform()).WillOnce(Return(TransportStatus::Ok));
+    EXPECT_CALL(*handle, responseCode()).WillOnce(Return(200));
+
+    auto performer = makePerformer(makeConfig(HC_VERIFY_NONE), std::move(mock));
+    EXPECT_EQ(TransportStatus::Ok, performer.perform(spec).status);
+}
+
 // A GET spec must map to CURLOPT_HTTPGET and carry no body at all -- neither
 // Post nor PostFields/PostFieldSize -- unlike every pre-existing spec, which
 // defaults to Post (MemoryBodyMapsToExactOptions above already pins that
@@ -347,6 +524,7 @@ TEST(CurlPerformerTest, TlsFullMode)
     EXPECT_CALL(*handle, setOptionLong(CurlOption::FollowLocation, 0L));
     EXPECT_CALL(*handle, setOptionLong(CurlOption::NoSignal, 1L));
     EXPECT_CALL(*handle, setOptionLong(CurlOption::SuppressConnectHeaders, 1L));
+    EXPECT_CALL(*handle, setOptionLong(CurlOption::HttpVersion, HTTP_VERSION_1_1));
 
     auto performer = makePerformer(config, std::move(mock));
     performer.perform(HttpRequestSpec {});
@@ -367,6 +545,21 @@ TEST(CurlPerformerTest, RejectedSuppressConnectHeadersOptionAbortsBeforePerformi
     auto performer = makePerformer(makeConfig(HC_VERIFY_FULL), std::move(mock));
     const auto response = performer.perform(HttpRequestSpec {});
     EXPECT_EQ(TransportStatus::TlsFail, response.status);
+}
+
+// A curl that can't be held to HTTP/1.1 could negotiate a protocol the coding guard was never run
+// against, so the request isn't sent.
+TEST(CurlPerformerTest, RejectedHttpVersionOptionAbortsBeforePerforming)
+{
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+
+    EXPECT_CALL(*handle, setOptionLong(CurlOption::HttpVersion, HTTP_VERSION_1_1)).WillOnce(Return(false));
+    EXPECT_CALL(*handle, perform()).Times(0);
+
+    auto performer = makePerformer(makeConfig(HC_VERIFY_FULL), std::move(mock));
+    EXPECT_EQ(TransportStatus::TlsFail, performer.perform(HttpRequestSpec {}).status);
 }
 
 TEST(CurlPerformerTest, TlsCertModeDisablesHostnameOnly)
@@ -1506,8 +1699,8 @@ TEST(CurlPerformerTest, SystemModeDoesNotLatchTheFallbackWhenNoBudgetRemainsRega
 }
 
 // m_noFallbackAnchorWarned gates the WARN only, never the outcome: a later call still makes its
-// own single attempt and returns the same failure. The WARN itself is not assertable here --
-// main.cpp leaves Log::GLOBAL_LOG_FUNCTION unset, so every LOGFN_* is a no-op in this binary.
+// own single attempt and returns the same failure. The WARN itself isn't asserted here (see
+// downloadFetchers_test.cpp's ConfigDownloadLogTest for capturing the module's log).
 TEST(CurlPerformerTest, SystemModeStillDoesNotRetryOnLaterCallsWithoutAFallbackPathConfigured)
 {
     auto config = makeConfig(HC_VERIFY_SYSTEM); // systemFallbackCaPath left empty.

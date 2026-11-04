@@ -101,6 +101,32 @@ INSTANTIATE_TEST_SUITE_P(
         // payload, so the two classes get opposite treatment downstream.
         ClassifierCase {TransportStatus::Ok, 404, OutcomeClass::RouteNotFound}));
 
+// A reply whose body couldn't be decoded still came with its status (#38514). An error reply is
+// judged by it, as it would be had nothing been offered; a 2xx is no success without its body.
+TEST(OutcomeClassifierTest, AnUndecodableErrorReplyIsJudgedByItsStatus)
+{
+    const auto undecodable = [](TransportStatus status, long code)
+    {
+        auto response = makeResponse(status, code);
+        response.contentDecodingFailed = true;
+        return classifyOutcome(response);
+    };
+
+    EXPECT_EQ(OutcomeClass::BackPressure, undecodable(TransportStatus::OtherError, 503));
+    EXPECT_EQ(OutcomeClass::RouteNotFound, undecodable(TransportStatus::OtherError, 404));
+    EXPECT_EQ(OutcomeClass::AuthFail, undecodable(TransportStatus::OtherError, 401));
+    EXPECT_EQ(OutcomeClass::Unreachable, undecodable(TransportStatus::OtherError, 200));
+    EXPECT_EQ(OutcomeClass::Unreachable, undecodable(TransportStatus::OtherError, 0));
+    EXPECT_EQ(OutcomeClass::Interrupted, undecodable(TransportStatus::Aborted, 503));
+}
+
+// Only a decoding failure lets the status through: a 503 cut short by a timeout is still a
+// manager that stopped answering.
+TEST(OutcomeClassifierTest, AnErrorReplyCutShortIsStillUnreachable)
+{
+    EXPECT_EQ(OutcomeClass::Unreachable, classifyOutcome(makeResponse(TransportStatus::Timeout, 503)));
+}
+
 TEST(OutcomeClassifierTest, AbortedIsInterruptedNeverOk)
 {
     // Even with a 2xx already received, an aborted transfer must surface as
