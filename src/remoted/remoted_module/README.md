@@ -447,6 +447,8 @@ src/endpoints/
 ├── downloadEndpoint.hpp/.cpp # /download policy: request grammar + resource resolution + file streaming
 ├── downloadMetrics.hpp       # remoted.download.* name catalog
 ├── iAgentGroupSource.hpp     # interface: the selector an authenticated agent may download
+├── iWpkAuthorizer.hpp        # interface: whether an agent may download a given WPK
+├── taskManagerWpkAuthorizer.hpp/.cpp # IWpkAuthorizer asking the task manager (POST /v1/tasks/wpk-authorization)
 ├── cacertsEndpoint.hpp/.cpp  # GET /cacerts: the CA the listener cert chains to, certificates only (no auth)
 ├── cacertsMetrics.hpp        # remoted.cacerts.* + remoted.server.tls.* name catalog
 ├── rateLimitGate.hpp/.cpp    # per-endpoint rate limit of the two unauthenticated routes
@@ -2011,9 +2013,14 @@ before the pump runs; the per-chunk loop is deliberately uninstrumented) — cat
   (and is cached; no groups is `default`), while no row — never "default" — and a lookup that fails or
   times out are both **503** `dependency_unavailable` (counted as `remoted.download.no_row` and
   `remoted.download.unavailable`). **403** is only a selector that is not the agent's membership. The
-  body is released before that wait. A `wpk` request is
-  **not** authorized here: its authority is the agent's pending upgrade task, which `/control` does
-  not carry.
+  body is released before that wait. A `wpk` request is not authorized against
+  groups: it is served only if the authenticated agent has an open `remote_upgrade` task (pending, or
+  delivered within `task_ttl` and not yet removed by the cleanup pass 24 h after delivery) for that
+  exact `wpk_file`, asked of the task manager with `POST /v1/tasks/wpk-authorization`. Without such a
+  task the answer is the same 404 as a missing file; if the task manager fails, the answer is 503
+  `{"error":"Service unavailable","code":503}` and nothing is opened, without `Retry-After`. A 5.0.0
+  agent makes up to `agent.https_download_attempts` attempts in total (2 by default) and then
+  abandons the upgrade; the task is already delivered, so the upgrade has to be launched again.
 
   The agent never picks the value it sends: it relays the `config_token` `/control` handed it (see
   the notify response above), so `/control` must report `config_hash` over the file this resolves to
@@ -2597,7 +2604,7 @@ linked into the settings' own documentation — is the official docs page:
 | `remoted.http.<stateless\|stateful\|stats\|config\|enroll\|cacerts>.responses.{2xx,400,403,409,413,429,500,503,other}` | WHAT each endpoint answered agents (some cells structurally zero per endpoint — kept so the vocabulary is uniform; `/cacerts`'s 404 lands in `other`) | the single place each response is sent: the forwarder's delivery task, the limiter-shed 503 in `forward()`, or the handler's own pre-forward 400. `/enroll` and `/cacerts` are not forwarded, so they count through a `MeteredResponder` wrapper instead (`common/requestOutcomeMetrics.hpp`; the description carries the route's method, `GET` for `/cacerts`) — one wrap covers `/enroll`'s five inline answers AND the one authd's callback delivers on another thread |
 | `remoted.http.<stateless\|stateful\|enroll>.latency` (histograms, µs) | end-to-end time; sizes `remoted.http_worker_threads` / `remoted.downstream_stateful_response_timeout` / the `authd_*` timeouts | stamped once in the auth gateway (`AuthenticatedRequest::receivedAt`), observed on the forwarder's post-processing pool. `/enroll` has no gateway, so `MeteredResponder` times it from handler entry. `/stats`/`/config` deliberately have none (same downstream as `/stateful`, no new answer) |
 | `remoted.forwarder.error.{connect, connect_timeout, write_timeout, response_timeout, transport, protocol, response_too_large}` + `downstream_5xx` + `route_mismatch` | WHY the 503s: which timeout knob, transport vs protocol, a downstream 5xx, or a route contract mismatch. Aggregate across services — the per-endpoint 503 cells already say which path | the forwarder's classification branches, next to the throttles that log the same cause |
-| `remoted.download.{rejected, denied, not_found, open_error, started, bytes.total, unavailable, no_row}`, `remoted.download.lookups` (pull) | group/WPK drift (404 retry storms) and offered transfer volume, plus `denied` — the 403 authorization signal (`resource_id` is not the requesting agent's own selector). It is the ONLY operator-facing signal for a denial, since the event itself is logged at debug; distinct from `rejected` (malformed request), from `not_found` (an *entitled* request whose file is not on disk) and from the two 503s, `unavailable` (the fallback lookup failed) and `no_row` (the local wazuh-db has no row for the agent yet) | `downloadEndpoint` admission + stream start (the per-chunk pump is deliberately uninstrumented) |
+| `remoted.download.{rejected, denied, not_found, open_error, started, bytes.total, unavailable, no_row, wpk_auth_unavailable}`, `remoted.download.lookups` (pull) | group/WPK drift (404 retry storms) and offered transfer volume, plus `denied` — the 403 authorization signal (`resource_id` is not the requesting agent's own selector). It is the ONLY operator-facing signal for a denial, since the event itself is logged at debug; distinct from `rejected` (malformed request), from `not_found` (an *entitled* request whose file is not on disk) and from the two 503s, `unavailable` (the fallback lookup failed) and `no_row` (the local wazuh-db has no row for the agent yet) | `downloadEndpoint` admission + stream start (the per-chunk pump is deliberately uninstrumented) |
 | `remoted.cacerts.{served, not_found, ca_mismatch, rate_limited}` | WHY `GET /cacerts` answered what it did: CA handed out, no CA file to hand out, refused because the served leaf does not chain to any CA of the bundle (`ca_mismatch`: a signature alone is not enough, C33), or refused by the route's rate limit before the CA was even read | `cacertsEndpoint` (`endpoints/cacertsMetrics.hpp`), one counter per branch; `rate_limited` is bumped by the gate (`endpoints/rateLimitGate.cpp`), which runs before the handler |
 | `remoted.server.tls.{cert_expiry_days, ca_matches_leaf}` (pulls; `cert_expiry_days` is the catalog's one **Double**, via `registerPullMetricDouble()` — negative once expired) | is the listener certificate about to expire; does it CHAIN to `remote.https.ca_certificate` (0 when it does not — including a CA that signs it but is expired, not a CA, or under another subject — or when the last successful read yielded no certificate; a read that fails after a good one keeps that bundle's verdict) | `IHttpServer::certificateStatus()`: `cert_expiry_days` from the transport's `TlsCertificateMonitor` snapshot (evaluated at start and every 24 h); `ca_matches_leaf` re-read from the same `CaCertificateSource` `/cacerts` answers from, on every scrape; registered by `registerPublicTransportDiagnostics()` on the same weak target as the budget pulls, so both read 0 while the listener is down |
 | `remoted.server.budget.{available.bytes, inflight.bytes, inflight.requests, rejected.total}` (pulls) | is `remoted.max_inflight_bytes` sized right; how much did the byte budget shed | `IHttpServer::diagnostics()` over the transport's `InFlightBudget` |
@@ -3053,12 +3060,14 @@ including arrival by rename, and auto-watches group directories created after st
 because that exact string *is* the hashed directory name) and
 `registryAgentGroupSource_test.cpp` (fails closed for malformed ids, unknown agents and a null
 registry, and refuses an entry with no `groupsRefreshedAtSec` — so a `/control/shutdown`-minted
-entry can never claim `default`).
+entry can never claim `default`) and
+`taskManagerWpkAuthorizer_test.cpp` (the request it sends, how it maps the task manager's answer
+to granted, denied or unavailable, and a stop with a request in flight).
 
 `/download` and `/stateful`: `downloadEndpoint_test.cpp` (the group and WPK grammars reject
 traversal; `FileByteSource` aborts when the file is truncated, grows, or is rewritten at the same
 length; a denied group returns an **identical** `403` whether or not it exists, so there is no
-enumeration oracle; WPKs are deliberately not authorized here) and `statefulEndpoint_test.cpp` (the
+enumeration oracle; a WPK is authorized by the agent's open upgrade task, a denial is the same 404 as a missing file, and a task manager failure is a 503 that opens nothing) and `statefulEndpoint_test.cpp` (the
 sync socket, the `X-Wazuh-Agent-Id` taken from the verified token, the dedicated deadline, contract
 statuses and bodies passed through untouched, everything off-contract collapsed to a neutral `503`,
 and `Retry-After` relayed only on a `503` and only when digits-only).
