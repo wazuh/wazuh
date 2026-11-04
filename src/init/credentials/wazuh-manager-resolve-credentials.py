@@ -1723,11 +1723,15 @@ def diagnose_dashboard_pair(paths: Paths, export: Dir, ca_state: Optional[CaStat
     return DashboardDiagnosis("reissue" if pair.owner == "ours" else "issue", pair, reason)
 
 
-def _no_key_warning(ca_dir_path: str, export: Dir, diagnosis: DashboardDiagnosis) -> str:
+def _report_no_key(report: Report, ca_dir_path: str, export: Dir, diagnosis: DashboardDiagnosis) -> None:
+    """An absent pair under a CA without its key is the layout of every distributed install (the key stays where the
+    PKI was generated) and nothing uses the pair yet: a progress line, not a warning. A pair of ours that needs
+    reissuing and cannot be is a defect: a warning."""
     if diagnosis.reason is None:
-        return (f"dashboard client pair not generated: {ca_dir_path} has no key; provision it externally in "
-                f"{export.path}")
-    return f"{export.child(DASHBOARD_CERT)}: {diagnosis.reason}; not reissued: {ca_dir_path} has no key"
+        report.progress(f"dashboard client pair not generated: {ca_dir_path} has no key ({DASHBOARD_NOT_USED}); "
+                        f"to provide one, issue it from that CA into {export.path}")
+        return
+    report.warning(f"{export.child(DASHBOARD_CERT)}: {diagnosis.reason}; not reissued: {ca_dir_path} has no key")
 
 
 def step_dashboard_pair(paths: Paths, conf: Dir, ca_dir: Dir, certs: Optional[Dir], state: CaState, names: TlsNames,
@@ -1754,7 +1758,7 @@ def step_dashboard_pair(paths: Paths, conf: Dir, ca_dir: Dir, certs: Optional[Di
                 report.progress(f"{cert_path}: provided by the operator; kept as it is")
                 return
             if diagnosis.action == "no-key":
-                report.warning(_no_key_warning(ca_dir.path, export, diagnosis))
+                _report_no_key(report, ca_dir.path, export, diagnosis)
                 return
             pair = diagnosis.pair
             new = issue_dashboard_pair(state)
@@ -1790,7 +1794,7 @@ def check_dashboard_pair(paths: Paths, conf: Dir, report: Report, names: TlsName
         elif diagnosis.action == "reissue":
             report.progress(f"{cert_path}: {diagnosis.reason}; the next start reissues it")
         elif diagnosis.action == "no-key" and state is not None and state.kind != "absent":
-            report.warning(_no_key_warning(conf.child(CA_DIR), export, diagnosis))
+            _report_no_key(report, conf.child(CA_DIR), export, diagnosis)
     finally:
         for opened in (export, ca_dir, certs):
             if opened is not None:

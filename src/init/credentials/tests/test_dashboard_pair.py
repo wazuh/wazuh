@@ -147,14 +147,30 @@ def test_unreadable_configuration_issues_nothing(resolver, sandbox):
 
 @pytest.mark.parametrize("mode", ["--check", "--prestart"])
 def test_no_ca_key_says_it_was_not_generated(resolver, sandbox, mode):
-    """The same diagnosis in both: --check says it as --prestart does."""
+    """The same diagnosis in both: --check says it as --prestart does. A CA without its key is the layout of every
+    distributed install and nothing uses the pair yet, so it is a progress line, never a WARNING."""
     sandbox.stage_ca(key=False)
     place(sandbox, {})                                     # export/ exists, as after any earlier run
+    code, out, err = run(resolver, sandbox, mode)
+    assert code == 0, err
+    assert f"dashboard client pair not generated: {sandbox.conf}/ca has no key (" in out
+    assert f"to provide one, issue it from that CA into {sandbox.conf}/export" in out
+    assert "dashboard client pair" not in err
+    assert not os.path.exists(export(sandbox, CERT))
+
+
+@pytest.mark.parametrize("mode", ["--check", "--prestart"])
+def test_no_ca_key_still_warns_about_a_defective_own_pair(resolver, sandbox, mode):
+    """Only the absent pair is quiet: the resolver's own pair that needs reissuing and cannot be is a WARNING."""
+    installed(resolver, sandbox)
+    expired = client_pair(*manager_ca(sandbox), days=(-60, -1))
+    place(sandbox, expired, resolver._marker_bytes(expired, {}))
+    os.unlink(os.path.join(sandbox.conf, "ca", "root-ca.key"))
     code, _, err = run(resolver, sandbox, mode)
     assert code == 0, err
-    assert (f"WARNING: dashboard client pair not generated: {sandbox.conf}/ca has no key; provision it externally "
-            f"in {sandbox.conf}/export") in err
-    assert not os.path.exists(export(sandbox, CERT))
+    assert f"WARNING: {export(sandbox, CERT)}: expired on " in err
+    assert f"; not reissued: {sandbox.conf}/ca has no key" in err
+    assert read(export(sandbox, CERT)) == expired[CERT]
 
 
 def test_prestart_validates_what_it_wrote(resolver, sandbox, monkeypatch):
