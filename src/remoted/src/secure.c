@@ -406,6 +406,40 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
               rm_config->auth_max_body_size);
         rm_config->auth_max_decoded_body_size = rm_config->auth_max_body_size;
     }
+
+    // The engine refuses a /stateless batch over its ingest cap from the declared length, and remoted
+    // forwards the body exactly as decoded. A decoded cap above the engine's turns a batch the agent could
+    // split (413) into a refused write here and a 503 it retries unchanged. The engine's key is read with a
+    // wide range so a bad value cannot stop remoted; the engine refuses to start with a value outside its
+    // own range (validateIngestLimits() in its ingest server), so only an accepted one is compared.
+    const long long engine_max_body_default = 67108864;
+    const long long engine_max_body_min = 33554432;
+    const long long engine_max_body_max = 1073741824;
+    const long long engine_max_body = getDefine_Int_default(
+        "analysisd", "server_enriched_events_max_body_bytes", 0, INT_MAX, (int)engine_max_body_default);
+    if (engine_max_body >= engine_max_body_min && engine_max_body <= engine_max_body_max) {
+        if (rm_config->auth_max_decoded_body_size > engine_max_body) {
+            // Never below the wire cap: a body accepted on the wire must still be accepted once decoded.
+            const long long capped =
+                engine_max_body > rm_config->auth_max_body_size ? engine_max_body : rm_config->auth_max_body_size;
+            mwarn("'remoted.auth_max_decoded_body_size' (%lld) is above "
+                  "'analysisd.server_enriched_events_max_body_bytes' (%lld), the largest batch the engine accepts; "
+                  "using %lld.",
+                  rm_config->auth_max_decoded_body_size,
+                  engine_max_body,
+                  capped);
+            rm_config->auth_max_decoded_body_size = capped;
+        }
+        // Not lowered: the wire cap applies to every authenticated route, not only to the batches the
+        // engine receives.
+        if (rm_config->auth_max_body_size > engine_max_body) {
+            mwarn("'remoted.auth_max_body_size' (%lld) is above 'analysisd.server_enriched_events_max_body_bytes' "
+                  "(%lld): the engine refuses an uncompressed batch larger than that. Lower the first or raise the "
+                  "second.",
+                  rm_config->auth_max_body_size,
+                  engine_max_body);
+        }
+    }
 }
 
 /**
