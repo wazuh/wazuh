@@ -60,6 +60,20 @@ libcurl) before sending its body. The interim answer is written only after the r
 admitted, so a request your caps or budget would refuse gets its final `413`/`503` before
 the body is sent.
 
+## Body timeout answer
+
+Off by default: a request whose body does not arrive within `bodyTimeoutSec` is closed
+without a response. Turn on `UdsHttpServerConfig::answerBodyTimeout` when your peers
+expect a status for it; they then get `400` before the close.
+
+## Body limits and memory
+
+Leaving both `maxBodySize` and `maxInFlightBytes` at no limit gives bodies no size limit.
+The server then reserves at most 1 MiB when it accepts a head and grows the buffer with the
+bytes received, so a declared length alone allocates nothing; with either limit in place it
+reserves the declared length at once. Set a class or route cap for the routes whose bodies
+you can bound.
+
 ## Route classes
 
 Declare each route's class with `RouteOptions`: **Data** (budget-charged, sheddable),

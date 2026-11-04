@@ -23,7 +23,7 @@ sequenceDiagram
     A->>S: accept (liveSessions++, over maxConnections ⇒ 503+close)
     S->>S: header timer armed, doRead
     P->>S: request head
-    Note over S: parser PAUSES at headers-complete<br/>(411 chunked, 413 server-wide cap, 414, 431 decided here)
+    Note over S: parser PAUSES at headers-complete<br/>(411 chunked, 413 server-wide cap or a length<br/>no buffer can hold, 414, 431 decided here)
     S->>S: match route (404/405) → class/route body cap (413)<br/>→ class/route session cap (503) → reserve budget, Data only (503)
     S->>S: resume, read body (chunks of bufferSize)
     S->>H: dispatch(request, responder)

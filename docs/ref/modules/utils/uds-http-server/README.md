@@ -44,8 +44,18 @@ The library defaults, which apply wherever a consumer does not override them:
 | Control / Liveness concurrent sessions | 256 / 64 |
 | URL, header name, header value, header count | 2048 bytes, 256 bytes, 8192 bytes, 32 |
 | Timeouts | head 10 s, body 30 s, response backstop 300 s, write 10 s, drain on stop 2 s |
+| Body not received in time | the connection is closed without a response (`answerBodyTimeout` off); a consumer may answer `400` instead |
 | Socket mode | `0660`, set explicitly after `bind()` |
 | `Expect: 100-continue` | not answered (`expectContinue` off); a consumer may turn it on |
+
+Three settings bound the memory of a request body, and they are distinct. The **per-body maximum**
+(the server-wide cap, or a class or route cap) refuses a declared length over it with `413` before the
+body is read. The **in-flight byte budget** bounds the declared lengths of all admitted Data requests
+together. The **initial reserve** is what the server allocates when it accepts a request head: with a
+per-body maximum or a budget in place it is the declared length; with neither, at most 1 MiB, and the
+buffer then grows as the body arrives, never past the declared length. The initial reserve is not a size
+limit, and a declared length alone never allocates memory. A declared length that no buffer can hold is
+`413` in every configuration.
 
 Every server logs the effective values once at start, at INFO, under its consumer's tag:
 `<name> server bound to '<socket>' (mode 0660, <n> I/O thread(s), …; timeouts s: header=… body=…
@@ -59,13 +69,13 @@ suppress another kind's first line):
 | Status | Meaning | Typical cause |
 |---|---|---|
 | `100` (interim) | `Expect: 100-continue` on a server with `expectContinue` on | Sent once the request is admitted and before the body arrives; a refused request gets its final status instead |
-| `400` | Malformed request | Broken client |
+| `400` | Malformed request, or, on a server that answers body timeouts, a body that did not arrive in time | Broken or stalled client |
 | `404` | No route for that path | Routes are `method + exact path` — no patterns |
 | `405` + `Allow` | Path exists, wrong method | The `Allow` header lists what the route accepts |
 | `411` | `Transfer-Encoding: chunked` | Chunked bodies are refused by design. The byte budget must know the size at headers-complete, so send `Content-Length` |
-| `413` | Declared body over a cap | The server-wide cap (by default, what the byte budget could ever admit), the route class's cap, or a per-route override. The peer is wrong; raising limits is a consumer setting. A route may answer its own cap's `413` with its own body (`payloadTooLargeBody`); the server-wide cap always answers the JSON body |
+| `413` | Declared body over a cap, or a declared length no buffer can hold | The server-wide cap (by default, what the byte budget could ever admit), the route class's cap, or a per-route override. The peer is wrong; raising limits is a consumer setting. A route may answer its own cap's `413` with its own body (`payloadTooLargeBody`); the server-wide cap always answers the JSON body |
 | `414` / `431` | URI / headers too large | Parser limits |
-| `500` | The consumer's handler threw | Check the consumer's log (lines carry the consumer's own name) |
+| `500` | The consumer's handler threw, or the server could not allocate what the request needed | Check the consumer's log (lines carry the consumer's own name) |
 | `503` | Load shed | Byte budget exhausted, connection cap, per-class or per-route session cap, a dropped responder, or shutdown in progress |
 | `504` | Handler never answered | The response-timer backstop fired |
 
@@ -95,6 +105,8 @@ name (`<name>` below is the consumer's, for example `inventory sync`):
 | WARN | `<n> request(s) <period> were not answered within their response backstop and were closed with 504 (…).` | A stuck handler or a lost responder |
 | WARN | `<n> request(s) <period> were dropped by their handler without a response and were answered 503. This is a handler bug.` | Handler bug |
 | WARN | `Closed <n> connection(s) <period> that timed out before a response was due (last phase: …).` | Slow or vanished peer while reading the request or writing the reply |
+| WARN | `Answered <n> request(s) with 400 <period>: the body did not arrive within <t> s (last on '<path>').` | A stalled body, on a server that answers body timeouts (the line above otherwise) |
+| ERROR | `Answered <n> request(s) with 500 <period>: the request could not be read or admitted (last: …).` | An allocation failed while the server buffered or admitted a request |
 | WARN | `Failed to accept <n> <name> connection(s) <period>: <reason>. The listener is still accepting; peers will retry.` | Transient `accept()` failure, usually descriptor exhaustion |
 | ERROR | `<n> request(s) failed while being dispatched <period> and were answered 500 (last: …).` | The handler threw |
 | ERROR | `Could not bring up <n> accepted <name> connection(s) <period> (last: …).` | An accepted connection could not be set up (allocation failure); it was closed |
