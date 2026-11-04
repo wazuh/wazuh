@@ -37,6 +37,13 @@ struct IngestLimits
 IngestLimits validateIngestLimits(const IngestLimits& limits);
 
 /**
+ * @brief The ingest server's options for @p limits: its connection cap, byte budget and body cap, max(2, nproc/4)
+ * handlers with a queue as long as the connection cap, interim "100 Continue" answers, and the settings that raise
+ * the budget and the connection cap named in the transport's 503 log lines.
+ */
+httpsrv::UdsServerOptions ingestServerOptions(const IngestLimits& limits);
+
+/**
  * @brief Builds (without starting) the server for POST /events/enriched.
  *
  * The route is a Data route capped at limits.maxBodyBytes (a larger declared body is answered 413

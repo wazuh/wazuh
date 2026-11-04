@@ -50,10 +50,7 @@ IngestLimits validateIngestLimits(const IngestLimits& limits)
     return limits;
 }
 
-std::shared_ptr<httpsrv::UdsServer> makeIngestServer(const std::shared_ptr<::router::IRouterAPI>& orchestrator,
-                                                     const std::shared_ptr<::dumper::IDumper>& dumper,
-                                                     std::shared_ptr<agentcache::AgentMetadataCache> agentMetadataCache,
-                                                     const IngestLimits& limits)
+httpsrv::UdsServerOptions ingestServerOptions(const IngestLimits& limits)
 {
     httpsrv::UdsServerOptions options;
     options.name = "Event ingest";
@@ -64,8 +61,17 @@ std::shared_ptr<httpsrv::UdsServer> makeIngestServer(const std::shared_ptr<::rou
     options.executorThreads = std::max<std::size_t>(2, cpp_get_nproc() / 4);
     options.executorQueue = limits.maxConnections;
     options.expectContinue = true;
+    options.budgetOptionHint = "analysisd.server_enriched_events_max_inflight_bytes";
+    options.connectionCapOptionHint = "analysisd.server_enriched_events_max_connections";
+    return options;
+}
 
-    auto server = std::make_shared<httpsrv::UdsServer>(std::move(options));
+std::shared_ptr<httpsrv::UdsServer> makeIngestServer(const std::shared_ptr<::router::IRouterAPI>& orchestrator,
+                                                     const std::shared_ptr<::dumper::IDumper>& dumper,
+                                                     std::shared_ptr<agentcache::AgentMetadataCache> agentMetadataCache,
+                                                     const IngestLimits& limits)
+{
+    auto server = std::make_shared<httpsrv::UdsServer>(ingestServerOptions(limits));
     httpsrv::RouteOptions route;
     route.cls = httpsrv::RouteClass::Data;
     route.maxBodyBytes = limits.maxBodyBytes;
