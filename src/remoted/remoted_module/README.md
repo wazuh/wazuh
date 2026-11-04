@@ -157,9 +157,13 @@ src/http_server/
   `accepted` notice (sent only after a successful handshake) against its `closed` notice (sent after
   a failed one too): it underflowed on every port scan, plain-HTTP probe or rejected client
   certificate, and never saw a stalled socket. A connection is now counted from the start of its
-  handshake — when it already holds its slot — to its close, keyed by connection id so a repeated or
-  unmatched notice is a no-op. Both guards are WARN-logged (throttled, with the count and the last
-  peer) and counted: `remoted.server.connections.handshaking`,
+  handshake — when it already holds its slot — to its close notice, keyed by connection id so a
+  repeated or unmatched notice is a no-op. The handshake itself is NOT released through the id:
+  `beginHandshake()` returns a `HandshakeLedger::Share`, owned by the connection's `HandshakeState`,
+  which gives that handshake's unit back exactly once (its handler releases it, its destructor is the
+  backstop). Keyed by id, two handshakes under one repeated id counted twice and released once, and
+  the extra unit kept one slot of the address until remoted restarted. Both guards are WARN-logged
+  (throttled, with the count and the last peer) and counted: `remoted.server.connections.handshaking`,
   `remoted.server.handshake.{timeouts,rejected_per_source}.total`.
 
   **Connection ids are unique per server run (`connectionIdSource.hpp`).** The ledger, the connection
@@ -2751,7 +2755,9 @@ the certificate this process reserialised and never the file's `##` lines),
 concurrency), `handshakeLedger_test.cpp` (a connection counted from handshake to close, a close
 while handshaking leaving both levels at zero, repeated or unknown notices as no-ops, the per-source
 cap refusing only the excess and freeing a share when a handshake finishes, 0 disabling it, reset()
-keeping the totals, concurrency) with `httpServer_test.cpp`'s `HandshakeGuardTest` over a real
+keeping the totals and a pre-reset share releasing nothing, two handshakes on one id counting twice and
+every order of their ends leaving nothing counted, a dropped share releasing, a share released once
+wherever it is moved, concurrency) with `httpServer_test.cpp`'s `HandshakeGuardTest` over a real
 listener (every slot held by a stalled handshake, then an honest request served once the deadline
 closes them; the per-source cap closing the excess at once; failed handshakes not underflowing
 `connectionsOpen`; a 32 000-connection storm on 4 I/O threads leaving nothing handshaking, never

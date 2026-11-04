@@ -10,8 +10,46 @@
 
 #include "handshakeLedger.hpp"
 
+#include <utility>
+
 namespace remoted::http
 {
+    HandshakeLedger::Share::Share(HandshakeLedger& ledger, const std::uint64_t ticket) noexcept
+        : m_ledger {&ledger}
+        , m_ticket {ticket}
+    {
+    }
+
+    HandshakeLedger::Share::Share(Share&& other) noexcept
+        : m_ledger {std::exchange(other.m_ledger, nullptr)}
+        , m_ticket {std::exchange(other.m_ticket, 0)}
+    {
+    }
+
+    HandshakeLedger::Share& HandshakeLedger::Share::operator=(Share&& other) noexcept
+    {
+        if (this != &other)
+        {
+            release();
+            m_ledger = std::exchange(other.m_ledger, nullptr);
+            m_ticket = std::exchange(other.m_ticket, 0);
+        }
+        return *this;
+    }
+
+    HandshakeLedger::Share::~Share()
+    {
+        release();
+    }
+
+    void HandshakeLedger::Share::release() noexcept
+    {
+        if (m_ledger != nullptr)
+        {
+            std::exchange(m_ledger, nullptr)->release(m_ticket);
+        }
+    }
+
     void HandshakeLedger::setMaxPerSource(const std::size_t maxPerSource)
     {
         std::lock_guard<std::mutex> lock {m_mutex};
@@ -22,18 +60,17 @@ namespace remoted::http
     {
         std::lock_guard<std::mutex> lock {m_mutex};
         m_connections.clear();
+        m_handshakes.clear();
         m_perSource.clear();
-        m_handshaking = 0;
     }
 
-    bool HandshakeLedger::beginHandshake(const std::uint64_t connectionId, const std::string& source)
+    HandshakeLedger::Share HandshakeLedger::beginHandshake(const std::uint64_t connectionId, const std::string& source)
     {
         std::lock_guard<std::mutex> lock {m_mutex};
 
         // Counted as open in every case: the connection already holds its slot, refused or not, and
         // its closed notice is what uncounts it.
         auto& entry = m_connections[connectionId];
-        entry.source = source;
 
         if (!source.empty())
         {
@@ -41,23 +78,17 @@ namespace remoted::http
             if (m_maxPerSource != 0 && inProgress >= m_maxPerSource)
             {
                 ++m_rejectedPerSourceTotal;
-                return false;
+                return Share {};
             }
             ++inProgress;
         }
 
-        entry.handshaking = true;
-        ++m_handshaking;
-        return true;
-    }
-
-    void HandshakeLedger::finishHandshake(const std::uint64_t connectionId)
-    {
-        std::lock_guard<std::mutex> lock {m_mutex};
-        if (const auto it = m_connections.find(connectionId); it != m_connections.end())
-        {
-            finishLocked(it->second);
-        }
+        // A second begin under the same id overwrites the entry's ticket: the first handshake is still
+        // released by its own share, and the close notice releases whichever one it finds.
+        const auto ticket = m_nextTicket++;
+        m_handshakes.emplace(ticket, source);
+        entry.ticket = ticket;
+        return Share {*this, ticket};
     }
 
     void HandshakeLedger::recordTimeout()
@@ -71,7 +102,7 @@ namespace remoted::http
         std::lock_guard<std::mutex> lock {m_mutex};
         if (const auto it = m_connections.find(connectionId); it != m_connections.end())
         {
-            finishLocked(it->second);
+            releaseLocked(it->second.ticket);
             m_connections.erase(it);
         }
     }
@@ -81,29 +112,36 @@ namespace remoted::http
         std::lock_guard<std::mutex> lock {m_mutex};
         HandshakeLedgerSnapshot snapshot;
         snapshot.open = m_connections.size();
-        snapshot.handshaking = m_handshaking;
+        snapshot.handshaking = m_handshakes.size();
         snapshot.timeoutsTotal = m_timeoutsTotal;
         snapshot.rejectedPerSourceTotal = m_rejectedPerSourceTotal;
         return snapshot;
     }
 
-    void HandshakeLedger::finishLocked(Entry& entry)
+    void HandshakeLedger::release(const std::uint64_t ticket)
     {
-        if (!entry.handshaking)
-        {
-            return;
-        }
-        entry.handshaking = false;
-        --m_handshaking;
+        std::lock_guard<std::mutex> lock {m_mutex};
+        releaseLocked(ticket);
+    }
 
-        if (entry.source.empty())
+    void HandshakeLedger::releaseLocked(const std::uint64_t ticket)
+    {
+        const auto handshake = m_handshakes.find(ticket);
+        if (handshake == m_handshakes.end())
+        {
+            return; // never counted, already released, or forgotten by reset()
+        }
+        const auto source = std::move(handshake->second);
+        m_handshakes.erase(handshake);
+
+        if (source.empty())
         {
             return;
         }
         // Erased at zero, so the table holds only the sources with a handshake in progress: it grows
         // with the handshakes in flight (bounded by max_parallel_connections), never with the number
         // of addresses ever seen.
-        if (const auto it = m_perSource.find(entry.source); it != m_perSource.end() && --it->second == 0)
+        if (const auto it = m_perSource.find(source); it != m_perSource.end() && --it->second == 0)
         {
             m_perSource.erase(it);
         }

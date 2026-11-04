@@ -115,8 +115,10 @@ namespace remoted::http
          * deadline can never act in the middle of a handshake step: the handshake's intermediate
          * handlers inherit the final handler's executor, which is this strand too.
          *
-         * The destructor is the backstop that keeps the ledger exact when neither handler ever runs
-         * (the io_context is destroyed with the handshake still pending, at shutdown).
+         * `share` is this handshake's unit in the ledger. The handshake handler releases it; if neither
+         * handler ever runs (the io_context is destroyed with the handshake still pending, at shutdown),
+         * the share's destructor does, which keeps the ledger exact. It is declared after `ledger`, so
+         * it is destroyed while the ledger is still alive.
          */
         struct HandshakeState
         {
@@ -124,19 +126,14 @@ namespace remoted::http
 
             HandshakeState(const Strand& handlerStrand,
                            std::shared_ptr<HandshakeLedger> handshakeLedger,
-                           std::uint64_t id,
+                           HandshakeLedger::Share handshakeShare,
                            std::string peerAddress)
                 : strand {handlerStrand}
                 , timer {handlerStrand}
                 , ledger {std::move(handshakeLedger)}
-                , connectionId {id}
+                , share {std::move(handshakeShare)}
                 , peer {std::move(peerAddress)}
             {
-            }
-
-            ~HandshakeState()
-            {
-                ledger->finishHandshake(connectionId);
             }
 
             HandshakeState(const HandshakeState&) = delete;
@@ -145,7 +142,7 @@ namespace remoted::http
             Strand strand;
             restinio::asio_ns::steady_timer timer;
             std::shared_ptr<HandshakeLedger> ledger;
-            std::uint64_t connectionId;
+            HandshakeLedger::Share share;
             std::string peer;
             bool finished {false}; ///< The handshake completed (either way); the deadline is moot.
             bool expired {false};  ///< The deadline fired first; the handshake's error is ours.
@@ -173,7 +170,8 @@ namespace remoted::http
         const auto endpoint = socket.lowest_layer().remote_endpoint(endpointError);
         std::string peer = endpointError ? std::string {} : endpoint.address().to_string();
 
-        if (!policy.ledger->beginHandshake(con.connection_id(), peer))
+        auto share = policy.ledger->beginHandshake(con.connection_id(), peer);
+        if (!share)
         {
             if (policy.onRefused != nullptr)
             {
@@ -188,7 +186,7 @@ namespace remoted::http
         auto state =
             std::make_shared<detail::HandshakeState>(asio::make_strand(asio::any_io_executor {socket.get_executor()}),
                                                      policy.ledger,
-                                                     con.connection_id(),
+                                                     std::move(share),
                                                      std::move(peer));
 
         state->timer.expires_after(policy.timeout);
@@ -224,7 +222,7 @@ namespace remoted::http
                                     state->timer.cancel();
                                     // Before the callbacks: the accepted notice start_read_cb emits
                                     // must find the connection no longer handshaking.
-                                    state->ledger->finishHandshake(state->connectionId);
+                                    state->share.release();
 
                                     if (!ec)
                                     {
