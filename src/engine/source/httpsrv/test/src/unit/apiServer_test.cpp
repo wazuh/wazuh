@@ -9,6 +9,7 @@
 #include <chrono>
 #include <cstring>
 #include <filesystem>
+#include <limits>
 #include <memory>
 #include <string>
 #include <vector>
@@ -173,6 +174,61 @@ TEST_F(ApiServerTest, ZeroLimitMeansUnlimited)
 
     EXPECT_EQ(200, statusOf(response));
     EXPECT_EQ(body.size(), seen.load());
+}
+
+TEST_F(ApiServerTest, OptionsKeepTheApiTransportShape)
+{
+    const auto options = httpsrv::apiServerOptions();
+
+    EXPECT_FALSE(options.byteBudget) << "no API route charges a byte budget";
+    EXPECT_EQ(4U, options.executorThreads);
+    EXPECT_EQ(64U, options.executorQueue);
+    EXPECT_EQ(10U, options.bodyTimeoutSec);
+    EXPECT_TRUE(options.answerBodyTimeout);
+    EXPECT_TRUE(options.expectContinue);
+}
+
+// An unlimited payload is not an unlimited allocation: a declared length no buffer can hold is refused at once,
+// and the server goes on serving.
+TEST_F(ApiServerTest, ZeroLimitStillRefusesALengthNoBufferCanHoldAtOnce)
+{
+    const auto path = socketPath("impossible");
+    auto server = httpsrv::makeApiServer();
+    ApiRouteRegistrar routes {server, 0};
+    routes.addRoute(Method::POST, "/_internal/content/namespace/import", ok);
+    server->start(path);
+
+    const auto started = std::chrono::steady_clock::now();
+    const auto rejected =
+        roundTrip(path, headDeclaring("/_internal/content/namespace/import", std::numeric_limits<std::size_t>::max()));
+    const auto elapsed = std::chrono::steady_clock::now() - started;
+    const auto next = roundTrip(path, post("/_internal/content/namespace/import", "{}"));
+    server->shutdown(1s);
+
+    EXPECT_EQ(413, statusOf(rejected));
+    EXPECT_LT(elapsed, 5s) << "decided at the head, not by the body timeout";
+    EXPECT_EQ(200, statusOf(next));
+}
+
+// As the API answered on cpp-httplib: a body that stops arriving gets a 400 once the body timeout passes.
+TEST_F(ApiServerTest, AStalledBodyIsAnswered400)
+{
+    const auto path = socketPath("stalled");
+    auto options = httpsrv::apiServerOptions();
+    options.bodyTimeoutSec = 1; // the API's 10 s, shortened to keep the test quick
+    auto server = std::make_shared<httpsrv::Server>(std::move(options));
+    ApiRouteRegistrar routes {server, 0};
+    routes.addRoute(Method::POST, "/_internal/content/namespace/import", ok);
+    server->start(path);
+
+    const auto started = std::chrono::steady_clock::now();
+    const auto response = roundTrip(path, headDeclaring("/_internal/content/namespace/import", 100) + "0123456789");
+    const auto elapsed = std::chrono::steady_clock::now() - started;
+    server->shutdown(1s);
+
+    EXPECT_EQ(400, statusOf(response));
+    EXPECT_EQ(R"({"error":"Request body not received in time","code":400})", bodyOf(response));
+    EXPECT_LT(elapsed, 5s);
 }
 
 TEST_F(ApiServerTest, LivenessRouteIsCappedAt4KiBWithTheDocumentedText)
