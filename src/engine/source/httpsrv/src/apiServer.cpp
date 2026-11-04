@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include <httpsrv/apiServer.hpp>
 
+#include <algorithm>
 #include <utility>
 
 #include <fmt/format.h>
+#include <proc.hpp>
 
 namespace httpsrv
 {
@@ -17,13 +19,18 @@ std::string payloadTooLargeText(std::size_t maxBytes)
     return fmt::format("Payload too large. Max allowed: {} bytes ({} KiB).", maxBytes, maxBytes / 1024);
 }
 
+std::size_t apiWorkerCount(unsigned int cpus)
+{
+    return std::clamp<std::size_t>(cpus > 1 ? cpus - 1 : 1, API_MIN_WORKERS, API_MAX_WORKERS);
+}
+
 ServerOptions apiServerOptions()
 {
     ServerOptions options;
     options.name = "API services";
     options.logTag = "wazuh-manager-analysisd:api-server";
     options.byteBudget = false;
-    options.executorThreads = 4;
+    options.executorThreads = apiWorkerCount(cpp_get_nproc());
     options.executorQueue = 64;
     options.bodyTimeoutSec = API_BODY_TIMEOUT_SEC;
     options.answerBodyTimeout = true;

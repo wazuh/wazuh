@@ -25,8 +25,20 @@ std::string payloadTooLargeText(std::size_t maxBytes);
 /// Seconds the API waits for a request body before answering 400, as it did on cpp-httplib.
 constexpr std::size_t API_BODY_TIMEOUT_SEC {10};
 
+/// Fewest API request workers. A tester or logtest request holds its worker until the single tester worker
+/// answers, up to analysisd.server_api_timeout, so a few concurrent tests must not hold every worker.
+constexpr std::size_t API_MIN_WORKERS {4};
+/// Most API request workers: the ceiling of the cpp-httplib pool the API used to run on.
+constexpr std::size_t API_MAX_WORKERS {16};
+
 /**
- * @brief The engine API server's options: 4 request workers with a 64-request queue, no
+ * @brief The API's request workers for @p cpus processors: one fewer than the processors, as the
+ * cpp-httplib pool the API used to run on, clamped to [API_MIN_WORKERS, API_MAX_WORKERS].
+ */
+std::size_t apiWorkerCount(unsigned int cpus);
+
+/**
+ * @brief The engine API server's options: apiWorkerCount() request workers with a 64-request queue, no
  * in-flight byte budget (no API route charges it, so the request body is bounded only by the route caps),
  * interim "100 Continue" answers, and a body that does not arrive within API_BODY_TIMEOUT_SEC answered 400.
  */
