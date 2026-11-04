@@ -986,6 +986,23 @@ class CheckExpectHeaderMiddleware(BaseHTTPMiddleware):
         return response
 
 
+class StripTrailingSlashMiddleware:
+    """Route `/path/` as `/path`.
+
+    starlette's router answers a declared path written with a trailing slash with a 307 before
+    security runs, so it would tell an unauthenticated caller which routes exist. connexion does
+    not expose the router's `redirect_slashes`.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope['type'] == 'http' and scope['path'] != '/' and scope['path'].endswith('/'):
+            scope = {**scope, 'path': scope['path'].rstrip('/') or '/'}
+        await self.app(scope, receive, send)
+
+
 # Methods a CORS preflight is answered for: every method spec.yaml declares. Without it CORSMiddleware
 # answers the preflight of GET only, refusing a cross-origin write even from an allowed origin.
 CORS_ALLOW_METHODS = ['GET', 'POST', 'PUT', 'DELETE']
@@ -1053,6 +1070,7 @@ def setup_middlewares(app: AsyncApp):
     # ContentSizeExceeded for the endpoints request validation does not read -- the XML and
     # octet-stream configuration uploads, the very requests max_upload_size exists to bound.
     app.add_middleware(CheckExpectHeaderMiddleware, MiddlewarePosition.BEFORE_VALIDATION)
+    app.add_middleware(StripTrailingSlashMiddleware, MiddlewarePosition.BEFORE_ROUTING)
     app.add_middleware(CheckBlockedIP, MiddlewarePosition.BEFORE_SECURITY)
     app.add_middleware(CheckAuthContextSizeMiddleware, MiddlewarePosition.BEFORE_SECURITY)
     app.add_middleware(WazuhAccessLoggerMiddleware, MiddlewarePosition.BEFORE_EXCEPTION)
