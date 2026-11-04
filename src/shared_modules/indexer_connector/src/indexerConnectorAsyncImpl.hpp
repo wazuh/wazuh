@@ -421,6 +421,7 @@ public:
                 // Process items with optimized iteration
                 size_t itemIndex = 0;
                 size_t clusterBlockedCount = 0;
+                size_t throttledCount = 0;
                 for (const auto& item : itemsArray)
                 {
                     // Try to find the operation element (could be "index", "create", "delete")
@@ -451,6 +452,18 @@ public:
                     simdjson::dom::element errorElement;
                     if (operationElement["error"].get(errorElement) != simdjson::SUCCESS)
                     {
+                        ++itemIndex;
+                        continue;
+                    }
+
+                    // Per-item 429 (circuit_breaking_exception, es_rejected_execution_exception): the
+                    // indexer is shedding load. Tally instead of logging per document; the batch backs
+                    // off and counts the items as dropped below. They are not re-queued.
+                    if (int64_t itemStatus = 0;
+                        operationElement["status"].get_int64().get(itemStatus) == simdjson::SUCCESS &&
+                        itemStatus == HTTP_TOO_MANY_REQUESTS)
+                    {
+                        ++throttledCount;
                         ++itemIndex;
                         continue;
                     }
@@ -550,11 +563,24 @@ public:
                                "future sends.",
                                clusterBlockedCount,
                                totalBlocked);
+                }
+
+                if (throttledCount > 0)
+                {
+                    m_queue->recordDiscarded(throttledCount);
+                    LOGFN_WARN(m_logFn,
+                               "Indexer rejected %zu document(s) in this batch with HTTP 429 (load shedding); they "
+                               "were not indexed and are counted as dropped. Backing off future sends.",
+                               throttledCount);
+                }
+
+                if (clusterBlockedCount > 0 || throttledCount > 0)
+                {
                     m_queue->requestBackoff(data.m_sequence);
                 }
                 else
                 {
-                    // Errors present but none were cluster_block_exception.
+                    // Errors present but none asked the connector to slow down.
                     m_queue->reportHealthyResponse(data.m_sequence);
                 }
             },
