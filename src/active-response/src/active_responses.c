@@ -671,4 +671,44 @@ int get_ip_version(const char *ip) {
     freeaddrinfo(res);
     return OS_INVALID;
 }
+
+int execute_command_with_retry(const char *ar_name, const char *path, char * const *argv) {
+    char log_msg[OS_MAXSTR];
+    char buffer[OS_MAXSTR];
+    int status;
+
+    for (int attempt = 1; ; attempt++) {
+        status = -1;
+        wfd_t *wfd = wpopenv(path, argv, W_BIND_STDOUT | W_BIND_STDERR);
+
+        if (wfd) {
+            // Drain the output: a command writing to a closed pipe dies by SIGPIPE
+            while (fgets(buffer, sizeof(buffer), wfd->file_out));
+
+            status = wpclose(wfd);
+
+            if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+                return OS_SUCCESS;
+            }
+        }
+
+        // Only a failed start or exit code 4 (iptables: xtables lock busy) can pass on a later attempt
+        if (attempt == AR_COMMAND_ATTEMPTS || (status != -1 && !(WIFEXITED(status) && WEXITSTATUS(status) == 4))) {
+            break;
+        }
+
+        sleep(attempt);
+    }
+
+    int len = snprintf(log_msg, sizeof(log_msg), "Command failed (exit code %d):",
+                       WIFEXITED(status) ? WEXITSTATUS(status) : -1);
+
+    for (int i = 0; argv[i] && len > 0 && (size_t)len < sizeof(log_msg); i++) {
+        len += snprintf(log_msg + len, sizeof(log_msg) - len, " %s", argv[i]);
+    }
+
+    write_debug_file(ar_name, log_msg);
+    return OS_INVALID;
+}
+
 #endif
