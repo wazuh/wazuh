@@ -3209,6 +3209,86 @@ void test_w_logcollector_check_max_files_raise_failed(void ** state) {
     w_logcollector_check_max_files(-1);
 }
 
+/* w_msg_queue_push */
+
+static void init_msg_queue_push(w_msg_queue_t * msg_queue, logtarget * target, socket_forwarder * forwarder, size_t size) {
+    memset(msg_queue, 0, sizeof(*msg_queue));
+    memset(forwarder, 0, sizeof(*forwarder));
+    forwarder->name = "test_target";
+    target->log_socket = forwarder;
+    target->format = NULL;
+    msg_queue->msg_queue = queue_init(size);
+    w_mutex_init(&msg_queue->mutex, NULL);
+    w_cond_init(&msg_queue->available, NULL);
+}
+
+static void free_msg_queue_push(w_msg_queue_t * msg_queue) {
+    w_message_t * message;
+
+    while (message = (w_message_t *) queue_pop(msg_queue->msg_queue), message) {
+        free(message->buffer);
+        free(message);
+    }
+    queue_free(msg_queue->msg_queue);
+    w_mutex_destroy(&msg_queue->mutex);
+    w_cond_destroy(&msg_queue->available);
+}
+
+void test_w_msg_queue_push_recovery_summary_after_burst(void ** state) {
+    w_msg_queue_t msg_queue;
+    logtarget target;
+    socket_forwarder forwarder;
+    w_message_t * message;
+    int i;
+
+    init_msg_queue_push(&msg_queue, &target, &forwarder, 2);
+
+    assert_int_equal(w_msg_queue_push(&msg_queue, "a", NULL, 2, &target, 0), 0);
+
+    // last_warned == 0 after memset, so the first drop warns immediately
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Target 'test_target' message queue is full (2). 1 log line(s) lost since the last warning.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Discarding log line for target 'test_target'");
+    assert_int_equal(w_msg_queue_push(&msg_queue, "b", NULL, 2, &target, 0), -1);
+
+    for (i = 0; i < 4; i++) {
+        expect_string(__wrap__mdebug2, formatted_msg, "Discarding log line for target 'test_target'");
+        assert_int_equal(w_msg_queue_push(&msg_queue, "b", NULL, 2, &target, 0), -1);
+    }
+    assert_int_equal(msg_queue.dropped_since_warning, 4);
+
+    message = (w_message_t *) queue_pop(msg_queue.msg_queue);
+    assert_non_null(message);
+    free(message->buffer);
+    free(message);
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Target 'test_target' message queue accepting lines again. 4 log line(s) lost since the last warning.");
+    assert_int_equal(w_msg_queue_push(&msg_queue, "c", NULL, 2, &target, 0), 0);
+    assert_int_equal(msg_queue.dropped_since_warning, 0);
+
+    message = (w_message_t *) queue_pop(msg_queue.msg_queue);
+    free(message->buffer);
+    free(message);
+    assert_int_equal(w_msg_queue_push(&msg_queue, "d", NULL, 2, &target, 0), 0);
+
+    free_msg_queue_push(&msg_queue);
+}
+
+void test_w_msg_queue_push_no_summary_without_drops(void ** state) {
+    w_msg_queue_t msg_queue;
+    logtarget target;
+    socket_forwarder forwarder;
+
+    init_msg_queue_push(&msg_queue, &target, &forwarder, 4);
+
+    assert_int_equal(w_msg_queue_push(&msg_queue, "a", NULL, 2, &target, 0), 0);
+    assert_int_equal(w_msg_queue_push(&msg_queue, "b", NULL, 2, &target, 0), 0);
+    assert_int_equal(msg_queue.dropped_since_warning, 0);
+
+    free_msg_queue_push(&msg_queue);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Test w_get_hash_context
@@ -3334,7 +3414,11 @@ int main(void) {
         // Test w_logcollector_check_max_files
         cmocka_unit_test(test_w_logcollector_check_max_files_fits),
         cmocka_unit_test(test_w_logcollector_check_max_files_above_limit_in_force_warns),
-        cmocka_unit_test(test_w_logcollector_check_max_files_raise_failed)
+        cmocka_unit_test(test_w_logcollector_check_max_files_raise_failed),
+
+        // Test w_msg_queue_push
+        cmocka_unit_test(test_w_msg_queue_push_recovery_summary_after_burst),
+        cmocka_unit_test(test_w_msg_queue_push_no_summary_without_drops)
 
     };
 
