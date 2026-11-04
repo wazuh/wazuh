@@ -127,6 +127,10 @@ typedef struct {
     /** A 401 `token_unknown` or `stale_token` from /enroll: the node does not accept the token
      *  yet (its copy of the token store has not caught up, or the clocks disagree). */
     bool pending;
+    /** The pending 401 was `stale_token`: the manager refused the request's timestamp, so the clocks
+     *  disagree and the token itself may be fine. Lets wazuh-agent-auth point at the clock rather
+     *  than at the token. Meaningful only when pending is set. */
+    bool clock_skew;
     /** The named reason the failing step logged, verbatim. The command runs with the log's stderr
      *  echo off (main-agent-auth.c's nowDaemon()), so without this an operator is shown the
      *  failure class and not the cause -- "the CA could not be established" reads identically for

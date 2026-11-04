@@ -2071,6 +2071,97 @@ static void test_enroll_transport_failure_stays_transient_and_is_reported(void *
     os_free(token);
 }
 
+/* A load balancer's own error page carries nothing the agent can read. The status is then the
+ * only fact left that tells "the manager said no" from "something in front of it failed", and
+ * wazuh-agent-auth only prints the report, so it has to be there. */
+static void test_enroll_unreadable_5xx_body_reports_the_status(void **state) {
+    (void) state;
+    w_token_enroll_opts_t opts = {0};
+    w_token_enroll_report_t report;
+    char *token = make_token(false, true, "FAKE-EMBEDDED-CA");
+    const char *expected = "/enroll answered HTTP 502 with no message the agent could read; it may not "
+                           "have come from the manager itself (for example, a load balancer or proxy).";
+
+    opts.token_text = token;
+    opts.uid = -1;
+    opts.gid = -1;
+
+    will_return(__wrap_hc_enroll, 502L);
+    will_return(__wrap_hc_enroll, "<html><head><title>502 Bad Gateway</title></head></html>");
+    will_return(__wrap_hc_enroll, 1);
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__minfo, formatted_msg);
+    expect_string(__wrap__merror, formatted_msg, "Enrollment failed with unexpected HTTP status 502.");
+
+    assert_int_equal(w_agent_token_enroll(&opts, &report), W_TOKEN_ENROLL_ERR_ENROLL);
+    assert_int_equal(report.http_code, 502);
+    assert_string_equal(report.manager_message, "");
+    assert_true(sizeof("/enroll answered HTTP 502 with no message the agent could read; it may not "
+                       "have come from the manager itself (for example, a load balancer or proxy).")
+                <= sizeof(report.detail));
+    assert_string_equal(report.detail, expected);
+    assert_true(report.transient);
+    assert_false(report.pending);
+
+    os_free(token);
+}
+
+/* When the manager did say something, that is the cause: the status line is not added. */
+static void test_enroll_5xx_with_a_manager_message_adds_no_detail(void **state) {
+    (void) state;
+    w_token_enroll_opts_t opts = {0};
+    w_token_enroll_report_t report;
+    char *token = make_token(false, true, "FAKE-EMBEDDED-CA");
+
+    opts.token_text = token;
+    opts.uid = -1;
+    opts.gid = -1;
+
+    will_return(__wrap_hc_enroll, 503L);
+    will_return(__wrap_hc_enroll,
+                "{\"error\":{\"code\":9010,\"message\":\"Enrollment service temporarily unavailable\"}}");
+    will_return(__wrap_hc_enroll, 1);
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__minfo, formatted_msg);
+    expect_any(__wrap__merror, formatted_msg);
+
+    assert_int_equal(w_agent_token_enroll(&opts, &report), W_TOKEN_ENROLL_ERR_ENROLL);
+    assert_string_equal(report.manager_message, "Enrollment service temporarily unavailable");
+    assert_string_equal(report.detail, "");
+    assert_true(report.transient);
+
+    os_free(token);
+}
+
+/* A refused token whose answer carries a code but no message: the code came from the manager, so
+ * the detail must not suggest the answer came from something in front of it. The refusal line is
+ * what tells the operator what to do. */
+static void test_token_refusal_without_a_message_adds_no_detail(void **state) {
+    (void) state;
+    w_token_enroll_opts_t opts = {0};
+    w_token_enroll_report_t report;
+    char *token = make_token(false, true, "FAKE-EMBEDDED-CA");
+
+    opts.token_text = token;
+    opts.uid = -1;
+    opts.gid = -1;
+
+    will_return(__wrap_hc_enroll, 403L);
+    will_return(__wrap_hc_enroll, "{\"error\":{\"code\":9024}}");
+    will_return(__wrap_hc_enroll, 1);
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__minfo, formatted_msg);
+    expect_any(__wrap__merror, formatted_msg);
+
+    assert_int_equal(w_agent_token_enroll(&opts, &report), W_TOKEN_ENROLL_ERR_ENROLL);
+    assert_true(report.token_rejected);
+    assert_non_null(strstr(report.token_refusal, "has no uses left"));
+    assert_string_equal(report.manager_message, "");
+    assert_string_equal(report.detail, "");
+
+    os_free(token);
+}
+
 /* The classifier itself: every certificate alert is named with its protocol prefix, an unrelated
  * alert or plain network error is not, and the reason never overruns its buffer. */
 static void test_tls_rejection_classifier(void **state) {
@@ -2824,6 +2915,12 @@ int main(void) {
                                         teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_flat_403_reason_reaches_the_report, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_transport_failure_stays_transient_and_is_reported,
+                                        setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_enroll_unreadable_5xx_body_reports_the_status,
+                                        setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_enroll_5xx_with_a_manager_message_adds_no_detail,
+                                        setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_token_refusal_without_a_message_adds_no_detail,
                                         setup_test, teardown_test),
         cmocka_unit_test(test_tls_rejection_classifier),
         cmocka_unit_test_setup_teardown(test_certs_only_embedded_ca_ignores_a_broken_client_identity,

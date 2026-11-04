@@ -46,6 +46,11 @@ void w_agent_resolve_ssl_posture(agent *cfg);
  * Returns false when the agent must not start. */
 bool w_agent_validate_ssl_ca(const agent *cfg);
 
+/* Warn, naming the anchor, when verification was left unset and resolved to 'none' because no
+ * trust anchor is readable. Call it once the enrollment-token bootstrap has had its chance to
+ * install the anchor, so a first boot that is about to get one is not warned about it. */
+void w_agent_warn_unverified_without_anchor(const agent *cfg);
+
 /* Check that <manager><endpoint> names a manager rather than a placeholder, logging why not and,
  * on an agent that was never enrolled, how to enroll it. @home_path is the installation
  * directory the POSIX hint builds the command's path from; Windows passes NULL, its hint points

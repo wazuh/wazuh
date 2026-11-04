@@ -646,6 +646,25 @@ static void bridge_dispatch_active_response(const char *task_id, const char *pay
 
     bool sent = false;
 
+#ifndef WIN32
+    /* execq is a datagram socket and execd reads it with OS_RecvUnix(q, OS_MAXSTR, ...), which
+     * takes at most OS_MAXSTR - 1 bytes and silently discards the rest of a longer datagram. A
+     * larger document still "sends" fine and then reaches execd cut short, where it fails to parse
+     * as "(1315): Invalid JSON message" with nothing naming the cause. Refused here instead, where
+     * the task and its real size are known. Windows hands execd the string through an in-process
+     * queue with no such limit. */
+    const size_t msg_len = strlen(msg_str);
+
+    if (msg_len > (size_t)AR_EXECQ_MAX_MSG_LEN) {
+        merror("https_client: active_response task %s dropped: its document is %zu bytes, larger than "
+               "the %d bytes wazuh-execd can receive. Shorten the response's extra_arguments.",
+               task_id, msg_len, AR_EXECQ_MAX_MSG_LEN);
+        os_free(msg_str);
+        w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
+        return;
+    }
+#endif
+
     if (agt->execdq >= 0) {
 #ifndef WIN32
         if (OS_SendUnix(agt->execdq, msg_str, 0) < 0) {

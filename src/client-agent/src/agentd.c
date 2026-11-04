@@ -189,6 +189,8 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         w_agent_resolve_ssl_posture(agt);
     }
 
+    w_agent_warn_unverified_without_anchor(agt);
+
     /* Set group ID */
     if (Privsep_SetGroup(gid) < 0) {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));

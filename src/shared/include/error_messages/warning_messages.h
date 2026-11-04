@@ -25,6 +25,10 @@
                                     "'%s' and was never installed (logs/upgrade.log says why; usually the " \
                                     "'openssl' command is missing). Stop the agent and run 'wazuh-agent-auth " \
                                     "--certs-only' with an enrollment token to install the anchor."
+#define AG_SSL_NONE_NO_ANCHOR "(4129): TLS verification is disabled: <ssl><verification_mode> is not set and " \
+                              "there is no readable trust anchor at '%s', so the manager's certificate is not " \
+                              "checked. Run 'wazuh-agent-auth --certs-only' with an enrollment token to install " \
+                              "the anchor, or set <verification_mode>none</verification_mode> if this is intended."
 #define AG_SSL_NONE_TOKEN_ENROLL_VERIFIED "(4127): <ssl><verification_mode> is 'none', but that only applies once the " \
                                           "agent is enrolled: token enrollment still verifies the manager's " \
                                           "certificate against the enrollment token's CA."

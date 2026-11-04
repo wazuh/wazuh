@@ -198,7 +198,7 @@ It refuses to run while `wazuh-agentd` is running, with no override. A restart i
 | `1` | Could not run |
 | `2` | Token rejected |
 | `3` | CA not established |
-| `4` | Enrollment refused by the manager |
+| `4` | Enrollment refused by the manager, or not completed. When the failure may clear on its own (no answer, a `429` or `5xx`, a node that does not know the token, or a clock the manager refuses), the first line reads `the enrollment did not go through` and the command says what to try. A token the manager does not know may also be one that no longer exists there: if it keeps failing, mint a new one |
 | `5` | Not committed |
 | `6` | Configuration not updated |
 
@@ -248,6 +248,8 @@ sudo grep -E "cacerts|pin_mismatch|verified enrollment|TLS verification|\(41[0-9
 | `(4126)` | No anchor, but a remote upgrade delivered the manager's CA and could not install it (usually the `openssl` command is missing), so it is still in `var/incoming/root-ca.pem`. The agent runs with `none` | Install the anchor with [`--certs-only`](#enrolling-or-re-pointing-an-agent); a token minted with `--no-credential` is enough. See [When the CA cannot be validated on the agent](../../../guide/migration/remote-agent-upgrade.md#when-the-ca-cannot-be-validated-on-the-agent) |
 | `(4127)` | An explicit `none` on an agent enrolling with a token. `none` applies only after enrollment, and the enrollment is still verified against the token's CA | Nothing, if the enrollment succeeds. If it then fails with `pin_mismatch` or `The verified enrollment request could not be sent: (60)`, see those rows: `none` does not bypass either. Logged once per run, then at debug level |
 | `(4128)` | Logged after `(4112)`: `<manager><endpoint>` still holds the package's placeholder and `client.keys` is empty, so the agent was installed without a token and never enrolled. It does not start | Enroll it as described in [Enrolling or re-pointing an agent](#enrolling-or-re-pointing-an-agent), then start the agent |
+| `(4129)` | `<verification_mode>` is not set and there is no readable trust anchor, so the agent connects with `none` without checking the manager's certificate. An install that has held an anchor gets `(4125)` instead; this one has no `.anchor-committed` beside it | Install the anchor with [`--certs-only`](#enrolling-or-re-pointing-an-agent), or set `<verification_mode>none</verification_mode>` if running unverified is intended |
+| `/enroll answered HTTP <code> with no message the agent could read` (from `wazuh-agent-auth`) | Something answered `/enroll` with an error page or an empty body instead of the manager's JSON error: usually a load balancer or proxy in front of the manager | Check the balancer and the manager nodes behind it. A `5xx` usually clears on its own; run the command again |
 | `TLS verification failed connecting to …: the certificate does not include that name` | The address the agent dials is not in the certificate | The line lists the names the certificate does carry |
 | `TLS verification failed connecting to …: the certificate has expired` / `is not valid yet` | The manager's certificate is outside its validity window, or the clock is wrong | The line gives the date it checked against |
 | `TLS verification is DISABLED (verification_mode=none)` | The resolved mode is `none` | See the resolution table under [`verification_mode`](configuration.md#verification_mode) |

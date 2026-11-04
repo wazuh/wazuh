@@ -443,6 +443,8 @@ int local_start()
         w_agent_resolve_ssl_posture(agt);
     }
 
+    w_agent_warn_unverified_without_anchor(agt);
+
     if (agt->notify_time == 0) {
         agt->notify_time = NOTIFY_TIME;
     }
