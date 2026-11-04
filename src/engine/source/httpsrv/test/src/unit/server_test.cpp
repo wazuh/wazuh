@@ -306,6 +306,41 @@ TEST_F(ServerTest, InlineRouteAnswersWhileTheExecutorIsSaturated)
     server.shutdown(1s);
 }
 
+// A route's own backstop applies to that route only: its neighbour keeps the server's.
+TEST_F(ServerTest, ARouteResponseBackstopAppliesToThatRouteOnly)
+{
+    const auto path = socketPath("backstop");
+    std::promise<void> release;
+    auto released = release.get_future().share();
+    std::atomic<int> started {0};
+    const auto held = [&](const Request&, Response& res)
+    {
+        ++started;
+        released.wait();
+        res.setContent("done", "text/plain");
+    };
+
+    Server server {options()};
+    RouteOptions shortBackstop;
+    shortBackstop.responseTimeoutSec = 1;
+    server.addRoute(Method::POST, "/short", held, shortBackstop);
+    server.addRoute(Method::POST, "/default", held);
+    server.start(path);
+
+    auto defaultRoute = std::async(std::launch::async, [&] { return roundTrip(path, post(path, "/default", "a")); });
+    const auto started504 = std::chrono::steady_clock::now();
+    const auto shortRoute = roundTrip(path, post(path, "/short", "b"));
+    const auto elapsed = std::chrono::steady_clock::now() - started504;
+
+    EXPECT_EQ(504, statusOf(shortRoute));
+    EXPECT_LT(elapsed, 5s) << "the route's own 1 s backstop, not the server's 300 s";
+    EXPECT_EQ(std::future_status::timeout, defaultRoute.wait_for(500ms)) << "the neighbour still waits for its handler";
+
+    release.set_value();
+    EXPECT_EQ(200, statusOf(defaultRoute.get()));
+    server.shutdown(1s);
+}
+
 TEST_F(ServerTest, InlineRouteThrowGives500)
 {
     const auto path = socketPath("inline500");
