@@ -44,8 +44,9 @@ event ingest server.
 - `Response` — `status`, `body`, `contentType`, set together with `setContent()`.
 - `RouteHandler = std::function<void(const Request&, Response&)>` — synchronous; `api::adapter` re-exports it.
 - `RouteOptions` — route class (`Data`, `Control`, `Liveness`), `maxBodyBytes` (0 = the class default,
-  `UNLIMITED_BODY` = none), `runInline`, and an optional `payloadTooLargeBody`/`payloadTooLargeContentType`
-  that replaces the transport's JSON `413` for that route's cap.
+  `UNLIMITED_BODY` = none), `runInline`, an optional `payloadTooLargeBody`/`payloadTooLargeContentType`
+  that replaces the transport's JSON `413` for that route's cap, and `responseTimeoutSec` (0 = the server's
+  300 s): how long the route's handler has before the transport answers `504` for it.
 
 ### Route registrar (`IRouteRegistrar`)
 
@@ -240,7 +241,7 @@ httpsrv/
 | Test | Verifies |
 |------|----------|
 | `BoundedExecutorTest.*` | Every job runs once; full queue and closed admission refuse; the drain runs queued jobs, rejects the unstarted ones at the deadline and reports running ones; `join()` and the destructor wait for a job that outlived the deadline, and `join()` can be called twice |
-| `ServerTest.*` | Neutral request/response round trip; a repeated header counted as 2; executor full ⇒ `503` busy; handler throw ⇒ `500` text; a running reply delivered within the deadline; unstarted requests ⇒ shutdown `503`; `shutdownAll()` stops every server; socket mode `0660`; a path that is not a socket refused (and kept); `expectContinue` reaches the wire; an inline route answers while the executor is full, and a throw there is a `500`; without a byte budget the parser has no limit; registering through `IRouteRegistrar`; the connection-limit `503` counted as a connection shed; the connection-limit and budget `503` log lines name the settings given as `connectionCapOptionHint` / `budgetOptionHint` |
+| `ServerTest.*` | Neutral request/response round trip; a repeated header counted as 2; executor full ⇒ `503` busy; handler throw ⇒ `500` text; a running reply delivered within the deadline; unstarted requests ⇒ shutdown `503`; `shutdownAll()` stops every server; socket mode `0660`; a path that is not a socket refused (and kept); `expectContinue` reaches the wire; an inline route answers while the executor is full, and a throw there is a `500`; without a byte budget the parser has no limit; registering through `IRouteRegistrar`; a route's own response backstop (`504` after 1 s) while its neighbour keeps the server's; the connection-limit `503` counted as a connection shed; the connection-limit and budget `503` log lines name the settings given as `connectionCapOptionHint` / `budgetOptionHint` |
 | `ServerOutlivingHandlerTest.*` | Parameterized over `shutdown()` and `shutdownAll()`: each returns only after a handler that outlived the deadline (and the transport's 2 s reply drain) ended |
 | `ApiServerTest.*` | The documented `413` text (`payloadTooLargeText()`), a Control route over the limit refused before its body, `0` meaning unlimited, the API options (no byte budget, `apiWorkerCount()` workers, queue 64, 10 s body timeout answered, `100 Continue`), the worker count for 0 to 64 CPUs (`ApiWorkerCountTest`), a length no buffer can hold refused at once with `0` and the next request served, a stalled body answered `400`, Liveness routes capped at 4 KiB, the eleven `server.api.*` metrics |
 | `ServerMetricsTest.*` | The eleven `server.<instance>.*` names registered; the values follow `stats()` (running, queue depth, executor-full `503`, `413`); every metric reads 0 once the server is destroyed |
