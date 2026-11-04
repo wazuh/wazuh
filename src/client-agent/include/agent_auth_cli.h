@@ -54,6 +54,11 @@
  * the CLI and the UI must spell it the same way. */
 #define AGENT_AUTH_MANAGER_SAID   "The manager said: "
 
+/* Leads the stderr line saying the manager refused the enrollment token itself, which token and
+ * what to do. The Windows agent UI prefers it over the manager's reason, which for an expired or
+ * revoked token does not say which. Same spelling rule as above. */
+#define AGENT_AUTH_TOKEN_REFUSED  "Token refused: "
+
 typedef enum {
     AGENT_AUTH_ACTION_ENROLL = 0,
     AGENT_AUTH_ACTION_SHOW

@@ -202,6 +202,15 @@ It refuses to run while `wazuh-agentd` is running, with no override. A restart i
 | `5` | Not committed |
 | `6` | Configuration not updated |
 
+On exit code `4` the manager's reason is printed after `The manager said:`. When the manager refused the token itself (expired, revoked, unknown or out of uses), a `Token refused:` line comes first, naming the token id, what happened to it and the fix. The Windows agent GUI shows that line in its message box:
+
+```text
+wazuh-agent-auth: the manager refused the enrollment.
+  Token refused: enrollment token e0093KT752obCNyE_JHPKA was revoked (token_revoked). Create a new enrollment token on the manager.
+  The manager said: Invalid client authentication
+  Nothing was changed.
+```
+
 **Moving an agent to another manager.** Which action applies depends on whether the new manager already knows this agent:
 
 - **The same deployment, after the manager rotated its certificate authority or changed its address** — `--certs-only`. The agent keeps its id and its history.

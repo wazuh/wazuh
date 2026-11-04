@@ -1348,9 +1348,20 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
             /* The same reading w_enrollment_process_response() logs from, so the reason
              * wazuh-agent-auth prints is the one in ossec.log, whichever envelope carried it. */
             w_enroll_error_t error;
+            char reason[32];
+            const char *refusal;
+
             w_enrollment_parse_error(&enroll_result, &error);
 
             snprintf(report->manager_message, sizeof(report->manager_message), "%s", error.message);
+
+            /* The manager's own message cannot name the token, and for an expired or revoked one
+             * it does not even say which of the two. */
+            if ((refusal = w_enrollment_token_refusal(enroll_result.http_code, &error, reason, sizeof(reason))) != NULL) {
+                snprintf(report->token_refusal, sizeof(report->token_refusal),
+                         "enrollment token %s %s (%s). Create a new enrollment token on the manager.",
+                         w_enrollment_token_id_or_unknown(enroll_request.enroll_kid), refusal, reason);
+            }
 
             report->pending = (enroll_result.http_code == 401 &&
                                (strcmp(error.auth_class, "token_unknown") == 0 ||

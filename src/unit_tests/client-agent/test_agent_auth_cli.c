@@ -908,6 +908,43 @@ static void test_refused_enrollment_reports_the_manager_reason(void **state) {
     fclose(err);
 
     assert_non_null(strstr(err_buf, "  " AGENT_AUTH_MANAGER_SAID "Duplicate name\n"));
+    assert_null(strstr(err_buf, AGENT_AUTH_TOKEN_REFUSED));
+    assert_string_equal(out_buf, "");
+}
+
+/* For a revoked or expired token the manager only says "Invalid client authentication". The
+ * token-refused line is what tells the operator, and the Windows agent UI, which token and why. */
+static void test_refused_token_is_named_with_what_to_do(void **state) {
+    (void) state;
+    agent_auth_opts_t opts;
+    char out_buf[1024] = {0};
+    char err_buf[2048] = {0};
+    char token[] = TOKEN_WITH_KEY;
+    FILE *in = fmemopen(token, strlen(token), "r");
+    FILE *out = fmemopen(out_buf, sizeof(out_buf), "w");
+    FILE *err = fmemopen(err_buf, sizeof(err_buf), "w");
+
+    write_file(KEYS_FILE, EXISTING_KEY_LINE);
+    write_file(AGENT_ANCHOR_CA, "OLD-CA");
+    w_agent_auth_opts_init(&opts);
+    opts.force_enroll = true;
+
+    allow_any_logging(LOG_INFO | LOG_ERROR);
+    will_return(__wrap_hc_spki_pinned_certificate, 1);
+    will_return(__wrap_hc_enroll, 401);
+    will_return(__wrap_hc_enroll,
+                "{\"error\":{\"code\":\"token_revoked\",\"message\":\"Invalid client authentication\"}}");
+    will_return(__wrap_hc_enroll, 1);
+
+    assert_int_equal(w_agent_auth_run(&opts, in, out, err), AGENT_AUTH_ERR_ENROLL);
+
+    fclose(in);
+    fclose(out);
+    fclose(err);
+
+    assert_non_null(strstr(err_buf, "  " AGENT_AUTH_TOKEN_REFUSED "enrollment token ZGVmZ2hpamtsbW5vcHFycw was "
+                                    "revoked (token_revoked). Create a new enrollment token on the manager.\n"
+                                    "  " AGENT_AUTH_MANAGER_SAID "Invalid client authentication\n"));
     assert_string_equal(out_buf, "");
 }
 
@@ -1716,6 +1753,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_operator_token_file_is_never_removed, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_refused_enrollment_leaves_the_old_state, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_refused_enrollment_reports_the_manager_reason, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_refused_token_is_named_with_what_to_do, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_rewrite_refuses_when_the_node_is_absent, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_rewrite_never_follows_a_swapped_staging_file, setup_test,
                                         teardown_test),

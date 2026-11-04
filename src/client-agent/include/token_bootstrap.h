@@ -142,6 +142,9 @@ typedef struct {
      *  a refusal is the manager's to give, and repeating it is the difference between "refused"
      *  and "refused because this name is taken by an agent too new to replace". */
     char manager_message[256];
+    /** Which token the manager refused, what happened to it and what to do. Empty unless the
+     *  refusal was about the token itself (w_enrollment_token_refusal()). */
+    char token_refusal[256];
 } w_token_enroll_report_t;
 
 /**

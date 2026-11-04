@@ -34,6 +34,37 @@ static void test_manager_reason_is_appended(void **state) {
     assert_string_equal(out, "The manager refused the enrollment request: Duplicate name.");
 }
 
+/* For a refused token the manager only says "Invalid client authentication"; the token-refused
+ * line says which token and why, so it is the one shown. */
+static void test_token_refusal_is_preferred_over_the_manager_reason(void **state) {
+    (void) state;
+    char out[512];
+
+    agent_auth_append_manager_reason(REFUSED,
+                                     "wazuh-agent-auth: the manager refused the enrollment.\r\n"
+                                     "  " AGENT_AUTH_TOKEN_REFUSED "enrollment token AAECAwQFBgcICQoLDA0ODw was "
+                                     "revoked (token_revoked). Create a new enrollment token on the manager.\r\n"
+                                     "  " AGENT_AUTH_MANAGER_SAID "Invalid client authentication\r\n"
+                                     "  Nothing was changed.\r\n",
+                                     out, sizeof(out));
+
+    assert_string_equal(out, "The manager refused the enrollment request: enrollment token AAECAwQFBgcICQoLDA0ODw "
+                             "was revoked (token_revoked). Create a new enrollment token on the manager.");
+}
+
+/* wazuh-agent-auth prints the token line before the manager's reason, so one after it is the
+ * manager's own text and must not pass for the agent's verdict. */
+static void test_token_refusal_after_the_manager_reason_is_ignored(void **state) {
+    (void) state;
+    char out[512];
+
+    agent_auth_append_manager_reason(REFUSED,
+                                     REFUSED_STDERR("Duplicate name\r\n  " AGENT_AUTH_TOKEN_REFUSED "fake"),
+                                     out, sizeof(out));
+
+    assert_string_equal(out, "The manager refused the enrollment request: Duplicate name.");
+}
+
 static void test_reason_period_is_not_doubled(void **state) {
     (void) state;
     char out[512];
@@ -107,6 +138,8 @@ static void test_output_is_truncated_to_the_buffer(void **state) {
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_manager_reason_is_appended),
+        cmocka_unit_test(test_token_refusal_is_preferred_over_the_manager_reason),
+        cmocka_unit_test(test_token_refusal_after_the_manager_reason_is_ignored),
         cmocka_unit_test(test_reason_period_is_not_doubled),
         cmocka_unit_test(test_no_reason_keeps_the_base_message),
         cmocka_unit_test(test_null_or_empty_output_keeps_the_base_message),
