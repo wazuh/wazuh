@@ -88,6 +88,22 @@ static void expect_reopen(int ret) {
     }
 }
 
+struct timeval wm_sendmsg_timeval(int usec);
+
+static void test_delay_keeps_microseconds_below_a_second(__attribute__((unused)) void **state) {
+    struct timeval one_second = wm_sendmsg_timeval(1000000);
+    struct timeval short_delay = wm_sendmsg_timeval(10000);
+    struct timeval long_delay = wm_sendmsg_timeval(2500000);
+
+    // max_eps=1: select() on macOS refuses tv_usec of a second or more, and then doesn't wait at all.
+    assert_int_equal(one_second.tv_sec, 1);
+    assert_int_equal(one_second.tv_usec, 0);
+    assert_int_equal(short_delay.tv_sec, 0);
+    assert_int_equal(short_delay.tv_usec, 10000);
+    assert_int_equal(long_delay.tv_sec, 2);
+    assert_int_equal(long_delay.tv_usec, 500000);
+}
+
 static void expect_not_sent_log(void) {
     expect_string(__wrap__mtdebug1, tag, TAG);
     expect_string(__wrap__mtdebug1, formatted_msg,
@@ -222,6 +238,7 @@ static void test_waits_stop_on_shutdown_and_sends_wait_no_more(__attribute__((un
 
 int main(void) {
     const struct CMUnitTest tests[] = {
+        cmocka_unit_test(test_delay_keeps_microseconds_below_a_second),
         cmocka_unit_test_setup_teardown(test_sent_on_first_try, setup, teardown),
         cmocka_unit_test_setup_teardown(test_failed_send_reopens_and_resends, setup, teardown),
         cmocka_unit_test_setup_teardown(test_failed_resend_drops_the_queue, setup, teardown),

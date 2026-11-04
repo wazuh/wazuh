@@ -8,7 +8,23 @@
  * Foundation.
  */
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 #include "wmodules.h"
+
+#ifndef WIN32
+// The delay as select() takes it. tv_usec stays below a second, which macOS requires: max_eps=1 gives
+// a delay of 1000000 microseconds.
+STATIC struct timeval wm_sendmsg_timeval(int usec) {
+    struct timeval timeout = {usec / 1000000, usec % 1000000};
+    return timeout;
+}
+#endif
 
 // Wait the given delay, which keeps a module under its events per second
 static void wm_sendmsg_delay(int usec) {
@@ -17,7 +33,7 @@ static void wm_sendmsg_delay(int usec) {
     int msec = usec / 1000;
     Sleep(msec);
 #else
-    struct timeval timeout = {0, usec};
+    struct timeval timeout = wm_sendmsg_timeval(usec);
     select(0, NULL, NULL, NULL, &timeout);
 #endif
 }
