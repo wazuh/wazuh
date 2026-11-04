@@ -401,8 +401,9 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* aut
                         if (body_parse = cJSON_Parse(response->body), body_parse) {
                             cJSON* logs = cJSON_GetObjectItem(body_parse, "value");
                             int num_logs = cJSON_GetArraySize(logs);
+                            bool queue_lost = false;
                             if (num_logs > 0) {
-                                for (int log_index = 0; log_index < num_logs; log_index++) {
+                                for (int log_index = 0; log_index < num_logs && !queue_lost; log_index++) {
                                     cJSON* log = NULL;
                                     if (log = cJSON_GetArrayItem(logs, log_index), log) {
                                         cJSON* full_log = cJSON_CreateObject();
@@ -426,6 +427,9 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* aut
                                         mtdebug2(WM_MS_GRAPH_LOGTAG, "Sending log: '%s'", payload);
                                         if (wm_sendmsg_with_reconnect(1000000 / wm_max_eps, &queue_fd, payload, WM_MS_GRAPH_CONTEXT.name, LOCALFILE_MQ, WM_MS_GRAPH_LOGTAG) < 0) {
                                             mterror(WM_MS_GRAPH_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+                                            // modulesd is stopping or the agent went away again: keep the
+                                            // bookmark, so the next scan fetches these events once more.
+                                            queue_lost = true;
                                         }
 
                                         os_free(payload);
@@ -434,14 +438,14 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* aut
                                         mtwarn(WM_MS_GRAPH_LOGTAG, "Failed to parse log array into singular log.");
                                     }
                                 }
-                                fail = false;
+                                fail = queue_lost;
                             } else {
                                 mtdebug2(WM_MS_GRAPH_LOGTAG, "No new logs received.");
                                 fail = false;
                             }
 
                             cJSON* next_url = cJSON_GetObjectItem(body_parse, "@odata.nextLink");
-                            if (cJSON_IsString(next_url)) {
+                            if (!queue_lost && cJSON_IsString(next_url)) {
                                 if (wm_url_is_allowed(next_url->valuestring, auth_config->query_fqdn)) {
                                     memset(url, '\0', OS_SIZE_8192);
                                     snprintf(url, OS_SIZE_8192 -1, "%s", next_url->valuestring);
