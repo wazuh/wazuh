@@ -32,7 +32,7 @@ services:
     container_name: wazuh-master
     command: ["wazuh-master", "master", "wazuh-master"]
     environment:
-      AUTHD_PASS: "labpassword"
+      AUTHD_PASS: "labenrollpassword"
     volumes:
       - ./certs:/lab-certs:ro
       - ./certs-indexer:/lab-certs-indexer:ro
@@ -124,7 +124,7 @@ services:
     image: lab-agent4:4.14.1
     hostname: wazuh-agent4-a
     container_name: wazuh-agent4-a
-    command: ["agent4-a", "wazuh-lb-haproxy", "labpassword"]
+    command: ["agent4-a", "wazuh-lb-haproxy", "labenrollpassword"]
     networks:
       lab:
         ipv4_address: 172.28.0.61
@@ -134,7 +134,7 @@ services:
     image: lab-agent4:4.14.1
     hostname: wazuh-agent4-b
     container_name: wazuh-agent4-b
-    command: ["agent4-b", "wazuh-lb-haproxy", "labpassword"]
+    command: ["agent4-b", "wazuh-lb-haproxy", "labenrollpassword"]
     networks:
       lab:
         ipv4_address: 172.28.0.62
@@ -149,7 +149,7 @@ services:
     image: lab-agent5:branch
     hostname: wazuh-agent5-term
     container_name: wazuh-agent5-term
-    command: ["agent5-term", "wazuh-lb-haproxy:1518", "full", "labpassword"]
+    command: ["agent5-term", "wazuh-lb-haproxy:1518", "full", "labenrollpassword"]
     volumes:
       - ./certs:/lab-certs:ro
     networks:
@@ -161,7 +161,7 @@ services:
     image: lab-agent5:branch
     hostname: wazuh-agent5-pass
     container_name: wazuh-agent5-pass
-    command: ["agent5-pass", "wazuh-lb-nginx:1517", "full", "labpassword"]
+    command: ["agent5-pass", "wazuh-lb-nginx:1517", "full", "labenrollpassword"]
     volumes:
       - ./certs:/lab-certs:ro
     networks:

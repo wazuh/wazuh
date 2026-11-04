@@ -13,7 +13,8 @@
 #include "common/requestOutcomeMetrics.hpp"
 
 #include "common/logThrottle.hpp"
-#include "control/controlTypes.hpp"    // isValidVersion(), isAgentVersionTooNew() -- shared with /control (D8)
+#include "control/controlTypes.hpp" // isValidVersion(), isAgentVersionTooNew() -- shared with /control (D8)
+#include "credentialRejection.hpp"
 #include "endpoints/endpoint.hpp"      // remoted::endpoints::errorResponseFor() -- shared auth-rejection logging
 #include "http_server/headerUtils.hpp" // remoted::http::headerValue() -- case-insensitive lookup
 #include "json.hpp"
@@ -53,6 +54,12 @@ namespace remoted::enrollment
         }
 
         remoted::common::LogThrottle& versionRejectionThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
+
+        remoted::common::LogThrottle& credentialRejectionThrottle()
         {
             static remoted::common::LogThrottle instance;
             return instance;
@@ -612,6 +619,25 @@ namespace remoted::enrollment
             {
                 incRejectedAuth(metrics);
                 countTokenRejection(*authErr, metrics);
+                // Names a source, as authd's own line on 1515 does ("Invalid password provided by ..."), so an
+                // operator can see a peer that keeps failing. Throttled: a failed credential spends no rate-limit
+                // bucket, so an unthrottled line would let any peer grow the log at will. The throttle emits on
+                // the first rejection after a quiet window; the count covers every rejection since the previous
+                // line, and the address is the one of the rejection that triggered this line.
+                if (isCredentialRejection(*authErr))
+                {
+                    if (const auto throttle = credentialRejectionThrottle().record())
+                    {
+                        const auto pe = remoted::auth::publicErrorFor(*authErr);
+                        LOGFN_WARN(logFn(),
+                                   "Rejected %llu /enroll request(s) with an invalid or missing credential %s "
+                                   "(latest from %s: %s).",
+                                   static_cast<unsigned long long>(throttle.total),
+                                   throttle.period().c_str(),
+                                   request->remoteIp.empty() ? "local" : request->remoteIp.c_str(),
+                                   pe.code != nullptr ? pe.code : pe.message);
+                    }
+                }
                 responder->send(authErrorResponse(*authErr));
                 return;
             }

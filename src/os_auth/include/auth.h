@@ -302,6 +302,13 @@ cJSON* local_add_clustered(const char *name,
 #define AUTHD_PASS_BYTES     32
 #define AUTHD_PASS_HEX_CHARS 64
 
+/* The shortest password accepted from a hand-written authd.pass, in bytes after trimming CR/LF (strlen, so a
+ * non-ASCII character counts as more than one). It removes the trivially short passwords; it is a length, not
+ * a strength, so choosing a strong one stays the operator's responsibility (the generated one is
+ * AUTHD_PASS_HEX_CHARS hex chars). remoted's PasswordKeySource (kMinPasswordBytes) applies the same rule to the
+ * same file. */
+#define AUTHD_PASS_MIN_BYTES 16
+
 /**
  * @brief Generates a shared enrollment password: AUTHD_PASS_BYTES bytes straight from the
  *        CSPRNG, hex-encoded to AUTHD_PASS_HEX_CHARS lowercase characters. No digest step:
@@ -321,6 +328,11 @@ char *w_authd_load_password(const char *path, bool *generated);
 /* Read the shared password from @p path (cluster worker): never generates, persists,
  * nor exits. Returns NULL when missing/empty/short/unreadable. */
 char *w_authd_read_password(const char *path);
+
+/* Judge an existing password file at @p path the way w_authd_load_password() would, for `-t`: logs the
+ * same error and returns -1 for a file the start would refuse; 0 when it is valid or absent (a start
+ * generates a missing one). Never generates, persists, nor exits. */
+int w_authd_check_password_file(const char *path);
 
 extern char shost[512];
 extern keystore keys;
