@@ -43,13 +43,13 @@ static void test_token_refusal_is_preferred_over_the_manager_reason(void **state
     agent_auth_append_manager_reason(REFUSED,
                                      "wazuh-agent-auth: the manager refused the enrollment.\r\n"
                                      "  " AGENT_AUTH_TOKEN_REFUSED "enrollment token AAECAwQFBgcICQoLDA0ODw was "
-                                     "revoked (token_revoked). Create a new enrollment token on the manager.\r\n"
+                                     "revoked. Create a new enrollment token on the manager.\r\n"
                                      "  " AGENT_AUTH_MANAGER_SAID "Invalid client authentication\r\n"
                                      "  Nothing was changed.\r\n",
                                      out, sizeof(out));
 
     assert_string_equal(out, "The manager refused the enrollment request: enrollment token AAECAwQFBgcICQoLDA0ODw "
-                             "was revoked (token_revoked). Create a new enrollment token on the manager.");
+                             "was revoked. Create a new enrollment token on the manager.");
 }
 
 /* wazuh-agent-auth prints the token line before the manager's reason, so one after it is the

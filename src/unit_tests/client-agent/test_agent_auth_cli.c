@@ -943,7 +943,7 @@ static void test_refused_token_is_named_with_what_to_do(void **state) {
     fclose(err);
 
     assert_non_null(strstr(err_buf, "  " AGENT_AUTH_TOKEN_REFUSED "enrollment token ZGVmZ2hpamtsbW5vcHFycw was "
-                                    "revoked (token_revoked). Create a new enrollment token on the manager.\n"
+                                    "revoked. Create a new enrollment token on the manager.\n"
                                     "  " AGENT_AUTH_MANAGER_SAID "Invalid client authentication\n"));
     assert_string_equal(out_buf, "");
 }

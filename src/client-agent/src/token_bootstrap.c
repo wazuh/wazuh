@@ -1356,11 +1356,12 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
             snprintf(report->manager_message, sizeof(report->manager_message), "%s", error.message);
 
             /* The manager's own message cannot name the token, and for an expired or revoked one
-             * it does not even say which of the two. */
+             * it does not even say which of the two. The class or code stays in the log, for the
+             * operator; the person reading this line only needs what happened and what to do. */
             if ((refusal = w_enrollment_token_refusal(enroll_result.http_code, &error, reason, sizeof(reason))) != NULL) {
                 snprintf(report->token_refusal, sizeof(report->token_refusal),
-                         "enrollment token %s %s (%s). Create a new enrollment token on the manager.",
-                         w_enrollment_token_id_or_unknown(enroll_request.enroll_kid), refusal, reason);
+                         "enrollment token %s %s. Create a new enrollment token on the manager.",
+                         w_enrollment_token_id_or_unknown(enroll_request.enroll_kid), refusal);
             }
 
             report->pending = (enroll_result.http_code == 401 &&

@@ -206,7 +206,7 @@ On exit code `4` the manager's reason is printed after `The manager said:`. When
 
 ```text
 wazuh-agent-auth: the manager refused the enrollment.
-  Token refused: enrollment token e0093KT752obCNyE_JHPKA was revoked (token_revoked). Create a new enrollment token on the manager.
+  Token refused: enrollment token e0093KT752obCNyE_JHPKA was revoked. Create a new enrollment token on the manager.
   The manager said: Invalid client authentication
   Nothing was changed.
 ```
