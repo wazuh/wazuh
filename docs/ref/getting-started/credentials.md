@@ -190,9 +190,14 @@ as master.
   the start while client certificates are not required:
   `WARNING: /etc/wazuh-manager/export/dashboard-client.pem: expired on …; provided by the operator, kept as it is (nothing uses it yet: …)`.
   On a master, an unsafe entry (a key readable by others, a link, another owner) is `UNSAFE`, like any other; a worker does not check the pair at all.
-- **A CA without its key.** With only an external CA's certificate in `ca/`, the manager cannot issue the pair:
-  `WARNING: dashboard client pair not generated: /etc/wazuh-manager/ca has no key; provision it externally in /etc/wazuh-manager/export`.
-  Issue it from that CA and put it in `export/` as above.
+- **A CA without its key.** With only an external CA's certificate in `ca/` — the layout of every distributed
+  installation, where the CA key stays on the host that generated the PKI — the manager cannot issue the pair. While
+  nothing uses it, that is not a warning, only an informational line on the resolver's output (the journal, not
+  `wazuh-manager.log`):
+  `resolve-credentials: dashboard client pair not generated: /etc/wazuh-manager/ca has no key (nothing uses it yet: …); to provide one, issue it from that CA into /etc/wazuh-manager/export`.
+  To provide one, issue it from that CA and put it in `export/` as above. The resolver's own pair that needs
+  reissuing (expired, or no longer issued by the CA) is still a `WARNING` when the key is gone:
+  `WARNING: /etc/wazuh-manager/export/dashboard-client.pem: expired on …; not reissued: /etc/wazuh-manager/ca has no key`.
 - **`--clear`** removes the resolver's pair with its marker, and keeps yours.
 
 **Dashboard on the same host.** It reads both files as root; nothing has to be copied.
