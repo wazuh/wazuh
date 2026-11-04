@@ -42,6 +42,7 @@ namespace remoted::endpoints::download
     constexpr auto METRIC_DOWNLOAD_BYTES_TOTAL {"remoted.download.bytes.total"};
     constexpr auto METRIC_DOWNLOAD_UNAVAILABLE {"remoted.download.unavailable"};
     constexpr auto METRIC_DOWNLOAD_NO_ROW {"remoted.download.no_row"};
+    constexpr auto METRIC_DOWNLOAD_WPK_AUTH_UNAVAILABLE {"remoted.download.wpk_auth_unavailable"};
 
     /**
      * @brief The /download counter set, pre-resolved from one manager.
@@ -51,10 +52,12 @@ namespace remoted::endpoints::download
     struct DownloadMetrics
     {
         std::shared_ptr<wazuh::metrics::ICounter> rejected;    ///< 400s: the request line didn't parse.
-        std::shared_ptr<wazuh::metrics::ICounter> denied;      ///< 403s: the agent asked for a selector that is
-                                                               ///< not its own (or the source could not vouch for
-                                                               ///< it at all -- a malformed id, no source wired; a
-                                                               ///< missing wazuh-db row is `noRow`, a 503).
+        std::shared_ptr<wazuh::metrics::ICounter> denied;      ///< 403s for config: the agent asked for a selector
+                                                               ///< that is not its own (or the source could not
+                                                               ///< vouch for it at all -- a malformed id, no source
+                                                               ///< wired; a missing wazuh-db row is `noRow`, a 503).
+                                                               ///< 404s for a WPK: the agent has no open upgrade
+                                                               ///< task for that file.
                                                                ///< Separate from `rejected` on purpose: a
                                                                ///< parse failure is a broken client, this is an
                                                                ///< authorization decision and the only
@@ -78,6 +81,9 @@ namespace remoted::endpoints::download
                                                                ///< for the agent (not yet synchronized). Same
                                                                ///< answer as `unavailable`, counted apart: a
                                                                ///< missing row is not a failed lookup.
+        std::shared_ptr<wazuh::metrics::ICounter> wpkAuthUnavailable; ///< 503s: the task manager could not
+                                                                      ///< authorize a WPK download, so nothing
+                                                                      ///< was opened.
     };
 
     /// Resolves the remoted.download.* family on @p manager (creating it on first call; totals
@@ -87,8 +93,9 @@ namespace remoted::endpoints::download
         return DownloadMetrics {
             manager.getOrCreateCounter(
                 METRIC_DOWNLOAD_REJECTED, "400 rejections: the /download request did not parse", "count"),
-            manager.getOrCreateCounter(
-                METRIC_DOWNLOAD_DENIED, "403 denials: the requested resource is not the agent's own", "count"),
+            manager.getOrCreateCounter(METRIC_DOWNLOAD_DENIED,
+                                       "Denials (403 config, 404 WPK): the requested resource is not the agent's own",
+                                       "count"),
             manager.getOrCreateCounter(
                 METRIC_DOWNLOAD_NOT_FOUND, "404s: the requested group/WPK does not exist", "count"),
             manager.getOrCreateCounter(
@@ -101,6 +108,9 @@ namespace remoted::endpoints::download
                                        "count"),
             manager.getOrCreateCounter(METRIC_DOWNLOAD_NO_ROW,
                                        "503s: the local wazuh-db has no row for the agent (not yet synchronized)",
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_DOWNLOAD_WPK_AUTH_UNAVAILABLE,
+                                       "503s: the task manager could not authorize a WPK download",
                                        "count")};
     }
 
@@ -125,6 +135,13 @@ namespace remoted::endpoints::download
         if (m.notFound)
         {
             m.notFound->add();
+        }
+    }
+    inline void incWpkAuthUnavailable(const DownloadMetrics& m)
+    {
+        if (m.wpkAuthUnavailable)
+        {
+            m.wpkAuthUnavailable->add();
         }
     }
     inline void incOpenError(const DownloadMetrics& m)

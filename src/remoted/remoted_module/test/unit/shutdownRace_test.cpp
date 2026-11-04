@@ -647,7 +647,10 @@ TEST(ShutdownRace, StopSequenceSurvivesADownloadLookupInFlight)
         Method::Post,
         "/download",
         remoted::endpoints::download::makeHandler(
-            {}, downloadMetrics, std::make_shared<remoted::control::RegistryAgentGroupSource>(registry, lookup, 60)),
+            {},
+            downloadMetrics,
+            std::make_shared<remoted::control::RegistryAgentGroupSource>(registry, lookup, 60),
+            nullptr),
         remoted::http::ResponseMode::Streamable);
 
     HttpServerConfig config;
@@ -742,7 +745,8 @@ TEST(ShutdownRace, GrantedDownloadLookupAfterStopAcceptingDoesNotUseFreedPool)
         remoted::endpoints::download::makeHandler(
             resource.paths,
             downloadMetrics,
-            std::make_shared<remoted::control::RegistryAgentGroupSource>(registry, lookup, 60)),
+            std::make_shared<remoted::control::RegistryAgentGroupSource>(registry, lookup, 60),
+            nullptr),
         remoted::http::ResponseMode::Streamable);
 
     HttpServerConfig config;
