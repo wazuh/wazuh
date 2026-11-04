@@ -4308,6 +4308,7 @@ void test_remoted_module_https_config_defaults(void** state)
     will_return(__wrap_getDefine_Int_default, 30); // jwt_clock_skew
     will_return(__wrap_getDefine_Int_default, 5242880); // auth_max_body_size
     will_return(__wrap_getDefine_Int_default, 33554432); // auth_max_decoded_body_size
+    will_return(__wrap_getDefine_Int_default, 67108864); // analysisd.server_enriched_events_max_body_bytes
 
     remoted_module_https_config(&rm_config);
 
@@ -4396,6 +4397,7 @@ void test_remoted_module_https_config_custom_values(void** state)
     will_return(__wrap_getDefine_Int_default, 20); // jwt_clock_skew
     will_return(__wrap_getDefine_Int_default, 31457280);
     will_return(__wrap_getDefine_Int_default, 67108864); // auth_max_decoded_body_size
+    will_return(__wrap_getDefine_Int_default, 67108864); // analysisd.server_enriched_events_max_body_bytes
 
     remoted_module_https_config(&rm_config);
 
@@ -4459,6 +4461,7 @@ void test_remoted_module_https_config_decoded_cap_below_wire_cap(void** state)
     will_return(__wrap_getDefine_Int_default, 30);       // jwt_clock_skew
     will_return(__wrap_getDefine_Int_default, 8388608);  // auth_max_body_size: 8 MiB
     will_return(__wrap_getDefine_Int_default, 2097152);  // auth_max_decoded_body_size: 2 MiB
+    will_return(__wrap_getDefine_Int_default, 67108864); // analysisd.server_enriched_events_max_body_bytes
 
     expect_string(__wrap__mwarn,
                   formatted_msg,
@@ -4469,6 +4472,87 @@ void test_remoted_module_https_config_decoded_cap_below_wire_cap(void** state)
 
     assert_int_equal(rm_config.auth_max_body_size, 8388608);
     assert_int_equal(rm_config.auth_max_decoded_body_size, 8388608);
+}
+
+// Queues the getDefine_Int_default() values of remoted_module_https_config() up to and including the
+// engine's ingest cap, in its FIFO order.
+static void queue_https_config_caps(int wire_cap, int decoded_cap, int engine_cap)
+{
+    for (int i = 0; i < 13; ++i) {
+        will_return(__wrap_getDefine_Int_default, 1); // http_*
+    }
+    will_return(__wrap_getDefine_Int_default, 1); // http_content_encoding_enabled
+    for (int i = 0; i < 6; ++i) {
+        will_return(__wrap_getDefine_Int_default, 1); // memory-management
+    }
+    for (int i = 0; i < 8; ++i) {
+        will_return(__wrap_getDefine_Int_default, 1); // downstream_*
+    }
+    will_return(__wrap_getDefine_Int_default, 60);          // jwt_max_age
+    will_return(__wrap_getDefine_Int_default, 30);          // jwt_clock_skew
+    will_return(__wrap_getDefine_Int_default, wire_cap);    // auth_max_body_size
+    will_return(__wrap_getDefine_Int_default, decoded_cap); // auth_max_decoded_body_size
+    will_return(__wrap_getDefine_Int_default, engine_cap);  // analysisd.server_enriched_events_max_body_bytes
+}
+
+// A decoded cap above the engine's ingest cap would let remoted accept a batch the engine refuses before
+// reading it, and the agent would get a 503 instead of the 413 that makes it split the batch: lowered to the
+// engine's cap, with a warning.
+void test_remoted_module_https_config_decoded_cap_above_engine_cap(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config = {0};
+    queue_https_config_caps(5242880, 134217728, 67108864); // 5 MiB wire, 128 MiB decoded, 64 MiB engine
+
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "'remoted.auth_max_decoded_body_size' (134217728) is above "
+                  "'analysisd.server_enriched_events_max_body_bytes' (67108864), the largest batch the engine accepts; "
+                  "using 67108864.");
+
+    remoted_module_https_config(&rm_config);
+
+    assert_int_equal(rm_config.auth_max_body_size, 5242880);
+    assert_int_equal(rm_config.auth_max_decoded_body_size, 67108864);
+}
+
+// An engine value outside the engine's own range never reaches a running engine (it refuses to start), so it
+// is not compared and changes nothing here.
+void test_remoted_module_https_config_engine_cap_outside_its_range_is_ignored(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config = {0};
+    queue_https_config_caps(5242880, 134217728, 16777216); // engine 16 MiB: below its 32 MiB minimum
+
+    remoted_module_https_config(&rm_config);
+
+    assert_int_equal(rm_config.auth_max_body_size, 5242880);
+    assert_int_equal(rm_config.auth_max_decoded_body_size, 134217728);
+}
+
+// A wire cap above the engine's ingest cap: the decoded cap is lowered only down to the wire cap, and the wire
+// cap is reported but kept, since it applies to every authenticated route.
+void test_remoted_module_https_config_wire_cap_above_engine_cap(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config = {0};
+    queue_https_config_caps(67108864, 134217728, 33554432); // 64 MiB wire, 128 MiB decoded, 32 MiB engine
+
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "'remoted.auth_max_decoded_body_size' (134217728) is above "
+                  "'analysisd.server_enriched_events_max_body_bytes' (33554432), the largest batch the engine accepts; "
+                  "using 67108864.");
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "'remoted.auth_max_body_size' (67108864) is above 'analysisd.server_enriched_events_max_body_bytes' "
+                  "(33554432): the engine refuses an uncompressed batch larger than that. Lower the first or raise the "
+                  "second.");
+
+    remoted_module_https_config(&rm_config);
+
+    assert_int_equal(rm_config.auth_max_body_size, 67108864);
+    assert_int_equal(rm_config.auth_max_decoded_body_size, 67108864);
 }
 
 // Tests remoted_enrollment_config
@@ -4639,6 +4723,7 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     will_return(__wrap_getDefine_Int_default, 30); // jwt_clock_skew
     will_return(__wrap_getDefine_Int_default, 10485760);
     will_return(__wrap_getDefine_Int_default, 33554432); // auth_max_decoded_body_size
+    will_return(__wrap_getDefine_Int_default, 67108864); // analysisd.server_enriched_events_max_body_bytes
 
     // remoted_enrollment_config(): the `auth` section is a "normally enabled" authd config, then
     // its own getDefine_Int_default calls.
@@ -4801,6 +4886,7 @@ static void queue_validate_module_config_build(void)
     will_return(__wrap_getDefine_Int_default, 30);
     will_return(__wrap_getDefine_Int_default, 5242880);
     will_return(__wrap_getDefine_Int_default, 33554432);
+    will_return(__wrap_getDefine_Int_default, 67108864); // analysisd.server_enriched_events_max_body_bytes
 
     expect_string(__wrap_w_mconf_section, section, "auth");
     will_return(__wrap_w_mconf_section, mock_auth_section(0, 1, 1, 1, 1));
@@ -5113,6 +5199,7 @@ void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(v
     will_return(__wrap_getDefine_Int_default, 30);
     will_return(__wrap_getDefine_Int_default, 10485760);
     will_return(__wrap_getDefine_Int_default, 33554432); // auth_max_decoded_body_size
+    will_return(__wrap_getDefine_Int_default, 67108864); // analysisd.server_enriched_events_max_body_bytes
 
     // remoted_enrollment_config(): no `auth` section available (document not loaded) --
     // enrollment_enabled must fail closed, not default to enabled.
@@ -5485,6 +5572,9 @@ int main(void)
         cmocka_unit_test(test_remoted_module_https_config_defaults),
         cmocka_unit_test(test_remoted_module_https_config_custom_values),
         cmocka_unit_test(test_remoted_module_https_config_decoded_cap_below_wire_cap),
+        cmocka_unit_test(test_remoted_module_https_config_decoded_cap_above_engine_cap),
+        cmocka_unit_test(test_remoted_module_https_config_engine_cap_outside_its_range_is_ignored),
+        cmocka_unit_test(test_remoted_module_https_config_wire_cap_above_engine_cap),
         // Tests remoted_enrollment_config
         cmocka_unit_test(test_remoted_enrollment_config_enabled_and_flags_passed_through),
         cmocka_unit_test(test_remoted_enrollment_config_authd_disabled_wins),
