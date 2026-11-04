@@ -557,6 +557,11 @@ int IsDir(const char *file)
 int check_path_type(const char *dir)
 {
 #ifdef WIN32
+    if (is_network_path(dir)) {
+        mwarn(NETWORK_PATH_EXECUTED, dir);
+        return 0;
+    }
+
     // opendir() reads the name in the ANSI code page; FIM paths are UTF-8.
     wchar_t *wdir = auto_to_wide(dir);
     if (wdir == NULL) {
