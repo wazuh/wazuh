@@ -87,6 +87,38 @@ class NPM final
             }
         }
 
+        void parsePackageFolder(const std::filesystem::path& folderPath,
+                                std::function<void(nlohmann::json&)>& callback,
+                                bool expandScope)
+        {
+            try
+            {
+                if (!TFileSystem::is_directory(folderPath))
+                {
+                    return;
+                }
+
+                const auto folderName {folderPath.filename().string()};
+
+                if (expandScope && !folderName.empty() && folderName.front() == '@')
+                {
+                    // Scoped packages live one level below @scope; never traverse their dependencies.
+                    for (const auto& packageFolder : TFileSystem::directory_iterator(folderPath))
+                    {
+                        parsePackageFolder(packageFolder, callback, false);
+                    }
+                }
+                else
+                {
+                    parsePackage(folderPath, callback);
+                }
+            }
+            catch (const std::exception&)
+            {
+                // An inaccessible package or scope must not hide the remaining packages.
+            }
+        }
+
         void exploreExpandedPaths(const std::deque<std::string>& expandedPaths,
                                   std::function<void(nlohmann::json&)> callback)
         {
@@ -101,10 +133,7 @@ class NPM final
                     {
                         for (const auto& packageFolder : TFileSystem::directory_iterator(nodeModulesFolder))
                         {
-                            if (TFileSystem::is_directory(packageFolder))
-                            {
-                                parsePackage(packageFolder, callback);
-                            }
+                            parsePackageFolder(packageFolder, callback, true);
                         }
                     }
                 }
