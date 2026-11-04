@@ -13,6 +13,7 @@ import json
 import datetime
 import gzip
 import socket
+import time
 
 import botocore
 import urllib3
@@ -75,9 +76,10 @@ def test_aws_sl_subscriber_bucket_obtain_logs(mock_wazuh_integration, mock_sts_c
     events."""
     instance = utils.get_mocked_aws_sl_subscriber_bucket()
     mock_get_object = instance.client.get_object
+    with open(os.path.join(logs_path, 'AWSSecurityLake', 'test_file.parquet'), 'rb') as f:
+        mock_get_object.return_value = {'Body': io.BytesIO(f.read())}
 
-    with patch('io.BytesIO', return_value=(os.path.join(logs_path, 'AWSSecurityLake', 'test_file.parquet'))):
-        events = instance.obtain_logs(utils.TEST_BUCKET, SAMPLE_PARQUET_KEY)
+    events = instance.obtain_logs(utils.TEST_BUCKET, SAMPLE_PARQUET_KEY)
 
     assert events == [json.dumps(SAMPLE_PARQUET_EVENT_1)]
     mock_get_object.assert_called_with(Bucket=utils.TEST_BUCKET, Key=SAMPLE_PARQUET_KEY)
@@ -89,14 +91,40 @@ def test_aws_sl_subscriber_bucket_obtain_logs_with_datetime(mock_wazuh_integrati
     """Test 'obtain_information_from_parquet' correctly processes events containing datetime objects."""
     instance = utils.get_mocked_aws_sl_subscriber_bucket()
     mock_get_object = instance.client.get_object
+    mock_get_object.return_value = {'Body': io.BytesIO(b"fake parquet data")}
 
     with patch('pyarrow.parquet.ParquetFile', return_value=MagicMock()) as mock_parquet_file:
         mock_parquet_file.return_value.iter_batches.return_value = [MagicMock(to_pylist=lambda: [SAMPLE_PARQUET_EVENT_WITH_DATETIME])]
-        with patch('io.BytesIO', return_value=b"fake parquet data"):
-            events = instance.obtain_logs(utils.TEST_BUCKET, SAMPLE_PARQUET_KEY)
+        events = instance.obtain_logs(utils.TEST_BUCKET, SAMPLE_PARQUET_KEY)
 
     assert events == [json.dumps(SAMPLE_PARQUET_EVENT_WITH_DATETIME, default=str)]
     mock_get_object.assert_called_with(Bucket=utils.TEST_BUCKET, Key=SAMPLE_PARQUET_KEY)
+
+
+@pytest.mark.parametrize('content_length', [11, None])
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhIntegration.__init__', side_effect=wazuh_integration.WazuhIntegration.__init__)
+def test_aws_sl_subscriber_bucket_obtain_logs_raises_for_objects_larger_than_the_limit(mock_wazuh_integration,
+                                                                                      mock_sts_client,
+                                                                                      content_length):
+    """Test 'obtain_logs' raises ObjectTooLargeError for a parquet file larger than the limit, refused by its
+    ContentLength or while reading it, without parsing it, so the queue decides what to do with the message."""
+    instance = utils.get_mocked_aws_sl_subscriber_bucket()
+    body = MagicMock(wraps=io.BytesIO(b'x' * 11))
+    response = {'Body': body}
+    if content_length is not None:
+        response['ContentLength'] = content_length
+    instance.client.get_object.return_value = response
+
+    with patch('wazuh_integration.MAX_OBJECT_SIZE', 10), patch('wazuh_integration.OBJECT_READ_CHUNK_SIZE', 4), \
+            patch('s3_log_handler.pq.ParquetFile') as mock_parquet, \
+            pytest.raises(wazuh_integration.ObjectTooLargeError):
+        instance.obtain_logs(utils.TEST_BUCKET, SAMPLE_PARQUET_KEY)
+
+    mock_parquet.assert_not_called()
+    body.close.assert_called_once()
+    # An object whose ContentLength is over the limit is refused before reading anything
+    assert body.read.called is (content_length is None)
 
 
 @pytest.mark.parametrize('error', [Exception('expired token'), 'NoSuchKey', 'AccessDenied'])
@@ -158,6 +186,45 @@ def test_json_event_generator():
     generator = s3_log_handler.AWSSubscriberBucket._json_event_generator(data)
     events = list(generator)
     assert events == [{"event": "data1"}, {"event": "data2"}]
+
+
+@pytest.mark.parametrize('data, expected', [
+    ('', []),
+    ('{"event": "data1"} \n\t{"event": "data2"}\n', [{"event": "data1"}, {"event": "data2"}]),
+    ('{"event": "data1"}　\x1c{"event": "data2"}', [{"event": "data1"}, {"event": "data2"}]),
+    ('[1]2"text"', [[1], 2, 'text']),
+])
+def test_json_event_generator_skips_whitespace_between_events(data, expected):
+    """Test the _json_event_generator function skips the same whitespace between events as str.lstrip()."""
+    assert list(s3_log_handler.AWSSubscriberBucket._json_event_generator(data)) == expected
+
+
+@pytest.mark.parametrize('data', [' {"event": "data1"}', '{"event": "data1"} text', '{"event": "data1"}{'])
+def test_json_event_generator_raises_on_invalid_json(data):
+    """Test the _json_event_generator function raises a JSONDecodeError for data that is not a sequence of JSON
+    values, so obtain_logs() can try other formats."""
+    with pytest.raises(json.JSONDecodeError):
+        list(s3_log_handler.AWSSubscriberBucket._json_event_generator(data))
+
+
+def test_obtain_logs_is_not_quadratic():
+    """Test 'obtain_logs' processes a large number of concatenated JSON objects in time roughly proportional to
+    the file size, not to its square. The previous `data = data[json_index:].lstrip()` pattern took ~25s for this
+    exact input; the fix takes ~0.1s -- 2s is a decisive, non-flaky threshold between the two.
+    """
+    n_objects = 20000
+    pad = "x" * 800
+    data = f'{{"source":"custom","detail":{{"note":"{pad}"}}}}\n' * n_objects
+    with patch('s3_log_handler.wazuh_integration.WazuhIntegration.__init__'):
+        handler = s3_log_handler.AWSSubscriberBucket()
+
+    with patch('s3_log_handler.AWSSubscriberBucket.decompress_file', return_value=io.StringIO(data)):
+        start = time.perf_counter()
+        logs = handler.obtain_logs(bucket=utils.TEST_BUCKET, log_path='file.json')
+        elapsed = time.perf_counter() - start
+
+    assert len(logs) == n_objects
+    assert elapsed < 2, f"took {elapsed:.3f}s -- quadratic rescan likely reintroduced"
 
 
 @pytest.mark.parametrize("content, expected", [
@@ -494,6 +561,7 @@ def test_obtain_logs_raises_parse_errors(error):
     (KeyError('detail'), False),
     (EOFError('truncated'), False),
     (gzip.BadGzipFile('Not a gzipped file'), False),
+    (wazuh_integration.ObjectTooLargeError('its size is larger than 536870912 bytes'), False),
     (MemoryError(), False),
 ])
 def test_is_retryable_error(error, expected):
@@ -543,6 +611,7 @@ def test_aws_subscriber_bucket_obtain_logs_raises_for_snappy_files():
     (botocore.exceptions.ParamValidationError(report='Invalid bucket name'), False),
     (botocore.exceptions.NoCredentialsError(), False),
     (ValueError('invalid content'), False),
+    (wazuh_integration.ObjectTooLargeError('its size is larger than 536870912 bytes'), False),
 ])
 def test_is_unanswered_error(error, expected):
     """Test 'is_unanswered_error' matches the requests that were sent and got no answer from AWS, and not the answers

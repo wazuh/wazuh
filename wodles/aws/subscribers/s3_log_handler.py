@@ -30,6 +30,8 @@ import botocore
 import urllib3
 
 UNAVAILABLE_OBJECT_ERROR_CODES = ('NoSuchKey', 'NoSuchBucket', 'InvalidBucketName', 'KeyTooLongError')
+# Same characters as str.lstrip() removes
+WHITESPACE_REGEX = re.compile(r'\s*')
 
 
 def is_object_unavailable(error: Exception) -> bool:
@@ -175,9 +177,11 @@ class AWSSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler):
             Extracted JSON event.
         """
         decoder = json.JSONDecoder()
-        while data:
-            json_data, json_index = decoder.raw_decode(data)
-            data = data[json_index:].lstrip()
+        # Move a position forward instead of slicing the data, which copied the rest of it for every event
+        position = 0
+        while position < len(data):
+            json_data, position = decoder.raw_decode(data, position)
+            position = WHITESPACE_REGEX.match(data, position).end()
             yield json_data
 
     @staticmethod
@@ -351,7 +355,7 @@ class AWSSLSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler)
         """
         aws_tools.debug(f'Processing file {log_path!r} in {bucket!r}', 2)
         events = []
-        raw_parquet = io.BytesIO(self.client.get_object(Bucket=bucket, Key=log_path)['Body'].read())
+        raw_parquet = io.BytesIO(self.get_object_content(bucket, log_path))
         pfile = pq.ParquetFile(raw_parquet)
         for i in pfile.iter_batches():
             for j in i.to_pylist():

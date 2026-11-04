@@ -46,6 +46,71 @@ ROLE_SESSION_MANDATORY_REFRESH = 10 * 60
 REFRESH_WINDOWS_AS_ARGUMENTS = 'advisory_timeout' in inspect.signature(
     credentials.RefreshableCredentials.create_from_metadata).parameters
 EXPIRED_TOKEN_ERROR_CODES = {'ExpiredToken', 'ExpiredTokenException'}
+# Largest object, and largest decompressed content of an object, that is processed. Four times the largest buffer
+# of Amazon Data Firehose (128 MiB, before compression), as AWS documents no maximum for most log sources
+MAX_OBJECT_SIZE = 512 * 1024 * 1024
+OBJECT_READ_CHUNK_SIZE = 1024 * 1024
+
+
+class ObjectTooLargeError(OSError):
+    """An object, or its decompressed content, is larger than MAX_OBJECT_SIZE."""
+
+
+class SizeLimitedReader(io.BufferedIOBase):
+    """Binary stream that raises ObjectTooLargeError once more than a given number of bytes is read from a stream.
+
+    The limit applies to the position in the stream, so rewinding it to read it again is not counted twice.
+    """
+
+    def __init__(self, stream, limit: int):
+        super().__init__()
+        self._stream = stream
+        self._limit = limit
+        self._position = 0
+
+    def _counted(self, data: bytes) -> bytes:
+        self._position += len(data)
+        if self._position > self._limit:
+            raise ObjectTooLargeError(f'its decompressed content is larger than {self._limit} bytes')
+        return data
+
+    def _bounded(self, size: int) -> int:
+        # Never ask the stream for more than one byte past the limit
+        return min(size, self._limit - self._position + 1)
+
+    def readable(self) -> bool:
+        return True
+
+    def read(self, size: int = -1) -> bytes:
+        if size is not None and size >= 0:
+            return self._counted(self._stream.read(self._bounded(size)))
+        chunks = []
+        while True:
+            chunk = self.read1(OBJECT_READ_CHUNK_SIZE)
+            if len(chunk) == 0:
+                return b''.join(chunks)
+            chunks.append(chunk)
+
+    def read1(self, size: int = -1) -> bytes:
+        if size is None or size < 0:
+            size = OBJECT_READ_CHUNK_SIZE
+        return self._counted(self._stream.read1(self._bounded(size)))
+
+    def seekable(self) -> bool:
+        return self._stream.seekable()
+
+    def seek(self, offset: int, whence: int = io.SEEK_SET) -> int:
+        self._position = self._stream.seek(offset, whence)
+        return self._position
+
+    def tell(self) -> int:
+        return self._position
+
+    def close(self) -> None:
+        try:
+            self._stream.close()
+        finally:
+            super().close()
 
 
 class RoleCredentials(credentials.RefreshableCredentials):
@@ -421,6 +486,44 @@ class WazuhIntegration:
             aws_tools.error("Error sending message to wazuh: {}".format(e))
             sys.exit(13)
 
+    def get_object_content(self, bucket: str, log_key: str) -> bytes:
+        """Download an object, reading at most MAX_OBJECT_SIZE bytes of it.
+
+        Parameters
+        ----------
+        bucket : str
+            Path of the bucket to get the object from.
+        log_key : str
+            Key of the object.
+
+        Returns
+        -------
+        bytes
+            Content of the object.
+
+        Raises
+        ------
+        ObjectTooLargeError
+            If the object is larger than MAX_OBJECT_SIZE.
+        """
+        response = self.client.get_object(Bucket=bucket, Key=log_key)
+        body = response['Body']
+        error = ObjectTooLargeError(f'its size is larger than {MAX_OBJECT_SIZE} bytes')
+        content_length = response.get('ContentLength')
+        if isinstance(content_length, int) and content_length > MAX_OBJECT_SIZE:
+            body.close()
+            raise error
+        # getvalue() hands over the buffer without a copy, unlike joining a list of chunks
+        content = io.BytesIO()
+        while True:
+            chunk = body.read(OBJECT_READ_CHUNK_SIZE)
+            if len(chunk) == 0:
+                return content.getvalue()
+            if content.tell() + len(chunk) > MAX_OBJECT_SIZE:
+                body.close()
+                raise error
+            content.write(chunk)
+
     @contextlib.contextmanager
     def decompress_file(self, bucket: str, log_key: str):
         """Method that returns a file stored in a bucket decompressing it if necessary.
@@ -444,14 +547,16 @@ class WazuhIntegration:
         file_object
             Decompressed (or raw) object, ready to be read by the caller.
         """
-        raw_object = io.BytesIO(self.client.get_object(Bucket=bucket, Key=log_key)['Body'].read())
+        raw_object = io.BytesIO(self.get_object_content(bucket, log_key))
         try:
             if log_key[-3:] == '.gz':
-                with gzip.open(filename=raw_object, mode='rt') as f:
+                with gzip.open(filename=raw_object, mode='rb') as gzip_file, \
+                        io.TextIOWrapper(SizeLimitedReader(gzip_file, MAX_OBJECT_SIZE)) as f:
                     yield f
             elif log_key[-4:] == '.zip':
                 with zipfile.ZipFile(raw_object, compression=zipfile.ZIP_DEFLATED) as zipfile_object, \
-                        io.TextIOWrapper(zipfile_object.open(zipfile_object.namelist()[0])) as f:
+                        io.TextIOWrapper(SizeLimitedReader(zipfile_object.open(zipfile_object.namelist()[0]),
+                                                           MAX_OBJECT_SIZE)) as f:
                     yield f
             elif log_key[-7:] == '.snappy':
                 aws_tools.error(f"Couldn't decompress the {log_key!r} file, snappy compression is not supported.")
