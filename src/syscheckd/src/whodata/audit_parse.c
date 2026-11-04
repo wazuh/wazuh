@@ -392,6 +392,21 @@ char *gen_audit_path(char *cwd, char *path0, char *path1) {
 }
 
 
+// Opens the directory once (O_NOFOLLOW) and resolves via /proc/self/fd so the symlink check and the resolution cannot race.
+static char *audit_resolve_directory(const char *path) {
+    const int fd = open(path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW);
+    if (fd < 0) {
+        return NULL;
+    }
+
+    char fd_path[OS_SIZE_64];
+    snprintf(fd_path, sizeof(fd_path), "/proc/self/fd/%d", fd);
+    char *resolved = realpath(fd_path, NULL);
+    close(fd);
+    return resolved;
+}
+
+
 // Returns the path FIM stores for the object of a single-item event, and takes ownership of file_path.
 static char *audit_stored_path(char *file_path, const char *inode) {
     struct stat st;
@@ -415,9 +430,8 @@ static char *audit_stored_path(char *file_path, const char *inode) {
     const directory_t *configuration = fim_configuration_directory(resolved, false, syscheck.directories);
     if (configuration == NULL || !(configuration->options & WHODATA_ACTIVE)) {
         configuration = fim_configuration_directory(file_path, false, syscheck.directories);
-        if (configuration && (configuration->options & WHODATA_ACTIVE) && w_lstat(configuration->path, &st) == 0 &&
-            S_ISDIR(st.st_mode)) {
-            char *root = realpath(configuration->path, NULL);
+        if (configuration && (configuration->options & WHODATA_ACTIVE)) {
+            char *root = audit_resolve_directory(configuration->path);
             const size_t root_len = root ? strlen(root) : 0;
             if (root_len && strncmp(resolved, root, root_len) == 0 && resolved[root_len] == '/') {
                 const size_t size = strlen(configuration->path) + strlen(resolved + root_len) + 1;
