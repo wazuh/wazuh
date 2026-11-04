@@ -15,11 +15,13 @@
 #include <algorithm>
 #include <cctype>
 #include <ifaddrs.h>
+#include <memory>
 #include <netinet/in.h>
 #include <net/if_arp.h>
 #include <sys/socket.h>
 #include "inetworkWrapper.h"
 #include "networkHelper.h"
+#include "networkLinuxAddressResolver.h"
 #include "filesystemHelper.h"
 #include "stringHelper.h"
 #include "sharedDefs.h"
@@ -124,6 +126,18 @@ static const std::map<std::string, std::string> DHCP_STATUS =
     { "no",                     "disabled"          },
     { "manual",                 "disabled"          },
     { "bootp",                  "BOOTP"             },
+    // SUSE (wicked) BOOTPROTO values that start a DHCPv4 client
+    { "dhcp4",                  "enabled"           },
+    { "dhcp+autoip",            "enabled"           },
+    // Boolean spellings that ifcfg-rh accepts for DHCPV6C
+    { "1",                      "enabled"           },
+    { "true",                   "enabled"           },
+    { "y",                      "enabled"           },
+    { "t",                      "enabled"           },
+    { "0",                      "disabled"          },
+    { "false",                  "disabled"          },
+    { "n",                      "disabled"          },
+    { "f",                      "disabled"          },
 };
 
 namespace GatewayFileFields
@@ -216,6 +230,14 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
         std::string m_interfaceName;
         std::string m_gateway;
         std::string m_metrics;
+        std::shared_ptr<const IPv4AddressFlags> m_addressFlags;
+
+        // Prefix length of an IPv4 entry, counted from its netmask; 0 without one.
+        unsigned int prefixLength() const
+        {
+            const auto netmask { reinterpret_cast<const sockaddr_in*>(m_interfaceAddress->ifa_netmask) };
+            return netmask ? static_cast<unsigned int>(__builtin_popcount(ntohl(netmask->sin_addr.s_addr))) : 0;
+        }
 
         static std::string getNameInfo(const sockaddr* inputData, const socklen_t socketLen)
         {
@@ -240,21 +262,6 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
             return retVal.get();
         }
 
-        static std::string getRedHatDHCPStatus(const std::vector<std::string>& fields)
-        {
-            std::string retVal { "enabled" };
-            const auto value { fields.at(RHInterfaceConfig::Value) };
-
-            const auto it { DHCP_STATUS.find(value) };
-
-            if (DHCP_STATUS.end() != it)
-            {
-                retVal = it->second;
-            }
-
-            return retVal;
-        }
-
         static std::string getDebianDHCPStatus(const std::string& family, const std::vector<std::string>& fields)
         {
             std::string retVal { "enabled" };
@@ -276,10 +283,11 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
 
     public:
         // interfaceName is the link holding the entry; for IPv4 entries ifa_name is the address label.
-        NetworkLinuxInterface(ifaddrs* addrs, const std::string& interfaceName)
+        NetworkLinuxInterface(ifaddrs* addrs, const std::string& interfaceName, std::shared_ptr<const IPv4AddressFlags> addressFlags = nullptr)
             : m_interfaceAddress{ addrs }
             , m_interfaceName{ interfaceName }
             , m_gateway{UNKNOWN_VALUE}
+            , m_addressFlags{ std::move(addressFlags) }
         {
             if (!addrs)
             {
@@ -443,6 +451,44 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
             return retVal;
         }
 
+        // Value of an ifcfg entry without surrounding whitespace and one pair of matching quotes
+        static std::string stripQuotes(const std::string& value)
+        {
+            auto retVal { Utils::trim(value, " \t\r") };
+
+            if (retVal.size() >= 2 && (retVal.front() == '"' || retVal.front() == '\'') && retVal.back() == retVal.front())
+            {
+                retVal = retVal.substr(1, retVal.size() - 2);
+            }
+
+            return retVal;
+        }
+
+        // Values are compared case-insensitively, as NetworkManager's ifcfg-rh plugin does. A value
+        // outside the table says nothing, so the runtime check can still answer.
+        static std::string getRedHatDHCPStatus(const std::vector<std::string>& fields)
+        {
+            std::string retVal { "unknown" };
+            const auto value { Utils::toLowerCase(stripQuotes(fields.at(RHInterfaceConfig::Value))) };
+
+            const auto it { DHCP_STATUS.find(value) };
+
+            if (DHCP_STATUS.end() != it)
+            {
+                retVal = it->second;
+            }
+
+            return retVal;
+        }
+
+        // The configuration files win. Without an answer from them, an address that is not permanent
+        // was installed with a lifetime, which is what a DHCP client does. A permanent address, or no
+        // flags, says nothing either way.
+        static std::string resolveDhcp(const std::string& fileResult, const bool flagsKnown, const uint32_t flags)
+        {
+            return ("unknown" == fileResult && flagsKnown && !(flags & IFA_F_PERMANENT)) ? "enabled" : fileResult;
+        }
+
         std::string metrics() const override
         {
             return m_metrics;
@@ -524,7 +570,22 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
                 }
             }
 
-            return retVal;
+            // Netplan, NetworkManager keyfiles and similar leave no file for the checks above
+            auto flagsKnown { false };
+            uint32_t flags { 0 };
+
+            if (AF_INET == family && m_addressFlags)
+            {
+                const auto it { m_addressFlags->find(IPv4AddressKey { ifName, this->address(), prefixLength() }) };
+
+                if (m_addressFlags->end() != it)
+                {
+                    flagsKnown = true;
+                    flags = it->second;
+                }
+            }
+
+            return resolveDhcp(retVal, flagsKnown, flags);
         }
 
         uint32_t mtu() const override

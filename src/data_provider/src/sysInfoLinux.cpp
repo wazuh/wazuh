@@ -410,10 +410,11 @@ nlohmann::json SysInfo::getNetworks() const
     Utils::NetworkUnixHelper::getNetworks(interfacesAddress, networkInterfaces);
 
     IPv4AddressLinks addressLinks;
+    const auto addressFlags { std::make_shared<IPv4AddressFlags>() };
 
     try
     {
-        addressLinks = NetworkLinuxAddressResolver::resolveLinks(NetworkLinuxAddressResolver::dumpIPv4Addresses(), interfacesAddress.get());
+        addressLinks = NetworkLinuxAddressResolver::resolveLinks(NetworkLinuxAddressResolver::dumpIPv4Addresses(), interfacesAddress.get(), addressFlags.get());
     }
     catch (...)
     {
@@ -426,7 +427,7 @@ nlohmann::json SysInfo::getNetworks() const
 
         for (auto addr : interface.second)
         {
-            const auto networkInterfacePtr { FactoryNetworkFamilyCreator<OSPlatformType::LINUX>::create(std::make_shared<NetworkLinuxInterface>(addr, interface.first)) };
+            const auto networkInterfacePtr { FactoryNetworkFamilyCreator<OSPlatformType::LINUX>::create(std::make_shared<NetworkLinuxInterface>(addr, interface.first, addressFlags)) };
 
             if (networkInterfacePtr)
             {

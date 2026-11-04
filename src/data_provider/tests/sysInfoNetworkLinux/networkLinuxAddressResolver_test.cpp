@@ -13,6 +13,11 @@
 #include "network/networkLinuxAddressResolver.h"
 #include "networkUnixHelper.h"
 
+// Absent from kernel headers older than 3.14
+#ifndef IFA_F_NOPREFIXROUTE
+#define IFA_F_NOPREFIXROUTE 0x200
+#endif
+
 namespace
 {
     constexpr unsigned int SEQUENCE { 1 };
@@ -36,6 +41,12 @@ namespace
         return { IFA_LABEL, std::vector<char>(label.c_str(), label.c_str() + label.size() + 1) };
     }
 
+    Attribute flagsAttribute(const uint32_t flags)
+    {
+        const auto bytes { reinterpret_cast<const char*>(&flags) };
+        return { IFA_FLAGS, std::vector<char>(bytes, bytes + sizeof(flags)) };
+    }
+
     void appendDone(std::vector<char>& buffer, const int result, const unsigned short flags = NLM_F_MULTI)
     {
         const auto offset { buffer.size() };
@@ -55,7 +66,9 @@ namespace
                        const unsigned int index = 0,
                        const std::vector<Attribute>& attributes = {},
                        const unsigned short flags = NLM_F_MULTI,
-                       const unsigned int sequence = SEQUENCE)
+                       const unsigned int sequence = SEQUENCE,
+                       const unsigned char addressFlags = 0,
+                       const unsigned char prefixLength = 0)
     {
         auto length { NLMSG_LENGTH(sizeof(ifaddrmsg)) };
 
@@ -76,6 +89,8 @@ namespace
         auto message { static_cast<ifaddrmsg*>(NLMSG_DATA(header)) };
         message->ifa_family = family;
         message->ifa_index = index;
+        message->ifa_flags = addressFlags;
+        message->ifa_prefixlen = prefixLength;
 
         auto position { NLMSG_LENGTH(sizeof(ifaddrmsg)) };
 
@@ -539,4 +554,88 @@ TEST(NetworkLinuxAddressResolverTest, DumpListsHostIPv4AddressesInGetifaddrsOrde
     }
 
     EXPECT_EQ(keys.first, keys.second);
+}
+
+TEST(NetworkLinuxAddressResolverTest, KeepsTheEightBitFlagsWithoutIfaFlags)
+{
+    std::vector<char> buffer;
+    appendMessage(buffer, RTM_NEWADDR, AF_INET, 2, { ipv4Attribute(IFA_LOCAL, "172.20.0.3") }, NLM_F_MULTI, SEQUENCE, IFA_F_PERMANENT);
+    appendMessage(buffer, RTM_NEWADDR, AF_INET, 2, { ipv4Attribute(IFA_LOCAL, "172.20.0.4") });
+
+    std::vector<IPv4AddressRecord> records;
+    EXPECT_TRUE(NetworkLinuxAddressResolver::parseAddressMessages(buffer.data(), buffer.size(), SEQUENCE, records));
+
+    ASSERT_EQ(2u, records.size());
+    EXPECT_EQ(static_cast<uint32_t>(IFA_F_PERMANENT), records[0].flags);
+    EXPECT_EQ(0u, records[1].flags);
+}
+
+TEST(NetworkLinuxAddressResolverTest, IfaFlagsOverridesTheEightBitFlags)
+{
+    // noprefixroute does not fit in the 8-bit field, so the kernel sends the whole value in IFA_FLAGS.
+    const uint32_t wide { IFA_F_PERMANENT | IFA_F_NOPREFIXROUTE };
+    std::vector<char> buffer;
+    appendMessage(buffer, RTM_NEWADDR, AF_INET, 2, { ipv4Attribute(IFA_LOCAL, "172.20.0.3"), flagsAttribute(wide) }, NLM_F_MULTI, SEQUENCE, IFA_F_PERMANENT);
+
+    std::vector<IPv4AddressRecord> records;
+    EXPECT_TRUE(NetworkLinuxAddressResolver::parseAddressMessages(buffer.data(), buffer.size(), SEQUENCE, records));
+
+    ASSERT_EQ(1u, records.size());
+    EXPECT_EQ(wide, records[0].flags);
+}
+
+TEST(NetworkLinuxAddressResolverTest, KeepsThePrefixLengthOfEachAddress)
+{
+    std::vector<char> buffer;
+    appendMessage(buffer, RTM_NEWADDR, AF_INET, 2, { ipv4Attribute(IFA_LOCAL, "10.0.0.5") }, NLM_F_MULTI, SEQUENCE, IFA_F_PERMANENT, 32);
+    appendMessage(buffer, RTM_NEWADDR, AF_INET, 2, { ipv4Attribute(IFA_LOCAL, "10.0.0.5") }, NLM_F_MULTI, SEQUENCE, 0, 24);
+
+    std::vector<IPv4AddressRecord> records;
+    EXPECT_TRUE(NetworkLinuxAddressResolver::parseAddressMessages(buffer.data(), buffer.size(), SEQUENCE, records));
+
+    ASSERT_EQ(2u, records.size());
+    EXPECT_EQ(32u, records[0].prefixLength);
+    EXPECT_EQ(24u, records[1].prefixLength);
+}
+
+TEST(NetworkLinuxAddressResolverTest, IgnoresATruncatedIfaFlags)
+{
+    std::vector<char> buffer;
+    appendMessage(buffer, RTM_NEWADDR, AF_INET, 2, { ipv4Attribute(IFA_LOCAL, "172.20.0.3"), { IFA_FLAGS, std::vector<char>(2, '\xff') } }, NLM_F_MULTI, SEQUENCE, IFA_F_PERMANENT);
+
+    std::vector<IPv4AddressRecord> records;
+    EXPECT_TRUE(NetworkLinuxAddressResolver::parseAddressMessages(buffer.data(), buffer.size(), SEQUENCE, records));
+
+    ASSERT_EQ(1u, records.size());
+    EXPECT_EQ(static_cast<uint32_t>(IFA_F_PERMANENT), records[0].flags);
+}
+
+TEST(NetworkLinuxAddressResolverTest, ResolvesTheFlagsOfEachAddressByLinkName)
+{
+    IfaddrsList list;
+    list.addLink("eth0", 0, 2);
+    list.addLink("br-ex", 0, 9);
+
+    const std::vector<IPv4AddressRecord> records
+    {
+        { 2, "", "172.20.0.3", 0, 16 },
+        { 9, "vip", "10.0.0.202", IFA_F_PERMANENT, 32 },
+        { 9, "", "10.0.0.196", IFA_F_PERMANENT | IFA_F_NOPREFIXROUTE, 24 },
+        { 9, "", "10.0.0.202", 0, 24 },
+        { 0, "", "198.51.100.1", 0, 24 },
+    };
+
+    IPv4AddressFlags flags;
+    NetworkLinuxAddressResolver::resolveLinks(records, list.head(), &flags);
+
+    // The label does not matter, the link does. The same address with two prefixes keeps two
+    // entries. An address whose link has no name carries no flags.
+    const IPv4AddressFlags expected
+    {
+        { { "eth0", "172.20.0.3", 16 }, 0 },
+        { { "br-ex", "10.0.0.202", 32 }, IFA_F_PERMANENT },
+        { { "br-ex", "10.0.0.196", 24 }, IFA_F_PERMANENT | IFA_F_NOPREFIXROUTE },
+        { { "br-ex", "10.0.0.202", 24 }, 0 },
+    };
+    EXPECT_EQ(expected, flags);
 }

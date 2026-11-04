@@ -27,6 +27,7 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 #include "stringHelper.h"
@@ -35,6 +36,11 @@
 // Missing from older kernel headers; kernels that predate it never set it.
 #ifndef NLM_F_DUMP_INTR
 #define NLM_F_DUMP_INTR 0x10
+#endif
+
+// IFA_FLAGS is an enum value, absent from kernel headers older than 3.14
+#ifndef IFA_FLAGS
+#define IFA_FLAGS 8
 #endif
 
 // The kernel flags a dump when the addresses change while it runs; it is worth asking again.
@@ -49,10 +55,18 @@ struct IPv4AddressRecord
     unsigned int index;
     std::string label;
     std::string address;
+    // IFA_FLAGS when the kernel sends it, else the 8-bit ifa_flags.
+    uint32_t flags { 0 };
+    unsigned int prefixLength { 0 };
 };
 
 // (label reported by getifaddrs(), IPv4 address) -> links that hold it, in dump order.
 using IPv4AddressLinks = std::map<std::pair<std::string, std::string>, std::vector<std::string>>;
+
+// (link name, IPv4 address, prefix length) -> IFA_F_* flags of that address. One link can hold the
+// same address twice with different prefixes, each with its own flags.
+using IPv4AddressKey = std::tuple<std::string, std::string, unsigned int>;
+using IPv4AddressFlags = std::map<IPv4AddressKey, uint32_t>;
 
 // getifaddrs() names IPv4 addresses after their label, which can be any string, and does not
 // expose the owning link. These helpers recover it from the kernel's RTM_GETADDR dump.
@@ -209,7 +223,7 @@ class NetworkLinuxAddressResolver final
                     continue;
                 }
 
-                IPv4AddressRecord record { message->ifa_index, "", "" };
+                IPv4AddressRecord record { message->ifa_index, "", "", message->ifa_flags, message->ifa_prefixlen };
                 std::string localAddress;
                 std::string peerAddress;
                 auto attributesLength { static_cast<int>(IFA_PAYLOAD(header)) };
@@ -229,6 +243,10 @@ class NetworkLinuxAddressResolver final
                     else if (IFA_LABEL == attribute->rta_type && payloadLength > 0)
                     {
                         record.label = std::string { static_cast<const char*>(RTA_DATA(attribute)), strnlen(static_cast<const char*>(RTA_DATA(attribute)), payloadLength) };
+                    }
+                    else if (IFA_FLAGS == attribute->rta_type && payloadLength >= sizeof(record.flags))
+                    {
+                        std::memcpy(&record.flags, RTA_DATA(attribute), sizeof(record.flags));
                     }
                 }
 
@@ -267,7 +285,8 @@ class NetworkLinuxAddressResolver final
         // match the interfaces being reported. if_indextoname() covers a link without one. An address
         // whose link cannot be named keeps its slot with an empty name, so the entries after it that
         // share its label and address still get their own links.
-        static IPv4AddressLinks resolveLinks(const std::vector<IPv4AddressRecord>& records, ifaddrs* addresses)
+        // When flags is given, it receives the flags of every address whose link has a name.
+        static IPv4AddressLinks resolveLinks(const std::vector<IPv4AddressRecord>& records, ifaddrs* addresses, IPv4AddressFlags* flags = nullptr)
         {
             std::map<unsigned int, std::string> linkNames;
 
@@ -302,6 +321,11 @@ class NetworkLinuxAddressResolver final
                 if (!label.empty())
                 {
                     links[std::make_pair(label, record.address)].push_back(linkName);
+                }
+
+                if (flags && !linkName.empty())
+                {
+                    flags->emplace(IPv4AddressKey { linkName, record.address, record.prefixLength }, record.flags);
                 }
             }
 
