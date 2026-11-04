@@ -235,7 +235,8 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
     char last_scan_time_str[80];
     struct tm tm_scan = { .tm_sec = 0 };
 
-    while (current != NULL)
+    // A stopping modulesd sends nothing more: start no other window, whose bookmark would stay anyway.
+    while (current != NULL && !wm_shutdown_requested)
     {
         next = current->next;
 
@@ -243,12 +244,12 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
 
         event_types_len = array_size(event_types);
 
-        for (event_types_it = 0; event_types_it < event_types_len; ++event_types_it) {
+        for (event_types_it = 0; event_types_it < event_types_len && !wm_shutdown_requested; ++event_types_it) {
 
             if (!strcmp(github_config->event_type, EVENT_TYPE_ALL) || !strcmp(event_types[event_types_it], github_config->event_type)) {
                 scan_finished = 0;
                 fail = 0;
-                bool queue_lost = false;
+                bool unsent = false;
 
                 memset(org_state_name, '\0', OS_SIZE_1024);
                 snprintf(org_state_name, OS_SIZE_1024 -1, "%s-%s-%s", WM_GITHUB_CONTEXT.name, current->org_name, event_types[event_types_it]);
@@ -335,7 +336,7 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                             } else {
                                 int response_lenght = cJSON_GetArraySize(array_logs_json);
 
-                                for (int i = 0 ; i < response_lenght && !queue_lost ; i++) {
+                                for (int i = 0 ; i < response_lenght && !unsent ; i++) {
                                     cJSON * subitem = cJSON_GetArrayItem(array_logs_json, i);
 
                                     if (subitem) {
@@ -349,10 +350,15 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                                         mtdebug2(WM_GITHUB_LOGTAG, "Sending GitHub log: '%s'", payload);
 
                                         if (wm_sendmsg_with_reconnect(WM_GITHUB_MSG_DELAY, &github_config->queue_fd, payload, WM_GITHUB_CONTEXT.name, LOCALFILE_MQ, WM_GITHUB_LOGTAG) < 0) {
-                                            mterror(WM_GITHUB_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
-                                            // modulesd is stopping or the agent went away again: end the
-                                            // window and keep its bookmark, so the next scan fetches it again.
-                                            queue_lost = true;
+                                            // modulesd stopping while the agent can't reach the manager is
+                                            // not an error: the helper says so at debug.
+                                            if (!wm_shutdown_requested) {
+                                                mterror(WM_GITHUB_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+                                            }
+                                            // End the window and keep its bookmark, so a later scan fetches
+                                            // it again; not after a restart with only_future_events, which
+                                            // starts from the current time.
+                                            unsent = true;
                                         }
 
                                         os_free(payload);
@@ -360,7 +366,7 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                                     }
                                 }
 
-                                if (queue_lost) {
+                                if (unsent) {
                                     scan_finished = 1;
                                 } else if (response_lenght == ITEM_PER_PAGE) {
                                     next_page = wm_read_http_header_element(response->header, GITHUB_NEXT_PAGE_REGEX);
@@ -396,8 +402,8 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                     }
                 }
 
-                if (queue_lost) {
-                    mtdebug1(WM_GITHUB_LOGTAG, "Bookmark kept for organization '%s' and event type '%s': its events could not be queued.",
+                if (unsent) {
+                    mtdebug1(WM_GITHUB_LOGTAG, "Bookmark kept for organization '%s' and event type '%s': not all its events were sent.",
                         current->org_name, event_types[event_types_it]);
                 } else if (fail) {
                     wm_github_scan_failure_action(&github_config->fails, current->org_name, event_types[event_types_it], error_msg, &github_config->queue_fd);
@@ -508,7 +514,9 @@ STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *
 
             mtwarn(WM_GITHUB_LOGTAG, "Sending GitHub internal message: '%s'", payload);
 
-            if (wm_sendmsg_with_reconnect(WM_GITHUB_MSG_DELAY, queue_fd, payload, WM_GITHUB_CONTEXT.name, LOCALFILE_MQ, WM_GITHUB_LOGTAG) < 0) {
+            // modulesd stopping while the agent can't reach the manager is not an error.
+            if (wm_sendmsg_with_reconnect(WM_GITHUB_MSG_DELAY, queue_fd, payload, WM_GITHUB_CONTEXT.name, LOCALFILE_MQ, WM_GITHUB_LOGTAG) < 0
+                && !wm_shutdown_requested) {
                 mterror(WM_GITHUB_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
             }
 
