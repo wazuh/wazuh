@@ -26,7 +26,6 @@ default_security_configuration = {
 default_api_configuration = {
     "host": ["0.0.0.0", "::"],
     "port": 55000,
-    "drop_privileges": True,
     "max_upload_size": 10485760,
     "auth_context_max_payload_size": 65536,
     "authentication_pool_size": 2,

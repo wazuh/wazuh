@@ -123,54 +123,13 @@ All settings below go in `/etc/wazuh-manager/wazuh-manager-internal-options.conf
 | Setting | Env var | Description | Default | Mode |
 |:--|:--|:--|:--:|:--:|
 | `analysisd.pid_path` | `WAZUH_ENGINE_PID_FILE_PATH` | Directory where the manager-mode engine process writes its PID file, `wazuh-manager-analysisd-<pid>.pid`. Do not change it on a manager: `wazuh-manager-control start` looks for the PID file only in `/var/wazuh-manager/var/run/` and fails the start when it is not there within 10 seconds. | `/var/wazuh-manager/var/run/` | manager |
-| `analysisd.drop_privileges` | `WAZUH_ENGINE_DROP_PRIVILEGES` | Whether the manager-mode engine process drops root privileges after start-up. Has no effect in standalone mode. | `true` | manager |
 
 #### Process privileges
 
-The engine daemon is launched as `root` and, in manager mode, switches to the `wazuh-manager` group and user at
-start-up, before it opens its store and sockets. The user and group are hard-coded; only the switch itself is
-configurable, with `analysisd.drop_privileges` (set it to `false` only for debugging). In standalone mode (inside
-`wazuh-indexer`) the engine keeps the user and group it was launched with. If the user or group change fails, the
-daemon logs the error and exits at start-up.
-
-##### Switching back to `true` after running as `root`
-
-While `analysisd.drop_privileges` is `false` the daemon keeps running as `root`, so every file and directory it
-creates under `/var/wazuh-manager` belongs to `root:root` and is not group-writable. Setting the option back to
-`true` (or removing it, since `true` is the default) makes the daemon start as `wazuh-manager`, which can no longer
-write that content, and start-up fails with a permission error naming the offending path. For example:
-
-```
-Cannot create directory in base path: /var/wazuh-manager/data/ruleset: Permission denied
-Failed to create KVDB root directory: Permission denied
-```
-
-The ownership must be fixed manually before restarting the daemon. The paths the engine creates or writes at
-runtime are:
-
-| Path | Contents |
-|------|----------|
-| `/var/wazuh-manager/data/store` | Engine store documents |
-| `/var/wazuh-manager/data/ruleset` | Content Manager ruleset (write-tested at start-up) |
-| `/var/wazuh-manager/data/kvdb-ioc` | IOC KVDB (RocksDB files, must be owner-writable) |
-| `/var/wazuh-manager/data/mmdb` | Downloaded geolocation databases |
-| `/var/wazuh-manager/data/tzdb` | Time-zone database |
-| `/var/wazuh-manager/logs/<channel>/` | Stream-log channels: `file` outputs and the event dumper |
-| `/var/wazuh-manager/var/run` | PID file (the directory is group-writable, so it needs no fix) |
-
-With the daemon stopped, restore the ownership of the affected paths and start it again:
-
-```bash
-cd /var/wazuh-manager
-chown -R wazuh-manager:wazuh-manager data/store data/ruleset data/kvdb-ioc data/tzdb
-chown wazuh-manager:wazuh-manager data/mmdb/*.mmdb
-# Every stream-log channel directory the engine created while running as root, for example:
-chown -R wazuh-manager:wazuh-manager logs/event-dumps
-```
-
-The reverse transition (`true` → `false`) needs no fix, since `root` can write files owned by `wazuh-manager`. To
-avoid the problem altogether, restore the ownership right after every debugging session run with
-`analysisd.drop_privileges=false`.
+The engine daemon is launched as `root` and, in manager mode, always switches to the `wazuh-manager` group and user
+at start-up, before it opens its store and sockets. The user and group are hard-coded and the switch is not
+configurable. In standalone mode (inside `wazuh-indexer`) the engine keeps the user and group it was launched with.
+If the user or group change fails, the daemon logs the error and exits at start-up.
 
 #### Process limits
 
@@ -490,8 +449,10 @@ grep wazuh-manager-analysisd /var/wazuh-manager/logs/wazuh-manager.log | grep -E
   `analysisd.*` value (or `WAZUH_*` variable, named in the message); fix the line in
   `wazuh-manager-internal-options.conf`. `wazuh-manager-control check` (or `wazuh-manager-analysisd -t`) reports the
   same error without stopping the manager.
-- A permission error naming a path under `/var/wazuh-manager` — see
-  [Switching back to `true` after running as `root`](#switching-back-to-true-after-running-as-root).
+- A permission error naming a path under `/var/wazuh-manager` — a path the engine writes at runtime (`data/store`,
+  `data/ruleset`, `data/kvdb-ioc`, `data/mmdb`, `data/tzdb`, `logs/<channel>/`) is not owned by `wazuh-manager`,
+  typically because it was created by hand as `root`. With the daemon stopped, restore it with
+  `chown -R wazuh-manager:wazuh-manager <path>` (see [Process privileges](#process-privileges)).
 
 ### Events being dropped
 

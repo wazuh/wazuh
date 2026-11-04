@@ -7,11 +7,10 @@ copyright: Copyright (C) Wazuh Inc.
 
 type: integration
 
-brief: These tests will check if the 'drop_privileges' setting of the API is working properly.
-       This setting allows the user who starts the 'wazuh-manager-apid' daemon to be different from
-       the 'root' user. The Wazuh API is an open source 'RESTful' API that allows for interaction
-       with the Wazuh manager from a web browser, command line tool like 'cURL' or any script
-       or program that can make web requests.
+brief: This test checks the user the 'wazuh-manager-apid' daemon runs as when the manager starts it.
+       The daemon starts as root and switches to 'wazuh-manager'; only the '-r' command-line flag keeps
+       root, and wazuh-manager-control never passes it. The unit tests cover the switch itself with
+       mocked calls; this one covers the real start path.
 
 components:
     - api
@@ -44,7 +43,6 @@ os_version:
 
 references:
     - https://documentation.wazuh.com/current/user-manual/api/getting-started.html
-    - https://documentation.wazuh.com/current/user-manual/api/configuration.html#drop-privileges
 
 tags:
     - api
@@ -70,8 +68,8 @@ pytestmark = pytest.mark.server
 configuration_type = CONFIGURATION_TYPES[0]
 
 # Paths
-test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_drop_privileges.yaml')
-test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_drop_privileges.yaml')
+test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_api_process_user.yaml')
+test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_api_process_user.yaml')
 
 # Configurations
 test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
@@ -82,18 +80,17 @@ daemons_handler_configuration = {'all_daemons': True}
 # Tests
 @pytest.mark.tier(level=0)
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_drop_privileges(test_configuration, test_metadata, add_configuration, truncate_monitored_files,
-                         daemons_handler, wait_for_api_start):
+def test_api_process_user(test_configuration, test_metadata, add_configuration, truncate_monitored_files,
+                          daemons_handler, wait_for_api_start):
     """
-    description: Check if 'drop_privileges' affects the user of the API process. In this test, the 'PID' of the API
-                 process is obtained. After that, it gets the user ('root' or 'wazuh') and checks if it matches the
-                 'drop_privileges' setting.
+    description: Check the user of the API process started by wazuh-manager-control. The 'PID' of the API
+                 process is obtained, and its user must be 'wazuh-manager'.
 
-    wazuh_min_version: 4.2.0
+    wazuh_min_version: 5.0.0
 
     test_phases:
         - setup:
-            - Append configuration to the target configuration files (defined by configuration_type)
+            - Append the default port to api.yaml (the fixtures need a configuration block)
             - Truncate the log files
             - Restart daemons defined in `daemons_handler_configuration` in this module
             - Wait until the API is ready to receive requests
@@ -129,16 +126,14 @@ def test_drop_privileges(test_configuration, test_metadata, add_configuration, t
             brief: Monitor the API log file to detect whether it has been started or not.
 
     assertions:
-        - Verify that when 'drop_privileges' is enabled the user who has started the 'wazuh-manager-apid' daemon is 'wazuh'.
-        - Verify that when 'drop_privileges' is disabled the user who has started the 'wazuh-manager-apid' daemon is 'root'.
+        - Verify that the 'wazuh-manager-apid' daemon runs as 'wazuh-manager'.
 
-    input_description: Different test cases are contained in an external YAML file (cases_drop_privileges.yaml)
+    input_description: Different test cases are contained in an external YAML file (cases_api_process_user.yaml)
                        which includes API configuration parameters.
 
     expected_output:
         - PID of the 'wazuh-manager-apid' process.
-        - wazuh (if drop_privileges is enabled)
-        - root (if drop_privileges is disabled)
+        - wazuh-manager
     """
     expected_user = test_metadata['expected_user']
 

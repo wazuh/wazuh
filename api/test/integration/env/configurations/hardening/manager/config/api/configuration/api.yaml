@@ -33,8 +33,6 @@ access:
   max_request_per_minute: 10000
   max_unauthenticated_request_per_minute: 10000
 
-# Drop privileges (Run as wazuh-manager user)
-drop_privileges: yes
 
 # Uploadable Wazuh configuration sections (allow all for testing)
 upload_configuration:

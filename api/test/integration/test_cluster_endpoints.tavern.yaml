@@ -647,7 +647,6 @@ stages:
                   block_time: !anyint
                   max_request_per_minute: !anyint
                   max_unauthenticated_request_per_minute: !anyint
-                drop_privileges: !anybool
                 authentication_pool_size: !anyint
                 upload_configuration:
                   agents:

@@ -54,7 +54,6 @@ api_config_schema = {
     "properties": {
         "host": {"type": "array", "items": {"type": "string"}},
         "port": {"type": "number"},
-        "drop_privileges": {"type": "boolean"},
         "max_upload_size": {"type": "integer", "minimum": 0},
         "auth_context_max_payload_size": {"type": "integer", "minimum": 1024, "maximum": 1048576},
         "authentication_pool_size": {"type": "integer", "minimum": 1, "maximum": 50},
