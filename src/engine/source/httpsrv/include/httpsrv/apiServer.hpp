@@ -22,10 +22,19 @@ constexpr std::size_t API_LIVENESS_BODY_CAP {4096};
  */
 std::string payloadTooLargeText(std::size_t maxBytes);
 
+/// Seconds the API waits for a request body before answering 400, as it did on cpp-httplib.
+constexpr std::size_t API_BODY_TIMEOUT_SEC {10};
+
 /**
- * @brief Builds the engine API server: 4 request workers with a 64-request queue, no in-flight byte budget
- * (no API route charges it, so the request body is bounded only by the route caps), interim
- * "100 Continue" answers, and its stats published as server.api.* metrics.
+ * @brief The engine API server's options: 4 request workers with a 64-request queue, no
+ * in-flight byte budget (no API route charges it, so the request body is bounded only by the route caps),
+ * interim "100 Continue" answers, and a body that does not arrive within API_BODY_TIMEOUT_SEC answered 400.
+ */
+ServerOptions apiServerOptions();
+
+/**
+ * @brief Builds the engine API server from apiServerOptions(), with its stats published as server.api.*
+ * metrics.
  */
 std::shared_ptr<Server> makeApiServer();
 

@@ -33,7 +33,9 @@ struct ServerOptions
     /// false: no in-flight byte budget at all, and so no parser limit derived from it; bodies are then
     /// bounded only by the route caps (and maxBodySize). For servers whose routes never charge the budget.
     bool byteBudget {true};
-    std::size_t maxBodySize {0}; ///< Server-wide declared-length cap; 0 = none of its own.
+    std::size_t maxBodySize {0};    ///< Server-wide declared-length cap; 0 = none of its own.
+    std::size_t bodyTimeoutSec {0}; ///< Head received -> full body received; 0 keeps the transport's 30 s.
+    bool answerBodyTimeout {false}; ///< Answer a body that did not arrive in time with 400, not a silent close.
     std::size_t executorThreads {2};
     std::size_t executorQueue {64};
     bool expectContinue {false};  ///< Answer "Expect: 100-continue" once a request is admitted.
