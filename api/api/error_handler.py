@@ -10,9 +10,10 @@ from connexion.security import AbstractSecurityHandler
 
 from content_size_limit_asgi.errors import ContentSizeExceeded
 
+from api import configuration
 from api.authentication import decode_token
-from api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT
-from api.api_exception import ExpectFailedException
+from api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT, charge_unauthenticated_request
+from api.api_exception import ExpectFailedException, MaxRequestsException
 from api.controllers.util import json_response, build_recursion_error_response, ERROR_CONTENT_TYPE
 
 logger = logging.getLogger('wazuh-api')
@@ -92,8 +93,9 @@ async def http_error_handler(request: ConnexionRequest,
     """HTTPError Exception Error handler.
 
     A 404 or 405 is answered with a 401 unless the request carries a valid bearer token, so that an
-    unauthenticated caller cannot tell which routes and methods exist.
-    
+    unauthenticated caller cannot tell which routes and methods exist. One that no rate-limit
+    middleware charged is charged here against the unauthenticated bucket.
+
     Parameters
     ----------
     request : ConnexionRequest
@@ -116,6 +118,13 @@ async def http_error_handler(request: ConnexionRequest,
     # these two never went through authentication. The 401 is built here, not by
     # `unauthorized_error_handler`, which words it "Invalid credentials" on the login paths.
     if status_code in {404, 405}:
+        # connexion's router raises a 405 above every rate-limit middleware, and a 404 is charged by
+        # CheckAuthenticatedRateLimitMiddleware only when max_request_per_minute registers it. The
+        # charge comes first so that `decode_token` below is bounded for a valid token as well.
+        access = configuration.api_conf['access']
+        if (status_code == 405 or not access['max_request_per_minute']) and await charge_unauthenticated_request(
+                request, access['max_unauthenticated_request_per_minute'], 6005):
+            return await problem_error_handler(request, MaxRequestsException(code=6005))
         try:
             auth_type, token = AbstractSecurityHandler.get_auth_header_value(request)
             if auth_type != 'bearer':
