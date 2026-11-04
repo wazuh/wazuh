@@ -1296,8 +1296,15 @@ static void expect_enroll_401(const char *auth_class) {
 
     snprintf(body, sizeof(body),
              "{\"error\":{\"code\":\"%s\",\"message\":\"Invalid client authentication\"}}", auth_class);
-    snprintf(line, sizeof(line), "Enrollment rejected by the manager: %s: Invalid client authentication. %s", auth_class,
-             final_class ? "This enrollment token can no longer be used; mint a new one." : "Retrying.");
+    if (final_class) {
+        /* The token write_token_file() mints has an id of sixteen 0x01 bytes. */
+        snprintf(line, sizeof(line),
+                 "Enrollment token AQEBAQEBAQEBAQEBAQEBAQ refused by the manager (%s): Invalid client "
+                 "authentication. Retrying will not help: a new enrollment token is needed.", auth_class);
+    } else {
+        snprintf(line, sizeof(line), "Enrollment rejected by the manager: %s: Invalid client authentication. Retrying.",
+                 auth_class);
+    }
 
     will_return(__wrap_hc_fetch_cacerts, 200L);
     will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
@@ -1310,7 +1317,12 @@ static void expect_enroll_401(const char *auth_class) {
     expect_any(__wrap__mdebug1, formatted_msg);
     expect_enrolling_as_line();
     expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
-    expect_string(__wrap__minfo, formatted_msg, line);
+
+    if (final_class) {
+        expect_string(__wrap__merror, formatted_msg, line);
+    } else {
+        expect_string(__wrap__minfo, formatted_msg, line);
+    }
 }
 
 /* A worker whose copy of the token store has not caught up answers token_unknown: retried, and the
@@ -1336,14 +1348,24 @@ static void test_stale_token_is_pending(void **state) {
     assert_int_equal(IsFile("etc/enrollment_token"), 0);
 }
 
-/* The other 401 classes cannot clear on their own on a first start, so they still end it. */
-static void test_token_revoked_401_is_permanent_and_keeps_the_token(void **state) {
+/* remoted refuses an expired or revoked token itself, with a 401: that is final, so the dead token
+ * is discarded exactly as on authd's 403. */
+static void test_token_revoked_401_is_permanent_and_deletes_the_token(void **state) {
     (void) state;
     write_token_file(true, true, NULL);
     expect_enroll_401("token_revoked");
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PERMANENT);
-    assert_int_equal(IsFile("etc/enrollment_token"), 0);
+    assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
+}
+
+static void test_token_expired_401_is_permanent_and_deletes_the_token(void **state) {
+    (void) state;
+    write_token_file(true, true, NULL);
+    expect_enroll_401("token_expired");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PERMANENT);
+    assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
 }
 
 static void test_bound_pending_passes_other_results_through(void **state) {
@@ -2757,7 +2779,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_certificate_mismatch_403_keeps_the_token, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_token_unknown_is_pending_and_keeps_the_token, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_stale_token_is_pending, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_token_revoked_401_is_permanent_and_keeps_the_token, setup_test,
+        cmocka_unit_test_setup_teardown(test_token_revoked_401_is_permanent_and_deletes_the_token, setup_test,
+                                        teardown_test),
+        cmocka_unit_test_setup_teardown(test_token_expired_401_is_permanent_and_deletes_the_token, setup_test,
                                         teardown_test),
         cmocka_unit_test(test_bound_pending_passes_other_results_through),
         cmocka_unit_test(test_bound_pending_retries_within_the_window),

@@ -223,8 +223,8 @@ def test_an_agent_whose_secret_is_also_refused_enrolls_without_one(
                  endpoint, on a manager that would have taken them all straight back.
 
                  #39064's rule against looping survives this: shredding makes the next attempt a
-                 genuinely different request, and the refusal that does stop the agent is a 403
-                 (test_a_403_on_enroll_stops_immediately_and_names_the_code).
+                 genuinely different request, and the refusal that does stop the agent is one of
+                 the token itself (test_a_403_on_enroll_stops_immediately_and_names_the_code).
 
     assertions:
         - The agent shreds the dead secret.
@@ -251,7 +251,7 @@ def test_an_agent_whose_secret_is_also_refused_enrolls_without_one(
     monitor.start(timeout=5, callback=make_callback('re-enrollment cannot succeed; giving up',
                                                     prefix='.*', escape=True))
     assert monitor.callback_result is None, \
-        'The agent gave up on a 401, which only a 403 may cause'
+        'The agent gave up on an unknown_agent 401'
 
     # The recovery the stop used to forbid: no restart, no operator.
     manager.enroll_force_auth_class = None
@@ -296,9 +296,9 @@ def test_an_invalid_signature_on_enroll_retries_instead_of_giving_up(
         manager, restart_agentd):
     '''
     description: `invalid_signature` must not re-enroll -- a new identity fixes nothing it reports
-                 -- but it must not stop either. #39064 splits the two by status: "retry 401", and
-                 only a `403` is authd's authoritative refusal. The fix for this one lives on the
-                 manager, and an agent that gave up would never see it arrive.
+                 -- but it must not stop either: only a refusal of the token itself does. The fix
+                 for this one lives on the manager, and an agent that gave up would never see it
+                 arrive.
 
     assertions:
         - The agent keeps attempting the enrollment.
@@ -319,7 +319,7 @@ def test_an_invalid_signature_on_enroll_retries_instead_of_giving_up(
     monitor.start(timeout=5, callback=make_callback('re-enrollment cannot succeed; giving up',
                                                     prefix='.*', escape=True))
     assert monitor.callback_result is None, \
-        'The agent gave up on a 401, which only a 403 may cause'
+        'The agent gave up on an invalid_signature 401'
 
     manager.enroll_force_auth_class = None
     manager.mode = 'ACCEPT'
@@ -362,14 +362,42 @@ def test_a_403_on_enroll_stops_immediately_and_names_the_code(
 
 
 @pytest.mark.parametrize('test_configuration', test_configuration, ids=['reenrollment'])
+@pytest.mark.parametrize('failure_class', ['token_expired', 'token_revoked'])
+def test_a_401_refusing_the_token_stops_immediately_and_names_the_class(
+        test_configuration, set_wazuh_configuration, truncate_monitored_files, enrolled_agent,
+        manager, failure_class, restart_agentd):
+    '''
+    description: remoted refuses an expired or revoked token itself, with a 401 that names it, so
+                 authd's 403 never follows. That 401 is just as final: the agent must stop and say
+                 which token, as it does for the 403.
+
+    assertions:
+        - The agent logs the class and that retrying will not help.
+        - It sends no further /enroll.
+    '''
+    manager.mode = 'REJECT_AUTH'
+    manager.auth_force_class = 'unknown_agent'
+    manager.enroll_force_auth_class = failure_class
+
+    assert wait_for(lambda: enroll_requests(manager), timeout=SETTLE)
+    # Same '(id unknown)' as the 403 case: this bearer is the agent's re-enrollment secret.
+    expect_log(f'Enrollment token (id unknown) refused by the manager ({failure_class})')
+    expect_log('https_client: re-enrollment cannot succeed; giving up')
+
+    attempted = len(enroll_requests(manager))
+    time.sleep(QUIET)
+    assert len(enroll_requests(manager)) == attempted, f'A {failure_class} 401 did not stop the retry loop'
+
+
+@pytest.mark.parametrize('test_configuration', test_configuration, ids=['reenrollment'])
 def test_a_token_unknown_401_is_retried_until_the_manager_catches_up(
         test_configuration, set_wazuh_configuration, truncate_monitored_files, enrolled_agent,
         manager, restart_agentd):
     '''
     description: The worker sync window. A worker whose replica of the token store lags the master
                  answers `token_unknown` for a token that is perfectly valid; the agent must keep
-                 trying rather than treat it as final. This is why `token_expired` and
-                 `token_revoked` arriving as a 401 are also retryable, while authd's own 403 is not.
+                 trying rather than treat it as final. A replica can only miss a newer token, so
+                 `token_expired` and `token_revoked` are final even as a 401.
 
     assertions:
         - The agent retries the enrollment more than once.

@@ -347,7 +347,7 @@ pin mismatch aborts with a named error and no enrollment is attempted.
 
 The file is also deleted, unused, whenever it can no longer be consumed -- on an agent that
 already holds an anchor or an identity, and when the manager reports the token as unknown,
-revoked or out of uses. It is a credential; it is not left at rest once it is spent.
+expired, revoked or out of uses. It is a credential; it is not left at rest once it is spent.
 
 Failures are split into permanent and transient. A
 transient one -- an unreachable manager, a misprovisioned CA, a `5xx` -- is retried in place, on

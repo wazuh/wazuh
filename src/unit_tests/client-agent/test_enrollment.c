@@ -486,9 +486,8 @@ static void test_process_response_401_invalid_signature_retries_without_re_enrol
     assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_AUTH_RETRY);
 }
 
-/* The corollary, and the reason the two are worth separating: a 401 never stops the loop, so the
- * ONLY thing that does is a 403. */
-static void test_process_response_no_401_class_is_ever_fatal(void **state) {
+/* Only the 401s that refuse the token itself stop the loop; no other class does. */
+static void test_process_response_no_other_401_class_is_fatal(void **state) {
     (void)state;
     /* The two that report at ERROR say something an operator has to act on; the rest are ordinary
      * retries and report at INFO. Queued per class rather than queueing both, because a cmocka
@@ -500,7 +499,6 @@ static void test_process_response_no_401_class_is_ever_fatal(void **state) {
         {"unknown_agent", true},  {"invalid_signature", true},
         {"stale_token", false},   {"invalid_request", false},
         {"enrollment_key_unavailable", false}, {"token_unknown", false},
-        {"token_expired", false}, {"token_revoked", false},
     };
     size_t i;
 
@@ -520,13 +518,11 @@ static void test_process_response_no_401_class_is_ever_fatal(void **state) {
     }
 }
 
-/* Every other class retries. token_expired and token_revoked included: as a 401 they come from
- * remoted's replica of the token store, which can lag the master. authd's authoritative refusal
- * of the same token arrives as a 403 instead, and that is what stops the loop. */
+/* Every other class retries. token_unknown included: the node's replica of the token store may
+ * not have the token yet. */
 static void test_process_response_401_other_classes_are_retryable(void **state) {
     (void)state;
-    static const char *const classes[] = {"stale_token", "token_unknown", "token_expired",
-                                          "token_revoked", "enrollment_key_unavailable",
+    static const char *const classes[] = {"stale_token", "token_unknown", "enrollment_key_unavailable",
                                           "invalid_request", "a_class_from_the_future"};
     size_t i;
 
@@ -539,6 +535,88 @@ static void test_process_response_401_other_classes_are_retryable(void **state) 
 
         expect_any(__wrap__minfo, formatted_msg);
         assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_AUTH_RETRY);
+    }
+}
+
+/* remoted answers an expired or revoked token itself, so this 401 is the only refusal such a token
+ * ever gets: it must stop the loop and name the token, as authd's 403 does. */
+static void test_process_response_401_token_expired_or_revoked_is_fatal(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+
+    set_error_body(&result, 401, "\"token_expired\"", "Invalid client authentication");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Enrollment token AAECAwQFBgcICQoLDA0ODw refused by the manager (token_expired): "
+                  "Invalid client authentication. Retrying will not help: a new enrollment token is "
+                  "needed.");
+    assert_int_equal(w_enrollment_process_response(&result, "AAECAwQFBgcICQoLDA0ODw"),
+                     W_ENROLL_ERR_AUTH_FATAL);
+
+    set_error_body(&result, 401, "\"token_revoked\"", "Invalid client authentication");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Enrollment token AAECAwQFBgcICQoLDA0ODw refused by the manager (token_revoked): "
+                  "Invalid client authentication. Retrying will not help: a new enrollment token is "
+                  "needed.");
+    assert_int_equal(w_enrollment_process_response(&result, "AAECAwQFBgcICQoLDA0ODw"),
+                     W_ENROLL_ERR_AUTH_FATAL);
+}
+
+/* w_enrollment_token_refusal */
+
+static void test_token_refusal_names_each_verdict_on_the_token(void **state) {
+    (void)state;
+    static const struct {
+        long http_code;
+        const char *code;
+        const char *words;
+        const char *reason;
+    } cases[] = {
+        {401, "\"token_expired\"", "has expired", "token_expired"},
+        {401, "\"token_revoked\"", "was revoked", "token_revoked"},
+        {403, "9022", "is unknown to the manager or was revoked", "code 9022"},
+        {403, "9023", "has expired", "code 9023"},
+        {403, "9024", "has no uses left", "code 9024"},
+    };
+    size_t i;
+
+    for (i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+        hc_enroll_result_t result = {0};
+        w_enroll_error_t error;
+        char reason[32] = "";
+
+        set_error_body(&result, cases[i].http_code, cases[i].code, "refused");
+        w_enrollment_parse_error(&result, &error);
+
+        assert_string_equal(w_enrollment_token_refusal(result.http_code, &error, reason, sizeof(reason)),
+                            cases[i].words);
+        assert_string_equal(reason, cases[i].reason);
+    }
+}
+
+/* Not a verdict on the token: a store that may still catch up, a disabled enrollment, a code that
+ * is not a token's, or a class or code on a status that never carries it. */
+static void test_token_refusal_is_null_for_anything_else(void **state) {
+    (void)state;
+    static const struct {
+        long http_code;
+        const char *code;
+    } cases[] = {
+        {401, "\"token_unknown\""}, {401, "\"stale_token\""}, {401, "9023"},
+        {403, "0"},                 {403, "9026"},            {403, "\"token_expired\""},
+        {409, "9008"},
+    };
+    size_t i;
+
+    for (i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+        hc_enroll_result_t result = {0};
+        w_enroll_error_t error;
+        char reason[32] = "";
+
+        set_error_body(&result, cases[i].http_code, cases[i].code, "refused");
+        w_enrollment_parse_error(&result, &error);
+
+        assert_null(w_enrollment_token_refusal(result.http_code, &error, reason, sizeof(reason)));
+        assert_string_equal(reason, "");
     }
 }
 
@@ -1395,8 +1473,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_process_response_401_reads_the_class_from_the_nested_envelope, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_401_unknown_agent_is_identity_gone, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_401_invalid_signature_retries_without_re_enrolling, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_process_response_no_401_class_is_ever_fatal, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_process_response_no_other_401_class_is_fatal, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_401_other_classes_are_retryable, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_process_response_401_token_expired_or_revoked_is_fatal, setup_test, teardown_test),
+        cmocka_unit_test(test_token_refusal_names_each_verdict_on_the_token),
+        cmocka_unit_test(test_token_refusal_is_null_for_anything_else),
         cmocka_unit_test_setup_teardown(test_process_response_403_with_an_authd_code_is_fatal, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_403_names_the_refused_token, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_403_without_a_token_id_still_reads, setup_test, teardown_test),

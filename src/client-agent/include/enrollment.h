@@ -94,6 +94,27 @@ typedef struct w_enroll_error_t {
 void w_enrollment_parse_error(const hc_enroll_result_t *result, w_enroll_error_t *out);
 
 /**
+ * @brief Tells whether a refused /enroll is the manager refusing the enrollment token itself:
+ *        expired, revoked, unknown or out of uses. Re-presenting that token cannot succeed.
+ *
+ * @param http_code The /enroll HTTP status.
+ * @param error The reason w_enrollment_parse_error() read from the same response.
+ * @param reason Filled with what the manager named: the 401 class (`token_expired`) or the 403
+ *        code (`code 9024`). Untouched when this returns NULL.
+ * @param reason_size Size of @p reason.
+ * @return What happened to the token in plain words ("has expired"), or NULL when the refusal is
+ *         not about the token.
+ */
+const char *w_enrollment_token_refusal(long http_code, const w_enroll_error_t *error, char *reason,
+                                       size_t reason_size);
+
+/**
+ * @brief The enrollment token id a request signed with, or "(id unknown)" when its kid is not a
+ *        token id (a re-enrollment bearer's, or none).
+ */
+const char *w_enrollment_token_id_or_unknown(const char *enroll_kid);
+
+/**
  * @brief Parses one /enroll HTTP outcome and, on success, writes client.keys
  *        (atomically on Linux, directly on Windows -- see
  *        w_enrollment_store_key_entry()'s platform split) from the response

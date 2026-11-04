@@ -1379,9 +1379,9 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
             /* Keyed on the status, deliberately, and NOT on `transient`: every fatal refusal is
              * permanent, but so is a malformed request, an enrollment the manager has disabled,
              * and a duplicate agent -- all of which may succeed later with the same token. This
-             * is authd's verdict on a bearer whose signature it already verified: unknown,
-             * revoked, or out of uses. Only the caller acts on it, because only the caller owns
-             * the token. */
+             * is the manager's verdict on a token whose signature it already verified: unknown,
+             * expired, revoked, or out of uses. Only the caller acts on it, because only the
+             * caller owns the token. */
             report->token_rejected = (enroll_status == W_ENROLL_ERR_AUTH_FATAL);
         }
 
@@ -1604,7 +1604,7 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
 
         /* The token file is kept, so a retry within this boot -- or a later one -- still has
          * something to enroll with. The one exception is a token the manager has finally refused:
-         * unknown, revoked, or out of uses. Nothing on this path clears it (the anchor is never
+         * unknown, expired, revoked, or out of uses. Nothing on this path clears it (the anchor is never
          * installed and client.keys never written, so neither latch above trips next boot), so
          * keeping it would hand the same dead credential to the same refusal on every restart.
          * Disposal is the caller's business, which is why the core only reports the verdict. */
