@@ -786,8 +786,8 @@ paths:
         response then carries `Content-Encoding: zstd`, stays chunked (no `Content-Length`) and is one
         zstd frame (level 3) that decompresses to the `merged.mg` file. A WPK, an error, a request
         without the offer, the option off, or a manager that cannot spare the compressor's memory
-        (it takes it from the in-flight byte budget and leaves at least `https.max_body_size` plus
-        4 KiB free) answers exactly as an uncompressed response does. No `Vary` header is sent.
+        (it takes it from the in-flight byte budget and leaves at least half of it free, and never less
+        than `https.max_body_size` plus 4 KiB) answers exactly as an uncompressed response does. No `Vary` header is sent.
         `config_hash` is computed over the plain file.
       requestBody:
         required: true

@@ -339,7 +339,8 @@ See [Download endpoint](#download-endpoint-post-download) for the headers and in
 - Only the centralized configuration (`merged.mg`) is compressed. A WPK is never compressed, and
   error responses are never compressed.
 - The compressor reserves its memory from the in-flight byte budget for the whole transfer. If the
-  reservation is refused, or would leave less than `https.max_body_size` plus 4 KiB free, or the
+  reservation is refused, or would leave less than half of the budget (and never less than
+  `https.max_body_size` plus 4 KiB) free, or the
   compressor cannot be prepared, the response is sent uncompressed, exactly as if `zstd` had not been
   offered.
 - With `remoted.http_content_encoding_enabled` disabled the response is always uncompressed. The same
