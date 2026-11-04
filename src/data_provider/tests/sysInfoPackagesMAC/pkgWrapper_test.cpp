@@ -271,6 +271,35 @@ TEST_F(PKGWrapperTest, NoVersion)
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
 
+TEST_F(PKGWrapperTest, OnlyBundleVersion)
+{
+    std::string inputPath;
+    inputPath += currentWorkingDirectory();
+    inputPath += "/input_files";
+    std::string package { "PKGWrapperTest_OnlyBundleVersion.app" };
+
+    struct PackageContext ctx
+    {
+        inputPath, package, ""
+    };
+    std::shared_ptr<PKGWrapper> wrapper;
+    EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
+    EXPECT_EQ(wrapper->name(), "WindowManager");
+    EXPECT_EQ(wrapper->version(), "341.4.4");
+    EXPECT_EQ(wrapper->groups(), " ");
+    EXPECT_EQ(wrapper->description(), "com.apple.WindowManager");
+    EXPECT_EQ(wrapper->architecture(), UNKNOWN_VALUE);
+    EXPECT_EQ(wrapper->format(), "pkg");
+    EXPECT_EQ(wrapper->osPatch(), "");
+    EXPECT_EQ(wrapper->source(), "applications");
+    EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
+    EXPECT_EQ(wrapper->vendor(), "Apple");
+    EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
+    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
+    EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
+}
+
 TEST_F(PKGWrapperTest, NoGroups)
 {
     std::string inputPath;
