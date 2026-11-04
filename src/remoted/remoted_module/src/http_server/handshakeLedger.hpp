@@ -34,9 +34,11 @@
  *   Here a connection is counted from the moment its handshake starts -- when it already holds its
  *   slot -- and only a connection that was counted is uncounted, once.
  *
- * Keys are RESTinio connection ids: unique per server run. They restart with a new server, which is
- * why start() calls reset(): no notice of the previous run can arrive once it has stopped, because
- * stop() joins the I/O threads first.
+ * Keys are RESTinio connection ids, distinct for every connection of a server run: the transport
+ * replaces RESTinio's connection factory, whose plain counter could give two connections created at
+ * the same moment the same id, with one that takes them from connectionIdSource.hpp. They restart with
+ * a new server, which is why start() calls reset(): no notice of the previous run can arrive once it
+ * has stopped, because stop() joins the I/O threads first.
  *
  * Thread safety: every method may be called from any I/O thread; one mutex guards the tables. The
  * cost is one lock per connection event, never per request.

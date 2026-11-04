@@ -121,6 +121,8 @@ src/http_server/
 │                            #   per-source handshake cap (RESTinio-free, unit-tested without a socket)
 ├── handshakeMetrics.hpp     # names of the handshake-guard pulls (remoted.server.connections.handshaking,
 │                            #   remoted.server.handshake.*)
+├── connectionIdSource.hpp   # atomic ids for the listener's connections (RESTinio-free); handed to RESTinio
+│                            #   by the connection_factory_t specialization in RestinioHttpServer.cpp
 ├── guardedTlsSocket.hpp     # PRIVATE to the .cpp: RESTinio's TLS socket + a deadline on the handshake
 │                            #   (traits customization point; see "TLS handshake guard" below)
 └── RestinioHttpServer.hpp/.cpp # RESTinio + OpenSSL implementation (PImpl hides RESTinio in the .cpp)
@@ -141,8 +143,8 @@ src/http_server/
        is shut down in both directions, which fails the handshake whatever step it is in (a pending
        read gets EOF, a later one fails at once); RESTinio's own failure path then closes the
        connection and frees the slot. Two RESTinio specializations carry the policy in
-       (`socket_type_dependent_settings_t::handshake_guard()`, `socket_supplier_t`). **Re-check the
-       three customization points when RESTinio is upgraded.**
+       (`socket_type_dependent_settings_t::handshake_guard()`, `socket_supplier_t`). **Re-check these
+       three customization points, and the connection factory below, when RESTinio is upgraded.**
     2. **A per-source cap on handshakes in progress** (`remoted.max_handshakes_per_source`, default
        32, 0 disables): one more connection from an address that already has that many mid-handshake
        is closed at once. The deadline alone only turns "hold forever" into "reconnect every few
@@ -159,6 +161,17 @@ src/http_server/
   unmatched notice is a no-op. Both guards are WARN-logged (throttled, with the count and the last
   peer) and counted: `remoted.server.connections.handshaking`,
   `remoted.server.handshake.{timeouts,rejected_per_source}.total`.
+
+  **Connection ids are unique per server run (`connectionIdSource.hpp`).** The ledger, the connection
+  level and the `verification_mode=full` verdicts are all keyed by RESTinio's connection id. RESTinio
+  0.7.x numbers connections with a plain post-increment in `connection_factory_t::create_new_connection()`,
+  which runs on the acceptor's executor — the `io_context` itself, not a strand — so with more than one
+  I/O thread two connections created at the same moment could get the same id. Each such pair leaked
+  one handshake slot of its address for good, until a fleet behind one load-balancer address was
+  refused. `RestinioHttpServer.cpp` specializes `restinio::impl::connection_factory_t<ServerTraits>`:
+  RESTinio 0.7.10's factory with the ids taken from an atomic counter, and `start()` `static_assert`s
+  that it is the one in use. Serializing the accepts (one at a time, connection created inline) would
+  also keep the ids unique, but gives up the accept-burst headroom of `http_concurrent_accepts`.
 
 - **Certificate status (`tlsCertificateStatus.hpp`, `IHttpServer::certificateStatus()`):** when
   `start()` builds the TLS context it evaluates the leaf it just loaded — days to `notAfter`
@@ -2741,7 +2754,9 @@ cap refusing only the excess and freeing a share when a handshake finishes, 0 di
 keeping the totals, concurrency) with `httpServer_test.cpp`'s `HandshakeGuardTest` over a real
 listener (every slot held by a stalled handshake, then an honest request served once the deadline
 closes them; the per-source cap closing the excess at once; failed handshakes not underflowing
-`connectionsOpen`), `deferredWorkLimiter_test.cpp` (count-based limiter: acquire-to-capacity, RAII/move
+`connectionsOpen`; a 32 000-connection storm on 4 I/O threads leaving nothing handshaking, never
+`handshaking > open`, and the address's whole per-source share free), `connectionIdSource_test.cpp`
+(ids from 1, distinct across 8 threads), `deferredWorkLimiter_test.cpp` (count-based limiter: acquire-to-capacity, RAII/move
 release, disabled mode, concurrency), `agentRequestLimiter_test.cpp` (the per-agent cap: one agent
 at its cap never touches another, an idle agent's entry is erased, release-once across moves, a slot
 co-owning its limiter, concurrency, the byte share across an agent's requests, and the

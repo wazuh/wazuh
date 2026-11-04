@@ -38,7 +38,9 @@
  *
  * Everything else (the state listener's tls_accessor_t, make_tls_socket_pointer_for_state_listener())
  * takes a tls_socket_t&, which GuardedTlsSocket is. Re-check all three points when RESTinio is
- * upgraded: a release that arms its own handshake timer, or renames one of them, changes this.
+ * upgraded: a release that arms its own handshake timer, or renames one of them, changes this. The
+ * same goes for the fourth specialization, impl::connection_factory_t in RestinioHttpServer.cpp, which
+ * gives the connections the unique ids the handshake ledger is keyed by.
  *
  * WHAT THE DEADLINE DOES. On expiry the TCP socket is shut down in both directions. That is what
  * ends the handshake whatever state it is in: a read already pending completes with EOF, and one
