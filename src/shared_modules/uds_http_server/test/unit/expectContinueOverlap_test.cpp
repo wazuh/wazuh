@@ -15,6 +15,7 @@
 // response into that window.
 
 #include "testHooks.hpp"
+#include "testLogRecorder.hpp"
 #include "udsTestClient.hpp"
 #include <uds_http_server/IUdsHttpServer.hpp>
 #include <uds_http_server/udsHttpServerFactory.hpp>
@@ -41,7 +42,9 @@ using wazuh::uds_http::HttpResponse;
 using wazuh::uds_http::IHttpResponder;
 using wazuh::uds_http::makeUdsHttpServer;
 using wazuh::uds_http::Method;
+using wazuh::uds_http::RouteOptions;
 using wazuh::uds_http::UdsHttpServerConfig;
+using wazuh::uds_http::test::LogRecorder;
 using wazuh::uds_http::test::uniqueSocketPath;
 
 namespace
@@ -281,6 +284,100 @@ TEST(ExpectContinueOverlapTest, AnInlineAnswerDuringTheInterimWriteIsWrittenAfte
     const auto stream = peer.readToEof();
     expectInterimThenOneFinal(stream, 200);
     EXPECT_NE(std::string::npos, stream.find("\r\n\r\n" + body, stream.find("HTTP/1.1 200 "))) << stream;
+}
+
+// An answered request must not become a 504 while its final answer waits for the interim write.
+TEST(ExpectContinueOverlapTest, AResponseTimeoutDoesNotReplaceAnAlreadyParkedHandlerAnswer)
+{
+    LogRecorder::clear();
+    const auto path = uniqueSocketPath("ovfirstanswer");
+    std::atomic<bool> handled {false};
+    std::shared_ptr<IHttpResponder> backstopResponder;
+    auto server = makeUdsHttpServer();
+    server->addRoute(Method::Post,
+                     "/events",
+                     [&](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+                     {
+                         responder->send(HttpResponse::json(200, R"({"accepted":true})"));
+                         handled.store(true);
+                     });
+    RouteOptions backstop;
+    backstop.responseTimeoutSec = 2;
+    server->addRoute(
+        Method::Post,
+        "/backstop",
+        [&](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+        { backstopResponder = std::move(responder); },
+        backstop);
+    auto config = configFor(path);
+    config.ioThreads = 1;
+    config.responseTimeoutSec = 1;
+    server->start(config);
+    HeldInterimWrite held;
+
+    Peer peer {path};
+    ASSERT_TRUE(peer.connected());
+    peer.send(headExpecting(2));
+    ASSERT_TRUE(held.waitHeld());
+    peer.send("{}");
+    ASSERT_TRUE(waitFor([&] { return handled.load(); }));
+
+    // This later, longer backstop proves the reactor has progressed past /events' deadline
+    // before the held write is released; no sleep is used to guess whether its timer ran.
+    Peer backstopPeer {path};
+    ASSERT_TRUE(backstopPeer.connected());
+    backstopPeer.send("POST /backstop HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\n\r\n");
+    const auto backstopResponse = backstopPeer.readToEof();
+    ASSERT_EQ(0U, backstopResponse.find("HTTP/1.1 504 ")) << backstopResponse;
+    EXPECT_FALSE(LogRecorder::sawMessageContaining("(last: /events,"))
+        << "a parked handler answer is not an unanswered-handler timeout";
+    EXPECT_EQ("", peer.receivedWithin(std::chrono::milliseconds {20}));
+
+    held.release();
+    const auto stream = peer.readToEof();
+    expectInterimThenOneFinal(stream, 200);
+    EXPECT_NE(std::string::npos, stream.find(R"({"accepted":true})")) << stream;
+}
+
+// If the backstop answered first, a late handler answer must not replace the parked 504 either.
+TEST(ExpectContinueOverlapTest, AHandlerAnswerDoesNotReplaceAnAlreadyParkedResponseTimeout)
+{
+    LogRecorder::clear();
+    const auto path = uniqueSocketPath("ovfirsttimeout");
+    std::mutex mutex;
+    std::shared_ptr<IHttpResponder> pending;
+    auto server = makeUdsHttpServer();
+    server->addRoute(Method::Post,
+                     "/events",
+                     [&](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+                     {
+                         std::lock_guard lock {mutex};
+                         pending = std::move(responder);
+                     });
+    auto config = configFor(path);
+    config.ioThreads = 1;
+    config.responseTimeoutSec = 1;
+    server->start(config);
+    HeldInterimWrite held;
+
+    Peer peer {path};
+    ASSERT_TRUE(peer.connected());
+    peer.send(headExpecting(2));
+    ASSERT_TRUE(held.waitHeld());
+    peer.send("{}");
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("(last: /events, 1 s)"));
+    {
+        std::lock_guard lock {mutex};
+        ASSERT_TRUE(pending);
+        pending->send(HttpResponse::json(200, R"({"late":true})"));
+    }
+
+    // The late send and the release both post to the same strand, in that order.
+    held.release();
+    const auto stream = peer.readToEof();
+    expectInterimThenOneFinal(stream, 504);
+    EXPECT_NE(std::string::npos, stream.find("Handler did not respond in time")) << stream;
+    EXPECT_EQ(std::string::npos, stream.find(R"({"late":true})")) << stream;
 }
 
 // A deferred answer sent from another thread lands in the same window.
