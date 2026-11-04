@@ -276,9 +276,9 @@ resolver did not exit `0`, that is the command to repeat once they are fixed,
 `/var/wazuh-manager/bin/wazuh-manager-resolve-credentials --install -H /var/wazuh-manager` (as root): it is the
 only mode that issues what the install could not, and on material already in place it only validates. When the
 CA was staged in `/etc/wazuh-manager/ca` without its key (`MISSING …/certs/remoted.pem: no CA key to issue it`),
-repeating `--install` changes nothing, so the next steps name the key instead: stage it as
-`/etc/wazuh-manager/ca/root-ca.key` (owned by root, mode `0400` or `0600`) and then run `--install`, or stage the
-server pairs it reports missing in `/etc/wazuh-manager/certs` and start the manager. When only
+repeating `--install` changes nothing, so the next steps name the pairs instead: place this node's certificate
+pairs it reports missing in `/etc/wazuh-manager/certs` (for example from `wazuh-certificates.tar`) and start the
+manager, with no new `--install`; they add that the node does not need the root CA private key. When only
 what the manager consumes is missing (the indexer's password, CA or client pair), it says `Supply them as each
 entry above says, then start the manager: the start completes them, no new --install is needed.`
 
