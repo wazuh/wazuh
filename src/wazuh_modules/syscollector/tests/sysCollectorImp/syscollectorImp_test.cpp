@@ -7415,12 +7415,20 @@ TEST_F(SyscollectorImpTest, AdmissionHoldReportsChangesToSyncedRowsOnly)
         }
     }
 
-    // Once the connector decides, a refusal suppresses even sync=1 changes.
-    module.m_admissionKnown = true;
+    // With no verdict and no pending hold, the ordinary admission gate fails
+    // open and the already-synced path still reports this change.
+    module.m_admissionKnown = false;
     module.m_admissionPending = false;
     const nlohmann::json row = {{"container_id", "b"}, {"pid", "123"}, {"name", "changed again"},
         {"checksum", "sum"}, {"version", 1}, {"sync", 1}
     };
+    events.clear();
+    module.processEvent(MODIFIED, {{"new", row}}, PROCESSES_TABLE, false);
+    EXPECT_EQ(events, (std::vector<Operation_t> {OPERATION_MODIFY}));
+    EXPECT_TRUE(flagUpdates.empty());
+
+    // Once the connector decides, a refusal suppresses even sync=1 changes.
+    module.m_admissionKnown = true;
     events.clear();
     module.processEvent(MODIFIED, {{"new", row}}, PROCESSES_TABLE, false);
     EXPECT_TRUE(events.empty());

@@ -6182,9 +6182,10 @@ bool Syscollector::checkDocumentLimit(const std::string& table,
     // nothing that could replay it. Keep its stored flag exactly as it was:
     // only the retraction pass may withdraw a reported row.
     //
-    // Only during the hold. A settled refusal still suppresses the MODIFY,
-    // because that document is about to be retracted, not reported again.
-    if (isContainerRow && result == MODIFIED && isAlreadySynced && (!m_admissionKnown || m_admissionPending))
+    // Only during a pending hold. An unknown verdict without a hold already
+    // fails open below; a settled refusal still suppresses the MODIFY, because
+    // that document is about to be retracted, not reported again.
+    if (isContainerRow && result == MODIFIED && isAlreadySynced && m_admissionPending)
     {
         return true;
     }
