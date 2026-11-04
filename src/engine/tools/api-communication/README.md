@@ -23,6 +23,11 @@ tests/
 └── test_client.py           # APIClient against a Unix-socket server answering like the engine
 ```
 
+`tests/` runs with `python3 -m pytest tools/api-communication/tests` from `src/engine/`, after installing the
+package and `pytest`; CI runs it in the `api_tests` job of `5_testintegration_engine.yml`. The same answers from
+the real engine (an unknown path, a body over a route's limit) are covered end to end by the engine-it
+`api_transport` suite.
+
 The `proto/` modules are generated from the engine's `.proto` files in `src/engine/source/proto/src/`.
 
 # Install
