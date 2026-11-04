@@ -2411,14 +2411,29 @@ class ImportUnit:
     files: Tuple[str, ...]
     sources: Tuple[str, ...]
     marker: Optional[str]                 # None: a unit under configured names, never imported, only staged
-    missing: str
+    missing: str                          # the advice when the indexer's export/ does not exist
+    published: Optional[str] = None       # the advice when it exists without these files; {export} is its path
+
+    def missing_reason(self, paths: "Paths", source) -> str:
+        """The MISSING reason, by the state of the export: with no export/ there is no indexer on this host to
+        import from; an export/ without the files is an indexer that did not publish them, which installing it
+        again does not change."""
+        if isinstance(source, Dir) and self.sources and self.published:
+            return self.published.format(export=paths.indexer_export)
+        return self.missing
 
 
 CA_UNIT = ImportUnit("the indexer CA", (INDEXER_CA,), (SOURCE_CA,), INDEXER_CA_MARKER,
-                     "install wazuh-indexer on this host first, or stage the indexer's export/ca.pem there")
+                     "install wazuh-indexer on this host first, or stage the indexer's export/ca.pem there",
+                     f"the Wazuh indexer on this host published no {SOURCE_CA} in {{export}}: stage the indexer's "
+                     f"CA certificate as certs/{INDEXER_CA}")
 PAIR_UNIT = ImportUnit("the indexer client pair", (CONNECTOR_KEY, CONNECTOR), (SOURCE_CLIENT_KEY, SOURCE_CLIENT),
                        CONNECTOR_MARKER, "install wazuh-indexer on this host first, or stage a pair issued by the "
-                                         "indexer's CA for this node")
+                                         "indexer's CA for this node",
+                       f"the Wazuh indexer on this host published no manager client pair in {{export}} (its CA key "
+                       f"is not on this host, as after the installation assistant): stage this node's pair, issued "
+                       f"by the indexer's CA (wazuh-install-files.tar with the installation assistant), as "
+                       f"certs/{CONNECTOR} and certs/{CONNECTOR_KEY}")
 
 
 def indexer_ca_problem(data: bytes, now: Optional[datetime.datetime] = None,
@@ -2680,7 +2695,7 @@ def _select_unit(paths: Paths, certs: Dir, source, unit: ImportUnit, validate, r
         return Selection(incoming, "incoming", incoming,
                          (state == "imported", f"{blamed}: {verb} from {paths.indexer_export}"))
     if incoming is None:
-        report.problem(MISSING, blamed, unit.missing)
+        report.problem(MISSING, blamed, unit.missing_reason(paths, source))
         return Selection(None, "missing")
     return Selection(None, None)
 
@@ -2833,7 +2848,8 @@ def step_indexer_trust(paths: Paths, certs: Dir, report: Report, names: IndexerN
             # No usable CA: the pair cannot be judged, only found missing.
             if pair_unit is not None and import_state(certs, pair_unit) == "absent" \
                     and read_source(source, pair_unit, report) is None:
-                report.problem(MISSING, certs.child(pair_unit.files[-1]), pair_unit.missing)
+                report.problem(MISSING, certs.child(pair_unit.files[-1]),
+                                   pair_unit.missing_reason(paths, source))
             return
         pair = None
         if pair_unit is not None:

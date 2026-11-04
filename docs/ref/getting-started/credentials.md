@@ -277,6 +277,12 @@ server pairs it reports missing in `/etc/wazuh-manager/certs` and start the mana
 what the manager consumes is missing (the indexer's password, CA or client pair), it says `Supply them as each
 entry above says, then start the manager: the start completes them, no new --install is needed.`
 
+`install.sh` reads the resolver's output the same way: when any `MISSING`, `INVALID` or `UNSAFE` line was
+reported, or the resolver did not exit `0`, it ends with ` - WARNING: Credential resolution is incomplete: …` and
+the next step (`--install` when the CA, the bundle or a server pair is missing or an entry is `INVALID`/`UNSAFE`,
+else start the manager) in place of ` - Configuration finished properly.`; it still exits `0` and finishes the
+installation.
+
 A fresh install with no indexer on the host:
 
 ```text
@@ -292,6 +298,22 @@ resolve-credentials: /etc/wazuh-manager/export/dashboard-client.pem: issued; DN 
 MISSING /etc/wazuh-manager/certs/indexer-ca.pem: install wazuh-indexer on this host first, or stage the indexer's export/ca.pem there
 MISSING /etc/wazuh-manager/certs/indexer-connector.pem: install wazuh-indexer on this host first, or stage a pair issued by the indexer's CA for this node
 ```
+
+The advice for the indexer's CA and client pair follows the state of `/etc/wazuh-indexer/export`: the lines
+above are printed when that directory does not exist. When it exists but lacks a file, the indexer on this host
+did not publish it, which installing it again does not change. That is the case after the installation
+assistant, which keeps the indexer's CA key on the host where its `-g` ran: the indexer publishes its CA, which is
+imported, but no client pair for the manager:
+
+```text
+resolve-credentials: /etc/wazuh-manager/certs/indexer-ca.pem: imported from /etc/wazuh-indexer/export
+MISSING /etc/wazuh-manager/certs/indexer-connector.pem: the Wazuh indexer on this host published no manager client pair in /etc/wazuh-indexer/export (its CA key is not on this host, as after the installation assistant): stage this node's pair, issued by the indexer's CA (wazuh-install-files.tar with the installation assistant), as certs/indexer-connector.pem and certs/indexer-connector-key.pem
+```
+
+Stage the pair from `wazuh-install-files.tar` (this node's certificate and key) as
+`/etc/wazuh-manager/certs/indexer-connector.pem` and `indexer-connector-key.pem`, `root:wazuh-manager 0640`, then
+start the manager. A missing `ca.pem` in an existing export reads `the Wazuh indexer on this host published no
+ca.pem in /etc/wazuh-indexer/export: stage the indexer's CA certificate as certs/indexer-ca.pem`.
 
 ## When the manager does not start
 
