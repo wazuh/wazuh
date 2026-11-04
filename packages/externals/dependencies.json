@@ -31,11 +31,11 @@
     },
     {
       "name": "abseil-cpp",
-      "version": "20240116.3",
-      "revision": "20240116.3",
+      "version": "20250127.2",
+      "revision": "20250127.2",
       "source": "upstream",
       "url": "https://github.com/abseil/abseil-cpp/archive/refs/tags/{version}.tar.gz",
-      "upstream_sha256": "e887b423da5a1ba66e71610094fd7147ff2febfedccdfbf00f2c644ac21adf83",
+      "upstream_sha256": "f5a67394128fb4d9a18124820026014591942d9c882d9055d4d2412b13bf1c91",
       "format": "tar.gz",
       "strip": 1,
       "patches": [],
@@ -46,7 +46,7 @@
         "linux"
       ],
       "cpe": "cpe:2.3:a:abseil:common_libraries:*:*:*:*:*:*:*:*",
-      "purl": "pkg:github/abseil/abseil-cpp@20240116.3",
+      "purl": "pkg:github/abseil/abseil-cpp@20250127.2",
       "license": "Apache-2.0",
       "author": "Google Inc.",
       "homepage": "https://github.com/abseil/abseil-cpp"
@@ -210,11 +210,11 @@
     },
     {
       "name": "cpp-httplib",
-      "version": "0.25.0",
-      "revision": "v0.25.0",
+      "version": "0.51.0",
+      "revision": "v0.51.0",
       "source": "upstream",
       "url": "https://github.com/yhirose/cpp-httplib/archive/refs/tags/v{version}.tar.gz",
-      "upstream_sha256": "ac7c59fa72325d4cb9f73af266312d82632ac35a5c4c8a1be620c1f946ec9cea",
+      "upstream_sha256": "d740ced75352f44e9d66d08806dc231b5621bb3592b5a5d5b2bd890a9a9d86cc",
       "format": "tar.gz",
       "strip": 1,
       "patches": [],
@@ -226,7 +226,7 @@
       ],
       "built": false,
       "cpe": "cpe:2.3:a:yhirose:cpp-httplib:*:*:*:*:*:*:*:*",
-      "purl": "pkg:github/yhirose/cpp-httplib@v0.25.0",
+      "purl": "pkg:github/yhirose/cpp-httplib@v0.51.0",
       "license": "MIT",
       "author": "yhirose",
       "homepage": "https://github.com/yhirose/cpp-httplib"
