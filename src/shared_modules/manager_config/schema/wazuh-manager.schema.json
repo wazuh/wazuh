@@ -617,7 +617,7 @@
           "type": "integer",
           "minimum": 0,
           "default": 3600,
-          "description": "Seconds a pending agent task may wait, from its creation, before it is expired. Manager tasks never expire."
+          "description": "Seconds a pending agent task may wait, from its creation, before it is expired. Manager tasks never expire. It also bounds how long a remote_upgrade task authorizes the download of its WPK: a pending task from its creation, a delivered task from its delivery, until the cleanup pass deletes it 24 h after delivery."
         },
         "cleanup_interval": {
           "type": "integer",
