@@ -113,25 +113,44 @@ char *os_read_agent_name()
 
 /* Get the <config-profile> of the agent from its parsed configuration file.
  * Only <agent> is read, as Read_Agent() does; the legacy <client> block ignores it.
- * If it is set more than once, the last value wins, as when the agent configuration is read.
+ * If it is set more than once, in one <agent> block or in several, the last value wins, as
+ * when the agent configuration is read. The nodes are walked as ReadConfig() does.
  * Returns "-" if it is not set, the value the agent info file holds in that case.
  */
 static char *w_get_agent_profile_from_config(OS_XML *xml)
 {
-    const char *xml_profile[] = {WAZUHCONFIG, "agent", "config-profile", NULL};
-    char **profiles = OS_GetContents(xml, xml_profile);
+    XML_NODE roots = OS_GetElementsbyNode(xml, NULL);
     char *profile = NULL;
-    size_t i;
 
-    if (profiles) {
-        for (i = 0; profiles[i]; i++);
-
-        if (i > 0) {
-            os_strdup(profiles[i - 1], profile);
+    for (size_t i = 0; roots && roots[i]; i++) {
+        if (!roots[i]->element || strcmp(roots[i]->element, WAZUHCONFIG) != 0) {
+            continue;
         }
 
-        free_strarray(profiles);
+        XML_NODE sections = OS_GetElementsbyNode(xml, roots[i]);
+
+        for (size_t j = 0; sections && sections[j]; j++) {
+            if (!sections[j]->element || strcmp(sections[j]->element, "agent") != 0) {
+                continue;
+            }
+
+            XML_NODE options = OS_GetElementsbyNode(xml, sections[j]);
+
+            for (size_t k = 0; options && options[k]; k++) {
+                if (options[k]->element && options[k]->content &&
+                    strcmp(options[k]->element, "config-profile") == 0) {
+                    os_free(profile);
+                    os_strdup(options[k]->content, profile);
+                }
+            }
+
+            OS_ClearNode(options);
+        }
+
+        OS_ClearNode(sections);
     }
+
+    OS_ClearNode(roots);
 
     if (!profile) {
         os_strdup("-", profile);
@@ -187,6 +206,7 @@ int os_write_agent_info(const char *agent_name, __attribute__((unused)) const ch
         return (0);
     }
 
+    /* Nothing reads the profile line: os_read_agent_profile() takes it from ossec.conf */
     fprintf(
         fp,
         "%s\n-\n%s\n%s\n",

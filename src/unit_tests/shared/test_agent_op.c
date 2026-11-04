@@ -765,6 +765,34 @@ static void test_w_get_agent_profile_from_config_last_wins(void **state) {
     free(profile);
 }
 
+static void test_w_get_agent_profile_from_config_later_agent_block(void **state) {
+    char *profile = get_profile_from_string(
+        "<" WAZUHCONFIG "><agent><manager><endpoint>1.1.1.1</endpoint></manager></agent>"
+        "<agent><config-profile>profB</config-profile></agent></" WAZUHCONFIG ">");
+
+    assert_string_equal(profile, "profB");
+    free(profile);
+}
+
+static void test_w_get_agent_profile_from_config_agent_blocks_split_by_section(void **state) {
+    char *profile = get_profile_from_string(
+        "<" WAZUHCONFIG "><agent><notify_time>10</notify_time></agent>"
+        "<logging><log_format>plain</log_format></logging>"
+        "<agent><config-profile>profB</config-profile></agent></" WAZUHCONFIG ">");
+
+    assert_string_equal(profile, "profB");
+    free(profile);
+}
+
+static void test_w_get_agent_profile_from_config_last_wins_across_agent_blocks(void **state) {
+    char *profile = get_profile_from_string(
+        "<" WAZUHCONFIG "><agent><config-profile>profA</config-profile><notify_time>10</notify_time></agent>"
+        "<agent><config-profile>profB</config-profile></agent></" WAZUHCONFIG ">");
+
+    assert_string_equal(profile, "profB");
+    free(profile);
+}
+
 static void test_w_get_agent_profile_from_config_legacy_client_ignored(void **state) {
     char *profile = get_profile_from_string(
         "<" WAZUHCONFIG "><client><server><address>1.1.1.1</address></server>"
@@ -792,6 +820,36 @@ static void test_os_read_agent_profile_no_config(void **state) {
 
     test_mode = 0;
     assert_null(profile);
+}
+
+static void test_os_read_agent_profile_success(void **state) {
+    const char *config = "<" WAZUHCONFIG "><agent><config-profile>profA</config-profile></agent></" WAZUHCONFIG ">";
+    FILE *fp = tmpfile();
+
+    assert_non_null(fp);
+    test_mode = 1;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Calling os_read_agent_profile().");
+    expect_string(__wrap_wfopen, path, WAZUHCONF);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, fp);
+
+    for (const char *c = config; *c; c++) {
+        will_return(__wrap_fgetc, (int)*c);
+    }
+    will_return(__wrap_fgetc, EOF);
+
+    expect_value(__wrap_fclose, _File, fp);
+    will_return(__wrap_fclose, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "os_read_agent_profile() = [profA]");
+
+    char *profile = os_read_agent_profile();
+
+    test_mode = 0;
+    fclose(fp);
+    assert_string_equal(profile, "profA");
+    free(profile);
 }
 
 #ifndef WIN32
@@ -1072,8 +1130,12 @@ int main(void) {
         cmocka_unit_test(test_w_get_agent_profile_from_config_not_set),
         cmocka_unit_test(test_w_get_agent_profile_from_config_empty),
         cmocka_unit_test(test_w_get_agent_profile_from_config_last_wins),
+        cmocka_unit_test(test_w_get_agent_profile_from_config_later_agent_block),
+        cmocka_unit_test(test_w_get_agent_profile_from_config_agent_blocks_split_by_section),
+        cmocka_unit_test(test_w_get_agent_profile_from_config_last_wins_across_agent_blocks),
         cmocka_unit_test(test_w_get_agent_profile_from_config_legacy_client_ignored),
         cmocka_unit_test(test_os_read_agent_profile_no_config),
+        cmocka_unit_test(test_os_read_agent_profile_success),
         #ifndef WIN32
         cmocka_unit_test(test_create_agent_remove_payload),
         cmocka_unit_test(test_create_sendsync_payload),
