@@ -414,76 +414,117 @@ namespace
     }
 
     // ---------------------------------------------------------------------------
-    // upsert(): a just-issued enrollment credential is honored without a reload
+    // upsert(): a just-issued enrollment credential is honored without a reload,
+    // beside the file's table, until the file carries it or the grace expires
     // ---------------------------------------------------------------------------
+
+    constexpr const char* kKeyA = "ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751";
+    constexpr const char* kKeyB = "00000000000000000000000000000000000000000000000000000000000000ff";
 
     TEST_F(KeystoreTest, UpsertMakesTheEntryVisibleToLookupImmediately)
     {
         Keystore keystore(m_path); // No file at all: the store starts empty.
 
-        ASSERT_TRUE(keystore.upsert("067", "any", "ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751"));
+        ASSERT_TRUE(keystore.upsert("067", "any", kKeyA));
 
         const auto key = keyOf(keystore, 67);
         ASSERT_TRUE(key.has_value());
         EXPECT_EQ(key->size(), 32u);
         EXPECT_TRUE(allowed(keystore, 67, "10.0.0.9"));
-        EXPECT_EQ(keystore.agentsLoaded(), 1u);
+        // Beside the file, not in it: the file-content level is untouched, the adoption is counted.
+        EXPECT_EQ(keystore.agentsLoaded(), 0u);
+        EXPECT_EQ(keystore.adoptionsTotal(), 1u);
+        EXPECT_EQ(keystore.adoptionsPending(), 1u);
     }
 
     TEST_F(KeystoreTest, UpsertHonorsTheAddressColumn)
     {
         Keystore keystore(m_path);
 
-        ASSERT_TRUE(
-            keystore.upsert("067", "10.0.0.7", "ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751"));
+        ASSERT_TRUE(keystore.upsert("067", "10.0.0.7", kKeyA));
 
         EXPECT_TRUE(allowed(keystore, 67, "10.0.0.7"));
         EXPECT_FALSE(allowed(keystore, 67, "10.0.0.8"));
     }
 
-    TEST_F(KeystoreTest, UpsertReplacesAnExistingEntry)
+    TEST_F(KeystoreTest, UpsertWinsOverTheFileEntryUntilTheFileCatchesUp)
     {
-        writeFile("67 agent1 any 00000000000000000000000000000000000000000000000000000000000000ff\n");
+        // A rotation: the file still carries the previous key until authd's writer pass lands.
+        writeFile(std::string("67 agent1 any ") + kKeyB + "\n");
         Keystore keystore(m_path);
         const auto before = keyOf(keystore, 67);
         ASSERT_TRUE(before.has_value());
 
-        ASSERT_TRUE(keystore.upsert("67", "any", "ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751"));
-
-        const auto after = keyOf(keystore, 67);
-        ASSERT_TRUE(after.has_value());
-        EXPECT_NE(*after, *before);
-        // Overwriting a usable key does not double-count the agent.
+        ASSERT_TRUE(keystore.upsert("67", "any", kKeyA));
+        const auto adopted = keyOf(keystore, 67);
+        ASSERT_TRUE(adopted.has_value());
+        EXPECT_NE(*adopted, *before);
         EXPECT_EQ(keystore.agentsLoaded(), 1u);
+
+        // A reload of the still-stale file keeps the adopted key in front.
+        EXPECT_EQ(keystore.reload(), 1);
+        EXPECT_EQ(keyOf(keystore, 67), adopted);
+        EXPECT_EQ(keystore.adoptionsPending(), 1u);
+
+        // The file catches up: the file's copy takes over and the adoption is retired.
+        writeFile(std::string("67 agent1 any ") + kKeyA + "\n");
+        EXPECT_EQ(keystore.reload(), 1);
+        EXPECT_EQ(keyOf(keystore, 67), adopted);
+        EXPECT_EQ(keystore.adoptionsPending(), 0u);
+        EXPECT_EQ(keystore.adoptionExpiriesTotal(), 0u);
+    }
+
+    TEST_F(KeystoreTest, UpsertSurvivesAReloadWhoseFileLacksTheEntry)
+    {
+        // authd answers before its writer thread writes the file (and a worker's file arrives with
+        // the cluster sync), so a reload in between must not drop the adopted entry.
+        writeFile(std::string("3824 debian10 any ") + kKeyA + "\n");
+        Keystore keystore(m_path);
+
+        ASSERT_TRUE(keystore.upsert("067", "any", kKeyA));
+        EXPECT_EQ(keystore.reload(), 1);
+
+        EXPECT_TRUE(keyOf(keystore, 67).has_value());
+        EXPECT_TRUE(keyOf(keystore, 3824).has_value());
+        EXPECT_EQ(keystore.agentsLoaded(), 1u);
+        EXPECT_EQ(keystore.adoptionsPending(), 1u);
+
+        // The file now carries it: served from the file, nothing pending.
+        writeFile(std::string("3824 debian10 any ") + kKeyA + "\n67 agent1 any " + kKeyA + "\n");
+        EXPECT_EQ(keystore.reload(), 2);
+        EXPECT_TRUE(keyOf(keystore, 67).has_value());
+        EXPECT_EQ(keystore.adoptionsPending(), 0u);
+    }
+
+    TEST_F(KeystoreTest, UpsertExpiresAfterTheGraceWhenTheFileNeverCatchesUp)
+    {
+        auto now = std::chrono::steady_clock::now();
+        Keystore keystore(m_path, Keystore::kDefaultRefreshIntervalSeconds, [&now] { return now; });
+
+        ASSERT_TRUE(keystore.upsert("067", "any", kKeyA));
+        now += Keystore::kAdoptionGrace; // Exactly the grace: still in service.
+        EXPECT_TRUE(keyOf(keystore, 67).has_value());
+        EXPECT_EQ(keystore.adoptionsPending(), 1u);
+
+        now += std::chrono::seconds(1); // Past it: ignored by lookup, swept by the level read.
+        EXPECT_FALSE(keyOf(keystore, 67).has_value());
+        EXPECT_EQ(keystore.adoptionsPending(), 0u);
+        EXPECT_EQ(keystore.adoptionExpiriesTotal(), 1u);
+        EXPECT_EQ(keystore.adoptionsTotal(), 1u);
     }
 
     TEST_F(KeystoreTest, UpsertRejectsUnparseableColumnsAndStoresNothing)
     {
         Keystore keystore(m_path);
 
-        EXPECT_FALSE(
-            keystore.upsert("abc", "any", "ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751"));
-        EXPECT_FALSE(keystore.upsert(
-            "067", "not-an-address", "ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751"));
+        EXPECT_FALSE(keystore.upsert("abc", "any", kKeyA));
+        EXPECT_FALSE(keystore.upsert("067", "not-an-address", kKeyA));
         EXPECT_FALSE(keystore.upsert("067", "any", "not-hex"));
 
         EXPECT_FALSE(keystore.lookup(67, "127.0.0.1").has_value());
         EXPECT_EQ(keystore.agentsLoaded(), 0u);
-    }
-
-    TEST_F(KeystoreTest, ReloadRemainsTheSourceOfTruthAfterAnUpsert)
-    {
-        writeFile("3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
-        Keystore keystore(m_path);
-
-        ASSERT_TRUE(keystore.upsert("067", "any", "ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751"));
-        ASSERT_TRUE(keyOf(keystore, 67).has_value());
-
-        // The file never held agent 67, so a reload drops it: upserts only ever bridge the gap
-        // until the next adopted snapshot, they do not fork the table away from the file.
-        EXPECT_EQ(keystore.reload(), 1);
-        EXPECT_FALSE(keyOf(keystore, 67).has_value());
-        EXPECT_TRUE(keyOf(keystore, 3824).has_value());
+        EXPECT_EQ(keystore.adoptionsTotal(), 0u);
+        EXPECT_EQ(keystore.adoptionsPending(), 0u);
     }
 
     // ---------------------------------------------------------------------------

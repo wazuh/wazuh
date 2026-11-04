@@ -967,18 +967,19 @@ private:
 
         m_httpServer->addRoute(remoted::http::Method::Post,
                                "/enroll",
-                               remoted::enrollment::makeHandler(*m_enrollmentAuthenticator,
-                                                                *m_authdClient,
-                                                                enrollConfig,
-                                                                m_enrollmentMetrics,
-                                                                enrollBodyDecoder,
-                                                                m_enrollHttpMetrics,
-                                                                std::move(enrollRateGates),
-                                                                // Strong capture on purpose: m_httpServer (and with it every route) is reset
-                                                                // before m_keystore in stop(), so this only extends the keystore's life until
-                                                                // the routes are gone.
-                                                                [keystore](const std::string& id, const std::string& ip, const std::string& key)
-                                                                { return keystore->upsert(id, ip, key); }));
+                               remoted::enrollment::makeHandler(
+                                   *m_enrollmentAuthenticator,
+                                   *m_authdClient,
+                                   enrollConfig,
+                                   m_enrollmentMetrics,
+                                   enrollBodyDecoder,
+                                   m_enrollHttpMetrics,
+                                   std::move(enrollRateGates),
+                                   // Strong capture on purpose: m_httpServer (and with it every route) is reset
+                                   // before m_keystore in stop(), so this only extends the keystore's life until
+                                   // the routes are gone.
+                                   [keystore](const std::string& id, const std::string& ip, const std::string& key)
+                                   { return keystore->upsert(id, ip, key); }));
 
         registerRateLimitDiagnostics();
 
@@ -1192,6 +1193,33 @@ private:
                 return keystore ? keystore->reloadFailuresTotal() : 0U;
             },
             "Failed client.keys loads: unreadable file, or torn reads on every attempt",
+            "count");
+        m_metricsManager->registerPullMetric(
+            "remoted.auth.keystore.adoptions.total",
+            [target]
+            {
+                const auto keystore = target();
+                return keystore ? keystore->adoptionsTotal() : 0U;
+            },
+            "Credentials adopted straight from an accepted POST /enroll answer, before client.keys carried them",
+            "count");
+        m_metricsManager->registerPullMetric(
+            "remoted.auth.keystore.adoptions_pending",
+            [target]
+            {
+                const auto keystore = target();
+                return keystore ? static_cast<uint64_t>(keystore->adoptionsPending()) : 0U;
+            },
+            "Adopted credentials client.keys has not caught up with yet (dropped at convergence or after the grace)",
+            "entries");
+        m_metricsManager->registerPullMetric(
+            "remoted.auth.keystore.adoption_expiries.total",
+            [target]
+            {
+                const auto keystore = target();
+                return keystore ? keystore->adoptionExpiriesTotal() : 0U;
+            },
+            "Adopted credentials dropped because client.keys never carried them within the grace",
             "count");
     }
 
@@ -1422,7 +1450,8 @@ private:
                     // readiness claim.
                     body << R"(,"keystore":{"readable":)" << (keystore->lastLoadOk() ? "true" : "false")
                          << R"(,"agents_loaded":)" << keystore->agentsLoaded() << R"(,"entries_skipped":)"
-                         << keystore->entriesSkipped() << "}";
+                         << keystore->entriesSkipped() << R"(,"adoptions_pending":)" << keystore->adoptionsPending()
+                         << "}";
                     // enrollment_tokens is informational ONLY too -- never folded into overallReady: an
                     // empty replica is the normal state of a manager that minted no token (and of a
                     // worker awaiting the sync), not a readiness failure. Present whenever enrollment

@@ -11,7 +11,9 @@
 #pragma once
 
 #include <atomic>
+#include <chrono>
 #include <cstdint>
+#include <functional>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -77,14 +79,27 @@ namespace remoted::auth
         /// own built-in default in the legacy pipeline).
         static constexpr int kDefaultRefreshIntervalSeconds = 10;
 
+        /// How long an entry adopted by upsert() stays in service while client.keys has not caught
+        /// up with it (see upsert()). Covers the cluster synchronization that carries the file to a
+        /// worker (up to ~13 s measured) several times over, and authd's own writer retry backoff.
+        static constexpr std::chrono::seconds kAdoptionGrace {60};
+
+        /// Time source for the adoption grace. Steady: a wall-clock step must not expire or revive an
+        /// adopted entry.
+        using Clock = std::function<std::chrono::steady_clock::time_point()>;
+
         /**
          * @param path Path to client.keys. Loaded immediately; a missing or
          *             unreadable file is not an error -- the keystore just
          *             starts empty (see reload()).
          * @param refreshIntervalSeconds How often the background watcher re-checks the file as a
          *             fallback to the inotify subscription (seconds). <=0 -> kDefaultRefreshIntervalSeconds.
+         * @param clock Time source for the adoption grace; empty -> std::chrono::steady_clock::now.
+         *             Tests inject one to expire an adoption without waiting.
          */
-        explicit Keystore(std::string path = kDefaultPath, int refreshIntervalSeconds = kDefaultRefreshIntervalSeconds);
+        explicit Keystore(std::string path = kDefaultPath,
+                          int refreshIntervalSeconds = kDefaultRefreshIntervalSeconds,
+                          Clock clock = {});
 
         ~Keystore() override;
 
@@ -110,18 +125,22 @@ namespace remoted::auth
         /**
          * @brief Adopt one just-issued enrollment credential without waiting for a reload.
          *
-         * The /enroll endpoint answers with a key authd has already persisted to client.keys,
-         * but this table only learns it when the watcher next adopts a stable snapshot -- and
-         * reload() deliberately refuses snapshots caught mid-write, so under enrollment churn
-         * (many agents re-enrolling, the file rewritten continuously) that can take long enough
-         * for the manager to 401 the very credential it just issued; the agent's recovery
-         * re-enrollment is then rejected as a duplicate of itself. Upserting the issued entry
-         * here closes that window. File reloads and upserts converge: authd wrote the entry
-         * before replying, so the next adopted snapshot contains it too.
+         * authd answers an enrollment as soon as it has queued the entry for its writer thread, so
+         * the agent holds its key before client.keys is written -- and on a worker the file arrives
+         * with the next cluster synchronization, seconds later. This table only learns keys from
+         * the file, so the first request signed with a fresh key can be refused as an unknown agent
+         * by the very node that issued it. The /enroll handler adopts the accepted entry here
+         * before sending the 200, so this node honors the credential the instant the agent has it.
+         *
+         * An adopted entry lives BESIDE the file's table, not in it: lookup() consults it first,
+         * and it survives reloads until the file carries the same id with the same key (the file's
+         * copy then takes over) or until kAdoptionGrace elapses (it is then dropped and counted in
+         * adoptionExpiriesTotal()). The file stays the source of truth for everything else:
+         * agentsLoaded() and entriesSkipped() describe the file only, and an entry the file removes
+         * within the grace keeps authenticating on this node until the grace ends.
          *
          * Columns are validated exactly like reload() validates a file line; nothing is stored
-         * unless all three parse -- an entry that cannot authenticate is not worth adopting early,
-         * and the file remains the source of truth for it.
+         * unless all three parse -- an entry that cannot authenticate is not worth adopting early.
          *
          * @param id     Agent id, as authd returned it (numeric string).
          * @param ip     The entry's ip column ("any", a fixed address, or a range).
@@ -192,6 +211,23 @@ namespace remoted::auth
             return m_reloadFailuresTotal.load(std::memory_order_relaxed);
         }
 
+        /// @brief Credentials adopted through upsert() since construction.
+        std::uint64_t adoptionsTotal() const noexcept
+        {
+            return m_adoptionsTotal.load(std::memory_order_relaxed);
+        }
+
+        /// @brief Adopted entries dropped because client.keys never carried them within kAdoptionGrace.
+        std::uint64_t adoptionExpiriesTotal() const noexcept
+        {
+            return m_adoptionExpiriesTotal.load(std::memory_order_relaxed);
+        }
+
+        /// @brief Adopted entries still in service that the file has not caught up with. Expires
+        /// overdue entries on the way, so a quiet manager (no reload since the adoption) reports the
+        /// level honestly.
+        std::size_t adoptionsPending();
+
     private:
         /// One client.keys line's worth of state.
         struct AgentEntry
@@ -227,8 +263,22 @@ namespace remoted::auth
         bool fileLooksChanged();
 
         std::string m_path;
+        /// An entry adopted by upsert(), waiting for client.keys to carry it (see upsert()).
+        struct PendingEntry
+        {
+            AgentEntry entry;
+            std::chrono::steady_clock::time_point adoptedAt;
+        };
+
+        /// Drops the adopted entries older than kAdoptionGrace, counting each in
+        /// m_adoptionExpiriesTotal. Caller holds m_mutex.
+        void expireAdoptedLocked(std::chrono::steady_clock::time_point now);
+
+        Clock m_clock;
+
         mutable std::mutex m_mutex;
         std::unordered_map<AgentId, AgentEntry> m_keys;
+        std::unordered_map<AgentId, PendingEntry> m_pending; ///< Guarded by m_mutex, like m_keys.
 
         // Hot-reload: background watcher (inotify + periodic fallback poll via poll()'s timeout).
         int m_refreshIntervalSeconds;
@@ -264,6 +314,8 @@ namespace remoted::auth
         std::atomic<std::uint64_t> m_reloadsTotal {0};
         std::atomic<std::uint64_t> m_reloadFailuresTotal {0};
         std::atomic<bool> m_lastLoadOk {false}; ///< Did the *last* reload() call succeed?
+        std::atomic<std::uint64_t> m_adoptionsTotal {0};
+        std::atomic<std::uint64_t> m_adoptionExpiriesTotal {0};
     };
 
 } // namespace remoted::auth
