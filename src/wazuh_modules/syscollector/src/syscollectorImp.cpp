@@ -2726,6 +2726,11 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
         // table -> rows, for the container currently being received.
         std::map<std::string, nlohmann::json> tables;
         std::string current;
+        // This walk's evidence of liveness, independent of admission. The poll
+        // precedes the walk, so a newcomer may not be in its snapshot yet.
+        // Keep this per pass: m_knownContainerIds tracks first-sync history
+        // across passes and would keep genuinely departed containers forever.
+        std::set<std::string> observedIds;
         std::size_t rowCount{0};
         std::size_t partialContainers{0};
         std::size_t hostNetnsContainers{0};
@@ -2812,6 +2817,8 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
                 return;
             }
 
+            observedIds.insert(containerId);
+
             if (current != containerId)
             {
                 // Defensive: the scanner reports a status per container, so this
@@ -2844,6 +2851,8 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
             {
                 return;
             }
+
+            observedIds.insert(containerId);
 
             if (current != containerId)
             {
@@ -2959,7 +2968,12 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
     // withholds instead of shortening the list. `discovered` already holds the
     // unkeyed ids: cbaseline_list_containers_ex() reports them through the id
     // sink as well, since the cap ranks them too.
-    std::set<std::string> discoveredIds;
+    // The listing precedes the walk; an id seen by either callback is still
+    // live even if absent from that earlier snapshot. Union the two views for
+    // retention only: observing an id grants no admission and spends no slot.
+    // Nor does it make a partial listing authoritative -- every sweep gate
+    // below still depends on the poll's coverage, never on what the walk saw.
+    std::set<std::string> discoveredIds = acc.observedIds;
 
     for (const auto& entry : discovered)
     {
@@ -2974,11 +2988,11 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
     // therefore left untouched here, so a later restart resumes diffing
     // against its retained rows instead of re-seeding from empty.
     //
-    // Unless the connector never answered (listed < 0), in which case
-    // `discoveredIds` is empty for want of a reply rather than for want of
-    // containers — sweeping against it would delete every container's rows in
-    // every table and re-insert them next cycle. Keeping stale rows for one
-    // cycle is strictly cheaper than that false-delete flood.
+    // Unless the connector never answered (listed < 0), in which case the
+    // poll supplied no coverage and the walk alone cannot account for stopped
+    // containers. Sweeping against only observed ids would delete their rows
+    // and re-insert them next time they run. Keeping stale rows for one cycle
+    // is strictly cheaper than that false-delete flood.
     std::size_t staleCount = 0;
 
     if (!sweep_absent)

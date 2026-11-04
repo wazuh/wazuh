@@ -7440,6 +7440,160 @@ TEST_F(SyscollectorImpTest, AdmissionHoldReportsChangesToSyncedRowsOnly)
     module.destroy();
 }
 
+// The admission listing precedes the walk. A container can start between them,
+// and either callback is evidence that it is still here, without being evidence
+// that it may report. That evidence expires at the end of this pass.
+TEST_F(SyscollectorImpTest, BaselineSweepKeepsContainersObservedAfterThePoll)
+{
+    struct ResetHooks
+    {
+        ~ResetHooks()
+        {
+            containerScanHook = {};
+            containerListHook = {};
+            containerSourcesPending = false;
+        }
+    } resetHooks;
+    const auto info = std::make_shared<MockSysInfo>();
+    EXPECT_CALL(*info, releaseThreadResources()).Times(testing::AnyNumber());
+    auto& module = Syscollector::instance();
+    std::vector<Operation_t> events;
+    module.init(
+        info,
+        reportFunction,
+        [&events](const std::string&, Operation_t op, const std::string&, const std::string&, uint64_t)
+    {
+        events.push_back(op);
+    },
+    logFunction,
+    SYSCOLLECTOR_DB_PATH,
+    "",
+    "",
+    3600,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false);
+    module.m_containerBaseline = true;
+    module.m_containerRowsPurged = false;
+    module.m_containerDocumentCounts.clear();
+    module.m_containerDocumentLimits.clear();
+    module.m_knownContainerIds.clear();
+    module.m_admittedContainers.clear();
+    module.m_pendingRetractions.clear();
+    module.m_globalReconcilePending = false;
+    module.m_admissionKnown = false;
+    module.m_admissionReconciled = false;
+
+    auto store = [&](const std::string & id, int sync)
+    {
+        const nlohmann::json row = {{"container_id", id}, {"pid", "123"}, {"name", "worker"},
+            {"checksum", "old"}, {"version", 1}, {"sync", sync}
+        };
+        auto query = SyncRowQuery::builder().table(PROCESSES_TABLE).data(row).build();
+        module.m_spDBSync->syncRow(query.query(), [](ReturnTypeCallback, const nlohmann::json&) {});
+    };
+    store("a", 1); // Stopped, but named by the poll: its rows must survive too.
+    store("departed", 0);
+    int polls = 0;
+    containerListHook = [&](cb_container_id_sink_t sink, void* ctx)
+    {
+        ++polls;
+        sink("a", 1, ctx);
+        return 1;
+    };
+    std::string rowId = "b";
+    bool statusOnly = true;
+    containerScanHook = [&](cb_dbsync_row_sink_t sink, cb_container_status_sink_t status, void* ctx)
+    {
+        EXPECT_EQ(polls, 1) << "admission must still be polled once, before the walk";
+
+        if (!rowId.empty())
+        {
+            // No status: the row callback alone must protect this newcomer.
+            const nlohmann::json row = {{"container_id", rowId}, {"pid", "123"}, {"name", "worker"}};
+            sink(rowId.c_str(), PROCESSES_TABLE, row.dump().c_str(), ctx);
+        }
+
+        if (statusOnly)
+        {
+            cb_container_status_t outcome {};
+            outcome.container_id = "c";
+            outcome.partial = 1;
+            status(&outcome, ctx);
+            // Seed after the status flush so this checks the global stale
+            // sweep independently of per-table empty-scan handling. There
+            // was no row callback for c: only its status can protect this id.
+            store("c", 0);
+        }
+
+        return (rowId.empty() ? 0 : 1) + (statusOnly ? 1 : 0);
+    };
+    auto flags = [&]()
+    {
+        std::map<std::string, int> rows;
+        auto query = SelectQuery::builder().table(PROCESSES_TABLE).columnList({"container_id", "sync"}).build();
+        module.m_spDBSync->selectRows(query.query(),
+                                      [&](ReturnTypeCallback, const nlohmann::json & row)
+        {
+            rows[row.at("container_id").get<std::string>()] = row.at("sync").get<int>();
+        });
+        return rows;
+    };
+
+    module.runContainerBaselinePass();
+    EXPECT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"b", 0}, {"c", 0}}))
+            << "both callbacks protect observed ids, while a genuinely absent container is swept";
+    EXPECT_EQ(module.m_admittedContainers, (std::set<std::string> {"a"}));
+    EXPECT_EQ(module.countFor(Syscollector::LimitScope::container, SYSCOLLECTOR_SYNC_INDEX_PROCESSES, "b"), 0u)
+            << "protecting a newcomer's rows grants no admission and spends no slot";
+    EXPECT_TRUE(events.empty());
+
+    // Neither b nor c is seen this time. A new observed id makes the union
+    // nonempty, but cannot turn a partial listing into permission to sweep.
+    polls = 0;
+    rowId = "e";
+    statusOnly = false;
+    containerSourcesPending = true;
+    module.runContainerBaselinePass();
+    EXPECT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"b", 0}, {"c", 0}, {"e", 0}}));
+    EXPECT_EQ(module.m_admittedContainers, (std::set<std::string> {"a"}));
+    EXPECT_TRUE(module.m_pendingRetractions.empty());
+    EXPECT_TRUE(events.empty());
+
+    // A later complete reply can clean them all up. The lifetime first-sync
+    // bookkeeping must not keep any container that this pass did not observe.
+    polls = 0;
+    rowId.clear();
+    containerSourcesPending = false;
+    module.runContainerBaselinePass();
+    EXPECT_EQ(flags(), (std::map<std::string, int> {{"a", 1}}));
+    EXPECT_TRUE(events.empty());
+
+    module.destroy();
+    module.m_containerBaseline = false;
+    module.m_containerDocumentCounts.clear();
+    module.m_containerDocumentLimits.clear();
+    module.m_knownContainerIds.clear();
+    module.m_admittedContainers.clear();
+    module.m_pendingRetractions.clear();
+    module.m_globalReconcilePending = false;
+    module.m_admissionKnown = false;
+    module.m_admissionReconciled = false;
+    module.m_containerAdmissionWithholding = false;
+    module.m_containerRowsPurged = false;
+}
+
 TEST_F(SyscollectorImpTest, APendingVerdictDefersOwedRetractions)
 {
     const auto info = std::make_shared<MockSysInfo>();
