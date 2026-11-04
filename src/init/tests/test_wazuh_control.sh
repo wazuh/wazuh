@@ -516,6 +516,13 @@ lock_code() {
 check "the agent's and the manager's start-lock code are the same" \
     "$(lock_code "${SCRIPT_DIR}/../wazuh-server.sh")" "$(lock_code "${TARGET}")"
 
+# A run stalled while taking the lock loses it to a run that reclaims it, and must notice.
+. "${SCRIPT_DIR}/start_lock_races.sh"
+check "a run that stalls before writing its pid doesn't share the lock" "one at a time" \
+    "$(lock_race "${TARGET}" before_open)"
+check "a run that stalls while writing its pid doesn't share the lock" "one at a time" \
+    "$(lock_race "${TARGET}" after_open)"
+
 echo
 echo "${checks} checks, ${failures} failed"
 [ "${failures}" -eq 0 ]

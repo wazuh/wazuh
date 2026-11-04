@@ -76,10 +76,12 @@ write_pid()
     ( umask 022; set -C; echo "$$" > "$1" ) > /dev/null 2>&1
 }
 
-# Creates the directory $1 and writes this run's pid in it: true only when this run owns it.
+# Creates the directory $1 and writes this run's pid in it: true only when this run owns it. The pid is
+# read back: a run stalled between creating the pid file and writing it may have lost the directory to a
+# run that reclaimed it meanwhile, and then wrote into a file that is gone.
 take_dir()
 {
-    ( umask 022; mkdir "$1" ) > /dev/null 2>&1 && write_pid "$1/pid"
+    ( umask 022; mkdir "$1" ) > /dev/null 2>&1 && write_pid "$1/pid" && [ "$(cat "$1/pid" 2>/dev/null)" = "$$" ]
 }
 
 # True when the pid file $1 names no live process, or names none at all.
