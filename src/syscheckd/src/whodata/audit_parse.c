@@ -11,6 +11,14 @@
 
 #define AUDIT_LOAD_RETRIES 5 // Max retries to reload Audit rules
 
+// Spelled out for the agent packages built with headers older than glibc 2.14, which lack them.
+#ifndef O_PATH
+#define O_PATH 010000000
+#endif
+#ifndef AT_EMPTY_PATH
+#define AT_EMPTY_PATH 0x1000
+#endif
+
 #ifdef ENABLE_AUDIT
 
 #ifndef WAZUH_UNIT_TESTING
@@ -407,17 +415,46 @@ static char *audit_resolve_directory(const char *path) {
 }
 
 
-// Returns the path FIM stores for the object of a single-item event, and takes ownership of file_path.
-static char *audit_stored_path(char *file_path, const char *inode) {
+// Opens without following the final component and resolves via /proc/self/fd, so check and resolution use the same object.
+static char *audit_resolve_file(const char *path, const char *inode, bool *is_link) {
+    int fd = open(path, O_PATH | O_NOFOLLOW | O_CLOEXEC);
     struct stat st;
 
-    // The syscall acted on a symbolic link itself (chown -h), so FIM stores the link.
-    if (inode && w_lstat(file_path, &st) == 0 && S_ISLNK(st.st_mode) &&
-        st.st_ino == (ino_t)strtoull(inode, NULL, 10)) {
+    *is_link = false;
+    if (fd < 0) {
+        return NULL;
+    }
+
+    if (fstatat(fd, "", &st, AT_EMPTY_PATH) == 0 && S_ISLNK(st.st_mode)) {
+        *is_link = inode && st.st_ino == (ino_t)strtoull(inode, NULL, 10);
+        close(fd);
+        if (*is_link) {
+            return NULL;
+        }
+        fd = open(path, O_PATH | O_CLOEXEC);
+        if (fd < 0) {
+            return NULL;
+        }
+    }
+
+    char fd_path[OS_SIZE_64];
+    snprintf(fd_path, sizeof(fd_path), "/proc/self/fd/%d", fd);
+    char *resolved = realpath(fd_path, NULL);
+    close(fd);
+    return resolved;
+}
+
+
+// Returns the path FIM stores for the object of a single-item event, and takes ownership of file_path.
+static char *audit_stored_path(char *file_path, const char *inode) {
+    bool is_link;
+    char *resolved = audit_resolve_file(file_path, inode, &is_link);
+
+    // The syscall acted on a symbolic link itself, so FIM stores the link.
+    if (is_link) {
         return file_path;
     }
 
-    char *resolved = realpath(file_path, NULL);
     if (resolved == NULL) {
         mdebug1(FIM_CHECK_LINK_REALPATH, file_path); // LCOV_EXCL_LINE
         return file_path;
