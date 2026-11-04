@@ -6,9 +6,11 @@ import logging
 
 from connexion.lifecycle import ConnexionRequest, ConnexionResponse
 from connexion import exceptions
+from connexion.security import AbstractSecurityHandler
 
 from content_size_limit_asgi.errors import ContentSizeExceeded
 
+from api.authentication import decode_token
 from api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT
 from api.api_exception import ExpectFailedException
 from api.controllers.util import json_response, build_recursion_error_response, ERROR_CONTENT_TYPE
@@ -88,6 +90,9 @@ async def unauthorized_error_handler(request: ConnexionRequest,
 async def http_error_handler(request: ConnexionRequest,
                              exc: exceptions.HTTPException) -> ConnexionResponse:
     """HTTPError Exception Error handler.
+
+    A 404 or 405 is answered with a 401 unless the request carries a valid bearer token, so that an
+    unauthenticated caller cannot tell which routes and methods exist.
     
     Parameters
     ----------
@@ -102,12 +107,25 @@ async def http_error_handler(request: ConnexionRequest,
         HTTP Response returned to the client.
     """
 
+    status_code = exc.status_code
     problem = {
         'title': exc.detail,
         "detail": f"{exc.status_code}: {exc.detail}",
     }
+    # connexion applies the security requirement only to a request that matched an operation, so
+    # these two never went through authentication. The 401 is built here, not by
+    # `unauthorized_error_handler`, which words it "Invalid credentials" on the login paths.
+    if status_code in {404, 405}:
+        try:
+            auth_type, token = AbstractSecurityHandler.get_auth_header_value(request)
+            if auth_type != 'bearer':
+                raise exceptions.Unauthorized("No authorization token provided")
+            await decode_token(token)
+        except exceptions.Unauthorized as unauthorized:
+            status_code = unauthorized.status_code
+            problem = {"title": "Unauthorized", "detail": unauthorized.detail}
     return json_response(data=problem, pretty=request.query_params.get('pretty', 'false') == 'true',
-                         status_code=exc.status_code, content_type=ERROR_CONTENT_TYPE)
+                         status_code=status_code, content_type=ERROR_CONTENT_TYPE)
 
 
 async def problem_error_handler(request: ConnexionRequest, exc: exceptions.ProblemException) -> ConnexionResponse:

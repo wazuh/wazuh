@@ -561,8 +561,8 @@ Errors follow a structured JSON response format.
 | 400       | Bad Request       | Invalid parameters       |
 | 401       | Unauthorized      | Invalid credentials, or an invalid or expired token |
 | 403       | Forbidden         | RBAC denied, or the client IP is blocked after too many failed logins (`6000`) |
-| 404       | Not Found         | Invalid endpoint, or the named resource (group, cluster node) does not exist |
-| 405       | Method Not Allowed | Invalid HTTP method     |
+| 404       | Not Found         | Invalid endpoint, or the named resource (group, cluster node) does not exist. A request without a valid token to an invalid endpoint gets `401` |
+| 405       | Method Not Allowed | Invalid HTTP method. A request without a valid token gets `401` |
 | 406       | Not Acceptable    | The body does not match its `Content-Type` (`6002`) |
 | 413       | Payload Too Large | Request body too large   |
 | 415       | Unsupported Media Type | A `Content-Type` the operation does not accept |
