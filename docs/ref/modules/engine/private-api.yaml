@@ -13,8 +13,9 @@ info:
     The server answers some requests before they reach the route's handler, with a JSON body
     `{"error":"<message>","code":<status>}` (`TransportError`): `404` (unknown path), `405` with an `Allow` header
     (known path, other method), `411` (chunked body), `414` (target too long), `431` (headers too large), `400`
-    (malformed HTTP) and `504` (no answer within 300 s). Every route can also answer `413` (body over its cap,
-    decided from `Content-Length` before the body is read) and `503` (busy, at its connection limit, or stopping).
+    (malformed HTTP, or a body that did not arrive within 10 s) and `504` (no answer within 300 s). Every route
+    can also answer `413` (body over its cap, decided from `Content-Length` before the body is read; a declared
+    length no buffer can hold gets the JSON body even when the limit is `0`) and `503` (busy, at its connection limit, or stopping).
     The server closes the connection after each response and answers `Expect: 100-continue` with `100 Continue`.
   version: 1.0.0
 servers:
