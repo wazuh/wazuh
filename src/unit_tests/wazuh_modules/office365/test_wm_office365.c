@@ -2978,6 +2978,179 @@ void test_wm_office365_execute_scan_all(void **state) {
     os_free(get_content_blobs_response);
 }
 
+// A send that fails (modulesd stopping, or the agent gone again) ends the window and keeps its bookmark.
+void test_wm_office365_execute_scan_queue_lost_keeps_bookmark(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    wm_office365_state tenant_state_struc;
+    tenant_state_struc.last_log_time = 160;
+    current_time = 161;
+    wm_max_eps = 1;
+
+    os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
+    os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
+    os_strdup("test_client_id", data->office365_config->auth->client_id);
+    os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+    os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, data->office365_config->auth->login_fqdn);
+    os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, data->office365_config->auth->management_fqdn);
+    data->office365_config->auth->next = NULL;
+
+    os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
+    os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
+    data->office365_config->subscription->next = NULL;
+
+    os_calloc(1, sizeof(wm_office365_fail), data->office365_config->fails);
+    os_strdup("subscription_name", data->office365_config->fails->subscription_name);
+    os_strdup("tenant_id", data->office365_config->fails->tenant_id);
+    data->office365_config->interval = 10;
+
+    int initial_scan = 1;
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Scanning tenant: 'test_tenant_id'");
+
+    os_calloc(1, sizeof(curl_response), data->response);
+    data->response->status_code = 200;
+    os_strdup("{\"access_token\":\"wazuh\"}", data->response->body);
+    os_strdup("test", data->response->header);
+
+    // wm_office365_get_content_blobs
+    curl_response *get_content_blobs_response;
+    os_calloc(1, sizeof(curl_response), get_content_blobs_response);
+    get_content_blobs_response->status_code = 200;
+    get_content_blobs_response->max_size_reached = false;
+    os_strdup("[{\"contentUri\":\"https://manage.office.com/contentUri1\"}]", get_content_blobs_response->body);
+    os_strdup("test", get_content_blobs_response->header);
+
+    // wm_office365_get_logs_from_blob: two logs, the first one fails to send
+    curl_response *logs_response;
+    os_calloc(1, sizeof(curl_response), logs_response);
+    logs_response->status_code = 200;
+    logs_response->max_size_reached = false;
+    os_strdup("[{\"id\":1},{\"id\":2}]", logs_response->body);
+    os_strdup("test", logs_response->header);
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
+    will_return(__wrap_wurl_http_request, data->response);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    const char expected_token_url[] = "Office 365 API access token URL: 'https://" WM_OFFICE365_DEFAULT_API_LOGIN_FQDN "/test_tenant_id/oauth2/v2.0/token'";
+    expect_string(__wrap__mtdebug1, formatted_msg, expected_token_url);
+
+    expect_value(__wrap_wurl_free_response, response, data->response);
+
+    expect_string(__wrap_wm_state_io, tag, "office365-test_tenant_id-test_subscription_name");
+    expect_value(__wrap_wm_state_io, op, WM_IO_READ);
+    expect_any(__wrap_wm_state_io, state);
+    expect_any(__wrap_wm_state_io, size);
+    will_return(__wrap_wm_state_io, 0);
+    will_return(__wrap_wm_state_io, (void *)&tenant_state_struc);
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_string(__wrap_wurl_http_request, header, "Content-Type: application/json");
+
+    char expHeader[OS_SIZE_8192];
+    snprintf(expHeader, OS_SIZE_8192 -1, "Authorization: Bearer wazuh");
+
+    expect_string(__wrap_wurl_http_request, header, expHeader);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
+    will_return(__wrap_wurl_http_request, data->response);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    const char expected_subscription_url[] = "Office 365 API subscription URL: 'https://" WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN "/api/v1.0/test_client_id/activity/feed/subscriptions/start?contentType=test_subscription_name'";
+    expect_string(__wrap__mtdebug1, formatted_msg, expected_subscription_url);
+
+    #ifndef WIN32
+        will_return(__wrap_gmtime_r, 1);
+        will_return(__wrap_gmtime_r, 1);
+    #endif
+
+    will_return(__wrap_strftime,"2021-05-07 12:24:56");
+    will_return(__wrap_strftime, 20);
+    will_return(__wrap_strftime,"2021-05-07 12:24:56");
+    will_return(__wrap_strftime, 20);
+
+    expect_value(__wrap_wurl_free_response, response, data->response);
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_string(__wrap_wurl_http_request, header, "Content-Type: application/json");
+
+    snprintf(expHeader, OS_SIZE_8192 -1, "Authorization: Bearer wazuh");
+
+    expect_string(__wrap_wurl_http_request, header, expHeader);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
+    will_return(__wrap_wurl_http_request, get_content_blobs_response);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    const char expected_blob_url[] = "Office 365 API content blobs URL: 'https://" WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN "/api/v1.0/test_client_id/activity/feed/subscriptions/content?contentType=test_subscription_name&startTime=2021-05-07 12:24:56&endTime=2021-05-07 12:24:56'";
+    expect_string(__wrap__mtdebug1, formatted_msg, expected_blob_url);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Office 365 API content URI: 'https://manage.office.com/contentUri1'");
+
+    expect_value(__wrap_wurl_free_response, response, get_content_blobs_response);
+
+    expect_string(__wrap_wurl_http_request, header, "Content-Type: application/json");
+    expect_any(__wrap_wurl_http_request, method);
+
+    snprintf(expHeader, OS_SIZE_8192 -1, "Authorization: Bearer wazuh");
+
+    expect_string(__wrap_wurl_http_request, header, expHeader);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
+    will_return(__wrap_wurl_http_request, logs_response);
+
+    expect_value(__wrap_wurl_free_response, response, logs_response);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sending Office365 log: '{\"integration\":\"office365\",\"office365\":{\"id\":1,\"Subscription\":\"test_subscription_name\"}}'");
+
+    int queue_fd = 0;
+    expect_value(__wrap_wm_sendmsg_with_reconnect, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, queue, queue_fd);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, message, "{\"integration\":\"office365\",\"office365\":{\"id\":1,\"Subscription\":\"test_subscription_name\"}}");
+    expect_string(__wrap_wm_sendmsg_with_reconnect, locmsg, "office365");
+    expect_value(__wrap_wm_sendmsg_with_reconnect, loc, LOCALFILE_MQ);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, tag, WM_OFFICE365_LOGTAG);
+    will_return(__wrap_wm_sendmsg_with_reconnect, -1);
+
+    expect_string(__wrap__mterror, tag, WM_OFFICE365_LOGTAG);
+    expect_any(__wrap__mterror, formatted_msg);
+
+    // No send of the second log and no bookmark write: either fails the test.
+    wm_office365_execute_scan(data->office365_config, initial_scan);
+
+    os_free(data->response->body);
+    os_free(data->response->header);
+    os_free(data->response);
+
+    os_free(get_content_blobs_response->body);
+    os_free(get_content_blobs_response->header);
+    os_free(get_content_blobs_response);
+
+    os_free(logs_response->body);
+    os_free(logs_response->header);
+    os_free(logs_response);
+}
+
 void test_wm_office365_execute_scan_skips_oversize_blob(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     wm_office365_state tenant_state_struc;
@@ -3873,6 +4046,7 @@ int main(void) {
             cmocka_unit_test_setup_teardown(test_wm_office365_execute_scan_content_blobs_fail, setup_conf, teardown_conf),
             cmocka_unit_test_setup_teardown(test_wm_office365_execute_scan_get_logs_from_blob_response_null, setup_conf, teardown_conf),
             cmocka_unit_test_setup_teardown(test_wm_office365_execute_scan_all, setup_conf, teardown_conf),
+            cmocka_unit_test_setup_teardown(test_wm_office365_execute_scan_queue_lost_keeps_bookmark, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_execute_scan_skips_oversize_blob, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_execute_scan_content_uri_out_of_host, setup_conf, teardown_conf),
         #endif

@@ -414,6 +414,7 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
 
                 scan_finished = 0;
                 fail = 0;
+                bool queue_lost = false;
 
                 while (!scan_finished) {
                     cJSON *blobs_array = NULL;
@@ -437,7 +438,7 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
                                 if (logs_array = wm_office365_get_logs_from_blob(content->valuestring, access_token, office365_config->curl_max_size, &buffer_size_reached, &error_msg), logs_array) {
                                     int size_logs = cJSON_GetArraySize(logs_array);
 
-                                    for (int i = 0 ; i < size_logs ; i++) {
+                                    for (int i = 0 ; i < size_logs && !queue_lost ; i++) {
                                         cJSON *log = cJSON_GetArrayItem(logs_array, i);
 
                                         if (log) {
@@ -455,6 +456,10 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
                                             if (wm_sendmsg_with_reconnect(WM_OFFICE365_MSG_DELAY, &office365_config->queue_fd,
                                                 payload, WM_OFFICE365_CONTEXT.name, LOCALFILE_MQ, WM_OFFICE365_LOGTAG) < 0) {
                                                 mterror(WM_OFFICE365_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+                                                // modulesd is stopping or the agent went away again: end the
+                                                // window and keep its bookmark, so the next scan fetches it again.
+                                                queue_lost = true;
+                                                scan_finished = 1;
                                             }
 
                                             os_free(payload);
@@ -501,7 +506,9 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
                     os_free(next_page);
                 }
 
-                if (fail) {
+                if (queue_lost) {
+                    break;
+                } else if (fail) {
                     wm_office365_scan_failure_action(&office365_config->fails, current_auth->tenant_id,
                         current_subscription->subscription_name, error_msg, &office365_config->queue_fd);
                     os_free(error_msg);
