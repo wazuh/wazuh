@@ -248,6 +248,7 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
             if (!strcmp(github_config->event_type, EVENT_TYPE_ALL) || !strcmp(event_types[event_types_it], github_config->event_type)) {
                 scan_finished = 0;
                 fail = 0;
+                bool queue_lost = false;
 
                 memset(org_state_name, '\0', OS_SIZE_1024);
                 snprintf(org_state_name, OS_SIZE_1024 -1, "%s-%s-%s", WM_GITHUB_CONTEXT.name, current->org_name, event_types[event_types_it]);
@@ -334,7 +335,7 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                             } else {
                                 int response_lenght = cJSON_GetArraySize(array_logs_json);
 
-                                for (int i = 0 ; i < response_lenght ; i++) {
+                                for (int i = 0 ; i < response_lenght && !queue_lost ; i++) {
                                     cJSON * subitem = cJSON_GetArrayItem(array_logs_json, i);
 
                                     if (subitem) {
@@ -349,6 +350,9 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
 
                                         if (wm_sendmsg_with_reconnect(WM_GITHUB_MSG_DELAY, &github_config->queue_fd, payload, WM_GITHUB_CONTEXT.name, LOCALFILE_MQ, WM_GITHUB_LOGTAG) < 0) {
                                             mterror(WM_GITHUB_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+                                            // modulesd is stopping or the agent went away again: end the
+                                            // window and keep its bookmark, so the next scan fetches it again.
+                                            queue_lost = true;
                                         }
 
                                         os_free(payload);
@@ -356,7 +360,9 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                                     }
                                 }
 
-                                if (response_lenght == ITEM_PER_PAGE) {
+                                if (queue_lost) {
+                                    scan_finished = 1;
+                                } else if (response_lenght == ITEM_PER_PAGE) {
                                     next_page = wm_read_http_header_element(response->header, GITHUB_NEXT_PAGE_REGEX);
                                     if ((next_page == NULL) || (strlen(next_page) >= OS_SIZE_8192)) {
                                         scan_finished = 1;
@@ -390,7 +396,10 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                     }
                 }
 
-                if (fail) {
+                if (queue_lost) {
+                    mtdebug1(WM_GITHUB_LOGTAG, "Bookmark kept for organization '%s' and event type '%s': its events could not be queued.",
+                        current->org_name, event_types[event_types_it]);
+                } else if (fail) {
                     wm_github_scan_failure_action(&github_config->fails, current->org_name, event_types[event_types_it], error_msg, &github_config->queue_fd);
                 } else {
                     org_state_struc.last_log_time = new_scan_time;
