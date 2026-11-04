@@ -18,6 +18,7 @@
 
 #include <json.hpp>
 
+#include <chrono>
 #include <functional>
 #include <memory>
 #include <string>
@@ -72,12 +73,20 @@ namespace task_manager::http
                     NotifyFn notifyManagerTask,
                     std::shared_ptr<metrics::TaskMetrics> metrics,
                     int maxPayloadBytes,
-                    int maxTasksPerPoll);
+                    int maxTasksPerPoll,
+                    std::chrono::seconds agentTaskTtl,
+                    std::function<Timestamp()> now = {});
 
         // ---- agent tasks ---------------------------------------------------------------------
         ApiResponse createAgentTask(const nlohmann::json& body);
         ApiResponse createAgentTasksBulk(const nlohmann::json& body);
         ApiResponse takePendingAgentTasks(const nlohmann::json& body);
+
+        /// @brief Name the open remote_upgrade task that lets an agent download one WPK, or null.
+        ///
+        /// Read-only: no row and no negative-cache entry changes. Open means pending and created,
+        /// or delivered, within agentTaskTtl; the payload's wpk_file must equal the request's.
+        ApiResponse authorizeWpkDownload(const nlohmann::json& body);
 
         // ---- manager tasks -------------------------------------------------------------------
         ApiResponse createManagerTask(const nlohmann::json& body);
@@ -99,6 +108,8 @@ namespace task_manager::http
         std::shared_ptr<metrics::TaskMetrics> m_metrics;
         int m_maxPayloadBytes;
         int m_maxTasksPerPoll;
+        std::chrono::seconds m_agentTaskTtl;
+        std::function<Timestamp()> m_now;
     };
 
     /// @brief Render a manager task as the full row an operator gets from the by-id lookup.

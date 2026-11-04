@@ -62,7 +62,8 @@ namespace
                 [this](const std::string& type) { m_notifiedManager.push_back(type); },
                 nullptr,
                 1024,
-                10);
+                10,
+                std::chrono::seconds {3600});
         }
 
         static nlohmann::json agentTaskBody(const std::string& agentId = "001",
@@ -72,6 +73,21 @@ namespace
                                    {"task_type", type},
                                    {"create_time", static_cast<Timestamp>(std::time(nullptr))},
                                    {"payload", nlohmann::json::object()}};
+        }
+
+        static nlohmann::json wpkTaskBody(const Timestamp createTime,
+                                          const std::string& wpkFile = "a.wpk",
+                                          const std::string& agentId = "001")
+        {
+            auto body = agentTaskBody(agentId, "remote_upgrade");
+            body["create_time"] = createTime;
+            body["payload"] = nlohmann::json {{"wpk_file", wpkFile}};
+            return body;
+        }
+
+        static nlohmann::json wpkQuery(const std::string& agentId, const std::string& wpkFile)
+        {
+            return nlohmann::json {{"agent_id", agentId}, {"wpk_file", wpkFile}};
         }
 
         std::unique_ptr<storage::SqliteTaskStore> m_store;
@@ -187,6 +203,192 @@ TEST_F(ApiTest, TakingPendingTasksReturnsThemOnceAndHandsBackParsedPayloads)
 
     const auto second {m_api->takePendingAgentTasks(nlohmann::json {{"agent_id", "001"}})};
     EXPECT_TRUE(second.body["tasks"].empty()) << "marking on read is the preserved behaviour";
+}
+
+TEST_F(ApiTest, WpkAuthorizationNamesTheOwnersPendingTask)
+{
+    const auto created {m_api->createAgentTask(wpkTaskBody(static_cast<Timestamp>(std::time(nullptr))))};
+    ASSERT_EQ(created.status, 200);
+
+    const auto response {m_api->authorizeWpkDownload(wpkQuery("001", "a.wpk"))};
+    EXPECT_EQ(response.status, 200);
+    EXPECT_EQ(response.body["task_id"], created.body["task_id"]);
+}
+
+TEST_F(ApiTest, WpkAuthorizationAcceptsADeliveredTaskWithinTheTtl)
+{
+    const auto created {m_api->createAgentTask(wpkTaskBody(static_cast<Timestamp>(std::time(nullptr))))};
+    ASSERT_EQ(m_api->takePendingAgentTasks(nlohmann::json {{"agent_id", "001"}}).body["tasks"].size(), 1U);
+
+    const auto response {m_api->authorizeWpkDownload(wpkQuery("001", "a.wpk"))};
+    EXPECT_EQ(response.status, 200);
+    EXPECT_EQ(response.body["task_id"], created.body["task_id"]);
+}
+
+TEST_F(ApiTest, WpkAuthorizationAcceptsALongPendingTaskDeliveredRecently)
+{
+    // m_api runs with the default 3600 s TTL. Created outside it, delivered inside it.
+    const auto created {m_api->createAgentTask(wpkTaskBody(static_cast<Timestamp>(std::time(nullptr)) - 3600 - 100))};
+    ASSERT_EQ(created.status, 200);
+    ASSERT_EQ(m_api->takePendingAgentTasks(nlohmann::json {{"agent_id", "001"}}).body["tasks"].size(), 1U);
+
+    const auto response {m_api->authorizeWpkDownload(wpkQuery("001", "a.wpk"))};
+    EXPECT_EQ(response.status, 200);
+    EXPECT_EQ(response.body["task_id"], created.body["task_id"]);
+}
+
+TEST_F(ApiTest, WpkAuthorizationPrefersTheNewestMatchingTask)
+{
+    const auto now {static_cast<Timestamp>(std::time(nullptr))};
+    const auto older {m_api->createAgentTask(wpkTaskBody(now - 200))};
+    const auto newer {m_api->createAgentTask(wpkTaskBody(now - 100))};
+    ASSERT_NE(older.body["task_id"], newer.body["task_id"]);
+
+    const auto response {m_api->authorizeWpkDownload(wpkQuery("001", "a.wpk"))};
+    EXPECT_EQ(response.status, 200);
+    EXPECT_EQ(response.body["task_id"], newer.body["task_id"]);
+}
+
+TEST_F(ApiTest, WpkAuthorizationRefusesAnotherAgentsTask)
+{
+    m_api->createAgentTask(wpkTaskBody(static_cast<Timestamp>(std::time(nullptr))));
+
+    const auto response {m_api->authorizeWpkDownload(wpkQuery("002", "a.wpk"))};
+    EXPECT_EQ(response.status, 200);
+    ASSERT_TRUE(response.body.contains("task_id"));
+    EXPECT_TRUE(response.body["task_id"].is_null());
+}
+
+TEST_F(ApiTest, WpkAuthorizationRefusesAnyOtherName)
+{
+    m_api->createAgentTask(wpkTaskBody(static_cast<Timestamp>(std::time(nullptr))));
+    ASSERT_TRUE(m_api->authorizeWpkDownload(wpkQuery("001", "a.wpk")).body["task_id"].is_string());
+
+    // Prefixes in both directions, case, surrounding whitespace and a path spelling.
+    for (const auto* name : {"a", "a.wpkx", "A.WPK", " a.wpk", "a.wpk ", "./a.wpk"})
+    {
+        const auto response {m_api->authorizeWpkDownload(wpkQuery("001", name))};
+        EXPECT_EQ(response.status, 200) << name;
+        EXPECT_TRUE(response.body["task_id"].is_null()) << name;
+    }
+}
+
+TEST_F(ApiTest, WpkAuthorizationRefusesTasksOutsideTheTtl)
+{
+    const auto now {static_cast<Timestamp>(std::time(nullptr))};
+    m_api->createAgentTask(wpkTaskBody(now, "delivered.wpk"));
+    ASSERT_EQ(m_api->takePendingAgentTasks(nlohmann::json {{"agent_id", "001"}}).body["tasks"].size(), 1U);
+    // A distinct create_time: it is part of the id, the payload is not.
+    m_api->createAgentTask(wpkTaskBody(now - 1, "pending.wpk"));
+
+    ASSERT_TRUE(m_api->authorizeWpkDownload(wpkQuery("001", "delivered.wpk")).body["task_id"].is_string());
+    ASSERT_TRUE(m_api->authorizeWpkDownload(wpkQuery("001", "pending.wpk")).body["task_id"].is_string());
+
+    // Read at query time: DELIVERY_TIME comes from the wall clock, so a fixed value could land on
+    // the cutoff when the second ticks between the delivery and the query.
+    const std::chrono::seconds ttl {600};
+    ApiHandlers later {*m_store,
+                       *m_registry,
+                       m_cache,
+                       [](const std::string&) {},
+                       nullptr,
+                       1024,
+                       10,
+                       ttl,
+                       [ttl] { return static_cast<Timestamp>(std::time(nullptr)) + ttl.count() + 1; }};
+
+    for (const auto* name : {"delivered.wpk", "pending.wpk"})
+    {
+        const auto response {later.authorizeWpkDownload(wpkQuery("001", name))};
+        EXPECT_EQ(response.status, 200) << name;
+        EXPECT_TRUE(response.body["task_id"].is_null()) << name;
+    }
+}
+
+TEST_F(ApiTest, WpkAuthorizationRefusesExpiredTasks)
+{
+    const auto now {static_cast<Timestamp>(std::time(nullptr))};
+    m_api->createAgentTask(wpkTaskBody(now));
+    ASSERT_TRUE(m_api->authorizeWpkDownload(wpkQuery("001", "a.wpk")).body["task_id"].is_string());
+
+    ASSERT_EQ(m_store->expireAgentTasks(now + 1), 1);
+
+    const auto response {m_api->authorizeWpkDownload(wpkQuery("001", "a.wpk"))};
+    EXPECT_EQ(response.status, 200);
+    EXPECT_TRUE(response.body["task_id"].is_null());
+}
+
+TEST_F(ApiTest, WpkAuthorizationSkipsRowsWithoutAUsableWpkFile)
+{
+    const auto now {static_cast<Timestamp>(std::time(nullptr))};
+
+    AgentTask valid;
+    valid.taskId = "valid";
+    valid.agentId = "001";
+    valid.taskType = "remote_upgrade";
+    valid.payload = R"({"wpk_file":"a.wpk"})";
+    valid.createTime = now - 100;
+    ASSERT_TRUE(m_store->createAgentTask(valid));
+
+    // Every unusable row is newer than the valid one, so the lookup must walk past all of them.
+    Timestamp createTime {now - 10};
+    for (const auto* payload :
+         {"not json", "[]", R"("x")", "1", "null", "{}", R"({"wpk_file":""})", R"({"wpk_file":1})"})
+    {
+        AgentTask task = valid;
+        task.taskId = std::string {"unusable "} + payload;
+        task.payload = payload;
+        task.createTime = createTime--;
+        ASSERT_TRUE(m_store->createAgentTask(task)) << payload;
+    }
+
+    ApiResponse response;
+    EXPECT_NO_THROW(response = m_api->authorizeWpkDownload(wpkQuery("001", "a.wpk")));
+    EXPECT_EQ(response.status, 200);
+    EXPECT_EQ(response.body["task_id"], "valid");
+}
+
+TEST_F(ApiTest, WpkAuthorizationRejectsAMalformedBody)
+{
+    // A body that is not an object reaches the handler as {} through the route adapter; an array
+    // is passed here too because the handler must not depend on that.
+    for (const auto& body : {nlohmann::json::object(),
+                             nlohmann::json::array(),
+                             nlohmann::json {{"wpk_file", "a.wpk"}},
+                             nlohmann::json {{"agent_id", "001"}},
+                             wpkQuery("", "a.wpk"),
+                             wpkQuery("001", ""),
+                             nlohmann::json {{"agent_id", 1}, {"wpk_file", "a.wpk"}},
+                             nlohmann::json {{"agent_id", "001"}, {"wpk_file", 1}},
+                             nlohmann::json {{"agent_id", "001"}, {"wpk_file", nullptr}}})
+    {
+        const auto response {m_api->authorizeWpkDownload(body)};
+        EXPECT_EQ(response.status, 400) << body.dump();
+        EXPECT_EQ(response.body["error"], "parsing_error") << body.dump();
+    }
+}
+
+TEST_F(ApiTest, WpkAuthorizationLeavesTheRowAndTheNegativeCacheUntouched)
+{
+    const auto created {m_api->createAgentTask(wpkTaskBody(static_cast<Timestamp>(std::time(nullptr))))};
+
+    // (a) Neither a hit nor a miss marks the row delivered or records the agent as empty.
+    ASSERT_EQ(m_api->authorizeWpkDownload(wpkQuery("001", "a.wpk")).body["task_id"], created.body["task_id"]);
+    ASSERT_TRUE(m_api->authorizeWpkDownload(wpkQuery("001", "other.wpk")).body["task_id"].is_null());
+
+    const auto pending {m_api->takePendingAgentTasks(nlohmann::json {{"agent_id", "001"}})};
+    ASSERT_EQ(pending.body["tasks"].size(), 1U);
+    EXPECT_EQ(pending.body["tasks"][0]["task_id"], created.body["task_id"]);
+
+    // (b) Delivered, and the next poll records the agent as empty: the lookup still finds the row
+    // and leaves that entry in place.
+    EXPECT_TRUE(m_api->takePendingAgentTasks(nlohmann::json {{"agent_id", "001"}}).body["tasks"].empty());
+    ASSERT_TRUE(m_cache.knownEmpty("001"));
+
+    const auto response {m_api->authorizeWpkDownload(wpkQuery("001", "a.wpk"))};
+    EXPECT_EQ(response.status, 200);
+    EXPECT_EQ(response.body["task_id"], created.body["task_id"]);
+    EXPECT_TRUE(m_cache.knownEmpty("001"));
 }
 
 TEST_F(ApiTest, TheNegativeCacheAnswersIdlePollsWithoutTouchingTheStore)

@@ -85,6 +85,8 @@ namespace task_manager::storage
         std::vector<AgentTask> takePendingAgentTasks(const std::string& agentId, int maxTasks) override;
         std::int64_t expireAgentTasks(Timestamp createdBefore) override;
         std::int64_t deleteOldAgentTasks(Timestamp before) override;
+        std::vector<AgentTask>
+        openAgentTasks(const std::string& agentId, const std::string& taskType, Timestamp notBefore) override;
 
         // ---- manager tasks -------------------------------------------------------------------
         CreateManagerTaskOutcome createManagerTask(const CreateManagerTaskRequest& request) override;
