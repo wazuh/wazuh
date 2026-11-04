@@ -291,6 +291,10 @@ class PKGWrapper final : public IPackageWrapper
                             m_version = bundleShortVersionString;
                         }
                     }
+                    else if (!bundleVersion.empty())
+                    {
+                        m_version = bundleVersion;
+                    }
 
                     m_architecture = UNKNOWN_VALUE;
                     m_multiarch = UNKNOWN_VALUE;
