@@ -89,9 +89,6 @@ OSList *os_get_process_list(void);
 /* Check if a process is running */
 int is_process(char *value, OSList *p_list);
 
-/*  Delete the process list */
-int del_plist(OSList *p_list);
-
 /* Used to report messages */
 int notify_rk(int rk_type, const char *msg);
 

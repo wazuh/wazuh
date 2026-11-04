@@ -55,7 +55,7 @@ class ISysInfo
         {
             processes([&callback](nlohmann::json & process)
             {
-                const auto stringField = [&process](const char* key)
+                const auto stringField = [&process](const char* key) -> std::string
                 {
                     const auto it = process.find(key);
                     return it != process.end() && it->is_string() ? it->get<std::string>() : std::string {};
