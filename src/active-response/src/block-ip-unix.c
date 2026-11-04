@@ -215,7 +215,6 @@ firewall_result_t try_firewalld(const char *srcip, int action, int ip_version, c
 // ============================================================================
 
 firewall_result_t try_iptables(const char *srcip, int action, int ip_version, const char *argv0) {
-    char log_msg[OS_MAXSTR];
     char *iptables = NULL;
     const char *iptables_name = (ip_version == 4) ? "iptables" : "ip6tables";
     lock_context_t lock_ctx = {
@@ -241,52 +240,15 @@ firewall_result_t try_iptables(const char *srcip, int action, int ip_version, co
 
     firewall_result_t final_result = FIREWALL_SUCCESS;
 
-    // Execute INPUT chain with retry
-    int count = 0;
-    bool flag = true;
-    while (flag) {
-        char *exec_cmd1[] = {iptables, (char *)arg, "INPUT", "-s", (char *)srcip, "-j", "DROP", NULL};
-        wfd_t *wfd = wpopenv(iptables, exec_cmd1, W_BIND_STDERR);
+    char *exec_cmd1[] = {iptables, (char *)arg, "INPUT", "-s", (char *)srcip, "-j", "DROP", NULL};
+    char *exec_cmd2[] = {iptables, (char *)arg, "FORWARD", "-s", (char *)srcip, "-j", "DROP", NULL};
 
-        if (!wfd) {
-            count++;
-            if (count > 4) {
-                flag = false;
-                memset(log_msg, '\0', OS_MAXSTR);
-                snprintf(log_msg, OS_MAXSTR - 1, "Unable to run %s on INPUT chain", iptables_name);
-                write_debug_file(argv0, log_msg);
-                final_result = FIREWALL_EXECUTION_FAILED;
-            } else {
-                sleep(count);
-            }
-        } else {
-            flag = false;
-            wpclose(wfd);
-        }
+    if (execute_command_with_retry(argv0, iptables, exec_cmd1) != OS_SUCCESS) {
+        final_result = FIREWALL_EXECUTION_FAILED;
     }
 
-    // Execute FORWARD chain with retry
-    count = 0;
-    flag = true;
-    while (flag) {
-        char *exec_cmd2[] = {iptables, (char *)arg, "FORWARD", "-s", (char *)srcip, "-j", "DROP", NULL};
-        wfd_t *wfd = wpopenv(iptables, exec_cmd2, W_BIND_STDERR);
-
-        if (!wfd) {
-            count++;
-            if (count > 4) {
-                flag = false;
-                memset(log_msg, '\0', OS_MAXSTR);
-                snprintf(log_msg, OS_MAXSTR - 1, "Unable to run %s on FORWARD chain", iptables_name);
-                write_debug_file(argv0, log_msg);
-                final_result = FIREWALL_EXECUTION_FAILED;
-            } else {
-                sleep(count);
-            }
-        } else {
-            flag = false;
-            wpclose(wfd);
-        }
+    if (execute_command_with_retry(argv0, iptables, exec_cmd2) != OS_SUCCESS) {
+        final_result = FIREWALL_EXECUTION_FAILED;
     }
 
     // Release lock
@@ -334,27 +296,23 @@ firewall_result_t try_ipfw(const char *srcip, int action, int ip_version, const 
         log_firewall_action(argv0, LOG_LEVEL_INFO, "ipfw", "setup", "Creating table 00001");
 
         char *exec_cmd2[] = {ipfw_path, "-q", "00001", "add", "deny", "ip", "from", "table(00001)", "to", "any", NULL};
-        wfd = wpopenv(ipfw_path, exec_cmd2, W_BIND_STDERR);
-        if (wfd) wpclose(wfd);
-
         char *exec_cmd3[] = {ipfw_path, "-q", "00001", "add", "deny", "ip", "from", "any", "to", "table(00001)", NULL};
-        wfd = wpopenv(ipfw_path, exec_cmd3, W_BIND_STDERR);
-        if (wfd) wpclose(wfd);
+
+        if (execute_command_with_retry(argv0, ipfw_path, exec_cmd2) != OS_SUCCESS ||
+            execute_command_with_retry(argv0, ipfw_path, exec_cmd3) != OS_SUCCESS) {
+            os_free(ipfw_path);
+            return FIREWALL_EXECUTION_FAILED;
+        }
     }
 
     // Add or delete IP from table
     const char *table_operation = (action == ENABLE_COMMAND) ? "add" : "delete";
     char *exec_cmd4[] = {ipfw_path, "-q", "table", "00001", (char *)table_operation, (char *)srcip, NULL};
 
-    wfd = wpopenv(ipfw_path, exec_cmd4, W_BIND_STDERR);
+    int ret = execute_command_with_retry(argv0, ipfw_path, exec_cmd4);
     os_free(ipfw_path);
 
-    if (!wfd) {
-        return FIREWALL_EXECUTION_FAILED;
-    }
-
-    wpclose(wfd);
-    return FIREWALL_SUCCESS;
+    return ret == OS_SUCCESS ? FIREWALL_SUCCESS : FIREWALL_EXECUTION_FAILED;
 }
 
 #endif // PLATFORM_FREEBSD
@@ -411,18 +369,15 @@ firewall_result_t try_pf(const char *srcip, int action, int ip_version, const ch
     const char *table_operation = (action == ENABLE_COMMAND) ? "add" : "delete";
     char *exec_cmd2[] = {pfctl_path, "-t", "wazuh_fwtable", "-T", (char *)table_operation, (char *)srcip, NULL};
 
-    wfd = wpopenv(pfctl_path, exec_cmd2, W_BIND_STDERR);
-    if (!wfd) {
+    if (execute_command_with_retry(argv0, pfctl_path, exec_cmd2) != OS_SUCCESS) {
         os_free(pfctl_path);
         return FIREWALL_EXECUTION_FAILED;
     }
-    wpclose(wfd);
 
-    // If adding, also kill existing connections
+    // If adding, also kill existing connections. The IP is already blocked, so a failure here is only logged
     if (action == ENABLE_COMMAND) {
         char *exec_cmd3[] = {pfctl_path, "-k", (char *)srcip, NULL};
-        wfd = wpopenv(pfctl_path, exec_cmd3, W_BIND_STDERR);
-        if (wfd) wpclose(wfd);
+        execute_command_with_retry(argv0, pfctl_path, exec_cmd3);
     }
 
     os_free(pfctl_path);
@@ -494,15 +449,10 @@ firewall_result_t try_npf(const char *srcip, int action, int ip_version, const c
     const char *table_operation = (action == ENABLE_COMMAND) ? "add" : "del";
     char *exec_cmd2[] = {npfctl_path, "table", "wazuh_blacklist", (char *)table_operation, (char *)srcip, NULL};
 
-    wfd = wpopenv(npfctl_path, exec_cmd2, W_BIND_STDERR);
+    int ret = execute_command_with_retry(argv0, npfctl_path, exec_cmd2);
     os_free(npfctl_path);
 
-    if (!wfd) {
-        return FIREWALL_EXECUTION_FAILED;
-    }
-
-    wpclose(wfd);
-    return FIREWALL_SUCCESS;
+    return ret == OS_SUCCESS ? FIREWALL_SUCCESS : FIREWALL_EXECUTION_FAILED;
 }
 
 #endif // PLATFORM_NETBSD
@@ -521,45 +471,40 @@ firewall_result_t try_route(const char *srcip, int action, int ip_version, const
         return FIREWALL_NOT_AVAILABLE;
     }
 
-    wfd_t *wfd = NULL;
+    int ret = OS_INVALID;
 
 #ifdef PLATFORM_LINUX
     // Linux: route add <ip> reject / route del <ip> reject
     if (action == ENABLE_COMMAND) {
         char *exec_cmd[] = {route_path, "add", (char *)srcip, "reject", NULL};
-        wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
+        ret = execute_command_with_retry(argv0, route_path, exec_cmd);
     } else {
         char *exec_cmd[] = {route_path, "del", (char *)srcip, "reject", NULL};
-        wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
+        ret = execute_command_with_retry(argv0, route_path, exec_cmd);
     }
 #elif defined(PLATFORM_FREEBSD)
     // FreeBSD: route -q add <ip> 127.0.0.1 -blackhole
     if (action == ENABLE_COMMAND) {
         char *exec_cmd[] = {route_path, "-q", "add", (char *)srcip, "127.0.0.1", "-blackhole", NULL};
-        wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
+        ret = execute_command_with_retry(argv0, route_path, exec_cmd);
     } else {
         char *exec_cmd[] = {route_path, "-q", "delete", (char *)srcip, "127.0.0.1", "-blackhole", NULL};
-        wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
+        ret = execute_command_with_retry(argv0, route_path, exec_cmd);
     }
 #elif defined(PLATFORM_OPENBSD) || defined(PLATFORM_NETBSD)
     // OpenBSD/NetBSD: Similar to FreeBSD
     if (action == ENABLE_COMMAND) {
         char *exec_cmd[] = {route_path, "-q", "add", (char *)srcip, "127.0.0.1", "-blackhole", NULL};
-        wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
+        ret = execute_command_with_retry(argv0, route_path, exec_cmd);
     } else {
         char *exec_cmd[] = {route_path, "-q", "delete", (char *)srcip, NULL};
-        wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
+        ret = execute_command_with_retry(argv0, route_path, exec_cmd);
     }
 #endif
 
     os_free(route_path);
 
-    if (!wfd) {
-        return FIREWALL_EXECUTION_FAILED;
-    }
-
-    wpclose(wfd);
-    return FIREWALL_SUCCESS;
+    return ret == OS_SUCCESS ? FIREWALL_SUCCESS : FIREWALL_EXECUTION_FAILED;
 }
 
 // ============================================================================
@@ -733,6 +678,15 @@ firewall_result_t try_hostsdeny(const char *srcip, int action, int ip_version, c
         }
 
         unlink(temp_hosts_deny_path);
+
+        // Nothing to remove: the IP was not blocked by this method, let the next one try
+        if (!entry_removed) {
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR - 1, "IP %s not found in '%s'", srcip, hosts_deny_path);
+            log_firewall_action(argv0, LOG_LEVEL_INFO, "hostsdeny", "delete", log_msg);
+            release_ar_lock(&lock_ctx);
+            return FIREWALL_EXECUTION_FAILED;
+        }
     }
 
     release_ar_lock(&lock_ctx);
