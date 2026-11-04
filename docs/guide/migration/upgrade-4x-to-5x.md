@@ -231,7 +231,7 @@ After upgrading and cleaning configuration, verify:
 
 1. Agent successfully connects to the manager over HTTPS on port `1517`.
 2. Agent and manager versions are both compatible with 5.0 communication protocol.
-3. The agent holds a trust anchor at `/var/ossec/etc/certs/root-ca.pem` and verifies the manager. A remote upgrade delivers one — see [Trust anchor delivery to legacy agents](remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents). A local Linux package upgrade (`.deb` or `.rpm`) installs one only when `WAZUH_ENROLLMENT_TOKEN` is set; otherwise run `wazuh-agent-auth --token-file <file> --certs-only`. On Linux, a `(4126)` in `ossec.log` means one was delivered but never installed, usually because the `openssl` command is missing — see [When the CA cannot be validated on the agent](remote-agent-upgrade.md#when-the-ca-cannot-be-validated-on-the-agent).
+3. The agent holds a trust anchor at `/var/ossec/etc/certs/root-ca.pem` and verifies the manager. A remote upgrade delivers one — see [Trust anchor delivery to legacy agents](remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents). A local Linux package upgrade (`.deb` or `.rpm`) installs one only when `WAZUH_ENROLLMENT_TOKEN` is set; otherwise stop the agent (`systemctl stop wazuh-agent`) and run `wazuh-agent-auth --token-file <file> --certs-only`, which refuses while `wazuh-agentd` is running, then start it again. On Linux, a `(4126)` in `ossec.log` means one was delivered but never installed, usually because the `openssl` command is missing — see [When the CA cannot be validated on the agent](remote-agent-upgrade.md#when-the-ca-cannot-be-validated-on-the-agent).
 
 Port `1515` is the legacy enrollment listener, used only by 4.x agents, and `1514` is the legacy session listener that 4.x agents (and the remote upgrade of a 4.x agent) use. A 5.0 manager opens `1514` only when `<remote><legacy>` is present and enabled (the installer writes it with `<enabled>yes</enabled>` unless `WAZUH_REMOTE_LEGACY_ENABLED=no`), and `1515` follows it unless `<auth><legacy_enrollment>` is set explicitly. An upgraded agent never uses either: it keeps the identity it already has and does not enroll again, and a 5.0 agent registering for the first time does so over `POST /enroll` on `1517`, with an enrollment token.
 
@@ -263,7 +263,38 @@ Two things to plan for when the upgrade is not run by hand on a terminal:
 
 A package upgrade supplies no CA and checks nothing: the manager pushes its `root-ca.pem` only on the remote-upgrade path (see [Trust anchor delivery](remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents)), and the pre-install gate described under [Certificate trust check](#certificate-trust-check) belongs to the WPK installer, which does not run here.
 
-The consequence is quiet rather than loud. A 4.X `ossec.conf` carries no `<ssl>` block, so the upgraded agent lands on the last row of the resolution table: with no anchor on disk it resolves to `none`, connects, and verifies nothing, logging `TLS verification is DISABLED (verification_mode=none).` It does not refuse to start and it does not fail to connect, so a fleet upgraded this way is working and unverified unless you look. Place the manager's CA at `/var/ossec/etc/certs/root-ca.pem` (`<installdir>\certs\root-ca.pem` on Windows) before the upgrade, `0640 root:wazuh` so the agent can read it, or set `<certificate_authorities>` explicitly; the same agent then comes up verifying with `full`.
+The consequence is quiet rather than loud. A 4.X `ossec.conf` carries no `<ssl>` block, so the upgraded agent lands on the last row of the resolution table: with no anchor on disk it resolves to `none`, connects, and verifies nothing, logging `TLS verification is DISABLED (verification_mode=none).` It does not refuse to start and it does not fail to connect, so a fleet upgraded this way is working and unverified unless you look. Before the upgrade, give the agent the manager's CA, or set `<certificate_authorities>` explicitly; the same agent then comes up verifying with `full`. On a Linux `.deb` or `.rpm` upgrade you can set `WAZUH_ENROLLMENT_TOKEN` instead: the agent fetches the CA, checks it against the token's pin, and installs it with the ownership and marker it expects. That upgrade also rewrites the manager address in `ossec.conf` to the token's, replacing every `<server>` block with that one address (so a multi-server failover list is lost), and it does not apply the token at all when a `<server>` block does not open and close on lines of its own, outside any comment. The Windows and macOS packages ignore `WAZUH_ENROLLMENT_TOKEN` on an upgrade, without a warning. Otherwise, place the manager's `/etc/wazuh-manager/certs/root-ca.pem` by hand. No agent package creates `etc/certs` (`certs\` on Windows), so the steps below create it.
+
+On Linux and macOS, run this from the directory that holds `root-ca.pem`, one that no other user can write to such as your home directory (not `/tmp`), and set `i=/Library/Ossec` on macOS. It leaves `etc/certs` at `01770 root:wazuh` and the anchor at `0640 wazuh:wazuh`, the layout the agent uses itself (see the [client module reference](../../ref/modules/client/README.md)):
+
+```bash
+sudo sh -c '
+i=/var/ossec   # /Library/Ossec on macOS
+ca="$PWD/root-ca.pem"
+[ -f "$ca" ] && [ ! -L "$ca" ] || { echo "$ca is missing or is a link; run this from the directory that holds the CA" >&2; exit 1; }
+grep -q "BEGIN CERTIFICATE" "$ca" && ! grep -q "PRIVATE KEY" "$ca" || { echo "$ca is not a PEM certificate, or it holds a private key" >&2; exit 1; }
+r=$(cd -P "$i/etc" && pwd -P) || exit 1
+[ -e "$r/certs" ] || [ -L "$r/certs" ] || mkdir -m 700 "$r/certs" || exit 1
+cd -P "$r/certs" 2>/dev/null && [ "$(pwd -P)" = "$r/certs" ] || { echo "$r/certs is a link or not a directory; the CA was not installed" >&2; exit 1; }
+trap "" HUP INT QUIT TERM
+chown 0:wazuh . && chmod 700 . || exit 1
+t=
+if [ -d root-ca.pem ] && [ ! -L root-ca.pem ]; then echo "$r/certs/root-ca.pem is a directory; the CA was not installed" >&2; rc=1
+elif t=$(mktemp ./.root-ca.XXXXXX) && cat "$ca" > "$t" && grep -q "BEGIN CERTIFICATE" "$t" && ! grep -q "PRIVATE KEY" "$t" && chown wazuh:wazuh "$t" && chmod 640 "$t" && { [ ! -L root-ca.pem ] || rm -f root-ca.pem; } && mv -f "$t" root-ca.pem; then rc=0
+else [ -z "$t" ] || rm -f "$t"; echo "the CA was not installed" >&2; rc=1; fi
+chmod 1770 . || { echo "could not reopen $r/certs to the wazuh group" >&2; rc=1; }
+exit $rc
+'
+```
+
+`etc/` is writable by the `wazuh` group, so the command does not run `install -d` or `chown` on that path, which would follow a link planted there. It checks the source `root-ca.pem` first, refusing one that holds no PEM certificate or holds a private key, creates `certs` only when nothing is there, and works from inside the directory once it has checked that it is the real one. It closes the directory to everyone but root while it works, writes the anchor to a new file that `mktemp` creates under a random name, so nothing left in the directory beforehand can stand in for it, and moves it over `root-ca.pem` (a link found there is not treated as an anchor and is removed first), then opens the directory to the `wazuh` group again, also when it fails. Ctrl-C and a dropped session are ignored while the directory is closed, so it always gets that far. When the source is missing, a link or not a certificate, `certs` is a link or a file, `root-ca.pem` is a directory, the install directory is wrong or the `wazuh` user or group is missing, it prints an error and installs nothing; an anchor file already in place is kept. The agent creates the `.anchor-committed` marker itself on its next start. A `certs` left behind by an earlier attempt gets the right ownership and mode. It uses `0` rather than `root` for the group, since macOS has no `root` group.
+
+On Windows, run this from an elevated PowerShell, adjusting the path if the agent is not installed in the default location. `certs\` inherits the installation directory's permissions, which is all the agent needs there:
+
+```powershell
+New-Item -ItemType Directory -Force -Path 'C:\Program Files (x86)\ossec-agent\certs' | Out-Null
+Copy-Item root-ca.pem 'C:\Program Files (x86)\ossec-agent\certs\root-ca.pem'
+```
 
 ## Remote upgrade (WPK)
 

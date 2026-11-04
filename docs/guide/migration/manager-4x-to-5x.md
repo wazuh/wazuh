@@ -609,18 +609,20 @@ migrated fleet:
     wazuh-manager-remoted: INFO: legacy_task_delivery: agent '003': delivered the manager CA as 'root-ca.pem' for task '...'; the agent can verify this manager after the upgrade
     wazuh-manager-remoted: INFO: legacy_task_delivery: successfully delivered remote_upgrade task '...' to agent '003' (wpk: '...')
     ```
-  - **Package upgrade on the host.** Nothing is delivered. Place the manager's
-    `/etc/wazuh-manager/certs/root-ca.pem` at `/var/ossec/etc/certs/root-ca.pem` on Linux and
-    macOS, or `<installdir>\certs\root-ca.pem` on Windows, before upgrading:
-
-    ```bash
-    sudo install -m 640 -o root -g wazuh root-ca.pem /var/ossec/etc/certs/root-ca.pem
-    ```
-
-    The ownership is part of the instruction, not decoration: an anchor the `wazuh` user cannot read
-    fails closed exactly as a missing one does, and a listing looks right until the group is checked.
-    An agent already upgraded without one takes it from a token afterwards, keeping its identity:
-    `wazuh-agent-auth --token-file <file> --certs-only`.
+  - **Package upgrade on the host.** Nothing is delivered. On a Linux `.deb` or `.rpm` upgrade,
+    set `WAZUH_ENROLLMENT_TOKEN` (it also rewrites the manager address in `ossec.conf`, see
+    [Package upgrade on the host](upgrade-4x-to-5x.md#package-upgrade-on-the-host); the Windows and
+    macOS packages ignore it on an upgrade), or place the manager's
+    `/etc/wazuh-manager/certs/root-ca.pem` at
+    `/var/ossec/etc/certs/root-ca.pem` (`/Library/Ossec/etc/certs/root-ca.pem` on macOS,
+    `<installdir>\certs\root-ca.pem` on Windows) before upgrading. Neither the 4.x nor the 5.0
+    agent package creates `etc/certs`, and `etc/` is writable by the `wazuh` group, so follow the
+    commands in [Package upgrade on the host](upgrade-4x-to-5x.md#package-upgrade-on-the-host)
+    rather than a plain `install`: they create the directory safely and give the anchor the
+    ownership the agent needs. An anchor the `wazuh` user cannot read fails closed exactly as a
+    missing one does, and a listing looks right until the owner is checked. An agent already
+    upgraded without one takes it from a token afterwards, keeping its identity: stop the agent
+    and run `wazuh-agent-auth --token-file <file> --certs-only` (see below).
 
   An upgraded agent that holds the anchor and states no `<verification_mode>` of its own comes up
   verifying with `full` against it. One upgraded without an anchor connects and verifies nothing:
@@ -669,19 +671,55 @@ and a token minted on the manager:
 sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address mgr.example.com --ttl 1d
 ```
 
+`wazuh-agent-auth` refuses to run while `wazuh-agentd` is running (`stop the agent first`), so
+stop the agent before either command below and start it afterwards: `systemctl stop wazuh-agent`
+and `systemctl start wazuh-agent` on Linux (`service wazuh-agent stop`/`start` on hosts without
+systemd), `/Library/Ossec/bin/wazuh-control stop` and `start` on macOS, `Stop-Service WazuhSvc`
+and `Start-Service WazuhSvc` on Windows.
+
 - **The agent cannot verify the manager**, because no anchor reached it. `--certs-only` installs the
   CA and the address from the token and leaves the identity alone, which is what you want for an
   agent that is otherwise healthy:
 
   ```bash
+  # Linux. On macOS use /Library/Ossec/bin/wazuh-control stop|start, /Library/Ossec/bin/wazuh-agent-auth
+  # and a token file under /var/root (root's home there).
+  sudo systemctl stop wazuh-agent
   sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token --certs-only
+  sudo systemctl start wazuh-agent
+  ```
+
+  ```powershell
+  # Windows, from an elevated PowerShell; adjust $dir if the agent is installed elsewhere.
+  # The token sits in the installation directory, readable only by SYSTEM and Administrators,
+  # and is removed afterwards.
+  $dir = 'C:\Program Files (x86)\ossec-agent'
+  Stop-Service WazuhSvc
+  & "$dir\wazuh-agent-auth.exe" --token-file "$dir\token" --certs-only
+  Remove-Item "$dir\token"
+  Start-Service WazuhSvc
   ```
 
 - **The identity is gone** from the manager. `--force-enroll`
   registers the agent again; it comes back with a **new id**, which is the cost of that path:
 
   ```bash
+  # Linux. On macOS use /Library/Ossec/bin/wazuh-control stop|start, /Library/Ossec/bin/wazuh-agent-auth
+  # and a token file under /var/root (root's home there).
+  sudo systemctl stop wazuh-agent
   sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token --force-enroll
+  sudo systemctl start wazuh-agent
+  ```
+
+  ```powershell
+  # Windows, from an elevated PowerShell; adjust $dir if the agent is installed elsewhere.
+  # The token sits in the installation directory, readable only by SYSTEM and Administrators,
+  # and is removed afterwards.
+  $dir = 'C:\Program Files (x86)\ossec-agent'
+  Stop-Service WazuhSvc
+  & "$dir\wazuh-agent-auth.exe" --token-file "$dir\token" --force-enroll
+  Remove-Item "$dir\token"
+  Start-Service WazuhSvc
   ```
 
 `--dry-run` reports what either would change without contacting anything. See
