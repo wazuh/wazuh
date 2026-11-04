@@ -684,8 +684,8 @@ agent.warn_level=90
 # Normal level for buffer usage percentage (default: 70)
 agent.normal_level=70
 
-# Tolerance for buffer fluctuations (default: 10)
-agent.tolerance=10
+# Seconds the buffer must stay full before the agent reports flooding (1-600, 0 uses the default, default: 15)
+agent.tolerance=15
 ```
 
 ### Log Rotation Settings
@@ -694,16 +694,16 @@ agent.tolerance=10
 # Compress rotated logs (0=no, 1=yes, default: 1)
 monitord.compress=1
 
-# Days to keep rotated logs (default: 365)
-monitord.keep_log_days=365
+# Days to keep rotated logs (0-500, default: 31)
+monitord.keep_log_days=31
 
-# Time of day to rotate logs (hh:mm format, default: 00:00)
-monitord.day_wait=0
+# Seconds to wait after midnight before the daily rotation (0-600, default: 10)
+monitord.day_wait=10
 
-# Maximum log file size in MB before rotation (default: 0 = unlimited)
-monitord.size_rotate=0
+# Log file size in MB that triggers a rotation (0-4096, 0 = no size-based rotation, default: 512)
+monitord.size_rotate=512
 
-# Number of daily rotations to keep (default: 12)
+# Maximum number of rotations per day (1-256, default: 12)
 monitord.daily_rotations=12
 
 # Enable automatic log rotation (0=no, 1=yes, default: 1)
