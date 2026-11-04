@@ -197,7 +197,7 @@ namespace
         EXPECT_FALSE(source.currentKey().has_value());
     }
 
-    // The minimum is authd's AUTHD_PASS_MIN_CHARS (16): both readers judge the same file.
+    // The minimum is authd's AUTHD_PASS_MIN_BYTES (16): both readers judge the same file.
     TEST_F(PasswordKeySourceTest, OneUnderTheMinimumIsRejected)
     {
         writeFile("0123456789abcde\n");

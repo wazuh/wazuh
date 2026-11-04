@@ -60,7 +60,7 @@ is for when it is somewhere else.
 | `--api-user USER` | `import`, `check` | `wazuh` | The API user |
 | `--api-password-file FILE` | `import`, `check` | — | File holding the API password, `-` for standard input |
 | `--api-ca FILE` | `import`, `check` | the target's `certs/root-ca.pem` under `--target-conf-dir`, for a loopback `--api-url` only | CA bundle to verify the API certificate with; required for any other `--api-url` |
-| `--with-password` | `export`, `import` | off | Carry the shared enrollment password, from the source's `etc/authd.pass` to `authd.pass` under `--target-conf-dir`. A password shorter than 16 characters, the 5.0 minimum, is refused at `import` (and warned about at `export`) |
+| `--with-password` | `export`, `import` | off | Carry the shared enrollment password, from the source's `etc/authd.pass` to `authd.pass` under `--target-conf-dir`. A password shorter than 16 bytes, the 5.0 minimum, is refused at `import` (and warned about at `export`) |
 | `--with-rbac` | `export`, `import` | off | Carry the API users, roles and policies |
 | `--dry-run` | `export`, `import` | off | Report what would happen and change nothing |
 | `--force` | `export`, `import` | off | Proceed past this tool's safety checks |

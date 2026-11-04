@@ -402,7 +402,7 @@ back on the next synchronization, after a `delete-group` has already gone out to
 install -m 660 -o wazuh-manager -g wazuh-manager /root/wazuh-4x-backup/authd.pass /etc/wazuh-manager/authd.pass
 ```
 
-A 4.x password shorter than **16 characters** cannot be carried: the 5.0 `wazuh-manager-authd` refuses to start
+A 4.x password shorter than **16 bytes** cannot be carried: the 5.0 `wazuh-manager-authd` refuses to start
 with it (see [`use_password`](../../ref/modules/authd/configuration.md#use_password)), and
 `wazuh-migrate-identity.py import --with-password` refuses it first. Set a longer password on the 4.x
 manager and on every agent or deployment script that still enrolls with it before you export.

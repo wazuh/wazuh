@@ -382,7 +382,12 @@ class MigrationToolTest(unittest.TestCase):
             "exported is not imported: the import flag gates it too")
 
     def test_the_password_lands_in_the_configuration_directory(self):
-        self.assertEqual(0, self.export("--with-password"))
+        import io, contextlib as cl
+        err = io.StringIO()
+        with cl.redirect_stderr(err):
+            self.assertEqual(0, self.export("--with-password"))
+        self.assertNotIn("shorter than", err.getvalue(),
+                         "a password of exactly the 5.0 minimum (16 bytes) is not warned about")
         self.assertEqual(0, self.do_import("--with-password"))
         with open(os.path.join(self.target_conf, "authd.pass")) as handle:
             self.assertEqual("MigrationLab2026\n", handle.read())
@@ -391,8 +396,13 @@ class MigrationToolTest(unittest.TestCase):
 
     def test_a_password_under_the_5x_minimum_is_refused_at_import(self):
         with open(os.path.join(self.source, "etc", "authd.pass"), "w") as handle:
-            handle.write("Lab2026Short15c\r\n")   # 15 chars once CR/LF are trimmed
-        self.assertEqual(0, self.export("--with-password"), "export only warns: the 4.x side is still fine")
+            handle.write("Lab2026Short15c\r\n")   # 15 bytes once CR/LF are trimmed
+        import io, contextlib as cl
+        err = io.StringIO()
+        with cl.redirect_stderr(err):
+            self.assertEqual(0, self.export("--with-password"), "export only warns: the 4.x side is still fine")
+        self.assertIn("shorter than 16 bytes", err.getvalue(),
+                      "the export warns now, before the bundle reaches the 5.0 manager")
         self.assertEqual(2, self.do_import("--with-password"),
                          "the 5.0 authd would refuse to start with it, so the import refuses it first")
         self.assertFalse(os.path.exists(os.path.join(self.target_conf, "authd.pass")))

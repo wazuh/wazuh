@@ -31,7 +31,7 @@
 typedef enum {
     PASS_LINE_OK = 0,
     PASS_LINE_INVALID,  /* missing, empty, or only whitespace after trimming */
-    PASS_LINE_TOO_SHORT, /* fewer than AUTHD_PASS_MIN_CHARS chars after trimming */
+    PASS_LINE_TOO_SHORT, /* fewer than AUTHD_PASS_MIN_BYTES bytes after trimming */
     PASS_LINE_TOO_LONG
 } pass_line_t;
 
@@ -1144,7 +1144,7 @@ static pass_line_t read_password_line(FILE *fp, char **out) {
         return PASS_LINE_INVALID;
     }
 
-    if (len < AUTHD_PASS_MIN_CHARS) {
+    if (len < AUTHD_PASS_MIN_BYTES) {
         return PASS_LINE_TOO_SHORT;
     }
 
@@ -1168,9 +1168,9 @@ char *w_authd_load_password(const char *path, bool *generated) {
         case PASS_LINE_TOO_LONG:
             merror_exit("Authentication password in '%s' is too long.", path);
         case PASS_LINE_TOO_SHORT:
-            merror_exit("Authentication password in '%s' is too short: it must be at least %d characters. "
+            merror_exit("Authentication password in '%s' is too short: it must be at least %d bytes. "
                         "Write a longer one, or delete the file to have a random one generated.",
-                        path, AUTHD_PASS_MIN_CHARS);
+                        path, AUTHD_PASS_MIN_BYTES);
         case PASS_LINE_INVALID:
             merror_exit("Invalid password provided in '%s'.", path);
         case PASS_LINE_OK:
@@ -1239,9 +1239,9 @@ int w_authd_check_password_file(const char *path) {
         merror("Authentication password in '%s' is too long.", path);
         break;
     case PASS_LINE_TOO_SHORT:
-        merror("Authentication password in '%s' is too short: it must be at least %d characters. "
+        merror("Authentication password in '%s' is too short: it must be at least %d bytes. "
                "Write a longer one, or delete the file to have a random one generated.",
-               path, AUTHD_PASS_MIN_CHARS);
+               path, AUTHD_PASS_MIN_BYTES);
         break;
     case PASS_LINE_INVALID:
         merror("Invalid password provided in '%s'.", path);
@@ -1270,8 +1270,8 @@ char *w_authd_read_password(const char *path) {
     if (status == PASS_LINE_TOO_LONG) {
         mwarn("Authentication password in '%s' is too long; ignoring.", path);
     } else if (status == PASS_LINE_TOO_SHORT) {
-        mwarn("Authentication password in '%s' is shorter than %d characters; ignoring.", path,
-              AUTHD_PASS_MIN_CHARS);
+        mwarn("Authentication password in '%s' is shorter than %d bytes; ignoring.", path,
+              AUTHD_PASS_MIN_BYTES);
     } else if (status == PASS_LINE_INVALID) {
         mwarn("Authentication password in '%s' is invalid or empty; ignoring.", path);
     }

@@ -1435,9 +1435,9 @@ Turns the authd password file into the `wazuh-enroll+jwt` HS256 key (shared HKDF
 `Keystore`'s watcher exactly (inotify + a poll fallback + content-hash change detection, so a rewrite
 landing mid-read can never be adopted torn) — the two files have the same operational shape, an
 operator-managed secret a running process must notice without a bounce. Parsing must byte-match
-authd's own `read_password_line()`: first line only, trailing `\r`/`\n` stripped, length `<= 2` or
-all-whitespace rejected, a 4096-byte cap — otherwise the manager's two enrollment paths could disagree
-about which password is valid. Derivation runs once per file change and is cached — never per
+authd's own `read_password_line()`: first line only, trailing `\r`/`\n` stripped, all-whitespace or
+shorter than 16 bytes (`AUTHD_PASS_MIN_BYTES`) rejected, a 4096-byte cap — otherwise the manager's two
+enrollment paths could disagree about which password is valid. Derivation runs once per file change and is cached — never per
 request.
 
 #### `TokenKeySource` (`auth/tokenKeySource.hpp/.cpp`)

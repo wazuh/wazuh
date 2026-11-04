@@ -89,9 +89,9 @@ class MigrationError(Exception):
     """A condition the operator has to resolve; reported without a traceback."""
 
 
-# The shortest authd.pass the 5.0 manager accepts: AUTHD_PASS_MIN_CHARS in src/os_auth/include/auth.h. A
+# The shortest authd.pass the 5.0 manager accepts: AUTHD_PASS_MIN_BYTES in src/os_auth/include/auth.h. A
 # shorter one stops wazuh-manager-authd at start, so it is refused here before it reaches the manager.
-AUTHD_PASS_MIN_CHARS = 16
+AUTHD_PASS_MIN_BYTES = 16
 
 
 def authd_pass_too_short(path):
@@ -99,7 +99,7 @@ def authd_pass_too_short(path):
     Empty and blank lines are left to authd's own error: they were never valid."""
     with open(path, "rb") as handle:
         line = handle.readline().rstrip(b"\r\n")
-    return bool(line.strip()) and len(line) < AUTHD_PASS_MIN_CHARS
+    return bool(line.strip()) and len(line) < AUTHD_PASS_MIN_BYTES
 
 
 def log(message):
@@ -438,9 +438,9 @@ def command_export(args):
             log("  skip     %s (not present on the source)" % name)
         else:
             if name == "authd.pass" and authd_pass_too_short(path):
-                warn("the 4.x enrollment password is shorter than %d characters, the minimum the 5.0"
+                warn("the 4.x enrollment password is shorter than %d bytes, the minimum the 5.0"
                      " manager accepts: 'import' will refuse it. Set a longer one on the 4.x manager"
-                     " and on the agents that still enroll, and export again." % AUTHD_PASS_MIN_CHARS)
+                     " and on the agents that still enroll, and export again." % AUTHD_PASS_MIN_BYTES)
             secrets.append((name, path))
 
     manifest = {
@@ -733,10 +733,10 @@ def command_import(args):
             continue
         if name == "authd.pass" and authd_pass_too_short(os.path.join(args.bundle, name)):
             raise MigrationError(
-                "the enrollment password in the bundle is shorter than %d characters, and the 5.0"
+                "the enrollment password in the bundle is shorter than %d bytes, and the 5.0"
                 " wazuh-manager-authd refuses to start with it. Set a longer password on the 4.x"
                 " manager and on the agents that still enroll, then export again; or re-run without"
-                " --with-password to let the manager generate a new one." % AUTHD_PASS_MIN_CHARS)
+                " --with-password to let the manager generate a new one." % AUTHD_PASS_MIN_BYTES)
         install_secret(args.bundle, name, target, args.target_conf_dir, args.dry_run)
         if name == "rbac.db":
             stage_rbac(target, args.dry_run)

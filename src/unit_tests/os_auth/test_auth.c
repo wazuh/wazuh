@@ -251,7 +251,7 @@ static void test_w_authd_load_password_persist_failure_is_fatal(void **state) {
 }
 
 #define TOO_SHORT_MSG "Authentication password in '" AUTHD_PASS "' is too short: it must be at least 16 " \
-                      "characters. Write a longer one, or delete the file to have a random one generated."
+                      "bytes. Write a longer one, or delete the file to have a random one generated."
 
 /* An existing file whose first line is too short must fail closed (never return NULL,
  * which would silently disable password enrollment). */
@@ -370,7 +370,7 @@ static void test_w_authd_read_password_missing_returns_null(void **state) {
 static void test_w_authd_read_password_short_returns_null(void **state) {
     expect_pass_file_read("0123456789abcde\n");   /* 15 chars */
     expect_string(__wrap__mwarn, formatted_msg,
-                  "Authentication password in '" AUTHD_PASS "' is shorter than 16 characters; ignoring.");
+                  "Authentication password in '" AUTHD_PASS "' is shorter than 16 bytes; ignoring.");
 
     assert_null(w_authd_read_password(AUTHD_PASS));
 }

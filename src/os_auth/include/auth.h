@@ -302,11 +302,12 @@ cJSON* local_add_clustered(const char *name,
 #define AUTHD_PASS_BYTES     32
 #define AUTHD_PASS_HEX_CHARS 64
 
-/* The shortest password accepted from a hand-written authd.pass, after trimming CR/LF. It removes the
- * trivially short passwords; it is a length, not a strength, so choosing a strong one stays the operator's
- * responsibility (the generated one is AUTHD_PASS_HEX_CHARS hex chars). remoted's PasswordKeySource
- * (kMinPasswordChars) applies the same rule to the same file. */
-#define AUTHD_PASS_MIN_CHARS 16
+/* The shortest password accepted from a hand-written authd.pass, in bytes after trimming CR/LF (strlen, so a
+ * non-ASCII character counts as more than one). It removes the trivially short passwords; it is a length, not
+ * a strength, so choosing a strong one stays the operator's responsibility (the generated one is
+ * AUTHD_PASS_HEX_CHARS hex chars). remoted's PasswordKeySource (kMinPasswordBytes) applies the same rule to the
+ * same file. */
+#define AUTHD_PASS_MIN_BYTES 16
 
 /**
  * @brief Generates a shared enrollment password: AUTHD_PASS_BYTES bytes straight from the

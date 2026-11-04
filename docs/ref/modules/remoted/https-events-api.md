@@ -651,7 +651,7 @@ Six more that are not about tuning:
   Behind a load balancer the address is the balancer's own. It points at a problem; it is not a
   per-source record (the manager keeps none). `wazuh-manager-authd` logs `Invalid password provided by
   <address>` for each failure on `1515`.
-- A short hand-written `/etc/wazuh-manager/authd.pass` (fewer than 16 characters) is treated as invalid
+- A short hand-written `/etc/wazuh-manager/authd.pass` (fewer than 16 bytes) is treated as invalid
   here too, as authd does: see [`use_password`](../authd/configuration.md#use_password).
 - **`Could not derive the enrollment key from '/etc/wazuh-manager/authd.pass' (HKDF unavailable)`** (ERROR) means the
   OpenSSL KDF provider is broken: every Password-mode enrollment fails closed until it is fixed,

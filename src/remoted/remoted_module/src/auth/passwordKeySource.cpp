@@ -62,9 +62,9 @@ namespace remoted::auth
         /// (4096 + 1 for the null terminator) exactly.
         constexpr std::size_t kMaxLineBytes {4096};
 
-        /// Shortest accepted password after trimming CR/LF: authd's AUTHD_PASS_MIN_CHARS
+        /// Shortest accepted password after trimming CR/LF: authd's AUTHD_PASS_MIN_BYTES
         /// (os_auth/include/auth.h). Both readers judge the same file, so they must agree.
-        constexpr std::size_t kMinPasswordChars {16};
+        constexpr std::size_t kMinPasswordBytes {16};
 
         /**
          * @brief Read and validate the first line of the password file, byte-matching authd's
@@ -73,7 +73,7 @@ namespace remoted::auth
          * @return The password string on success, std::nullopt on any of: file not open, no
          *         line read, line filled the buffer without a trailing newline (too long), the
          *         remainder after stripping trailing '\r'/'\n' is empty or entirely whitespace, or it
-         *         is shorter than kMinPasswordChars characters.
+         *         is shorter than kMinPasswordBytes bytes.
          */
         std::optional<std::string> readPasswordLine(const std::string& path)
         {
@@ -120,7 +120,7 @@ namespace remoted::auth
                 return std::nullopt;
             }
 
-            if (len < kMinPasswordChars)
+            if (len < kMinPasswordBytes)
             {
                 return std::nullopt;
             }
@@ -157,10 +157,10 @@ namespace remoted::auth
         {
             LOGFN_WARN(logFn(),
                        "Could not load a usable enrollment password from '%s' at startup (missing, unreadable, "
-                       "blank or shorter than %zu characters); Password-mode enrollment requests will be "
+                       "blank or shorter than %zu bytes); Password-mode enrollment requests will be "
                        "rejected until it is available.",
                        m_path.c_str(),
-                       kMinPasswordChars);
+                       kMinPasswordBytes);
         }
         else
         {
