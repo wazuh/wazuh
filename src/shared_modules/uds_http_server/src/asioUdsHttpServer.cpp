@@ -552,6 +552,11 @@ namespace wazuh::uds_http
 
                 if (m_phase == Phase::Response)
                 {
+                    // The handler already answered; only the interim write is still outstanding.
+                    if (m_parkedResponse)
+                    {
+                        return;
+                    }
                     // Synthesize a status rather than just dropping the connection: the peer gets a
                     // 504 it can classify instead of a bare reset. This is the leak backstop for a
                     // handler that kept a responder and never used it.
@@ -1126,8 +1131,11 @@ namespace wazuh::uds_http
                 }
                 if (m_interimWriting)
                 {
-                    // Never two writes in flight: the interim completion delivers it.
-                    m_parkedResponse = std::move(response);
+                    // Never two writes in flight: the interim completion delivers the first final answer.
+                    if (!m_parkedResponse)
+                    {
+                        m_parkedResponse = std::move(response);
+                    }
                     return;
                 }
                 m_finished = true;
