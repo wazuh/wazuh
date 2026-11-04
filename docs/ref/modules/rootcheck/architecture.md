@@ -431,7 +431,7 @@ Enable verbose logging:
 syscheck.debug=2
 
 # Restart agent
-systemctl restart wazuh-agent
+/var/ossec/bin/wazuh-control restart
 ```
 
 Check rootcheck-specific logs:

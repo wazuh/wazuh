@@ -133,7 +133,6 @@ testconfig()
         ${DIR}/bin/${i} -t;
         if [ $? != 0 ]; then
             echo "${i}: Configuration error. Exiting"
-            unlock;
             exit 1;
         fi
     done
@@ -162,18 +161,26 @@ is_systemd() {
 }
 
 # Hands stop, restart and reload to systemctl while systemd supervises the agent, and returns
-# otherwise. Run by hand next to the unit, they take the daemons away from it: the unit tracks
+# otherwise. Run outside systemd, they take the daemons away from the unit: it tracks
 # wazuh-agentd through PIDFile=, so when this script stops it systemd runs ExecStop, which waits
 # for this script's lock and then stops the daemons this same restart has just brought up, and
 # the agent ends up stopped right after "Completed.". Through systemctl the unit runs them with
 # its own ExecStop, ExecStart and ExecReload, which call this script again from inside the unit.
 #
+# systemd runs ExecStart, ExecStop and ExecReload while the unit is activating, deactivating or
+# reloading, never while it is active. Called from one of them, systemctl would queue a job
+# behind the one running this call and wait for it until the unit times out. So a call from
+# inside the unit's cgroup is handed over only while the unit is active: then it comes from
+# something the daemons launched (an upgrade's installer), not from systemd.
+#
+# A reload is handed over only while the unit is active as well. While it is still starting,
+# systemctl reload is folded into that start and returns 0 without reloading anything, so a
+# configuration change made meanwhile would be lost. This script waits for the start to finish
+# and then reloads, and a reload never stops wazuh-agentd, which is what the unit tracks.
+#
 # Left to this script:
-# - a call from inside the unit's cgroup. For systemd's own ExecStart, ExecStop and ExecReload,
-#   systemctl would queue a job behind the one running this call and wait for it until the unit
-#   times out. Whatever the daemons launch (an upgrade's installer) shares that cgroup and can't be
-#   told apart from them, so it keeps running every action here, as it did before.
-# - a process whose cgroup can't be read, since it can't tell whether it is one of those.
+# - a unit that runs another installation of the agent, whose PIDFile= is not this one's.
+# - a process whose cgroup can't be read, since it can't tell where it runs.
 # - a unit that is not running: the agent was started with this script, or it is stopped.
 # - start: on a running unit systemctl start does nothing, while this script still brings up a
 #   daemon that is down.
@@ -184,10 +191,17 @@ systemd_redirect()
     is_systemd || return
     command -v systemctl > /dev/null 2>&1 || return
     [ -r "${SELF_CGROUP}" ] || return
-    grep -Eq '/wazuh-agent\.service(/|$)' "${SELF_CGROUP}" && return
 
-    case "$(systemctl is-active "${SYSTEMD_UNIT}" 2>/dev/null)" in
-        active|activating|reloading) ;;
+    _sr_pidfile=$(systemctl show -p PIDFile "${SYSTEMD_UNIT}" 2>/dev/null | sed -n 's/^PIDFile=//p')
+    [ "X${_sr_pidfile}" = "X${DIR}/var/run/wazuh-agentd.pid" ] || return
+
+    if [ "$1" = "reload" ] || grep -Eq '/wazuh-agent\.service(/|$)' "${SELF_CGROUP}"; then
+        _sr_states="active"
+    else
+        _sr_states="active activating reloading deactivating"
+    fi
+    case " ${_sr_states} " in
+        *" $(systemctl is-active "${SYSTEMD_UNIT}" 2>/dev/null) "*) ;;
         *) return ;;
     esac
 
@@ -420,12 +434,6 @@ restart_service()
 arg=$2
 
 case "$1" in
-stop|restart|reload)
-    systemd_redirect "$1"
-    ;;
-esac
-
-case "$1" in
 start)
     testconfig
     check_folders
@@ -434,14 +442,17 @@ start)
     unlock
     ;;
 stop)
+    systemd_redirect stop
     lock
     stop_service
     unlock
     ;;
 restart)
+    systemd_redirect restart
     restart_service
     ;;
 reload)
+    systemd_redirect reload
     RELOADING=1
     DAEMONS=$(echo $DAEMONS | sed 's/wazuh-agentd//')
     if is_systemd; then

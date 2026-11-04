@@ -51,10 +51,19 @@ exit 0
 '
 
 # Stands in for systemctl: logs each call to systemctl.log. is-active prints the state in
-# unit-state (inactive by default); any other action exits with the status in systemctl-rc (0).
+# unit-state (inactive by default), show -p PIDFile the path in unit-pidfile, and --version a
+# version line; any other action exits with the status in systemctl-rc (0).
 SYSTEMCTL_STUB='#!/bin/sh
 dir=$(cd "$(dirname "$0")/.." && pwd)
 echo "$*" >> "${dir}/systemctl.log"
+if [ "$1" = "show" ]; then
+    echo "PIDFile=$(cat "${dir}/unit-pidfile" 2>/dev/null)"
+    exit 0
+fi
+if [ "$1" = "--version" ]; then
+    echo "systemd 252 (252.39-1~deb12u2)"
+    exit 0
+fi
 if [ "$1" = "is-active" ]; then
     state=$(cat "${dir}/unit-state" 2>/dev/null || echo inactive)
     echo "${state}"
@@ -83,8 +92,8 @@ new_tree() {
 
 }
 
-# Turns the case's tree into a host where systemd runs wazuh-agent.service in state $2 and this
-# process sits in cgroup $3.
+# Turns the case's tree into a host where systemd runs wazuh-agent.service in state $2 for this
+# installation (its PIDFile= is the tree's) and this process sits in cgroup $3.
 systemd_host() {
 
     local dir="${WORK}/$1"
@@ -92,6 +101,7 @@ systemd_host() {
     mkdir -p "${dir}/run-systemd"
     echo "$2" > "${dir}/unit-state"
     printf '%s\n' "$3" > "${dir}/cgroup"
+    echo "${dir}/var/run/wazuh-agentd.pid" > "${dir}/unit-pidfile"
 
 }
 
@@ -197,6 +207,10 @@ check "a failed reload stops nothing it started" "wazuh-execd wazuh-agentd wazuh
 SESSION_CGROUP="0::/user.slice/user-0.slice/session-1.scope"
 UNIT_CGROUP="0::/system.slice/wazuh-agent.service"
 
+# What wazuh-control asks systemctl before handing an action over: whose unit it is, then its state.
+PROBE="show -p PIDFile wazuh-agent.service
+is-active wazuh-agent.service"
+
 for action in stop restart reload; do
     new_tree "sd_${action}"
     control "sd_${action}" start > /dev/null
@@ -204,7 +218,7 @@ for action in stop restart reload; do
     systemd_host "sd_${action}" active "${SESSION_CGROUP}"
     check "${action} on an active unit returns systemctl's status" "0" "$(control "sd_${action}" "${action}")"
     check "${action} on an active unit goes to systemctl" \
-        "is-active wazuh-agent.service
+        "${PROBE}
 ${action} wazuh-agent.service" "$(systemctl_calls "sd_${action}")"
     check "${action} on an active unit leaves the daemons to the unit" "${before}" "$(pids "sd_${action}")"
 done
@@ -214,7 +228,7 @@ control sd_activating start > /dev/null
 systemd_host sd_activating activating "${SESSION_CGROUP}"
 control sd_activating restart > /dev/null
 check "restart while the unit is starting goes to systemctl" \
-    "is-active wazuh-agent.service
+    "${PROBE}
 restart wazuh-agent.service" "$(systemctl_calls sd_activating)"
 
 new_tree sd_reloading
@@ -222,7 +236,7 @@ control sd_reloading start > /dev/null
 systemd_host sd_reloading reloading "${SESSION_CGROUP}"
 control sd_reloading stop > /dev/null
 check "stop while the unit is reloading goes to systemctl" \
-    "is-active wazuh-agent.service
+    "${PROBE}
 stop wazuh-agent.service" "$(systemctl_calls sd_reloading)"
 
 new_tree sd_rc
@@ -238,7 +252,7 @@ before="$(pids sd_badconf)"
 systemd_host sd_badconf active "${SESSION_CGROUP}"
 touch "${WORK}/sd_badconf/badconf-wazuh-syscheckd"
 check "restart with a configuration error fails" "1" "$(control sd_badconf restart)"
-check "restart with a configuration error does not reach systemctl" "is-active wazuh-agent.service" \
+check "restart with a configuration error does not reach systemctl" "${PROBE}" \
     "$(systemctl_calls sd_badconf)"
 check "restart with a configuration error keeps the daemons" "${before}" "$(pids sd_badconf)"
 
@@ -248,20 +262,38 @@ check "start on an active unit runs in wazuh-control" "0" "$(control sd_start st
 check "start on an active unit does not call systemctl" "" "$(systemctl_calls sd_start)"
 check "start on an active unit brings the daemons up" "${DAEMONS}" "$(running sd_start)"
 
-# systemd's own ExecStop and ExecStart, and whatever the daemons launch, run inside the unit's
-# cgroup: there systemctl would wait for the job that is running this very call.
+# Inside the unit's cgroup, an active unit means the call comes from something the daemons
+# launched (an upgrade's installer): it goes to systemctl.
 for cgroup in "${UNIT_CGROUP}" "1:name=systemd:/system.slice/wazuh-agent.service
 0::/system.slice/wazuh-agent.service" "0::/system.slice/wazuh-agent.service/payload"; do
     new_tree sd_inside
     control sd_inside start > /dev/null
     before="$(pids sd_inside)"
     systemd_host sd_inside active "${cgroup}"
-    check "restart inside the unit runs in wazuh-control (${cgroup##*:})" "0" "$(control sd_inside restart)"
-    check "restart inside the unit does not call systemctl (${cgroup##*:})" "" "$(systemctl_calls sd_inside)"
-    check "restart inside the unit restarts the daemons (${cgroup##*:})" "${DAEMONS}" "$(running sd_inside)"
-    [ "${before}" != "$(pids sd_inside)" ]
-    check "restart inside the unit gives the daemons new pids (${cgroup##*:})" "0" "$?"
+    check "restart inside an active unit goes to systemctl (${cgroup##*:})" \
+        "${PROBE}
+restart wazuh-agent.service" "$(control sd_inside restart > /dev/null; systemctl_calls sd_inside)"
+    check "restart inside an active unit leaves the daemons to the unit (${cgroup##*:})" "${before}" \
+        "$(pids sd_inside)"
     rm -rf "${WORK}/sd_inside"
+done
+
+# systemd's own ExecStart, ExecStop and ExecReload run inside the unit while it is activating,
+# deactivating or reloading: there systemctl would wait for the job that is running this very call.
+for state in activating deactivating reloading; do
+    for action in restart stop; do
+        new_tree sd_exec
+        control sd_exec start > /dev/null
+        systemd_host sd_exec "${state}" "${UNIT_CGROUP}"
+        check "${action} inside a ${state} unit runs in wazuh-control" "0" "$(control sd_exec "${action}")"
+        check "${action} inside a ${state} unit only asks systemctl" "${PROBE}" "$(systemctl_calls sd_exec)"
+        if [ "${action}" = "restart" ]; then
+            check "restart inside a ${state} unit restarts the daemons" "${DAEMONS}" "$(running sd_exec)"
+        else
+            check "stop inside a ${state} unit stops the daemons" "" "$(running sd_exec)"
+        fi
+        rm -rf "${WORK}/sd_exec"
+    done
 done
 
 # cgroup v1 (systemd 219 on RHEL 7 and Amazon Linux 2) lists one line per hierarchy. A root shell
@@ -275,7 +307,7 @@ systemd_host sd_v1_session active "11:cpuset:/
 1:name=systemd:/user.slice/user-0.slice/session-1.scope"
 control sd_v1_session restart > /dev/null
 check "restart from a cgroup v1 session goes to systemctl" \
-    "is-active wazuh-agent.service
+    "${PROBE}
 restart wazuh-agent.service" "$(systemctl_calls sd_v1_session)"
 
 # Another unit whose name ends like it is not the agent's.
@@ -284,18 +316,50 @@ control sd_other_unit start > /dev/null
 systemd_host sd_other_unit active "0::/system.slice/my-wazuh-agent.service"
 control sd_other_unit stop > /dev/null
 check "a unit named like the agent's is not taken for it" \
-    "is-active wazuh-agent.service
+    "${PROBE}
 stop wazuh-agent.service" "$(systemctl_calls sd_other_unit)"
 
-for state in inactive failed deactivating unknown; do
+for state in inactive failed unknown; do
     new_tree "sd_${state}"
     control "sd_${state}" start > /dev/null
     systemd_host "sd_${state}" "${state}" "${SESSION_CGROUP}"
     check "stop on a ${state} unit runs in wazuh-control" "0" "$(control "sd_${state}" stop)"
-    check "stop on a ${state} unit only asks systemctl the state" "is-active wazuh-agent.service" \
+    check "stop on a ${state} unit only asks systemctl" "${PROBE}" \
         "$(systemctl_calls "sd_${state}")"
     check "stop on a ${state} unit stops the daemons" "" "$(running "sd_${state}")"
 done
+
+# A restart or stop while systemctl stop is running goes after it, through systemctl.
+new_tree sd_deactivating
+control sd_deactivating start > /dev/null
+systemd_host sd_deactivating deactivating "${SESSION_CGROUP}"
+control sd_deactivating restart > /dev/null
+check "restart while the unit is stopping goes to systemctl" \
+    "${PROBE}
+restart wazuh-agent.service" "$(systemctl_calls sd_deactivating)"
+
+# A reload goes to systemctl only on an active unit; otherwise it reloads here, as before.
+for state in activating reloading deactivating; do
+    new_tree "sd_reload_${state}"
+    control "sd_reload_${state}" start > /dev/null
+    agentd="$(cat "${WORK}/sd_reload_${state}/var/run/wazuh-agentd"-*.pid)"
+    systemd_host "sd_reload_${state}" "${state}" "${SESSION_CGROUP}"
+    check "reload on a ${state} unit runs in wazuh-control" "0" "$(control "sd_reload_${state}" reload)"
+    check "reload on a ${state} unit does not hand it to systemctl" "${PROBE}
+--version" "$(systemctl_calls "sd_reload_${state}")"
+    check "reload on a ${state} unit keeps wazuh-agentd" "${agentd}" \
+        "$(cat "${WORK}/sd_reload_${state}/var/run/wazuh-agentd"-*.pid)"
+done
+
+# A second installation in another directory: the unit runs the first one.
+new_tree sd_other_install
+control sd_other_install start > /dev/null
+systemd_host sd_other_install active "${SESSION_CGROUP}"
+echo "/var/ossec/var/run/wazuh-agentd.pid" > "${WORK}/sd_other_install/unit-pidfile"
+check "stop of another installation runs in wazuh-control" "0" "$(control sd_other_install stop)"
+check "stop of another installation does not reach that unit" "show -p PIDFile wazuh-agent.service" \
+    "$(systemctl_calls sd_other_install)"
+check "stop of another installation stops its own daemons" "" "$(running sd_other_install)"
 
 new_tree sd_no_cgroup
 control sd_no_cgroup start > /dev/null
@@ -319,6 +383,18 @@ systemd_host sd_skip active "${SESSION_CGROUP}"
 WAZUH_CONTROL_SKIP_SYSTEMD=1 control sd_skip stop > /dev/null
 check "WAZUH_CONTROL_SKIP_SYSTEMD=1 keeps stop in wazuh-control" "" "$(systemctl_calls sd_skip)"
 check "WAZUH_CONTROL_SKIP_SYSTEMD=1 stops the daemons" "" "$(running sd_skip)"
+
+# A failed configuration test exits before this call takes the lock, so the lock it finds is
+# someone else's (systemd's ExecStart, say) and must stay.
+for action in restart start; do
+    new_tree "badconf_lock_${action}"
+    touch "${WORK}/badconf_lock_${action}/badconf-wazuh-syscheckd"
+    mkdir -p "${WORK}/badconf_lock_${action}/var/start-script-lock"
+    echo $$ > "${WORK}/badconf_lock_${action}/var/start-script-lock/pid"
+    check "${action} with a configuration error fails" "1" "$(control "badconf_lock_${action}" "${action}")"
+    check "${action} with a configuration error keeps a lock it did not take" "$$" \
+        "$(cat "${WORK}/badconf_lock_${action}/var/start-script-lock/pid" 2>/dev/null)"
+done
 
 echo
 echo "${checks} checks, ${failures} failed"

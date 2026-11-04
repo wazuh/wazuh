@@ -459,7 +459,7 @@ grep -A5 'wodle name="syscollector"' /var/ossec/etc/ossec.conf | grep interval
 **Force manual scan:**
 ```bash
 # Restart agent to trigger scan_on_start
-systemctl restart wazuh-agent
+/var/ossec/bin/wazuh-control restart
 ```
 
 ### Synchronization Not Working
