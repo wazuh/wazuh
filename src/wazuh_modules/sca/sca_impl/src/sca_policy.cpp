@@ -3,6 +3,7 @@
 #include <check_condition_evaluator.hpp>
 #include <sca_utils.hpp>
 
+#include "defer.hpp"
 #include "logging_helper.hpp"
 
 #include <stringHelper.h>
@@ -36,8 +37,13 @@ SCAPolicy::SCAPolicy(SCAPolicy&& other) noexcept
 void SCAPolicy::Run(std::function<void(const CheckResult&)> reportCheckResult)
 {
     m_scanInProgress = true;
+
+    DEFER([this]()
+    {
+        m_scanInProgress = false;
+    });
+
     Scan(reportCheckResult);
-    m_scanInProgress = false;
 }
 
 void SCAPolicy::Scan(
@@ -79,36 +85,47 @@ void SCAPolicy::Scan(
 
         for (const auto& check : m_checks)
         {
-            auto resultEvaluator = CheckConditionEvaluator::FromString(check.condition);
-
-            for (const auto& rule : check.rules)
+            // A check that fails while it is evaluated or reported must not take the rest of the policy with
+            // it: log it and continue with the next one, as the parser does with a check it cannot load.
+            try
             {
-                if (!m_keepRunning)
+                auto resultEvaluator = CheckConditionEvaluator::FromString(check.condition);
+
+                for (const auto& rule : check.rules)
                 {
-                    return;
+                    if (!m_keepRunning)
+                    {
+                        return;
+                    }
+
+                    const auto ruleResult = rule->Evaluate();
+                    resultEvaluator.AddResult(RuleEvaluationResult(ruleResult, rule->GetUnresolvedReason(), rule->GetContext().source));
                 }
 
-                const auto ruleResult = rule->Evaluate();
-                resultEvaluator.AddResult(RuleEvaluationResult(ruleResult, rule->GetUnresolvedReason(), rule->GetContext().source));
+                const auto result = resultEvaluator.Result();
+                const auto reason = resultEvaluator.Reason();
+
+                // NOLINTBEGIN(bugprone-unchecked-optional-access)
+                LoggingHelper::getInstance().log(
+                    LOG_DEBUG,
+                    "Policy check \"" +
+                    check.id.value() +
+                    "\" evaluation completed for policy \"" +
+                    m_id +
+                    "\", result: " +
+                    sca::CheckResultToString(result) +
+                    (reason.empty() ? "" : ", reason: " + OnOneLine(reason))
+                );
+
+                reportCheckResult({m_id, check.id.value(), sca::CheckResultToString(result), reason});
+                // NOLINTEND(bugprone-unchecked-optional-access)
             }
-
-            const auto result = resultEvaluator.Result();
-            const auto reason = resultEvaluator.Reason();
-
-            // NOLINTBEGIN(bugprone-unchecked-optional-access)
-            LoggingHelper::getInstance().log(
-                LOG_DEBUG,
-                "Policy check \"" +
-                check.id.value() +
-                "\" evaluation completed for policy \"" +
-                m_id +
-                "\", result: " +
-                sca::CheckResultToString(result) +
-                (reason.empty() ? "" : ", reason: " + OnOneLine(reason))
-            );
-
-            reportCheckResult({m_id, check.id.value(), sca::CheckResultToString(result), reason});
-            // NOLINTEND(bugprone-unchecked-optional-access)
+            catch (const std::exception& e)
+            {
+                // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
+                LoggingHelper::getInstance().log(LOG_ERROR, "Failed to evaluate check '" + check.id.value() + "' of policy '" +
+                                                 m_id + "'. Skipping it. Error: " + e.what());
+            }
         }
 
         LoggingHelper::getInstance().log(LOG_DEBUG, "Policy checks evaluation completed for policy \"" + m_id + "\"");

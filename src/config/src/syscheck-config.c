@@ -2174,7 +2174,11 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         } else if (w_is_str_in_array(xml_deprecated, node[i]->element)) {
             mwarn(XML_DEPRECATED, node[i]->element);
         } else {
-            minfo(XML_INVELEM, node[i]->element);
+            // Options removed since 4.x are matched above and only logged, so an
+            // upgraded configuration still loads; anything else is a typo or an
+            // unsupported option, rejected as the other agent modules do.
+            merror(XML_INVELEM, node[i]->element);
+            return (OS_INVALID);
         }
     }
 
