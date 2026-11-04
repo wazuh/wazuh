@@ -108,6 +108,7 @@ static void mock_remoted_internal_option_values(int legacy_value) {
     will_return(__wrap_getDefine_Int_default, 1);
     will_return(__wrap_getDefine_Int_default, 1);
     will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
 
     // Syscollector limits
     will_return(__wrap_getDefine_Int_default, 1);
@@ -136,9 +137,13 @@ static void mock_remoted_internal_option_values(int legacy_value) {
     will_return(__wrap_getDefine_Int_default, 1);
     will_return(__wrap_getDefine_Int_default, 1);
     will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
 
     // SCA limits
     will_return(__wrap_getDefine_Int_default, 1);
+
+    // Container admission limit
+    will_return(__wrap_getDefine_Int_default, 0);
 
     will_return(__wrap_getDefine_Int_default, 2);      // receive_chunk
     will_return(__wrap_getDefine_Int_default, 3);      // send_chunk

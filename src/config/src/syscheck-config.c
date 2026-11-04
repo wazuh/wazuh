@@ -78,7 +78,26 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->scan_day                        = NULL;
     syscheck->scan_time                       = NULL;
     syscheck->file_limit_enabled              = true;
-    syscheck->file_entry_limit                = 100000;
+    /* The whole file_entry table: host rows and every container's rows together.
+     *
+     * Raised from the host-era 100,000 because the workload it has to cover
+     * changed. Measured on a real node (23.4): 50 containers monitoring 2,000
+     * files each filled the old ceiling exactly, four of them ended up with no
+     * rows at all, and which four was decided by walk order. The reference node
+     * is 100 containers, which is ~200,500 container rows plus the host's own.
+     *
+     * 300,000 covers that with headroom and was validated end to end (23.6).
+     * At the measured ~435 bytes/row it bounds the database at roughly 130 MB.
+     * It is a ceiling, so an agent monitoring fewer files pays nothing for it --
+     * but it does mean the "database is N% full" warnings fire later than they
+     * used to on an agent that runs no containers at all. */
+    syscheck->file_entry_limit                = 300000;
+    /* Rows ONE container may store, per container. 30000 mirrors
+     * the per-container document budget, so a container that may REPORT 30,000
+     * files may also STORE them. ~15x a container monitoring 2,000 files, so it
+     * guards against one pathological container rather than bounding a normal
+     * one; the node ceiling above is what bounds the agent. */
+    syscheck->container_file_entry_limit      = 30000;
     syscheck->directories                     = OSList_Create();
 
     if (syscheck->directories == NULL) {

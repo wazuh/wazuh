@@ -13,14 +13,14 @@
   metadata:
     folder_to_monitor: !!python/object/apply:os.path.join
               args: [!!python/object/apply:os.getcwd [], test_dir]
-    max_files_entries: 100000
-    files_amount: 10000
+    max_files_entries: 300000
+    files_amount: 30000
     fill_percentage: 10
     fim_mode: realtime
 
 
 
-- name: Default file limit fill 100% - Real-time
+- name: File limit of 100000 fill 100% - Real-time
   description: ''
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join
@@ -32,6 +32,8 @@
         elements:
           - enabled:
               value: 'yes'
+          - entries:
+              value: 100000
   metadata:
     folder_to_monitor: !!python/object/apply:os.path.join
               args: [!!python/object/apply:os.getcwd [], test_dir]
@@ -231,12 +233,12 @@
   metadata:
     folder_to_monitor: !!python/object/apply:os.path.join
               args: [!!python/object/apply:os.getcwd [], test_dir]
-    max_files_entries: 100000
-    files_amount: 10000
+    max_files_entries: 300000
+    files_amount: 30000
     fill_percentage: 10
     fim_mode: whodata
 
-- name: Default file limit fill 100% - Who-data
+- name: File limit of 100000 fill 100% - Who-data
   description: ''
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join
@@ -248,6 +250,8 @@
         elements:
           - enabled:
               value: 'yes'
+          - entries:
+              value: 100000
   metadata:
     folder_to_monitor: !!python/object/apply:os.path.join
               args: [!!python/object/apply:os.getcwd [], test_dir]
@@ -410,7 +414,7 @@
     fill_percentage: 100
     fim_mode: whodata
 
-- name: Default file limit fill 10% - Who-data
+- name: Default file limit fill 10% - Scheduled
   description: ''
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join
@@ -425,12 +429,12 @@
   metadata:
     folder_to_monitor: !!python/object/apply:os.path.join
               args: [!!python/object/apply:os.getcwd [], test_dir]
-    max_files_entries: 100000
-    files_amount: 10000
+    max_files_entries: 300000
+    files_amount: 30000
     fill_percentage: 10
     fim_mode: scheduled
 
-- name: Default file limit fill 100% - Who-data
+- name: File limit of 100000 fill 100% - Scheduled
   description: ''
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join
@@ -442,6 +446,8 @@
         elements:
           - enabled:
               value: 'yes'
+          - entries:
+              value: 100000
   metadata:
     folder_to_monitor: !!python/object/apply:os.path.join
               args: [!!python/object/apply:os.getcwd [], test_dir]

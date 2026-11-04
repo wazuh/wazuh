@@ -32,7 +32,7 @@ void DB::removeFile(const std::string& path)
     // The host's own row, which is the one this overload has always meant --
     // fim_db_file_delete() is the host API, fim_db_container_file_delete() the
     // container one. Spelling the scope out is not optional: container_id joined
-    // path in file_entry's primary key (#37532), so deleting on path alone is a
+    // path in file_entry's primary key, so deleting on path alone is a
     // partial key, and dbsync refuses to build a statement for it rather than
     // guessing which container's row was meant.
     removeFile(path, "");

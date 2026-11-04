@@ -1,5 +1,5 @@
 /*
- * Wazuh container_instances — the cursor on the wire (#37532 / #37203).
+ * Wazuh container_instances — the cursor on the wire (#37203).
  * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it

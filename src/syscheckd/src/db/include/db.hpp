@@ -106,7 +106,7 @@ class EXPORTED DB final
          * @brief removeFile Remove ONE container-scoped file row.
          *
          * removeFile(path) alone is ambiguous now that container_id is part of
-         * file_entry's primary key (#37532): the same in-container path exists
+         * file_entry's primary key: the same in-container path exists
          * in every container that has the file, and on the host as
          * container_id="". Filtering on both key columns is what stops deleting
          * one container's file from removing another's, or the host's.

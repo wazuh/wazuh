@@ -30,6 +30,7 @@
 #include "file.h"
 
 #include <cJSON.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -45,6 +46,12 @@ typedef struct fim_container_host_api_t
     /** The daemon's live configuration. Read, never written, and read through
      *  rather than copied so a configuration reload is picked up. */
     const syscheck_config* config;
+
+    /** The lock guarding the daemon's synced-document counters. The container
+     *  counters deliberately share it, so the two populations cannot interleave
+     *  an update -- which means it has to be the daemon's own lock, not one of
+     *  this library's. NULL leaves the container counters unguarded. */
+    pthread_mutex_t* synced_docs_mutex;
 
     /** FIM's files-per-second budget (check_max_fps). Its token bucket is
      *  process-global, so the container walk shares one budget with the host
@@ -67,6 +74,11 @@ typedef struct fim_container_host_api_t
 
     /** Sends a stateless event to the agent queue. */
     void (*send_event)(const cJSON* msg);
+
+    /** Sends a message up to the manager through the agent's log channel. Used
+     *  for the saturation notice, following the only pattern the agent has for
+     *  telling a manager it is full. NULL means the notice is not sent. */
+    int (*send_log)(const char* msg);
 
     /** Validates a stateful document against its index schema and persists it. */
     bool (*validate_and_persist)(const cJSON* stateful_event,

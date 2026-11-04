@@ -63,7 +63,7 @@ TEST(ContainerEventStaging, NothingIsServedBeforeRelease)
 
     Batch batch;
     EXPECT_FALSE(staging.nextBatch(batch, kShortWait))
-        << "work was served while the baseline walk could still be running";
+            << "work was served while the baseline walk could still be running";
 
     /* The work is not discarded, only withheld. */
     EXPECT_EQ(staging.pendingContainers(), 3u);
@@ -77,7 +77,8 @@ TEST(ContainerEventStaging, ReleaseWakesAWaitingConsumer)
     ContainerEventStaging staging(1024, 128);
     std::atomic<bool> got{false};
 
-    std::thread consumer([&staging, &got] {
+    std::thread consumer([&staging, &got]
+    {
         Batch batch;
 
         if (staging.nextBatch(batch, 5000))
@@ -159,10 +160,10 @@ TEST(ContainerEventStaging, ExceedingThePathBudgetEscalatesToAReWalk)
     const auto batches = drainAll(staging);
     ASSERT_EQ(batches.size(), 1u);
     EXPECT_TRUE(batches[0].suspect) << "the budget was exceeded and no re-walk was requested — those "
-                                       "changes would never be reported";
+                                    "changes would never be reported";
     EXPECT_EQ(batches[0].container_id, "c1");
     EXPECT_TRUE(batches[0].paths.empty()) << "a Suspect batch must not also carry a partial path list, "
-                                             "or the consumer does the work twice";
+                                          "or the consumer does the work twice";
     EXPECT_EQ(staging.stats().path_overflows, 1u);
 }
 
@@ -188,7 +189,7 @@ TEST(ContainerEventStaging, ExceedingTheContainerBudgetForcesAFullReBaseline)
     }
 
     EXPECT_TRUE(sawGlobalSuspect) << "a container that did not fit was dropped silently; nothing would "
-                                     "ever re-read it";
+                                  "ever re-read it";
     EXPECT_EQ(staging.stats().unknown_overflows, 1u);
 }
 
@@ -214,8 +215,8 @@ TEST(ContainerEventStaging, AttributedDropsEscalateOnlyThatContainer)
         else if (batch.container_id == "quiet")
         {
             EXPECT_FALSE(batch.suspect) << "a drop attributed to another container escalated this one — "
-                                           "this is the whole-node re-baseline the per-cgroup drop map "
-                                           "exists to avoid";
+                                        "this is the whole-node re-baseline the per-cgroup drop map "
+                                        "exists to avoid";
             EXPECT_EQ(batch.paths.size(), 1u);
         }
         else
@@ -238,7 +239,7 @@ TEST(ContainerEventStaging, DropsSupersedeAlreadyStagedPaths)
     ASSERT_EQ(batches.size(), 1u);
     EXPECT_TRUE(batches[0].suspect);
     EXPECT_TRUE(batches[0].paths.empty()) << "the re-walk covers the staged paths; carrying both means "
-                                             "reading them twice";
+                                          "reading them twice";
 }
 
 TEST(ContainerEventStaging, EventsForAnAlreadySuspectContainerAreNotAccumulated)
@@ -283,7 +284,7 @@ TEST(ContainerEventStaging, UnattributedDropsEscalateEverything)
     }
 
     EXPECT_TRUE(sawGlobalSuspect) << "loss that cannot be attributed to a cgroup must escalate every "
-                                     "container, since nothing is known about what changed";
+                                  "container, since nothing is known about what changed";
 }
 
 TEST(ContainerEventStaging, TheGlobalSuspectIsServedOnceNotForever)
@@ -299,7 +300,7 @@ TEST(ContainerEventStaging, TheGlobalSuspectIsServedOnceNotForever)
     EXPECT_TRUE(batch.container_id.empty());
 
     EXPECT_FALSE(staging.nextBatch(batch, kNoWait))
-        << "the node-wide Suspect was served again — the consumer would re-baseline in a loop";
+            << "the node-wide Suspect was served again — the consumer would re-baseline in a loop";
 }
 
 /* --- lifecycle ------------------------------------------------------------ */
@@ -311,7 +312,8 @@ TEST(ContainerEventStaging, StopUnblocksAWaitingConsumer)
 
     std::atomic<bool> returned{false};
 
-    std::thread consumer([&staging, &returned] {
+    std::thread consumer([&staging, &returned]
+    {
         Batch batch;
         staging.nextBatch(batch, 10000);
         returned = true;
@@ -323,7 +325,7 @@ TEST(ContainerEventStaging, StopUnblocksAWaitingConsumer)
     staging.stop();
     consumer.join();
     EXPECT_TRUE(returned.load()) << "stop() did not wake the consumer; shutdown would hang for the "
-                                    "full poll timeout";
+                                 "full poll timeout";
 }
 
 TEST(ContainerEventStaging, EmptyWhenNothingHappened)
@@ -353,7 +355,8 @@ TEST(ContainerEventStaging, EveryStagedPathIsServedExactlyOnceUnderContention)
     std::atomic<bool> producing{true};
     std::atomic<int> served{0};
 
-    std::thread consumer([&staging, &producing, &served] {
+    std::thread consumer([&staging, &producing, &served]
+    {
         Batch batch;
 
         for (;;)
@@ -379,7 +382,8 @@ TEST(ContainerEventStaging, EveryStagedPathIsServedExactlyOnceUnderContention)
 
     for (int p = 0; p < kProducers; ++p)
     {
-        producers.emplace_back([&staging, p] {
+        producers.emplace_back([&staging, p]
+        {
             for (int i = 0; i < kPathsEach; ++i)
             {
                 staging.onEvent("c" + std::to_string(p), "/etc/f" + std::to_string(i));
@@ -396,7 +400,7 @@ TEST(ContainerEventStaging, EveryStagedPathIsServedExactlyOnceUnderContention)
     consumer.join();
 
     EXPECT_EQ(served, kProducers * kPathsEach)
-        << "paths were lost or duplicated between the drain and the consumer";
+            << "paths were lost or duplicated between the drain and the consumer";
     EXPECT_EQ(staging.stats().staged, static_cast<unsigned long long>(kProducers * kPathsEach));
     EXPECT_EQ(staging.stats().path_overflows, 0u);
     EXPECT_EQ(staging.pendingContainers(), 0u);

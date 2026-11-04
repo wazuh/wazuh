@@ -7,7 +7,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * Baseline acquisition for containerised workloads (spike #37532): a host-side
+ * Baseline acquisition for containerised workloads: a host-side
  * scan that seeds the initial FIM (file) and Syscollector (inventory) state for
  * a container, so the eBPF-driven change stream (#37396) has a known prior
  * state to diff against instead of only reporting activity after the fact.
@@ -316,8 +316,19 @@ EXPORTED int cbaseline_lifecycle_since(const char*         connector_socket_path
                                        void*               user_data);
 
 /* Invoked once per container currently known to the container-connector
- * module, independent of whether it has a resolvable live PID right now. */
-typedef void (*cb_container_id_sink_t)(const char* container_id, void* user_data);
+ * module, independent of whether it has a resolvable live PID right now, and
+ * independent of whether the connector has an attribution key for it.
+ *
+ * `synced` is that container's synchronization verdict: non-zero when it may
+ * report to the manager, zero when its rows must be withheld. It is 1 when the
+ * connector expressed no opinion, so an agent talking to a module older than
+ * the decision keeps reporting everything instead of silently going quiet.
+ *
+ * A container with `synced == 0` is STILL KNOWN and must still be counted as
+ * existing. Leaving it out of the set passed to a stale sweep would delete its
+ * stored rows, which is the opposite of withholding them — withholding keeps
+ * the rows and stops offering them. */
+typedef void (*cb_container_id_sink_t)(const char* container_id, int synced, void* user_data);
 
 /* Lists every container currently known to the container-connector module
  * (queried via its IPC socket at `connector_socket_path`) — including a
@@ -327,8 +338,10 @@ typedef void (*cb_container_id_sink_t)(const char* container_id, void* user_data
  * their own database) MUST compare this list against the run_* functions'
  * output instead of treating "absent from a scan" as "removed".
  *
- * Returns the number of containers reported through `sink`, or -1 when the
- * connector could not be reached or answered malformed.
+ * Returns the number of containers the connector could KEY, or -1 when it
+ * could not be reached or answered malformed. cbaseline_list_containers_ex()
+ * additionally reports the unkeyed ones through `sink`, and those are not
+ * counted here.
  *
  * IMPORTANT: callers MUST check for -1 before using this list to authorise
  * deletions. A failed query reports zero containers, so treating the result as
@@ -341,6 +354,86 @@ typedef void (*cb_container_id_sink_t)(const char* container_id, void* user_data
 EXPORTED int cbaseline_list_containers(const char*            connector_socket_path,
                                        cb_container_id_sink_t sink,
                                        void*                  user_data);
+
+/* What one list reply said about its own coverage. */
+typedef struct
+{
+    /* The keyed list covers every running container. 0 while the connector is
+     * still resolving, and always 0 on failure. */
+    int complete;
+
+    /* The connector reported WHICH containers it could not key. When neither
+     * pending flag below is set, 0 means one too old to, and then `complete`
+     * is the only guard a caller has. */
+    int unkeyed_known;
+
+    /* The connector WILL decide admission but has not yet, so the `synced`
+     * argument `sink` receives is not a decision -- it is the default that
+     * stands in for one, and that default is "admitted".
+     *
+     * Distinct from a connector too old to decide, which also sends no
+     * verdict and which this is 0 for. The two need opposite handling: against
+     * the old one, reporting everything is right and permanent; against this
+     * one it is right for a moment only, and recording it overwrites refusals
+     * the connector is about to re-issue. A caller must leave its stored
+     * admission alone while this is set.
+     *
+     * `complete` and `unkeyed_known` are both 0 whenever this is 1: a
+     * connector that cannot yet see the whole node is not describing the whole
+     * node, so the reply is no basis for deleting anything either. */
+    int admission_pending;
+
+    /* A configured source has not enumerated. This can outlive the admission
+     * grace: unlike admission_pending, it does not say the verdict is missing.
+     * Apply the decision for the containers this reply names, while retaining
+     * the stored reporting flags of containers it does not name. Those ids are
+     * unknown to this reply, not refused or removed; installing the known set
+     * must preserve that distinction rather than retracting their documents.
+     *
+     * `complete` and `unkeyed_known` are both 0 while this is set. Absence-based
+     * cleanup must still wait, even after the cap has been applied to the
+     * available source. Always 0 on failure, like the other status fields. */
+    int sources_pending;
+} cb_list_status_t;
+
+/* As cbaseline_list_containers(), and additionally reports the reply's coverage.
+ *
+ * A non-negative return says only that the connector answered. It does NOT say
+ * the answer covered every container: the connector deliberately omits a
+ * running container until it can key it, so "not resolved yet" and "removed"
+ * are the same absence from `sink`.
+ *
+ * Which of the two it is comes from `out_status` and `sink` together:
+ *
+ *   "does this container exist?"   `sink`, which is called for every container
+ *                                  the connector knows of, keyed or not. A
+ *                                  caller that deletes rows on absence may act
+ *                                  as soon as unkeyed_known is set -- it does
+ *                                  not need the list to be complete.
+ *   "may it report?"               `sink` again, in the `synced` argument, for
+ *                                  the same every container.
+ *
+ * Conflating existence with keying is what let one permanently unkeyable
+ * container block stale cleanup for as long as it ran.
+ *
+ * One sink for both, because admission is a question about a container id and
+ * never about an attribution key: the unkeyed containers carry the connector's
+ * verdict like every other container. Reporting them separately made each
+ * caller supply an answer of its own, and each supplied "admitted", which let
+ * the node report past containers.synced_limit for the length of every
+ * container restart.
+ *
+ * WHICH containers the reply could key is NOT answerable through this API, and
+ * no caller of it needs to be: `sink` carries an id and a verdict, never a key.
+ * `complete` and `unkeyed_known` say in aggregate whether any are missing and
+ * whether the connector is able to name them, which is all a stale sweep has to
+ * know. A caller that needs the keys themselves -- the kernel filter -- reads
+ * the records through the C++ connector client instead, where they live.
+ */
+EXPORTED int cbaseline_list_containers_ex(const char*            connector_socket_path,
+                                          cb_container_id_sink_t sink,
+                                          void*                  user_data,
+                                          cb_list_status_t*      out_status);
 
 #ifdef __cplusplus
 }

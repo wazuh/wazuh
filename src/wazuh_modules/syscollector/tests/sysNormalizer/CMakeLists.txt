@@ -13,9 +13,11 @@ file(GLOB SYS_NORMALIZER_SRC
 
 add_executable(sys_normalizer_unit_test ${SYS_NORMALIZER_UNIT_TEST_SRC}
                                         ${SYS_NORMALIZER_SRC})
+add_coverage_libraries(sys_normalizer_unit_test)
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_link_libraries(
     sys_normalizer_unit_test
+    PRIVATE
     debug
     gtestd
     debug
@@ -38,6 +40,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 else()
   target_link_libraries(
     sys_normalizer_unit_test
+    PRIVATE
     debug
     gtestd
     debug

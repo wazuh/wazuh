@@ -15,7 +15,7 @@ extern "C" {
 #endif
 
 /**
- * @brief Run the container file baseline (spike #37532) for every container
+ * @brief Run the container file baseline for every container
  * currently known to the container-connector module, over every configured
  * `<container_security><syscheck><directories>` entry, and persist each resulting row
  * through the existing FIM sync-protocol handle (syscheck.sync_handle) — the
@@ -52,10 +52,10 @@ void fim_run_container_baseline(void);
  *
  * The consumer does NOT act on anything until fim_container_events_release().
  *
- * No-op, with a debug line, when the eBPF engine is unavailable, its ABI does
- * not match, or the host is cgroup v1 — none of which are startup failures.
- * Container FIM then relies on scheduled baselines alone, exactly as it does
- * today.
+ * Warns when the eBPF engine is unavailable, its ABI does not match, or the
+ * host cannot provide a usable cgroup key — none are startup failures.
+ * Container FIM keeps a startup snapshot; the resolver continues admission polling without
+ * another walk.
  */
 void fim_container_events_start(void);
 
@@ -67,13 +67,23 @@ void fim_container_events_start(void);
  * container's open scoped transaction silently lost 502 of 504 rows on a real
  * node, which is why the gate exists rather than relying on the two rarely
  * overlapping. Safe to call when fim_container_events_start() did nothing.
+ * Returns promptly in admission-only mode too; the resolver publishes and
+ * reconciles stored rows once the baseline transaction has closed.
  */
 void fim_container_events_release(void);
 
 /**
- * @brief Stop the drain and close the engine. Idempotent.
+ * @brief Stop and join the drain, then close the engine.
+ *
+ * Idempotent. Interrupts the resolver's poll wait and joins any in-flight admission
+ * refresh/reconciliation before returning; call before tearing down the database
+ * or the bridge's borrowed host state.
  */
 void fim_container_events_stop(void);
+
+/* Shutdown waiter only: permanently prevent a later start and join admission
+ * work before resource teardown, without joining a potentially long file walk. */
+void fim_container_events_stop_admission(void);
 
 
 #ifdef __cplusplus

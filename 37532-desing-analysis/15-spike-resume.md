@@ -500,6 +500,10 @@ what [roadmap item 20](08-roadmap.md) and [10](10-container-instances-delta-plan
 and it has not been changed. What *did* change is that the pass has its own cadence
 (`<container_baseline_interval>`) and its own document budget, requested from `agentd` as the
 `syscollector_containers` scope so container rows cannot exhaust the host's allowance.
+**Renamed and re-scoped 2026-10-13 ([23](23-nfr3-container-limits.md)):** there is no
+`syscollector_containers` scope any more. The budgets arrive inside the existing `syscollector`
+reply as `container_<dimension>`, split on the prefix, and each one applies to **one container**
+rather than to every container together.
 
 ---
 
@@ -699,10 +703,14 @@ The other consumer, same `container` block, in the same place. `module` is `inve
 }
 ```
 
-The same envelope carries all ten producing dimensions — this run emitted `dbsync_processes`,
+The same envelope carries every producing dimension — ten of them in this run, which emitted
+`dbsync_processes`,
 `dbsync_packages`, `dbsync_users`, `dbsync_groups`, `dbsync_ports`, `dbsync_osinfo`,
 `dbsync_hwinfo`, `dbsync_network_iface`, `dbsync_network_address` and `dbsync_network_protocol`,
 574 inventory events across both containers. Only the payload object next to `container` changes.
+**`services` is the eleventh** and was absent here because neither container ran an init system;
+measured later on a node that did, it was the *second-largest* dimension
+([23 §23.3](23-nfr3-container-limits.md)).
 
 Note `pid` here is the **host-namespace** pid, not the container's: syscollector reads `/proc`
 from the host and scopes by cgroup, so what it reports is what the host sees.
@@ -814,8 +822,8 @@ event and a string in the stateful document.** Same field name, two types, one r
 | **Stateful documents are rejected** | no schema in `external/indexer-plugins` carries a `container` field, so ten indices fail `container: Field not allowed in strict mode` and the document is discarded. Detection and stateless events are unaffected | #37203-3/-4, external dependency |
 | **No packaged `rt_file.bpf.o`** | the pipeline never *builds* the object, so a released agent has no engine and container FIM degrades to a startup snapshot that never updates. Logged as a `WARNING` when container directories are configured | [14](14-spike-integration-plan.md) WP6 |
 | ~~**No container lifecycle delta**~~ **Delivered 2026-10-05** | ~~syscollector still re-scans everything every cycle; FIM depends on `cgroup_mode = ALL` for discovery~~ — the journal, its wire cursor and a push notification all landed; syscollector scans only what changed between floor passes, and FIM discovery rides the notification rather than ALL-mode | [10](10-container-instances-delta-plan.md), item 20 |
-| **Docker reconcile floor missing** | `m_reconcilePending` is written and never read, and the removal grace only expires inside `applySnapshot()`. On an idle host a removed container stays in `list` indefinitely and its rows are never swept | [C16](03-findings-correctness.md#c16--dockers-deferred-reconcile-is-dropped-not-deferred) — P0 |
-| **cgroup v1 unsupported** | `bpf_get_current_cgroup_id()` collapses to one value, so attribution is impossible. Refused at `rt_open()` rather than mis-attributed | [D11](12-blocking-decisions.md) |
+| ~~**Docker reconcile floor missing**~~ **Fixed 2026-10-08, `aca7a2a759`** | ~~On an idle host a removed container stays in `list` indefinitely and its rows are never swept~~ — reproduced on two hosts (3 of 5 stranded, [22 §22.6](22-container-e2e-validation-report.md)) after O9 was recorded as fixing it. The debounce was **not** at fault: its trailing edge only runs while work is outstanding, and taking a snapshot clears that, so a quiet host stopped taking the snapshots that are the only thing evaluating the removal grace. Now periodic, well inside the grace | [C16](03-findings-correctness.md#c16--dockers-deferred-reconcile-is-dropped-not-deferred), [#40096](https://github.com/wazuh/wazuh/issues/40096) |
+| ~~**cgroup v1 unsupported**~~ **Delivered 2026-10-06** | ~~`bpf_get_current_cgroup_id()` collapses to one value, so attribution is impossible. Refused at `rt_open()` rather than mis-attributed~~ — the helper was the limit, not the kernel. The BPF program now reads the id from a v1 controller's own cgroup, chosen by the same selector that resolves container paths, so both halves key on the **same inode**. Inventory *and* event-driven FIM work on a pure v1 host, filtered in-kernel. The refusal survives only as a floor where no controller can serve as a key | [18](18-cgroup-v1-unified-resolver-plan.md), [20](20-mnt-ns-key-and-legacy-filter-mode.md) — O4 |
 | **Host FIM whodata still on its own engine** | two BPF loaders coexist; the collapse is planned, not done | [14](14-spike-integration-plan.md) WP5, gated on D9 |
 | **No consumer-side tests for the `BaselineDriver`** | the state machine where C26 and C27 both lived is still only covered by contract tests below it | [09](09-implementation-status.md) item 30 |
 
@@ -837,9 +845,13 @@ measured failure.
 4. **Never let a partial view delete.** A row cap, an unreadable rootfs or a rejected path suppresses
    delete detection; a configured directory that is simply absent from the image does **not**, because
    that is a static fact and suppressing on it disabled deletions forever. (D17 / C24)
-5. **Wrong attribution is worse than none.** cgroup v1 is refused, `cgroup_id 0` is never used as a
-   key, and a contested inode leaves a record unattributed rather than filed under the wrong
-   container.
+5. **Wrong attribution is worse than none.** `cgroup_id 0` is never used as a key, and a contested
+   inode leaves a record unattributed rather than filed under the wrong container. *Amended
+   2026-10-06:* this rule used to open "cgroup v1 is refused". v1 is now **supported**, and the rule
+   is what made that safe rather than what blocked it — the refusal narrowed to a host where no
+   controller can serve as a key, and both halves are made to choose that controller through one
+   selector so they cannot disagree. They did disagree once, and the cost was exactly this rule's
+   subject: 0 events and 0 inventory rows while both sides logged success ([22 §22.11.3](22-container-e2e-validation-report.md)).
 
 ---
 

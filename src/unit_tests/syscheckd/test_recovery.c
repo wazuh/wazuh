@@ -202,17 +202,14 @@ static void test_fim_recovery_integrity_interval_has_elapsed_elapsed(void **stat
 }
 
 // Test: Persist and resync with successful synchronization
-static void test_fim_recovery_persist_table_and_resync_success(void **state) {
-    (void) state;
+static void check_fim_recovery_file_id(const char* container_id) {
     AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234; // Mock handle
-
-    expect_any_always(__wrap__mdebug1, formatted_msg);
-    expect_any_always(__wrap__minfo, formatted_msg);
 
     // Create test data - simple file entry
     cJSON* test_items = cJSON_CreateArray();
     cJSON* item = cJSON_CreateObject();
     cJSON_AddStringToObject(item, "path", "/tmp/test.txt");
+    cJSON_AddStringToObject(item, "container_id", container_id);
     cJSON_AddStringToObject(item, "checksum", "abc123");
     cJSON_AddNumberToObject(item, "version", 1);
     cJSON_AddNumberToObject(item, "inode", 12345);
@@ -249,7 +246,11 @@ static void test_fim_recovery_persist_table_and_resync_success(void **state) {
 
     // Expect asp_persist_diff call - validate all parameters
     expect_value(__wrap_asp_persist_diff, handle, handle);
-    expect_any(__wrap_asp_persist_diff, id);
+    char document_id[128];
+    os_sha1 hashed_id;
+    snprintf(document_id, sizeof(document_id), "%s%s/tmp/test.txt", container_id, *container_id ? ":" : "");
+    OS_SHA1_Str(document_id, -1, hashed_id);
+    expect_string(__wrap_asp_persist_diff, id, hashed_id);
     expect_value(__wrap_asp_persist_diff, operation, OPERATION_CREATE);
     expect_string(__wrap_asp_persist_diff, index, FIM_FILES_SYNC_INDEX);
     expect_any(__wrap_asp_persist_diff, data);
@@ -266,6 +267,237 @@ static void test_fim_recovery_persist_table_and_resync_success(void **state) {
 
     // The function should complete successfully
     // Note: test_items is freed by the function, so don't free it here
+}
+
+static void test_fim_recovery_persist_table_and_resync_success(void **state) {
+    (void)state;
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__minfo, formatted_msg);
+    check_fim_recovery_file_id("");
+}
+
+// Recovery runs on the sync thread; the container layer walks and reconciles on
+// its own, under a lock recovery does not hold unless it is given one. These
+// count the calls so a test can assert the row was handled inside it.
+static int container_lock_depth = 0;
+static int container_lock_taken = 0;
+static int container_locked_during_handler = 0;
+
+static void mock_container_lock(void) {
+    ++container_lock_depth;
+    ++container_lock_taken;
+}
+
+static void mock_container_unlock(void) {
+    --container_lock_depth;
+}
+
+static int mock_container_row_result = 1;
+
+static int mock_container_row_handler(const cJSON* row) {
+    const char* container_id = cJSON_GetStringValue(cJSON_GetObjectItem(row, "container_id"));
+    const char* path = cJSON_GetStringValue(cJSON_GetObjectItem(row, "path"));
+    container_locked_during_handler = container_lock_depth;
+    check_expected(container_id);
+    check_expected(path);
+    return mock_container_row_result;
+}
+
+static void expect_recovery_start(AgentSyncProtocolHandle* handle, cJSON* items) {
+    expect_string(__wrap_fim_db_increase_each_entry_version, table_name, FIMDB_FILE_TABLE_NAME);
+    will_return(__wrap_fim_db_increase_each_entry_version, 0);
+    expect_string(__wrap_fim_db_get_every_element, table_name, FIMDB_FILE_TABLE_NAME);
+    expect_string(__wrap_fim_db_get_every_element, row_filter, "WHERE sync=1");
+    will_return(__wrap_fim_db_get_every_element, items);
+
+    expect_value(__wrap_asp_notify_data_clean, handle, handle);
+    expect_any(__wrap_asp_notify_data_clean, indices);
+    expect_value(__wrap_asp_notify_data_clean, indices_count, 1);
+    will_return(__wrap_asp_notify_data_clean, true);
+}
+
+static void expect_recovery_sync(AgentSyncProtocolHandle* handle) {
+    expect_value(__wrap_asp_sync_module_bounded, handle, handle);
+    expect_value(__wrap_asp_sync_module_bounded, mode, MODE_DELTA);
+    expect_value(__wrap_asp_sync_module_bounded, max_blocks, 10);
+    will_return(__wrap_asp_sync_module_bounded, true);
+
+    // The sync reports its outcome through minfo, which every other test in this
+    // file also lets through rather than pinning to a message.
+    expect_any_always(__wrap__minfo, formatted_msg);
+}
+
+// A container row the resync did not queue must not stay counted as reported: the
+// integrity checksum covers the sync=1 rows and the DataClean already removed this
+// one from the manager, so leaving it at 1 mismatches forever.
+static void expect_container_demote(void) {
+    expect_string(__wrap_fim_db_set_sync_flag, table_name, FIMDB_FILE_TABLE_NAME);
+    expect_any(__wrap_fim_db_set_sync_flag, item);
+    expect_value(__wrap_fim_db_set_sync_flag, sync_value, 0);
+    will_return(__wrap_fim_db_set_sync_flag, 0);
+}
+
+static cJSON* container_recovery_item(const char* container_id, const char* path) {
+    cJSON* item = cJSON_CreateObject();
+    cJSON_AddStringToObject(item, "path", path);
+    cJSON_AddStringToObject(item, "container_id", container_id);
+    cJSON_AddStringToObject(item, "checksum", "container-sha");
+    cJSON_AddNumberToObject(item, "version", 1);
+    cJSON_AddNumberToObject(item, "inode", 22222);
+    return item;
+}
+
+// Container rows are not covered by the host directory list and are not shaped like host
+// documents: recovery must hand them to the container layer instead of dropping them as
+// orphans, while the host file with the same path keeps its own hashed id.
+static void test_fim_recovery_resync_routes_container_rows_to_handler(void **state) {
+    (void)state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    const char* path = "/tmp/shared.txt";
+    os_sha1 host_id;
+    OS_SHA1_Str(path, -1, host_id);
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+
+    cJSON* test_items = cJSON_CreateArray();
+    cJSON* host_item = cJSON_CreateObject();
+    cJSON_AddStringToObject(host_item, "path", path);
+    cJSON_AddStringToObject(host_item, "container_id", "");
+    cJSON_AddStringToObject(host_item, "checksum", "host-sha");
+    cJSON_AddNumberToObject(host_item, "version", 1);
+    cJSON_AddNumberToObject(host_item, "inode", 11111);
+    cJSON_AddItemToArray(test_items, host_item);
+    cJSON_AddItemToArray(test_items, container_recovery_item("abc123", path));
+
+    fim_recovery_set_container_row_handler(mock_container_row_handler);
+    mock_container_row_result = 1;
+    expect_recovery_start(handle, test_items);
+
+    expect_string(__wrap_fim_configuration_directory, path, path);
+    will_return(__wrap_fim_configuration_directory, &mock_directory_config);
+    expect_string(__wrap_build_stateful_event_file, path, path);
+    cJSON* mock_event = cJSON_CreateObject();
+    cJSON_AddStringToObject(mock_event, "type", "file");
+    will_return(__wrap_build_stateful_event_file, mock_event);
+    will_return(__wrap_schema_validator_is_initialized, false);
+    expect_value(__wrap_asp_persist_diff, handle, handle);
+    expect_string(__wrap_asp_persist_diff, id, host_id);
+    expect_value(__wrap_asp_persist_diff, operation, OPERATION_CREATE);
+    expect_string(__wrap_asp_persist_diff, index, FIM_FILES_SYNC_INDEX);
+    expect_any(__wrap_asp_persist_diff, data);
+    expect_value(__wrap_asp_persist_diff, version, 1);
+
+    expect_string(mock_container_row_handler, container_id, "abc123");
+    expect_string(mock_container_row_handler, path, path);
+
+    expect_recovery_sync(handle);
+
+    assert_true(fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories, "retry note"));
+    fim_recovery_set_container_row_handler(NULL);
+}
+
+// With container monitoring off nothing is configured to monitor a container row, so it is
+// an orphan: neither re-sent nor built as a host document.
+static void test_fim_recovery_resync_skips_container_rows_without_handler(void **state) {
+    (void)state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+
+    cJSON* test_items = cJSON_CreateArray();
+    cJSON_AddItemToArray(test_items, container_recovery_item("abc123", "/tmp/c.txt"));
+
+    fim_recovery_set_container_row_handler(NULL);
+    expect_recovery_start(handle, test_items);
+    expect_container_demote();
+    expect_recovery_sync(handle);
+
+    assert_true(fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories, "retry note"));
+}
+
+static void test_fim_recovery_resync_reports_container_row_failure(void **state) {
+    (void)state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+
+    cJSON* test_items = cJSON_CreateArray();
+    cJSON_AddItemToArray(test_items, container_recovery_item("abc123", "/tmp/c.txt"));
+
+    fim_recovery_set_container_row_handler(mock_container_row_handler);
+    mock_container_row_result = -1;
+    expect_recovery_start(handle, test_items);
+    expect_string(mock_container_row_handler, container_id, "abc123");
+    expect_string(mock_container_row_handler, path, "/tmp/c.txt");
+    expect_string(__wrap__merror, formatted_msg, "Failed to recover container file abc123:/tmp/c.txt");
+    expect_container_demote();
+    expect_recovery_sync(handle);
+
+    assert_true(fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories, "retry note"));
+    fim_recovery_set_container_row_handler(NULL);
+    mock_container_row_result = 1;
+}
+
+// The container layer writes the same rows from its own threads, holding a lock
+// recovery knows nothing about. Both of recovery's writes -- handing the document
+// to the manager, and demoting the row it could not send -- have to happen inside
+// that lock, or one of them lands in the middle of a walk's open scoped
+// transaction. Balance matters as much as coverage: a lock left held stops the
+// container layer for the life of the process.
+static void test_fim_recovery_container_rows_are_handled_under_the_container_lock(void **state) {
+    (void)state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+
+    cJSON* test_items = cJSON_CreateArray();
+    cJSON_AddItemToArray(test_items, container_recovery_item("abc123", "/tmp/c.txt"));
+
+    container_lock_depth = 0;
+    container_lock_taken = 0;
+    container_locked_during_handler = 0;
+    fim_recovery_set_container_locking(mock_container_lock, mock_container_unlock);
+    fim_recovery_set_container_row_handler(mock_container_row_handler);
+    mock_container_row_result = 0; // Not queued, so the demote runs too.
+
+    expect_recovery_start(handle, test_items);
+    expect_string(mock_container_row_handler, container_id, "abc123");
+    expect_string(mock_container_row_handler, path, "/tmp/c.txt");
+    expect_container_demote();
+    expect_recovery_sync(handle);
+
+    assert_true(fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories, "retry note"));
+
+    assert_int_equal(container_lock_taken, 1);
+    assert_int_equal(container_locked_during_handler, 1);
+    assert_int_equal(container_lock_depth, 0);
+
+    fim_recovery_set_container_locking(NULL, NULL);
+    fim_recovery_set_container_row_handler(NULL);
+    mock_container_row_result = 1;
+}
+
+// Half a pair would be worse than none: a lock taken with nothing to release it
+// stops the container layer for good, so an incomplete registration clears both.
+static void test_fim_recovery_half_a_container_lock_pair_is_refused(void **state) {
+    (void)state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+
+    cJSON* test_items = cJSON_CreateArray();
+    cJSON_AddItemToArray(test_items, container_recovery_item("abc123", "/tmp/c.txt"));
+
+    container_lock_depth = 0;
+    container_lock_taken = 0;
+    fim_recovery_set_container_locking(mock_container_lock, NULL);
+    fim_recovery_set_container_row_handler(NULL);
+
+    expect_recovery_start(handle, test_items);
+    expect_container_demote();
+    expect_recovery_sync(handle);
+
+    assert_true(fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories, "retry note"));
+
+    assert_int_equal(container_lock_taken, 0);
+    assert_int_equal(container_lock_depth, 0);
 }
 
 // Test: Persist and resync with failed synchronization
@@ -1405,6 +1637,11 @@ int main(void) {
         cmocka_unit_test(test_fim_recovery_integrity_interval_has_elapsed_not_elapsed),
         cmocka_unit_test(test_fim_recovery_integrity_interval_has_elapsed_elapsed),
         cmocka_unit_test(test_fim_recovery_persist_table_and_resync_success),
+        cmocka_unit_test(test_fim_recovery_resync_routes_container_rows_to_handler),
+        cmocka_unit_test(test_fim_recovery_resync_skips_container_rows_without_handler),
+        cmocka_unit_test(test_fim_recovery_resync_reports_container_row_failure),
+        cmocka_unit_test(test_fim_recovery_container_rows_are_handled_under_the_container_lock),
+        cmocka_unit_test(test_fim_recovery_half_a_container_lock_pair_is_refused),
         cmocka_unit_test(test_fim_recovery_persist_table_and_resync_failure),
         cmocka_unit_test(test_fim_recovery_persist_table_and_resync_version_increase_failure),
         cmocka_unit_test(test_fim_recovery_persist_table_and_resync_null_items),

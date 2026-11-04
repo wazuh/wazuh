@@ -26,6 +26,17 @@ struct ContainerIdentity
 {
     std::string        container_id;
     ContainerContextPtr context;
+
+    /// Whether this container may report to the manager, as container_instances
+    /// decided it. TRUE when the connector said nothing, so a server older than
+    /// the decision keeps reporting everything rather than silently stopping.
+    ///
+    /// It does NOT mean "skip this container". The container is still walked,
+    /// still stored, and still counted as existing — what changes is only
+    /// whether its rows are offered to the manager. A container dropped from
+    /// the caller's known set would have its stored rows DELETED by the stale
+    /// sweeps, which is the opposite of withholding them.
+    bool synced {true};
 };
 
 /// @brief Stamp a container's identity onto any baseline row.
@@ -54,7 +65,7 @@ std::pair<std::string, std::string> BuildFimFileJson(const FileBaselineRow& row)
 /// byte reproduction of Syscollector::ecsData()'s mapping (that method is
 /// private to the Syscollector class and its exact field contract for
 /// container-sourced rows is still pending #37203-4's schema decision — see the
-/// #37532 spike report). Wire this through the real ecsData() transform once
+/// spike report). Wire this through the real ecsData() transform once
 /// that schema is finalized, instead of relying on this approximation.
 std::pair<std::string, std::string> BuildProcessJson(const ProcessBaselineRow& row);
 

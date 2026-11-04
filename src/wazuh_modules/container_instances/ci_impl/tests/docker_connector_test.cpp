@@ -1,6 +1,6 @@
 /*
  * Wazuh container_instances — DockerConnector reconcile-debounce tests
- * (#37532 / #37203 O9, "C16").
+ * (#37203 O9, "C16").
  * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it

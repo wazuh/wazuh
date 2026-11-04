@@ -15,7 +15,7 @@
 
 #define FIMDB_FILE_TABLE_NAME "file_entry"
 /* Host file-scan transaction: scoped to container_id='' so a full host scan
- * cannot delete container-baselined rows (spike #37532, Option A). Container
+ * cannot delete container-baselined rows (Option A). Container
  * baseline scans use the same shape with the container's id as scope value. */
 #define FIMDB_FILE_TXN_TABLE  "{\"tables\": [\"file_entry\"], \"scope\": {\"column\": \"container_id\", \"value\": \"\"}}"
 #define FILE_PRIMARY_KEY      "path"

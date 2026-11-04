@@ -14,6 +14,7 @@ void fim_limits_init(fim_limits_t *fim) {
         return;
     }
     fim->file = DEFAULT_FIM_FILE_LIMIT;
+    fim->container_file = DEFAULT_FIM_CONTAINER_FILE_LIMIT;
     fim->registry_key = DEFAULT_FIM_REGISTRY_KEY_LIMIT;
     fim->registry_value = DEFAULT_FIM_REGISTRY_VALUE_LIMIT;
 }
@@ -35,22 +36,17 @@ void syscollector_limits_init(syscollector_limits_t *syscollector) {
     syscollector->groups = DEFAULT_SYSCOLLECTOR_GROUPS_LIMIT;
     syscollector->services = DEFAULT_SYSCOLLECTOR_SERVICES_LIMIT;
     syscollector->browser_extensions = DEFAULT_SYSCOLLECTOR_BROWSER_EXTENSIONS_LIMIT;
-}
-
-void syscollector_containers_limits_init(syscollector_containers_limits_t *syscollector_containers) {
-    if (!syscollector_containers) {
-        return;
-    }
-    syscollector_containers->processes = DEFAULT_SYSCOLLECTOR_CONTAINERS_PROCESSES_LIMIT;
-    syscollector_containers->ports = DEFAULT_SYSCOLLECTOR_CONTAINERS_PORTS_LIMIT;
-    syscollector_containers->packages = DEFAULT_SYSCOLLECTOR_CONTAINERS_PACKAGES_LIMIT;
-    syscollector_containers->users = DEFAULT_SYSCOLLECTOR_CONTAINERS_USERS_LIMIT;
-    syscollector_containers->groups = DEFAULT_SYSCOLLECTOR_CONTAINERS_GROUPS_LIMIT;
-    syscollector_containers->os_info = DEFAULT_SYSCOLLECTOR_CONTAINERS_OS_INFO_LIMIT;
-    syscollector_containers->network_iface = DEFAULT_SYSCOLLECTOR_CONTAINERS_NETWORK_IFACE_LIMIT;
-    syscollector_containers->network_protocol = DEFAULT_SYSCOLLECTOR_CONTAINERS_NETWORK_PROTO_LIMIT;
-    syscollector_containers->network_address = DEFAULT_SYSCOLLECTOR_CONTAINERS_NETWORK_ADDR_LIMIT;
-    syscollector_containers->hardware = DEFAULT_SYSCOLLECTOR_CONTAINERS_HARDWARE_LIMIT;
+    syscollector->container_processes = DEFAULT_SYSCOLLECTOR_CONTAINER_PROCESSES_LIMIT;
+    syscollector->container_ports = DEFAULT_SYSCOLLECTOR_CONTAINER_PORTS_LIMIT;
+    syscollector->container_packages = DEFAULT_SYSCOLLECTOR_CONTAINER_PACKAGES_LIMIT;
+    syscollector->container_users = DEFAULT_SYSCOLLECTOR_CONTAINER_USERS_LIMIT;
+    syscollector->container_groups = DEFAULT_SYSCOLLECTOR_CONTAINER_GROUPS_LIMIT;
+    syscollector->container_os_info = DEFAULT_SYSCOLLECTOR_CONTAINER_OS_INFO_LIMIT;
+    syscollector->container_network_iface = DEFAULT_SYSCOLLECTOR_CONTAINER_NETWORK_IFACE_LIMIT;
+    syscollector->container_network_protocol = DEFAULT_SYSCOLLECTOR_CONTAINER_NETWORK_PROTO_LIMIT;
+    syscollector->container_network_address = DEFAULT_SYSCOLLECTOR_CONTAINER_NETWORK_ADDR_LIMIT;
+    syscollector->container_hardware = DEFAULT_SYSCOLLECTOR_CONTAINER_HARDWARE_LIMIT;
+    syscollector->container_services = DEFAULT_SYSCOLLECTOR_CONTAINER_SERVICES_LIMIT;
 }
 
 void sca_limits_init(sca_limits_t *sca) {
@@ -60,14 +56,21 @@ void sca_limits_init(sca_limits_t *sca) {
     sca->checks = DEFAULT_SCA_CHECKS_LIMIT;
 }
 
+void containers_limits_init(containers_limits_t *containers) {
+    if (!containers) {
+        return;
+    }
+    containers->synced = DEFAULT_CONTAINERS_SYNCED_LIMIT;
+}
+
 void module_limits_init(module_limits_t *limits) {
     if (!limits) {
         return;
     }
     fim_limits_init(&limits->fim);
     syscollector_limits_init(&limits->syscollector);
-    syscollector_containers_limits_init(&limits->syscollector_containers);
     sca_limits_init(&limits->sca);
+    containers_limits_init(&limits->containers);
     limits->limits_received = false;
 }
 
@@ -82,6 +85,7 @@ bool module_limits_changed(const module_limits_t *limits1, const module_limits_t
 
     // Compare FIM limits
     if (limits1->fim.file != limits2->fim.file ||
+        limits1->fim.container_file != limits2->fim.container_file ||
         limits1->fim.registry_key != limits2->fim.registry_key ||
         limits1->fim.registry_value != limits2->fim.registry_value) {
         return true;
@@ -100,26 +104,30 @@ bool module_limits_changed(const module_limits_t *limits1, const module_limits_t
         limits1->syscollector.users != limits2->syscollector.users ||
         limits1->syscollector.groups != limits2->syscollector.groups ||
         limits1->syscollector.services != limits2->syscollector.services ||
-        limits1->syscollector.browser_extensions != limits2->syscollector.browser_extensions) {
-        return true;
-    }
-
-    // Compare Syscollector container-inventory limits
-    if (limits1->syscollector_containers.processes != limits2->syscollector_containers.processes ||
-        limits1->syscollector_containers.ports != limits2->syscollector_containers.ports ||
-        limits1->syscollector_containers.packages != limits2->syscollector_containers.packages ||
-        limits1->syscollector_containers.users != limits2->syscollector_containers.users ||
-        limits1->syscollector_containers.groups != limits2->syscollector_containers.groups ||
-        limits1->syscollector_containers.os_info != limits2->syscollector_containers.os_info ||
-        limits1->syscollector_containers.network_iface != limits2->syscollector_containers.network_iface ||
-        limits1->syscollector_containers.network_protocol != limits2->syscollector_containers.network_protocol ||
-        limits1->syscollector_containers.network_address != limits2->syscollector_containers.network_address ||
-        limits1->syscollector_containers.hardware != limits2->syscollector_containers.hardware) {
+        limits1->syscollector.browser_extensions != limits2->syscollector.browser_extensions ||
+        limits1->syscollector.container_processes != limits2->syscollector.container_processes ||
+        limits1->syscollector.container_ports != limits2->syscollector.container_ports ||
+        limits1->syscollector.container_packages != limits2->syscollector.container_packages ||
+        limits1->syscollector.container_users != limits2->syscollector.container_users ||
+        limits1->syscollector.container_groups != limits2->syscollector.container_groups ||
+        limits1->syscollector.container_os_info != limits2->syscollector.container_os_info ||
+        limits1->syscollector.container_network_iface != limits2->syscollector.container_network_iface ||
+        limits1->syscollector.container_network_protocol != limits2->syscollector.container_network_protocol ||
+        limits1->syscollector.container_network_address != limits2->syscollector.container_network_address ||
+        limits1->syscollector.container_hardware != limits2->syscollector.container_hardware ||
+        limits1->syscollector.container_services != limits2->syscollector.container_services ) {
         return true;
     }
 
     // Compare SCA limits
     if (limits1->sca.checks != limits2->sca.checks) {
+        return true;
+    }
+
+    // Compare container-wide limits. Omitting a field here is silent: the agent
+    // keeps the old value and never reloads, so the manager's change appears to
+    // have been accepted and simply does nothing.
+    if (limits1->containers.synced != limits2->containers.synced) {
         return true;
     }
 

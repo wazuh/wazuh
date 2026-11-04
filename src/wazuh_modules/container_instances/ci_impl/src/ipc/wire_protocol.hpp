@@ -5,6 +5,7 @@
 #include "json.hpp"
 
 #include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 #include <variant>
@@ -235,7 +236,18 @@ namespace wazuh::container_instances::wire
     }
 
     /// Docker records omit the Kubernetes-only keys entirely (absent, not null).
-    [[nodiscard]] inline nlohmann::json recordToJson(const ContainerRecord& record, KeyKind keyKind)
+    ///
+    /// `admitted` is the synchronization decision for this reply, or null when
+    /// the caller has none to give. Null OMITS the `synced` key rather than
+    /// defaulting it, for the same reason `cgroup_id` is omitted below: a
+    /// consumer that reads a key it was handed treats it as an answer, and the
+    /// only honest thing to say on a reply that never consulted the decision is
+    /// nothing. Only `list` replies carry it — every consumer takes admission
+    /// from the list, and a `resolve` exists to attribute one event to one
+    /// container, which is a question about identity rather than reporting.
+    [[nodiscard]] inline nlohmann::json recordToJson(const ContainerRecord& record,
+                                                     KeyKind keyKind,
+                                                     const std::set<std::string>* admitted = nullptr)
     {
         nlohmann::json data;
         data["runtime"] = (record.runtime == ContainerRuntime::kubernetes) ? "kubernetes" : "docker";
@@ -292,6 +304,11 @@ namespace wazuh::container_instances::wire
             }
 
             data["extra_cgroup_ids"] = std::move(extraKeys);
+        }
+
+        if (admitted != nullptr)
+        {
+            data["synced"] = admitted->count(record.containerId) != 0;
         }
 
         if (record.runtime == ContainerRuntime::kubernetes)
@@ -362,7 +379,10 @@ namespace wazuh::container_instances::wire
 
     /// Adds the delta keys to a `list` reply. Everything here is additive: a
     /// client that does not know these keys reads the reply exactly as before.
-    inline void serialiseDelta(const LifecycleDelta& delta, nlohmann::json& body, KeyKind keyKind)
+    inline void serialiseDelta(const LifecycleDelta& delta,
+                               nlohmann::json& body,
+                               KeyKind keyKind,
+                               const std::set<std::string>* admitted = nullptr)
     {
         // The cursor to come back with. Decimal strings for the 2^53 reason
         // above; its presence is also how a client detects that this server
@@ -402,7 +422,7 @@ namespace wazuh::container_instances::wire
             }
             if (event.record)
             {
-                entry["data"] = recordToJson(*event.record, keyKind);
+                entry["data"] = recordToJson(*event.record, keyKind, admitted);
             }
 
             events.push_back(std::move(entry));
@@ -457,6 +477,60 @@ namespace wazuh::container_instances::wire
                 // they were told) and logged a fault that was not occurring.
                 // C28. Not emitted for a `status` reply, which shares this
                 // branch but says nothing about the container set.
+                // Null while the store has no verdict, which omits `synced`
+                // from every record and the whole set below. A reply that says
+                // nothing about admission is the one a connector older than the
+                // decision sends, and every consumer already keeps reporting on
+                // it; an empty set would instead read as "refuse everything".
+                const std::set<std::string>* admittedOrNone = response.admissionKnown ? &response.admitted : nullptr;
+
+                // The difference between "this connector never decides" and
+                // "this connector has not decided YET", which omission alone
+                // cannot express.
+                //
+                // Both look identical on the wire -- no `admitted` key, no
+                // per-record `synced` -- and a consumer must treat them
+                // oppositely. Against a connector too old to decide, reporting
+                // everything is right and permanent. Against this one it is
+                // right only for a moment, and acting on it writes default-true
+                // sync flags over refusals the store is about to re-issue: on a
+                // modulesd restart the FIM drain re-admitted containers it had
+                // correctly refused, and the rows were created on the manager
+                // and deleted again a few seconds later.
+                //
+                // It also says the list is not authoritative about WHAT EXISTS.
+                // A reply sent while only one source has enumerated omits the
+                // other source's containers entirely, and `withheld`/
+                // `known_unkeyed` describe only the resolver's backlog, so a
+                // consumer reads such a reply as a complete node and sweeps
+                // live containers' rows. See the client, which forces
+                // `complete` and `unkeyedKnown` false on this key.
+                //
+                // Additive and emitted only when true, so an older client
+                // ignores it and behaves exactly as before.
+                if ((response.listReply || response.delta) && !response.admissionKnown)
+                {
+                    body["admission_pending"] = true;
+                }
+
+                // A DIFFERENT claim from `admission_pending`, and it outlives
+                // it. The verdict settles on the grace whether or not every
+                // source has spoken -- withholding it for ever would mean the
+                // cap never applies at all -- so after a grace settle with one
+                // runtime still silent, `admission_pending` is gone and the
+                // reply looks authoritative about a node whose Kubernetes
+                // containers are entirely absent from it. A consumer that
+                // deletes on absence then deletes their rows and re-creates
+                // them when that source finally lists.
+                //
+                // `withheld` and `known_unkeyed` cannot carry this: they
+                // describe the RESOLVER's backlog, and a source that has never
+                // enumerated contributes no records to have a backlog about.
+                if ((response.listReply || response.delta) && !response.sourcesEnumerated)
+                {
+                    body["sources_pending"] = true;
+                }
+
                 if (response.listReply)
                 {
                     auto containers = nlohmann::json::array();
@@ -464,15 +538,58 @@ namespace wazuh::container_instances::wire
                     {
                         if (record)
                         {
-                            containers.push_back(recordToJson(*record, response.keyKind));
+                            containers.push_back(recordToJson(*record, response.keyKind, admittedOrNone));
                         }
                     }
                     body["containers"] = std::move(containers);
+
+                    // Additive, like the delta keys: a client that does not read
+                    // this key behaves exactly as before. Non-zero says the list
+                    // above omits that many running containers the resolver has
+                    // not keyed yet, so absence from it does not mean removal and
+                    // a stale-row sweep must wait for a later reply.
+                    body["withheld"] = response.unkeyedIds.size();
+
+                    // ...and WHICH ones, so the question a stale sweep actually
+                    // asks -- does this container still exist? -- can be answered
+                    // for a container the resolver cannot key. `withheld` alone
+                    // could only say "do not trust the list yet", which on a node
+                    // with one permanently unkeyable container means "never sweep
+                    // again".
+                    auto unkeyed = nlohmann::json::array();
+                    for (const auto& id : response.unkeyedIds)
+                    {
+                        unkeyed.push_back(id);
+                    }
+                    body["known_unkeyed"] = std::move(unkeyed);
+
+                    // The WHOLE admitted set, on every list reply including a
+                    // delta one.
+                    //
+                    // Admission is deliberately not a field on the record and
+                    // not a lifecycle event -- see admittedIds(), which explains
+                    // that journalling it would make every admission shift look
+                    // like a container change. The consequence is that a delta
+                    // reply only tells a consumer about containers that HAVE an
+                    // event, while recomputeAdmittedLocked() moves admission for
+                    // containers that have none: readmit one because another
+                    // freed a slot, and the only notice of it is here. Sending
+                    // the set is what keeps "a separate query" from meaning "a
+                    // question the delta stream can never answer".
+                    if (admittedOrNone != nullptr)
+                    {
+                        auto admittedIds = nlohmann::json::array();
+                        for (const auto& id : response.admitted)
+                        {
+                            admittedIds.push_back(id);
+                        }
+                        body["admitted"] = std::move(admittedIds);
+                    }
                 }
 
                 if (response.delta)
                 {
-                    serialiseDelta(*response.delta, body, response.keyKind);
+                    serialiseDelta(*response.delta, body, response.keyKind, admittedOrNone);
                 }
                 break;
             }

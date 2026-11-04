@@ -549,7 +549,7 @@ void audit_rules_to_realtime();
  * @param max Size of the templates array
  * @return Number of candidates written to templates, 0 if no known plugins directory was found
  */
-int audisp_get_candidates(const char **plugin_dir, const char **templates, int max);
+int audisp_get_candidates(const char** plugin_dir, const char** templates, int max);
 
 /**
  * @brief Whether the audisp plugin configuration on disk is one of the known templates
@@ -559,7 +559,7 @@ int audisp_get_candidates(const char **plugin_dir, const char **templates, int m
  * @param count Number of templates
  * @return 1 when the file on disk matches one of them, 0 otherwise
  */
-int audisp_configuration_is_known(const char *plugin_dir, const char **templates, int count);
+int audisp_configuration_is_known(const char* plugin_dir, const char** templates, int count);
 
 /**
  * @brief Configure the audisp plugin and connect to the who-data socket, probing the known
@@ -578,7 +578,7 @@ int configure_and_connect_audit_socket(void);
  *         restarted because restart_audit is disabled, -1 on error (a failed Auditd restart
  *         included)
  */
-int set_auditd_config_template(const char *plugin_dir, const char *audisp_config);
+int set_auditd_config_template(const char* plugin_dir, const char* audisp_config);
 
 /**
  * @brief Removes the Audit plugin configuration file, if present.
@@ -598,7 +598,7 @@ int init_auditd_socket(void);
  * @param audit_sock Output: file descriptor of the reconnected socket, -1 on failure
  * @return File descriptor of the socket, -1 on error
  */
-int audit_reconnect_with_retries(int *audit_sock);
+int audit_reconnect_with_retries(int* audit_sock);
 
 /**
  * @brief Reloads audit rules every RELOAD_RULES_INTERVAL seconds
@@ -654,7 +654,7 @@ void audit_parse(char* buffer);
  * @param audit_socket The audit socket to read the events from. Updated if the healthcheck reconnects
  * @return 0 on success, -1 on error
  */
-int audit_health_check(int *audit_socket);
+int audit_health_check(int* audit_socket);
 
 /**
  * @brief Deletes all the existing audit rules added by FIM

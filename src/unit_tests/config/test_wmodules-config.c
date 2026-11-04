@@ -73,7 +73,7 @@ static void test_Test_WModule_syscollector_invalid_content_is_reported(void **st
     assert_int_equal(Test_WModule(TEST_CONF_PATH), -1);
 }
 
-/* Both container options moved under <container_security><syscollector> (#37532).
+/* Both container options moved under <container_security><syscollector>.
  * They are still recognised here, but only to name their replacement: falling
  * through to the generic unknown-element branch would abort the configuration read
  * with "No such tag", which says nothing about where they went. */

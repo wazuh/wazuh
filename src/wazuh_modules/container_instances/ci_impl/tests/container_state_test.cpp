@@ -1,5 +1,5 @@
 /*
- * Wazuh container_instances — stopped-container visibility (#37532 / #37203 D20).
+ * Wazuh container_instances — stopped-container visibility (#37203 D20).
  * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it

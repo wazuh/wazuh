@@ -39,6 +39,17 @@ namespace wazuh::container_instances
         /// transport exists to avoid.
         std::vector<std::string> notifySocketPaths {"queue/sockets/syscheck-ci-notify",
                                                     "queue/sockets/syscollector-ci-notify"};
+
+        /// How many containers may report to the manager; <= 0 means unlimited,
+        /// which is the shipped default.
+        ///
+        /// Decided here, for both consumers, because syscheckd and modulesd are
+        /// separate processes: two independent answers would show a container's
+        /// packages while hiding its files. It arrives with the rest of the
+        /// configuration rather than being queried by this module, since the
+        /// value comes from the manager and modulesd already has the socket to
+        /// ask on.
+        int syncedContainerLimit {0};
     };
 
 } // namespace wazuh::container_instances

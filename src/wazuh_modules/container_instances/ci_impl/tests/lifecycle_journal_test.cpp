@@ -1,5 +1,5 @@
 /*
- * Wazuh container_instances — lifecycle journal (#37532 / #37203 O3).
+ * Wazuh container_instances — lifecycle journal (#37203 O3).
  * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it

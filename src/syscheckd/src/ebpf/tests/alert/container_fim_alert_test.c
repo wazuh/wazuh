@@ -6,7 +6,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * The container FIM stateless alert (#37532, WP2 of 14-spike-integration-plan).
+ * The container FIM stateless alert (WP2 of 14-spike-integration-plan).
  *
  * Container rows were persisted into wazuh-states-fim-files and never alerted
  * on, so a file changing inside a container produced no FIM alert at all. This
@@ -71,6 +71,13 @@ void send_syscheck_msg(const cJSON* msg)
     g_sent[g_sent_count++] = cJSON_PrintUnformatted(msg);
 }
 
+static char* g_persisted_id;
+static char* g_persisted_doc;
+static char* g_persisted_index;
+static int g_persisted_operation = -1;
+static int g_persisted_sync = -1;
+static size_t g_persist_count;
+
 bool validate_and_persist_fim_event(const cJSON* stateful_event,
                                     const char* id,
                                     Operation_t operation,
@@ -82,9 +89,17 @@ bool validate_and_persist_fim_event(const cJSON* stateful_event,
                                     void* failed_item_data,
                                     int sync_flag)
 {
-    (void)stateful_event; (void)id; (void)operation; (void)index;
     (void)document_version; (void)item_description; (void)mark_for_deletion;
-    (void)failed_list; (void)failed_item_data; (void)sync_flag;
+    (void)failed_list; (void)failed_item_data;
+    free(g_persisted_id);
+    free(g_persisted_doc);
+    free(g_persisted_index);
+    g_persisted_id = strdup(id);
+    g_persisted_doc = cJSON_PrintUnformatted(stateful_event);
+    g_persisted_index = strdup(index);
+    g_persisted_operation = (int)operation;
+    g_persisted_sync = sync_flag;
+    ++g_persist_count;
     return true;
 }
 
@@ -331,6 +346,53 @@ static void CaseTaggedEntryWinsOverLongerHostEntry(void)
     Check(AlertNode("file", "permissions") == NULL, "permissions absent (the host list was not consulted)");
 }
 
+static void CaseRecoveryResendsContainerRow(void)
+{
+    printf("case 7: recovery re-sends a container row as the live path does\n");
+
+    const size_t alerts = g_sent_count;
+    const size_t persisted = g_persist_count;
+    cJSON* row = Row("/etc/profile", 100, "aaa");
+    cJSON_AddNumberToObject(row, "sync", 1);
+    cJSON_ReplaceItemInObject(row, "checksum", cJSON_CreateString("1111111111111111111111111111111111111111"));
+    cJSON_AddStringToObject(row, "hash_sha1", "2222222222222222222222222222222222222222");
+    const int result = fim_container_recover_row(row);
+    cJSON_Delete(row);
+
+    Check(result == 1, "reported");
+    Check(g_persist_count == persisted + 1, "one document queued");
+    Check(g_persisted_id != NULL && strcmp(g_persisted_id, "cid-a:/etc/profile") == 0,
+          "id is the live path's unhashed container_id:path");
+    Check(g_persisted_operation == OPERATION_CREATE, "as a create");
+    Check(g_persisted_sync == 1, "with sync_flag 1");
+    Check(g_persisted_index != NULL && strcmp(g_persisted_index, "wazuh-states-fim-files") == 0,
+          "into the FIM files index");
+
+    cJSON* doc = cJSON_Parse(g_persisted_doc);
+    Check(cJSON_IsObject(cJSON_GetObjectItem(doc, "container")), "document carries the container block");
+    Check(cJSON_GetObjectItem(doc, "container_id") == NULL, "dbsync-only columns removed");
+    const char* doc_checksum = cJSON_GetStringValue(
+        cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(doc, "checksum"), "hash"), "sha1"));
+    Check(doc_checksum != NULL && strcmp(doc_checksum, "1111111111111111111111111111111111111111") == 0,
+          "checksum.hash.sha1 is the row checksum the integrity check hashes, not the content sha1");
+    cJSON_Delete(doc);
+    Check(g_sent_count == alerts, "no alert: recovery is not a file change");
+}
+
+static void CaseRecoverySkipsUncoveredRow(void)
+{
+    printf("case 8: recovery skips a container row no container directory covers\n");
+
+    const size_t persisted = g_persist_count;
+    cJSON* row = Row("/var/lib/data.db", 100, "aaa");
+    cJSON_AddNumberToObject(row, "sync", 1);
+    const int result = fim_container_recover_row(row);
+    cJSON_Delete(row);
+
+    Check(result == 0, "skipped");
+    Check(g_persist_count == persisted, "nothing queued");
+}
+
 int main(void)
 {
     /* The bridge borrows these rather than calling them, so stubbing the
@@ -355,6 +417,8 @@ int main(void)
     CaseDelete();
     CaseUncheckedColumnIsSilent();
     CaseTaggedEntryWinsOverLongerHostEntry();
+    CaseRecoveryResendsContainerRow();
+    CaseRecoverySkipsUncoveredRow();
 
     printf("\n%s\n", g_failures == 0 ? "ALL OK" : "FAILURES");
     return g_failures == 0 ? 0 : 1;

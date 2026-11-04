@@ -1,6 +1,6 @@
 /*
  * Wazuh Syscheckd — the eBPF drain that feeds the container reconcile consumer
- * (#37532 / #37396).
+ * (#37396).
  * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
@@ -46,113 +46,146 @@
 
 #include "container_reconcile_plan.hpp"
 
+#include <chrono>
 #include <cstddef>
 #include <functional>
+#include <mutex>
+#include <set>
 #include <string>
 
 namespace fim_container_events
 {
 
-struct DrainConfig
-{
-    /* Absolute path to rt_file.bpf.o. The engine falls back to a CWD-relative
-     * lookup when this is empty, which is wrong for a daemonised agent whose CWD
-     * is not its install directory — so the caller resolves it. */
-    std::string bpf_object_path;
+    /* CONSUMER OUTAGE policy: tolerate brief connector failures before the first
+     * verdict, but never hold a node indefinitely when the connector is down.
+     * This is independent of the producer's admission settlement bound. */
+    constexpr auto kConsumerOutageBudget = std::chrono::seconds {60};
 
-    /* Absolute path to the libbpf the agent ships. Empty leaves the engine
-     * resolving bare sonames, which binds the host's libbpf — too old on a
-     * legacy RHEL-family host to carry the symbols the engine needs. */
-    std::string libbpf_path;
+    /* Both listing writers call this under the container state lock, including
+     * successful pending replies. Returns true only when it releases a hold. */
+    bool noteAdmissionListing(bool available);
 
-    /* container_instances IPC socket. */
-    std::string connector_socket_path;
+    struct DrainConfig
+    {
+        /* Absolute path to rt_file.bpf.o. The engine falls back to a CWD-relative
+         * lookup when this is empty, which is wrong for a daemonised agent whose CWD
+         * is not its install directory — so the caller resolves it. */
+        std::string bpf_object_path;
 
-    std::size_t max_paths_per_container{4096};
-    std::size_t max_containers{512};
+        /* Absolute path to the libbpf the agent ships. Empty leaves the engine
+         * resolving bare sonames, which binds the host's libbpf — too old on a
+         * legacy RHEL-family host to carry the symbols the engine needs. */
+        std::string libbpf_path;
 
-    int poll_timeout_ms{200};
-    int resolver_interval_ms{5000};
+        /* container_instances IPC socket. */
+        std::string connector_socket_path;
 
-    /* D16's settle bound (12-blocking-decisions.md): how long a staged path is
-     * held before it is re-read, when the pid that triggered it has not exited
-     * first. RT_EV_FILE_OPEN fires BEFORE the write, so reconciling immediately
-     * stores the pre-write file (C23).
-     *
-     * 500 ms because the common case does not use it at all — the writing pid is
-     * usually already gone by the time the event is processed, which releases
-     * the path immediately — so this only has to cover a burst held open by a
-     * live writer. It is a bound, not a guarantee: a writer that outlives it is
-     * still read mid-write, which no consumer-side option can prevent. */
-    int settle_delay_ms{500};
+        std::size_t max_paths_per_container{4096};
+        std::size_t max_containers{512};
 
-    /* Resolves attempted per resolver cycle. Bounded because each one is its own
-     * connect/send/recv/close against a 2-worker server. */
-    std::size_t max_resolves_per_cycle{32};
+        int poll_timeout_ms{200};
+        int resolver_interval_ms{5000};
 
-    /* Discard events from cgroups that are not containers in the KERNEL, before
-     * a 12,416-byte ring reservation is attempted, instead of in this process.
-     *
-     * Worth having because the ratio is lopsided: unfiltered, this consumer
-     * receives every file write on the host and discards the overwhelming
-     * majority of them as host traffic, having paid a ring reservation, a copy
-     * and a hash lookup for each. Filtering turns that into one map lookup in
-     * the kernel.
-     *
-     * The cost is where a new container is discovered. Unfiltered, a container
-     * announces itself: its runtime's own startup writes arrive from a cgroup
-     * nobody knows, and resolving that cgroup escalates it to a walk, roughly a
-     * second after it starts. Filtered, those writes never arrive, so discovery
-     * falls entirely to the connector's container list and takes up to
-     * `resolver_interval_ms`.
-     *
-     * That is a latency change and not a correctness one, because the OUTCOME
-     * is the same either way: a container identified after the fact is re-walked
-     * rather than having its early paths replayed — they were discarded before
-     * anyone knew whose they were. A walk reads current on-disk state, so
-     * nothing that still exists is missed. A file created and deleted inside the
-     * discovery window is lost under both settings.
-     *
-     * Set false to restore the unfiltered behaviour. The drain also falls back
-     * to it on its own if the kernel allowlist cannot be populated. */
-    bool cgroup_allowlist{true};
-};
-
-/* Invoked on the consumer thread, once per batch, after release(). */
-using ReconcileHandler = std::function<void(const ReconcileRequest&)>;
-
-class ContainerEventDrain
-{
-    public:
-        static ContainerEventDrain& instance();
-
-        /* Opens the engine and starts the drain and resolver threads. Returns
-         * false and changes nothing if the engine is unavailable, its ABI does
-         * not match, or the host is cgroup v1 — all of which are degradations to
-         * "no event-driven reconcile", never a reason to fail startup.
+        /* D16's settle bound (12-blocking-decisions.md): how long a staged path is
+         * held before it is re-read, when the pid that triggered it has not exited
+         * first. RT_EV_FILE_OPEN fires BEFORE the write, so reconciling immediately
+         * stores the pre-write file (C23).
          *
-         * The consumer thread starts here too, but parked. */
-        bool start(const DrainConfig& config, ReconcileHandler handler);
+         * 500 ms because the common case does not use it at all — the writing pid is
+         * usually already gone by the time the event is processed, which releases
+         * the path immediately — so this only has to cover a burst held open by a
+         * live writer. It is a bound, not a guarantee: a writer that outlives it is
+         * still read mid-write, which no consumer-side option can prevent. */
+        int settle_delay_ms{500};
 
-        /* The baseline walk has committed; the consumer may now touch
-         * file_entry. Safe to call when start() failed. */
-        void release();
+        /* Resolves attempted per resolver cycle. Bounded because each one is its own
+         * connect/send/recv/close against a 2-worker server. */
+        std::size_t max_resolves_per_cycle{32};
 
-        /* Stops all three threads and closes the engine. Idempotent. */
-        void stop();
+        /* Discard events from cgroups that are not containers in the KERNEL, before
+         * a 12,416-byte ring reservation is attempted, instead of in this process.
+         *
+         * Worth having because the ratio is lopsided: unfiltered, this consumer
+         * receives every file write on the host and discards the overwhelming
+         * majority of them as host traffic, having paid a ring reservation, a copy
+         * and a hash lookup for each. Filtering turns that into one map lookup in
+         * the kernel.
+         *
+         * The cost is where a new container is discovered. Unfiltered, a container
+         * announces itself: its runtime's own startup writes arrive from a cgroup
+         * nobody knows, and resolving that cgroup escalates it to a walk, roughly a
+         * second after it starts. Filtered, those writes never arrive, so discovery
+         * falls entirely to the connector's container list and takes up to
+         * `resolver_interval_ms`.
+         *
+         * That is a latency change and not a correctness one, because the OUTCOME
+         * is the same either way: a container identified after the fact is re-walked
+         * rather than having its early paths replayed — they were discarded before
+         * anyone knew whose they were. A walk reads current on-disk state, so
+         * nothing that still exists is missed. A file created and deleted inside the
+         * discovery window is lost under both settings.
+         *
+         * Set false to restore the unfiltered behaviour. The drain also falls back
+         * to it on its own if the kernel allowlist cannot be populated. */
+        bool cgroup_allowlist{true};
+    };
 
-        [[nodiscard]] bool running() const;
+    /* Invoked on the consumer thread, once per batch, after release(). */
+    using ReconcileHandler = std::function<void(const ReconcileRequest&)>;
 
-    private:
-        ContainerEventDrain() = default;
-        ~ContainerEventDrain();
+    class ContainerEventDrain
+    {
+        public:
+            static ContainerEventDrain& instance();
 
-        ContainerEventDrain(const ContainerEventDrain&) = delete;
-        ContainerEventDrain& operator=(const ContainerEventDrain&) = delete;
+            /* Starts the resolver unless shutdown has already closed startup,
+             * including when the engine is unavailable.
+             * Returns whether event-driven change detection is available; false
+             * still leaves admission polling live. The consumer starts parked,
+             * and is omitted entirely in admission-only mode. */
+            bool start(const DrainConfig& config, ReconcileHandler handler);
 
-        struct Impl;
-        Impl* m_impl{nullptr};
-};
+            /* The baseline walk has committed; the consumer may now touch
+             * file_entry. Safe to call when start() failed. */
+            void release();
+
+            /* Permanently closes admission startup and joins only the resolver.
+             * The shutdown waiter calls this before database teardown; joining a
+             * consumer in a filesystem walk would unnecessarily delay exit. */
+            void stopAdmission();
+
+            /* Stops all three threads and closes the engine. Idempotent. */
+            void stop();
+
+            [[nodiscard]] bool running() const;
+
+        private:
+            ContainerEventDrain() = default;
+            ~ContainerEventDrain();
+
+            ContainerEventDrain(const ContainerEventDrain&) = delete;
+            ContainerEventDrain& operator=(const ContainerEventDrain&) = delete;
+
+            friend struct ContainerEventDrainTestPeer;
+            struct Impl;
+            Impl* m_impl{nullptr};
+            mutable std::mutex m_lifecycle_mutex;
+            bool m_admission_stopped{false};
+    };
+
+#ifdef WAZUH_UNIT_TESTING
+    /* Exercise the resolver's real request and refresh without loading eBPF or
+     * starting threads. The map and admission state live across refreshes just
+     * as they do in the resolver loop. */
+    struct ContainerEventDrainTestPeer
+    {
+        static void initialize(const DrainConfig& config);
+        static void refresh();
+        static void reset();
+        static void advanceAdmissionTime(std::chrono::milliseconds elapsed);
+        static std::set<std::string> mappedContainers();
+    };
+#endif
 
 } // namespace fim_container_events
 

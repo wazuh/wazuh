@@ -540,6 +540,7 @@ set(RECOVERY_BASE_FLAGS "-Wl,--wrap,fim_db_get_last_sync_time -Wl,--wrap,fim_db_
                          -Wl,--wrap,fim_shutdown_process_on \
                          -Wl,--wrap,fim_db_get_every_element -Wl,--wrap,fim_db_calculate_table_checksum \
                          -Wl,--wrap,fim_db_increase_each_entry_version \
+                         -Wl,--wrap,fim_db_set_sync_flag \
                          -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_persist_diff \
                          -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_sync_module_bounded -Wl,--wrap,asp_requires_full_sync \
                          -Wl,--wrap,asp_get_agent_id \
