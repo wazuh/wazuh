@@ -97,7 +97,9 @@ implements it; the API modules register through `ApiRouteRegistrar` (below).
 
 ### API server (`include/httpsrv/apiServer.hpp`)
 
-`makeApiServer()` builds the API instance from `apiServerOptions()`: 4 workers, queue 64, no byte budget (no
+`makeApiServer()` builds the API instance from `apiServerOptions()`: `apiWorkerCount()` workers (one per CPU but
+one, between 4 and 16: cpp-httplib's sizing, with a floor because a tester or logtest call holds its worker up to
+`analysisd.server_api_timeout`), queue 64, no byte budget (no
 API route charges it, so the body is bounded only by the route caps, and with `0` it has no size limit: the
 transport then allocates as the body arrives, and refuses only a length no buffer can hold), `100 Continue`, a
 body that does not arrive within 10 s (`API_BODY_TIMEOUT_SEC`) answered `400` as on cpp-httplib, detailed
@@ -233,7 +235,7 @@ httpsrv/
 | `BoundedExecutorTest.*` | Every job runs once; full queue and closed admission refuse; the drain runs queued jobs, rejects the unstarted ones at the deadline and reports running ones; `join()` and the destructor wait for a job that outlived the deadline, and `join()` can be called twice |
 | `ServerTest.*` | Neutral request/response round trip; a repeated header counted as 2; executor full ⇒ `503` busy; handler throw ⇒ `500` text; a running reply delivered within the deadline; unstarted requests ⇒ shutdown `503`; `shutdownAll()` stops every server; socket mode `0660`; a path that is not a socket refused (and kept); `expectContinue` reaches the wire; an inline route answers while the executor is full, and a throw there is a `500`; without a byte budget the parser has no limit; registering through `IRouteRegistrar`; the connection-limit `503` counted as a connection shed; the connection-limit and budget `503` log lines name the settings given as `connectionCapOptionHint` / `budgetOptionHint` |
 | `ServerOutlivingHandlerTest.*` | Parameterized over `shutdown()` and `shutdownAll()`: each returns only after a handler that outlived the deadline (and the transport's 2 s reply drain) ended |
-| `ApiServerTest.*` | The documented `413` text (`payloadTooLargeText()`), a Control route over the limit refused before its body, `0` meaning unlimited, the API options (no byte budget, 4 workers, queue 64, 10 s body timeout answered, `100 Continue`), a length no buffer can hold refused at once with `0` and the next request served, a stalled body answered `400`, Liveness routes capped at 4 KiB, the eleven `server.api.*` metrics |
+| `ApiServerTest.*` | The documented `413` text (`payloadTooLargeText()`), a Control route over the limit refused before its body, `0` meaning unlimited, the API options (no byte budget, `apiWorkerCount()` workers, queue 64, 10 s body timeout answered, `100 Continue`), the worker count for 0 to 64 CPUs (`ApiWorkerCountTest`), a length no buffer can hold refused at once with `0` and the next request served, a stalled body answered `400`, Liveness routes capped at 4 KiB, the eleven `server.api.*` metrics |
 | `ServerMetricsTest.*` | The eleven `server.<instance>.*` names registered; the values follow `stats()` (running, queue depth, executor-full `503`, `413`); every metric reads 0 once the server is destroyed |
 
 The API's routes end to end — every handler on the real socket — are covered by the engine integration tests
