@@ -253,10 +253,13 @@ namespace wazuh::uds_http
 
         /// Sentinel meaning "no body cap of this server's own".
         static constexpr std::size_t UNLIMITED_BODY_SIZE {static_cast<std::size_t>(-1)};
+        /// The per-body maximum: a declared Content-Length over it is a 413 at headers-complete.
         /// No own cap BY DEFAULT: a session is bounded by the in-flight byte budget instead, and
         /// start() feeds that budget to the parser so a request that declares more than could ever
         /// be admitted is refused with 413 at headers-complete (the peer must split the session)
-        /// rather than shed with a retriable 503 it would retry forever.
+        /// rather than shed with a retriable 503 it would retry forever. With neither this cap nor a
+        /// budget, bodies have no size limit: only a length no buffer can hold is refused, and the
+        /// parser reserves memory as the body arrives rather than from the declared length.
         std::size_t maxBodySize {UNLIMITED_BODY_SIZE};
         std::size_t maxUrlSize {2048};
         std::size_t maxHeaderNameSize {256};
@@ -325,9 +328,11 @@ namespace wazuh::uds_http
         /// Accept-headroom the data plane can never consume. Clamped at start() to at most
         /// maxConnections / 4 (and to 0 when that quarter is 0, i.e. tiny test configs).
         std::size_t reservedControlConnections {64};
-        /// Reserved from the declared Content-Length at headers-complete, so this bounds the
-        /// read-phase peak as well as resident payloads. 0 disables. start() clamps it up to at
-        /// least one maximum-size body, so a too-small value cannot reject everything.
+        /// The aggregate budget across requests: reserved from the declared Content-Length at
+        /// headers-complete, so this bounds the read-phase peak as well as resident payloads; the
+        /// parser then reserves each admitted body in full. 0 disables it (see maxBodySize for what
+        /// bounds a body then). start() clamps it up to at least one maximum-size body, so a
+        /// too-small value cannot reject everything.
         std::size_t maxInFlightBytes {256U * 1024U * 1024U};
     };
 
