@@ -190,8 +190,10 @@ header). It coexists with the cpp-httplib `httpsrv::Server` while the engine mov
   [Metrics](../../../../docs/ref/modules/engine/README.md#metrics).
 - `Options`: name and log tag, `maxConnections`, `maxInFlightBytes` (0 = transport default),
   `maxBodySize`, executor size, `expectContinue` (answer `Expect: 100-continue` once admitted),
-  `detailedLogging` (one TRACE line per request, no bodies). I/O threads, timeouts and the `0660`
-  socket mode are the transport's.
+  `detailedLogging` (one TRACE line per request, no bodies), and `budgetOptionHint` / `connectionCapOptionHint`
+  (the settings named, as "consider raising", in the transport's budget and connection-limit `503` log lines; the
+  ingest server sets `analysisd.server_enriched_events_max_inflight_bytes` and `…_max_connections`). I/O threads,
+  timeouts and the `0660` socket mode are the transport's.
 
 ## Dependencies
 
@@ -299,7 +301,7 @@ httpsrv/
 | `AddRoute`, `AddOverrideRoute` | Route registration, including the same route twice |
 | `IsRunning` | `isRunning()` before and after start |
 | `BoundedExecutorTest.*` | Every job runs once; full queue and closed admission refuse; the drain runs queued jobs, rejects the unstarted ones at the deadline and reports running ones; `join()` and the destructor wait for a job that outlived the deadline, and `join()` can be called twice |
-| `UdsServerTest.*` | Neutral request/response round trip; a repeated header counted as 2; executor full ⇒ `503` busy; handler throw ⇒ `500` text; a running reply delivered within the deadline; unstarted requests ⇒ shutdown `503`; `shutdownAll()` stops every server; socket mode `0660`; a path that is not a socket refused (and kept); `expectContinue` reaches the wire |
+| `UdsServerTest.*` | Neutral request/response round trip; a repeated header counted as 2; executor full ⇒ `503` busy; handler throw ⇒ `500` text; a running reply delivered within the deadline; unstarted requests ⇒ shutdown `503`; `shutdownAll()` stops every server; socket mode `0660`; a path that is not a socket refused (and kept); `expectContinue` reaches the wire; the connection-limit and budget `503` log lines name the settings given as `connectionCapOptionHint` / `budgetOptionHint` |
 | `UdsServerOutlivingHandlerTest.*` | Parameterized over `shutdown()` and `shutdownAll()`: each returns only after a handler that outlived the deadline (and the transport's 2 s reply drain) ended |
 | `UdsServerMetricsTest.*` | The eleven `server.<instance>.*` names registered; the values follow `stats()` (running, queue depth, executor-full `503`, `413`); every metric reads 0 once the server is destroyed |
 
