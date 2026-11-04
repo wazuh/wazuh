@@ -85,6 +85,19 @@ def test_unmatched_and_misplaced_stages(operations):
     assert 'test_x_endpoints.tavern.yaml:12: 405 asserted on the declared operation GET /agents' in errors
 
 
+def test_401_is_accepted_where_the_api_hides_the_route(operations):
+    """Without a valid token an undeclared path or method answers 401, which covers no bucket."""
+    stages = [coverage.Stage('test_x_endpoints.tavern.yaml', 3, 'GET', '/nope', (401,)),
+              coverage.Stage('test_x_endpoints.tavern.yaml', 9, 'DELETE', '/agents', (401,)),
+              coverage.Stage('test_x_endpoints.tavern.yaml', 12, 'GET', '/nope', (403,)),
+              coverage.Stage('test_x_endpoints.tavern.yaml', 15, 'DELETE', '/agents', (200,))]
+    errors = coverage.evaluate(operations, stages, [])
+    assert not any(':3:' in e or ':9:' in e for e in errors)
+    assert 'test_x_endpoints.tavern.yaml:12: GET /nope matches no spec path' in errors
+    assert any(e.startswith('test_x_endpoints.tavern.yaml:15: DELETE is not declared for /agents') for e in errors)
+    assert not any('method_not_allowed' in op.covered for op in operations if op.path == '/agents')
+
+
 @pytest.mark.parametrize('exception, message', [
     ({'operation': 'GET /nope', 'bucket': 'ok', 'reason': 'x'}, 'no such operation'),
     ({'operation': 'GET /agents', 'bucket': 'nope', 'reason': 'x'}, 'unknown bucket'),
