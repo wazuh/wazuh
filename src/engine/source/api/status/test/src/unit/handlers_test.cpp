@@ -11,6 +11,10 @@
 #include <geo/mockManager.hpp>
 #include <iocsync/mockIocSync.hpp>
 
+#include <map>
+#include <memory>
+#include <string>
+
 namespace eStatus = ::com::wazuh::api::engine::status;
 
 using cm::sync::mocks::MockCMSync;
@@ -487,4 +491,40 @@ TEST_F(StatusHandlerTest, DisabledAvailableSpaceStillReady)
     EXPECT_TRUE(response.ready());
     EXPECT_FALSE(response.spaces().at("custom").enabled());
     EXPECT_TRUE(response.spaces().at("custom").available());
+}
+
+// ─── Registration ───────────────────────────────────────────────────────────
+
+namespace
+{
+/// Records the options each route is registered with.
+class RecordingRegistrar : public httpsrv::IRouteRegistrar
+{
+public:
+    void addRoute(httpsrv::Method method,
+                  const std::string& path,
+                  httpsrv::RouteHandler,
+                  httpsrv::RouteOptions options) override
+    {
+        methods[path] = method;
+        routes[path] = std::move(options);
+    }
+
+    std::map<std::string, httpsrv::Method> methods;
+    std::map<std::string, httpsrv::RouteOptions> routes;
+};
+} // namespace
+
+// The readiness probe keeps its own sessions and answers on the I/O thread, so a saturated executor never delays it.
+TEST_F(StatusHandlerTest, StatusIsAnInlineLivenessRoute)
+{
+    auto registrar = std::make_shared<RecordingRegistrar>();
+
+    api::status::handlers::registerHandlers(m_mockCmSync, m_mockIocSync, m_mockGeo, registrar);
+
+    ASSERT_EQ(1U, registrar->routes.size());
+    ASSERT_EQ(1U, registrar->routes.count("/status"));
+    EXPECT_EQ(httpsrv::Method::GET, registrar->methods.at("/status"));
+    EXPECT_EQ(httpsrv::RouteClass::Liveness, registrar->routes.at("/status").cls);
+    EXPECT_TRUE(registrar->routes.at("/status").runInline);
 }
