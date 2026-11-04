@@ -341,6 +341,7 @@ namespace wazuh::uds_http
             LogThrottle peerGoneThrottle;
             LogThrottle classBodyCapThrottle;
             LogThrottle classSessionCapThrottle;
+            LogThrottle bodyTimeoutThrottle;
             LogThrottle requestErrorThrottle;
 
             /// Connections answered 503 because stopAccepting() found them pre-handler; reported in
@@ -577,6 +578,25 @@ namespace wazuh::uds_http
                                        : m_state->config.responseTimeoutSec);
                     }
                     deliver(errorResponse(504, "Handler did not respond in time"));
+                    return;
+                }
+
+                // Opt-in: a consumer whose peers expect a status for a body that never arrived. The
+                // head is in, so the peer is still reading what we send; the other phases keep the
+                // silent close below.
+                if (m_phase == Phase::Body && m_state->config.answerBodyTimeout)
+                {
+                    if (const auto decision = m_state->bodyTimeoutThrottle.record())
+                    {
+                        LOGFN_WARN(m_state->log,
+                                   "Answered %llu request(s) with 400 in the last %d s: the body did not arrive "
+                                   "within %zu s (last on '%.128s').",
+                                   static_cast<unsigned long long>(decision.total),
+                                   LogThrottle::kDefaultWindowSeconds,
+                                   m_state->config.bodyTimeoutSec,
+                                   requestPath().c_str());
+                    }
+                    deliver(errorResponse(400, "Request body not received in time"));
                     return;
                 }
 
