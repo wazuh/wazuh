@@ -108,7 +108,7 @@ The agent's daemons read these sections from `agent.conf` (`read_main_elements()
 
 | Section | Read by |
 |---------|---------|
-| `<localfile>`, `<socket>` | Log collection |
+| `<localfile>`, `<socket>` | Log collection. `<socket>` is ignored with an error unless the agent sets `logcollector.remote_commands=1` (see [`<socket>`](../logcollector/configuration.md#socket-section)) |
 | `<syscheck>` | File integrity monitoring |
 | `<rootcheck>` | Rootkit detection |
 | `<sca>` | Security configuration assessment |

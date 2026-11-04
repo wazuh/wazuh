@@ -23,7 +23,7 @@ For module overview and architecture, see [Logcollector Module](README.md).
 The Logcollector module uses two main XML sections:
 
 - **`<localfile>`** - Configures file-based log collection
-- **`<socket>`** - Configures socket-based log reception
+- **`<socket>`** - Defines a Unix socket that `<localfile>` entries can forward their events to
 
 ---
 
@@ -57,8 +57,8 @@ Defines the format of the log source to determine how logs are read and parsed.
   - `eventlog` - Windows Event Log (all Windows versions)
   - `macos` - macOS Unified Logging System
   - `journald` - Linux systemd journal
-  - `command` - Output from a command
-  - `full_command` - Full output from a command including empty lines
+  - `command` - Output from a command, one event per output line. An empty line still produces an event that carries only the `wazuh: output: '<alias>': ` header
+  - `full_command` - Output from a command as a single event, read in one block of up to the maximum event size. It does not keep empty lines: carriage returns are removed and line breaks are collapsed in pairs, so a single blank line is dropped and a run of several leaves some behind. A last line with no trailing newline is dropped
   - `audit` - Linux audit logs
   - `nmapg` - NMAP grepable output
   - `mysql_log` - MySQL logs
@@ -114,11 +114,11 @@ Collect only events generated after the agent starts.
 
 ### target
 
-Specifies a target socket or file for routing logs.
+Sends the events of this `<localfile>` to one or more outputs instead of the manager.
 
-- **Default value:** None (logs sent to standard analysis queue)
-- **Allowed values:** Socket name or file path
-- **Note:** Used for custom log routing and processing pipelines
+- **Default value:** `agent` (events are sent to the manager)
+- **Allowed values:** Comma-separated list of `agent` and the `name` of `<socket>` sections defined in the same configuration
+- **Note:** A file path is not accepted. A name that matches no `<socket>` makes `wazuh-logcollector` exit right after it starts (`CRITICAL: Socket '<name>' for '<location>' is not defined.`), so no log is collected. In a centralized `agent.conf` (with `logcollector.remote_commands=0`, the default), an undefined name is logged and removed from the list instead, and a `<localfile>` left with no target is ignored. On Windows there is no socket output: every target delivers to the manager, so `agent` together with a socket name sends each event twice
 
 ### out_format
 
@@ -158,8 +158,8 @@ Specifies the maximum age for log files to read (for wildcard patterns).
 Excludes files matching a pattern when using wildcards.
 
 - **Default value:** None (optional)
-- **Allowed values:** Regex pattern
-- **Note:** Files matching this pattern are excluded from monitoring
+- **Allowed values:** Wildcard pattern (`*`, `?`, `[...]`) matched against the full path of each file, for example `/var/log/app/*.old`. `strftime` tokens such as `%Y` are expanded once, when the configuration is loaded
+- **Note:** This is not a regular expression: `\.old$` matches no file. Applies only to a `location` with wildcards. On Windows, only `*` is a wildcard, and only in the file name; the path must use `\` as separator, a pattern written with `/` excludes nothing
 
 ### alias
 
@@ -212,41 +212,39 @@ Time to wait before reconnecting to a log source after failure.
 
 ## `<socket>` Section
 
-The `<socket>` section configures socket-based log reception. The agent listens on the specified socket for incoming log messages.
+The `<socket>` section defines an output: a Unix socket, created and listened on by another program, that `wazuh-logcollector` connects to and writes events into. It receives nothing by itself; a `<localfile>` sends its events there by naming the socket in its [`target`](#target). Not accepted from a centralized `agent.conf` unless `logcollector.remote_commands=1`. Linux and macOS only: on Windows the events of a localfile that targets a socket still go to the manager.
 
 ### name
 
-Path to the Unix socket or name of the Windows named pipe.
+Identifier of the socket, referenced by `<target>` in `<localfile>`.
 
 - **Default value:** None (required)
-- **Allowed values:**
-  - **Linux/Unix:** Socket path (e.g., `/var/run/custom.sock`)
-  - **Windows:** Named pipe name (e.g., `custom-pipe`)
-- **Note:** The agent must have permissions to create and read from the socket
+- **Allowed values:** Any string except `agent`, which is reserved for the manager output
+- **Note:** A `<socket>` without `name` is a configuration error
 
 ### location
 
-Alias for the socket name (alternative to `name`).
+Path of the Unix socket to connect to.
 
-- **Default value:** None (mutually exclusive with `name`)
-- **Allowed values:** Same as `name`
-- **Note:** Either `name` or `location` must be specified
+- **Default value:** None (required)
+- **Allowed values:** Socket path (e.g., `/var/run/custom.sock`)
+- **Note:** Required together with `name`, not an alternative to it. The socket must already exist, created by the program that reads from it; while it cannot be reached, events for it are lost and the agent retries the connection every `logcollector.sock_fail_time` seconds
 
 ### mode
 
-Socket connection mode.
+Socket type.
 
-- **Default value:** `tcp`
-- **Allowed values:** `tcp`, `udp`
-- **Note:** Determines the protocol used for socket communication
+- **Default value:** `udp`
+- **Allowed values:** `udp` (datagram socket), `tcp` (stream socket)
+- **Note:** Must match the socket the other program created
 
 ### prefix
 
-Prefix to add to messages received from the socket.
+Text written in front of every event sent to the socket.
 
 - **Default value:** None (optional)
 - **Allowed values:** Any string
-- **Note:** Useful for identifying the source of socket messages
+- **Note:** Written as is, with no separator between it and the event. A backslash escapes the next character and is removed
 
 ---
 
@@ -475,14 +473,14 @@ Monitor all log files matching a wildcard pattern:
 
 ```xml
 <localfile>
-  <location>/var/log/app*.log</location>
+  <location>/var/log/app/*</location>
   <log_format>syslog</log_format>
-  <exclude>\.old$</exclude>
+  <exclude>/var/log/app/*.old</exclude>
   <age>7d</age>
 </localfile>
 ```
 
-This configuration monitors all files starting with `app` and ending with `.log`, excluding files with `.old` extension and files older than 7 days.
+This configuration monitors the files in `/var/log/app`, excluding the ones that end in `.old` and files older than 7 days. `exclude` is a wildcard pattern for the full path, like `location`, not a regular expression.
 
 ### Windows Event Channel
 
@@ -609,17 +607,26 @@ Monitor all Docker containers:
 </localfile>
 ```
 
-### Socket-Based Log Collection
+### Forwarding Events to a Socket
 
-Create a Unix socket for receiving syslog messages:
+Forward the events of a log file to a Unix socket that another program listens on, instead of the manager:
 
 ```xml
 <socket>
-  <name>/var/run/custom.sock</name>
+  <name>custom</name>
+  <location>/var/run/custom.sock</location>
   <mode>tcp</mode>
   <prefix>custom-app</prefix>
 </socket>
+
+<localfile>
+  <location>/var/log/app.log</location>
+  <log_format>syslog</log_format>
+  <target>custom</target>
+</localfile>
 ```
+
+Use `<target>agent,custom</target>` to send the events to the manager as well.
 
 ### Multi-Line Log Collection
 
