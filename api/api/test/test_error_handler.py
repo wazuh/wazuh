@@ -14,7 +14,7 @@ from connexion.lifecycle import ConnexionRequest
 from api.error_handler import _cleanup_detail_field, \
     http_error_handler, problem_error_handler, unauthorized_error_handler, \
     expect_failed_error_handler, recursion_error_handler, ERROR_CONTENT_TYPE
-from api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT
+from api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT, general_request_stats
 from api.api_exception import ExpectFailedException
 
 
@@ -26,6 +26,14 @@ def mock_request():
     req.query_param = {}
 
     return req
+
+
+@pytest.fixture(autouse=True)
+def clean_rate_limit_state():
+    """Keep the rate limiters' module level buckets from leaking between tests."""
+    general_request_stats.clear()
+    yield
+    general_request_stats.clear()
 
 
 def test_cleanup_detail_field():
@@ -134,6 +142,51 @@ async def test_http_error_handler_valid_token(status_code, reason, mock_request)
     decode_mock.assert_awaited_once_with('token')
     assert response.status_code == status_code
     assert json.loads(response.body) == {'title': reason, 'detail': f"{status_code}: {reason}"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('status_code, reason, max_request, charged', [
+    (405, 'Method Not Allowed', 300, True),
+    (405, 'Method Not Allowed', 0, True),
+    (404, 'Not Found', 0, True),
+    # CheckAuthenticatedRateLimitMiddleware has already charged it
+    (404, 'Not Found', 300, False),
+])
+@pytest.mark.parametrize('authorization', [None, 'Bearer token'], ids=['no-token', 'valid-token'])
+async def test_http_error_handler_charges_the_unauthenticated_bucket(authorization, status_code, reason,
+                                                                    max_request, charged, mock_request):
+    """Test that a 404 or 405 no rate-limit middleware charged is charged here, before the token is checked."""
+    mock_request.headers = {'Authorization': authorization} if authorization else {}
+    api_conf = {'access': {'max_request_per_minute': max_request, 'max_unauthenticated_request_per_minute': 2}}
+    answers = []
+
+    with patch('api.error_handler.configuration.api_conf', new=api_conf), \
+         patch('api.error_handler.decode_token', new=AsyncMock(return_value={})) as decode_mock:
+        for _ in range(3):
+            response = await http_error_handler(mock_request, HTTPException(status_code=status_code, detail=reason))
+            answers.append(response.status_code)
+
+    answer = status_code if authorization else 401
+    if charged:
+        assert answers == [answer, answer, 429]
+        assert json.loads(response.body)['error'] == 6005
+        # The refused request never reaches the token check
+        assert decode_mock.await_count == (2 if authorization else 0)
+    else:
+        assert answers == [answer] * 3
+
+
+@pytest.mark.asyncio
+async def test_http_error_handler_unlimited_unauthenticated_bucket(mock_request):
+    """Test that `max_unauthenticated_request_per_minute: 0` never refuses a 405."""
+    mock_request.headers = {}
+    api_conf = {'access': {'max_request_per_minute': 300, 'max_unauthenticated_request_per_minute': 0}}
+
+    with patch('api.error_handler.configuration.api_conf', new=api_conf):
+        answers = [(await http_error_handler(mock_request, HTTPException(status_code=405, detail='x'))).status_code
+                   for _ in range(25)]
+
+    assert answers == [401] * 25
 
 
 @pytest.mark.asyncio
