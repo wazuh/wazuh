@@ -391,6 +391,84 @@ void test_write_debug_file_hard_link_not_followed(void **state) {
     assert_int_equal(ar_log_size("other"), 14);
 }
 
+// Tests for execute_command_with_retry
+static char *test_command[] = { "/usr/sbin/iptables", "-I", "INPUT", "-s", "10.0.0.1", "-j", "DROP", NULL };
+static wfd_t test_wfd[AR_COMMAND_ATTEMPTS];
+
+// Queue one attempt: the command starts, prints output and ends with status
+static void expect_attempt(int i, const char *output, int status) {
+    test_wfd[i].file_out = tmpfile();
+    assert_non_null(test_wfd[i].file_out);
+    fputs(output, test_wfd[i].file_out);
+    rewind(test_wfd[i].file_out);
+    will_return(__wrap_wpopenv, &test_wfd[i]);
+    will_return(__wrap_wpclose, status);
+}
+
+static void close_attempts(int count) {
+    for (int i = 0; i < count; i++) {
+        // The output is drained before waiting for the command
+        assert_int_equal(fgetc(test_wfd[i].file_out), EOF);
+        fclose(test_wfd[i].file_out);
+    }
+}
+
+void test_execute_command_with_retry_success(void **state) {
+    expect_attempt(0, "output\n", 0);
+
+    assert_int_equal(execute_command_with_retry("ar-name", test_command[0], test_command), OS_SUCCESS);
+
+    close_attempts(1);
+    assert_int_not_equal(access(LOG_FILE_PATH, F_OK), 0);
+}
+
+void test_execute_command_with_retry_succeeds_after_failures(void **state) {
+    will_return(__wrap_wpopenv, NULL);
+    expect_value(__wrap_sleep, seconds, 1);
+    expect_attempt(0, "Another app is currently holding the xtables lock.\n", 4 << 8);
+    expect_value(__wrap_sleep, seconds, 2);
+    expect_attempt(1, "", 0);
+
+    assert_int_equal(execute_command_with_retry("ar-name", test_command[0], test_command), OS_SUCCESS);
+
+    close_attempts(2);
+    assert_int_not_equal(access(LOG_FILE_PATH, F_OK), 0);
+}
+
+void test_execute_command_with_retry_fails_after_all_attempts(void **state) {
+    char line[OS_MAXSTR] = {0};
+
+    for (int i = 0; i < AR_COMMAND_ATTEMPTS - 1; i++) {
+        expect_attempt(i, "Another app is currently holding the xtables lock.\n", 4 << 8);
+        expect_value(__wrap_sleep, seconds, i + 1);
+    }
+    will_return(__wrap_wpopenv, NULL);
+
+    assert_int_equal(execute_command_with_retry("ar-name", test_command[0], test_command), OS_INVALID);
+
+    close_attempts(AR_COMMAND_ATTEMPTS - 1);
+    FILE *fp = fopen(LOG_FILE_PATH, "r");
+    assert_non_null(fp);
+    assert_non_null(fgets(line, sizeof(line), fp));
+    fclose(fp);
+    assert_non_null(strstr(line, "ar-name: Command failed (exit code -1): /usr/sbin/iptables -I INPUT -s 10.0.0.1 -j DROP\n"));
+}
+
+void test_execute_command_with_retry_other_error_not_retried(void **state) {
+    char line[OS_MAXSTR] = {0};
+
+    expect_attempt(0, "iptables: Bad rule (does a matching rule exist in that chain?).\n", 1 << 8);
+
+    assert_int_equal(execute_command_with_retry("ar-name", test_command[0], test_command), OS_INVALID);
+
+    close_attempts(1);
+    FILE *fp = fopen(LOG_FILE_PATH, "r");
+    assert_non_null(fp);
+    assert_non_null(fgets(line, sizeof(line), fp));
+    fclose(fp);
+    assert_non_null(strstr(line, "ar-name: Command failed (exit code 1): /usr/sbin/iptables -I INPUT -s 10.0.0.1 -j DROP\n"));
+}
+
 // Tests for canonicalize_ip
 void test_canonicalize_ip_ipv4_canonical(void **state) {
     (void)state;
@@ -504,6 +582,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_write_debug_file_appends, setup_ar_log, teardown_ar_log),
         cmocka_unit_test_setup_teardown(test_write_debug_file_symlink_not_followed, setup_ar_log, teardown_ar_log),
         cmocka_unit_test_setup_teardown(test_write_debug_file_hard_link_not_followed, setup_ar_log, teardown_ar_log),
+
+        // execute_command_with_retry tests
+        cmocka_unit_test_setup_teardown(test_execute_command_with_retry_success, setup_ar_log, teardown_ar_log),
+        cmocka_unit_test_setup_teardown(test_execute_command_with_retry_succeeds_after_failures, setup_ar_log, teardown_ar_log),
+        cmocka_unit_test_setup_teardown(test_execute_command_with_retry_fails_after_all_attempts, setup_ar_log, teardown_ar_log),
+        cmocka_unit_test_setup_teardown(test_execute_command_with_retry_other_error_not_retried, setup_ar_log, teardown_ar_log),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
