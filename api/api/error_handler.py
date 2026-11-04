@@ -133,6 +133,13 @@ async def http_error_handler(request: ConnexionRequest,
         except exceptions.Unauthorized as unauthorized:
             status_code = unauthorized.status_code
             problem = {"title": "Unauthorized", "detail": unauthorized.detail}
+        except Exception as error:
+            # An exception raised in here is not dispatched again, so it would reach ServerErrorMiddleware
+            # as an empty 500. A declared route answers the same failure with this JSON one.
+            logger.error(f"Could not validate the token of a {status_code} response: {error!r}")
+            if not isinstance(error, exceptions.ProblemException):
+                error = exceptions.InternalServerError()
+            return await problem_error_handler(request, error)
     return json_response(data=problem, pretty=request.query_params.get('pretty', 'false') == 'true',
                          status_code=status_code, content_type=ERROR_CONTENT_TYPE)
 
