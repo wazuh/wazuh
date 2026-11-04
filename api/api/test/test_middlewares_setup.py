@@ -339,6 +339,27 @@ def test_undeclared_path_with_a_trailing_slash_is_not_found(clean_rate_limit_sta
     assert 'location' not in response.headers
 
 
+@pytest.mark.parametrize('method, path, content_type, body, status', [
+    ('POST', '/groups', 'application/json', b'{"group_id":"x"}', 417),
+    ('GET', '/nope', None, None, 404),
+    ('POST', '/nope', 'application/json', b'{"group_id":"x"}', 404),
+], ids=['declared', 'undeclared-get', 'undeclared-post'])
+def test_unmeetable_expectation_is_refused_only_on_a_declared_path(method, path, content_type, body, status,
+                                                                  clean_rate_limit_state):
+    """Check that a path no operation matches reaches the router's 404, not the Expect middleware's 417."""
+    api_conf = build_api_conf()
+    headers = {'Expect': 'foo'}
+    if content_type:
+        headers['Content-Type'] = content_type
+
+    with patch.object(middlewares.configuration, 'api_conf', new=api_conf), \
+         patch('api.middlewares.access_log'):
+        with TestClient(build_app(api_conf)) as client:
+            response = client.request(method, path, content=body, headers=headers)
+
+    assert response.status_code == status
+
+
 @pytest.mark.parametrize('value, expected', [
     ('*', ['*']),
     ('https://allowed.example', ['https://allowed.example']),
