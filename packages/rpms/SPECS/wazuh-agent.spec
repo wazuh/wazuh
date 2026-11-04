@@ -24,7 +24,7 @@ Requires(postun): /usr/sbin/groupdel /usr/sbin/userdel
 Conflicts:   ossec-hids ossec-hids-agent wazuh-local
 AutoReqProv: no
 
-Requires: coreutils
+Requires: coreutils findutils procps
 BuildRequires: coreutils glibc-devel automake autoconf libtool policycoreutils-python perl
 
 ExclusiveOS: linux
