@@ -72,21 +72,25 @@ namespace remoted::http
         // its closed notice is what uncounts it.
         auto& entry = m_connections[connectionId];
 
-        if (!source.empty())
+        const auto inProgress = source.empty() ? m_perSource.end() : m_perSource.try_emplace(source).first;
+        if (inProgress != m_perSource.end() && m_maxPerSource != 0 && inProgress->second >= m_maxPerSource)
         {
-            auto& inProgress = m_perSource[source];
-            if (m_maxPerSource != 0 && inProgress >= m_maxPerSource)
-            {
-                ++m_rejectedPerSourceTotal;
-                return Share {};
-            }
-            ++inProgress;
+            ++m_rejectedPerSourceTotal;
+            return Share {};
+        }
+
+        // The handshake is recorded before the address is charged: the emplace allocates, and a throw
+        // after the increment would leave the address a unit that no share gives back.
+        const auto ticket = m_nextTicket;
+        m_handshakes.emplace(ticket, source);
+        ++m_nextTicket;
+        if (inProgress != m_perSource.end())
+        {
+            ++inProgress->second;
         }
 
         // A second begin under the same id overwrites the entry's ticket: the first handshake is still
         // released by its own share, and the close notice releases whichever one it finds.
-        const auto ticket = m_nextTicket++;
-        m_handshakes.emplace(ticket, source);
         entry.ticket = ticket;
         return Share {*this, ticket};
     }
