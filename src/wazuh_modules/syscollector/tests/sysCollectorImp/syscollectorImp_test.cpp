@@ -7928,7 +7928,15 @@ TEST_F(SyscollectorImpTest, FailedSweepsKeepContextAndBudgetUntilRetrySucceeds)
         EXPECT_EQ(module.m_containerDocumentCounts.count("gone"), 0u);
         EXPECT_EQ(module.m_limitReported.count({"gone", index}), 0u);
         ASSERT_EQ(persisted.size(), 1u);
-        EXPECT_EQ(nlohmann::json::parse(persisted.front()).at("container").at("name"), "web");
+
+        // The guard is for cppcheck, not for the test: it sees persisted.clear()
+        // above and cannot see the DBSync callback that refills it, so it reads
+        // the front() below as an access into an empty vector. The ASSERT has
+        // already ended the test if that were true.
+        if (!persisted.empty())
+        {
+            EXPECT_EQ(nlohmann::json::parse(persisted.front()).at("container").at("name"), "web");
+        }
     }
 
     module.m_containerDocumentLimits[index] = 0;
