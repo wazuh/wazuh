@@ -1962,6 +1962,14 @@ int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsig
 
     if (result = queue_push(msg->msg_queue, message), result == 0) {
         w_cond_signal(&msg->available);
+
+        /* Not rate-limited: fires once per drop episode, so a queue flapping at full can still warn each cycle. */
+        if (msg->dropped_since_warning > 0) {
+            mwarn("Target '%s' message queue accepting lines again. %lu log line(s) lost since the last warning.",
+                  log_target->log_socket->name, msg->dropped_since_warning);
+            msg->last_warned = time(NULL);
+            msg->dropped_since_warning = 0;
+        }
     }
 
     if (result < 0) {
