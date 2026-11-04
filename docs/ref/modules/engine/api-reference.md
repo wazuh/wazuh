@@ -32,9 +32,12 @@ These apply to every route on `engine-api-http.sock`:
   `Content-Length` before the body is read. `GET /status` and `POST /metrics/*` are capped at 4096 bytes.
 - The server closes the connection after each response, and answers `Expect: 100-continue` with `100 Continue`.
   Statuses decided before a handler runs carry a JSON body `{"error":"<message>","code":<status>}`: 404 (unknown
-  path), 405 with an `Allow` header (known path, other method), 411 (chunked body), 431 (headers too large),
-  503 (`Server busy`: every request worker busy and the queue full; or the engine is stopping) and 504 (no answer
-  within 300 s).
+  path), 405 with an `Allow` header (known path, other method), 411 (chunked body), 414 (target too long), 431
+  (headers too large), 400 (`Malformed HTTP request`, or `Request body not received in time` when the body does
+  not arrive within 10 s; a different body from a handler's 400), 503 (`Server busy`: every request worker busy
+  and the queue full; a connection or session limit reached; or the engine is stopping) and 504 (no answer
+  within 300 s). The 413 above is the one answer decided before a handler that carries a `text/plain` body
+  rather than JSON; only a declared length that no buffer can hold gets a 413 with the JSON body.
 
 The internal options named here are described in [Engine Configuration Reference](configuration.md).
 
