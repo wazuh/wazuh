@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-from helper_test.test_cases_generator.parser import Parser
+from helper_test.test_cases_generator.parser import Parser, HELPER_TYPES, HELPER_GROUPS
 from helper_test.definition_types.utils import *
 from pathlib import Path
 
@@ -90,9 +90,9 @@ class Validator:
         if not self.parser.has_helper_type():
             sys.exit(
                 f"Helper {self.parser.get_name()}: the helper_type property is required")
-        if self.parser.get_helper_type() not in ["map", "filter", "transformation"]:
+        if self.parser.get_helper_type() not in HELPER_TYPES:
             sys.exit(
-                f"Helper {self.parser.get_name()}: invalid value for helper_type. allowed values are ['map', 'filter'', 'transformation']")
+                f"Helper {self.parser.get_name()}: invalid value for helper_type. allowed values are {list(HELPER_TYPES)}")
 
     def verify_skip(self):
         """
@@ -292,6 +292,27 @@ class Validator:
         if "description" not in metadata:
             sys.exit(
                 f"Helper {self.parser.get_name()}: It is mandatory to define the 'description' property in metadata")
+        if "keywords" in metadata:
+            sys.exit(
+                f"Helper {self.parser.get_name()}: 'metadata.keywords' is no longer supported, replace it with 'metadata.group' (one of {list(HELPER_GROUPS)})")
+        if "group" not in metadata:
+            sys.exit(
+                f"Helper {self.parser.get_name()}: It is mandatory to define the 'group' property in metadata")
+        group = metadata["group"]
+        if not isinstance(group, str) or group not in HELPER_GROUPS:
+            sys.exit(
+                f"Helper {self.parser.get_name()}: invalid value for metadata.group. allowed values are {list(HELPER_GROUPS)}")
+        if "fails_when" not in metadata:
+            sys.exit(
+                f"Helper {self.parser.get_name()}: It is mandatory to define the 'fails_when' property in metadata")
+        fails_when = metadata["fails_when"]
+        if not isinstance(fails_when, list) or len(fails_when) == 0:
+            sys.exit(
+                f"Helper {self.parser.get_name()}: 'metadata.fails_when' must be a non-empty list of strings")
+        for condition in fails_when:
+            if not isinstance(condition, str) or not condition.strip():
+                sys.exit(
+                    f"Helper {self.parser.get_name()}: every entry of 'metadata.fails_when' must be a non-empty string, got '{condition}'")
 
     def verify_restrictions(self) -> None:
         """
@@ -352,7 +373,7 @@ class Validator:
                 for test in tests:
                     if 'target_field' not in test:
                         sys.exit(
-                            f"Helper {self.parser.get_name()}: 'target_field' atributte is requeried into 'test' for filter and transformation helpers")
+                            f"Helper {self.parser.get_name()}: 'target_field' attribute is required in 'test' for check and transform helpers")
 
     def evaluator(self, file_path: Path):
         """

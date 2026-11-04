@@ -1,0 +1,73 @@
+# Name of the helper function
+name: int_ne
+
+metadata:
+  description: |
+    Checks whether the target integer differs from `value`, as exact 64-bit integers.
+
+    Behavior:
+    - The target must hold a JSON integer; a floating-point value, even `2.0`, is not an integer and gives
+      false.
+    - `value` is a literal integer or a reference to an integer field; the comparison is exact, so no
+      precision is lost above 2^53.
+    - A missing or non-integer target gives false, so this is not the same as `NOT int_eq(...)`, which is
+      true for a missing field.
+
+    Build errors:
+    - `value` is a literal that is not an integer: a floating-point number (`2.0`), a quoted number, a boolean,
+      null or a value above 2^63-1.
+    - `value` is a reference to a schema field whose type is not an integer type (`integer`, `long`, `short`
+      or `byte`).
+    - The target is a schema field whose type is not numeric.
+
+    Notes:
+    - `number_ne` converts both operands to double and treats `2` and `2.0` as equal.
+    - The `!=` operator with a numeric literal maps to `number_ne`, never to this helper.
+  group: comparison
+  fails_when:
+    - The target field does not exist.
+    - The target field is not an integer (a floating-point value such as `2.0` included).
+    - The reference given as `value` does not exist or is not an integer.
+    - The two integers are equal.
+
+helper_type: check
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  value:
+    type: number
+    generate: integer
+    source: both # includes values or references (their names start with $)
+
+# do not compare with target field to avoid failure
+skipped:
+  - success_cases
+
+target_field:
+  type: number
+  generate: integer
+
+test:
+  - arguments:
+      value: 22
+    target_field: 2
+    should_pass: true
+    description: The two integers differ.
+  - arguments:
+      value: 22
+    target_field: 22
+    should_pass: false
+    description: The two integers are equal.
+  - arguments:
+      value: 22
+    target_field: 2.0
+    should_pass: false
+    description: A floating-point target is not an integer, so the check fails although the values differ.
+  - arguments:
+      value: 22
+    target_field: "2"
+    should_pass: false
+    description: The target field is a string, not an integer, so the check fails although the values differ.

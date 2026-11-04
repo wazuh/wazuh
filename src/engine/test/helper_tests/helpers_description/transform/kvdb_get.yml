@@ -1,0 +1,162 @@
+# Name of the helper function
+name: kvdb_get
+
+metadata:
+  description: |
+    Copies the value stored under `key` in the KVDB `db` to the target field.
+
+    Behavior:
+    - `db` is a literal string naming a KVDB that must exist, be declared by the integration and be enabled.
+    - `key` is a literal string or a reference to a string field.
+    - The value may be of any JSON type (string, number, boolean, object, array or null); it replaces the
+      target field, which is created when missing.
+    - When the target field is a schema field the value is validated against its type, and an object value
+      may only contain fields allowed under the target.
+    - The KVDB content is loaded when the asset is built: the operation works on that snapshot.
+
+    Build errors:
+    - The KVDB does not exist, is not declared by the integration or is disabled.
+    - `db` is not a literal string, or `key` is a literal that is not a string.
+    - A number of arguments other than 2.
+    - The target field is not a schema field and does not start with `_`.
+
+    Notes:
+    - A key that is not in the KVDB makes the operation fail and leaves the event unchanged; the following
+      operations of the map block still run.
+    - `kvdb_get_merge` merges the value into the target and `kvdb_get_append` appends one value per key.
+  group: kvdb
+  fails_when:
+    - The key is not present in the KVDB.
+    - The key reference does not exist or is not a string.
+    - The value does not pass the schema validation of the target field.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  db:
+    type: string
+    generate: string
+    source: value
+  key:
+    type: string
+    generate: string
+    source: both
+
+# Random keys are not present in the KVDB
+skipped:
+  - success_cases
+
+# Target field may receive any JSON value coming from the KVDB
+target_field:
+  type:
+    - string
+    - number
+    - boolean
+    - object
+    - array
+
+test:
+  # Key resolved by reference
+  - arguments:
+      db:
+        source: value
+        value: "windows_kerberos_status_code_to_code_name"
+      key:
+        source: reference
+        value: "0x1"
+    target_field: ""
+    should_pass: true
+    expected: "KDC_ERR_NAME_EXP"
+    description: The key is read from a referenced field before the lookup
+
+  # Database does not exist -> build-time error
+  - arguments:
+      db: non-existing-db
+      key: "0x0"
+    target_field: "keep-me"
+    should_pass: false
+    expected: "keep-me"
+    description: Rejected at build time because the KVDB does not exist
+
+  # Database exists but key does not exist -> the operation fails
+  - arguments:
+      db: windows_kerberos_status_code_to_code_name
+      key: "0x99"
+    target_field: "keep-me"
+    should_pass: false
+    expected: "keep-me"
+    description: Fails and leaves the target unchanged when the key is not in the KVDB
+
+  # String value: direct key lookup ("0x0" -> "KDC_ERR_NONE")
+  - arguments:
+      db: windows_kerberos_status_code_to_code_name
+      key: "0x0"
+    target_field: ""
+    should_pass: true
+    expected: "KDC_ERR_NONE"
+    description: Stores a string value of the KVDB in the target field
+
+  # String value: another key ("0x6" -> "KDC_ERR_C_PRINCIPAL_UNKNOWN")
+  - arguments:
+      db: windows_kerberos_status_code_to_code_name
+      key: "0x6"
+    target_field: ""
+    should_pass: true
+    expected: "KDC_ERR_C_PRINCIPAL_UNKNOWN"
+    description: Stores another string value of the KVDB in the target field
+
+  # Object value: "access_mask" -> full JSON object
+  - arguments:
+      db: windows_kerberos_status_code_to_code_name
+      key: "access_mask"
+    target_field: {}
+    should_pass: true
+    expected:
+      "0": "Create Child"
+      "1": "Delete Child"
+      "2": "List Contents"
+      "3": "SELF"
+      "4": "Read Property"
+      "5": "Write Property"
+      "6": "Delete Tree"
+      "7": "List Object"
+      "8": "Control Access"
+      "16": "DELETE"
+      "17": "READ_CONTROL"
+      "18": "WRITE_DAC"
+      "19": "WRITE_OWNER"
+      "20": "SYNCHRONIZE"
+      "24": "ADS_RIGHT_ACCESS_SYSTEM_SECURITY"
+      "31": "ADS_RIGHT_GENERIC_READ"
+      "30": "ADS_RIGHT_GENERIC_WRITE"
+      "29": "ADS_RIGHT_GENERIC_EXECUTE"
+      "28": "ADS_RIGHT_GENERIC_ALL"
+    description: Stores an object value of the KVDB in the target field
+
+  # Array value: "bitmask_test_values" -> numeric array
+  - arguments:
+      db: windows_kerberos_status_code_to_code_name
+      key: "bitmask_test_values"
+    target_field: []
+    should_pass: true
+    expected:
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+      - 16
+      - 17
+      - 18
+      - 19
+      - 20
+      - 24
+      - 28
+      - 29
+      - 30
+      - 31
+    description: Stores an array value of the KVDB in the target field

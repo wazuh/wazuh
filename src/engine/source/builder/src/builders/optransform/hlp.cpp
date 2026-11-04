@@ -261,7 +261,7 @@ TransformOp uriParseBuilder(const Reference& targetField,
     return detail::specificHLPBuilder(targetField, opArgs, buildCtx, parserGetter(HLPParserType::URI));
 }
 
-// +parse_useragent/[$ref|value]
+// field: parse_user_agent($ref) -- stores the raw string in <field>.original, nothing else is extracted
 TransformOp userAgentParseBuilder(const Reference& targetField,
                                   const std::vector<OpArg>& opArgs,
                                   const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -317,7 +317,7 @@ TransformOp dsvParseBuilder(const Reference& targetField,
     return detail::specificHLPBuilder(targetField, opArgs, buildCtx, parserGetter(HLPParserType::DSV));
 }
 
-// +parse_key_value/[$ref|value]
+// +parse_kv/[$ref|value]
 TransformOp keyValueParseBuilder(const Reference& targetField,
                                  const std::vector<OpArg>& opArgs,
                                  const std::shared_ptr<const IBuildCtx>& buildCtx)

@@ -1,0 +1,69 @@
+# Name of the helper function
+name: trim_start
+
+metadata:
+  description: |
+    Removes from the start of the target string the characters that belong to a set.
+
+    Behavior:
+    - `chars` is an optional literal string listing the characters to remove; when it is omitted the set is
+      the whitespace characters: space, tab, line feed, carriage return, form feed and vertical tab.
+    - Every leading character that is in the set is removed until the first character that is not; the end
+      of the string is not touched.
+    - A string made only of characters of the set becomes the empty string.
+    - The result is written back to the target field; the operation succeeds even when nothing is removed.
+
+    Build errors:
+    - `chars` is not a literal string.
+    - More than 1 argument.
+
+    Notes:
+    - `chars` is a set, not a sequence: `xy` removes any run of `x` and `y` characters.
+    - `trim` trims both ends and `trim_end` the end only.
+  group: string
+  fails_when:
+    - The target field does not exist or is not a string.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  chars:
+    type: string
+    generate: string
+    source: value
+    optional: true
+
+# the generator does not know that `chars` is optional: a call without it is valid; string generation is random
+skipped:
+  - success_cases
+  - fewer_arguments
+
+target_field:
+  type: string
+  generate: string
+
+test:
+  - target_field: "  hi  "
+    should_pass: true
+    expected: "hi  "
+    description: Without arguments the leading whitespace is removed and the trailing one is kept
+  - target_field: "\t\nhi"
+    should_pass: true
+    expected: "hi"
+    description: Tabs and line feeds count as whitespace
+  - arguments:
+      chars: '-'
+    target_field: --hi--
+    should_pass: true
+    expected: hi--
+    description: Removes the given character from the start only
+  - arguments:
+      chars: xy
+    target_field: xyx
+    should_pass: true
+    expected: ""
+    description: A string made only of the given characters becomes empty

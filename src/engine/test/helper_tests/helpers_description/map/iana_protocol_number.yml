@@ -1,0 +1,101 @@
+# Name of the helper function
+name: iana_protocol_number
+
+metadata:
+  description: |
+    Resolves an IANA IP protocol keyword to its protocol number and maps it to the target field as a
+    string of decimal digits, for example `"6"` for `tcp`.
+
+    Behavior:
+    - The name is normalized before the lookup: ASCII letters are lowercased, and `_` and every
+      whitespace character become `-`; the aliases `icmpv6`, `udp-lite` and `ip-in-ip` stand for
+      `ipv6-icmp`, `udplite` and `ipip`.
+    - The name is not trimmed: `" tcp"` becomes `-tcp` and fails.
+    - The lookup is exact against a built-in table of the IANA keywords for the numbers 0 to 147,
+      without the generic categories 61, 63, 68, 99 and 114 (such as `any-host-internal-protocol`).
+
+    Build errors:
+    - `protocol_name` is a literal.
+    - `protocol_name` is a schema field whose type is not a string.
+
+    Notes:
+    - The result is a string: `community_id` needs an integer protocol and cannot consume it.
+    - `iana_protocol_name` is the inverse lookup.
+  group: network
+  fails_when:
+    - "`protocol_name` is missing or is not a string"
+    - "the normalized name is not in the table"
+
+helper_type: map
+
+is_variadic: false
+
+arguments:
+  protocol_name:
+    type: string
+    generate: string
+    source: reference
+
+skipped:
+  - success_cases
+
+output:
+  type: string
+  subset: string
+
+test:
+  - arguments:
+      protocol_name: "tcp"
+    should_pass: true
+    expected: "6"
+    description: Resolve a canonical keyword
+  - arguments:
+      protocol_name: "UDP"
+    should_pass: true
+    expected: "17"
+    description: Resolve a keyword regardless of its letter case
+  - arguments:
+      protocol_name: "ipv6-icmp"
+    should_pass: true
+    expected: "58"
+    description: Resolve a canonical hyphenated keyword
+  - arguments:
+      protocol_name: "udp_lite"
+    should_pass: true
+    expected: "136"
+    description: Normalize the underscore and the alias udp-lite to udplite
+  - arguments:
+      protocol_name: "ip-in-ip"
+    should_pass: true
+    expected: "94"
+    description: Normalize the alias ip-in-ip to ipip
+  - arguments:
+      protocol_name: "ICMPv6"
+    should_pass: true
+    expected: "58"
+    description: Normalize the alias icmpv6 to ipv6-icmp
+  - arguments:
+      protocol_name: "ipv6 icmp"
+    should_pass: true
+    expected: "58"
+    description: Turn a whitespace character into a hyphen
+  - arguments:
+      protocol_name: " tcp"
+    should_pass: false
+    description: Fail on a leading space, as the name is not trimmed
+  - arguments:
+      protocol_name: "any-host-internal-protocol"
+    should_pass: false
+    description: Fail on a generic category that the table does not hold
+  - arguments:
+      protocol_name: "smtp"
+    should_pass: false
+    description: Fail on an application-layer name that is not an IP protocol keyword
+  - arguments:
+      protocol_name: ""
+    should_pass: false
+    description: Fail on an empty string
+  - arguments:
+      protocol_name: 123
+    should_pass: false
+    description: Fail on a reference that is not a string

@@ -1,0 +1,36 @@
+# Name of the helper function
+name: delete_custom_fields
+
+metadata:
+  description: |
+    Deletes the top-level fields of the event that are not defined in the schema.
+
+    Behavior:
+    - The target field must be the root of the event (`.`); the helper takes no arguments.
+    - Each top-level key of the event is checked by name against the schema: a key that is not a top-level
+      schema field is removed, the temporary fields that start with `_` included.
+    - The check is not recursive: a custom key nested inside a schema object (for example `host.custom`) is
+      kept.
+    - The operation always succeeds, also when nothing is removed.
+
+    Build errors:
+    - The target field is not the root `.`.
+    - Any argument is given.
+
+    Notes:
+    - Temporary `_` fields are removed too, so run it after the last use of any temporary field.
+    - `delete` removes one field and `delete_fields_with_value` removes the members of an object by value.
+  group: object
+  fails_when:
+    - Never; once the asset is built the helper always succeeds.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# The harness maps its target to `_target_field`, which this helper rejects at build time (the target must be
+# the root), so no runtime case can be expressed here
+target_field:
+  type: object
+  generate: object

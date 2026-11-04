@@ -1,0 +1,140 @@
+# Name of the helper function
+name: decode_hex
+
+metadata:
+  description: |
+    Decodes a string of hexadecimal digits into text and maps it to the target field.
+
+    Behavior:
+    - Without `mode`, `hex` must be a string with an even number of hexadecimal digits (`0-9`, `A-F`
+      or `a-f`, with no `0x` prefix, whitespace or sign) whose every decoded byte is ASCII (`0x00` to
+      `0x7F`, control characters included); the result is that text, and an empty string gives an
+      empty string.
+    - With the mode `quoted`, each value is handled by its quoting, as auditd writes its arguments: a
+      value between double quotes loses the quotes and is kept as text (so `"10"` or `"1234"` stay
+      text); an unquoted value made of upper-case hexadecimal digits that decodes to valid UTF-8 is
+      decoded; any other value (lower-case hexadecimal, invalid UTF-8, other text, a value that is
+      not a string) is kept unchanged. The reference can be a string or an array, handled element by
+      element, and the result has the same type; this mode never fails on the content.
+
+    Build errors:
+    - `mode` is given and is not the literal `quoted`.
+    - `hex` is a schema field whose type is not a string.
+
+    Notes:
+    - `hex_to_int` reads hexadecimal digits as an integer instead.
+    - `regex_extract_all` with `(?:^|\s)a\d+=(\S+)` collects the raw auditd EXECVE arguments, quotes
+      included, that the mode `quoted` then decodes.
+    - When the target is a keyword field such as `process.args`, an element that is not a string
+      fails the schema validation and the whole operation fails.
+  group: string
+  fails_when:
+    - "`hex` is missing"
+    - "without `mode`: `hex` is not a string, has an odd number of digits, contains a character that is not a hexadecimal digit, or decodes to a byte above 0x7F"
+    - "with the mode `quoted`: `hex` is neither a string nor an array"
+
+helper_type: map
+
+is_variadic: false
+
+arguments:
+  hex:
+    type: string
+    generate: hexadecimal
+    source: reference
+  mode:
+    type: string
+    source: value
+    optional: true
+    restrictions:
+      allowed:
+        - quoted
+
+# The generated reference type cases cannot express that an array succeeds with the quoted mode;
+# the tests below and the builder unit tests cover the reference types
+skipped:
+  - success_cases
+  - different_type
+
+output:
+  type:
+    - string
+    - array
+
+test:
+  - arguments:
+      hex: 48656C6C6F20776F726C6421
+    should_pass: true
+    expected: "Hello world!"
+    description: Decode an even number of hexadecimal digits to ASCII text
+  - arguments:
+      hex: 48656C6C6F20776F726C64
+    should_pass: true
+    expected: "Hello world"
+    description: Decode lower and upper case digits alike
+  - arguments:
+      hex: ""
+    should_pass: true
+    expected: ""
+    description: Decode an empty string to an empty string
+  - arguments:
+      hex: 48656C6C6F20776F726C6
+    should_pass: false
+    description: Fail on an odd number of hexadecimal digits
+  - arguments:
+      hex: 48656C6C6G
+    should_pass: false
+    description: Fail on a character that is not a hexadecimal digit
+  - arguments:
+      hex: "0x4142"
+    should_pass: false
+    description: Fail on a 0x prefix, as x is not a hexadecimal digit
+  - arguments:
+      hex: CAFE
+    should_pass: false
+    description: Fail when a decoded byte is not ASCII
+  - arguments:
+      hex: ["48656C6C6F", "776F726C6421"]
+    should_pass: false
+    description: Fail on an array reference without the mode quoted
+  - arguments:
+      hex: {"key": "4142"}
+      mode: quoted
+    should_pass: false
+    description: Fail on a reference that is neither a string nor an array, also with the mode quoted
+  - arguments:
+      hex: ['"/usr/bin/sudo"', '"grep"', "6B65793D226172742D7465737422", '"/var/log/audit/audit.log"']
+      mode: quoted
+    should_pass: true
+    expected: ["/usr/bin/sudo", "grep", "key=\"art-test\"", "/var/log/audit/audit.log"]
+    description: Strip the quotes of the quoted auditd arguments and decode the unquoted hexadecimal one
+  - arguments:
+      hex: ['"kill"', '"-9"', '"1234"', '"10"', '"0755"']
+      mode: quoted
+    should_pass: true
+    expected: ["kill", "-9", "1234", "10", "0755"]
+    description: Keep quoted arguments as text even when they look hexadecimal
+  - arguments:
+      hex: ['"touch"', "636166C3A9"]
+      mode: quoted
+    should_pass: true
+    expected: ["touch", "caf\u00e9"]
+    description: Decode an unquoted hexadecimal argument to UTF-8
+  - arguments:
+      hex: ["3c3e", "CAFE", "(null)", ""]
+      mode: quoted
+    should_pass: true
+    expected: ["3c3e", "CAFE", "(null)", ""]
+    description: Keep lower-case hexadecimal, invalid UTF-8 and other unquoted values unchanged
+  - arguments:
+      hex: [1, '"4142"', "4142", true]
+      mode: quoted
+    should_pass: true
+    expected: [1, "4142", "AB", true]
+    description: Keep the elements that are not strings unchanged
+  - arguments:
+      hex: '"1234"'
+      mode: quoted
+    should_pass: true
+    expected: "1234"
+    description: Apply the mode quoted to a string reference

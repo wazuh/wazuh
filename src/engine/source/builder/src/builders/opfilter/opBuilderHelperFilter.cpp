@@ -2,6 +2,8 @@
 #include "opBuilderHelperFilter.hpp"
 
 #include <algorithm>
+#include <charconv>
+#include <limits>
 #include <optional>
 #include <unordered_set>
 #include <variant>
@@ -83,14 +85,18 @@ FilterOp getIntCmpFunction(const std::string& targetField,
     else
     {
         auto ref = std::static_pointer_cast<Reference>(rightParameter);
-        if (buildCtx->validator().hasField(ref->dotPath())
-            && buildCtx->validator().getType(ref->dotPath()) != schemf::Type::INTEGER)
+        if (buildCtx->validator().hasField(ref->dotPath()))
         {
-            throw std::runtime_error(
-                fmt::format("Expected a reference of type '{}' but got reference '{}' of type '{}'",
-                            schemf::typeToStr(schemf::Type::INTEGER),
-                            ref->dotPath(),
-                            schemf::typeToStr(buildCtx->validator().getType(ref->dotPath()))));
+            const auto refType = buildCtx->validator().getType(ref->dotPath());
+            if (refType != schemf::Type::INTEGER && refType != schemf::Type::LONG && refType != schemf::Type::SHORT
+                && refType != schemf::Type::BYTE)
+            {
+                throw std::runtime_error(
+                    fmt::format("Expected a reference of an integer type (integer, long, short or byte) but got "
+                                "reference '{}' of type '{}'",
+                                ref->dotPath(),
+                                schemf::typeToStr(refType)));
+            }
         }
         rValue = std::static_pointer_cast<Reference>(rightParameter)->jsonPath();
     }
@@ -410,6 +416,11 @@ FilterOp getStringCmpFunction(const std::string& targetField,
             throw std::runtime_error(
                 fmt::format(R"({} function: Expected a string but got {}.)", name, rightParameter->str()));
         }
+        if ((op == Operator::ST || op == Operator::CN) && sv.empty())
+        {
+            throw std::runtime_error(
+                fmt::format("{} function: Expected a non-empty string but got an empty one", name));
+        }
         preExtractedValueStr = std::string(sv);
     }
     else
@@ -525,7 +536,7 @@ FilterOp opBuilderComparison(const std::string& targetField,
 //*               Int Cmp filters                 *
 //*************************************************
 
-// field: +int_equal/int|$ref/
+// field: +int_eq/int|$ref/
 FilterOp opBuilderHelperIntEqual(const Reference& targetField,
                                  const std::vector<OpArg>& opArgs,
                                  const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -534,7 +545,7 @@ FilterOp opBuilderHelperIntEqual(const Reference& targetField,
     return op;
 }
 
-// field: +int_not_equal/int|$ref/
+// field: +int_ne/int|$ref/
 FilterOp opBuilderHelperIntNotEqual(const Reference& targetField,
                                     const std::vector<OpArg>& opArgs,
                                     const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -543,7 +554,7 @@ FilterOp opBuilderHelperIntNotEqual(const Reference& targetField,
     return op;
 }
 
-// field: +int_less/int|$ref/
+// field: +int_lt/int|$ref/
 FilterOp opBuilderHelperIntLessThan(const Reference& targetField,
                                     const std::vector<OpArg>& opArgs,
                                     const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -552,7 +563,7 @@ FilterOp opBuilderHelperIntLessThan(const Reference& targetField,
     return op;
 }
 
-// field: +int_less_or_equal/int|$ref/
+// field: +int_lte/int|$ref/
 FilterOp opBuilderHelperIntLessThanEqual(const Reference& targetField,
                                          const std::vector<OpArg>& opArgs,
                                          const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -561,7 +572,7 @@ FilterOp opBuilderHelperIntLessThanEqual(const Reference& targetField,
     return op;
 }
 
-// field: +int_greater/int|$ref/
+// field: +int_gt/int|$ref/
 FilterOp opBuilderHelperIntGreaterThan(const Reference& targetField,
                                        const std::vector<OpArg>& opArgs,
                                        const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -570,7 +581,7 @@ FilterOp opBuilderHelperIntGreaterThan(const Reference& targetField,
     return op;
 }
 
-// field: +int_greater_or_equal/int|$ref/
+// field: +int_gte/int|$ref/
 FilterOp opBuilderHelperIntGreaterThanEqual(const Reference& targetField,
                                             const std::vector<OpArg>& opArgs,
                                             const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -641,7 +652,7 @@ FilterOp opBuilderHelperNumberGreaterThanEqual(const Reference& targetField,
 //*           String Cmp filters                  *
 //*************************************************
 
-// field: +string_equal/value|$ref
+// field: +string_eq/value|$ref
 FilterOp opBuilderHelperStringEqual(const Reference& targetField,
                                     const std::vector<OpArg>& opArgs,
                                     const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -650,7 +661,7 @@ FilterOp opBuilderHelperStringEqual(const Reference& targetField,
     return op;
 }
 
-// field: +string_not_equal/value|$ref
+// field: +string_ne/value|$ref
 FilterOp opBuilderHelperStringNotEqual(const Reference& targetField,
                                        const std::vector<OpArg>& opArgs,
                                        const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -659,7 +670,7 @@ FilterOp opBuilderHelperStringNotEqual(const Reference& targetField,
     return op;
 }
 
-// field: +string_greater/value|$ref
+// field: +string_gt/value|$ref
 FilterOp opBuilderHelperStringGreaterThan(const Reference& targetField,
                                           const std::vector<OpArg>& opArgs,
                                           const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -668,7 +679,7 @@ FilterOp opBuilderHelperStringGreaterThan(const Reference& targetField,
     return op;
 }
 
-// field: +string_greater_or_equal/value|$ref
+// field: +string_gte/value|$ref
 FilterOp opBuilderHelperStringGreaterThanEqual(const Reference& targetField,
                                                const std::vector<OpArg>& opArgs,
                                                const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -677,7 +688,7 @@ FilterOp opBuilderHelperStringGreaterThanEqual(const Reference& targetField,
     return op;
 }
 
-// field: +string_less/value|$ref
+// field: +string_lt/value|$ref
 FilterOp opBuilderHelperStringLessThan(const Reference& targetField,
                                        const std::vector<OpArg>& opArgs,
                                        const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -686,7 +697,7 @@ FilterOp opBuilderHelperStringLessThan(const Reference& targetField,
     return op;
 }
 
-// field: +string_less_or_equal/value|$ref
+// field: +string_lte/value|$ref
 FilterOp opBuilderHelperStringLessThanEqual(const Reference& targetField,
                                             const std::vector<OpArg>& opArgs,
                                             const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -713,109 +724,114 @@ FilterOp opBuilderHelperStringContains(const Reference& targetField,
     return op;
 }
 
-// field: binary_and(value)
+// field: has_any_bit(mask)
 FilterOp opBuilderHelperBinaryAnd(const Reference& targetField,
                                   const std::vector<OpArg>& opArgs,
                                   const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     const auto& name = buildCtx->context().opName;
-    const auto& schema = buildCtx->validator();
 
     // Assert expected number of parameters
     utils::assertSize(opArgs, 1);
     // Parameter type check
     utils::assertValue(opArgs, 0);
 
-    // Mask
-    std::string strMask;
-    if (std::static_pointer_cast<Value>(opArgs[0])->value().getString(strMask) != json::RetGet::Success)
+    // Parse a hexadecimal string, with or without the '0x' prefix and in any case, into an unsigned 64-bit integer
+    const auto parseHex = [](std::string_view str) -> std::optional<uint64_t>
     {
-        throw std::runtime_error(fmt::format("{} function: Mask expected a string but got {}", name, opArgs[0]->str()));
-    }
-
-    // Tracing
-    const auto successTrace {fmt::format("[{}] -> Success", name)};
-    const auto referenceNotFoundTrace {
-        fmt::format("[{}] -> Failure: Reference '{}' not found or not a string", name, targetField.dotPath())};
-    const auto referenceNotValidHexTrace {fmt::format("[{}] -> Failure: Reference '{}' is not a valid hexadecimal "
-                                                      "number",
-                                                      name,
-                                                      targetField.dotPath())};
-
-    const auto failAndTrace {fmt::format("[{}] -> Failure: Binary AND is false", name)};
-
-    // Get the mask
-    std::string prefix {"0x"};
-    // 4 digits per byte + prefix
-    std::size_t maxSize = (std::numeric_limits<uint64_t>::digits / 4) + prefix.size();
-    uint64_t mask {};
-    {
-        if (strMask.substr(0, prefix.size()) != prefix)
+        if (str.size() > 2 && str[0] == '0' && (str[1] == 'x' || str[1] == 'X'))
         {
-            throw std::runtime_error(
-                fmt::format("{} function: Mask '{}' is not a valid hexadecimal number", name, strMask));
-        }
-        else if (strMask.size() > maxSize)
-        {
-            throw std::runtime_error(fmt::format("{} function: Mask '{}' is too big", name, strMask));
+            str.remove_prefix(2);
         }
 
-        try
+        // At most 16 hexadecimal digits fit in 64 bits
+        if (str.empty() || str.size() > static_cast<size_t>(std::numeric_limits<uint64_t>::digits / 4))
         {
-            mask = std::stoull(strMask, nullptr, 16);
-            if (mask == 0)
-            {
-                throw std::runtime_error(fmt::format("{} function: Mask cannot be 0", name));
-            }
-        }
-        catch (const std::exception& e)
-        {
-            throw std::runtime_error(
-                fmt::format("{} function: Mask '{}' is not a valid hexadecimal number: {}", name, strMask, e.what()));
-        }
-    }
-
-    // Fn to get the value from the event
-    auto getValue = [targetField,
-                     targetFieldPP = json::PointerPath(targetField.jsonPath()),
-                     referenceNotFoundTrace,
-                     referenceNotValidHexTrace](base::ConstEvent event) -> base::RespOrError<uint64_t>
-    {
-        std::string value;
-        if (event->getString(value, targetFieldPP) != json::RetGet::Success)
-        {
-            return base::Error {referenceNotFoundTrace};
+            return std::nullopt;
         }
 
-        if (value.substr(0, 2) != "0x")
+        uint64_t result {0};
+        const auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), result, 16);
+        if (ec != std::errc() || ptr != str.data() + str.size())
         {
-            return base::Error {referenceNotValidHexTrace};
-        }
-
-        uint64_t result {};
-        try
-        {
-            result = std::stoull(value, nullptr, 16);
-        }
-        catch (const std::exception& e)
-        {
-            return base::Error {referenceNotValidHexTrace};
+            return std::nullopt;
         }
 
         return result;
     };
 
-    // The filter
-    return [getValue, isTestMode = buildCtx->isTestMode(), mask, successTrace, failAndTrace](
-               base::ConstEvent event) -> FilterResult
+    // Mask: a hexadecimal string or a non-negative integer
+    std::optional<uint64_t> maskOpt;
     {
-        auto valueResult = getValue(event);
-        if (base::isError(valueResult))
+        const auto maskValue = std::static_pointer_cast<Value>(opArgs[0])->value();
+        std::string maskStr;
+        if (maskValue.getString(maskStr) == json::RetGet::Success)
         {
-            RETURN_FAILURE(isTestMode, false, base::getError(valueResult).message);
+            maskOpt = parseHex(maskStr);
+        }
+        else if (const auto maskInt = maskValue.getIntAsInt64(); maskInt.has_value() && maskInt.value() >= 0)
+        {
+            maskOpt = static_cast<uint64_t>(maskInt.value());
+        }
+    }
+
+    if (!maskOpt.has_value())
+    {
+        throw std::runtime_error(fmt::format(
+            "{} function: Mask '{}' is not a valid hexadecimal string or non-negative integer (up to 64 bits)",
+            name,
+            opArgs[0]->str()));
+    }
+
+    const uint64_t mask = maskOpt.value();
+    if (mask == 0)
+    {
+        throw std::runtime_error(fmt::format("{} function: Mask cannot be 0", name));
+    }
+
+    // Tracing
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
+    const auto referenceNotFoundTrace {
+        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField.dotPath())};
+    const auto referenceNotValidHexTrace {
+        fmt::format("[{}] -> Failure: Target field '{}' is not a hexadecimal string or a non-negative integer",
+                    name,
+                    targetField.dotPath())};
+    const auto failAndTrace {fmt::format("[{}] -> Failure: No bit of the mask is set", name)};
+
+    // The filter
+    return [parseHex,
+            mask,
+            successTrace,
+            referenceNotFoundTrace,
+            referenceNotValidHexTrace,
+            failAndTrace,
+            isTestMode = buildCtx->isTestMode(),
+            targetPath = targetField.jsonPath(),
+            targetPP = json::PointerPath(targetField.jsonPath())](base::ConstEvent event) -> FilterResult
+    {
+        if (!event->exists(targetPath))
+        {
+            RETURN_FAILURE(isTestMode, false, referenceNotFoundTrace);
         }
 
-        if (base::getResponse(valueResult) & mask)
+        std::optional<uint64_t> value;
+        std::string_view str;
+        if (event->getString(str, targetPP) == json::RetGet::Success)
+        {
+            value = parseHex(str);
+        }
+        else if (const auto number = event->getIntAsInt64(targetPath); number.has_value() && number.value() >= 0)
+        {
+            value = static_cast<uint64_t>(number.value());
+        }
+
+        if (!value.has_value())
+        {
+            RETURN_FAILURE(isTestMode, false, referenceNotValidHexTrace);
+        }
+
+        if (value.value() & mask)
         {
             RETURN_SUCCESS(isTestMode, true, successTrace);
         }
@@ -941,63 +957,59 @@ FilterOp opBuilderHelperRegexNotMatch(const Reference& targetField,
 // //*               IP filters                     *
 // //*************************************************
 
-// field: +ip_cidr_match/192.168.0.0/16
-// field: +ip_cidr_match/192.168.0.0/255.255.0.0
+// field: in_cidr('192.168.0.0/16', ...)
 FilterOp opBuilderHelperIPCIDR(const Reference& targetField,
                                const std::vector<OpArg>& opArgs,
                                const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    // Assert expected number of parameters
-    utils::assertSize(opArgs, 2);
+    // Assert expected number of parameters: one or more networks
+    utils::assertSize(opArgs, 1, utils::MAX_OP_ARGS);
     // Parameter type check
     utils::assertValue(opArgs);
     // Format name for the tracer
     const auto name = buildCtx->context().opName;
 
-    std::string networkStr;
-    if (std::static_pointer_cast<Value>(opArgs[0])->value().getString(networkStr) != json::RetGet::Success)
+    // Every network is a literal 'a.b.c.d/nn' or 'a.b.c.d/m.m.m.m', kept as its lowest and highest address
+    std::vector<std::pair<uint32_t, uint32_t>> networks;
+    networks.reserve(opArgs.size());
+    for (size_t i = 0; i < opArgs.size(); ++i)
     {
-        throw std::runtime_error(
-            fmt::format("{} function: IPv4 address expected a string but got {}", name, opArgs[0]->str()));
-    }
+        std::string cidrStr;
+        if (std::static_pointer_cast<Value>(opArgs[i])->value().getString(cidrStr) != json::RetGet::Success)
+        {
+            throw std::runtime_error(
+                fmt::format("{} function: Expected a CIDR string ('a.b.c.d/nn') as parameter {} but got {}",
+                            name,
+                            i + 1,
+                            opArgs[i]->str()));
+        }
 
-    uint32_t network {};
-    try
-    {
-        network = ::utils::ip::IPv4ToUInt(networkStr);
-    }
-    catch (std::exception& e)
-    {
-        throw std::runtime_error(fmt::format("\"{}\" function: IPv4 address \"{}\" "
-                                             "could not be converted to int: {}",
-                                             name,
-                                             networkStr,
-                                             e.what()));
-    }
+        const auto slash = cidrStr.find('/');
+        if (slash == std::string::npos || slash == 0 || slash + 1 == cidrStr.size())
+        {
+            throw std::runtime_error(
+                fmt::format("{} function: Expected a CIDR string ('a.b.c.d/nn') as parameter {} but got '{}'",
+                            name,
+                            i + 1,
+                            cidrStr));
+        }
 
-    std::string maskStr;
-    if (std::static_pointer_cast<Value>(opArgs[1])->value().getString(maskStr) != json::RetGet::Success)
-    {
-        throw std::runtime_error(
-            fmt::format("{} function: IPv4 Mask expected a string but got {}", name, opArgs[1]->str()));
-    }
+        uint32_t network {};
+        uint32_t mask {};
+        try
+        {
+            network = ::utils::ip::IPv4ToUInt(cidrStr.substr(0, slash));
+            mask = ::utils::ip::IPv4MaskUInt(cidrStr.substr(slash + 1));
+        }
+        catch (const std::exception& e)
+        {
+            throw std::runtime_error(
+                fmt::format("{} function: '{}' is not a valid IPv4 network: {}", name, cidrStr, e.what()));
+        }
 
-    uint32_t mask {};
-    try
-    {
-        mask = ::utils::ip::IPv4MaskUInt(maskStr);
+        const uint32_t lower = network & mask;
+        networks.emplace_back(lower, lower | (~mask));
     }
-    catch (std::exception& e)
-    {
-        throw std::runtime_error(fmt::format("\"{}\" function: IPv4 Mask \"{}\" "
-                                             "could not be converted to int: {}",
-                                             name,
-                                             maskStr,
-                                             e.what()));
-    }
-
-    uint32_t net_lower {network & mask};
-    uint32_t net_upper {net_lower | (~mask)};
 
     // Tracing
     const std::string successTrace {fmt::format("[{}] -> Success", name)};
@@ -1005,11 +1017,16 @@ FilterOp opBuilderHelperIPCIDR(const Reference& targetField,
     const std::string failureTrace1 {
         fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField.dotPath())};
     const std::string failureTrace2 {fmt::format("[{}] -> Failure: IPv4 address ", name)};
-    const std::string failureTrace3 {fmt::format("[{}] -> Failure: IP address is not in CIDR", name)};
+    const std::string failureTrace3 {fmt::format("[{}] -> Failure: IP address is not in any of the networks", name)};
 
     // Return Op
-    return [=, isTestMode = buildCtx->isTestMode(), targetField = json::PointerPath(targetField.jsonPath())](
-               base::ConstEvent event) -> FilterResult
+    return [networks,
+            successTrace,
+            failureTrace1,
+            failureTrace2,
+            failureTrace3,
+            isTestMode = buildCtx->isTestMode(),
+            targetField = json::PointerPath(targetField.jsonPath())](base::ConstEvent event) -> FilterResult
     {
         std::string resolvedField;
         if (event->getString(resolvedField, targetField) != json::RetGet::Success)
@@ -1022,21 +1039,23 @@ FilterOp opBuilderHelperIPCIDR(const Reference& targetField,
         {
             ip = ::utils::ip::IPv4ToUInt(resolvedField); // IPv4ToUInt requires std::string
         }
-        catch (std::exception& e)
+        catch (const std::exception& e)
         {
             RETURN_FAILURE(isTestMode,
                            false,
                            failureTrace2
                                + fmt::format("'{}' could not be converted to int: {}", resolvedField, e.what()));
         }
-        if (net_lower <= ip && ip <= net_upper)
+
+        for (const auto& [lower, upper] : networks)
         {
-            RETURN_SUCCESS(isTestMode, true, successTrace);
+            if (lower <= ip && ip <= upper)
+            {
+                RETURN_SUCCESS(isTestMode, true, successTrace);
+            }
         }
-        else
-        {
-            RETURN_FAILURE(isTestMode, false, failureTrace3);
-        }
+
+        RETURN_FAILURE(isTestMode, false, failureTrace3);
     };
 }
 
@@ -1201,7 +1220,7 @@ FilterOp opBuilderHelperArrayPresence(const Reference& targetField,
     };
 }
 
-// field: +array_contains/value1/value2/...valueN
+// field: +array_contains_all/value1/value2/...valueN
 FilterOp opBuilderHelperContains(const Reference& targetField,
                                  const std::vector<OpArg>& opArgs,
                                  const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -1209,7 +1228,7 @@ FilterOp opBuilderHelperContains(const Reference& targetField,
     return opBuilderHelperArrayPresence(targetField, opArgs, false, true, buildCtx);
 }
 
-// field: +array_not_contains/value1/value2/...valueN
+// field: +array_excludes_any/value1/value2/...valueN
 FilterOp opBuilderHelperNotContains(const Reference& targetField,
                                     const std::vector<OpArg>& opArgs,
                                     const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -1225,7 +1244,7 @@ FilterOp opBuilderHelperContainsAny(const Reference& targetField,
     return opBuilderHelperArrayPresence(targetField, opArgs, true, true, buildCtx);
 }
 
-// field: +array_not_contains_any/value1/value2/...valueN
+// field: +array_excludes_all/value1/value2/...valueN
 FilterOp opBuilderHelperNotContainsAny(const Reference& targetField,
                                        const std::vector<OpArg>& opArgs,
                                        const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -1380,7 +1399,7 @@ FilterOp opBuilderHelperIsNotNull(const Reference& targetField,
 //*              Definition filters               *
 //*************************************************
 
-// <field>: +match_value/$<definition_array>|$<array_reference>
+// <field>: +one_of/$<definition_array>|$<array_reference>
 FilterOp opBuilderHelperMatchValue(const Reference& targetField,
                                    const std::vector<OpArg>& opArgs,
                                    const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -1478,7 +1497,7 @@ FilterOp opBuilderHelperMatchValue(const Reference& targetField,
     };
 }
 
-// <field>: +exists_key_in/$<definition_object>|$<object_reference>
+// <field>: is_key_of($<definition_object>|$<object_reference>)
 FilterOp opBuilderHelperMatchKey(const Reference& targetField,
                                  const std::vector<OpArg>& opArgs,
                                  const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -1542,7 +1561,8 @@ FilterOp opBuilderHelperMatchKey(const Reference& targetField,
             RETURN_FAILURE(isTestMode, false, ret == json::RetGet::WrongType ? failureTrace2 : failureTrace1);
         }
 
-        auto pointerPath = json::Json::formatJsonPath(targetStr);
+        // The key is matched literally: a dot in the value is part of the key, not a path separator
+        auto pointerPath = json::Json::formatJsonPath(targetStr, true);
         bool exists {false};
 
         if (parameter->isReference())
@@ -1592,6 +1612,11 @@ FilterOp opBuilderHelperEndsWith(const Reference& targetField,
         {
             throw std::runtime_error(
                 fmt::format("{} function: Expected string value for parameter 1 but got '{}'", name, opArgs[0]->str()));
+        }
+        if (value.empty())
+        {
+            throw std::runtime_error(
+                fmt::format("{} function: Expected a non-empty string but got an empty one", name));
         }
     }
     else
@@ -1747,7 +1772,7 @@ FilterOp opBuilderHelperIsIpv6(const Reference& targetField,
     };
 }
 
-// <field>: +keys_exist_in_list/$<list_value>|$<list_reference>
+// <field>: +has_only_keys/$<list_value>|$<list_reference>
 FilterOp opBuilderHelperKeysExistInList(const Reference& targetField,
                                         const std::vector<OpArg>& opArgs,
                                         const std::shared_ptr<const IBuildCtx>& buildCtx)

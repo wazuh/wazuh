@@ -1,0 +1,106 @@
+# Name of the helper function
+name: has_any_bit
+
+metadata:
+  description: |
+    Checks whether the target value and `mask` have at least one bit in common.
+
+    Behavior:
+    - The target is read as an unsigned 64-bit integer, either from a hexadecimal string, with or without the
+      `0x` prefix and in any letter case, or from a JSON integer.
+    - `mask` is a literal of the same kinds: a hexadecimal string or a JSON integer.
+    - True when `(target AND mask)` is not 0: a single common bit is enough, all the mask bits are not
+      required.
+
+    Build errors:
+    - `mask` is a reference.
+    - `mask` is 0, longer than 64 bits, or neither a hexadecimal string nor an integer.
+
+    Notes:
+    - For an equality test on the whole value, convert it with `hex_to_int` and use a numeric comparison.
+  group: number
+  fails_when:
+    - The target field does not exist.
+    - The target field is neither a string nor an integer.
+    - The target string is not hexadecimal or does not fit in 64 bits.
+    - No bit of `mask` is set in the target value.
+
+helper_type: check
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  mask:
+    type:
+      - string
+      - number
+    generate:
+      - hexadecimal
+      - integer
+    source: value # only literal values, not references
+    accepted_values: Hexadecimal string, with or without the `0x` prefix, or integer; never 0 and at most 64 bits  # documentation only
+
+# the generated success cases may use a mask with no bit in common with the generated target, and a
+# generated integer target may legitimately pass the check
+skipped:
+  - success_cases
+  - different_target_field_type
+
+# The target may also hold a JSON integer; the harness declares the hexadecimal string form only
+target_field:
+  type: string
+  generate: hexadecimal
+
+test:
+  - arguments:
+      mask: "0x4F1"
+    target_field: "0x1"
+    should_pass: true
+    description: The target and the mask share bit 0.
+  - arguments:
+      mask: "0x4F1"
+    target_field: "0x1000"
+    should_pass: false
+    description: The target and the mask have no bit in common.
+  - arguments:
+      mask: "0x4F1"
+    target_field: "0X1F"
+    should_pass: true
+    description: The prefix and the digits of the target may be upper case.
+  - arguments:
+      mask: "0x4F1"
+    target_field: "4f1"
+    should_pass: true
+    description: The target may omit the 0x prefix.
+  - arguments:
+      mask: 31
+    target_field: "0x10"
+    should_pass: true
+    description: The mask may be given as an integer.
+  - arguments:
+      mask: "0x4F1"
+    target_field: 16
+    should_pass: true
+    description: The target may be a JSON integer.
+  - arguments:
+      mask: "0x4F1"
+    target_field: 2
+    should_pass: false
+    description: An integer target with no bit in common with the mask.
+  - arguments:
+      mask: "0xff"
+    target_field: "zz"
+    should_pass: false
+    description: The target string is not hexadecimal.
+  - arguments:
+      mask: "0xff"
+    target_field: true
+    should_pass: false
+    description: The target field is a boolean, neither a string nor an integer.
+  - arguments:
+      mask: "0x0"
+    target_field: "0x1"
+    should_pass: false
+    description: A zero mask is rejected at build time.

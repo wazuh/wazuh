@@ -62,6 +62,27 @@ auto jTypeArrayRefExpected(json::Json::Type jType, bool isArray)
     };
 }
 
+// Several references, none of them in the schema
+auto anyRefsExpected()
+{
+    return [](const BuildersMocks& mocks)
+    {
+        EXPECT_CALL(*mocks.ctx, validator()).Times(testing::AtLeast(1));
+        EXPECT_CALL(*mocks.validator, hasField(testing::_)).WillRepeatedly(testing::Return(false));
+        return None {};
+    };
+}
+
+auto anyRefsExpected(json::Json jValue)
+{
+    return [=](const BuildersMocks& mocks)
+    {
+        EXPECT_CALL(*mocks.ctx, validator()).Times(testing::AtLeast(1));
+        EXPECT_CALL(*mocks.validator, hasField(testing::_)).WillRepeatedly(testing::Return(false));
+        return jValue;
+    };
+}
+
 } // namespace
 
 namespace mapbuildtest
@@ -70,11 +91,13 @@ INSTANTIATE_TEST_SUITE_P(
     Builders,
     MapBuilderTest,
     testing::Values(
-        /*** To String ***/
+        /*** To String (to_string) ***/
+        MapT({}, opBuilderHelperNumberToString, FAILURE()),
         MapT({makeRef("ref")}, opBuilderHelperNumberToString, SUCCESS()),
         MapT({makeRef("ref"), makeRef("ref")}, opBuilderHelperNumberToString, FAILURE()),
         MapT({makeValue(R"("value")")}, opBuilderHelperNumberToString, FAILURE()),
-        /*** To Upper ***/
+        MapT({makeValue(R"(1)")}, opBuilderHelperNumberToString, FAILURE()),
+        /*** To Upper (uppercase) ***/
         MapT({}, opBuilderHelperStringUP, FAILURE()),
         MapT({makeValue(R"("value")")}, opBuilderHelperStringUP, SUCCESS()),
         MapT({makeValue(R"(1)")}, opBuilderHelperStringUP, FAILURE()),
@@ -92,7 +115,7 @@ INSTANTIATE_TEST_SUITE_P(
         MapT({makeRef("ref")}, opBuilderHelperStringUP, FAILURE(jTypeRefExpected(json::Json::Type::Null))),
         MapT({makeRef("ref")}, opBuilderHelperStringUP, SUCCESS(jTypeRefExpected(json::Json::Type::String))),
         MapT({makeRef("ref"), makeRef("ref")}, opBuilderHelperStringUP, FAILURE()),
-        /*** To Lower ***/
+        /*** To Lower (lowercase) ***/
         MapT({}, opBuilderHelperStringLO, FAILURE()),
         MapT({makeValue(R"("value")")}, opBuilderHelperStringLO, SUCCESS()),
         MapT({makeValue(R"(1)")}, opBuilderHelperStringLO, FAILURE()),
@@ -110,7 +133,7 @@ INSTANTIATE_TEST_SUITE_P(
         MapT({makeRef("ref")}, opBuilderHelperStringLO, FAILURE(jTypeRefExpected(json::Json::Type::Null))),
         MapT({makeRef("ref")}, opBuilderHelperStringLO, SUCCESS(jTypeRefExpected(json::Json::Type::String))),
         MapT({makeRef("ref"), makeRef("ref")}, opBuilderHelperStringLO, FAILURE()),
-        /*** Concat ***/
+        /*** Concat (concat_all) ***/
         MapT({}, opBuilderHelperStringConcat(), FAILURE()),
         MapT({makeValue(R"("value")")}, opBuilderHelperStringConcat(), FAILURE()),
         MapT({makeValue(R"("value")"), makeValue(R"("value")")}, opBuilderHelperStringConcat(), SUCCESS()),
@@ -143,7 +166,25 @@ INSTANTIATE_TEST_SUITE_P(
         MapT({makeRef("ref"), makeValue(R"("value")")},
              opBuilderHelperStringConcat(),
              SUCCESS(jTypeRefExpected(json::Json::Type::String))),
-        /*** Concat Array ***/
+        /*** Concat Any (concat_any): same build rules as concat_all ***/
+        MapT({}, opBuilderHelperStringConcat(true), FAILURE()),
+        MapT({makeValue(R"("value")")}, opBuilderHelperStringConcat(true), FAILURE()),
+        MapT({makeRef("ref")}, opBuilderHelperStringConcat(true), FAILURE()),
+        MapT({makeValue(R"("value")"), makeValue(R"("value")")}, opBuilderHelperStringConcat(true), SUCCESS()),
+        MapT({makeValue(R"("value")"), makeValue(R"(true)")}, opBuilderHelperStringConcat(true), FAILURE()),
+        MapT({makeValue(R"("value")"), makeValue(R"(null)")}, opBuilderHelperStringConcat(true), FAILURE()),
+        MapT({makeRef("ref"), makeValue(R"("value")")},
+             opBuilderHelperStringConcat(true),
+             SUCCESS(customRefExpected())),
+        MapT({makeRef("ref"), makeRef("ref")}, opBuilderHelperStringConcat(true), SUCCESS(customRefExpected(true))),
+        MapT({makeRef("ref"), makeValue(R"(true)")}, opBuilderHelperStringConcat(true), FAILURE(customRefExpected())),
+        MapT({makeRef("ref"), makeValue(R"("value")")},
+             opBuilderHelperStringConcat(true),
+             FAILURE(jTypeRefExpected(json::Json::Type::Boolean))),
+        MapT({makeRef("ref"), makeValue(R"("value")")},
+             opBuilderHelperStringConcat(true),
+             SUCCESS(jTypeRefExpected(json::Json::Type::String))),
+        /*** Concat Array (join) ***/
         MapT({}, opBuilderHelperStringFromArray, FAILURE()),
         MapT({makeRef("ref"), makeValue(R"(1)")}, opBuilderHelperStringFromArray, FAILURE()),
         MapT({makeRef("ref"), makeValue(R"(1.2)")}, opBuilderHelperStringFromArray, FAILURE()),
@@ -174,7 +215,7 @@ INSTANTIATE_TEST_SUITE_P(
         MapT({makeRef("ref"), makeValue(R"("separator")")},
              opBuilderHelperStringFromArray,
              FAILURE(jTypeArrayRefExpected(json::Json::Type::Null, true))),
-        /*** String from Hexa ***/
+        /*** String from Hexa (decode_hex) ***/
         MapT({}, opBuilderHelperStringFromHexa, FAILURE()),
         MapT({makeValue(R"("48656C6C6F20776F726C6421")")}, opBuilderHelperStringFromHexa, FAILURE()),
         MapT({makeRef("ref")}, opBuilderHelperStringFromHexa, SUCCESS(customRefExpected())),
@@ -192,7 +233,7 @@ INSTANTIATE_TEST_SUITE_P(
         MapT({makeRef("ref")}, opBuilderHelperStringFromHexa, FAILURE(jTypeRefExpected(json::Json::Type::Array))),
         MapT({makeRef("ref")}, opBuilderHelperStringFromHexa, FAILURE(jTypeRefExpected(json::Json::Type::Object))),
         MapT({makeRef("ref")}, opBuilderHelperStringFromHexa, FAILURE(jTypeRefExpected(json::Json::Type::Null))),
-        /*** Hex to Number*/
+        /*** Hex to Number (hex_to_int) ***/
         MapT({}, opBuilderHelperHexToNumber, FAILURE()),
         MapT({makeValue(R"("begin")")}, opBuilderHelperHexToNumber, FAILURE()),
         MapT({makeValue(R"("48656C6C6F20776F726C6421")")}, opBuilderHelperHexToNumber, FAILURE()),
@@ -213,21 +254,33 @@ INSTANTIATE_TEST_SUITE_P(
     Builders,
     MapOperationTest,
     testing::Values(
-        /*** To String ***/
+        /*** To String (to_string) ***/
         MapT(R"({})", opBuilderHelperNumberToString, {makeRef("ref")}, FAILURE()),
         MapT(R"({"notRef": "value"})", opBuilderHelperNumberToString, {makeRef("ref")}, FAILURE()),
         MapT(R"({"ref": 1})", opBuilderHelperNumberToString, {makeRef("ref")}, SUCCESS(json::Json(R"("1")"))),
+        MapT(R"({"ref": -42})", opBuilderHelperNumberToString, {makeRef("ref")}, SUCCESS(json::Json(R"("-42")"))),
+        MapT(R"({"ref": 3000000000})",
+             opBuilderHelperNumberToString,
+             {makeRef("ref")},
+             SUCCESS(json::Json(R"("3000000000")"))),
         MapT(R"({"ref": 2.33875648})",
              opBuilderHelperNumberToString,
              {makeRef("ref")},
              SUCCESS(json::Json(R"("2.338756")"))),
         MapT(R"({"ref": 2.35})", opBuilderHelperNumberToString, {makeRef("ref")}, SUCCESS(json::Json(R"("2.350000")"))),
-        MapT(R"({"ref": "hello"})", opBuilderHelperNumberToString, {makeRef("ref")}, FAILURE()),
-        MapT(R"({"ref": true})", opBuilderHelperNumberToString, {makeRef("ref")}, FAILURE()),
+        // A string is mapped as it is
+        MapT(R"({"ref": "hello"})", opBuilderHelperNumberToString, {makeRef("ref")}, SUCCESS(json::Json(R"("hello")"))),
+        MapT(R"({"ref": ""})", opBuilderHelperNumberToString, {makeRef("ref")}, SUCCESS(json::Json(R"("")"))),
+        // A boolean is mapped as "true"/"false"
+        MapT(R"({"ref": true})", opBuilderHelperNumberToString, {makeRef("ref")}, SUCCESS(json::Json(R"("true")"))),
+        MapT(R"({"ref": false})", opBuilderHelperNumberToString, {makeRef("ref")}, SUCCESS(json::Json(R"("false")"))),
+        // Arrays, objects and null are not converted
         MapT(R"({"ref": [1, 2, 3]})", opBuilderHelperNumberToString, {makeRef("ref")}, FAILURE()),
+        MapT(R"({"ref": []})", opBuilderHelperNumberToString, {makeRef("ref")}, FAILURE()),
         MapT(R"({"ref": {"a": 1, "b": 2}})", opBuilderHelperNumberToString, {makeRef("ref")}, FAILURE()),
+        MapT(R"({"ref": {}})", opBuilderHelperNumberToString, {makeRef("ref")}, FAILURE()),
         MapT(R"({"ref": null})", opBuilderHelperNumberToString, {makeRef("ref")}, FAILURE()),
-        /*** To Upper ***/
+        /*** To Upper (uppercase) ***/
         MapT("{}", opBuilderHelperStringUP, {makeValue(R"("value")")}, SUCCESS(json::Json(R"("VALUE")"))),
         MapT("{}", opBuilderHelperStringUP, {makeValue(R"("VALUE")")}, SUCCESS(json::Json(R"("VALUE")"))),
         MapT(R"({"ref": "value"})",
@@ -246,7 +299,7 @@ INSTANTIATE_TEST_SUITE_P(
         MapT(R"({"ref": [1, 2, 3]})", opBuilderHelperStringUP, {makeRef("ref")}, FAILURE(customRefExpected())),
         MapT(R"({"ref": {"a": 1, "b": 2}})", opBuilderHelperStringUP, {makeRef("ref")}, FAILURE(customRefExpected())),
         MapT(R"({"ref": null})", opBuilderHelperStringUP, {makeRef("ref")}, FAILURE(customRefExpected())),
-        /*** To Lower ***/
+        /*** To Lower (lowercase) ***/
         MapT("{}", opBuilderHelperStringLO, {makeValue(R"("VALUE")")}, SUCCESS(json::Json(R"("value")"))),
         MapT("{}", opBuilderHelperStringLO, {makeValue(R"("value")")}, SUCCESS(json::Json(R"("value")"))),
         MapT(R"({"ref": "VALUE"})",
@@ -268,7 +321,7 @@ INSTANTIATE_TEST_SUITE_P(
              opBuilderHelperStringLO,
              {makeRef("ref")},
              SUCCESS(customRefExpected(json::Json(R"("0val1ue2")")))),
-        /*** Concat ***/
+        /*** Concat (concat_all): a missing reference fails the operation ***/
         MapT("{}",
              opBuilderHelperStringConcat(),
              {makeValue(R"("v")"), makeValue(R"("alue")")},
@@ -313,7 +366,57 @@ INSTANTIATE_TEST_SUITE_P(
              opBuilderHelperStringConcat(),
              {makeRef("ref"), makeValue(R"("alue")")},
              FAILURE(customRefExpected())),
-        /*** Concat Array ***/
+        /*** Concat Any (concat_any): missing references are skipped, but at least one argument must resolve ***/
+        MapT(R"({"ref": "v"})",
+             opBuilderHelperStringConcat(true),
+             {makeRef("ref"), makeValue(R"("alue")")},
+             SUCCESS(customRefExpected(json::Json(R"("value")")))),
+        MapT(R"({"ref": "v"})",
+             opBuilderHelperStringConcat(true),
+             {makeRef("ref"), makeRef("ref")},
+             SUCCESS(anyRefsExpected(json::Json(R"("vv")")))),
+        MapT(R"({"ref": 1})",
+             opBuilderHelperStringConcat(true),
+             {makeRef("ref"), makeValue(R"("alue")")},
+             SUCCESS(customRefExpected(json::Json(R"("1alue")")))),
+        // A missing reference contributes nothing when another argument resolves
+        MapT(R"({"other": "x"})",
+             opBuilderHelperStringConcat(true),
+             {makeRef("ref"), makeRef("other")},
+             SUCCESS(anyRefsExpected(json::Json(R"("x")")))),
+        MapT(R"({"ref": "v"})",
+             opBuilderHelperStringConcat(true),
+             {makeRef("ref"), makeRef("other"), makeValue(R"("alue")")},
+             SUCCESS(anyRefsExpected(json::Json(R"("value")")))),
+        // A literal always resolves
+        MapT("{}",
+             opBuilderHelperStringConcat(true),
+             {makeRef("ref"), makeValue(R"("alue")")},
+             SUCCESS(customRefExpected(json::Json(R"("alue")")))),
+        MapT("{}",
+             opBuilderHelperStringConcat(true),
+             {makeValue(R"("v")"), makeValue(R"("alue")")},
+             SUCCESS(json::Json(R"("value")"))),
+        // No argument resolves -> failure
+        MapT("{}",
+             opBuilderHelperStringConcat(true),
+             {makeRef("ref"), makeRef("ref")},
+             FAILURE(customRefExpected(true))),
+        MapT("{}", opBuilderHelperStringConcat(true), {makeRef("ref"), makeRef("other")}, FAILURE(anyRefsExpected())),
+        MapT(R"({"notRef": "v"})",
+             opBuilderHelperStringConcat(true),
+             {makeRef("ref"), makeRef("other"), makeRef("another")},
+             FAILURE(anyRefsExpected())),
+        // A reference of an unsupported type still fails the operation
+        MapT(R"({"ref": true})",
+             opBuilderHelperStringConcat(true),
+             {makeRef("ref"), makeValue(R"("alue")")},
+             FAILURE(customRefExpected())),
+        MapT(R"({"ref": null})",
+             opBuilderHelperStringConcat(true),
+             {makeRef("ref"), makeValue(R"("alue")")},
+             FAILURE(customRefExpected())),
+        /*** Concat Array (join) ***/
         MapT(R"({"ref": ["v", "a", "l", "u", "e"]})",
              opBuilderHelperStringFromArray,
              {makeRef("ref"), makeValue(R"("")")},
@@ -351,7 +454,7 @@ INSTANTIATE_TEST_SUITE_P(
              opBuilderHelperStringFromArray,
              {makeRef("ref"), makeValue(R"("-")")},
              FAILURE(customRefExpected())),
-        /*** String from Hexa ***/
+        /*** String from Hexa (decode_hex) ***/
         MapT(R"({"ref": "48656C6C6F20776F726C6421"})",
              opBuilderHelperStringFromHexa,
              {makeRef("ref")},
@@ -461,7 +564,7 @@ INSTANTIATE_TEST_SUITE_P(
              opBuilderHelperStringFromHexa,
              {makeRef("ref"), makeValue(R"("quoted")")},
              FAILURE(customRefExpected())),
-        /*** Hex to Number*/
+        /*** Hex to Number (hex_to_int) ***/
         MapT(R"({"ref": "48656C"})",
              opBuilderHelperHexToNumber,
              {makeRef("ref")},
@@ -481,16 +584,16 @@ INSTANTIATE_TEST_SUITE_P(
     testNameFormatter<MapOperationTest>("StrTransform"));
 } // namespace mapoperatestest
 
-namespace decodebase16test
+namespace decodehextest
 {
-// decode_base16 run in test mode, to check the trace of every outcome
-class DecodeBase16Test : public BaseBuilderTest
+// decode_hex run in test mode, to check the trace of every outcome
+class DecodeHexTest : public BaseBuilderTest
 {
 protected:
     void SetUp() override
     {
         BaseBuilderTest::SetUp();
-        mocks->context.opName = "decode_base16";
+        mocks->context.opName = "decode_hex";
         ON_CALL(*mocks->ctx, isTestMode()).WillByDefault(testing::Return(true));
         ON_CALL(*mocks->validator, hasField(testing::_)).WillByDefault(testing::Return(false));
     }
@@ -511,7 +614,7 @@ protected:
     }
 };
 
-TEST_F(DecodeBase16Test, Traces)
+TEST_F(DecodeHexTest, Traces)
 {
     struct Case
     {
@@ -521,30 +624,27 @@ TEST_F(DecodeBase16Test, Traces)
         std::string trace;
     };
     const std::vector<Case> cases {
-        {R"({"ref": "4142"})", false, true, "[decode_base16] -> Success"},
-        {R"({"other": "4142"})", false, false, "[decode_base16] -> Failure: Parameter 'ref' reference not found"},
-        {R"({"ref": ["4142"]})", false, false, "[decode_base16] -> Failure: Parameter 'ref' type is not string"},
-        {R"({"ref": 1})", false, false, "[decode_base16] -> Failure: Parameter 'ref' type is not string"},
-        {R"({"ref": "414"})",
-         false,
-         false,
-         "[decode_base16] -> Failure: Hexa string has not an even quantity of digits"},
+        {R"({"ref": "4142"})", false, true, "[decode_hex] -> Success"},
+        {R"({"other": "4142"})", false, false, "[decode_hex] -> Failure: Parameter 'ref' reference not found"},
+        {R"({"ref": ["4142"]})", false, false, "[decode_hex] -> Failure: Parameter 'ref' type is not string"},
+        {R"({"ref": 1})", false, false, "[decode_hex] -> Failure: Parameter 'ref' type is not string"},
+        {R"({"ref": "414"})", false, false, "[decode_hex] -> Failure: Hexa string has not an even quantity of digits"},
         {R"({"ref": "41G2"})",
          false,
          false,
-         "[decode_base16] -> Failure: Hexa string has a non hexadecimal digit or a non ASCII byte"},
+         "[decode_hex] -> Failure: Hexa string has a non hexadecimal digit or a non ASCII byte"},
         {R"({"ref": "CAFE"})",
          false,
          false,
-         "[decode_base16] -> Failure: Hexa string has a non hexadecimal digit or a non ASCII byte"},
-        {R"({"ref": ["\"a\"", "CAFE"]})", true, true, "[decode_base16] -> Success"},
-        {R"({"ref": "CAFE"})", true, true, "[decode_base16] -> Success"},
-        {R"({"other": []})", true, false, "[decode_base16] -> Failure: Parameter 'ref' reference not found"},
-        {R"({"ref": 1})", true, false, "[decode_base16] -> Failure: Parameter 'ref' type is neither string nor array"},
+         "[decode_hex] -> Failure: Hexa string has a non hexadecimal digit or a non ASCII byte"},
+        {R"({"ref": ["\"a\"", "CAFE"]})", true, true, "[decode_hex] -> Success"},
+        {R"({"ref": "CAFE"})", true, true, "[decode_hex] -> Success"},
+        {R"({"other": []})", true, false, "[decode_hex] -> Failure: Parameter 'ref' reference not found"},
+        {R"({"ref": 1})", true, false, "[decode_hex] -> Failure: Parameter 'ref' type is neither string nor array"},
         {R"({"ref": {"a": "41"}})",
          true,
          false,
-         "[decode_base16] -> Failure: Parameter 'ref' type is neither string nor array"},
+         "[decode_hex] -> Failure: Parameter 'ref' type is neither string nor array"},
     };
 
     for (const auto& c : cases)
@@ -556,7 +656,7 @@ TEST_F(DecodeBase16Test, Traces)
     }
 }
 
-TEST_F(DecodeBase16Test, QuotedModeOnKeywordTarget)
+TEST_F(DecodeHexTest, QuotedModeOnKeywordTarget)
 {
     // A keyword target such as process.args gets the string validator wrapped with asArray() at runtime: an array
     // result with a non-string element fails the whole operation and the target is not set
@@ -577,4 +677,4 @@ TEST_F(DecodeBase16Test, QuotedModeOnKeywordTarget)
     EXPECT_THAT(result.trace(), testing::HasSubstr("schema validation failed"));
     EXPECT_FALSE(event->exists("/process/args"));
 }
-} // namespace decodebase16test
+} // namespace decodehextest

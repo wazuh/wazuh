@@ -1,0 +1,148 @@
+# Name of the helper function
+name: kvdb_get_append
+
+metadata:
+  description: |
+    Looks up every key of `keys` in the KVDB `db` and appends the values found to the target array.
+
+    Behavior:
+    - `db` is a literal string naming a KVDB that must exist, be declared by the integration and be enabled.
+    - `keys` is a literal array of strings or a reference to a field holding an array of strings.
+    - One value is appended per key, in key order; an array value is appended as a single nested element.
+    - Every key must exist in the KVDB and all the values must share one JSON type; otherwise nothing is
+      appended (all-or-nothing).
+    - A missing target field is created; a target that exists but is not an array is overwritten with the
+      new array and its old value is lost.
+    - No duplicate check and no type check against the elements already in the array are done.
+    - When the target field is a schema field the resulting array is validated against it.
+    - An empty key list succeeds and appends nothing.
+    - The KVDB content is loaded when the asset is built: the operation works on that snapshot.
+
+    Build errors:
+    - The KVDB does not exist, is not declared by the integration or is disabled.
+    - `db` is not a literal string, or `keys` is a literal that is not an array.
+    - A number of arguments other than 2.
+
+    Notes:
+    - Unlike `array_append_all`, a target that is not an array is replaced instead of failing the operation.
+  group: kvdb
+  fails_when:
+    - Any key is not present in the KVDB.
+    - The keys reference does not exist, is not an array or holds an element that is not a string.
+    - The values found do not all have the same JSON type.
+    - The resulting array is rejected by the schema validation of the target field.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  db:
+    type: string
+    generate: string
+    source: value
+  keys:
+    type: array
+    generate: string
+    source: both
+
+# a target of another type is overwritten, and random keys are not present in the KVDB
+skipped:
+  - different_target_field_type
+  - success_cases
+
+target_field:
+  type: array
+  generate: all
+
+test:
+  # Keys provided by reference
+  - arguments:
+      db:
+        source: value
+        value: "windows_kerberos_status_code_to_code_name"
+      keys:
+        source: reference
+        value: ["0x0", "0x1", "0x6"]
+    target_field: []
+    should_pass: true
+    expected: [KDC_ERR_NONE, KDC_ERR_NAME_EXP, KDC_ERR_C_PRINCIPAL_UNKNOWN]
+    description: Appends the value of each key of a referenced array
+
+  # Mixed existing and non-existing keys provided by reference
+  - arguments:
+      db:
+        source: value
+        value: "windows_kerberos_status_code_to_code_name"
+      keys:
+        source: reference
+        value: ["0x2", "0x99", "0x6"]
+    target_field: []
+    should_pass: false
+    expected: []
+    description: Fails and appends nothing when a key of the referenced array is not in the KVDB
+
+  # Database does not exist -> build-time error
+  - arguments:
+      db: non-existing-db
+      keys: ["0x0", "0x1"]
+    target_field: [BASE]
+    should_pass: false
+    expected: [BASE]
+    description: Rejected at build time because the KVDB does not exist
+
+  # Append values for multiple existing keys
+  - arguments:
+      db: windows_kerberos_status_code_to_code_name
+      keys: ["0x0", "0x1"]
+    target_field: []
+    should_pass: true
+    expected: [KDC_ERR_NONE, KDC_ERR_NAME_EXP]
+    description: Appends one value per key, in key order
+
+  # Some keys do not exist: the operation fails and nothing is appended
+  - arguments:
+      db: windows_kerberos_status_code_to_code_name
+      keys: ["0x0", "0x99", "0x6"]
+    target_field: []
+    should_pass: false
+    expected: []
+    description: Fails and appends nothing when one of the keys is not in the KVDB
+
+  # Append to a pre-populated array
+  - arguments:
+      db: windows_kerberos_status_code_to_code_name
+      keys: ["0x2"]
+    target_field: [LOCAL_BASE]
+    should_pass: true
+    expected: [LOCAL_BASE, KDC_ERR_SERVICE_EXP]
+    description: Appends the values to an existing array
+
+  # No keys found at all
+  - arguments:
+      db: windows_kerberos_status_code_to_code_name
+      keys: ["0x99", "0x98"]
+    target_field: [BASE]
+    should_pass: false
+    expected: [BASE]
+    description: Fails and leaves the target unchanged when none of the keys is in the KVDB
+
+  # Array value from KVDB: bitmask_test_values -> appended as a single element
+  - arguments:
+      db: windows_kerberos_status_code_to_code_name
+      keys: ["bitmask_test_values"]
+    target_field: []
+    should_pass: true
+    expected: [[0, 1, 2, 3, 4, 16, 17, 18, 19, 20, 24, 28, 29, 30, 31]]
+    description: An array value of the KVDB is appended as a single nested element
+
+  # A target that is not an array is overwritten
+  - arguments:
+      db: windows_kerberos_status_code_to_code_name
+      keys: ["0x0"]
+    target_field: scalar
+    should_pass: true
+    expected: [KDC_ERR_NONE]
+    description: A target that is not an array is replaced by the new array

@@ -1,18 +1,35 @@
+# Name of the helper function
 name: float_calculate
 
 metadata:
   description: |
-    The function `float_calculate` performs basic arithmetic operations on floats and integers.
-    The function receives an operator and two or more operands.
-    The function applies the operator to the first two operands and then applies the result to the next operand.
-    The result of the operation is stored in the field `field`.
-    The function supports the following operators: `sum` (addition), `sub` (subtraction), `mul` (multiplication), and `div` (division).
-  keywords:
-    - math
+    Applies an arithmetic operator to two or more numeric operands, from left to right in double
+    precision, and maps the double result to the target field.
+
+    Behavior:
+    - `operator` is one of the literals `sum`, `sub`, `mul` and `div`; it is applied to the first two
+      operands, then to that result and the next operand, and so on.
+    - Operands can be integers or floating-point numbers, as literals or references.
+    - The result is always a double, even for integer operands: `1 + 1` gives `2.0`.
+    - A result that is infinite or NaN fails.
+
+    Build errors:
+    - `operator` is not a literal or is not one of the four names.
+    - An operand literal that is not a number.
+    - With `div`, a literal `0` in any position after the first operand.
+
+    Notes:
+    - The result is a double: a `long` or `integer` target rejects it at runtime.
+    - `int_calculate` computes exact 64-bit integers.
+  group: number
+  fails_when:
+    - "an operand reference is missing or is not a number"
+    - "a divisor read from a reference is 0"
+    - "the result is infinite or NaN (the double range is exceeded)"
 
 helper_type: map
 
-is_variadic: True
+is_variadic: true
 
 arguments:
   operator:
@@ -47,11 +64,11 @@ general_restrictions:
       operator: div
       operand_right: 0
     details: Division by zero is not allowed (the function will fail).
-  - details: The limit for a float is 3.402823466e+38
+  - details: The arithmetic is done in double precision; a result that is infinite or NaN fails.
 
 output:
   type: number
-  subset: float
+  subset: double
 
 test:
   - arguments:
@@ -59,131 +76,131 @@ test:
       operand_left: 1.7976931348623157e+308
       operand_right: 1.7976931348623157e+308
     should_pass: false
-    description: Sum that produces overflow. The limit for a double is exceeded.
+    description: Fail on a sum whose result is infinite
   - arguments:
       operator: sum
       operand_left: -1.7976931348623157e+308
       operand_right: -1.7976931348623157e+308
     should_pass: false
-    description: Sum that produces overflow. The limit for a double is exceeded.
+    description: Fail on a sum whose result is infinite
   - arguments:
       operator: sub
       operand_left: 1.7976931348623157e+308
       operand_right: -1.7976931348623157e+308
     should_pass: false
-    description: Subtraction that produces overflow. The limit for a double is exceeded.
+    description: Fail on a subtraction whose result is infinite
   - arguments:
       operator: sub
       operand_left: -1.7976931348623157e+308
       operand_right: 1.7976931348623157e+308
     should_pass: false
-    description: Subtraction that produces overflow. The limit for a double is exceeded.
+    description: Fail on a subtraction whose result is infinite
   - arguments:
       operator: mul
       operand_left: 1.7976931348623157e+308
       operand_right: 2.0
     should_pass: false
-    description: Multiplication that produces overflow. The limit for a double is exceeded.
+    description: Fail on a multiplication whose result is infinite
   - arguments:
       operator: mul
       operand_left: 1.7976931348623157e+308
       operand_right: -2.0
     should_pass: false
-    description: Multiplication that produces overflow. The limit for a double is exceeded.
+    description: Fail on a multiplication whose result is infinite
   - arguments:
       operator: div
       operand_left: 0.0
       operand_right: 8
     should_pass: true
     expected: 0.0
-    description: Any division with a numerator equal to zero results in zero as long as the denominator is different from 0.
+    description: Divide a zero numerator, which gives zero as long as the divisor is not zero
   - arguments:
       operator: div
       operand_left: 5
       operand_right: 0.0
     should_pass: false
-    description: Any division with a denominator equal to zero is an indeterminate operation.
+    description: Fail on a division by zero
   - arguments:
       operator: sum
       operand_left: -1.53
       operand_right: 1
     should_pass: true
     expected: -0.53
-    description: Sum float with integer
+    description: Add a float and an integer
   - arguments:
       operator: sum
       operand_left: 1
       operand_right: 1
     should_pass: true
     expected: 2.0
-    description: Sum integer with integer
+    description: Add two integers, which gives a double
   - arguments:
       operator: sum
       operand_left: 2.676
       operand_right: 3.756
     should_pass: true
     expected: 6.432
-    description: Sum float with float
+    description: Add two floats
   - arguments:
       operator: sub
       operand_left: 1.53
       operand_right: -1
     should_pass: true
     expected: 2.5300000000000002
-    description: Sub float with integer
+    description: Subtract an integer from a float
   - arguments:
       operator: sub
       operand_left: -1
       operand_right: -1
     should_pass: true
     expected: 0.0
-    description: Sub integer with integer
+    description: Subtract two integers, which gives a double
   - arguments:
       operator: sub
       operand_left: -2.676
       operand_right: -3.756
     should_pass: true
     expected: 1.0799999999999996
-    description: Sub float with float
+    description: Subtract two floats
   - arguments:
       operator: mul
       operand_left: 12.53
       operand_right: -3
     should_pass: true
     expected: -37.589999999999996
-    description: Mul float with integer
+    description: Multiply a float by an integer
   - arguments:
       operator: mul
       operand_left: -45
       operand_right: 2
     should_pass: true
-    expected: -90
-    description: Mul integer with integer
+    expected: -90.0
+    description: Multiply two integers, which gives a double
   - arguments:
       operator: mul
       operand_left: -2.676
       operand_right: -3.756
     should_pass: true
     expected: 10.051056
-    description: Mul float with float
+    description: Multiply two floats
   - arguments:
       operator: div
       operand_left: 12.53
       operand_right: -3
     should_pass: true
     expected: -4.176666666666667
-    description: Div float with integer
+    description: Divide a float by an integer
   - arguments:
       operator: div
       operand_left: -45
       operand_right: 2
     should_pass: true
     expected: -22.5
-    description: Div integer with integer
+    description: Divide two integers, which keeps the fraction
   - arguments:
       operator: div
       operand_left: -2.676
       operand_right: -3.756
     should_pass: true
     expected: 0.7124600638977636
-    description: Div float with float
+    description: Divide two floats

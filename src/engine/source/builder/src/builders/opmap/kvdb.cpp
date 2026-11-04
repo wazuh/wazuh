@@ -78,8 +78,29 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
                     const bool doMerge,
                     const bool isRecursive)
 {
-    // Assert expected number of parameters
-    utils::assertSize(opArgs, 2);
+    // Assert expected number of parameters: (db, key) plus the optional 'deep' mode when merging
+    if (doMerge)
+    {
+        utils::assertSize(opArgs, 2, 3);
+    }
+    else
+    {
+        utils::assertSize(opArgs, 2);
+    }
+
+    bool recursive = isRecursive;
+    if (opArgs.size() == 3)
+    {
+        utils::assertValue(opArgs, 2);
+        std::string mode;
+        if (std::static_pointer_cast<Value>(opArgs[2])->value().getString(mode) != json::RetGet::Success
+            || mode != "deep")
+        {
+            throw std::runtime_error(
+                fmt::format("Expected the literal 'deep' as third argument but got '{}'", opArgs[2]->str()));
+        }
+        recursive = true;
+    }
 
     // Allowed fields check
     const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
@@ -235,7 +256,7 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
             allowedFieldsPtr,
             kvdbHandler = std::move(kvdbHandler),
             doMerge,
-            isRecursive](base::Event event) -> TransformResult
+            recursive](base::Event event) -> TransformResult
     {
         // Get DB key
         std::string resolvedKey;
@@ -297,7 +318,7 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
                     RETURN_FAILURE(isTestMode, event, failureTrace5)
                 }
 
-                event->merge(isRecursive ? json::RECURSIVE : json::NOT_RECURSIVE, value, targetJsonPath);
+                event->merge(recursive ? json::RECURSIVE : json::NOT_RECURSIVE, value, targetJsonPath);
             }
             else
             {
@@ -317,7 +338,7 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
     };
 }
 
-// <field>: +kvdb_get/<DB>/<ref_key>
+// <field>: kvdb_get('db', key)
 TransformBuilder getOpBuilderKVDBGet(std::shared_ptr<IKVDBManager> kvdbManager)
 {
     return [kvdbManager](const Reference& targetField,
@@ -328,7 +349,7 @@ TransformBuilder getOpBuilderKVDBGet(std::shared_ptr<IKVDBManager> kvdbManager)
     };
 }
 
-// <field>: +kvdb_get_merge/<DB>/<ref_key>
+// <field>: kvdb_get_merge('db', key[, 'deep'])
 TransformBuilder getOpBuilderKVDBGetMerge(std::shared_ptr<IKVDBManager> kvdbManager)
 {
     return [kvdbManager](const Reference& targetField,
@@ -336,17 +357,6 @@ TransformBuilder getOpBuilderKVDBGetMerge(std::shared_ptr<IKVDBManager> kvdbMana
                          const std::shared_ptr<const IBuildCtx>& buildCtx)
     {
         return KVDBGet(kvdbManager, targetField, opArgs, buildCtx, true);
-    };
-}
-
-// <field>: +kvdb_get_merge_recursive/<DB>/<ref_key>
-TransformBuilder getOpBuilderKVDBGetMergeRecursive(std::shared_ptr<IKVDBManager> kvdbManager)
-{
-    return [kvdbManager](const Reference& targetField,
-                         const std::vector<OpArg>& opArgs,
-                         const std::shared_ptr<const IBuildCtx>& buildCtx)
-    {
-        return KVDBGet(kvdbManager, targetField, opArgs, buildCtx, true, true);
     };
 }
 
@@ -442,7 +452,7 @@ FilterOp existanceCheck(std::shared_ptr<IKVDBManager> kvdbManager,
     };
 }
 
-// <field>: +kvdb_match/<DB>
+// <field>: +in_kvdb/<DB>
 FilterBuilder getOpBuilderKVDBMatch(std::shared_ptr<IKVDBManager> kvdbManager)
 {
     return [kvdbManager](const Reference& targetField,
@@ -453,7 +463,7 @@ FilterBuilder getOpBuilderKVDBMatch(std::shared_ptr<IKVDBManager> kvdbManager)
     };
 }
 
-// <field>: +kvdb_not_match/<DB>
+// <field>: +not_in_kvdb/<DB>
 FilterBuilder getOpBuilderKVDBNotMatch(std::shared_ptr<IKVDBManager> kvdbManager)
 {
     return [kvdbManager](const Reference& targetField,
@@ -464,7 +474,7 @@ FilterBuilder getOpBuilderKVDBNotMatch(std::shared_ptr<IKVDBManager> kvdbManager
     };
 }
 
-// <field>: kvdb_get_array(<db>, <key_array>)
+// <field>: kvdb_get_append(<db>, <key_array>)
 TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbManager)
 {
     return [kvdbManager](const Reference& targetField,

@@ -1,0 +1,93 @@
+# Name of the helper function
+name: parse_uri
+
+metadata:
+  description: |
+    Parses the input URL and writes its parts as members of the target object.
+
+    Behavior:
+    - The whole input is validated with libcurl; a scheme is required (there is no default scheme).
+    - These members are written into the target field as strings, keeping any other member it has, each
+      one only when the URL contains it: `original` (the URL as normalized by libcurl, for example with the
+      `/` path added), `scheme`, `domain`, `port` (a string, not a number), `path`, `query`, `fragment`,
+      `username` and `password`.
+    - A target that is not an object becomes one.
+
+    Build errors:
+    - `input` is not a reference, or references a schema field that is not a string.
+    - A number of arguments other than 1.
+    - The target field is a schema field that is not an object.
+
+    Notes:
+    - `port` is written as a string also when the target is a schema object with a numeric `port` field.
+    - `parse_fqdn` validates a bare domain name.
+  group: parse
+  fails_when:
+    - The input field does not exist or is not a string.
+    - The input is not a URL accepted by libcurl, a missing scheme included.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  input:
+    type: string
+    generate: string
+    source: reference
+
+# string generation is random, and a target of another type is turned into an object
+skipped:
+  - success_cases
+  - different_target_field_type
+
+target_field:
+  type: object
+  generate: object
+
+test:
+  - arguments:
+      input: http://someurl.com
+    target_field: any_value
+    should_pass: true
+    expected:
+      original: http://someurl.com/
+      scheme: http
+      domain: someurl.com
+      path: "/"
+    description: The normalized URL and its parts are written; the missing path becomes /
+  - arguments:
+      input: https://user:pw@host.com:8080/p?q=1#f
+    target_field: any_value
+    should_pass: true
+    expected:
+      original: https://user:pw@host.com:8080/p?q=1#f
+      scheme: https
+      domain: host.com
+      port: "8080"
+      path: /p
+      query: q=1
+      fragment: f
+      username: user
+      password: pw
+    description: Every part present in the URL is written, the port as a string
+  - arguments:
+      input: www.someurl.com
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Fails without a scheme
+  - arguments:
+      input: www.someurl.com
+    target_field: true
+    should_pass: false
+    expected: true
+    description: A boolean target is left unchanged when the input is not a URL
+  - arguments:
+      input: www.someurl.com
+    target_field: [true]
+    should_pass: false
+    expected: [true]
+    description: An array target is left unchanged when the input is not a URL

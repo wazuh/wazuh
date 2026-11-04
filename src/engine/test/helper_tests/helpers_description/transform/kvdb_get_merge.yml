@@ -1,0 +1,266 @@
+# Name of the helper function
+name: kvdb_get_merge
+
+metadata:
+  description: |
+    Merges the value stored under `key` in the KVDB `db` into the target field.
+
+    Behavior:
+    - `db` is a literal string naming a KVDB that must exist, be declared by the integration and be enabled.
+    - `key` is a literal string or a reference to a string field.
+    - The target field must already exist and have the same type as the value: both objects, or both arrays.
+    - Objects, default mode: the top-level members of the value are added to the target; on a shared key the
+      KVDB value wins and a nested object is replaced as a whole.
+    - Objects, `deep` mode: a shared key whose KVDB value is an object or an array is merged recursively; a
+      scalar overwrites the target member.
+    - Arrays, both modes: a de-duplicated union; the elements of the KVDB array that are not already in the
+      target are appended in KVDB order, nothing is removed or duplicated.
+    - When the target field is a schema field the KVDB value (not the merged result) is validated against its
+      type before the merge.
+    - The KVDB content is loaded when the asset is built: the operation works on that snapshot.
+
+    Build errors:
+    - The KVDB does not exist, is not declared by the integration or is disabled.
+    - `db` is not a literal string, or `key` is a literal that is not a string.
+    - A third argument other than the literal `deep`, or more than 3 arguments.
+    - The target field is a schema field that is not an object.
+    - The target field is not a schema field and does not start with `_`.
+
+    Notes:
+    - In `deep` mode an object or array in the KVDB value whose counterpart in the target has another type
+      fails the operation; the members merged before the conflict stay modified.
+    - `lookup_merge` does the same merge with a value taken from an object.
+  group: kvdb
+  fails_when:
+    - The key is not present in the KVDB.
+    - The key reference does not exist or is not a string.
+    - The target field does not exist or its type differs from the type of the value.
+    - The value is neither an object nor an array.
+    - The value does not pass the schema validation of the target field.
+    - In deep mode, a nested member is an object or array in the value and has another type in the target.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  db:
+    type: string
+    generate: string
+    source: value
+  key:
+    type: string
+    generate: string
+    source: both
+  mode:
+    type: string
+    generate: string
+    source: value
+    optional: true
+    restrictions:
+      allowed:
+        - deep
+
+skipped:
+  - success_cases
+
+# Target field must be an object or an array to be mergeable
+target_field:
+  type:
+    - object
+    - array
+
+test:
+  # Type mismatch resolving the key via reference
+  - arguments:
+      db:
+        source: value
+        value: "windows_kerberos_status_code_to_code_name"
+      key:
+        source: reference
+        value: "0x2"
+    target_field:
+      status: "INITIAL"
+    should_pass: false
+    expected:
+      status: "INITIAL"
+    description: Fails when the KVDB value of a referenced key is a string and the target is an object
+
+  # Database does not exist -> build-time error
+  - arguments:
+      db: non-existing-db
+      key: "0x0"
+    target_field:
+      merged:
+        status: "INITIAL"
+    should_pass: false
+    expected:
+      merged:
+        status: "INITIAL"
+    description: Rejected at build time because the KVDB does not exist
+
+  # Database exists but key does not exist -> the operation fails
+  - arguments:
+      db: windows_kerberos_status_code_to_code_name
+      key: "0x99"
+    target_field:
+      merged:
+        status: "INITIAL"
+    should_pass: false
+    expected:
+      merged:
+        status: "INITIAL"
+    description: Fails and leaves the target unchanged when the key is not in the KVDB
+
+  # Type mismatch: target object vs KVDB string
+  - arguments:
+      db: windows_kerberos_status_code_to_code_name
+      key: "0x0"
+    target_field:
+      status: "INITIAL"
+    should_pass: false
+    expected:
+      status: "INITIAL"
+    description: Fails when the KVDB value is a string and the target is an object
+
+  # Type mismatch: target array vs KVDB string
+  - arguments:
+      db: windows_kerberos_status_code_to_code_name
+      key: "0x1"
+    target_field: ["KDC_ERR_OLD"]
+    should_pass: false
+    expected: ["KDC_ERR_OLD"]
+    description: Fails when the KVDB value is a string and the target is an array
+
+  # Shallow merge of objects: KVDB "access_mask" overrides and extends the target object
+  - arguments:
+      db: windows_kerberos_status_code_to_code_name
+      key: "access_mask"
+    target_field:
+      "0": "LOCAL_OVERRIDE"
+      "99": "LOCAL_CUSTOM"
+    should_pass: true
+    expected:
+      "0": "Create Child"
+      "1": "Delete Child"
+      "2": "List Contents"
+      "3": "SELF"
+      "4": "Read Property"
+      "5": "Write Property"
+      "6": "Delete Tree"
+      "7": "List Object"
+      "8": "Control Access"
+      "16": "DELETE"
+      "17": "READ_CONTROL"
+      "18": "WRITE_DAC"
+      "19": "WRITE_OWNER"
+      "20": "SYNCHRONIZE"
+      "24": "ADS_RIGHT_ACCESS_SYSTEM_SECURITY"
+      "31": "ADS_RIGHT_GENERIC_READ"
+      "30": "ADS_RIGHT_GENERIC_WRITE"
+      "29": "ADS_RIGHT_GENERIC_EXECUTE"
+      "28": "ADS_RIGHT_GENERIC_ALL"
+      "99": "LOCAL_CUSTOM"
+    description: Merges the KVDB object into the target, the KVDB winning on shared keys and local-only keys kept
+
+  # Union of arrays
+  - arguments:
+      db: windows_kerberos_status_code_to_code_name
+      key: "bitmask_test_values"
+    target_field:
+      - -1
+    should_pass: true
+    expected:
+      - -1
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+      - 16
+      - 17
+      - 18
+      - 19
+      - 20
+      - 24
+      - 28
+      - 29
+      - 30
+      - 31
+    description: Appends the KVDB array elements that are not already in the target array
+
+  # Deep merge of objects
+  - arguments:
+      db: windows_kerberos_status_code_to_code_name
+      key: "access_mask"
+      mode: deep
+    target_field:
+      "0": "LOCAL_OVERRIDE"
+      "99": "LOCAL_CUSTOM"
+    should_pass: true
+    expected:
+      "0": "Create Child"
+      "1": "Delete Child"
+      "2": "List Contents"
+      "3": "SELF"
+      "4": "Read Property"
+      "5": "Write Property"
+      "6": "Delete Tree"
+      "7": "List Object"
+      "8": "Control Access"
+      "16": "DELETE"
+      "17": "READ_CONTROL"
+      "18": "WRITE_DAC"
+      "19": "WRITE_OWNER"
+      "20": "SYNCHRONIZE"
+      "24": "ADS_RIGHT_ACCESS_SYSTEM_SECURITY"
+      "31": "ADS_RIGHT_GENERIC_READ"
+      "30": "ADS_RIGHT_GENERIC_WRITE"
+      "29": "ADS_RIGHT_GENERIC_EXECUTE"
+      "28": "ADS_RIGHT_GENERIC_ALL"
+      "99": "LOCAL_CUSTOM"
+    description: In deep mode the scalar members of the KVDB object overwrite the shared keys as well
+
+  # Deep merge of arrays
+  - arguments:
+      db: windows_kerberos_status_code_to_code_name
+      key: "bitmask_test_values"
+      mode: deep
+    target_field:
+      - -1
+      - 16
+    should_pass: true
+    expected:
+      - -1
+      - 16
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+      - 17
+      - 18
+      - 19
+      - 20
+      - 24
+      - 28
+      - 29
+      - 30
+      - 31
+    description: In deep mode arrays merge as the same de-duplicated union
+
+  # Deep mode: key not found
+  - arguments:
+      db: windows_kerberos_status_code_to_code_name
+      key: "0x99"
+      mode: deep
+    target_field:
+      kerberos:
+        status: "INITIAL"
+    should_pass: false
+    expected:
+      kerberos:
+        status: "INITIAL"
+    description: In deep mode a key that is not in the KVDB fails as well

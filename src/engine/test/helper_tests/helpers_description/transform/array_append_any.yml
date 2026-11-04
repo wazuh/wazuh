@@ -1,0 +1,109 @@
+# Name of the helper function
+name: array_append_any
+
+metadata:
+  description: |
+    Appends the arguments that resolve to the array stored in the target field, skipping the references that
+    do not exist.
+
+    Behavior:
+    - The target field must be an array or be missing; a missing target is created as an empty array first.
+    - Each argument is a literal of any JSON type or a reference to a field, and is appended as one element,
+      in argument order, without removing duplicates.
+    - A reference that does not exist in the event is skipped; the other arguments are still appended.
+    - Every element must share one JSON type: the schema type of the target field when it has one, otherwise
+      the type of the first element already in the array, otherwise the type of the first argument that
+      resolves. Integers and floating-point values count as the same type (number). A reference that exists
+      with another type is not skipped: it fails the operation.
+    - The operation fails when nothing was appended, for example when every reference is missing.
+    - The operation is all-or-nothing: the array is rewritten only after every argument has been accepted,
+      so a failure leaves the target field unchanged.
+
+    Build errors:
+    - No arguments, or more than 150 arguments.
+    - A literal argument whose JSON type differs from the element type of a schema target field.
+    - The target field is not a schema field and does not start with `_`.
+
+    Notes:
+    - With literal arguments only, the behavior is the same as `array_append_all`.
+    - A target field that exists and is not an array makes the operation fail; it is never overwritten.
+  group: array
+  fails_when:
+    - The target field exists and is not an array.
+    - No argument was appended because every reference is missing.
+    - A resolved argument has a JSON type different from the element type of the array.
+    - The resulting array is rejected by the schema validation of the target field.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: true
+
+# Arguments expected by the helper function
+arguments:
+  value:
+    type:
+      - number
+      - string
+      - object
+      - boolean
+      - array
+    source: both
+
+# adding elements of different type of target_field is not allowed
+skipped:
+  - success_cases
+
+target_field:
+  type: array
+  generate: all
+
+test:
+  - arguments:
+      value:
+        source: reference
+        value: null
+      value_1:
+        source: reference
+        value: 6
+    target_field: [1,2,3,4]
+    should_pass: true
+    expected: [1,2,3,4,6]
+    description: A missing reference is skipped and the one that resolves is appended
+  - arguments:
+      value:
+        source: value
+        value: 5
+      value_1:
+        source: reference
+        value: null
+    target_field: [1,2,3,4]
+    should_pass: true
+    expected: [1,2,3,4,5]
+    description: A literal is appended although the reference after it is missing
+  - arguments:
+      value:
+        source: reference
+        value: null
+      value_1:
+        source: reference
+        value: null
+    target_field: [1,2,3,4]
+    should_pass: false
+    expected: [1,2,3,4]
+    description: Fails when every reference is missing because nothing is appended
+  - arguments:
+      value:
+        source: reference
+        value: hello
+    target_field: [1,2,3,4]
+    should_pass: false
+    expected: [1,2,3,4]
+    description: A reference that resolves to another type is not skipped and fails the operation
+  - arguments:
+      value: 5
+      value_1: 6
+    target_field: [1,2,3,4]
+    should_pass: true
+    expected: [1,2,3,4,5,6]
+    description: Literal numbers are appended in argument order

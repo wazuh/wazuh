@@ -1,0 +1,71 @@
+# Name of the helper function
+name: regex_not_match
+
+metadata:
+  description: |
+    Checks whether the target string does not match the regular expression `regex`.
+
+    Behavior:
+    - `regex` is a literal pattern compiled with RE2 (syntax: https://github.com/google/re2/wiki/Syntax) with
+      the default options: UTF-8, case-sensitive, `.` does not match a newline.
+    - The match is unanchored: the check fails as soon as the pattern matches anywhere in the string. Use `^`
+      and `$` to constrain the match to the whole string.
+    - A missing or non-string target gives false, so this is not the same as `NOT regex_match(...)`, which is
+      true for a missing field.
+
+    Build errors:
+    - `regex` is not a valid RE2 pattern.
+    - `regex` is a reference or a literal that is not a string.
+    - The target is a schema field whose type is not a string type.
+
+    Notes:
+    - Quote the pattern when it contains a comma, a closing parenthesis or a space, and mind the YAML escaping
+      rules for backslashes.
+    - An empty pattern matches every string, so the check is always false with it.
+  group: string
+  fails_when:
+    - The target field does not exist.
+    - The target field is not a string.
+    - The pattern matches the target string.
+
+helper_type: check
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  regex:
+    type: string
+    generate: regex
+    source: value # only literal values, not references
+
+# the generated success cases use a pattern that does not match the generated target
+skipped:
+  - success_cases
+
+target_field:
+  type: string
+  generate: string
+
+test:
+  - arguments:
+      regex: "^abc"
+    target_field: "hello world"
+    should_pass: true
+    description: The pattern does not match the string.
+  - arguments:
+      regex: "^abc"
+    target_field: "abc123"
+    should_pass: false
+    description: The pattern matches the string.
+  - arguments:
+      regex: "abc"
+    target_field: "123abc"
+    should_pass: false
+    description: An unanchored pattern matches in the middle of the string, so the check fails.
+  - arguments:
+      regex: "^(bye pcre\\d)$"
+    target_field: 123
+    should_pass: false
+    description: The target field is a number, not a string.

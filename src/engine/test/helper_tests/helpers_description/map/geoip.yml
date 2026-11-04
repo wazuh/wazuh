@@ -3,36 +3,50 @@ name: geoip
 
 metadata:
   description: |
-    Performs a query to the maxmind GeoLite2-City database (provided by Maxmind Inc.   https://www.maxmind.com ).
-    In case of errors the target field will not be modified.
-    In case of success it will return an object with the following fields:
-      - city_name: mapping of the 'city.names.en' field of the mmdb entry.
-      - continent_code: mapping of the 'continent.code' field of the mmdb entry.
-      - continent_name: mapping of the 'continent.names.en' field of the mmdb entry.
-      - country_iso_code: mapping of the 'country.iso_code' field of the mmdb entry.
-      - country_name: mapping of the 'country.names.en' field of the mmdb entry.
-      - postal_code: mapping of the 'postal.code' field of the mmdb entry.
-      - location.lat: mapping of the 'location.latitude' field of the mmdb entry.
-      - location.lon: mapping of the 'location.longitude' field of the mmdb entry.
-      - timezone: mapping of the 'location.time_zone' field of the mmdb entry.
-      - region_iso_code: mapping of the 'subdivisions.0.iso_code' field of the mmdb entry.
-      - region_name: mapping of the 'subdivisions.0.names.en' field of the mmdb entry.
-  keywords:
-    - max_min_db
+    Looks up the location of an IP address in the GeoLite2-City database (MaxMind) and maps the result
+    object to the target field.
+
+    Behavior:
+    - `ip` is a reference to a string holding an IPv4 or IPv6 address.
+    - The result holds these keys, each present only when the database entry has the field:
+      - `city_name`: `city.names.en`
+      - `continent_code`: `continent.code`
+      - `continent_name`: `continent.names.en`
+      - `country_iso_code`: `country.iso_code`
+      - `country_name`: `country.names.en`
+      - `location.lat`: `location.latitude` (double)
+      - `location.lon`: `location.longitude` (double)
+      - `postal_code`: `postal.code`
+      - `timezone`: `location.time_zone`
+      - `region_iso_code`: `subdivisions.0.iso_code`
+      - `region_name`: `subdivisions.0.names.en`
+    - On success the whole target value is replaced by the object.
+
+    Build errors:
+    - The number of arguments is not exactly 1, or `ip` is not a reference.
+    - `ip` is a schema field whose type is not `ip` (for example `keyword` or `text`).
+    - The City database is not available.
+
+    Notes:
+    - `asn` queries the ASN database instead.
+    - The `geo` enrichment maps the same fields automatically for the IP fields of the schema; it
+      writes them leaf by leaf, while `geoip` replaces the target object.
+  group: network
+  fails_when:
+    - "`ip` is missing or is not a string (an array is rejected too)"
+    - "the database has no entry for the address, or the string is not a valid IP"
 
 helper_type: map
 
-# Indicates whether the helper function supports a variable number of arguments
-is_variadic: True
+is_variadic: false
 
-# Arguments expected by the helper function
 arguments:
   ip:
-    type: string # Expected type is string
+    type: string
     generate: ip
-    source: reference # Includes only references (their names start with $)
+    source: reference
 
-# Empty wcs data
+# The test database has no entry for the generated addresses
 skipped:
   - success_cases
 
@@ -44,15 +58,14 @@ test:
       ip: 1.2.3.4
     should_pass: true
     expected:
-        city_name: Wazuh city
-        timezone: Wazuh/Timezone
-        country_name: Wazuh Country
-        continent_code: WC
-        continent_name: Wazuh Continent
-        country_iso_code: WCtry
-        postal_code: "7777"
-        location:
-            lon: 88.4293
-            lat: 41.7776
-
-    description: Get geo of public ip
+      city_name: Wazuh city
+      timezone: Wazuh/Timezone
+      country_name: Wazuh Country
+      continent_code: WC
+      continent_name: Wazuh Continent
+      country_iso_code: WCtry
+      postal_code: "7777"
+      location:
+        lon: 88.4293
+        lat: 41.7776
+    description: Look up the location of a public IP present in the test database

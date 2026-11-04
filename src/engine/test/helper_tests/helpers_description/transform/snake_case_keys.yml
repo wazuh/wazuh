@@ -1,0 +1,205 @@
+# Name of the helper function
+name: snake_case_keys
+
+metadata:
+  description: |
+    Rewrites the keys of the target object as lowercase snake_case; applied to an array it rewrites its
+    strings and the keys of its objects, and applied to a string it rewrites the string itself.
+
+    Behavior:
+    - Every key or string is normalized the same way: ASCII letters are lowercased and letters and digits are
+      kept; a space, `/`, `.`, `-`, `\`, `:` or `_` becomes a single `_` (a run of them collapses into one and
+      a leading `_` is never emitted); every other character, non-ASCII bytes included, is dropped; a trailing
+      `_` is removed. So `Full Name` becomes `full_name` and `_tmp` becomes `tmp`.
+    - Object target: its keys are renamed. Nested objects are visited only in `deep` mode, which also visits
+      the arrays held by object members (their objects get their keys renamed, their strings are kept).
+    - Array target: its string elements are normalized and its object elements get their keys renamed; nested
+      arrays are always processed, with or without `deep`.
+    - String target: the string itself is normalized.
+    - The change is atomic: every key and string is validated first, and the event is rewritten only when all
+      of them are accepted.
+
+    Build errors:
+    - An argument other than the literal `deep`.
+    - More than 1 argument.
+
+    Notes:
+    - Two keys that normalize to the same name make the operation fail; nothing is silently overwritten.
+    - A key or string that normalizes to an empty string makes the operation fail.
+    - A visited array that holds a number, a boolean or `null` makes the operation fail; in `deep` mode this
+      includes the arrays under object members, such as `{"ports": [80]}`.
+    - Leading digits are kept: `123abc` stays `123abc`.
+  group: object
+  fails_when:
+    - The target field does not exist, or is a number, a boolean or null.
+    - Two keys normalize to the same name.
+    - A key or a string normalizes to an empty string.
+    - A visited array contains a number, a boolean or null.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  mode:
+    type: string
+    generate: string
+    source: value
+    optional: true
+    restrictions:
+      allowed:
+        - deep
+
+# the generator does not know that `mode` is optional: a call without it is valid
+skipped:
+  - success_cases
+  - fewer_arguments
+
+target_field:
+  type:
+    - object
+    - array
+    - string
+
+# The cases without arguments come first: the generator reuses the arguments of the previous case when a
+# case declares none
+test:
+  # 1) Identity (no change expected)
+  - target_field: {"a":1,"b":2}
+    should_pass: true
+    expected: {"a":1,"b":2}
+    description: Keys that are already normalized are kept
+
+  # 2) Basic snake_case for keys
+  - target_field: {"Full Name":"Ana","e-mail":"x","Pais":"AR"}
+    should_pass: true
+    expected: {"full_name":"Ana","e_mail":"x","pais":"AR"}
+    description: Keys are lowercased and separators become underscores
+
+  # 3) Collision after normalization -> fail
+  - target_field: {"hello world":1,"hello-world":2}
+    should_pass: false
+    description: Fails because both keys normalize to hello_world
+
+  # 4) Leading digit is kept
+  - target_field: {"123abc":1,"x":2}
+    should_pass: true
+    expected: {"123abc":1,"x":2}
+    description: A key starting with a digit is kept as it is
+
+  # 5) Leading underscore is dropped
+  - target_field: {"_Tmp Key":1}
+    should_pass: true
+    expected: {"tmp_key":1}
+    description: A leading underscore is never emitted
+
+  # 6) Nested object keys are not visited without deep
+  - target_field: {"Outer Key":{"Inner Key":1}}
+    should_pass: true
+    expected: {"outer_key":{"Inner Key":1}}
+    description: Without deep only the top-level keys are renamed
+
+  # 7) Array of strings is normalized element-wise
+  - target_field: ["Hello world","hello-world","HELLO  world"]
+    should_pass: true
+    expected: ["hello_world","hello_world","hello_world"]
+    description: The strings of an array target are normalized
+
+  # 8) Array of objects is normalized object-wise
+  - target_field: [{"Full Name":"Ana"},{"e-mail":"x"}]
+    should_pass: true
+    expected: [{"full_name":"Ana"},{"e_mail":"x"}]
+    description: The keys of the objects of an array target are renamed
+
+  # 9) Mixed array (string + object)
+  - target_field: ["Hello world", {"Full Name":"Ana"}]
+    should_pass: true
+    expected: ["hello_world", {"full_name":"Ana"}]
+    description: An array mixing strings and objects is supported
+
+  # 10) Arrays with unsupported primitives -> fail
+  - target_field: [1, {"a":1}]
+    should_pass: false
+    description: Fails because the array holds a number
+  - target_field: [true, {"a":1}]
+    should_pass: false
+    description: Fails because the array holds a boolean
+  - target_field: [null, {"a":1}]
+    should_pass: false
+    description: Fails because the array holds null
+
+  # 11) Nested arrays are always processed
+  - target_field: [["Hello world","hello-world"], [{"Full Name":"Ana"}]]
+    should_pass: true
+    expected: [["hello_world","hello_world"], [{"full_name":"Ana"}]]
+    description: Nested arrays are processed without deep
+
+  # 12) Duplicate strings allowed in arrays after normalization
+  - target_field: ["a b","a-b","a_b"]
+    should_pass: true
+    expected: ["a_b","a_b","a_b"]
+    description: Strings of an array may normalize to the same value
+
+  # 13) Key becomes empty after normalization -> fail
+  - target_field: {"***": 1}
+    should_pass: false
+    description: Fails because every character of the key is dropped and the key becomes empty
+
+  # 14) Multiple mixed separators collapse to a single underscore
+  - target_field: {"a\\\\b///c::d  e": 1}
+    should_pass: true
+    expected: {"a_b_c_d_e": 1}
+    description: Runs of backslashes, slashes, colons and spaces collapse into single underscores
+
+  # 15) Trailing separator is trimmed (no trailing underscore)
+  - target_field: {"name:": 1}
+    should_pass: true
+    expected: {"name": 1}
+    description: A trailing separator does not leave a trailing underscore
+
+  # 16) Only separators -> becomes empty -> fail
+  - target_field: {":\\ /- .": 1}
+    should_pass: false
+    description: Fails because a key made only of separators normalizes to an empty string
+
+  # 17) Arrays of strings with backslash and colon
+  - target_field: ["A\\B:C", "X:Y\\Z"]
+    should_pass: true
+    expected: ["a_b_c", "x_y_z"]
+    description: Backslashes and colons inside strings become underscores
+
+  # 18) Standalone string is normalized
+  - target_field: "HELLO-world\\TEST"
+    should_pass: true
+    expected: "hello_world_test"
+    description: A string target is normalized itself
+
+  # 19) Standalone string becomes empty after normalization -> fail
+  - target_field: "::::"
+    should_pass: false
+    description: Fails because the string normalizes to an empty string
+
+  # 20) deep mode: nested objects
+  - arguments:
+      mode: deep
+    target_field: {"a":{"B-C":{"D E":1}}}
+    should_pass: true
+    expected: {"a":{"b_c":{"d_e":1}}}
+    description: In deep mode the keys of nested objects are renamed too
+
+  # 21) deep mode: arrays under object members are visited
+  - arguments:
+      mode: deep
+    target_field: {"Items":[{"Full Name":"Ana"}]}
+    should_pass: true
+    expected: {"items":[{"full_name":"Ana"}]}
+    description: In deep mode the objects inside an array member get their keys renamed
+
+  # 22) deep mode: an array member holding a number fails
+  - arguments:
+      mode: deep
+    target_field: {"Ports":[80]}
+    should_pass: false
+    description: In deep mode an array member that holds a number makes the operation fail
