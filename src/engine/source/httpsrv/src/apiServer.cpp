@@ -17,7 +17,7 @@ std::string payloadTooLargeText(std::size_t maxBytes)
     return fmt::format("Payload too large. Max allowed: {} bytes ({} KiB).", maxBytes, maxBytes / 1024);
 }
 
-std::shared_ptr<Server> makeApiServer()
+ServerOptions apiServerOptions()
 {
     ServerOptions options;
     options.name = "API services";
@@ -25,10 +25,16 @@ std::shared_ptr<Server> makeApiServer()
     options.byteBudget = false;
     options.executorThreads = 4;
     options.executorQueue = 64;
+    options.bodyTimeoutSec = API_BODY_TIMEOUT_SEC;
+    options.answerBodyTimeout = true;
     options.expectContinue = true;
     options.detailedLogging = true;
+    return options;
+}
 
-    auto server = std::make_shared<Server>(std::move(options));
+std::shared_ptr<Server> makeApiServer()
+{
+    auto server = std::make_shared<Server>(apiServerOptions());
     registerMetrics(server, "api");
     return server;
 }

@@ -290,6 +290,11 @@ void Server::start(const std::filesystem::path& socketPath)
     {
         config.maxBodySize = options.maxBodySize;
     }
+    if (options.bodyTimeoutSec != 0)
+    {
+        config.bodyTimeoutSec = options.bodyTimeoutSec;
+    }
+    config.answerBodyTimeout = options.answerBodyTimeout;
     config.expectContinue = options.expectContinue;
     config.logTag = options.logTag;
     config.serverName = options.name;
