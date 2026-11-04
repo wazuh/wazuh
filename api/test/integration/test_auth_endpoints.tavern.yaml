@@ -492,8 +492,9 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}{path}"
       method: "{method}"
-      # A followed 307 would land on the declared route and answer 401 as well
-      allow_redirects: False
+      # A followed 307 would land on the declared route and answer 401 as well. tavern only follows
+      # redirects under --tavern-always-follow-redirects, so say it here instead of relying on that
+      follow_redirects: False
     response:
       status_code: 401
       json:
@@ -505,7 +506,7 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}{path}"
       method: "{method}"
-      allow_redirects: False
+      follow_redirects: False
       headers:
         Authorization: "Bearer invalid"
     response:
