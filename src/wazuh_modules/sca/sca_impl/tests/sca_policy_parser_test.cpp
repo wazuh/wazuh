@@ -361,9 +361,62 @@ TEST_F(PolicyParserTest, RequirementsRulesWithoutConditionRejectPolicy)
     const auto policyOpt = parser.ParsePolicy(j);
 
     EXPECT_FALSE(policyOpt);
+    // A rejected policy is not scanned, so nothing of it is stored either.
+    EXPECT_TRUE(j["policies"].empty());
+    EXPECT_TRUE(j["checks"].empty());
     ASSERT_EQ(ErrorLogs().size(), 1);
     EXPECT_EQ(ErrorLogs()[0],
               "Failed to parse the requirements of policy file 'policy.yml'. Error: Missing or invalid condition");
+}
+
+TEST_F(PolicyParserTest, InvalidRequirementsConditionRejectsPolicyAndStoresNothing)
+{
+    auto mockYamlToJson = [](const std::string&) -> nlohmann::json
+    {
+        return nlohmann::json::parse(R"({
+            "policy": {"id": "policy_id"},
+            "requirements": {"title": "title", "condition": "foo", "rules": ["f: /etc/passwd exists"]},
+            "checks": [{"id": "check1", "title": "Title", "condition": "all", "rules": ["f: /test exists"]}]
+        })");
+    };
+
+    PolicyParser parser("policy.yml", 30, false, mockYamlToJson);
+    nlohmann::json j;
+    const auto policyOpt = parser.ParsePolicy(j);
+
+    EXPECT_FALSE(policyOpt);
+    EXPECT_TRUE(j["policies"].empty());
+    EXPECT_TRUE(j["checks"].empty());
+}
+
+TEST_F(PolicyParserTest, NumericCheckIdMustBeAnInteger)
+{
+    CaptureErrorLogs();
+
+    auto mockYamlToJson = [](const std::string&) -> nlohmann::json
+    {
+        return PolicyWithChecks(R"([
+            {"id": 3001, "title": "Integer", "condition": "all", "rules": ["f: /test exists"]},
+            {"id": 3001.5, "title": "Fractional", "condition": "all", "rules": ["f: /test exists"]},
+            {"id": 4294967296, "title": "Beyond 32 bits", "condition": "all", "rules": ["f: /test exists"]},
+            {"id": -7, "title": "Negative", "condition": "all", "rules": ["f: /test exists"]}
+        ])");
+    };
+
+    PolicyParser parser("policy.yml", 30, false, mockYamlToJson);
+    nlohmann::json j;
+    const auto policyOpt = parser.ParsePolicy(j);
+
+    ASSERT_TRUE(policyOpt);
+    ASSERT_EQ(j["checks"].size(), 3);
+    EXPECT_EQ(j["checks"][0]["id"], "3001");
+    EXPECT_EQ(j["checks"][1]["id"], "4294967296");
+    EXPECT_EQ(j["checks"][2]["id"], "-7");
+
+    ASSERT_EQ(ErrorLogs().size(), 1);
+    EXPECT_EQ(ErrorLogs()[0],
+              "Failed to parse check without a valid id of policy file 'policy.yml'. Skipping it. "
+              "Error: Missing or invalid id");
 }
 
 TEST_F(PolicyParserTest, RequirementsWithoutRulesNeedNoCondition)
@@ -383,6 +436,8 @@ TEST_F(PolicyParserTest, RequirementsWithoutRulesNeedNoCondition)
 
     ASSERT_TRUE(policyOpt);
     EXPECT_EQ(j["checks"].size(), 1);
+    ASSERT_EQ(j["policies"].size(), 1);
+    EXPECT_EQ(j["policies"][0]["id"], "policy_id");
 }
 
 TEST_F(PolicyParserTest, InvalidRuleIsHandledGracefully)

@@ -297,6 +297,13 @@ void SecurityConfigurationAssessment::Run()
         // Mark scan as in progress
         setScanInProgress(true);
 
+        // Cleared on every way out of this iteration, an exception included: pause() waits for it with no
+        // timeout, so a flag left set would block it for good.
+        DEFER([&setScanInProgress]()
+        {
+            setScanInProgress(false);
+        });
+
         // Load policies on each run iteration
         // *INDENT-OFF*
         const SCAPolicyLoader policyLoader(m_policiesData, m_fileSystemWrapper, m_dBSync);

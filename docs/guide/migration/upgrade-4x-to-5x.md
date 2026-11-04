@@ -107,17 +107,19 @@ The following changes were identified during agent startup validation after upgr
 ### Additional observed parser side-effects
 
 The 4.x options listed above are only reported, so an upgraded `ossec.conf` starts as it is. Any other
-element `<syscheck>` or `<rootcheck>` does not know, or an invalid value, is a configuration error, as it
-is in the other agent sections: `wazuh-syscheckd -t` fails and `wazuh-control start` stops with
-`wazuh-syscheckd: Configuration error. Exiting`, after logging the cause:
+element `<syscheck>` or `<rootcheck>` does not know is a configuration error, as it is in the other agent
+sections, and so is an invalid value in most of their options (some, such as `<max_eps>` or the `<diff>`
+size limits, only log a warning and keep their default). `wazuh-syscheckd -t` then fails and
+`wazuh-control start` stops with `wazuh-syscheckd: Configuration error. Exiting`, after logging the cause:
 
 ```console
 wazuh-syscheckd: ERROR: (1230): Invalid element in the configuration: '<element>'.
 wazuh-syscheckd: ERROR: (1202): Configuration error at 'etc/ossec.conf'.
 ```
 
-Fix or remove the element the first line names. The Windows agent, which has no `-t` check, logs the same
-error and runs with FIM disabled until it is fixed.
+Fix or remove the element the first line names. The Windows agent has no `-t` check: it logs the cause
+and runs without the affected module, FIM for a `<syscheck>` error and rootcheck for a `<rootcheck>` one,
+until it is fixed.
 
 ## `ossec.conf` quick before/after examples
 

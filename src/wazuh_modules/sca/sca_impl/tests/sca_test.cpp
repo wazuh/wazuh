@@ -634,9 +634,10 @@ TEST_F(ScaTest, Run_SetsFirstScanCompletedAfterFirstSuccessfulScan)
     EXPECT_TRUE(scaMock->getFirstScanCompletedForTest());
 }
 
-// A policy whose scan throws must not stop the scan of the other policies nor the scan loop: before, the
-// exception reached sca_start() and the whole module (periodic scans and synchronization) stopped.
-TEST_F(ScaTest, Run_PolicyThatThrowsDoesNotStopTheScan)
+// A check that throws while it is evaluated or reported must not stop the rest of its policy, the other
+// policies nor the scan loop: before, the exception reached sca_start() and the whole module (periodic scans and
+// synchronization) stopped.
+TEST_F(ScaTest, Run_CheckThatThrowsDoesNotStopTheScan)
 {
     auto mockDBSync = std::make_shared<MockDBSync>();
     auto mockFileSystem = std::make_shared<MockFileSystemWrapper>();
@@ -647,18 +648,24 @@ TEST_F(ScaTest, Run_PolicyThatThrowsDoesNotStopTheScan)
     EXPECT_CALL(*mockFileSystem, exists(::testing::_))
     .WillRepeatedly(::testing::Return(true));
 
+    std::atomic<bool> samePolicyCheckReached {false};
     std::atomic<bool> nextPolicyReached {false};
 
-    // Reporting the first policy's check throws, as any unexpected error during a policy scan would.
+    // Reporting the first check throws, as any unexpected error while a check is handled would.
     EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillRepeatedly(::testing::Invoke([&nextPolicyReached](const nlohmann::json & query,
-                                                           std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    .WillRepeatedly(::testing::Invoke([&samePolicyCheckReached, &nextPolicyReached](const nlohmann::json & query,
+                                                                                    std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
     {
         const auto queryText = query.dump();
 
         if (queryText.find("id = 'failing_check'") != std::string::npos)
         {
             throw std::runtime_error("unexpected failure");
+        }
+
+        if (queryText.find("id = 'second_check'") != std::string::npos)
+        {
+            samePolicyCheckReached = true;
         }
 
         if (queryText.find("id = 'next_check'") != std::string::npos)
@@ -677,14 +684,25 @@ TEST_F(ScaTest, Run_PolicyThatThrowsDoesNotStopTheScan)
 
     auto yamlToJsonFunc = [](const std::string & path) -> nlohmann::json
     {
-        const bool failing = path.find("failing_policy") != std::string::npos;
+        const auto makeCheck = [](const std::string & id)
+        {
+            return nlohmann::json {{"id", id}, {"title", "Test Check"}, {"condition", "all"},
+                {"rules", nlohmann::json::array({"f:/etc/passwd exists"})}};
+        };
+
         nlohmann::json result;
-        result["policy"] = {{"id", failing ? "failing_policy" : "next_policy"}, {"name", "Test Policy"}};
-        result["checks"] = nlohmann::json::array({
-            {   {"id", failing ? "failing_check" : "next_check"}, {"title", "Test Check"}, {"condition", "all"},
-                {"rules", nlohmann::json::array({"f:/etc/passwd exists"})}
-            }
-        });
+
+        if (path.find("failing_policy") != std::string::npos)
+        {
+            result["policy"] = {{"id", "failing_policy"}, {"name", "Test Policy"}};
+            result["checks"] = nlohmann::json::array({makeCheck("failing_check"), makeCheck("second_check")});
+        }
+        else
+        {
+            result["policy"] = {{"id", "next_policy"}, {"name", "Test Policy"}};
+            result["checks"] = nlohmann::json::array({makeCheck("next_check")});
+        }
+
         return result;
     };
 
@@ -695,12 +713,21 @@ TEST_F(ScaTest, Run_PolicyThatThrowsDoesNotStopTheScan)
         scaMock->Run();
     });
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+    // Wait for the scan to complete instead of a fixed delay, so a slow runner does not fail the test.
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+
+    while (!scaMock->getFirstScanCompletedForTest() && std::chrono::steady_clock::now() < deadline)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
 
     scaMock->Stop();
     runThread.join();
 
-    EXPECT_NE(m_logOutput.find("Scan of policy 'failing_policy' stopped: unexpected failure"), std::string::npos);
+    EXPECT_NE(m_logOutput.find("Failed to evaluate check 'failing_check' of policy 'failing_policy'. Skipping it. "
+                               "Error: unexpected failure"),
+              std::string::npos);
+    EXPECT_TRUE(samePolicyCheckReached);
     EXPECT_TRUE(nextPolicyReached);
     EXPECT_NE(m_logOutput.find("Scan ended."), std::string::npos);
     EXPECT_TRUE(scaMock->getFirstScanCompletedForTest());
