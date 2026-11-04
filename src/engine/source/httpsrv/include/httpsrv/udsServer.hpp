@@ -34,6 +34,12 @@ struct UdsServerOptions
     std::size_t executorQueue {64};
     bool expectContinue {false};  ///< Answer "Expect: 100-continue" once a request is admitted.
     bool detailedLogging {false}; ///< One TRACE line per request (method, target, status).
+    /// Setting that raises the in-flight byte budget, named in the transport's budget-exhausted log line;
+    /// empty omits the advice.
+    std::string budgetOptionHint;
+    /// Setting that raises the connection limit, named in the transport's connection-limit log line; empty
+    /// omits the advice.
+    std::string connectionCapOptionHint;
 };
 
 /**

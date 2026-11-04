@@ -277,6 +277,8 @@ void UdsServer::start(const std::filesystem::path& socketPath)
     config.logTag = options.logTag;
     config.serverName = options.name;
     config.serverHeader = SERVER_HEADER;
+    config.budgetOptionHint = options.budgetOptionHint;
+    config.connectionCapOptionHint = options.connectionCapOptionHint;
 
     m_impl->transport->start(config);
     m_impl->running.store(true);
