@@ -251,8 +251,9 @@ def evaluate(operations: list, stages: list, exceptions: list) -> list:
             continue
         path_ops = match_path(operations, stage.url_path)
         if not path_ops:
-            if stage.status_codes == (404,):
-                unknown_route_404 += 1
+            # Without a valid token the API answers the 401 of a declared route instead of the 404
+            if stage.status_codes in {(404,), (401,)}:
+                unknown_route_404 += stage.status_codes == (404,)
                 continue
             errors.append(f'{where}: {stage.method} {stage.url_path} matches no spec path')
             continue
@@ -262,7 +263,7 @@ def evaluate(operations: list, stages: list, exceptions: list) -> list:
             if stage.status_codes == (405,):
                 for path_op in path_ops:
                     path_op.covered.setdefault('method_not_allowed', set()).add(stage.file)
-            else:
+            elif stage.status_codes != (401,):
                 errors.append(f'{where}: {stage.method} is not declared for {path_ops[0].path}; '
                               f'only a 405 is expected there')
             continue
