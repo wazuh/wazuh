@@ -510,6 +510,12 @@ foreach(counter RANGE ${count})
         target_compile_definitions(${test_name} PRIVATE CLIENT)
     endif()
 
+    # Same for test_agent_op: the agent library resolves WAZUHCONF and WAZUHCONFIG
+    # with CLIENT, so the test must expect the agent's paths too.
+    if("${test_name}" STREQUAL "test_agent_op" AND NOT ${TARGET} STREQUAL "manager")
+        target_compile_definitions(${test_name} PRIVATE CLIENT)
+    endif()
+
     if(${TARGET} STREQUAL "manager")
         target_link_libraries(
             ${test_name}
