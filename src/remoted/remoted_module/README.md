@@ -1278,8 +1278,9 @@ A stateless, synchronous passthrough of VD's admission, run entirely on the HTTP
 - Rejects `agentId == 0` outright; queries `VdClient::getOffset()` and rejects with
   `VersionMismatch` unless the request's `feed_offset` matches exactly.
 - Makes **one** inline `POST /vulnerability-detector/scan` to the VD module (over the *same*
-  `vd-http.sock` UDS socket `VdClient` uses for `/offset` — see below), with a read/write timeout
-  each configurable via `remoted.vd_scan_read_timeout`/`remoted.vd_scan_write_timeout` (default
+  `vd-http.sock` UDS socket `VdClient` uses for `/offset`, through the same client — see below and
+  this endpoint's Lifecycle), with a fixed 1 s connect deadline and a read/write timeout each
+  configurable via `remoted.vd_scan_read_timeout`/`remoted.vd_scan_write_timeout` (default
   5 s each): VD answers at **admission** — a readiness preflight plus recording a `vd_scan` manager
   task (a pending one for the same agent is coalesced) — so the round trip is inline route work,
   never a scan.
@@ -1288,7 +1289,9 @@ A stateless, synchronous passthrough of VD's admission, run entirely on the HTTP
   `scan_queue_full` and `indexer_unavailable` are VD's own causes to log and keep their own
   counters; **every other** code — `feed_not_ready`, `task_create_failed`, a relay failure… — is
   counted as `vd_error` and logged here at WARN, throttled (one line per 90 s window with its count
-  and the last code).
+  and the last code). A relay failure also names the client's error class there —
+  `vd_unreachable (connect_failed)` when VD is not listening, `vd_unreachable (response_timeout)` when
+  it did not answer in time — while the agent only ever sees `vd_unreachable`.
 - **No retry, by design**: the agent's pending state survives a `503` and its next `/control`
   notify re-requests — retrying here would only duplicate that loop with a worse deadline.
   Dedup of repeated requests lives in the task manager (VD coalesces into the pending task); queued scans
@@ -1311,6 +1314,12 @@ since it's the same client instance — this is the rest of its contract. `getOf
    the next attempt is gated to a short, separate `failureRetryInterval` (default 5s) rather than
    the normal 30s TTL — recovers quickly once VD comes back, without hammering it (or serializing
    every caller) on every single call during an outage.
+4. The round trip itself goes through the client shared with the scan request
+   (`downstream::sendBlocking()` over an `AsioUdsHttpClient`): 1 s each to connect, send and receive
+   the answer, a 64 KiB cap on VD's answer (`VdClient::MAX_RESPONSE_BODY_BYTES`), and a backstop 1 s
+   past those deadlines in case the client never completes the call. A failed query is logged at
+   WARN, throttled, with the error class (`Failed to query VD offset: connect_failed`), the HTTP
+   status or the parse error.
 
 ### Metrics
 
@@ -1328,7 +1337,12 @@ outcome per agent).
 
 `ScanVdHandlerImpl` shares its `VdClient` instance with `ControlHandler` (constructed once in
 `RemotedModuleFacade::startHttpServer()` and passed to both), so the two endpoints never see different
-offsets due to independent cache state. It owns no threads and no queue — teardown is trivial.
+offsets due to independent cache state. Neither owns a thread or a queue; what they share is the
+facade's client for VD's socket (`m_vdHttpClient`: an `AsioUdsHttpClient` with one I/O thread, built
+from `VdClient::httpClientConfig()` and handed to both). `RemotedModuleFacade::stop()` stops that client
+in the same phase as `m_downstreamClient`, **after** both handlers are dropped: `ControlHandler`'s
+`TaskClient` still asks `VdClient` for the feed state (`getFeedState()`) from its destructor. A call caught by the stop anyway returns
+`transport_error` by its backstop instead of hanging the caller.
 
 ## Agent enrollment (`POST /enroll`) — `src/enrollment/`
 
@@ -2151,6 +2165,7 @@ src/downstream/
 ├── downstreamConfig.hpp/.cpp # events socket (fixed) + C-ABI-driven connect/write/response timeouts,
 │                            #   io/post threads, max response body (buildDownstreamConfig())
 ├── IDownstreamClient.hpp     # async forward interface + DTOs (DownstreamRequest/Response/Error)
+├── blockingCall.hpp/.cpp     # sendBlocking(): one call waited on, bounded by a backstop (VD offset + scan)
 ├── downstreamTypes.cpp       # the DownstreamError names used in logs
 ├── forwarderMetrics.hpp      # remoted.forwarder.* failure catalog
 ├── asioUdsHttpClient.hpp/.cpp# standalone-Asio impl (UDS connect-per-request) + llhttp response parse
@@ -2942,9 +2957,12 @@ full `postProcess` mapping table, **that no downstream body is ever reflected to
 answers a fixed `{}`, `/config` passes the sync server's own body through — and that an empty body
 answers 400 without ever reaching `forward()`),
 `asioUdsHttpClient_test.cpp` (in-process UDS stub: response parse, connect/timeout errors, keep-alive,
+a per-request write deadline overriding the configured one,
 **and that caller-supplied headers are actually serialized onto the wire without displacing
 Content-Type/Content-Length** — the assertion that the agent id really reaches modulesd),
-`payload_test.cpp` (zero-copy `Payload`: view validity,
+`blockingCall_test.cpp` (`sendBlocking()`: the response or the client's error passed through, and a
+dropped callback, a callback that never comes, a failure to send and a stopped client all returning
+`transport_error` instead of hanging), `payload_test.cpp` (zero-copy `Payload`: view validity,
 keep-alive pinning, explicit `release()` + RAII), `authGateway_test.cpp` (gateway: 400/401 paths, valid-auth success + payload
 view, payload outliving dispatch + release keeping metadata, handler-exception → 500, a zstd body
 decoding past the decoded cap → 413 with the handler untouched, an agent over its request cap → 503
@@ -3112,13 +3130,15 @@ and `src/unit_tests/shared/test_enrollment_token.c`.
 VD re-scan coverage: `vdClient_test.cpp` (a real `httplib::Server` fake VD backend — cache hit
 within TTL, single-flight refresh under a concurrent caller with the lock released during the UDS
 round trip, stale-value fallback and bounded retry gating on a failed query, recovery clearing the
-failure state), `scanVdEndpoint_test.cpp` (JSON dispatch in isolation against a fake
+failure state, a null client refused, an oversized answer and a missing socket as failed queries), `scanVdEndpoint_test.cpp` (JSON dispatch in isolation against a fake
 `ScanVdHandler`: every rejection code, the `ScanVdOutcome` → response mapping), `scanVdHandler_test.cpp`
 (the synchronous admission passthrough against a real `VdClient` + fake VD backend: version
 mismatch and invalid-agent gates, VD's 200 relayed as exactly one POST with no retry, VD's
 capacity/readiness rejections passed through with their error codes, an unreachable VD answered
 as an honest `vd_unreachable` 503, VD's `indexer_unavailable` cause kept off the `vd_error`
-counter, and the wire shape of the scan POST), and
+counter, the wire shape of the scan POST and its configured deadlines on the shared client, a
+missing socket and a full accept backlog both answered `vd_unreachable` at once rather than after the
+connect deadline, a null client refused, and the startup budget counting both connect deadlines), and
 `controlScanVdE2E_test.cpp` (the one test that goes over a **real** TLS
 `RestinioHttpServer` + real `AuthGateway` + real `ControlHandler`/`ScanVdHandlerImpl`, with only
 wazuh-db/task-manager/VD faked — confirms `vd_feed_offset` and the `/scan/vd` 200/409/503
