@@ -726,18 +726,6 @@ void SQLiteDBEngine::initialize(const std::string&              path,
                 m_recreateReason = "Database '" + path + "' could not be upgraded from version " +
                                    std::to_string(dbVersion) + " and was created again: " + e.what();
             }
-            catch (const dbengine_error& e)
-            {
-                if (STEP_ERROR_UPDATE_STMT.first != e.id())
-                {
-                    throw;
-                }
-
-                m_sqliteConnection.reset();
-                reCreateDbLambda();
-                m_recreateReason = "Database '" + path + "' could not be upgraded from version " +
-                                   std::to_string(dbVersion) + " and was created again: " + e.what();
-            }
 
             // Outside the try: once the upgrades are committed, a failure here is not a schema
             // problem, so it must not delete the upgraded database.
