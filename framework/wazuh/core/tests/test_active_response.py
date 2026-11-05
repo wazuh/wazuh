@@ -159,6 +159,17 @@ def test_get_command_names():
     assert active_response.get_command_names('custom-ar-t6') == []
 
 
+def test_get_command_names_repeated_name_and_line_endings(tmp_path):
+    """Check that a name repeated with the same timeout is returned once, and that CRLF and blank lines are ignored."""
+    ar_conf = tmp_path / 'ar.conf'
+    ar_conf.write_bytes(b'foo60 - foo.sh - 60\r\nfoo60 - foo.sh - 60\r\n\r\nbar0 - bar.sh - 0\n')
+
+    with patch('wazuh.core.common.AR_CONF', new=str(ar_conf)):
+        assert active_response.get_command_names('foo') == ['foo60']
+        assert active_response.get_command_names('bar') == ['bar0']
+        assert active_response.ARStrMessage().validate_command('foo') == 'foo60'
+
+
 @patch('wazuh.core.common.AR_CONF', new=test_data_path)
 def test_get_commands():
     """

@@ -149,8 +149,8 @@ class ARMessageBuilder:
         ----------
         command : str
             Command running in the agent. It can be the name that ar.conf gives to the active response (command name
-            followed by its timeout), the name of a command defined in the configuration if it is used by a single
-            active response, or a script name preceded by !.
+            followed by its timeout), the name of a command defined in the configuration if it maps to a single name
+            in ar.conf, or a script name preceded by !.
 
         Returns
         -------
