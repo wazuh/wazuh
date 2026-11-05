@@ -282,6 +282,13 @@ own with a failure (a crash, or an exit with an error): systemd 233 and later sk
 `ExecStopPost` stops the other agent daemons, so the unit ends `failed` with nothing left running, as `ExecStop`
 already did on older systemd.
 
+The agent unit also runs `wazuh-control stop` as `ExecStartPre`. An agent started with `wazuh-control start`
+runs outside the unit, and systemd refuses the PID file of a `wazuh-agentd` it did not start, so a
+`systemctl start` or `restart`, including the restart a manager sends, would fail and `ExecStopPost` would stop
+the agent. With `ExecStartPre` those daemons are stopped first and the start brings them all up inside the
+unit. On a normal start nothing is running and it stops nothing. `ExecStartPre` and `ExecStart` each get their
+own `TimeoutSec`.
+
 **`wazuh-manager-control` always acts on the daemons itself**, whoever runs it: `start` launches every daemon
 that is not running (and reports `already running` for the rest), even while the unit is `active`, and the
 caller's environment and standard error reach the checks. Typed in a shell on a systemd host, it therefore starts

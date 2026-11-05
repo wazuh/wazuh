@@ -242,11 +242,11 @@ is_systemd() {
 # the agent ends up stopped right after "Completed.". Through systemctl the unit runs them with
 # its own ExecStop, ExecStart and ExecReload, which call this script again from inside the unit.
 #
-# Those calls from systemd's own ExecStart, ExecStop, ExecStopPost and ExecReload must stay
-# here: systemctl would queue a job behind the one running them and wait until the unit times
-# out. The unit's ControlPID is the process systemd started for the line it is running (this
-# script, or a shell that runs it), so a call from inside the unit's cgroup is one of them when
-# its pid or its parent's is the ControlPID. Any other call from there comes from something the
+# Those calls from systemd's own ExecStartPre, ExecStart, ExecStop, ExecStopPost and ExecReload
+# must stay here: systemctl would queue a job behind the one running them and wait until the unit
+# times out. The unit's ControlPID is the process systemd started for the line it is running (this
+# script, or a shell that runs it), so a call from inside the unit's cgroup is one of them when its
+# pid or its parent's is the ControlPID. Any other call from there comes from something the
 # daemons launched, such as an upgrade's installer, and is handled like a call from outside.
 #
 # Every other call waits while the unit is starting or reloading. A stop or restart job issued

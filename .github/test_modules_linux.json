@@ -33,6 +33,7 @@
         "tests/integration/pytest.ini",
         "tests/integration/unit_control.py",
         "tests/integration/start_lock.py",
+        "tests/integration/agent_daemons.py",
         "tests/integration/test_agent_control/**"
       ]
     },
