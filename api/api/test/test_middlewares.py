@@ -852,6 +852,46 @@ async def test_access_log_omits_unauthenticated_body(context, status_code, path,
     assert mock_custom_logging.call_args.args[5] == expected_body
 
 
+@pytest.mark.parametrize('context, path, cached, expected_body', [
+    # No body was cached (chunked, or above the logging limit): the count the endpoint left in the
+    # context stands in for it.
+    ({'user': 'wazuh', 'events_count': 100}, '/events', False, {'events': 100}),
+    ({'user': 'wazuh', 'events_count': 0}, '/events', False, {'events': 0}),
+    # The endpoint never counted (rejected before the handler): nothing is invented.
+    ({'user': 'wazuh'}, '/events', False, {}),
+    # A cached body is what gets logged, so debug logging still sees the events themselves.
+    ({'user': 'wazuh', 'events_count': 1}, '/events', True, {'events': ['a']}),
+    # An unauthenticated caller's context is never trusted for this.
+    ({'events_count': 100}, '/events', False, {}),
+    # Only /events reads the count.
+    ({'user': 'wazuh', 'events_count': 100}, '/agents', False, {}),
+])
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_access_log_events_count_without_cached_body(context, path, cached, expected_body, mock_req):
+    """Check that /events reports the count from the request context when no body was cached."""
+    response = MagicMock()
+    response.status_code = 200
+    if cached:
+        mock_req._body = b'{"events": ["a"]}'
+    else:
+        del mock_req._body
+    mock_req.json = AsyncMock(return_value={'events': ['a']})
+    mock_req.query_params = {}
+    mock_req.method = 'POST'
+    mock_req.context = context
+    mock_req.scope = {'path': path}
+    mock_req.headers = {'content-type': 'application/json'}
+
+    with patch('api.middlewares.custom_logging') as mock_custom_logging, \
+         patch('api.middlewares.AbstractSecurityHandler.get_auth_header_value',
+               side_effect=OAuthProblem):
+        await access_log(request=mock_req, response=response,
+                         prev_time=datetime(1970, 1, 1, 0, 0, 10).timestamp())
+
+    assert mock_custom_logging.call_args.args[5] == expected_body
+
+
 @pytest.mark.parametrize('context, path, should_parse', [
     # Reached the endpoint: the body is logged, so it has to be parsed.
     ({'user': 'wazuh'}, '/agents', True),

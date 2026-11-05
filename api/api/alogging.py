@@ -259,10 +259,12 @@ def custom_logging(user, remote, method, path, query,
     headers: dict
         Optional dictionary of request headers.
     """
-    # For /events at INFO, log only the event count. Done before the body is serialised so both
+    # For /events at INFO, log only the event count (already an int when the caller counted it, as
+    # access_log does for a batch it did not read). Done before the body is serialised so both
     # log lines carry the same summary and a large batch is not written out in full to api.log.
     if path == '/events' and logger.level >= 20 and isinstance(body, dict):
-        body = {'events': len(body.get('events', []))}
+        events = body.get('events', [])
+        body = {'events': events if isinstance(events, int) else len(events)}
 
     # Serialise the body once and refuse to log an oversized one. The access logger already
     # declines to buffer a body above this size, but nothing else stops a caller of this function
