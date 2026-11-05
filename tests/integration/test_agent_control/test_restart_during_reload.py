@@ -38,17 +38,11 @@ references:
 tags:
     - agent_control
 '''
-import shutil
-from pathlib import Path
-
-import psutil
 import pytest
 
+from agent_daemons import all_daemons_running, daemon_pids, enrolled_keys  # noqa: F401
 from unit_control import control_process_killed, journal_time, systemctl, unit_property, wait_for
-from wazuh_testing.constants.daemons import AGENT_DAEMON, AGENT_MODULES_DAEMON, WAZUH_AGENT, WAZUH_AGENT_DAEMONS
-from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH
-from wazuh_testing.constants.paths.variables import VAR_RUN_PATH
-from wazuh_testing.utils.client_keys import add_client_keys_entry
+from wazuh_testing.constants.daemons import AGENT_DAEMON, AGENT_MODULES_DAEMON, WAZUH_AGENT
 
 # Marks
 pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.tier(level=0)]
@@ -58,48 +52,12 @@ START_TIMEOUT_SECONDS = 60
 RELOAD_TIMEOUT_SECONDS = 30
 
 
-def _daemon_pids():
-    """Map each agent daemon to its live PID, read from 'var/run/<daemon>-<pid>.pid' like
-    wazuh-control does. A daemon with no live PID file is left out."""
-    pids = {}
-    for daemon in WAZUH_AGENT_DAEMONS:
-        for pidfile in Path(VAR_RUN_PATH).glob(f'{daemon}-*.pid'):
-            pid = int(pidfile.stem.rsplit('-', 1)[1])
-            if psutil.pid_exists(pid):
-                pids[daemon] = pid
-    return pids
-
-
-def _all_daemons_running():
-    pids = _daemon_pids()
-    return pids if len(pids) == len(WAZUH_AGENT_DAEMONS) else None
-
-
-@pytest.fixture()
-def enrolled_keys(tmp_path):
-    """Give the agent a client.keys entry, and put the original file back whatever happens.
-
-    With an entry, wazuh-agentd starts as an enrolled agent, whether or not it reaches a manager (the
-    Remoted and Authd simulators the suite's conftest starts may answer it), and every daemon starts
-    and writes its PID file, which is all the service control under test needs. The copy lives in
-    this test's own folder, so a failed run can't overwrite it.
-    """
-    keys = Path(WAZUH_CLIENT_KEYS_PATH)
-    backup = tmp_path / keys.name
-    shutil.copy2(keys, backup)
-    try:
-        add_client_keys_entry('001', 'agent-control-test')
-        yield
-    finally:
-        shutil.copy2(backup, keys)
-
-
 @pytest.fixture()
 def agent_running(enrolled_keys):
     """Run the agent under systemd with every daemon up, and stop it afterwards."""
     try:
         systemctl('restart', UNIT)
-        yield wait_for(_all_daemons_running, START_TIMEOUT_SECONDS, 'not every agent daemon started')
+        yield wait_for(all_daemons_running, START_TIMEOUT_SECONDS, 'not every agent daemon started')
     finally:
         systemctl('stop', UNIT, check=False)
 
@@ -137,15 +95,15 @@ def test_restart_during_reload_restarts_every_daemon(agent_running):
     # wazuh-control reload restarts every daemon but wazuh-agentd, wazuh-modulesd last, then keeps
     # its lock for two more seconds. A restart in that window used to leave them all running.
     def reloaded_modulesd():
-        return _daemon_pids().get(AGENT_MODULES_DAEMON, old_modulesd) != old_modulesd
+        return daemon_pids().get(AGENT_MODULES_DAEMON, old_modulesd) != old_modulesd
 
     wait_for(reloaded_modulesd, RELOAD_TIMEOUT_SECONDS, 'the reload did not start a new wazuh-modulesd')
-    reloaded = _daemon_pids()
+    reloaded = daemon_pids()
     assert unit_property(UNIT, 'SubState') == 'reload', 'the reload ended before the restart could reach it'
 
     systemctl('restart', UNIT)
 
-    restarted = wait_for(_all_daemons_running, START_TIMEOUT_SECONDS,
+    restarted = wait_for(all_daemons_running, START_TIMEOUT_SECONDS,
                          'not every agent daemon is running after the restart')
     kept = sorted(daemon for daemon, pid in restarted.items() if reloaded.get(daemon) == pid)
     assert not kept, f'daemons the restart left running: {kept}'
