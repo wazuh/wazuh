@@ -1348,7 +1348,6 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
             /* The same reading w_enrollment_process_response() logs from, so the reason
              * wazuh-agent-auth prints is the one in ossec.log, whichever envelope carried it. */
             w_enroll_error_t error;
-            char reason[32];
             const char *refusal;
 
             w_enrollment_parse_error(&enroll_result, &error);
@@ -1359,7 +1358,7 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
              * the token, so the same call decides both that and the line telling the operator. Not
              * keyed on the status: a malformed request, a disabled enrollment or a duplicate agent
              * is just as final for this attempt, yet may succeed later with the same token. */
-            refusal = w_enrollment_token_refusal(enroll_result.http_code, &error, reason, sizeof(reason));
+            refusal = w_enrollment_token_refusal(enroll_result.http_code, &error, NULL, 0);
             report->token_rejected = (refusal != NULL);
 
             /* The manager's own message cannot name the token, and for an expired or revoked one

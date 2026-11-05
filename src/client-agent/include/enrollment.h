@@ -101,7 +101,8 @@ void w_enrollment_parse_error(const hc_enroll_result_t *result, w_enroll_error_t
  * @param http_code The /enroll HTTP status.
  * @param error The reason w_enrollment_parse_error() read from the same response.
  * @param reason Filled with what the manager named: the 401 class (`token_expired`) or the 403
- *        code (`code 9024`). Untouched when this returns NULL.
+ *        code (`code 9024`). Untouched when this returns NULL. May be NULL when only the
+ *        verdict is wanted.
  * @param reason_size Size of @p reason.
  * @return What happened to the token in plain words ("has expired"), or NULL when the refusal is
  *         not about the token.

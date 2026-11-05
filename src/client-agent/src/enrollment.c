@@ -296,7 +296,6 @@ void w_enrollment_parse_error(const hc_enroll_result_t *result, w_enroll_error_t
 const char *w_enrollment_token_refusal(long http_code, const w_enroll_error_t *error, char *reason,
                                        size_t reason_size) {
     assert(error != NULL);
-    assert(reason != NULL);
 
     const char *words = NULL;
 
@@ -312,7 +311,7 @@ const char *w_enrollment_token_refusal(long http_code, const w_enroll_error_t *e
             words = "was revoked";
         }
 
-        if (words != NULL) {
+        if (words != NULL && reason != NULL) {
             snprintf(reason, reason_size, "%s", error->auth_class);
         }
     } else if (http_code == 403 && error->has_numeric_code) {
@@ -330,7 +329,7 @@ const char *w_enrollment_token_refusal(long http_code, const w_enroll_error_t *e
                 break;
         }
 
-        if (words != NULL) {
+        if (words != NULL && reason != NULL) {
             snprintf(reason, reason_size, "code %d", error->authd_code);
         }
     }

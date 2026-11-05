@@ -202,7 +202,7 @@ It refuses to run while `wazuh-agentd` is running, with no override. A restart i
 | `5` | Not committed |
 | `6` | Configuration not updated |
 
-On exit code `4` the manager's reason is printed after `The manager said:`. When the manager refused the token itself (expired, revoked, out of uses, or unknown to the master, not merely to a worker that has not received it yet), a `Token refused:` line comes first, naming the token id, what happened to it and the fix. The Windows agent GUI shows that line in its message box:
+On exit code `4` the manager's reason is printed after `The manager said:`. When the manager refused the token itself (expired, revoked, out of uses, or unknown to the master, not merely to a worker that has not received it yet), a `Token refused:` line comes first, naming the token id, what happened to it and the fix. The Windows agent GUI shows that line's text in its message box, after "The manager refused the enrollment request:":
 
 ```text
 wazuh-agent-auth: the manager refused the enrollment.
