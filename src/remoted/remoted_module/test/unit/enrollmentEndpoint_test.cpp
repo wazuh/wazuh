@@ -1559,8 +1559,9 @@ TEST(EnrollmentEndpointTest, RejectedEnrollmentNeverReachesTheUpsert)
 
 TEST(EnrollmentEndpointTest, UpsertFailureStillAnswers200)
 {
-    // The agent's copy of the key is valid and the file reload remains the fallback, so a keystore
-    // that cannot adopt the entry must never turn a successful enrollment into an error.
+    // authd has registered the agent either way (whether it can authenticate is then up to the
+    // entry client.keys carries), so a keystore that cannot adopt the entry must never turn a
+    // successful enrollment into an error.
     auto stub = fixedAuthdServer(std::string(R"({"error":0,"data":{"id":"067","name":"agent1","ip":"any","key":")") +
                                  kIssuedKey + R"("}})");
 

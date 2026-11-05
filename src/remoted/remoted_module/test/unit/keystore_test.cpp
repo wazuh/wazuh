@@ -472,6 +472,7 @@ namespace
 
         ASSERT_TRUE(keystore.upsert("067", "10.0.0.7", kKeyA));
 
+        EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyA));
         EXPECT_TRUE(allowed(keystore, 67, "10.0.0.7"));
         EXPECT_FALSE(allowed(keystore, 67, "10.0.0.8"));
     }
@@ -752,6 +753,49 @@ namespace
         writeFile("67 agent1 any " + nthKey(last) + "\n");
         EXPECT_EQ(keystore.reload(), 1);
         EXPECT_EQ(keyOf(keystore, 67), newest);
+        EXPECT_EQ(keystore.adoptionsPending(), 0u);
+    }
+
+    // Unusable rows follow the same comparison as any other file state (see upsert()'s doc):
+    // a key that does not decode is the empty key, an ip column that does not parse drops the row.
+    constexpr const char* kUndecodableKey = "zz3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751";
+
+    TEST_F(KeystoreTest, UpsertIsRetiredWhenItsRowLosesAUsableKey)
+    {
+        writeFile(std::string("67 agent1 any ") + kKeyB + "\n");
+        Keystore keystore(m_path);
+        ASSERT_TRUE(keystore.upsert("67", "any", kKeyA));
+
+        writeFile(std::string("67 agent1 any ") + kUndecodableKey + "\n");
+        EXPECT_EQ(keystore.reload(), 0); // Unusable lines are not counted as loaded.
+        const auto key = keyOf(keystore, 67);
+        ASSERT_TRUE(key.has_value()); // The file's unusable entry: answered MissingKey.
+        EXPECT_TRUE(key->empty());
+        EXPECT_EQ(keystore.adoptionsPending(), 0u);
+    }
+
+    TEST_F(KeystoreTest, UpsertStaysWhileTheFileKeepsTheUnusableRowItSuperseded)
+    {
+        // The file's row was already unusable at adoption: the empty key is one it supersedes.
+        writeFile(std::string("67 agent1 any ") + kUndecodableKey + "\n");
+        Keystore keystore(m_path);
+        ASSERT_TRUE(keystore.upsert("67", "any", kKeyA));
+
+        EXPECT_EQ(keystore.reload(), 0);
+        EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyA));
+        EXPECT_EQ(keystore.adoptionsPending(), 1u);
+    }
+
+    TEST_F(KeystoreTest, UpsertIsRetiredWhenARowItShowedLosesItsAddress)
+    {
+        // An ip column that does not parse drops the row: the file no longer carries an id it had.
+        writeFile(std::string("3824 debian10 any ") + kKeyA + "\n67 agent1 any " + kKeyB + "\n");
+        Keystore keystore(m_path);
+        ASSERT_TRUE(keystore.upsert("67", "any", kKeyA));
+
+        writeFile(std::string("3824 debian10 any ") + kKeyA + "\n67 agent1 not-an-address " + kKeyB + "\n");
+        EXPECT_EQ(keystore.reload(), 1);
+        EXPECT_FALSE(keyOf(keystore, 67).has_value());
         EXPECT_EQ(keystore.adoptionsPending(), 0u);
     }
 
