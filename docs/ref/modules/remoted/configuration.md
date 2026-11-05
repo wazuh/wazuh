@@ -1460,13 +1460,21 @@ database.
 
 Seconds between refreshes of the cached shared-group listing used to answer `/control`.
 
-- **Default value:** `60`
+- **Default value:** `1`
 - **Allowed values:** Integer from `1` to `3600`
+- **Note:** At the default, which is below the agents' 10 s notify period, every `notify` reads
+  the agent's groups from `wazuh-manager-db`: one read per notify, about one per agent every 10 s
+  across the cluster. That is what keeps the nodes behind a per-request load balancer in step.
+  Each node keeps its own copy of an agent's groups, and a node still holding the membership from
+  before a group change answers `/control` with the previous configuration's `config_hash` and
+  serves it on `/download`, so the agent reloads back into its previous groups and forward again
+  until every node has refreshed. Raise this value to trade that wazuh-db load for staleness only
+  when each agent always reaches the same node (a single node, or a balancer with source
+  affinity). On a cluster worker a membership change also waits for the agent-groups
+  synchronization from the master, up to 10 s, whatever this value.
 - **Note:** This is the propagation latency an agent sees for a change of group **membership**
   only. Group **content** travels on a different path: the merged-groups watcher picks up a
-  changed `merged.mg` on inotify plus a poll, so content propagates in seconds while membership
-  waits out this interval. At the defaults that is roughly 60 s against 10 s, and at the maximum
-  of `3600` the two differ by about two orders of magnitude.
+  changed `merged.mg` on inotify plus a poll, so content propagates in seconds.
 - **Note:** Editing `var/multigroups/<hash>/merged.mg` by hand is not a way to reproduce this:
   `remoted.shared_reload` (default `10`) regenerates the file and reverts the edit.
 - **Note:** A refresh that fails does not mark the cached membership fresh, so while wazuh-db is
