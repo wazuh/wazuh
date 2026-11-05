@@ -2466,7 +2466,7 @@ Current indexer output queue byte utilization as a percentage of the configured 
 
 ##### `indexer.events.dropped`
 
-Number of events dropped in the indexer path since the indexer connector started. It is a pull metric (type `pull` in the dump): the engine reads the connector's own count on every read, so a reset does not change it, and it reads `0` while no connector exists. It counts events refused by a full queue, plus events of batches discarded after an indexer response for their `_bulk` status (500, 502, 504 or any other status the connector does not retry, or 503 retries exhausted). A `413` batch the async connector can no longer shrink (bulk threshold at its minimum), and failed items inside a successful response, are not counted.
+Number of events dropped in the indexer path since the indexer connector started. It is a pull metric (type `pull` in the dump): the engine reads the connector's own count on every read, so a reset does not change it, and it reads `0` while no connector exists. It counts events refused by a full queue, plus events of batches discarded after an indexer response for their `_bulk` status (500, 502, 504 or any other status the connector does not retry, or 503 retries exhausted), plus items a successful response rejected with a per-item `429` (the indexer shedding load). A `413` batch the async connector can no longer shrink (bulk threshold at its minimum), and other failed items inside a successful response, are not counted.
 
 **Used for:** detecting loss conditions and overload situations.
 

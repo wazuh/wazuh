@@ -1302,6 +1302,154 @@ TEST_F(IndexerConnectorAsyncTest, AppliesBackoffToNextBulkAfterClusterBlockExcep
     EXPECT_NE(receivedData[2].find("value2"), std::string::npos);
 }
 
+// A per-item 429 inside an HTTP 200 bulk response (the indexer shedding load, e.g. its parent circuit
+// breaker tripping) backs off the next send and counts the rejected items in getDroppedEvents(), with one
+// WARN per batch and no per-document WARN carrying the payload. The items are not resent.
+TEST_F(IndexerConnectorAsyncTest, PerItem429BacksOffAndCountsDroppedItems)
+{
+    // Installed before the connector: its threads log until the connector is destroyed.
+    ScopedLogCapture logs;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    // Two items rejected with 429 (each exception type the indexer uses for it), one indexed.
+    static constexpr auto throttledResponse = R"({
+        "took": 1,
+        "errors": true,
+        "items": [
+            {
+                "create": {
+                    "_index": ".ds-wazuh-events-v5-system-activity-000001",
+                    "status": 429,
+                    "error": {
+                        "type": "circuit_breaking_exception",
+                        "reason": "[parent] Data too large, data for [indices:data/write/bulk[s]] would be larger than the limit",
+                        "bytes_wanted": 3285407922,
+                        "bytes_limit": 3278268006,
+                        "durability": "TRANSIENT"
+                    }
+                }
+            },
+            {
+                "create": {
+                    "_index": ".ds-wazuh-events-v5-system-activity-000001",
+                    "status": 429,
+                    "error": {
+                        "type": "es_rejected_execution_exception",
+                        "reason": "rejected execution of coordinating operation"
+                    }
+                }
+            },
+            {"create": {"_index": ".ds-wazuh-events-v5-system-activity-000001", "status": 201}}
+        ]
+    })";
+
+    struct PauseRecord
+    {
+        bool external;
+        int posts;
+    };
+    std::vector<PauseRecord> pauses;
+    std::mutex pausesMutex;
+    std::condition_variable pausesCv;
+
+    std::promise<void> firstCallPromise;
+    std::future<void> firstCallFuture = firstCallPromise.get_future();
+    std::promise<void> secondCallPromise;
+    std::future<void> secondCallFuture = secondCallPromise.get_future();
+    std::atomic<int> callIndex {0};
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [this, &firstCallPromise, &secondCallPromise, &callIndex](
+                RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
+            {
+                this->callCount++;
+                const int currentCall = ++callIndex;
+                this->receivedData.push_back(postedData(requestParams));
+
+                if (currentCall == 1)
+                {
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(throttledResponse);
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onSuccess(std::string(throttledResponse));
+                    }
+                    firstCallPromise.set_value();
+                }
+                else
+                {
+                    answerSuccess(postParams);
+                    if (currentCall == 2)
+                    {
+                        secondCallPromise.set_value();
+                    }
+                }
+            }));
+
+    IndexerBulkQueue::PauseObserver observer =
+        [&pauses, &pausesMutex, &pausesCv, &callIndex](std::chrono::milliseconds, bool externalRequest)
+    {
+        {
+            std::lock_guard<std::mutex> lock(pausesMutex);
+            pauses.push_back({externalRequest, callIndex.load()});
+        }
+        pausesCv.notify_all();
+    };
+
+    IndexerConnectorAsyncImplMultiItemBulk connector(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "", std::nullopt, observer);
+
+    for (int i = 0; i < 3; ++i)
+    {
+        connector.bulkIndexDataStream("wazuh-events-v5-system-activity",
+                                      R"({"field":"value)" + std::to_string(i) + R"("})");
+    }
+
+    ASSERT_EQ(firstCallFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready)
+        << "Timeout waiting for the throttled bulk";
+    ASSERT_NE(receivedData[0].find("value2"), std::string::npos) << "the three documents must go out in one bulk";
+
+    // The response is classified on the logger thread: the pause request is the signal it was handled.
+    // Nothing else is queued until the pause shows up: a clean answer to a next bulk sent before the
+    // dispatcher picks the request up would reset it (reportHealthyResponse()), so the pause would never run.
+    {
+        std::unique_lock<std::mutex> lock(pausesMutex);
+        ASSERT_TRUE(pausesCv.wait_for(lock,
+                                      std::chrono::seconds(10),
+                                      [&pauses]()
+                                      {
+                                          return std::any_of(pauses.begin(),
+                                                             pauses.end(),
+                                                             [](const PauseRecord& record)
+                                                             { return record.external && record.posts >= 1; });
+                                      }))
+            << "Timeout waiting for the backoff pause after the throttled bulk";
+    }
+
+    connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"value3"})");
+    ASSERT_EQ(secondCallFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready)
+        << "Timeout waiting for the bulk after the throttled one";
+
+    EXPECT_EQ(connector.getDroppedEvents(), 2u) << "only the two 429 items are dropped";
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "Indexer rejected 2 document(s) in this batch with HTTP 429"),
+              1u);
+    EXPECT_FALSE(logs.contains("Error indexing document")) << "no per-document WARN with the payload";
+
+    // The rejected items are not resent: the next bulk carries only the new document.
+    ASSERT_GE(receivedData.size(), 2u);
+    for (int i = 0; i < 3; ++i)
+    {
+        EXPECT_EQ(receivedData[1].find("value" + std::to_string(i)), std::string::npos);
+    }
+    EXPECT_NE(receivedData[1].find("value3"), std::string::npos);
+}
+
 // A 500 is not retried: each batch is sent once, discarded and counted.
 TEST_F(IndexerConnectorAsyncTest, HandleError500InternalServerError)
 {
