@@ -163,6 +163,27 @@ class EXPORTED Syscollector final
         /// gone is known directly rather than by absence from a list.
         std::size_t sweepContainerRows(const std::vector<std::string>& container_ids);
 
+        /// Stores one container's context so its rows can reference it rather
+        /// than each carrying a copy. Returns false if it could not be stored,
+        /// which makes the baseline skip that container entirely.
+        ///
+        /// Public for the same reason sweepContainerRows() is: the behaviour
+        /// that matters here is what reaches the database, and driving it
+        /// through a live connector to observe that is not a unit test.
+        bool storeContainerContext(const std::string& containerId, const std::string& contextJson);
+
+        /// Forgets both context memos. Called whenever the database they
+        /// describe is closed, deleted or replaced.
+        void forgetContainerContexts();
+
+        /// Deletes one container's stored context. Call only after that
+        /// container's rows are gone and their events emitted.
+        void dropContainerContext(const std::string& containerId);
+
+        /// Deletes every stored context whose container is not in `keep`.
+        /// Returns how many were removed. `keep` must be authoritative.
+        std::size_t pruneContainerContexts(const std::set<std::string>& keep);
+
         // Sync protocol methods
         void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD,
                               uint32_t integrityInterval);
@@ -197,6 +218,8 @@ class EXPORTED Syscollector final
         Syscollector& operator=(const Syscollector&) = delete;
 
         std::string getCreateStatement() const;
+        std::vector<std::string> getUpgradeStatements() const;
+        nlohmann::json containerContextBlock(const std::string& containerId);
         nlohmann::json getOSData();
         nlohmann::json getHardwareData();
         nlohmann::json getNetworkData();
@@ -1029,13 +1052,39 @@ class EXPORTED Syscollector final
         mutable std::shared_mutex                                                m_resourcesMutex;
 
         // Container ids whose baseline has already been synced at least once
-        // (in this process's lifetime). A container_id not in this set is
+        // in this database. A container_id not in this set is
         // treated as a first-ever sync and kept quiet regardless of m_notify,
         // mirroring the one-shot baseline's original "no alert per row on
         // first seed" behavior now that scanContainerBaseline() runs every
-        // interval instead of once. Reset only implicitly, by process
-        // restart — same durability as m_notify itself.
+        // interval instead of once. Like the sibling memos below, forgotten
+        // whenever the database they describe is closed, deleted or replaced.
         std::set<std::string>                                                    m_knownContainerIds;
+
+        // Memo for containerContextBlock(), so a container's context is read
+        // once per flush instead of once per row. Rows reach ecsData() grouped
+        // by container on every path: the scan flushes one container at a
+        // time, and every table is WITHOUT ROWID with container_id leading the
+        // primary key, so rows read back out of the database arrive clustered
+        // too.
+        //
+        // Keyed on the container id, which means it DOES need invalidating
+        // when a container's stored context changes. storeContainerContext()
+        // clears it, and it is cleared again when a container is swept. One
+        // entry rather than a map: a flush visits one container at a time, so
+        // a second entry would never be hit before being replaced.
+        //
+        // All three memos are guarded by m_containerContextMutex: the baseline
+        // runs on the scan thread, the sweeps that erase entries can run from the
+        // container-cadence path, and deleteDatabase() forgets them without
+        // holding m_scan_mutex. All are forgotten whenever the database they
+        // describe is closed, deleted or replaced.
+        std::string                                                              m_lastContainerId;
+        nlohmann::json                                                           m_lastContainerBlock;
+
+        // Last context written per container, so an unchanged one is not
+        // rewritten every scan.
+        std::mutex                                                               m_containerContextMutex;
+        std::map<std::string, std::string>                                       m_containerContexts;
 };
 
 

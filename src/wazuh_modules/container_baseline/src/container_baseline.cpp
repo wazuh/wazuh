@@ -10,6 +10,7 @@
 
 using wazuh::container_baseline::ContainerStatus;
 using wazuh::container_baseline::ContainerStatusSink;
+using wazuh::container_baseline::ContainerContextSink;
 using wazuh::container_baseline::DbsyncRow;
 using wazuh::container_baseline::ListContainers;
 using wazuh::container_baseline::MonitoredPath;
@@ -69,6 +70,18 @@ wazuh::container_baseline::DbsyncRowSink MakeRowSink(cb_dbsync_row_sink_t sink, 
     };
 }
 
+/// A null C callback means the consumer does not store context separately, so
+/// every container is accepted. Returning an empty std::function (rather than
+/// one that always returns true) lets the scanner skip the call entirely.
+ContainerContextSink MakeContextSink(cb_container_context_sink_t sink, void* user_data)
+{
+    if (sink == nullptr) return {};
+
+    return [sink, user_data](const std::string& container_id, const std::string& context_json) {
+        return sink(container_id.c_str(), context_json.c_str(), user_data) == 0;
+    };
+}
+
 ContainerStatusSink MakeStatusSink(cb_container_status_sink_t sink, void* user_data)
 {
     if (sink == nullptr) return {};
@@ -99,6 +112,7 @@ extern "C" int cbaseline_run_fim_dbsync(const char*                connector_soc
                                          const cb_monitored_path_t* paths,
                                          int                        path_count,
                                          cb_dbsync_row_sink_t       sink,
+                                         cb_container_context_sink_t context_sink,
                                          cb_container_status_sink_t status_sink,
                                          cb_rate_limit_fn           rate_limit,
                                          void*                      user_data)
@@ -112,7 +126,8 @@ extern "C" int cbaseline_run_fim_dbsync(const char*                connector_soc
                                 TranslatePaths(paths, path_count),
                                 MakeRowSink(sink, user_data),
                                 MakeStatusSink(status_sink, user_data),
-                                throttle);
+                                throttle,
+                                MakeContextSink(context_sink, user_data));
 }
 
 extern "C" int cbaseline_run_fim_dbsync_container(const char*                connector_socket_path,
@@ -120,6 +135,7 @@ extern "C" int cbaseline_run_fim_dbsync_container(const char*                con
                                                   const cb_monitored_path_t* paths,
                                                   int                        path_count,
                                                   cb_dbsync_row_sink_t       sink,
+                                                  cb_container_context_sink_t context_sink,
                                                   cb_container_status_sink_t status_sink,
                                                   cb_rate_limit_fn           rate_limit,
                                                   void*                      user_data)
@@ -141,11 +157,13 @@ extern "C" int cbaseline_run_fim_dbsync_container(const char*                con
                                             TranslatePaths(paths, path_count, /*keep_unusable=*/true),
                                             MakeRowSink(sink, user_data),
                                             MakeStatusSink(status_sink, user_data),
-                                            throttle);
+                                            throttle,
+                                            MakeContextSink(context_sink, user_data));
 }
 
 extern "C" int cbaseline_run_syscollector_dbsync(const char*                connector_socket_path,
                                                   cb_dbsync_row_sink_t       sink,
+                                                  cb_container_context_sink_t context_sink,
                                                   cb_container_status_sink_t status_sink,
                                                   void*                      user_data)
 {
@@ -153,13 +171,15 @@ extern "C" int cbaseline_run_syscollector_dbsync(const char*                conn
 
     return RunSyscollectorDbsyncBaseline(connector_socket_path,
                                          MakeRowSink(sink, user_data),
-                                         MakeStatusSink(status_sink, user_data));
+                                         MakeStatusSink(status_sink, user_data),
+                                         MakeContextSink(context_sink, user_data));
 }
 
 extern "C" int cbaseline_run_syscollector_dbsync_for(const char*                connector_socket_path,
                                                      const char* const*         container_ids,
                                                      int                        container_count,
                                                      cb_dbsync_row_sink_t       sink,
+                                                     cb_container_context_sink_t context_sink,
                                                      cb_container_status_sink_t status_sink,
                                                      void*                      user_data)
 {
@@ -185,7 +205,8 @@ extern "C" int cbaseline_run_syscollector_dbsync_for(const char*                
     if (ids.empty()) return 0;
 
     return RunSyscollectorDbsyncBaselineForContainers(
-        connector_socket_path, ids, MakeRowSink(sink, user_data), MakeStatusSink(status_sink, user_data));
+        connector_socket_path, ids, MakeRowSink(sink, user_data), MakeStatusSink(status_sink, user_data),
+        MakeContextSink(context_sink, user_data));
 }
 
 extern "C" int cbaseline_lifecycle_since(const char*         connector_socket_path,

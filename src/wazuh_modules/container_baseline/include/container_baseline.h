@@ -79,13 +79,35 @@ typedef struct cb_monitored_path_t {
 
 /* Invoked once per raw dbsync-format baseline row. `table` is the dbsync table
  * name ("dbsync_processes", "file_entry", ...); `row_json` is a flat object of
- * that table's columns, already stamped with container_id and container_json.
+ * that table's columns, already stamped with container_id.
  * The caller groups rows per container per table and syncs them through
  * per-container scoped DBSync transactions. */
 typedef void (*cb_dbsync_row_sink_t)(const char* container_id,
                                      const char* table,
                                      const char* row_json,
                                      void*       user_data);
+
+/* Invoked once per scanned container, strictly BEFORE any of that container's
+ * rows reach the row sink.
+ *
+ * `context_json` is the container's context as a JSON object -- the same
+ * {"container":{...}} shape that was copied onto every row. The consumer
+ * stores it once, keyed by container_id, and that container's rows reference
+ * it instead of carrying it.
+ *
+ * RETURN 0 to accept the container, non-zero to skip it. A non-zero return
+ * means the consumer could not persist the context, and the baseline then
+ * emits NO rows for that container. That is what the return value is for:
+ * rows whose context was never stored would describe a container nothing can
+ * identify, and the DELETE they eventually produce is precisely the event the
+ * context exists to keep self-contained.
+ *
+ * Skipping is not a failed scan of the container, it is the absence of one.
+ * The caller learns of it through the status sink and must not read the
+ * missing rows as deletions. */
+typedef int (*cb_container_context_sink_t)(const char* container_id,
+                                           const char* context_json,
+                                           void*       user_data);
 
 /* Per-container outcome, reported once per SCANNED container after all of its
  * rows have been emitted.
@@ -148,8 +170,8 @@ typedef void (*cb_container_status_sink_t)(const cb_container_status_t* status, 
 typedef void (*cb_rate_limit_fn)(void);
 
 /* Baseline every container's FIM files as raw file_entry dbsync rows. Each row
- * is a flat file_entry column set (container_id, path, hash_md5, …,
- * container_json) ready for fim_db_transaction_sync_row_json().
+ * is a flat file_entry column set (container_id, path, hash_md5, …) ready for
+ * fim_db_transaction_sync_row_json().
  *
  * `status_sink` and `rate_limit` may be NULL.
  *
@@ -160,6 +182,7 @@ EXPORTED int cbaseline_run_fim_dbsync(const char*                connector_socke
                                       const cb_monitored_path_t* paths,
                                       int                        path_count,
                                       cb_dbsync_row_sink_t       sink,
+                                      cb_container_context_sink_t context_sink,
                                       cb_container_status_sink_t status_sink,
                                       cb_rate_limit_fn           rate_limit,
                                       void*                      user_data);
@@ -205,6 +228,7 @@ EXPORTED int cbaseline_run_fim_dbsync_container(const char*                conne
                                                 const cb_monitored_path_t* paths,
                                                 int                        path_count,
                                                 cb_dbsync_row_sink_t       sink,
+                                                cb_container_context_sink_t context_sink,
                                                 cb_container_status_sink_t status_sink,
                                                 cb_rate_limit_fn           rate_limit,
                                                 void*                      user_data);
@@ -216,6 +240,7 @@ EXPORTED int cbaseline_run_fim_dbsync_container(const char*                conne
  * `status_sink` may be NULL. Same return semantics as above. */
 EXPORTED int cbaseline_run_syscollector_dbsync(const char*                connector_socket_path,
                                                cb_dbsync_row_sink_t       sink,
+                                               cb_container_context_sink_t context_sink,
                                                cb_container_status_sink_t status_sink,
                                                void*                      user_data);
 
@@ -238,6 +263,7 @@ EXPORTED int cbaseline_run_syscollector_dbsync_for(const char*                co
                                                    const char* const*         container_ids,
                                                    int                        container_count,
                                                    cb_dbsync_row_sink_t       sink,
+                                                   cb_container_context_sink_t context_sink,
                                                    cb_container_status_sink_t status_sink,
                                                    void*                      user_data);
 

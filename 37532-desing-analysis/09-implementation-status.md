@@ -441,7 +441,7 @@ window, which is [D15](12-blocking-decisions.md) at single-row granularity.
 | --- | --- | --- |
 | 14 | Move the work off critical threads | **Largely resolved — see [Thread ownership](#thread-ownership-item-14--d5).** D5 is decided; the drain and reconcile move off `main()`, the walk deliberately stays. The staging buffer is implemented; the drain thread and consumer are A3's remaining work |
 | 15 | Bounded concurrency over containers | **Deprioritised, and now ruled out for the live path** — the spike's 502-of-504 row loss above is what concurrent scoped transactions for one container actually cost. **Deprioritised on the evidence** for the walk too. Its value fell sharply once the `/proc` storm, the 1+N IPC pattern and the image rescans were removed: the remaining cost is dominated by FIM file hashing, which is I/O-bound and deliberately rate-limited by `check_max_fps`, so parallelising past a throttle buys little. It would also add real thread-safety surface (a shared image cache, and the row-contiguity contract the consumers stream on). Worth revisiting only if a node-level benchmark shows collection wall-clock is actually the bottleneck |
-| 17 | Container context stored once | Replacing the per-row `container_json` blob with a dimension row is a schema change for #37203-3/-4 |
+| 17 | Container context stored once | **Done.** The recorded reason for deferring it was wrong — see below |
 | 20 | Baseline once per lifetime + create trigger | The largest remaining win, and the one that makes this a *baseline*. **Now planned in [10](10-container-instances-delta-plan.md)**; still needs the `container_instances` change that plan specifies |
 | 21 | Baseline↔eBPF handoff | **In progress.** The provider is imported and all four gaps it depended on are closed and kernel-verified (in-kernel filtering `619ecb670c`, per-cgroup loss attribution `9e884232c5`, link teardown `9683fbbb7f`, ABI guard). What remains is the *consumer* — A3 in [11 §11.7](11-ebpf-provider-import-plan.md#117-phased-plan) — which is gated on **[D5](12-blocking-decisions.md#blocking-the-next-phase)** (thread ownership) and, because allowlist filtering makes an unknown cgroup invisible rather than merely unattributed, on item 20's create trigger |
 | 22 | Cache across runs, not just within one | The fingerprint makes it safe; it needs somewhere to live other than the per-run context, i.e. the `BaselineService` object item 29 wants. **Note the dependency runs the other way from what [08](08-roadmap.md) says** — see [10 §risk 2](10-container-instances-delta-plan.md): `ImageContentCache`'s saving is within-cycle reuse across replicas, so once item 20 makes a cycle scan only the delta the saving evaporates. 22 must land with or before 20 |
@@ -500,3 +500,44 @@ window, which is [D15](12-blocking-decisions.md) at single-row granularity.
 6. **The module's test suite was red on the branch as delivered** — two failures, both fixed here:
    `BuildProcessJson` asserted a string `pid` against the numeric one the code emits, and a test
    pinned the hash-truncation behaviour that finding C2 identifies as a defect.
+
+
+## Correction — why item 17 was deferred, and why that reason did not hold
+
+This table recorded item 17 as blocked because *"replacing the per-row
+`container_json` blob with a dimension row is a schema change for #37203-3/-4"*.
+That conflated two different changes, and the conflation came from
+[16](16-open-design-questions.md) Q1, whose **shape 2** is an *indexer-side*
+dimension row where the consumer joins. That one is external and does change
+the emitted document.
+
+Item 17 as written in [04](04-findings-performance.md) is an **agent-local**
+normalisation. The emitted document is unchanged by it, which was verified
+rather than assumed: the context blob is not in the document `_id`
+(`calculateHashId()` hashes table + container_id + primary keys), not in the
+integrity checksum (`getRowChecksum()` erases both container columns, as does
+the FIM mirror), and is dropped at emission by both consumers. Sourcing the
+same block from a stored row produces the same bytes on the wire.
+
+The real obstacles were different, and neither was the indexer:
+
+1. **No migration mechanism was in use.** `DBSync` only runs its create
+   statement for a database being built from nothing, and neither consumer
+   passed any upgrade statements — so a newly added table would have appeared
+   on fresh installs only, and the first write to it on an upgraded agent
+   would have thrown. Standing that up was a prerequisite, and it is now done.
+2. **Track S overlaps the same functions.** Item 20 / doc 10 rewrites
+   `syscollectorImp.cpp` and `container_baseline_scanner.cpp`, which item 17
+   must also touch.
+
+Recording the wrong reason had a cost: it pointed at an owner who could not
+have unblocked the work, and it hid a defect — the MODIFIED storm in
+[03](03-findings-correctness.md) C29 — that was the strongest argument for
+doing it.
+
+Item 17 is now complete, including the half that was itself deferred a second
+time: the `container_json` column is removed rather than left in place for an
+upgrade cycle, since nothing on this branch has been released and so there is
+no installed base for a compatibility window to protect. See
+[24](24-container-context-measured.md) for what the column cost and what
+removing it required.

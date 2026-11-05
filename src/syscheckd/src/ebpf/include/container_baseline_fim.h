@@ -42,6 +42,26 @@ extern "C" {
 void fim_run_container_baseline(void);
 
 /**
+ * @brief Reconcile stored container FIM state against the runtime's own list.
+ *
+ * The periodic floor. Asks container_instances which containers exist and, if
+ * it answered, deletes the rows and contexts of those that no longer do, then
+ * prunes contexts an interrupted cleanup left behind.
+ *
+ * Collects nothing: no walk, no file reads. One IPC round trip and one scan of
+ * the stored container ids, so it is cheap enough to run on a short cadence.
+ *
+ * Needed in addition to the per-removal cleanup because two things no
+ * notification can report: a container the module never learned about, and any
+ * removal that happened across a resync, since a full-list refresh carries no
+ * removal events at all.
+ *
+ * Does nothing if the connector does not answer. An empty list is not evidence
+ * that every container is gone.
+ */
+void fim_container_sweep_absent(void);
+
+/**
  * @brief Start draining container file events from the eBPF engine (#37396).
  *
  * MUST be called BEFORE fim_run_container_baseline(). That ordering is the

@@ -13,9 +13,11 @@
 
 #include "cgroup_container_map.hpp"
 #include "container_baseline_fim_bridge.h"
+#include "container_identity_set.hpp"
 #include "container_event_router.hpp"
 #include "container_list_refresh.hpp"
 #include "container_event_staging.hpp"
+#include "container_sweep_schedule.hpp"
 #include "resolver_wait.hpp"
 #include "container_instances_client.hpp"
 #include "container_instances_notify_socket.hpp"
@@ -123,7 +125,9 @@ namespace fim_container_events
         AdmissionClock::time_point admissionNow()
         {
 #ifdef WAZUH_UNIT_TESTING
+
             if (admission_test_now) return *admission_test_now;
+
 #endif
             return AdmissionClock::now();
         }
@@ -141,7 +145,9 @@ namespace fim_container_events
         }
 
         const auto now = admissionNow();
+
         if (!unavailable_since) unavailable_since = now;
+
         if (!fim_container_admission_snapshot_known() && now - *unavailable_since <= kConsumerOutageBudget)
         {
             return false;
@@ -325,7 +331,7 @@ namespace fim_container_events
      * that the installed snapshot is behind the view, so the next call that can
      * install does, with or without a further change. */
     AdmissionPublish decideAdmissionPublish(bool changed, bool unpublished, bool released, bool enumerated,
-                                             bool sourcesPending)
+                                            bool sourcesPending)
     {
         if (!changed && !unpublished)
         {
@@ -605,6 +611,7 @@ namespace fim_container_events
             , staging(cfg.max_paths_per_container, cfg.max_containers, cfg.settle_delay_ms)
             , router(map, staging)
             , client(cfg.connector_socket_path)
+            , sweep(cfg.sweep_interval_ms)
         {
         }
 
@@ -613,6 +620,11 @@ namespace fim_container_events
         ContainerEventStaging                                        staging;
         ContainerEventRouter                                         router;
         wazuh::container_instances_client::ContainerInstancesClient  client;
+
+        /* When the whole-node reconciliation pass is next due. Touched only on the
+         * resolver thread -- the loop's deadline and every out-of-band request are
+         * all on it -- which is why it needs no synchronisation. */
+        SweepSchedule    sweep;
 
         rt_handle_t      handle{nullptr};
         ReconcileHandler handler;
@@ -626,6 +638,7 @@ namespace fim_container_events
          * full set — the seeding path, reached without a special case. */
         std::uint64_t cursor_epoch{0};
         std::uint64_t cursor_seq{0};
+        ContainerIdentitySet known_container_ids;
 
         /* Previous values of the counters that record work being shed.
          *
@@ -838,6 +851,7 @@ namespace fim_container_events
                          "container discovery falls back to polling every " +
                          std::to_string(config.resolver_interval_ms) + " ms.");
             }
+
             stop_event_fd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
             resolver_thread = std::thread([this] { resolverLoop(); });
         }
@@ -854,6 +868,7 @@ namespace fim_container_events
         void resolverLoop()
         {
             auto next_list = std::chrono::steady_clock::now();
+            sweep.restart(next_list);
 
             while (!admission_stop.load(std::memory_order_relaxed))
             {
@@ -862,15 +877,25 @@ namespace fim_container_events
                 if (now >= next_list)
                 {
                     refreshContainerList();
+
                     if (admission_stop.load(std::memory_order_relaxed)) return;
+
                     reportShedWork();
                     next_list = now + std::chrono::milliseconds(config.resolver_interval_ms);
+                }
+
+                /* The floor. After the refresh, never before: the refresh is what
+                 * requests a sweep out of band, and doing both in one pass is one
+                 * sweep rather than two. */
+                if (sweep.due(std::chrono::steady_clock::now()))
+                {
+                    requestSweep();
                 }
 
                 resolvePending();
                 router.pumpUnknownOverflow();
 
-                if (waitForWork(next_list))
+                if (waitForWork(sweep.soonerOf(next_list)))
                 {
                     /* container_instances says its list moved. Refreshing on the
                      * next pass rather than here keeps one call site for the
@@ -897,13 +922,14 @@ namespace fim_container_events
          *   stop     an eventfd, not a short timeout. The floor is heading for tens
          *            of seconds, and without this, shutdown would wait out whatever
          *            remained of it.
-         *   timeout  bounded by resolvePending()'s pacing while cgroups are still
-         *            unresolved, since those need revisiting on their own cadence
-         *            and no notification is coming for them. */
-        bool waitForWork(std::chrono::steady_clock::time_point next_list)
+         *   timeout  the earlier of the next list refresh and the next whole-node
+         *            sweep, further bounded by resolvePending()'s pacing while
+         *            cgroups are still unresolved, since those need revisiting on
+         *            their own cadence and no notification is coming for them. */
+        bool waitForWork(std::chrono::steady_clock::time_point next_deadline)
         {
             const auto until_refresh =
-                std::chrono::duration_cast<std::chrono::milliseconds>(next_list - std::chrono::steady_clock::now());
+                std::chrono::duration_cast<std::chrono::milliseconds>(next_deadline - std::chrono::steady_clock::now());
             const int timeout_ms = resolverWaitMs(until_refresh, map.unresolvedCount() > 0);
 
             struct pollfd fds[2];
@@ -939,6 +965,23 @@ namespace fim_container_events
             return false;
         }
 
+        /* Ask for a whole-node reconciliation pass, and start the floor's period
+         * again from here.
+         *
+         * One function for the deadline and for both out-of-band triggers, so the
+         * "a sweep restarts the period" rule cannot hold on one path and not the
+         * others. Only the marker is raised: the pass itself runs on the consumer
+         * thread, the only thread allowed to open a FIMDB transaction (D5).
+         *
+         * Resolver thread only -- the deadline, the resync and the discovery
+         * triggers are all on it, plus start()'s seed refresh before that thread
+         * exists. */
+        void requestSweep()
+        {
+            staging.requestSweep();
+            sweep.restart(std::chrono::steady_clock::now());
+        }
+
         /* Bring the cgroup map up to date with container_instances.
          *
          * Reads forward from a cursor where it can, and falls back to the whole
@@ -960,6 +1003,7 @@ namespace fim_container_events
         {
             const auto admissionGeneration = fim_container_admission_generation();
             const auto delta = client.listContainersSince(cursor_epoch, cursor_seq);
+
             // Fetch above, apply below. Publication synchronously reconciles
             // file_entry, so the state lock must cover the install as well as
             // reconciliation, but must never cover connector I/O. Keep THIS
@@ -969,12 +1013,18 @@ namespace fim_container_events
             while (!fim_container_state_trylock())
             {
                 if (admission_stop.load(std::memory_order_relaxed)) return;
+
                 std::this_thread::sleep_for(std::chrono::milliseconds {10});
             }
+
             struct StateUnlock
             {
-                ~StateUnlock() { fim_container_state_unlock(); }
+                ~StateUnlock()
+                {
+                    fim_container_state_unlock();
+                }
             } stateUnlock;
+
             if (admission_stop.load(std::memory_order_relaxed)) return;
 
             const bool releasedHold = noteAdmissionListing(delta.available);
@@ -1006,6 +1056,89 @@ namespace fim_container_events
                  * settled answer is still published on a quiet node. */
                 fim_container_set_admission_pending_if_current(admissionGeneration);
                 admission_unpublished = true;
+            }
+
+            /* A whole-node sweep is the only pass that rebuilds the admission
+             * set from a container list, and until it runs a container the
+             * module had not seen is walked, has every row withheld by an
+             * admission set that predates it, and reports nothing at all.
+             *
+             * Asked for BEFORE the plan is applied, not after. Applying it
+             * escalates any new container to a walk; the staging buffer serves
+             * lifecycle work ahead of walks, so asking first puts the admission
+             * refresh in front of the walk whose rows depend on it. The other
+             * order leaves a window in which the consumer takes the walk first
+             * and drops every row it produces -- and nothing walks that
+             * container again, so it would report only the files that happen to
+             * change afterwards.
+             *
+             * The two reply shapes need different tests:
+             *
+             * A full list states what exists and says nothing about what stopped
+             * existing, so every removal that happened while the cursor was
+             * unusable is invisible on this path. The map cannot infer them
+             * either -- install() never reports a container gone, deliberately,
+             * because an absence is not a statement of removal and acting on one
+             * is D11 rule 1. Conditional on the list having changed,
+             * because this branch is also the STEADY STATE against a
+             * container_instances too old to serve deltas, where it runs on
+             * every resolver pass; sweeping the node every five seconds there
+             * would be a self-inflicted cost on exactly the deployments least
+             * able to take it. Container identities are compared, not list
+             * length against the cgroup map's size: a stopped or unresolved
+             * container has no positive cgroup mapping, and an id can be
+             * replaced without either count moving. A resync is asked for
+             * regardless, since its gap is a gap in the events rather than in
+             * the list. The set comparison still misses an addition and a
+             * removal between two passes that cancel out -- the floor covers
+             * that, which is what the floor is for.
+             *
+             * A delta names the new containers outright, so the test there is
+             * exact. */
+            if (!delta.deltaSupported || delta.resyncRequired)
+            {
+                ContainerIdentitySet listed_ids;
+
+                for (const auto& container : delta.containers)
+                {
+                    if (!container.containerId.empty())
+                    {
+                        listed_ids.insert(container.containerId);
+                    }
+                }
+
+                if (delta.resyncRequired || ContainerIdentitySetChanged(known_container_ids, listed_ids))
+                {
+                    requestSweep();
+                }
+
+                known_container_ids = std::move(listed_ids);
+            }
+            else
+            {
+                using Kind = wazuh::container_instances_client::ContainerEventRef::Kind;
+
+                bool discovered = false;
+
+                for (const auto& event : delta.events)
+                {
+                    if (event.containerId.empty()) continue;
+
+                    if (event.kind == Kind::added)
+                    {
+                        discovered = true;
+                        known_container_ids.insert(event.containerId);
+                    }
+                    else if (event.kind == Kind::removed)
+                    {
+                        known_container_ids.erase(event.containerId);
+                    }
+                }
+
+                if (discovered)
+                {
+                    requestSweep();
+                }
             }
 
             admission_unkeyed = std::move(plan.unkeyed);
@@ -1360,7 +1493,9 @@ namespace fim_container_events
     bool ContainerEventDrain::start(const DrainConfig& config, ReconcileHandler handler)
     {
         std::lock_guard<std::mutex> lock(m_lifecycle_mutex);
+
         if (m_admission_stopped) return false;
+
         if (m_impl != nullptr) return m_impl->handle != nullptr;
 
         auto impl = new Impl(config);
@@ -1449,9 +1584,18 @@ namespace fim_container_events
              * Deliberately NOT "container FIM falls back to scheduled baselines":
              * there is no scheduled container baseline to fall back to —
              * fim_run_container_baseline() runs once from main(), and the only
-             * thing that re-runs it is this drain's own rebaselineAll. The caller
-             * turns this into a WARNING when container directories are actually
-             * configured; the detail stays here at debug level. */
+             * thing that re-runs it is this drain's own rebaselineAll.
+             *
+             * Nor does the reconciliation floor cover it, which is worth saying
+             * plainly because the floor exists precisely to catch what nothing
+             * else reports: it is scheduled by THIS drain's resolver loop, so a
+             * host that gets no further than here has no floor either. Container
+             * FIM then reports the node as it stood when the agent started —
+             * every container listed at that moment, and nothing about any
+             * container created or removed since.
+             *
+             * The caller turns this into a WARNING when container directories are
+             * actually configured; the detail stays here at debug level. */
             LogDebug("Container eBPF drain: the eBPF engine is unavailable (no rt_file.bpf.o, or the "
                      "kernel/capabilities do not permit loading it).");
             return admissionOnly();
@@ -1661,6 +1805,7 @@ namespace fim_container_events
     void ContainerEventDrain::release()
     {
         std::lock_guard<std::mutex> lock(m_lifecycle_mutex);
+
         if (m_admission_stopped || m_impl == nullptr) return;
 
         m_impl->staging.release();
@@ -1675,15 +1820,19 @@ namespace fim_container_events
         // stopping whichever thread happens to exist right now.
         std::lock_guard<std::mutex> lock(m_lifecycle_mutex);
         m_admission_stopped = true;
+
         if (m_impl == nullptr) return;
+
         m_impl->admission_stop.store(true, std::memory_order_relaxed);
         m_impl->wakeResolver();
+
         if (m_impl->resolver_thread.joinable()) m_impl->resolver_thread.join();
     }
 
     void ContainerEventDrain::stop()
     {
         std::lock_guard<std::mutex> lock(m_lifecycle_mutex);
+
         if (m_impl == nullptr) return;
 
         Impl* impl = m_impl;
@@ -1707,6 +1856,7 @@ namespace fim_container_events
         /* After the threads, never before: rt_close() detaches and frees everything
          * the handle owns, and the drain thread is inside rt_poll() on it. */
         if (impl->handle != nullptr) rt_close(impl->handle);
+
         impl->handle = nullptr;
 
         if (impl->stop_event_fd >= 0)
@@ -1732,7 +1882,9 @@ namespace fim_container_events
     void ContainerEventDrainTestPeer::advanceAdmissionTime(std::chrono::milliseconds elapsed)
     {
         fim_container_state_lock();
+
         if (!admission_test_now) admission_test_now = AdmissionClock::now();
+
         *admission_test_now += elapsed;
         fim_container_state_unlock();
     }

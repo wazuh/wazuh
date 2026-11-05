@@ -247,14 +247,22 @@ namespace
         // it describes.
         fim_send_container_stateless_event(row_data, old_data, static_cast<int>(op), ctx->origin);
 
-        char* row_str = cJSON_PrintUnformatted(row_data);
-
-        if (!row_str) return;
-
-        const int sync =
-            fim_persist_baseline_row(id.c_str(), static_cast<int>(op), "wazuh-states-fim-files", row_str, version);
+        // The sync column is read before the persist path takes its copy, which it
+        // normalises in place and frees.
         const cJSON* stored_sync = cJSON_GetObjectItem(row_data, "sync");
         const int previous_sync = cJSON_IsNumber(stored_sync) ? stored_sync->valueint : 0;
+
+        // row_data belongs to DBSync and is const, so the persist path gets its own
+        // copy rather than normalising DBSync's tree in place. A duplicate is
+        // markedly cheaper than the print-and-reparse it replaces, which serialised
+        // the whole row -- container context blob included -- and tokenised it
+        // straight back, once per row.
+        cJSON* row_copy = cJSON_Duplicate(row_data, 1);
+
+        if (!row_copy) return;
+
+        const int sync =
+            fim_persist_baseline_row(id.c_str(), static_cast<int>(op), "wazuh-states-fim-files", row_copy, version);
 
         if (op != OPERATION_DELETE && sync >= 0 && sync != previous_sync)
         {
@@ -264,8 +272,6 @@ namespace
         {
             ctx->pending_sync.erase(cJSON_GetStringValue(path_json));
         }
-
-        free(row_str);
     }
 
     /// Owns one container's scoped transaction for its lifetime.
@@ -402,8 +408,8 @@ namespace
                 {
                     if (fim_db_transaction_deleted_rows(m_txn, container_txn_callback, &m_ctx) != FIMDB_OK)
                     {
-                        LogDebug("Container FIM baseline: delete detection failed for container '%s'.",
-                                 m_ctx.container_id.c_str());
+                        LogWarn("Container FIM baseline: delete detection failed for container '%s'.",
+                                m_ctx.container_id.c_str());
                     }
                 }
                 else
@@ -454,6 +460,54 @@ namespace
             std::size_t m_unstored {0};
     };
 
+    /// Removes every trace of ONE container, in the only order that works.
+    ///
+    /// The sole copy of this sequence. Both callers -- the whole-node sweep and the
+    /// per-container cleanup a removal triggers -- go through here, so the ordering
+    /// cannot drift between them.
+    ///
+    /// Deliberately does NOT prune orphaned contexts. A prune deletes the context
+    /// of every container absent from a list, and a caller that was told "this one
+    /// container went" has no authoritative view of which others still exist;
+    /// pruning against that would delete live containers' contexts. Only the
+    /// whole-node path, which obtained and checked a full list, may prune.
+    ///
+    /// Returns false, and keeps the budget and the context, unless the container is
+    /// confirmed to hold no rows afterwards. Releasing either while rows survive
+    /// would let the container exceed its document limit, and would emit those rows'
+    /// eventual DELETEs without the context that says what they refer to. The rows
+    /// are still absent from the next whole-node listing, so the periodic sweep
+    /// retries. The row count decides, not the transaction's result: a failed
+    /// delete detection still closes the transaction, which removes the rows
+    /// without reporting them.
+    static bool SweepOneContainer(const std::string& container_id, int origin)
+    {
+        ScopedContainerTxn txn{container_id, origin};
+
+        // No rows synced -> every stored row becomes DELETED.
+        txn.finish(true);
+        const int remaining = fim_db_count_container_rows(container_id.c_str(), nullptr);
+
+        if (remaining != 0)
+        {
+            LogWarn("Container FIM: could not confirm the rows of removed container '%s' were deleted; "
+                    "keeping its context and document budget until a later sweep succeeds.",
+                    container_id.c_str());
+            return false;
+        }
+
+        // After the rows are gone, not before: the DELETEs above run through
+        // container_txn_callback and decrement the very count being released, so
+        // releasing first would drop a map entry that the sweep then re-creates and
+        // leaves non-zero.
+        fim_container_doc_budget_release(container_id.c_str());
+
+        // Same ordering, same reason: the DELETE events emitted just above are
+        // built from this context, so it cannot go first.
+        fim_db_delete_container_context(container_id.c_str());
+        return true;
+    }
+
     /// Streams the baseline into per-container transactions.
     class BaselineDriver
     {
@@ -489,15 +543,15 @@ namespace
 
                 // Stable checksum so DBSync can detect row-level changes between runs.
                 //
-                // The container-scope columns are excluded deliberately:
-                // container_id is part of the row's primary key already, and
-                // container_json is a copy of the container's metadata blob. With
-                // the blob inside the digest, editing one label changed the checksum
-                // of every file row of that container and re-emitted the whole file
-                // set as MODIFIED — a metadata edit reported as file changes.
+                // container_id is excluded deliberately: it is part of the row's
+                // primary key already, so rows are told apart by it without the
+                // digest. The container's metadata is not here to exclude — it is
+                // stored once under that id rather than copied onto the row, which
+                // is what keeps editing one label from rewriting the checksum of
+                // every file row of that container and re-emitting the whole file
+                // set as MODIFIED.
                 auto checksumInput = row;
                 checksumInput.erase("container_id");
-                checksumInput.erase("container_json");
                 const std::string dump = checksumInput.dump();
                 char sha1[41] = {0};
                 fim_compute_row_checksum(dump.c_str(), sha1);
@@ -646,15 +700,21 @@ namespace
 
                 const auto db_ids = distinctContainerIds();
 
-                if (!db_ids)
-                {
-                    LogDebug("Container FIM baseline: could not read container ids from the database; "
-                             "skipping the stale-container sweep.");
-                    return std::nullopt;
-                }
-
                 std::set<std::string> stale;
                 std::set<std::string> surviving;
+
+                // Without this list neither half below is safe. The row sweep needs
+                // it to know which containers still hold rows. The context prune
+                // needs it too: a container absent from `known` whose rows could not
+                // be listed may still hold rows, and pruning its context would emit
+                // their eventual DELETEs without it. Skip both; the next sweep retries.
+                if (!db_ids)
+                {
+                    LogWarn("Container FIM baseline: could not read container ids from the database; "
+                            "skipping the stale-container sweep and the context prune.");
+                    m_stale = 0;
+                    return std::nullopt;
+                }
 
                 for (const auto& id : *db_ids)
                 {
@@ -670,24 +730,53 @@ namespace
                     }
                 }
 
+                // A container whose sweep could not be confirmed still holds rows,
+                // so the prune below must keep its context as if it were live.
+                std::set<std::string> unswept;
+
                 for (const auto& id : stale)
                 {
                     LogDebug("Container FIM baseline: container '%s' is gone; ageing out its FIM rows.",
                              id.c_str());
-                    ScopedContainerTxn txn{id, m_origin};
-                    txn.finish(true); // no rows synced -> every stored row becomes DELETED
 
-                    // After the rows are gone, not before: the DELETEs above run
-                    // through container_txn_callback and decrement the very count
-                    // being released, so releasing first would drop a map entry
-                    // that the sweep then re-creates and leaves non-zero.
-                    fim_container_doc_budget_release(id.c_str());
+                    if (!SweepOneContainer(id, m_origin))
+                    {
+                        unswept.insert(id);
+                    }
                 }
 
-                m_stale = stale.size();
+                // Recovers contexts orphaned by a crash between deleting a
+                // container's rows and deleting its context. Once the rows are
+                // gone the row scan above can never find that container again, so
+                // only the live list can identify it.
+                //
+                // `known` is the whole-node container list, which the caller
+                // already established was answered -- an incomplete list here
+                // would delete the contexts of containers that still exist. A
+                // container the walk discovered after that listing is live too, and
+                // context_sink has just stored its context.
+                std::set<std::string> live_ids{known};
+                live_ids.insert(m_scanned.begin(), m_scanned.end());
+                live_ids.insert(unswept.begin(), unswept.end());
+
+                std::vector<const char*> live;
+                live.reserve(live_ids.size());
+
+                for (const auto& id : live_ids)
+                {
+                    live.push_back(id.c_str());
+                }
+
+                fim_db_prune_container_contexts(live.empty() ? nullptr : live.data(),
+                                                static_cast<int>(live.size()));
+
+                m_stale = stale.size() - unswept.size();
 
                 // Every stale container's rows are gone now, so this is exactly
-                // what the table holds.
+                // what the table holds -- plus the ones whose sweep could not be
+                // confirmed, which still hold theirs.
+                surviving.insert(unswept.begin(), unswept.end());
+
                 return surviving;
             }
 
@@ -809,6 +898,27 @@ namespace
         static_cast<BaselineDriver*>(user_data)->onRow(container_id, row_json);
     }
 
+    /// Stores the container's context before any of its rows arrive.
+    ///
+    /// A non-zero return makes the baseline skip the container entirely, which is
+    /// the right answer to a failed write: file rows stored against a context that
+    /// is not there would, when the container is eventually swept, produce deletes
+    /// describing a container nothing can identify.
+    int context_sink(const char* container_id, const char* context_json, void* /*user_data*/)
+    {
+        if (!container_id || !context_json) return 1;
+
+        if (fim_db_set_container_context(container_id, context_json) != FIMDB_OK)
+        {
+            LogDebug("Container FIM baseline: could not store the context for container '%s'; "
+                     "its rows are skipped this pass rather than stored without it.",
+                     container_id);
+            return 1;
+        }
+
+        return 0;
+    }
+
     void status_sink(const cb_container_status_t* status, void* user_data)
     {
         if (!status || !user_data) return;
@@ -858,7 +968,7 @@ namespace
     };
 
     /// Called for every container the connector knows of, keyed or not --
-    /// ListContainers() feeds the unkeyed ones through here too, with the
+    /// ApplyListing() feeds the unkeyed ones through here too, with the
     /// connector's own decision for each. `known` must hold them both: the
     /// bridge reads absence from it as "this snapshot predates the container"
     /// and retakes the listing, which for one that can never be keyed would
@@ -911,6 +1021,7 @@ namespace
         const auto admissionGeneration = reply.generation;
         const int listed = reply.listed;
         fim_container_events::noteAdmissionListing(listed >= 0);
+
         if (listed < 0) return listed;
 
         // Before the early return below, which a pending reply would otherwise
@@ -920,6 +1031,7 @@ namespace
         // every agent restart. Holding instead is what leaves each row at the
         // flag the previous run gave it.
         listing.sourcesPending = (listStatus.sources_pending != 0);
+
         if (listStatus.admission_pending != 0)
         {
             listing.settling = true;
@@ -984,6 +1096,109 @@ namespace
                                        listing.sourcesPending);
 
         return listed;
+    }
+
+    /// What a whole-node reconciliation pass produced.
+    struct NodeReconcile
+    {
+        ContainerListing listing;
+
+        /// False when the connector never answered. `listing` is then empty for
+        /// want of a reply rather than for want of containers, which is a
+        /// difference nothing downstream may ignore.
+        bool answered{false};
+    };
+
+    /// Install an admission reply and describe what it listed.
+    ///
+    /// The caller holds container_state_mutex: application, unlike the fetch it
+    /// answers, belongs inside the baseline/recovery transaction.
+    NodeReconcile ApplyListing(AdmissionReply& reply)
+    {
+        NodeReconcile out;
+
+        // Before the move: applying is what sets the pending flags on it.
+        out.answered = (applyContainerAdmission(reply) >= 0);
+        out.listing = std::move(reply.listing);
+
+        return out;
+    }
+
+    /// Sweep what is absent from an installed listing -- and do nothing
+    /// unless the connector answered with the WHOLE node.
+    ///
+    /// The reachability gate belongs with the thing it gates: a failed query would
+    /// otherwise delete every container's state. Every container the listing holds,
+    /// INCLUDING ones that are merely stopped, is left alone; without that
+    /// distinction a container restart would delete all of its FIM state and
+    /// re-create it -- a false-positive flood on exactly the event that must be
+    /// reported accurately.
+    ///
+    /// @return the ids that still hold rows once the sweep has run, or nothing
+    ///         when a gate below declined to sweep at all. A caller that needs
+    ///         that list anyway has to ask the database for it.
+    [[nodiscard]] std::optional<std::set<std::string>> SweepUnlisted(BaselineDriver& driver, const NodeReconcile& reconcile)
+    {
+        const ContainerListing& listing = reconcile.listing;
+
+        if (!reconcile.answered)
+        {
+            LogError("Container FIM: container connector unavailable, skipping stale-container cleanup "
+                     "to avoid false deletions.");
+            return std::nullopt;
+        }
+
+        if (!listing.complete && !listing.unkeyedKnown && listing.settling)
+        {
+            // The connector is still settling, which forces both flags to 0 and
+            // so lands here looking exactly like a version mismatch. It is not
+            // one, and it happens on every agent restart: warning about it
+            // taught operators to ignore the message below, which means a real
+            // one.
+            LogDebug("Container FIM: the container connector is still settling; deferring "
+                     "stale-container cleanup until it has a verdict.");
+            return std::nullopt;
+        }
+
+        if (!listing.complete && !listing.unkeyedKnown && listing.sourcesPending)
+        {
+            // The admission install warns once for this deferral, shared with
+            // the resolver and the admission-only degraded-start retry. Keep
+            // the per-pass detail here at DEBUG; no timeout makes absence safe.
+            LogDebug("Container FIM: a configured container source has not enumerated; applying named "
+                     "admission verdicts and deferring stale-container cleanup.");
+            return std::nullopt;
+        }
+
+        if (!listing.complete && !listing.unkeyedKnown)
+        {
+            // The connector answered, is still withholding running containers it
+            // cannot key -- and is too old to say which. They are missing from
+            // `known` for want of an attribution key, not for want of a
+            // container, and this sweep deletes on absence: it would wipe a live
+            // container's whole FIM baseline and re-seed it next cycle, the
+            // exact false-delete flood the unreachable branch above prevents.
+            LogWarn("Container FIM: the container list is incomplete and this connector does not "
+                    "report which containers it could not identify; skipping stale-container cleanup until "
+                    "it does. FIM state for containers that no longer exist is retained meanwhile.");
+            return std::nullopt;
+        }
+
+        return driver.sweepStale(listing.known);
+    }
+
+    /// List, refresh admission and sweep, for a caller that performs no walk of its own.
+    NodeReconcile ListAndSweep(BaselineDriver& driver)
+    {
+        // Only the fetch runs outside the transaction lock, as in
+        // fim_run_container_baseline(): the sweep has to act on the listing
+        // that was installed, not on one an intervening poll replaced.
+        auto reply = fetchContainerAdmission();
+        std::lock_guard<std::recursive_mutex> lock(container_state_mutex);
+        auto out = ApplyListing(reply);
+        // Without a walk, no surviving container frees budget for another promotion pass.
+        static_cast<void>(SweepUnlisted(driver, out));
+        return out;
     }
 
     /// Is `path` inside the configured monitored path `root`?
@@ -1124,17 +1339,51 @@ namespace
             return;
         }
 
+        /* Both of the following are handled before the monitored-path collection
+         * below, because neither reads a file: they remove rows that are already
+         * stored. Gating them on there being configured paths would mean a
+         * configuration edit that removes the last <directories> entry strands
+         * every container's rows forever. */
+
+        if (request.mode == fim_container_events::ReconcileMode::containerGone)
+        {
+            if (request.container_id.empty()) return;
+
+            LogDebug("Container FIM reconcile: container '%s' reported removed; ageing out its rows, "
+                     "then its context.",
+                     request.container_id.c_str());
+
+            // Idempotent: if the startup baseline's sweep already took this
+            // container, the transaction covers no rows and emits nothing, the
+            // budget release finds no entry, and the context DELETE matches none.
+            // Serialize with whole-node walks so their shared row statuses cannot be swept here.
+            std::lock_guard<std::recursive_mutex> lock(container_state_mutex);
+            SweepOneContainer(request.container_id, CB_FIM_ORIGIN_EVENT);
+            return;
+        }
+
+        if (request.mode == fim_container_events::ReconcileMode::sweepAbsent)
+        {
+            // The floor. Carries no container_id by construction -- the connector's
+            // list is the input -- so it must not fall through to the emptiness
+            // check below.
+            fim_container_sweep_absent();
+            return;
+        }
+
         if (request.container_id.empty()) return;
 
         // Fetch before taking the transaction lock: recovery must not queue
         // behind a connector timeout. A pending reply still carries the sampled
         // generation, so a newer install cannot be overwritten while we wait.
         std::optional<AdmissionReply> admissionReply;
+
         if (request.mode != ReconcileMode::deletePaths
-            && fim_container_admission_is_stale(request.container_id.c_str()))
+                && fim_container_admission_is_stale(request.container_id.c_str()))
         {
             admissionReply = fetchContainerAdmission();
         }
+
         std::lock_guard<std::recursive_mutex> lock(container_state_mutex);
 
         cb_monitored_path_t* paths      = nullptr;
@@ -1188,6 +1437,7 @@ namespace
                                                                        paths,
                                                                        static_cast<int>(path_count),
                                                                        dbsync_sink,
+                                                                       context_sink,
                                                                        status_sink,
                                                                        fim_container_baseline_rate_limit,
                                                                        &driver);
@@ -1231,6 +1481,7 @@ namespace
                                                        selected.data(),
                                                        static_cast<int>(selected.size()),
                                                        dbsync_sink,
+                                                       context_sink,
                                                        status_sink,
                                                        fim_container_baseline_rate_limit,
                                                        &driver);
@@ -1337,18 +1588,18 @@ namespace
 
                 const auto version = static_cast<uint64_t>(cJSON_GetNumberValue(cJSON_GetObjectItem(row, "version")));
                 const std::string id = std::string(container_id) + ":" + path;
-                std::unique_ptr<char, decltype(&free)> plain {cJSON_PrintUnformatted(row), free};
+                cJSON* copy = cJSON_Duplicate(row, 1);
 
-                if (!plain)
+                if (!copy)
                 {
-                    LogError("Container FIM: could not serialize reporting row '%s'.", id.c_str());
+                    LogError("Container FIM: could not copy reporting row '%s'.", id.c_str());
                     continue;
                 }
 
                 const int granted = fim_persist_baseline_row(id.c_str(),
                                                              promote ? OPERATION_CREATE : OPERATION_DELETE,
                                                              "wazuh-states-fim-files",
-                                                             plain.get(),
+                                                             copy,
                                                              version);
 
                 // A refused PROMOTION is the budget doing its job; a refused
@@ -1453,6 +1704,40 @@ extern "C" void fim_container_reconcile_admission(void)
     updateContainerReporting(true, *ids);
 }
 
+extern "C" void fim_container_sweep_absent(void)
+{
+    try
+    {
+        // may_detect_deletions is irrelevant here -- it governs how a WALK
+        // treats absent rows, and this performs no walk. CB_FIM_ORIGIN_SCAN
+        // because this is the scheduled floor rather than a reaction to an
+        // event, which is what the resulting alerts will report as their mode.
+        BaselineDriver driver{/*may_detect_deletions=*/true, CB_FIM_ORIGIN_SCAN};
+
+        const auto reconcile = ListAndSweep(driver);
+
+        if (reconcile.answered)
+        {
+            // Debug, like the per-container lines sweepStale() already emits:
+            // a floor that finds nothing is the normal case and must not be
+            // noise. The containers it does remove are each named at debug by
+            // sweepStale() itself.
+            LogDebug("Container FIM: reconciled against the runtime's container list (%zu known, "
+                     "%zu no longer present).",
+                     reconcile.listing.known.size(),
+                     driver.stale());
+        }
+    }
+    catch (const std::exception& err)
+    {
+        LogError("Container FIM reconciliation failed: %s", err.what());
+    }
+    catch (...)
+    {
+        LogError("Container FIM reconciliation failed with an unknown error.");
+    }
+}
+
 extern "C" void fim_run_container_baseline(void)
 {
     cb_monitored_path_t* paths = nullptr;
@@ -1472,11 +1757,14 @@ extern "C" void fim_run_container_baseline(void)
     // thread, which has no handler of its own.
     try
     {
+        // Listed, and admission refreshed, BEFORE the walk: the walk's rows are
+        // offered upward only for admitted containers. Only the fetch runs
+        // outside the transaction lock; the walk and the sweep below share the
+        // one the application is installed under.
         auto reply = fetchContainerAdmission();
         std::lock_guard<std::recursive_mutex> lock(container_state_mutex);
-        const int listed = applyContainerAdmission(reply);
-        const auto& listing = reply.listing;
-        const std::set<std::string>& known = listing.known;
+        const auto reconcile = ApplyListing(reply);
+        const std::set<std::string>& known = reconcile.listing.known;
 
         BaselineDriver driver;
 
@@ -1488,62 +1776,17 @@ extern "C" void fim_run_container_baseline(void)
                                                        paths,
                                                        static_cast<int>(path_count),
                                                        dbsync_sink,
+                                                       context_sink,
                                                        status_sink,
                                                        fim_container_baseline_rate_limit,
                                                        &driver);
 
         // Every container container_instances still knows about, INCLUDING ones
-        // that are merely stopped and therefore produced no rows above. Without
-        // this distinction a container restart would delete all of its FIM
-        // state and re-create it — a false-positive flood on exactly the event
-        // that must be reported accurately.
-        // A negative count means the connector never answered, so `known` is
-        // empty for want of an answer rather than for want of containers.
-        // Sweeping against it would delete every container's FIM state. Skip
-        // the sweep and keep the rows: a stale row costs one cycle of accuracy,
-        // whereas deleting a live container's whole baseline costs a
+        // that are merely stopped and therefore produced no rows above. Gated
+        // on the connector having answered: a stale row costs one cycle of
+        // accuracy, whereas deleting a live container's whole baseline costs a
         // false-delete flood plus a full re-seed.
-        std::optional<std::set<std::string>> reporting;
-
-        if (listed < 0)
-        {
-            LogError("Container FIM baseline: container connector unavailable, "
-                     "skipping stale-container cleanup to avoid false deletions.");
-        }
-        else if (!listing.complete && !listing.unkeyedKnown && listing.settling)
-        {
-            // The connector is still settling, which forces both flags to 0 and
-            // so lands here looking exactly like a version mismatch. It is not
-            // one, and it happens on every agent restart: warning about it
-            // taught operators to ignore the message below, which means a real
-            // one.
-            LogDebug("Container FIM baseline: the container connector is still settling; deferring "
-                     "stale-container cleanup until it has a verdict.");
-        }
-        else if (!listing.complete && !listing.unkeyedKnown && listing.sourcesPending)
-        {
-            // The admission install warns once for this deferral, shared with
-            // the resolver, including admission-only mode. Keep
-            // the per-pass detail here at DEBUG; no timeout makes absence safe.
-            LogDebug("Container FIM baseline: a configured container source has not enumerated; applying named "
-                     "admission verdicts and deferring stale-container cleanup.");
-        }
-        else if (!listing.complete && !listing.unkeyedKnown)
-        {
-            // The connector answered, is still withholding running containers it
-            // cannot key -- and is too old to say which. They are missing from
-            // `known` for want of an attribution key, not for want of a
-            // container, and this sweep deletes on absence: it would wipe a live
-            // container's whole FIM baseline and re-seed it next cycle, the
-            // exact false-delete flood the unreachable branch above prevents.
-            LogWarn("Container FIM baseline: the container list is incomplete and this connector does not "
-                    "report which containers it could not identify; skipping stale-container cleanup until "
-                    "it does. FIM state for containers that no longer exist is retained meanwhile.");
-        }
-        else
-        {
-            reporting = driver.sweepStale(known);
-        }
+        std::optional<std::set<std::string>> reporting = SweepUnlisted(driver, reconcile);
 
         // One more promotion pass, and it is not the one the admission install
         // at the top of this function already ran.
@@ -1584,7 +1827,7 @@ extern "C" void fim_run_container_baseline(void)
                                              driver.partial(),
                                              driver.stale(),
                                              known.size(),
-                                             known.size() - listing.admitted.size());
+                                             known.size() - reconcile.listing.admitted.size());
     }
     catch (const std::exception& err)
     {
