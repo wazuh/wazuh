@@ -610,15 +610,17 @@ entry stays, up to a 60 s grace (then it is dropped and counted in
 `remoted.auth.keystore.adoption_expiries.total`; the watcher drops expired entries on its own cycle
 even if nothing else touches the keystore). The file is authoritative for unusable rows too, and
 they follow the same comparison: a row whose `ip` column does not parse is not loaded, so it reads
-as a missing `id`; one whose key does not decode reads as a key the adoption does not supersede.
+as a missing `id`; one whose key does not decode is loaded with an empty key, compared like any
+other — so it retires the adoption unless the row was already unusable when the adoption was made
+(the empty key is then among the keys it supersedes) or the adoption is saturated.
 Either is logged and counted in `entries_skipped`. If the file already carries the issued key when
 the adoption runs (the writer pass and the reload won the race), nothing is adopted.
 
 Two consequences follow. `agents` on
 [`GET /metrics`](metrics.md#keystore-health--remotedauthkeystore) and `agents_loaded` on
 [`GET /status`](README.md) keep describing the file only; the adoptions have their own
-`adoptions_pending` level. And some windows remain until the grace ends, on that node only — the
-price of not losing a key the file has not caught up with yet:
+`adoptions_pending` level. And some windows remain, on that node only and at most until the grace
+ends — the price of not losing a key the file has not caught up with yet:
 
 - a *new* agent removed before the file ever carried it keeps authenticating;
 - two enrollments of the same `id` in flight at once are not ordered (`authd`'s answer carries no
@@ -627,7 +629,13 @@ price of not losing a key the file has not caught up with yet:
   duplicated identity or concurrent manual operations;
 - after more than eight re-enrollments of one agent on this node before the file catches up, the
   adoption stops remembering the oldest keys it supersedes, so a rotation on another node no longer
-  retires it.
+  retires it;
+- a key the file carries that this node never saw is taken as newer than the adoption, which it
+  need not be: if the agent rotates on another node and then again on this one (a worker) before
+  this node's synchronization, the snapshot that brings the first rotation retires the second, and
+  the node refuses the agent's current key with `invalid_signature` until the next synchronization
+  carries it. The agent keeps its key on that answer and retries. Nothing in `client.keys` or in
+  `authd`'s answer orders two keys, so no comparison of keys can tell the two cases apart.
 
 Any node the agent reaches that did not serve its enrollment still
 waits for the file: see [§7.1 of the cluster page](../cluster/lb.md#71-replicated-state-brief-401s-after-enrollment).
