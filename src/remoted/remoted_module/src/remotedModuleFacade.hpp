@@ -880,6 +880,7 @@ private:
         // server's route classes (offset is Liveness; scans are Control, deferred to a bounded
         // lane that never occupies a server thread), not by socket separation.
         m_scanVdHandler = std::make_unique<remoted::scanvd::ScanVdHandlerImpl>(vdClient,
+                                                                               m_vdHttpClient,
                                                                                m_scanVdMetrics,
                                                                                remoted::paths::kVdSocket,
                                                                                m_config.vd_scan_read_timeout_sec,
@@ -890,7 +891,8 @@ private:
                                              "/scan/vd",
                                              remoted::endpoints::scanvd::makeHandler(*m_scanVdHandler));
 
-        // The budget also carries VdClient's fixed offset round trip, so it exceeds the two options.
+        // The budget also carries VdClient's fixed offset round trip and the fixed connect deadline of both
+        // calls, so it exceeds the two options.
         warnIfBudgetExceedsRequestTimeout("/scan/vd",
                                           "vd_scan_read_timeout'/'vd_scan_write_timeout",
                                           m_scanVdHandler->getBudgetMs(),

@@ -10,12 +10,14 @@
 
 #include "scanVdHandler.hpp"
 #include "common/vdClient.hpp"
+#include "downstream/blockingCall.hpp"
 #include "json.hpp"
 #include "loggerHelper.h"
 
 #include <uds_http_server/logThrottle.hpp>
 
-#include <httplib.h>
+#include <chrono>
+#include <stdexcept>
 #include <string>
 #include <utility>
 
@@ -36,11 +38,13 @@ namespace remoted::scanvd
     {
     public:
         Impl(std::shared_ptr<remoted::common::VdClient> vdClient,
+             std::shared_ptr<remoted::downstream::IDownstreamClient> httpClient,
              ScanVdMetrics& metrics,
              std::string socketPath,
              long readTimeoutSeconds,
              long writeTimeoutSeconds)
             : m_vdClient(std::move(vdClient))
+            , m_httpClient(std::move(httpClient))
             , m_metrics(metrics)
             , m_vdModulesdSocketPath(std::move(socketPath))
             , m_readTimeoutSeconds(readTimeoutSeconds)
@@ -91,7 +95,7 @@ namespace remoted::scanvd
             // synchronous downstream round trips.
             const auto vdAnswer = postScan(agentId);
 
-            if (vdAnswer.first == 200)
+            if (vdAnswer.status == 200)
             {
                 LOGFN_DEBUG1(logFn(), "VD queued the scan for agent %u at offset %llu", agentId, currentOffset);
                 incAccepted(m_metrics);
@@ -99,11 +103,11 @@ namespace remoted::scanvd
                 return;
             }
 
-            if (vdAnswer.second == "scan_queue_full")
+            if (vdAnswer.code == "scan_queue_full")
             {
                 incQueueFull(m_metrics);
             }
-            else if (vdAnswer.second == "indexer_unavailable")
+            else if (vdAnswer.code == "indexer_unavailable")
             {
                 // VD's own reported, VD-logged cause -- exactly like scan_queue_full, and NOT a
                 // relay failure. Folding it into the vd_error window below would let a
@@ -111,7 +115,7 @@ namespace remoted::scanvd
                 // cause detail is its LAST error) and send the operator to the wrong subsystem.
                 incIndexerUnavailable(m_metrics);
             }
-            else if (vdAnswer.second == "vd_not_initialized")
+            else if (vdAnswer.code == "vd_not_initialized")
             {
                 // VD is disabled on this node (or its start failed, which VD logs itself): a
                 // state, not a relay failure, and with VD disabled a permanent one. Since #41101
@@ -129,67 +133,90 @@ namespace remoted::scanvd
                 // and would otherwise be invisible on this side of the wire.
                 if (const auto decision = m_vdErrorThrottle.record())
                 {
+                    // A relay failure names its class ("vd_unreachable (connect_failed)"): the agent only
+                    // ever sees the code, but the operator needs to tell "VD is not running" from "VD did
+                    // not answer in time".
+                    const std::string cause =
+                        vdAnswer.detail.empty() ? vdAnswer.code : vdAnswer.code + " (" + vdAnswer.detail + ")";
                     LOGFN_WARN(logFn(),
                                "Answered %llu scan request(s) with 503 %s: VD did not queue them "
                                "(last: %s). The agents retry on their next notify.",
                                static_cast<unsigned long long>(decision.total),
                                decision.period().c_str(),
-                               vdAnswer.second.c_str());
+                               cause.c_str());
                 }
             }
-            callback(ScanVdResponse {ScanVdOutcome::VdRejected, currentOffset, vdAnswer.second});
+            callback(ScanVdResponse {ScanVdOutcome::VdRejected, currentOffset, vdAnswer.code});
         }
 
     private:
-        /// @return {status, errorCode}: {200, ""} when VD queued the scan; otherwise the error
-        /// code out of VD's body ("scan_queue_full", "feed_not_ready", ...), "vd_unreachable"
-        /// when the round trip itself failed, or "vd_error" for anything unrecognisable.
-        std::pair<int, std::string> postScan(uint32_t agentId)
+        struct ScanAnswer
         {
+            int status;
+            /// Empty on 200; otherwise what the agent sees.
+            std::string code;
+            /// Why the round trip failed, for the log only (the client's error class); empty when VD answered.
+            std::string detail;
+        };
+
+        /// @return {200, ""} when VD queued the scan; otherwise the error code out of VD's body
+        /// ("scan_queue_full", "feed_not_ready", ...), "vd_unreachable" when the round trip itself
+        /// failed, or "vd_error" for anything unrecognisable.
+        ScanAnswer postScan(uint32_t agentId)
+        {
+            using remoted::common::VdClient;
+
+            nlohmann::json requestBody;
+            requestBody["agent_id"] = std::to_string(agentId);
+            // The client only views the body; this keeps it alive until the send completes, even if the
+            // wait below gives up first.
+            const auto body = std::make_shared<const std::string>(requestBody.dump());
+
+            const int writeTimeoutMs = static_cast<int>(m_writeTimeoutSeconds * 1000);
+            const int responseTimeoutMs = static_cast<int>(m_readTimeoutSeconds * 1000);
+
+            remoted::downstream::DownstreamRequest request;
+            request.socketPath = m_vdModulesdSocketPath;
+            request.method = remoted::http::Method::Post;
+            request.path = "/vulnerability-detector/scan";
+            request.contentType = "application/json";
+            request.body = *body;
+            request.writeTimeoutMs = writeTimeoutMs;
+            request.responseTimeoutMs = responseTimeoutMs;
+
+            const auto result = remoted::downstream::sendBlocking(
+                *m_httpClient,
+                std::move(request),
+                body,
+                std::chrono::milliseconds {static_cast<long long>(VdClient::CONNECT_TIMEOUT_MS) + writeTimeoutMs +
+                                           responseTimeoutMs + VdClient::BACKSTOP_MARGIN_MS});
+
+            if (result.error != remoted::downstream::DownstreamError::None)
+            {
+                return {0, "vd_unreachable", remoted::downstream::toString(result.error)};
+            }
+            if (result.response.status == 200)
+            {
+                return {200, {}, {}};
+            }
+
             try
             {
-                // See vdClient.cpp: httplib::Client's single-string constructor only parses
-                // "http(s)://host[:port]" URLs, so a raw socket path needs set_address_family
-                // (AF_UNIX) to actually be treated as a Unix domain socket.
-                httplib::Client client(m_vdModulesdSocketPath);
-                client.set_address_family(AF_UNIX);
-                client.set_read_timeout(m_readTimeoutSeconds, 0);
-                client.set_write_timeout(m_writeTimeoutSeconds, 0);
-
-                nlohmann::json requestBody;
-                requestBody["agent_id"] = std::to_string(agentId);
-
-                const auto res = client.Post("/vulnerability-detector/scan", requestBody.dump(), "application/json");
-                if (!res)
+                const auto errorJson = nlohmann::json::parse(result.response.body);
+                if (errorJson.contains("error") && errorJson["error"].is_string())
                 {
-                    return {0, "vd_unreachable"};
+                    return {result.response.status, errorJson["error"].get<std::string>(), {}};
                 }
-                if (res->status == 200)
-                {
-                    return {200, {}};
-                }
-
-                try
-                {
-                    const auto errorJson = nlohmann::json::parse(res->body);
-                    if (errorJson.contains("error") && errorJson["error"].is_string())
-                    {
-                        return {res->status, errorJson["error"].get<std::string>()};
-                    }
-                }
-                catch (...) // NOLINT(bugprone-empty-catch)
-                {
-                    // Unparseable body: fall through to the generic code.
-                }
-                return {res->status, "vd_error"};
             }
-            catch (const std::exception&)
+            catch (...) // NOLINT(bugprone-empty-catch)
             {
-                return {0, "vd_unreachable"};
+                // Unparseable body: fall through to the generic code.
             }
+            return {result.response.status, "vd_error", {}};
         }
 
         std::shared_ptr<remoted::common::VdClient> m_vdClient;
+        std::shared_ptr<remoted::downstream::IDownstreamClient> m_httpClient;
         ScanVdMetrics& m_metrics;
         std::string m_vdModulesdSocketPath;
         long m_readTimeoutSeconds;
@@ -198,7 +225,21 @@ namespace remoted::scanvd
         wazuh::uds_http::LogThrottle m_vdErrorThrottle;
     };
 
+    namespace
+    {
+        std::shared_ptr<remoted::downstream::IDownstreamClient>
+        requireClient(std::shared_ptr<remoted::downstream::IDownstreamClient> httpClient)
+        {
+            if (!httpClient)
+            {
+                throw std::invalid_argument("ScanVdHandlerImpl needs an HTTP client for VD's socket");
+            }
+            return httpClient;
+        }
+    } // namespace
+
     ScanVdHandlerImpl::ScanVdHandlerImpl(std::shared_ptr<remoted::common::VdClient> vdClient,
+                                         std::shared_ptr<remoted::downstream::IDownstreamClient> httpClient,
                                          ScanVdMetrics& metrics,
                                          std::string vdModulesdSocketPath,
                                          long readTimeoutSeconds,
@@ -206,6 +247,7 @@ namespace remoted::scanvd
         // <=0 -> the compiled-in default: a config that never ran through
         // remoted_module_control_config() must not turn every request into an immediate timeout.
         : m_impl(std::make_unique<Impl>(std::move(vdClient),
+                                        requireClient(std::move(httpClient)),
                                         metrics,
                                         std::move(vdModulesdSocketPath),
                                         readTimeoutSeconds > 0 ? readTimeoutSeconds : VD_SCAN_READ_TIMEOUT_SECONDS,
