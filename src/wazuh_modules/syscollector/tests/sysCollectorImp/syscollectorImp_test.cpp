@@ -119,7 +119,7 @@ void populateTestDb()
 // Defines to replace inline JSON in EXPECT_CALLs
 #define EXPECT_CALL_HARDWARE_JSON R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "memory_free":1000000,"memory_total":4000000,"memory_used":3000000})"
 #define EXPECT_CALL_OS_JSON R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_display_version":"sp1","os_full":"Microsoft Windows 7 sp1","os_version":"6.1.7601","os_kernel_release":"6.1.7601","os_type":"windows"})"
-#define EXPECT_CALL_NETWORKS_JSON R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":0,"network_metric":"75","network_netmask":"255.0.0.0","network_type":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":0,"network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":0,"network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})"
+#define EXPECT_CALL_NETWORKS_JSON R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600", "network_gateway6":"fe80::1","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":0,"network_metric":"75","network_netmask":"255.0.0.0","network_type":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":0,"network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":0,"network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})"
 #define EXPECT_CALL_PORTS_JSON R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])"
 #define EXPECT_CALL_PORTS_ALL_JSON R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"udp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"","host_network_egress_queue":0},{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])"
 #define EXPECT_CALL_PACKAGES_JSON R"({"architecture":"amd64", "category":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version_":"1:7.7+19ubuntu14","type":"deb","path":" "})"
@@ -148,7 +148,7 @@ const auto expected_dbsync_network_protocol_1
 };
 const auto expected_dbsync_network_protocol_2
 {
-    R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":["192.168.0.1|600"],"metric":null,"type":"ipv6"}},"module":"inventory"})"
+    R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":["fe80::1"],"metric":null,"type":"ipv6"}},"module":"inventory"})"
 };
 const auto expected_dbsync_network_address_1
 {
@@ -377,7 +377,7 @@ static const auto expectedPersistNetAddrIPv4
 };
 static const auto expectedPersistNetProtoIPv6
 {
-    R"({"checksum":{"hash":{"sha1":"53a9aa90a75f0264beae6beb9bf19192cfc23df1"}},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":["192.168.0.1|600"],"metric":null,"type":"ipv6"}})"
+    R"({"checksum":{"hash":{"sha1":"6f792a94b75cbf6f34960104f6f0a9d582ef906c"}},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":["fe80::1"],"metric":null,"type":"ipv6"}})"
 };
 static const auto expectedPersistNetAddrIPv6
 {
@@ -2600,7 +2600,7 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                 R"({"architecture":" x86_64", "hostname":" UBUNTU ","os_build":"  7601","os_major":"6  ","os_minor":"  1  ","os_name":" Microsoft Windows 7 ","os_display_version":"   sp1","os_full":" Microsoft Windows 7 sp1  ","os_version":"6.1.7601   ","os_kernel_release":"  6.1.7601 ","os_kernel_name":" Windows_NT ","os_kernel_version":" 6.1 ","os_type":" windows "})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"   ethernet", "interface_state":"up   ", "network_dhcp":0,"interface_mtu":1500,"host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":0,"network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":0,"network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600", "network_gateway6":"  fe80::1","network_broadcast":"127.255.255.255", "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"   ethernet", "interface_state":"up   ", "network_dhcp":0,"interface_mtu":1500,"host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":0,"network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":0,"network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                    R"([{"file_inode":0,"source_ip":" 127.0.0.1 ", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp   ","destination_ip":"   0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])")));
     EXPECT_CALL(*spInfoWrapper, packages(_))
@@ -4294,6 +4294,110 @@ TEST_F(SyscollectorImpTest, invalidUtf8DoesNotAbortScan)
         "dbsync_processes:good",
     };
     EXPECT_EQ(inserted, expected);
+}
+
+TEST_F(SyscollectorImpTest, incompleteInterfaceDoesNotAbortNetworkScan)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    // An interface without its mandatory fields comes first; the complete one after it must still be reported.
+    auto networks = nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON);
+    networks["iface"].insert(networks["iface"].begin(),
+                             R"({"IPv4":[{"network_ip":"192.0.2.10","network_broadcast":"192.0.2.10","network_dhcp":0,"network_metric":"","network_netmask":"255.255.255.255"}]})"_json);
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(networks));
+
+    std::mutex insertedMutex;
+    std::vector<std::string> inserted;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&inserted, &insertedMutex](const std::string & data)
+        {
+            const auto delta = nlohmann::json::parse(data);
+
+            if (!delta.contains("collector") || !delta.contains("data"))
+            {
+                return;
+            }
+
+            const auto& item {delta.at("data")};
+            const auto namePointer = nlohmann::json::json_pointer("/interface/name");
+            const auto ipPointer = nlohmann::json::json_pointer("/network/ip/0");
+            const auto netTypePointer = nlohmann::json::json_pointer("/network/type");
+            const auto ifaceTypePointer = nlohmann::json::json_pointer("/interface/type");
+
+            std::string detail;
+
+            if (item.contains(ipPointer))
+            {
+                detail = item.at(ipPointer).get<std::string>();
+            }
+            else if (item.contains(netTypePointer))
+            {
+                detail = item.at(netTypePointer).get<std::string>();
+            }
+            else if (item.contains(ifaceTypePointer))
+            {
+                detail = item.at(ifaceTypePointer).get<std::string>();
+            }
+
+            std::lock_guard<std::mutex> lock(insertedMutex);
+            inserted.push_back(delta.at("collector").get<std::string>() + ":" +
+                               (item.contains(namePointer) ? item.at(namePointer).get<std::string>() : "") + ":" + detail);
+        }
+    };
+
+    std::mutex warningsMutex;
+    std::vector<std::string> warnings;
+    std::function<void(const modules_log_level_t, const std::string&)> captureLog
+    {
+        [&warnings, &warningsMutex](const modules_log_level_t level, const std::string & log)
+        {
+            if (LOG_WARNING == level && std::string::npos != log.find("incomplete data"))
+            {
+                std::lock_guard<std::mutex> lock(warningsMutex);
+                warnings.push_back(log);
+            }
+        }
+    };
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &captureLog]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          persistFunction,
+                                          captureLog,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, true, false, false, true, false, false, false, false, false, false, false, false, false, true);
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds{2});
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    std::sort(inserted.begin(), inserted.end());
+    const std::vector<std::string> expected
+    {
+        "dbsync_network_address:enp4s0:192.168.153.1",
+        "dbsync_network_address:enp4s0:fe80::250:56ff:fec0:8",
+        "dbsync_network_iface:enp4s0:ethernet",
+        "dbsync_network_protocol:enp4s0:ipv4",
+        "dbsync_network_protocol:enp4s0:ipv6",
+    };
+    EXPECT_EQ(inserted, expected);
+    ASSERT_EQ(1u, warnings.size());
+    EXPECT_NE(std::string::npos, warnings[0].find("192.0.2.10"));
 }
 
 TEST_F(SyscollectorImpTest, destroyWaitsForSyncLoopCompletion)

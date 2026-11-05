@@ -22,7 +22,9 @@ case "$1" in
               *running*) service wazuh-manager stop > /dev/null 2>&1 ;;
           esac
       fi
-      ${DIR}/bin/wazuh-manager-control stop > /dev/null 2>&1
+      if [ -x ${DIR}/bin/wazuh-manager-control ]; then
+          ${DIR}/bin/wazuh-manager-control stop > /dev/null 2>&1 || true
+      fi
 
       # Purging files
       rm -rf ${DIR}/queue/*

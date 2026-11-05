@@ -20,6 +20,12 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/externals/pcre2/pcre2_wrappers.h"
 
+// Group names of 255 and 256 chars, for the oversized-group case
+#define GROUP_A16  "aaaaaaaaaaaaaaaa"
+#define GROUP_A255 GROUP_A16 GROUP_A16 GROUP_A16 GROUP_A16 GROUP_A16 GROUP_A16 GROUP_A16 GROUP_A16 \
+                   GROUP_A16 GROUP_A16 GROUP_A16 GROUP_A16 GROUP_A16 GROUP_A16 GROUP_A16 "aaaaaaaaaaaaaaa"
+#define GROUP_A256 GROUP_A255 "a"
+
 //Expected log messages to be checked on mocked log functions
 typedef struct _mocked_log {
     char* merror;
@@ -110,6 +116,8 @@ parse_evaluator parse_values_default_cfg [] = {
     { "OSSEC A:'agent5' IP:'!10.31.0.5'", "192.0.0.1", NULL,            {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid IP: !10.31.0.5"},                    {NULL, "Invalid IP: '!10.31.0.5'", NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
     /* A refused group list is logged with the reason the agent is answered with */
     { "OSSEC A:'agent5' G:'default,'", "192.0.0.1", NULL,               {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid group name: default,... cannot start or end with ','"}, {NULL, "Invalid group name: default,... cannot start or end with ','", NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
+    /* An oversized group inside a multigroup is reported by its first 255 characters */
+    { "OSSEC A:'agent12' G:'" GROUP_A256 ",Group2'", "192.0.0.1", NULL, {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid group name: " GROUP_A255 "... group is too large"}, {NULL, "Invalid group name: " GROUP_A255 "... group is too large", NULL, "Received request for a new agent (agent12) from: 192.0.0.1", NULL} },
     /* The sentinel is the exact word "src", not every value starting with it */
     { "OSSEC A:'agent18' IP:'src'", "192.0.0.1", NULL,                                          {"192.0.0.1", "agent18", NULL, NULL},                         {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent18) from: 192.0.0.1", NULL} },
     { "OSSEC A:'agent5' IP:'srcx'", "192.0.0.1", NULL,                  {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid IP: srcx"},                          {NULL, "Invalid IP: 'srcx'", NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },

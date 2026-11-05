@@ -66,6 +66,9 @@ time_t fim_scan() {
     mdebug2(FIM_DIFF_FOLDER_SIZE, DIFF_DIR, syscheck.diff_folder_size);
 
     update_wildcards_config();
+#if defined(__linux__) && defined(ENABLE_AUDIT)
+    fim_ebpf_update_dirs();
+#endif
 
     // First file scan
     fim_file_scan();

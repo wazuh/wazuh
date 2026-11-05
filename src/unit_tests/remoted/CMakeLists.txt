@@ -108,7 +108,7 @@ list(APPEND remoted_flags "-Wl,--wrap,time -Wl,--wrap,rem_get_input_bytes_used -
 list(APPEND remoted_names "test_remcom")
 list(APPEND remoted_flags "-Wl,--wrap,rem_create_state_json -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,select -Wl,--wrap,close -Wl,--wrap,accept \
                            -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,getRemoteConfig \
-                           -Wl,--wrap,assign_group_to_agent -Wl,--wrap,getpid \
+                           -Wl,--wrap,assign_group_to_agent -Wl,--wrap,req_sender -Wl,--wrap,getpid \
                            -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop -Wl,--wrap,w_query_agentd \
                            ${DEBUG_OP_WRAPPERS}")
 

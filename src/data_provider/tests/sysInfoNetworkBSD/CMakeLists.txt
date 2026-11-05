@@ -36,6 +36,13 @@ target_link_libraries(
   sqlite3
   cjson
   dl)
+
+if(APPLE)
+  find_library(corefoundation_lib CoreFoundation)
+  find_library(systemconfiguration_lib SystemConfiguration)
+  target_link_libraries(sysInfoNetworkBSD_unit_test ${corefoundation_lib} ${systemconfiguration_lib})
+endif(APPLE)
+
 add_test(NAME sysInfoNetworkBSD_unit_test COMMAND sysInfoNetworkBSD_unit_test)
 
 set_tests_properties(sysInfoNetworkBSD_unit_test PROPERTIES LABELS "data_provider")

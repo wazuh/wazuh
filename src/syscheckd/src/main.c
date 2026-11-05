@@ -170,7 +170,7 @@ static void *fim_shutdown_waiter(__attribute__((unused)) void *arg)
 #ifdef ENABLE_AUDIT
     clean_rules();
 #endif
-    DeletePID(ARGV0);
+    HandleExit();
     _exit(1);
 
     return NULL;
@@ -397,6 +397,12 @@ int main(int argc, char **argv)
     /* Connect to the queue */
 
     if ((syscheck.queue = StartMQPredicated(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS, fim_shutdown_process_on)) < 0) {
+        /* A termination signal aborted the connection: fim_shutdown_waiter() ends the process */
+        if (fim_shutdown_process_on()) {
+            while (1) {
+                pause();
+            }
+        }
         merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 

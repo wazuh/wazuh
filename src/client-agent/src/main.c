@@ -14,6 +14,7 @@
 #include "agentd.h"
 #include "token_bootstrap.h"
 #include "enrollment_token.h"
+#include "openssl_init.h"
 #include <getopt.h>
 
 #if defined(__GLIBC__)
@@ -123,6 +124,9 @@ int main(int argc, char **argv)
 
     /* Set the name */
     OS_SetName(ARGV0);
+
+    /* Must precede any other OpenSSL init: NO_ATEXIT keeps OPENSSL_cleanup() out of exit(), where it races with worker threads */
+    w_openssl_init();
 
 	/* Change working directory */
     if (chdir(home_path) == -1) {
