@@ -847,9 +847,11 @@ namespace
         EXPECT_EQ(keystore.adoptionsPending(), 0u);
     }
 
-    TEST_F(KeystoreTest, UpsertConvergingAfterTheGraceIsNotAnExpiry)
+    TEST_F(KeystoreTest, UpsertConvergingAfterTheGraceIsStillAnExpiry)
     {
-        // A reload that finds the adopted key reconciles before it expires: the file did carry it.
+        // Whether an adoption expired is decided by its age alone: lookup() stopped serving the key
+        // at the grace, so a reload that finds it afterwards counts the expiry exactly as a watcher
+        // cycle a moment earlier would have -- the count must not depend on which ran first.
         ManualClock clock;
         Keystore keystore(m_path, Keystore::kDefaultRefreshIntervalSeconds, clock.source());
         ASSERT_TRUE(keystore.upsert("67", "any", kKeyA));
@@ -857,8 +859,120 @@ namespace
         clock.advance(Keystore::kAdoptionGrace + std::chrono::seconds(1));
         writeFile(std::string("67 agent1 any ") + kKeyA + "\n");
         EXPECT_EQ(keystore.reload(), 1);
+        EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyA)); // The file's copy, converged and forgotten.
+        EXPECT_EQ(keystore.adoptionExpiriesTotal(), 1u);
+        EXPECT_EQ(keystore.adoptionsPending(), 0u);
+    }
+
+    TEST_F(KeystoreTest, AConvergedExpiredAdoptionLeavesNoHistoryBehind)
+    {
+        // File X, adopt A, let it expire, then the file lands A: converged, so the (expired) entry
+        // must go, X included. The next adoption B then supersedes A only: a file back on X is past
+        // B, not behind it. A converged tombstone left in the table would hand X down and keep B.
+        ManualClock clock;
+        writeFile(std::string("67 agent1 any ") + kKeyB + "\n");
+        Keystore keystore(m_path, Keystore::kDefaultRefreshIntervalSeconds, clock.source());
+        ASSERT_TRUE(keystore.upsert("67", "any", kKeyA));
+        clock.advance(Keystore::kAdoptionGrace + std::chrono::seconds(1));
+        writeFile(std::string("67 agent1 any ") + kKeyA + "\n");
+        ASSERT_EQ(keystore.reload(), 1);
+        ASSERT_EQ(keystore.adoptionExpiriesTotal(), 1u);
+
+        ASSERT_TRUE(keystore.upsert("67", "any", kKeyC));
+        writeFile(std::string("67 agent1 any ") + kKeyB + "\n");
+        ASSERT_EQ(keystore.reload(), 1);
+        EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyB));
+        EXPECT_EQ(keystore.adoptionsPending(), 0u);
+    }
+
+    TEST_F(KeystoreTest, UpsertInheritsTheHistoryOfAnAdoptionASweepAlreadyExpired)
+    {
+        // The watcher sweeps every cycle, so by the time the agent re-enrolls after an expiry the
+        // previous entry has usually been expired already. Its keys must still be there to inherit:
+        // the sync landing K1 afterwards is behind K2, not past it. The sweep here is a reload.
+        ManualClock clock;
+        Keystore keystore(m_path, Keystore::kDefaultRefreshIntervalSeconds, clock.source());
+        ASSERT_TRUE(keystore.upsert("67", "any", kKeyA));
+        clock.advance(Keystore::kAdoptionGrace + std::chrono::seconds(1));
+        writeFile(std::string("3824 debian10 any ") + kKeyB + "\n");
+        ASSERT_EQ(keystore.reload(), 1);
+        ASSERT_EQ(keystore.adoptionExpiriesTotal(), 1u); // Expired and no longer served...
+        ASSERT_FALSE(keyOf(keystore, 67).has_value());
+        ASSERT_EQ(keystore.adoptionsPending(), 0u);
+
+        ASSERT_TRUE(keystore.upsert("67", "any", kKeyB)); // ...but its key is inherited here.
+        writeFile(std::string("3824 debian10 any ") + kKeyB + "\n67 agent1 any " + kKeyA + "\n");
+        ASSERT_EQ(keystore.reload(), 2);
+        EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyB));
+        EXPECT_EQ(keystore.adoptionsPending(), 1u);
+        EXPECT_EQ(keystore.adoptionExpiriesTotal(), 1u);
+    }
+
+    TEST_F(KeystoreTest, ExpiredHistoryIsForgottenAfterTheRetention)
+    {
+        // The history outlives the grace by kHistoryRetention, not forever: past it the entry is
+        // gone and a re-enrollment starts afresh (the sync-lag limitation applies again).
+        ManualClock clock;
+        Keystore keystore(m_path, Keystore::kDefaultRefreshIntervalSeconds, clock.source());
+        ASSERT_TRUE(keystore.upsert("67", "any", kKeyA));
+        clock.advance(Keystore::kAdoptionGrace + Keystore::kHistoryRetention + std::chrono::seconds(1));
+        writeFile(std::string("3824 debian10 any ") + kKeyB + "\n");
+        ASSERT_EQ(keystore.reload(), 1); // Expires and, being past the retention, forgets in one sweep.
+        ASSERT_EQ(keystore.adoptionExpiriesTotal(), 1u);
+
+        ASSERT_TRUE(keystore.upsert("67", "any", kKeyB));
+        writeFile(std::string("3824 debian10 any ") + kKeyB + "\n67 agent1 any " + kKeyA + "\n");
+        ASSERT_EQ(keystore.reload(), 2);
+        EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyA)); // Unknown key: taken as newer.
+        EXPECT_EQ(keystore.adoptionsPending(), 0u);
+    }
+
+    TEST_F(KeystoreTest, UpsertPastTheRetentionStartsAfreshWithoutAnIntermediateSweep)
+    {
+        // Same bound when nothing swept in between: upsert() sweeps before it inherits, so an entry
+        // past the retention is forgotten, not carried over -- whoever sweeps first.
+        ManualClock clock;
+        Keystore keystore(m_path, Keystore::kDefaultRefreshIntervalSeconds, clock.source());
+        ASSERT_TRUE(keystore.upsert("67", "any", kKeyA));
+        clock.advance(Keystore::kAdoptionGrace + Keystore::kHistoryRetention + std::chrono::seconds(1));
+
+        ASSERT_TRUE(keystore.upsert("67", "any", kKeyB));
+        EXPECT_EQ(keystore.adoptionExpiriesTotal(), 1u);
+        writeFile(std::string("67 agent1 any ") + kKeyA + "\n");
+        ASSERT_EQ(keystore.reload(), 1);
         EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyA));
-        EXPECT_EQ(keystore.adoptionExpiriesTotal(), 0u);
+        EXPECT_EQ(keystore.adoptionsPending(), 0u);
+    }
+
+    TEST_F(KeystoreTest, UpsertMovedPastAfterTheGraceIsStillAnExpiry)
+    {
+        // The age decides, whichever retirement the same reload also finds: an unknown key after
+        // the grace retires the (expired) entry AND the expiry is counted, as a watcher cycle a
+        // moment earlier would have counted it.
+        ManualClock clock;
+        Keystore keystore(m_path, Keystore::kDefaultRefreshIntervalSeconds, clock.source());
+        ASSERT_TRUE(keystore.upsert("67", "any", kKeyA));
+        clock.advance(Keystore::kAdoptionGrace + std::chrono::seconds(1));
+
+        writeFile(std::string("67 agent1 any ") + kKeyC + "\n");
+        EXPECT_EQ(keystore.reload(), 1);
+        EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyC));
+        EXPECT_EQ(keystore.adoptionExpiriesTotal(), 1u);
+        EXPECT_EQ(keystore.adoptionsPending(), 0u);
+    }
+
+    TEST_F(KeystoreTest, UpsertRemovedAfterTheGraceIsStillAnExpiry)
+    {
+        ManualClock clock;
+        writeFile(std::string("67 agent1 any ") + kKeyB + "\n");
+        Keystore keystore(m_path, Keystore::kDefaultRefreshIntervalSeconds, clock.source());
+        ASSERT_TRUE(keystore.upsert("67", "any", kKeyA));
+        clock.advance(Keystore::kAdoptionGrace + std::chrono::seconds(1));
+
+        writeFile(std::string("3824 debian10 any ") + kKeyB + "\n");
+        EXPECT_EQ(keystore.reload(), 1);
+        EXPECT_FALSE(keyOf(keystore, 67).has_value());
+        EXPECT_EQ(keystore.adoptionExpiriesTotal(), 1u);
         EXPECT_EQ(keystore.adoptionsPending(), 0u);
     }
 

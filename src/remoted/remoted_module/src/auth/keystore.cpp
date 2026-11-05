@@ -136,8 +136,8 @@ namespace remoted::auth
 
     Keystore::Keystore(std::string path, int refreshIntervalSeconds, Clock clock)
         : m_path(std::move(path))
-        , m_refreshIntervalSeconds(refreshIntervalSeconds > 0 ? refreshIntervalSeconds : kDefaultRefreshIntervalSeconds)
         , m_clock(clock ? std::move(clock) : Clock {[] { return std::chrono::steady_clock::now(); }})
+        , m_refreshIntervalSeconds(refreshIntervalSeconds > 0 ? refreshIntervalSeconds : kDefaultRefreshIntervalSeconds)
     {
         // Report the initial load unconditionally: an unreadable client.keys at startup means every
         // agent request will be rejected as "unknown agent", which without this line was completely
@@ -383,9 +383,9 @@ namespace remoted::auth
                 // kReloadUnstable already logged its own warning inside reload().
             }
 
-            // The grace bounds how long an adopted key is KEPT, not only how long lookup() honors
-            // it: on a quiet manager (no reload, no adoption) nothing else would drop an expired
-            // entry or count it. Reading the level deliberately does not.
+            // The grace decides when an adopted key stops being served and is counted, and the
+            // retention when its history is forgotten; on a quiet manager (no reload, no adoption)
+            // nothing else would sweep. Reading the level deliberately does not.
             std::vector<ExpiredAdoption> expired;
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
@@ -590,8 +590,13 @@ namespace remoted::auth
                     //    the adopted key first in lookup() would refuse the current one) -- unless
                     //    the entry is saturated, when an unknown key proves nothing.
                     // A file without the id that never had it, or still on a superseded key, is
-                    // behind: the entry stays. Reconciled before expiring, so a late convergence is
-                    // not an expiry.
+                    // behind: the entry stays. Swept BEFORE reconciling: whether an entry expired is
+                    // decided by its age alone, never by which of the watcher and this reload ran
+                    // first -- a convergence found after the grace is counted, lookup() stopped
+                    // serving the key then. Expired entries reconcile like live ones (their history
+                    // is what a later re-enrollment inherits), so the file moving past them, or
+                    // carrying them, forgets them.
+                    expired = expireAdoptedLocked(m_clock());
                     for (auto it = m_pending.begin(); it != m_pending.end();)
                     {
                         auto& pending = it->second;
@@ -619,10 +624,11 @@ namespace remoted::auth
                         if (retiredBecause != nullptr)
                         {
                             LOGFN_DEBUG1(logFn(),
-                                         "client.keys moved past the key adopted for agent %u (%s); the file's "
-                                         "entry takes over.",
+                                         "client.keys moved past the key adopted for agent %u (%s); %s.",
                                          it->first,
-                                         retiredBecause);
+                                         retiredBecause,
+                                         pending.expired ? "its history is retired"
+                                                         : "lookups go to the file from now on");
                             it = m_pending.erase(it);
                         }
                         else
@@ -630,7 +636,6 @@ namespace remoted::auth
                             ++it;
                         }
                     }
-                    expired = expireAdoptedLocked(m_clock());
                 }
                 reportExpired(expired);
                 m_hasBaseline = true;
@@ -693,11 +698,14 @@ namespace remoted::auth
                 logFn(), "client.keys already carries the key issued to agent %u; nothing to adopt.", *agentId);
             return true;
         }
+        // Swept FIRST, so what is inherited below is exactly what any other sweep would have left:
+        // an expired entry within its retention (kept for this), never one past it.
+        expired = expireAdoptedLocked(now);
         // A newer adoption for the same id (two re-enrollments before the file caught up): the key
-        // it replaces is one authd may still write first, so it joins the superseded keys. Inherited
-        // BEFORE the sweep below: a previous adoption past its grace is still a key this node issued
-        // and the file may still land it (the typical chain is an expiry, an unknown_agent answer and
-        // a re-enrollment here, with the sync then delivering the older key first).
+        // it replaces is one authd may still write first, so it joins the superseded keys. An expired
+        // previous adoption is inherited the same way -- the sweep keeps it for exactly this: the
+        // typical chain is an expiry, an unknown_agent answer and a re-enrollment here, with the sync
+        // then delivering the older key first, usually after a watcher cycle has already expired it.
         PendingEntry adoption {
             AgentEntry {std::move(decoded), std::move(*addressRule)}, now, {}, fileState.has_value()};
         if (auto previous = m_pending.find(*agentId); previous != m_pending.end())
@@ -716,7 +724,6 @@ namespace remoted::auth
             adoption.idSeenInFile = adoption.idSeenInFile || previous->second.idSeenInFile;
             adoption.saturated = previous->second.saturated;
         }
-        expired = expireAdoptedLocked(now);
         if (fileState && std::find(adoption.supersededKeys.begin(), adoption.supersededKeys.end(), *fileState) ==
                              adoption.supersededKeys.end())
         {
@@ -746,16 +753,21 @@ namespace remoted::auth
         std::vector<ExpiredAdoption> expired;
         for (auto it = m_pending.begin(); it != m_pending.end();)
         {
-            if (now - it->second.adoptedAt > kAdoptionGrace)
+            auto& pending = it->second;
+            if (!pending.expired && !isLive(pending, now))
             {
-                expired.push_back(ExpiredAdoption {it->first, it->second.idSeenInFile});
+                pending.expired = true;
+                expired.push_back(ExpiredAdoption {it->first, pending.idSeenInFile});
                 m_adoptionExpiriesTotal.fetch_add(1, std::memory_order_relaxed);
-                it = m_pending.erase(it);
             }
-            else
+            // Kept for its key history only; forgotten once that history can no longer matter
+            // (in the same sweep when the first one comes that late).
+            if (pending.expired && now - pending.adoptedAt > kAdoptionGrace + kHistoryRetention)
             {
-                ++it;
+                it = m_pending.erase(it);
+                continue;
             }
+            ++it;
         }
         return expired;
     }
@@ -764,15 +776,18 @@ namespace remoted::auth
     {
         for (const auto& entry : expired)
         {
-            // What the file did show in the meantime tells the causes apart: an id it never carried
-            // is an enrollment the writer or the sync has not landed (or an agent removed before
-            // they did -- the keystore gets no removal signal, only the file); an id still on an
-            // older key is a rotation they have not landed.
+            // What the file showed DURING the grace tells the causes apart (by now it may carry
+            // anything, the convergence included): an id it never carried is an enrollment the
+            // writer or the sync had not landed (or an agent removed before they did -- the keystore
+            // gets no removal signal, only the file); an id it showed on another key is a rotation
+            // they had not landed.
             const char* fileShowed =
-                entry.idSeenInFile ? "the file still shows an older key for it"
-                                   : "the file never showed the agent (not written yet, or removed before it was)";
+                entry.idSeenInFile ? "the file had shown the agent on another key"
+                                   : "the file had not shown the agent (not written yet, or removed before it was)";
+            // The line describes that adoption's expiry only -- not what serves the id now, which may
+            // be the file's entry, a later adoption, or nothing (unknown_agent).
             LOGFN_DEBUG1(logFn(),
-                         "Dropped the key adopted for agent %u: not seen in '%s' within %lld s; %s.",
+                         "The key adopted for agent %u expired: no reload observed it in '%s' within %lld s (%s).",
                          entry.id,
                          m_path.c_str(),
                          static_cast<long long>(kAdoptionGrace.count()),
@@ -782,9 +797,9 @@ namespace remoted::auth
             if (const auto d = m_expiryThrottle.record())
             {
                 LOGFN_WARN(logFn(),
-                           "Dropped the key adopted for agent %u from its enrollment: not seen in '%s' within %lld s "
-                           "(%s). %llu adopted key(s) expired %s; check that wazuh-authd is writing the file (or, on "
-                           "a worker, that the cluster synchronization is running).",
+                           "The key adopted for agent %u from its enrollment expired: no reload observed it in '%s' "
+                           "within %lld s (%s). %llu adopted key(s) expired %s; check that wazuh-authd is writing the "
+                           "file (or, on a worker, that the cluster synchronization is running).",
                            entry.id,
                            m_path.c_str(),
                            static_cast<long long>(kAdoptionGrace.count()),
@@ -802,10 +817,8 @@ namespace remoted::auth
         // A plain count, never a sweep: this is read by metrics scrapes and status probes, which
         // must not move counters or write log lines (and how often they run must not decide when
         // an expiry is counted). reload(), upsert() and the watcher's cycle do the sweeping.
-        return static_cast<std::size_t>(std::count_if(m_pending.begin(),
-                                                      m_pending.end(),
-                                                      [now](const auto& pending)
-                                                      { return now - pending.second.adoptedAt <= kAdoptionGrace; }));
+        return static_cast<std::size_t>(std::count_if(
+            m_pending.begin(), m_pending.end(), [now](const auto& pending) { return isLive(pending.second, now); }));
     }
 
     std::optional<AgentLookup> Keystore::lookup(AgentId agentId, std::string_view peerIp) const
@@ -819,7 +832,7 @@ namespace remoted::auth
         if (!m_pending.empty())
         {
             if (const auto pending = m_pending.find(agentId);
-                pending != m_pending.end() && m_clock() - pending->second.adoptedAt <= kAdoptionGrace)
+                pending != m_pending.end() && isLive(pending->second, m_clock()))
             {
                 return AgentLookup {pending->second.entry.key, pending->second.entry.address.matches(peerIp)};
             }

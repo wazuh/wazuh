@@ -541,7 +541,7 @@ namespace remoted::enrollment
                 {
                     LOGFN_DEBUG1(logFn(),
                                  "authd rejected %llu /enroll request(s) %s (last code=%d: %s).",
-                                 throttle.total,
+                                 static_cast<unsigned long long>(throttle.total),
                                  throttle.period().c_str(),
                                  result.errorCode,
                                  result.message.c_str());
@@ -555,7 +555,7 @@ namespace remoted::enrollment
                 LOGFN_WARN(logFn(),
                            "%llu /enroll request(s) got no clean answer from authd %s (last: %s). Is "
                            "authd unreachable, or did it just not answer in time?",
-                           throttle.total,
+                           static_cast<unsigned long long>(throttle.total),
                            throttle.period().c_str(),
                            result.message.c_str());
             }
@@ -685,7 +685,7 @@ namespace remoted::enrollment
                 {
                     LOGFN_DEBUG2(logFn(),
                                  "Rejected %llu invalid /enroll request(s) %s (last reason: %s).",
-                                 throttle.total,
+                                 static_cast<unsigned long long>(throttle.total),
                                  throttle.period().c_str(),
                                  std::get<std::string>(parsedOrError).c_str());
                 }
@@ -711,7 +711,7 @@ namespace remoted::enrollment
                                parsed.version.c_str(),
                                config.managerVersion.c_str(),
                                config.allowHigherVersions,
-                               throttle.total,
+                               static_cast<unsigned long long>(throttle.total),
                                throttle.period().c_str());
                 }
                 responder->send(errorResponse(400, 0, "Agent version is newer than this manager allows"));
@@ -795,7 +795,7 @@ namespace remoted::enrollment
                                                "usable entry for it. %llu such enrollment(s) %s.",
                                                result.id.c_str(),
                                                failure.c_str(),
-                                               throttle.total,
+                                               static_cast<unsigned long long>(throttle.total),
                                                throttle.period().c_str());
                                 }
                             }

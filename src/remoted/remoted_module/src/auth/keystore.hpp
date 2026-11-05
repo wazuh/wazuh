@@ -89,6 +89,12 @@ namespace remoted::auth
         /// the entry is saturated and a rotation elsewhere no longer retires it.
         static constexpr std::size_t kMaxSupersededKeys {8};
 
+        /// How long an adopted entry's key history outlives its grace (see upsert()): once expired the
+        /// entry is no longer served, but the keys it issued or superseded are what lets the next
+        /// re-enrollment on this node recognise the file landing them late as behind, not past.
+        /// A synchronization stalled longer than this loses that history (the sync-lag limitation).
+        static constexpr std::chrono::minutes kHistoryRetention {10};
+
         /// Time source for the adoption grace. Steady: a wall-clock step must not expire or revive an
         /// adopted entry.
         using Clock = std::function<std::chrono::steady_clock::time_point()>;
@@ -143,21 +149,27 @@ namespace remoted::auth
          * A reload retires it as soon as the file is no longer behind it (see PendingEntry): the
          * file carries the adopted key (converged; only the key is compared), drops an id it has
          * carried since the adoption (removed), or carries a key the adoption does not supersede
-         * (rotated elsewhere) -- the file's copy then takes over. A row whose ip column does not
+         * (rotated elsewhere) -- lookups then go to the file, which may carry no entry. A row whose ip column does not
          * parse is not loaded, so it reads as a missing id; one whose key does not decode is
          * loaded with an empty key and compared like any other (it may be a superseded one). While the file is behind,
-         * the entry stays, up to kAdoptionGrace (then a reload, an upsert or the watcher's own cycle drops it and
-         * counts it in adoptionExpiriesTotal(); reading the level never does). If the file already carries the issued
-         * key when upsert() runs (the writer pass won the race), nothing is stored. The file stays the source of truth
-         * for everything else: agentsLoaded() and entriesSkipped() describe the file only. Windows that remain until
-         * the grace ends, on this node only: a new agent the file never carried but whose enrollment is undone keeps
-         * authenticating; an older enrollment's answer adopted after a newer key already reached the file (nothing in
-         * authd's answer orders two enrollments of one id in flight) refuses the newer key; and once an adoption
-         * supersedes more than kMaxSupersededKeys distinct keys (an agent re-enrolling on this node over and over
-         * before the file caught up; the same key adopted again adds nothing), a rotation elsewhere no longer retires
-         * it. And an unknown key is taken as newer, which it need not be: a worker whose sync is behind (agent rotated
-         * elsewhere, then here) retires the newer adoption and serves the older key until the next sync -- client.keys
-         * and authd's answer carry no order between two keys.
+         * the entry is served up to kAdoptionGrace after its adoption. For an entry still pending then (one a reload
+         * retired earlier never expires), whether it expires is decided by that age alone: the first sweep after the
+         * grace (a reload, an upsert or the watcher's own cycle; reading the level never sweeps) counts it in
+         * adoptionExpiriesTotal() -- a convergence the file shows only after the grace is still an expiry, since
+         * lookup() stopped serving the key at the grace. An expired entry is kept, unserved, for kHistoryRetention past
+         * the grace (earlier if a reload retires it; the next sweep after that removes it): its keys are the history a
+         * re-enrollment on this node inherits, so the file landing the older key late reads as behind the new adoption.
+         * Reconciliation retires expired entries like live ones, and every sweep runs before anything is inherited.
+         * If the file already carries the issued key when upsert() runs (the writer pass won the race), nothing is
+         * stored. The file stays the source of truth for everything else: agentsLoaded() and entriesSkipped() describe
+         * the file only. Windows that remain until the grace ends, on this node only: a new agent the file never
+         * carried but whose enrollment is undone keeps authenticating; an older enrollment's answer adopted after a
+         * newer key already reached the file (nothing in authd's answer orders two enrollments of one id in flight)
+         * refuses the newer key; and once an adoption supersedes more than kMaxSupersededKeys distinct keys (an agent
+         * re-enrolling on this node over and over before the file caught up; the same key adopted again adds nothing),
+         * a rotation elsewhere no longer retires it. And an unknown key is taken as newer, which it need not be: a
+         * worker whose sync is behind (agent rotated elsewhere, then here) retires the newer adoption and serves the
+         * older key until the next sync -- client.keys and authd's answer carry no order between two keys.
          *
          * Columns are parsed like reload() parses a file line, with one difference: reload() keeps a
          * line whose key does not decode as an entry with an empty key (answered MissingKey), while
@@ -241,8 +253,8 @@ namespace remoted::auth
             return m_adoptionsTotal.load(std::memory_order_relaxed);
         }
 
-        /// @brief Adopted entries dropped because no reload observed client.keys catching up with
-        /// them within kAdoptionGrace (the file may already hold the key, not yet reloaded).
+        /// @brief Adopted entries that stopped being served because no reload observed client.keys
+        /// carrying them within kAdoptionGrace (the file may hold the key by then, serving it itself).
         std::uint64_t adoptionExpiriesTotal() const noexcept
         {
             return m_adoptionExpiriesTotal.load(std::memory_order_relaxed);
@@ -304,18 +316,28 @@ namespace remoted::auth
             /// no longer proves the file moved past the adoption, so it no longer retires it (the
             /// grace still does).
             bool saturated {false};
+            /// Past kAdoptionGrace and counted: no longer served, kept only for its key history until
+            /// kHistoryRetention passes or a reload retires it.
+            bool expired {false};
         };
 
-        /// One entry expireAdoptedLocked() dropped, for reportExpired() to log once the lock is gone.
+        /// Served: not expired and within the grace. The one grace test, for lookup(), the level and the sweep.
+        static bool isLive(const PendingEntry& entry, std::chrono::steady_clock::time_point now) noexcept
+        {
+            return !entry.expired && now - entry.adoptedAt <= kAdoptionGrace;
+        }
+
+        /// One entry expireAdoptedLocked() expired, for reportExpired() to log once the lock is gone.
         struct ExpiredAdoption
         {
             AgentId id;
             bool idSeenInFile; ///< The file showed the id on an older key, vs never showed it at all.
         };
 
-        /// Drops the adopted entries older than kAdoptionGrace, counting each in
-        /// m_adoptionExpiriesTotal, and hands them back for reportExpired(). Caller holds m_mutex;
-        /// this does not log, so a wave of expiries never holds lookup() behind log I/O.
+        /// Marks the adopted entries older than kAdoptionGrace as expired, counting each in
+        /// m_adoptionExpiriesTotal, hands them back for reportExpired(), and forgets expired entries
+        /// older than the grace plus kHistoryRetention. Caller holds m_mutex; this does not log, so a
+        /// wave of expiries never holds lookup() behind log I/O.
         std::vector<ExpiredAdoption> expireAdoptedLocked(std::chrono::steady_clock::time_point now);
 
         /// Logs what expireAdoptedLocked() dropped: one debug line per entry and a warning throttled
