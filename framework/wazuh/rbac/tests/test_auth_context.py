@@ -250,3 +250,43 @@ def test_process_lists_requires_every_rule_item(role_chunk, auth_chunk, mode, ex
     """Each item of the rule must be satisfied by some value, not just reach the same number of matches."""
     checker = _make_checker()
     assert checker.process_lists(role_chunk, auth_chunk, mode) == expected
+
+
+@pytest.mark.parametrize('role_chunk, auth_chunk, expected', [
+    # A regex key matching several context keys must not compensate an unsatisfied key
+    ({"r'g.*'": ["a"], "other": ["z"]}, {"g1": ["a"]}, False),
+    ({"r'g.*'": ["a"], "other": ["z"]}, {"g1": ["a"], "g2": ["a"]}, False),
+    ({"r'g.*'": ["a"], "other": ["z"]}, {"g1": ["a"], "other": ["z"]}, True),
+    # A regex key is satisfied by any one matching context key, however many match
+    ({"r'g.*'": ["a"]}, {"g1": ["a"]}, True),
+    ({"r'g.*'": ["a"]}, {"g1": ["a"], "g2": ["a"]}, True),
+    ({"r'g.*'": ["a"]}, {"g1": ["b"], "g2": ["a"]}, True),
+    # A context key matching the regex key but not its value does not satisfy it
+    ({"r'g.*'": ["a"]}, {"g1": ["b"]}, False),
+    # A regex key that is also a literal context key counts once
+    ({"r'g.*'": ["a"], "g1": ["a"], "other": ["z"]}, {"g1": ["a"]}, False),
+    ({"r'g.*'": ["a"], "g1": ["a"]}, {"g1": ["a"]}, True),
+    # Nested dictionaries follow the same rule
+    ({"r'g.*'": {"k": ["a"]}, "other": ["z"]}, {"g1": {"k": ["a"]}, "g2": {"k": ["a"]}}, False),
+    ({"r'g.*'": {"k": ["a"]}}, {"g1": {"k": ["b"]}, "g2": {"k": ["a"]}}, True),
+])
+def test_match_item_requires_every_rule_key(role_chunk, auth_chunk, expected):
+    """Each key of the rule must be satisfied by some context key, not just reach the same number of matches."""
+    checker = _make_checker()
+    assert bool(checker.match_item(role_chunk, auth_chunk)) is expected
+
+
+@pytest.mark.parametrize('rule, auth_context, expected', [
+    ({"MATCH$": {"r'g.*'": ["a"], "other": ["z"]}}, {"g1": ["a"], "g2": ["a"]}, False),
+    ({"MATCH$": {"r'g.*'": ["a"], "other": ["z"]}}, {"g1": ["a"], "other": ["z"]}, True),
+    ({"MATCH$": {"r'g.*'": ["a"]}}, {"g1": ["a"], "g2": ["a"]}, True),
+    ({"AND": [{"MATCH": {"r'g.*'": ["a"], "other": ["z"]}}, {"MATCH": {"x": ["1"]}}]},
+     {"g1": ["a"], "g2": ["a"], "x": ["1"]}, False),
+    ({"OR": [{"MATCH": {"r'g.*'": ["a"], "other": ["z"]}}, {"MATCH": {"x": ["9"]}}]},
+     {"g1": ["a"], "g2": ["a"], "x": ["1"]}, False),
+    ({"NOT": [{"MATCH": {"r'g.*'": ["a"], "other": ["z"]}}]}, {"g1": ["a"], "g2": ["a"]}, True),
+])
+def test_check_rule_requires_every_rule_key(rule, auth_context, expected):
+    """MATCH$ and logical operators evaluate dictionary rules with each rule key counted once."""
+    checker = _make_checker(auth_context)
+    assert bool(checker.check_rule(rule)) is expected
