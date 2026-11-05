@@ -153,7 +153,9 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
                 else:
                     formatted_message = self.format_msg(message)
                     self.logger.debug(f'Processing event: {formatted_message}')
-                    self.send_msg(formatted_message)
+                    if not self.send_msg(formatted_message):
+                        self.logger.error(f'Skipped the message {received_message.message.message_id} of '
+                                          f'{self.subscription_path}')
 
                 # Ack every handled message regardless of its content: an ack only tells Pub/Sub to
                 # stop holding this message for us, it is unrelated to whether the payload made sense.

@@ -80,13 +80,18 @@ class WazuhGCloudIntegration:
     def process_data(self):
         raise NotImplementedError
 
-    def send_msg(self, msg: str):
+    def send_msg(self, msg: str) -> bool:
         """Send an event to the Wazuh queue.
 
         Parameters
         ----------
         msg : str
             Event to be sent.
+
+        Returns
+        -------
+        bool
+            False if the event was skipped for being too long for the socket, True if it was sent.
 
         Raises
         ------
@@ -107,5 +112,6 @@ class WazuhGCloudIntegration:
             # Resending will never fit, so skip it rather than abort the whole run.
             if error.errno == errno.EMSGSIZE:
                 self.logger.error(f'Message of {len(event_json)} bytes too long to send to Wazuh. Skipping message...')
-                return
+                return False
             raise exceptions.WazuhIntegrationInternalError(3)
+        return True

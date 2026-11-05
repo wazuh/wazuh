@@ -231,9 +231,11 @@ def test_WazuhGCloudSubscriber_pull_request_event_size_does_not_grow(mock_creden
 
 
 def get_pubsub_message(ack_id: str, payload: str) -> MagicMock:
-    """Return a fake received Pub/Sub message with the given ack ID and raw payload."""
+    """Return a fake received Pub/Sub message with the given ack ID and raw payload. Its message ID is the ack ID with
+    'message' in place of 'ack'."""
     message = MagicMock()
     message.ack_id = ack_id
+    message.message.message_id = ack_id.replace('ack', 'message')
     message.message.data = payload.encode()
     return message
 
@@ -267,7 +269,9 @@ def test_WazuhGCloudSubscriber_pull_request_skips_message_too_long(mock_credenti
             delivered.append(json.loads(event[len(pubsub.header):])['gcp']['id'])
 
     assert delivered == [1, 3]
-    pubsub.logger.error.assert_called_once()
+    # The send logs the size of the event, and pull_request which message it was, so it can be found again.
+    assert pubsub.logger.error.call_count == 2
+    pubsub.logger.error.assert_called_with(f'Skipped the message message-id-2 of {pubsub.subscription_path}')
     pubsub.subscriber.acknowledge.assert_called_once_with(
         request={'subscription': pubsub.subscription_path, 'ack_ids': ['ack-id-1', 'ack-id-2', 'ack-id-3']})
 
@@ -290,7 +294,7 @@ def test_WazuhGCloudSubscriber_pull_request_send_error_acks_handled_messages(moc
         get_pubsub_message('ack-id-3', '{"id": 3}'),
         get_pubsub_message('ack-id-4', '{"id": 4}'),
     ])
-    mock_send_msg.side_effect = [None] * (failing_send - 1) + [WazuhIntegrationInternalError(3)]
+    mock_send_msg.side_effect = [True] * (failing_send - 1) + [WazuhIntegrationInternalError(3)]
 
     with pytest.raises(WazuhIntegrationInternalError):
         pubsub.pull_request(max_messages=4)
@@ -313,7 +317,7 @@ def test_WazuhGCloudSubscriber_pull_request_ack_error_keeps_send_error(mock_cred
         get_pubsub_message('ack-id-1', '{"id": 1}'),
         get_pubsub_message('ack-id-2', '{"id": 2}'),
     ])
-    mock_send_msg.side_effect = [None, WazuhIntegrationInternalError(3)]
+    mock_send_msg.side_effect = [True, WazuhIntegrationInternalError(3)]
     pubsub.subscriber.acknowledge.side_effect = google_exceptions.ServiceUnavailable('placeholder')
 
     with pytest.raises(WazuhIntegrationInternalError) as e:

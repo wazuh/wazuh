@@ -316,7 +316,8 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
             if len(events) > 0:
                 with self.initialize_socket():
                     for event in events:
-                        self.send_msg(self.format_msg(dumps(event)))
+                        if not self.send_msg(self.format_msg(dumps(event))):
+                            self.logger.error(f'Skipped an event of "{blob.name}" in {self.bucket_name}')
                         num_events += 1
             if self.delete_file:
                 self.bucket.delete_blob(blob.name)

@@ -76,7 +76,7 @@ def test_WazuhGCloudIntegration_send_message(mock_socket):
     """Test if messages are sent to Wazuh queue socket."""
     integration = WazuhGCloudIntegration(logger=MagicMock())
     with integration.initialize_socket():
-        integration.send_msg(test_message)
+        assert integration.send_msg(test_message) is True
     mock_socket.return_value.send.assert_called_with(
         f'{WazuhGCloudIntegration.header}{test_message}'.encode(errors='replace'))
 
@@ -111,7 +111,7 @@ def test_WazuhGCloudIntegration_send_message_skips_message_too_long():
     integration = WazuhGCloudIntegration(logger=MagicMock())
     integration.socket = MagicMock()
     integration.socket.send.side_effect = OSError(errno.EMSGSIZE, 'Message too long')
-    integration.send_msg(test_message)
+    assert integration.send_msg(test_message) is False
     integration.logger.error.assert_called_once()
 
 
@@ -126,8 +126,8 @@ def test_WazuhGCloudIntegration_send_message_too_long_real_socket():
         receiver.setblocking(False)
         integration.socket = sender
 
-        integration.send_msg('x' * sender.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF))
-        integration.send_msg(test_message)
+        assert integration.send_msg('x' * sender.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF)) is False
+        assert integration.send_msg(test_message) is True
 
         assert receiver.recv(65536) == f'{WazuhGCloudIntegration.header}{test_message}'.encode()
         with pytest.raises(BlockingIOError):
