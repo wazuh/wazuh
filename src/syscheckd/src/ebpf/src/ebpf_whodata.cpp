@@ -623,7 +623,10 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load)
                     bpf_helpers->bpf_map_delete_elem))
     {
         logFn(LOG_ERROR, FIM_ERROR_EBPF_LIB_LOAD);
-        local_sym_load->freeLibrary(bpf_helpers->module);
+        if (bpf_helpers->module)
+        {
+            local_sym_load->freeLibrary(bpf_helpers->module);
+        }
         bpf_helpers.reset();
         return 1;
     }
