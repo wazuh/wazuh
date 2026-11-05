@@ -91,6 +91,20 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         /// This method closes the database connection and removes the database file from disk.
         void deleteDatabase() override;
 
+        /// @brief Returns the stored checksum mismatch progress of an index.
+        /// @param index The index to look up.
+        /// @return The progress, or std::nullopt if none is stored.
+        std::optional<IntegrityProgress> getIntegrityProgress(const std::string& index) override;
+
+        /// @brief Stores the checksum mismatch progress of an index, replacing any previous one.
+        /// @param index The index the progress belongs to.
+        /// @param progress The progress to store.
+        void setIntegrityProgress(const std::string& index, const IntegrityProgress& progress) override;
+
+        /// @brief Removes the checksum mismatch progress of an index, if any.
+        /// @param index The index whose progress is removed.
+        void clearIntegrityProgress(const std::string& index) override;
+
         /// @brief Returns the WAL auto-checkpoint threshold currently configured on this connection.
         /// @return The configured threshold, in WAL pages.
         int32_t getWalAutocheckpoint() const;
@@ -118,7 +132,7 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         ///        every item behind it forever.
         unsigned int m_oversizedItemAttempts = 0;
 
-        /// @brief Creates the persistent_queue table if it doesn't already exist.
+        /// @brief Creates the persistent_queue and integrity_progress tables if they don't already exist.
         void createTableIfNotExists();
 
         /// @brief Opens the database file or creates it if it doesn't exist.

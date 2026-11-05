@@ -323,6 +323,52 @@ TEST_F(PersistentQueueStorageTest, ConstructorHonorsWalAutocheckpointOverride)
     EXPECT_EQ(overriddenStorage->getWalAutocheckpoint(), 4000);
 }
 
+TEST_F(PersistentQueueStorageTest, IntegrityProgressIsStoredReplacedAndCleared)
+{
+    EXPECT_FALSE(storage->getIntegrityProgress("idx").has_value());
+
+    storage->setIntegrityProgress("idx", {.mismatches = 1, .lastMismatchMs = 1000});
+    auto progress = storage->getIntegrityProgress("idx");
+    ASSERT_TRUE(progress.has_value());
+    EXPECT_EQ(progress->mismatches, 1u);
+    EXPECT_EQ(progress->lastMismatchMs, 1000);
+
+    storage->setIntegrityProgress("idx", {.mismatches = 2, .lastMismatchMs = 1786000000000});
+    progress = storage->getIntegrityProgress("idx");
+    ASSERT_TRUE(progress.has_value());
+    EXPECT_EQ(progress->mismatches, 2u);
+    EXPECT_EQ(progress->lastMismatchMs, 1786000000000);
+
+    storage->clearIntegrityProgress("idx");
+    EXPECT_FALSE(storage->getIntegrityProgress("idx").has_value());
+}
+
+TEST_F(PersistentQueueStorageTest, IntegrityProgressIsKeptPerIndex)
+{
+    storage->setIntegrityProgress("idx1", {.mismatches = 1, .lastMismatchMs = 1000});
+    storage->setIntegrityProgress("idx2", {.mismatches = 3, .lastMismatchMs = 2000});
+
+    storage->clearIntegrityProgress("idx1");
+
+    EXPECT_FALSE(storage->getIntegrityProgress("idx1").has_value());
+    const auto progress = storage->getIntegrityProgress("idx2");
+    ASSERT_TRUE(progress.has_value());
+    EXPECT_EQ(progress->mismatches, 3u);
+}
+
+TEST_F(PersistentQueueStorageTest, IntegrityProgressDoesNotTouchTheQueue)
+{
+    storage->submitOrCoalesce(PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0});
+    storage->setIntegrityProgress("idx", {.mismatches = 1, .lastMismatchMs = 1000});
+
+    storage->removeByIndex("idx");
+    EXPECT_TRUE(storage->getIntegrityProgress("idx").has_value());
+
+    storage->clearIntegrityProgress("idx");
+    storage->submitOrCoalesce(PersistedData{0, "id2", "idx", "{}", Operation::CREATE, 0});
+    EXPECT_EQ(storage->fetchPending().size(), 1u);
+}
+
 TEST_F(PersistentQueueStorageTest, RemoveByIndexDeletesOnlySpecifiedIndex)
 {
     // Insert items with different indices
@@ -677,4 +723,71 @@ TEST_F(PersistentQueueStorageBusyLockTest, ResetAllSyncingWaitsOutTransientLockI
     EXPECT_NO_THROW(secondInstanceStorage.resetAllSyncing());
 
     lockReleaser.join();
+}
+
+/// @brief The integrity progress must survive a restart, including on a database created before it existed.
+class PersistentQueueStorageIntegrityProgressFileTest : public ::testing::Test
+{
+    protected:
+        std::string dbPath;
+        LoggerFunc testLogger = [](modules_log_level_t /*level*/, const std::string& /*msg*/) {};
+
+        void SetUp() override
+        {
+            dbPath = (std::filesystem::temp_directory_path() / "wazuh_persistent_queue_integrity_progress_test.db").string();
+            removeDatabase();
+        }
+
+        void TearDown() override
+        {
+            removeDatabase();
+        }
+
+        void removeDatabase()
+        {
+            std::filesystem::remove(dbPath);
+            std::filesystem::remove(dbPath + "-wal");
+            std::filesystem::remove(dbPath + "-shm");
+        }
+};
+
+TEST_F(PersistentQueueStorageIntegrityProgressFileTest, IntegrityProgressSurvivesReopen)
+{
+    {
+        PersistentQueueStorage storage(dbPath, testLogger);
+        storage.setIntegrityProgress("idx", {.mismatches = 2, .lastMismatchMs = 1000});
+    }
+
+    PersistentQueueStorage storage(dbPath, testLogger);
+    const auto progress = storage.getIntegrityProgress("idx");
+    ASSERT_TRUE(progress.has_value());
+    EXPECT_EQ(progress->mismatches, 2u);
+    EXPECT_EQ(progress->lastMismatchMs, 1000);
+}
+
+TEST_F(PersistentQueueStorageIntegrityProgressFileTest, IntegrityProgressWorksOnADatabaseWithoutItsTable)
+{
+    // A queue database written before the integrity_progress table existed.
+    {
+        SQLite3Wrapper::Connection connection(dbPath);
+        connection.execute(
+            "CREATE TABLE persistent_queue ("
+            "id TEXT PRIMARY KEY NOT NULL,"
+            "idx TEXT NOT NULL,"
+            "data TEXT NOT NULL,"
+            "operation INTEGER NOT NULL,"
+            "version INTEGER NOT NULL DEFAULT 0,"
+            "sync_status INTEGER NOT NULL DEFAULT 0,"
+            "create_status INTEGER NOT NULL DEFAULT 0,"
+            "operation_syncing INTEGER NOT NULL DEFAULT 3,"
+            "is_data_context INTEGER NOT NULL DEFAULT 0);");
+        connection.execute("INSERT INTO persistent_queue (id, idx, data, operation) VALUES ('id1', 'idx', '{}', 0);");
+    }
+
+    PersistentQueueStorage storage(dbPath, testLogger);
+
+    EXPECT_FALSE(storage.getIntegrityProgress("idx").has_value());
+    storage.setIntegrityProgress("idx", {.mismatches = 1, .lastMismatchMs = 1000});
+    EXPECT_TRUE(storage.getIntegrityProgress("idx").has_value());
+    EXPECT_EQ(storage.fetchPending().size(), 1u);
 }

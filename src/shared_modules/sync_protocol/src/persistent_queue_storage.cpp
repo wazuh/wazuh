@@ -85,6 +85,12 @@ void PersistentQueueStorage::createTableIfNotExists()
             "is_data_context INTEGER NOT NULL DEFAULT 0);";
 
         m_connection.execute(query);
+
+        m_connection.execute(
+            "CREATE TABLE IF NOT EXISTS integrity_progress ("
+            "idx TEXT PRIMARY KEY NOT NULL,"
+            "mismatches INTEGER NOT NULL,"
+            "last_mismatch_ms INTEGER NOT NULL);");
     }
     // LCOV_EXCL_START
     catch (const std::exception& ex)
@@ -618,6 +624,38 @@ void PersistentQueueStorage::deleteDatabase()
         m_logger(LOG_ERROR, std::string("PersistentQueueStorage: Error deleting database: ") + ex.what());
         throw;
     }
+}
+
+std::optional<IntegrityProgress> PersistentQueueStorage::getIntegrityProgress(const std::string& index)
+{
+    SQLite3Wrapper::Statement stmt(m_connection,
+                                   "SELECT mismatches, last_mismatch_ms FROM integrity_progress WHERE idx = ?;");
+    stmt.bind(1, index);
+
+    if (stmt.step() != SQLITE_ROW)
+    {
+        return std::nullopt;
+    }
+
+    return IntegrityProgress {.mismatches = static_cast<unsigned int>(stmt.value<int32_t>(0)),
+                              .lastMismatchMs = stmt.value<int64_t>(1)};
+}
+
+void PersistentQueueStorage::setIntegrityProgress(const std::string& index, const IntegrityProgress& progress)
+{
+    SQLite3Wrapper::Statement stmt(m_connection,
+                                   "INSERT OR REPLACE INTO integrity_progress (idx, mismatches, last_mismatch_ms) VALUES (?, ?, ?);");
+    stmt.bind(1, index);
+    stmt.bind(2, static_cast<int32_t>(progress.mismatches));
+    stmt.bind(3, progress.lastMismatchMs);
+    stmt.step();
+}
+
+void PersistentQueueStorage::clearIntegrityProgress(const std::string& index)
+{
+    SQLite3Wrapper::Statement stmt(m_connection, "DELETE FROM integrity_progress WHERE idx = ?;");
+    stmt.bind(1, index);
+    stmt.step();
 }
 
 int32_t PersistentQueueStorage::getWalAutocheckpoint() const

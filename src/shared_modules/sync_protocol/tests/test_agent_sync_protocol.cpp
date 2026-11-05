@@ -14,9 +14,11 @@
 #include "agent_sync_protocol.hpp"
 #include "agent_sync_protocol_types.hpp"
 #include "ipersistent_queue.hpp"
+#include "persistent_queue.hpp"
 #include "agent_sync_protocol_c_interface.h"
 #include "metadata_provider.h"
 
+#include <filesystem>
 #include <future>
 #include <atomic>
 #include <tuple>
@@ -48,7 +50,9 @@ class MockPersistentQueue : public IPersistentQueue
         MOCK_METHOD(void, clearItemsByIndex, (const std::string& index), (override));
         MOCK_METHOD(void, clearAllDataContext, (), (override));
         MOCK_METHOD(void, deleteDatabase, (), (override));
-
+        MOCK_METHOD(std::optional<IntegrityProgress>, getIntegrityProgress, (const std::string& index), (override));
+        MOCK_METHOD(void, setIntegrityProgress, (const std::string& index, const IntegrityProgress& progress), (override));
+        MOCK_METHOD(void, clearIntegrityProgress, (const std::string& index), (override));
 };
 
 class AgentSyncProtocolTest : public ::testing::Test
@@ -2370,6 +2374,160 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncReportsUnconfirmedMismatchWhenStop
     EXPECT_TRUE(result.stopped);
     EXPECT_TRUE(result.mismatchUnconfirmed);
     EXPECT_FALSE(result.managerNotReady);
+}
+
+// requiresFullSync() on a real queue, so the mismatch progress outlives the protocol instance.
+class AgentSyncProtocolIntegrityProgressTest : public AgentSyncProtocolTest
+{
+    protected:
+        void SetUp() override
+        {
+            AgentSyncProtocolTest::SetUp();
+            dbPath = (std::filesystem::temp_directory_path() /
+                      ("asp_integrity_progress_" +
+                       std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + ".db"))
+                     .string();
+            restart();
+        }
+
+        void TearDown() override
+        {
+            protocol.reset();
+            queue.reset();
+
+            std::filesystem::remove(dbPath);
+            std::filesystem::remove(dbPath + "-wal");
+            std::filesystem::remove(dbPath + "-shm");
+
+            AgentSyncProtocolTest::TearDown();
+        }
+
+        /// Replaces the queue and the protocol with new ones on the same database.
+        void restart()
+        {
+            protocol.reset();
+            queue.reset();
+            queue = std::make_shared<PersistentQueue>(dbPath, logger);
+            protocol = std::make_unique<AgentSyncProtocol>("test_module", dbPath, logger, queue, mockSyncTransport);
+        }
+
+        /// Runs requiresFullSync() answering every session it sends with @p httpCode.
+        /// @return The result and the number of sessions sent.
+        std::pair<IntegrityCheckResult, int> checkAnsweringEverySession(int httpCode)
+        {
+            const int sentBefore = mockSyncTransport->sendCount();
+            std::atomic<bool> done {false};
+            IntegrityCheckResult result;
+
+            std::thread checkThread([this, &done, &result]()
+            {
+                result = protocol->requiresFullSync(INDEX, "checksum");
+                done = true;
+            });
+
+            int answered = sentBefore;
+
+            while (!done)
+            {
+                if (mockSyncTransport->sendCount() > answered)
+                {
+                    ++answered;
+                    feedHttpResult(httpCode);
+                    continue;
+                }
+
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+
+            checkThread.join();
+            return {result, mockSyncTransport->sendCount() - sentBefore};
+        }
+
+        static int64_t nowMs()
+        {
+            return std::chrono::duration_cast<std::chrono::milliseconds>(
+                       std::chrono::system_clock::now().time_since_epoch()).count();
+        }
+
+        static constexpr auto INDEX = "test_index";
+        std::string dbPath;
+        std::shared_ptr<PersistentQueue> queue;
+        LoggerFunc logger = [](modules_log_level_t, const std::string&) {};
+};
+
+TEST_F(AgentSyncProtocolIntegrityProgressTest, ResumesMismatchConfirmationAfterRestart)
+{
+    // The first instance gets one 409 and stops while confirming it.
+    IntegrityCheckResult first;
+    std::thread checkThread([this, &first]()
+    {
+        first = protocol->requiresFullSync(INDEX, "checksum");
+    });
+
+    ASSERT_TRUE(mockSyncTransport->waitForSession());
+    feedHttpResult(409);
+    protocol->stop();
+    checkThread.join();
+
+    EXPECT_EQ(first.status, IntegrityCheckStatus::NOT_CHECKED);
+    EXPECT_TRUE(first.mismatchUnconfirmed);
+    const auto stored = queue->getIntegrityProgress(INDEX);
+    ASSERT_TRUE(stored.has_value());
+    EXPECT_EQ(stored->mismatches, 1u);
+
+    // After the restart, the 409 already reported counts: four more confirm the mismatch.
+    restart();
+    const auto [result, sessions] = checkAnsweringEverySession(409);
+
+    EXPECT_EQ(result.status, IntegrityCheckStatus::MISMATCH);
+    EXPECT_EQ(sessions, 4);
+    EXPECT_FALSE(queue->getIntegrityProgress(INDEX).has_value());
+}
+
+TEST_F(AgentSyncProtocolIntegrityProgressTest, ClearsMismatchProgressWhenTheChecksumMatches)
+{
+    queue->setIntegrityProgress(INDEX, {.mismatches = 3, .lastMismatchMs = nowMs() - 60000});
+
+    const auto [result, sessions] = checkAnsweringEverySession(200);
+
+    EXPECT_EQ(result.status, IntegrityCheckStatus::VALID);
+    EXPECT_EQ(sessions, 1);
+    EXPECT_FALSE(queue->getIntegrityProgress(INDEX).has_value());
+}
+
+TEST_F(AgentSyncProtocolIntegrityProgressTest, KeepsMismatchProgressWhenTheCheckCannotRun)
+{
+    // A 503 says nothing about the checksum, so the mismatches already reported still count.
+    queue->setIntegrityProgress(INDEX, {.mismatches = 2, .lastMismatchMs = nowMs() - 60000});
+
+    const auto [result, sessions] = checkAnsweringEverySession(503);
+
+    EXPECT_EQ(result.status, IntegrityCheckStatus::NOT_CHECKED);
+    EXPECT_TRUE(result.mismatchUnconfirmed);
+    EXPECT_EQ(sessions, 1);
+    const auto stored = queue->getIntegrityProgress(INDEX);
+    ASSERT_TRUE(stored.has_value());
+    EXPECT_EQ(stored->mismatches, 2u);
+}
+
+TEST_F(AgentSyncProtocolIntegrityProgressTest, StartsOverWhenTheMismatchProgressExpired)
+{
+    queue->setIntegrityProgress(INDEX, {.mismatches = 4, .lastMismatchMs = nowMs() - 2 * 3600 * 1000});
+
+    const auto [result, sessions] = checkAnsweringEverySession(409);
+
+    EXPECT_EQ(result.status, IntegrityCheckStatus::MISMATCH);
+    EXPECT_EQ(sessions, 5);
+}
+
+TEST_F(AgentSyncProtocolIntegrityProgressTest, StartsOverWhenTheMismatchProgressIsInTheFuture)
+{
+    queue->setIntegrityProgress(INDEX, {.mismatches = 4, .lastMismatchMs = nowMs() + 3600 * 1000});
+
+    const auto [result, sessions] = checkAnsweringEverySession(409);
+
+    EXPECT_EQ(result.status, IntegrityCheckStatus::MISMATCH);
+    EXPECT_EQ(sessions, 5);
 }
 
 // Tests for synchronizeMetadataOrGroups

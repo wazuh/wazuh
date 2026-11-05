@@ -97,6 +97,15 @@ class PersistentQueue : public IPersistentQueue
         /// This method closes the database connection and removes the database file from disk.
         void deleteDatabase() override;
 
+        /// @copydoc IPersistentQueue::getIntegrityProgress
+        std::optional<IntegrityProgress> getIntegrityProgress(const std::string& index) override;
+
+        /// @copydoc IPersistentQueue::setIntegrityProgress
+        void setIntegrityProgress(const std::string& index, const IntegrityProgress& progress) override;
+
+        /// @copydoc IPersistentQueue::clearIntegrityProgress
+        void clearIntegrityProgress(const std::string& index) override;
+
     private:
         /// @brief Used when no flush batch size override is given.
         static constexpr std::size_t DEFAULT_FLUSH_BATCH_SIZE = 100;

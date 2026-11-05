@@ -73,6 +73,16 @@ struct PersistedData
     bool is_data_context = false;
 };
 
+/// @brief Progress of an unconfirmed checksum mismatch for one index, kept across restarts.
+struct IntegrityProgress
+{
+    /// @brief Checksum mismatches (409) the manager has reported in a row.
+    unsigned int mismatches{};
+
+    /// @brief When the last of them was reported, in milliseconds since the epoch.
+    int64_t lastMismatchMs{};
+};
+
 /// @brief Interface for persistent message queues.
 ///
 /// This abstraction allows storing, retrieving, and deleting messages
@@ -126,4 +136,18 @@ class IPersistentQueue
         /// @brief Deletes the database file.
         /// This method closes the database connection and removes the database file from disk.
         virtual void deleteDatabase() = 0;
+
+        /// @brief Returns the stored checksum mismatch progress of an index.
+        /// @param index The index to look up.
+        /// @return The progress, or std::nullopt if none is stored.
+        virtual std::optional<IntegrityProgress> getIntegrityProgress(const std::string& index) = 0;
+
+        /// @brief Stores the checksum mismatch progress of an index, replacing any previous one.
+        /// @param index The index the progress belongs to.
+        /// @param progress The progress to store.
+        virtual void setIntegrityProgress(const std::string& index, const IntegrityProgress& progress) = 0;
+
+        /// @brief Removes the checksum mismatch progress of an index, if any.
+        /// @param index The index whose progress is removed.
+        virtual void clearIntegrityProgress(const std::string& index) = 0;
 };

@@ -52,6 +52,9 @@ class MockPersistentQueue : public IPersistentQueue
         MOCK_METHOD(void, clearItemsByIndex, (const std::string& index), (override));
         MOCK_METHOD(void, clearAllDataContext, (), (override));
         MOCK_METHOD(void, deleteDatabase, (), (override));
+        MOCK_METHOD(std::optional<IntegrityProgress>, getIntegrityProgress, (const std::string& index), (override));
+        MOCK_METHOD(void, setIntegrityProgress, (const std::string& index, const IntegrityProgress& progress), (override));
+        MOCK_METHOD(void, clearIntegrityProgress, (const std::string& index), (override));
 };
 
 class AgentSyncProtocolDataContextTest : public ::testing::Test
