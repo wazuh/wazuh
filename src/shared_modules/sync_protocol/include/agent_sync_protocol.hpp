@@ -81,6 +81,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         IntegrityCheckResult requiresFullSync(const std::string& index,
                                               const std::string& checksum) override;
 
+        /// @copydoc IAgentSyncProtocol::clearIntegrityProgress
+        void clearIntegrityProgress(const std::string& index) override;
+
         /// @copydoc IAgentSyncProtocol::synchronizeMetadataOrGroups
         SyncModuleResult synchronizeMetadataOrGroups(Mode mode, const std::vector<std::string>& indices, uint64_t globalVersion) override;
 

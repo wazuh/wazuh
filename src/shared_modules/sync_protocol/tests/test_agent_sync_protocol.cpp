@@ -2539,6 +2539,17 @@ TEST_F(AgentSyncProtocolIntegrityProgressTest, ClearsMismatchProgressWhenTheInde
     EXPECT_TRUE(queue->getIntegrityProgress("other_index").has_value());
 }
 
+TEST_F(AgentSyncProtocolIntegrityProgressTest, ClearIntegrityProgressRemovesOnlyThatIndex)
+{
+    queue->setIntegrityProgress(INDEX, {.mismatches = 4, .lastMismatchMs = nowMs() - 60000});
+    queue->setIntegrityProgress("other_index", {.mismatches = 2, .lastMismatchMs = nowMs() - 60000});
+
+    protocol->clearIntegrityProgress(INDEX);
+
+    EXPECT_FALSE(queue->getIntegrityProgress(INDEX).has_value());
+    EXPECT_TRUE(queue->getIntegrityProgress("other_index").has_value());
+}
+
 TEST_F(AgentSyncProtocolIntegrityProgressTest, DiscardsAnOutOfRangeMismatchCount)
 {
     queue->setIntegrityProgress(INDEX, {.mismatches = 5, .lastMismatchMs = nowMs() - 60000});

@@ -53,6 +53,13 @@ class IAgentSyncProtocol
         virtual IntegrityCheckResult requiresFullSync(const std::string& index,
                                                       const std::string& checksum) = 0;
 
+        /// @brief Removes the checksum mismatches stored for an index by requiresFullSync().
+        ///
+        /// notifyDataClean() already does it for the indices it cleans. A module that checks an
+        /// index on one instance and cleans it on another calls this on the one that checked it.
+        /// @param index The index whose stored mismatches are removed.
+        virtual void clearIntegrityProgress(const std::string& index) = 0;
+
         /// @brief Synchronizes metadata or groups with the server without sending data.
         ///
         /// This method handles the following modes: MetadataDelta, MetadataCheck, GroupDelta, GroupCheck.

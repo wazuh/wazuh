@@ -814,6 +814,11 @@ void AgentSyncProtocol::storeMismatchProgress(const std::string& index, unsigned
     }
 }
 
+void AgentSyncProtocol::clearIntegrityProgress(const std::string& index)
+{
+    clearMismatchProgress(index);
+}
+
 void AgentSyncProtocol::clearMismatchProgress(const std::string& index)
 {
     if (!m_persistentQueue)

@@ -5236,6 +5236,12 @@ bool Syscollector::resyncTableToManager(const std::string& tableName,
         return false;
     }
 
+    // Every index is checked on the plain protocol, so a VD index's stored mismatches live there.
+    if (protocol != m_spSyncProtocol.get() && m_spSyncProtocol)
+    {
+        m_spSyncProtocol->clearIntegrityProgress(index);
+    }
+
     // LCOV_EXCL_START
     for (const auto& item : items)
     {
