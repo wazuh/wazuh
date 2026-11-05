@@ -2336,6 +2336,18 @@ components:
                       type: integer
                       format: int64
                       description: "Keystore reloads that failed, leaving the previous contents in place"
+                    adoptions_total:
+                      type: integer
+                      format: int64
+                      description: "Credentials taken from accepted POST /enroll answers on this node: adopted before client.keys carried them, or found already in the file"
+                    adoptions_pending:
+                      type: integer
+                      format: int64
+                      description: "Adopted credentials client.keys has not caught up with yet (dropped at convergence, when the file moves past them, or after the grace)"
+                    adoption_expiries_total:
+                      type: integer
+                      format: int64
+                      description: "Adopted credentials dropped because no reload saw client.keys catch up with them within the grace"
                 downstream:
                   type: object
                   description: "Delivery of accepted requests to the services behind the daemon. A failure here is answered to the agent with 503 and also counted in `responses.<endpoint>.503`"
@@ -7254,6 +7266,9 @@ paths:
                             entries_skipped: 0
                             reloads_total: 3
                             reload_failures_total: 0
+                            adoptions_total: 2
+                            adoptions_pending: 0
+                            adoption_expiries_total: 0
                           downstream:
                             downstream_5xx: 0
                             route_mismatch: 0

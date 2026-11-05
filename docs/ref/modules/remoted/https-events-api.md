@@ -606,9 +606,12 @@ file is no longer behind it, after which the file's entry takes over:
   (for example, it re-enrolled elsewhere before this worker's synchronization).
 
 A file without the `id` that has not carried it yet, or still on a superseded key, is behind: the
-entry stays, up to a 60 s grace (then it is dropped and counted in
-`remoted.auth.keystore.adoption_expiries.total`; the watcher drops expired entries on its own cycle
-even if nothing else touches the keystore). The file is authoritative for unusable rows too, and
+entry stays, up to a 60 s grace (then a reload, a later adoption or the watcher's own cycle drops it
+and counts it in `remoted.auth.keystore.adoption_expiries.total`; reading `adoptions_pending` never
+does — a scrape moves no counter and writes no log line). The warning for an expiry — one per 90 s
+window, with the count of the entries it stands for — says whether the file never showed the agent
+(the writer or the synchronization has not landed the enrollment, or the agent was removed before
+they did) or still shows an older key for it (they have not landed the rotation). The file is authoritative for unusable rows too, and
 they follow the same comparison: a row whose `ip` column does not parse is not loaded, so it reads
 as a missing `id`; one whose key does not decode is loaded with an empty key, compared like any
 other — so it retires the adoption unless the row was already unusable when the adoption was made
@@ -623,7 +626,10 @@ Two consequences follow. `agents` on
 key the file has not caught up with yet. The first three last at most until the grace ends; the
 last one until the next synchronization:
 
-- a *new* agent removed before the file ever carried it keeps authenticating;
+- a *new* agent removed before the file ever carried it keeps authenticating (the keystore gets no
+  removal signal, only the file: on the master that window is the writer pass after the
+  enrollment, on a worker the next synchronization), and its expiry is then reported as an
+  enrollment the file never showed;
 - two enrollments of the same `id` in flight at once are not ordered (`authd`'s answer carries no
   generation): if the older one's answer is adopted after the newer key is already in the file,
   the node refuses the newer key. An agent serializes its own enrollments, so this takes a

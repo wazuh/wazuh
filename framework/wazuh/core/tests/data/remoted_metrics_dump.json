@@ -95,6 +95,24 @@
       "value": 4004.0
     },
     {
+      "name": "remoted.auth.keystore.adoptions.total",
+      "type": "pull",
+      "enabled": true,
+      "value": 4005.0
+    },
+    {
+      "name": "remoted.auth.keystore.adoptions_pending",
+      "type": "pull",
+      "enabled": true,
+      "value": 4006.0
+    },
+    {
+      "name": "remoted.auth.keystore.adoption_expiries.total",
+      "type": "pull",
+      "enabled": true,
+      "value": 4007.0
+    },
+    {
       "name": "remoted.auth.reject.address_not_allowed",
       "type": "counter",
       "enabled": true,

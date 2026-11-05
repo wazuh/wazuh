@@ -266,7 +266,7 @@ Measured on a three-node cluster:
 
 | File | Master accepts after | Workers accept after | Rejection while waiting |
 |---|---|---|---|
-| `/etc/wazuh-manager/client.keys` | immediately (adopted by the node that served `/enroll`) | 8.4 – 13.0 s (immediately on the worker that served `/enroll`) | `401`, code `unknown_agent` |
+| `/etc/wazuh-manager/client.keys` | 0.04 s (immediately when it served `/enroll`) | 8.4 – 13.0 s (immediately on the worker that served `/enroll`) | `401`, code `unknown_agent` |
 | `/etc/wazuh-manager/authd.pass` | immediately | ~23 s | `401`, code `enrollment_key_unavailable` |
 | `/etc/wazuh-manager/enrollment_tokens.json` | 0.13 s | up to ~13 s | `401`, code `token_unknown` |
 

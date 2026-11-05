@@ -193,6 +193,11 @@ REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.auth.keystore.entries_skipped", "keystore_entries_skipped"),
     ("remoted.auth.keystore.reloads.total", "keystore_reloads_total"),
     ("remoted.auth.keystore.reload_failures.total", "keystore_reload_failures_total"),
+    # Keys adopted from /enroll answers on this node: adoptions_pending is the level to watch
+    # (the file has not caught up with them yet), the two totals are cumulative.
+    ("remoted.auth.keystore.adoptions.total", "keystore_adoptions_total"),
+    ("remoted.auth.keystore.adoptions_pending", "keystore_adoptions_pending"),
+    ("remoted.auth.keystore.adoption_expiries.total", "keystore_adoption_expiries_total"),
     # Per-endpoint response outcomes ("what the agent got"), one closed set x four endpoints.
     ("remoted.http.stateless.responses.2xx", "http_stateless_responses_2xx"),
     ("remoted.http.stateless.responses.400", "http_stateless_responses_400"),

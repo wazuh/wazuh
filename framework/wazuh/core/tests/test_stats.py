@@ -108,7 +108,8 @@ EXPECTED_HTTP_SERVER_METRICS = {
                 'task_fetch': 3006, 'task_fetch_error': 3007, 'registry_agents': 3008,
                 'wdb_latency': {'count': 3100, 'sum': 3101, 'min': 3102, 'max': 3103, 'p50': 3104,
                                 'p90': 3105, 'p99': 3106}},
-    'keystore': {'agents': 4001, 'entries_skipped': 4002, 'reloads_total': 4004, 'reload_failures_total': 4003},
+    'keystore': {'agents': 4001, 'entries_skipped': 4002, 'reloads_total': 4004, 'reload_failures_total': 4003,
+                 'adoptions_total': 4005, 'adoptions_pending': 4006, 'adoption_expiries_total': 4007},
     'downstream': {'downstream_5xx': 5001, 'route_mismatch': 5002,
                    'errors': {'connect': 5003, 'connect_timeout': 5004, 'write_timeout': 5005,
                               'response_timeout': 5006, 'transport': 5007, 'protocol': 5008,
@@ -257,7 +258,8 @@ def test_build_remoted_http_metrics_reports_pull_metrics_as_integers():
     assert not floats, f'every reported value must be an int, found floats: {floats}'
     # Spot-check the pull-backed groups specifically.
     assert result['keystore'] == {'agents': 4001, 'entries_skipped': 4002, 'reloads_total': 4004,
-                                  'reload_failures_total': 4003}
+                                  'reload_failures_total': 4003, 'adoptions_total': 4005,
+                                  'adoptions_pending': 4006, 'adoption_expiries_total': 4007}
     assert result['backpressure']['available_bytes'] == 6001
     assert result['control']['registry_agents'] == 3008
 

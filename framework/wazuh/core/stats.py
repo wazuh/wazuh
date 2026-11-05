@@ -115,6 +115,11 @@ _REMOTED_METRIC_GROUPS = {
         'entries_skipped': 'remoted.auth.keystore.entries_skipped',
         'reloads_total': 'remoted.auth.keystore.reloads.total',
         'reload_failures_total': 'remoted.auth.keystore.reload_failures.total',
+        # Keys adopted from POST /enroll answers on this node before client.keys carried them:
+        # `adoptions_pending` is the level to watch after enrollments stop.
+        'adoptions_total': 'remoted.auth.keystore.adoptions.total',
+        'adoptions_pending': 'remoted.auth.keystore.adoptions_pending',
+        'adoption_expiries_total': 'remoted.auth.keystore.adoption_expiries.total',
     },
     'downstream': {
         'downstream_5xx': 'remoted.forwarder.downstream_5xx',
