@@ -21,7 +21,6 @@
 #include <cstdlib>
 #include <cstring>
 #include <memory>
-#include <algorithm>
 #include <set>
 
 namespace
@@ -629,7 +628,7 @@ IntegrityCheckResult AgentSyncProtocol::requiresFullSync(const std::string& inde
 
     if (const auto progress = loadMismatchProgress(index))
     {
-        firstAttempt = std::min(progress->mismatches, CHECKSUM_MISMATCH_MAX_ATTEMPTS - 1) + 1;
+        firstAttempt = progress->mismatches + 1;
         m_logger(LOG_DEBUG, "Resuming checksum mismatch confirmation for index: " + index + " at attempt " +
                  std::to_string(firstAttempt) + "/" + std::to_string(CHECKSUM_MISMATCH_MAX_ATTEMPTS));
 
@@ -751,8 +750,8 @@ IntegrityCheckResult AgentSyncProtocol::requiresFullSync(const std::string& inde
         }
     }
 
-    clearMismatchProgress(index);
-
+    // The stored mismatches stay until the index is cleaned, so a recovery cut short is
+    // retried after a single 409 instead of a new confirmation.
     return {.status = IntegrityCheckStatus::MISMATCH,
             .failureReason = {},
             .stopped = false,
@@ -780,9 +779,10 @@ std::optional<IntegrityProgress> AgentSyncProtocol::loadMismatchProgress(const s
         // A negative age means the clock moved back, so the age cannot be trusted either.
         const std::chrono::milliseconds age {currentTimeMs() - progress->lastMismatchMs};
 
-        if (progress->mismatches == 0 || age.count() < 0 || age > CHECKSUM_MISMATCH_PROGRESS_TTL)
+        if (progress->mismatches == 0 || progress->mismatches >= CHECKSUM_MISMATCH_MAX_ATTEMPTS ||
+                age.count() < 0 || age > CHECKSUM_MISMATCH_PROGRESS_TTL)
         {
-            m_persistentQueue->clearIntegrityProgress(index);
+            clearMismatchProgress(index);
             return std::nullopt;
         }
 
@@ -999,6 +999,7 @@ SyncModuleResult AgentSyncProtocol::notifyDataClean(const std::vector<std::strin
             for (const auto& index : indices)
             {
                 m_persistentQueue->clearItemsByIndex(index);
+                clearMismatchProgress(index);
             }
         }
         else

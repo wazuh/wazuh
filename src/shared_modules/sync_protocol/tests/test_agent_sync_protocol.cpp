@@ -2411,6 +2411,33 @@ class AgentSyncProtocolIntegrityProgressTest : public AgentSyncProtocolTest
             protocol = std::make_unique<AgentSyncProtocol>("test_module", dbPath, logger, queue, mockSyncTransport);
         }
 
+        /// Answers every session sent from @p sentBefore on with @p httpCode until @p done is set.
+        /// Stops the protocol and fails the test if that takes more than 10 s.
+        void answerEverySessionUntil(int httpCode, const std::atomic<bool>& done, int sentBefore)
+        {
+            const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+            int answered = sentBefore;
+
+            while (!done)
+            {
+                if (std::chrono::steady_clock::now() > deadline)
+                {
+                    ADD_FAILURE() << "The protocol did not return within 10 s";
+                    protocol->stop();
+                    return;
+                }
+
+                if (mockSyncTransport->sendCount() > answered)
+                {
+                    ++answered;
+                    feedHttpResult(httpCode);
+                    continue;
+                }
+
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+        }
+
         /// Runs requiresFullSync() answering every session it sends with @p httpCode.
         /// @return The result and the number of sessions sent.
         std::pair<IntegrityCheckResult, int> checkAnsweringEverySession(int httpCode)
@@ -2425,20 +2452,7 @@ class AgentSyncProtocolIntegrityProgressTest : public AgentSyncProtocolTest
                 done = true;
             });
 
-            int answered = sentBefore;
-
-            while (!done)
-            {
-                if (mockSyncTransport->sendCount() > answered)
-                {
-                    ++answered;
-                    feedHttpResult(httpCode);
-                    continue;
-                }
-
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            }
-
+            answerEverySessionUntil(httpCode, done, sentBefore);
             checkThread.join();
             return {result, mockSyncTransport->sendCount() - sentBefore};
         }
@@ -2481,7 +2495,58 @@ TEST_F(AgentSyncProtocolIntegrityProgressTest, ResumesMismatchConfirmationAfterR
 
     EXPECT_EQ(result.status, IntegrityCheckStatus::MISMATCH);
     EXPECT_EQ(sessions, 4);
+
+    // The mismatches stay stored until the index is cleaned.
+    const auto kept = queue->getIntegrityProgress(INDEX);
+    ASSERT_TRUE(kept.has_value());
+    EXPECT_EQ(kept->mismatches, 4u);
+}
+
+TEST_F(AgentSyncProtocolIntegrityProgressTest, RetriesAnInterruptedRecoveryAfterOneMismatch)
+{
+    const auto confirmed = checkAnsweringEverySession(409);
+    ASSERT_EQ(confirmed.first.status, IntegrityCheckStatus::MISMATCH);
+    ASSERT_EQ(confirmed.second, 5);
+
+    // The process stops before the recovery cleans the index: one 409 confirms it again.
+    restart();
+    const auto [result, sessions] = checkAnsweringEverySession(409);
+
+    EXPECT_EQ(result.status, IntegrityCheckStatus::MISMATCH);
+    EXPECT_EQ(sessions, 1);
+}
+
+TEST_F(AgentSyncProtocolIntegrityProgressTest, ClearsMismatchProgressWhenTheIndexIsCleaned)
+{
+    queue->setIntegrityProgress(INDEX, {.mismatches = 4, .lastMismatchMs = nowMs() - 60000});
+    queue->setIntegrityProgress("other_index", {.mismatches = 2, .lastMismatchMs = nowMs() - 60000});
+
+    const int sentBefore = mockSyncTransport->sendCount();
+    std::atomic<bool> done {false};
+    SyncModuleResult result;
+
+    std::thread cleanThread([this, &done, &result]()
+    {
+        result = protocol->notifyDataClean({INDEX});
+        done = true;
+    });
+
+    answerEverySessionUntil(200, done, sentBefore);
+    cleanThread.join();
+
+    EXPECT_TRUE(result.success);
     EXPECT_FALSE(queue->getIntegrityProgress(INDEX).has_value());
+    EXPECT_TRUE(queue->getIntegrityProgress("other_index").has_value());
+}
+
+TEST_F(AgentSyncProtocolIntegrityProgressTest, DiscardsAnOutOfRangeMismatchCount)
+{
+    queue->setIntegrityProgress(INDEX, {.mismatches = 5, .lastMismatchMs = nowMs() - 60000});
+
+    const auto [result, sessions] = checkAnsweringEverySession(409);
+
+    EXPECT_EQ(result.status, IntegrityCheckStatus::MISMATCH);
+    EXPECT_EQ(sessions, 5);
 }
 
 TEST_F(AgentSyncProtocolIntegrityProgressTest, ClearsMismatchProgressWhenTheChecksumMatches)

@@ -213,7 +213,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         ///        CHECKSUM_MISMATCH_MAX_ATTEMPTS after the last of them.
         ///
         /// They are kept in the persistent queue so a restart does not discard a confirmation
-        /// in progress. Past this age the confirmation starts over.
+        /// in progress, and until the index is cleaned so an interrupted recovery is retried
+        /// after one more 409. Past this age the confirmation starts over, so they only span a
+        /// check cut short by a stop or an integrity_interval shorter than this.
         static constexpr auto CHECKSUM_MISMATCH_PROGRESS_TTL = std::chrono::hours(1);
 
         /// @brief Updates the consecutive-failure streak with the outcome of a synchronization.
