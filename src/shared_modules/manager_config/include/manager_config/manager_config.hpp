@@ -17,6 +17,7 @@
 #include <string>
 #include <string_view>
 #include <variant>
+#include <vector>
 
 namespace manager_config
 {
@@ -64,8 +65,17 @@ namespace manager_config
         std::unique_ptr<Impl> m_impl;
     };
 
-    /// Validate a file without keeping the document (bin/<daemon> -t, wazuh-manager-conf validate).
+    /// Validate a file without keeping the document (bin/<daemon> -t); the first problem only, as `load()`.
     std::optional<Error> validateFile(const std::filesystem::path& file, const LoadOptions& options = {});
+
+    /// Every problem of a configuration text in one pass (wazuh-manager-conf validate), in the order of the
+    /// file: element-level XML problems (duplicates, stray text...), then every schema violation of the rest
+    /// of the document, then the cross-field rules. Malformed XML or a wrong root stops at that one error.
+    /// Empty exactly when `Document::parse()` succeeds with the same options.
+    std::vector<Error> validateAll(std::string_view xmlText, const LoadOptions& options = {});
+
+    /// validateAll() over a file; a missing, unreadable or oversized file is its single error.
+    std::vector<Error> validateFileAll(const std::filesystem::path& file, const LoadOptions& options = {});
 
     /// The embedded JSON Schema (draft-04) text.
     std::string_view schemaJson();

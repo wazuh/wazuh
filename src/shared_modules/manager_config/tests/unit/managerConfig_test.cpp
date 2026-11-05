@@ -12,12 +12,14 @@
 #include <rapidjson/document.h>
 #include <rapidjson/pointer.h>
 
+#include <algorithm>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <functional>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include <unistd.h>
 
@@ -734,6 +736,144 @@ TEST(Semantics, CaCertificateFileValidation)
     EXPECT_EQ(std::get<manager_config::Error>(ko).pointer, "/remote/https/ca_certificate");
     EXPECT_NE(std::get<manager_config::Error>(ko).message.find("file not found"), std::string::npos);
     std::filesystem::remove_all(dir);
+}
+
+// ---------------------------------------------------------------------------------------------------
+// validateAll: every problem in one run (wazuh-manager-conf validate)
+// ---------------------------------------------------------------------------------------------------
+
+namespace
+{
+    std::vector<std::string> pointers(const std::vector<manager_config::Error>& errors)
+    {
+        std::vector<std::string> result;
+        for (const auto& error : errors)
+        {
+            result.push_back(error.pointer);
+        }
+        return result;
+    }
+
+    std::string render(const std::vector<manager_config::Error>& errors)
+    {
+        std::string text;
+        for (const auto& error : errors)
+        {
+            text += error.what() + "\n";
+        }
+        return text;
+    }
+} // namespace
+
+TEST(ValidateAll, ReportsEveryProblemInTheOrderOfTheFile)
+{
+    // A 4.x leftover in miniature: a duplicate, a wrong type, an unknown option inside a section, an unknown
+    // section and a section missing its mandatory option. One run reports all five, in the order of the file,
+    // the missing option after the problems of the object it is missing from.
+    const std::string xml = "<wazuh_config>"
+                            "<auth><port>1515</port><port>1516</port><use_password>true</use_password></auth>"
+                            "<global><jsonout_output>yes</jsonout_output></global>"
+                            "<alerts><log_alert_level>3</log_alert_level></alerts>"
+                            "<cluster><node_type>master</node_type></cluster>" +
+                            std::string {INDEXER_SECTION} + "</wazuh_config>";
+    const auto errors = manager_config::validateAll(xml, noFiles());
+    const std::vector<std::string> expected {
+        "/auth/port", "/auth/use_password", "/global/jsonout_output", "/alerts", "/cluster"};
+    ASSERT_EQ(pointers(errors), expected) << render(errors);
+    EXPECT_NE(errors[0].message.find("duplicate element <port>"), std::string::npos) << errors[0].what();
+    EXPECT_NE(errors[1].message.find("booleans are yes/no"), std::string::npos) << errors[1].what();
+    EXPECT_NE(errors[2].message.find("unknown option"), std::string::npos) << errors[2].what();
+    EXPECT_NE(errors[2].message.find("[schema /properties/global]"), std::string::npos) << errors[2].what();
+    EXPECT_NE(errors[3].message.find("[schema /]"), std::string::npos) << errors[3].what();
+    EXPECT_NE(errors[4].message.find("'required'): key"), std::string::npos) << errors[4].what();
+    // The fail-fast loader the daemons use stops at the first of them.
+    EXPECT_EQ(parseKo(xml).pointer, "/auth/port");
+}
+
+TEST(ValidateAll, SchemaErrorsAreWordedAsTheFailFastLoaderWordsThem)
+{
+    for (const std::string body : {"<auth><use_password>true</use_password></auth>",
+                                   "<remote><https><port>70000</port></https></remote>",
+                                   "<github><enabled>yes</enabled></github>",
+                                   "<remote><https><bind_addr>any</bind_addr></https></remote>"})
+    {
+        const auto errors = manager_config::validateAll(wrap(body), noFiles());
+        ASSERT_EQ(errors.size(), 1u) << body << "\n" << render(errors);
+        const auto single = parseKo(wrap(body));
+        EXPECT_EQ(errors[0].pointer, single.pointer) << body;
+        EXPECT_EQ(errors[0].message, single.message) << body;
+    }
+}
+
+TEST(ValidateAll, SemanticsRunAlongsideSchemaErrors)
+{
+    const auto errors = manager_config::validateAll(wrap("<remote><https><port>1516</port><foo>1</foo></https></remote>"
+                                                         "<auth><ssl_manager_cert>x.pem</ssl_manager_cert></auth>"),
+                                                    noFiles());
+    const std::vector<std::string> expected {"/remote/https/foo", "/auth/ssl_manager_key", "/cluster/port"};
+    EXPECT_EQ(pointers(errors), expected) << render(errors);
+}
+
+TEST(ValidateAll, StructuralProblemsDoNotHideTheRest)
+{
+    const auto errors = manager_config::validateAll(
+        wrap("<auth>stray<port>1515</port></auth>"
+             "<indexer><hosts><url>https://a:9200</url><host>https://b:9200</host></hosts></indexer>"
+             "<remote><https><port>0</port></https></remote>"),
+        noFiles());
+    // wrap() appends a second <indexer>: reported as a duplicate, after the problems of the first one.
+    const std::vector<std::string> expected {"/auth", "/indexer/hosts", "/indexer", "/remote/https/port"};
+    EXPECT_EQ(pointers(errors), expected) << render(errors);
+}
+
+TEST(ValidateAll, AnUnknownElementIsReportedOnceWhateverItHolds)
+{
+    // 4.x blocks repeat (<localfile>) and repeat their children (<ignore>): the operator removes the block, so
+    // it is reported once, not once per repeat or per problem inside it. A known option still reports its own
+    // duplicate.
+    const auto errors = manager_config::validateAll(
+        wrap("<syscheck><ignore>/a</ignore><ignore>/b</ignore>stray<x><y>1</y><y>2</y></x></syscheck>"
+             "<localfile><location>a</location></localfile><localfile><location>b</location></localfile>"
+             "<auth><port>1515</port><port>1516</port><port>1517</port><bogus>1</bogus><bogus>2</bogus></auth>"),
+        noFiles());
+    const std::vector<std::string> expected {"/auth/port", "/auth/port", "/syscheck", "/localfile", "/auth/bogus"};
+    EXPECT_EQ(pointers(errors), expected) << render(errors);
+}
+
+TEST(ValidateAll, MalformedXmlIsTheOnlyError)
+{
+    const auto errors = manager_config::validateAll(wrap("<global>a & b</global>"), noFiles());
+    ASSERT_EQ(errors.size(), 1u) << render(errors);
+    EXPECT_EQ(errors[0].message.rfind("invalid XML: ", 0), 0u) << errors[0].what();
+}
+
+TEST(ValidateAll, AgreesWithTheLoaderOnEveryVector)
+{
+    for (const auto& entry : std::filesystem::directory_iterator(VECTORS / "valid"))
+    {
+        if (entry.path().extension() == ".conf")
+        {
+            EXPECT_TRUE(manager_config::validateAll(slurp(entry.path()), noFiles()).empty()) << entry.path();
+        }
+    }
+    for (const auto& entry : std::filesystem::directory_iterator(VECTORS / "invalid"))
+    {
+        const auto name = entry.path().stem().string();
+        const auto expected = json(slurp(VECTORS / "expected" / (name + ".json")));
+        const auto errors = manager_config::validateAll(slurp(entry.path()), noFiles());
+        // The first problem of the file is the one the fail-fast loader stops at, worded the same way (a vector
+        // may break more than one rule: duplicate-element also omits the mandatory sections).
+        ASSERT_FALSE(errors.empty()) << name;
+        EXPECT_EQ(errors[0].pointer, std::string {expected["pointer"].GetString()}) << name;
+        EXPECT_EQ(errors[0].what(), parseKo(slurp(entry.path())).what()) << name;
+    }
+}
+
+TEST(ValidateAll, FileErrorsAreTheOnlyError)
+{
+    const auto errors = manager_config::validateFileAll(VECTORS / "does-not-exist.conf", noFiles());
+    ASSERT_EQ(errors.size(), 1u);
+    EXPECT_NE(errors[0].message.find("not found"), std::string::npos) << errors[0].what();
 }
 
 // ---------------------------------------------------------------------------------------------------

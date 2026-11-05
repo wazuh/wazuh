@@ -54,6 +54,25 @@ else
     fail cli_validate_invalid "exit $rc; err='$(cat "$TMP/err")'"
 fi
 
+# Every problem of the file in one run (#40814): one (1244) line each, in the order of the file.
+cat > "$TMP/many-errors.conf" << 'EOF'
+<wazuh_config>
+  <auth><port>1515</port><port>1516</port><use_password>true</use_password></auth>
+  <global><jsonout_output>yes</jsonout_output></global>
+  <alerts><log_alert_level>3</log_alert_level></alerts>
+  <cluster><node_type>master</node_type></cluster>
+  <indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer>
+</wazuh_config>
+EOF
+rc=$(run "$CLI" --skip-file-checks validate -f "$TMP/many-errors.conf")
+subjects=$(sed -n "s/^(1244): Invalid configuration at '\([^']*\)'.*/\1/p" "$TMP/err" | tr '\n' ' ')
+if [ "$rc" = 1 ] && [ ! -s "$TMP/out" ] && [ "$(grep -c . "$TMP/err")" = 5 ] \
+    && [ "$subjects" = "/auth/port /auth/use_password /global/jsonout_output /alerts /cluster " ]; then
+    pass cli_validate_reports_every_error
+else
+    fail cli_validate_reports_every_error "exit $rc; err='$(cat "$TMP/err")'"
+fi
+
 rc=$(run "$CLI" validate -f "$INVALID/raw-ampersand.conf")
 if [ "$rc" = 1 ] && grep -q "raw '&'" "$TMP/err" && grep -q 'line' "$TMP/err"; then
     pass cli_validate_raw_ampersand
