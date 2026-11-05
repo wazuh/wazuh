@@ -136,14 +136,20 @@ Ignore binary files when using wildcard patterns.
 - **Allowed values:** `yes`, `no`
 - **Note:** When enabled, skips files that appear to be binary when expanding wildcards
 
-### labels
+### label
 
-Adds custom labels to collected log events.
+Adds a custom field to each event read from a `json` log.
 
 - **Default value:** None (optional)
-- **Allowed values:** Contains one or more `<label>` elements
-- **Format:** `<label key="key_name">value</label>`
-- **Note:** Labels are injected into JSON logs and added as metadata to other log formats
+- **Allowed values:** A string. A value that is a JSON array, starting with `[` and with nothing after the closing `]` (no surrounding whitespace), is added as an array instead
+- **Attributes:** `key` (required) - name of the field to add. A `<label>` with no `key`, or an empty one, is a configuration error. Do not use a key starting with `_`: it is reserved (see **Errors**)
+- **Format:** `<label key="key_name">value</label>`, directly under `<localfile>`. Repeat the element to add more fields
+- **Note:**
+  - **Errors:** There is no `<labels>` wrapper. One is rejected with `(1230): Invalid element in the configuration: 'labels'.`: in `ossec.conf` the agent does not start; in a group's `agent.conf` the agent rejects the whole downloaded configuration and keeps the one it had, so none of that update applies, including unrelated sections, and an agent still waiting for its first configuration from the manager keeps its modules on hold. Run `verify-agent-conf` on the manager before distributing a group's `agent.conf` to catch it. A key starting with `_` is not reported: the parser loops on it, logging the reserved-label warning without end. In `ossec.conf`, logcollector never finishes reading its configuration. In a group's `agent.conf`, `wazuh-agentd` also hangs on every agent in the group, at startup and when checking a downloaded configuration, so the agent cannot download a corrected `agent.conf` until the file is removed on each host. `verify-agent-conf` and uploading the group configuration through the API hang the same way instead of reporting an error, so check those keys by hand before distributing
+  - **Formats:** Labels are only added to `json` events. Other formats keep them in the configuration (the agent's reported localfile configuration lists them, always as strings) but add nothing to the events, and only `journald` and `macos` log a warning
+  - **Merging:** A label never overwrites a field that is already in the event, whether the event carried it or an earlier label added it. Field names are compared without regard to case: `Host` is dropped when the event has `host`, and `App.env` goes into an existing `app` object. A key with a dot (`app.env`) is added as a nested object inside `app`, and dropped when `app` already exists and is not an object. Empty parts in a dotted key are not validated: `app.` or `.env` load without error and add a field with an empty name, so avoid them
+  - **Repeated and overlapping keys:** A repeated key keeps its last value, at the position of its first occurrence, and labels are added in that order. Keys are only treated as repeated when they match exactly, including case: `Env` followed by `env` are kept as two labels, and since the event compares field names without regard to case, the first one (`Env`) is added and the second is dropped. Do not combine a key with dotted keys under it (`app` and `app.env`): whichever is added first wins and the other is dropped
+- **Example:** `<label key="environment">production</label>`
 
 ### age
 
@@ -447,10 +453,8 @@ Collect JSON-formatted application logs:
 <localfile>
   <location>/var/log/app.json</location>
   <log_format>json</log_format>
-  <labels>
-    <label key="app">myapp</label>
-    <label key="environment">production</label>
-  </labels>
+  <label key="app">myapp</label>
+  <label key="environment">production</label>
 </localfile>
 ```
 
