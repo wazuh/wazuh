@@ -79,6 +79,8 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - GET /agents
+          - PUT /agents/group/{group_id}/restart
+          - PUT /agents/group/{group_id}/reload
           - GET /agents/no_group
           - GET /agents/outdated
           - GET /agents/stats/distinct
@@ -281,6 +283,8 @@ get_rbac_actions:
             - group:id:*
           effect: allow
         related_endpoints:
+          - PUT /agents/group/{group_id}/restart
+          - PUT /agents/group/{group_id}/reload
           - GET /groups
           - GET /groups/{group_id}/agents
           - GET /groups/{group_id}/configuration
@@ -330,6 +334,7 @@ get_rbac_actions:
           - GET /cluster/{node_id}/status
           - GET /cluster/{node_id}/info
           - GET /cluster/{node_id}/configuration
+          - PUT /cluster/{node_id}/configuration
           - GET /cluster/{node_id}/daemons/stats
           - GET /cluster/{node_id}/daemons/remoted/tls
           - GET /cluster/{node_id}/logs

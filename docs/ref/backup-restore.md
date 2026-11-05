@@ -77,7 +77,7 @@ Before creating a backup, verify:
 1. Sufficient disk space for backup files
 2. Backup destination is accessible
 3. You have appropriate permissions
-4. Consider stopping the manager for consistent backups (optional)
+4. Consider stopping the manager for consistent backups (optional). On a running manager, commit pending agent registry changes before copying `global.db` (see [below](#committing-pending-agent-registry-changes))
 5. `sqlite3` is installed on the manager host. The manager packages do not depend on it and a default install does not have it, so install it from the distribution first (`apt install sqlite3` or `dnf install sqlite`). Without it every `sqlite3 ... ".backup"` command below fails with `command not found`, the loop carries on and `db/` is left empty. If you cannot install it, copy a database with the Python `sqlite3` module bundled with the manager, which implements the same online backup API:
 
 ```bash
@@ -89,6 +89,24 @@ dst = sqlite3.connect(sys.argv[2]); src.backup(dst); dst.close(); src.close()' S
 ```
 
 The same interpreter can run the `PRAGMA integrity_check` and `SELECT count(*)` verification queries. After any backup, confirm that `$BACKUP_DIR/db/` holds the copies before relying on it.
+
+#### Committing pending agent registry changes
+
+`wazuh-manager-db` does not commit `global.db` on every write. It answers `ok` to a change (an agent registration, a group created or assigned) from inside an open transaction and commits it later on its own clock: within `wazuh_db.commit_time_min` (10 s) to `wazuh_db.commit_time_max` (60 s) by default, see [wazuh-db configuration](modules/wazuh_db/configuration.md). The SQLite backup API used by `.backup` sees committed data only, so a copy of a running manager's `global.db` can lack up to a minute of changes the API has already reported as done. Such a copy passes `PRAGMA integrity_check` and the agent count, and it can be older than the `client.keys` archived before it: restored, it shows a group with its agents missing, or a key with no registry row.
+
+Ask `wazuh-manager-db` to commit just before copying the database. `global commit` ends the open transaction at once, so the copy then holds every change acknowledged before the command. The procedures below that copy a running manager's database do this step:
+
+```bash
+sudo /var/wazuh-manager/framework/python/bin/python3 -I -c '
+import socket, struct, sys
+s = socket.socket(socket.AF_UNIX); s.connect(sys.argv[1])
+m = b"global commit"; s.sendall(struct.pack("<I", len(m)) + m)
+r = s.recv(struct.unpack("<I", s.recv(4, socket.MSG_WAITALL))[0], socket.MSG_WAITALL).decode()
+sys.exit(0 if r.startswith("ok") else "wazuh-manager-db answered: " + r)' /var/wazuh-manager/queue/sockets/wdb.sock \
+  || echo "WARNING: global.db was not committed - the copy may lack the last minute of changes"
+```
+
+It fails when `wazuh-manager-db` is not running; with the manager stopped nothing is pending, so the copy is complete anyway. If you cannot run it, wait `commit_time_max` seconds after the last change before copying, or use [Option 2](#creating-a-full-manager-backup). The manager's own snapshots under `backup/db/` (`global backup create` and the periodic `wdb.backup.global`) already commit before they are written.
 
 #### Creating a Full Manager Backup
 
@@ -112,6 +130,17 @@ sudo tar -czf $BACKUP_DIR/wazuh-state.tar.gz -C /var/wazuh-manager \
     queue/keystore/ \
     queue/authd/ \
     data/
+
+# Commit what wazuh-manager-db has acknowledged but not written yet, after
+# client.keys was archived, so global.db is at least as recent as it
+# (see "Committing pending agent registry changes" above)
+sudo /var/wazuh-manager/framework/python/bin/python3 -I -c '
+import socket, struct, sys
+s = socket.socket(socket.AF_UNIX); s.connect(sys.argv[1])
+m = b"global commit"; s.sendall(struct.pack("<I", len(m)) + m)
+r = s.recv(struct.unpack("<I", s.recv(4, socket.MSG_WAITALL))[0], socket.MSG_WAITALL).decode()
+sys.exit(0 if r.startswith("ok") else "wazuh-manager-db answered: " + r)' /var/wazuh-manager/queue/sockets/wdb.sock \
+  || echo "WARNING: global.db was not committed - the copy may lack the last minute of changes"
 
 # Backup the databases. Each source is tested first -- with `sudo test`, since
 # these directories are not readable unprivileged -- because sqlite3 creates a
@@ -187,7 +216,7 @@ sudo tar -czf wazuh-manager-config-$(date +%Y%m%d).tar.gz -C / etc/wazuh-manager
 sudo cp /etc/wazuh-manager/client.keys wazuh-client-keys-$(date +%Y%m%d).backup
 ```
 
-**Global database only:**
+**Global database only:** run the commit step from [Committing pending agent registry changes](#committing-pending-agent-registry-changes) first, then:
 
 ```bash
 sudo test -f /var/wazuh-manager/queue/db/global.db \
@@ -273,6 +302,16 @@ tar -czf $BACKUP_DIR/wazuh-etc.tar.gz -C / etc/wazuh-manager/
 tar -czf $BACKUP_DIR/wazuh-state.tar.gz -C /var/wazuh-manager \
     --exclude='api/configuration/security/rbac.db' \
     api/configuration/ queue/keystore/ queue/authd/ data/
+
+# Make wazuh-manager-db commit what it has acknowledged but not written yet: the
+# SQLite backup sees committed data only, and the commit can lag up to a minute.
+/var/wazuh-manager/framework/python/bin/python3 -I -c '
+import socket, struct, sys
+s = socket.socket(socket.AF_UNIX); s.connect(sys.argv[1])
+m = b"global commit"; s.sendall(struct.pack("<I", len(m)) + m)
+r = s.recv(struct.unpack("<I", s.recv(4, socket.MSG_WAITALL))[0], socket.MSG_WAITALL).decode()
+sys.exit(0 if r.startswith("ok") else "wazuh-manager-db answered: " + r)' /var/wazuh-manager/queue/sockets/wdb.sock \
+  2>> $LOG_FILE || echo "$(date): WARNING - global.db was not committed; the copy may lack the last minute of changes" >> $LOG_FILE
 sqlite3 "$GLOBAL_DB" ".backup '$BACKUP_DIR/db/global.db'"
 
 # The task history and the API users are only created once the task manager and
@@ -523,6 +562,14 @@ sudo tar -czf $BACKUP_DIR/wazuh-state.tar.gz -C /var/wazuh-manager \
     queue/keystore/ \
     queue/authd/ \
     data/
+# Commit pending registry changes first, as in the single-node Option 1
+sudo /var/wazuh-manager/framework/python/bin/python3 -I -c '
+import socket, struct, sys
+s = socket.socket(socket.AF_UNIX); s.connect(sys.argv[1])
+m = b"global commit"; s.sendall(struct.pack("<I", len(m)) + m)
+r = s.recv(struct.unpack("<I", s.recv(4, socket.MSG_WAITALL))[0], socket.MSG_WAITALL).decode()
+sys.exit(0 if r.startswith("ok") else "wazuh-manager-db answered: " + r)' /var/wazuh-manager/queue/sockets/wdb.sock \
+  || echo "WARNING: global.db was not committed - the copy may lack the last minute of changes"
 for DB in queue/db/global.db queue/tasks/tasks.db api/configuration/security/rbac.db; do
     SRC="/var/wazuh-manager/$DB"
     if sudo test -f "$SRC"; then

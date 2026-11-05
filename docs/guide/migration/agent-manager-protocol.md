@@ -117,6 +117,12 @@ configuration and remote upgrade. It does **not** get:
 - **Inventory synchronization.** `s:` messages are discarded — a 4.x agent's inventory is not synced
   to a 5.0 manager.
 - **dbsync deltas.** `5:` messages are discarded.
+- **Rootcheck signature and audit files.** The 5.0 `default` group carries only `agent.conf`, so
+  `rootkit_files.txt`, `rootkit_trojans.txt` and the CIS and system audit files leave the agent's
+  `etc/shared/` with its first 5.0 `merged.mg`. Rootcheck keeps running without them, and the agent
+  only logs `WARNING: No rootcheck_files file`. To keep these checks until the agents are upgraded,
+  copy the files from the 4.x `etc/shared/default/` into the 5.0 one; see
+  [Migrating a Wazuh manager from 4.x to 5.0](manager-4x-to-5x.md#1-back-up-the-4x-manager).
 
 Treat the legacy channel as a migration bridge for event collection and upgrade, not as feature
 parity. See [Remote agent upgrade](remote-agent-upgrade.md) for the upgrade path itself.

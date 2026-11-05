@@ -62,7 +62,7 @@ The 34 actions of `x-rbac-catalog` in `api/api/spec/spec.yaml`, with the endpoin
 | Action | Resources | Endpoints |
 |--------|-----------|-----------|
 | `agent:create` | `*:*` | `POST /agents`, `POST /agents/insert`, `POST /agents/insert/quick` |
-| `agent:read` | `agent:id`, `agent:group` | `GET /agents`, `/agents/no_group`, `/agents/outdated`, `/agents/stats/distinct`, `/agents/summary`, `/agents/summary/os`, `/agents/summary/status`, `/groups/{group_id}/agents`, `/overview/agents` |
+| `agent:read` | `agent:id`, `agent:group` | `GET /agents`, `/agents/no_group`, `/agents/outdated`, `/agents/stats/distinct`, `/agents/summary`, `/agents/summary/os`, `/agents/summary/status`, `/groups/{group_id}/agents`, `/overview/agents`; also needed by `PUT /agents/group/{group_id}/restart`, `/agents/group/{group_id}/reload` |
 | `agent:read_secrets` | `agent:id`, `agent:group` | `GET /agents/{agent_id}/key` |
 | `agent:delete` | `agent:id`, `agent:group` | `DELETE /agents` |
 | `agent:modify_group` | `agent:id`, `agent:group` | `PUT`/`DELETE /agents/{agent_id}/group/{group_id}`, `DELETE /agents/{agent_id}/group`, `PUT`/`DELETE /agents/group` |
@@ -80,7 +80,7 @@ The 34 actions of `x-rbac-catalog` in `api/api/spec/spec.yaml`, with the endpoin
 | Action | Resources | Endpoints |
 |--------|-----------|-----------|
 | `group:create` | `*:*` | `POST /groups` |
-| `group:read` | `group:id` | `GET /groups`, `/groups/{group_id}/agents`, `/groups/{group_id}/configuration`, `/groups/{group_id}/files`, `/groups/{group_id}/files/{file_name}`, `/overview/agents` |
+| `group:read` | `group:id` | `GET /groups`, `/groups/{group_id}/agents`, `/groups/{group_id}/configuration`, `/groups/{group_id}/files`, `/groups/{group_id}/files/{file_name}`, `/overview/agents`; also needed by `PUT /agents/group/{group_id}/restart`, `/agents/group/{group_id}/reload` |
 | `group:update_config` | `group:id` | `PUT /groups/{group_id}/configuration` |
 | `group:delete` | `group:id` | `DELETE /groups` |
 | `group:modify_assignments` | `group:id` | The same five group-assignment endpoints as `agent:modify_group` |
@@ -98,7 +98,7 @@ role gets `200` with empty results from the list endpoints (`/agents`, `/groups`
 | Action | Resources | Endpoints |
 |--------|-----------|-----------|
 | `cluster:status` | `*:*` | `GET /cluster/status` |
-| `cluster:read` | `node:id` | `GET /cluster/nodes`, `/cluster/healthcheck`, `/cluster/local/info`, `/cluster/local/config`, `/cluster/configuration/validation`, `/cluster/{node_id}/status`, `/cluster/{node_id}/info`, `/cluster/{node_id}/configuration`, `/cluster/{node_id}/configuration/{component}/{configuration}`, `/cluster/{node_id}/daemons/stats`, `/cluster/{node_id}/daemons/remoted/tls`, `/cluster/{node_id}/logs`, `/cluster/{node_id}/logs/summary`; `PUT /cluster/restart`, `/cluster/reload` |
+| `cluster:read` | `node:id` | `GET /cluster/nodes`, `/cluster/healthcheck`, `/cluster/local/info`, `/cluster/local/config`, `/cluster/configuration/validation`, `/cluster/{node_id}/status`, `/cluster/{node_id}/info`, `/cluster/{node_id}/configuration`, `/cluster/{node_id}/configuration/{component}/{configuration}`, `/cluster/{node_id}/daemons/stats`, `/cluster/{node_id}/daemons/remoted/tls`, `/cluster/{node_id}/logs`, `/cluster/{node_id}/logs/summary`; `PUT /cluster/restart`, `/cluster/reload`, `/cluster/{node_id}/configuration` |
 | `cluster:read_secrets` | `node:id` | Unmasks the enrollment password, the cluster key and the credential-named fields in `GET /cluster/local/config`, `/cluster/{node_id}/configuration` and `/cluster/{node_id}/configuration/{component}/{configuration}`; needed to change the cluster key or the `indexer` section with `PUT /cluster/{node_id}/configuration` |
 | `cluster:update_config` | `node:id` | `PUT /cluster/{node_id}/configuration` |
 | `cluster:read_api_config` | `*:*` | `GET /cluster/api/config` |
@@ -155,6 +155,18 @@ naming the caller and the agents, never a key.
 
 `agent:restart` and `agent:reload` are dispatched as task manager tasks that the agent fetches; an
 agent older than v5.0.0 is refused with error `1761`.
+
+The group variants, `PUT /agents/group/{group_id}/restart` and `/reload`, first list the group's agents
+and then act on that list, so they need three actions: `group:read` over the group, `agent:read` over
+its agents and `agent:restart` (or `agent:reload`) over them. Without `group:read` they answer `403`
+(`Resource type: group:id`), whatever the other two grant. The list keeps only the agents the caller
+can read, so with `group:read` but no `agent:read` the request answers `200` with error `0` and no
+affected items ("Restart command was not sent to any agent", or "Reload …"): nothing was sent, though
+the answer is not an error.
+
+`PUT /cluster/{node_id}/configuration` likewise needs `cluster:read` over the node besides
+`cluster:update_config`: the node is resolved through the readable node list, as for every
+`/cluster/{node_id}/…` request, and without it the answer is `403` on `node:id`.
 
 ---
 

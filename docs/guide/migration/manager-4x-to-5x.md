@@ -83,6 +83,8 @@ cp etc/client.keys etc/authd.pass queue/db/global.db api/configuration/security/
 cp etc/ossec.conf etc/local_internal_options.conf api/configuration/api.yaml /root/wazuh-4x-backup/
 (cd /var/ossec/etc && tar -czf /root/wazuh-4x-backup/groups.tar.gz --exclude='shared/default' --exclude='*/merged.mg' shared/*/)
 tar -czf /root/wazuh-4x-backup/ruleset.tar.gz -C /var/ossec/etc rules decoders lists
+# Only if 4.x agents must keep their rootkit and audit checks until they are upgraded (see below)
+mkdir -p /root/wazuh-4x-backup/rootcheck && cp /var/ossec/etc/shared/default/*.txt /root/wazuh-4x-backup/rootcheck/
 ```
 
 | 4.x file | Content | 5.0 destination |
@@ -103,6 +105,24 @@ moving on to step 2, which uninstalls 4.x and takes the originals with it.
 The `default` group is excluded on purpose: the 5.0 package ships its own `default` folder and
 `shared/*/` would otherwise overwrite it with the 4.x files. If you customized
 `shared/default/agent.conf`, copy that single file and merge it into the 5.0 one by hand.
+
+**4.x agents lose their rootcheck signatures.** The 4.x `default` folder also carries
+`rootkit_files.txt`, `rootkit_trojans.txt` and the CIS and system audit files (`cis_*_rcl.txt`,
+`system_audit_*.txt`, `win_*_rcl.txt`), which every 4.x agent reads from its own `etc/shared/` through
+its default `<rootkit_files>` and `<rootkit_trojans>` settings. The 5.0 `default` folder has only
+`agent.conf`: these checks were removed from 5.0 on purpose, and a 5.0 agent no longer has the options
+that read them (see [the agent's configuration migration](upgrade-4x-to-5x.md#configuration-migration-ossecconf)). Once the 5.0 manager sends its first
+`merged.mg`, the files disappear from the 4.x agents. Rootcheck keeps running without signatures, and
+the only trace is a warning in each agent's `ossec.log`:
+
+```text
+rootcheck: WARNING: No rootcheck_files file: 'etc/shared/rootkit_files.txt'
+rootcheck: WARNING: No rootcheck_trojans file: 'etc/shared/rootkit_trojans.txt'
+```
+
+To keep these checks on the 4.x agents until they are upgraded, save the files with the optional
+last line of the backup above and copy them into the 5.0 `default` folder in
+[step 3](#groups).
 
 `global.db` is under `queue/db/`, not `var/db/`. Copying a path that does not exist produces a
 valid, empty database and no error.
@@ -385,8 +405,13 @@ have no counterpart in 5.0 (agent labels were removed). Columns dropped in 5.0 (
 
 ```bash
 tar -xzf /root/wazuh-4x-backup/groups.tar.gz -C /etc/wazuh-manager
+# Only if you saved the 4.x rootcheck files in step 1
+install -m 0660 -o wazuh-manager -g wazuh-manager /root/wazuh-4x-backup/rootcheck/*.txt /etc/wazuh-manager/shared/default/
 chown -R wazuh-manager:wazuh-manager /etc/wazuh-manager/shared/
 ```
+
+The rootcheck files are only for 4.x agents; a 5.0 agent receives them in its `etc/shared/` but never
+reads them. Remove them from `default` once every agent in it runs 5.0.
 
 Group membership came with `global.db`: an agent assigned to a group from the dashboard, the API
 or `agent_groups` in 4.x is in the same group on 5.0, even though its `ossec.conf` never mentioned
@@ -592,7 +617,9 @@ A 4.x agent on the legacy channel keeps:
 - remote upgrade through the manager.
 
 It does not get active response, inventory or FIM state synchronization, or vulnerability
-detection: 5.0's `wazuh-states-*` indices stay empty for it until it runs 5.0. See
+detection: 5.0's `wazuh-states-*` indices stay empty for it until it runs 5.0. Nor does it keep the
+rootcheck signature and audit files, unless you copied them into the 5.0 `default` group (see
+[step 1](#1-back-up-the-4x-manager)). See
 [Agent-manager protocol](agent-manager-protocol.md#what-the-legacy-channel-still-carries).
 The API endpoints that served that data in 4.x (`/syscollector/{agent_id}/*`, `PUT /active-response`)
 no longer exist in 5.0.
