@@ -14,6 +14,7 @@
 |-------|---------|
 | [#39590](https://github.com/wazuh/wazuh/issues/39590) | Changed the engine's enriched-event ingest (`POST /events/enriched` on `engine-ingest-http.sock`) to require exactly one canonical `X-Wazuh-Agent-Id` header and an H line whose `wazuh.agent.id` matches it; other batches are answered `400`. remoted (`/stateless` and the legacy channel) and the vulnerability scanner send it; local tools posting to that socket must add it. remoted no longer parses the H line itself, and caches agent metadata by that trusted id. |
 | [#39590](https://github.com/wazuh/wazuh/issues/39590) | Changed the engine's handling of unsigned internal options: a negative value in `wazuh-manager-internal-options.conf` now stops start-up, and a negative environment value is ignored with a warning, instead of wrapping to a huge number or silently falling back to the default. |
+| [#41104](https://github.com/wazuh/wazuh/pull/41104) | Changed the Server API to answer an unauthenticated request to a path or method it does not declare with the 401 of a declared route, instead of a 404, 405, 307, 417 or 413, so that routes can no longer be enumerated without credentials. A 405, and a 404 when `max_request_per_minute` is 0, now count against `max_unauthenticated_request_per_minute`. |
 
 #### Removed
 
