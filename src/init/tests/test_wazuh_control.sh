@@ -652,6 +652,16 @@ for action in restart start; do
         "$(cat "${WORK}/badconf_lock_${action}/var/start-script-lock/pid" 2>/dev/null)"
 done
 
+# Each package ships its control script alone, so the start-lock code is copied in both: a fix to one
+# must reach the other.
+lock_code() {
+
+    awk '/^write_pid\(\)/ {on=1} /^lock\(\)/ {on=0} on' "$1"
+
+}
+check "the agent's and the manager's start-lock code are the same" \
+    "$(lock_code "${SCRIPT_DIR}/../wazuh-server.sh")" "$(lock_code "${TARGET}")"
+
 echo
 echo "${checks} checks, ${failures} failed"
 [ "${failures}" -eq 0 ]
