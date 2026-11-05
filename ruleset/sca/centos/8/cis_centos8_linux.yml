@@ -10300,7 +10300,7 @@ checks:
           - "Pluggable Authentication Modules"
     condition: all
     rules:
-      - "c:dnf list sudo -> r:^sudo\\.x86_64"
+      - "c:rpm -q sudo -> r:^sudo-"
 
   # 5.3.2 Ensure sudo commands use pty. (Automated)
   - id: 6681
