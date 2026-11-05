@@ -51,11 +51,27 @@ enum class RouteClass
 /**
  * @brief Per-route options.
  */
+/// RouteOptions::maxBodyBytes value that lifts the class cap: the route takes a body of any size.
+constexpr std::size_t UNLIMITED_BODY {static_cast<std::size_t>(-1)};
+
 struct RouteOptions
 {
     RouteClass cls {RouteClass::Control};
-    /// Declared-length cap answered with 413 before the body is read; 0 means the class default.
+    /// Declared-length cap answered with 413 before the body is read; 0 means the class default,
+    /// UNLIMITED_BODY means none.
     std::size_t maxBodyBytes {0};
+    /// Run the handler on the transport's I/O thread instead of the executor, so the route answers even when
+    /// every worker is busy. Only for handlers that never wait -- no I/O, no lock another module may hold, no
+    /// call into other modules -- such as one that reads snapshots already published (GET /status).
+    bool runInline {false};
+    /// Body of the 413 this route answers when maxBodyBytes (or the class cap) refuses the declared length;
+    /// empty keeps the transport's JSON body.
+    std::string payloadTooLargeBody {};
+    /// Content-Type of payloadTooLargeBody; ignored while that body is empty.
+    std::string payloadTooLargeContentType {"text/plain"};
+    /// Seconds this route's handler has to answer before the transport answers 504 for it; 0 keeps the server's
+    /// 300 s. Raise it on a route whose peer legitimately waits longer, rather than for every route.
+    std::size_t responseTimeoutSec {0};
 };
 
 /**
@@ -130,7 +146,9 @@ struct Request
         return request;
     }
 
-private:
+    /**
+     * @brief ASCII lower-casing, the form header names are stored in.
+     */
     static std::string lowerCase(std::string_view text)
     {
         std::string lowered {text};

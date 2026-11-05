@@ -13,6 +13,7 @@
 #include <store/istore.hpp>
 
 #include <api/adapter/adapter.hpp>
+#include <httpsrv/irouteregistrar.hpp>
 
 namespace api::ioccrud::handlers
 {
@@ -56,7 +57,7 @@ void performIOCSync(const std::weak_ptr<ioc::kvdb::IKVDBManager>& weakKvdbManage
 inline void registerHandlers(const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbManager,
                              const std::shared_ptr<scheduler::IScheduler>& scheduler,
                              const std::shared_ptr<store::IStore>& store,
-                             const std::shared_ptr<httpsrv::Server>& server,
+                             const std::shared_ptr<httpsrv::IRouteRegistrar>& server,
                              const std::filesystem::path& inputRoot)
 {
     server->addRoute(httpsrv::Method::POST, "/content/ioc/update", syncIoc(kvdbManager, scheduler, store, inputRoot));

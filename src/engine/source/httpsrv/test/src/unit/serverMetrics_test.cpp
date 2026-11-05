@@ -15,14 +15,14 @@
 
 #include <base/logging.hpp>
 #include <fastmetrics/registry.hpp>
-#include <httpsrv/udsServer.hpp>
+#include <httpsrv/server.hpp>
 
 using namespace std::chrono_literals;
 using httpsrv::Method;
 using httpsrv::Request;
 using httpsrv::Response;
-using httpsrv::UdsServer;
-using httpsrv::UdsServerOptions;
+using httpsrv::Server;
+using httpsrv::ServerOptions;
 
 namespace
 {
@@ -53,9 +53,9 @@ std::string socketPath(const char* tag)
            + std::to_string(counter.fetch_add(1)) + ".sock";
 }
 
-UdsServerOptions options(std::size_t threads, std::size_t queue)
+ServerOptions options(std::size_t threads, std::size_t queue)
 {
-    UdsServerOptions opts;
+    ServerOptions opts;
     opts.name = "Test";
     opts.logTag = "httpsrv-test";
     opts.executorThreads = threads;
@@ -111,16 +111,16 @@ double metric(const std::string& instance, const char* suffix)
     const auto found = fastmetrics::manager().get(fastmetrics::names::server_metric(instance, suffix));
     return found ? found->value() : -1.0;
 }
-class UdsServerMetricsTest : public ::testing::Test
+class ServerMetricsTest : public ::testing::Test
 {
 protected:
     void SetUp() override { logging::testInit(); }
 };
 } // namespace
 
-TEST_F(UdsServerMetricsTest, RegistersEveryMetricUnderTheInstance)
+TEST_F(ServerMetricsTest, RegistersEveryMetricUnderTheInstance)
 {
-    auto server = std::make_shared<UdsServer>(options(1, 1));
+    auto server = std::make_shared<Server>(options(1, 1));
 
     const auto instance = uniqueInstance("names");
 
@@ -132,14 +132,14 @@ TEST_F(UdsServerMetricsTest, RegistersEveryMetricUnderTheInstance)
     }
 }
 
-TEST_F(UdsServerMetricsTest, MetricsFollowTheServerStats)
+TEST_F(ServerMetricsTest, MetricsFollowTheServerStats)
 {
     const auto path = socketPath("follow");
     std::promise<void> release;
     auto released = release.get_future().share();
     std::atomic<int> started {0};
 
-    auto server = std::make_shared<UdsServer>(options(1, 1));
+    auto server = std::make_shared<Server>(options(1, 1));
     server->addRoute(Method::POST,
                      "/events",
                      [&](const Request&, Response&)
@@ -181,10 +181,10 @@ TEST_F(UdsServerMetricsTest, MetricsFollowTheServerStats)
     server->shutdown(1s);
 }
 
-TEST_F(UdsServerMetricsTest, MetricsReadZeroOnceTheServerIsGone)
+TEST_F(ServerMetricsTest, MetricsReadZeroOnceTheServerIsGone)
 {
     const auto path = socketPath("gone");
-    auto server = std::make_shared<UdsServer>(options(1, 1));
+    auto server = std::make_shared<Server>(options(1, 1));
     httpsrv::RouteOptions capped;
     capped.maxBodyBytes = 16;
     server->addRoute(Method::POST, "/small", [](const Request&, Response&) {}, capped);

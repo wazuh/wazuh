@@ -12,7 +12,7 @@ connection, exact-match routing, no TLS, no keep-alive, no chunked encoding.
 
 ## Consumers
 
-Six servers, each on its own socket under `/var/wazuh-manager/queue/sockets/`:
+Seven servers, each on its own socket under `/var/wazuh-manager/queue/sockets/`:
 
 | Consumer | Daemon | Socket | Routes | Transport settings |
 |---|---|---|---|---|
@@ -22,13 +22,14 @@ Six servers, each on its own socket under `/var/wazuh-manager/queue/sockets/`:
 | Wazuh DB | `wazuh-manager-db` | `wdb-http.sock` | [API reference](../../wazuh_db/api-reference.md) | Fixed in code: the library defaults |
 | Remoted admin socket | `wazuh-manager-remoted` | `remote-admin-http.sock` | `GET /`, `GET /metrics`, `GET /status`, `GET /tls` — [Local admin socket](../../remoted/README.md#local-admin-socket) | Fixed in code: 2 I/O threads, 64 connections, 16 reserved for control |
 | Engine event ingest | `wazuh-manager-analysisd` | `engine-ingest-http.sock` | `POST /events/enriched` — [events API reference](../../engine/api-events-reference.md) | Body cap, connections and in-flight byte budget: `analysisd.server_enriched_events_max_*` internal options — [configuration](../../engine/configuration.md#engine-api-server); `100 Continue` on; the rest fixed in code |
+| Engine API | `wazuh-manager-analysisd` | `engine-api-http.sock` | [Public](../../engine/public-api-reference.md) and [private](../../engine/private-api-reference.md) API references | Body cap: `analysisd.server_api_payload_max_bytes` (`0`, the default, is unlimited; `GET /status` and `POST /metrics/*` are capped at 4 KiB) — [configuration](../../engine/configuration.md#engine-api-server); no in-flight byte budget, one handler thread per CPU but one (between 4 and 16) with a 64-request queue, `100 Continue` on, a body not received within 10 s answered `400`; the rest fixed in code |
 
 This library has **no configuration of its own**. Each consumer sets the transport knobs
 (I/O threads, in-flight byte budget, connection caps, timeouts, reserved control
 connections) in code. Inventory Sync exposes most of them as internal options; Task
 Manager exposes its I/O thread count and sizes one route's body cap from
 `max_payload_bytes`; the engine's event ingest exposes its body cap, connection cap and byte
-budget. The other three consumers expose none.
+budget, and the engine API its body cap. The other three consumers expose none.
 
 The library defaults, which apply wherever a consumer does not override them:
 
@@ -43,8 +44,18 @@ The library defaults, which apply wherever a consumer does not override them:
 | Control / Liveness concurrent sessions | 256 / 64 |
 | URL, header name, header value, header count | 2048 bytes, 256 bytes, 8192 bytes, 32 |
 | Timeouts | head 10 s, body 30 s, response backstop 300 s, write 10 s, drain on stop 2 s |
+| Body not received in time | the connection is closed without a response (`answerBodyTimeout` off); a consumer may answer `400` instead |
 | Socket mode | `0660`, set explicitly after `bind()` |
 | `Expect: 100-continue` | not answered (`expectContinue` off); a consumer may turn it on |
+
+Three settings bound the memory of a request body, and they are distinct. The **per-body maximum**
+(the server-wide cap, or a class or route cap) refuses a declared length over it with `413` before the
+body is read. The **in-flight byte budget** bounds the declared lengths of all admitted Data requests
+together. The **initial reserve** is what the server allocates when it accepts a request head: with a
+per-body maximum or a budget in place it is the declared length; with neither, at most 1 MiB, and the
+buffer then grows as the body arrives, never past the declared length. The initial reserve is not a size
+limit, and a declared length alone never allocates memory. A declared length that no buffer can hold is
+`413` in every configuration.
 
 Every server logs the effective values once at start, at INFO, under its consumer's tag:
 `<name> server bound to '<socket>' (mode 0660, <n> I/O thread(s), …; timeouts s: header=… body=…
@@ -58,13 +69,13 @@ suppress another kind's first line):
 | Status | Meaning | Typical cause |
 |---|---|---|
 | `100` (interim) | `Expect: 100-continue` on a server with `expectContinue` on | Sent once the request is admitted and before the body arrives; a refused request gets its final status instead |
-| `400` | Malformed request | Broken client |
+| `400` | Malformed request, or, on a server that answers body timeouts, a body that did not arrive in time | Broken or stalled client |
 | `404` | No route for that path | Routes are `method + exact path` — no patterns |
 | `405` + `Allow` | Path exists, wrong method | The `Allow` header lists what the route accepts |
 | `411` | `Transfer-Encoding: chunked` | Chunked bodies are refused by design. The byte budget must know the size at headers-complete, so send `Content-Length` |
-| `413` | Declared body over a cap | The server-wide cap (by default, what the byte budget could ever admit), the route class's cap, or a per-route override. The peer is wrong; raising limits is a consumer setting |
+| `413` | Declared body over a cap, or a declared length no buffer can hold | The server-wide cap (by default, what the byte budget could ever admit), the route class's cap, or a per-route override. The peer is wrong; raising limits is a consumer setting. A route may answer its own cap's `413` with its own body (`payloadTooLargeBody`); the server-wide cap always answers the JSON body |
 | `414` / `431` | URI / headers too large | Parser limits |
-| `500` | The consumer's handler threw | Check the consumer's log (lines carry the consumer's own name) |
+| `500` | The consumer's handler threw, or the server could not allocate what the request needed | Check the consumer's log (lines carry the consumer's own name) |
 | `503` | Load shed | Byte budget exhausted, connection cap, per-class or per-route session cap, a dropped responder, or shutdown in progress |
 | `504` | Handler never answered | The response-timer backstop fired |
 
@@ -90,6 +101,8 @@ consumer's, for example `inventory sync`):
 | WARN | `<n> request(s) in the last <s> s were not answered within their response backstop and were closed with 504 (…).` | A stuck handler or a lost responder |
 | WARN | `<n> request(s) in the last <s> s were dropped by their handler without a response and were answered 503. This is a handler bug.` | Handler bug |
 | WARN | `Closed <n> connection(s) in the last <s> s that timed out before a response was due (last phase: …).` | Slow or vanished peer while reading the request or writing the reply |
+| WARN | `Answered <n> request(s) with 400 in the last <s> s: the body did not arrive within <t> s (last on '<path>').` | A stalled body, on a server that answers body timeouts (the line above otherwise) |
+| ERROR | `Answered <n> request(s) with 500 in the last <s> s: the request could not be read or admitted (last: …).` | An allocation failed while the server buffered or admitted a request |
 | WARN | `Failed to accept <n> <name> connection(s) in the last <s> s: <reason>. The listener is still accepting; peers will retry.` | Transient `accept()` failure, usually descriptor exhaustion |
 | ERROR | `<n> request(s) failed while being dispatched in the last <s> s and were answered 500 (last: …).` | The handler threw |
 | INFO | `Removing the existing socket at '<path>' (a leftover from an unclean shutdown) before binding.` | A stale socket file was replaced at start |

@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <stdexcept>
 #include <string_view>
 #include <utility>
 
@@ -216,10 +217,12 @@ namespace wazuh::uds_http
             {
                 owner->m_rejectStatus = 411;
             }
-            else if (parser.content_length > owner->m_limits.maxBodySize)
+            else if (parser.content_length > owner->m_limits.maxBodySize ||
+                     parser.content_length > owner->m_request.body.max_size())
             {
                 // Decided from the DECLARED length, so an oversized body is refused without reading
-                // one byte of it.
+                // one byte of it. The second bound applies even with no limit: a length no body
+                // buffer can ever hold is refused here, not discovered by a failed allocation later.
                 owner->m_rejectStatus = 413;
             }
 
@@ -241,6 +244,22 @@ namespace wazuh::uds_http
             {
                 owner->m_rejectStatus = 413;
                 return HPE_USER;
+            }
+
+            // Grown here rather than by append(), whose geometric growth could leave up to twice the
+            // declared length allocated: doubling, but never past the declared length, so a complete
+            // body ends with exactly the capacity a full reserve would have given it. Into a fresh
+            // buffer, because reserve() on a non-empty string may round the request up to twice its
+            // current capacity, while a fresh one is sized exactly. Only the unbounded mode gets here
+            // with spare room missing; a full reserve never runs short.
+            const auto needed = body.size() + length;
+            if (needed > body.capacity())
+            {
+                const auto declared = static_cast<std::size_t>(owner->m_declaredContentLength);
+                std::string grown;
+                grown.reserve(std::max(needed, std::min(declared, body.capacity() * 2)));
+                grown.append(body);
+                body.swap(grown);
             }
 
             body.append(at, length);
@@ -352,11 +371,33 @@ namespace wazuh::uds_http
         m_impl->paused = false;
         llhttp_resume(&m_impl->parser);
 
-        // Bounded: the caller has already compared declaredContentLength() against its cap, so this
-        // cannot be used to make us allocate more than one permitted body.
+        // With a finite limit the declared length is at most one permitted body (checked at the
+        // head, and by the caller against its own caps), so it is reserved whole. With none, the
+        // declared length is only the peer's word: reserve a bounded start and let onBody() grow it
+        // with the bytes that actually arrive.
         if (m_declaredContentLength > 0)
         {
-            m_request.body.reserve(static_cast<std::size_t>(m_declaredContentLength));
+            auto initial = static_cast<std::size_t>(m_declaredContentLength);
+            if (m_limits.maxBodySize == UdsHttpServerConfig::UNLIMITED_BODY_SIZE)
+            {
+                initial = std::min(initial, UNBOUNDED_INITIAL_RESERVE);
+            }
+            try
+            {
+                m_request.body.reserve(initial);
+            }
+            catch (const std::length_error&)
+            {
+                m_impl->spent = true;
+                m_rejectStatus = 413;
+                return Feed::Reject;
+            }
+            catch (...)
+            {
+                m_impl->spent = true;
+                m_rejectStatus = 500;
+                return Feed::Reject;
+            }
         }
 
         // Moved out first, so an append during execute cannot reallocate the buffer being read.

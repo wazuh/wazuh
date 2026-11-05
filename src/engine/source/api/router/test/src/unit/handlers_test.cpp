@@ -66,10 +66,8 @@ INSTANTIATE_TEST_SUITE_P(
         HandlerT(
             []()
             {
-                httplib::Request req;
-                req.body = "not json proto request";
-                req.set_header("Content-Type", "text/plain");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", "not json proto request", {{"Content-Type", "text/plain"}});
             },
             [](const std::shared_ptr<::router::IRouterAPI>& router) { return routePost(router); },
             []()
@@ -85,10 +83,8 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 json::Json jsonReq;
                 jsonReq.setObject();
-                httplib::Request req;
-                req.body = jsonReq.str();
-                req.set_header("Content-Type", "plain/text");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", jsonReq.str(), {{"Content-Type", "plain/text"}});
             },
             [](const std::shared_ptr<::router::IRouterAPI>& router) { return routePost(router); },
             []() { return userErrorResponse<eEngine::GenericStatus_Response>("Missing /route"); },
@@ -101,10 +97,8 @@ INSTANTIATE_TEST_SUITE_P(
                 jsonReq.setObject("/route");
                 jsonReq.setString("not-valid", "/route/namespaceId");
                 jsonReq.setInt(1, "/route/priority");
-                httplib::Request req;
-                req.body = jsonReq.str();
-                req.set_header("Content-Type", "plain/text");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", jsonReq.str(), {{"Content-Type", "plain/text"}});
             },
             [](const std::shared_ptr<::router::IRouterAPI>& router) { return routePost(router); },
             []()
@@ -120,10 +114,8 @@ INSTANTIATE_TEST_SUITE_P(
                 json::Json jsonReq;
                 jsonReq.setObject("/route");
                 jsonReq.setString("testing", "/route/namespaceId");
-                httplib::Request req;
-                req.body = jsonReq.str();
-                req.set_header("Content-Type", "plain/text");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", jsonReq.str(), {{"Content-Type", "plain/text"}});
             },
             [](const std::shared_ptr<::router::IRouterAPI>& router) { return routePost(router); },
             []()
@@ -196,10 +188,8 @@ INSTANTIATE_TEST_SUITE_P(
         HandlerT(
             []()
             {
-                httplib::Request req;
-                req.body = "not json proto request";
-                req.set_header("Content-Type", "text/plain");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", "not json proto request", {{"Content-Type", "text/plain"}});
             },
             [](const std::shared_ptr<::router::IRouterAPI>& router) { return routeDelete(router); },
             []()
@@ -215,10 +205,8 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 json::Json jsonReq;
                 jsonReq.setObject();
-                httplib::Request req;
-                req.body = jsonReq.str();
-                req.set_header("Content-Type", "plain/text");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", jsonReq.str(), {{"Content-Type", "plain/text"}});
             },
             [](const std::shared_ptr<::router::IRouterAPI>& router) { return routeDelete(router); },
             []()
@@ -259,10 +247,8 @@ INSTANTIATE_TEST_SUITE_P(
         HandlerT(
             []()
             {
-                httplib::Request req;
-                req.body = "not json proto request";
-                req.set_header("Content-Type", "text/plain");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", "not json proto request", {{"Content-Type", "text/plain"}});
             },
             [](const std::shared_ptr<::router::IRouterAPI>& router) { return routeReload(router); },
             []()
@@ -278,10 +264,8 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 json::Json jsonReq;
                 jsonReq.setObject();
-                httplib::Request req;
-                req.body = jsonReq.str();
-                req.set_header("Content-Type", "plain/text");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", jsonReq.str(), {{"Content-Type", "plain/text"}});
             },
             [](const std::shared_ptr<::router::IRouterAPI>& router) { return routeReload(router); },
             []()
@@ -327,10 +311,8 @@ INSTANTIATE_TEST_SUITE_P(
         HandlerT(
             []()
             {
-                httplib::Request req;
-                req.body = "not json proto request";
-                req.set_header("Content-Type", "text/plain");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", "not json proto request", {{"Content-Type", "text/plain"}});
             },
             [](const std::shared_ptr<::router::IRouterAPI>& router) { return routePatchPriority(router); },
             []()
@@ -346,10 +328,8 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 json::Json jsonReq;
                 jsonReq.setObject();
-                httplib::Request req;
-                req.body = jsonReq.str();
-                req.set_header("Content-Type", "plain/text");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", jsonReq.str(), {{"Content-Type", "plain/text"}});
             },
             [](const std::shared_ptr<::router::IRouterAPI>& router) { return routePatchPriority(router); },
             []()

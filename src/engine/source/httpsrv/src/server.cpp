@@ -1,295 +1,463 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#include "server.hpp"
+#include <httpsrv/server.hpp>
 
-#include <sstream>
+#include <atomic>
+#include <cstdint>
+#include <exception>
+#include <functional>
+#include <future>
+#include <limits>
 #include <stdexcept>
-
-#include <cerrno>
-#include <cstring>
-#include <sys/stat.h>
-
-#include <fmt/format.h>
+#include <utility>
 
 #include <base/logging.hpp>
-#include <base/process.hpp>
+#include <fastmetrics/registry.hpp>
+#include <uds_http_server/IUdsHttpServer.hpp>
+#include <uds_http_server/udsHttpServerFactory.hpp>
+
+#include <httpsrv/boundedExecutor.hpp>
 
 namespace httpsrv
 {
+namespace uds = wazuh::uds_http;
 
-Server::Server(const std::string& id, size_t payloadMaxBytes, bool enableDetailedLogging)
-    : m_srv(std::make_shared<httplib::Server>())
-    , m_id(id)
-    , m_socketPath()
-    , m_payloadMaxBytes(payloadMaxBytes)
-    , m_enableDetailedLogging(enableDetailedLogging)
+namespace
 {
-    // General exception handler for routes handlers, handlers must not throw exceptions.
-    auto excptFnName = fmt::format("Server::Server({})::set_exception_handler", id);
-    m_srv->set_exception_handler(
-        [id, excptFnName](const auto&, auto& res, std::exception_ptr ep)
-        {
-            try
-            {
-                std::rethrow_exception(ep);
-            }
-            catch (std::exception& e)
-            {
-                LOG_ERROR_L(excptFnName.c_str(),
-                            fmt::format("[Server] {} uncaught route handler exception: {}", id, e.what()));
-            }
-            catch (...)
-            {
-                LOG_ERROR_L(excptFnName.c_str(),
-                            fmt::format("[Server] {} uncaught route handler unknown exception", id));
-            }
+constexpr auto SERVER_HEADER = "wazuh-manager-analysisd";
+constexpr auto BUSY_BODY = R"({"error":"Server busy","code":503})";
+constexpr auto SHUTTING_DOWN_BODY = R"({"error":"Server shutting down","code":503})";
+constexpr auto INTERNAL_ERROR_BODY = "Internal server error";
 
-            res.status = httplib::StatusCode::InternalServerError_500;
-            res.set_content("Internal server error", "text/plain");
-        });
+/// One log line per window for a repeating condition; the line says how many occurrences it covers.
+class Throttle
+{
+public:
+    static constexpr int WINDOW_SECONDS {90};
 
-    // Apply payload limit
-    applyPayloadLimit();
-
-    m_srv->set_error_handler(
-        [this](const httplib::Request&, httplib::Response& res) -> httplib::Server::HandlerResponse
-        {
-            if (res.status == httplib::StatusCode::PayloadTooLarge_413)
-            {
-                if (!res.body.empty())
-                {
-                    return httplib::Server::HandlerResponse::Unhandled;
-                }
-
-                const auto maxBytes = m_payloadMaxBytes;
-                if (maxBytes == 0)
-                {
-                    res.set_content("Payload too large.", "text/plain");
-                }
-                else
-                {
-                    res.set_content(
-                        fmt::format("Payload too large. Max allowed: {} bytes ({} KiB).", maxBytes, maxBytes / 1024),
-                        "text/plain");
-                }
-                return httplib::Server::HandlerResponse::Handled;
-            }
-            return httplib::Server::HandlerResponse::Unhandled;
-        });
-
-    // TODO: Add Metrics
-    if (m_enableDetailedLogging)
+    /// @return 0 when the caller must stay quiet, otherwise the occurrences this line stands for.
+    std::uint64_t record()
     {
-        auto afterFnName = fmt::format("Server::Server({})::after_processing", id);
-        m_srv->set_logger(
-            [id, afterFnName](const auto& req, const auto& res)
-            {
-                auto truncateBody = [](const std::string& body, size_t maxLen = 1024) -> std::string
-                {
-                    if (body.size() <= maxLen)
-                        return body;
-                    return body.substr(0, maxLen) + "...";
-                };
-
-                LOG_TRACE_L(afterFnName.c_str(),
-                            fmt::format("Request: {} {} '{}' - Response: {} '{}'",
-                                        req.method,
-                                        req.path,
-                                        truncateBody(req.body),
-                                        res.status,
-                                        res.body));
-            });
+        m_pending.fetch_add(1, std::memory_order_relaxed);
+        const auto now =
+            std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch())
+                .count();
+        auto last = m_lastEmit.load(std::memory_order_relaxed);
+        if (now - last < WINDOW_SECONDS || !m_lastEmit.compare_exchange_strong(last, now))
+        {
+            return 0;
+        }
+        return m_pending.exchange(0, std::memory_order_relaxed);
     }
-    else
+
+private:
+    std::atomic<std::int64_t> m_lastEmit {std::numeric_limits<std::int32_t>::min()};
+    std::atomic<std::uint64_t> m_pending {0};
+};
+
+uds::Method toTransport(Method method)
+{
+    switch (method)
     {
-        auto loggerFnName = fmt::format("Server::Server({})::set_logger", id);
-        m_srv->set_logger([id, loggerFnName](const auto& /*req*/, const auto& /*res*/)
-                          { LOG_TRACE_L(loggerFnName.c_str(), "[Server] {} request received", id); });
+        case Method::GET: return uds::Method::Get;
+        case Method::POST: return uds::Method::Post;
+        case Method::PUT: return uds::Method::Put;
+        case Method::DELETE: return uds::Method::Delete;
+        default: throw std::invalid_argument {"Unsupported HTTP method for a route"};
     }
 }
 
-void Server::addRoute(Method method,
-                      const std::string& route,
-                      const std::function<void(const httplib::Request&, httplib::Response&)>& handler)
+Method fromTransport(uds::Method method)
 {
-    std::function<void(const httplib::Request&, httplib::Response&)> wrapped;
-
-    if (m_enableDetailedLogging)
+    switch (method)
     {
-        auto beforeFnName = fmt::format("Server::Server({})::before_processing", m_id);
-        wrapped = [this, handler, beforeFnName](const httplib::Request& req, httplib::Response& res)
+        case uds::Method::Get: return Method::GET;
+        case uds::Method::Post: return Method::POST;
+        case uds::Method::Put: return Method::PUT;
+        case uds::Method::Delete: return Method::DELETE;
+        default: return Method::ERROR_METHOD;
+    }
+}
+
+uds::RouteClass toTransport(RouteClass cls)
+{
+    switch (cls)
+    {
+        case RouteClass::Data: return uds::RouteClass::Data;
+        case RouteClass::Liveness: return uds::RouteClass::Liveness;
+        case RouteClass::Control:
+        default: return uds::RouteClass::Control;
+    }
+}
+
+const char* methodName(Method method)
+{
+    switch (method)
+    {
+        case Method::GET: return "GET";
+        case Method::POST: return "POST";
+        case Method::PUT: return "PUT";
+        case Method::DELETE: return "DELETE";
+        default: return "?";
+    }
+}
+
+/// The handler's view of a transport request. The body is not copied: `owner` keeps the
+/// transport's request, and with it the bytes and their budget reservation, alive.
+Request toRequest(const std::shared_ptr<const uds::HttpRequest>& in)
+{
+    Request out;
+    out.method = fromTransport(in->method);
+    out.target = in->target;
+    out.body = std::string_view {in->body};
+    out.headers = in->headers;
+    out.repeatedHeaders = in->duplicateHeaders;
+    out.owner = in;
+    return out;
+}
+
+uds::HttpResponse toTransport(Response in)
+{
+    uds::HttpResponse out;
+    out.status = in.status;
+    out.body = std::move(in.body);
+    if (!in.contentType.empty())
+    {
+        out.headers.emplace_back("Content-Type", std::move(in.contentType));
+    }
+    return out;
+}
+} // namespace
+
+struct Server::Impl
+{
+    explicit Impl(ServerOptions opts)
+        : options {std::move(opts)}
+        , executor {std::make_unique<BoundedExecutor>(options.name, options.executorThreads, options.executorQueue)}
+        , transport {uds::makeUdsHttpServer()}
+    {
+    }
+
+    // Declaration order is destruction order reversed: the transport goes first (no new request
+    // can reach the executor), then the executor (its destructor joins every worker), and the
+    // counters the jobs touch outlive both.
+    ServerOptions options;
+    std::atomic<std::size_t> shedExecutorFull {0};
+    std::atomic<std::size_t> shedShutdown {0};
+    std::atomic<std::size_t> handlerErrors {0};
+    Throttle busyThrottle;
+    Throttle handlerErrorThrottle;
+    std::atomic<bool> running {false};
+    std::unique_ptr<BoundedExecutor> executor;
+    std::unique_ptr<uds::IUdsHttpServer> transport;
+
+    void answerShuttingDown(const std::shared_ptr<uds::IHttpResponder>& responder)
+    {
+        shedShutdown.fetch_add(1, std::memory_order_relaxed);
+        responder->send(uds::HttpResponse::json(503, SHUTTING_DOWN_BODY));
+    }
+
+    void runHandler(const RouteHandler& handler,
+                    const std::shared_ptr<const uds::HttpRequest>& transportRequest,
+                    const std::shared_ptr<uds::IHttpResponder>& responder)
+    {
+        const auto request = toRequest(transportRequest);
+        Response response;
+        try
         {
-            LOG_TRACE_L(beforeFnName.c_str(), fmt::format("Request: {} {} '{}'", req.method, req.path, req.body));
-            handler(req, res);
+            handler(request, response);
+        }
+        catch (const std::exception& e)
+        {
+            handlerErrors.fetch_add(1, std::memory_order_relaxed);
+            if (const auto total = handlerErrorThrottle.record(); total != 0)
+            {
+                LOG_ERROR("[{}] {} request handler(s) failed in the last {} s (last: {} {}: {}).",
+                          options.name,
+                          total,
+                          Throttle::WINDOW_SECONDS,
+                          methodName(request.method),
+                          request.target,
+                          e.what());
+            }
+            response = Response {};
+            response.status = 500;
+            response.setContent(INTERNAL_ERROR_BODY, "text/plain");
+        }
+        catch (...)
+        {
+            handlerErrors.fetch_add(1, std::memory_order_relaxed);
+            response = Response {};
+            response.status = 500;
+            response.setContent(INTERNAL_ERROR_BODY, "text/plain");
+        }
+
+        if (options.detailedLogging)
+        {
+            LOG_TRACE("[{}] {} {} -> {}", options.name, methodName(request.method), request.target, response.status);
+        }
+        responder->send(toTransport(std::move(response)));
+    }
+
+    uds::RouteHandler adapt(RouteHandler handler, bool runInline)
+    {
+        // Shared, not referenced: the transport (and this route lambda with it) is destroyed before
+        // the executor joins its workers, so a job must own its handler.
+        auto shared = std::make_shared<const RouteHandler>(std::move(handler));
+        if (runInline)
+        {
+            return [this, shared](std::shared_ptr<const uds::HttpRequest> request,
+                                  std::shared_ptr<uds::IHttpResponder> responder)
+            {
+                runHandler(*shared, request, responder);
+            };
+        }
+        return [this, shared](std::shared_ptr<const uds::HttpRequest> request,
+                              std::shared_ptr<uds::IHttpResponder> responder)
+        {
+            BoundedExecutor::Job job;
+            job.run = [this, shared, request, responder]
+            {
+                runHandler(*shared, request, responder);
+            };
+            job.reject = [this, responder]
+            {
+                answerShuttingDown(responder);
+            };
+
+            switch (executor->trySubmit(std::move(job)))
+            {
+                case BoundedExecutor::Submit::Accepted: return;
+                case BoundedExecutor::Submit::Closed: answerShuttingDown(responder); return;
+                case BoundedExecutor::Submit::Full:
+                    shedExecutorFull.fetch_add(1, std::memory_order_relaxed);
+                    if (const auto total = busyThrottle.record(); total != 0)
+                    {
+                        LOG_WARNING("[{}] Rejected {} request(s) with 503 in the last {} s: every request worker is "
+                                    "busy and the queue is full ({} queued).",
+                                    options.name,
+                                    total,
+                                    Throttle::WINDOW_SECONDS,
+                                    executor->depth());
+                    }
+                    responder->send(uds::HttpResponse::json(503, BUSY_BODY));
+                    return;
+            }
         };
     }
-    else
-    {
-        wrapped = handler;
-    }
+};
 
-    try
-    {
-        switch (method)
-        {
-            case Method::GET: m_srv->Get(route, wrapped); break;
-            case Method::POST: m_srv->Post(route, wrapped); break;
-            case Method::PUT: m_srv->Put(route, wrapped); break;
-            case Method::DELETE: m_srv->Delete(route, wrapped); break;
-            default: throw std::runtime_error("Invalid method");
-        }
-    }
-    catch (const std::exception& e)
-    {
-        throw std::runtime_error(fmt::format("[Server] {} failed to add route: {}", m_id, e.what()));
-    }
-
-    LOG_DEBUG("[Server] {} added route: {} {}", m_id, methodToStr(method), route);
+Server::Server(ServerOptions options)
+    : m_impl {std::make_unique<Impl>(std::move(options))}
+{
 }
 
-void Server::applyPayloadLimit()
+Server::~Server()
 {
-    const auto maxLen = (m_payloadMaxBytes == 0) ? std::numeric_limits<size_t>::max() : m_payloadMaxBytes;
-
-    m_srv->set_payload_max_length(maxLen);
-}
-
-bool Server::bindAndListen()
-{
-    if (m_socketPath.empty())
+    if (m_impl->running.load())
     {
-        LOG_ERROR("[Server] {} cannot bind and listen: empty socket path", m_id);
-        return false;
-    }
-
-    if (!m_srv->bind_to_port(m_socketPath.string(), 80))
-    {
-        LOG_ERROR("[Server] {} failed to bind to socket {}", m_id, m_socketPath.string());
-        return false;
-    }
-
-    if (chmod(m_socketPath.c_str(), 0660) != 0)
-    {
-        LOG_WARNING("[Server] {} failed to change socket permissions: {} ({})", m_id, std::strerror(errno), errno);
-    }
-    else
-    {
-        LOG_TRACE("[Server] {} changed socket permissions to 660 for {}", m_id, m_socketPath.string());
-    }
-
-    LOG_DEBUG("[Server] {} bound to socket {}", m_id, m_socketPath.string());
-
-    return m_srv->listen_after_bind();
-}
-
-void Server::start(const std::filesystem::path& socketPath, bool useThread)
-{
-    if (socketPath.empty())
-    {
-        throw std::runtime_error(fmt::format("Cannot start server {}: empty socket path", m_id));
-    }
-
-    if (isRunning())
-    {
-        throw std::runtime_error(fmt::format("Cannot start server {}: already running", m_id));
-    }
-
-    if (!std::filesystem::exists(socketPath.parent_path()))
-    {
-        throw std::runtime_error(fmt::format(
-            "Cannot start server {}: parent directory {} does not exist", m_id, socketPath.parent_path().string()));
-    }
-
-    m_srv->set_address_family(AF_UNIX);
-
-    if (std::filesystem::exists(socketPath.string()))
-    {
-        std::filesystem::remove(socketPath);
-        LOG_TRACE("[Server] {} removed existing socket file {}", m_id, socketPath.string());
-    }
-    m_socketPath = socketPath;
-
-    if (useThread)
-    {
-        std::atomic<bool> threadFailed {false};
-
-        m_thread = std::thread(
-            [this, &threadFailed]()
-            {
-                base::process::setThreadName(m_id.c_str());
-                if (!bindAndListen())
-                {
-                    threadFailed = true;
-                }
-            });
-
-        const auto timeout = std::chrono::steady_clock::now() + std::chrono::seconds(10);
-
-        while (!threadFailed && std::chrono::steady_clock::now() < timeout)
-        {
-            if (m_srv->is_running())
-            {
-                break;
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        }
-
-        if (threadFailed)
-        {
-            if (m_thread.joinable())
-            {
-                m_thread.join();
-            }
-            throw std::runtime_error(fmt::format("[Server] {} failed to start at {}", m_id, socketPath.string()));
-        }
-
-        auto tid = m_thread.get_id();
-        std::stringstream ss;
-        ss << tid;
-        LOG_DEBUG("[Server] {} started in thread {}, with {} threads, at {}",
-                  m_id,
-                  ss.str(),
-                  CPPHTTPLIB_THREAD_POOL_COUNT,
-                  socketPath.string());
-    }
-    else
-    {
-        LOG_INFO(
-            "[Server] Starting {} with {} threads, at {}", m_id, CPPHTTPLIB_THREAD_POOL_COUNT, socketPath.string());
-        if (!bindAndListen())
-        {
-            throw std::runtime_error(fmt::format("[Server] {} failed to start at {}", m_id, socketPath.string()));
-        }
+        stop();
     }
 }
 
-void Server::stop() noexcept
+void Server::addRoute(Method method, const std::string& path, RouteHandler handler, RouteOptions options)
 {
-    try
+    uds::RouteOptions routeOptions;
+    routeOptions.cls = toTransport(options.cls);
+    routeOptions.maxBodyBytes =
+        options.maxBodyBytes == UNLIMITED_BODY ? uds::UdsHttpServerConfig::UNLIMITED_BODY_SIZE : options.maxBodyBytes;
+    routeOptions.payloadTooLargeBody = std::move(options.payloadTooLargeBody);
+    routeOptions.payloadTooLargeContentType = std::move(options.payloadTooLargeContentType);
+    routeOptions.responseTimeoutSec = options.responseTimeoutSec;
+    m_impl->transport->addRoute(
+        toTransport(method), path, m_impl->adapt(std::move(handler), options.runInline), routeOptions);
+}
+
+void Server::start(const std::filesystem::path& socketPath)
+{
+    const auto& options = m_impl->options;
+    uds::UdsHttpServerConfig config;
+    config.socketPath = socketPath.string();
+    config.maxConnections = options.maxConnections;
+    if (!options.byteBudget)
     {
-        if (!isRunning())
-        {
-            return;
-        }
-
-        m_srv->stop();
-
-        if (m_thread.joinable())
-        {
-            m_thread.join();
-        }
-
-        if (!m_socketPath.empty())
-        {
-            std::filesystem::remove(m_socketPath);
-            LOG_TRACE("[Server] {} removed socket file {}", m_id, m_socketPath.string());
-            m_socketPath.clear();
-        }
-
-        LOG_INFO("[Server] {} stopped", m_id);
+        config.maxInFlightBytes = 0;
     }
-    catch (const std::exception& e)
+    else if (options.maxInFlightBytes != 0)
     {
-        LOG_ERROR("[Server] {} error while stopping: {}", m_id, e.what());
+        config.maxInFlightBytes = options.maxInFlightBytes;
+    }
+    if (options.maxBodySize != 0)
+    {
+        config.maxBodySize = options.maxBodySize;
+    }
+    if (options.bodyTimeoutSec != 0)
+    {
+        config.bodyTimeoutSec = options.bodyTimeoutSec;
+    }
+    config.answerBodyTimeout = options.answerBodyTimeout;
+    config.expectContinue = options.expectContinue;
+    config.logTag = options.logTag;
+    config.serverName = options.name;
+    config.serverHeader = SERVER_HEADER;
+    config.budgetOptionHint = options.budgetOptionHint;
+    config.connectionCapOptionHint = options.connectionCapOptionHint;
+
+    m_impl->transport->start(config);
+    m_impl->running.store(true);
+}
+
+bool Server::isRunning() const
+{
+    return m_impl->running.load();
+}
+
+void Server::stopAccepting()
+{
+    m_impl->transport->stopAccepting();
+}
+
+void Server::closeAdmission()
+{
+    m_impl->executor->closeAdmission();
+}
+
+ShutdownReport Server::drainUntil(std::chrono::steady_clock::time_point deadline)
+{
+    const auto drained = m_impl->executor->drainUntil(deadline);
+    return ShutdownReport {drained.completed, drained.rejected, drained.abandoned};
+}
+
+void Server::waitForHandlers()
+{
+    m_impl->executor->join();
+}
+
+void Server::stop()
+{
+    m_impl->transport->stop();
+    m_impl->running.store(false);
+}
+
+ShutdownReport Server::shutdown(std::chrono::milliseconds deadline)
+{
+    const auto until = std::chrono::steady_clock::now() + deadline;
+    stopAccepting();
+    closeAdmission();
+    const auto report = drainUntil(until);
+    stop();
+    LOG_INFO("[{}] Stopped: {} request(s) finished during the drain, {} answered 503, {} still running at the "
+             "deadline.",
+             m_impl->options.name,
+             report.completed,
+             report.rejected,
+             report.abandoned);
+    waitForHandlers();
+    return report;
+}
+
+ServerStats Server::stats() const
+{
+    const auto transport = m_impl->transport->diagnostics();
+    ServerStats stats;
+    stats.inFlightBytes = transport.budgetInFlightBytes;
+    stats.inFlightRequests = transport.budgetInFlightCount;
+    stats.sessions = transport.liveSessions;
+    stats.shedBudget = transport.rejectedBudgetExhausted;
+    stats.shedSessions = transport.rejectedSessionCap + transport.rejectedConnectionCap;
+    stats.queueDepth = m_impl->executor->depth();
+    stats.running = m_impl->executor->running();
+    stats.shedExecutorFull = m_impl->shedExecutorFull.load(std::memory_order_relaxed);
+    stats.shedShutdown = m_impl->shedShutdown.load(std::memory_order_relaxed) + transport.rejectedShutdown;
+    stats.handlerErrors = m_impl->handlerErrors.load(std::memory_order_relaxed);
+    stats.rejectedTooLarge = transport.rejectedTooLarge;
+    return stats;
+}
+
+void registerMetrics(const std::weak_ptr<Server>& server, const std::string& instance)
+{
+    namespace names = fastmetrics::names;
+    const auto publish = [&](const char* suffix, std::size_t ServerStats::* field)
+    {
+        fastmetrics::registerPullMetric(names::server_metric(instance, suffix),
+                                        std::function<uint64_t()>(
+                                            [server, field]() -> uint64_t
+                                            {
+                                                const auto alive = server.lock();
+                                                return alive ? static_cast<uint64_t>(alive->stats().*field) : 0;
+                                            }));
+    };
+
+    publish(names::SERVER_INFLIGHT_BYTES, &ServerStats::inFlightBytes);
+    publish(names::SERVER_INFLIGHT_REQUESTS, &ServerStats::inFlightRequests);
+    publish(names::SERVER_SESSIONS, &ServerStats::sessions);
+    publish(names::SERVER_QUEUE_DEPTH, &ServerStats::queueDepth);
+    publish(names::SERVER_RUNNING, &ServerStats::running);
+    publish(names::SERVER_SHED_BUDGET, &ServerStats::shedBudget);
+    publish(names::SERVER_SHED_CONNECTIONS, &ServerStats::shedSessions);
+    publish(names::SERVER_SHED_EXECUTOR_FULL, &ServerStats::shedExecutorFull);
+    publish(names::SERVER_SHED_SHUTDOWN, &ServerStats::shedShutdown);
+    publish(names::SERVER_HANDLER_ERRORS, &ServerStats::handlerErrors);
+    publish(names::SERVER_REJECTED_TOO_LARGE, &ServerStats::rejectedTooLarge);
+}
+
+void shutdownAll(const std::vector<Server*>& servers, std::chrono::milliseconds deadline)
+{
+    const auto until = std::chrono::steady_clock::now() + deadline;
+
+    // 1. No server lets a new request reach a handler; I/O stays up so replies still go out.
+    for (auto* server : servers)
+    {
+        if (server != nullptr)
+        {
+            server->stopAccepting();
+        }
+    }
+    // 2. No executor admits new work; what is queued keeps running.
+    for (auto* server : servers)
+    {
+        if (server != nullptr)
+        {
+            server->closeAdmission();
+        }
+    }
+    // 3. Drain every executor in parallel up to one deadline.
+    std::vector<std::future<ShutdownReport>> drains;
+    for (auto* server : servers)
+    {
+        if (server != nullptr)
+        {
+            drains.push_back(std::async(std::launch::async, [server, until] { return server->drainUntil(until); }));
+        }
+    }
+    ShutdownReport total;
+    for (auto& drain : drains)
+    {
+        const auto report = drain.get();
+        total.completed += report.completed;
+        total.rejected += report.rejected;
+        total.abandoned += report.abandoned;
+    }
+    // 4. Only now close the transports, before the caller destroys what the handlers use.
+    for (auto* server : servers)
+    {
+        if (server != nullptr)
+        {
+            server->stop();
+        }
+    }
+    LOG_INFO("HTTP servers stopped: {} request(s) finished during the drain, {} answered 503, {} still running at "
+             "the deadline.",
+             total.completed,
+             total.rejected,
+             total.abandoned);
+    // 5. A handler that outlived the deadline is waited for: returning while one runs would let the caller tear down
+    //    what it uses.
+    for (auto* server : servers)
+    {
+        if (server != nullptr)
+        {
+            server->waitForHandlers();
+        }
     }
 }
 

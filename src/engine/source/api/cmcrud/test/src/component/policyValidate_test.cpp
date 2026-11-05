@@ -87,12 +87,9 @@ std::string promoteBody()
         kTemplate, fmt::arg("space", kSpace), fmt::arg("dec", kDecoderUuid), fmt::arg("integ", kIntegUuid));
 }
 
-httplib::Request jsonRequest(const std::string& body)
+httpsrv::Request jsonRequest(const std::string& body)
 {
-    httplib::Request req;
-    req.body = body;
-    req.set_header("Content-Type", "plain/text");
-    return req;
+    return httpsrv::Request::fromOwned(httpsrv::Method::POST, "/", body, {{"Content-Type", "plain/text"}});
 }
 
 class PolicyValidateConcurrencyTest : public ::testing::Test
@@ -250,7 +247,7 @@ protected:
         std::promise<void> go;
         std::shared_future<void> start = go.get_future().share();
         std::vector<std::thread> threads;
-        std::vector<httplib::Response> responses(calls.size());
+        std::vector<httpsrv::Response> responses(calls.size());
 
         for (std::size_t i = 0; i < calls.size(); ++i)
         {

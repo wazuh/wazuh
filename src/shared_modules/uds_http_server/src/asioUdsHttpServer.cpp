@@ -341,6 +341,8 @@ namespace wazuh::uds_http
             LogThrottle peerGoneThrottle;
             LogThrottle classBodyCapThrottle;
             LogThrottle classSessionCapThrottle;
+            LogThrottle bodyTimeoutThrottle;
+            LogThrottle requestErrorThrottle;
 
             /// Connections answered 503 because stopAccepting() found them pre-handler; reported in
             /// the shutdown INFO so the third source of 503 (besides budget and cap) is accounted for.
@@ -579,6 +581,25 @@ namespace wazuh::uds_http
                     return;
                 }
 
+                // Opt-in: a consumer whose peers expect a status for a body that never arrived. The
+                // head is in, so the peer is still reading what we send; the other phases keep the
+                // silent close below.
+                if (m_phase == Phase::Body && m_state->config.answerBodyTimeout)
+                {
+                    if (const auto decision = m_state->bodyTimeoutThrottle.record())
+                    {
+                        LOGFN_WARN(m_state->log,
+                                   "Answered %llu request(s) with 400 in the last %d s: the body did not arrive "
+                                   "within %zu s (last on '%.128s').",
+                                   static_cast<unsigned long long>(decision.total),
+                                   LogThrottle::kDefaultWindowSeconds,
+                                   m_state->config.bodyTimeoutSec,
+                                   requestPath().c_str());
+                    }
+                    deliver(errorResponse(400, "Request body not received in time"));
+                    return;
+                }
+
                 // Header/Body/Write: the peer is slow or gone. Nothing useful to say to it, but the
                 // operator needs the trace -- these closes consume the connections that
                 // max_parallel_connections bounds, and without a line a slow-loris or a degraded
@@ -638,6 +659,47 @@ namespace wazuh::uds_http
                     return;
                 }
 
+                // Exception barrier for parsing and admission (dispatch() has its own). Without it an
+                // allocation failure here escapes to the I/O thread's run() loop, and the session is
+                // left with no read pending and nobody to answer it until a phase timer reaps it.
+                try
+                {
+                    processRead(bytes);
+                }
+                catch (const std::exception& e)
+                {
+                    failRequest(e.what());
+                }
+                // LCOV_EXCL_START -- nothing on this path throws a non-std exception
+                catch (...)
+                {
+                    failRequest("non-standard exception");
+                }
+                // LCOV_EXCL_STOP
+            }
+
+            /// Answer 500 and close through the normal path, which releases the session's counters
+            /// and, with the session, its byte reservation.
+            void failRequest(const char* reason)
+            {
+                if (m_finished)
+                {
+                    return;
+                }
+                if (const auto decision = m_state->requestErrorThrottle.record())
+                {
+                    LOGFN_ERROR(m_state->log,
+                                "Answered %llu request(s) with 500 in the last %d s: the request could not be "
+                                "read or admitted (last: %s).",
+                                static_cast<unsigned long long>(decision.total),
+                                LogThrottle::kDefaultWindowSeconds,
+                                reason);
+                }
+                deliver(errorResponse(500, rejectMessage(500)));
+            }
+
+            void processRead(std::size_t bytes)
+            {
                 auto verdict = m_parser.feed(m_readBuffer.data(), bytes);
 
                 if (verdict == RequestParser::Feed::HeadersReady)
@@ -650,6 +712,12 @@ namespace wazuh::uds_http
                     case RequestParser::Feed::Incomplete: doRead(); return;
                     case RequestParser::Feed::Complete: dispatch(); return;
                     case RequestParser::Feed::Reject:
+                        if (m_parser.rejectStatus() == 500)
+                        {
+                            // Not a limit: the parser could not allocate what the request needed.
+                            failRequest("out of memory while buffering the request");
+                            return;
+                        }
                         // These four statuses are decided by limits an operator can tune, and the
                         // peer's write-then-read pattern often means it never reads the status either
                         // (see the interop note below deliver()) -- so this line is the only record
@@ -709,6 +777,21 @@ namespace wazuh::uds_http
                         return errorResponse(413, "Request body exceeds the liveness-class limit");
                 }
                 return errorResponse(413, "Request body exceeds the class limit"); // LCOV_EXCL_LINE
+            }
+
+            /// The 413 for a declared length over the route's body cap: the route's own body when it
+            /// set one, else the class-keyed JSON.
+            wazuh::uds_http::HttpResponse bodyCapResponse(const Route& route) const
+            {
+                if (route.options.payloadTooLargeBody.empty())
+                {
+                    return classBodyCapResponse(route.options.cls);
+                }
+                wazuh::uds_http::HttpResponse response;
+                response.status = 413;
+                response.body = route.options.payloadTooLargeBody;
+                response.headers.emplace_back("Content-Type", route.options.payloadTooLargeContentType);
+                return response;
             }
 
             wazuh::uds_http::HttpResponse classSessionCapResponse(RouteClass cls) const
@@ -778,7 +861,7 @@ namespace wazuh::uds_http
                                    route->path.c_str());
                     }
                     m_state->tooLargeRejected.fetch_add(1, std::memory_order_relaxed);
-                    deliver(classBodyCapResponse(cls));
+                    deliver(bodyCapResponse(*route));
                     return RequestParser::Feed::Incomplete;
                 }
 

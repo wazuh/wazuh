@@ -6,23 +6,23 @@
 
 #include <fmt/format.h>
 #include <google/protobuf/message.h>
-#include <httpsrv/server.hpp>
+#include <httpsrv/types.hpp>
 
 #include <eMessages/eMessage.h>
 #include <eMessages/engine.pb.h>
 
 namespace api::adapter
 {
-using RouteHandler = std::function<void(const httplib::Request&, httplib::Response&)>;
+using RouteHandler = httpsrv::RouteHandler;
 namespace eEngine = ::com::wazuh::api::engine;
 
 struct Error
 {
-    httplib::Response res;
+    httpsrv::Response res;
 };
 
 /**
- * @brief Return type for fallible operations with either the result or an error httplib::Response.
+ * @brief Return type for fallible operations with either the result or an error httpsrv::Response.
  *
  * @tparam Res The result type
  */
@@ -34,7 +34,7 @@ using ResOrErrorResp = std::variant<Res, Error>;
  *
  * @tparam Res The result type
  * @param res The result
- * @return true If the response is an httplib::Response error (Error)
+ * @return true If the response is an httpsrv::Response error (Error)
  * @return false Otherwise
  */
 template<typename Res>
@@ -48,7 +48,7 @@ inline bool isError(const ResOrErrorResp<Res>& res)
  *
  * @tparam Res the result type
  * @param res The result
- * @return Error The error object with the httplib::Response
+ * @return Error The error object with the httpsrv::Response
  */
 template<typename Res>
 Error getError(const ResOrErrorResp<Res>& res)
@@ -57,14 +57,14 @@ Error getError(const ResOrErrorResp<Res>& res)
 }
 
 /**
- * @brief Get the httplib::Response error
+ * @brief Get the httpsrv::Response error
  *
  * @tparam Res The result type
  * @param res The result
- * @return httplib::Response error response
+ * @return httpsrv::Response error response
  */
 template<typename Res>
-httplib::Response getErrorResp(const ResOrErrorResp<Res>& res)
+httpsrv::Response getErrorResp(const ResOrErrorResp<Res>& res)
 {
     return getError(res).res;
 }
@@ -87,10 +87,10 @@ Res getRes(const ResOrErrorResp<Res>& res)
  *
  * @tparam Res The response type
  * @param message The error message
- * @return httplib::Response
+ * @return httpsrv::Response
  */
 template<typename Res>
-inline httplib::Response internalErrorResponse(const std::string& message)
+inline httpsrv::Response internalErrorResponse(const std::string& message)
 {
     Res protoRes;
     protoRes.set_status(eEngine::ReturnStatus::ERROR);
@@ -103,9 +103,9 @@ inline httplib::Response internalErrorResponse(const std::string& message)
         protoRes.set_error(error.message);
     }
 
-    httplib::Response response;
-    response.status = httplib::StatusCode::InternalServerError_500;
-    response.set_content(std::get<std::string>(result), "application/json");
+    httpsrv::Response response;
+    response.status = 500;
+    response.setContent(std::get<std::string>(result), "application/json");
 
     return response;
 }
@@ -116,10 +116,10 @@ inline httplib::Response internalErrorResponse(const std::string& message)
  * @tparam Res The response type
  * @tparam Req The request type
  * @param res The response
- * @return httplib::Response The response object
+ * @return httpsrv::Response The response object
  */
 template<typename Res>
-httplib::Response userResponse(const Res& res)
+httpsrv::Response userResponse(const Res& res)
 {
     static_assert(std::is_base_of_v<google::protobuf::Message, Res>, "Response must be a protobuf message");
     const auto result = eMessage::eMessageToJson<Res>(res);
@@ -130,9 +130,9 @@ httplib::Response userResponse(const Res& res)
         return internalErrorResponse<Res>(error.message);
     }
 
-    httplib::Response response;
-    response.status = httplib::StatusCode::OK_200;
-    response.set_content(std::get<std::string>(result), "application/json");
+    httpsrv::Response response;
+    response.status = 200;
+    response.setContent(std::get<std::string>(result), "application/json");
     return response;
 }
 
@@ -141,10 +141,10 @@ httplib::Response userResponse(const Res& res)
  *
  * @tparam Res The response type
  * @param message The error message
- * @return httplib::Response
+ * @return httpsrv::Response
  */
 template<typename Res>
-inline httplib::Response userErrorResponse(const std::string& message)
+inline httpsrv::Response userErrorResponse(const std::string& message)
 {
     Res protoRes;
     protoRes.set_status(eEngine::ReturnStatus::ERROR);
@@ -157,23 +157,23 @@ inline httplib::Response userErrorResponse(const std::string& message)
         return internalErrorResponse<Res>(error.message);
     }
 
-    httplib::Response response;
-    response.status = httplib::StatusCode::BadRequest_400;
-    response.set_content(std::get<std::string>(result), "application/json");
+    httpsrv::Response response;
+    response.status = 400;
+    response.setContent(std::get<std::string>(result), "application/json");
 
     return response;
 }
 
 /**
- * @brief Parse a request from a httplib request.
+ * @brief Parse a protobuf request from an HTTP request.
  *
  * @tparam Req The request typeç
  * @tparam Res The response type
- * @param req The httplib request
+ * @param req The request
  * @return ResOrErrorResp<Req> The request or an error with the response
  */
 template<typename Req, typename Res>
-ResOrErrorResp<Req> parseRequest(const httplib::Request& req)
+ResOrErrorResp<Req> parseRequest(const httpsrv::Request& req)
 {
     static_assert(std::is_base_of_v<google::protobuf::Message, Req>, "Request must be a protobuf message");
     if (!req.body.empty())
@@ -197,10 +197,10 @@ ResOrErrorResp<Req> parseRequest(const httplib::Request& req)
  *
  * @tparam Req The request type
  * @param req The request
- * @return httplib::Request The request object
+ * @return httpsrv::Request The request object
  */
 template<typename Req>
-inline httplib::Request createRequest(const Req& req)
+inline httpsrv::Request createRequest(const Req& req)
 {
     static_assert(std::is_base_of_v<google::protobuf::Message, Req>, "Request must be a protobuf message");
     const auto result = eMessage::eMessageToJson<Req>(req);
@@ -210,22 +210,19 @@ inline httplib::Request createRequest(const Req& req)
             fmt::format("Failed to serialize request: {}", std::get<base::Error>(result).message)};
     }
 
-    httplib::Request request;
-    request.body = std::get<std::string>(result);
-    request.set_header("Content-Type", "application/json");
-
-    return request;
+    return httpsrv::Request::fromOwned(
+        httpsrv::Method::POST, "/", std::get<std::string>(result), {{"Content-Type", "application/json"}});
 }
 
 /**
- * @brief Parse a response from a httplib response.
+ * @brief Parse a protobuf response from an HTTP response.
  *
  * @tparam Res The response type
- * @param res The httplib response
+ * @param res The response
  * @return Res The response object
  */
 template<typename Res>
-inline Res parseResponse(const httplib::Response& res)
+inline Res parseResponse(const httpsrv::Response& res)
 {
     static_assert(std::is_base_of_v<google::protobuf::Message, Res>, "Response must be a protobuf message");
     if (!res.body.empty())
@@ -246,7 +243,7 @@ template<typename Req, typename IHandler>
 using ReqAndHandler = std::tuple<std::shared_ptr<IHandler>, Req>;
 
 template<typename Req, typename Res, typename IHandler>
-ResOrErrorResp<ReqAndHandler<Req, IHandler>> getReqAndHandler(const httplib::Request& req,
+ResOrErrorResp<ReqAndHandler<Req, IHandler>> getReqAndHandler(const httpsrv::Request& req,
                                                               const std::weak_ptr<IHandler>& weakHandler)
 {
     auto handler = weakHandler.lock();

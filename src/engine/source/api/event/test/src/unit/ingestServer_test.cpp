@@ -98,7 +98,7 @@ class IngestServerTest : public ::testing::Test
 {
 protected:
     std::shared_ptr<testing::NiceMock<MockRouterAPI>> router = std::make_shared<testing::NiceMock<MockRouterAPI>>();
-    std::shared_ptr<httpsrv::UdsServer> server;
+    std::shared_ptr<httpsrv::Server> server;
     std::string path = socketPath();
 
     /// The limits the server is built with; a derived fixture overrides them.

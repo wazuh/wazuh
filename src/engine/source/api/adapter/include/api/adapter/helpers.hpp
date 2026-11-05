@@ -35,12 +35,12 @@ ResOrErrorResp<T> tryGetProperty(bool exists, PropGetter<T> propGetter, std::str
 }
 
 inline base::RespOrError<json::Json>
-getJsonFieldFromBody(const std::string& body, const char* fieldPath, const char* missingMessage)
+getJsonFieldFromBody(std::string_view body, const char* fieldPath, const char* missingMessage)
 {
     json::Json reqJson;
     try
     {
-        reqJson = json::Json(body.c_str());
+        reqJson = json::Json(body);
     }
     catch (const std::exception& e)
     {
@@ -56,16 +56,16 @@ getJsonFieldFromBody(const std::string& body, const char* fieldPath, const char*
     return field.value();
 }
 
-inline httplib::Response buildJsonContentResponse(const json::Json& content)
+inline httpsrv::Response buildJsonContentResponse(const json::Json& content)
 {
     json::Json responseBody;
     responseBody.setObject();
     responseBody.setString("OK", "/status");
     responseBody.set("/jsonContent", content);
 
-    httplib::Response response;
-    response.status = httplib::StatusCode::OK_200;
-    response.set_content(responseBody.str(), "application/json");
+    httpsrv::Response response;
+    response.status = 200;
+    response.setContent(responseBody.str(), "application/json");
     return response;
 }
 

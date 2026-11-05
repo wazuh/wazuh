@@ -61,12 +61,12 @@ TEST(ApiAdapterTest, GetReq)
 
 TEST(ApiAdapterTest, InternalErrorResponse)
 {
-    httplib::Response res;
+    httpsrv::Response res;
     TestRes protoRes;
     protoRes.set_status(eEngine::ReturnStatus::ERROR);
     protoRes.set_error("test");
     ASSERT_NO_THROW(res = internalErrorResponse<TestRes>("test"));
-    ASSERT_EQ(res.status, httplib::StatusCode::InternalServerError_500);
+    ASSERT_EQ(res.status, 500);
     auto gotProtoRes = parseResponse<TestRes>(res);
     ASSERT_EQ(protoRes.status(), gotProtoRes.status());
     ASSERT_EQ(protoRes.error(), gotProtoRes.error());
@@ -74,23 +74,23 @@ TEST(ApiAdapterTest, InternalErrorResponse)
 
 TEST(ApiAdapterTest, UserResponse)
 {
-    httplib::Response res;
+    httpsrv::Response res;
     TestRes protoRes;
     protoRes.set_status(eEngine::ReturnStatus::OK);
     ASSERT_NO_THROW(res = userResponse(protoRes));
-    ASSERT_EQ(res.status, httplib::StatusCode::OK_200);
+    ASSERT_EQ(res.status, 200);
     auto gotProtoRes = parseResponse<TestRes>(res);
     ASSERT_EQ(protoRes.status(), gotProtoRes.status());
 }
 
 TEST(ApiAdapterTest, UserErrorResponse)
 {
-    httplib::Response res;
+    httpsrv::Response res;
     TestRes protoRes;
     protoRes.set_status(eEngine::ReturnStatus::ERROR);
     protoRes.set_error("test");
     ASSERT_NO_THROW(res = userErrorResponse<TestRes>("test"));
-    ASSERT_EQ(res.status, httplib::StatusCode::BadRequest_400);
+    ASSERT_EQ(res.status, 400);
     auto gotProtoRes = parseResponse<TestRes>(res);
     ASSERT_EQ(protoRes.status(), gotProtoRes.status());
     ASSERT_EQ(protoRes.error(), gotProtoRes.error());
@@ -119,7 +119,7 @@ TEST(ApiAdapterTest, ParseRequest)
     ASSERT_NO_THROW(fn2());
     ASSERT_TRUE(isError(res));
     auto error = getErrorResp(res);
-    ASSERT_EQ(error.status, httplib::StatusCode::BadRequest_400);
+    ASSERT_EQ(error.status, 400);
     auto expectedProtoRes = eEngine::GenericStatus_Response {};
     expectedProtoRes.set_status(eEngine::ReturnStatus::ERROR);
     expectedProtoRes.set_error(
@@ -133,10 +133,32 @@ TEST(ApiAdapterTest, CreateRequest)
 {
     TestReq protoReq;
     protoReq.set_content("test");
-    httplib::Request req;
+    httpsrv::Request req;
     ASSERT_NO_THROW(req = createRequest<TestReq>(protoReq));
     ASSERT_EQ(req.body, std::get<std::string>(eMessage::eMessageToJson<TestReq>(protoReq)));
-    ASSERT_EQ(req.get_header_value("Content-Type"), "application/json");
+    ASSERT_EQ(req.header("Content-Type"), "application/json");
+}
+
+TEST(ApiAdapterTest, ParseRequestReadsOnlyTheViewedBody)
+{
+    // The body is a view into the transport's buffer, not a terminated string: whatever follows it must not
+    // be parsed.
+    const auto json = std::get<std::string>(eMessage::eMessageToJson<TestReq>(
+        []
+        {
+            TestReq protoReq;
+            protoReq.set_content("test");
+            return protoReq;
+        }()));
+    const auto buffer = std::make_shared<const std::string>(json + "TRAILING BYTES");
+    httpsrv::Request req;
+    req.method = httpsrv::Method::POST;
+    req.body = std::string_view {*buffer}.substr(0, json.size());
+    req.owner = buffer;
+
+    const auto res = parseRequest<TestReq, TestRes>(req);
+    ASSERT_FALSE(isError(res));
+    EXPECT_EQ(getRes(res).content(), "test");
 }
 
 TEST(ApiAdapterTest, ResponsesAreLabelledJson)
@@ -145,25 +167,25 @@ TEST(ApiAdapterTest, ResponsesAreLabelledJson)
     protoRes.set_status(eEngine::ReturnStatus::OK);
 
     auto ok = userResponse<TestRes>(protoRes);
-    EXPECT_EQ(ok.status, httplib::StatusCode::OK_200);
-    EXPECT_EQ(ok.get_header_value("Content-Type"), "application/json");
+    EXPECT_EQ(ok.status, 200);
+    EXPECT_EQ(ok.contentType, "application/json");
 
     auto userError = userErrorResponse<TestRes>("bad request");
-    EXPECT_EQ(userError.status, httplib::StatusCode::BadRequest_400);
-    EXPECT_EQ(userError.get_header_value("Content-Type"), "application/json");
+    EXPECT_EQ(userError.status, 400);
+    EXPECT_EQ(userError.contentType, "application/json");
 
     auto internalError = internalErrorResponse<TestRes>("internal");
-    EXPECT_EQ(internalError.status, httplib::StatusCode::InternalServerError_500);
-    EXPECT_EQ(internalError.get_header_value("Content-Type"), "application/json");
+    EXPECT_EQ(internalError.status, 500);
+    EXPECT_EQ(internalError.contentType, "application/json");
 }
 
 TEST(ApiAdapterTest, ParseResponse)
 {
-    httplib::Response res;
+    httpsrv::Response res;
     TestRes protoRes;
     protoRes.set_status(eEngine::ReturnStatus::OK);
     ASSERT_NO_THROW(res = userResponse(protoRes));
-    ASSERT_EQ(res.status, httplib::StatusCode::OK_200);
+    ASSERT_EQ(res.status, 200);
     auto gotProtoRes = parseResponse<TestRes>(res);
     ASSERT_EQ(protoRes.status(), gotProtoRes.status());
 }
