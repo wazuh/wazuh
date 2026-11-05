@@ -3047,6 +3047,77 @@ TEST_F(IndexerConnectorSyncTest, BulkResponseValidationVersionConflictAccepted)
     EXPECT_TRUE(postCalled);
 }
 
+/// A versioned bulkIndex is a scripted `update`. The update API reads the document, runs the script and
+/// writes with the document's seq_no as a condition, so a concurrent write to the same document (the group or
+/// metadata _update_by_query) makes the item answer 409 and drops its data. Without `retry_on_conflict` OpenSearch
+/// does not re-read and retry. The action line has to carry it.
+TEST_F(IndexerConnectorSyncTest, ScriptedUpdateActionCarriesRetryOnConflict)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndex("1", "test-index", R"({"field":"value1"})", "5");
+    connector.flush();
+
+    ASSERT_EQ(receivedData.size(), 1u);
+    const auto& body = receivedData.front();
+    const auto actionLine = nlohmann::json::parse(body.substr(0, body.find('\n')));
+    ASSERT_TRUE(actionLine.contains("update")) << "a versioned bulkIndex is expected to be a scripted update";
+    ASSERT_TRUE(actionLine["update"].contains("retry_on_conflict"))
+        << "the update action has no retry_on_conflict, so a concurrent write loses this document's data: "
+        << actionLine.dump();
+    EXPECT_GT(actionLine["update"]["retry_on_conflict"].get<int>(), 0);
+}
+
+/// For an `index` action with external versioning a 409 means "this version is already stored" and is safe
+/// to accept (BulkResponseValidationVersionConflictAccepted). For a scripted `update` item the same 409 means the
+/// write was REJECTED and this item's data is NOT stored. Once the retries are exhausted it must fail the flush so
+/// the agent is not told `200` and sends the change again.
+TEST_F(IndexerConnectorSyncTest, BulkResponseUpdateItemVersionConflictIsAFailure)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [](auto /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                // The shape OpenSearch returns when a concurrent write moved the document under a scripted update.
+                std::string conflictResponse = R"({
+                    "took": 10,
+                    "errors": true,
+                    "items": [
+                        {"update": {"_id": "1", "status": 200, "result": "updated"}},
+                        {"update": {
+                            "_id": "2",
+                            "status": 409,
+                            "error": {
+                                "type": "version_conflict_engine_exception",
+                                "reason": "[2]: version conflict, required seqNo [7], primary term [1]. current document has seqNo [8] and primary term [1]"
+                            }
+                        }}
+                    ]
+                })";
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(conflictResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(conflictResponse));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndex("1", "test-index", R"({"field":"value1"})", "5");
+    connector.bulkIndex("2", "test-index", R"({"field":"value2"})", "5");
+
+    EXPECT_THROW(connector.flush(), IndexerConnectorException)
+        << "a 409 on a scripted update item means its data was NOT stored, it cannot be counted as success";
+}
+
 TEST_F(IndexerConnectorSyncTest, BulkResponseValidationRealFailure)
 {
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
