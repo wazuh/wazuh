@@ -165,7 +165,8 @@ TEST_F(InstallPathsTest, ScanVdHandlerDefaultReachesRelativeSocket)
 
     wazuh::metrics::Manager metricsManager;
     ScanVdMetrics metrics = makeScanVdMetrics(metricsManager);
-    ScanVdHandlerImpl handler {std::make_shared<VdClient>(remoted::test::makeVdHttpClient()), metrics};
+    const auto httpClient = remoted::test::makeVdHttpClient();
+    ScanVdHandlerImpl handler {std::make_shared<VdClient>(httpClient), httpClient, metrics};
 
     ScanVdResponse response {};
     handler.handleVdScan(7, 100, [&response](const ScanVdResponse& r) { response = r; });
