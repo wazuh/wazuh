@@ -17,6 +17,7 @@
 #include "fakeVdServer.hpp"
 #include "scanvd/scanVdHandler.hpp"
 #include "scanvd/scanVdMetrics.hpp"
+#include "vdHttpClient.hpp"
 
 #include <wazuh_metrics/manager.hpp>
 
@@ -36,6 +37,7 @@ using remoted::scanvd::ScanVdHandlerImpl;
 using remoted::scanvd::ScanVdMetrics;
 using remoted::test::FakeVdServer;
 using remoted::test::makeUniqueVdSocketPath;
+using remoted::test::makeVdHttpClient;
 
 namespace
 {
@@ -57,7 +59,7 @@ namespace
                      long writeTimeout = ScanVdHandlerImpl::VD_SCAN_WRITE_TIMEOUT_SECONDS)
             : socketPath(makeUniqueVdSocketPath(tag))
             , server(socketPath)
-            , vdClient(std::make_shared<VdClient>(socketPath, VDCLIENT_TTL, VDCLIENT_FAILURE_RETRY))
+            , vdClient(std::make_shared<VdClient>(makeVdHttpClient(), socketPath, VDCLIENT_TTL, VDCLIENT_FAILURE_RETRY))
             , metrics(makeScanVdMetrics(metricsManager))
             , handler(vdClient, metrics, socketPath, readTimeout, writeTimeout)
         {
@@ -203,7 +205,7 @@ TEST(ScanVdHandlerTest, AnUnreachableVdIsAnHonest503NotASilentDrop)
     auto server = std::make_unique<FakeVdServer>(socketPath);
     server->setOffset(100);
 
-    auto vdClient = std::make_shared<VdClient>(socketPath, 5s, VDCLIENT_FAILURE_RETRY);
+    auto vdClient = std::make_shared<VdClient>(makeVdHttpClient(), socketPath, 5s, VDCLIENT_FAILURE_RETRY);
     ASSERT_EQ(vdClient->getOffset(), 100u) << "prime the cache while the server is up";
 
     wazuh::metrics::Manager metricsManager;

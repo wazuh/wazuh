@@ -35,6 +35,7 @@
 #include "scanvd/scanVdHandler.hpp"
 #include "scanvd/scanVdMetrics.hpp"
 #include "testTlsServer.hpp"
+#include "vdHttpClient.hpp"
 
 #include <wazuh_metrics/manager.hpp>
 
@@ -151,8 +152,10 @@ namespace
             hashCache = std::make_shared<HashCache>(cfg);
             // Short TTL: ScanVdMismatchedOffsetReturns409OverRealHttp relies on a fresh query
             // rather than the real 30s default cache window.
-            vdClient = std::make_shared<remoted::common::VdClient>(
-                vdSocketPath, std::chrono::milliseconds {30}, std::chrono::milliseconds {30});
+            vdClient = std::make_shared<remoted::common::VdClient>(remoted::test::makeVdHttpClient(),
+                                                                   vdSocketPath,
+                                                                   std::chrono::milliseconds {30},
+                                                                   std::chrono::milliseconds {30});
 
             controlHandler = std::make_unique<ControlHandler>(
                 registry, wdbClient, taskClient, hashCache, vdClient, controlMetrics, cfg);

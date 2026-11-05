@@ -20,6 +20,7 @@
 #include "fakeVdServer.hpp"
 #include "scanvd/scanVdHandler.hpp"
 #include "scanvd/scanVdMetrics.hpp"
+#include "vdHttpClient.hpp"
 
 #include <wazuh_metrics/manager.hpp>
 
@@ -148,7 +149,7 @@ TEST_F(InstallPathsTest, VdClientDefaultReachesRelativeSocket)
     FakeVdServer server {paths::kVdSocket};
     server.setOffset(4242);
 
-    VdClient client {};
+    VdClient client {remoted::test::makeVdHttpClient()};
 
     EXPECT_EQ(client.getOffset(), 4242u);
     EXPECT_EQ(server.offsetRequestCount(), 1u) << "the default socket must be the relative kVdSocket under the cwd";
@@ -164,7 +165,7 @@ TEST_F(InstallPathsTest, ScanVdHandlerDefaultReachesRelativeSocket)
 
     wazuh::metrics::Manager metricsManager;
     ScanVdMetrics metrics = makeScanVdMetrics(metricsManager);
-    ScanVdHandlerImpl handler {std::make_shared<VdClient>(), metrics};
+    ScanVdHandlerImpl handler {std::make_shared<VdClient>(remoted::test::makeVdHttpClient()), metrics};
 
     ScanVdResponse response {};
     handler.handleVdScan(7, 100, [&response](const ScanVdResponse& r) { response = r; });
