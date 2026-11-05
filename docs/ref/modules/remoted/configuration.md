@@ -1462,11 +1462,25 @@ Seconds between refreshes of the cached shared-group listing used to answer `/co
 
 - **Default value:** `60`
 - **Allowed values:** Integer from `1` to `3600`
-- **Note:** This is the propagation latency an agent sees for a change of group **membership**
-  only. Group **content** travels on a different path: the merged-groups watcher picks up a
-  changed `merged.mg` on inotify plus a poll, so content propagates in seconds while membership
-  waits out this interval. At the defaults that is roughly 60 s against 10 s, and at the maximum
-  of `3600` the two differ by about two orders of magnitude.
+- **Note:** For a change of group **membership** this is the backstop, not the usual latency.
+  When a membership change is written to the node's `wazuh-manager-db`, remoted is told which
+  agents changed (`POST /_internal/agents/groups` on its [admin socket](README.md#local-admin-socket)):
+  on a cluster worker by the cluster daemon, after it applies the master's changes; on a master or
+  a standalone node by the server API, after it assigns or removes a group, and after it deletes a
+  group. remoted then stops trusting those agents' cached memberships: their next `/control` reads
+  the database, and until it does, a configuration download for them is refused. This keeps the
+  nodes behind a per-request load balancer from handing an agent its previous groups'
+  configuration after a change. The notification is best effort. When it is lost (remoted down or
+  restarting, its admin socket unreachable, a worker's publication queue full), and for changes
+  nothing announces (a group assigned at enrollment, or a group directory removed by hand, which
+  `wazuh-manager-modulesd` applies to the database on its own), the cached membership is trusted
+  until it is this old. On a worker the change reaches the node with the next agent-groups
+  synchronization from the master, so for up to that long the worker still answers with the
+  previous membership.
+- **Note:** Group **content** travels on a different path: the merged-groups watcher picks up a
+  changed `merged.mg` on inotify plus a poll, so content propagates in seconds. When a membership
+  change is not announced, the two differ by this interval: roughly 60 s against 10 s at the
+  defaults, about two orders of magnitude at the maximum of `3600`.
 - **Note:** Editing `var/multigroups/<hash>/merged.mg` by hand is not a way to reproduce this:
   `remoted.shared_reload` (default `10`) regenerates the file and reverts the edit.
 - **Note:** A refresh that fails does not mark the cached membership fresh, so while wazuh-db is
@@ -1475,7 +1489,10 @@ Seconds between refreshes of the cached shared-group listing used to answer `/co
   the cache fresh on failure would stop it, at the cost of serving membership that can be a full
   `control_groups_refresh_interval` stale with no sign of it, which is the worse trade for a
   security product. The retry rate is visible as `remoted.control.wdb.*` in
-  [`GET /metrics`](metrics.md#control-plane--remotedcontrol).
+  [`GET /metrics`](metrics.md#control-plane--remotedcontrol). A membership remoted was told is no
+  longer true (see above) is never served this way: while the refresh fails, that agent's notify
+  is answered `503` and the agent retries. The same `503` answers a `startup` or `notify` whose
+  read was overtaken by such a notification, since the answer may predate the change.
 
 #### remoted.control_wdb_request_connections
 

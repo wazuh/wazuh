@@ -303,6 +303,119 @@ class RemotedHTTPClient:
         except ValueError as exc:
             raise WazuhInternalError(2032, extra_message=f'Invalid JSON in remoted admin response: {exc}')
 
+    def post_agent_groups(self, publication: dict) -> dict:
+        """Tell remoted which agents' group memberships were just written to the local wazuh-manager-db.
+
+        The synchronous twin of `AsyncRemotedHTTPClient.post_agent_groups`, for the framework's group writers
+        on a master or a standalone node.
+
+        Parameters
+        ----------
+        publication : dict
+            `{"invalidate": [1, 5]}`: remoted withdraws the cached memberships of the agents it tracks and
+            reads their groups from the database on their next request. Other keys are ignored.
+
+        Returns
+        -------
+        dict
+            remoted's per-agent counts: `invalidated` and `skipped` (agents it does not track).
+
+        Raises
+        ------
+        RemotedAdminHTTPError
+            remoted answered an error status (error 2029): `400` for a malformed publication, `404` when
+            that remoted predates the route, `503` while it is stopping.
+        """
+        try:
+            response = self._client.post(
+                url=f'{self.API_URL}/_internal/agents/groups',
+                json=publication,
+                headers={'Content-Type': 'application/json'},
+            )
+        except httpx.TimeoutException as exc:
+            raise WazuhInternalError(2030, extra_message=str(exc))
+        except httpx.ConnectError as exc:
+            raise WazuhInternalError(2031, extra_message=str(exc))
+        except httpx.RequestError as exc:
+            raise WazuhError(2013, extra_message=str(exc))
+
+        if response.is_error:
+            raise RemotedAdminHTTPError(response.status_code, extra_message=response.text)
+
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise WazuhInternalError(2032, extra_message=f'Invalid JSON in remoted admin response: {exc}')
+
+
+# Seconds a membership publication may take end to end: remoted answers it inline from memory, so
+# anything slower means it is not answering, and the publisher drops the publication.
+REMOTED_PUBLISH_TIMEOUT = 5
+
+
+class AsyncRemotedHTTPClient:
+    """Asynchronous HTTP client for remoted's local admin unix socket.
+
+    The cluster daemon's event loop cannot block on remoted, so the membership publications it sends
+    after applying agent groups (`POST /_internal/agents/groups`) go through this client. Same socket
+    and error mapping as `RemotedHTTPClient`.
+    """
+
+    API_URL = 'http://localhost'
+
+    def __init__(self, timeout: float = REMOTED_PUBLISH_TIMEOUT):
+        self.socket_path = str(common.REMOTED_ADMIN_SOCKET)
+        try:
+            transport = httpx.AsyncHTTPTransport(uds=self.socket_path)
+            self._client = httpx.AsyncClient(transport=transport, timeout=timeout)
+        except Exception as exc:
+            raise WazuhInternalError(2028, extra_message=str(exc)) from exc
+
+    async def close(self) -> None:
+        """Close the remoted admin HTTP client."""
+        await self._client.aclose()
+
+    async def post_agent_groups(self, publication: dict) -> dict:
+        """Tell remoted which agents' group memberships were just written to the local wazuh-manager-db.
+
+        Parameters
+        ----------
+        publication : dict
+            `{"invalidate": [1, 5]}`: remoted withdraws the cached memberships of the agents it tracks and
+            reads their groups from the database on their next request. Other keys are ignored.
+
+        Returns
+        -------
+        dict
+            remoted's per-agent counts: `invalidated` and `skipped` (agents it does not track).
+
+        Raises
+        ------
+        RemotedAdminHTTPError
+            remoted answered an error status (error 2029): `400` for a malformed publication, `404` when
+            that remoted predates the route, `503` while it is stopping.
+        """
+        try:
+            response = await self._client.post(
+                url=f'{self.API_URL}/_internal/agents/groups',
+                json=publication,
+                headers={'Content-Type': 'application/json'},
+            )
+        except httpx.TimeoutException as exc:
+            raise WazuhInternalError(2030, extra_message=str(exc))
+        except httpx.ConnectError as exc:
+            raise WazuhInternalError(2031, extra_message=str(exc))
+        except httpx.RequestError as exc:
+            raise WazuhError(2013, extra_message=str(exc))
+
+        if response.is_error:
+            raise RemotedAdminHTTPError(response.status_code, extra_message=response.text)
+
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise WazuhInternalError(2032, extra_message=f'Invalid JSON in remoted admin response: {exc}')
+
 
 class WazuhDBStatusHTTPClient:
     """Synchronous HTTP client for wazuh-db's unix socket, for status reporting only.

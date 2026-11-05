@@ -1110,3 +1110,148 @@ TEST(ControlHandlerTest, NotifyWithMalformedHostReturns400WithoutWriting)
     std::this_thread::sleep_for(50ms);
     EXPECT_TRUE(wdb->commands().empty());
 }
+
+// =============================================================================
+// Membership invalidation (POST /_internal/agents/groups, issue #41159)
+// =============================================================================
+
+namespace
+{
+    HttpResponse runStartup(HandlerFixture& h, AgentId id)
+    {
+        StartupData startup;
+        startup.version = "5.0.0";
+        Waiter<HttpResponse> w;
+        h.handler->handleStartup(id, startup, [&](const HttpResponse& r) { w.complete(r); });
+        EXPECT_TRUE(w.wait(3000ms));
+        return w.value;
+    }
+
+    HttpResponse runNotify(HandlerFixture& h, AgentId id)
+    {
+        NotifyData data;
+        data.version = "5.0.0";
+        Waiter<HttpResponse> w;
+        h.handler->handleNotify(id, data, [&](const HttpResponse& r) { w.complete(r); });
+        EXPECT_TRUE(w.wait(3000ms));
+        return w.value;
+    }
+} // namespace
+
+TEST(ControlHandlerTest, NotifyAfterInvalidationRereadsWdbWithinRefreshInterval)
+{
+    // The node that answers /control after an agent's groups changed elsewhere must not keep
+    // handing out the previous membership for the whole refresh interval: an invalidation makes
+    // the very next notify read wazuh-db.
+    std::atomic<int> groupSet {1};
+    auto wdb = std::make_shared<WdbRouter>();
+    wdb->onSelectAgentGroup([&](const std::string&) -> std::string
+                            { return groupSet.load() == 1 ? "ok [{\"group\":\"g1\"}]" : "ok [{\"group\":\"g2\"}]"; });
+    HandlerFixture h(
+        wdb, [](const std::string&) { return "{\"tasks\":[]}"; }, [](Config& c) { c.groupsRefreshIntervalSec = 3600; });
+
+    ASSERT_EQ(runStartup(h, 1).status, 200);
+    groupSet.store(2);
+
+    // Fresh membership, no invalidation: served from the registry, still g1.
+    auto r1 = runNotify(h, 1);
+    ASSERT_EQ(r1.status, 200);
+    EXPECT_EQ(nlohmann::json::parse(r1.body)["agent"]["groups"][0], "g1");
+
+    EXPECT_EQ(h.registry->invalidateGroups(1), AgentRegistry::PushOutcome::Invalidated);
+
+    auto r2 = runNotify(h, 1);
+    ASSERT_EQ(r2.status, 200);
+    EXPECT_EQ(nlohmann::json::parse(r2.body)["agent"]["groups"][0], "g2");
+    const auto entry = h.registry->get(1);
+    ASSERT_TRUE(entry);
+    EXPECT_NE(entry->groupsRefreshedAtSec, 0U);
+    ASSERT_EQ(entry->groups.size(), 1U);
+    EXPECT_EQ(entry->groups[0], "g2");
+}
+
+TEST(ControlHandlerTest, NotifyAfterInvalidationReturns503OnWdbErrorInsteadOfTheWithdrawnGroups)
+{
+    // An invalidated membership is one this node was told is no longer true: serving it while
+    // wazuh-db is down is exactly what sends an agent back to its previous groups.
+    std::atomic<bool> wdbDown {false};
+    auto wdb = std::make_shared<WdbRouter>();
+    wdb->onSelectAgentGroup([&](const std::string&) -> std::string
+                            { return wdbDown.load() ? "err some failure" : "ok [{\"group\":\"g1\"}]"; });
+    HandlerFixture h(
+        wdb, [](const std::string&) { return "{\"tasks\":[]}"; }, [](Config& c) { c.groupsRefreshIntervalSec = 3600; });
+
+    ASSERT_EQ(runStartup(h, 1).status, 200);
+    ASSERT_EQ(h.registry->invalidateGroups(1), AgentRegistry::PushOutcome::Invalidated);
+    wdbDown.store(true);
+
+    const auto r = runNotify(h, 1);
+    EXPECT_EQ(r.status, 503);
+    EXPECT_NE(r.body.find("dependency_unavailable"), std::string::npos);
+
+    const auto entry = h.registry->get(1);
+    ASSERT_TRUE(entry);
+    EXPECT_EQ(entry->groupsRefreshedAtSec, 0U) << "a failed read must not re-establish the withdrawn membership";
+}
+
+TEST(ControlHandlerTest, NotifyReadOvertakenByAnInvalidationIsDiscarded)
+{
+    // The read is issued, then the cluster daemon writes new groups and invalidates the agent,
+    // and only then does the (now stale) answer arrive. It must not be stored as fresh.
+    std::atomic<bool> invalidateDuringRead {false};
+    std::atomic<AgentRegistry*> registry {nullptr};
+    auto wdb = std::make_shared<WdbRouter>();
+    wdb->onSelectAgentGroup(
+        [&](const std::string&) -> std::string
+        {
+            if (invalidateDuringRead.load())
+            {
+                registry.load()->invalidateGroups(1);
+            }
+            return "ok [{\"group\":\"g1\"}]";
+        });
+    HandlerFixture h(
+        wdb, [](const std::string&) { return "{\"tasks\":[]}"; }, [](Config& c) { c.groupsRefreshIntervalSec = 3600; });
+    registry.store(h.registry.get());
+
+    ASSERT_EQ(runStartup(h, 1).status, 200);
+    ASSERT_EQ(h.registry->invalidateGroups(1), AgentRegistry::PushOutcome::Invalidated);
+    invalidateDuringRead.store(true);
+
+    const auto r = runNotify(h, 1);
+    EXPECT_EQ(r.status, 503);
+    const auto entry = h.registry->get(1);
+    ASSERT_TRUE(entry);
+    EXPECT_EQ(entry->groupsRefreshedAtSec, 0U);
+
+    // The retry, with nothing overtaking it, establishes the membership again.
+    invalidateDuringRead.store(false);
+    EXPECT_EQ(runNotify(h, 1).status, 200);
+    EXPECT_NE(h.registry->get(1)->groupsRefreshedAtSec, 0U);
+}
+
+TEST(ControlHandlerTest, StartupReadOvertakenByAnInvalidationIsDiscarded)
+{
+    std::atomic<bool> invalidateDuringRead {false};
+    std::atomic<AgentRegistry*> registry {nullptr};
+    auto wdb = std::make_shared<WdbRouter>();
+    wdb->onSelectAgentGroup(
+        [&](const std::string&) -> std::string
+        {
+            if (invalidateDuringRead.load())
+            {
+                registry.load()->invalidateGroups(1);
+            }
+            return "ok [{\"group\":\"g1\"}]";
+        });
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
+    registry.store(h.registry.get());
+
+    ASSERT_EQ(runStartup(h, 1).status, 200);
+    invalidateDuringRead.store(true);
+
+    const auto r = runStartup(h, 1);
+    EXPECT_EQ(r.status, 503);
+    EXPECT_NE(r.body.find("dependency_unavailable"), std::string::npos);
+    EXPECT_EQ(h.registry->get(1)->groupsRefreshedAtSec, 0U);
+}

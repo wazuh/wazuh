@@ -25,6 +25,7 @@
 #include <string>
 #include <thread>
 
+#include "admin/agentGroupsRoute.hpp"
 #include "auth/keystore.hpp"
 #include "auth/passwordKeySource.hpp"
 #include "auth/tokenKeySource.hpp"
@@ -136,8 +137,9 @@ constexpr int REMOTED_MODULE_DEFAULT_MAX_DEFERRED {128};
 // remoted_module_config_t::max_requests_per_agent <= 0). An honest agent peaks at 5.
 constexpr int REMOTED_MODULE_DEFAULT_MAX_REQUESTS_PER_AGENT {6};
 
-// Fixed path of the module's LOCAL admin socket (GET / + GET /metrics + GET /status + GET /tls). RELATIVE on
-// purpose: remoted's cwd is the installation directory, so the bind lands at $WAZUH_HOME/queue/sockets/.
+// Fixed path of the module's LOCAL admin socket (GET / + GET /metrics + GET /status + GET /tls + POST
+// /_internal/agents/groups). RELATIVE on purpose: remoted's cwd is the installation directory, so the
+// bind lands at $WAZUH_HOME/queue/sockets/.
 // Named "-admin" (not "-http"/"-stats"): remoted's HTTP identity is the public listener, this is
 // a management plane, and it must not collide with remcom's legacy "queue/sockets/remote.sock". No
 // config knob -- internal options only carry ints, the same criterion that fixed inventory
@@ -1465,6 +1467,26 @@ private:
                 },
                 wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Liveness});
 
+            // POST /_internal/agents/groups: the agents whose memberships were just written to this
+            // node's wazuh-db (by clusterd after each agent-groups apply on a worker, by the framework's
+            // group writers on a master or standalone node), invalidated in the SAME AgentRegistry
+            // /control and /download use -- through the weak target the registry pull already holds,
+            // repointed by this start()'s startHttpServer(), so ownership does not change and a
+            // publication racing teardown is answered 503. Control class, the first on this plane: it
+            // is small-bodied and other daemons depend on it, so data-plane pressure never sheds it.
+            // Inline: validation plus O(batch) registry updates, no I/O.
+            std::weak_ptr<remoted::control::AgentRegistry> registry;
+            {
+                std::lock_guard<std::mutex> lock {m_controlDiagMutex};
+                registry = m_registryDiagTarget;
+            }
+            m_adminServer->addRoute(wazuh::uds_http::Method::Post,
+                                    remoted::admin::AGENT_GROUPS_ROUTE_PATH,
+                                    remoted::admin::makeAgentGroupsHandler(
+                                        std::move(registry), remoted::control::makePushMetrics(*m_metricsManager)),
+                                    wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Control,
+                                                                   remoted::admin::kAgentGroupsMaxBodyBytes});
+
             wazuh::uds_http::UdsHttpServerConfig config;
             config.socketPath = REMOTED_MODULE_ADMIN_SOCKET_PATH;
             // Identity: a NEW server with no prior wire contract, so the Server: header carries
@@ -1483,7 +1505,8 @@ private:
 
             LOGFN_INFO(
                 moduleLogFn(),
-                "remoted admin server listening on '%s' (routes: GET /, GET /metrics, GET /status, and GET /tls).",
+                "remoted admin server listening on '%s' (routes: GET /, GET /metrics, GET /status, GET /tls, and "
+                "POST /_internal/agents/groups).",
                 REMOTED_MODULE_ADMIN_SOCKET_PATH);
         }
         catch (const std::exception& e)

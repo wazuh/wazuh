@@ -20,7 +20,7 @@ All under `/var/wazuh-manager/queue/sockets/`:
 
 | Socket | Owner | Used for |
 |---|---|---|
-| `remote-admin-http.sock` | `remoted_module` | `GET /`, `/metrics`, `/status`, `/tls` — [Local admin socket](README.md#local-admin-socket) |
+| `remote-admin-http.sock` | `remoted_module` | `GET /`, `/metrics`, `/status`, `/tls`; `POST /_internal/agents/groups` — [Local admin socket](README.md#local-admin-socket) |
 | `remote.sock` | remoted (C) | `getstats`, `getconfig`, legacy agent requests — [Local request socket](README.md#local-request-socket) |
 | `engine-ingest-http.sock` | engine | where both channels post event batches (`POST /events/enriched`) — [Event Protocol](event-protocol.md) |
 

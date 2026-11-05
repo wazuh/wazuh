@@ -402,6 +402,9 @@ task-manager clients.
 | `remoted.control.task_fetch` | counter | count | Pending-task fetches from the task manager that succeeded | — |
 | `remoted.control.task_fetch_error` | counter | count | Pending-task fetches that failed | [`remoted.control_tm_deadline`](configuration.md#remotedcontrol_tm_deadline), [`remoted.control_tm_concurrency`](configuration.md#remotedcontrol_tm_concurrency), [`remoted.control_tm_max_queue_size`](configuration.md#remotedcontrol_tm_max_queue_size) |
 | `remoted.control.registry.agents` | gauge (pull) | agents | Agents currently tracked by the control registry | diagnostic — the registry TTL (6 h) and eviction cadence (5 min) are compile-time constants, not settings |
+| `remoted.control.registry.push.invalidated` | counter | agents | Agents whose cached membership a `POST /_internal/agents/groups` invalidated, so their next `/control` reads wazuh-db | [`remoted.control_groups_refresh_interval`](configuration.md#remotedcontrol_groups_refresh_interval) |
+| `remoted.control.registry.push.skipped` | counter | agents | Agents named in an invalidation that this node does not track (nothing is created) | diagnostic |
+| `remoted.control.registry.push.rejected` | counter | count | Invalidations refused whole: a malformed body (`400`) or remoted stopping (`503`) | diagnostic — a non-zero rate outside restarts is a caller bug |
 
 There is no counter for keepalives the throttle suppressed, and none is needed: on a fleet in
 steady state the control plane's wazuh-db traffic is almost entirely keepalive writes, so the
@@ -482,9 +485,10 @@ never charges the bucket, so scraping cannot cost an agent its enrollment.
 ### Admin transport — `remoted.admin.server.*`
 
 The admin socket's own transport diagnostics (the server dogfooding itself). **Entirely
-diagnostic**: its thread count, connection cap and socket path are fixed by design. All four admin
-routes (`/`, `/metrics`, `/status`, `/tls`) are liveness-class, so the budget lanes, the data/control session lanes and
-`rejected.budget` with them are structurally zero. What moves is `sessions.live`,
+diagnostic**: its thread count, connection cap and socket path are fixed by design. The four GET
+routes (`/`, `/metrics`, `/status`, `/tls`) are liveness-class and the membership invalidation
+(`POST /_internal/agents/groups`) is the one control-class route, so the budget lanes, the data
+session lanes and `rejected.budget` with them are structurally zero. What moves is `sessions.live`,
 `sessions.liveness` and the rest of the `rejected.*` family; the full set is published so every
 `uds_http_server` consumer reports the same vocabulary.
 
