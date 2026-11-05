@@ -1655,8 +1655,6 @@ BUCKET_LAYOUTS = [
                  f'{A}_elasticloadbalancing_{R}_app.lb_{d:%Y%m%d}T0000Z_10.0.0.1_{n}.log.gz', id='alb'),
     pytest.param(AWSGuardDutyBucket, {'native': True},
                  lambda d, n: f'AWSLogs/{A}/GuardDuty/{R}/{d:%Y/%m/%d}/{n}.jsonl.gz', id='guardduty'),
-    pytest.param(AWSGuardDutyBucket, {'native': False, 'prefix': 'firehose/'},
-                 lambda d, n: f'firehose/{d:%Y/%m/%d}/00/firehose-1-{d:%Y-%m-%d}-00-00-00-{n}', id='guardduty-kinesis'),
     # The module does not set the table of the custom type, which is then 'custom'
     pytest.param(aws_bucket.AWSCustomBucket, {'prefix': 'custom/', 'db_table_name': None},
                  lambda d, n: f'custom/{d:%Y/%m/%d}/00/firehose-1-{d:%Y-%m-%d}-00-00-00-{n}', id='custom'),

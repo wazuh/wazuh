@@ -66,7 +66,7 @@ jobs:
       id-token: write
       contents: read
     if: (github.event_name == 'pull_request' && !github.event.pull_request.draft) || inputs.architecture == 'intel64'
-    runs-on: macos-14-large
+    runs-on: macos-15-large
     timeout-minutes: 90
     name: Build PKG package (intel64)
     outputs:
@@ -150,7 +150,7 @@ jobs:
       id-token: write
       contents: read
     needs: build-macos-intel64
-    runs-on: macos-14-large
+    runs-on: macos-15-large
     timeout-minutes: 30
     name: Test PKG package (intel64)
 
@@ -327,7 +327,7 @@ jobs:
       id-token: write
       contents: read
     if: (github.event_name == 'pull_request' && !github.event.pull_request.draft) || inputs.architecture == 'arm64'
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 90
     name: Build PKG package (arm64)
     outputs:
@@ -411,7 +411,7 @@ jobs:
       id-token: write
       contents: read
     needs: build-macos-arm64
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 30
     name: Test PKG package (arm64)
 

@@ -32,11 +32,17 @@
  *   failed. Counting those two notices against each other underflowed on every failed handshake
  *   (a port scan, plain HTTP, a rejected client certificate) and never saw a stalled one at all.
  *   Here a connection is counted from the moment its handshake starts -- when it already holds its
- *   slot -- and only a connection that was counted is uncounted, once.
+ *   slot -- until RESTinio's closed notice for its id.
  *
- * Keys are RESTinio connection ids: unique per server run. They restart with a new server, which is
- * why start() calls reset(): no notice of the previous run can arrive once it has stopped, because
- * stop() joins the I/O threads first.
+ * Each handshake is released through the Share that beginHandshake() returned for it, never through
+ * the connection id: a share releases its own handshake once, whatever happened to the id. Two
+ * connections that ever shared an id -- RESTinio's own connection factory could give two connections
+ * created at the same moment the same one -- each count against their address and each give their
+ * unit back. Keyed by id, the second handshake used to keep one slot of its address until remoted
+ * restarted. The transport now also replaces that factory with one that takes its ids from
+ * connectionIdSource.hpp, so the ids that drive the connection level are distinct for every connection
+ * of a server run. They restart with a new server, which is why start() calls reset(): no notice of the
+ * previous run can arrive once it has stopped, because stop() joins the I/O threads first.
  *
  * Thread safety: every method may be called from any I/O thread; one mutex guards the tables. The
  * cost is one lock per connection event, never per request.
@@ -65,6 +71,40 @@ namespace remoted::http
     {
     public:
         /**
+         * @brief One handshake in progress, counted against its address until released.
+         *
+         * Move-only. release() gives the handshake's unit back, once; the destructor does it if
+         * nobody did. An empty share (default-constructed, refused, released or moved from) releases
+         * nothing. The ledger must outlive its shares. Not thread-safe on its own: one owner at a time.
+         */
+        class Share final
+        {
+        public:
+            Share() noexcept = default;
+            Share(Share&& other) noexcept;
+            Share& operator=(Share&& other) noexcept;
+            Share(const Share&) = delete;
+            Share& operator=(const Share&) = delete;
+            ~Share();
+
+            /// Whether this share still holds a handshake.
+            explicit operator bool() const noexcept
+            {
+                return m_ledger != nullptr;
+            }
+
+            /// The handshake ended, successfully or not. A second call is a no-op.
+            void release() noexcept;
+
+        private:
+            friend class HandshakeLedger;
+            Share(HandshakeLedger& ledger, std::uint64_t ticket) noexcept;
+
+            HandshakeLedger* m_ledger {nullptr};
+            std::uint64_t m_ticket {0};
+        };
+
+        /**
          * @brief Sets the per-source cap on connections in the handshake. 0 disables it.
          *
          * Takes effect for the handshakes that start afterwards; the ones in progress keep counting.
@@ -73,6 +113,8 @@ namespace remoted::http
 
         /**
          * @brief Forgets every connection (the counters are kept). Called when a new server run starts.
+         *
+         * A share taken before the reset releases nothing afterwards.
          */
         void reset();
 
@@ -84,22 +126,19 @@ namespace remoted::http
          * @param connectionId RESTinio's id of the connection.
          * @param source       The peer address, as text. Empty when it could not be read (the peer is
          *                     already gone); such a connection is never refused.
-         * @return false when the source already has the maximum number of handshakes in progress:
-         *         the caller must close the connection. It is then NOT counted as handshaking.
+         * @return The share of this handshake, which the caller keeps until the handshake ends. Empty
+         *         when the source already has the maximum number of handshakes in progress: the caller
+         *         must close the connection, which is then NOT counted as handshaking.
          */
-        bool beginHandshake(std::uint64_t connectionId, const std::string& source);
-
-        /**
-         * @brief The handshake of a connection ended, successfully or not. Idempotent.
-         */
-        void finishHandshake(std::uint64_t connectionId);
+        [[nodiscard]] Share beginHandshake(std::uint64_t connectionId, const std::string& source);
 
         /// The deadline closed a handshake.
         void recordTimeout();
 
         /**
-         * @brief The connection closed. Uncounts it if it was counted; a second call, or a call for a
-         *        connection that never began a handshake, is a no-op.
+         * @brief The connection closed. Uncounts it, and releases its handshake if it closed in the
+         *        middle of it; a second call, or a call for a connection that never began a handshake,
+         *        is a no-op.
          */
         void closed(std::uint64_t connectionId);
 
@@ -108,18 +147,24 @@ namespace remoted::http
     private:
         struct Entry
         {
-            std::string source;
-            bool handshaking {false};
+            std::uint64_t ticket {0}; ///< The connection's handshake while it may be in progress; 0 when none.
         };
 
-        /// Caller holds m_mutex. Releases the entry's per-source share if it is still handshaking.
-        void finishLocked(Entry& entry);
+        /// Caller holds m_mutex. Gives the handshake's unit back if it is still in progress.
+        void releaseLocked(std::uint64_t ticket);
+
+        /// Called by Share.
+        void release(std::uint64_t ticket);
 
         mutable std::mutex m_mutex;
         std::size_t m_maxPerSource {0};
+        /// Every open connection, by RESTinio id.
         std::unordered_map<std::uint64_t, Entry> m_connections;
+        /// Every handshake in progress, by ticket, with its source. Tickets are never reused, not even
+        /// across reset(), so a share can only ever release the handshake it was taken for.
+        std::unordered_map<std::uint64_t, std::string> m_handshakes;
         std::unordered_map<std::string, std::size_t> m_perSource;
-        std::size_t m_handshaking {0};
+        std::uint64_t m_nextTicket {1};
         std::uint64_t m_timeoutsTotal {0};
         std::uint64_t m_rejectedPerSourceTotal {0};
     };

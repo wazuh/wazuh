@@ -13,6 +13,7 @@
 #include "caPublicationRecord.hpp"
 #include "caRecordEvents.hpp"
 #include "common/logThrottle.hpp"
+#include "connectionIdSource.hpp"
 #include "guardedTlsSocket.hpp"
 #include "handshakeLedger.hpp"
 #include "httpServerConfig.hpp"
@@ -269,8 +270,9 @@ namespace
      * connection_t::init() in restinio/impl/connection.hpp). The verdict is therefore recorded
      * before any byte of a request can be read from that connection.
      *
-     * Keys are RESTinio connection ids: a monotonically increasing std::uint64_t, so an id is
-     * never reused and a stale entry can never refuse a different connection.
+     * Keys are RESTinio connection ids, distinct for every connection of a server run because the
+     * connection factory below takes them from an atomic source (RESTinio's own could give two
+     * connections the same one): a stale entry can never refuse a different connection.
      */
     class RejectedConnections
     {
@@ -437,7 +439,67 @@ namespace
         // is Full, and RESTinio skips the notification entirely when none is set.
         using connection_state_listener_t = FullModeListener;
     };
+} // namespace
 
+namespace restinio::impl
+{
+    /**
+     * @brief RESTinio's connection factory for ServerTraits, with ids that are distinct per server run.
+     *
+     * RESTinio's own factory (restinio/impl/connection.hpp) numbers connections with a plain
+     * post-increment, called on the acceptor's executor -- the io_context, not a strand. With more than
+     * one I/O thread two connections created at the same moment can get the same id, and everything
+     * keyed by it (the handshake ledger, the connection level, the verification_mode=full verdicts)
+     * goes wrong: the ledger leaked a handshake slot of the address for good. This is RESTinio
+     * 0.7.10's factory with the ids taken from an atomic source instead, so the accepts stay concurrent.
+     *
+     * It must be declared before anything instantiates http_server_t<ServerTraits> (start() asserts it
+     * is the one in use). Re-check it, with guardedTlsSocket.hpp's customization points, when RESTinio
+     * is upgraded: a change to the primary template's constructor or create_new_connection() breaks
+     * the build here.
+     */
+    template<>
+    class connection_factory_t<ServerTraits>
+    {
+    public:
+        using logger_t = ServerTraits::logger_t;
+        using stream_socket_t = ServerTraits::stream_socket_t;
+        using lifetime_monitor_t = connection_count_limit_types<ServerTraits>::lifetime_monitor_t;
+
+        /// Checked by start(): the build fails if RESTinio's primary template is used instead.
+        static constexpr bool uniqueConnectionIds = true;
+
+        connection_factory_t(connection_settings_handle_t<ServerTraits> connectionSettings,
+                             std::unique_ptr<socket_options_setter_t> socketOptionsSetter)
+            : m_connectionSettings {std::move(connectionSettings)}
+            , m_socketOptionsSetter {std::move(socketOptionsSetter)}
+        {
+        }
+
+        auto
+        create_new_connection(stream_socket_t socket, endpoint_t remoteEndpoint, lifetime_monitor_t lifetimeMonitor)
+        {
+            {
+                socket_options_t options {socket.lowest_layer()};
+                (*m_socketOptionsSetter)(options);
+            }
+
+            return std::make_shared<connection_t<ServerTraits>>(m_ids.next(),
+                                                                std::move(socket),
+                                                                m_connectionSettings,
+                                                                std::move(remoteEndpoint),
+                                                                std::move(lifetimeMonitor));
+        }
+
+    private:
+        remoted::http::ConnectionIdSource m_ids;
+        connection_settings_handle_t<ServerTraits> m_connectionSettings;
+        std::unique_ptr<socket_options_setter_t> m_socketOptionsSetter;
+    };
+} // namespace restinio::impl
+
+namespace
+{
     using ServerHandle = restinio::running_server_handle_t<ServerTraits>;
 
     // Map the neutral verb to a RESTinio method matcher.
@@ -1989,6 +2051,10 @@ namespace remoted::http
                                           .max_field_value_size(config.maxHeaderValueSize)
                                           .max_field_count(config.maxHeaderCount)
                                           .max_body_size(config.maxBodySize));
+
+        // RESTinio's own factory would hand two connections created at the same moment the same id.
+        static_assert(restinio::impl::connection_factory_t<ServerTraits>::uniqueConnectionIds,
+                      "the server must use the connection factory with unique ids defined after ServerTraits");
 
         try
         {

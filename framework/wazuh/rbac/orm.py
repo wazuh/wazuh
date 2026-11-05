@@ -1822,14 +1822,12 @@ class UserRolesManager(RBACManager):
                 role = self.session.scalars(select(Roles).filter_by(id=role_id).limit(1)).first()
                 if role is None:
                     return SecurityError.ROLE_NOT_EXIST
-                if position is not None or \
-                        self.session.scalars(select(UserRoles).filter_by(user_id=user_id, role_id=role_id).limit(1)
-                                             ).first() is None:
+                # An existing link is refused whether or not a position is given: linking again never moves it
+                if self.session.scalars(select(UserRoles).filter_by(user_id=user_id, role_id=role_id).limit(1)
+                                        ).first() is None:
                     if position is not None and \
                             self.session.scalars(select(UserRoles).filter_by(user_id=user_id, level=position).limit(1)
-                                                 ).first() and \
-                            self.session.scalars(select(UserRoles).filter_by(user_id=user_id, role_id=role_id).limit(1)
-                                                 ).first() is None:
+                                                 ).first():
                         user_roles = [row for row in self.session.query(
                             UserRoles).filter(UserRoles.user_id == user_id, UserRoles.level >= position
                                               ).order_by(UserRoles.level).all()]
@@ -1984,15 +1982,13 @@ class RolesPoliciesManager(RBACManager):
                 policy = self.session.scalars(select(Policies).filter_by(id=policy_id).limit(1)).first()
                 if policy is None:
                     return SecurityError.POLICY_NOT_EXIST
-                if position is not None or self.session.scalars(
+                # An existing link is refused whether or not a position is given: linking again never moves it
+                if self.session.scalars(
                         select(RolesPolicies).filter_by(role_id=role_id, policy_id=policy_id).limit(1)).first() is None:
                     if position is not None and \
                             self.session.scalars(
                                 select(RolesPolicies).filter_by(role_id=role_id, level=position).limit(1)
-                            ).first() and \
-                            self.session.scalars(select(RolesPolicies).filter_by(role_id=role_id,
-                                                                                 policy_id=policy_id).limit(
-                                1)).first() is None:
+                            ).first():
                         role_policies = [row for row in self.session.query(
                             RolesPolicies).filter(RolesPolicies.role_id == role_id, RolesPolicies.level >= position
                                                   ).order_by(RolesPolicies.level).all()]

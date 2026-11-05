@@ -43,7 +43,7 @@ security_config_schema = {
     "type": "object",
     "additionalProperties": False,
     "properties": {
-        "auth_token_exp_timeout": {"type": "integer"},
+        "auth_token_exp_timeout": {"type": "integer", "maximum": 2147483647},
         "rbac_mode": {"type": "string", "enum": ["white", "black"]}
     }
 }

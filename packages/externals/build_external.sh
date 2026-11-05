@@ -133,7 +133,7 @@ elif command -v brew >/dev/null 2>&1; then
     # macOS: zip/unzip in base system. pkg-config is the one reliably absent.
     # libtool/autoconf/automake are needed by libplist's autoreconf step. On
     # macos-13 (Intel) brew lives under /usr/local and aclocal already searches
-    # there; on macos-14 (arm64) brew is /opt/homebrew so AC_PROG_LIBTOOL goes
+    # there; on macos-15 (arm64) brew is /opt/homebrew so AC_PROG_LIBTOOL goes
     # missing without ACLOCAL_PATH pointing at the brew aclocal dir.
     log "installing tooling via brew"
     for _pkg in ${BREW_TOOLS}; do
