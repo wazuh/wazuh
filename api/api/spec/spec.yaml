@@ -4875,10 +4875,16 @@ paths:
       tags:
         - Agents
       summary: 'Restart agents in group'
-      description: 'Restart all agents which belong to a given group'
+      description: "Restart all agents which belong to a given group. The group's agents are listed first, so
+      the caller needs `group:read` over the group and `agent:read` over its agents besides `agent:restart`.
+      Without `group:read` the request is refused (403); an agent the caller cannot read is left out of the
+      list, and when none is left the answer is a 200 with no affected items ('Restart command was not sent to
+      any agent')."
       operationId: api.controllers.agent_controller.restart_agents_by_group
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:restart'
+        - $ref: '#/x-rbac-catalog/actions/agent:read'
+        - $ref: '#/x-rbac-catalog/actions/group:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4924,10 +4930,16 @@ paths:
       tags:
         - Agents
       summary: 'Reload agents in group'
-      description: 'Reload all agents which belong to a given group'
+      description: "Reload all agents which belong to a given group. The group's agents are listed first, so
+      the caller needs `group:read` over the group and `agent:read` over its agents besides `agent:reload`.
+      Without `group:read` the request is refused (403); an agent the caller cannot read is left out of the
+      list, and when none is left the answer is a 200 with no affected items ('Reload command was not sent to
+      any agent')."
       operationId: api.controllers.agent_controller.reload_agents_by_group
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:reload'
+        - $ref: '#/x-rbac-catalog/actions/agent:read'
+        - $ref: '#/x-rbac-catalog/actions/group:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7080,9 +7092,10 @@ paths:
       tags:
         - Cluster
       summary: "Update node configuration"
-      description: "Replace the manager configuration (/etc/wazuh-manager/wazuh-manager.conf) of the given node with the XML text contained in the API request. The text is validated (syntax, schema, protected sections, secret options) before the file is written. A cluster key sent back masked (`*****`), as this API returns it to a caller without `cluster:read_secrets`, keeps the node's current key; changing the key to any other value requires `cluster:read_secrets` over that node and is refused with error 1132 otherwise. So is any change to the indexer section (hosts, TLS): every indexer host receives the manager's indexer credential."
+      description: "Replace the manager configuration (/etc/wazuh-manager/wazuh-manager.conf) of the given node with the XML text contained in the API request. The text is validated (syntax, schema, protected sections, secret options) before the file is written. A cluster key sent back masked (`*****`), as this API returns it to a caller without `cluster:read_secrets`, keeps the node's current key; changing the key to any other value requires `cluster:read_secrets` over that node and is refused with error 1132 otherwise. So is any change to the indexer section (hosts, TLS): every indexer host receives the manager's indexer credential. The node is resolved as every node-scoped request is, so `cluster:read` over it is needed too: without it the request is refused (403) on `node:id`."
       operationId: api.controllers.cluster_controller.update_configuration
       x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
         - $ref: '#/x-rbac-catalog/actions/cluster:update_config'
         - $ref: '#/x-rbac-catalog/actions/cluster:read_secrets'
       parameters:
