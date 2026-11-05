@@ -12,7 +12,8 @@ from content_size_limit_asgi.errors import ContentSizeExceeded
 
 from api import configuration
 from api.authentication import decode_token
-from api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT, charge_unauthenticated_request
+from api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT, charge_unauthenticated_request, \
+    is_authenticated_bucket_exhausted
 from api.api_exception import ExpectFailedException, MaxRequestsException
 from api.controllers.util import json_response, build_recursion_error_response, ERROR_CONTENT_TYPE
 
@@ -122,6 +123,10 @@ async def http_error_handler(request: ConnexionRequest,
         # CheckAuthenticatedRateLimitMiddleware only when max_request_per_minute registers it. The
         # charge comes first so that `decode_token` below is bounded for a valid token as well.
         access = configuration.api_conf['access']
+        # CheckRateLimitsMiddleware refuses every routed request while the authenticated bucket is exhausted
+        if status_code == 405 and access['max_unauthenticated_request_per_minute'] and \
+                await is_authenticated_bucket_exhausted(request, access['max_request_per_minute']):
+            return await problem_error_handler(request, MaxRequestsException(code=6001))
         if (status_code == 405 or not access['max_request_per_minute']) and await charge_unauthenticated_request(
                 request, access['max_unauthenticated_request_per_minute'], 6005):
             return await problem_error_handler(request, MaxRequestsException(code=6005))
