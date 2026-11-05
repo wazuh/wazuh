@@ -48,8 +48,9 @@ We aim to test each WPK package on a modern platform that supports it.
 ## Download the manager package
 
 ```shell
-curl -fLsO https://packages-dev.wazuh.com/pre-release/apt/pool/main/w/wazuh-manager/wazuh-manager_{{VERSION}}-1_amd64.deb
-curl -fLsO https://packages-dev.wazuh.com/pre-release/yum/wazuh-manager-{{VERSION}}-1.x86_64.rpm
+REVISION=rcN  # stage of this issue in lowercase, without spaces: rc2 for RC 2
+curl -fLsO "https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_{{VERSION}}-${REVISION}_amd64.deb"
+curl -fLsO "https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-manager-{{VERSION}}-${REVISION}.x86_64.rpm"
 ```
 
 ## Download the WPK packages
