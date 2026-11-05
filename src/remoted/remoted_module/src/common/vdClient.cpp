@@ -10,9 +10,11 @@
 
 #include "vdClient.hpp"
 #include "common/logThrottle.hpp"
+#include "downstream/blockingCall.hpp"
 #include "json.hpp"
 #include "loggerHelper.h"
-#include <httplib.h>
+#include <stdexcept>
+#include <utility>
 
 namespace remoted::common
 {
@@ -38,10 +40,23 @@ namespace remoted::common
         }
     } // namespace
 
-    VdClient::VdClient(std::string socketPath,
+    remoted::downstream::DownstreamConfig VdClient::httpClientConfig()
+    {
+        remoted::downstream::DownstreamConfig config;
+        config.connectTimeoutMs = CONNECT_TIMEOUT_MS;
+        config.writeTimeoutMs = static_cast<int>(OFFSET_WRITE_TIMEOUT_SECONDS * 1000);
+        config.responseTimeoutMs = static_cast<int>(OFFSET_READ_TIMEOUT_SECONDS * 1000);
+        config.ioThreads = 1;
+        config.maxResponseBodySize = MAX_RESPONSE_BODY_BYTES;
+        return config;
+    }
+
+    VdClient::VdClient(std::shared_ptr<remoted::downstream::IDownstreamClient> httpClient,
+                       std::string socketPath,
                        std::chrono::milliseconds cacheTtl,
                        std::chrono::milliseconds failureRetryInterval)
-        : m_socketPath(std::move(socketPath))
+        : m_httpClient(std::move(httpClient))
+        , m_socketPath(std::move(socketPath))
         , m_cachedOffset(0)
         , m_hasValue(false)
         , m_hasAttempted(false)
@@ -51,6 +66,10 @@ namespace remoted::common
         , m_cacheTtl(cacheTtl)
         , m_failureRetryInterval(failureRetryInterval)
     {
+        if (!m_httpClient)
+        {
+            throw std::invalid_argument("VdClient needs an HTTP client for VD's socket");
+        }
     }
 
     uint64_t VdClient::getOffset()
@@ -91,9 +110,10 @@ namespace remoted::common
             m_refreshInProgress = true;
         }
 
-        // m_mutex is intentionally released here: the UDS round trip (up to ~1s, see
-        // queryVdModule()) must never run while held, or every concurrent caller of getOffset()
-        // -- i.e. every agent's /control notify on this node -- would serialize behind it.
+        // m_mutex is intentionally released here: the UDS round trip (bounded by its connect, write
+        // and response deadlines, see queryVdModule()) must never run while held, or every
+        // concurrent caller of getOffset() -- i.e. every agent's /control notify on this node --
+        // would serialize behind it.
         const auto result = queryVdModule();
 
         std::lock_guard<std::mutex> lock(m_mutex);
@@ -129,57 +149,62 @@ namespace remoted::common
 
     VdClient::QueryResult VdClient::queryVdModule() const
     {
+        constexpr int writeTimeoutMs = static_cast<int>(OFFSET_WRITE_TIMEOUT_SECONDS * 1000);
+        constexpr int responseTimeoutMs = static_cast<int>(OFFSET_READ_TIMEOUT_SECONDS * 1000);
+
+        remoted::downstream::DownstreamRequest request;
+        request.socketPath = m_socketPath;
+        request.method = remoted::http::Method::Get;
+        request.path = "/vulnerability-detector/offset";
+        request.writeTimeoutMs = writeTimeoutMs;
+        request.responseTimeoutMs = responseTimeoutMs;
+
+        const auto result = remoted::downstream::sendBlocking(
+            *m_httpClient,
+            std::move(request),
+            nullptr,
+            std::chrono::milliseconds {CONNECT_TIMEOUT_MS + writeTimeoutMs + responseTimeoutMs + BACKSTOP_MARGIN_MS});
+
+        if (result.error != remoted::downstream::DownstreamError::None)
+        {
+            // The error class tells "VD is not running" (connect_failed) apart from "VD did not answer in
+            // time" (response_timeout) and the rest.
+            if (const auto throttle = queryFailureThrottle().record())
+            {
+                LOGFN_WARN(logFn(),
+                           "Failed to query VD offset: %s (%llu occurrence(s) in the last %d s).",
+                           remoted::downstream::toString(result.error),
+                           throttle.total,
+                           LogThrottle::kDefaultWindowSeconds);
+            }
+            return {false, 0};
+        }
+
+        if (result.response.status != 200)
+        {
+            if (const auto throttle = queryFailureThrottle().record())
+            {
+                LOGFN_WARN(logFn(),
+                           "Failed to query VD offset: status=%d (%llu occurrence(s) in the last %d s).",
+                           result.response.status,
+                           throttle.total,
+                           LogThrottle::kDefaultWindowSeconds);
+            }
+            return {false, 0};
+        }
+
         try
         {
-            // httplib::Client's single-string constructor only parses "http(s)://host[:port]"
-            // URLs -- a raw filesystem path (with embedded '/') does not match its scheme/host
-            // regex and silently falls back to treating the whole string as a DNS hostname.
-            // set_address_family(AF_UNIX) is what actually tells httplib to treat the path as a
-            // Unix domain socket.
-            httplib::Client client(m_socketPath);
-            client.set_address_family(AF_UNIX);
-            client.set_read_timeout(OFFSET_READ_TIMEOUT_SECONDS, 0);
-            client.set_write_timeout(OFFSET_WRITE_TIMEOUT_SECONDS, 0);
-
-            auto res = client.Get("/vulnerability-detector/offset");
-            if (!res || res->status != 200)
-            {
-                if (const auto throttle = queryFailureThrottle().record())
-                {
-                    LOGFN_WARN(logFn(),
-                               "Failed to query VD offset: status=%d (%llu occurrence(s) in the last %d s).",
-                               res ? res->status : 0,
-                               throttle.total,
-                               LogThrottle::kDefaultWindowSeconds);
-                }
-                return {false, 0};
-            }
-
-            try
-            {
-                const auto json = nlohmann::json::parse(res->body);
-                const uint64_t offset = json.value<uint64_t>("offset", 0);
-                return {true, offset};
-            }
-            catch (const std::exception& e)
-            {
-                if (const auto throttle = queryFailureThrottle().record())
-                {
-                    LOGFN_WARN(logFn(),
-                               "Failed to parse VD offset response: %s (%llu occurrence(s) in the last %d s).",
-                               e.what(),
-                               throttle.total,
-                               LogThrottle::kDefaultWindowSeconds);
-                }
-                return {false, 0};
-            }
+            const auto json = nlohmann::json::parse(result.response.body);
+            const uint64_t offset = json.value<uint64_t>("offset", 0);
+            return {true, offset};
         }
         catch (const std::exception& e)
         {
             if (const auto throttle = queryFailureThrottle().record())
             {
                 LOGFN_WARN(logFn(),
-                           "Failed to connect to VD module: %s (%llu occurrence(s) in the last %d s).",
+                           "Failed to parse VD offset response: %s (%llu occurrence(s) in the last %d s).",
                            e.what(),
                            throttle.total,
                            LogThrottle::kDefaultWindowSeconds);
