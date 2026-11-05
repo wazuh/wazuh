@@ -469,6 +469,18 @@ std::vector<PersistedData> PersistentQueueStorage::fetchPending(bool onlyDataVal
     return result;
 }
 
+void PersistentQueueStorage::settleInFlightRows()
+{
+    const std::string query = "UPDATE persistent_queue SET sync_status = ?, create_status = ?, operation_syncing = ? WHERE sync_status IN (?, ?);";
+    SQLite3Wrapper::Statement stmt(m_connection, query);
+    stmt.bind(1, static_cast<int>(SyncStatus::PENDING));
+    stmt.bind(2, static_cast<int>(CreateStatus::EXISTING));
+    stmt.bind(3, static_cast<int>(Operation::NO_OP));
+    stmt.bind(4, static_cast<int>(SyncStatus::SYNCING));
+    stmt.bind(5, static_cast<int>(SyncStatus::SYNCING_UPDATED));
+    stmt.step();
+}
+
 void PersistentQueueStorage::removeAllSynced()
 {
     m_connection.execute("BEGIN IMMEDIATE TRANSACTION;");
@@ -483,14 +495,7 @@ void PersistentQueueStorage::removeAllSynced()
         stmt.bind(4, static_cast<int>(Operation::DELETE_));
         stmt.step();
 
-        const std::string queryUpdate = "UPDATE persistent_queue SET sync_status = ?, create_status = ?, operation_syncing = ? WHERE (sync_status = ? OR sync_status = ?);";
-        SQLite3Wrapper::Statement stmtUpdate(m_connection, queryUpdate);
-        stmtUpdate.bind(1, static_cast<int>(SyncStatus::PENDING));
-        stmtUpdate.bind(2, static_cast<int>(CreateStatus::EXISTING));
-        stmtUpdate.bind(3, static_cast<int>(Operation::NO_OP));
-        stmtUpdate.bind(4, static_cast<int>(SyncStatus::SYNCING));
-        stmtUpdate.bind(5, static_cast<int>(SyncStatus::SYNCING_UPDATED));
-        stmtUpdate.step();
+        settleInFlightRows();
 
         m_connection.execute("COMMIT;");
     }
@@ -511,19 +516,9 @@ void PersistentQueueStorage::resetAllSyncing()
 
     try
     {
-        const std::string queryUpdate = "UPDATE persistent_queue SET sync_status = ?, operation_syncing = ? WHERE sync_status IN (?, ?);";
-        SQLite3Wrapper::Statement stmtUpdate(m_connection, queryUpdate);
-        stmtUpdate.bind(1, static_cast<int>(SyncStatus::PENDING));
-        stmtUpdate.bind(2, static_cast<int>(Operation::NO_OP));
-        stmtUpdate.bind(3, static_cast<int>(SyncStatus::SYNCING));
-        stmtUpdate.bind(4, static_cast<int>(SyncStatus::SYNCING_UPDATED));
-        stmtUpdate.step();
-
-        const std::string queryDelete = "DELETE FROM persistent_queue WHERE operation = ? AND create_status = ?;";
-        SQLite3Wrapper::Statement stmtDelete(m_connection, queryDelete);
-        stmtDelete.bind(1, static_cast<int>(Operation::DELETE_));
-        stmtDelete.bind(2, static_cast<int>(CreateStatus::NEW_DELETED));
-        stmtDelete.step();
+        // A failed session may still have been applied by the manager, so its rows are
+        // settled as if it succeeded: a later DELETE must be sent, not coalesced away.
+        settleInFlightRows();
 
         m_connection.execute("COMMIT;");
     }

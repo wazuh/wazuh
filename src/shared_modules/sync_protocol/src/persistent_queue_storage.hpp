@@ -28,9 +28,9 @@ enum class SyncStatus : int
 /// @brief Tracks the creation state of a persisted message, particularly for newly created items.
 enum class CreateStatus : int
 {
-    EXISTING = 0,     ///< The message existed prior to the current session; it was not newly created.
-    NEW = 1,          ///< The message was newly created during the current session.
-    NEW_DELETED = 2   ///< The message was newly created, but then deleted before it could be synchronized.
+    EXISTING = 0,     ///< The message may already be known to the manager.
+    NEW = 1,          ///< The message was created and has never been part of a session.
+    NEW_DELETED = 2   ///< The message was created and then deleted while its creation was being synchronized.
 };
 
 /// @brief SQLite-backed implementation of IPersistentQueueStorage.
@@ -78,6 +78,8 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         void removeAllSynced() override;
 
         /// @brief Resets the status of all SYNCING messages for a module back to PENDING.
+        /// The manager may have applied the failed session, so the reset messages are no
+        /// longer treated as new and a later DELETE of them is kept.
         void resetAllSyncing() override;
 
         /// @brief Deletes all messages belonging to a specific index.
@@ -130,4 +132,8 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         /// Must be called inside a BEGIN/COMMIT block.
         /// @param newData The message to insert or coalesce.
         void applyCoalesceLogic(const PersistedData& newData);
+
+        /// @brief Moves every SYNCING or SYNCING_UPDATED message back to PENDING as EXISTING.
+        /// Must be called inside a BEGIN/COMMIT block.
+        void settleInFlightRows();
 };
