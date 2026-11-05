@@ -3124,6 +3124,12 @@ std::size_t Syscollector::sweepContainerRowsNotIn(const std::set<std::string>& k
         }
     }
 
+    if (staleIds.empty())
+    {
+        pruneContainerContexts(keep);
+        return 0;
+    }
+
     std::set<std::string> unswept;
 
     for (const auto& staleId : staleIds)
@@ -3182,6 +3188,7 @@ std::size_t Syscollector::sweepContainerRows(const std::vector<std::string>& con
 {
 #if defined(__linux__)
     std::size_t swept = 0;
+    std::size_t deleted = 0;
 
     for (const auto& containerId : container_ids)
     {
@@ -3197,6 +3204,16 @@ std::size_t Syscollector::sweepContainerRows(const std::vector<std::string>& con
         {
             updateChanges(table, nlohmann::json::array(), containerId);
         }
+
+        ++deleted;
+    }
+
+    if (deleted == 0)
+    {
+        // Nothing was deleted, so nothing can have survived a delete. The scan
+        // below reads every container-scoped table, which is too much to pay for
+        // an answer that cannot differ from what the caller already knows.
+        return 0;
     }
 
     const auto survivingIds = storedContainerIds(*m_spDBSync);
