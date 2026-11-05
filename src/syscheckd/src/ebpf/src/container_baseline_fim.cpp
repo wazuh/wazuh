@@ -1356,6 +1356,8 @@ namespace
             // Idempotent: if the startup baseline's sweep already took this
             // container, the transaction covers no rows and emits nothing, the
             // budget release finds no entry, and the context DELETE matches none.
+            // Serialize with whole-node walks so their shared row statuses cannot be swept here.
+            std::lock_guard<std::recursive_mutex> lock(container_state_mutex);
             SweepOneContainer(request.container_id, CB_FIM_ORIGIN_EVENT);
             return;
         }
