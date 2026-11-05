@@ -786,6 +786,10 @@ class CheckExpectHeaderMiddleware(BaseHTTPMiddleware):
         the body it announces that is too large, and 413 is the status every other size ceiling in
         this API answers with.
 
+        A request that matched no operation is not judged: it skipped the security handler and nothing
+        reads its body, so refusing it here would answer an unauthenticated caller 417 or 413 where a
+        declared route answers 401.
+
         Parameters
         ----------
             request : Request
@@ -805,7 +809,8 @@ class CheckExpectHeaderMiddleware(BaseHTTPMiddleware):
             If the request declares a body above `max_upload_size`.
         """
 
-        if 'Expect' not in request.headers:
+        operation_id = request.scope.get('extensions', {}).get('connexion_routing', {}).get('operation_id')
+        if 'Expect' not in request.headers or operation_id is None:
             response = await call_next(request)
             return response
         else:
@@ -828,6 +833,23 @@ class CheckExpectHeaderMiddleware(BaseHTTPMiddleware):
 
         response = await call_next(request)
         return response
+
+
+class StripTrailingSlashMiddleware:
+    """Route `/path/` as `/path`.
+
+    starlette's router answers a declared path written with a trailing slash with a 307 before
+    security runs, so it would tell an unauthenticated caller which routes exist. connexion does
+    not expose the router's `redirect_slashes`.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope['type'] == 'http' and scope['path'] != '/' and scope['path'].endswith('/'):
+            scope = {**scope, 'path': scope['path'].rstrip('/') or '/'}
+        await self.app(scope, receive, send)
 
 
 # Methods a CORS preflight is answered for: every method spec.yaml declares. Without it CORSMiddleware
@@ -899,6 +921,9 @@ def setup_middlewares(app: AsyncApp):
     app.add_middleware(CheckExpectHeaderMiddleware, MiddlewarePosition.BEFORE_VALIDATION)
     app.add_middleware(CheckBlockedIP, MiddlewarePosition.BEFORE_SECURITY)
     app.add_middleware(CheckAuthContextSizeMiddleware, MiddlewarePosition.BEFORE_SECURITY)
+    # Outermost, so that the access log and the error handlers see the same path as every layer
+    # below, which compare it with the login endpoints
+    app.add_middleware(StripTrailingSlashMiddleware, MiddlewarePosition.BEFORE_EXCEPTION)
     app.add_middleware(WazuhAccessLoggerMiddleware, MiddlewarePosition.BEFORE_EXCEPTION)
     app.add_middleware(SecureHeadersMiddleware, MiddlewarePosition.BEFORE_EXCEPTION)
 

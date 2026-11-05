@@ -6,11 +6,15 @@ import logging
 
 from connexion.lifecycle import ConnexionRequest, ConnexionResponse
 from connexion import exceptions
+from connexion.security import AbstractSecurityHandler
 
 from content_size_limit_asgi.errors import ContentSizeExceeded
 
-from api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT
-from api.api_exception import ExpectFailedException
+from api import configuration
+from api.authentication import decode_token
+from api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT, charge_unauthenticated_request, \
+    is_authenticated_bucket_exhausted
+from api.api_exception import ExpectFailedException, MaxRequestsException
 from api.controllers.util import json_response, build_recursion_error_response, ERROR_CONTENT_TYPE
 
 logger = logging.getLogger('wazuh-api')
@@ -88,7 +92,11 @@ async def unauthorized_error_handler(request: ConnexionRequest,
 async def http_error_handler(request: ConnexionRequest,
                              exc: exceptions.HTTPException) -> ConnexionResponse:
     """HTTPError Exception Error handler.
-    
+
+    A 404 or 405 is answered with a 401 unless the request carries a valid bearer token, so that an
+    unauthenticated caller cannot tell which routes and methods exist. One that no rate-limit
+    middleware charged is charged here against the unauthenticated bucket.
+
     Parameters
     ----------
     request : ConnexionRequest
@@ -102,12 +110,43 @@ async def http_error_handler(request: ConnexionRequest,
         HTTP Response returned to the client.
     """
 
+    status_code = exc.status_code
     problem = {
         'title': exc.detail,
         "detail": f"{exc.status_code}: {exc.detail}",
     }
+    # connexion applies the security requirement only to a request that matched an operation, so
+    # these two never went through authentication. The 401 is built here, not by
+    # `unauthorized_error_handler`, which words it "Invalid credentials" on the login paths.
+    if status_code in {404, 405}:
+        # connexion's router raises a 405 above every rate-limit middleware, and a 404 is charged by
+        # CheckAuthenticatedRateLimitMiddleware only when max_request_per_minute registers it. The
+        # charge comes first so that `decode_token` below is bounded for a valid token as well.
+        access = configuration.api_conf['access']
+        # CheckRateLimitsMiddleware refuses every routed request while the authenticated bucket is exhausted
+        if status_code == 405 and access['max_unauthenticated_request_per_minute'] and \
+                await is_authenticated_bucket_exhausted(request, access['max_request_per_minute']):
+            return await problem_error_handler(request, MaxRequestsException(code=6001))
+        if (status_code == 405 or not access['max_request_per_minute']) and await charge_unauthenticated_request(
+                request, access['max_unauthenticated_request_per_minute'], 6005):
+            return await problem_error_handler(request, MaxRequestsException(code=6005))
+        try:
+            auth_type, token = AbstractSecurityHandler.get_auth_header_value(request)
+            if auth_type != 'bearer':
+                raise exceptions.Unauthorized("No authorization token provided")
+            await decode_token(token)
+        except exceptions.Unauthorized as unauthorized:
+            status_code = unauthorized.status_code
+            problem = {"title": "Unauthorized", "detail": unauthorized.detail}
+        except Exception as error:
+            # An exception raised in here is not dispatched again, so it would reach ServerErrorMiddleware
+            # as an empty 500. A declared route answers the same failure with this JSON one.
+            logger.error(f"Could not validate the token of a {status_code} response: {error!r}")
+            if not isinstance(error, exceptions.ProblemException):
+                error = exceptions.InternalServerError()
+            return await problem_error_handler(request, error)
     return json_response(data=problem, pretty=request.query_params.get('pretty', 'false') == 'true',
-                         status_code=exc.status_code, content_type=ERROR_CONTENT_TYPE)
+                         status_code=status_code, content_type=ERROR_CONTENT_TYPE)
 
 
 async def problem_error_handler(request: ConnexionRequest, exc: exceptions.ProblemException) -> ConnexionResponse:

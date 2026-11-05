@@ -29,8 +29,10 @@ python3 endpoint_coverage.py --write   # regenerate COVERAGE.md
 
 It also fails when:
 
-- a stage calls a path the spec does not declare, unless it asserts 404 (unknown-route tests);
-- a stage asserts something other than 405 on an undeclared method, or 405 on a declared one;
+- a stage calls a path the spec does not declare, unless it asserts 404 with a token or 401 without a
+  valid one (unknown-route tests);
+- a stage asserts something other than 405 with a token or 401 without a valid one on an undeclared
+  method, or 405 on a declared one;
 - an entry of [coverage_exceptions.yaml](coverage_exceptions.yaml) has no reason, names an unknown
   operation or bucket, or is stale (the bucket is covered, or not required);
 - [COVERAGE.md](COVERAGE.md) differs from what the tavern files and the spec produce.
