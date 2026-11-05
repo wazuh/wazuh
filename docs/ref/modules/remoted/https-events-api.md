@@ -627,7 +627,7 @@ Two more, about a registered address that no longer matches:
   column or re-enroll the agent. Not throttled: logged once per offending line each time
   `client.keys` is (re)loaded.
 
-Six more that are not about tuning:
+Seven more that are not about tuning:
 
 - **`Loaded N agent key(s) from '<path>'.`** at startup, and **`Reloaded N agent key(s) from
   '<path>'.`** after every hot-reload. `N` counts keys
@@ -651,6 +651,16 @@ Six more that are not about tuning:
   Behind a load balancer the address is the balancer's own. It points at a problem; it is not a
   per-source record (the manager keeps none). `wazuh-manager-authd` logs `Invalid password provided by
   <address>` for each failure on `1515`.
+- **`Rejected N agent request(s) with an invalid or missing bearer credential <period> (latest from
+  <address>: <class>).`** (WARNING) is the same line for every bearer route (`/stateless`, `/stateful`,
+  `/stats`, `/config`, `/control`, `/download`, `/scan/vd`), on its own throttle: no or a malformed
+  bearer (`invalid_request`), an unknown agent (`unknown_agent`), or a token that is not a valid
+  `wazuh-agent+jwt` or whose signature does not verify (`invalid_signature`). The same rejections are
+  not counted as on `/enroll`; a peer outside the agent's registered address and an unusable key in
+  `client.keys` are not counted either, since each has its own line. The response the peer receives is
+  unchanged, and nothing is blocked or delayed: a per-source limit would see only the load balancer, and
+  a per-agent one would let any peer lock a real agent out. To block a source that keeps failing, act on
+  the address in this line (or, behind a load balancer, the balancer's own logs).
 - A short hand-written `/etc/wazuh-manager/authd.pass` (fewer than 16 bytes) is treated as invalid
   here too, as authd does: see [`use_password`](../authd/configuration.md#use_password).
 - **`Could not derive the enrollment key from '/etc/wazuh-manager/authd.pass' (HKDF unavailable)`** (ERROR) means the
@@ -668,10 +678,10 @@ Six more that are not about tuning:
   fails inside the module with an ERROR naming which of the two is the problem. See
   [Certificate provisioning and fail-closed start](#certificate-provisioning-and-fail-closed-start).
 
-Rejections of unauthenticated requests (no bearer, an unknown agent, a bad signature) are logged at
-debug level only — visible with `remoted.debug=2` — because an unauthenticated peer controls how many
-it can trigger. `POST /enroll` is the exception: its credential rejections are also summarised by the
-throttled WARNING above. A malformed request from an agent that **did** authenticate (an invalid `/control` or
+Each rejection of an unauthenticated request (no bearer, an unknown agent, a bad signature) is logged
+at debug level only — visible with `remoted.debug=2` — because an unauthenticated peer controls how
+many it can trigger; the throttled credential-rejection WARNINGs above summarise them, one for
+`POST /enroll` and one for the bearer routes. A malformed request from an agent that **did** authenticate (an invalid `/control` or
 `/scan/vd` body, an unknown `/control` type, a payload naming another agent) and the rejections that
 point at a manager-side setting (a token outside the clock-skew window, a body over the
 authenticated-body cap, an unusable key in `client.keys`) are logged as throttled `WARNING`s instead:

@@ -12,9 +12,9 @@
 
 #include "common/requestOutcomeMetrics.hpp"
 
+#include "auth/credentialRejection.hpp"
 #include "common/logThrottle.hpp"
-#include "control/controlTypes.hpp" // isValidVersion(), isAgentVersionTooNew() -- shared with /control (D8)
-#include "credentialRejection.hpp"
+#include "control/controlTypes.hpp"    // isValidVersion(), isAgentVersionTooNew() -- shared with /control (D8)
 #include "endpoints/endpoint.hpp"      // remoted::endpoints::errorResponseFor() -- shared auth-rejection logging
 #include "http_server/headerUtils.hpp" // remoted::http::headerValue() -- case-insensitive lookup
 #include "json.hpp"
@@ -624,7 +624,7 @@ namespace remoted::enrollment
                 // bucket, so an unthrottled line would let any peer grow the log at will. The throttle emits on
                 // the first rejection after a quiet window; the count covers every rejection since the previous
                 // line, and the address is the one of the rejection that triggered this line.
-                if (isCredentialRejection(*authErr))
+                if (remoted::auth::isCredentialRejection(*authErr))
                 {
                     if (const auto throttle = credentialRejectionThrottle().record())
                     {

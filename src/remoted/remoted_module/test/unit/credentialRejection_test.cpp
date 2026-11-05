@@ -1,5 +1,5 @@
 /*
- * Wazuh remoted module - POST /enroll credential rejections
+ * Wazuh remoted module - credential rejections (POST /enroll and the bearer routes)
  * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
@@ -12,10 +12,10 @@
 
 #include <gtest/gtest.h>
 
-#include "enrollment/credentialRejection.hpp"
+#include "auth/credentialRejection.hpp"
 
 using remoted::auth::AuthError;
-using remoted::enrollment::isCredentialRejection;
+using remoted::auth::isCredentialRejection;
 
 namespace
 {
@@ -45,7 +45,7 @@ namespace
                                  // Raised after the signature verified: the peer holds the credential
                                  std::make_tuple(AuthError::StaleToken, false),
                                  std::make_tuple(AuthError::IdentityMismatch, false),
-                                 // Malformed request, manager-side fault, or not reachable on /enroll
+                                 // Malformed request, manager-side fault, logged elsewhere, or unreachable on a route
                                  std::make_tuple(AuthError::None, false),
                                  std::make_tuple(AuthError::MissingProtocolVersion, false),
                                  std::make_tuple(AuthError::UnsupportedProtocolVersion, false),
