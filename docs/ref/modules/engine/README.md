@@ -902,6 +902,14 @@ The routing logic uses a `first_of` block that evaluates two conditions in order
 If neither condition matches — the event is unclassified but the policy has unclassified-events indexing
 disabled — no output is selected and the event is **not indexed**.
 
+Since every event of a log source whose integration is disabled ends up unclassified, the engine reports
+these drops: when the policy of a space has `index_unclassified_events` disabled, the engine logs a WARNING
+at most once every 5 minutes per space (shared by all router workers), with the number of unclassified
+events dropped since the previous warning and up to 10 of their sources (`wazuh.protocol.location`). The first
+drop is reported immediately. Policies built in test mode (tester sessions, `/logtest`, policy validation)
+never warn. The [`space.<space>.events.unclassified`](#spacespaceeventsunclassified) metric counts every
+unclassified event, indexed or not.
+
 ```mermaid
 flowchart TD
 
