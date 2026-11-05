@@ -2280,9 +2280,10 @@ credential and retries.
 `unknown_agent` is not always final on a cluster: a worker's keystore is its own `client.keys`, which
 the cluster's integrity sync brings from the master about 10 seconds after an enrollment (sometimes a
 few more), so a worker answers `unknown_agent` to an agent enrolled moments before until the file
-arrives. The agent recovers on its own (by retrying, or by enrolling again where it took the answer for
-the loss of its identity); the answer stays the honest one for that node's view, and nothing on the
-manager side waits for the sync.
+arrives. The exception is the node that served the agent's `POST /enroll`, which adopts the issued key
+before answering (see *Agent key lookup* below). The agent recovers on its own (by retrying, or by
+enrolling again where it took the answer for the loss of its identity); the answer stays the honest one
+for that node's view, and nothing on the manager side waits for the sync.
 
 Because `unknown_agent` is answered before any signature check, it is an **accepted existence
 oracle**: an unauthenticated peer can tell an enrolled id from a free one, both on the authenticated
@@ -2319,6 +2320,13 @@ exactly 64 lowercase hex characters (32 bytes) to work as the HS256 key — the 
 any other shape is reported as unusable (`MissingKey`) and the agent has to re-enroll. client.keys has no "disabled but present" state -- a removed entry is simply
 absent -- so `AuthError` has no separate inactive-agent case; an unknown and a removed agent are
 indistinguishable and both resolve to `AuthError::UnknownAgent`.
+
+The one key that does not come from the file first is the one this node just issued: the `/enroll`
+handler hands `authd`'s accepted `id`, `ip` column and key to `Keystore::upsert()` before it answers,
+and `lookup()` serves that adopted entry ahead of the file until a reload shows the file caught up
+with it or moved past it, or for at most `Keystore::kAdoptionGrace` (60 s). The rules, the race with
+`authd`'s writer and the limitations are in
+[adoption of a just-issued key](../../../docs/ref/modules/remoted/https-events-api.md#adoption-of-a-just-issued-key).
 
 **Registered-address enforcement:** the `ip` column is parsed into an `AddressRule`
 (`auth/addressRule.hpp`) and evaluated by `IAgentKeystore::lookup()`, which resolves the agent's key
@@ -2469,6 +2477,7 @@ linked into the settings' own documentation — is the official docs page:
 | `remoted.scanvd.*` (7 counters) | VD scan admission split | `scanVdHandler` (see the /scan/vd section) |
 | `remoted.auth.reject.{unknown_agent, invalid_signature, bad_token, identity_mismatch, clock_skew, unusable_key, address_not_allowed, enrollment_key_unavailable, payload_mismatch, body_too_large, bad_encoding, malformed, token_unknown, token_expired, token_revoked, agent_busy}` | WHY authentication failed, finer than the class the wire names (see [401 classes](#401-classes)); the three `token_*` cells are `/enroll`'s enrollment-token states; `agent_busy` is the per-agent request cap's `503`, an authenticated agent over its share | `errorResponseFor()` — the single funnel, shared with `/enroll`; installed process-wide via `installAuthRejectMetrics()`. `metrics_test.cpp` DISCOVERS the live `AuthError` values through `toString()` instead of listing them, so a value appended upstream without its own cell fails the test — a hand-written list missed `address_not_allowed` and then `enrollment_key_unavailable` |
 | `remoted.auth.keystore.{agents, entries_skipped, reloads.total, reload_failures.total}` (pulls) | did the client.keys hot-reload pick up re-enrolls; is the file unreadable/unstable; how many lines the load could not use | atomics maintained by `Keystore::reload()`. `agents`/`entries_skipped` are LEVELS of the adopted load (a failed load leaves both untouched); neither counts comments, blanks or removed entries |
+| `remoted.auth.keystore.{adoptions.total, adoptions_pending, adoption_expiries.total}` (pulls) | keys taken from `/enroll` answers on this node; how many the file has not caught up with; how many were dropped at the 60 s grace | `Keystore::upsert()` / `reload()` / the watcher's expiry sweep. `adoptions_pending` is a level (it sweeps expired entries when read) |
 | `remoted.http.<stateless\|stateful\|stats\|config\|enroll\|cacerts>.responses.{2xx,400,403,409,413,429,500,503,other}` | WHAT each endpoint answered agents (some cells structurally zero per endpoint — kept so the vocabulary is uniform; `/cacerts`'s 404 lands in `other`) | the single place each response is sent: the forwarder's delivery task, the limiter-shed 503 in `forward()`, or the handler's own pre-forward 400. `/enroll` and `/cacerts` are not forwarded, so they count through a `MeteredResponder` wrapper instead (`common/requestOutcomeMetrics.hpp`; the description carries the route's method, `GET` for `/cacerts`) — one wrap covers `/enroll`'s five inline answers AND the one authd's callback delivers on another thread |
 | `remoted.http.<stateless\|stateful\|enroll>.latency` (histograms, µs) | end-to-end time; sizes `remoted.http_worker_threads` / `remoted.downstream_stateful_response_timeout` / the `authd_*` timeouts | stamped once in the auth gateway (`AuthenticatedRequest::receivedAt`), observed on the forwarder's post-processing pool. `/enroll` has no gateway, so `MeteredResponder` times it from handler entry. `/stats`/`/config` deliberately have none (same downstream as `/stateful`, no new answer) |
 | `remoted.forwarder.error.{connect, connect_timeout, write_timeout, response_timeout, transport, protocol, response_too_large}` + `downstream_5xx` + `route_mismatch` | WHY the 503s: which timeout knob, transport vs protocol, a downstream 5xx, or a route contract mismatch. Aggregate across services — the per-endpoint 503 cells already say which path | the forwarder's classification branches, next to the throttles that log the same cause |
@@ -2546,7 +2555,7 @@ module already owns in-process — no I/O, no KDF, nothing that can block the ad
 Response shape:
 
 ```json
-{"ready":true,"enrollment_password":{"ready":true},"keystore":{"readable":true,"agents_loaded":12,"entries_skipped":0},"enrollment_tokens":{"loaded":3,"last_reload_ok":true}}
+{"ready":true,"enrollment_password":{"ready":true},"keystore":{"readable":true,"agents_loaded":12,"entries_skipped":0,"adoptions_pending":0},"enrollment_tokens":{"loaded":3,"last_reload_ok":true}}
 ```
 
 - **`ready`** is the AND of the *gating* components only, and `enrollment_password` (when

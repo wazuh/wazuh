@@ -584,31 +584,41 @@ mid-write rather than adopting a torn read.
 A reload alone leaves a window: `authd` signals its writer thread and answers `POST /enroll`
 without waiting for the pass, so nothing orders the agent receiving its key before `client.keys`
 is written, and on a worker the file arrives with the next cluster synchronization, seconds later. An agent that uses
-the key inside that window is refused with `401 unknown_agent` by the very node that issued it.
+the key inside that window is refused by the very node that issued it: `401 unknown_agent` for a
+first enrollment, `401 invalid_signature` for a re-enrollment while the file still has the previous key.
 To close it, the node that served `POST /enroll` adopts the accepted `id`, `ip` column and key
 into its `Keystore` **before** sending the `200` — for a first enrollment and for a re-enrollment
-(where the file still carries the previous key until the writer pass). The columns are validated
-exactly like a file line; an entry that does not parse is not adopted, the enrollment still
-answers `200`, and a warning names the agent.
+(where the file still carries the previous key until the writer pass). The columns are parsed
+like a file line, except that a key that does not decode is not adopted (a file line keeps it as an
+unusable entry); an entry that does not parse is not adopted, the enrollment still answers `200`,
+and a warning names the agent.
 
 An adopted entry is kept **beside** the file's table, not in it: `lookup()` consults it first.
-It remembers what the file held for that `id` when it was adopted (the previous key, or nothing),
-and a reload retires it as soon as the file leaves that state, after which the file's entry takes over:
+It remembers the states the file may still show before it catches up: what the file held for that
+`id` when it was first adopted (the previous key, or nothing), plus every key a later re-enrollment
+on this node replaced (`authd` may write those first). A reload retires it as soon as the file shows
+anything else, after which the file's entry takes over:
 
 - the file carries the same `id` and key: it converged;
-- the file carries another key, or no longer carries an `id` it had: the agent was rotated on
-  another node (for example, it re-enrolled elsewhere before this worker's synchronization) or
-  removed, and the file is newer than the adoption.
+- the file carries a key outside those states, or no longer carries an `id` it had: the agent was
+  rotated on another node (for example, it re-enrolled elsewhere before this worker's
+  synchronization) or removed. A row that turns unusable (a key or `ip` column that does not parse)
+  counts as such a change: the file is authoritative, and the row is logged and counted in
+  `entries_skipped`.
 
-While the file still shows the state it had at adoption, the entry stays, up to a 60 s grace (then
-it is dropped and counted in `remoted.auth.keystore.adoption_expiries.total`). If the file already
+While the file still shows one of those states, the entry stays, up to a 60 s grace (then it is
+dropped and counted in `remoted.auth.keystore.adoption_expiries.total`; the watcher drops expired
+entries on its own cycle even if nothing else touches the keystore). If the file already
 carries the issued key when the adoption runs (the writer pass and the reload won the race),
 nothing is adopted. Two consequences follow. `agents` on
 [`GET /metrics`](metrics.md#keystore-health--remotedauthkeystore) and `agents_loaded` on
 [`GET /status`](README.md) keep describing the file only; the adoptions have their own
 `adoptions_pending` level. And a *new* agent removed before the file ever carried it keeps
 authenticating until the grace ends, on that node only — the price of not losing a key the file
-has not caught up with yet. Any node the agent reaches that did not serve its enrollment still
+has not caught up with yet. Nor can it order two enrollments of the same `id` in flight at once
+(`authd`'s answer carries no generation): if the older one's answer is adopted after the newer key
+is already in the file, that node refuses the newer key until the grace ends. An agent serializes
+its own enrollments, so this takes a duplicated identity or concurrent manual operations. Any node the agent reaches that did not serve its enrollment still
 waits for the file: see [§7.1 of the cluster page](../cluster/lb.md#71-replicated-state-brief-401s-after-enrollment).
 
 ## Diagnosing rejections and capacity problems
