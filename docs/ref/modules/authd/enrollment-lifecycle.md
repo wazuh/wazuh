@@ -540,7 +540,8 @@ The full phase ordering of the deletion half is in
 The node that served `POST /enroll` honors the key at once: remoted adopts the accepted id, address
 and key into its own keystore before it answers the agent, for a first enrollment and for a rotation
 alike (see [adoption of a just-issued key](../remoted/https-events-api.md#adoption-of-a-just-issued-key)).
-That entry lives beside the file until `client.keys` carries it, or for at most 60 s.
+That entry lives beside the file until `client.keys` carries it or moves past it (a later rotation
+or a removal), or for at most 60 s.
 
 Every **other** node authenticates agents by reading `client.keys`, reloaded on its own cadence.
 Until that reload lands there, the new key can receive `401`: an unknown agent for a fresh id, or an

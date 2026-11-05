@@ -1210,7 +1210,8 @@ private:
                 const auto keystore = target();
                 return keystore ? static_cast<uint64_t>(keystore->adoptionsPending()) : 0U;
             },
-            "Adopted credentials client.keys has not caught up with yet (dropped at convergence or after the grace)",
+            "Adopted credentials client.keys has not caught up with yet (dropped at convergence, when the file "
+            "moves past them, or after the grace)",
             "entries");
         m_metricsManager->registerPullMetric(
             "remoted.auth.keystore.adoption_expiries.total",

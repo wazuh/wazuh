@@ -1423,7 +1423,7 @@ TEST(EnrollmentEndpointTest, ASpentTokenIsChargedToTheUnverifiedBucket)
 }
 
 // -----------------------------------------------------------------------------
-// Keystore adoption (issue #38572): an accepted enrollment is adopted into the
+// Keystore adoption: an accepted enrollment is adopted into the
 // keystore before the 200 is sent, so this node honors the credential the
 // instant the agent holds it.
 // -----------------------------------------------------------------------------

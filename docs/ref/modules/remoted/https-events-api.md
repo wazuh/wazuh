@@ -581,9 +581,9 @@ mid-write rather than adopting a torn read.
 
 #### Adoption of a just-issued key
 
-A reload alone leaves a window: `authd` answers `POST /enroll` as soon as it has queued the new
-entry for its writer thread, so the agent holds its key before `client.keys` is written, and on a
-worker the file arrives with the next cluster synchronization, seconds later. An agent that uses
+A reload alone leaves a window: `authd` signals its writer thread and answers `POST /enroll`
+without waiting for the pass, so nothing orders the agent receiving its key before `client.keys`
+is written, and on a worker the file arrives with the next cluster synchronization, seconds later. An agent that uses
 the key inside that window is refused with `401 unknown_agent` by the very node that issued it.
 To close it, the node that served `POST /enroll` adopts the accepted `id`, `ip` column and key
 into its `Keystore` **before** sending the `200` — for a first enrollment and for a re-enrollment
@@ -591,13 +591,22 @@ into its `Keystore` **before** sending the `200` — for a first enrollment and 
 exactly like a file line; an entry that does not parse is not adopted, the enrollment still
 answers `200`, and a warning names the agent.
 
-An adopted entry is kept **beside** the file's table, not in it: `lookup()` consults it first,
-and it survives reloads until the file carries the same `id`, key and `ip` column (then the file's
-copy takes over) or until a 60 s grace expires (then it is dropped and counted in
-`remoted.auth.keystore.adoption_expiries.total`). Two consequences follow. `agents` on
+An adopted entry is kept **beside** the file's table, not in it: `lookup()` consults it first.
+It remembers what the file held for that `id` when it was adopted (the previous key, or nothing),
+and a reload retires it as soon as the file leaves that state, after which the file's entry takes over:
+
+- the file carries the same `id` and key: it converged;
+- the file carries another key, or no longer carries an `id` it had: the agent was rotated on
+  another node (for example, it re-enrolled elsewhere before this worker's synchronization) or
+  removed, and the file is newer than the adoption.
+
+While the file still shows the state it had at adoption, the entry stays, up to a 60 s grace (then
+it is dropped and counted in `remoted.auth.keystore.adoption_expiries.total`). If the file already
+carries the issued key when the adoption runs (the writer pass and the reload won the race),
+nothing is adopted. Two consequences follow. `agents` on
 [`GET /metrics`](metrics.md#keystore-health--remotedauthkeystore) and `agents_loaded` on
 [`GET /status`](README.md) keep describing the file only; the adoptions have their own
-`adoptions_pending` level. And an entry *removed* from the file inside those 60 s keeps
+`adoptions_pending` level. And a *new* agent removed before the file ever carried it keeps
 authenticating until the grace ends, on that node only — the price of not losing a key the file
 has not caught up with yet. Any node the agent reaches that did not serve its enrollment still
 waits for the file: see [§7.1 of the cluster page](../cluster/lb.md#71-replicated-state-brief-401s-after-enrollment).

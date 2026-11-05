@@ -7252,7 +7252,6 @@ paths:
                           keystore:
                             agents: 34
                             entries_skipped: 0
-                            adoptions_pending: 0
                             reloads_total: 3
                             reload_failures_total: 0
                           downstream:

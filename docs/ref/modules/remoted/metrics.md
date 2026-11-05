@@ -374,7 +374,7 @@ the agent and it still gets 401s". All pulls.
 | `remoted.auth.keystore.reloads.total` | counter (pull) | count | Successful loads (startup load included) | [`remoted.keyupdate_interval`](configuration.md#remotedkeyupdate_interval) sets the fallback poll cadence |
 | `remoted.auth.keystore.reload_failures.total` | counter (pull) | count | Failed loads: unreadable file, or content that kept changing across every read attempt | diagnostic — fix the file/permissions |
 | `remoted.auth.keystore.adoptions.total` | counter (pull) | count | Credentials adopted straight from an accepted `POST /enroll` answer, before the file carried them | diagnostic — one per enrollment or re-enrollment served by this node |
-| `remoted.auth.keystore.adoptions_pending` | gauge (pull) | entries | Adopted entries the file has not caught up with yet (dropped at convergence or after the 60 s grace) | **non-zero for longer than a few seconds means `client.keys` is not being written or synchronized**: check `authd`'s writer and the cluster sync |
+| `remoted.auth.keystore.adoptions_pending` | gauge (pull) | entries | Adopted entries the file has not caught up with yet (dropped at convergence, when the file moves past them, or after the 60 s grace) | **non-zero for longer than a few seconds means `client.keys` is not being written or synchronized**: check `authd`'s writer and the cluster sync |
 | `remoted.auth.keystore.adoption_expiries.total` | counter (pull) | count | Adopted entries dropped because the file never carried them within the grace | diagnostic — each one is an enrollment whose key never reached `client.keys` on this node |
 
 `agents` and `entries_skipped` are **levels describing the file as it stands now**, and they
