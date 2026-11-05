@@ -562,11 +562,14 @@ namespace
             EXPECT_EQ(keystore.adoptionExpiriesTotal(), 0u);
         }
 
-        // A late convergence is still reconciled, not expired: the level read left the entry there.
+        // The entry is still there, not silently dropped: a re-enrollment inherits its key, so the
+        // file landing that key afterwards is behind the new adoption, not past it.
+        ASSERT_TRUE(keystore.upsert("67", "any", kKeyB));
+        EXPECT_EQ(keystore.adoptionExpiriesTotal(), 1u); // Swept by the adoption, counted once.
         writeFile(std::string("67 agent1 any ") + kKeyA + "\n");
         EXPECT_EQ(keystore.reload(), 1);
-        EXPECT_EQ(keystore.adoptionExpiriesTotal(), 0u);
-        EXPECT_EQ(keystore.adoptionsPending(), 0u);
+        EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyB));
+        EXPECT_EQ(keystore.adoptionsPending(), 1u);
     }
 
     TEST_F(KeystoreTest, UpsertRejectsUnparseableColumnsAndStoresNothing)

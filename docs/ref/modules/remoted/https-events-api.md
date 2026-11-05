@@ -590,8 +590,10 @@ To close it, the node that served `POST /enroll` adopts the accepted `id`, `ip` 
 into its `Keystore` **before** sending the `200` — for a first enrollment and for a re-enrollment
 (where the file still carries the previous key until the writer pass). The columns are parsed
 like a file line, except that a key that does not decode is not adopted (a file line keeps it as an
-unusable entry); an entry that does not parse is not adopted, the enrollment still answers `200`,
-and a warning names the agent.
+unusable entry); an entry that does not parse — or an adoption that throws — is not adopted, the
+enrollment still answers `200`, and a warning names the agent and the reason (throttled like the
+handler's other per-request lines: at most one per 90 s window, with the count of enrollments it
+stands for).
 
 An adopted entry is kept **beside** the file's table, not in it: `lookup()` consults it first.
 It remembers the keys it supersedes — the key the file had for that `id` at the first adoption,
@@ -608,8 +610,8 @@ file is no longer behind it, after which the file's entry takes over:
 A file without the `id` that has not carried it yet, or still on a superseded key, is behind: the
 entry stays, up to a 60 s grace (then a reload, a later adoption or the watcher's own cycle drops it
 and counts it in `remoted.auth.keystore.adoption_expiries.total`; reading `adoptions_pending` never
-does — a scrape moves no counter and writes no log line). The warning for an expiry — one per 90 s
-window, with the count of the entries it stands for — says whether the file never showed the agent
+does — a scrape moves no counter and writes no log line). The warning for an expiry — at most one
+per 90 s window, with the count of the entries it stands for — says whether the file never showed the agent
 (the writer or the synchronization has not landed the enrollment, or the agent was removed before
 they did) or still shows an older key for it (they have not landed the rotation). The file is authoritative for unusable rows too, and
 they follow the same comparison: a row whose `ip` column does not parse is not loaded, so it reads
@@ -627,9 +629,10 @@ key the file has not caught up with yet. The first three last at most until the 
 last one until the next synchronization:
 
 - a *new* agent removed before the file ever carried it keeps authenticating (the keystore gets no
-  removal signal, only the file: on the master that window is the writer pass after the
-  enrollment, on a worker the next synchronization), and its expiry is then reported as an
-  enrollment the file never showed;
+  removal signal, only the file: the window closes with the first writer pass — on a worker, the
+  first synchronization — that actually carries the agent's row; a pass or a synchronization
+  without it proves nothing), and its expiry is then reported as an enrollment the file never
+  showed;
 - two enrollments of the same `id` in flight at once are not ordered (`authd`'s answer carries no
   generation): if the older one's answer is adopted after the newer key is already in the file,
   the node refuses the newer key. An agent serializes its own enrollments, so this takes a

@@ -764,7 +764,9 @@ namespace remoted::enrollment
                         // agent an HTTP timeout and another enrollment. A throw here would otherwise
                         // unwind into AuthdClient's worker and be swallowed before send().
                         bool adopted = false;
-                        const char* failure = "the keystore refused it";
+                        // Copied, not pointed at: e.what() dies with the exception at the end of
+                        // its handler, and the line below is logged after it.
+                        std::string failure = "the keystore refused it";
                         try
                         {
                             adopted = keyUpsert(result.id, result.ip, result.key);
@@ -788,7 +790,7 @@ namespace remoted::enrollment
                                            "keystore (%s); it can authenticate here once client.keys carries a "
                                            "usable entry for it. %llu such enrollment(s) %s.",
                                            result.id.c_str(),
-                                           failure,
+                                           failure.c_str(),
                                            throttle.total,
                                            throttle.period().c_str());
                             }

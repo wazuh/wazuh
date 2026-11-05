@@ -703,7 +703,15 @@ namespace remoted::auth
         if (auto previous = m_pending.find(*agentId); previous != m_pending.end())
         {
             adoption.supersededKeys = std::move(previous->second.supersededKeys);
-            adoption.supersededKeys.push_back(std::move(previous->second.entry.key));
+            // The same key adopted again supersedes nothing, and a key already listed is not
+            // listed twice: both would only eat into kMaxSupersededKeys.
+            auto& previousKey = previous->second.entry.key;
+            if (previousKey != decoded &&
+                std::find(adoption.supersededKeys.begin(), adoption.supersededKeys.end(), previousKey) ==
+                    adoption.supersededKeys.end())
+            {
+                adoption.supersededKeys.push_back(std::move(previousKey));
+            }
             adoption.idSeenInFile = adoption.idSeenInFile || previous->second.idSeenInFile;
             adoption.saturated = previous->second.saturated;
         }
