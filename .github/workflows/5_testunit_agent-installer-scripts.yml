@@ -25,6 +25,8 @@ on:
       - "src/init/tests/test_write_logs.sh"
       # wazuh-client.sh (wazuh-control), run against stub daemons.
       - "src/init/wazuh-client.sh"
+      # test_wazuh_control.sh checks that its start-lock code matches the manager's.
+      - "src/init/wazuh-server.sh"
       - "src/init/tests/test_wazuh_control.sh"
   workflow_dispatch:
 
