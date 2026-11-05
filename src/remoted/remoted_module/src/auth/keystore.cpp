@@ -663,7 +663,6 @@ namespace remoted::auth
 
         const auto now = m_clock();
         std::lock_guard<std::mutex> lock(m_mutex);
-        expireAdoptedLocked(now);
         m_adoptionsTotal.fetch_add(1, std::memory_order_relaxed);
         // authd's writer pass can land before this call (it is signaled before the reply is built):
         // the file already serves the key, so a pending entry would never converge and would expire
@@ -673,13 +672,17 @@ namespace remoted::auth
             inFile != m_keys.end() ? std::optional<std::vector<std::uint8_t>> {inFile->second.key} : std::nullopt;
         if (fileState && *fileState == decoded)
         {
+            expireAdoptedLocked(now);
             m_pending.erase(*agentId);
             LOGFN_DEBUG1(
                 logFn(), "client.keys already carries the key issued to agent %u; nothing to adopt.", *agentId);
             return true;
         }
         // A newer adoption for the same id (two re-enrollments before the file caught up): the key
-        // it replaces is one authd may still write first, so it joins the superseded keys.
+        // it replaces is one authd may still write first, so it joins the superseded keys. Inherited
+        // BEFORE the sweep below: a previous adoption past its grace is still a key this node issued
+        // and the file may still land it (the typical chain is an expiry, an unknown_agent answer and
+        // a re-enrollment here, with the sync then delivering the older key first).
         PendingEntry adoption {
             AgentEntry {std::move(decoded), std::move(*addressRule)}, now, {}, fileState.has_value()};
         if (auto previous = m_pending.find(*agentId); previous != m_pending.end())
@@ -689,6 +692,7 @@ namespace remoted::auth
             adoption.idSeenInFile = adoption.idSeenInFile || previous->second.idSeenInFile;
             adoption.saturated = previous->second.saturated;
         }
+        expireAdoptedLocked(now);
         if (fileState && std::find(adoption.supersededKeys.begin(), adoption.supersededKeys.end(), *fileState) ==
                              adoption.supersededKeys.end())
         {

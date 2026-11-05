@@ -831,6 +831,33 @@ namespace
         EXPECT_EQ(keystore.adoptionsPending(), 0u);
     }
 
+    TEST_F(KeystoreTest, UpsertInheritsTheHistoryOfAnAdoptionPastItsGrace)
+    {
+        // K1 adopted for a new agent, never landed within the grace (sync stalled); this node then
+        // answers unknown_agent, the agent re-enrolls here and K2 is adopted. The sync finally
+        // delivers the snapshot carrying K1: it is a key this node issued, so the file is behind K2,
+        // not past it. Sweeping the expired K1 before inheriting from it lost that.
+        ManualClock clock;
+        Keystore keystore(m_path, Keystore::kDefaultRefreshIntervalSeconds, clock.source());
+        ASSERT_TRUE(keystore.upsert("067", "any", kKeyA));
+        clock.advance(Keystore::kAdoptionGrace + std::chrono::seconds(1));
+
+        ASSERT_TRUE(keystore.upsert("067", "any", kKeyB));
+        EXPECT_EQ(keystore.adoptionExpiriesTotal(), 1u); // K1 is still counted as expired...
+        EXPECT_EQ(keystore.adoptionsPending(), 1u);
+
+        writeFile(std::string("067 agent any ") + kKeyA + "\n");
+        ASSERT_EQ(keystore.reload(), 1);
+        EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyB)); // ...but the file carrying it is behind K2.
+        EXPECT_EQ(keystore.adoptionsPending(), 1u);
+
+        writeFile(std::string("067 agent any ") + kKeyB + "\n");
+        ASSERT_EQ(keystore.reload(), 1);
+        EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyB));
+        EXPECT_EQ(keystore.adoptionsPending(), 0u);
+        EXPECT_EQ(keystore.adoptionExpiriesTotal(), 1u);
+    }
+
     TEST_F(KeystoreTest, WatcherDropsAnExpiredAdoptionWithoutAReload)
     {
         // Nothing else touches the keystore: no reload (the file never changes), no new adoption,
