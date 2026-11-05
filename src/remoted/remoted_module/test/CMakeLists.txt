@@ -63,8 +63,8 @@ target_include_directories(
           # control/*.hpp include "json.hpp" (nlohmann); remoted_module gets that dir PRIVATE so
           # the utest translation units need it added here too.
           ${SRC_FOLDER}/external/nlohmann
-          # vdClient_test.cpp's fakeVdServer.hpp spins up a real httplib::Server over a UDS socket
-          # to stand in for the VD module; remoted_module gets cpp-httplib PRIVATE, same gap as above.
+          # The VD and task-manager fakes (fakeVdServer.hpp, fakeTaskServer.hpp) and adminServer_test.cpp's
+          # client are cpp-httplib; remoted_module itself does not use it, so the tests add it on their own.
           ${SRC_FOLDER}/external/cpp-httplib
           # agentGroupsRoute_test.cpp drives the admin route handler directly (HttpRequest,
           # IHttpResponder); remoted_module links wazuh_uds_http_server PRIVATE, same gap -- the
