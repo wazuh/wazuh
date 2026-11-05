@@ -207,6 +207,201 @@ void test_W_JSON_AddField_string_time(void **state)
     os_free(output);
     cJSON_Delete(root);
 }
+
+void test_W_JSON_AddField_keeps_existing_value(void **state)
+{
+    cJSON * root = cJSON_Parse("{\"env\":\"from_line\"}");
+    char * output = NULL;
+
+    W_JSON_AddField(root, "env", "configured");
+    output = cJSON_PrintUnformatted(root);
+    assert_string_equal(output, "{\"env\":\"from_line\"}");
+
+    os_free(output);
+    cJSON_Delete(root);
+}
+
+// Tests W_JSON_RemoveField
+
+void test_W_JSON_RemoveField_no_match(void **state)
+{
+    cJSON * root = cJSON_Parse("{\"msg\":\"hello\"}");
+    char * output = NULL;
+
+    W_JSON_RemoveField(root, "env");
+    output = cJSON_PrintUnformatted(root);
+    assert_string_equal(output, "{\"msg\":\"hello\"}");
+
+    os_free(output);
+    cJSON_Delete(root);
+}
+
+void test_W_JSON_RemoveField_removes_member(void **state)
+{
+    cJSON * root = cJSON_Parse("{\"env\":\"from_line\",\"msg\":\"hello\"}");
+    char * output = NULL;
+
+    W_JSON_RemoveField(root, "env");
+    output = cJSON_PrintUnformatted(root);
+    assert_string_equal(output, "{\"msg\":\"hello\"}");
+
+    os_free(output);
+    cJSON_Delete(root);
+}
+
+void test_W_JSON_RemoveField_removes_every_case_insensitive_match(void **state)
+{
+    cJSON * root = cJSON_Parse("{\"ENV\":\"a\",\"msg\":\"hello\",\"env\":\"b\",\"Env\":{\"x\":1}}");
+    char * output = NULL;
+
+    W_JSON_RemoveField(root, "env");
+    output = cJSON_PrintUnformatted(root);
+    assert_string_equal(output, "{\"msg\":\"hello\"}");
+
+    os_free(output);
+    cJSON_Delete(root);
+}
+
+void test_W_JSON_RemoveField_does_not_match_prefix(void **state)
+{
+    cJSON * root = cJSON_Parse("{\"environment\":\"a\",\"en\":\"b\"}");
+    char * output = NULL;
+
+    W_JSON_RemoveField(root, "env");
+    output = cJSON_PrintUnformatted(root);
+    assert_string_equal(output, "{\"environment\":\"a\",\"en\":\"b\"}");
+
+    os_free(output);
+    cJSON_Delete(root);
+}
+
+void test_W_JSON_RemoveField_nest_removes_leaf_only(void **state)
+{
+    cJSON * root = cJSON_Parse("{\"tags\":{\"env\":\"from_line\",\"team\":\"a\"},\"msg\":\"hello\"}");
+    char * output = NULL;
+
+    W_JSON_RemoveField(root, "tags.env");
+    output = cJSON_PrintUnformatted(root);
+    assert_string_equal(output, "{\"tags\":{\"team\":\"a\"},\"msg\":\"hello\"}");
+
+    os_free(output);
+    cJSON_Delete(root);
+}
+
+void test_W_JSON_RemoveField_nest_removes_non_object(void **state)
+{
+    cJSON * root = cJSON_Parse("{\"tags\":\"x\",\"msg\":\"hello\"}");
+    char * output = NULL;
+
+    W_JSON_RemoveField(root, "tags.env");
+    output = cJSON_PrintUnformatted(root);
+    assert_string_equal(output, "{\"msg\":\"hello\"}");
+
+    os_free(output);
+    cJSON_Delete(root);
+}
+
+void test_W_JSON_RemoveField_nest_keeps_every_object(void **state)
+{
+    cJSON * root = cJSON_Parse("{\"TAGS\":{\"team\":\"a\",\"env\":\"1\"},\"tags\":\"x\",\"Tags\":{\"owner\":\"b\",\"ENV\":\"2\"}}");
+    char * output = NULL;
+
+    W_JSON_RemoveField(root, "tags.env");
+    output = cJSON_PrintUnformatted(root);
+    assert_string_equal(output, "{\"TAGS\":{\"team\":\"a\"},\"Tags\":{\"owner\":\"b\"}}");
+
+    os_free(output);
+    cJSON_Delete(root);
+}
+
+void test_W_JSON_RemoveField_multi_level_nest(void **state)
+{
+    cJSON * root = cJSON_Parse("{\"a\":{\"b\":\"from_line\",\"c\":1}}");
+    char * output = NULL;
+
+    W_JSON_RemoveField(root, "a.b.c");
+    output = cJSON_PrintUnformatted(root);
+    assert_string_equal(output, "{\"a\":{\"c\":1}}");
+
+    os_free(output);
+    cJSON_Delete(root);
+}
+
+void test_W_JSON_RemoveField_dotted_member_name(void **state)
+{
+    cJSON * root = cJSON_Parse("{\"tags.env\":\"x\",\"TAGS.ENV\":\"y\",\"msg\":\"m\"}");
+    char * output = NULL;
+
+    W_JSON_RemoveField(root, "tags.env");
+    output = cJSON_PrintUnformatted(root);
+    assert_string_equal(output, "{\"msg\":\"m\"}");
+
+    os_free(output);
+    cJSON_Delete(root);
+}
+
+void test_W_JSON_RemoveField_dotted_member_prefix_object(void **state)
+{
+    cJSON * root = cJSON_Parse("{\"a.b\":{\"c\":1,\"d\":2}}");
+    char * output = NULL;
+
+    W_JSON_RemoveField(root, "a.b.c");
+    output = cJSON_PrintUnformatted(root);
+    assert_string_equal(output, "{\"a.b\":{\"d\":2}}");
+
+    os_free(output);
+    cJSON_Delete(root);
+}
+
+void test_W_JSON_RemoveField_dotted_member_prefix_non_object(void **state)
+{
+    cJSON * root = cJSON_Parse("{\"a.b\":\"x\",\"msg\":\"m\"}");
+    char * output = NULL;
+
+    W_JSON_RemoveField(root, "a.b.c");
+    output = cJSON_PrintUnformatted(root);
+    assert_string_equal(output, "{\"msg\":\"m\"}");
+
+    os_free(output);
+    cJSON_Delete(root);
+}
+
+void test_W_JSON_RemoveField_dotted_member_not_on_boundary(void **state)
+{
+    cJSON * root = cJSON_Parse("{\"tag\":1,\"tags.environment\":2,\"tags.envx\":3}");
+    char * output = NULL;
+
+    W_JSON_RemoveField(root, "tags.env");
+    output = cJSON_PrintUnformatted(root);
+    assert_string_equal(output, "{\"tag\":1,\"tags.environment\":2,\"tags.envx\":3}");
+
+    os_free(output);
+    cJSON_Delete(root);
+}
+
+void test_W_JSON_RemoveField_many_duplicates(void **state)
+{
+    cJSON * root = cJSON_CreateObject();
+    cJSON * item = NULL;
+    char name[16];
+
+    for (int i = 0; i < 1000; i++) {
+        snprintf(name, sizeof(name), "f%d", i);
+        cJSON_AddStringToObject(root, name, "value");
+        cJSON_AddStringToObject(root, i % 2 ? "env" : "ENV", "from_line");
+    }
+
+    W_JSON_RemoveField(root, "env");
+
+    cJSON_ArrayForEach(item, root) {
+        assert_int_not_equal(strcasecmp(item->string, "env"), 0);
+    }
+
+    assert_int_equal(cJSON_GetArraySize(root), 1000);
+
+    cJSON_Delete(root);
+}
+
 /* w_strndup */
 void test_w_strndup_null_str(void ** state)
 {
@@ -1235,6 +1430,21 @@ int main(void) {
         cmocka_unit_test(test_W_JSON_AddField_JSON_valid),
         cmocka_unit_test(test_W_JSON_AddField_JSON_invalid),
         cmocka_unit_test(test_W_JSON_AddField_string_time),
+        cmocka_unit_test(test_W_JSON_AddField_keeps_existing_value),
+        // Tests W_JSON_RemoveField
+        cmocka_unit_test(test_W_JSON_RemoveField_no_match),
+        cmocka_unit_test(test_W_JSON_RemoveField_removes_member),
+        cmocka_unit_test(test_W_JSON_RemoveField_removes_every_case_insensitive_match),
+        cmocka_unit_test(test_W_JSON_RemoveField_does_not_match_prefix),
+        cmocka_unit_test(test_W_JSON_RemoveField_nest_removes_leaf_only),
+        cmocka_unit_test(test_W_JSON_RemoveField_nest_removes_non_object),
+        cmocka_unit_test(test_W_JSON_RemoveField_nest_keeps_every_object),
+        cmocka_unit_test(test_W_JSON_RemoveField_multi_level_nest),
+        cmocka_unit_test(test_W_JSON_RemoveField_dotted_member_name),
+        cmocka_unit_test(test_W_JSON_RemoveField_dotted_member_prefix_object),
+        cmocka_unit_test(test_W_JSON_RemoveField_dotted_member_prefix_non_object),
+        cmocka_unit_test(test_W_JSON_RemoveField_dotted_member_not_on_boundary),
+        cmocka_unit_test(test_W_JSON_RemoveField_many_duplicates),
         // Tests w_strndup
         cmocka_unit_test(test_w_strndup_null_str),
         cmocka_unit_test(test_w_strndup_str_less_than_n),

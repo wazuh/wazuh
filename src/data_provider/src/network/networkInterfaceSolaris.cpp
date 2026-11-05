@@ -109,4 +109,5 @@ void SolarisNetworkImpl<AF_UNSPEC>::buildNetworkData(nlohmann::json& network)
 
     network["mtu"]        = m_interfaceAddress->mtu();
     network["gateway"]    = m_interfaceAddress->gateway();
+    network["gateway6"]   = m_interfaceAddress->gatewayV6();
 }

@@ -27,6 +27,11 @@ list(APPEND os_integrator_flags "-Wl,--wrap,jqueue_open -Wl,--wrap,jqueue_next -
                                  -Wl,--wrap,os_random -Wl,--wrap,wpopenv -Wl,--wrap,wpclose -Wl,--wrap,fprintf -Wl,--wrap,unlink,--wrap,getpid \
                                  -Wl,--wrap,File_DateofChange -Wl,--wrap,wfopen -Wl,--wrap,popen ${STDIO_OP_WRAPPERS}")
 
+list(APPEND os_integrator_names "test_intgcom")
+list(APPEND os_integrator_flags "-Wl,--wrap,close -Wl,--wrap,accept -Wl,--wrap,select -Wl,--wrap,FOREVER \
+                                 -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,OS_RecvSecureTCP \
+                                 -Wl,--wrap,OS_SendSecureTCP ${DEBUG_OP_WRAPPERS}")
+
 list(LENGTH os_integrator_names count)
 math(EXPR count "${count} - 1")
 foreach(counter RANGE ${count})

@@ -402,6 +402,30 @@ if(NOT ${TARGET} STREQUAL "winagent")
     add_test(NAME test_check_rc_ports COMMAND test_check_rc_ports)
   endif()
 
+  set(CHECK_RC_PIDS_FLAGS "-Wl,--wrap,kill \
+                           -Wl,--wrap,getsid \
+                           -Wl,--wrap,getpgid \
+                           -Wl,--wrap,getpid \
+                           -Wl,--wrap,syscall \
+                           -Wl,--wrap,wopendir \
+                           -Wl,--wrap,readdir \
+                           -Wl,--wrap,closedir \
+                           -Wl,--wrap,w_stat \
+                           -Wl,--wrap,waccess \
+                           -Wl,--wrap,wfopen \
+                           -Wl,--wrap,popen \
+                           -Wl,--wrap,pclose \
+                           -Wl,--wrap,system \
+                           -Wl,--wrap,notify_rk")
+
+  # The scan under test is Linux-only
+  if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+    add_executable(test_check_rc_pids test_check_rc_pids.c)
+    target_include_directories(test_check_rc_pids PRIVATE ${SRC_FOLDER}/rootcheck)
+    target_link_libraries(test_check_rc_pids SYSCHECK_O ROOTCHECK_O ${TEST_DEPS} "${CHECK_RC_PIDS_FLAGS}")
+    add_test(NAME test_check_rc_pids COMMAND test_check_rc_pids)
+  endif()
+
   set(COMMON_FLAGS "-Wl,--wrap,wopendir \
                     -Wl,--wrap,closedir \
                     -Wl,--wrap,w_stat \

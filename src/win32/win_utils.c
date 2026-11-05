@@ -451,14 +451,18 @@ char *get_agent_ip_legacy_win32()
                         if(!element) {
                             continue;
                         }
-                        cJSON *gateway = cJSON_GetObjectItem(element, "gateway");
-                        if(gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring, " ")) {
+                        const char * gateway = cJSON_GetStringValue(cJSON_GetObjectItem(element, "gateway"));
+                        const char * gateway6 = cJSON_GetStringValue(cJSON_GetObjectItem(element, "gateway6"));
+                        const int has_gateway = gateway && 0 != strcmp(gateway, " ");
+                        const int has_gateway6 = gateway6 && *gateway6 != '\0' && 0 != strcmp(gateway6, " ");
+
+                        if (has_gateway || has_gateway6) {
 
                             const char * primaryIpType = NULL;
                             const char * secondaryIpType = NULL;
 
-                            if (strchr(gateway->valuestring, ':') != NULL) {
-                                // Assume gateway is IPv6. IPv6 IP will be prioritary
+                            if (has_gateway6 || strchr(gateway, ':') != NULL) {
+                                // Any IPv6 gateway makes the IPv6 IP prioritary
                                 primaryIpType = "IPv6";
                                 secondaryIpType = "IPv4";
                             } else {

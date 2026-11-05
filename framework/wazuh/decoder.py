@@ -15,7 +15,7 @@ from wazuh.core.decoder import load_decoders_from_file, check_status, REQUIRED_F
     DECODER_FILES_FIELDS, DECODER_FILES_REQUIRED_FIELDS
 from wazuh.core.exception import WazuhInternalError, WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.rule import format_rule_decoder_file
+from wazuh.core.rule import format_rule_decoder_file, format_rule_decoder_files
 from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml, \
     upload_file, to_relative_path, full_copy
 from wazuh.core.logtest import validate_dummy_logtest
@@ -170,13 +170,10 @@ def get_decoders_files(status: str = None, relative_dirname: str = None, filenam
     if not ruleset_conf:
         raise WazuhInternalError(1500)
 
-    decoders_files = list()
     tags = ['decoder_include', 'decoder_exclude', 'decoder_dir']
     if isinstance(filename, list):
-        for f in filename:
-            decoders_files.extend(format_rule_decoder_file(
-                ruleset_conf, {'status': status, 'relative_dirname': relative_dirname, 'filename': f},
-                tags))
+        decoders_files = format_rule_decoder_files(
+            ruleset_conf, {'status': status, 'relative_dirname': relative_dirname}, tags, filename)
     else:
         decoders_files = format_rule_decoder_file(
             ruleset_conf,

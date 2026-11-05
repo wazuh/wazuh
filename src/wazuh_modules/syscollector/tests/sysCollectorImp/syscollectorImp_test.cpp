@@ -8,7 +8,9 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include <atomic>
 #include <cstdio>
+#include <future>
 #include "syscollectorImp_test.h"
 #include "syscollector.hpp"
 
@@ -17,7 +19,7 @@ constexpr auto SYSCOLLECTOR_DB_PATH {"TEMP.db"};
 // Defines to replace inline JSON in EXPECT_CALLs
 #define EXPECT_CALL_HARDWARE_JSON R"({"board_serial":"Intel Corporation","scan_time":"2020/12/28 21:49:50", "cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54})"
 #define EXPECT_CALL_OS_JSON R"({"architecture":"x86_64","scan_time":"2020/12/28 21:49:50", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"})"
-#define EXPECT_CALL_NETWORKS_JSON R"({"iface":[{"address":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "mac":"d4:5d:64:51:07:5d", "gateway":"192.168.0.1|600","broadcast":"127.255.255.255", "name":"ens1", "mtu":1500, "name":"enp4s0", "adapter":" ", "type":"ethernet", "state":"up", "dhcp":"disabled","iface":"Loopback Pseudo-Interface 1","metric":"75","netmask":"255.0.0.0","proto":"IPv4","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0, "IPv4":[{"address":"192.168.153.1","broadcast":"192.168.153.255","dhcp":"unknown","metric":" ","netmask":"255.255.255.0"}], "IPv6":[{"address":"fe80::250:56ff:fec0:8","dhcp":"unknown","metric":" ","netmask":"ffff:ffff:ffff:ffff::"}]}]})"
+#define EXPECT_CALL_NETWORKS_JSON R"({"iface":[{"address":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "mac":"d4:5d:64:51:07:5d", "gateway":"192.168.0.1|600", "gateway6":"fe80::1","broadcast":"127.255.255.255", "name":"ens1", "mtu":1500, "name":"enp4s0", "adapter":" ", "type":"ethernet", "state":"up", "dhcp":"disabled","iface":"Loopback Pseudo-Interface 1","metric":"75","netmask":"255.0.0.0","proto":"IPv4","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0, "IPv4":[{"address":"192.168.153.1","broadcast":"192.168.153.255","dhcp":"unknown","metric":" ","netmask":"255.255.255.0"}], "IPv6":[{"address":"fe80::250:56ff:fec0:8","dhcp":"unknown","metric":" ","netmask":"ffff:ffff:ffff:ffff::"}]}]})"
 #define EXPECT_CALL_PORTS_JSON R"([{"inode":0,"local_ip":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0}])"
 #define EXPECT_CALL_PACKAGES_JSON R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"
 #define EXPECT_CALL_HOTFIXES_JSON R"([{"hotfix":"KB12345678"}])"
@@ -45,7 +47,7 @@ const auto expected_dbsync_network_protocol_1
 };
 const auto expected_dbsync_network_protocol_2
 {
-    R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+    R"({"data":{"checksum":"6ec1526bd65663386d4839d6feba4b4eb42e0a76","dhcp":"unknown","gateway":"fe80::1","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
 };
 const auto expected_dbsync_network_address_1
 {
@@ -198,6 +200,25 @@ void logFunction(const modules_log_level_t /*level*/, const std::string& /*log*/
     // std::cout << s_logStringMap.at(level) << ": " << log << std::endl;
 }
 
+// destroy() interrupts a running scan, so tests that expect a full scan must wait for it instead of sleeping.
+template <typename Predicate>
+static bool waitUntil(Predicate&& predicate, const std::chrono::seconds timeout = std::chrono::seconds{120})
+{
+    const auto deadline{std::chrono::steady_clock::now() + timeout};
+
+    while (!predicate())
+    {
+        if (std::chrono::steady_clock::now() >= deadline)
+        {
+            return false;
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds{50});
+    }
+
+    return true;
+}
+
 TEST_F(SyscollectorImpTest, defaultCtor)
 {
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
@@ -223,22 +244,25 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
     EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
 
+    std::atomic<int> dataEvents{0};
+    std::atomic<int> deltaEvents{0};
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
     {
-        [&wrapper](const std::string & data)
+        [&wrapper, &dataEvents](const std::string & data)
         {
             auto delta = nlohmann::json::parse(data);
             delta["data"].erase("checksum");
             delta["data"].erase("id");
             wrapper.callbackMock(delta.dump());
+            ++dataEvents;
         }
     };
 
     CallbackMock wrapperDelta;
     std::function<void(const std::string&)> callbackDataDelta
     {
-        [&wrapperDelta](const std::string & data)
+        [&wrapperDelta, &deltaEvents](const std::string & data)
         {
             auto delta = nlohmann::json::parse(data);
 
@@ -249,6 +273,7 @@ TEST_F(SyscollectorImpTest, defaultCtor)
 
             delta["data"].erase("scan_time");
             wrapperDelta.callbackMock(delta.dump());
+            ++deltaEvents;
         }
     };
 
@@ -297,7 +322,11 @@ TEST_F(SyscollectorImpTest, defaultCtor)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    // A full scan emits every expected event; stopping earlier makes destroy() abort it.
+    EXPECT_TRUE(waitUntil([&]()
+    {
+        return dataEvents >= 13 && deltaEvents >= 15;
+    }));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -314,12 +343,24 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_PORTS_JSON)));
     EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"},{"hotfix":"KB87654321"}])"_json));
-    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(::testing::AtLeast(2)).WillRepeatedly(testing::InvokeArgument<0>(nlohmann::json::parse(EXPECT_CALL_PROCESSES_JSON)));
+    std::atomic<int> processScans{0};
+    std::atomic<int> packageScans{0};
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(::testing::AtLeast(2)).WillRepeatedly([&processScans](const std::function<void(nlohmann::json&)>& cb)
+    {
+        auto data = nlohmann::json::parse(EXPECT_CALL_PROCESSES_JSON);
+        ++processScans;
+        cb(data);
+    });
 
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(2))
-    .WillRepeatedly(::testing::InvokeArgument<0>
-                    (R"({"name":"TEXT", "scan_time":"2020/12/28 21:49:50", "version":"TEXT", "vendor":"TEXT", "install_time":"TEXT", "location":"TEXT", "architecture":"TEXT", "groups":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json));
+    .WillRepeatedly([&packageScans](const std::function<void(nlohmann::json&)>& cb)
+    {
+        auto data =
+            R"({"name":"TEXT", "scan_time":"2020/12/28 21:49:50", "version":"TEXT", "vendor":"TEXT", "install_time":"TEXT", "location":"TEXT", "architecture":"TEXT", "groups":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json;
+        ++packageScans;
+        cb(data);
+    });
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
@@ -342,7 +383,10 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds{10});
+    EXPECT_TRUE(waitUntil([&]()
+    {
+        return processScans >= 2 && packageScans >= 2;
+    }));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -1903,7 +1947,7 @@ TEST_F(SyscollectorImpTest, pushMessageInvalid)
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                       R"({"board_serial":"Intel Corporation","scan_time":"2020/12/28 21:49:50", "cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"address":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "mac":"d4:5d:64:51:07:5d", "gateway":"192.168.0.1|600","broadcast":"127.255.255.255", "name":"ens1", "mtu":1500, "name":"enp4s0", "adapter":" ", "type":"ethernet", "state":"up", "dhcp":"disabled","iface":"Loopback Pseudo-Interface 1","metric":"75","netmask":"255.0.0.0","proto":"IPv4","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0, "IPv4":[{"address":"192.168.153.1","broadcast":"192.168.153.255","dhcp":"unknown","metric":" ","netmask":"255.255.255.0"}], "IPv6":[{"address":"fe80::250:56ff:fec0:8","dhcp":"unknown","metric":" ","netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"address":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "mac":"d4:5d:64:51:07:5d", "gateway":"192.168.0.1|600", "gateway6":"fe80::1","broadcast":"127.255.255.255", "name":"ens1", "mtu":1500, "name":"enp4s0", "adapter":" ", "type":"ethernet", "state":"up", "dhcp":"disabled","iface":"Loopback Pseudo-Interface 1","metric":"75","netmask":"255.0.0.0","proto":"IPv4","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0, "IPv4":[{"address":"192.168.153.1","broadcast":"192.168.153.255","dhcp":"unknown","metric":" ","netmask":"255.255.255.0"}], "IPv6":[{"address":"fe80::250:56ff:fec0:8","dhcp":"unknown","metric":" ","netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                 R"({"architecture":"x86_64","scan_time":"2020/12/28 21:49:50", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
@@ -1958,7 +2002,7 @@ TEST_F(SyscollectorImpTest, scanInvalidData)
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                       R"({"board_serial":"Intel Corporation","scan_time":"2020/12/28 21:49:50", "cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"address":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "mac":"d4:5d:64:51:07:5d", "gateway":"192.168.0.1|600","broadcast":"127.255.255.255", "name":"ens1", "mtu":1500, "name":"enp4s0", "adapter":" ", "type":"ethernet", "state":"up", "dhcp":"disabled","iface":"Loopback Pseudo-Interface 1","metric":"75","netmask":"255.0.0.0","proto":"IPv4","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0, "IPv4":[{"address":"192.168.153.1","broadcast":"192.168.153.255","dhcp":"unknown","metric":" ","netmask":"255.255.255.0"}], "IPv6":[{"address":"fe80::250:56ff:fec0:8","dhcp":"unknown","metric":" ","netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"address":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "mac":"d4:5d:64:51:07:5d", "gateway":"192.168.0.1|600", "gateway6":"fe80::1","broadcast":"127.255.255.255", "name":"ens1", "mtu":1500, "name":"enp4s0", "adapter":" ", "type":"ethernet", "state":"up", "dhcp":"disabled","iface":"Loopback Pseudo-Interface 1","metric":"75","netmask":"255.0.0.0","proto":"IPv4","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0, "IPv4":[{"address":"192.168.153.1","broadcast":"192.168.153.255","dhcp":"unknown","metric":" ","netmask":"255.255.255.0"}], "IPv6":[{"address":"fe80::250:56ff:fec0:8","dhcp":"unknown","metric":" ","netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                 R"({"architecture":"x86_64","scan_time":"2020/12/28 21:49:50", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
@@ -2329,7 +2373,7 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                 R"({"architecture":" x86_64","scan_time":"2020/12/28 21:49:50 ", "hostname":" UBUNTU ","os_build":"  7601","os_major":"6  ","os_minor":"  1  ","os_name":" Microsoft   Windows  7 ","os_release":"   sp1","os_version":"6.1.7601   "})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"address":"127.0.0.1 ","scan_time":" 2020/12/28 21:49:50", "mac":" d4:5d:64:51:07:5d ", "gateway":"  192.168.0.1|600","broadcast":"127.255.255.255  ", "name":"  ens1  ", "mtu":1500, "name":"enp4s0", "adapter":" ", "type":"   ethernet", "state":"up   ", "dhcp":"disabled","iface":"Loopback Pseudo-Interface 1","metric":"75","netmask":"255.0.0.0","proto":"IPv4","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0, "IPv4":[{"address":"192.168.153.1","broadcast":"192.168.153.255","dhcp":"unknown","metric":" ","netmask":"255.255.255.0"}], "IPv6":[{"address":"fe80::250:56ff:fec0:8","dhcp":"unknown","metric":" ","netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"address":"127.0.0.1 ","scan_time":" 2020/12/28 21:49:50", "mac":" d4:5d:64:51:07:5d ", "gateway":"  192.168.0.1|600", "gateway6":"  fe80::1","broadcast":"127.255.255.255  ", "name":"  ens1  ", "mtu":1500, "name":"enp4s0", "adapter":" ", "type":"   ethernet", "state":"up   ", "dhcp":"disabled","iface":"Loopback Pseudo-Interface 1","metric":"75","netmask":"255.0.0.0","proto":"IPv4","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0, "IPv4":[{"address":"192.168.153.1","broadcast":"192.168.153.255","dhcp":"unknown","metric":" ","netmask":"255.255.255.0"}], "IPv6":[{"address":"fe80::250:56ff:fec0:8","dhcp":"unknown","metric":" ","netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                    R"([{"inode":0,"local_ip":" 127.0.0.1 ","scan_time":"  2020/12/28 21:49:50  ", "local_port":631,"pid":0,"process_name":"System  Idle Process","protocol":"tcp   ","remote_ip":"   0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0}])")));
     EXPECT_CALL(*spInfoWrapper, packages(_))
@@ -2516,6 +2560,76 @@ TEST_F(SyscollectorImpTest, invalidUtf8DoesNotAbortScan)
     EXPECT_EQ(inserted, expected);
 }
 
+TEST_F(SyscollectorImpTest, incompleteInterfaceDoesNotAbortNetworkScan)
+{
+    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+
+    auto networks = nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON);
+    networks["iface"].insert(networks["iface"].begin(),
+                             R"({"IPv4":[{"address":"192.0.2.10","broadcast":"192.0.2.10","dhcp":"unknown","metric":"","netmask":"255.255.255.255"}]})"_json);
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(networks));
+
+    std::vector<std::string> inserted;
+    std::function<void(const std::string&)> callbackData
+    {
+        [&inserted](const std::string & data)
+        {
+            const auto delta = nlohmann::json::parse(data);
+            const auto& item {delta.at("data")};
+            inserted.push_back(delta.at("type").get<std::string>() + ":" +
+                               item.value("name", item.value("iface", "")) + ":" + item.value("address", item.value("type", "")));
+        }
+    };
+
+    std::vector<std::string> warnings;
+    std::function<void(const modules_log_level_t, const std::string&)> captureLog
+    {
+        [&warnings](const modules_log_level_t level, const std::string & log)
+        {
+            if (LOG_WARNING == level)
+            {
+                warnings.push_back(log);
+            }
+        }
+    };
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackData, &captureLog]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackData,
+                                          reportFunction,
+                                          captureLog,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, true, false, false, true, false, false, false, false, false, false, false, false, false, true);
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds{2});
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    std::sort(inserted.begin(), inserted.end());
+    const std::vector<std::string> expected
+    {
+        "dbsync_network_address:enp4s0:192.168.153.1",
+        "dbsync_network_address:enp4s0:fe80::250:56ff:fec0:8",
+        "dbsync_network_iface:enp4s0:ethernet",
+        "dbsync_network_protocol:enp4s0:ipv4",
+        "dbsync_network_protocol:enp4s0:ipv6",
+    };
+    EXPECT_EQ(inserted, expected);
+    ASSERT_EQ(1u, warnings.size());
+    EXPECT_NE(std::string::npos, warnings[0].find("192.0.2.10"));
+}
+
 TEST_F(SyscollectorImpTest, destroyWaitsForSyncLoopCompletion)
 {
     auto spInfoWrapper
@@ -2592,4 +2706,175 @@ TEST_F(SyscollectorImpTest, destroyWaitsForSyncLoopCompletion)
     {
         t.join();
     }
+}
+
+class ScanGate
+{
+    public:
+        void block()
+        {
+            m_entered.set_value();
+            m_released.get_future().wait();
+        }
+        void waitEntered()
+        {
+            m_enteredFuture.wait();
+        }
+        void release()
+        {
+            m_released.set_value();
+        }
+    private:
+        std::promise<void> m_entered;
+        std::shared_future<void> m_enteredFuture{m_entered.get_future().share()};
+        std::promise<void> m_released;
+};
+
+TEST_F(SyscollectorImpTest, destroyDuringScanSkipsRemainingTasks)
+{
+    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    ScanGate gate;
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillOnce(testing::Invoke([&gate]()
+    {
+        gate.block();
+        return nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON);
+    }));
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    std::thread t
+    {
+        [&]()
+        {
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, logFunction,
+                                          SYSCOLLECTOR_DB_PATH, "", "", 3600, true, true, true,
+                                          false, false, false, false, false, false, false, false, false, false);
+        }
+    };
+
+    gate.waitEntered();
+    // Scan holds the syscollector mutex now; destroy must neither need it nor hang.
+    auto destroyed{std::async(std::launch::async, []()
+    {
+        Syscollector::instance().destroy();
+    })};
+    std::this_thread::sleep_for(std::chrono::milliseconds{1500});
+    EXPECT_EQ(std::future_status::timeout, destroyed.wait_for(std::chrono::seconds{0}));
+    gate.release();
+    ASSERT_EQ(std::future_status::ready, destroyed.wait_for(std::chrono::seconds{10}));
+    t.join();
+}
+
+TEST_F(SyscollectorImpTest, destroyDuringScanReturnsAfterBoundedWait)
+{
+    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    ScanGate gate;
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillOnce(testing::Invoke([&gate]()
+    {
+        gate.block();
+        return nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON);
+    }));
+
+    std::thread t
+    {
+        [&]()
+        {
+            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, logFunction,
+                                          SYSCOLLECTOR_DB_PATH, "", "", 3600, true, true, false,
+                                          false, false, false, false, false, false, false, false, false, false);
+        }
+    };
+
+    gate.waitEntered();
+    const auto start{std::chrono::steady_clock::now()};
+    Syscollector::instance().destroy();
+    const auto elapsed{std::chrono::steady_clock::now() - start};
+    // Bounds bracket destroy()'s STOP_WAIT_SLICES budget (20 x 1 s).
+    EXPECT_GE(elapsed, std::chrono::seconds{15});
+    EXPECT_LT(elapsed, std::chrono::seconds{30});
+    gate.release();
+    t.join();
+}
+
+TEST_F(SyscollectorImpTest, destroyDuringSyncDoesNotHang)
+{
+    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    ScanGate gate;
+    std::atomic<bool> blocked{false};
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
+    EXPECT_CALL(*spInfoWrapper, os()).Times(testing::AtMost(1)).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
+
+    const auto blockingSync
+    {
+        [&](const std::string&)
+        {
+            if (!blocked.exchange(true))
+            {
+                gate.block();
+            }
+        }
+    };
+
+    std::thread t
+    {
+        [&]()
+        {
+            Syscollector::instance().init(spInfoWrapper, reportFunction, blockingSync, logFunction,
+                                          SYSCOLLECTOR_DB_PATH, "", "", 3600, true, true, true,
+                                          false, false, false, false, false, false, false, false, false, false);
+        }
+    };
+
+    gate.waitEntered();
+    auto destroyed{std::async(std::launch::async, []()
+    {
+        Syscollector::instance().destroy();
+    })};
+    std::this_thread::sleep_for(std::chrono::milliseconds{1500});
+    gate.release();
+    ASSERT_EQ(std::future_status::ready, destroyed.wait_for(std::chrono::seconds{10}));
+    t.join();
+}
+
+TEST_F(SyscollectorImpTest, notifyChangeNotDroppedWhileStopping)
+{
+    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    ScanGate gate;
+    std::atomic<int> hardwareEvents{0};
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillOnce(testing::Invoke([&gate]()
+    {
+        gate.block();
+        return nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON);
+    }));
+
+    const auto countDiff
+    {
+        [&](const std::string & payload)
+        {
+            if (payload.find("dbsync_hwinfo") != std::string::npos)
+            {
+                ++hardwareEvents;
+            }
+        }
+    };
+
+    std::thread t
+    {
+        [&]()
+        {
+            Syscollector::instance().init(spInfoWrapper, countDiff, reportFunction, logFunction,
+                                          SYSCOLLECTOR_DB_PATH, "", "", 3600, true, true, false,
+                                          false, false, false, false, false, false, false, false, false, false, true);
+        }
+    };
+
+    gate.waitEntered();
+    auto destroyed{std::async(std::launch::async, []()
+    {
+        Syscollector::instance().destroy();
+    })};
+    std::this_thread::sleep_for(std::chrono::milliseconds{500});
+    gate.release();
+    ASSERT_EQ(std::future_status::ready, destroyed.wait_for(std::chrono::seconds{10}));
+    t.join();
+    EXPECT_EQ(1, hardwareEvents.load());
 }

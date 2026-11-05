@@ -22,7 +22,7 @@ from unittest.mock import patch
 
 import pytest
 
-from connexion import AsyncApp
+from connexion import AsyncApp, request
 from connexion.middleware import MiddlewarePosition
 
 from api.alogging import MAX_LOGGED_BODY_SIZE
@@ -49,6 +49,11 @@ SPEC = {
             'requestBody': {'content': {'application/json': {'schema': {'type': 'object'}}}},
             'responses': {'200': {'description': 'ok'}},
         }},
+        '/events': {'post': {
+            'operationId': 'api.test.test_middlewares_context._events_handler',
+            'requestBody': {'content': {'application/json': {'schema': {'type': 'object'}}}},
+            'responses': {'200': {'description': 'ok'}},
+        }},
         RUN_AS_LOGIN_ENDPOINT: {'post': {
             'operationId': 'api.test.test_middlewares_context._run_as_handler',
             'requestBody': {'content': {'application/json': {'schema': {'type': 'object'}}}},
@@ -66,6 +71,11 @@ def _decode_token(token):
 
 
 def _handler(body=None):
+    return {'ok': True}, 200
+
+
+async def _events_handler(body=None):
+    request.context['events_count'] = len(body['events'])
     return {'ok': True}, 200
 
 
@@ -231,3 +241,32 @@ async def test_access_log_hashes_an_auth_context_over_the_logging_limit():
 
     mock_custom_logging.assert_called_once()
     assert mock_custom_logging.call_args.kwargs['hash_auth_context'] == expected_hash
+
+
+@pytest.mark.parametrize('n_events, event_len, declare_length', [
+    (100, 90, True),    # over MAX_LOGGED_BODY_SIZE
+    (3, 10, False),     # chunked
+    (100, 90, False),
+])
+@pytest.mark.asyncio
+async def test_access_log_reports_the_events_count_the_endpoint_left_in_the_context(
+        n_events, event_len, declare_length):
+    """Check that /events logs its event count whether or not the body could be cached.
+
+    A body above the logging limit, or one streamed without a length, never reaches the access
+    logger, so the count the handler leaves in the request context is the only thing it can report.
+    """
+    body = json.dumps({'events': ['a' * event_len] * n_events}).encode()
+    assert (len(body) > MAX_LOGGED_BODY_SIZE) == (n_events == 100)
+
+    app = _build_app()
+    task, queue = await _start(app)
+    try:
+        with patch('api.middlewares.custom_logging') as mock_custom_logging:
+            await _post(app, 'good', path='/events', body=body, declare_length=declare_length)
+    finally:
+        await queue.put({'type': 'lifespan.shutdown'})
+        task.cancel()
+
+    mock_custom_logging.assert_called_once()
+    assert mock_custom_logging.call_args.args[5] == {'events': n_events}

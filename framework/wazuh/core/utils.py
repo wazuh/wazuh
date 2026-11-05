@@ -46,29 +46,57 @@ t_cache = TTLCache(maxsize=4500, ttl=60)
 def clean_pid_files(daemon: str) -> None:
     """Check the existence of '.pid' files for a specified daemon.
 
+    A PID file only proves that some process had that PID at the time the file was
+    written. If the PID has since been recycled by an unrelated process (or by this
+    same daemon's own new instance), killing it blindly can terminate the wrong
+    process. A process is only treated as the stale owner of the file when it was
+    already alive before the file's mtime.
+
     Parameters
     ----------
     daemon : str
         Daemon's name.
     """
+    own_pid = os.getpid()
     regex = rf'{daemon}[\w_]*-(\d+).pid'
     for pid_file in os.listdir(common.OSSEC_PIDFILE_PATH):
         if match := re.match(regex, pid_file):
+            pid = int(match.group(1))
+            full_path = path.join(common.OSSEC_PIDFILE_PATH, pid_file)
             try:
-                pid = int(match.group(1))
                 process = psutil.Process(pid)
-                command = process.cmdline()[-1]
+                command = ' '.join(process.cmdline())
+                belongs_to_daemon = daemon.replace('-', '_') in command
+                predates_file = process.create_time() <= path.getmtime(full_path)
 
-                if daemon.replace('-', '_') in command:
-                    os.kill(pid, SIGKILL)
-                    print(f"{daemon}: Orphan child process {pid} was terminated.")
-                else:
+                if pid != own_pid and belongs_to_daemon and predates_file:
+                    try:
+                        os.kill(pid, SIGKILL)
+                        print(f"{daemon}: Orphan child process {pid} was terminated.")
+                    except OSError as kill_error:
+                        print(f"{daemon}: Orphan child process {pid} was identified but could not "
+                              f"be terminated ({kill_error}), removing from {common.WAZUH_PATH}/var/run...")
+                elif pid == own_pid:
+                    print(f"{daemon}: Process {pid} is this process's own PID, recycled from a stale "
+                          f"pidfile, removing from {common.WAZUH_PATH}/var/run...")
+                elif not belongs_to_daemon:
                     print(f"{daemon}: Process {pid} does not belong to {daemon}, removing from {common.WAZUH_PATH}/var/run...")
+                else:
+                    print(f"{daemon}: Process {pid} belongs to {daemon} but was created after its stale "
+                          f"pidfile (PID recycled), removing from {common.WAZUH_PATH}/var/run...")
 
-            except (OSError, psutil.NoSuchProcess):
-                print(f'{daemon}: Non existent process {pid}, removing from {common.WAZUH_PATH}/var/run...')
+            except (OSError, psutil.Error):
+                # psutil.Error also covers AccessDenied (the PID was recycled by a process
+                # owned by another user) and ZombieProcess. Neither means the file's
+                # original owner is still around, so it's still safe to drop it.
+                print(f'{daemon}: Could not identify process {pid}, removing from {common.WAZUH_PATH}/var/run...')
             finally:
-                os.remove(path.join(common.OSSEC_PIDFILE_PATH, pid_file))
+                try:
+                    os.remove(full_path)
+                except OSError as remove_error:
+                    # The owner's exit handler or the control script may have removed it meanwhile;
+                    # a leftover pidfile is never a reason to abort the startup.
+                    print(f'{daemon}: Could not remove {full_path} ({remove_error}).')
 
 
 def find_nth(string: str, substring: str, n: int) -> int:
@@ -116,6 +144,69 @@ def previous_month(n: int = 1) -> datetime.date:
         date = (date - timedelta(days=1)).replace(day=1)  # (first_day - 1) = previous month
 
     return date.replace(hour=00, minute=00, second=00, microsecond=00)
+
+
+def _distinct_key(value) -> typing.Hashable:
+    """Get a hashable key of a value, equal for two values only when the values compare equal.
+
+    Parameters
+    ----------
+    value
+        Value to get the key of.
+
+    Raises
+    ------
+    TypeError
+        If the value contains a type whose equality the key cannot represent.
+
+    Returns
+    -------
+    typing.Hashable
+        Key of the value.
+    """
+    if type(value) is dict:
+        return dict, frozenset((k, _distinct_key(v)) for k, v in value.items())
+    if type(value) is list:
+        return list, tuple(_distinct_key(v) for v in value)
+    if isinstance(value, tuple):
+        return tuple, tuple(_distinct_key(v) for v in value)
+
+    hash(value)
+    return value
+
+
+def get_distinct_items(array: list) -> list:
+    """Remove the repeated items of a list, keeping the first occurrence of each one.
+
+    Items are compared by equality. When an item cannot be turned into a hashable key, every item is compared
+    against the ones already kept instead.
+
+    Parameters
+    ----------
+    array : list
+        Items to process.
+
+    Returns
+    -------
+    list
+        Distinct items, in their original order.
+    """
+    distinct_array = []
+    try:
+        keys = [_distinct_key(element) for element in array]
+    except TypeError:
+        for element in array:
+            if element not in distinct_array:
+                distinct_array.append(element)
+        return distinct_array
+
+    seen = set()
+    for key, element in zip(keys, array):
+        if key not in seen:
+            seen.add(key)
+            distinct_array.append(element)
+
+    return distinct_array
 
 
 def process_array(array: list, search_text: str = None, complementary_search: bool = False,
@@ -196,12 +287,7 @@ def process_array(array: list, search_text: str = None, complementary_search: bo
                              allowed_select_fields=allowed_select_fields)
 
     if distinct:
-        distinct_array = []
-        for element in array:
-            if element not in distinct_array:
-                distinct_array.append(element)
-
-        array = distinct_array
+        array = get_distinct_items(array)
 
     return {'items': cut_array(array, offset=offset, limit=limit), 'totalItems': len(array)}
 
@@ -1179,7 +1265,7 @@ def check_virustotal_integration(new_conf: Element):
                 raise WazuhError(1130, extra_message='integrations > virustotal')
 
 
-def load_wazuh_xml(xml_path, data=None):
+def load_wazuh_xml(xml_path, data=None, raw_entities=False):
     if not data:
         with open(xml_path) as f:
             try:
@@ -1195,6 +1281,10 @@ def load_wazuh_xml(xml_path, data=None):
 
     # Replace &lt; and &gt; currently present in the config
     data = data.replace('&lt;', '_custom_amp_lt_').replace('&gt;', '_custom_amp_gt_')
+
+    if raw_entities:
+        # os_xml does not decode entities, so '&amp;' has to stay text for a value to compare as the daemons read it
+        data = re.sub(r'&(amp|quot|apos);', r'&amp;\1;', data)
 
     custom_entities = {
         'backslash': '\\'
@@ -1223,7 +1313,15 @@ def load_wazuh_xml(xml_path, data=None):
                '\n'.join([f'<!ENTITY {name} "{value}">' for name, value in custom_entities.items()]) + \
                '\n]>\n'
 
-    return fromstring(f"{entities}<root_tag>{data}</root_tag>", forbid_entities=False)
+    root = fromstring(f"{entities}<root_tag>{data}</root_tag>", forbid_entities=False)
+    for element in root.iter():
+        # Once the namespace is dropped a prefixed tag would shadow a plain one with the same name
+        children = [child.tag for child in element]
+        if {tag.rpartition('}')[2] for tag in children if '}' in tag} & {tag for tag in children if '}' not in tag}:
+            raise ValueError(f"Namespaced and plain elements share a name inside '{element.tag}'")
+        element.tag = element.tag.rpartition('}')[2]
+
+    return root
 
 
 class WazuhVersion:
@@ -2148,29 +2246,35 @@ def validate_wazuh_xml(content: str, config_file: bool = False):
     WazuhError(1113)
         XML syntax error.
     """
+    # Text after the last terminator cannot close a comment; scanning it for each '<!' would be quadratic
+    end = max((i + len(token) for token in ('-->', '!>') if (i := content.rfind(token)) != -1), default=0)
+    uncommented = re.sub(r'<!.*?(?:-->|!>)', '', content[:end], flags=re.DOTALL) + content[end:]
+    # os_xml reads a '<' preceded by an odd number of backslashes as text
+    uncommented = re.sub(r'(?<!\\)((?:\\\\)*)\\<', r'\1\\&lt;', uncommented)
     # -- characters are not allowed in XML comments
     content = replace_in_comments(content, '--', '%wildcard%')
 
     # Create temporary file for parsing xml input
     try:
+        # Check the syntax of the text as it is uploaded, not only of the copy without comments
+        parseString(f'<root>{content}</root>'.replace('&', '&amp;'))
         # Beautify xml file and escape '&' character as it could come in some tag values unescaped
-        xml = parseString(f'<root>{content}</root>'.replace('&', '&amp;'))
+        xml = parseString(f'<root>{uncommented}</root>'.replace('&', '&amp;'))
         # Remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
         indent = '  '  # indent parameter for toprettyxml function
         pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent=indent).split('\n')[2:-2])) + '\n'
         # Revert xml.dom replacings
         # (https://github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305)
-        pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"", ) \
-            .replace("&gt;", ">").replace('&apos;', "'")
+        pretty_xml = pretty_xml.replace("&lt;", "<").replace("&quot;", "\"", ).replace("&gt;", ">") \
+            .replace('&apos;', "'").replace("&amp;", "&")
         # Delete two first spaces of each line
         final_xml = re.sub(fr'^{indent}', '', pretty_xml, flags=re.MULTILINE)
-        final_xml = replace_in_comments(final_xml, '%wildcard%', '--')
 
         # Check xml format
-        incoming_xml = load_wazuh_xml(xml_path='', data=final_xml)
+        incoming_xml = load_wazuh_xml(xml_path='', data=final_xml, raw_entities=config_file)
         # Check if remote commands are allowed if it is a configuration file
         if config_file:
-            current_xml = load_wazuh_xml(xml_path=common.OSSEC_CONF)
+            current_xml = load_wazuh_xml(xml_path=common.OSSEC_CONF, raw_entities=True)
             check_remote_commands(incoming_xml, current_xml)
             check_agents_allow_higher_versions(incoming_xml, current_xml)
             check_virustotal_integration(incoming_xml)

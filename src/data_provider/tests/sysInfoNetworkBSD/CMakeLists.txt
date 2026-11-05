@@ -28,5 +28,12 @@ target_link_libraries(sysInfoNetworkBSD_unit_test
     cjson
     dl
 )
+
+if(APPLE)
+    find_library(corefoundation_lib CoreFoundation)
+    find_library(systemconfiguration_lib SystemConfiguration)
+    target_link_libraries(sysInfoNetworkBSD_unit_test ${corefoundation_lib} ${systemconfiguration_lib})
+endif(APPLE)
+
 add_test(NAME sysInfoNetworkBSD_unit_test
          COMMAND sysInfoNetworkBSD_unit_test)

@@ -87,6 +87,9 @@ char * w_strtrim(char * string);
 // Add a dynamic field with object nesting
 void W_JSON_AddField(cJSON *root, const char *key, const char *value);
 
+// Remove the members of a JSON object that a dynamic field with object nesting would collide with
+void W_JSON_RemoveField(cJSON *root, const char *key);
+
 // Converts a CSV list into JSON style string array ("a,s,d" -> ["a","s","d"])
 void csv_list_to_json_str_array(char * const csv_list, char **buffer);
 

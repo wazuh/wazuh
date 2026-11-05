@@ -212,6 +212,12 @@ class NetworkSolarisInterface final : public INetworkInterfaceWrapper
             return retVal;
         }
 
+        std::string gatewayV6() const override
+        {
+            // IPv6 gateways are not collected on Solaris
+            return UNKNOWN_VALUE;
+        }
+
         std::string metrics() const override
         {
             std::string metric;

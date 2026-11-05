@@ -36,6 +36,7 @@ bool w_get_hash_context(logreader *lf, EVP_MD_CTX **context, int64_t position);
 ssize_t w_set_to_pos(logreader *lf, long pos, int mode);
 char * w_save_files_status_to_cJSON();
 void w_save_file_status();
+void w_logcollector_shutdown(void);
 void w_load_files_status(cJSON *global_json);
 void w_initialize_file_status();
 int w_update_hash_node(char * path, int64_t pos);
@@ -1044,6 +1045,35 @@ void test_w_save_file_status_OK(void ** state) {
     expect_rename_ex("queue/logcollector/file_status.json.tmp", "queue/logcollector/file_status.json", 0);
 
     w_save_file_status();
+}
+
+/* w_logcollector_shutdown */
+
+void test_w_logcollector_shutdown_releases_macos_and_saves_status(void ** state) {
+    OSHashNode *hash_node = NULL;
+    strcpy(macos_log_vault.timestamp,"any timestamp");
+    macos_log_vault.settings = "my settings";
+    macos_processes = NULL;
+    macos_log_shutdown = 0;
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_value(__wrap_OSHash_Begin, self, files_status);
+    will_return(__wrap_OSHash_Begin, hash_node);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    w_logcollector_shutdown();
+
+    assert_int_equal(macos_log_shutdown, 1);
+    macos_log_shutdown = 0;
 }
 
 void test_w_save_file_status_short_write(void ** state) {
@@ -3076,6 +3106,112 @@ void test_w_macos_release_log_execution_log_stream_not_launched_and_show_launche
 
 }
 
+/* w_macos_log_reader */
+
+static int macos_reader_reads;
+static logreader * macos_reader_logff_bak;
+
+static void * read_macos_stub(logreader * lf, __attribute__((unused)) int * rc, __attribute__((unused)) int drop_it) {
+    assert_int_equal(pthread_mutex_trylock(&lf->mutex), EBUSY);
+    if (++macos_reader_reads == 2) {
+        lf->macos_log->state = LOG_NOT_RUNNING;
+    }
+    return NULL;
+}
+
+static int setup_macos_log_reader(void ** state) {
+    static logreader files[3];
+    static w_macos_log_config_t macos_log;
+    static char syslog_format[] = "syslog";
+    static char macos_format[] = "macos";
+
+    memset(files, 0, sizeof(files));
+    memset(&macos_log, 0, sizeof(macos_log));
+    files[0].logformat = syslog_format;
+    files[1].logformat = macos_format;
+    files[1].macos_log = &macos_log;
+    files[1].read = read_macos_stub;
+    macos_log.state = LOG_RUNNING_STREAM;
+    w_mutex_init(&files[1].mutex, NULL);
+
+    macos_reader_logff_bak = logff;
+    logff = files;
+    macos_reader_reads = 0;
+    *state = files;
+    return 0;
+}
+
+static int teardown_macos_log_reader(void ** state) {
+    logreader * files = *state;
+
+    w_mutex_destroy(&files[1].mutex);
+    logff = macos_reader_logff_bak;
+    macos_log_shutdown = 0;
+    return 0;
+}
+
+static void expect_macos_log_reader_loops(int loops) {
+    for (int i = 0; i < loops; i++) {
+        will_return(__wrap_FOREVER, 1);
+        expect_function_call(__wrap_pthread_rwlock_rdlock);
+        expect_function_call(__wrap_pthread_rwlock_unlock);
+    }
+}
+
+void test_w_macos_log_reader_reads_until_process_stops(void ** state) {
+    expect_macos_log_reader_loops(3);
+
+    assert_null(w_macos_log_reader(NULL));
+    assert_int_equal(macos_reader_reads, 2);
+}
+
+static logreader macos_reader_moved[2];
+static logreader * macos_reader_last_read;
+
+static void * read_macos_moving_stub(logreader * lf, __attribute__((unused)) int * rc, __attribute__((unused)) int drop_it) {
+    macos_reader_last_read = lf;
+    if (++macos_reader_reads == 1) {
+        /* The entry is moved to another position, as Remove_Localfile() does */
+        logff = macos_reader_moved;
+    } else {
+        lf->macos_log->state = LOG_NOT_RUNNING;
+    }
+    return NULL;
+}
+
+void test_w_macos_log_reader_follows_moved_entry(void ** state) {
+    logreader * files = *state;
+
+    files[1].read = read_macos_moving_stub;
+    memset(macos_reader_moved, 0, sizeof(macos_reader_moved));
+    macos_reader_moved[0] = files[1];
+    w_mutex_init(&macos_reader_moved[0].mutex, NULL);
+    expect_macos_log_reader_loops(3);
+
+    assert_null(w_macos_log_reader(NULL));
+    assert_int_equal(macos_reader_reads, 2);
+    assert_ptr_equal(macos_reader_last_read, &macos_reader_moved[0]);
+    w_mutex_destroy(&macos_reader_moved[0].mutex);
+}
+
+void test_w_macos_log_reader_process_not_running(void ** state) {
+    logreader * files = *state;
+
+    files[1].macos_log->state = LOG_NOT_RUNNING;
+    expect_macos_log_reader_loops(1);
+
+    assert_null(w_macos_log_reader(NULL));
+    assert_int_equal(macos_reader_reads, 0);
+}
+
+void test_w_macos_log_reader_shutdown(void ** state) {
+    macos_log_shutdown = 1;
+    expect_macos_log_reader_loops(1);
+
+    assert_null(w_macos_log_reader(NULL));
+    assert_int_equal(macos_reader_reads, 0);
+}
+
 void check_ignore_and_restrict_null_config(void ** state) {
     logreader *regex_config = *state;
 
@@ -3219,6 +3355,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_save_file_status_wfopen_error, setup_log_context, teardown_log_context),
         cmocka_unit_test_setup_teardown(test_w_save_file_status_fwrite_error, setup_log_context, teardown_log_context),
         cmocka_unit_test_setup_teardown(test_w_save_file_status_OK, setup_log_context, teardown_log_context),
+        cmocka_unit_test_setup_teardown(test_w_logcollector_shutdown_releases_macos_and_saves_status, setup_local_hashmap, teardown_local_hashmap),
         cmocka_unit_test_setup_teardown(test_w_save_file_status_short_write, setup_log_context, teardown_log_context),
         cmocka_unit_test_setup_teardown(test_w_save_file_status_fclose_error, setup_log_context, teardown_log_context),
         cmocka_unit_test_setup_teardown(test_w_save_file_status_rename_error, setup_log_context, teardown_log_context),
@@ -3294,6 +3431,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_macos_release_log_execution_log_stream_and_show_launched_and_running, setup_process, teardown_process),
         cmocka_unit_test_setup_teardown(test_w_macos_release_log_execution_log_stream_launched_and_show_not_launched, setup_process, teardown_process),
         cmocka_unit_test_setup_teardown(test_w_macos_release_log_execution_log_stream_not_launched_and_show_launched, setup_process, teardown_process),
+        cmocka_unit_test_setup_teardown(test_w_macos_log_reader_reads_until_process_stops, setup_macos_log_reader, teardown_macos_log_reader),
+        cmocka_unit_test_setup_teardown(test_w_macos_log_reader_follows_moved_entry, setup_macos_log_reader, teardown_macos_log_reader),
+        cmocka_unit_test_setup_teardown(test_w_macos_log_reader_process_not_running, setup_macos_log_reader, teardown_macos_log_reader),
+        cmocka_unit_test_setup_teardown(test_w_macos_log_reader_shutdown, setup_macos_log_reader, teardown_macos_log_reader),
 
         // Test w_macos_release_log_execution
         cmocka_unit_test_setup_teardown(check_ignore_and_restrict_null_config, setup_regex, teardown_regex),

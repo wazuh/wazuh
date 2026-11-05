@@ -10,6 +10,7 @@
  */
 #ifndef _SYSCOLLECTOR_HPP
 #define _SYSCOLLECTOR_HPP
+#include <atomic>
 #include <chrono>
 #include <thread>
 #include <condition_variable>
@@ -130,8 +131,8 @@ class EXPORTED Syscollector final
         bool                                                                    m_portsAll;
         bool                                                                    m_processes;
         bool                                                                    m_hotfixes;
-        bool                                                                    m_stopping;
-        bool                                                                    m_syncLoopFinished;
+        std::atomic<bool>                                                       m_stopping;
+        std::atomic<bool>                                                       m_syncLoopFinished;
         bool                                                                    m_notify;
         bool                                                                    m_groups;
         bool                                                                    m_users;
@@ -141,6 +142,8 @@ class EXPORTED Syscollector final
         std::unique_ptr<RemoteSync>                                             m_spRsync;
         std::condition_variable                                                 m_cv;
         std::mutex                                                              m_mutex;
+        std::condition_variable                                                 m_finishedCv;
+        std::mutex                                                              m_finishedMutex;
         std::unique_ptr<SysNormalizer>                                          m_spNormalizer;
         std::string                                                             m_scanTime;
 };

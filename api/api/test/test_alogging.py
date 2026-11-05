@@ -197,6 +197,34 @@ def test_custom_logging_events_summary_matches_in_both_logs():
     assert 'body_omitted' not in plain_line
 
 
+def test_custom_logging_events_count_given_as_integer():
+    """An event count already computed by the caller is logged as is, not passed to len()."""
+    with patch('api.alogging.logger') as logger_mock:
+        logger_mock.level = 20
+        logger_mock.info = MagicMock()
+        logger_mock.debug2 = MagicMock()
+        alogging.custom_logging(user='wazuh', remote='1.1.1.1', method='POST', path='/events',
+                                query={}, body={'events': 100}, elapsed_time=0.01, status=200)
+
+    plain_line, json_record = (c.args[0] for c in logger_mock.info.call_args_list)
+    assert json_record['body'] == {'events': 100}
+    assert 'and body {"events": 100} ' in plain_line
+
+
+@pytest.mark.parametrize("body, expected", [({'events': ['a', 'b', 'c']}, 3), ({}, 0),
+                                            ({'events': None}, 0), ({'events': 'abc'}, 0), ({'events': {}}, 0)])
+def test_custom_logging_events_count_from_list(body, expected):
+    """A list of events gives its length; a missing or non-list value counts as none."""
+    with patch('api.alogging.logger') as logger_mock:
+        logger_mock.level = 20
+        logger_mock.info = MagicMock()
+        logger_mock.debug2 = MagicMock()
+        alogging.custom_logging(user='wazuh', remote='1.1.1.1', method='POST', path='/events',
+                                query={}, body=body, elapsed_time=0.01, status=200)
+
+    assert logger_mock.info.call_args_list[1].args[0]['body'] == {'events': expected}
+
+
 @pytest.mark.parametrize("body", [None, ['a', 'b'], 'a string', 42])
 def test_custom_logging_non_dict_events_body(body):
     """A non-dict body on /events is not summarised and does not raise."""
