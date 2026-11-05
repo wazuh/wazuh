@@ -81,14 +81,9 @@
       "name": "cpp-httplib",
       "dependency": "cpp-httplib",
       "artefacts": [
-        "manager",
-        "standalone"
+        "readme-only"
       ],
-      "readme_license": "MIT License",
-      "dir": "cpp-httplib",
-      "files": [
-        "cpp-httplib/LICENSE"
-      ]
+      "readme_license": "MIT License"
     },
     {
       "name": "cPython",
@@ -629,6 +624,10 @@
     {
       "dir": "benchmark",
       "reason": "build and test only (Google Benchmark)"
+    },
+    {
+      "dir": "cpp-httplib",
+      "reason": "test only (fake HTTP servers and clients in unit tests)"
     },
     {
       "dir": "cpython",
