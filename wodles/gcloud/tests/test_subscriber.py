@@ -8,7 +8,9 @@
 
 """Unit tests for subscriber module."""
 
+import json
 import os
+import socket
 import sys
 from logging import Logger
 from unittest.mock import MagicMock
@@ -19,7 +21,7 @@ from google.api_core import exceptions as google_exceptions
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))  # noqa: E501
 from pubsub.subscriber import WazuhGCloudSubscriber
-from exceptions import GCloudError
+from exceptions import GCloudError, WazuhIntegrationInternalError
 from utils import MAX_EVENT_SIZE
 
 
@@ -226,6 +228,101 @@ def test_WazuhGCloudSubscriber_pull_request_event_size_does_not_grow(mock_creden
     sent = pubsub.socket.send.call_args.args[0]
     assert len(sent) == len(f'{pubsub.header}{pubsub.format_msg(raw_payload)}'.encode())
     assert len(sent) <= MAX_EVENT_SIZE
+
+
+def get_pubsub_message(ack_id: str, payload: str) -> MagicMock:
+    """Return a fake received Pub/Sub message with the given ack ID and raw payload."""
+    message = MagicMock()
+    message.ack_id = ack_id
+    message.message.data = payload.encode()
+    return message
+
+
+@patch('pubsub.subscriber.pubsub.subscriber.Client.from_service_account_file')
+def test_WazuhGCloudSubscriber_pull_request_skips_message_too_long(mock_credentials):
+    """Test pull_request skips a message too long for the Wazuh socket, keeps forwarding the rest of the batch and
+    acks the whole batch, instead of aborting before the ack and getting the batch redelivered forever."""
+    pubsub = WazuhGCloudSubscriber(**get_wodle_config())
+    sender, receiver = socket.socketpair(socket.AF_UNIX, socket.SOCK_DGRAM)
+    with sender, receiver:
+        # A small send buffer makes the overflow size independent of the host's net.core.wmem_default
+        sender.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 4096)
+        receiver.setblocking(False)
+        pubsub.socket = sender
+        oversized = 'x' * sender.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF)
+        pubsub.subscriber.pull.return_value = MagicMock(received_messages=[
+            get_pubsub_message('ack-id-1', json.dumps({'id': 1})),
+            get_pubsub_message('ack-id-2', json.dumps({'id': 2, 'data': oversized})),
+            get_pubsub_message('ack-id-3', json.dumps({'id': 3})),
+        ])
+
+        assert pubsub.pull_request(max_messages=3) == 3
+
+        delivered = []
+        while True:
+            try:
+                event = receiver.recv(65536).decode()
+            except BlockingIOError:
+                break
+            delivered.append(json.loads(event[len(pubsub.header):])['gcp']['id'])
+
+    assert delivered == [1, 3]
+    pubsub.logger.error.assert_called_once()
+    pubsub.subscriber.acknowledge.assert_called_once_with(
+        request={'subscription': pubsub.subscription_path, 'ack_ids': ['ack-id-1', 'ack-id-2', 'ack-id-3']})
+
+
+@pytest.mark.parametrize('failing_send, expected_ack_ids', [
+    (1, []),
+    (2, ['ack-id-1', 'ack-id-2']),
+    (3, ['ack-id-1', 'ack-id-2', 'ack-id-3']),
+])
+@patch('pubsub.subscriber.WazuhGCloudSubscriber.send_msg')
+@patch('pubsub.subscriber.pubsub.subscriber.Client.from_service_account_file')
+def test_WazuhGCloudSubscriber_pull_request_send_error_acks_handled_messages(mock_credentials, mock_send_msg,
+                                                                             failing_send, expected_ack_ids):
+    """Test that when a send aborts the run, pull_request acks the messages already handled, so they are not re-sent
+    as duplicates, but not the message that failed nor the ones after it, so they are redelivered."""
+    pubsub = WazuhGCloudSubscriber(**get_wodle_config())
+    pubsub.subscriber.pull.return_value = MagicMock(received_messages=[
+        get_pubsub_message('ack-id-1', '{"id": 1}'),
+        get_pubsub_message('ack-id-2', 'not json'),
+        get_pubsub_message('ack-id-3', '{"id": 3}'),
+        get_pubsub_message('ack-id-4', '{"id": 4}'),
+    ])
+    mock_send_msg.side_effect = [None] * (failing_send - 1) + [WazuhIntegrationInternalError(3)]
+
+    with pytest.raises(WazuhIntegrationInternalError):
+        pubsub.pull_request(max_messages=4)
+
+    assert mock_send_msg.call_count == failing_send
+    if expected_ack_ids:
+        pubsub.subscriber.acknowledge.assert_called_once_with(
+            request={'subscription': pubsub.subscription_path, 'ack_ids': expected_ack_ids})
+    else:
+        pubsub.subscriber.acknowledge.assert_not_called()
+
+
+@patch('pubsub.subscriber.WazuhGCloudSubscriber.send_msg')
+@patch('pubsub.subscriber.pubsub.subscriber.Client.from_service_account_file')
+def test_WazuhGCloudSubscriber_pull_request_ack_error_keeps_send_error(mock_credentials, mock_send_msg):
+    """Test that if acking the handled messages fails after a send aborted the run, the ack failure is logged and the
+    send error is the one raised."""
+    pubsub = WazuhGCloudSubscriber(**get_wodle_config())
+    pubsub.subscriber.pull.return_value = MagicMock(received_messages=[
+        get_pubsub_message('ack-id-1', '{"id": 1}'),
+        get_pubsub_message('ack-id-2', '{"id": 2}'),
+    ])
+    mock_send_msg.side_effect = [None, WazuhIntegrationInternalError(3)]
+    pubsub.subscriber.acknowledge.side_effect = google_exceptions.ServiceUnavailable('placeholder')
+
+    with pytest.raises(WazuhIntegrationInternalError) as e:
+        pubsub.pull_request(max_messages=2)
+
+    assert e.value.errcode == 3
+    pubsub.subscriber.acknowledge.assert_called_once_with(
+        request={'subscription': pubsub.subscription_path, 'ack_ids': ['ack-id-1']})
+    pubsub.logger.error.assert_called_once()
 
 
 @patch('pubsub.subscriber.pubsub.subscriber.Client.from_service_account_file')

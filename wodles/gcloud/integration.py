@@ -8,6 +8,7 @@
 
 """This module contains tools for processing events from a Google Cloud subscription."""  # noqa: E501
 
+import errno
 import logging
 import socket
 from sys import path
@@ -90,7 +91,8 @@ class WazuhGCloudIntegration:
         Raises
         ------
         exceptions.WazuhIntegrationInternalError
-            If the socket is unable to send the message to analysisd.
+            If the socket is unable to send the message to analysisd. An event too long for the socket is skipped
+            instead.
         """
         event_json = f'{self.header}{msg}'.encode(errors='replace')
 
@@ -101,5 +103,9 @@ class WazuhGCloudIntegration:
         self.logger.debug(f'Sending msg to analysisd: "{event_json}"')
         try:
             self.socket.send(event_json)
-        except OSError:
+        except OSError as error:
+            # Resending will never fit, so skip it rather than abort the whole run.
+            if error.errno == errno.EMSGSIZE:
+                self.logger.error(f'Message of {len(event_json)} bytes too long to send to Wazuh. Skipping message...')
+                return
             raise exceptions.WazuhIntegrationInternalError(3)

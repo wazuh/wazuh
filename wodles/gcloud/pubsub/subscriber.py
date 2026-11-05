@@ -136,36 +136,54 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
             return 0
 
         ack_ids = []
-        for received_message in response.received_messages:
-            # Ack every pulled message regardless of its content: an ack only tells Pub/Sub to
-            # stop holding this message for us, it is unrelated to whether the payload made sense.
-            # Not acking a message we will never be able to parse would make Pub/Sub redeliver it
-            # forever.
-            ack_ids.append(received_message.ack_id)
+        try:
+            for received_message in response.received_messages:
+                raw_message = received_message.message.data.decode(errors='replace')
+                try:
+                    # Re-serializing the parsed payload guarantees format_msg() receives exactly one
+                    # well-formed JSON value, so a message cannot close the "gcp" field early and add
+                    # sibling keys (e.g. "srcip") to the event analysisd ultimately decodes.
+                    # ensure_ascii=False and compact separators keep a compact UTF-8 message at its original size;
+                    # \uXXXX escapes or ", "/": " spacing can push the event past the analysisd size limit.
+                    message = dumps(loads(raw_message), ensure_ascii=False, separators=(',', ':'))
+                except (ValueError, RecursionError) as error:
+                    # JSONDecodeError is a ValueError; an over-long integer literal raises a plain ValueError and
+                    # deeply nested arrays raise RecursionError, neither of which may escape before the ack.
+                    self.logger.warning(f'Discarding a Pub/Sub message that is not valid JSON: {error}')
+                else:
+                    formatted_message = self.format_msg(message)
+                    self.logger.debug(f'Processing event: {formatted_message}')
+                    self.send_msg(formatted_message)
 
-            raw_message = received_message.message.data.decode(errors='replace')
+                # Ack every handled message regardless of its content: an ack only tells Pub/Sub to
+                # stop holding this message for us, it is unrelated to whether the payload made sense.
+                # Not acking a message we will never be able to parse would make Pub/Sub redeliver it
+                # forever. A message whose send raised is not acked, so it is redelivered.
+                ack_ids.append(received_message.ack_id)
+        except BaseException:
+            # Ack the handled messages even if a later send aborts the run, so they are not re-sent as duplicates,
+            # without letting an ack failure hide why the run stopped.
             try:
-                # Re-serializing the parsed payload guarantees format_msg() receives exactly one
-                # well-formed JSON value, so a message cannot close the "gcp" field early and add
-                # sibling keys (e.g. "srcip") to the event analysisd ultimately decodes.
-                # ensure_ascii=False and compact separators keep a compact UTF-8 message at its original size;
-                # \uXXXX escapes or ", "/": " spacing can push the event past the analysisd size limit.
-                message = dumps(loads(raw_message), ensure_ascii=False, separators=(',', ':'))
-            except (ValueError, RecursionError) as error:
-                # JSONDecodeError is a ValueError; an over-long integer literal raises a plain ValueError and
-                # deeply nested arrays raise RecursionError, neither of which may escape before the ack.
-                self.logger.warning(f'Discarding a Pub/Sub message that is not valid JSON: {error}')
-                continue
+                self.acknowledge_messages(ack_ids)
+            except Exception as error:
+                self.logger.error(f'Unable to acknowledge the {len(ack_ids)} messages already processed: {error}')
+            raise
 
-            formatted_message = self.format_msg(message)
-            self.logger.debug(f'Processing event: {formatted_message}')
-            self.send_msg(formatted_message)
+        self.acknowledge_messages(ack_ids)
 
+        return len(response.received_messages)
+
+    def acknowledge_messages(self, ack_ids: list):
+        """Acknowledge the given messages, if any, so the subscription does not deliver them again.
+
+        Parameters
+        ----------
+        ack_ids : list
+            Ack IDs of the messages to acknowledge.
+        """
         ack_ids and self.subscriber.acknowledge(
             request={'subscription': self.subscription_path, 'ack_ids': ack_ids}
         )
-
-        return len(response.received_messages)
 
     def process_messages(self, max_messages: int = 100) -> int:
         """Process the available messages in the subscription.
