@@ -146,18 +146,17 @@ namespace remoted::auth
          * (rotated elsewhere) -- the file's copy then takes over. A row whose ip column does not
          * parse is not loaded, so it reads as a missing id; one whose key does not decode is
          * loaded with an empty key and compared like any other (it may be a superseded one). While the file is behind,
-         * the entry stays, up to kAdoptionGrace (then a reload, a level read or the watcher's own cycle drops it and
-         * counts it in adoptionExpiriesTotal()). If the file already carries the issued key when upsert() runs (the
-         * writer pass won the race), nothing is stored. The file stays the source of truth for everything else:
-         * agentsLoaded() and entriesSkipped() describe the file only. Windows that remain until the grace ends, on this
-         * node only: a new agent the file never carried but whose enrollment is undone keeps authenticating; an older
-         * enrollment's answer adopted after a newer key already reached the file (nothing in authd's answer orders two
-         * enrollments of one id in flight) refuses the newer key; and once an agent has re-enrolled
-         * more than kMaxSupersededKeys times on this node before the file caught up, a rotation
-         * elsewhere no longer retires the adoption. And an unknown key is taken as newer, which it
-         * need not be: a worker whose sync is behind (agent rotated elsewhere, then here) retires
-         * the newer adoption and serves the older key until the next sync -- client.keys and
-         * authd's answer carry no order between two keys.
+         * the entry stays, up to kAdoptionGrace (then a reload, an upsert or the watcher's own cycle drops it and
+         * counts it in adoptionExpiriesTotal(); reading the level never does). If the file already carries the issued
+         * key when upsert() runs (the writer pass won the race), nothing is stored. The file stays the source of truth
+         * for everything else: agentsLoaded() and entriesSkipped() describe the file only. Windows that remain until
+         * the grace ends, on this node only: a new agent the file never carried but whose enrollment is undone keeps
+         * authenticating; an older enrollment's answer adopted after a newer key already reached the file (nothing in
+         * authd's answer orders two enrollments of one id in flight) refuses the newer key; and once an agent has
+         * re-enrolled more than kMaxSupersededKeys times on this node before the file caught up, a rotation elsewhere
+         * no longer retires the adoption. And an unknown key is taken as newer, which it need not be: a worker whose
+         * sync is behind (agent rotated elsewhere, then here) retires the newer adoption and serves the older key until
+         * the next sync -- client.keys and authd's answer carry no order between two keys.
          *
          * Columns are parsed like reload() parses a file line, with one difference: reload() keeps a
          * line whose key does not decode as an entry with an empty key (answered MissingKey), while
@@ -248,10 +247,10 @@ namespace remoted::auth
             return m_adoptionExpiriesTotal.load(std::memory_order_relaxed);
         }
 
-        /// @brief Adopted entries still in service that the file has not moved past. Expires
-        /// overdue entries on the way, so a quiet manager (no reload since the adoption) reports the
-        /// level honestly.
-        std::size_t adoptionsPending();
+        /// @brief Adopted entries still in service that the file has not moved past. A plain count:
+        /// reading the level never expires anything (a metrics scrape or a status probe must not move
+        /// counters or write log lines); reload(), upsert() and the watcher's own cycle do the sweeping.
+        std::size_t adoptionsPending() const;
 
     private:
         /// One client.keys line's worth of state.
@@ -306,9 +305,22 @@ namespace remoted::auth
             bool saturated {false};
         };
 
+        /// One entry expireAdoptedLocked() dropped, for reportExpired() to log once the lock is gone.
+        struct ExpiredAdoption
+        {
+            AgentId id;
+            bool idSeenInFile; ///< The file showed the id on an older key, vs never showed it at all.
+        };
+
         /// Drops the adopted entries older than kAdoptionGrace, counting each in
-        /// m_adoptionExpiriesTotal. Caller holds m_mutex.
-        void expireAdoptedLocked(std::chrono::steady_clock::time_point now);
+        /// m_adoptionExpiriesTotal, and hands them back for reportExpired(). Caller holds m_mutex;
+        /// this does not log, so a wave of expiries never holds lookup() behind log I/O.
+        std::vector<ExpiredAdoption> expireAdoptedLocked(std::chrono::steady_clock::time_point now);
+
+        /// Logs what expireAdoptedLocked() dropped: one debug line per entry and a warning throttled
+        /// by m_expiryThrottle (a stalled writer or sync expires a whole enrollment wave at once).
+        /// Called WITHOUT m_mutex held.
+        void reportExpired(const std::vector<ExpiredAdoption>& expired);
 
         Clock m_clock;
 
@@ -343,6 +355,9 @@ namespace remoted::auth
         /// Throttles the "client.keys is unreadable" warning: the watcher retries every
         /// m_refreshIntervalSeconds, so an unreadable file would otherwise flood wazuh-manager.log .
         remoted::common::LogThrottle m_unreadableThrottle;
+        /// Throttles the "adopted key expired" warning: a writer or sync that stalls during an
+        /// enrollment wave expires every adoption in the same sweep.
+        remoted::common::LogThrottle m_expiryThrottle;
 
         // See the public accessors; maintained exclusively by reload().
         std::atomic<std::size_t> m_agentsLoaded {0};

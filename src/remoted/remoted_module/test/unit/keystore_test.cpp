@@ -536,11 +536,37 @@ namespace
         EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyA));
         EXPECT_EQ(keystore.adoptionsPending(), 1u);
 
-        clock.advance(std::chrono::seconds(1)); // Past it: ignored by lookup, swept by the level read.
+        clock.advance(std::chrono::seconds(1)); // Past it: ignored by lookup and by the level...
         EXPECT_FALSE(keyOf(keystore, 67).has_value());
         EXPECT_EQ(keystore.adoptionsPending(), 0u);
+        EXPECT_EQ(keystore.adoptionExpiriesTotal(), 0u); // ...which does not sweep (a scrape moves nothing).
+
+        writeFile(std::string("3824 debian10 any ") + kKeyB + "\n"); // The next reload does.
+        EXPECT_EQ(keystore.reload(), 1);
         EXPECT_EQ(keystore.adoptionExpiriesTotal(), 1u);
         EXPECT_EQ(keystore.adoptionsTotal(), 1u);
+    }
+
+    TEST_F(KeystoreTest, AdoptionsPendingIsAPlainCount)
+    {
+        // Read by metrics scrapes and GET /status: it must neither count an expiry nor drop the
+        // entry -- how often a dashboard polls must not decide when an expiry is counted.
+        ManualClock clock;
+        Keystore keystore(m_path, Keystore::kDefaultRefreshIntervalSeconds, clock.source());
+        ASSERT_TRUE(keystore.upsert("67", "any", kKeyA));
+
+        clock.advance(Keystore::kAdoptionGrace + std::chrono::seconds(1));
+        for (int i = 0; i < 3; ++i)
+        {
+            EXPECT_EQ(keystore.adoptionsPending(), 0u);
+            EXPECT_EQ(keystore.adoptionExpiriesTotal(), 0u);
+        }
+
+        // A late convergence is still reconciled, not expired: the level read left the entry there.
+        writeFile(std::string("67 agent1 any ") + kKeyA + "\n");
+        EXPECT_EQ(keystore.reload(), 1);
+        EXPECT_EQ(keystore.adoptionExpiriesTotal(), 0u);
+        EXPECT_EQ(keystore.adoptionsPending(), 0u);
     }
 
     TEST_F(KeystoreTest, UpsertRejectsUnparseableColumnsAndStoresNothing)
@@ -575,8 +601,9 @@ namespace
         EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyB));
         EXPECT_EQ(keystore.adoptionsPending(), 0u);
 
-        // Retired, not expired: the grace passing later counts nothing.
+        // Retired, not expired: the grace passing later counts nothing, sweep included.
         clock.advance(Keystore::kAdoptionGrace + std::chrono::seconds(1));
+        EXPECT_EQ(keystore.reload(), 2);
         EXPECT_EQ(keystore.adoptionsPending(), 0u);
         EXPECT_EQ(keystore.adoptionExpiriesTotal(), 0u);
     }
@@ -622,6 +649,7 @@ namespace
         EXPECT_EQ(keystore.adoptionsPending(), 0u);
 
         clock.advance(Keystore::kAdoptionGrace + std::chrono::seconds(1));
+        EXPECT_EQ(keystore.reload(), 1); // A sweep finds nothing to expire.
         EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyA));
         EXPECT_EQ(keystore.adoptionsPending(), 0u);
         EXPECT_EQ(keystore.adoptionExpiriesTotal(), 0u);

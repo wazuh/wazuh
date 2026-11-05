@@ -368,12 +368,14 @@ namespace remoted::auth
             }
 
             // The grace bounds how long an adopted key is KEPT, not only how long lookup() honors
-            // it: on a quiet manager (no reload, no adoption, nobody reading the level) nothing
-            // else would drop an expired entry or count it.
+            // it: on a quiet manager (no reload, no adoption) nothing else would drop an expired
+            // entry or count it. Reading the level deliberately does not.
+            std::vector<ExpiredAdoption> expired;
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
-                expireAdoptedLocked(m_clock());
+                expired = expireAdoptedLocked(m_clock());
             }
+            reportExpired(expired);
         }
 
         LOGFN_DEBUG1(logFn(), "client.keys watcher thread stopped.");
@@ -560,6 +562,7 @@ namespace remoted::auth
 
             if (postHash && *postHash == *preHash)
             {
+                std::vector<ExpiredAdoption> expired;
                 {
                     std::lock_guard<std::mutex> lock(m_mutex);
                     m_keys = std::move(loaded);
@@ -610,8 +613,9 @@ namespace remoted::auth
                             ++it;
                         }
                     }
-                    expireAdoptedLocked(m_clock());
+                    expired = expireAdoptedLocked(m_clock());
                 }
+                reportExpired(expired);
                 m_hasBaseline = true;
                 m_lastHash = *preHash;
                 // Health counters (the remoted.auth.keystore.* pulls): the LEVEL tracks what the
@@ -662,7 +666,8 @@ namespace remoted::auth
         }
 
         const auto now = m_clock();
-        std::lock_guard<std::mutex> lock(m_mutex);
+        std::vector<ExpiredAdoption> expired;
+        std::unique_lock<std::mutex> lock(m_mutex);
         m_adoptionsTotal.fetch_add(1, std::memory_order_relaxed);
         // authd's writer pass can land before this call (it is signaled before the reply is built):
         // the file already serves the key, so a pending entry would never converge and would expire
@@ -672,8 +677,10 @@ namespace remoted::auth
             inFile != m_keys.end() ? std::optional<std::vector<std::uint8_t>> {inFile->second.key} : std::nullopt;
         if (fileState && *fileState == decoded)
         {
-            expireAdoptedLocked(now);
+            expired = expireAdoptedLocked(now);
             m_pending.erase(*agentId);
+            lock.unlock();
+            reportExpired(expired);
             LOGFN_DEBUG1(
                 logFn(), "client.keys already carries the key issued to agent %u; nothing to adopt.", *agentId);
             return true;
@@ -692,7 +699,7 @@ namespace remoted::auth
             adoption.idSeenInFile = adoption.idSeenInFile || previous->second.idSeenInFile;
             adoption.saturated = previous->second.saturated;
         }
-        expireAdoptedLocked(now);
+        expired = expireAdoptedLocked(now);
         if (fileState && std::find(adoption.supersededKeys.begin(), adoption.supersededKeys.end(), *fileState) ==
                              adoption.supersededKeys.end())
         {
@@ -708,6 +715,8 @@ namespace remoted::auth
         // Beside the file's table, never in it: agentsLoaded()/entriesSkipped() keep describing
         // the file, and the next reload() decides when the file has moved on (see the header).
         m_pending.insert_or_assign(*agentId, std::move(adoption));
+        lock.unlock();
+        reportExpired(expired);
         LOGFN_DEBUG1(logFn(),
                      "Adopted the key issued to agent %u; in service until client.keys carries it (%lld s at most).",
                      *agentId,
@@ -715,19 +724,14 @@ namespace remoted::auth
         return true;
     }
 
-    void Keystore::expireAdoptedLocked(std::chrono::steady_clock::time_point now)
+    std::vector<Keystore::ExpiredAdoption> Keystore::expireAdoptedLocked(std::chrono::steady_clock::time_point now)
     {
+        std::vector<ExpiredAdoption> expired;
         for (auto it = m_pending.begin(); it != m_pending.end();)
         {
             if (now - it->second.adoptedAt > kAdoptionGrace)
             {
-                LOGFN_WARN(logFn(),
-                           "The key adopted for agent %u from its enrollment was not seen in '%s' within %lld s; "
-                           "dropping it. Check that wazuh-authd is writing the file (or, on a worker, that the "
-                           "cluster synchronization is running).",
-                           it->first,
-                           m_path.c_str(),
-                           static_cast<long long>(kAdoptionGrace.count()));
+                expired.push_back(ExpiredAdoption {it->first, it->second.idSeenInFile});
                 m_adoptionExpiriesTotal.fetch_add(1, std::memory_order_relaxed);
                 it = m_pending.erase(it);
             }
@@ -736,27 +740,72 @@ namespace remoted::auth
                 ++it;
             }
         }
+        return expired;
     }
 
-    std::size_t Keystore::adoptionsPending()
+    void Keystore::reportExpired(const std::vector<ExpiredAdoption>& expired)
+    {
+        for (const auto& entry : expired)
+        {
+            // What the file did show in the meantime tells the causes apart: an id it never carried
+            // is an enrollment the writer or the sync has not landed (or an agent removed before
+            // they did -- the keystore gets no removal signal, only the file); an id still on an
+            // older key is a rotation they have not landed.
+            const char* fileShowed =
+                entry.idSeenInFile ? "the file still shows an older key for it"
+                                   : "the file never showed the agent (not written yet, or removed before it was)";
+            LOGFN_DEBUG1(logFn(),
+                         "Dropped the key adopted for agent %u: not seen in '%s' within %lld s; %s.",
+                         entry.id,
+                         m_path.c_str(),
+                         static_cast<long long>(kAdoptionGrace.count()),
+                         fileShowed);
+            // Throttled: a writer or sync that stalls during an enrollment wave expires every
+            // adoption in one sweep, and one line per entry would flood the log.
+            if (const auto d = m_expiryThrottle.record())
+            {
+                LOGFN_WARN(logFn(),
+                           "Dropped the key adopted for agent %u from its enrollment: not seen in '%s' within %lld s "
+                           "(%s). %llu adopted key(s) expired %s; check that wazuh-authd is writing the file (or, on "
+                           "a worker, that the cluster synchronization is running).",
+                           entry.id,
+                           m_path.c_str(),
+                           static_cast<long long>(kAdoptionGrace.count()),
+                           fileShowed,
+                           static_cast<unsigned long long>(d.total),
+                           d.period().c_str());
+            }
+        }
+    }
+
+    std::size_t Keystore::adoptionsPending() const
     {
         const auto now = m_clock();
         std::lock_guard<std::mutex> lock(m_mutex);
-        expireAdoptedLocked(now);
-        return m_pending.size();
+        // A plain count, never a sweep: this is read by metrics scrapes and status probes, which
+        // must not move counters or write log lines (and how often they run must not decide when
+        // an expiry is counted). reload(), upsert() and the watcher's cycle do the sweeping.
+        return static_cast<std::size_t>(std::count_if(m_pending.begin(),
+                                                      m_pending.end(),
+                                                      [now](const auto& pending)
+                                                      { return now - pending.second.adoptedAt <= kAdoptionGrace; }));
     }
 
     std::optional<AgentLookup> Keystore::lookup(AgentId agentId, std::string_view peerIp) const
     {
-        const auto now = m_clock();
         std::lock_guard<std::mutex> lock(m_mutex);
         // An adopted entry wins while it is in service: after a rotation the file still carries the
         // previous key until authd's writer pass lands. Expired ones are ignored here (lookup() is
-        // const and hot) and swept by reload() / adoptionsPending().
-        if (const auto pending = m_pending.find(agentId);
-            pending != m_pending.end() && now - pending->second.adoptedAt <= kAdoptionGrace)
+        // const and hot) and swept by reload(), upsert() and the watcher. The clock is consulted
+        // only when the id has an adopted entry: m_pending is empty almost always, and this is
+        // the path every authenticated request takes.
+        if (!m_pending.empty())
         {
-            return AgentLookup {pending->second.entry.key, pending->second.entry.address.matches(peerIp)};
+            if (const auto pending = m_pending.find(agentId);
+                pending != m_pending.end() && m_clock() - pending->second.adoptedAt <= kAdoptionGrace)
+            {
+                return AgentLookup {pending->second.entry.key, pending->second.entry.address.matches(peerIp)};
+            }
         }
         const auto it = m_keys.find(agentId);
         if (it == m_keys.end())
