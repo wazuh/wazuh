@@ -424,6 +424,7 @@ from the balancer yourself and restart it.
 | `401` right after enrolling | replication window | **yes**, clears within ~25 s |
 | `401` persistent | clock drift | no |
 | `401 token_unknown` | token not replicated yet | **yes**, clears within ~15 s |
+| `401 token_expired` / `token_revoked` | the token itself is dead | no, final: the agent deletes its token file; create a new token |
 | `403` on configuration download | node has not met the agent yet | **yes**, scales with node count |
 | `404` on everything | `global_prefix` mismatch, or path rewriting | no |
 | `413` | batch over the 5 MiB auth cap | **yes**, the agent splits it |

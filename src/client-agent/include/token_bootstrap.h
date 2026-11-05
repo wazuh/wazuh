@@ -118,10 +118,11 @@ typedef struct {
      *  needs to decide between retrying and giving up (see w_token_bootstrap_result_t); an
      *  operator driving a single attempt from a terminal has no use for it. */
     bool transient;
-    /** The manager finally refused the token itself: unknown, revoked, or out of uses. Its
-     *  signature verified, so this is authd's verdict on the credential rather than on the
-     *  request, and re-presenting it cannot change the answer. Acted on only by the caller,
-     *  which is the only party that owns the token and can dispose of it. */
+    /** The manager finally refused the token itself: expired, revoked, out of uses, or unknown to
+     *  the master (w_enrollment_token_refusal()). Its signature verified, so this is a verdict on
+     *  the credential rather than on the request, and re-presenting it cannot change the answer.
+     *  Acted on only by the caller, which is the only party that owns the token and can dispose
+     *  of it. */
     bool token_rejected;
     /** A 401 `token_unknown` or `stale_token` from /enroll: the node does not accept the token
      *  yet (its copy of the token store has not caught up, or the clocks disagree). */
@@ -141,6 +142,9 @@ typedef struct {
      *  a refusal is the manager's to give, and repeating it is the difference between "refused"
      *  and "refused because this name is taken by an agent too new to replace". */
     char manager_message[256];
+    /** Which token the manager refused, what happened to it and what to do. Empty unless the
+     *  refusal was about the token itself (w_enrollment_token_refusal()). */
+    char token_refusal[256];
 } w_token_enroll_report_t;
 
 /**

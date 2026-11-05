@@ -957,6 +957,10 @@ STATIC int w_agent_auth_enroll(const agent_auth_opts_t *opts, FILE *in, FILE *ou
                 fprintf(err, "  former manager, and can reach neither until it is re-enrolled.\n");
             }
         } else {
+            if (report.token_refusal[0] != '\0') {
+                fprintf(err, "  " AGENT_AUTH_TOKEN_REFUSED "%s\n", report.token_refusal);
+            }
+
             if (report.manager_message[0] != '\0') {
                 fprintf(err, "  " AGENT_AUTH_MANAGER_SAID "%s\n", report.manager_message);
             }
