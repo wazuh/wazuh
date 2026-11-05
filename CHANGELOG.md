@@ -80,6 +80,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the Windows agent not monitoring the registry keys that match a `windows_registry` wildcard and are created after the agent starts. ([#40978](https://github.com/wazuh/wazuh/pull/40978))
 - Fixed `wazuh-logcollector` skipping the newer journald entries of a read when one entry could not be formatted. ([#41068](https://github.com/wazuh/wazuh/pull/41068))
 - Fixed `wazuh-logcollector` keeping a field of the log line instead of the label configured with the same name for `json` localfiles. ([#41072](https://github.com/wazuh/wazuh/pull/41072))
+- Fixed `wazuh-syscheckd` crash when the eBPF whodata provider fails to load `libbpf.so`. ([#41095](https://github.com/wazuh/wazuh/issues/41095))
 
 ## [v4.14.10]
 
