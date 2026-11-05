@@ -1319,11 +1319,6 @@ void test_audit_parse_chmod_followed_link_reopen_failure(void **state) {
     expect_string(__wrap_open, path, "/proc/self/fd/98");
     will_return(__wrap_open, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "(6213): Cannot get the real path of the link '/root/test/file'");
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 58280);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "99");
