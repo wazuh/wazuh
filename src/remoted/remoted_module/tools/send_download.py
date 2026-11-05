@@ -343,7 +343,8 @@ class ProcWatcher:
 # and running send_download.py BEFORE send_control.py -- the answer must be 403, not 200.
 # `wpk` requests are authorized by the agent's open upgrade task in the task manager. The agents
 # --all uses have none, so a staged WPK (wpk_without_task) answers 404 with the same body as a
-# name that is not in var/upgrade (wpk_absent).
+# name that is not in var/upgrade (wpk_absent). Only a WPK that really is staged proves the denial:
+# an absent one answers 404 for the wrong reason, so main() passes None and the scenario is skipped.
 
 def build_scenarios(group, unknown_group, other_group, wpk_name):
     scenarios = [
@@ -380,8 +381,9 @@ def build_scenarios(group, unknown_group, other_group, wpk_name):
 
     scenarios += [
         ("wpk_absent", 404, request_body("wpk", "no-such-package.wpk")),
-        ("wpk_without_task", 404, request_body("wpk", wpk_name)),
     ]
+    if wpk_name:
+        scenarios.append(("wpk_without_task", 404, request_body("wpk", wpk_name)))
     return scenarios
 
 
@@ -564,8 +566,14 @@ def main():
 
     if args.all:
         wpk = args.wpk or next((f for f in sorted(os.listdir(paths.wpk_dir))
-                                if f.endswith(".wpk")), "none-staged.wpk") \
-            if os.path.isdir(paths.wpk_dir) else "none-staged.wpk"
+                                if f.endswith(".wpk")), None) \
+            if os.path.isdir(paths.wpk_dir) else args.wpk
+        if wpk is None or not os.path.isfile(os.path.join(paths.wpk_dir, wpk)):
+            print(f"WARNING: no staged WPK{f' {wpk!r}' if wpk else ''} in {paths.wpk_dir}.")
+            print("         'wpk_without_task' would answer 404 because the file is missing, not because "
+                  "the agent has no task, so it is SKIPPED.")
+            print("         Stage a WPK under var/upgrade (or pass --wpk <a staged file>).\n")
+            wpk = None
         # --other-group must name a group that EXISTS but is not this agent's. Its default does not
         # exist on a stock install, and a missing one still answers 403 (denial precedes
         # resolution), so the scenario would pass without proving anything. Say so loudly and drop

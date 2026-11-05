@@ -534,7 +534,8 @@ namespace remoted::endpoints::download
     namespace
     {
         /// The answer when a WPK request cannot be authorized: no authorizer is wired, or the task
-        /// manager gave no usable answer. Nothing has been opened by then, and the agent retries.
+        /// manager gave no usable answer. Nothing has been opened by then; a 5.0.0 agent tries
+        /// agent.https_download_attempts times in total, then abandons the upgrade.
         remoted::http::HttpResponse serviceUnavailableResponse()
         {
             return remoted::http::HttpResponse::json(503, R"({"error":"Service unavailable","code":503})");

@@ -21,7 +21,8 @@ namespace remoted::endpoints
     {
         Granted,    ///< The agent has an open upgrade task for exactly this file.
         Denied,     ///< It has none. Answered like a missing file, so existence is not revealed.
-        Unavailable ///< No answer could be obtained. Never served; the agent retries a 503.
+        Unavailable ///< No answer could be obtained. Never served: a 503, which a 5.0.0 agent tries
+                    ///< agent.https_download_attempts times in total before abandoning the upgrade.
     };
 
     /**
