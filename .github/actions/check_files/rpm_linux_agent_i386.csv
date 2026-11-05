@@ -154,9 +154,9 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/wodles/gcloud/tools.py,root,wazuh,750,file,-rwxr-x---,4420,0.1
 /var/ossec/wodles/gcloud/gcloud,root,wazuh,750,file,-rwxr-x---,4741,0.1
 /var/ossec/wodles/gcloud/exceptions.py,root,wazuh,750,file,-rwxr-x---,4704,0.1
-/var/ossec/wodles/gcloud/integration.py,root,wazuh,750,file,-rwxr-x---,3479,0.1
-/var/ossec/wodles/gcloud/pubsub/subscriber.py,root,wazuh,750,file,-rwxr-x---,8141,0.1
-/var/ossec/wodles/gcloud/buckets/bucket.py,root,wazuh,750,file,-rwxr-x---,12735,0.1
+/var/ossec/wodles/gcloud/integration.py,root,wazuh,750,file,-rwxr-x---,3658,0.1
+/var/ossec/wodles/gcloud/pubsub/subscriber.py,root,wazuh,750,file,-rwxr-x---,8593,0.1
+/var/ossec/wodles/gcloud/buckets/bucket.py,root,wazuh,750,file,-rwxr-x---,12835,0.1
 /var/ossec/wodles/gcloud/buckets/access_logs.py,root,wazuh,750,file,-rwxr-x---,1870,0.1
 /var/ossec/wodles/aws/aws_tools.py,root,wazuh,750,file,-rwxr-x---,17341,0.1
 /var/ossec/wodles/aws/aws-s3,root,wazuh,750,file,-rwxr-x---,10237,0.1
