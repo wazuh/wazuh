@@ -426,7 +426,7 @@ unit `count`.
 | `remoted.scanvd.accepted` | 200: VD queued the scan (it will run) |
 | `remoted.scanvd.queue_full` | 503: VD answered `scan_queue_full` — the Task Manager's admission bound for pending `vd_scan` tasks is reached, so the scan could not be recorded ([vulnerability scanner metrics](../vulnerability-scanner/metrics.md)). **Not** `vd.capacity.503.total`, which the inventory sync server raises for its own VD lane on a different socket ([inventory sync server metrics](../inventory-sync-server/metrics.md#vulnerability-detection-lane--vd)) |
 | `remoted.scanvd.indexer_unavailable` | 503: VD reports no healthy indexer host |
-| `remoted.scanvd.vd_error` | 503 for any other reason: VD unreachable, not ready, unexpected answer |
+| `remoted.scanvd.vd_error` | 503 for any other reason: VD unreachable, not ready or disabled, unexpected answer |
 | `remoted.scanvd.version_mismatch` | 409: requested feed offset != current offset |
 | `remoted.scanvd.invalid_agent` | 400: agent id 0 reached the handler |
 

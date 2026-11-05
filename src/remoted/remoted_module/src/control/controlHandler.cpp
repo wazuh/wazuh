@@ -18,6 +18,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <thread>
 #include <utility>
@@ -431,9 +432,15 @@ namespace remoted::control
         }
 
     private:
-        uint64_t getVdFeedOffset() const
+        /// This node's VD feed offset, or nothing while VD reports itself disabled.
+        std::optional<uint64_t> getVdFeedOffset() const
         {
-            return m_vdClient->getOffset();
+            const auto state = m_vdClient->getFeedState();
+            if (!state.enabled)
+            {
+                return std::nullopt;
+            }
+            return state.offset;
         }
 
         void processNotify(AgentId id,
@@ -570,7 +577,14 @@ namespace remoted::control
                         tasksJson.push_back(std::move(taskJson));
                     }
                     response["tasks"] = std::move(tasksJson);
-                    response["vd_feed_offset"] = this->getVdFeedOffset();
+                    // Omitted while VD is disabled on this node (#41101): the agent requests a
+                    // re-scan only off an advertised offset and leaves a missing one alone, and a
+                    // disabled VD refuses every scan -- advertising its 0 would have the agents
+                    // retry a request that can never succeed for as long as they run.
+                    if (const auto vdFeedOffset = this->getVdFeedOffset())
+                    {
+                        response["vd_feed_offset"] = *vdFeedOffset;
+                    }
 
                     HttpResponse httpResp;
                     httpResp.status = 200;
