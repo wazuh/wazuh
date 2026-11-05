@@ -2754,7 +2754,8 @@ the certificate this process reserialised and never the file's `##` lines),
 `inFlightBudget_test.cpp` (reserve/release accounting, exhaustion, RAII move-once, disabled mode,
 concurrency), `handshakeLedger_test.cpp` (a connection counted from handshake to close, a close
 while handshaking leaving both levels at zero, repeated or unknown notices as no-ops, the per-source
-cap refusing only the excess and freeing a share when a handshake finishes, 0 disabling it, reset()
+cap refusing only the excess, freeing one share on a partial release while the others still count,
+0 disabling it, reset()
 keeping the totals and a pre-reset share releasing nothing, two handshakes on one id counting twice and
 every order of their ends leaving nothing counted, a dropped share releasing, a share released once
 wherever it is moved, concurrency) with `httpServer_test.cpp`'s `HandshakeGuardTest` over a real
