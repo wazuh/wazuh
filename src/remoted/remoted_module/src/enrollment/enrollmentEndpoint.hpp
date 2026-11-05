@@ -66,8 +66,8 @@ namespace remoted::enrollment
      *
      * Wired to Keystore::upsert() by the facade. Returns whether the entry was adopted; a false is
      * an anomaly worth logging (authd issued a credential this manager cannot parse), never a
-     * reason to fail the enrollment -- the agent's copy is valid and the keystore's file reload
-     * remains the fallback.
+     * reason to fail the enrollment -- authd has registered the agent either way, and whether it
+     * can authenticate is then up to the entry client.keys carries for it.
      */
     using KeyUpsertFn = std::function<bool(const std::string& id, const std::string& ip, const std::string& keyHex)>;
 

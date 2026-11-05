@@ -563,31 +563,46 @@ namespace remoted::auth
                 {
                     std::lock_guard<std::mutex> lock(m_mutex);
                     m_keys = std::move(loaded);
-                    // An adopted entry stays only while the file still shows a state that precedes
-                    // it (see PendingEntry::olderFileStates). Same id and same key bytes is
-                    // convergence; only the key is compared. Any other state (an unknown key, or the
-                    // entry gone for an id the file had) means the agent was rotated elsewhere or
-                    // removed: keeping the adopted key first in lookup() would refuse the current
-                    // one. Reconciled before expiring, so a late convergence is not an expiry.
+                    // An adopted entry is retired as soon as the file is no longer behind it:
+                    //  - it carries the adopted key (converged; only the key is compared);
+                    //  - it no longer carries an id it has carried since the adoption (removed);
+                    //  - it carries a key the adoption does not supersede (rotated elsewhere: keeping
+                    //    the adopted key first in lookup() would refuse the current one) -- unless
+                    //    the entry is saturated, when an unknown key proves nothing.
+                    // A file without the id that never had it, or still on a superseded key, is
+                    // behind: the entry stays. Reconciled before expiring, so a late convergence is
+                    // not an expiry.
                     for (auto it = m_pending.begin(); it != m_pending.end();)
                     {
+                        auto& pending = it->second;
                         const auto inFile = m_keys.find(it->first);
-                        const auto fileKey = inFile != m_keys.end()
-                                                 ? std::optional<std::vector<std::uint8_t>> {inFile->second.key}
-                                                 : std::nullopt;
-                        const auto& older = it->second.olderFileStates;
-                        if (fileKey && *fileKey == it->second.entry.key)
+                        const char* retiredBecause = nullptr;
+                        if (inFile == m_keys.end())
+                        {
+                            retiredBecause = pending.idSeenInFile ? "entry removed" : nullptr;
+                        }
+                        else if (inFile->second.key == pending.entry.key)
                         {
                             LOGFN_DEBUG1(logFn(), "client.keys now carries the key adopted for agent %u.", it->first);
                             it = m_pending.erase(it);
+                            continue;
                         }
-                        else if (std::find(older.begin(), older.end(), fileKey) == older.end())
+                        else
+                        {
+                            pending.idSeenInFile = true;
+                            const auto& superseded = pending.supersededKeys;
+                            const bool behind =
+                                std::find(superseded.begin(), superseded.end(), inFile->second.key) != superseded.end();
+                            retiredBecause = behind || pending.saturated ? nullptr : "another key";
+                        }
+
+                        if (retiredBecause != nullptr)
                         {
                             LOGFN_DEBUG1(logFn(),
                                          "client.keys moved past the key adopted for agent %u (%s); the file's "
                                          "entry takes over.",
                                          it->first,
-                                         fileKey ? "another key" : "entry removed");
+                                         retiredBecause);
                             it = m_pending.erase(it);
                         }
                         else
@@ -664,27 +679,31 @@ namespace remoted::auth
             return true;
         }
         // A newer adoption for the same id (two re-enrollments before the file caught up): the key
-        // it replaces is a state authd may still write first, so it joins the history.
-        std::vector<std::optional<std::vector<std::uint8_t>>> olderFileStates;
+        // it replaces is one authd may still write first, so it joins the superseded keys.
+        PendingEntry adoption {
+            AgentEntry {std::move(decoded), std::move(*addressRule)}, now, {}, fileState.has_value()};
         if (auto previous = m_pending.find(*agentId); previous != m_pending.end())
         {
-            olderFileStates = std::move(previous->second.olderFileStates);
-            olderFileStates.emplace_back(std::move(previous->second.entry.key));
+            adoption.supersededKeys = std::move(previous->second.supersededKeys);
+            adoption.supersededKeys.push_back(std::move(previous->second.entry.key));
+            adoption.idSeenInFile = adoption.idSeenInFile || previous->second.idSeenInFile;
+            adoption.saturated = previous->second.saturated;
         }
-        if (std::find(olderFileStates.begin(), olderFileStates.end(), fileState) == olderFileStates.end())
+        if (fileState && std::find(adoption.supersededKeys.begin(), adoption.supersededKeys.end(), *fileState) ==
+                             adoption.supersededKeys.end())
         {
-            olderFileStates.push_back(std::move(fileState));
+            adoption.supersededKeys.push_back(std::move(*fileState));
         }
-        if (olderFileStates.size() > kMaxOlderFileStates)
+        if (adoption.supersededKeys.size() > kMaxSupersededKeys)
         {
-            olderFileStates.erase(olderFileStates.begin(),
-                                  olderFileStates.end() - static_cast<std::ptrdiff_t>(kMaxOlderFileStates));
+            adoption.supersededKeys.erase(adoption.supersededKeys.begin(),
+                                          adoption.supersededKeys.end() -
+                                              static_cast<std::ptrdiff_t>(kMaxSupersededKeys));
+            adoption.saturated = true;
         }
         // Beside the file's table, never in it: agentsLoaded()/entriesSkipped() keep describing
         // the file, and the next reload() decides when the file has moved on (see the header).
-        m_pending.insert_or_assign(
-            *agentId,
-            PendingEntry {AgentEntry {std::move(decoded), std::move(*addressRule)}, now, std::move(olderFileStates)});
+        m_pending.insert_or_assign(*agentId, std::move(adoption));
         LOGFN_DEBUG1(logFn(),
                      "Adopted the key issued to agent %u; in service until client.keys carries it (%lld s at most).",
                      *agentId,
@@ -699,7 +718,7 @@ namespace remoted::auth
             if (now - it->second.adoptedAt > kAdoptionGrace)
             {
                 LOGFN_WARN(logFn(),
-                           "The key adopted for agent %u from its enrollment never appeared in '%s' within %lld s; "
+                           "The key adopted for agent %u from its enrollment was not seen in '%s' within %lld s; "
                            "dropping it. Check that wazuh-authd is writing the file (or, on a worker, that the "
                            "cluster synchronization is running).",
                            it->first,

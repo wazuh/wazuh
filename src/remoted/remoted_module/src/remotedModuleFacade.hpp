@@ -1220,7 +1220,7 @@ private:
                 const auto keystore = target();
                 return keystore ? keystore->adoptionExpiriesTotal() : 0U;
             },
-            "Adopted credentials dropped because client.keys never carried them within the grace",
+            "Adopted credentials dropped because no reload saw client.keys catch up with them within the grace",
             "count");
     }
 

@@ -69,6 +69,12 @@ namespace
             m_cv.notify_all();
         }
 
+        bool sent()
+        {
+            std::lock_guard<std::mutex> lock(m_mu);
+            return m_done;
+        }
+
         HttpResponse wait(std::chrono::milliseconds timeout = 2s)
         {
             std::unique_lock<std::mutex> lock(m_mu);
@@ -1431,7 +1437,10 @@ TEST(EnrollmentEndpointTest, ASpentTokenIsChargedToTheUnverifiedBucket)
 namespace
 {
     // Builds a handler wired with `keyUpsert` and runs one dispatch, mirroring run() above.
-    HttpResponse runWithUpsert(const Config& config, const std::string& authdPath, KeyUpsertFn keyUpsert)
+    HttpResponse runWithUpsert(const Config& config,
+                               const std::string& authdPath,
+                               KeyUpsertFn keyUpsert,
+                               std::shared_ptr<CapturingResponder> responder = std::make_shared<CapturingResponder>())
     {
         EnrollmentAuthenticator authenticator {EnrollmentAuthConfig {false}, nullptr};
         wazuh::metrics::Manager metricsManager;
@@ -1447,7 +1456,6 @@ namespace
             authenticator, authdClient, config, metrics, passthroughDecoder(), {}, {}, std::move(keyUpsert));
 
         auto request = std::make_shared<const HttpRequest>(makeRequest(R"({"name":"agent1","version":"5.0.0"})", ""));
-        auto responder = std::make_shared<CapturingResponder>();
         handler(request, responder);
         return responder->wait();
     }
@@ -1481,6 +1489,31 @@ TEST(EnrollmentEndpointTest, AcceptedEnrollmentIsAdoptedWithAuthdsIdIpAndKey)
     EXPECT_EQ(id, "067");
     EXPECT_EQ(ip, "any");
     EXPECT_EQ(key, kIssuedKey);
+}
+
+TEST(EnrollmentEndpointTest, AdoptionHappensBeforeTheResponseIsSent)
+{
+    // The point of adopting: this node must honor the key by the time the agent can hold it.
+    auto stub = fixedAuthdServer(std::string(R"({"error":0,"data":{"id":"067","name":"agent1","ip":"any","key":")") +
+                                 kIssuedKey + R"("}})");
+
+    auto responder = std::make_shared<CapturingResponder>();
+    std::atomic<int> calls {0};
+    std::atomic<bool> sentBeforeUpsert {true};
+    const auto response = runWithUpsert(
+        openModeConfig(),
+        stub.path,
+        [&](const std::string&, const std::string&, const std::string&)
+        {
+            ++calls;
+            sentBeforeUpsert = responder->sent();
+            return true;
+        },
+        responder);
+
+    EXPECT_EQ(response.status, 200);
+    EXPECT_EQ(calls.load(), 1);
+    EXPECT_FALSE(sentBeforeUpsert.load());
 }
 
 TEST(EnrollmentEndpointTest, AcceptedReenrollmentIsAdoptedWithTheRotatedKey)

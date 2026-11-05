@@ -752,7 +752,7 @@ namespace remoted::enrollment
                     {
                         LOGFN_WARN(logFn(),
                                    "Enrolled agent %s but its credential could not be adopted into the keystore; "
-                                   "this node will honor it once client.keys carries it.",
+                                   "it can authenticate here once client.keys carries a usable entry for it.",
                                    result.id.c_str());
                     }
                     responder->send(mapAuthdResult(result, metrics, usedEnrollmentToken, requestedReenrollment));

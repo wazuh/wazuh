@@ -510,18 +510,18 @@ namespace
         writeFile(std::string("3824 debian10 any ") + kKeyA + "\n");
         Keystore keystore(m_path);
 
-        ASSERT_TRUE(keystore.upsert("067", "any", kKeyA));
+        ASSERT_TRUE(keystore.upsert("067", "any", kKeyB));
         EXPECT_EQ(keystore.reload(), 1);
 
-        EXPECT_TRUE(keyOf(keystore, 67).has_value());
-        EXPECT_TRUE(keyOf(keystore, 3824).has_value());
+        EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyB));
+        EXPECT_EQ(keyOf(keystore, 3824), bytesOf(kKeyA));
         EXPECT_EQ(keystore.agentsLoaded(), 1u);
         EXPECT_EQ(keystore.adoptionsPending(), 1u);
 
         // The file now carries it: served from the file, nothing pending.
-        writeFile(std::string("3824 debian10 any ") + kKeyA + "\n67 agent1 any " + kKeyA + "\n");
+        writeFile(std::string("3824 debian10 any ") + kKeyA + "\n67 agent1 any " + kKeyB + "\n");
         EXPECT_EQ(keystore.reload(), 2);
-        EXPECT_TRUE(keyOf(keystore, 67).has_value());
+        EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyB));
         EXPECT_EQ(keystore.adoptionsPending(), 0u);
     }
 
@@ -678,6 +678,81 @@ namespace
         EXPECT_EQ(keystore.reload(), 1);
         EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyC));
         EXPECT_EQ(keystore.adoptionsPending(), 1u);
+    }
+
+    TEST_F(KeystoreTest, UpsertIsRetiredWhenAnIdTheFileCarriedSinceIsRemoved)
+    {
+        // A new agent: K1 then K2 adopted; the file shows K1 (so it has carried the id), then drops it.
+        Keystore keystore(m_path);
+        ASSERT_TRUE(keystore.upsert("67", "any", kKeyA));
+        ASSERT_TRUE(keystore.upsert("67", "any", kKeyC));
+
+        writeFile(std::string("67 agent1 any ") + kKeyA + "\n");
+        EXPECT_EQ(keystore.reload(), 1);
+        ASSERT_EQ(keyOf(keystore, 67), bytesOf(kKeyC));
+
+        writeFile(std::string("3824 debian10 any ") + kKeyA + "\n");
+        EXPECT_EQ(keystore.reload(), 1);
+        EXPECT_FALSE(keyOf(keystore, 67).has_value());
+        EXPECT_EQ(keystore.adoptionsPending(), 0u);
+        EXPECT_EQ(keystore.adoptionExpiriesTotal(), 0u);
+    }
+
+    // Distinct valid key columns for the cap tests below.
+    std::string nthKey(std::size_t n)
+    {
+        char suffix[9];
+        std::snprintf(suffix, sizeof(suffix), "%08zx", n + 0x1000);
+        return std::string(56, 'd') + suffix;
+    }
+
+    // https-events-api.md states the cap ("more than eight re-enrollments"); the tests below are
+    // written against the constant, so this pins the documented value.
+    static_assert(Keystore::kMaxSupersededKeys == 8, "update docs/ref/modules/remoted/https-events-api.md");
+
+    TEST_F(KeystoreTest, UpsertUpToTheCapStillRetiresOnAnUnknownKey)
+    {
+        // K0 in the file and kMaxSupersededKeys adoptions: the adoption supersedes K0 and the
+        // first kMaxSupersededKeys - 1 keys, exactly the cap, so it remembers them all.
+        writeFile("67 agent1 any " + nthKey(0) + "\n");
+        Keystore keystore(m_path);
+        for (std::size_t n = 1; n <= Keystore::kMaxSupersededKeys; ++n)
+        {
+            ASSERT_TRUE(keystore.upsert("67", "any", nthKey(n)));
+        }
+
+        writeFile(std::string("67 agent1 any ") + kKeyC + "\n");
+        EXPECT_EQ(keystore.reload(), 1);
+        EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyC));
+        EXPECT_EQ(keystore.adoptionsPending(), 0u);
+    }
+
+    TEST_F(KeystoreTest, UpsertPastTheCapKeepsTheAdoptionUntilItConverges)
+    {
+        // One adoption more than the cap: the oldest superseded key (K0) is forgotten, so an
+        // unknown key -- K0 included -- no longer proves the file moved past the adoption.
+        writeFile("67 agent1 any " + nthKey(0) + "\n");
+        Keystore keystore(m_path);
+        const auto last = Keystore::kMaxSupersededKeys + 1;
+        for (std::size_t n = 1; n <= last; ++n)
+        {
+            ASSERT_TRUE(keystore.upsert("67", "any", nthKey(n)));
+        }
+        const auto newest = bytesOf(nthKey(last).c_str());
+
+        writeFile("67 agent1 any " + nthKey(0) + "\n");
+        EXPECT_EQ(keystore.reload(), 1);
+        EXPECT_EQ(keyOf(keystore, 67), newest);
+
+        writeFile(std::string("67 agent1 any ") + kKeyC + "\n");
+        EXPECT_EQ(keystore.reload(), 1);
+        EXPECT_EQ(keyOf(keystore, 67), newest);
+        EXPECT_EQ(keystore.adoptionsPending(), 1u);
+
+        writeFile("67 agent1 any " + nthKey(last) + "\n");
+        EXPECT_EQ(keystore.reload(), 1);
+        EXPECT_EQ(keyOf(keystore, 67), newest);
+        EXPECT_EQ(keystore.adoptionsPending(), 0u);
     }
 
     TEST_F(KeystoreTest, UpsertConvergingAfterTheGraceIsNotAnExpiry)
