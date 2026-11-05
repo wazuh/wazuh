@@ -697,7 +697,7 @@ STATIC void remoted_module_control_config(remoted_module_config_t *rm_config) {
     snprintf(rm_config->manager_version, sizeof(rm_config->manager_version), "%s", __wazuh_version);
     rm_config->allow_higher_versions = logr.allow_higher_versions;
 
-    rm_config->groups_refresh_interval_sec = getDefine_Int_default("remoted", "control_groups_refresh_interval", 1, 3600, 60);
+    rm_config->groups_refresh_interval_sec = getDefine_Int_default("remoted", "control_groups_refresh_interval", 1, 3600, 1);
     rm_config->wdb_request_connections = getDefine_Int_default("remoted", "control_wdb_request_connections", 1, 64, 4);
     rm_config->wdb_roundtrip_deadline_ms = getDefine_Int_default("remoted", "control_wdb_roundtrip_deadline", 100, 30000, 5000);
     rm_config->wdb_max_queue_size = getDefine_Int_default("remoted", "control_wdb_max_queue_size", 100, 1000000, 10000);

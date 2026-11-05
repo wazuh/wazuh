@@ -234,7 +234,7 @@ extern "C"
         char manager_version[64];        ///< Manager version string.
         bool allow_higher_versions;      ///< Allow agents with version > manager version.
         char limits_json[4096];          ///< Limits JSON (rendered from remote.limits in manager conf).
-        int groups_refresh_interval_sec; ///< Group refresh interval in seconds (<=0 -> 60).
+        int groups_refresh_interval_sec; ///< Group refresh interval in seconds (<=0 -> 1).
         int wdb_request_connections;     ///< Wazuh-DB request connection pool size (<=0 -> 4).
         int wdb_roundtrip_deadline_ms;   ///< Wazuh-DB roundtrip deadline in milliseconds (<=0 -> 5000).
         int wdb_max_queue_size;          ///< Wazuh-DB request queue high-water mark; QueueFull over it (<=0 -> 10000).
