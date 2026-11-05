@@ -125,19 +125,26 @@ namespace remoted::auth
         /**
          * @brief Adopt one just-issued enrollment credential without waiting for a reload.
          *
-         * authd answers an enrollment as soon as it has queued the entry for its writer thread, so
-         * the agent holds its key before client.keys is written -- and on a worker the file arrives
-         * with the next cluster synchronization, seconds later. This table only learns keys from
-         * the file, so the first request signed with a fresh key can be refused as an unknown agent
-         * by the very node that issued it. The /enroll handler adopts the accepted entry here
-         * before sending the 200, so this node honors the credential the instant the agent has it.
+         * authd signals its writer thread and answers the enrollment without waiting for the pass,
+         * so nothing orders the agent receiving its key before client.keys is written -- and on a
+         * worker the file arrives with the next cluster synchronization, seconds later. This table
+         * only learns keys from the file, so the first request signed with a fresh key can be
+         * refused as an unknown agent by the very node that issued it. The /enroll handler adopts
+         * the accepted entry here before sending the 200, so this node honors the credential the
+         * instant the agent has it.
          *
-         * An adopted entry lives BESIDE the file's table, not in it: lookup() consults it first,
-         * and it survives reloads until the file carries the same id with the same key (the file's
-         * copy then takes over) or until kAdoptionGrace elapses (it is then dropped and counted in
-         * adoptionExpiriesTotal()). The file stays the source of truth for everything else:
-         * agentsLoaded() and entriesSkipped() describe the file only, and an entry the file removes
-         * within the grace keeps authenticating on this node until the grace ends.
+         * An adopted entry lives BESIDE the file's table, not in it: lookup() consults it first.
+         * It records what the file held for that id when it was adopted (the previous key, or
+         * nothing), and a reload retires it as soon as the file leaves that state: the file
+         * carrying the same id with the same key (converged), or a different key or no entry at
+         * all for an id it carried (superseded: rotated on another node, or removed) -- either way
+         * the file's copy takes over. While the file still shows the adoption-time state the
+         * entry stays, up to kAdoptionGrace (it is then dropped and counted in
+         * adoptionExpiriesTotal()). If the file already carries the issued key when upsert() runs
+         * (the writer pass won the race), nothing is stored. The file stays the source of truth
+         * for everything else: agentsLoaded() and entriesSkipped() describe the file only, and a
+         * new agent the file never carried but whose enrollment is undone keeps authenticating on
+         * this node until the grace ends.
          *
          * Columns are validated exactly like reload() validates a file line; nothing is stored
          * unless all three parse -- an entry that cannot authenticate is not worth adopting early.
@@ -145,7 +152,8 @@ namespace remoted::auth
          * @param id     Agent id, as authd returned it (numeric string).
          * @param ip     The entry's ip column ("any", a fixed address, or a range).
          * @param keyHex The key column: lowercase hex decoding to 16, 24 or 32 bytes.
-         * @return true if the entry was adopted; false if any column failed to parse.
+         * @return true if the entry was adopted (or the file already carries it); false if any
+         *         column failed to parse.
          */
         bool upsert(const std::string& id, const std::string& ip, const std::string& keyHex);
 
@@ -223,7 +231,7 @@ namespace remoted::auth
             return m_adoptionExpiriesTotal.load(std::memory_order_relaxed);
         }
 
-        /// @brief Adopted entries still in service that the file has not caught up with. Expires
+        /// @brief Adopted entries still in service that the file has not moved past. Expires
         /// overdue entries on the way, so a quiet manager (no reload since the adoption) reports the
         /// level honestly.
         std::size_t adoptionsPending();
@@ -268,6 +276,9 @@ namespace remoted::auth
         {
             AgentEntry entry;
             std::chrono::steady_clock::time_point adoptedAt;
+            /// The file's key for this id when the entry was adopted; nullopt if the file had no
+            /// entry for it. A reload that finds anything else retires the adoption.
+            std::optional<std::vector<std::uint8_t>> fileKeyAtAdoption;
         };
 
         /// Drops the adopted entries older than kAdoptionGrace, counting each in

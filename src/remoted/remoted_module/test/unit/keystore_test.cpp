@@ -476,8 +476,8 @@ namespace
 
     TEST_F(KeystoreTest, UpsertSurvivesAReloadWhoseFileLacksTheEntry)
     {
-        // authd answers before its writer thread writes the file (and a worker's file arrives with
-        // the cluster sync), so a reload in between must not drop the adopted entry.
+        // authd does not wait for its writer thread before answering (and a worker's file arrives
+        // with the cluster sync), so a reload in between must not drop the adopted entry.
         writeFile(std::string("3824 debian10 any ") + kKeyA + "\n");
         Keystore keystore(m_path);
 
@@ -525,6 +525,96 @@ namespace
         EXPECT_EQ(keystore.agentsLoaded(), 0u);
         EXPECT_EQ(keystore.adoptionsTotal(), 0u);
         EXPECT_EQ(keystore.adoptionsPending(), 0u);
+    }
+
+    constexpr const char* kKeyC = "0000000000000000000000000000000000000000000000000000000000000c0c";
+
+    TEST_F(KeystoreTest, UpsertIsRetiredWhenTheFirstSyncCarriesANewerKey)
+    {
+        // A worker adopts K1 for a new agent; before its next sync the agent re-enrolls on another
+        // node (rotating to K2, same id), so the first file that names the agent already carries K2.
+        auto now = std::chrono::steady_clock::now();
+        writeFile(std::string("3824 debian10 any ") + kKeyA + "\n");
+        Keystore keystore(m_path, Keystore::kDefaultRefreshIntervalSeconds, [&now] { return now; });
+
+        ASSERT_TRUE(keystore.upsert("067", "any", kKeyA));
+        const auto adopted = keyOf(keystore, 67);
+
+        writeFile(std::string("3824 debian10 any ") + kKeyA + "\n67 agent1 any " + kKeyB + "\n");
+        EXPECT_EQ(keystore.reload(), 2);
+        Keystore reference(m_path);
+        EXPECT_EQ(keyOf(keystore, 67), keyOf(reference, 67));
+        EXPECT_NE(keyOf(keystore, 67), adopted);
+        EXPECT_EQ(keystore.adoptionsPending(), 0u);
+
+        // Retired, not expired: the grace passing later counts nothing.
+        now += Keystore::kAdoptionGrace + std::chrono::seconds(1);
+        EXPECT_EQ(keystore.adoptionsPending(), 0u);
+        EXPECT_EQ(keystore.adoptionExpiriesTotal(), 0u);
+    }
+
+    TEST_F(KeystoreTest, UpsertIsRetiredWhenTheFileRotatesPastTheAdoptedKey)
+    {
+        // Adopted K1 over the file's K0; the file then moves to K2 (a later rotation elsewhere).
+        writeFile(std::string("67 agent1 any ") + kKeyB + "\n");
+        Keystore keystore(m_path);
+        ASSERT_TRUE(keystore.upsert("67", "any", kKeyA));
+
+        writeFile(std::string("67 agent1 any ") + kKeyC + "\n");
+        EXPECT_EQ(keystore.reload(), 1);
+        Keystore reference(m_path);
+        EXPECT_EQ(keyOf(keystore, 67), keyOf(reference, 67));
+        EXPECT_EQ(keystore.adoptionsPending(), 0u);
+        EXPECT_EQ(keystore.adoptionExpiriesTotal(), 0u);
+    }
+
+    TEST_F(KeystoreTest, UpsertIsRetiredWhenAnAgentItRotatedIsRemoved)
+    {
+        // Adopted K1 over the file's K0; the agent is then removed from the file.
+        writeFile(std::string("3824 debian10 any ") + kKeyA + "\n67 agent1 any " + kKeyB + "\n");
+        Keystore keystore(m_path);
+        ASSERT_TRUE(keystore.upsert("67", "any", kKeyA));
+
+        writeFile(std::string("3824 debian10 any ") + kKeyA + "\n");
+        EXPECT_EQ(keystore.reload(), 1);
+        EXPECT_FALSE(keyOf(keystore, 67).has_value());
+        EXPECT_EQ(keystore.adoptionsPending(), 0u);
+        EXPECT_EQ(keystore.adoptionExpiriesTotal(), 0u);
+    }
+
+    TEST_F(KeystoreTest, UpsertOfAKeyTheFileAlreadyCarriesLeavesNothingPending)
+    {
+        // authd's writer pass and the reload it triggers beat the adoption: the file already
+        // serves the key, so nothing may wait for a convergence that has already happened.
+        auto now = std::chrono::steady_clock::now();
+        writeFile(std::string("67 agent1 any ") + kKeyA + "\n");
+        Keystore keystore(m_path, Keystore::kDefaultRefreshIntervalSeconds, [&now] { return now; });
+        const auto fromFile = keyOf(keystore, 67);
+        ASSERT_TRUE(fromFile.has_value());
+
+        ASSERT_TRUE(keystore.upsert("67", "any", kKeyA));
+        EXPECT_EQ(keystore.adoptionsTotal(), 1u);
+        EXPECT_EQ(keystore.adoptionsPending(), 0u);
+
+        now += Keystore::kAdoptionGrace + std::chrono::seconds(1);
+        EXPECT_EQ(keyOf(keystore, 67), fromFile);
+        EXPECT_EQ(keystore.adoptionsPending(), 0u);
+        EXPECT_EQ(keystore.adoptionExpiriesTotal(), 0u);
+    }
+
+    TEST_F(KeystoreTest, UpsertOfAKeyTheFileAlreadyCarriesClearsAnOlderAdoption)
+    {
+        writeFile(std::string("67 agent1 any ") + kKeyB + "\n");
+        Keystore keystore(m_path);
+        const auto fromFile = keyOf(keystore, 67);
+
+        ASSERT_TRUE(keystore.upsert("67", "any", kKeyA));
+        ASSERT_EQ(keystore.adoptionsPending(), 1u);
+
+        ASSERT_TRUE(keystore.upsert("67", "any", kKeyB));
+        EXPECT_EQ(keyOf(keystore, 67), fromFile);
+        EXPECT_EQ(keystore.adoptionsPending(), 0u);
+        EXPECT_EQ(keystore.adoptionsTotal(), 2u);
     }
 
     // ---------------------------------------------------------------------------

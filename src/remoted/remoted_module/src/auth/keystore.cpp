@@ -554,16 +554,31 @@ namespace remoted::auth
                 {
                     std::lock_guard<std::mutex> lock(m_mutex);
                     m_keys = std::move(loaded);
-                    // The file caught up with an adopted entry: its copy takes over. Same id and
-                    // same key bytes is the convergence test -- the ip column is authd's in both
-                    // copies, so it cannot differ.
+                    // An adopted entry stays only while the file still shows what it held when the
+                    // entry was adopted. Same id and same key bytes is convergence -- the ip column
+                    // is authd's in both copies, so it cannot differ. Any other change (another
+                    // key, or the entry gone) means the agent was rotated on another node or
+                    // removed: the file is newer than the adoption, and keeping the adopted key
+                    // first in lookup() would refuse the current one.
                     expireAdoptedLocked(m_clock());
                     for (auto it = m_pending.begin(); it != m_pending.end();)
                     {
                         const auto inFile = m_keys.find(it->first);
-                        if (inFile != m_keys.end() && inFile->second.key == it->second.entry.key)
+                        const auto fileKey = inFile != m_keys.end()
+                                                 ? std::optional<std::vector<std::uint8_t>> {inFile->second.key}
+                                                 : std::nullopt;
+                        if (fileKey && *fileKey == it->second.entry.key)
                         {
                             LOGFN_DEBUG1(logFn(), "client.keys now carries the key adopted for agent %u.", it->first);
+                            it = m_pending.erase(it);
+                        }
+                        else if (fileKey != it->second.fileKeyAtAdoption)
+                        {
+                            LOGFN_DEBUG1(logFn(),
+                                         "client.keys moved past the key adopted for agent %u (%s); the file's "
+                                         "entry takes over.",
+                                         it->first,
+                                         fileKey ? "another key" : "entry removed");
                             it = m_pending.erase(it);
                         }
                         else
@@ -624,11 +639,25 @@ namespace remoted::auth
         const auto now = m_clock();
         std::lock_guard<std::mutex> lock(m_mutex);
         expireAdoptedLocked(now);
-        // Beside the file's table, never in it: agentsLoaded()/entriesSkipped() keep describing
-        // the file, and the next reload() decides when the file has caught up (see the header).
-        m_pending.insert_or_assign(*agentId,
-                                   PendingEntry {AgentEntry {std::move(decoded), std::move(*addressRule)}, now});
         m_adoptionsTotal.fetch_add(1, std::memory_order_relaxed);
+        // authd's writer pass can land before this call (it is signaled before the reply is built):
+        // the file already serves the key, so a pending entry would never converge and would expire
+        // as a false alarm. Any older adoption for the id is stale by the same token.
+        const auto inFile = m_keys.find(*agentId);
+        if (inFile != m_keys.end() && inFile->second.key == decoded)
+        {
+            m_pending.erase(*agentId);
+            LOGFN_DEBUG1(
+                logFn(), "client.keys already carries the key issued to agent %u; nothing to adopt.", *agentId);
+            return true;
+        }
+        // Beside the file's table, never in it: agentsLoaded()/entriesSkipped() keep describing
+        // the file, and the next reload() decides when the file has moved on (see the header).
+        auto fileKeyAtAdoption =
+            inFile != m_keys.end() ? std::optional<std::vector<std::uint8_t>> {inFile->second.key} : std::nullopt;
+        m_pending.insert_or_assign(
+            *agentId,
+            PendingEntry {AgentEntry {std::move(decoded), std::move(*addressRule)}, now, std::move(fileKeyAtAdoption)});
         LOGFN_DEBUG1(logFn(),
                      "Adopted the key issued to agent %u; in service until client.keys carries it (%lld s at most).",
                      *agentId,

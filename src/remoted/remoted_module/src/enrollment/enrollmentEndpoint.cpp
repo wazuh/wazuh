@@ -745,8 +745,9 @@ namespace remoted::enrollment
                 [responder, &metrics, usedEnrollmentToken, requestedReenrollment, keyUpsert](AuthdResult result)
                 {
                     // Adopted BEFORE the 200 leaves: the agent may use the key the instant it has it, and
-                    // this manager's own keystore must honor it by then. The file reload that will carry
-                    // the same entry happens after authd's writer pass, which is after this answer.
+                    // this manager's own keystore must honor it by then. authd signals its writer before
+                    // building this answer but does not wait for the pass, so the file reload may land
+                    // before or after this point; upsert() handles both orders.
                     if (result.errorCode == 0 && keyUpsert && !keyUpsert(result.id, result.ip, result.key))
                     {
                         LOGFN_WARN(logFn(),
