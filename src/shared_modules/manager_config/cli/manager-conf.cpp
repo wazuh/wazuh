@@ -53,7 +53,8 @@ namespace
         std::fputs("Usage: wazuh-manager-conf [-f <file>] [-H <home>] [--skip-file-checks] <command>\n"
                    "\n"
                    "Commands:\n"
-                   "  validate            Check the file (XML, schema and cross-field rules); silent on success.\n"
+                   "  validate            Check the file (XML, schema and cross-field rules); silent on success,\n"
+                   "                      else one line per problem found.\n"
                    "  get <key.path>      Print one option of the effective configuration (defaults applied):\n"
                    "                      scalars as plain text, objects and lists as JSON.\n"
                    "  dump                Print the whole effective configuration as JSON.\n"
@@ -268,11 +269,14 @@ namespace
 
         if (command == "validate")
         {
-            if (const auto error = manager_config::validateFile(filePath, options))
+            // Every problem of the file at once, one line each, so a file migrated from another version is
+            // fixed in one pass instead of one run per leftover option.
+            const auto errors = manager_config::validateFileAll(filePath, options);
+            for (const auto& error : errors)
             {
-                return reportInvalid(*error);
+                reportInvalid(error);
             }
-            return 0;
+            return errors.empty() ? 0 : EXIT_INVALID;
         }
 
         auto loaded = manager_config::Document::load(filePath, options);

@@ -26,7 +26,7 @@ credential resolver (`src/init/credentials/wazuh-manager-resolve-credentials.py`
 |---|---|---|
 | RF-1 | Strict XML: exactly one `<wazuh_config>` root; entities decoded; raw `&`, `--` inside comments, legacy `<! !>` comments and a second root are rejected with the offending line | `src/xmlToJson.cpp` |
 | RF-2 | Canonical JSON with the schema's types: `yes`/`no` → boolean, digits → integer where allowed, repeated or comma-separated values → arrays, the attribute forms of the dialect (`<backup database="…">`, `<disconnected_time enabled="…">`) → nested objects, enums matched in any case and normalized to the schema's spelling | `src/xmlToJson.cpp` |
-| RF-3 | Validation against the embedded draft-04 schema; the first error is reported with its JSON pointer and keyword | `src/schemaValidate.cpp` |
+| RF-3 | Validation against the embedded draft-04 schema; each error is reported with its JSON pointer and keyword — the first by the loader, every one, in the order of the file, by `validateAll()` (`wazuh-manager-conf validate`) | `src/schemaValidate.cpp`, `src/manager_config.cpp` |
 | RF-4 | Defaults declared in the schema are filled into the effective document (a missing section = its defaults) | `src/defaults.cpp` |
 | RF-5 | Uniform, fatal cross-field rules: certificate/key pairing, no `.`/`..` prefix segments, distinct listener ports, existence of the HTTPS/authd certificate files (relative to the manager home; nothing recreates them at start — the credential resolver issues them once at installation, or the operator provisions them, e.g. with wazuh-certs-tool — so the `file not found` verdict carries that hint; `indexer.ssl.*` is not checked here: the credential resolver owns those files — imported from the indexer's export or staged by the operator — and refuses the start itself, before any daemon runs, when they are missing or invalid) | `src/semantics.cpp` |
 | RF-6 | `sectionJson()` / `documentJson()` canonical JSON (cJSON-parseable); C API without exceptions or C++ types across the boundary | `src/manager_config.cpp`, `src/manager_config_c.cpp` |
@@ -99,11 +99,27 @@ credential resolver (`src/init/credentials/wazuh-manager-resolve-credentials.py`
 - **An empty file is invalid** (XML needs a root); the minimal valid document is
   `<wazuh_config><cluster><key>...32 alphanumeric...</key></cluster><indexer><hosts><host>scheme://host:port</host>
   </hosts></indexer></wazuh_config>` — every other option keeps its schema default.
+- **`validate` reports every problem in one run; the loader stops at the first** (#40814). A 4.x
+  configuration carried into `wazuh-manager.conf` breaks dozens of rules, and fixing them one run at a time
+  turned the migration into a loop. `validateAll()` therefore collects in three passes over one document:
+  `xmlToJson` records element-level problems (a duplicate, stray text, a wrong list item, nesting too deep)
+  and leaves that element out instead of stopping; the schema runs with rapidjson's
+  `kValidateContinueOnErrorFlag` over what remains (each entry worded by the same `describe()` as the
+  fail-fast error, and pointed at the offending key or item where rapidjson names its container); the
+  cross-field rules then run on that document too — they read only values of the type the schema expects —
+  skipping a pointer already reported. Only a document-level XML error (malformed text, the root) is alone,
+  since nothing after it can be read. Errors are sorted by the position of their value in the document (a
+  `required` one after the problems inside its object). Duplicates and stray text are reported only where the
+  schema defines the members: an unknown element is rejected once, by `additionalProperties`, and what it
+  holds or how often it repeats would bury that line (a default 4.14 manager configuration lists 23 problems
+  instead of 62). `Document::parse()` and `validateFile()` keep the fail-fast validator: the daemons' `-t`,
+  `dump` and `get` need one verdict. Both fail on exactly the same documents, and on every invalid vector
+  the first error of `validateAll()` is, word for word, the one they report (pinned by the GTest).
 
 ## Architecture
 
 `Document::parse()` (`src/manager_config.cpp`) runs the pipeline in one direction, stopping at the
-first error:
+first error (`validateAll()` runs the same stages but collects every error — see Design decisions):
 
 ```mermaid
 flowchart LR
@@ -143,8 +159,8 @@ manager_config/
 
 ## Consumer contract
 
-- **Two APIs, one implementation**: C++ (`manager_config.hpp`, `Document::load`/`Document::parse`) for
-  the engine and `bin/wazuh-manager-conf`; a C ABI (`manager_config_c.h`, `mconf_load`/`mconf_load_ex`/
+- **Two APIs, one implementation**: C++ (`manager_config.hpp`, `Document::load`/`Document::parse`, and
+  `validateAll`/`validateFileAll` for the whole list of problems) for the engine and `bin/wazuh-manager-conf`; a C ABI (`manager_config_c.h`, `mconf_load`/`mconf_load_ex`/
   `mconf_validate`) for the C daemons through libconfig's `w_mconf_*()` wrappers
   (`src/config/src/mconf-config.c`). Both call the same `Document::parse()` pipeline — there is no
   second validator to keep in sync.
@@ -205,7 +221,7 @@ it is the reference for the Python framework and the seed of the 5.0→5.1 conve
 |---|---|
 | file missing, unreadable or larger than 1 MiB | plain message, empty JSON pointer (`configuration file not found: <path>` only when the path does not exist; `configuration file cannot be read: <path>: <system error>` for any other access error, a directory included; `… larger than 1048576 bytes: …`). The CLI checks the file itself first and reports a missing one as `(1239): Configuration file not found: '<path>'.` and any other access error as `(1244): Invalid configuration at '/': configuration file cannot be read: <path>: <reason>.`; the C daemons render the loader's message under `(1244)` |
 | malformed XML, raw `&`, `--` in a comment, second root, wrong root | `invalid XML: … (line N)` / specific message with the line, empty JSON pointer |
-| schema / semantics | JSON pointer + violated keyword (`/remote/https/port: does not satisfy 'maximum' … [schema …]`; the schema root shows as `[schema /]`). `bin/wazuh-manager-conf` renders it as `(1244): Invalid configuration at '<pointer>': <reason>.` (`'/'` for an empty pointer); the C daemons put the file path in the subject and `Error::what()` (`<pointer>: <reason>`) in the reason |
+| schema / semantics | JSON pointer + violated keyword (`/remote/https/port: does not satisfy 'maximum' … [schema …]`; the schema root shows as `[schema /]`). `bin/wazuh-manager-conf` renders it as `(1244): Invalid configuration at '<pointer>': <reason>.` (`'/'` for an empty pointer) — `validate` one such line per problem, `get`/`dump` the first only; the C daemons put the file path in the subject and `Error::what()` (`<pointer>: <reason>`) in the reason |
 
 ## License
 

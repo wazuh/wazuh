@@ -47,9 +47,16 @@ element is rejected as a duplicate.
     55000 by default, lives in `api.yaml` and is **not** compared with them) and, unless `--skip-file-checks`, the existence of the
     certificate files the configuration names (`remote.https.certificate`, `key`, `ca`,
     `ca_certificate`, `auth.ssl_agent_ca`, `ssl_manager_cert`, `ssl_manager_key`; `indexer.ssl.*` is not
-    checked). Silent on success; on failure it prints the JSON pointer of the offending option:
+    checked). Silent on success; on failure it prints every problem it finds in one run, one line each,
+    with the JSON pointer of the offending option:
     `(1244): Invalid configuration at '/remote/legacy/port': does not satisfy 'maximum' [...]`
-    (`'/'` for syntax problems, which name the line instead). A missing file is
+    (`'/'` for syntax problems, which name the line instead). The lines come in the order of the file:
+    duplicate elements and stray text first, then the schema violations, then the cross-field rules. A
+    syntax error (malformed XML, a raw `&`, a wrong or second root element) is the only line, since
+    nothing after it can be read. An element the schema does not know (a 4.x section such as
+    `<syscheck>`) is one line however often it repeats and whatever it holds. `wazuh-manager-control`
+    runs the same `validate` before a start, so its refusal and the manager log list every problem too;
+    the daemons' own `-t` and the other `wazuh-manager-conf` commands stop at the first. A missing file is
     `(1239): Configuration file not found: '<file>'.`; a file that exists but cannot be read is
     `(1244): Invalid configuration at '/': configuration file cannot be read: <file>: <reason>.`
   - Durations and sizes are judged to the limits the daemons read them with: a size is at least one byte

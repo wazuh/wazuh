@@ -13,10 +13,12 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 
+#include <algorithm>
 #include <cerrno>
 #include <fstream>
 #include <sstream>
 #include <system_error>
+#include <vector>
 
 #include "defaults.hpp"
 #include "embeddedSchema.hpp"
@@ -98,9 +100,15 @@ namespace manager_config
     std::variant<Document, Error> Document::parse(std::string_view xmlText, const LoadOptions& options)
     {
         auto impl = std::make_unique<Impl>();
-        if (auto error = detail::xmlToJson(xmlText, impl->effective))
+        std::vector<Error> problems;
+        if (auto error = detail::xmlToJson(xmlText, impl->effective, problems))
         {
             return *error;
+        }
+        // Each stage collects in document order, so the first problem is the one the file shows first.
+        if (!problems.empty())
+        {
+            return problems.front();
         }
         if (auto error = detail::validateAgainstSchema(impl->effective))
         {
@@ -113,9 +121,9 @@ namespace manager_config
         raw.CopyFrom(impl->effective, raw.GetAllocator());
         detail::fillDefaults(
             detail::schemaDocument(), detail::schemaDocument(), impl->effective, impl->effective.GetAllocator());
-        if (auto error = detail::checkSemantics(impl->effective, raw, options))
+        if (auto errors = detail::checkSemantics(impl->effective, raw, options); !errors.empty())
         {
-            return *error;
+            return errors.front();
         }
         return Document(std::move(impl));
     }
@@ -159,6 +167,48 @@ namespace manager_config
             return *error;
         }
         return std::nullopt;
+    }
+
+    std::vector<Error> validateAll(std::string_view xmlText, const LoadOptions& options)
+    {
+        rapidjson::Document document;
+        std::vector<Error> errors;
+        if (auto error = detail::xmlToJson(xmlText, document, errors))
+        {
+            // Malformed XML or a wrong root: there is no document to judge any further.
+            return {*error};
+        }
+        // The elements the conversion left out (duplicates, stray text...) are absent from the document, so the
+        // schema judges what remains and every violation comes out of one run.
+        auto schemaErrors = detail::validateAgainstSchemaAll(document);
+        errors.insert(
+            errors.end(), std::make_move_iterator(schemaErrors.begin()), std::make_move_iterator(schemaErrors.end()));
+
+        // The cross-field rules read only values of the type the schema expects, so they run even on a document
+        // the schema refused; a rule broken by an option already reported is not reported twice.
+        rapidjson::Document raw;
+        raw.CopyFrom(document, raw.GetAllocator());
+        detail::fillDefaults(detail::schemaDocument(), detail::schemaDocument(), document, document.GetAllocator());
+        for (auto& error : detail::checkSemantics(document, raw, options))
+        {
+            const bool reported = std::any_of(
+                errors.begin(), errors.end(), [&error](const Error& other) { return other.pointer == error.pointer; });
+            if (!reported)
+            {
+                errors.push_back(std::move(error));
+            }
+        }
+        return errors;
+    }
+
+    std::vector<Error> validateFileAll(const std::filesystem::path& file, const LoadOptions& options)
+    {
+        auto content = readFile(file);
+        if (auto* error = std::get_if<Error>(&content))
+        {
+            return {*error};
+        }
+        return validateAll(std::get<std::string>(content), options);
     }
 
     std::string_view schemaJson()

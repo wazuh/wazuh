@@ -14,6 +14,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "manager_config/manager_config.hpp"
 
@@ -32,7 +33,12 @@ namespace manager_config::detail
      * forms of the historic dialect (<backup database="...">, <disconnected_time enabled="...">) become
      * nested objects, and enums declared in lowercase are normalized. Unknown elements are converted
      * literally so the schema rejects them with their JSON pointer.
+     *
+     * Two kinds of failure: the returned error is document-level (size, malformed XML, raw '&', the root
+     * element) and leaves `out` empty; element-level problems (a duplicate element, stray text, a wrong list
+     * item, nesting deeper than MAX_XML_DEPTH) are appended to `problems` in document order and the offending
+     * element is left out of `out`, so the rest of the document is still converted and can be validated.
      */
-    std::optional<Error> xmlToJson(std::string_view xmlText, rapidjson::Document& out);
+    std::optional<Error> xmlToJson(std::string_view xmlText, rapidjson::Document& out, std::vector<Error>& problems);
 
 } // namespace manager_config::detail

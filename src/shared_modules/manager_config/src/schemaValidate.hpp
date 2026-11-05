@@ -12,6 +12,7 @@
 #include <rapidjson/document.h>
 
 #include <optional>
+#include <vector>
 
 #include "manager_config/manager_config.hpp"
 
@@ -24,5 +25,10 @@ namespace manager_config::detail
     /// Validate a raw document against the embedded schema. The error carries the JSON pointer of the
     /// offending value and the violated keyword ("/remote/https/port: does not satisfy 'maximum'").
     std::optional<Error> validateAgainstSchema(const rapidjson::Document& document);
+
+    /// Every violation of the embedded schema in one pass (rapidjson's kValidateContinueOnErrorFlag), each worded
+    /// as validateAgainstSchema() words its single error, in the order of the document (a missing option after
+    /// the other problems of the object that misses it). Empty when the document is valid.
+    std::vector<Error> validateAgainstSchemaAll(const rapidjson::Document& document);
 
 } // namespace manager_config::detail
