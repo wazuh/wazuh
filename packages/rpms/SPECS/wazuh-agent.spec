@@ -690,6 +690,9 @@ if [ $1 = 0 ]; then
   # Remove SCA files
   rm -f %{_localstatedir}/ruleset/sca/*
 
+  # Remove the agent key so rpm does not save it as client.keys.rpmsave
+  rm -f %{_localstatedir}/etc/client.keys
+
 fi
 
 %triggerin -- glibc

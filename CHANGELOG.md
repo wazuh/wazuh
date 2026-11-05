@@ -188,6 +188,7 @@
 | [#40349](https://github.com/wazuh/wazuh/pull/40349) | Fixed the AWS and GCP modules stopping when a command could not be run. |
 | [#40349](https://github.com/wazuh/wazuh/pull/40349) | Fixed the agent upgrade reporting an installer that timed out as dispatched. |
 | [#40114](https://github.com/wazuh/wazuh/issues/40114) | Fixed RPM agent removal leaving the agent key and re-enrollment secret behind. |
+| [#41082](https://github.com/wazuh/wazuh/issues/41082) | Fixed RPM agent removal reporting a `client.keys.rpmsave` copy that it then deletes. |
 | [#39991](https://github.com/wazuh/wazuh/issues/39991) | Fixed agent daemons using up to 2x memory on aarch64 with glibc 2.43. |
 | [#29668](https://github.com/wazuh/wazuh/issues/29668) | Fixed FIM checksum calculation that was incorrectly ignoring some file fields. |
 | [#30513](https://github.com/wazuh/wazuh/issues/30513) | Fixed syscollector reporting duplicate and bogus packages on macOS arm64. |
