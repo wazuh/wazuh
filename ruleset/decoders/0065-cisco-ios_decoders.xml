@@ -109,11 +109,15 @@ Details: https://www.cisco.com/c/en/us/td/docs/routers/access/wireless/software/
   <prematch>\p*\w+\s+\d*\s\d+:\d+:\d+:\s+%|</prematch>
   <prematch>\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+:\s+%|</prematch>
   <prematch>\p*\w+\s+\d*\s\d+:\d+:\d+\s+\w+:\s+%|</prematch>
+  <prematch>\p*\w+\s+\d*\s\d+:\d+:\d+\s+\w+\p\d+:\s+%|</prematch>
   <prematch>\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+\s+\w+:\s+%|</prematch>
+  <prematch>\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+\s+\w+\p\d+:\s+%|</prematch>
   <prematch>\p*\w+\s+\d*\s\d+:\d+:\d+.\d+:\s+%|</prematch>
   <prematch>\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+.\d+:\s+%|</prematch>
   <prematch>\p*\w+\s+\d*\s\d+:\d+:\d+.\d+\s+\w+:\s+%|</prematch>
-  <prematch>\w+\s+\d\p*\s\d+\s\d+:\d+:\d+.\d+\s+\w+:\s+%</prematch>
+  <prematch>\p*\w+\s+\d*\s\d+:\d+:\d+.\d+\s+\w+\p\d+:\s+%|</prematch>
+  <prematch>\w+\s+\d\p*\s\d+\s\d+:\d+:\d+.\d+\s+\w+:\s+%|</prematch>
+  <prematch>\w+\s+\d\p*\s\d+\s\d+:\d+:\d+.\d+\s+\w+\p\d+:\s+%</prematch>
 </decoder>
 
 <decoder name="cisco-ios">
@@ -121,11 +125,15 @@ Details: https://www.cisco.com/c/en/us/td/docs/routers/access/wireless/software/
   <prematch>^\p*\w+\s+\d*\s\d+:\d+:\d+:\s+%|</prematch>
   <prematch>^\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+:\s+%|</prematch>
   <prematch>^\p*\w+\s+\d*\s\d+:\d+:\d+\s+\w+:\s+%|</prematch>
+  <prematch>^\p*\w+\s+\d*\s\d+:\d+:\d+\s+\w+\p\d+:\s+%|</prematch>
   <prematch>^\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+\s+\w+:\s+%|</prematch>
+  <prematch>^\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+\s+\w+\p\d+:\s+%|</prematch>
   <prematch>^\p*\w+\s+\d*\s\d+:\d+:\d+.\d+:\s+%|</prematch>
   <prematch>^\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+.\d+:\s+%|</prematch>
   <prematch>^\p*\w+\s+\d*\s\d+:\d+:\d+.\d+\s+\w+:\s+%|</prematch>
-  <prematch>^\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+.\d+\s+\w+:\s+%</prematch>
+  <prematch>^\p*\w+\s+\d*\s\d+:\d+:\d+.\d+\s+\w+\p\d+:\s+%|</prematch>
+  <prematch>^\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+.\d+\s+\w+:\s+%|</prematch>
+  <prematch>^\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+.\d+\s+\w+\p\d+:\s+%</prematch>
 </decoder>
 
 <!--
@@ -155,11 +163,15 @@ Details: https://www.cisco.com/c/en/us/td/docs/routers/access/wireless/software/
   <prematch>^\d+:\s\p*\w+\s+\d*\s\d+:\d+:\d+:\s+%|</prematch>
   <prematch>^\d+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+:\s+%|</prematch>
   <prematch>^\d+:\s\p*\w+\s+\d*\s\d+:\d+:\d+\s+\w+:\s+%|</prematch>
+  <prematch>^\d+:\s\p*\w+\s+\d*\s\d+:\d+:\d+\s+\w+\p\d+:\s+%|</prematch>
   <prematch>^\d+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+\s+\w+:\s+%|</prematch>
+  <prematch>^\d+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+\s+\w+\p\d+:\s+%|</prematch>
   <prematch>^\d+:\s\p*\w+\s+\d*\s\d+:\d+:\d+.\d+:\s+%|</prematch>
   <prematch>^\d+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+.\d+:\s+%|</prematch>
   <prematch>^\d+:\s\p*\w+\s+\d*\s\d+:\d+:\d+.\d+\s+\w+:\s+%|</prematch>
-  <prematch>^\d+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+.\d+\s+\w+:\s+%</prematch>
+  <prematch>^\d+:\s\p*\w+\s+\d*\s\d+:\d+:\d+.\d+\s+\w+\p\d+:\s+%|</prematch>
+  <prematch>^\d+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+.\d+\s+\w+:\s+%|</prematch>
+  <prematch>^\d+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+.\d+\s+\w+\p\d+:\s+%</prematch>
 </decoder>
 
 <decoder name="cisco-ios">
@@ -167,11 +179,15 @@ Details: https://www.cisco.com/c/en/us/td/docs/routers/access/wireless/software/
   <prematch>^\d+:\s\p*\w+\s+\d*\s\d+:\d+:\d+:\s+%|</prematch>
   <prematch>^\d+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+:\s+%|</prematch>
   <prematch>^\d+:\s\p*\w+\s+\d*\s\d+:\d+:\d+\s+\w+:\s+%|</prematch>
+  <prematch>^\d+:\s\p*\w+\s+\d*\s\d+:\d+:\d+\s+\w+\p\d+:\s+%|</prematch>
   <prematch>^\d+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+\s+\w+:\s+%|</prematch>
+  <prematch>^\d+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+\s+\w+\p\d+:\s+%|</prematch>
   <prematch>^\d+:\s\p*\w+\s+\d*\s\d+:\d+:\d+.\d+:\s+%|</prematch>
   <prematch>^\d+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+.\d+:\s+%|</prematch>
   <prematch>^\d+:\s\p*\w+\s+\d*\s\d+:\d+:\d+.\d+\s+\w+:\s+%|</prematch>
-  <prematch>^\d+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+.\d+\s+\w+:\s+%</prematch>
+  <prematch>^\d+:\s\p*\w+\s+\d*\s\d+:\d+:\d+.\d+\s+\w+\p\d+:\s+%|</prematch>
+  <prematch>^\d+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+.\d+\s+\w+:\s+%|</prematch>
+  <prematch>^\d+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+.\d+\s+\w+\p\d+:\s+%</prematch>
 </decoder>
 
 <!--
@@ -190,11 +206,15 @@ Details: https://www.cisco.com/c/en/us/td/docs/routers/access/wireless/software/
   <prematch>^\d+:\s\.+:\s\p*\w+\s+\d*\s\d+:\d+:\d+:\s+%|</prematch>
   <prematch>^\d+:\s\.+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+:\s+%|</prematch>
   <prematch>^\d+:\s\.+:\s\p*\w+\s+\d*\s\d+:\d+:\d+\s+\w+:\s+%|</prematch>
+  <prematch>^\d+:\s\.+:\s\p*\w+\s+\d*\s\d+:\d+:\d+\s+\w+\p\d+:\s+%|</prematch>
   <prematch>^\d+:\s\.+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+\s+\w+:\s+%|</prematch>
+  <prematch>^\d+:\s\.+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+\s+\w+\p\d+:\s+%|</prematch>
   <prematch>^\d+:\s\.+:\s\p*\w+\s+\d*\s\d+:\d+:\d+.\d+:\s+%|</prematch>
   <prematch>^\d+:\s\.+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+.\d+:\s+%|</prematch>
   <prematch>^\d+:\s\.+:\s\p*\w+\s+\d*\s\d+:\d+:\d+.\d+\s+\w+:\s+%|</prematch>
-  <prematch>^\d+:\s\.+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+.\d+\s+\w+:\s+%</prematch>
+  <prematch>^\d+:\s\.+:\s\p*\w+\s+\d*\s\d+:\d+:\d+.\d+\s+\w+\p\d+:\s+%|</prematch>
+  <prematch>^\d+:\s\.+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+.\d+\s+\w+:\s+%|</prematch>
+  <prematch>^\d+:\s\.+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+.\d+\s+\w+\p\d+:\s+%</prematch>
 </decoder>
 
 <decoder name="cisco-ios">
@@ -202,11 +222,29 @@ Details: https://www.cisco.com/c/en/us/td/docs/routers/access/wireless/software/
   <prematch>^\d+:\s\.+:\s\p*\w+\s+\d*\s\d+:\d+:\d+:\s+%|</prematch>
   <prematch>^\d+:\s\.+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+:\s+%|</prematch>
   <prematch>^\d+:\s\.+:\s\p*\w+\s+\d*\s\d+:\d+:\d+\s+\w+:\s+%|</prematch>
+  <prematch>^\d+:\s\.+:\s\p*\w+\s+\d*\s\d+:\d+:\d+\s+\w+\p\d+:\s+%|</prematch>
   <prematch>^\d+:\s\.+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+\s+\w+:\s+%|</prematch>
+  <prematch>^\d+:\s\.+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+\s+\w+\p\d+:\s+%|</prematch>
   <prematch>^\d+:\s\.+:\s\p*\w+\s+\d*\s\d+:\d+:\d+.\d+:\s+%|</prematch>
   <prematch>^\d+:\s\.+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+.\d+:\s+%|</prematch>
   <prematch>^\d+:\s\.+:\s\p*\w+\s+\d*\s\d+:\d+:\d+.\d+\s+\w+:\s+%|</prematch>
-  <prematch>^\d+:\s\.+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+.\d+\s+\w+:\s+%</prematch>
+  <prematch>^\d+:\s\.+:\s\p*\w+\s+\d*\s\d+:\d+:\d+.\d+\s+\w+\p\d+:\s+%|</prematch>
+  <prematch>^\d+:\s\.+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+.\d+\s+\w+:\s+%|</prematch>
+  <prematch>^\d+:\s\.+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+.\d+\s+\w+\p\d+:\s+%</prematch>
+</decoder>
+
+<!--
+  - Time zone with an offset, when the pre-decoder already took the date as the syslog timestamp
+  - (counter, date and time without milliseconds): the decoders only see "UTC+1: %..."
+  - 972: Nov  5 19:42:37 UTC+1: %SYS-5-CONFIG_I: Configured from console by admin on vty0 (192.0.2.252)
+-->
+<decoder name="cisco-ios">
+  <prematch>^\w+\p\d+:\s+%\w+-\d-\w+: </prematch>
+</decoder>
+
+<decoder name="cisco-ios">
+  <program_name />
+  <prematch>^\w+\p\d+:\s+%\w+-\d-\w+: </prematch>
 </decoder>
 
 <!-- Cisco IOS
