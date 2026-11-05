@@ -260,7 +260,7 @@ A standard integration must also be
 **enabled** to decode anything: most ship disabled (see
 [Enable the integration's ruleset first](../../ref/modules/integrations/README.md#enable-the-integrations-ruleset-first)).
 
-The `test` space normalizes with the test policy, which holds only the decoders promoted from your draft. When you migrate rules only, the logs are decoded by a standard integration, so run them through the `standard` space with the ID of that integration. With no decoders in the test policy, logtest answers `200` with `The 'test' environment does not exist.` in `message.normalization.error`.
+The `test` space normalizes with the test policy, which holds only the decoders promoted from your draft. When you migrate rules only, the logs are decoded by a standard integration, so run them through the `standard` space with the ID of that integration. With no decoders in the test policy, logtest answers `200` with `The 'test' environment does not exist.` in `message.normalization.error.message`.
 
 The `message.normalization.output` section of the response is the fully decoded WCS document. The field paths you see there are the exact paths to use in your `detection` block.
 
@@ -340,12 +340,12 @@ In 4.x, `<match>` and `<regex>` search the **raw log string** before any field e
      selection:
        event.action: "authentication-failure"
    ```
-3. **If the text was not decoded into a specific field** — fall back to `message`, the free-text part of the log that many decoders set (check with logtest that yours does). Do not use `event.original`: it holds the raw log line, but it is not searchable in the event indices, so a condition on it can never match. `message` is indexed up to 4096 characters, so a rule never matches a longer value:
+3. **If the text was not decoded into a specific field** — fall back to `message`, the free-text part of the log that many decoders set (check with logtest that yours does). Do not use `event.original`: it holds the raw log line, but it is not searchable in the event indices, so a condition on it can never match. `message` is a `keyword` with `ignore_above: 4096`: a longer value is not indexed at all, so a rule never matches it:
    ```yaml
    detection:
      condition: selection
      selection:
-       message|contains: "illegal user"
+       message|contains: "invalid user"
    ```
 4. **For several alternative strings** — list them under the same field. A list is an OR, as the `|` in a 4.x `<match>`:
    ```yaml
@@ -435,7 +435,7 @@ Modifiers are appended to field names using the pipe (`|`) character and transfo
 | `\|contains` | Substring match (wildcard on both sides) | `message\|contains: "invalid user"` |
 | `\|startswith` | Value begins with string (wildcard at end) | `process.name\|startswith: "cmd"` |
 | `\|endswith` | Value ends with string (wildcard at start) | `file.name\|endswith: ".exe"` |
-| `\|re` | Regular expression match | `message\|re: "illegal user\|invalid user"` |
+| `\|re` | Regular expression match | `message\|re: "[Ii]llegal user\|[Ii]nvalid user"` |
 | `\|exists` | Field is present (`true`) or absent (`false`) | `user.name\|exists: true` |
 | `\|cidr` | IPv4 or IPv6 address falls within the CIDR range | `source.ip\|cidr: "10.0.0.0/8"` |
 | `\|all` | All list values must match (default list logic is OR); on a single-item list it is the same as the plain value | `event.category\|contains\|all: ["authentication", "failure"]` |
