@@ -339,7 +339,8 @@ namespace remoted::endpoints::download
      *
      * @param wpkAuthorizer Decides every WPK request before anything is opened. Required, with no
      * default, for the same reason as @p groups. A denial answers the same 404 a missing file does;
-     * a null pointer or an authorizer that cannot answer gives 503, which the agent retries.
+     * a null pointer or an authorizer that cannot answer gives 503, which a 5.0.0 agent tries
+     * agent.https_download_attempts times in total before abandoning the upgrade.
      */
     remoted::endpoints::AuthenticatedHandler makeHandler(ResourcePaths paths,
                                                          DownloadMetrics metrics,
