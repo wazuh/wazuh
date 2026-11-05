@@ -39,10 +39,12 @@ def send_msg_to_wdb(msg, raw=False):
 @pytest.mark.parametrize('message_exception, send_exception, agent_list, command, arguments, alert', [
     (1650, None, ['001'], None, [], None),
     (1652, None, ['002'], 'random', [], None),
+    (1653, None, ['002'], 'custom-ar-t', [], None),
     (1701, None, ['999'], 'random', [], None),
     (None, 1707, ['004'], 'restart-wazuh0', [], None),
     (None, None, ['006'], 'restart-wazuh0', [], None),
     (None, None, ['006'], '!custom-ar', [], None),
+    (None, None, ['006'], 'custom-ar', [], None),
     (None, None, ['007'], 'restart-wazuh0', ["arg1", "arg2"], None),
     (None, None, ['001', '002', '003', '004', '005', '006'], 'restart-wazuh0', [], None),
     (None, None, ['001'], 'restart-wazuh0', ["arg1", "arg2"], None),
@@ -92,3 +94,20 @@ def test_run_command(socket_mock, send_mock, mock_get_agents_info, mock_close, m
                 message = 'AR command was sent to all agents'
         
         assert render['message'] == message
+
+
+@patch("wazuh.core.wazuh_queue.WazuhQueue._connect")
+@patch("wazuh.syscheck.WazuhQueue._send", return_value='1')
+@patch("wazuh.core.wazuh_queue.WazuhQueue.close")
+@patch('wazuh.core.common.AR_CONF', new=test_data_path)
+@patch('wazuh.active_response.get_agents_info', return_value=full_agent_list)
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_run_command_sends_ar_conf_name(socket_mock, send_mock, mock_get_agents_info, mock_close, mock_send,
+                                        mock_conn):
+    """Verify that the command name is sent to the agent as the name that ar.conf gives to the active response."""
+    with patch('wazuh.core.agent.Agent.get_config', return_value=agent_config(None)):
+        ret = run_command(agent_list=['006'], command='custom-ar', arguments=[], alert=None)
+
+    assert ret.render()['data']['affected_items'] == ['006']
+    assert b'custom-ar0' in mock_send.call_args.args[0]
