@@ -162,13 +162,14 @@ namespace
         DownstreamResponse response;
     };
 
-    // Fire one request and block for its completion. responseTimeoutMs == 0 means "use the client's
-    // configured default", matching DownstreamRequest's own sentinel.
+    // Fire one request and block for its completion. responseTimeoutMs/writeTimeoutMs == 0 mean "use the
+    // client's configured default", matching DownstreamRequest's own sentinel.
     Result sendAndWait(AsioUdsHttpClient& client,
                        const std::string& socketPath,
                        std::string_view body,
                        std::shared_ptr<const void> keepAlive = std::make_shared<int>(0),
-                       int responseTimeoutMs = 0)
+                       int responseTimeoutMs = 0,
+                       int writeTimeoutMs = 0)
     {
         std::promise<Result> promise;
         auto future = promise.get_future();
@@ -180,6 +181,7 @@ namespace
         req.contentType = "application/x-ndjson";
         req.body = body;
         req.responseTimeoutMs = responseTimeoutMs;
+        req.writeTimeoutMs = writeTimeoutMs;
 
         client.sendAsync(std::move(req),
                          std::move(keepAlive),
@@ -427,6 +429,29 @@ TEST(AsioUdsHttpClientTest, ZeroResponseTimeoutFallsBackToTheConfiguredDefault)
 
     EXPECT_EQ(result.error, DownstreamError::ResponseTimeout);
     EXPECT_LT(elapsed, std::chrono::seconds {2});
+}
+
+TEST(AsioUdsHttpClientTest, PerRequestWriteTimeoutOverridesConfig)
+{
+    // Same peer as WriteHangYieldsWriteTimeoutNotIndefiniteHang: it accepts but never reads, so a large
+    // enough body blocks the write phase.
+    StubUdsServer server {uniqueSocketPath("writeoverride"), "", /*silent=*/false, /*acceptButNeverRead=*/true};
+
+    // The client default is deliberately left at the built-in 5000 ms; the request asks for 200 ms.
+    DownstreamConfig config;
+    ASSERT_EQ(config.writeTimeoutMs, 5000) << "test assumes the built-in default";
+    AsioUdsHttpClient client {config};
+    client.start();
+
+    const std::string bigBody(8U * 1024U * 1024U, 'A');
+
+    const auto start = std::chrono::steady_clock::now();
+    const auto result = sendAndWait(
+        client, server.path(), bigBody, std::make_shared<int>(0), /*responseTimeoutMs=*/0, /*writeTimeoutMs=*/200);
+    const auto elapsed = std::chrono::steady_clock::now() - start;
+
+    EXPECT_EQ(result.error, DownstreamError::WriteTimeout);
+    EXPECT_LT(elapsed, std::chrono::seconds {2}) << "the per-request override did not take effect";
 }
 
 TEST(AsioUdsHttpClientTest, CallerSuppliedHeadersAreSerializedOntoTheRequest)
