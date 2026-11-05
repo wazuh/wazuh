@@ -738,7 +738,7 @@ namespace
         return std::string(56, 'd') + suffix;
     }
 
-    // https-events-api.md states the cap ("more than eight re-enrollments"); the tests below are
+    // https-events-api.md states the cap ("more than eight distinct keys"); the tests below are
     // written against the constant, so this pins the documented value.
     static_assert(Keystore::kMaxSupersededKeys == 8, "update docs/ref/modules/remoted/https-events-api.md");
 
