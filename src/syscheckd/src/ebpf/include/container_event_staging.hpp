@@ -385,6 +385,14 @@ namespace fim_container_events
                     m_pending.erase(container_id);
                     m_unlinked.erase(container_id);
                     m_suspect.erase(container_id);
+
+                    // Admission-only mode has no consumer, so bound removals by
+                    // upgrading them to the floor that covers every absent container.
+                    if (m_gone.size() > m_max_containers)
+                    {
+                        m_gone.clear();
+                        m_sweep_absent = true;
+                    }
                 }
 
                 notify();

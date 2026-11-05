@@ -432,6 +432,41 @@ TEST(ContainerEventStaging, AGoneContainerIsServedAsLifecycleWork)
     EXPECT_FALSE(staging.nextBatch(batch, kNoWait)) << "served more than once";
 }
 
+TEST(ContainerEventStaging, GoneOverflowUpgradesToTheFloorWithoutAConsumer)
+{
+    for (const int removals :
+            {
+                2, 3, 3000
+            })
+    {
+        SCOPED_TRACE(removals);
+        ContainerEventStaging staging(1024, 2);
+
+        // Admission-only mode has no consumer to drain lifecycle work while
+        // containers churn, so the bound must hold before nextBatch() runs.
+        for (int i = 0; i < removals; ++i)
+        {
+            staging.onGone("c" + std::to_string(i));
+        }
+
+        staging.release();
+        const auto batches = drainAll(staging);
+
+        if (removals == 2)
+        {
+            ASSERT_EQ(batches.size(), 2u);
+            EXPECT_EQ(batches[0].lifecycle, Batch::Lifecycle::containerGone);
+            EXPECT_EQ(batches[1].lifecycle, Batch::Lifecycle::containerGone);
+        }
+        else
+        {
+            ASSERT_EQ(batches.size(), 1u);
+            EXPECT_EQ(batches[0].lifecycle, Batch::Lifecycle::sweepAbsent);
+            EXPECT_TRUE(batches[0].container_id.empty());
+        }
+    }
+}
+
 TEST(ContainerEventStaging, ARemovalSupersedesEverythingStagedForThatContainer)
 {
     // Reading or walking a container the runtime has already removed is work
