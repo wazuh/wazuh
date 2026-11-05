@@ -1578,6 +1578,7 @@ TEST_F(SyscollectorIdentityTest, AReleasedVersionTwoDatabaseIsUpgradedWithoutRec
                             "ALTER TABLE dbsync_osinfo RENAME COLUMN os_distribution_release TO os_display_version;"
                             "INSERT INTO dbsync_osinfo (os_name, os_version, os_display_version, checksum) "
                             "VALUES ('Ubuntu', '24.04', 'noble', 'os-sum');"
+                            "INSERT INTO dbsync_processes (pid, name, checksum) VALUES ('123', 'worker', 'process-sum');"
                             "PRAGMA user_version = 2;").c_str(),
                            nullptr, nullptr, nullptr), SQLITE_OK);
     sqlite3_close(db);
@@ -1609,6 +1610,26 @@ TEST_F(SyscollectorIdentityTest, AReleasedVersionTwoDatabaseIsUpgradedWithoutRec
     ASSERT_EQ(sqlite3_step(stmt), SQLITE_ROW);
     EXPECT_STREQ(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)), "|noble|os-sum");
     sqlite3_finalize(stmt);
+
+    ASSERT_EQ(sqlite3_prepare_v2(db,
+                                 "SELECT container_id || '|' || pid || '|' || name || '|' || checksum FROM dbsync_processes;",
+                                 -1, &stmt, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_step(stmt), SQLITE_ROW);
+    EXPECT_STREQ(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)), "|123|worker|process-sum");
+    sqlite3_finalize(stmt);
+
+    // The upgrade must reach the container-scoped keys, not merely add a column
+    // while leaving a host-only primary key behind.
+    for (const auto* table :
+            {"dbsync_osinfo", "dbsync_processes"
+            })
+    {
+        const auto query = std::string {"SELECT pk FROM pragma_table_info('"} + table + "') WHERE name='container_id';";
+        ASSERT_EQ(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr), SQLITE_OK);
+        ASSERT_EQ(sqlite3_step(stmt), SQLITE_ROW);
+        EXPECT_EQ(sqlite3_column_int(stmt, 0), 1) << table;
+        sqlite3_finalize(stmt);
+    }
 
     ASSERT_EQ(sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM sqlite_master WHERE name = 'container_context';",
                                  -1, &stmt, nullptr), SQLITE_OK);
