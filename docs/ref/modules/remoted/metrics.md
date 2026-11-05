@@ -374,8 +374,8 @@ the agent and it still gets 401s". All pulls.
 | `remoted.auth.keystore.reloads.total` | counter (pull) | count | Successful loads (startup load included) | [`remoted.keyupdate_interval`](configuration.md#remotedkeyupdate_interval) sets the fallback poll cadence |
 | `remoted.auth.keystore.reload_failures.total` | counter (pull) | count | Failed loads: unreadable file, or content that kept changing across every read attempt | diagnostic — fix the file/permissions |
 | `remoted.auth.keystore.adoptions.total` | counter (pull) | count | Credentials taken from an accepted `POST /enroll` answer: adopted, or found already in the file (the reload won the race) and so not kept | diagnostic — one per enrollment or re-enrollment served by this node |
-| `remoted.auth.keystore.adoptions_pending` | gauge (pull) | entries | Adopted entries the file has not caught up with yet (dropped at convergence, when the file moves past them, or after the 60 s grace) | a level that stays above zero while enrollments have stopped means `client.keys` is not reaching this node: check `authd`'s writer and the cluster sync (under a steady stream of enrollments it is normally non-zero) |
-| `remoted.auth.keystore.adoption_expiries.total` | counter (pull) | count | Adopted entries dropped because the file never carried them within the grace | diagnostic — each one is an enrollment whose key never reached `client.keys` on this node |
+| `remoted.auth.keystore.adoptions_pending` | gauge (pull) | entries | Adopted entries the file has not caught up with yet (dropped at convergence, when the file moves past them, or after the 60 s grace) | a level that stays above zero after enrollments stop is a signal to correlate with `authd`'s writer and the cluster sync (under a steady stream of enrollments it is normally non-zero; a late answer of an older enrollment can also hold one entry until the grace) |
+| `remoted.auth.keystore.adoption_expiries.total` | counter (pull) | count | Adopted entries dropped because no reload saw the file catch up with them within the grace | diagnostic — each one is an enrollment whose key was not observed in `client.keys` on this node within 60 s (the file may hold it, not yet reloaded) |
 
 `agents` and `entries_skipped` are **levels describing the file as it stands now**, and they
 are read together: an agent that is neither authenticating nor showing up in `agents` is
@@ -390,7 +390,7 @@ enrollments it served (see [adoption of a just-issued key](https-events-api.md#a
 they are **not** part of `agents`, which keeps describing the file. `adoptions_pending` is the one
 to watch: on a master the file should carry an adopted entry within milliseconds, on a worker
 within one cluster synchronization, so a level that stays above zero after enrollments stop is
-the earliest sign that the writer thread or the synchronization is stuck — the same condition that otherwise surfaces
+an early signal, to correlate with the writer thread and the synchronization, that one of them is stuck — the same condition that otherwise surfaces
 only as a wave of `401`s minutes later.
 
 There is no `keystore_refresh_interval` option: the module's refresh cadence is fed by the

@@ -594,31 +594,42 @@ unusable entry); an entry that does not parse is not adopted, the enrollment sti
 and a warning names the agent.
 
 An adopted entry is kept **beside** the file's table, not in it: `lookup()` consults it first.
-It remembers the states the file may still show before it catches up: what the file held for that
-`id` when it was first adopted (the previous key, or nothing), plus every key a later re-enrollment
-on this node replaced (`authd` may write those first). A reload retires it as soon as the file shows
-anything else, after which the file's entry takes over:
+It remembers the keys it supersedes — the key the file had for that `id` at the first adoption,
+plus every key a later re-enrollment on this node replaced (`authd` may write those first) — and
+whether the file has carried that `id` since the adoption. Each reload compares the file's entry
+for the `id` (its decoded key, or nothing) with that state, and retires the adoption as soon as the
+file is no longer behind it, after which the file's entry takes over:
 
-- the file carries the same `id` and key: it converged;
-- the file carries a key outside those states, or no longer carries an `id` it had: the agent was
-  rotated on another node (for example, it re-enrolled elsewhere before this worker's
-  synchronization) or removed. A row that turns unusable (a key or `ip` column that does not parse)
-  counts as such a change: the file is authoritative, and the row is logged and counted in
-  `entries_skipped`.
+- the file carries the adopted key: it converged (only the key is compared);
+- the file no longer carries an `id` it has carried since the adoption: the agent was removed;
+- the file carries a key the adoption does not supersede: the agent was rotated on another node
+  (for example, it re-enrolled elsewhere before this worker's synchronization).
 
-While the file still shows one of those states, the entry stays, up to a 60 s grace (then it is
-dropped and counted in `remoted.auth.keystore.adoption_expiries.total`; the watcher drops expired
-entries on its own cycle even if nothing else touches the keystore). If the file already
-carries the issued key when the adoption runs (the writer pass and the reload won the race),
-nothing is adopted. Two consequences follow. `agents` on
+A file without the `id` that has not carried it yet, or still on a superseded key, is behind: the
+entry stays, up to a 60 s grace (then it is dropped and counted in
+`remoted.auth.keystore.adoption_expiries.total`; the watcher drops expired entries on its own cycle
+even if nothing else touches the keystore). The file is authoritative for unusable rows too, and
+they follow the same comparison: a row whose `ip` column does not parse is not loaded, so it reads
+as a missing `id`; one whose key does not decode reads as a key the adoption does not supersede.
+Either is logged and counted in `entries_skipped`. If the file already carries the issued key when
+the adoption runs (the writer pass and the reload won the race), nothing is adopted.
+
+Two consequences follow. `agents` on
 [`GET /metrics`](metrics.md#keystore-health--remotedauthkeystore) and `agents_loaded` on
 [`GET /status`](README.md) keep describing the file only; the adoptions have their own
-`adoptions_pending` level. And a *new* agent removed before the file ever carried it keeps
-authenticating until the grace ends, on that node only — the price of not losing a key the file
-has not caught up with yet. Nor can it order two enrollments of the same `id` in flight at once
-(`authd`'s answer carries no generation): if the older one's answer is adopted after the newer key
-is already in the file, that node refuses the newer key until the grace ends. An agent serializes
-its own enrollments, so this takes a duplicated identity or concurrent manual operations. Any node the agent reaches that did not serve its enrollment still
+`adoptions_pending` level. And some windows remain until the grace ends, on that node only — the
+price of not losing a key the file has not caught up with yet:
+
+- a *new* agent removed before the file ever carried it keeps authenticating;
+- two enrollments of the same `id` in flight at once are not ordered (`authd`'s answer carries no
+  generation): if the older one's answer is adopted after the newer key is already in the file,
+  the node refuses the newer key. An agent serializes its own enrollments, so this takes a
+  duplicated identity or concurrent manual operations;
+- after more than eight re-enrollments of one agent on this node before the file catches up, the
+  adoption stops remembering the oldest keys it supersedes, so a rotation on another node no longer
+  retires it.
+
+Any node the agent reaches that did not serve its enrollment still
 waits for the file: see [§7.1 of the cluster page](../cluster/lb.md#71-replicated-state-brief-401s-after-enrollment).
 
 ## Diagnosing rejections and capacity problems
