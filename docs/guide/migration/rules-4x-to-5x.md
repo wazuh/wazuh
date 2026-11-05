@@ -128,8 +128,8 @@ logsource:
 detection:
   condition: "selection"
   selection:
-    event.action: "authentication-failed"
-    user.name|exists: false   # non-existent user: field absent after normalization
+    event.action: "authentication-failure"
+    message|re: "[Ii]llegal user|[Ii]nvalid user"
 
 mitre:
   tactic:
@@ -226,7 +226,7 @@ In 5.x, **every field name in a `detection` block is validated against the Wazuh
 This has two practical consequences:
 
 1. **You cannot carry over 4.x decoder field names directly.** Fields like `office365.Operation`, `audit.key`, or `sysmon.image` do not exist in WCS and will cause rule creation to fail. You must find the WCS equivalent.
-2. **A rule that passes validation is guaranteed to match on the fields you specified.** There are no silent mismatches from typos or renamed fields.
+2. **Validation catches misspelled and renamed fields, not fields your events never carry.** A rule on a WCS field that your decoders do not set, or that is not searchable (such as `event.original`), is accepted and never matches. Check the fields with logtest.
 
 The complete WCS field list is at the [WCS field reference (CSV)](https://github.com/wazuh/wazuh-indexer-plugins/blob/5.0.0/wcs/stateless/events/main/docs/fields.csv).
 
@@ -260,7 +260,9 @@ A standard integration must also be
 **enabled** to decode anything: most ship disabled (see
 [Enable the integration's ruleset first](../../ref/modules/integrations/README.md#enable-the-integrations-ruleset-first)).
 
-The `normalization.output` section of the response is the fully decoded WCS document. The field paths you see there are the exact paths to use in your `detection` block.
+The `test` space normalizes with the test policy, which holds only the decoders promoted from your draft. When you migrate rules only, the logs are decoded by a standard integration, so run them through the `standard` space with the ID of that integration. With no decoders in the test policy, logtest answers `200` with `The 'test' environment does not exist.` in `message.normalization.error.message`.
+
+The `message.normalization.output` section of the response is the fully decoded WCS document. The field paths you see there are the exact paths to use in your `detection` block.
 
 **Example:** A 4.x rule uses `<field name="office365.Operation" type="pcre2">ComplianceDLP.*</field>`. Run a sample O365 log through logtest and find `"event": {"code": "ComplianceDLPSharePoint"}` in the output. Use `event.code|contains: "ComplianceDLPSharePoint"` in the 5.x rule.
 
@@ -336,25 +338,26 @@ In 4.x, `<match>` and `<regex>` search the **raw log string** before any field e
    detection:
      condition: selection
      selection:
-       event.action: "authentication-failed"
+       event.action: "authentication-failure"
    ```
-3. **If the text was not decoded into a specific field** — fall back to `message`, the free-text part of the log that many decoders set (check with logtest that yours does). Do not use `event.original`: it holds the raw log line, but it is not searchable in the event indices, so a condition on it can never match:
+3. **If the text was not decoded into a specific field** — fall back to `message`, the free-text part of the log that many decoders set (check with logtest that yours does). Do not use `event.original`: it holds the raw log line, but it is not searchable in the event indices, so a condition on it can never match. `message` is a `keyword` with `ignore_above: 4096`: a longer value is not indexed at all, so a rule never matches it:
    ```yaml
    detection:
      condition: selection
      selection:
-       message|contains: "illegal user"
+       message|contains: "invalid user"
    ```
-4. **For a list of keyword alternatives across all event fields** (not targeting a specific field) — use `keywords` detection:
+4. **For several alternative strings** — list them under the same field. A list is an OR, as the `|` in a 4.x `<match>`:
    ```yaml
    detection:
-     keywords:
-       - "illegal user"
-       - "invalid user"
-     condition: keywords
+     condition: selection
+     selection:
+       message|contains:
+         - "illegal user"
+         - "invalid user"
    ```
 
-`keywords` is closest to a raw-log `<match>` but has no field targeting, and, like any condition, it cannot match text that is only in `event.original`. Always prefer a specific WCS field when one exists.
+Do not translate `<match>` into `keywords`. A keyword is not a substring search: each value is compared with the whole value of every field, so `keywords: ["invalid user"]` matches only an event with a field whose entire value is `invalid user`, and never `Failed password for invalid user oracle`. Always prefer a specific WCS field when one exists.
 
 **Example: translating a 4.x regex alternation**
 
@@ -368,17 +371,17 @@ In 4.x, `<match>` and `<regex>` search the **raw log string** before any field e
 detection:
   condition: selection
   selection:
-    event.action: "authentication-failed"
-    user.name|exists: false   # non-existent user maps to absent field, not specific text
+    event.action: "authentication-failure"
 ```
 
 ```yaml
-# 5.x option B: keywords (fallback when no WCS field captures the value)
+# 5.x option B: substrings of message (fallback when no WCS field captures the value; only when the decoder sets message)
 detection:
-  keywords:
-    - "illegal user"
-    - "invalid user"
-  condition: keywords
+  condition: selection
+  selection:
+    message|contains:
+      - "illegal user"
+      - "invalid user"
 ```
 
 ```yaml
@@ -386,8 +389,12 @@ detection:
 detection:
   condition: selection
   selection:
-    message|re: "illegal user|invalid user"
+    message|re: "[Ii]llegal user|[Ii]nvalid user"
 ```
+
+With the standard sshd decoding (the `system-auth` integration), option A catches every failed login, not only those of an unknown user: `user.name` holds the name that was tried whether or not it exists, and no field records that it does not. Add option B or C to it to keep the meaning of the 4.x rule.
+
+A 4.x `<match>` ignores case and 5.x does not: sshd logs both `Failed password for invalid user oracle` and `Invalid user oracle from ...`. Option B catches only the first. The character classes in option C catch both.
 
 #### Negating conditions
 
@@ -408,7 +415,7 @@ In 4.x, `negate="yes"` inverts the match for any element. In 5.x, define the exc
 detection:
   condition: "selection and not filter_internal and not filter_privileged"
   selection:
-    event.action: "authentication-success"
+    event.action: "logged-in"
   filter_internal:
     source.ip|cidr: "192.168.0.0/16"
   filter_privileged:
@@ -428,21 +435,20 @@ Modifiers are appended to field names using the pipe (`|`) character and transfo
 | `\|contains` | Substring match (wildcard on both sides) | `message\|contains: "invalid user"` |
 | `\|startswith` | Value begins with string (wildcard at end) | `process.name\|startswith: "cmd"` |
 | `\|endswith` | Value ends with string (wildcard at start) | `file.name\|endswith: ".exe"` |
-| `\|re` | Regular expression match | `message\|re: "illegal user\|invalid user"` |
-| `\|re\|i` | Case-insensitive regex | `process.name\|re\|i: "^powershell"` |
-| `\|re\|m` | Multi-line regex (`^`/`$` match line boundaries) | `message\|re\|m: "^error"` |
-| `\|re\|s` | Single-line regex (`.` also matches newlines) | `message\|re\|s: "begin.*end"` |
+| `\|re` | Regular expression match | `message\|re: "[Ii]llegal user\|[Ii]nvalid user"` |
 | `\|exists` | Field is present (`true`) or absent (`false`) | `user.name\|exists: true` |
 | `\|cidr` | IPv4 or IPv6 address falls within the CIDR range | `source.ip\|cidr: "10.0.0.0/8"` |
-| `\|all` | All list values must match (default list logic is OR); not valid on a single-item list | `event.category\|contains\|all: ["authentication", "failure"]` |
+| `\|all` | All list values must match (default list logic is OR); on a single-item list it is the same as the plain value | `event.category\|contains\|all: ["authentication", "failure"]` |
 | `\|base64` | Value is Base64-encoded before comparison | `process.command_line\|base64: "/bin/bash"` |
 | `\|base64offset\|contains` | All three Base64 offsets of the value (for substrings inside encoded streams) | `process.command_line\|base64offset\|contains: "/bin/bash"` |
-| `\|wide\|base64offset\|contains` | UTF-16 encoding then Base64 offsets (Windows-style wide strings); `wide` must be followed by an encoding modifier | `process.command_line\|wide\|base64offset\|contains: "ping"` |
-| `\|windash\|contains` | Expand Windows dash variants (`-`, `/`, `–`, `—`, `―`) | `process.command_line\|windash\|contains: " -enc "` |
+| `\|wide\|base64offset\|contains` | UTF-16 encoding then Base64 offsets (Windows-style wide strings); `wide` alone never matches plain text, so follow it with an encoding modifier | `process.command_line\|wide\|base64offset\|contains: "ping"` |
+| `\|windash\|contains` | Also match a switch written with `/` instead of `-`, and the reverse (`-enc` and `/enc`); other dash characters are not expanded | `process.command_line\|windash\|contains: " -enc "` |
 | `\|lt` | Less than (numeric) | `event.severity\|lt: 10` |
 | `\|lte` | Less than or equal (numeric) | `event.severity\|lte: 3` |
 | `\|gt` | Greater than (numeric) | `event.severity\|gt: 7` |
 | `\|gte` | Greater than or equal (numeric) | `event.duration\|gte: 5000` |
+
+The regular expression flags `i`, `m` and `s` (`|re|i`, `|re|m`, `|re|s`) are not supported: a rule that uses them is rejected with `Unknown modifier`. For a case-insensitive match, use character classes (`[Pp]ower[Ss]hell`).
 
 #### Detection condition syntax
 
@@ -457,13 +463,13 @@ The `condition` field uses Sigma condition expressions:
 | `(selection1 or selection2) and not filter` | Grouped logic with exclusion |
 | `1 of selection_*` | At least one selection matching the wildcard must match |
 | `all of selection_*` | All selections matching the wildcard must match |
-| `keywords` | Keyword-based matching across all event fields |
+| `keywords` | Each value compared with the whole value of every field (not a substring search) |
 
 #### Field value matching
 
 In 5.x, detection field values can be:
 - **Single string:** `event.action: "vulnerability-detected"` — exact match
-- **List of strings:** `event.action: ["inserted", "added", "started"]` — OR match (any value matches)
+- **List of strings:** `event.action: ["package-installed", "service-installed", "started"]` — OR match (any value matches)
 - **Wildcard:** `observer.ingress.interface.name: "*"` — field exists with any value
 - **CIDR range:** `source.ip|cidr: "10.0.0.0/8"` — use the `|cidr` modifier
 
@@ -701,12 +707,12 @@ The most common migration challenge is collapsing a multi-level rule chain into 
 ```
 
 **Migration plan:**
-- Rule 5700: **discard** — its `decoded_as` binding is implicit in the sshd integration.
+- Rule 5700: **discard** — in 5.x the standard `system-auth` integration decodes sshd logs, and the migrated rule selects its events with `wazuh.integration.name: "system-auth"`.
 - Rule 5710: **migrate** — the integration link replaces `if_sid`; detection logic replaces `<match>`.
 - Rule 5720: **cannot be migrated directly** — `frequency`/`timeframe`/`if_matched_sid` have no equivalent in the 5.x rule format. Count the findings of the migrated 5710 with a monitor instead (see [Alerting on repeated events](#alerting-on-repeated-events)).
 
 ```yaml
-# Migrated rule 5710 — self-contained, linked to the sshd integration
+# Migrated rule 5710 — self-contained, in a custom integration titled sshd
 enabled: true
 status: "experimental"
 level: "low"
@@ -724,9 +730,9 @@ logsource:
 detection:
   condition: "selection"
   selection:
-    wazuh.integration.name: "sshd"
-    event.action: "authentication-failed"
-    user.name|exists: false   # non-existent user: field absent after normalization
+    wazuh.integration.name: "system-auth"
+    event.action: "authentication-failure"
+    message|re: "[Ii]llegal user|[Ii]nvalid user"
 
 mitre:
   tactic:
@@ -741,7 +747,7 @@ tags:
   - "attack.t1110"
 ```
 
-> **Verify with logtest:** The 4.x `<match>illegal user|invalid user</match>` matched raw log text. After normalization, whether the `user.name` field is absent or set to a sentinel value depends on the decoder. Confirm with logtest which field (if any) captures this distinction in your integration.
+> **Verify with logtest:** The 4.x `<match>illegal user|invalid user</match>` matched raw log text. The standard decoding sets `user.name` to the name that was tried and gives every failed login `event.action: "authentication-failure"`, so only the text of `message` tells an unknown user apart. A decoder of your own may record it in a field: check with logtest.
 
 #### Alerting on repeated events
 
@@ -851,11 +857,13 @@ To count another pattern, change the `filter` that selects the findings (`event.
 2. **Create the rule in Draft space** via the API (see [Step 5](#step-5-assign-rules-to-an-integration)).
 3. **Promote to Test space** (`GET` then `POST /_plugins/_content_manager/promote`) — decoders, KVDBs and filters in the change set are validated by the Engine and loaded into its test policy; rules and integrations are synchronized to Ruleset Management in the Indexer (they never reach the Engine).
 4. **Validate with logtest** — send sample log events through `POST /_plugins/_content_manager/logtest` with `"space": "test"` and the integration's ID. Inspect:
-   - `normalization.output` — verify the decoder produced the WCS fields you expect.
-   - `detection.matches` — verify the rule fired on the correct conditions (`detection.rules_evaluated` and `detection.rules_matched` give the counts).
+   - `message.normalization.output` — verify the decoder produced the WCS fields you expect.
+   - `message.detection.matches` — verify the rule fired on the correct conditions (`message.detection.rules_evaluated` and `message.detection.rules_matched` give the counts).
    - Fix the rule in the draft space and promote it again until it behaves as expected.
+
+   If the integration has rules but no decoders, as when you migrate rules over a standard integration, the test space cannot decode the log. Normalize it with `POST /_plugins/_content_manager/logtest/normalization` and `"space": "standard"` (no integration ID), then send its `message.output` as `input` to `POST /_plugins/_content_manager/logtest/detection` with `"space": "test"` and your integration's ID. That response lists the matches in `message.matches`.
 5. **Promote to Custom space** — the rule is now available for production use.
-6. **Create or update a detector** to include the rule's integration, enabling active detection against incoming events. A detector references rules from one space only, Standard or Custom, never both.
+6. **Create or update a detector** to include the rule's integration, enabling active detection against incoming events. A detector references rules from one space only, Standard or Custom, never both. It holds at most 50 rules (`plugins.security_analytics.max_rules_per_detector`, a dynamic cluster setting): split a larger set across detectors or raise the limit.
 
 ---
 
@@ -1100,9 +1108,10 @@ logsource:
 detection:
   condition: "1 of selection_*"
   selection_syscall:
-    event.action: "SYSCALL"
+    event.code: "SYSCALL"
   selection_sysctl:
-    event.action: "EXECVE"
+    event.code: "EXECVE"
+    process.name: "sysctl"
 
 mitre:
   tactic:
@@ -1125,7 +1134,7 @@ falsepositives:
   - "Debugging or legitimate software testing"
 ```
 
-The `1 of selection_*` condition fires if either `selection_syscall` or `selection_sysctl` matches. This pattern is also the standard way to consolidate related 4.x rules that shared a parent via `if_sid` — instead of chaining, you combine them as named selections in a single rule.
+The `1 of selection_*` condition fires if either `selection_syscall` or `selection_sysctl` matches. The auditd decoder writes the audit record type to `event.code`, and `process.name: "sysctl"` replaces the 4.x `<match>sysctl</match>`. This pattern is also the standard way to consolidate related 4.x rules that shared a parent via `if_sid` — instead of chaining, you combine them as named selections in a single rule.
 
 ### Example 4: List-based matching (multiple event actions)
 
@@ -1161,8 +1170,6 @@ detection:
   condition: "selection"
   selection:
     event.action:
-      - "inserted"
-      - "added"
       - "started"
       - "package-installed"
       - "service-installed"
@@ -1187,13 +1194,13 @@ falsepositives:
   - "Normal software installation and system asset changes"
 ```
 
-The 4.x `<match>` regex alternation (`inserted|added|started|...`) becomes a list of values under `event.action`. A list field matches if any value in the list is present (OR logic). The 4.x decoder field `integration` maps to `wazuh.integration.name` in WCS.
+The 4.x `<match>` regex alternation (`inserted|added|started|...`) becomes a list of values under `event.action`. The values are the action names the 5.x IT Hygiene decoders write: the generic 4.x `inserted` and `added` are not among them, and the specific actions in the list replace them. A list field matches if any value in the list is present (OR logic). The 4.x decoder field `integration` maps to `wazuh.integration.name` in WCS.
 
 ---
 
 ## WCS field mapping reference
 
-When migrating, 4.x decoder-extracted fields must be mapped to WCS fields. Always verify the mapping with logtest — the `normalization.output` in the response shows the exact field paths produced by your integration's decoder. For the complete field list, see the [WCS field reference (CSV)](https://github.com/wazuh/wazuh-indexer-plugins/blob/5.0.0/wcs/stateless/events/main/docs/fields.csv).
+When migrating, 4.x decoder-extracted fields must be mapped to WCS fields. Always verify the mapping with logtest — the `message.normalization.output` in the response shows the exact field paths produced by your integration's decoder. For the complete field list, see the [WCS field reference (CSV)](https://github.com/wazuh/wazuh-indexer-plugins/blob/5.0.0/wcs/stateless/events/main/docs/fields.csv).
 
 Common mappings:
 
