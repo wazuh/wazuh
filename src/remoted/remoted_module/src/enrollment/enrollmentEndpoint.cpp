@@ -762,38 +762,47 @@ namespace remoted::enrollment
                         // Best effort, and never at the price of the answer: authd has already
                         // registered (or rotated) the agent, and a 200 that never leaves costs the
                         // agent an HTTP timeout and another enrollment. A throw here would otherwise
-                        // unwind into AuthdClient's worker and be swallowed before send().
-                        bool adopted = false;
-                        // Copied, not pointed at: e.what() dies with the exception at the end of
-                        // its handler, and the line below is logged after it.
-                        std::string failure = "the keystore refused it";
+                        // unwind into AuthdClient's worker and be swallowed before send(). The outer
+                        // barrier covers the diagnostic too (its strings allocate): if even that
+                        // fails, the adoption is simply not reported and the answer still leaves.
                         try
                         {
-                            adopted = keyUpsert(result.id, result.ip, result.key);
-                        }
-                        catch (const std::exception& e)
-                        {
-                            failure = e.what();
+                            bool adopted = false;
+                            // Copied, not pointed at: e.what() dies with the exception at the end of
+                            // its handler, and the line below is logged after it.
+                            std::string failure = "the keystore refused it";
+                            try
+                            {
+                                adopted = keyUpsert(result.id, result.ip, result.key);
+                            }
+                            catch (const std::exception& e)
+                            {
+                                failure = e.what();
+                            }
+                            catch (...)
+                            {
+                                failure = "unknown exception";
+                            }
+                            if (!adopted)
+                            {
+                                // Throttled like the other per-request lines: the `ip` column is the
+                                // request's, so one agent can repeat this on every enrollment.
+                                if (const auto throttle = adoptionFailureThrottle().record())
+                                {
+                                    LOGFN_WARN(logFn(),
+                                               "Enrolled agent %s but its credential could not be adopted into the "
+                                               "keystore (%s); it can authenticate here once client.keys carries a "
+                                               "usable entry for it. %llu such enrollment(s) %s.",
+                                               result.id.c_str(),
+                                               failure.c_str(),
+                                               throttle.total,
+                                               throttle.period().c_str());
+                                }
+                            }
                         }
                         catch (...)
                         {
-                            failure = "unknown exception";
-                        }
-                        if (!adopted)
-                        {
-                            // Throttled like the other per-request lines: the `ip` column is the
-                            // request's, so one agent can repeat this on every enrollment.
-                            if (const auto throttle = adoptionFailureThrottle().record())
-                            {
-                                LOGFN_WARN(logFn(),
-                                           "Enrolled agent %s but its credential could not be adopted into the "
-                                           "keystore (%s); it can authenticate here once client.keys carries a "
-                                           "usable entry for it. %llu such enrollment(s) %s.",
-                                           result.id.c_str(),
-                                           failure.c_str(),
-                                           throttle.total,
-                                           throttle.period().c_str());
-                            }
+                            // Nothing left to say it with; the agent's answer matters more.
                         }
                     }
                     responder->send(mapAuthdResult(result, metrics, usedEnrollmentToken, requestedReenrollment));

@@ -152,11 +152,12 @@ namespace remoted::auth
          * for everything else: agentsLoaded() and entriesSkipped() describe the file only. Windows that remain until
          * the grace ends, on this node only: a new agent the file never carried but whose enrollment is undone keeps
          * authenticating; an older enrollment's answer adopted after a newer key already reached the file (nothing in
-         * authd's answer orders two enrollments of one id in flight) refuses the newer key; and once an agent has
-         * re-enrolled more than kMaxSupersededKeys times on this node before the file caught up, a rotation elsewhere
-         * no longer retires the adoption. And an unknown key is taken as newer, which it need not be: a worker whose
-         * sync is behind (agent rotated elsewhere, then here) retires the newer adoption and serves the older key until
-         * the next sync -- client.keys and authd's answer carry no order between two keys.
+         * authd's answer orders two enrollments of one id in flight) refuses the newer key; and once an adoption
+         * supersedes more than kMaxSupersededKeys distinct keys (an agent re-enrolling on this node over and over
+         * before the file caught up; the same key adopted again adds nothing), a rotation elsewhere no longer retires
+         * it. And an unknown key is taken as newer, which it need not be: a worker whose sync is behind (agent rotated
+         * elsewhere, then here) retires the newer adoption and serves the older key until the next sync -- client.keys
+         * and authd's answer carry no order between two keys.
          *
          * Columns are parsed like reload() parses a file line, with one difference: reload() keeps a
          * line whose key does not decode as an entry with an empty key (answered MissingKey), while

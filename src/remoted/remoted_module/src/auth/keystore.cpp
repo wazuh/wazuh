@@ -706,7 +706,8 @@ namespace remoted::auth
             // The same key adopted again supersedes nothing, and a key already listed is not
             // listed twice: both would only eat into kMaxSupersededKeys.
             auto& previousKey = previous->second.entry.key;
-            if (previousKey != decoded &&
+            if (previousKey != adoption.entry.key && // decoded was moved into the adoption above
+
                 std::find(adoption.supersededKeys.begin(), adoption.supersededKeys.end(), previousKey) ==
                     adoption.supersededKeys.end())
             {

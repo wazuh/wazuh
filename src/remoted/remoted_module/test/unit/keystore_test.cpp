@@ -889,6 +889,24 @@ namespace
         EXPECT_EQ(keystore.adoptionExpiriesTotal(), 1u);
     }
 
+    TEST_F(KeystoreTest, UpsertOfTheSameKeyAgainSupersedesNothing)
+    {
+        // Nine distinct adoptions with no file fill the history to the cap exactly (not past it).
+        // Adopting the ninth key again must not list it as superseded by itself: that would tip the
+        // entry into saturation and an unknown key would then no longer retire it.
+        Keystore keystore(m_path);
+        for (std::size_t n = 0; n <= Keystore::kMaxSupersededKeys; ++n)
+        {
+            ASSERT_TRUE(keystore.upsert("67", "any", nthKey(n)));
+        }
+        ASSERT_TRUE(keystore.upsert("67", "any", nthKey(Keystore::kMaxSupersededKeys)));
+
+        writeFile("67 agent1 any " + nthKey(Keystore::kMaxSupersededKeys + 1) + "\n");
+        EXPECT_EQ(keystore.reload(), 1);
+        EXPECT_EQ(keyOf(keystore, 67), bytesOf(nthKey(Keystore::kMaxSupersededKeys + 1).c_str()));
+        EXPECT_EQ(keystore.adoptionsPending(), 0u);
+    }
+
     TEST_F(KeystoreTest, WatcherDropsAnExpiredAdoptionWithoutAReload)
     {
         // Nothing else touches the keystore: no reload (the file never changes), no new adoption,

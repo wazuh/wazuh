@@ -637,9 +637,9 @@ last one until the next synchronization:
   generation): if the older one's answer is adopted after the newer key is already in the file,
   the node refuses the newer key. An agent serializes its own enrollments, so this takes a
   duplicated identity or concurrent manual operations;
-- after more than eight re-enrollments of one agent on this node before the file catches up, the
-  adoption stops remembering the oldest keys it supersedes, so a rotation on another node no longer
-  retires it;
+- once an adoption supersedes more than eight distinct keys (an agent re-enrolling on this node over
+  and over before the file catches up; the same key adopted again adds nothing), it stops
+  remembering the oldest ones, so a rotation on another node no longer retires it;
 - a key the file carries that this node never saw is taken as newer than the adoption, which it
   need not be: if the agent rotates on another node and then again on this one (a worker) before
   this node's synchronization, the snapshot that brings the first rotation retires the second, and
