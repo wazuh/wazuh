@@ -2,6 +2,15 @@
 #ifndef BUILDER_ENRICHMENT_ENRICHMENT_HPP
 #define BUILDER_ENRICHMENT_ENRICHMENT_HPP
 
+#include <atomic>
+#include <chrono>
+#include <limits>
+#include <memory>
+#include <mutex>
+#include <optional>
+#include <set>
+#include <string>
+#include <string_view>
 #include <utility>
 
 #include <cmstore/datapolicy.hpp>
@@ -35,14 +44,59 @@ inline base::Expression makeTraceableSuccessExpression(const base::Expression& e
 }
 
 /**
+ * @brief Throttled report of the unclassified events a space drops (policy `index_unclassified_events=false`).
+ *
+ * Every router worker builds its own copy of a space's policy, so the reporter of a space is shared by all of
+ * them (see forSpace()): the warning is logged at most once per interval for the whole engine, and it carries
+ * the number of events dropped since the previous one and the sources (`wazuh.protocol.location`) they came from.
+ */
+class UnclassifiedDropReporter
+{
+public:
+    using Clock = std::chrono::steady_clock;
+
+    static constexpr std::chrono::seconds DEFAULT_INTERVAL {300}; ///< Minimum time between two warnings
+    static constexpr std::size_t MAX_SOURCES {10};                ///< Sources listed per warning
+    static constexpr std::size_t MAX_SOURCE_LENGTH {128};         ///< Characters kept per source
+
+    UnclassifiedDropReporter(std::string spaceName, std::chrono::seconds interval = DEFAULT_INTERVAL);
+
+    /**
+     * @brief Get the reporter of a space, shared by every policy of that space alive at the same time.
+     */
+    static std::shared_ptr<UnclassifiedDropReporter> forSpace(const std::string& spaceName);
+
+    /**
+     * @brief Record a dropped unclassified event.
+     *
+     * @param location Source of the event (`wazuh.protocol.location`), empty if unknown.
+     * @param now Current time.
+     * @return std::optional<std::string> The warning to log, when the interval since the previous one elapsed.
+     */
+    std::optional<std::string> record(std::string_view location, Clock::time_point now);
+
+private:
+    const std::string m_spaceName;
+    const Clock::duration m_interval;
+    std::atomic<uint64_t> m_dropped {0};
+    std::atomic<Clock::rep> m_nextReport {std::numeric_limits<Clock::rep>::min()};
+    std::atomic<bool> m_sourcesFull {false};
+    std::mutex m_sourcesMutex;
+    std::set<std::string> m_sources;
+};
+
+/**
  * @brief Create an expression that increments the unclassified events metric after output.
  *
  * @param spaceName space's name, used to create a space-specific metric.
  * @param unclassifiedCounter Counter to increment for unclassified events.
+ * @param dropReporter Reporter of the unclassified events the policy does not index; nullptr when the policy
+ * indexes them or is built in test mode.
  * @return base::Expression The post-output expression.
  */
 base::Expression postOutputUnclassifiedCounter(const std::string& spaceName,
-                                               std::shared_ptr<fastmetrics::ICounter> unclassifiedCounter);
+                                               std::shared_ptr<fastmetrics::ICounter> unclassifiedCounter,
+                                               std::shared_ptr<UnclassifiedDropReporter> dropReporter = nullptr);
 
 /**
  * @brief Get the enrichment expression and traceable name for the space defined in the policy.

@@ -2,8 +2,13 @@
 #include "enrichment.hpp"
 
 #include <exception>
-#include <fmt/format.h>
+#include <unordered_map>
 
+#include <fmt/format.h>
+#include <fmt/ranges.h>
+
+#include <base/eventParser.hpp>
+#include <base/logging.hpp>
 #include <cmstore/categories.hpp>
 #include <fastmetrics/registry.hpp>
 
@@ -93,12 +98,81 @@ getDiscardedEventsFilter(const cm::store::dataType::Policy& policy,
     return std::make_pair(makeTraceableSuccessExpression(op, isTestMode), DISCARDED_EVENTS_FILTER_TRACEABLE_NAME);
 }
 
+UnclassifiedDropReporter::UnclassifiedDropReporter(std::string spaceName, std::chrono::seconds interval)
+    : m_spaceName(std::move(spaceName))
+    , m_interval(interval)
+{
+}
+
+std::shared_ptr<UnclassifiedDropReporter> UnclassifiedDropReporter::forSpace(const std::string& spaceName)
+{
+    static std::mutex registryMutex;
+    static std::unordered_map<std::string, std::weak_ptr<UnclassifiedDropReporter>> registry;
+
+    std::lock_guard lock(registryMutex);
+    for (auto it = registry.begin(); it != registry.end();)
+    {
+        it = it->second.expired() ? registry.erase(it) : std::next(it);
+    }
+
+    auto& slot = registry[spaceName];
+    auto reporter = slot.lock();
+    if (!reporter)
+    {
+        reporter = std::make_shared<UnclassifiedDropReporter>(spaceName);
+        slot = reporter;
+    }
+    return reporter;
+}
+
+std::optional<std::string> UnclassifiedDropReporter::record(std::string_view location, Clock::time_point now)
+{
+    m_dropped.fetch_add(1, std::memory_order_relaxed);
+
+    // Sample the source; a contended lock only skips this event's source, never the count.
+    if (!location.empty() && !m_sourcesFull.load(std::memory_order_relaxed))
+    {
+        std::unique_lock lock(m_sourcesMutex, std::try_to_lock);
+        if (lock.owns_lock() && m_sources.size() < MAX_SOURCES)
+        {
+            m_sources.emplace(location.substr(0, MAX_SOURCE_LENGTH));
+            m_sourcesFull.store(m_sources.size() >= MAX_SOURCES, std::memory_order_relaxed);
+        }
+    }
+
+    auto nextReport = m_nextReport.load(std::memory_order_relaxed);
+    const auto nowRep = now.time_since_epoch().count();
+    if (nowRep < nextReport
+        || !m_nextReport.compare_exchange_strong(nextReport, (now + m_interval).time_since_epoch().count()))
+    {
+        return std::nullopt;
+    }
+
+    const auto dropped = m_dropped.exchange(0, std::memory_order_relaxed);
+    std::set<std::string> sources;
+    {
+        std::lock_guard lock(m_sourcesMutex);
+        sources.swap(m_sources);
+        m_sourcesFull.store(false, std::memory_order_relaxed);
+    }
+
+    return fmt::format(
+        "Space '{}': {} unclassified event(s) not indexed since the last report (index_unclassified_events=false). "
+        "No enabled integration decoded them; sources: [{}]. Enable the integration of these sources, or enable "
+        "index_unclassified_events or index_raw_events to keep such events. Next report in {}s at the earliest.",
+        m_spaceName,
+        dropped,
+        sources.empty() ? std::string {"unknown"} : fmt::format("{}", fmt::join(sources, ", ")),
+        std::chrono::duration_cast<std::chrono::seconds>(m_interval).count());
+}
+
 base::Expression postOutputUnclassifiedCounter(const std::string& spaceName,
-                                               std::shared_ptr<fastmetrics::ICounter> unclassifiedCounter)
+                                               std::shared_ptr<fastmetrics::ICounter> unclassifiedCounter,
+                                               std::shared_ptr<UnclassifiedDropReporter> dropReporter)
 {
     return base::Term<base::EngineOp>::create(
         "postOutputUnclassified",
-        [unclassifiedCounter](base::Event event) -> base::result::Result<base::Event>
+        [unclassifiedCounter, dropReporter](base::Event event) -> base::result::Result<base::Event>
         {
             std::string_view category;
             const json::PointerPath ppIntegrationCategory {syntax::asset::CATEGORY_PATH};
@@ -106,6 +180,17 @@ base::Expression postOutputUnclassifiedCounter(const std::string& spaceName,
                 && category == cm::store::categories::UNCLASSIFIED_CATEGORY)
             {
                 unclassifiedCounter->add(1);
+
+                if (dropReporter)
+                {
+                    std::string_view location;
+                    const json::PointerPath ppLocation {base::eventParsers::EVENT_LOCATION_ID};
+                    event->getString(location, ppLocation);
+                    if (auto warning = dropReporter->record(location, UnclassifiedDropReporter::Clock::now()))
+                    {
+                        LOG_WARNING("{}", *warning);
+                    }
+                }
             }
             return base::result::makeSuccess<decltype(event)>(event);
         });

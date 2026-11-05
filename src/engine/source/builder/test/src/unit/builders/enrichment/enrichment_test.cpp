@@ -5,6 +5,8 @@
 #include <memory>
 #include <string>
 
+#include <fmt/format.h>
+
 #include <base/baseTypes.hpp>
 #include <base/expression.hpp>
 #include <base/json.hpp>
@@ -279,6 +281,112 @@ TEST_F(UnclassifiedCounterTest, NoCategoryFieldNoCrash)
     EXPECT_CALL(*mockCounter, add(_)).Times(0);
     auto result = evalTerm(expr, event);
     EXPECT_TRUE(result.success());
+}
+
+// Unclassified event with a drop reporter => counted and recorded in the reporter
+TEST_F(UnclassifiedCounterTest, UnclassifiedCategoryRecordedInDropReporter)
+{
+    auto reporter = std::make_shared<UnclassifiedDropReporter>("space1");
+    auto expr = postOutputUnclassifiedCounter("space1", mockCounter, reporter);
+
+    auto event =
+        makeEvent(R"({"wazuh":{"integration":{"category":"unclassified"},"protocol":{"location":"Wazuh-AWS"}}})");
+    EXPECT_CALL(*mockCounter, add(1)).Times(1);
+    auto result = evalTerm(expr, event);
+    EXPECT_TRUE(result.success());
+
+    // The first event already reported, so the next report in the interval is empty
+    EXPECT_FALSE(reporter->record("other", UnclassifiedDropReporter::Clock::now()).has_value());
+}
+
+// Classified event with a drop reporter => nothing recorded
+TEST_F(UnclassifiedCounterTest, ClassifiedCategoryNotRecordedInDropReporter)
+{
+    auto reporter = std::make_shared<UnclassifiedDropReporter>("space1");
+    auto expr = postOutputUnclassifiedCounter("space1", mockCounter, reporter);
+
+    auto event = makeEvent(R"({"wazuh":{"integration":{"category":"security"}}})");
+    EXPECT_CALL(*mockCounter, add(_)).Times(0);
+    EXPECT_TRUE(evalTerm(expr, event).success());
+
+    // Nothing was recorded, so the first record still reports
+    EXPECT_TRUE(reporter->record("src", UnclassifiedDropReporter::Clock::now()).has_value());
+}
+
+// =============================================================================
+// UnclassifiedDropReporter
+// =============================================================================
+
+using ReporterClock = UnclassifiedDropReporter::Clock;
+
+// First drop reports at once, with the space, count and source
+TEST(UnclassifiedDropReporterTest, FirstDropReportsImmediately)
+{
+    UnclassifiedDropReporter reporter("myspace", std::chrono::seconds {60});
+    const auto t0 = ReporterClock::time_point {std::chrono::hours {1}};
+
+    auto warning = reporter.record("Wazuh-AWS", t0);
+    ASSERT_TRUE(warning.has_value());
+    EXPECT_THAT(*warning, HasSubstr("Space 'myspace': 1 unclassified event(s)"));
+    EXPECT_THAT(*warning, HasSubstr("sources: [Wazuh-AWS]"));
+    EXPECT_THAT(*warning, HasSubstr("index_unclassified_events=false"));
+}
+
+// Drops inside the interval are accumulated and reported once it elapses
+TEST(UnclassifiedDropReporterTest, ThrottlesAndAccumulatesWithinInterval)
+{
+    UnclassifiedDropReporter reporter("myspace", std::chrono::seconds {60});
+    const auto t0 = ReporterClock::time_point {std::chrono::hours {1}};
+
+    ASSERT_TRUE(reporter.record("a", t0).has_value());
+    EXPECT_FALSE(reporter.record("b", t0 + std::chrono::seconds {10}).has_value());
+    EXPECT_FALSE(reporter.record("c", t0 + std::chrono::seconds {59}).has_value());
+
+    auto warning = reporter.record("b", t0 + std::chrono::seconds {60});
+    ASSERT_TRUE(warning.has_value());
+    EXPECT_THAT(*warning, HasSubstr(": 3 unclassified event(s)"));
+    EXPECT_THAT(*warning, HasSubstr("sources: [b, c]"));
+}
+
+// Events without a location report an unknown source
+TEST(UnclassifiedDropReporterTest, EmptyLocationReportsUnknownSource)
+{
+    UnclassifiedDropReporter reporter("myspace");
+    auto warning = reporter.record("", ReporterClock::now());
+    ASSERT_TRUE(warning.has_value());
+    EXPECT_THAT(*warning, HasSubstr("sources: [unknown]"));
+}
+
+// Sources are capped in number and length
+TEST(UnclassifiedDropReporterTest, SourcesAreBounded)
+{
+    UnclassifiedDropReporter reporter("myspace", std::chrono::seconds {60});
+    const auto t0 = ReporterClock::time_point {std::chrono::hours {1}};
+    ASSERT_TRUE(reporter.record("first", t0).has_value());
+
+    for (std::size_t i = 0; i < UnclassifiedDropReporter::MAX_SOURCES + 5; ++i)
+    {
+        reporter.record(fmt::format("src{:02}", i), t0 + std::chrono::seconds {1});
+    }
+    const std::string longSource(UnclassifiedDropReporter::MAX_SOURCE_LENGTH + 50, 'x');
+    reporter.record(longSource, t0 + std::chrono::seconds {1});
+
+    auto warning = reporter.record("late", t0 + std::chrono::seconds {60});
+    ASSERT_TRUE(warning.has_value());
+    EXPECT_THAT(*warning, HasSubstr(fmt::format(": {} unclassified", UnclassifiedDropReporter::MAX_SOURCES + 7)));
+    EXPECT_THAT(*warning, HasSubstr(fmt::format("src{:02}]", UnclassifiedDropReporter::MAX_SOURCES - 1)));
+    EXPECT_THAT(*warning, Not(HasSubstr("late")));
+    EXPECT_THAT(*warning, Not(HasSubstr("xxxxx")));
+}
+
+// Policies of the same space share one reporter; another space gets its own
+TEST(UnclassifiedDropReporterTest, ForSpaceSharesReporterPerSpace)
+{
+    auto a1 = UnclassifiedDropReporter::forSpace("space-a");
+    auto a2 = UnclassifiedDropReporter::forSpace("space-a");
+    auto b = UnclassifiedDropReporter::forSpace("space-b");
+    EXPECT_EQ(a1, a2);
+    EXPECT_NE(a1, b);
 }
 
 // =============================================================================
