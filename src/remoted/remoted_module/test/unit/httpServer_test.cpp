@@ -2793,7 +2793,7 @@ TEST(HandshakeGuardTest, ConnectionStormLeavesNoHandshakeCounted)
         const auto refused = d.handshakeRejectedPerSourceTotal - afterStorm.handshakeRejectedPerSourceTotal;
         return admitted + refused >= kCap;
     };
-    eventually(settled);
+    const bool sharesSettled = eventually(settled);
     const auto refusedAfterStorm =
         server->diagnostics().handshakeRejectedPerSourceTotal - afterStorm.handshakeRejectedPerSourceTotal;
     for (auto& connection : held)
@@ -2806,6 +2806,8 @@ TEST(HandshakeGuardTest, ConnectionStormLeavesNoHandshakeCounted)
                          << " instead of 0 and 0";
     EXPECT_EQ(violations.load(), 0U) << "connections.handshaking exceeded connections.open in " << violations.load()
                                      << " of " << samples.load() << " samples";
+    EXPECT_TRUE(sharesSettled) << "did not observe all " << kCap
+                               << " held connections admitted or refused before the wait expired";
     EXPECT_EQ(refusedAfterStorm, 0U) << refusedAfterStorm << " of " << kCap
                                      << " handshakes from the address were refused after the storm";
 
