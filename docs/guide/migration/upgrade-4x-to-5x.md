@@ -306,7 +306,7 @@ Copy-Item root-ca.pem 'C:\Program Files (x86)\ossec-agent\certs\root-ca.pem'
 
 A remote upgrade from 4.14.X to 5.0.0 never rewrites `ossec.conf`: the file the 4.X agent had is the file the 5.0 agent reads, which is why the `<client>` fallback above exists.
 
-Before installing anything, the WPK installer checks that the manager answers HTTPS on the port/endpoint the upgraded agent will use, retrying a few times in case it's briefly unreachable, and aborts if it still does not. On hosts whose TLS stack can't negotiate the manager's TLS 1.3 minimum (e.g. EL7-era/Amazon Linux 2 system crypto libraries), the check falls back to a plain TCP connectivity check instead of treating that incompatibility as "manager unreachable":
+Before installing anything, the WPK installer checks that the manager answers HTTPS on the port/endpoint the upgraded agent will use, retrying a few times in case it's briefly unreachable, and aborts if it still does not. Where the system `curl` rejects the `--tlsv1.3` option, as on macOS, the check runs the same HTTPS request without it and reads the TLS version `curl` reports for the handshake: a manager that answers over TLS 1.2 or lower fails the check, since the upgraded agent requires TLS 1.3, and a `curl` that reports no version passes with a line in `logs/upgrade.log` saying so. When that HTTPS request fails for any reason other than an HTTP error status, as on hosts whose TLS stack can't negotiate the manager's TLS 1.3 minimum (e.g. Amazon Linux 2, whose system curl links OpenSSL 1.0.2), the check falls back to a plain TCP connectivity check instead of treating that incompatibility as "manager unreachable", and logs the `curl` exit code:
 
 ```console
 2026/07/31 00:26:57 - Checking connectivity to MANAGER_IP:1517/wazuh-manager.
@@ -335,7 +335,7 @@ Before installing anything, the WPK installer checks that the combination the up
 - `full` or `certificate` — set explicitly, or resolved from a `<certificate_authorities>` with no mode — whose CA file is missing or unreadable;
 - the same two modes with no `<certificate_authorities>` configured and no anchor on disk;
 - an explicit `system` with `<certificate_authorities>` also set, which the agent refuses to start with;
-- a `system` that the host's own trust store does not verify the manager against, whether it was set explicitly or resolved by default;
+- a `system` that the host's own trust store does not verify the manager against, whether it was set explicitly or resolved by default. On macOS an explicit `system` is never checked: the agent reads the store through its own TLS library, which the system `curl` cannot stand in for, so the installer treats it as unverified and logs that it cannot check it. It proceeds only when a trust anchor is present and aborts otherwise, advising the anchor or `<verification_mode>certificate</verification_mode>` rather than importing the CA into the OS store;
 - a `<verification_mode>` that is not one of the four accepted values.
 
 A 4.X agent carries none of that: a `<client>` block cannot express TLS verification. With no anchor available, the installer checks whether the host's own trust store verifies the manager's certificate, and when it does not, the outcome depends on whether it can tell that the installed agent predates 5.0:
