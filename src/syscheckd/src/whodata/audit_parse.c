@@ -14,12 +14,14 @@
 
 #define AUDIT_LOAD_RETRIES 5 // Max retries to reload Audit rules
 
-// Spelled out for the agent packages built with headers older than glibc 2.14, which lack them.
-// Only the architectures sharing the generic values are covered; the others ship headers that define them.
-#if !defined(__sparc__) && !defined(__alpha__) && !defined(__hppa__)
-#ifndef O_PATH
+// Spelled out for the agent packages built with headers older than glibc 2.14, which lack them. O_PATH has this
+// value on these architectures (kernels before 2.6.39 ignore it) and AT_EMPTY_PATH on every Linux one.
+#if !defined(O_PATH) && (defined(__x86_64__) || defined(__i386__) || defined(__aarch64__) || defined(__arm__) || \
+                         defined(__powerpc__))
 #define O_PATH 010000000
 #endif
+#ifndef O_PATH
+#define O_PATH O_RDONLY
 #endif
 #ifndef AT_EMPTY_PATH
 #define AT_EMPTY_PATH 0x1000
@@ -406,26 +408,48 @@ char *gen_audit_path(char *cwd, char *path0, char *path1) {
 }
 
 
-// Opens once with O_NOFOLLOW and resolves via /proc/self/fd so check and resolution cannot race; O_PATH avoids needing read permission.
+// O_NONBLOCK and O_NOCTTY keep an open that is not O_PATH (old kernels) from blocking on a FIFO or acquiring a terminal.
+#define AUDIT_OPEN_FLAGS (O_PATH | O_NONBLOCK | O_NOCTTY | O_CLOEXEC)
+
+// Returns the path the kernel reports for an open descriptor, already resolved and with no further lookup by name.
+static char *audit_fd_path(int fd) {
+    static const char deleted[] = " (deleted)";
+    char fd_path[OS_SIZE_64];
+    char target[PATH_MAX + 1];
+
+    snprintf(fd_path, sizeof(fd_path), "/proc/self/fd/%d", fd);
+    const ssize_t len = readlinkat(AT_FDCWD, fd_path, target, sizeof(target) - 1);
+    if (len <= 0 || (size_t)len >= sizeof(target) - 1) { // Empty or possibly truncated
+        return NULL;
+    }
+    target[len] = '\0';
+
+    // The kernel appends this to the path of an object that was unlinked.
+    if ((size_t)len >= sizeof(deleted) - 1 && strcmp(target + len - (sizeof(deleted) - 1), deleted) == 0) {
+        return NULL;
+    }
+
+    return strdup(target);
+}
+
+
+// Opens the directory once (O_NOFOLLOW) and reads its path from that descriptor, so the symlink check and the resolution cannot race.
 static char *audit_resolve_directory(const char *path) {
-    const int fd = open(path, O_PATH | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+    const int fd = open(path, AUDIT_OPEN_FLAGS | O_DIRECTORY | O_NOFOLLOW);
     if (fd < 0) {
         return NULL;
     }
 
-    char fd_path[OS_SIZE_64];
-    snprintf(fd_path, sizeof(fd_path), "/proc/self/fd/%d", fd);
-    char *resolved = realpath(fd_path, NULL);
+    char *resolved = audit_fd_path(fd);
     close(fd);
     return resolved;
 }
 
 
-// Opens without following the final component and resolves via /proc/self/fd, so check and resolution use the same object.
+// Type and inode come from the O_NOFOLLOW descriptor; a link other than the audited object is followed by name, which cannot be made race-free.
 static char *audit_resolve_file(const char *path, const char *inode, bool *is_link) {
-    int fd = open(path, O_PATH | O_NOFOLLOW | O_CLOEXEC);
     struct stat st;
-    char fd_path[OS_SIZE_64];
+    int fd = open(path, AUDIT_OPEN_FLAGS | O_NOFOLLOW);
 
     *is_link = false;
     if (fd < 0) {
@@ -433,36 +457,20 @@ static char *audit_resolve_file(const char *path, const char *inode, bool *is_li
     }
 
     if (fstatat(fd, "", &st, AT_EMPTY_PATH) == 0 && S_ISLNK(st.st_mode)) {
+        close(fd);
         if (inode && st.st_ino == (ino_t)strtoull(inode, NULL, 10)) {
             *is_link = true;
-            close(fd);
             return NULL;
         }
 
-        // Follow via the descriptor so the inspected link is the one followed.
-        snprintf(fd_path, sizeof(fd_path), "/proc/self/fd/%d", fd);
-        const int target = open(fd_path, O_PATH | O_CLOEXEC);
-        close(fd);
-        if (target < 0) {
+        fd = open(path, AUDIT_OPEN_FLAGS);
+        if (fd < 0) {
             return NULL;
         }
-        fd = target;
     }
 
-    snprintf(fd_path, sizeof(fd_path), "/proc/self/fd/%d", fd);
-    char *resolved = realpath(fd_path, NULL);
+    char *resolved = audit_fd_path(fd);
     close(fd);
-
-    if (resolved == NULL) {
-        // Only without /proc (chroot, hidepid) fall back to name-based realpath, which is not race-free.
-        const int proc = open("/proc/self/fd", O_PATH | O_DIRECTORY | O_CLOEXEC);
-        if (proc >= 0) {
-            close(proc);
-            return NULL;
-        }
-        return realpath(path, NULL);
-    }
-
     return resolved;
 }
 

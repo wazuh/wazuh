@@ -117,7 +117,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                            -Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite\
                            -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,getpid -Wl,--wrap,sleep -Wl,--wrap,unlink \
                            -Wl,--wrap,audit_delete_rule -Wl,--wrap,realpath -Wl,--wrap,lstat -Wl,--wrap,fstatat -Wl,--wrap,stat -Wl,--wrap,atexit -Wl,--wrap,audit_open -Wl,--wrap,open -Wl,--wrap,close\
-                           -Wl,--wrap,get_user -Wl,--wrap,get_group -Wl,--wrap,readlink -Wl,--wrap,audit_get_rule_list \
+                           -Wl,--wrap,get_user -Wl,--wrap,get_group -Wl,--wrap,readlink -Wl,--wrap,readlinkat -Wl,--wrap,audit_get_rule_list \
                            -Wl,--wrap,SendMSG -Wl,--wrap,fim_whodata_event -Wl,--wrap,search_audit_rule \
                            -Wl,--wrap,audit_close -Wl,--wrap,fim_manipulated_audit_rules -Wl,--wrap,wfopen \
                            -Wl,--wrap,fim_audit_reload_rules -Wl,--wrap,remove_audit_rule_syscheck \

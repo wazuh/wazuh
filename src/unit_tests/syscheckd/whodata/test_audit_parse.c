@@ -30,6 +30,12 @@
 #ifndef AT_EMPTY_PATH
 #define AT_EMPTY_PATH 0x1000
 #endif
+#ifndef O_PATH
+#define O_PATH 010000000
+#endif
+
+// What audit_parse opens the audited path with: no read access, and neither blocking on a FIFO nor taking a terminal.
+#define EXPECTED_OPEN_FLAGS (O_PATH | O_NONBLOCK | O_NOCTTY | O_CLOEXEC)
 
 #define PERMS (AUDIT_PERM_WRITE | AUDIT_PERM_ATTR)
 
@@ -48,6 +54,7 @@ int __wrap_open(const char *path, int flags, ...) {
         return __real_open(path, flags, mode);
     }
     check_expected(path);
+    check_expected(flags);
     return mock();
 }
 
@@ -987,15 +994,25 @@ void test_audit_parse_rm(void **state) {
 }
 
 
-// The object audit_parse resolves for the stored path: open(O_PATH) of the path, then fstatat on that descriptor.
+static void expect_open(const char *path, int flags, int fd) {
+    expect_string(__wrap_open, path, path);
+    expect_value(__wrap_open, flags, flags);
+    will_return(__wrap_open, fd);
+}
+
+static void expect_fd_path(const char *proc_path, const char *target) {
+    expect_string(__wrap_readlinkat, path, proc_path);
+    will_return(__wrap_readlinkat, target);
+}
+
+// The object audit_parse resolves for the stored path: open the path without following it, then fstatat on that descriptor.
 static void expect_stored_path_object(const char *path, int fd, mode_t mode, ino_t inode) {
     static struct stat st;
 
     memset(&st, 0, sizeof(st));
     st.st_mode = mode;
     st.st_ino = inode;
-    expect_string(__wrap_open, path, path);
-    will_return(__wrap_open, fd);
+    expect_open(path, EXPECTED_OPEN_FLAGS | O_NOFOLLOW, fd);
     expect_value(__wrap_fstatat, __fd, fd);
     expect_string(__wrap_fstatat, __file, "");
     expect_value(__wrap_fstatat, __flag, AT_EMPTY_PATH);
@@ -1036,12 +1053,9 @@ void test_audit_parse_chmod(void **state) {
 
     // /var/test is reached through a symbolic link above it: the path is spelled from the configured directory.
     expect_stored_path_object("/var/test/file", 98, S_IFREG, 55);
-    expect_string(__wrap_realpath, path, "/proc/self/fd/98");
-    will_return(__wrap_realpath, strdup("/real/test/file"));
-    expect_string(__wrap_open, path, "/var/test");
-    will_return(__wrap_open, 99);
-    expect_string(__wrap_realpath, path, "/proc/self/fd/99");
-    will_return(__wrap_realpath, strdup("/real/test"));
+    expect_fd_path("/proc/self/fd/98", "/real/test/file");
+    expect_open("/var/test", EXPECTED_OPEN_FLAGS | O_DIRECTORY | O_NOFOLLOW, 99);
+    expect_fd_path("/proc/self/fd/99", "/real/test");
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -1094,10 +1108,8 @@ void test_audit_parse_chmod_link_directory(void **state) {
 
     // /var/test is itself a symbolic link: it cannot be opened, so the resolved path is used.
     expect_stored_path_object("/var/test/file", 98, S_IFREG, 55);
-    expect_string(__wrap_realpath, path, "/proc/self/fd/98");
-    will_return(__wrap_realpath, strdup("/real/test/file"));
-    expect_string(__wrap_open, path, "/var/test");
-    will_return(__wrap_open, -1);
+    expect_fd_path("/proc/self/fd/98", "/real/test/file");
+    expect_open("/var/test", EXPECTED_OPEN_FLAGS | O_DIRECTORY | O_NOFOLLOW, -1);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -1150,8 +1162,7 @@ void test_audit_parse_chmod_regular_directory(void **state) {
 
     // /var/test is a regular directory: the resolved path is already inside it.
     expect_stored_path_object("/var/test/file", 98, S_IFREG, 55);
-    expect_string(__wrap_realpath, path, "/proc/self/fd/98");
-    will_return(__wrap_realpath, strdup("/var/test/file"));
+    expect_fd_path("/proc/self/fd/98", "/var/test/file");
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -1204,10 +1215,8 @@ void test_audit_parse_chmod_followed_link(void **state) {
 
     // /root/test/file is a symbolic link that is not the audited inode: it is followed to /var/test/file.
     expect_stored_path_object("/root/test/file", 98, S_IFLNK, 77);
-    expect_string(__wrap_open, path, "/proc/self/fd/98");
-    will_return(__wrap_open, 97);
-    expect_string(__wrap_realpath, path, "/proc/self/fd/97");
-    will_return(__wrap_realpath, strdup("/var/test/file"));
+    expect_open("/root/test/file", EXPECTED_OPEN_FLAGS, 97);
+    expect_fd_path("/proc/self/fd/97", "/var/test/file");
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -1227,7 +1236,7 @@ void test_audit_parse_chmod_followed_link(void **state) {
     audit_parse(buffer);
 }
 
-void test_audit_parse_chmod_proc_unavailable(void **state) {
+void test_audit_parse_chmod_deleted_object(void **state) {
     (void) state;
 
     char audit_key_msg[OS_SIZE_128] = {0};
@@ -1257,25 +1266,16 @@ void test_audit_parse_chmod_proc_unavailable(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6247): audit_event: uid=user99, auid=lp, euid=user29, gid=, pid=58280, ppid=3211, inode=19, path=/root/test/file, pname=/usr/bin/chmod");
 
-    // /proc is unusable: realpath on the descriptor path fails and resolution falls back to the name.
+    // The object was unlinked after the syscall: the kernel reports its path as deleted, so the audited path is kept.
     expect_stored_path_object("/root/test/file", 98, S_IFREG, 19);
-    expect_string(__wrap_realpath, path, "/proc/self/fd/98");
-    will_return(__wrap_realpath, NULL);
-    expect_string(__wrap_open, path, "/proc/self/fd");
-    will_return(__wrap_open, -1);
-    expect_string(__wrap_realpath, path, "/root/test/file");
-    will_return(__wrap_realpath, strdup("/var/test/file"));
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_fd_path("/proc/self/fd/98", "/root/test/file (deleted)");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6213): Cannot get the real path of the link '/root/test/file'");
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 58280);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "99");
     expect_string(__wrap_fim_whodata_event, w_evt->group_id, "78");
     expect_string(__wrap_fim_whodata_event, w_evt->process_name, "/usr/bin/chmod");
-    expect_string(__wrap_fim_whodata_event, w_evt->path, "/var/test/file");
+    expect_string(__wrap_fim_whodata_event, w_evt->path, "/root/test/file");
     expect_string(__wrap_fim_whodata_event, w_evt->audit_uid, "4");
     expect_string(__wrap_fim_whodata_event, w_evt->effective_uid, "29");
     expect_string(__wrap_fim_whodata_event, w_evt->inode, "19");
@@ -1314,10 +1314,9 @@ void test_audit_parse_chmod_followed_link_reopen_failure(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6247): audit_event: uid=user99, auid=lp, euid=user29, gid=, pid=58280, ppid=3211, inode=19, path=/root/test/file, pname=/usr/bin/chmod");
 
-    // Reopening the link through its descriptor fails: the event keeps the audited path.
+    // Reopening the link by name to follow it fails: the event keeps the audited path.
     expect_stored_path_object("/root/test/file", 98, S_IFLNK, 77);
-    expect_string(__wrap_open, path, "/proc/self/fd/98");
-    will_return(__wrap_open, -1);
+    expect_open("/root/test/file", EXPECTED_OPEN_FLAGS, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "(6213): Cannot get the real path of the link '/root/test/file'");
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 58280);
@@ -1338,7 +1337,7 @@ void test_audit_parse_chown_link_itself(void **state) {
 
     char audit_key_msg[OS_SIZE_128] = {0};
     char * buffer = " \
-        type=SYSCALL msg=audit(1571992092.822:3004348): arch=c000003e syscall=268 success=yes exit=0 a0=ffffff9c a1=5648a8ab74c0 a2=1ff a3=fff items=1 ppid=3211 pid=58280 auid=4 uid=99 gid=78 euid=29 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"chmod\" exe=\"/usr/bin/chmod\" key=\"wazuh_fim\" \
+        type=SYSCALL msg=audit(1571992092.822:3004348): arch=c000003e syscall=260 success=yes exit=0 a0=ffffff9c a1=5648a8ab74c0 a2=1ff a3=fff items=1 ppid=3211 pid=58280 auid=4 uid=99 gid=78 euid=29 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"chmod\" exe=\"/usr/bin/chmod\" key=\"wazuh_fim\" \
         type=CWD msg=audit(1571992092.822:3004348): cwd=\"/root/test\" \
         type=PATH msg=audit(1571992092.822:3004348): item=0 name=\"/root/test/file\" inode=19 dev=08:02 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=NORMAL cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
         type=PROCTITLE msg=audit(1571992092.822:3004348): proctitle=63686D6F6400373737002F726F6F742F746573742F66696C65 \
@@ -1411,8 +1410,7 @@ void test_audit_parse_chmod_open_failure(void **state) {
         "(6247): audit_event: uid=user99, auid=lp, euid=user29, gid=, pid=58280, ppid=3211, inode=19, path=/root/test/file, pname=/usr/bin/chmod");
 
     // /root/test/file cannot be opened (e.g. deleted): the audited path is kept.
-    expect_string(__wrap_open, path, "/root/test/file");
-    will_return(__wrap_open, -1);
+    expect_open("/root/test/file", EXPECTED_OPEN_FLAGS | O_NOFOLLOW, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "(6213): Cannot get the real path of the link '/root/test/file'");
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 58280);
@@ -1800,7 +1798,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_audit_parse_chmod_link_directory, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_audit_parse_chmod_regular_directory, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_audit_parse_chmod_followed_link, setup_config, teardown_config),
-        cmocka_unit_test_setup_teardown(test_audit_parse_chmod_proc_unavailable, setup_config, teardown_config),
+        cmocka_unit_test_setup_teardown(test_audit_parse_chmod_deleted_object, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_audit_parse_chmod_followed_link_reopen_failure, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_audit_parse_chown_link_itself, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_audit_parse_chmod_open_failure, setup_config, teardown_config),
