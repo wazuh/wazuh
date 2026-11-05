@@ -86,7 +86,7 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
-- Fixed the "Ensure sudo is installed." check passing when sudo is not installed and failing on aarch64 in the AlmaLinux 8, 9 and 10, Amazon Linux 2023, CentOS 8, 9 and 10, and Oracle Linux 9 and 10 SCA policies. The check now queries the local rpm database instead of `dnf`. ([#41165](https://github.com/wazuh/wazuh/issues/41165))
+- Fixed the "Ensure sudo is installed." check passing when sudo is not installed and failing on aarch64 in the AlmaLinux 8, 9 and 10, Amazon Linux 2023, CentOS 8, 9 and 10, and Oracle Linux 9 and 10 SCA policies. The check now queries the local rpm database instead of `dnf`. ([#41169](https://github.com/wazuh/wazuh/pull/41169))
 
 ## [v4.14.10]
 
