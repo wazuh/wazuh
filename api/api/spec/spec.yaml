@@ -1618,16 +1618,18 @@ components:
             actions:
               type: array
               description: "Actions to perform"
+              minItems: 1
               items:
                 type: string
             resources:
               type: array
               description: "Resources to apply the actions on"
+              minItems: 1
               items:
                 type: string
             effect:
               type: string
-              description: "Effect of the policy"
+              description: "Effect of the policy: allow or deny (case-insensitive)"
           required:
             - actions
             - resources
@@ -1647,16 +1649,18 @@ components:
             actions:
               type: array
               description: "Actions to perform"
+              minItems: 1
               items:
                 type: string
             resources:
               type: array
               description: "Resources to apply the actions on"
+              minItems: 1
               items:
                 type: string
             effect:
               type: string
-              description: "Effect of the policy"
+              description: "Effect of the policy: allow or deny (case-insensitive)"
           required:
             - actions
             - resources
@@ -3184,6 +3188,7 @@ components:
           type: integer
           format: int32
           minimum: 30
+          maximum: 2147483647
           example: 900
         rbac_mode:
           description: "RBAC mode (white/black)"

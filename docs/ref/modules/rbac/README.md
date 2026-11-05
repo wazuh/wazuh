@@ -51,6 +51,20 @@ A policy resource is `<type>:<field>:<value>`, with `*` as a wildcard value (`ag
 `GET /security/actions` and `GET /security/resources` return this catalog from the running API
 (both need `security:read_config`).
 
+### What a create or update accepts
+
+`POST /security/policies` and `PUT /security/policies/{policy_id}` refuse with error `4006` a policy whose
+`effect` is not `allow` or `deny` (case-insensitive), or with an action or a resource type (`<type>:<field>`)
+missing from the catalog above; an empty `actions` or `resources` list is `400`.
+
+`POST /security/rules` and `PUT /security/rules/{rule_id}` refuse with error `4003` a rule that is not a
+non-empty object of operators: `AND`, `OR` and `NOT` hold one rule or a non-empty list of rules, `MATCH`,
+`MATCH$`, `FIND` and `FIND$` hold a non-empty object. Any other key, `{}` and `{"OR": []}` are refused.
+
+Linking a role a user already has, or a policy a role already has, fails with `4017` or `4011` whether
+or not `position` is given: a link is never moved by linking it again. To reorder, unlink it and link it
+at the new `position`.
+
 ---
 
 ## Actions reference

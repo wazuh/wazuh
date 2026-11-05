@@ -470,11 +470,16 @@ class WazuhException(Exception):
         4002: {'message': 'The specified role does not exist',
                'remediation': 'Please, create the specified role with the endpoint POST /security/roles'},
         4003: {'message': 'The specified rule is invalid',
-               'remediation': "The rule must be in JSON format."},
+               'remediation': 'The rule must be a non-empty JSON object whose keys are the logical operators AND, '
+                              'OR and NOT, holding a rule or a non-empty list of rules, or the functions MATCH, '
+                              'MATCH$, FIND and FIND$, holding a non-empty object.'},
         4005: {'message': 'The specified name or rule already exists'},
         4006: {'message': 'The specified policy is invalid',
                'remediation': 'The policy must be in JSON format and its keys must be "actions", "resources" and'
-                              ' "effect". The actions and resources must be split by ":". Example: agent:id:001'},
+                              ' "effect". The actions and resources must be split by ":". Example: agent:id:001. '
+                              'Neither list may be empty, every action and resource type must be one listed by '
+                              'GET /security/actions and GET /security/resources, and the effect must be "allow" '
+                              'or "deny"'},
         4007: {'message': 'The specified policy does not exist',
                'remediation': 'Please, create the specified policy with the endpoint POST /security/policies'},
         4008: {'message': 'The specified resource is required for a correct Wazuh\'s functionality'},
