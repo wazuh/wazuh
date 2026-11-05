@@ -160,7 +160,8 @@ that answers**. Nodes can disagree on those groups for a short while:
 **Confirm it is this and not something else:**
 
 * It affects only configuration downloads. WPK downloads are not gated this way.
-* `remoted.download.denied` increments on the refusing node:
+* `remoted.download.denied` increments on the refusing node (it also counts WPK downloads refused for
+  lack of an upgrade task, which answer `404`, not `403`):
 
   ```bash
   curl -s --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock \
@@ -266,6 +267,16 @@ membership older than that is never served in their place.
 The node also logs both causes, throttled: `the local wazuh-manager-db has no row for it` for the
 first, and `wazuh-manager-db is not answering` or `could not be read from wazuh-manager-db in time`
 for the second.
+
+### `{"error":"Service unavailable","code":503}` on a WPK download
+
+Only on `POST /download` with `resource_type: wpk`. The node's task manager (`wazuh-manager-modulesd`)
+did not answer the authorization lookup within `remoted.control_tm_deadline` (2000 ms by default), or
+answered something other than `200`; nothing is opened. It is counted in
+`remoted.download.wpk_auth_unavailable`, and remoted logs `Task manager WPK authorization timeout` or
+`Failed to reach the task manager socket`, throttled. A 5.0.0 agent tries `agent.https_download_attempts`
+times (2 by default) and then abandons the upgrade, so launch it again once that node's task manager
+answers.
 
 ### Back-pressure
 
