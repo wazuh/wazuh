@@ -888,11 +888,14 @@ int fim_db_set_container_context(const char* container_id, const char* context_j
             return FIMDB_ERR;
         }
 
-        // Only cached once the write succeeded, so a cache hit always describes
-        // something the database holds.
-        std::unique_ptr<cJSON, decltype(&cJSON_Delete)> block {ExtractContainerBlock(context.c_str()), cJSON_Delete};
-        ContainerContextCache::instance().store(container_id, block.get(), context);
-        block.release();
+        if (!unchanged)
+        {
+            // Only cached once the write succeeded, so a cache hit always describes
+            // something the database holds.
+            std::unique_ptr<cJSON, decltype(&cJSON_Delete)> block {ExtractContainerBlock(context.c_str()), cJSON_Delete};
+            ContainerContextCache::instance().store(container_id, block.get(), context);
+            block.release();
+        }
     }
     catch (const std::exception& e)
     {
