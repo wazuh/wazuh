@@ -13,8 +13,10 @@
 
 #include <asio.hpp>
 
+#include <array>
 #include <atomic>
 #include <chrono>
+#include <mutex>
 #include <string>
 #include <system_error>
 #include <thread>
@@ -134,6 +136,85 @@ namespace wazuh::uds_http::test
             result.body = result.raw.substr(separator + 4);
         }
 
+        return result;
+    }
+
+    /// What a peer saw before it sent the body, and everything it saw in total.
+    struct HeadThenBodyResult
+    {
+        bool connected {false};
+        std::string beforeBody; ///< Bytes received during the wait after the head.
+        std::string raw;        ///< Every byte received until EOF (interim + final response).
+    };
+
+    /**
+     * @brief Writes @p head, collects what arrives for @p wait, then writes @p body and reads to EOF.
+     *
+     * This is the exchange of a client that sends `Expect: 100-continue`: the interim response, if
+     * any, lands in beforeBody. A reader thread drains the socket the whole time; the main thread
+     * only writes.
+     */
+    inline HeadThenBodyResult sendHeadThenBody(const std::string& socketPath,
+                                               const std::string& head,
+                                               const std::string& body,
+                                               std::chrono::milliseconds wait,
+                                               std::chrono::milliseconds timeout = std::chrono::seconds {10})
+    {
+        HeadThenBodyResult result;
+
+        asio::io_context ioc;
+        stream_protocol::socket socket {ioc};
+        std::error_code ec;
+        socket.connect(stream_protocol::endpoint {socketPath}, ec);
+        if (ec)
+        {
+            return result;
+        }
+        result.connected = true;
+
+        std::mutex mutex;
+        std::string received;
+        std::atomic_bool eof {false};
+        std::thread reader {[&]
+                            {
+                                std::array<char, 4096> buffer {};
+                                std::error_code readEc;
+                                for (;;)
+                                {
+                                    const auto n = socket.read_some(asio::buffer(buffer), readEc);
+                                    if (readEc)
+                                    {
+                                        break;
+                                    }
+                                    std::lock_guard lock {mutex};
+                                    received.append(buffer.data(), n);
+                                }
+                                eof.store(true);
+                            }};
+
+        asio::write(socket, asio::buffer(head), ec);
+        std::this_thread::sleep_for(wait);
+        {
+            std::lock_guard lock {mutex};
+            result.beforeBody = received;
+        }
+        if (!ec && !body.empty())
+        {
+            asio::write(socket, asio::buffer(body), ec);
+        }
+
+        const auto deadline = std::chrono::steady_clock::now() + timeout;
+        while (!eof.load() && std::chrono::steady_clock::now() < deadline)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds {5});
+        }
+        if (!eof.load())
+        {
+            std::error_code ignore;
+            socket.shutdown(stream_protocol::socket::shutdown_both, ignore);
+        }
+        reader.join();
+        result.raw = received;
         return result;
     }
 

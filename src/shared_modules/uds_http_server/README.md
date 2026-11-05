@@ -14,10 +14,12 @@ linking the archive into its own binary:
 | vulnerability_scanner (modulesd) | `vd-http.sock` | `wazuh_modules/vulnerability_scanner/src/vulnerabilityScanner.cpp` |
 | wazuh-manager-db | `wdb-http.sock` | `wazuh_db/src/http/wdb_http.cpp` |
 | remoted_module (remoted's local admin socket) | `remote-admin-http.sock` | `remoted/remoted_module/src/remotedModuleFacade.hpp` |
+| engine event ingest (wazuh-manager-analysisd) | `engine-ingest-http.sock` | `engine/source/api/event/src/ingestServer.cpp` (through the engine's `httpsrv::UdsServer`) |
 
 What it deliberately is NOT: remoted's agent-facing TCP/TLS server (a protocol PEER of this
 library, not a layer of it), and not a general web framework — one request per connection,
-exact-match routing, no TLS, no keep-alive, no chunked encoding.
+exact-match routing, no TLS, no keep-alive, no chunked encoding. `Expect: 100-continue` is
+answered only by a server that opts in (`expectContinue`).
 
 Operator/integrator docs: `docs/ref/modules/utils/uds-http-server/` (library defaults, status
 semantics, log lines, architecture, integration guide). This library has no configuration of its own. Each consumer
@@ -38,9 +40,11 @@ the knobs, and those are documented on the consumer's own pages.
 | RF-4 | Connection cap with an explicit 503-and-close at accept |
 | RF-5 | Two-phase shutdown with guarantees S1/S2/S3 (below), budgeted to fit a daemon's 30 s stop window |
 | RF-6 | **Injected identity**: `logTag`, `serverName` (rendered as "`<name>` server / connection(s) / request(s)" in every diagnostic), `serverHeader` (the `Server:` response header), and optional internal-option hints for the two capacity diagnostics — so each consumer's lines read in its own vocabulary, and the extraction changed no log line of its first consumer |
-| RF-7 | **Diagnostics snapshot** (`diagnostics()`): budget available/in-flight bytes, in-flight request count, live sessions, classified sessions per `RouteClass`, and cumulative transport-level 503s by cause (`rejectedBudgetExhausted`, `rejectedSessionCap`, `rejectedShutdown`, `rejectedNoResponse` — answered before any handler, so invisible to endpoint metrics) — relaxed atomic loads, callable at any point between construction and destruction. Consumers publish these as `wazuh_metrics` pull metrics; the library itself does not depend on wazuh_metrics |
+| RF-7 | **Diagnostics snapshot** (`diagnostics()`): budget available/in-flight bytes, in-flight request count, live sessions, classified sessions per `RouteClass`, and cumulative transport-level 503s by cause (`rejectedBudgetExhausted`, `rejectedSessionCap`, `rejectedConnectionCap` — the server-wide limit, refused at accept before any request is read — `rejectedShutdown`, `rejectedNoResponse`) and 413s (`rejectedTooLarge`, whichever cap decided them) — all answered before any handler, so invisible to endpoint metrics — relaxed atomic loads, callable at any point between construction and destruction. Consumers publish these as `wazuh_metrics` pull metrics; the library itself does not depend on wazuh_metrics |
 | RF-8 | Fixed status semantics: 400/404/405+`Allow`/411/413/414/431/500/503/504, with throttled per-condition diagnostics (one storm cannot suppress another kind's first line) |
 | RF-9 | Safe socket ownership: pre-flight check (`socketPathIsUsable`), refusal to unlink a non-socket, explicit chmod (0660 default), no parent-directory creation, inode-guarded unlink at teardown |
+| RF-10 | **Repeated header names reported**: `HttpRequest::duplicateHeaders` holds the lower-cased names that appeared more than once; `headers` keeps the last value |
+| RF-11 | **Opt-in `100 Continue`**: with `UdsHttpServerConfig::expectContinue`, `Expect: 100-continue` (any case) is answered with an interim `HTTP/1.1 100 Continue` once the request is admitted and while its body is outstanding; other expectations are ignored; off by default |
 
 ### Non-functional
 
@@ -60,10 +64,17 @@ the knobs, and those are documented on the consumer's own pages.
 | Exact-match routing only | Variable segments invite application logic into the router; the in-tree precedent (agent id in `X-Wazuh-Agent-Id`) predates the library and works |
 | One request per connection, `Connection: close` always | Simplifies the deferral machinery and the peer-gone watch; every in-tree client (libcurl `uhttp_*`, cpp-httplib, httpx, the asio downstream client) reconnects transparently |
 | Chunked ⇒ 411 | Delimitation is `Content-Length`-only: the budget must know the size at headers-complete |
+| `100 Continue` opt-in (`expectContinue`, off by default), written only after admission | The default keeps every existing consumer's wire byte-identical; a peer that sends `Expect: 100-continue` (libcurl does above 1 MiB) otherwise waits out its own timeout before the body. Written after the route, body caps, session caps and budget passed, so a refused request gets its final status before the body; never written once the body is complete. A final response that becomes ready while the interim write is in flight is parked and written from its completion: never two writes on one socket |
+| Repeated header names reported, not rejected (`HttpRequest::duplicateHeaders`) | The map stays last-wins for every consumer; one that needs exactly one occurrence of a header (an identity header) checks the set. Rejecting repeats in the transport would refuse legitimate ones |
 | Budget charges a DERIVED overhead | `maxHeaderCount × (nameSize + valueSize) + bufferSize + fixed` — a constant would drift the moment an operator raised a limit |
 | No dynamic route registration | Routes are immutable after `start()`, which is what makes the hot-path table scan lock-free. The one seemingly-dynamic consumer (content updates on demand) is dynamic at the handler level, not the route level |
 | Identity via config, not template/macros | The extraction requirement was byte-identical logs for the first consumer; a handful of `%s` templates plus injected strings achieves it with zero per-consumer builds |
 | `diagnostics()` instead of built-in metrics | Keeps the library free of the metrics dependency; each consumer publishes through its own `wazuh::metrics::IManager` as pull metrics |
+| A second, instrumented archive (`wazuh_uds_http_server_tsan`) under the engine's ThreadSanitizer build (`ENGINE_ENABLE_TSAN`) | TSAN only sees the synchronization of instrumented code: the plain archive linked into the instrumented engine makes it report races in asio's strand and scheduler that do not exist. The engine (`httpsrv`) links the instrumented copy; every other consumer keeps the plain archive, since it is not built with the sanitizer and could not link an instrumented one. Both come from one CMake function, so their settings cannot drift |
+
+A final response ready during the interim `100 Continue` write is parked until that write
+completes. The first final response wins: neither a response timeout nor a late handler answer
+replaces it. A parked handler answer does not trigger an unanswered-handler timeout warning.
 
 ## Architecture
 
@@ -161,12 +172,13 @@ with its own `main()` (`testMain.cpp`) that owns the binary's log sink; no modul
 
 | File | Pins |
 |---|---|
-| `udsHttpServer_test.cpp` | Routing, 404/405+`Allow`, query handling, socket modes under a hostile umask, stale-socket unlink + non-socket refusal, 411/413/414/431, slowloris, deferrals from other threads, 300 concurrent deferrals on 2 I/O threads, budget release on request drop, connection-cap 503, handler throw ⇒ 500, dropped responder ⇒ 503, never-answered ⇒ 504, a route raising its own response backstop while its neighbour keeps the server-wide one, no head-of-line blocking, requests outliving the server, inode-guarded unlink |
+| `udsHttpServer_test.cpp` | Routing, 404/405+`Allow`, query handling, socket modes under a hostile umask, stale-socket unlink + non-socket refusal, 411/413/414/431, slowloris, deferrals from other threads, 300 concurrent deferrals on 2 I/O threads, budget release on request drop, connection-cap 503, handler throw ⇒ 500, dropped responder ⇒ 503, never-answered ⇒ 504, a route raising its own response backstop while its neighbour keeps the server-wide one, no head-of-line blocking, requests outliving the server, inode-guarded unlink, repeated header names reaching the handler, `expectContinue` (off ⇒ no interim; on ⇒ `100` then final; `413`/`503` without `100`; body already sent ⇒ no `100`; no overlapping writes over 200 rounds; other expectations ignored) |
 | `udsShutdown_test.cpp` | S1/S2/S3 verbatim: replies between the two phases, `send()` after stop AND after destruction, drain window, force-close as EOF, concurrent stop races |
-| `requestParser_test.cpp` | The parser alone, byte-by-byte split boundaries, every limit, chunked ⇒ 411 |
+| `requestParser_test.cpp` | The parser alone, byte-by-byte split boundaries, every limit, chunked ⇒ 411, repeated header names recorded (and a name split across reads is not a repeat) |
 | `inFlightBudget_test.cpp` | Reservation RAII, move semantics, concurrent exactness |
 | `routeClasses_test.cpp` | The QoS model end to end: data saturation not shedding Control/Liveness, class body caps (413 at headers), class session caps releasing on close, the reserved headroom under a flood (and its documented residual), the bool-shim mapping, per-route overrides, per-class diagnostics |
-| `transportDiagnostics_test.cpp` | `diagnostics()` before/during/after; identity injection rendering the consumer vocabulary byte-for-byte; the capacity-hint sentence appearing only when configured |
+| `expectContinueOverlap_test.cpp` | A final answer ready while the interim `100 Continue` write is in flight — held open through the test seam (`testHooks.{hpp,cpp}`: a strong definition of `detail::interceptInterimWrite()` that overrides, in this binary only, the library's weak default that always writes at once) — is parked and written after it: an inline answer, a deferred answer from another thread, a `stopAccepting()` `503` (and `stopAccepting()` returning once it is out), and a peer leaving (parked answer dropped, session freed). The first final answer wins in both handler-before-timeout and timeout-before-handler order, without a false timeout warning for a parked handler answer. Each stream: the interim first, exactly one final, body exactly its `Content-Length` |
+| `transportDiagnostics_test.cpp` | `diagnostics()` before/during/after; each rejection counted under its own cause (body caps, the server-wide connection limit at accept); identity injection rendering the consumer vocabulary byte-for-byte; the capacity-hint sentence appearing only when configured |
 | `serverDiagnostics_test.cpp` | Operator-visible (throttled) lines per rejection class |
 | `logThrottle_test.cpp`, `socketPathCheck_test.cpp` | The helpers |
 

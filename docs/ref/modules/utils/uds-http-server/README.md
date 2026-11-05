@@ -12,7 +12,7 @@ connection, exact-match routing, no TLS, no keep-alive, no chunked encoding.
 
 ## Consumers
 
-Five servers, each on its own socket under `/var/wazuh-manager/queue/sockets/`:
+Six servers, each on its own socket under `/var/wazuh-manager/queue/sockets/`:
 
 | Consumer | Daemon | Socket | Routes | Transport settings |
 |---|---|---|---|---|
@@ -21,12 +21,14 @@ Five servers, each on its own socket under `/var/wazuh-manager/queue/sockets/`:
 | Vulnerability Scanner | `wazuh-manager-modulesd` | `vd-http.sock` | [Local HTTP API](../../vulnerability-scanner/api-reference.md#local-http-api-vd-httpsock) | Fixed in code: 2 I/O threads, 3600 s response backstop |
 | Wazuh DB | `wazuh-manager-db` | `wdb-http.sock` | [API reference](../../wazuh_db/api-reference.md) | Fixed in code: the library defaults |
 | Remoted admin socket | `wazuh-manager-remoted` | `remote-admin-http.sock` | `GET /`, `GET /metrics`, `GET /status`, `GET /tls` — [Local admin socket](../../remoted/README.md#local-admin-socket) | Fixed in code: 2 I/O threads, 64 connections, 16 reserved for control |
+| Engine event ingest | `wazuh-manager-analysisd` | `engine-ingest-http.sock` | `POST /events/enriched` — [events API reference](../../engine/api-events-reference.md) | Body cap, connections and in-flight byte budget: `analysisd.server_enriched_events_max_*` internal options — [configuration](../../engine/configuration.md#engine-api-server); `100 Continue` on; the rest fixed in code |
 
 This library has **no configuration of its own**. Each consumer sets the transport knobs
 (I/O threads, in-flight byte budget, connection caps, timeouts, reserved control
 connections) in code. Inventory Sync exposes most of them as internal options; Task
 Manager exposes its I/O thread count and sizes one route's body cap from
-`max_payload_bytes`. The other three consumers expose none.
+`max_payload_bytes`; the engine's event ingest exposes its body cap, connection cap and byte
+budget. The other three consumers expose none.
 
 The library defaults, which apply wherever a consumer does not override them:
 
@@ -42,6 +44,7 @@ The library defaults, which apply wherever a consumer does not override them:
 | URL, header name, header value, header count | 2048 bytes, 256 bytes, 8192 bytes, 32 |
 | Timeouts | head 10 s, body 30 s, response backstop 300 s, write 10 s, drain on stop 2 s |
 | Socket mode | `0660`, set explicitly after `bind()` |
+| `Expect: 100-continue` | not answered (`expectContinue` off); a consumer may turn it on |
 
 Every server logs the effective values once at start, at INFO, under its consumer's tag:
 `<name> server bound to '<socket>' (mode 0660, <n> I/O thread(s), …; timeouts s: header=… body=…
@@ -54,6 +57,7 @@ suppress another kind's first line):
 
 | Status | Meaning | Typical cause |
 |---|---|---|
+| `100` (interim) | `Expect: 100-continue` on a server with `expectContinue` on | Sent once the request is admitted and before the body arrives; a refused request gets its final status instead |
 | `400` | Malformed request | Broken client |
 | `404` | No route for that path | Routes are `method + exact path` — no patterns |
 | `405` + `Allow` | Path exists, wrong method | The `Allow` header lists what the route accepts |
@@ -101,7 +105,8 @@ only at debug level.
 - [Integration Guide](integration-guide.md) — for module developers consuming the library.
 - [Metrics Library](../metrics/README.md) — Inventory Sync, Task Manager and the remoted
   admin socket publish this transport's `diagnostics()` as pull metrics; Vulnerability
-  Scanner and Wazuh DB do not.
+  Scanner and Wazuh DB do not. The engine publishes its ingest server's through its own
+  metrics library, as `server.ingest.*` ([engine metrics](../../engine/README.md#metrics)).
 
 ## Development
 

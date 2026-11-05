@@ -17,6 +17,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -86,6 +87,10 @@ namespace wazuh::uds_http
         /// which documents lower-casing but inserts the name as received -- this one actually
         /// normalizes, so a handler may look up "content-type" unconditionally.
         std::unordered_map<std::string, std::string> headers;
+        /// Lower-cased names that appeared MORE THAN ONCE in the head. `headers` keeps the last
+        /// value of such a name; this set is what lets a handler that needs "exactly one" of a
+        /// header (an identity header, say) tell a repeated one from a single one.
+        std::unordered_set<std::string> duplicateHeaders;
     };
 
     /**
@@ -251,6 +256,13 @@ namespace wazuh::uds_http
         /// Fixed at 32 everywhere (here, RequestParser::Limits and the builder): it is a term of
         /// the per-request memory overhead the in-flight byte budget charges for.
         std::size_t maxHeaderCount {32};
+        /// Answer `Expect: 100-continue` with an interim `HTTP/1.1 100 Continue`. Off by default, which
+        /// keeps the wire byte-identical for consumers whose peers never send the expectation. When
+        /// on, the interim response is written only after the request is admitted (route, body caps,
+        /// session caps and byte budget all passed) and only while the body is still outstanding, so
+        /// a request that will be refused gets its final 4xx/5xx before the peer sends the body. Any
+        /// other expectation value is ignored.
+        bool expectContinue {false};
 
         std::size_t headerTimeoutSec {10}; ///< Accept -> full request head received.
         std::size_t bodyTimeoutSec {30};   ///< Head received -> full body received.
@@ -338,6 +350,12 @@ namespace wazuh::uds_http
         std::size_t rejectedSessionCap {0};      ///< A per-class session cap was already reached.
         std::size_t rejectedShutdown {0};        ///< Answered because the server was already stopping.
         std::size_t rejectedNoResponse {0};      ///< A handler dropped the request without answering.
+        /// The server-wide limit (maxConnections) was already reached when the connection was
+        /// accepted: answered before its request is read, so no route class is known yet.
+        std::size_t rejectedConnectionCap {0};
+        /// Cumulative 413s: the declared or received body exceeded the route, class or parser cap.
+        /// Not a 503 -- the peer is wrong and must split -- but invisible to endpoint metrics too.
+        std::size_t rejectedTooLarge {0};
     };
 
     /**

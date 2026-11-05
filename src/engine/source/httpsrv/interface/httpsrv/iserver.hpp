@@ -6,21 +6,10 @@
 #include <functional>
 #include <string>
 
+#include <httpsrv/types.hpp>
+
 namespace httpsrv
 {
-
-/**
- * @brief An enum class representing the HTTP methods supported by the server.
- *
- */
-enum class Method
-{
-    GET,
-    POST,
-    PUT,
-    DELETE,
-    ERROR_METHOD
-};
 
 /**
  * @brief Obtain the string representation of the HTTP method.

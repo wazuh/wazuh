@@ -36,6 +36,11 @@ on:
       # linked by indexer_connector (target_link_libraries(indexer_connector)); keyStore.hpp in
       # wIndexerConnector_utest (its target_include_directories in source/wiconnector/CMakeLists.txt)
       - 'src/shared_modules/keystore/**'
+      # httpsrv links the shared HTTP-over-UDS transport (guarded add_subdirectory in
+      # source/httpsrv/CMakeLists.txt); its own tests are another component's tree.
+      - 'src/shared_modules/uds_http_server/**/CMakeLists.txt'
+      - 'src/shared_modules/uds_http_server/include/**'
+      - 'src/shared_modules/uds_http_server/src/**'
       # Other components' test trees, harnesses and tools: never linked into the engine.
       - '!src/shared_modules/utils/tests/**'
       - '!src/shared_modules/utils/benchmark/**'
