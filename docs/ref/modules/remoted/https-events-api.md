@@ -600,7 +600,7 @@ It remembers the keys it supersedes — the key the file had for that `id` at th
 plus every key a later re-enrollment on this node replaced (`authd` may write those first) — and
 whether the file has carried that `id` since the adoption. Each reload compares the file's entry
 for the `id` (its decoded key, or nothing) with that state, and retires the adoption as soon as the
-file is no longer behind it, after which the file's entry takes over:
+file is no longer behind it, after which lookups go to the file (which may carry no entry — `401 unknown_agent` then):
 
 - the file carries the adopted key: it converged (only the key is compared);
 - the file no longer carries an `id` it has carried since the adoption: the agent was removed;
@@ -608,12 +608,21 @@ file is no longer behind it, after which the file's entry takes over:
   (for example, it re-enrolled elsewhere before this worker's synchronization).
 
 A file without the `id` that has not carried it yet, or still on a superseded key, is behind: the
-entry stays, up to a 60 s grace (then a reload, a later adoption or the watcher's own cycle drops it
-and counts it in `remoted.auth.keystore.adoption_expiries.total`; reading `adoptions_pending` never
-does — a scrape moves no counter and writes no log line). The warning for an expiry — at most one
-per 90 s window, with the count of the entries it stands for — says whether the file never showed the agent
-(the writer or the synchronization has not landed the enrollment, or the agent was removed before
-they did) or still shows an older key for it (they have not landed the rotation). The file is authoritative for unusable rows too, and
+entry is served for a 60 s grace after its adoption. For an entry still pending then (one a reload
+retired earlier never expires), whether it expires is decided by that age alone, never by what ran first: the first sweep after the grace (a reload, a later adoption or the watcher's
+own cycle; reading `adoptions_pending` never sweeps — a scrape moves no counter and writes no log
+line) counts it in `remoted.auth.keystore.adoption_expiries.total`, and a convergence the file shows
+only after the grace is still an expiry, since the key stopped being served at the grace. An expired
+entry is kept, unserved, for 10 minutes past the grace (earlier if a reload retires it; the next sweep
+after that removes it): its keys are the history a re-enrollment on this node
+inherits (an expiry, a `401 unknown_agent`, a re-enrollment here, then the synchronization landing
+the older key — behind the new adoption, not past it). Reloads retire expired entries exactly like
+live ones. The warning for an expiry — at most one
+per 90 s window, with the count of the entries it stands for — says what the file showed during the grace: the agent
+on another key (the writer or the synchronization had not landed the rotation) or not at all (they had
+not landed the enrollment, or the agent was removed before they did). It describes that adoption's
+expiry only — not what serves the `id` from then on, which may be the file's entry, a later adoption
+or nothing (`401 unknown_agent`). The file is authoritative for unusable rows too, and
 they follow the same comparison: a row whose `ip` column does not parse is not loaded, so it reads
 as a missing `id`; one whose key does not decode is loaded with an empty key, compared like any
 other — so it retires the adoption unless the row was already unusable when the adoption was made
