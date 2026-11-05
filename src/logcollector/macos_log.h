@@ -30,6 +30,7 @@
 #define SYSLOG_STR              "syslog"        ///< This is the style chosen to show the "log stream" output
 #define NDJSON_STR              "ndjson"        ///< One escaped JSON object per event, used when supported
 #define MACOS_NDJSON_MIN_DARWIN 19              ///< Darwin release of the oldest macOS validated with ndjson (10.15)
+#define MACOS_LOG_READ_INTERVAL_MS 100          ///< `log` drops events while its pipe is full, so drain it often
 
 #define PREDICATE_OPT_STR       "--predicate"   ///< This precedes the "query" filter to be used by "log stream"
 #define TYPE_OPT_STR            "--type"        ///< This precedes a "type" filter to be used by "log stream"

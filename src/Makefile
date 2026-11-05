@@ -317,8 +317,10 @@ ifeq (${uname_S},HP-UX)
 		DEFINES+=-DHIGHFIRST
 		DEFINES+=-DOS_BIG_ENDIAN
 		OSSEC_CFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-lrt -pthread -L. -lwazuhext -lxnet
-		AR_LDFLAGS+=-lrt -pthread -L. -lwazuhext -lwazuhshared -lxnet
+		OSSEC_LDFLAGS+=-lrt -pthread -L. -lwazuhext
+		AR_LDFLAGS+=-lrt -pthread -L. -lwazuhext -lwazuhshared
+		# libxnet is needed for SCM_RIGHTS descriptor passing but makes SO_RCVTIMEO/SO_SNDTIMEO fail with ENOPROTOOPT, so link it only where needed.
+wazuh-logcollector wazuh-modulesd: OSSEC_LDFLAGS+=-lxnet
 ifeq ($(INSTALLDIR),)
 	INSTALLDIR = /var/ossec
 endif
