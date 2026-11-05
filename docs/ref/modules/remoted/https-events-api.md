@@ -816,8 +816,10 @@ sends a new `startup` request; if `config_hash` differs, it downloads the new `m
 `/download`, using the response's `agent.config_token` as the request's `resource_id`.
 
 The response also carries `vd_feed_offset`: this node's current Vulnerability Detection feed
-offset, always present (0 if the feed has never completed an update, or if the VD module is
-temporarily unreachable — see [Scan endpoint](#scan-endpoint-post-scanvd) below). The agent
+offset (0 if the feed has never completed an update, or if the VD module is temporarily
+unreachable — see [Scan endpoint](#scan-endpoint-post-scanvd) below). It is **omitted** while the
+module is disabled (`<vulnerability-detection><enabled>no</enabled>`): a disabled module refuses
+every scan, and an agent that receives no offset requests none. The agent
 persists the highest offset it has seen; when a fresh notify reports a strictly higher offset than
 its stored value, that's this node's signal that the feed changed since the agent last synced, and
 the agent requests its own re-scan via `POST /scan/vd`. This offset comparison — not a manager-
@@ -1052,12 +1054,15 @@ take the `/stateless` shape described in [Error responses](#error-responses).
 | `feed_offset` != current offset                  | `409` | `version_mismatch` (carries `current_version`)                |
 | VD's pending-scan queue at capacity              | `503` | `scan_queue_full`                                             |
 | Indexer not usable (no healthy host)             | `503` | `indexer_unavailable`                                         |
-| VD not ready (feed mid-update, scanner starting) | `503` | `feed_not_ready` / `scanner_not_ready` / `vd_not_initialized` |
+| VD not ready (feed mid-update, scanner starting) | `503` | `feed_not_ready` / `scanner_not_ready`                        |
+| VD disabled on this node, or its start failed    | `503` | `vd_not_initialized`                                          |
 | VD could not record the scan task                | `503` | `task_create_failed`                                          |
 | VD unreachable, or any other VD answer           | `503` | `vd_unreachable` / `vd_error`, or VD's own error code         |
 
 Every `503` means the same thing to the agent — not accepted, retry on the next notify cycle —
-and its pending state survives; the `error` code exists so an operator reading the exchange sees
+and its pending state survives (a disabled module is the exception in practice: notify then
+carries no `vd_feed_offset`, so the agent never retries, and remoted logs a straggling
+`vd_not_initialized` only at debug level); the `error` code exists so an operator reading the exchange sees
 the actual cause. During a long indexer outage the agent keeps re-requesting on each notify and
 the scan runs once the indexer becomes available again. Auth failures (`401`) reuse the same
 responses as `/stateless`. This endpoint's body cap (4 KiB) is far tighter than `/control`'s

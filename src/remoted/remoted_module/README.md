@@ -832,8 +832,10 @@ sequenceDiagram
      today that means its value *is* the group selector. Never empty (`"default"` when the CSV is)
    - Queries task-manager for pending tasks (`status='pending'`); if found, marks as `delivered` (local only, no cluster broadcast)
    - Reads this node's current Vulnerability Detection feed offset via `VdClient` (cached, see
-     `common/vdClient.hpp` below) and includes it as `vd_feed_offset` — always present; the last
-     known-good value while VD is unreachable, and 0 only if no value was ever obtained
+     `common/vdClient.hpp` below) and includes it as `vd_feed_offset` — the last known-good value
+     while VD is unreachable, and 0 only if no value was ever obtained; **omitted** while VD's
+     `/offset` answer says `"enabled": false` (#41101: a disabled VD refuses every scan, and the
+     agent requests one only off an advertised offset)
    - Reads the CA bundle's published generation through `Config::caGenerationProvider` (issue
      #39319, RF-3) and includes it as `ca_generation` — the SAME generation `GET /cacerts`'s
      `Wazuh-CA-Generation` header would answer right now, at the cost of at most one file read per
@@ -845,7 +847,7 @@ sequenceDiagram
      `buildControlConfig()` leaves it at on a build with no HTTPS listener wired in) — absent means
      *this manager does not know*, which is not the same as the confirmed-empty `null`, and an agent
      must not conflate the two
-   - **Response** (`agent`/`settings_hash`/`tasks`/`vd_feed_offset` always present -- `tasks` is
+   - **Response** (`agent`/`settings_hash`/`tasks` always present, `vd_feed_offset` unless VD is disabled -- `tasks` is
      `[]` when there is no work, never an absent key; `ca_generation` is the one field whose value can
      be `null`, per the state above; the key is sent whenever the handler has a CA provider, which the
      facade always installs). `nlohmann::json` serialises object keys alphabetically, so on
