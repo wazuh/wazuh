@@ -1648,6 +1648,19 @@ namespace
 
 } // namespace
 
+#ifdef WAZUH_UNIT_TESTING
+/* Drive one reconcile without an engine, a drain or a consumer thread.
+ *
+ * ReconcileBatch() is the drain's handler and has internal linkage, so a test
+ * that needs to run it on a thread of its own -- to show that a reported
+ * removal waits for a walk holding the transaction lock -- cannot otherwise
+ * name it. */
+void fim_container_reconcile_batch_for_testing(const fim_container_events::ReconcileRequest& request)
+{
+    ReconcileBatch(request);
+}
+#endif
+
 extern "C" void fim_container_state_lock(void)
 {
     container_state_mutex.lock();

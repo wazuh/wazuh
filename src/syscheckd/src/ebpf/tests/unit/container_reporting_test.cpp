@@ -20,6 +20,7 @@ extern "C"
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <functional>
 #include <future>
 #include <mutex>
 #include <cstdarg>
@@ -32,11 +33,19 @@ extern "C"
 extern "C" void container_reporting_test_host(int limit);
 extern "C" void container_reporting_test_row_limit(int limit);
 
+/* Defined in container_baseline_fim.cpp under WAZUH_UNIT_TESTING: the drain's own
+ * reconcile handler, which has internal linkage there. */
+void fim_container_reconcile_batch_for_testing(const fim_container_events::ReconcileRequest& request);
+
 #include "container_list_refresh.hpp"
 
 namespace
 {
     std::map<std::string, bool> admission;
+
+    /* Run inside the wrapped walk, while fim_run_container_baseline() holds the
+     * transaction lock. Only AReportedRemovalWaitsForAWalkHoldingTheLock sets it. */
+    std::function<void()> inside_walk;
     std::map<std::string, std::vector<std::string>> files;
     std::map<std::string, std::string> contexts;
     std::vector<std::pair<std::string, int>> persisted;
@@ -139,6 +148,7 @@ namespace
                 connector_available = true;
                 pending_replies = 0;
                 baseline_walks = 0;
+                inside_walk = {};
                 admission_list_requests = 0;
                 resolver_list_requests = 0;
                 drain_reply_provider = {};
@@ -431,6 +441,9 @@ extern "C" int __wrap_cbaseline_run_fim_dbsync(const char*,
         result.container_id = id.c_str();
         status(&result, ctx);
     }
+
+    // After the rows, so the walk has done real work while it blocks.
+    if (inside_walk) inside_walk();
 
     return static_cast<int>(files.size());
 }
@@ -2479,6 +2492,90 @@ TEST_F(ContainerReportingTest, ScheduledSweepKeepsListedContainersIncludingStopp
     EXPECT_TRUE(hasContext("a"));
     EXPECT_TRUE(hasContext("b"));
     EXPECT_TRUE(persisted.empty());
+}
+
+TEST_F(ContainerReportingTest, AReportedRemovalWaitsForAWalkHoldingTheLock)
+{
+    // The one writer of container rows that used to run unserialised. A removal
+    // sweep racing a walk of the same container could delete that walk's rows,
+    // see none remaining, release the budget and drop the context -- and then the
+    // walk's own transaction re-inserted rows with no context to describe them.
+    //
+    // Proven by blocking inside the walk, which holds the transaction lock, and
+    // showing the removal cannot finish until the walk lets go.
+    files = {{"a", {"/etc/one"}}};
+
+    std::mutex mutex;
+    std::condition_variable cv;
+    bool walkParked {false};
+    bool releaseWalk {false};
+    bool sweepEntered {false};
+    bool sweepReturned {false};
+
+    inside_walk = [&]
+    {
+        std::unique_lock<std::mutex> lock {mutex};
+        walkParked = true;
+        cv.notify_all();
+        cv.wait(lock, [&] { return releaseWalk; });
+    };
+
+    std::thread walk {[] { fim_run_container_baseline(); }};
+
+    {
+        std::unique_lock<std::mutex> lock {mutex};
+        ASSERT_TRUE(cv.wait_for(lock, std::chrono::seconds(10), [&] { return walkParked; }))
+                << "the walk never reached the hook";
+    }
+
+    std::thread removal {[&]
+        {
+            {
+                std::lock_guard<std::mutex> lock {mutex};
+                sweepEntered = true;
+            }
+            cv.notify_all();
+
+            fim_container_events::ReconcileRequest request;
+            request.mode = fim_container_events::ReconcileMode::containerGone;
+            request.container_id = "a";
+            fim_container_reconcile_batch_for_testing(request);
+
+            {
+                std::lock_guard<std::mutex> lock {mutex};
+                sweepReturned = true;
+            }
+            cv.notify_all();
+        }};
+
+    {
+        std::unique_lock<std::mutex> lock {mutex};
+        ASSERT_TRUE(cv.wait_for(lock, std::chrono::seconds(10), [&] { return sweepEntered; }))
+                << "the removal thread never started";
+
+        // It must still be blocked on the transaction lock. Without it the sweep
+        // runs to completion here, inside the walk, which is the race itself.
+        EXPECT_FALSE(cv.wait_for(lock, std::chrono::milliseconds(500), [&] { return sweepReturned; }))
+                << "the removal swept while a walk held the transaction lock";
+
+        releaseWalk = true;
+    }
+
+    cv.notify_all();
+    walk.join();
+
+    {
+        std::unique_lock<std::mutex> lock {mutex};
+        EXPECT_TRUE(cv.wait_for(lock, std::chrono::seconds(10), [&] { return sweepReturned; }))
+                << "the removal never ran once the walk released the lock";
+    }
+
+    removal.join();
+    inside_walk = {};
+
+    // And it did sweep: the rows and the context are gone, not merely deferred.
+    EXPECT_EQ(fim_db_count_container_rows("a", nullptr), 0);
+    EXPECT_FALSE(hasContext("a"));
 }
 
 TEST_F(ContainerReportingTest, UnreadableContainerIdsSkipThePruneToo)
