@@ -27,6 +27,7 @@
 #include <cctype>
 #include <cstdint>
 #include <ctime>
+#include <exception>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -72,6 +73,14 @@ namespace remoted::enrollment
         }
 
         remoted::common::LogThrottle& authdUnavailableThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
+
+        // An accepted enrollment whose credential the keystore would not (or could not) adopt. The
+        // `ip` column comes from the request, so one agent can repeat this on every enrollment.
+        remoted::common::LogThrottle& adoptionFailureThrottle()
         {
             static remoted::common::LogThrottle instance;
             return instance;
@@ -748,12 +757,42 @@ namespace remoted::enrollment
                     // this manager's own keystore must honor it by then. authd signals its writer before
                     // building this answer but does not wait for the pass, so the file reload may land
                     // before or after this point; upsert() handles both orders.
-                    if (result.errorCode == 0 && keyUpsert && !keyUpsert(result.id, result.ip, result.key))
+                    if (result.errorCode == 0 && keyUpsert)
                     {
-                        LOGFN_WARN(logFn(),
-                                   "Enrolled agent %s but its credential could not be adopted into the keystore; "
-                                   "it can authenticate here once client.keys carries a usable entry for it.",
-                                   result.id.c_str());
+                        // Best effort, and never at the price of the answer: authd has already
+                        // registered (or rotated) the agent, and a 200 that never leaves costs the
+                        // agent an HTTP timeout and another enrollment. A throw here would otherwise
+                        // unwind into AuthdClient's worker and be swallowed before send().
+                        bool adopted = false;
+                        const char* failure = "the keystore refused it";
+                        try
+                        {
+                            adopted = keyUpsert(result.id, result.ip, result.key);
+                        }
+                        catch (const std::exception& e)
+                        {
+                            failure = e.what();
+                        }
+                        catch (...)
+                        {
+                            failure = "unknown exception";
+                        }
+                        if (!adopted)
+                        {
+                            // Throttled like the other per-request lines: the `ip` column is the
+                            // request's, so one agent can repeat this on every enrollment.
+                            if (const auto throttle = adoptionFailureThrottle().record())
+                            {
+                                LOGFN_WARN(logFn(),
+                                           "Enrolled agent %s but its credential could not be adopted into the "
+                                           "keystore (%s); it can authenticate here once client.keys carries a "
+                                           "usable entry for it. %llu such enrollment(s) %s.",
+                                           result.id.c_str(),
+                                           failure,
+                                           throttle.total,
+                                           throttle.period().c_str());
+                            }
+                        }
                     }
                     responder->send(mapAuthdResult(result, metrics, usedEnrollmentToken, requestedReenrollment));
                 });

@@ -22,6 +22,7 @@
 #include <fstream>
 #include <memory>
 #include <mutex>
+#include <stdexcept>
 #include <string>
 #include <unistd.h>
 #include <utility>
@@ -1580,4 +1581,24 @@ TEST(EnrollmentEndpointTest, UpsertFailureStillAnswers200)
     EXPECT_EQ(calls, 1);
     EXPECT_EQ(upsertedId, "067");
     EXPECT_EQ(response.status, 200);
+}
+
+TEST(EnrollmentEndpointTest, UpsertThrowingStillAnswers200)
+{
+    // Adoption is best effort: a throw out of the keystore (an allocation, say) must not unwind
+    // past send() -- AuthdClient's worker would swallow it and the agent would wait for the HTTP
+    // timeout, then enroll again, rotating a credential authd had already issued.
+    auto stub = fixedAuthdServer(std::string(R"({"error":0,"data":{"id":"067","name":"agent1","ip":"any","key":")") +
+                                 kIssuedKey + R"("}})");
+
+    auto responder = std::make_shared<CapturingResponder>();
+    const auto response = runWithUpsert(
+        openModeConfig(),
+        stub.path,
+        [](const std::string&, const std::string&, const std::string&) -> bool
+        { throw std::runtime_error("keystore unavailable"); },
+        responder);
+
+    EXPECT_EQ(response.status, 200);
+    EXPECT_TRUE(responder->sent());
 }
