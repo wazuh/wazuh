@@ -1197,12 +1197,10 @@ if [ -f "./bin/wazuh-control" ]; then
     elif [ "${PACKAGE_MANAGER_HANDLES_RESTART}" = "1" ] && ./bin/wazuh-control status 2>/dev/null | grep -q "wazuh-agentd is running"; then
         # deb's postinst / rpm's %post already stopped the pre-upgrade agent (preinst/%pre)
         # and restarted it after install -- via systemctl when the host runs systemd -- when
-        # it finds the wazuh.restart marker those scripts drop. Calling wazuh-control restart
-        # again here bypasses systemd and kills the daemon set it's still supervising as
-        # wazuh-agent.service; systemd then marks the unit "deactivated" with nothing left to
-        # bring it back up, and this script's own wait-for-connection loop below times out
-        # against a dead agent. If wazuh-agentd is already up, trust that restart instead of
-        # racing it.
+        # it finds the wazuh.restart marker those scripts drop. A second restart here would
+        # only bring the agent down again right after it came up, and this script's own
+        # wait-for-connection loop below would race it. If wazuh-agentd is already up, trust
+        # that restart instead.
         #
         # Gated on PACKAGE_MANAGER_HANDLES_RESTART (deb/rpm only): without it, a leftover
         # pre-upgrade wazuh-agentd process from an install method that does NOT restart on

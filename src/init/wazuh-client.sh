@@ -46,6 +46,10 @@ SYSTEMD_UNIT="wazuh-agent.service"
 SYSTEMD_RUNTIME_DIR="/run/systemd/system"
 SELF_CGROUP="/proc/$$/cgroup"
 
+# Seconds to wait for wazuh-agent.service to finish starting or reloading before handing it an
+# action. Longer than the unit's TimeoutSec (45), after which systemd itself leaves those states.
+SYSTEMD_SETTLE_TIMEOUT="50"
+
 checkpid()
 {
     for i in ${DAEMONS}; do
@@ -167,21 +171,27 @@ is_systemd() {
 # the agent ends up stopped right after "Completed.". Through systemctl the unit runs them with
 # its own ExecStop, ExecStart and ExecReload, which call this script again from inside the unit.
 #
-# systemd runs ExecStart, ExecStop and ExecReload while the unit is activating, deactivating or
-# reloading, never while it is active. Called from one of them, systemctl would queue a job
-# behind the one running this call and wait for it until the unit times out. So a call from
-# inside the unit's cgroup is handed over only while the unit is active: then it comes from
-# something the daemons launched (an upgrade's installer), not from systemd.
+# Those calls from systemd's own ExecStart, ExecStop and ExecReload must stay here: systemctl
+# would queue a job behind the one running them and wait until the unit times out. The unit's
+# ControlPID is the process systemd started for the line it is running (this script, or a shell
+# that runs it), so a call from inside the unit's cgroup is one of them when its pid or its
+# parent's is the ControlPID. Any other call from there comes from something the daemons
+# launched, such as an upgrade's installer, and is handled like a call from outside.
 #
-# A reload is handed over only while the unit is active as well. While it is still starting,
-# systemctl reload is folded into that start and returns 0 without reloading anything, so a
-# configuration change made meanwhile would be lost. This script waits for the start to finish
-# and then reloads, and a reload never stops wazuh-agentd, which is what the unit tracks.
+# Every other call waits while the unit is starting or reloading. A stop or restart job issued
+# then skips ExecStop (systemd runs it only after a successful start) and, with KillMode=process,
+# only signals wazuh-agentd, leaving the other daemons running outside any supervision; and a
+# reload issued during a start is folded into it and returns 0 without reloading anything. Once
+# the unit is active, all three are handed over. While it is stopping, stop and restart are
+# handed over too, and run after that stop.
 #
 # Left to this script:
-# - a unit that runs another installation of the agent, whose PIDFile= is not this one's.
+# - a unit that runs another installation of the agent, whose PIDFile= is not in this one.
 # - a process whose cgroup can't be read, since it can't tell where it runs.
-# - a unit that is not running: the agent was started with this script, or it is stopped.
+# - a unit that is not running: the agent was started with this script, or it is stopped. A
+#   reload then starts the daemons that are down, as it does without systemd.
+# - a reload while the unit is stopping, which waits for this script's lock like before.
+# - a unit still starting or reloading after SYSTEMD_SETTLE_TIMEOUT seconds.
 # - start: on a running unit systemctl start does nothing, while this script still brings up a
 #   daemon that is down.
 # WAZUH_CONTROL_SKIP_SYSTEMD=1 keeps every action in this script.
@@ -192,16 +202,42 @@ systemd_redirect()
     command -v systemctl > /dev/null 2>&1 || return
     [ -r "${SELF_CGROUP}" ] || return
 
+    # The unit's PIDFile= and this installation's, compared through their real directories so
+    # that a symlinked installation path or a trailing slash still match.
     _sr_pidfile=$(systemctl show -p PIDFile "${SYSTEMD_UNIT}" 2>/dev/null | sed -n 's/^PIDFile=//p')
-    [ "X${_sr_pidfile}" = "X${DIR}/var/run/wazuh-agentd.pid" ] || return
+    case "${_sr_pidfile}" in
+        */wazuh-agentd.pid) ;;
+        *) return ;;
+    esac
+    _sr_unit_run=$(cd "$(dirname "${_sr_pidfile}")" 2>/dev/null && pwd -P)
+    [ -n "${_sr_unit_run}" ] || return
+    [ "X${_sr_unit_run}" = "X$(cd "${DIR}/var/run" 2>/dev/null && pwd -P)" ] || return
 
-    if [ "$1" = "reload" ] || grep -Eq '/wazuh-agent\.service(/|$)' "${SELF_CGROUP}"; then
-        _sr_states="active"
-    else
-        _sr_states="active activating reloading deactivating"
+    if grep -Eq '/wazuh-agent\.service(/|$)' "${SELF_CGROUP}"; then
+        _sr_control_pid=$(systemctl show -p ControlPID "${SYSTEMD_UNIT}" 2>/dev/null | sed -n 's/^ControlPID=//p')
+        case "${_sr_control_pid}" in
+            "$$"|"${PPID}") return ;;
+        esac
     fi
-    case " ${_sr_states} " in
-        *" $(systemctl is-active "${SYSTEMD_UNIT}" 2>/dev/null) "*) ;;
+
+    _sr_state=$(systemctl is-active "${SYSTEMD_UNIT}" 2>/dev/null)
+    case "${_sr_state}" in
+        activating|reloading)
+            echo "${SYSTEMD_UNIT} is ${_sr_state}: waiting for it to finish."
+            _sr_deadline=`expr \`date +%s\` + ${SYSTEMD_SETTLE_TIMEOUT}`
+            while [ "`date +%s`" -lt "${_sr_deadline}" ]; do
+                sleep 1
+                _sr_state=$(systemctl is-active "${SYSTEMD_UNIT}" 2>/dev/null)
+                case "${_sr_state}" in
+                    activating|reloading) ;;
+                    *) break ;;
+                esac
+            done
+            ;;
+    esac
+    case "${_sr_state}" in
+        active) ;;
+        deactivating) [ "$1" = "reload" ] && return ;;
         *) return ;;
     esac
 
