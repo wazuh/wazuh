@@ -83,6 +83,10 @@ namespace remoted::downstream
         /// default). Lets one endpoint wait minutes for a slow async handler without forcing every
         /// other endpoint to tolerate the same delay before a hung downstream is detected.
         int responseTimeoutMs {0};
+        /// Per-request write (request send) deadline, ms. <=0 -> DownstreamConfig::writeTimeoutMs (the global
+        /// default). Lets callers sharing one client keep their own deadlines, e.g. the vulnerability scanner's
+        /// offset query and scan request, which have different ones.
+        int writeTimeoutMs {0};
     };
 
     /// @brief Delivered exactly once, on an internal I/O thread, when the response arrives or on error.

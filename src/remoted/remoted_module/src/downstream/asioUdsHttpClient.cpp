@@ -545,13 +545,14 @@ namespace remoted::downstream
         // exactly what would make it break silently if this field ever became a non-trivial type.
         const int responseTimeoutMs =
             req.responseTimeoutMs > 0 ? req.responseTimeoutMs : m_impl->config.responseTimeoutMs;
+        const int writeTimeoutMs = req.writeTimeoutMs > 0 ? req.writeTimeoutMs : m_impl->config.writeTimeoutMs;
 
         auto session = std::make_shared<Session>(m_impl->ioc,
                                                  std::move(req),
                                                  std::move(bodyKeepAlive),
                                                  std::move(onComplete),
                                                  Millis {m_impl->config.connectTimeoutMs},
-                                                 Millis {m_impl->config.writeTimeoutMs},
+                                                 Millis {writeTimeoutMs},
                                                  Millis {responseTimeoutMs},
                                                  m_impl->config.maxResponseBodySize);
 
