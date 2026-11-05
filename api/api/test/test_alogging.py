@@ -211,9 +211,10 @@ def test_custom_logging_events_count_given_as_integer():
     assert 'and body {"events": 100} ' in plain_line
 
 
-@pytest.mark.parametrize("body, expected", [({'events': ['a', 'b', 'c']}, 3), ({}, 0)])
+@pytest.mark.parametrize("body, expected", [({'events': ['a', 'b', 'c']}, 3), ({}, 0),
+                                            ({'events': None}, 0), ({'events': 'abc'}, 0), ({'events': {}}, 0)])
 def test_custom_logging_events_count_from_list(body, expected):
-    """A list of events, or none, still gives its length."""
+    """A list of events gives its length; a missing or non-list value counts as none."""
     with patch('api.alogging.logger') as logger_mock:
         logger_mock.level = 20
         logger_mock.info = MagicMock()
