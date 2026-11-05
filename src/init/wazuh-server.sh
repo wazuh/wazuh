@@ -638,20 +638,110 @@ testconfig()
         fi
     done
 }
+# Seconds the engine may take to start. wait_for_wazuh_engine_ready turns it into ENGINE_DEADLINE, a
+# single absolute deadline that the launch, the PID lookup and the readiness probes all share, so how
+# the time is split between them does not change what `start` spends on the engine. Two bounded
+# overshoots are possible past the deadline: a probe already in flight adds at most its 5 s socket
+# timeout, and a launch that failed or timed out adds the kill_wazuh_engine cleanup (bounded by
+# MAX_KILL_TRIES). This is the engine's share of the unit's TimeoutStartSec, not the whole
+# of it: the lock wait (up to MAX_ITERATION seconds), testconfig and the daemons started before
+# analysisd come out of the same 180 s, so a start that is slow everywhere can still be cut by systemd.
+ENGINE_START_BUDGET=120
+
+# Absolute time (epoch seconds) by which the engine must be up. Set by wait_for_wazuh_engine_ready
+# before the launch and read by launch_wazuh_engine and get_wazuh_engine_pid.
+ENGINE_DEADLINE=0
+
+# Stops the engine daemon a failed or hung launch left behind, by its own PID file -- the same handle
+# stop_service() uses. Scanning /proc for processes whose exe resolves to the engine binary would
+# also reach another installation's engine: that comparison is blind to mount namespaces, so two
+# containers of the same image resolve to the identical path and a start in one would kill the
+# other's engine.
+#
+# The PID is read before pstatus(), which deletes the file when its process is gone: a daemon that
+# already exited is then cleaned up silently, and only a launch that never wrote a PID file is
+# reported as one.
+#
+# With "wait-first" the daemon is given MAX_KILL_TRIES seconds to leave on its own before being
+# signalled. That is the reported-failure path: the engine reports before exitHandler.execute()
+# returns, so the launcher can be gone while the daemon is still tearing down. A hung launch passes
+# nothing and is signalled at once, since by then the daemon is stuck by definition. Either way the
+# SIGTERM/SIGKILL escalation bounds what refuses to leave, and both run after ENGINE_DEADLINE.
+kill_wazuh_engine()
+{
+    local pid
+    local wait_first=${1:-""}
+
+    pid=`cat ${DIR}/var/run/wazuh-manager-analysisd-*.pid 2>/dev/null`
+
+    pstatus wazuh-manager-analysisd "quiet"
+    if [ $? = 1 ]; then
+        if [ -z "$wait_first" ] || ! wait_pid $pid; then
+            kill $pid 2>/dev/null
+            if ! wait_pid $pid; then
+                kill -9 $pid 2>/dev/null
+            fi
+        fi
+    elif [ -z "$pid" ]; then
+        echo "wazuh-manager-analysisd wrote no PID file; if it is still starting, stop it manually." >&2
+    fi
+
+    # The engine never removes its PID file.
+    rm -f ${DIR}/var/run/wazuh-manager-analysisd-*.pid
+}
+
+# Runs the engine and waits for its start-up verdict: without -f the launch only returns once the
+# engine is ready (0) or has failed (1, with the cause on stderr). The cause is the engine's to
+# print, so a failure here is not reported again as a missing PID or a dead process.
+launch_wazuh_engine()
+{
+    local status
+    local started
+    local budget
+
+    # The launch gets what is left of ENGINE_DEADLINE, never less than a second, so the launch and the
+    # checks after it cannot each spend a full budget.
+    budget=$((ENGINE_DEADLINE - $(date +%s)))
+    if [ $budget -lt 1 ]; then
+        budget=1
+    fi
+
+    # -k: the launcher dies of SIGTERM while it waits, but the bound must not depend on that.
+    # timeout exits 124 after SIGTERM and 137 after the SIGKILL that follows it.
+    # The engine's output goes to stderr and never to this script's stdout, which with -j carries
+    # exactly one JSON document; its stderr is left connected on both paths, so the cause survives
+    # (lock() and validateconfig() relay their reasons there in JSON mode too).
+    started=$(date +%s)
+    timeout -k 5 ${budget} ${DIR}/bin/wazuh-manager-analysisd ${DEBUG_CLI} 1>&2
+    status=$?
+
+    if [ $status -eq 124 ] || { [ $status -eq 137 ] &&
+            [ $(($(date +%s) - started)) -ge ${budget} ]; }; then
+        echo "wazuh-manager-analysisd did not finish starting after ${budget} seconds." >&2
+        kill_wazuh_engine
+        return 1
+    fi
+    if [ $status -ne 0 ]; then
+        echo "wazuh-manager-analysisd failed to start (exit status ${status})." >&2
+        # The failure is reported before the daemon finishes tearing down, so it can still be alive
+        # here. Without this, its PID file outlives the failed start and the next start's pstatus()
+        # reads the engine as already running and never launches it.
+        kill_wazuh_engine "wait-first"
+        return 1
+    fi
+    return 0
+}
+
+# The engine writes its PID file well before it reports ready, so after a successful launch the first
+# pass already finds it. The 10 s of ticks bound a launch that reported ready without one; ENGINE_DEADLINE
+# bounds the pair, and the file is always looked for at least once, however little of the budget is left.
 get_wazuh_engine_pid()
 {
     local max_ticks=100
     local ticks=0
     local pidfile
 
-    # Its output goes anywhere but this function's stdout, which the caller captures as the pid.
-    if [ $USE_JSON = true ]; then
-        ${DIR}/bin/wazuh-manager-analysisd ${DEBUG_CLI} > /dev/null 2>&1
-    else
-        ${DIR}/bin/wazuh-manager-analysisd ${DEBUG_CLI} 1>&2
-    fi
-
-    while [ $ticks -lt $max_ticks ]; do
+    while : ; do
         for pidfile in ${DIR}/var/run/wazuh-manager-analysisd-*.pid; do
             if [ -f "$pidfile" ]; then
                 pidfile="${pidfile##*-}"
@@ -660,10 +750,11 @@ get_wazuh_engine_pid()
             fi
         done
         ticks=$((ticks + 1))
+        if [ $ticks -ge $max_ticks ] || [ $(date +%s) -ge ${ENGINE_DEADLINE} ]; then
+            return 1  # timeout
+        fi
         sleep 0.1
     done
-
-    return 1  # timeout
 }
 
 # Asks the engine API whether it answers, through the bundled interpreter (the package declares no
@@ -684,8 +775,11 @@ except Exception:
 
 wait_for_wazuh_engine_ready()
 {
-    local attempts=0
-    local max_attempts=120
+    # One deadline for the three waits below. Counting attempts instead let each probe add its own
+    # socket timeout on top of the sleep, so a reachable but slow engine ran well past the budget.
+    ENGINE_DEADLINE=$(($(date +%s) + ENGINE_START_BUDGET))
+
+    launch_wazuh_engine || return 1
 
     ENGINE_PID=$(get_wazuh_engine_pid)
     if [ $? -ne 0 ]; then
@@ -693,7 +787,8 @@ wait_for_wazuh_engine_ready()
         return 1
     fi
 
-    while [ $attempts -lt $max_attempts ]; do
+    # Probed at least once, whatever the launch and the PID lookup consumed.
+    while : ; do
         ${DIR}/framework/python/bin/python3 -I -c "${ENGINE_PROBE}" \
             ${DIR}/queue/sockets/engine-api-http.sock > /dev/null 2>&1
         if [ $? -eq 0 ]; then
@@ -705,11 +800,13 @@ wait_for_wazuh_engine_ready()
             return 1
         fi
 
-        attempts=$((attempts + 1))
+        if [ $(date +%s) -ge ${ENGINE_DEADLINE} ]; then
+            break
+        fi
         sleep 1
     done
 
-    echo "wazuh-manager-analysisd did not respond correctly after $max_attempts attempts." >&2
+    echo "wazuh-manager-analysisd did not become ready within ${ENGINE_START_BUDGET} seconds." >&2
     kill $ENGINE_PID
     return 1
 }
