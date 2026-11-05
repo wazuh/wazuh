@@ -461,6 +461,14 @@ Both the `versions` fetch and the WPK download send `User-Agent: wazuh-manager/<
 example `wazuh-manager/5.0.0`); a repository behind a WAF or proxy that filters on that header must
 allow it.
 
+**The agent cannot download the WPK (`404` or `503`).** `remoted` serves the package only to the agent
+that has an open `remote_upgrade` task for that file (see [Agent upgrades](agent-upgrades.md)). A `404`
+counted in `remoted.download.denied` means the task was no longer open, typically because the download
+came more than `task_ttl` seconds after the task was delivered; one counted in
+`remoted.download.not_found` means the file is missing from `var/upgrade/` on the node that answered. A
+`503` (`remoted.download.wpk_auth_unavailable`) means the task manager did not answer `remoted` in time.
+A task is handed out only once, so after a `404`, or a `503` the agent gave up on, launch the upgrade again.
+
 *A missing CA bundle fails every repository request, by design* (peer verification is never
 disabled; see [The WPK file](agent-upgrades.md#the-wpk-file)). The module says so once at start-up,
 at WARN:

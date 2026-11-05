@@ -1420,7 +1420,7 @@ Accepted identifiers:
 > merged files, and only one of them is the file `config_hash` refers to.
 >
 > **`wpk` downloads are authorized by task, not by group.** A package is served only if the
-> authenticated agent has an open `remote_upgrade` task (pending, or delivered within `task_ttl` and not yet removed by the cleanup pass 24 h after delivery)
+> authenticated agent has an open `remote_upgrade` task (pending and created within the last `task_ttl` seconds, or delivered within the last `task_ttl` seconds and not yet removed by the cleanup pass 24 h after delivery)
 > whose `wpk_file` is exactly the requested name, asked of the task manager with
 > `POST /v1/tasks/wpk-authorization`. Otherwise the answer is the same 404 as for a package that
 > does not exist, so a response does not reveal which packages are staged. If the task manager

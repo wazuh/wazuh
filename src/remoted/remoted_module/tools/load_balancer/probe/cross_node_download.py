@@ -21,7 +21,7 @@ Steps:
     1. /control (startup + notify) on one node, for config_token and config_hash
     2. the same download on every download node: each must end at 200 with sha256(body) ==
        config_hash
-    3. a WPK download on every node: not membership-gated by design, so never 403
+    3. a WPK download on every node: authorized by the agent's upgrade task, not its groups, so never 403
 
 Exit status 0 when every assertion holds, 1 otherwise; --json-out writes the per-node record.
 """
@@ -170,8 +170,9 @@ def main() -> int:
         elif chash and hashlib.sha256(r.content).hexdigest() != chash:
             fail(f"{n}: served a body whose sha256 is not config_hash")
 
-    # 3. WPK on every node: deliberately not membership-gated, so it must NOT 403.
-    print("\n3. wpk download on every node (not membership-gated by design)")
+    # 3. WPK on every node: authorized by the agent's upgrade task, not its groups. With no task for
+    #    this name the answer is 404 (503 if the task manager does not answer), never 403.
+    print("\n3. wpk download on every node (task-authorized, never 403)")
     for n, url in nodes.items():
         r = download(url, pre, a, k, ca, "wpk", "does-not-exist.wpk")
         record("download_wpk", n, r)
