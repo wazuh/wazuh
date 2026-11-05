@@ -10,6 +10,7 @@
 
 #include "keystore.hpp"
 
+#include <algorithm>
 #include <charconv>
 #include <chrono>
 #include <cstdint>
@@ -365,6 +366,14 @@ namespace remoted::auth
                 }
                 // kReloadUnstable already logged its own warning inside reload().
             }
+
+            // The grace bounds how long an adopted key is KEPT, not only how long lookup() honors
+            // it: on a quiet manager (no reload, no adoption, nobody reading the level) nothing
+            // else would drop an expired entry or count it.
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                expireAdoptedLocked(m_clock());
+            }
         }
 
         LOGFN_DEBUG1(logFn(), "client.keys watcher thread stopped.");
@@ -554,25 +563,25 @@ namespace remoted::auth
                 {
                     std::lock_guard<std::mutex> lock(m_mutex);
                     m_keys = std::move(loaded);
-                    // An adopted entry stays only while the file still shows what it held when the
-                    // entry was adopted. Same id and same key bytes is convergence -- the ip column
-                    // is authd's in both copies, so it cannot differ. Any other change (another
-                    // key, or the entry gone) means the agent was rotated on another node or
-                    // removed: the file is newer than the adoption, and keeping the adopted key
-                    // first in lookup() would refuse the current one.
-                    expireAdoptedLocked(m_clock());
+                    // An adopted entry stays only while the file still shows a state that precedes
+                    // it (see PendingEntry::olderFileStates). Same id and same key bytes is
+                    // convergence; only the key is compared. Any other state (an unknown key, or the
+                    // entry gone for an id the file had) means the agent was rotated elsewhere or
+                    // removed: keeping the adopted key first in lookup() would refuse the current
+                    // one. Reconciled before expiring, so a late convergence is not an expiry.
                     for (auto it = m_pending.begin(); it != m_pending.end();)
                     {
                         const auto inFile = m_keys.find(it->first);
                         const auto fileKey = inFile != m_keys.end()
                                                  ? std::optional<std::vector<std::uint8_t>> {inFile->second.key}
                                                  : std::nullopt;
+                        const auto& older = it->second.olderFileStates;
                         if (fileKey && *fileKey == it->second.entry.key)
                         {
                             LOGFN_DEBUG1(logFn(), "client.keys now carries the key adopted for agent %u.", it->first);
                             it = m_pending.erase(it);
                         }
-                        else if (fileKey != it->second.fileKeyAtAdoption)
+                        else if (std::find(older.begin(), older.end(), fileKey) == older.end())
                         {
                             LOGFN_DEBUG1(logFn(),
                                          "client.keys moved past the key adopted for agent %u (%s); the file's "
@@ -586,6 +595,7 @@ namespace remoted::auth
                             ++it;
                         }
                     }
+                    expireAdoptedLocked(m_clock());
                 }
                 m_hasBaseline = true;
                 m_lastHash = *preHash;
@@ -644,20 +654,37 @@ namespace remoted::auth
         // the file already serves the key, so a pending entry would never converge and would expire
         // as a false alarm. Any older adoption for the id is stale by the same token.
         const auto inFile = m_keys.find(*agentId);
-        if (inFile != m_keys.end() && inFile->second.key == decoded)
+        auto fileState =
+            inFile != m_keys.end() ? std::optional<std::vector<std::uint8_t>> {inFile->second.key} : std::nullopt;
+        if (fileState && *fileState == decoded)
         {
             m_pending.erase(*agentId);
             LOGFN_DEBUG1(
                 logFn(), "client.keys already carries the key issued to agent %u; nothing to adopt.", *agentId);
             return true;
         }
+        // A newer adoption for the same id (two re-enrollments before the file caught up): the key
+        // it replaces is a state authd may still write first, so it joins the history.
+        std::vector<std::optional<std::vector<std::uint8_t>>> olderFileStates;
+        if (auto previous = m_pending.find(*agentId); previous != m_pending.end())
+        {
+            olderFileStates = std::move(previous->second.olderFileStates);
+            olderFileStates.emplace_back(std::move(previous->second.entry.key));
+        }
+        if (std::find(olderFileStates.begin(), olderFileStates.end(), fileState) == olderFileStates.end())
+        {
+            olderFileStates.push_back(std::move(fileState));
+        }
+        if (olderFileStates.size() > kMaxOlderFileStates)
+        {
+            olderFileStates.erase(olderFileStates.begin(),
+                                  olderFileStates.end() - static_cast<std::ptrdiff_t>(kMaxOlderFileStates));
+        }
         // Beside the file's table, never in it: agentsLoaded()/entriesSkipped() keep describing
         // the file, and the next reload() decides when the file has moved on (see the header).
-        auto fileKeyAtAdoption =
-            inFile != m_keys.end() ? std::optional<std::vector<std::uint8_t>> {inFile->second.key} : std::nullopt;
         m_pending.insert_or_assign(
             *agentId,
-            PendingEntry {AgentEntry {std::move(decoded), std::move(*addressRule)}, now, std::move(fileKeyAtAdoption)});
+            PendingEntry {AgentEntry {std::move(decoded), std::move(*addressRule)}, now, std::move(olderFileStates)});
         LOGFN_DEBUG1(logFn(),
                      "Adopted the key issued to agent %u; in service until client.keys carries it (%lld s at most).",
                      *agentId,

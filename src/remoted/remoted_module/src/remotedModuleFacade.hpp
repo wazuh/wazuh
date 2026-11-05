@@ -1201,7 +1201,7 @@ private:
                 const auto keystore = target();
                 return keystore ? keystore->adoptionsTotal() : 0U;
             },
-            "Credentials adopted straight from an accepted POST /enroll answer, before client.keys carried them",
+            "Credentials taken from an accepted POST /enroll answer: adopted, or found already in client.keys",
             "count");
         m_metricsManager->registerPullMetric(
             "remoted.auth.keystore.adoptions_pending",

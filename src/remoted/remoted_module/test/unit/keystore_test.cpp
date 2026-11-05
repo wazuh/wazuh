@@ -20,11 +20,34 @@
 #include <gtest/gtest.h>
 
 #include "auth/keystore.hpp"
+#include "jwt/jwtKeyDecoder.hpp"
 
 using namespace remoted::auth;
 
 namespace
 {
+
+    // Injected time source for the adoption grace. Atomic: the watcher thread reads it on every
+    // cycle while the test advances it.
+    class ManualClock
+    {
+    public:
+        void advance(std::chrono::steady_clock::duration by)
+        {
+            m_now.fetch_add(by.count());
+        }
+
+        Keystore::Clock source()
+        {
+            return [this]
+            {
+                return std::chrono::steady_clock::time_point(std::chrono::steady_clock::duration(m_now.load()));
+            };
+        }
+
+    private:
+        std::atomic<std::chrono::steady_clock::rep> m_now {std::chrono::steady_clock::now().time_since_epoch().count()};
+    };
 
     class KeystoreTest : public ::testing::Test
     {
@@ -47,6 +70,14 @@ namespace
         {
             const auto found = keystore.lookup(id, "127.0.0.1");
             return found ? std::optional {found->key} : std::nullopt;
+        }
+
+        // The exact bytes a key column decodes to, for byte-for-byte assertions.
+        static std::vector<std::uint8_t> bytesOf(const char* hex)
+        {
+            const auto key = jwt_profile::v1::JwtKeyDecoder::decode(hex);
+            return key ? std::vector<std::uint8_t>(key->data(), key->data() + key->size())
+                       : std::vector<std::uint8_t> {};
         }
 
         static bool allowed(const Keystore& keystore, AgentId id, std::string_view peerIp)
@@ -427,9 +458,7 @@ namespace
 
         ASSERT_TRUE(keystore.upsert("067", "any", kKeyA));
 
-        const auto key = keyOf(keystore, 67);
-        ASSERT_TRUE(key.has_value());
-        EXPECT_EQ(key->size(), 32u);
+        EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyA));
         EXPECT_TRUE(allowed(keystore, 67, "10.0.0.9"));
         // Beside the file, not in it: the file-content level is untouched, the adoption is counted.
         EXPECT_EQ(keystore.agentsLoaded(), 0u);
@@ -498,15 +527,15 @@ namespace
 
     TEST_F(KeystoreTest, UpsertExpiresAfterTheGraceWhenTheFileNeverCatchesUp)
     {
-        auto now = std::chrono::steady_clock::now();
-        Keystore keystore(m_path, Keystore::kDefaultRefreshIntervalSeconds, [&now] { return now; });
+        ManualClock clock;
+        Keystore keystore(m_path, Keystore::kDefaultRefreshIntervalSeconds, clock.source());
 
         ASSERT_TRUE(keystore.upsert("067", "any", kKeyA));
-        now += Keystore::kAdoptionGrace; // Exactly the grace: still in service.
+        clock.advance(Keystore::kAdoptionGrace); // Exactly the grace: still in service.
         EXPECT_TRUE(keyOf(keystore, 67).has_value());
         EXPECT_EQ(keystore.adoptionsPending(), 1u);
 
-        now += std::chrono::seconds(1); // Past it: ignored by lookup, swept by the level read.
+        clock.advance(std::chrono::seconds(1)); // Past it: ignored by lookup, swept by the level read.
         EXPECT_FALSE(keyOf(keystore, 67).has_value());
         EXPECT_EQ(keystore.adoptionsPending(), 0u);
         EXPECT_EQ(keystore.adoptionExpiriesTotal(), 1u);
@@ -533,22 +562,20 @@ namespace
     {
         // A worker adopts K1 for a new agent; before its next sync the agent re-enrolls on another
         // node (rotating to K2, same id), so the first file that names the agent already carries K2.
-        auto now = std::chrono::steady_clock::now();
+        ManualClock clock;
         writeFile(std::string("3824 debian10 any ") + kKeyA + "\n");
-        Keystore keystore(m_path, Keystore::kDefaultRefreshIntervalSeconds, [&now] { return now; });
+        Keystore keystore(m_path, Keystore::kDefaultRefreshIntervalSeconds, clock.source());
 
         ASSERT_TRUE(keystore.upsert("067", "any", kKeyA));
-        const auto adopted = keyOf(keystore, 67);
+        ASSERT_EQ(keyOf(keystore, 67), bytesOf(kKeyA));
 
         writeFile(std::string("3824 debian10 any ") + kKeyA + "\n67 agent1 any " + kKeyB + "\n");
         EXPECT_EQ(keystore.reload(), 2);
-        Keystore reference(m_path);
-        EXPECT_EQ(keyOf(keystore, 67), keyOf(reference, 67));
-        EXPECT_NE(keyOf(keystore, 67), adopted);
+        EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyB));
         EXPECT_EQ(keystore.adoptionsPending(), 0u);
 
         // Retired, not expired: the grace passing later counts nothing.
-        now += Keystore::kAdoptionGrace + std::chrono::seconds(1);
+        clock.advance(Keystore::kAdoptionGrace + std::chrono::seconds(1));
         EXPECT_EQ(keystore.adoptionsPending(), 0u);
         EXPECT_EQ(keystore.adoptionExpiriesTotal(), 0u);
     }
@@ -562,8 +589,7 @@ namespace
 
         writeFile(std::string("67 agent1 any ") + kKeyC + "\n");
         EXPECT_EQ(keystore.reload(), 1);
-        Keystore reference(m_path);
-        EXPECT_EQ(keyOf(keystore, 67), keyOf(reference, 67));
+        EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyC));
         EXPECT_EQ(keystore.adoptionsPending(), 0u);
         EXPECT_EQ(keystore.adoptionExpiriesTotal(), 0u);
     }
@@ -586,18 +612,16 @@ namespace
     {
         // authd's writer pass and the reload it triggers beat the adoption: the file already
         // serves the key, so nothing may wait for a convergence that has already happened.
-        auto now = std::chrono::steady_clock::now();
+        ManualClock clock;
         writeFile(std::string("67 agent1 any ") + kKeyA + "\n");
-        Keystore keystore(m_path, Keystore::kDefaultRefreshIntervalSeconds, [&now] { return now; });
-        const auto fromFile = keyOf(keystore, 67);
-        ASSERT_TRUE(fromFile.has_value());
+        Keystore keystore(m_path, Keystore::kDefaultRefreshIntervalSeconds, clock.source());
 
         ASSERT_TRUE(keystore.upsert("67", "any", kKeyA));
         EXPECT_EQ(keystore.adoptionsTotal(), 1u);
         EXPECT_EQ(keystore.adoptionsPending(), 0u);
 
-        now += Keystore::kAdoptionGrace + std::chrono::seconds(1);
-        EXPECT_EQ(keyOf(keystore, 67), fromFile);
+        clock.advance(Keystore::kAdoptionGrace + std::chrono::seconds(1));
+        EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyA));
         EXPECT_EQ(keystore.adoptionsPending(), 0u);
         EXPECT_EQ(keystore.adoptionExpiriesTotal(), 0u);
     }
@@ -606,15 +630,81 @@ namespace
     {
         writeFile(std::string("67 agent1 any ") + kKeyB + "\n");
         Keystore keystore(m_path);
-        const auto fromFile = keyOf(keystore, 67);
 
         ASSERT_TRUE(keystore.upsert("67", "any", kKeyA));
         ASSERT_EQ(keystore.adoptionsPending(), 1u);
 
         ASSERT_TRUE(keystore.upsert("67", "any", kKeyB));
-        EXPECT_EQ(keyOf(keystore, 67), fromFile);
+        EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyB));
         EXPECT_EQ(keystore.adoptionsPending(), 0u);
         EXPECT_EQ(keystore.adoptionsTotal(), 2u);
+    }
+
+    TEST_F(KeystoreTest, UpsertKeepsTheNewestAdoptionWhileTheFileShowsAnOlderOne)
+    {
+        // Two re-enrollments on this node before the file caught up: K0 in the file, K1 then K2
+        // adopted. authd may write K1 before K2, and a reload that sees K1 must keep K2 in front.
+        writeFile(std::string("67 agent1 any ") + kKeyB + "\n");
+        Keystore keystore(m_path);
+        ASSERT_TRUE(keystore.upsert("67", "any", kKeyA));
+        ASSERT_TRUE(keystore.upsert("67", "any", kKeyC));
+        EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyC));
+        EXPECT_EQ(keystore.adoptionsPending(), 1u);
+
+        writeFile(std::string("67 agent1 any ") + kKeyA + "\n");
+        EXPECT_EQ(keystore.reload(), 1);
+        EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyC));
+        EXPECT_EQ(keystore.adoptionsPending(), 1u);
+
+        // Still the original K0 is a state that precedes the adoption too.
+        writeFile(std::string("67 agent1 any ") + kKeyB + "\n");
+        EXPECT_EQ(keystore.reload(), 1);
+        EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyC));
+
+        writeFile(std::string("67 agent1 any ") + kKeyC + "\n");
+        EXPECT_EQ(keystore.reload(), 1);
+        EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyC));
+        EXPECT_EQ(keystore.adoptionsPending(), 0u);
+        EXPECT_EQ(keystore.adoptionExpiriesTotal(), 0u);
+    }
+
+    TEST_F(KeystoreTest, UpsertOfANewAgentKeepsTheNewestAdoptionWhileTheFileShowsAnOlderOne)
+    {
+        Keystore keystore(m_path);
+        ASSERT_TRUE(keystore.upsert("67", "any", kKeyA));
+        ASSERT_TRUE(keystore.upsert("67", "any", kKeyC));
+
+        writeFile(std::string("67 agent1 any ") + kKeyA + "\n");
+        EXPECT_EQ(keystore.reload(), 1);
+        EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyC));
+        EXPECT_EQ(keystore.adoptionsPending(), 1u);
+    }
+
+    TEST_F(KeystoreTest, UpsertConvergingAfterTheGraceIsNotAnExpiry)
+    {
+        // A reload that finds the adopted key reconciles before it expires: the file did carry it.
+        ManualClock clock;
+        Keystore keystore(m_path, Keystore::kDefaultRefreshIntervalSeconds, clock.source());
+        ASSERT_TRUE(keystore.upsert("67", "any", kKeyA));
+
+        clock.advance(Keystore::kAdoptionGrace + std::chrono::seconds(1));
+        writeFile(std::string("67 agent1 any ") + kKeyA + "\n");
+        EXPECT_EQ(keystore.reload(), 1);
+        EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyA));
+        EXPECT_EQ(keystore.adoptionExpiriesTotal(), 0u);
+        EXPECT_EQ(keystore.adoptionsPending(), 0u);
+    }
+
+    TEST_F(KeystoreTest, WatcherDropsAnExpiredAdoptionWithoutAReload)
+    {
+        // Nothing else touches the keystore: no reload (the file never changes), no new adoption,
+        // no level read. The watcher's own cycle must still drop the entry and count it.
+        ManualClock clock;
+        Keystore keystore(m_path, /*refreshIntervalSeconds=*/1, clock.source());
+        ASSERT_TRUE(keystore.upsert("67", "any", kKeyA));
+
+        clock.advance(Keystore::kAdoptionGrace + std::chrono::seconds(1));
+        EXPECT_TRUE(waitFor([&] { return keystore.adoptionExpiriesTotal() == 1u; }, std::chrono::seconds(4)));
     }
 
     // ---------------------------------------------------------------------------

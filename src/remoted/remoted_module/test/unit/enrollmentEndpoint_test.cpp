@@ -1531,8 +1531,19 @@ TEST(EnrollmentEndpointTest, UpsertFailureStillAnswers200)
     auto stub = fixedAuthdServer(std::string(R"({"error":0,"data":{"id":"067","name":"agent1","ip":"any","key":")") +
                                  kIssuedKey + R"("}})");
 
-    const auto response = runWithUpsert(
-        openModeConfig(), stub.path, [](const std::string&, const std::string&, const std::string&) { return false; });
+    int calls = 0;
+    std::string upsertedId;
+    const auto response =
+        runWithUpsert(openModeConfig(),
+                      stub.path,
+                      [&calls, &upsertedId](const std::string& id, const std::string&, const std::string&)
+                      {
+                          ++calls;
+                          upsertedId = id;
+                          return false;
+                      });
 
+    EXPECT_EQ(calls, 1);
+    EXPECT_EQ(upsertedId, "067");
     EXPECT_EQ(response.status, 200);
 }
