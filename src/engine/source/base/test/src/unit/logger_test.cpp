@@ -247,7 +247,7 @@ TEST(LoggerTestLevels, ChengeInRuntime)
     std::filesystem::remove(tmpPath); // Remove temporary log file
 }
 
-class LoggerTestExtraInfo : public ::testing::TestWithParam<std::tuple<logging::Level, std::regex>>
+class LoggerTestExtraInfo : public ::testing::TestWithParam<std::tuple<logging::Level, std::regex, std::size_t>>
 {
 public:
     std::string m_tmpPath;
@@ -257,10 +257,15 @@ public:
         auto tempFileDescriptor = mkstemp(tempFileName);
         m_tmpPath = tempFileName;
         ASSERT_NE(tempFileDescriptor, -1);
+        // Only standalone mode reaches the spdlog sinks; without this the lines go to the manager
+        // sink, the file stays empty and the pattern loop below runs zero times.
+        setenv(base::process::ENV_ENGINE_STANDALONE, "true", 1);
     }
 
     void TearDown() override
     {
+        // Unset the environment variable
+        unsetenv(base::process::ENV_ENGINE_STANDALONE);
         logging::stop();
         std::filesystem::remove(m_tmpPath); // Remove temporary log file
     }
@@ -268,7 +273,7 @@ public:
 
 TEST_P(LoggerTestExtraInfo, LogPatternMatching)
 {
-    auto [level, pattern] = GetParam();
+    auto [level, pattern, expectedLines] = GetParam();
 
     ASSERT_NO_THROW(logging::start(logging::LoggingConfig {.filePath = m_tmpPath, .level = level}));
 
@@ -290,29 +295,44 @@ TEST_P(LoggerTestExtraInfo, LogPatternMatching)
     LOG_CRITICAL("CRITICAL message");
     LOG_CRITICAL_L(l().c_str(), "L_CRITICAL message");
 
-    std::istringstream iss(readFileContents(m_tmpPath));
+    const auto contents = readFileContents(m_tmpPath);
+    ASSERT_FALSE(contents.empty()) << "nothing was logged to " << m_tmpPath
+                                   << ": the pattern loop would assert nothing";
+
+    std::istringstream iss(contents);
     std::string line;
+    std::size_t lines = 0;
     while (std::getline(iss, line))
     {
-        EXPECT_TRUE(std::regex_match(line, pattern));
+        EXPECT_TRUE(std::regex_match(line, pattern)) << line;
+        ++lines;
     }
+
+    // Two macros per level (LOG_X and LOG_X_L), from the configured level up.
+    EXPECT_EQ(lines, expectedLines);
 }
 
 INSTANTIATE_TEST_CASE_P(
     LevelsWithRegex,
     LoggerTestExtraInfo,
     ::testing::Values(std::make_tuple(logging::Level::Trace,
-                                      std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ .*: (\w+): .*)")),
+                                      std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ .*: (\w+): .*)"),
+                                      12U),
                       std::make_tuple(logging::Level::Debug,
-                                      std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ .*: (\w+): .*)")),
+                                      std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ .*: (\w+): .*)"),
+                                      10U),
                       std::make_tuple(logging::Level::Info,
-                                      std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ (\w+): .*)")),
+                                      std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ (\w+): .*)"),
+                                      8U),
                       std::make_tuple(logging::Level::Warn,
-                                      std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ (\w+): .*)")),
+                                      std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ (\w+): .*)"),
+                                      6U),
                       std::make_tuple(logging::Level::Err,
-                                      std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ (\w+): .*)")),
+                                      std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ (\w+): .*)"),
+                                      4U),
                       std::make_tuple(logging::Level::Critical,
-                                      std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ (\w+): .*)"))));
+                                      std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ (\w+): .*)"),
+                                      2U)));
 
 class LoggerTestLevelsParam
     : public ::testing::TestWithParam<std::tuple<logging::Level, std::vector<std::string>, std::vector<std::string>>>

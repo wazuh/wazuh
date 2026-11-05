@@ -6,10 +6,6 @@
 namespace bk::taskf
 {
 
-class Controller::TracerImpl final : public detail::Tracer
-{
-};
-
 Controller::Controller(const base::Expression& expression,
                        const std::unordered_set<std::string>& traceables,
                        const std::function<void()> endCallback)
@@ -24,7 +20,7 @@ Controller::Controller(const base::Expression& expression,
     builder.build(m_expression, m_tf, &m_event, traces, m_traceables, endCallback);
     for (auto& [name, trace] : traces)
     {
-        m_traces.emplace(name, std::static_pointer_cast<TracerImpl>(trace));
+        m_traces.emplace(name, trace);
     }
 }
 

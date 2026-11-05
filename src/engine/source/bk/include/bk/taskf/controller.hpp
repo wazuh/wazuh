@@ -14,6 +14,11 @@
 namespace bk::taskf
 {
 
+namespace detail
+{
+class Tracer;
+} // namespace detail
+
 /**
  * @brief Taskflow-based backend controller implementation.
  *
@@ -23,11 +28,9 @@ namespace bk::taskf
 class Controller final : public IController
 {
 private:
-    class TracerImpl; ///< Implementation of the trace
-
-    std::unordered_map<std::string, std::shared_ptr<TracerImpl>> m_traces; ///< Traces
-    std::unordered_set<std::string> m_traceables;                          ///< Traceables
-    base::Expression m_expression;                                         ///< Expression
+    std::unordered_map<std::string, std::shared_ptr<detail::Tracer>> m_traces; ///< Traces
+    std::unordered_set<std::string> m_traceables;                              ///< Traceables
+    base::Expression m_expression;                                             ///< Expression
 
     tf::Taskflow m_tf;       ///< Taskflow
     tf::Executor m_executor; ///< Executor

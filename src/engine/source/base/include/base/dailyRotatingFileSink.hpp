@@ -19,6 +19,15 @@
 #include <thread>
 #include <vector>
 
+// spdlog must see the engine's external fmt (8.1.1), never its own bundled fmt 10: the two share
+// include guards, so whichever lands first voids the other and the same spdlog class ends up defined
+// over a different fmt in different TUs -- an ODR violation UBSAN reports as a vptr error.
+// The macro comes from the spdlog imported target (src/engine/CMakeLists.txt); this guard fails the
+// build instead of letting the reports come back silently if that wiring is ever lost.
+#ifndef SPDLOG_FMT_EXTERNAL
+#error "engine code must build spdlog against external fmt: link spdlog::spdlog"
+#endif
+
 #include <spdlog/details/file_helper.h>
 #include <spdlog/details/null_mutex.h>
 #include <spdlog/fmt/fmt.h>
