@@ -136,7 +136,7 @@ void expectDoublingToCap(const std::vector<size_t>& sizes, std::size_t base)
     EXPECT_EQ(std::count(sizes.begin(), sizes.end(), LOOKUP_CAP), 1);
 }
 
-/// ProcessSysCalls with all 13 members set to fakes that succeed and record their arguments, so no real system call
+/// ProcessSysCalls with all 18 members set to fakes that succeed and record their arguments, so no real system call
 /// runs. A test overrides one member to make it fail. Like FakeLookup, every successful fake leaves errno = ENOSYS, so
 /// an implementation that reads errno after the wrong call fails. The fork fake never returns > 0: the real _exit of
 /// the parent would end the test runner.
@@ -157,6 +157,11 @@ struct RecordingSys
     std::vector<uid_t> setuids;
     std::vector<uid_t> seteuids;
     std::vector<int> sysconfs;
+    int pipes = 0;              ///< pipe2 calls
+    std::vector<int> pipeFlags; ///< flags each pipe2 was given
+    std::string channel;        ///< Bytes the fake pipe2 ends would carry
+    int sigmasks = 0;           ///< pthread_sigmask calls
+    int drains = 0;             ///< sigtimedwait calls
 
     RecordingSys()
         : RecordingSys(5)
@@ -177,6 +182,35 @@ struct RecordingSys
             ++setsids;
             errno = ENOSYS;
             return 1;
+        };
+        m_sys.fcntl = [](int fd, int, int) -> int
+        {
+            return fd; // the fake ends are already above 2, so lifting is a no-op
+        };
+        m_sys.pipe2 = [this](int fds[2], int flags) -> int
+        {
+            ++pipes;
+            pipeFlags.push_back(flags);
+            fds[0] = fakeFd + 10; // read end
+            fds[1] = fakeFd + 11; // write end
+            errno = ENOSYS;
+            return 0;
+        };
+        m_sys.read = [](int, void*, size_t) -> ssize_t
+        {
+            errno = ENOSYS;
+            return 0; // end of file: no test here drives the parent side
+        };
+        m_sys.pthread_sigmask = [this](int, const sigset_t*, sigset_t*) -> int
+        {
+            ++sigmasks;
+            return 0; // POSIX: returns an errno-style code, does not set errno
+        };
+        m_sys.sigtimedwait = [this](const sigset_t*, siginfo_t*, const struct timespec*) -> int
+        {
+            ++drains;
+            errno = EAGAIN;
+            return -1; // nothing pending, which is the normal case
         };
         m_sys.umask = [this](mode_t mask) -> mode_t
         {
@@ -251,11 +285,12 @@ struct RecordingSys
 
     ProcessSysCalls& sys() { return m_sys; }
 
-    /// All 13 members are set: none falls back to the real call.
+    /// All 18 members are set: none falls back to the real call.
     bool allSet() const
     {
         return m_sys.fork && m_sys.setsid && m_sys.umask && m_sys.open && m_sys.dup2 && m_sys.close && m_sys.fchmod
-               && m_sys.write && m_sys.setgroups && m_sys.setgid && m_sys.setuid && m_sys.seteuid && m_sys.sysconf;
+               && m_sys.write && m_sys.setgroups && m_sys.setgid && m_sys.setuid && m_sys.seteuid && m_sys.sysconf
+               && m_sys.pipe2 && m_sys.read && m_sys.pthread_sigmask && m_sys.sigtimedwait && m_sys.fcntl;
     }
 
 private:
@@ -363,14 +398,18 @@ TEST(GoDaemonFunctionalTest, ContinuesInGrandchild)
         // Child context for goDaemon
         close(fds[0]);
 
+        base::process::StartupReport startup;
         try
         {
-            goDaemon();
+            startup = goDaemon();
         }
         catch (...)
         {
             _exit(EXIT_DAEMON_FAILURE);
         }
+        // The startup contract: without this the original would exit non-zero, because a grandchild that reports
+        // nothing is a failed start.
+        startup.reportReady();
         // In grandchild: 'X' only if detached as daemon(7) describes, 'N' otherwise
         const pid_t sid = getsid(0);
         const mode_t mask = umask(0);
@@ -427,14 +466,16 @@ TEST(GoDaemonFunctionalTest, StdioIsDevNull)
         close(sentinel[0]);
         close(sentinel[1]);
 
+        base::process::StartupReport startup;
         try
         {
-            goDaemon();
+            startup = goDaemon();
         }
         catch (...)
         {
             _exit(EXIT_DAEMON_FAILURE);
         }
+        startup.reportReady();
 
         // Grandchild: one char per fd, 'Y' = /dev/null, 'N' = something else, 'E' = fstat failed
         char result[3];
@@ -508,14 +549,16 @@ TEST(GoDaemonFunctionalTest, ParentsSkipExitHandlers)
             _exit(EXIT_WRITE_FAILURE);
         }
 
+        base::process::StartupReport startup;
         try
         {
-            goDaemon();
+            startup = goDaemon();
         }
         catch (...)
         {
             _exit(EXIT_DAEMON_FAILURE);
         }
+        startup.reportReady();
 
         // Grandchild
         const char msg = 'G';
@@ -951,7 +994,7 @@ TEST(GoDaemonErrors, FirstForkFails)
     };
     ASSERT_TRUE(rec.allSet());
 
-    EXPECT_EQ(thrownMessage([&] { goDaemon(rec.sys()); }),
+    EXPECT_EQ(thrownMessage([&] { (void)goDaemon(rec.sys()); }),
               "fork failed (first): Resource temporarily unavailable (11)");
     EXPECT_EQ(rec.forks, 1);
     EXPECT_EQ(rec.setsids, 0);
@@ -972,7 +1015,7 @@ TEST(GoDaemonErrors, SecondForkFails)
     };
     ASSERT_TRUE(rec.allSet());
 
-    EXPECT_EQ(thrownMessage([&] { goDaemon(rec.sys()); }),
+    EXPECT_EQ(thrownMessage([&] { (void)goDaemon(rec.sys()); }),
               "fork failed (second): Resource temporarily unavailable (11)");
     EXPECT_EQ(rec.forks, 2);
     EXPECT_EQ(rec.setsids, 1);
@@ -990,7 +1033,7 @@ TEST(GoDaemonErrors, SetsidFails)
     };
     ASSERT_TRUE(rec.allSet());
 
-    EXPECT_EQ(thrownMessage([&] { goDaemon(rec.sys()); }), "setsid failed: Operation not permitted (1)");
+    EXPECT_EQ(thrownMessage([&] { (void)goDaemon(rec.sys()); }), "setsid failed: Operation not permitted (1)");
     EXPECT_EQ(rec.forks, 1);
     EXPECT_EQ(rec.setsids, 1);
 }
@@ -1006,7 +1049,8 @@ TEST(GoDaemonErrors, DevNullOpenFails)
     };
     ASSERT_TRUE(rec.allSet());
 
-    EXPECT_EQ(thrownMessage([&] { goDaemon(rec.sys()); }), "could not open /dev/null: No such file or directory (2)");
+    EXPECT_EQ(thrownMessage([&] { (void)goDaemon(rec.sys()); }),
+              "could not open /dev/null: No such file or directory (2)");
     EXPECT_EQ(rec.forks, 2);
     EXPECT_EQ(rec.umasks, std::vector<mode_t> {027});
     EXPECT_EQ(rec.opens, std::vector<std::string> {"/dev/null"});
@@ -1029,10 +1073,12 @@ TEST(GoDaemonErrors, Dup2FailsClosesFd)
     };
     ASSERT_TRUE(rec.allSet());
 
-    EXPECT_EQ(thrownMessage([&] { goDaemon(rec.sys()); }),
+    EXPECT_EQ(thrownMessage([&] { (void)goDaemon(rec.sys()); }),
               "could not redirect fd 1 to /dev/null: Bad file descriptor (9)");
     EXPECT_EQ(rec.dup2s, (std::vector<std::pair<int, int>> {{7, 0}, {7, 1}}));
-    EXPECT_EQ(rec.closes, std::vector<int> {7});
+    // In order: the channel's read end (the children never read), the /dev/null descriptor that dup2 could not
+    // install, and the channel's write end once the cause has been sent through it.
+    EXPECT_EQ(rec.closes, (std::vector<int> {17, 7, 18}));
 }
 
 TEST(GoDaemonErrors, Dup2FailsLowFdNotClosed)
@@ -1046,10 +1092,260 @@ TEST(GoDaemonErrors, Dup2FailsLowFdNotClosed)
     };
     ASSERT_TRUE(rec.allSet());
 
-    EXPECT_EQ(thrownMessage([&] { goDaemon(rec.sys()); }),
+    EXPECT_EQ(thrownMessage([&] { (void)goDaemon(rec.sys()); }),
               "could not redirect fd 0 to /dev/null: Bad file descriptor (9)");
     EXPECT_EQ(rec.dup2s, (std::vector<std::pair<int, int>> {{2, 0}}));
-    EXPECT_TRUE(rec.closes.empty());
+    // fd 2 is not above STDERR_FILENO, so it is still not closed; what is closed is the channel: read end first,
+    // write end after reporting the cause.
+    EXPECT_EQ(rec.closes, (std::vector<int> {12, 13}));
+}
+
+// --- Startup channel: the contract goDaemon() gained -------------------------------------------------------------
+//
+// The reading half runs only in the process that launched the binary, and RecordingSys cannot take a test there: its
+// fork fake never returns > 0, because the real _exit of the parent would end the test runner. So every case about
+// what the caller observes forks for real and inspects the child's exit status and stderr.
+
+namespace
+{
+/// Runs `body` in a forked child whose stderr is a pipe, and returns (exit status, what it wrote to stderr).
+std::pair<int, std::string> runDaemonizing(const std::function<void(base::process::StartupReport&)>& body)
+{
+    int err[2];
+    EXPECT_EQ(pipe(err), 0);
+
+    const pid_t pid = fork();
+    EXPECT_GE(pid, 0);
+    if (pid == 0)
+    {
+        close(err[0]);
+        if (dup2(err[1], STDERR_FILENO) < 0)
+        {
+            _exit(EXIT_WRITE_FAILURE);
+        }
+        close(err[1]);
+
+        base::process::StartupReport startup;
+        try
+        {
+            startup = goDaemon();
+        }
+        catch (...)
+        {
+            _exit(EXIT_DAEMON_FAILURE);
+        }
+        body(startup);
+        _exit(EXIT_SUCCESS); // the grandchild leaves; only what body reported decides the original's status
+    }
+
+    close(err[1]);
+    std::string captured;
+    char chunk[256];
+    ssize_t n = 0;
+    while ((n = read(err[0], chunk, sizeof(chunk))) > 0)
+    {
+        captured.append(chunk, static_cast<std::size_t>(n));
+    }
+    close(err[0]);
+
+    int status = 0;
+    EXPECT_EQ(waitpid(pid, &status, 0), pid);
+    EXPECT_TRUE(WIFEXITED(status));
+    return {WEXITSTATUS(status), captured};
+}
+} // namespace
+
+// A reported failure reaches the launching process: non-zero status AND the cause on its stderr.
+TEST(StartupChannelFunctionalTest, ReportedFailureReachesTheCaller)
+{
+    const auto [status, err] =
+        runDaemonizing([](base::process::StartupReport& startup) { startup.reportFailure("store is missing"); });
+    EXPECT_EQ(status, EXIT_FAILURE);
+    EXPECT_NE(err.find("store is missing"), std::string::npos) << "stderr was: " << err;
+}
+
+// The whole point of the change: a grandchild that dies without reporting is a FAILED start, not a successful one.
+TEST(StartupChannelFunctionalTest, SilentDeathIsAFailure)
+{
+    const auto [status, err] = runDaemonizing([](base::process::StartupReport&) { /* reports nothing */ });
+    EXPECT_EQ(status, EXIT_FAILURE);
+    EXPECT_NE(err.find("reported no reason"), std::string::npos) << "stderr was: " << err;
+}
+
+// A reported success is still a success, and nothing is printed: -f and no -f must agree on a healthy start.
+TEST(StartupChannelFunctionalTest, ReportedReadyIsASuccess)
+{
+    const auto [status, err] = runDaemonizing([](base::process::StartupReport& startup) { startup.reportReady(); });
+    EXPECT_EQ(status, EXIT_SUCCESS);
+    EXPECT_TRUE(err.empty()) << "stderr was: " << err;
+}
+
+// Single shot: main.cpp's catch blocks also cover the service loop, so a failure reported hours after a successful
+// startup must not write into a descriptor the process has since reused.
+//
+// This cannot be asserted from the caller's side: on reading 'R' the original exits at once and would never see a
+// later byte, so such a test passes even with the contract removed (found by mutating disconnect() away). What has to
+// be observed is the descriptor itself, and that no second write happens.
+TEST(StartupReportTest, ReportingDisconnectsAndTheSecondCallWritesNothing)
+{
+    RecordingSys rec {5};
+    ASSERT_TRUE(rec.allSet());
+    int closed = -1;
+    rec.sys().close = [&closed](int fd) -> int
+    {
+        closed = fd;
+        return 0;
+    };
+
+    base::process::StartupReport startup {41, rec.sys()};
+    ASSERT_TRUE(startup.connected());
+
+    startup.reportReady();
+    EXPECT_FALSE(startup.connected()) << "reportReady must leave the object permanently disconnected";
+    EXPECT_EQ(closed, 41) << "the channel descriptor must be closed, not merely abandoned";
+    EXPECT_EQ(rec.written, "R");
+
+    startup.reportFailure("must not be written");
+    EXPECT_EQ(rec.written, "R") << "a report after the first one must write nothing at all";
+}
+
+// An empty cause must not leave the caller with a non-zero status and a silent stderr, which is the symptom the fix
+// exists to remove.
+TEST(StartupChannelFunctionalTest, EmptyReasonStillPrintsSomething)
+{
+    const auto [status, err] = runDaemonizing([](base::process::StartupReport& startup) { startup.reportFailure(""); });
+    EXPECT_EQ(status, EXIT_FAILURE);
+    EXPECT_FALSE(err.empty());
+}
+
+// Writing with the reader already gone must not kill the engine: write(2) on a dead pipe delivers SIGPIPE, and the
+// engine only sets SIG_IGN long after the first report points.
+//
+// Driven over a real pipe whose read end is closed first. Going through goDaemon() would not do it: after reportReady
+// the object is disconnected, so the second call writes nothing and the path under test never runs.
+TEST(StartupChannelFunctionalTest, WriteWithNoReaderDoesNotKillTheProcess)
+{
+    int alive[2];
+    ASSERT_EQ(pipe(alive), 0);
+
+    const pid_t pid = fork();
+    ASSERT_GE(pid, 0);
+    if (pid == 0)
+    {
+        close(alive[0]);
+        int channel[2];
+        if (pipe(channel) != 0)
+        {
+            _exit(EXIT_WRITE_FAILURE);
+        }
+        close(channel[0]); // no reader from here on: a bare write(2) would raise SIGPIPE and kill us
+
+        base::process::StartupReport startup {channel[1], base::process::ProcessSysCalls {}};
+        // The read end is already closed, so the very first write fails with EPIPE; what this proves is that
+        // the process is not killed by the signal, not that the partial-write loop runs.
+        startup.reportFailure(std::string(8192, 'x'));
+
+        const char ok = 'A';
+        if (write(alive[1], &ok, 1) != 1)
+        {
+            _exit(EXIT_WRITE_FAILURE);
+        }
+        _exit(EXIT_SUCCESS);
+    }
+
+    close(alive[1]);
+    char beacon = 0;
+    const ssize_t got = read(alive[0], &beacon, 1);
+    close(alive[0]);
+    int status = 0;
+    ASSERT_EQ(waitpid(pid, &status, 0), pid);
+    ASSERT_TRUE(WIFEXITED(status)) << "the process was killed by a signal: the SIGPIPE guard did not hold";
+    EXPECT_EQ(got, 1) << "the process died before signalling it had survived the write";
+    EXPECT_EQ(beacon, 'A');
+}
+
+// A default-constructed report is what foreground mode (-f) uses: disconnected, and every method a no-op.
+TEST(StartupReportTest, DefaultIsDisconnectedAndInert)
+{
+    base::process::StartupReport startup;
+    EXPECT_FALSE(startup.connected());
+    startup.reportReady();
+    startup.reportFailure("ignored");
+    EXPECT_FALSE(startup.connected());
+}
+
+// pipe2 is injected like every other call, and its failure is reported as such instead of aborting.
+TEST(GoDaemonErrors, Pipe2Fails)
+{
+    RecordingSys rec {4};
+    rec.sys().pipe2 = [&rec](int[2], int flags) -> int
+    {
+        ++rec.pipes;
+        rec.pipeFlags.push_back(flags);
+        errno = EMFILE;
+        return -1;
+    };
+    ASSERT_TRUE(rec.allSet());
+
+    EXPECT_EQ(thrownMessage([&] { (void)goDaemon(rec.sys()); }),
+              "could not create the startup channel: Too many open files (24)");
+    EXPECT_EQ(rec.forks, 0) << "nothing must be forked when the channel cannot be created";
+}
+
+// If the binary is launched with stdin/stdout/stderr closed, pipe2 hands out 0/1/2 for the channel and the dup2 of
+// /dev/null would silently replace the write end: the grandchild's verdict would go to /dev/null and a healthy start
+// would be reported as a failure. Both ends must therefore be lifted above STDERR_FILENO first.
+TEST(GoDaemonErrors, ChannelEndsAreLiftedAboveStdio)
+{
+    RecordingSys rec {4};
+    rec.sys().pipe2 = [&rec](int fds[2], int flags) -> int
+    {
+        ++rec.pipes;
+        rec.pipeFlags.push_back(flags);
+        fds[0] = 1; // as if stdout and stderr were closed
+        fds[1] = 2;
+        return 0;
+    };
+    std::vector<std::pair<int, int>> lifted;
+    rec.sys().fcntl = [&lifted](int fd, int cmd, int arg) -> int
+    {
+        lifted.emplace_back(fd, arg);
+        EXPECT_EQ(cmd, F_DUPFD_CLOEXEC);
+        return fd + 20; // the lifted descriptor
+    };
+    rec.sys().setsid = [&rec]() -> pid_t
+    {
+        ++rec.setsids;
+        errno = EPERM;
+        return -1;
+    };
+    ASSERT_TRUE(rec.allSet());
+
+    EXPECT_EQ(thrownMessage([&] { (void)goDaemon(rec.sys()); }), "setsid failed: Operation not permitted (1)");
+    ASSERT_EQ(lifted.size(), 2u) << "both ends must be lifted when they land on stdio descriptors";
+    EXPECT_EQ(lifted[0], (std::pair<int, int> {1, STDERR_FILENO + 1}));
+    EXPECT_EQ(lifted[1], (std::pair<int, int> {2, STDERR_FILENO + 1}));
+    // The originals are closed, and the write end used afterwards is the lifted one (22), not 2.
+    EXPECT_NE(std::find(rec.closes.begin(), rec.closes.end(), 1), rec.closes.end());
+    EXPECT_NE(std::find(rec.closes.begin(), rec.closes.end(), 2), rec.closes.end());
+    EXPECT_NE(std::find(rec.closes.begin(), rec.closes.end(), 22), rec.closes.end());
+}
+
+// The channel is created with O_CLOEXEC on both ends, like every other descriptor the module opens.
+TEST(GoDaemonErrors, ChannelIsCloexec)
+{
+    RecordingSys rec {4};
+    rec.sys().setsid = [&rec]() -> pid_t
+    {
+        ++rec.setsids;
+        errno = EPERM;
+        return -1;
+    };
+    ASSERT_TRUE(rec.allSet());
+
+    EXPECT_EQ(thrownMessage([&] { (void)goDaemon(rec.sys()); }), "setsid failed: Operation not permitted (1)");
+    ASSERT_EQ(rec.pipeFlags.size(), 1u);
+    EXPECT_EQ(rec.pipeFlags.front(), O_CLOEXEC);
 }
 
 TEST(CreatePIDErrors, FchmodFails)
