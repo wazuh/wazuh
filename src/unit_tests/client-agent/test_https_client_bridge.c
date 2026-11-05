@@ -2867,6 +2867,74 @@ static void test_on_task_active_response_execd_send_failure_counts_failed(void *
     w_https_client_stop();
 }
 
+/* An AR document of exactly @p len bytes once serialized: cJSON_PrintUnformatted() gives back this
+ * compact ASCII text unchanged, so the length execd would receive is the length built here. */
+static char *build_ar_document_of_length(size_t len)
+{
+    static const char head[] = "{\"wazuh\":{\"active_response\":{\"extra_arguments\":\"";
+    static const char tail[] = "\"}}}";
+    const size_t fixed = strlen(head) + strlen(tail);
+    char *doc = NULL;
+
+    assert_true(len > fixed);
+    os_calloc(len + 1, 1, doc);
+    memcpy(doc, head, strlen(head));
+    memset(doc + strlen(head), 'A', len - fixed);
+    memcpy(doc + len - strlen(tail), tail, strlen(tail));
+    return doc;
+}
+
+/* The longest document execd takes whole from its datagram queue still goes out. */
+static void test_on_task_active_response_at_execq_limit_forwards(void **state)
+{
+    (void)state;
+    start_client_successfully();
+    agt->execdq = 5;
+
+    char *payload = build_ar_document_of_length(AR_EXECQ_MAX_MSG_LEN);
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client task received: id=t1 type=active_response");
+    expect_value(__wrap_OS_SendUnix, socket, 5);
+    expect_string(__wrap_OS_SendUnix, msg, payload);
+    expect_value(__wrap_OS_SendUnix, size, 0);
+    will_return(__wrap_OS_SendUnix, 0);
+    expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_DISPATCHED);
+    expect_value(__wrap_w_agentd_state_update, data, NULL);
+
+    g_captured_callbacks.on_task("t1", "active_response", payload, g_captured_callbacks.user_data);
+    os_free(payload);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+/* One byte more would reach execd cut short and fail as an invalid JSON message, so it is refused
+ * before the send, naming the task and the size. */
+static void test_on_task_active_response_over_execq_limit_dropped(void **state)
+{
+    (void)state;
+    start_client_successfully();
+    agt->execdq = 5;
+
+    char *payload = build_ar_document_of_length(AR_EXECQ_MAX_MSG_LEN + 1);
+    char expected[OS_SIZE_512];
+    snprintf(expected, sizeof(expected),
+             "https_client: active_response task t1 dropped: its document is %d bytes, larger than the "
+             "%d bytes wazuh-execd can receive. Shorten the response's extra_arguments.",
+             AR_EXECQ_MAX_MSG_LEN + 1, AR_EXECQ_MAX_MSG_LEN);
+
+    /* No OS_SendUnix expectation: refused before the call. */
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client task received: id=t1 type=active_response");
+    expect_string(__wrap__merror, formatted_msg, expected);
+    expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_FAILED);
+    expect_value(__wrap_w_agentd_state_update, data, NULL);
+
+    g_captured_callbacks.on_task("t1", "active_response", payload, g_captured_callbacks.user_data);
+    os_free(payload);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
 static void test_on_task_no_execd_queue_counts_failed(void **state)
 {
     (void)state;
@@ -3550,6 +3618,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_on_task_active_response_full_confirmed_contract_forwards_unchanged, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_on_task_active_response_malformed_payload_counts_failed, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_on_task_active_response_execd_send_failure_counts_failed, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_on_task_active_response_at_execq_limit_forwards, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_on_task_active_response_over_execq_limit_dropped, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_on_task_no_execd_queue_counts_failed, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_on_task_unknown_type_counts_failed, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_on_task_missing_id_or_type_counts_failed, setup_test, teardown_test),

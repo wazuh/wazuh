@@ -373,6 +373,10 @@ const char *w_agent_token_enroll_strerror(w_token_enroll_status_t status) {
     }
 }
 
+/* Appended to every marker-write failure: what the operator loses, in the terms they can act on. */
+#define AG_ANCHOR_MARKER_RISK "Without it, losing the trust anchor later would turn TLS verification off " \
+                              "instead of stopping the agent."
+
 /**
  * @brief Records that this install has committed a trust anchor, by creating AGENT_ANCHOR_MARKER
  *        if it is not already there.
@@ -382,7 +386,9 @@ const char *w_agent_token_enroll_strerror(w_token_enroll_status_t status) {
  * one is never rewritten.
  *
  * Best effort: a marker that could not be written costs the deletion guard in
- * w_agent_validate_ssl_ca(), not the bootstrap, so a failure is logged and swallowed. Called
+ * w_agent_validate_ssl_ca(), not the bootstrap, so a failure is swallowed -- but logged as a
+ * warning, because without the marker a later loss of the anchor is indistinguishable from an
+ * install that never had one, and the agent would come up unverified instead of refusing. Called
  * both after a fresh commit and from the latch, so an install that predates #39321 -- or one
  * whose marker write failed once -- picks one up on a later boot.
  */
@@ -411,8 +417,8 @@ STATIC void w_token_bootstrap_mark_anchor_committed(int gid) {
      * runtime user choose the DIRECTORY it lands in by swapping `certs`. */
     if (dirfd = w_token_bootstrap_open_parent_nofollow(AGENT_ANCHOR_MARKER, dir, sizeof(dir),
                                                        &filename), dirfd < 0) {
-        mdebug1("Token bootstrap: could not open '%s' to write the anchor marker: %s (%d).", dir,
-                strerror(errno), errno);
+        mwarn("Token bootstrap: could not open '%s' to write the anchor marker: %s (%d). "
+              AG_ANCHOR_MARKER_RISK, dir, strerror(errno), errno);
         return;
     }
 
@@ -425,8 +431,8 @@ STATIC void w_token_bootstrap_mark_anchor_committed(int gid) {
     if (fd < 0) {
         /* EEXIST is the benign race of two starts at once, not a problem worth a line. */
         if (errno != EEXIST) {
-            mdebug1("Token bootstrap: could not write '%s': %s (%d).", AGENT_ANCHOR_MARKER,
-                    strerror(errno), errno);
+            mwarn("Token bootstrap: could not write '%s': %s (%d). " AG_ANCHOR_MARKER_RISK,
+                  AGENT_ANCHOR_MARKER, strerror(errno), errno);
         }
 
         return;
@@ -434,8 +440,8 @@ STATIC void w_token_bootstrap_mark_anchor_committed(int gid) {
 
 #ifndef WIN32
     if (fchown(fd, 0, gid) != 0) {
-        mdebug1("Token bootstrap: could not set ownership of '%s': %s (%d).", AGENT_ANCHOR_MARKER,
-                strerror(errno), errno);
+        mwarn("Token bootstrap: could not set ownership of '%s': %s (%d). " AG_ANCHOR_MARKER_RISK,
+              AGENT_ANCHOR_MARKER, strerror(errno), errno);
     }
 #else
     /* No second user to hand it to: the installation directory's own ACL already keeps
@@ -1370,9 +1376,34 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
                          w_enrollment_token_id_or_unknown(enroll_request.enroll_kid), refusal);
             }
 
-            report->pending = (enroll_result.http_code == 401 &&
-                               (strcmp(error.auth_class, "token_unknown") == 0 ||
-                                strcmp(error.auth_class, "stale_token") == 0));
+            /* Nothing readable in the body -- a load balancer's or proxy's own error page, or an
+             * empty answer -- leaves wazuh-agent-auth with the failure class alone, since the
+             * status is only logged and the command silences the log's echo. The status is the one
+             * fact left that tells "the manager said no" from "something in front of it failed".
+             * A refused token is not that case even without a message: its class or code came
+             * from the manager, and the refusal line already says what to do. */
+            if (error.message[0] == '\0' && report->detail[0] == '\0' && enroll_result.http_code == 404) {
+                /* Except a 404, which points at the path, not at what sits in front of the manager:
+                 * the manager always serves /enroll, and its router answers a route it does not
+                 * serve with a bare {"error":"not_found"}, which carries no reason. With an
+                 * embedded-CA token /cacerts is skipped, so a wrong prefix is first met here. The
+                 * path is capped so the text always fits the field. */
+                snprintf(report->detail, sizeof(report->detail),
+                         "/enroll answered HTTP 404: nothing serves /enroll under the path '/%.*s'. That path must "
+                         "match the prefix the manager serves.",
+                         100, report->endpoint);
+            } else if (refusal == NULL && error.message[0] == '\0' && report->detail[0] == '\0') {
+                snprintf(report->detail, sizeof(report->detail),
+                         "/enroll answered HTTP %ld with no message the agent could read; it may not "
+                         "have come from the manager itself (for example, a load balancer or proxy).",
+                         enroll_result.http_code);
+            }
+
+            report->clock_skew = (enroll_result.http_code == 401 &&
+                                  strcmp(error.auth_class, "stale_token") == 0);
+            report->pending = report->clock_skew ||
+                              (enroll_result.http_code == 401 &&
+                               strcmp(error.auth_class, "token_unknown") == 0);
         }
     }
 

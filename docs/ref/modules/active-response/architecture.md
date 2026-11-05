@@ -110,7 +110,11 @@ from an in-process queue and the agent's main thread runs the timeout check ever
    is no acknowledgment after execution: the task is fire-and-forget.
 5. **Forwarding**: `wazuh-agentd` hands the payload unchanged to `wazuh-execd`. A payload that is not
    JSON or has no top-level `wazuh` key is dropped with an ERROR; when execd's queue is not available (Active
-   Response disabled on the agent) the task is dropped at debug level.
+   Response disabled on the agent) the task is dropped at debug level. On Linux and macOS the payload travels as
+   one datagram, which `wazuh-execd` reads whole only up to 65,535 bytes: a larger one (in practice, a long
+   `extra_arguments`, since the payload also carries the merged event) is dropped with an ERROR naming the task
+   and its size (`its document is N bytes, larger than the 65535 bytes wazuh-execd can receive`). Windows has no
+   such limit.
 6. **Validation**: `wazuh-execd` parses the message, reads `wazuh.active_response.executable`,
    `type` and `stateful_timeout` (see [What wazuh-execd reads](#what-wazuh-execd-reads)), and drops
    the message when `source.ip` is the manager, loopback or an `<allowlist>` entry, or when `executable`
