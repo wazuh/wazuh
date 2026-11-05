@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import collections
+import copy
 import logging
 import json
 import re
@@ -164,6 +165,26 @@ def escape_control_chars(value: str) -> str:
     return control_chars_pattern.sub(lambda m: repr(m.group())[1:-1], value)
 
 
+# What the plain formatter escapes: the control characters above plus the other characters
+# `str.splitlines` breaks on (NEL, LINE SEPARATOR, PARAGRAPH SEPARATOR), so no reader splits a record.
+plain_line_breaks_pattern = re.compile(r'[\x00-\x1f\x7f\x85\u2028\u2029]')
+
+
+class PlainLogFormatter(logging.Formatter):
+    """Formatter of the plain-text API log that keeps every record on one physical line.
+
+    Any call site may log request data (a path, a header, a stored agent field), so the message is
+    escaped here, once for every record, instead of at each call site: a line break in it would let a
+    client write a whole forged entry, timestamp and level included. The traceback of a record logged
+    with `exc_info` is appended by `format()` after this step and keeps its own line breaks.
+    """
+
+    def formatMessage(self, record: logging.LogRecord) -> str:
+        record = copy.copy(record)
+        record.message = plain_line_breaks_pattern.sub(lambda m: repr(m.group())[1:-1], record.message)
+        return super().formatMessage(record)
+
+
 class APILoggerSize:
     size_regex = re.compile(r"(\d+)([KM])")
     unit_conversion = {
@@ -290,10 +311,9 @@ def set_logging(log_filepath, log_level='INFO', foreground_mode=False) -> dict:
                 "fmt": '%(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s',
             },
             "log": {
-                "()": "uvicorn.logging.DefaultFormatter",
+                "()": "api.alogging.PlainLogFormatter",
                 "fmt": "%(asctime)s %(levelname)s: %(message)s",
                 "datefmt": "%Y/%m/%d %H:%M:%S",
-                "use_colors": None,
             },
             "json" : {
                 '()': 'api.alogging.WazuhJsonFormatter',

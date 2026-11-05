@@ -377,10 +377,11 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
                 user = s['sub']
                 if HASH_AUTH_CONTEXT_KEY in s:
                     hash_auth_context = s[HASH_AUTH_CONTEXT_KEY]
-        # `WazuhInternalError` covers a keypair that could not be read (6003). This runs after the
-        # response has already been produced, so a transient failure here must degrade the logged
-        # username, never turn a served response into a 500.
-        except (KeyError, IndexError, ValueError, jwt.exceptions.PyJWTError, OAuthProblem,
+        # `WazuhInternalError` covers a keypair that could not be read (6003), and `RecursionError` a
+        # token header nested too deep for the JSON decoder, which PyJWT does not wrap in a PyJWTError.
+        # This runs after the response has already been produced, so a transient failure here must
+        # degrade the logged username, never turn a served response into a 500.
+        except (KeyError, IndexError, ValueError, RecursionError, jwt.exceptions.PyJWTError, OAuthProblem,
                 WazuhInternalError):
             user = UNKNOWN_USER_STRING
 
@@ -971,9 +972,11 @@ class CheckExpectHeaderMiddleware(BaseHTTPMiddleware):
                 content_length = int(request.headers["Content-Length"])
                 max_upload_size = configuration.api_conf["max_upload_size"]
                 if max_upload_size and content_length > max_upload_size:
+                    # The path is percent-decoded and comes from a client that may not be authenticated
+                    # (an unmatched route skips SecurityMiddleware): escape it, as the access log does.
                     logger.warning(
                         "Rejected a request to %s: Maximum content size limit (%s) exceeded (%s bytes declared)",
-                        request.scope.get('path', ''), max_upload_size, content_length)
+                        escape_control_chars(request.scope.get('path', '')), max_upload_size, content_length)
                     raise PayloadTooLargeException(
                         title="Request Entity Too Large",
                         detail=f"Maximum content size limit ({max_upload_size}) exceeded "

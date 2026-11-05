@@ -1170,9 +1170,9 @@ async def test_agent_add_group_to_agent_ko(agent_groups_mock):
     # Group cannot be replaced because it is not in replace_list (not enough permissions in rbac)
     with pytest.raises(WazuhError, match='.* 1752 .*') as exc_info:
         await Agent.add_group_to_agent('test_group', '002', replace=True, replace_list=['other'])
-    # The message names the permission and the groups it is missing over
+    # The message names the permission, never the agent's groups: the caller may not be allowed to read them
     assert "'group:modify_assignments'" in exc_info.value.message
-    assert exc_info.value.message.endswith("current group(s) default")
+    assert 'default' not in exc_info.value.message
 
     # The group already belongs to the agent
     with pytest.raises(WazuhError, match='.* 1751 .*'):

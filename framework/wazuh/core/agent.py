@@ -1282,10 +1282,11 @@ class Agent:
 
         if replace:
             if not agent_groups.issubset(set(replace_list)):
-                # replace_list holds the groups the caller may modify assignments of: name the ones it may not
-                denied = ', '.join(sorted(agent_groups - set(replace_list)))
-                raise WazuhError(1752, extra_message=f"the caller lacks 'group:modify_assignments' over the "
-                                                     f"agent's current group(s) {denied}")
+                # replace_list holds the groups the caller may modify assignments of. The ones it may not are
+                # not named: group names and the agent's membership in them are resources the caller may
+                # hold no `group:read` or `agent:read` over.
+                raise WazuhError(1752, extra_message="the caller lacks 'group:modify_assignments' over one or "
+                                                     "more of the agent's current groups")
         else:
             # Check if the group already belongs to the agent
             if group_id in agent_groups:
