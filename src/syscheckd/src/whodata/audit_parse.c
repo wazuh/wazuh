@@ -7,13 +7,19 @@
  * Foundation.
  */
 #ifdef __linux__
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE // fstatat(AT_EMPTY_PATH)
+#endif
 #include "syscheck_audit.h"
 
 #define AUDIT_LOAD_RETRIES 5 // Max retries to reload Audit rules
 
 // Spelled out for the agent packages built with headers older than glibc 2.14, which lack them.
+// Only the architectures sharing the generic values are covered; the others ship headers that define them.
+#if !defined(__sparc__) && !defined(__alpha__) && !defined(__hppa__)
 #ifndef O_PATH
 #define O_PATH 010000000
+#endif
 #endif
 #ifndef AT_EMPTY_PATH
 #define AT_EMPTY_PATH 0x1000
@@ -400,9 +406,9 @@ char *gen_audit_path(char *cwd, char *path0, char *path1) {
 }
 
 
-// Opens the directory once (O_NOFOLLOW) and resolves via /proc/self/fd so the symlink check and the resolution cannot race.
+// Opens once with O_NOFOLLOW and resolves via /proc/self/fd so check and resolution cannot race; O_PATH avoids needing read permission.
 static char *audit_resolve_directory(const char *path) {
-    const int fd = open(path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW);
+    const int fd = open(path, O_PATH | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
     if (fd < 0) {
         return NULL;
     }
@@ -419,6 +425,7 @@ static char *audit_resolve_directory(const char *path) {
 static char *audit_resolve_file(const char *path, const char *inode, bool *is_link) {
     int fd = open(path, O_PATH | O_NOFOLLOW | O_CLOEXEC);
     struct stat st;
+    char fd_path[OS_SIZE_64];
 
     *is_link = false;
     if (fd < 0) {
@@ -426,21 +433,36 @@ static char *audit_resolve_file(const char *path, const char *inode, bool *is_li
     }
 
     if (fstatat(fd, "", &st, AT_EMPTY_PATH) == 0 && S_ISLNK(st.st_mode)) {
-        *is_link = inode && st.st_ino == (ino_t)strtoull(inode, NULL, 10);
+        if (inode && st.st_ino == (ino_t)strtoull(inode, NULL, 10)) {
+            *is_link = true;
+            close(fd);
+            return NULL;
+        }
+
+        // Follow via the descriptor so the inspected link is the one followed.
+        snprintf(fd_path, sizeof(fd_path), "/proc/self/fd/%d", fd);
+        const int target = open(fd_path, O_PATH | O_CLOEXEC);
         close(fd);
-        if (*is_link) {
+        if (target < 0) {
             return NULL;
         }
-        fd = open(path, O_PATH | O_CLOEXEC);
-        if (fd < 0) {
-            return NULL;
-        }
+        fd = target;
     }
 
-    char fd_path[OS_SIZE_64];
     snprintf(fd_path, sizeof(fd_path), "/proc/self/fd/%d", fd);
     char *resolved = realpath(fd_path, NULL);
     close(fd);
+
+    if (resolved == NULL) {
+        // Only without /proc (chroot, hidepid) fall back to name-based realpath, which is not race-free.
+        const int proc = open("/proc/self/fd", O_PATH | O_DIRECTORY | O_CLOEXEC);
+        if (proc >= 0) {
+            close(proc);
+            return NULL;
+        }
+        return realpath(path, NULL);
+    }
+
     return resolved;
 }
 
