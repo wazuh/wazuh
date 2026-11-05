@@ -55,6 +55,18 @@ int __wrap_fstat(int __fd, struct stat *__buf) {
     return mock();
 }
 
+int __wrap_fstatat(int __fd, const char *__file, struct stat *__buf, int __flag) {
+    check_expected(__fd);
+    check_expected(__file);
+    check_expected(__flag);
+
+    struct stat *mock_buf = mock_type(struct stat *);
+    if (mock_buf != NULL) {
+        memcpy(__buf, mock_buf, sizeof(struct stat));
+    }
+    return mock();
+}
+
 #ifdef WIN32
 int __wrap_mkdir(const char *__path) {
     check_expected(__path);

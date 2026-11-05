@@ -109,6 +109,18 @@ ssize_t __wrap_readlink(__attribute__((unused)) const char *path, __attribute__(
     return ret > (ssize_t)bufsiz ? (ssize_t)bufsiz : ret;
 }
 
+ssize_t __wrap_readlinkat(__attribute__((unused)) int dirfd, const char *path, char *buf, size_t bufsiz) {
+    check_expected(path);
+    const char *target = mock_ptr_type(const char *);
+    if (target == NULL) {
+        return -1;
+    }
+    const size_t len = strlen(target);
+    const size_t copied = len > bufsiz ? bufsiz : len;
+    memcpy(buf, target, copied);
+    return (ssize_t)copied;
+}
+
 int __wrap_symlink(const char *path1, const char *path2) {
     check_expected(path1);
     check_expected(path2);

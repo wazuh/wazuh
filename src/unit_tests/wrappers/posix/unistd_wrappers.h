@@ -46,6 +46,8 @@ int __wrap_gethostname(char *name, int len);
 
 ssize_t __wrap_readlink(const char *path, char *buf, size_t bufsiz);
 
+ssize_t __wrap_readlinkat(int dirfd, const char *path, char *buf, size_t bufsiz);
+
 int __wrap_symlink(const char *path1, const char *path2);
 
 int __wrap_rmdir(const char *path);
