@@ -26,6 +26,7 @@
 #include <thread>
 
 #include "auth/keystore.hpp"
+#include "auth/keystoreMetrics.hpp"
 #include "auth/passwordKeySource.hpp"
 #include "auth/tokenKeySource.hpp"
 #include "common/installPaths.hpp"
@@ -1158,7 +1159,7 @@ private:
         };
 
         m_metricsManager->registerPullMetric(
-            "remoted.auth.keystore.agents",
+            remoted::auth::METRIC_KEYSTORE_AGENTS,
             [target]
             {
                 const auto keystore = target();
@@ -1167,7 +1168,7 @@ private:
             "Agents with a usable key after the last successful client.keys load",
             "agents");
         m_metricsManager->registerPullMetric(
-            "remoted.auth.keystore.entries_skipped",
+            remoted::auth::METRIC_KEYSTORE_ENTRIES_SKIPPED,
             [target]
             {
                 const auto keystore = target();
@@ -1177,7 +1178,7 @@ private:
             "unparseable ip column, or undecodable key); comments and removed entries excluded",
             "entries");
         m_metricsManager->registerPullMetric(
-            "remoted.auth.keystore.reloads.total",
+            remoted::auth::METRIC_KEYSTORE_RELOADS_TOTAL,
             [target]
             {
                 const auto keystore = target();
@@ -1186,7 +1187,7 @@ private:
             "Successful client.keys loads (startup load included)",
             "count");
         m_metricsManager->registerPullMetric(
-            "remoted.auth.keystore.reload_failures.total",
+            remoted::auth::METRIC_KEYSTORE_RELOAD_FAILURES_TOTAL,
             [target]
             {
                 const auto keystore = target();
@@ -1195,7 +1196,7 @@ private:
             "Failed client.keys loads: unreadable file, or torn reads on every attempt",
             "count");
         m_metricsManager->registerPullMetric(
-            "remoted.auth.keystore.adoptions.total",
+            remoted::auth::METRIC_KEYSTORE_ADOPTIONS_TOTAL,
             [target]
             {
                 const auto keystore = target();
@@ -1204,7 +1205,7 @@ private:
             "Credentials taken from an accepted POST /enroll answer: adopted, or found already in client.keys",
             "count");
         m_metricsManager->registerPullMetric(
-            "remoted.auth.keystore.adoptions_pending",
+            remoted::auth::METRIC_KEYSTORE_ADOPTIONS_PENDING,
             [target]
             {
                 const auto keystore = target();
@@ -1214,7 +1215,7 @@ private:
             "moves past them, or after the grace)",
             "entries");
         m_metricsManager->registerPullMetric(
-            "remoted.auth.keystore.adoption_expiries.total",
+            remoted::auth::METRIC_KEYSTORE_ADOPTION_EXPIRIES_TOTAL,
             [target]
             {
                 const auto keystore = target();

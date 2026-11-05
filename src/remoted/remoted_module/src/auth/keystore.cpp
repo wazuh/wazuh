@@ -92,6 +92,22 @@ namespace remoted::auth
             return value;
         }
 
+        // The three columns a lookup needs, parsed the one way reload() and upsert() share (the
+        // header promises an adopted credential is parsed like a file line). Each column is
+        // reported on its own so the callers can say which one failed: reload() logs and counts per
+        // line, upsert() stores nothing unless all three parse.
+        struct ParsedColumns
+        {
+            std::optional<AgentId> id;
+            decltype(AddressRule::parse(std::string {})) address;
+            std::vector<std::uint8_t> key; ///< Empty when the key column does not decode.
+        };
+
+        ParsedColumns parseColumns(const std::string& id, const std::string& ip, const std::string& key)
+        {
+            return ParsedColumns {parseAgentId(id), AddressRule::parse(ip), decodeKey(key)};
+        }
+
         // Maximum attempts reload() makes to get a stable (non-torn) read of the file before
         // giving up for this call -- see reload()'s doc comment.
         constexpr int kMaxReadAttempts {3};
@@ -506,7 +522,8 @@ namespace remoted::auth
                     continue; // removed/disabled entry -- same as OS_ReadKeys()
                 }
 
-                const auto agentId = parseAgentId(id);
+                auto columns = parseColumns(id, ip, key);
+                const auto& agentId = columns.id;
                 if (!agentId)
                 {
                     LOGFN_DEBUG1(logFn(),
@@ -519,7 +536,7 @@ namespace remoted::auth
 
                 // Skip the line rather than load it unrestricted: an ip column that does not parse
                 // would otherwise turn a fixed-address registration into one that accepts any peer.
-                auto addressRule = AddressRule::parse(ip);
+                auto& addressRule = columns.address;
                 if (!addressRule)
                 {
                     LOGFN_WARN(logFn(),
@@ -532,7 +549,7 @@ namespace remoted::auth
                     continue;
                 }
 
-                auto decoded = decodeKey(key);
+                auto& decoded = columns.key;
                 if (decoded.empty())
                 {
                     // Store the empty key anyway: lookup() returning an empty key (rather than
@@ -647,22 +664,13 @@ namespace remoted::auth
 
     bool Keystore::upsert(const std::string& id, const std::string& ip, const std::string& keyHex)
     {
-        const auto agentId = parseAgentId(id);
-        if (!agentId)
+        auto columns = parseColumns(id, ip, keyHex);
+        const auto& agentId = columns.id;
+        auto& addressRule = columns.address;
+        auto& decoded = columns.key;
+        if (!agentId || !addressRule || decoded.empty())
         {
-            return false;
-        }
-
-        auto addressRule = AddressRule::parse(ip);
-        if (!addressRule)
-        {
-            return false;
-        }
-
-        auto decoded = decodeKey(keyHex);
-        if (decoded.empty())
-        {
-            return false;
+            return false; // Unlike reload(), an entry that cannot authenticate is not worth adopting.
         }
 
         const auto now = m_clock();
