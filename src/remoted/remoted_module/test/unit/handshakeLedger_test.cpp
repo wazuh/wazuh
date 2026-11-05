@@ -133,6 +133,26 @@ TEST(HandshakeLedgerTest, AFinishedHandshakeFreesItsShareOfTheCap)
     EXPECT_EQ(ledger.snapshot().open, 3U);
 }
 
+// Releasing one handshake frees one unit; the other handshakes from its source still count.
+TEST(HandshakeLedgerTest, PartialReleasePreservesThePerSourceCap)
+{
+    HandshakeLedger ledger;
+    ledger.setMaxPerSource(2);
+
+    auto first = ledger.beginHandshake(1, "10.0.0.1");
+    auto second = ledger.beginHandshake(2, "10.0.0.1");
+    ASSERT_TRUE(first);
+    ASSERT_TRUE(second);
+
+    first.release();
+
+    auto replacement = ledger.beginHandshake(3, "10.0.0.1");
+    ASSERT_TRUE(replacement) << "releasing one handshake must free one unit";
+    auto excess = ledger.beginHandshake(4, "10.0.0.1");
+    EXPECT_FALSE(excess) << "the remaining handshake must still count against the per-source cap";
+    EXPECT_EQ(ledger.snapshot().handshaking, 2U);
+}
+
 TEST(HandshakeLedgerTest, ZeroDisablesTheCap)
 {
     HandshakeLedger ledger;
