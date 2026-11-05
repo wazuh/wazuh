@@ -196,6 +196,51 @@ async def test_http_error_handler_charges_the_unauthenticated_bucket(authorizati
 
 
 @pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+@pytest.mark.parametrize('status_code, reason, max_request, max_unauthenticated, refused', [
+    (405, 'Method Not Allowed', 3, 10, True),
+    # CheckRateLimitsMiddleware is not registered without the unauthenticated bucket
+    (405, 'Method Not Allowed', 3, 0, False),
+    # The authenticated limit is off, there is no bucket to be exhausted
+    (405, 'Method Not Allowed', 0, 10, False),
+    # A 404 goes through CheckRateLimitsMiddleware, which has refused it already
+    (404, 'Not Found', 3, 10, False),
+])
+async def test_http_error_handler_authenticated_bucket_exhausted(status_code, reason, max_request,
+                                                                 max_unauthenticated, refused, mock_request):
+    """Test that a 405 is refused with 6001 while the authenticated bucket is exhausted, as a routed request is."""
+    mock_request.headers = {}
+    general_request_stats['ip'] = {'authenticated': {'count': 3, 'window_start': 10.0}}
+    api_conf = {'access': {'max_request_per_minute': max_request,
+                           'max_unauthenticated_request_per_minute': max_unauthenticated}}
+
+    with patch('api.error_handler.configuration.api_conf', new=api_conf):
+        response = await http_error_handler(mock_request, HTTPException(status_code=status_code, detail=reason))
+
+    if refused:
+        assert response.status_code == 429
+        assert json.loads(response.body)['error'] == 6001
+        # Checking the bucket does not charge anything
+        assert 'unauthenticated' not in general_request_stats['ip']
+    else:
+        assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_http_error_handler_authenticated_bucket_below_the_limit(mock_request):
+    """Test that a 405 is not refused while the authenticated bucket has room."""
+    mock_request.headers = {}
+    general_request_stats['ip'] = {'authenticated': {'count': 2, 'window_start': 10.0}}
+    api_conf = {'access': {'max_request_per_minute': 3, 'max_unauthenticated_request_per_minute': 10}}
+
+    with patch('api.error_handler.configuration.api_conf', new=api_conf):
+        response = await http_error_handler(mock_request, HTTPException(status_code=405, detail='x'))
+
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
 async def test_http_error_handler_unlimited_unauthenticated_bucket(mock_request):
     """Test that `max_unauthenticated_request_per_minute: 0` never refuses a 405."""
     mock_request.headers = {}
