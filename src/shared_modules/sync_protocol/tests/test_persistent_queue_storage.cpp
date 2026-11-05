@@ -28,6 +28,7 @@ struct QueueScenario
     size_t expectedRows;
     Operation expectedOp;
     std::vector<PersistedData> eventsAfter {};
+    std::string expectedId {};
 };
 
 inline void PrintTo(const QueueScenario& q, std::ostream* os)
@@ -105,6 +106,11 @@ TEST_P(PersistentQueueFullParamTest, HandlesSubmitFetchRemoveResetCorrectly)
     if (!rows.empty())
     {
         EXPECT_EQ(rows[0].operation, param.expectedOp);
+
+        if (!param.expectedId.empty())
+        {
+            EXPECT_EQ(rows[0].id, param.expectedId);
+        }
     }
 }
 
@@ -339,7 +345,8 @@ QueueScenario
     { PersistedData{0, "id2", "idx", "{}", Operation::CREATE, 0} },
     false, true,
     1, Operation::CREATE,
-    { PersistedData{0, "id2", "idx", "{}", Operation::DELETE_, 0} }
+    { PersistedData{0, "id2", "idx", "{}", Operation::DELETE_, 0} },
+    "id1"
 },
 // 22. CREATE + Sync + sync success, then DELETE -> DELETE
 QueueScenario

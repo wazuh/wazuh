@@ -114,6 +114,8 @@ class IPersistentQueue
         virtual void clearSyncedItems() = 0;
 
         /// @brief Resets items that failed to synchronize.
+        /// The manager may have applied them, so they are no longer treated as new: a later
+        /// DELETE of them is sent instead of coalesced away.
         virtual void resetSyncingItems() = 0;
 
         /// @brief Clears all items belonging to a specific index.
