@@ -533,7 +533,7 @@ namespace
 
         ASSERT_TRUE(keystore.upsert("067", "any", kKeyA));
         clock.advance(Keystore::kAdoptionGrace); // Exactly the grace: still in service.
-        EXPECT_TRUE(keyOf(keystore, 67).has_value());
+        EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyA));
         EXPECT_EQ(keystore.adoptionsPending(), 1u);
 
         clock.advance(std::chrono::seconds(1)); // Past it: ignored by lookup, swept by the level read.
@@ -783,6 +783,23 @@ namespace
 
         EXPECT_EQ(keystore.reload(), 0);
         EXPECT_EQ(keyOf(keystore, 67), bytesOf(kKeyA));
+        EXPECT_EQ(keystore.adoptionsPending(), 1u);
+    }
+
+    TEST_F(KeystoreTest, UpsertPastTheCapIsKeptWhenItsRowLosesAUsableKey)
+    {
+        // Saturated: an undecodable key is as unknown as any other, so it does not retire either.
+        writeFile("67 agent1 any " + nthKey(0) + "\n");
+        Keystore keystore(m_path);
+        const auto last = Keystore::kMaxSupersededKeys + 1;
+        for (std::size_t n = 1; n <= last; ++n)
+        {
+            ASSERT_TRUE(keystore.upsert("67", "any", nthKey(n)));
+        }
+
+        writeFile(std::string("67 agent1 any ") + kUndecodableKey + "\n");
+        EXPECT_EQ(keystore.reload(), 0);
+        EXPECT_EQ(keyOf(keystore, 67), bytesOf(nthKey(last).c_str()));
         EXPECT_EQ(keystore.adoptionsPending(), 1u);
     }
 

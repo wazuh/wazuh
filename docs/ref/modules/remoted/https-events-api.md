@@ -619,8 +619,9 @@ the adoption runs (the writer pass and the reload won the race), nothing is adop
 Two consequences follow. `agents` on
 [`GET /metrics`](metrics.md#keystore-health--remotedauthkeystore) and `agents_loaded` on
 [`GET /status`](README.md) keep describing the file only; the adoptions have their own
-`adoptions_pending` level. And some windows remain, on that node only and at most until the grace
-ends — the price of not losing a key the file has not caught up with yet:
+`adoptions_pending` level. And some windows remain, on that node only — the price of not losing a
+key the file has not caught up with yet. The first three last at most until the grace ends; the
+last one until the next synchronization:
 
 - a *new* agent removed before the file ever carried it keeps authenticating;
 - two enrollments of the same `id` in flight at once are not ordered (`authd`'s answer carries no
