@@ -140,7 +140,10 @@ cluster, since the agent may download it from any of them — then run:
   agents, `upgrade.sh` otherwise).
 
 The command creates the upgrade tasks and returns; agents run the upgrade on their own and no result
-comes back to the manager. Every flag is listed in
+comes back to the manager. The manager serves the file only to the agents those tasks name, and only
+while each task is open (`task_ttl`, 3600 s by default). Do not replace the file in `var/upgrade/` after
+creating the tasks: the agent would download the new file and reject it, because its SHA-1 no longer
+matches the task. Every flag is listed in
 [Agent Upgrade](../../docs/ref/modules/agent_upgrade/README.md#agent_upgrade).
 
 Output example:
