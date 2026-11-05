@@ -1532,6 +1532,32 @@ stages:
           total_failed_items: 0
     delay_after: !float "{restart_delay_cluster}"
 
+  # The master is reloaded locally: it must not also be reported as a node that does not exist
+  - name: Reload cluster (master-node and an unknown node)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        nodes_list: 'master-node,nonode'
+    response:
+      status_code: 202
+      json:
+        error: 2
+        data:
+          affected_items:
+            - 'master-node'
+          failed_items:
+            - error:
+                code: 1730
+              id:
+                - 'nonode'
+          total_affected_items: 1
+          total_failed_items: 1
+    delay_after: !float "{restart_delay_cluster}"
+
   - name: Every node is back after the reload
     request:
       verify: False
@@ -1831,6 +1857,21 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         pretty: wrong
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+  # ... but an empty node name is refused before it
+  - name: nodes_list is empty
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}{path}"
+      method: "{method}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        nodes_list: ''
     response:
       status_code: 400
       json:

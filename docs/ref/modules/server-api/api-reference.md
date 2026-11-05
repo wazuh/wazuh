@@ -621,6 +621,8 @@ same shape a list of agents gets, where some may exist and others not. A missing
 named in the same request is still a `404`, except in the node lists of `GET /cluster/nodes`,
 `GET /cluster/healthcheck` and `GET /cluster/configuration/validation` (`nodes_list`): there an unknown
 node is a failed item (`1730`, *Node does not exist*) of a `200` answer, next to the nodes that exist.
+`PUT /cluster/restart` and `PUT /cluster/reload` report it the same way in their `202` answer. An empty
+node name in `nodes_list` (`nodes_list=`) is a `400`.
 
 `DELETE /agents/{agent_id}/group/{group_id}` is the exception to that exception: it names exactly one agent and
 one group and answers with a message, not with affected and failed items. An unknown agent is a `404` with

@@ -3491,6 +3491,7 @@ components:
         type: array
         items:
           type: string
+          minLength: 1
     mitre_mitigation_ids:
       in: query
       name: 'mitigation_ids'

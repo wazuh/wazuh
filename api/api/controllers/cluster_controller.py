@@ -586,6 +586,80 @@ def _use_operation_messages(result: AffectedItemsWazuhResult, result_kwargs: dic
         result.none_msg = result_kwargs['none_msg']
 
 
+async def _restart_or_reload(f: callable, result_kwargs: dict, nodes_list, pretty: bool) -> ConnexionResponse:
+    """Send a restart or reload request to all nodes in the cluster or a list of them.
+
+    The workers are reached through the distributed API first and the master runs the operation last, locally, so
+    that a master restart does not cut the request to the workers.
+
+    Parameters
+    ----------
+    f : callable
+        Framework function of the operation, `manager.restart` or `manager.reload`.
+    result_kwargs : dict
+        Default result arguments of the operation.
+    nodes_list : list or str
+        List of node IDs, or '*' for every node.
+    pretty : bool
+        Show results in human-readable format.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
+    """
+    nodes = raise_if_exc(await get_system_nodes())
+    # Remove the master from the list to reach all workers without issuing the command locally yet.
+    # The master node is always the first item in the list.
+    master_node = nodes.pop(0)
+
+    broadcasting = nodes_list == '*'
+    if broadcasting:
+        includes_master = True
+        worker_list = '*'
+    else:
+        requested = [nodes_list] if isinstance(nodes_list, str) else nodes_list
+        includes_master = master_node in requested
+        # The distributed request only knows the workers: a master left in its node list is reported
+        # as a node that does not exist (1730) while the local request below restarts it.
+        worker_list = list(dict.fromkeys(node for node in requested if node != master_node))
+
+    def local_master_dapi():
+        return DistributedAPI(
+            f=f,
+            request_type='local_master',
+            logger=logger,
+            rbac_permissions=request.context['token_info']['rbac_policies'],
+        )
+
+    if not worker_list:
+        result = raise_if_exc(await local_master_dapi().distribute_function())
+        return json_response(result, pretty=pretty, status_code=202)
+
+    dapi = DistributedAPI(f=f,
+                          f_kwargs=remove_nones_to_dict({'node_list': worker_list}),
+                          request_type='distributed_master',
+                          is_async=False,
+                          logger=logger,
+                          broadcasting=broadcasting,
+                          rbac_permissions=request.context['token_info']['rbac_policies'],
+                          wait_for_complete=True,
+                          nodes=nodes
+                          )
+    result = raise_if_exc(await dapi.distribute_function())
+    _use_operation_messages(result, result_kwargs)
+
+    if includes_master:
+        master_result = raise_if_exc(await local_master_dapi().distribute_function())
+        if master_result.total_affected_items > 0:
+            result.affected_items.insert(0, master_node)
+            result.total_affected_items += 1
+        if master_result.total_failed_items > 0:
+            result.add_failed_items_from(master_result)
+
+    return json_response(result, pretty=pretty, status_code=202)
+
+
 async def put_restart(pretty: bool = False, nodes_list: str = '*') -> ConnexionResponse:
     """Restarts all nodes in the cluster or a list of them.
 
@@ -601,52 +675,7 @@ async def put_restart(pretty: bool = False, nodes_list: str = '*') -> ConnexionR
     ConnexionResponse
         API response.
     """
-    f_kwargs = {'node_list': nodes_list}
-
-    nodes = raise_if_exc(await get_system_nodes())
-    # Remove the master from the list to restart all workers without issuing the command locally yet.
-    # The master node is always the first item in the list.
-    master_node = nodes.pop(0)
-
-    if nodes_list == [master_node]:
-        dapi = DistributedAPI(
-            f=manager.restart,
-            request_type='local_master',
-            logger=logger,
-            rbac_permissions=request.context['token_info']['rbac_policies'],
-        )
-        result = raise_if_exc(await dapi.distribute_function())
-
-        return json_response(result, pretty=pretty, status_code=202)
-
-    dapi = DistributedAPI(f=manager.restart,
-                        f_kwargs=remove_nones_to_dict(f_kwargs),
-                        request_type='distributed_master',
-                        is_async=False,
-                        logger=logger,
-                        broadcasting=nodes_list == '*',
-                        rbac_permissions=request.context['token_info']['rbac_policies'],
-                        wait_for_complete=True,
-                        nodes=nodes
-                        )
-    result = raise_if_exc(await dapi.distribute_function())
-    _use_operation_messages(result, manager._restart_default_result_kwargs)
-
-    if nodes_list == '*' or master_node in nodes_list:
-        dapi_master = DistributedAPI(
-            f=manager.restart,
-            request_type='local_master',
-            logger=logger,
-            rbac_permissions=request.context['token_info']['rbac_policies'],
-        )
-        master_result = raise_if_exc(await dapi_master.distribute_function())
-        if master_result.total_affected_items > 0:
-            result.affected_items.insert(0, master_node)
-            result.total_affected_items += 1
-        if master_result.total_failed_items > 0:
-            result.add_failed_items_from(master_result)
-
-    return json_response(result, pretty=pretty, status_code=202)
+    return await _restart_or_reload(manager.restart, manager._restart_default_result_kwargs, nodes_list, pretty)
 
 
 async def put_reload(pretty: bool = False, nodes_list: str = '*') -> ConnexionResponse:
@@ -664,52 +693,7 @@ async def put_reload(pretty: bool = False, nodes_list: str = '*') -> ConnexionRe
     ConnexionResponse
         API response.
     """
-    f_kwargs = {'node_list': nodes_list}
-
-    nodes = raise_if_exc(await get_system_nodes())
-    # Remove the master from the list to reload all workers without issuing the command locally yet.
-    # The master node is always the first item in the list.
-    master_node = nodes.pop(0)
-
-    if nodes_list == [master_node]:
-        dapi = DistributedAPI(
-            f=manager.reload,
-            request_type='local_master',
-            logger=logger,
-            rbac_permissions=request.context['token_info']['rbac_policies'],
-        )
-        result = raise_if_exc(await dapi.distribute_function())
-
-        return json_response(result, pretty=pretty, status_code=202)
-
-    dapi = DistributedAPI(f=manager.reload,
-                        f_kwargs=remove_nones_to_dict(f_kwargs),
-                        request_type='distributed_master',
-                        is_async=False,
-                        logger=logger,
-                        broadcasting=nodes_list == '*',
-                        rbac_permissions=request.context['token_info']['rbac_policies'],
-                        wait_for_complete=True,
-                        nodes=nodes
-                        )
-    result = raise_if_exc(await dapi.distribute_function())
-    _use_operation_messages(result, manager._reload_default_result_kwargs)
-
-    if nodes_list == '*' or master_node in nodes_list:
-        dapi_master = DistributedAPI(
-            f=manager.reload,
-            request_type='local_master',
-            logger=logger,
-            rbac_permissions=request.context['token_info']['rbac_policies'],
-        )
-        master_result = raise_if_exc(await dapi_master.distribute_function())
-        if master_result.total_affected_items > 0:
-            result.affected_items.insert(0, master_node)
-            result.total_affected_items += 1
-        if master_result.total_failed_items > 0:
-            result.add_failed_items_from(master_result)
-
-    return json_response(result, pretty=pretty, status_code=202)
+    return await _restart_or_reload(manager.reload, manager._reload_default_result_kwargs, nodes_list, pretty)
 
 
 async def get_conf_validation(pretty: bool = False, wait_for_complete: bool = False,
