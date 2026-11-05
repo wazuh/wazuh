@@ -1317,7 +1317,8 @@ int fim_db_count_container_rows(const char* container_id, const char* path)
 
     try
     {
-        int count = 0;
+        // An unavailable database never calls back; keep that distinct from a confirmed empty container.
+        int count = -1;
         auto query = SelectQuery::builder()
                      .table(FIMDB_FILE_TABLE_NAME)
                      .columnList({"COUNT(*) AS count"})
