@@ -1941,13 +1941,36 @@ int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logt
     return 0;
 }
 
-/* Minimum time between repeated "queue is full" warnings for the same target, so a
- * sustained outage stays visible in the log instead of going quiet after the first drop. */
-#define W_MSG_QUEUE_FULL_WARN_INTERVAL 60
+/* Minimum time between two warnings (queue full or recovered) for the same target, so a sustained
+ * outage stays visible in the log without a flapping queue flooding it. */
+#define W_MSG_QUEUE_WARN_INTERVAL 60
+
+/* Requires msg->mutex held. */
+static unsigned long w_msg_queue_take_drops(w_msg_queue_t * msg) {
+    unsigned long lost;
+    time_t now;
+
+    if (msg->dropped_since_warning == 0) {
+        return 0;
+    }
+
+    now = time(NULL);
+    if (now - msg->last_warned < W_MSG_QUEUE_WARN_INTERVAL) {
+        return 0;
+    }
+
+    lost = msg->dropped_since_warning;
+    msg->dropped_since_warning = 0;
+    msg->last_warned = now;
+
+    return lost;
+}
 
 int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsigned long size, logtarget * log_target, char queue_mq) {
     w_message_t *message;
     int result;
+    unsigned long lost;
+    size_t queue_size;
 
     w_mutex_lock(&msg->mutex);
 
@@ -1959,39 +1982,33 @@ int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsig
     message->log_target = log_target;
     message->queue_mq = queue_mq;
 
+    msg->target_name = log_target->log_socket->name;
+    queue_size = msg->msg_queue->size;
 
     if (result = queue_push(msg->msg_queue, message), result == 0) {
         w_cond_signal(&msg->available);
-
-        /* Not rate-limited: fires once per drop episode, so a queue flapping at full can still warn each cycle. */
-        if (msg->dropped_since_warning > 0) {
-            mwarn("Target '%s' message queue accepting lines again. %lu log line(s) lost since the last warning.",
-                  log_target->log_socket->name, msg->dropped_since_warning);
-            msg->last_warned = time(NULL);
-            msg->dropped_since_warning = 0;
-        }
-    }
-
-    if (result < 0) {
-        /* Per-target, guarded by msg->mutex above (held for the whole function) --
-         * not a process-wide static, since each target has its own w_msg_queue_t. */
+    } else {
         msg->dropped_since_warning++;
-
-        time_t now = time(NULL);
-        if (now - msg->last_warned >= W_MSG_QUEUE_FULL_WARN_INTERVAL) {
-            #ifndef WIN32
-                mwarn("Target '%s' message queue is full (%zu). %lu log line(s) lost since the last warning.",
-                      log_target->log_socket->name, msg->msg_queue->size, msg->dropped_since_warning);
-            #else
-                mwarn("Target '%s' message queue is full (%u). %lu log line(s) lost since the last warning.",
-                      log_target->log_socket->name, msg->msg_queue->size, msg->dropped_since_warning);
-            #endif
-            msg->last_warned = now;
-            msg->dropped_since_warning = 0;
-        }
     }
+
+    lost = w_msg_queue_take_drops(msg);
 
     w_mutex_unlock(&msg->mutex);
+
+    if (lost > 0) {
+        if (result < 0) {
+            #ifndef WIN32
+                mwarn("Target '%s' message queue is full (%zu). %lu log line(s) lost since the last warning.",
+                      log_target->log_socket->name, queue_size, lost);
+            #else
+                mwarn("Target '%s' message queue is full (%u). %lu log line(s) lost since the last warning.",
+                      log_target->log_socket->name, (unsigned int) queue_size, lost);
+            #endif
+        } else {
+            mwarn("Target '%s' message queue accepting lines again. %lu log line(s) lost since the last warning.",
+                  log_target->log_socket->name, lost);
+        }
+    }
 
     if (result < 0) {
         free(message->file);
@@ -2005,10 +2022,26 @@ int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsig
 
 w_message_t * w_msg_queue_pop(w_msg_queue_t * msg){
     w_message_t *message;
+    unsigned long lost;
+
     w_mutex_lock(&msg->mutex);
 
     while (message = (w_message_t *)queue_pop(msg->msg_queue), !message) {
-        w_cond_wait(&msg->available, &msg->mutex);
+        if (msg->dropped_since_warning == 0) {
+            w_cond_wait(&msg->available, &msg->mutex);
+        } else if (lost = w_msg_queue_take_drops(msg), lost > 0) {
+            /* Report the tail of a burst once the source went quiet. */
+            const char * name = msg->target_name;
+
+            w_mutex_unlock(&msg->mutex);
+            mwarn("Target '%s' message queue accepting lines again. %lu log line(s) lost since the last warning.",
+                  name, lost);
+            w_mutex_lock(&msg->mutex);
+        } else {
+            struct timespec deadline = { msg->last_warned + W_MSG_QUEUE_WARN_INTERVAL, 0 };
+
+            pthread_cond_timedwait(&msg->available, &msg->mutex, &deadline);
+        }
     }
 
     w_mutex_unlock(&msg->mutex);

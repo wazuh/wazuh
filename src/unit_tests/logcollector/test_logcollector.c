@@ -3208,11 +3208,23 @@ static void free_msg_queue_push(w_msg_queue_t * msg_queue) {
     w_cond_destroy(&msg_queue->available);
 }
 
+static void drop_one_line(w_msg_queue_t * msg_queue, logtarget * target) {
+    expect_string(__wrap__mdebug2, formatted_msg, "Discarding log line for target 'test_target'");
+    assert_int_equal(w_msg_queue_push(msg_queue, "b", NULL, 2, target, 0), -1);
+}
+
+static void free_one_message(w_msg_queue_t * msg_queue) {
+    w_message_t * message = (w_message_t *) queue_pop(msg_queue->msg_queue);
+
+    assert_non_null(message);
+    free(message->buffer);
+    free(message);
+}
+
 void test_w_msg_queue_push_recovery_summary_after_burst(void ** state) {
     w_msg_queue_t msg_queue;
     logtarget target;
     socket_forwarder forwarder;
-    w_message_t * message;
     int i;
 
     init_msg_queue_push(&msg_queue, &target, &forwarder, 2);
@@ -3222,31 +3234,115 @@ void test_w_msg_queue_push_recovery_summary_after_burst(void ** state) {
     // last_warned == 0 after memset, so the first drop warns immediately
     expect_string(__wrap__mwarn, formatted_msg,
                   "Target 'test_target' message queue is full (2). 1 log line(s) lost since the last warning.");
-    expect_string(__wrap__mdebug2, formatted_msg, "Discarding log line for target 'test_target'");
-    assert_int_equal(w_msg_queue_push(&msg_queue, "b", NULL, 2, &target, 0), -1);
+    drop_one_line(&msg_queue, &target);
+    assert_int_not_equal(msg_queue.last_warned, 0);
 
     for (i = 0; i < 4; i++) {
-        expect_string(__wrap__mdebug2, formatted_msg, "Discarding log line for target 'test_target'");
-        assert_int_equal(w_msg_queue_push(&msg_queue, "b", NULL, 2, &target, 0), -1);
+        drop_one_line(&msg_queue, &target);
     }
     assert_int_equal(msg_queue.dropped_since_warning, 4);
 
-    message = (w_message_t *) queue_pop(msg_queue.msg_queue);
-    assert_non_null(message);
-    free(message->buffer);
-    free(message);
+    // Recovery within the interval of the last warning stays silent and keeps counting
+    free_one_message(&msg_queue);
+    assert_int_equal(w_msg_queue_push(&msg_queue, "c", NULL, 2, &target, 0), 0);
+    assert_int_equal(msg_queue.dropped_since_warning, 4);
 
+    // Once the interval elapsed, the next accepted line reports the accumulated count
+    msg_queue.last_warned = time(NULL) - 61;
+    free_one_message(&msg_queue);
     expect_string(__wrap__mwarn, formatted_msg,
                   "Target 'test_target' message queue accepting lines again. 4 log line(s) lost since the last warning.");
-    assert_int_equal(w_msg_queue_push(&msg_queue, "c", NULL, 2, &target, 0), 0);
-    assert_int_equal(msg_queue.dropped_since_warning, 0);
-
-    message = (w_message_t *) queue_pop(msg_queue.msg_queue);
-    free(message->buffer);
-    free(message);
     assert_int_equal(w_msg_queue_push(&msg_queue, "d", NULL, 2, &target, 0), 0);
+    assert_int_equal(msg_queue.dropped_since_warning, 0);
+    assert_true(time(NULL) - msg_queue.last_warned < 5);
 
     free_msg_queue_push(&msg_queue);
+}
+
+void test_w_msg_queue_push_second_episode_rate_limited(void ** state) {
+    w_msg_queue_t msg_queue;
+    logtarget target;
+    socket_forwarder forwarder;
+    time_t warned;
+
+    init_msg_queue_push(&msg_queue, &target, &forwarder, 2);
+
+    assert_int_equal(w_msg_queue_push(&msg_queue, "a", NULL, 2, &target, 0), 0);
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Target 'test_target' message queue is full (2). 1 log line(s) lost since the last warning.");
+    drop_one_line(&msg_queue, &target);
+    warned = msg_queue.last_warned;
+
+    // Second episode inside the interval: no warning, last_warned is not refreshed
+    free_one_message(&msg_queue);
+    assert_int_equal(w_msg_queue_push(&msg_queue, "c", NULL, 2, &target, 0), 0);
+    drop_one_line(&msg_queue, &target);
+    drop_one_line(&msg_queue, &target);
+    assert_int_equal(msg_queue.dropped_since_warning, 2);
+    assert_int_equal(msg_queue.last_warned, warned);
+
+    // After the interval the "queue is full" warning fires again with the accumulated count
+    msg_queue.last_warned = time(NULL) - 61;
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Target 'test_target' message queue is full (2). 3 log line(s) lost since the last warning.");
+    drop_one_line(&msg_queue, &target);
+    assert_int_equal(msg_queue.dropped_since_warning, 0);
+    assert_true(time(NULL) - msg_queue.last_warned < 5);
+
+    free_msg_queue_push(&msg_queue);
+}
+
+static void * push_after_delay(void * arg) {
+    w_msg_queue_t * msg_queue = arg;
+    logtarget target;
+    socket_forwarder forwarder;
+
+    memset(&forwarder, 0, sizeof(forwarder));
+    forwarder.name = "test_target";
+    target.log_socket = &forwarder;
+    target.format = NULL;
+
+    sleep(3);
+    w_msg_queue_push(msg_queue, "z", NULL, 2, &target, 0);
+    return NULL;
+}
+
+static void pop_with_pending_drops(time_t age, const char * expected_warning) {
+    w_msg_queue_t msg_queue;
+    logtarget target;
+    socket_forwarder forwarder;
+    pthread_t thread;
+    w_message_t * message;
+
+    init_msg_queue_push(&msg_queue, &target, &forwarder, 4);
+    msg_queue.target_name = "test_target";
+    msg_queue.dropped_since_warning = 7;
+    msg_queue.last_warned = time(NULL) - age;
+
+    expect_string(__wrap__mwarn, formatted_msg, expected_warning);
+    assert_int_equal(pthread_create(&thread, NULL, push_after_delay, &msg_queue), 0);
+
+    // The queue is empty: the consumer reports the pending drops itself, then blocks until a line arrives
+    message = w_msg_queue_pop(&msg_queue);
+    pthread_join(thread, NULL);
+
+    assert_non_null(message);
+    assert_int_equal(msg_queue.dropped_since_warning, 0);
+    free(message->buffer);
+    free(message);
+    free_msg_queue_push(&msg_queue);
+}
+
+void test_w_msg_queue_pop_reports_pending_drops_when_drained(void ** state) {
+    pop_with_pending_drops(61, "Target 'test_target' message queue accepting lines again. 7 log line(s) lost since the last warning.");
+}
+
+void test_w_msg_queue_pop_waits_for_interval_before_reporting(void ** state) {
+    time_t start = time(NULL);
+
+    // 58 s into the interval: the consumer sleeps ~2 s, reports, and only then receives the pushed line
+    pop_with_pending_drops(58, "Target 'test_target' message queue accepting lines again. 7 log line(s) lost since the last warning.");
+    assert_true(time(NULL) - start >= 1);
 }
 
 void test_w_msg_queue_push_no_summary_without_drops(void ** state) {
@@ -3387,6 +3483,9 @@ int main(void) {
 
         // Test w_msg_queue_push
         cmocka_unit_test(test_w_msg_queue_push_recovery_summary_after_burst),
+        cmocka_unit_test(test_w_msg_queue_push_second_episode_rate_limited),
+        cmocka_unit_test(test_w_msg_queue_pop_reports_pending_drops_when_drained),
+        cmocka_unit_test(test_w_msg_queue_pop_waits_for_interval_before_reporting),
         cmocka_unit_test(test_w_msg_queue_push_no_summary_without_drops)
 
     };

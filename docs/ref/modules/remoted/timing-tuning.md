@@ -127,7 +127,9 @@ producer pause — `agent.https_producer_pause_threshold` does stop the agent's 
 exactly why the backlog lands one layer up — but `logcollector.queue_size` (1024 lines), which
 drops new lines on a full queue and warns at most once a minute per target with the count lost since
 the previous warning (`Target '<target>' message queue is full (<size>). <n> log line(s) lost since
-the last warning.`). Size it as
+the last warning.`). Once the queue accepts lines again, the lines lost since the last warning are
+reported the same way (`Target '<target>' message queue accepting lines again. <n> log line(s) lost
+since the last warning.`), under the same once-a-minute limit. Size it as
 `peak EPS × required outage window`: the default tolerates ≈100 s at 20 eps (measured: 33% of a
 3-minute outage's events lost).
 
