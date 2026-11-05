@@ -1547,6 +1547,8 @@ nlohmann::json Syscollector::containerContextBlock(const std::string& containerI
     {
         // Leaves `block` null, which degrades to the fallback below and then
         // to an event without a container block -- never to a malformed one.
+        // Retry on the next row instead of memoizing a transient read failure.
+        return nullptr;
     }
 
 #endif

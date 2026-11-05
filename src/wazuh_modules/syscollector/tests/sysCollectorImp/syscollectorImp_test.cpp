@@ -10297,6 +10297,61 @@ TEST_F(SyscollectorImpTest, ADeletedContainerRowCarriesOneContainerBlockAndNoKub
 #endif
 }
 
+TEST_F(SyscollectorImpTest, FailedContextLookupRetriesOnTheNextRow)
+{
+#ifndef __linux__
+    GTEST_SKIP() << "Container contexts are Linux-only";
+#else
+    class FailingSelectDBSync : public DBSync
+    {
+        public:
+            using DBSync::DBSync;
+            int selects {0};
+
+            void selectRows(const nlohmann::json& input, ResultCallbackData callback) override
+            {
+                if (++selects == 1)
+                {
+                    throw std::runtime_error("container context select failed");
+                }
+
+                DBSync::selectRows(input, callback);
+            }
+    };
+
+    const auto info = std::make_shared<MockSysInfo>();
+    EXPECT_CALL(*info, releaseThreadResources()).Times(testing::AnyNumber());
+    auto& module = Syscollector::instance();
+    module.init(info, reportFunction, persistFunction, logFunction,
+                SYSCOLLECTOR_DB_PATH, "", "",
+                3600, false, false, false, false, false, false, false,
+                false, false, false, false, false, false, false);
+
+    auto db = std::make_unique<FailingSelectDBSync>(HostType::AGENT, DbEngineType::SQLITE3,
+                                                    SYSCOLLECTOR_DB_PATH, module.getCreateStatement(),
+                                                    DbManagement::PERSISTENT, UPGRADE_SQL_STATEMENTS);
+    auto* failingDb = db.get();
+    module.m_spDBSync = std::move(db);
+    ASSERT_TRUE(module.storeContainerContext("c1", R"({"container":{"id":"c1","name":"web"}})"));
+
+    nlohmann::json row = {{"container_id", "c1"}, {"pid", "1"}, {"name", "worker"}};
+    EXPECT_FALSE(module.ecsData(row, PROCESSES_TABLE).first.contains("container"));
+
+    // A transient read failure must not strip the context from every later
+    // row of the same container in this flush.
+    row["pid"] = "2";
+    const auto document = module.ecsData(row, PROCESSES_TABLE).first;
+    EXPECT_EQ(failingDb->selects, 2);
+    ASSERT_TRUE(document.contains("container"));
+    EXPECT_EQ(document.at("container").at("id"), "c1");
+    EXPECT_EQ(document.at("container").at("name"), "web");
+
+    row["pid"] = "3";
+    EXPECT_EQ(module.ecsData(row, PROCESSES_TABLE).first.at("container"), document.at("container"));
+    EXPECT_EQ(failingDb->selects, 2) << "a successful lookup must still be memoized";
+#endif
+}
+
 TEST_F(SyscollectorImpTest, EachContainersRowsCarryTheirOwnContextNotThePreviousContainers)
 {
 #ifndef __linux__
