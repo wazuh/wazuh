@@ -21,17 +21,30 @@
 #                           [--interval 1] [--max-seconds N]    # sample until killed (or N)
 #   indexer_ingest_probe.sh --once [--patterns ...]               # print the summed count and exit
 #   indexer_ingest_probe.sh --dry-run ...                         # print the plan, touch nothing
+#   indexer_ingest_probe.sh --print-url                           # print the indexer URL it would use
 #
-# Environment: INDEXER_URL (default https://localhost:9200), INDEXER_USER (default admin),
-#   INDEXER_PASSWORD (or INDEXER_PASS), INDEXER_CACERT (a CA bundle; without it the check is
-#   skipped, like indexer_control.sh).
+# Environment: INDEXER_URL (default: the first <host> of <indexer><hosts> in WAZUH_MANAGER_CONF,
+#   /etc/wazuh-manager/wazuh-manager.conf, the address the manager itself writes to; without one,
+#   https://127.0.0.1:9200 -- never `localhost`: the e2e node's certificate names IP:127.0.0.1 and
+#   DNS:wazuh-indexer only, so a verified request to localhost fails). The credentials and the TLS
+#   trust come from indexer_credentials.sh: INDEXER_USER + INDEXER_PASSWORD (or INDEXER_PASS), else
+#   WAZUH_INDEXER_ADMIN_PASSWORD parsed from INDEXER_CREDENTIALS_FILE / the e2e .credentials.env /
+#   /etc/wazuh-indexer/export/credentials.env -- NO default: without one the probe exits 1;
+#   INDEXER_CACERT, else the manager config's indexer CA, else /etc/wazuh-manager/certs/indexer-ca.pem
+#   (`-k` only with INDEXER_INSECURE=1).
 # ---------------------------------------------------------------------------
 set -uo pipefail
 
-INDEXER_URL="${INDEXER_URL:-https://localhost:9200}"
-INDEXER_USER="${INDEXER_USER:-admin}"
-INDEXER_PASSWORD="${INDEXER_PASSWORD:-${INDEXER_PASS:-admin}}"
 PYTHON="${PYTHON:-python3}"
+DEFAULT_INDEXER_URL="https://127.0.0.1:9200"
+# shellcheck source=indexer_credentials.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/indexer_credentials.sh"
+
+if [[ -z "${INDEXER_URL:-}" ]]; then
+    INDEXER_URL="$(indexer_conf_url)"
+    INDEXER_URL="${INDEXER_URL:-$DEFAULT_INDEXER_URL}"
+fi
+INDEXER_URL="${INDEXER_URL%/}"
 PATTERNS="wazuh-events*,wazuh-states-*"
 OUT=""
 INTERVAL=1
@@ -49,6 +62,7 @@ while [[ $# -gt 0 ]]; do
         --max-seconds) MAX_SECONDS="$2"; shift 2 ;;
         --once)        ONCE=true; shift ;;
         --dry-run)     DRY_RUN=true; shift ;;
+        --print-url)   echo "$INDEXER_URL"; exit 0 ;;
         -h|--help)     usage; exit 0 ;;
         *) echo "indexer_ingest_probe: unknown option $1" >&2; exit 1 ;;
     esac
@@ -71,12 +85,12 @@ if $DRY_RUN; then
     exit 0
 fi
 
+indexer_resolve_credentials || exit 1
+indexer_resolve_tls || exit 1
 # The credentials go to curl on stdin (-K -), never in its argv (visible in /proc/*/cmdline).
-curl_args=(-s -g --max-time 5 -K -)
-curl_user="${INDEXER_USER}:${INDEXER_PASSWORD}"
-curl_user="${curl_user//\\/\\\\}"; curl_user="${curl_user//\"/\\\"}"
-probe_curl() { printf 'user = "%s"\n' "$curl_user" | curl "${curl_args[@]}" "$@"; }
-if [[ -n "${INDEXER_CACERT:-}" ]]; then curl_args+=(--cacert "$INDEXER_CACERT"); else curl_args+=(-k); fi
+curl_args=(-s -g --max-time 5 -K - "${INDEXER_TLS_ARGS[@]}")
+curl_user="$(indexer_curl_user_line)"
+probe_curl() { printf '%s\n' "$curl_user" | curl "${curl_args[@]}" "$@"; }
 
 # json_field BODY EXPR -> the number at EXPR (a python expression on `d`), or nothing.
 json_field() {
