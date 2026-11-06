@@ -26,6 +26,10 @@ enum class SyncStatus : int
 };
 
 /// @brief Tracks the creation state of a persisted message, particularly for newly created items.
+///
+/// Only NEW on a PENDING message changes behaviour: its DELETE is coalesced away. NEW_DELETED is
+/// only set while a session is in flight and both ends of a session turn it into EXISTING; it is
+/// kept so existing databases keep their values.
 enum class CreateStatus : int
 {
     EXISTING = 0,     ///< The message may already be known to the manager.
