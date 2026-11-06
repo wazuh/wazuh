@@ -49,7 +49,7 @@ void fim_container_baseline_log_warn(const char* message);
 void fim_container_baseline_log_error(const char* message);
 
 /* Install-relative location of the eBPF Module's compiled BPF object, mirroring
- * how ebpf_whodata.cpp names modern.bpf.o. */
+ * how ebpf_whodata.cpp names rt_file.bpf.o. */
 #define CB_RT_BPF_OBJECT_PATH "lib/rt_file.bpf.o"
 
 /* Install-relative location of the libbpf the agent ships. Named here for the

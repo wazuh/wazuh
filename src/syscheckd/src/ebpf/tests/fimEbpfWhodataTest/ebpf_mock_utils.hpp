@@ -2,10 +2,10 @@
 #define BPF_HELPERS_TEST_H
 #include <cstring>
 #include "ebpf_whodata.hpp"
-#include "bpf_helpers.h"
-#include "dynamic_library_wrapper.h"
+#include <bounded_queue.hpp>
 
-extern std::unique_ptr<w_bpf_helpers_t> bpf_helpers;
+
+extern fim::BoundedQueue<std::unique_ptr<dynamic_file_event>> kernelEventQueue;
 
 
 class MockFimebpf : public fimebpf
@@ -123,120 +123,5 @@ char* mock_abspath([[maybe_unused]] const char* path, char* buffer, [[maybe_unus
     std::strcpy(buffer, "/tmp/ebpf_hc");
     return buffer;
 }
-void* mock_bpf_object_open_file_success([[maybe_unused]] const char* filename, [[maybe_unused]] void* opts)
-{
-    return (void*)1;
-}
-void* mock_bpf_object_open_file_failure([[maybe_unused]] const char* filename, [[maybe_unused]] void* opts)
-{
-    return nullptr;
-}
-int mock_bpf_object_load_success([[maybe_unused]] void* obj)
-{
-    return 0;
-}
-int mock_bpf_object_load_failure([[maybe_unused]] void* obj)
-{
-    return 1;
-}
-void mock_bpf_object_close_called([[maybe_unused]] void* obj)
-{
-    return;
-}
-bpf_program* mock_bpf_object_next_program([[maybe_unused]] void* obj, [[maybe_unused]] bpf_program* pos)
-{
-    return nullptr;
-}
-bpf_program* mock_bpf_object_next_program_in([[maybe_unused]] void* obj, bpf_program* pos)
-{
-    /* Stateless single-step iteration: yield one program then stop.
-     * Avoids infinite loops in select_programs / attach loops. */
-    return pos == nullptr ? (bpf_program*)1 : nullptr;
-}
-int mock_bpf_program_attach_success([[maybe_unused]] void* prog)
-{
-    return 1;
-}
-int mock_bpf_program_attach_failure([[maybe_unused]] void* prog)
-{
-    return 0;
-}
-void mock_bpf_link_destroy([[maybe_unused]] struct bpf_link* link) {}
-int mock_bpf_program_set_autoload([[maybe_unused]] void* prog, [[maybe_unused]] bool autoload)
-{
-    return 0;
-}
-bool mock_bpf_program_autoload_true([[maybe_unused]] const void* prog)
-{
-    return true;
-}
-bool mock_bpf_program_autoload_false([[maybe_unused]] const void* prog)
-{
-    return false;
-}
-const char* mock_bpf_program_section_name_kprobe([[maybe_unused]] const void* prog)
-{
-    return "kprobe/security_inode_setattr";
-}
-const char* mock_bpf_program_name_default([[maybe_unused]] const void* prog)
-{
-    return "mock_prog";
-}
-int mock_bpf_object_find_map_fd_by_name_success([[maybe_unused]] void* obj, [[maybe_unused]] const char* name)
-{
-    return 1;
-}
-int mock_bpf_object_find_map_fd_by_name_failure([[maybe_unused]] void* obj, [[maybe_unused]] const char* name)
-{
-    return -1;
-}
-
-ring_buffer* mock_ring_buffer_new_success([[maybe_unused]] int fd, [[maybe_unused]] ring_buffer_sample_fn sample_cb, [[maybe_unused]] void* ctx, [[maybe_unused]] void* consumer_ctx)
-{
-    return (ring_buffer*)1;
-}
-
-ring_buffer* mock_ring_buffer_new_failure([[maybe_unused]] int fd, [[maybe_unused]] ring_buffer_sample_fn sample_cb, [[maybe_unused]] void* ctx, [[maybe_unused]] void* consumer_ctx)
-{
-    return nullptr;
-}
-
-int mock_ring_buffer_poll_success([[maybe_unused]]ring_buffer* rb, [[maybe_unused]]int timeout_ms)
-{
-    return 1;
-}
-int mock_ring_buffer_poll_healthcheck_success([[maybe_unused]]ring_buffer* rb, [[maybe_unused]]int timeout_ms)
-{
-    event_received = true;
-    return 1;
-}
-int mock_ring_buffer_poll_failure([[maybe_unused]]ring_buffer* rb, [[maybe_unused]]int timeout_ms)
-{
-    return -1;
-}
-void mock_ring_buffer_free([[maybe_unused]]ring_buffer* rb) {}
-void mock_bpf_object_close([[maybe_unused]]void* obj) {}
-void mock_w_bpf_deinit([[maybe_unused]]void* helpers) {}
-int mock_init_ring_buffer_success([[maybe_unused]]ring_buffer** rb, [[maybe_unused]]ring_buffer_sample_fn sample_cb)
-{
-    return 0;
-}
-int mock_init_ring_buffer_failure([[maybe_unused]]ring_buffer** rb, [[maybe_unused]]ring_buffer_sample_fn sample_cb)
-{
-    return 1;
-}
-void mock_ebpf_pop_events()
-{
-    return;
-}
-int mock_init_libbpf([[maybe_unused]]std::unique_ptr<DynamicLibraryWrapper> sym_load)
-{
-    return 0;
-}
-int mock_init_bpfobj()
-{
-    return 0;
-}
-
-
-#endif // BPF_HELPERS_TEST_H
+// Tests replace the engine's three consumer operations, never libbpf internals.
+#endif

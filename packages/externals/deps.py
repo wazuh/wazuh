@@ -79,7 +79,7 @@ BUILD_RECIPE = ("src/external/CMakeLists.txt", "src/CMakeLists.txt#deps-recipe",
 OWN_RECIPE = {
     "cpython": ("framework/cpython/compile.sh", "framework/cpython/custom/**", "framework/requirements.txt",
                 "framework/.python-version", "src/Makefile#cpython-recipe"),
-    "libbpf-bootstrap": ("packages/externals/ebpf/build_ebpf.sh", "src/syscheckd/src/ebpf/src/modern.bpf.c"),
+    "libbpf-bootstrap": ("packages/externals/ebpf/build_ebpf.sh",),
 }
 # builder-images.json is listed for the path filters; only its darwin values go into a key (_platform_recipe()).
 KEY_INPUT_FILES = ("packages/externals/dependencies.json", "packages/externals/builder-images.json",

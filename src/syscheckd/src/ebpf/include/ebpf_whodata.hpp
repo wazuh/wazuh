@@ -11,12 +11,28 @@
 #define EBPF_WHODATA_HPP
 
 #include "ebpf_whodata.h"
-#include "dynamic_library_wrapper.h"
+#include "rt_engine.h"
+#include <bounded_queue.hpp>
 #include <memory>
+#include <string>
 
 // Defined in src/ebpf_whodata.cpp
 extern volatile bool event_received;
-volatile bool ebpf_hc_created = false;
+extern volatile bool ebpf_hc_created;
+
+struct rt_engine_api_t
+{
+    rt_handle_t (*open)(const struct rt_filter*) = rt_open;
+    int (*poll)(rt_handle_t, rt_sink_fn, void*, int) = rt_poll;
+    void (*close)(rt_handle_t) = rt_close;
+};
+extern rt_engine_api_t rt_engine_api;
+
+struct healthcheck_context
+{
+    const char* path;
+    unsigned int event_type;
+};
 
 class fimebpf
 {
@@ -77,7 +93,24 @@ class fimebpf
         fimShutdownProcessOn_t m_fim_shutdown_process_on;
 };
 
-int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> sym_load);
+struct dynamic_file_event
+{
+    std::string filename;
+    std::string cwd;
+    std::string parent_cwd;
+    std::string comm;
+    std::string parent_comm;
+    uint32_t pid;
+    uint32_t ppid;
+    uint32_t uid;
+    uint32_t gid;
+    uint32_t euid;
+    uint32_t login_uid;
+    uint64_t inode;
+    uint64_t dev;
+};
 
+void handle_event(const struct rt_file_event* event, void* ctx);
+void ebpf_pop_events(fim::BoundedQueue<std::unique_ptr<dynamic_file_event>>& queue);
 
 #endif // EBPF_WHODATA_HPP
