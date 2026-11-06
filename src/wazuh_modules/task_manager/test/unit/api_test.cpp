@@ -63,7 +63,8 @@ namespace
                 nullptr,
                 1024,
                 10,
-                std::chrono::seconds {3600});
+                std::chrono::seconds {3600},
+                std::chrono::seconds {300});
         }
 
         static nlohmann::json agentTaskBody(const std::string& agentId = "001",
@@ -273,7 +274,7 @@ TEST_F(ApiTest, WpkAuthorizationRefusesAnyOtherName)
     }
 }
 
-TEST_F(ApiTest, WpkAuthorizationRefusesTasksOutsideTheTtl)
+TEST_F(ApiTest, WpkAuthorizationClosesADeliveredTaskAtTheTtlAndAnUndeliveredOneLater)
 {
     const auto now {static_cast<Timestamp>(std::time(nullptr))};
     m_api->createAgentTask(wpkTaskBody(now, "delivered.wpk"));
@@ -287,33 +288,48 @@ TEST_F(ApiTest, WpkAuthorizationRefusesTasksOutsideTheTtl)
     // Read at query time: DELIVERY_TIME comes from the wall clock, so a fixed value could land on
     // the cutoff when the second ticks between the delivery and the query.
     const std::chrono::seconds ttl {600};
-    ApiHandlers later {*m_store,
-                       *m_registry,
-                       m_cache,
-                       [](const std::string&) {},
-                       nullptr,
-                       1024,
-                       10,
-                       ttl,
-                       [ttl] { return static_cast<Timestamp>(std::time(nullptr)) + ttl.count() + 1; }};
+    const std::chrono::seconds cleanup {300};
+    const auto handlerAt = [&](const Timestamp offset)
+    {
+        return ApiHandlers {*m_store,
+                            *m_registry,
+                            m_cache,
+                            [](const std::string&) {},
+                            nullptr,
+                            1024,
+                            10,
+                            ttl,
+                            cleanup,
+                            [offset] { return static_cast<Timestamp>(std::time(nullptr)) + offset; }};
+    };
 
+    // Past the TTL the delivered task closes, while the one this node never delivered stays open:
+    // another node may have handed it out at the last moment.
+    auto pastTtl {handlerAt(ttl.count() + 1)};
+    EXPECT_TRUE(pastTtl.authorizeWpkDownload(wpkQuery("001", "delivered.wpk")).body["task_id"].is_null());
+    EXPECT_TRUE(pastTtl.authorizeWpkDownload(wpkQuery("001", "pending.wpk")).body["task_id"].is_string());
+
+    auto pastWindow {handlerAt(2 * ttl.count() + cleanup.count() + 1)};
     for (const auto* name : {"delivered.wpk", "pending.wpk"})
     {
-        const auto response {later.authorizeWpkDownload(wpkQuery("001", name))};
+        const auto response {pastWindow.authorizeWpkDownload(wpkQuery("001", name))};
         EXPECT_EQ(response.status, 200) << name;
         EXPECT_TRUE(response.body["task_id"].is_null()) << name;
     }
 }
 
-TEST_F(ApiTest, WpkAuthorizationRefusesExpiredTasks)
+TEST_F(ApiTest, WpkAuthorizationKeepsAnExpiredTaskOpenUntilTheUndeliveredWindowCloses)
 {
+    // m_api runs with a 3600 s TTL and a 300 s cleanup interval: the window is 7500 s.
     const auto now {static_cast<Timestamp>(std::time(nullptr))};
-    m_api->createAgentTask(wpkTaskBody(now));
-    ASSERT_TRUE(m_api->authorizeWpkDownload(wpkQuery("001", "a.wpk")).body["task_id"].is_string());
+    // Near the end of the window, past ttl + cleanup and past 2 * ttl, so either term missing shows.
+    m_api->createAgentTask(wpkTaskBody(now - 7500 + 100, "inside.wpk"));
+    m_api->createAgentTask(wpkTaskBody(now - 7500 - 100, "outside.wpk"));
+    ASSERT_EQ(m_store->expireAgentTasks(now - 3600), 2);
 
-    ASSERT_EQ(m_store->expireAgentTasks(now + 1), 1);
+    EXPECT_TRUE(m_api->authorizeWpkDownload(wpkQuery("001", "inside.wpk")).body["task_id"].is_string());
 
-    const auto response {m_api->authorizeWpkDownload(wpkQuery("001", "a.wpk"))};
+    const auto response {m_api->authorizeWpkDownload(wpkQuery("001", "outside.wpk"))};
     EXPECT_EQ(response.status, 200);
     EXPECT_TRUE(response.body["task_id"].is_null());
 }
