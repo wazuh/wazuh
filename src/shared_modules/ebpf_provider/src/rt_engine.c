@@ -1254,18 +1254,14 @@ int rt_drain_drops(rt_handle_t handle, rt_drop_fn cb, void* user)
     {
         unsigned int drops = 0;
 
-        if (g_libbpf.map_lookup_and_delete_elem)
-        {
-            if (g_libbpf.map_lookup_and_delete_elem(h->cgroup_drops_fd, &keys[i], &drops) != 0)
-            {
-                continue; /* raced with another drain, or already gone */
-            }
-        }
-        else
+        /* Hash maps take the atomic call from Linux 5.14 on; an older kernel
+         * rejects it, so fall back rather than skip the key. */
+        if (!g_libbpf.map_lookup_and_delete_elem ||
+            g_libbpf.map_lookup_and_delete_elem(h->cgroup_drops_fd, &keys[i], &drops) != 0)
         {
             if (g_libbpf.map_lookup_elem(h->cgroup_drops_fd, &keys[i], &drops) != 0)
             {
-                continue;
+                continue; /* raced with another drain, or already gone */
             }
             /* Non-atomic fallback: a drop recorded between the lookup and the
              * delete is lost from the per-cgroup view. It is still counted in
