@@ -168,6 +168,16 @@ TEST_F(FimDBFixture, executeQueryFailException)
     fimDBMock.executeQuery(itemJson, callback);
 }
 
+TEST_F(FimDBFixture, executeQueryWhileStopping)
+{
+    nlohmann::json itemJson;
+    ResultCallbackData callback;
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Query not executed: FIMDB is not initialized or is shutting down"));
+    // The teardown releases the DBSync handler (and its mock), so the query must not reach it
+    fimDBMock.teardown();
+    fimDBMock.executeQuery(itemJson, callback);
+}
+
 TEST_F(FimDBFixture, logAnExceptionErr)
 {
     EXPECT_CALL(*mockLog, loggingFunction(testing::_, testing::_));

@@ -110,4 +110,5 @@ void BSDNetworkImpl<AF_LINK>::buildNetworkData(nlohmann::json& network)
 
     network["interface_mtu"]   = m_interfaceAddress->mtu();
     network["network_gateway"] = m_interfaceAddress->gateway();
+    network["network_gateway6"] = m_interfaceAddress->gatewayV6();
 }

@@ -10,6 +10,7 @@
 
 #include "shared.h"
 #include "sha256_op.h"
+#include "openssl_init.h"
 
 #ifdef WAZUH_UNIT_TESTING
     #ifdef WIN32
@@ -55,7 +56,7 @@ int wurl_get(const char * url, const char * dest, const char * header, const cha
     CURL *curl;
     FILE *fp;
     CURLcode res;
-    OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS | OPENSSL_INIT_LOAD_CONFIG | OPENSSL_INIT_NO_ATEXIT, NULL);
+    w_openssl_init();
     curl = curl_easy_init();
     char errbuf[CURL_ERROR_SIZE];
     int old_mask;
@@ -198,7 +199,7 @@ int wurl_request_gz(const char * url, const char * dest, const char * header, co
 char * wurl_http_get(const char * url, size_t max_size, const long timeout) {
     CURL *curl;
     CURLcode res;
-    OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS | OPENSSL_INIT_LOAD_CONFIG | OPENSSL_INIT_NO_ATEXIT, NULL);
+    w_openssl_init();
     curl = curl_easy_init();
     char errbuf[CURL_ERROR_SIZE];
 
@@ -345,7 +346,7 @@ curl_response* wurl_http_request(char *method, char **headers, const char* url, 
         return NULL;
     }
 
-    OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS | OPENSSL_INIT_LOAD_CONFIG | OPENSSL_INIT_NO_ATEXIT, NULL);
+    w_openssl_init();
     CURL* curl = curl_easy_init();
 
     if (!curl) {

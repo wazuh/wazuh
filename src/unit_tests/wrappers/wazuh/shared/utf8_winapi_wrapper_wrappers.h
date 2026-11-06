@@ -24,6 +24,12 @@ HANDLE __wrap_utf8_CreateFile(const char* utf8_path,
                               DWORD flags,
                               HANDLE h_template);
 
+BOOL __wrap_utf8_ReplaceFile(const char* old_name, const char* new_name, const char* backup_name, DWORD flags);
+
+BOOL __wrap_utf8_DeleteFile(const char* utf8_path);
+
+BOOL __wrap_utf8_RemoveDirectory(const char* utf8_path);
+
 DWORD __wrap_utf8_GetFileAttributes(const char* utf8_path);
 
 char* __wrap_utf8_GetShortPathName(const char* utf8_path);

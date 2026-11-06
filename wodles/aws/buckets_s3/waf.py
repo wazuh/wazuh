@@ -29,9 +29,10 @@ class AWSWAFBucket(AWSCustomBucket):
         """Load data from a WAF log file."""
 
         def json_event_generator(data):
-            while data:
-                json_data, json_index = decoder.raw_decode(data)
-                data = data[json_index:]
+            # Move a position forward instead of slicing the data, which copied the rest of it for every event
+            position = 0
+            while position < len(data):
+                json_data, position = decoder.raw_decode(data, position)
                 yield json_data
 
         content = []

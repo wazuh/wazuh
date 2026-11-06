@@ -180,6 +180,8 @@ if(${TARGET} STREQUAL "winagent")
                  "syscheckd/test_syscheck_invalid_diff_limit.conf" NEWLINE_STYLE WIN32)
   configure_file("config_files/test_syscheck_diff_nodiff_mixed.conf"
                  "syscheckd/test_syscheck_diff_nodiff_mixed.conf" NEWLINE_STYLE WIN32)
+  configure_file("config_files/test_syscheck_registry_wildcards_win.conf"
+                 "syscheckd/test_syscheck_registry_wildcards.conf" NEWLINE_STYLE WIN32)
 else()
   configure_file("config_files/test_syscheck.conf"
                  "syscheckd/test_syscheck.conf" COPYONLY)

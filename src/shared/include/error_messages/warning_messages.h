@@ -96,7 +96,11 @@
 #define FIM_ERROR_EBPF_HEALTHCHECK              "(6959): The eBPF healthcheck has failed. Switching all whodata eBPF configuration to audit."
 #define FIM_WARN_INODE_WRONG_TYPE               "(6960): Inode field received with a wrong type, it must be a string."
 #define FIM_WARN_SYMLINK_NOFOLLOW               "(6961): Configured path '%s' is a symbolic link to '%s'. Without 'follow_symbolic_link' enabled, only the symlink itself will be monitored, not the directory contents. Consider monitoring '%s' directly or enabling 'follow_symbolic_link'."
+#define FIM_WARN_REG_WILDCARD_LIMIT             "(6962): Registry wildcard '%s' matches more than %d keys. New keys over the limit are not monitored."
+#define FIM_WARN_REG_WILDCARD_LIST              "(6963): Could not list every key matching the registry wildcard '%s'. Its monitored keys are kept until they are removed."
+#define FIM_WARN_REG_WILDCARD_ROOT              "(6964): Registry wildcard '%s' does not start with a supported root key. It is not monitored."
 #define FIM_WARN_WHODATA_PROVIDER_UNSUPPORTED   "(6967): The whodata 'provider' option is only available on Linux. Ignoring it."
+#define FIM_WARN_EBPF_DIRS_MAP_FULL             "(6984): eBPF monitored directories map is full. Some whodata events will be lost."
 
 /* Log rotation warning messages. Unused -- no emitter on either product -- and kept only because
  * the codes are published. Rotation itself lives in shared/src/log_rotate.c.

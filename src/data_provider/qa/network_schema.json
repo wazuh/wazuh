@@ -80,6 +80,9 @@
                             "network_gateway": {
                                 "type": "string"
                             },
+                            "network_gateway6": {
+                                "type": "string"
+                            },
                             "host_mac": {
                                 "type": "string"
                             },
@@ -128,6 +131,7 @@
                         "required": [
                             "interface_alias",
                             "network_gateway",
+                            "network_gateway6",
                             "host_mac",
                             "interface_mtu",
                             "interface_name",
