@@ -447,10 +447,19 @@ static void test_v1_subsys_configuration(void)
 
     /* The index this host would configure, resolved the way the engine's
      * callers must resolve it — from /proc/cgroups, never hardcoded, because
-     * enum cgroup_subsys_id is ordered by what the kernel was built with. */
+     * enum cgroup_subsys_id is ordered by what the kernel was built with.
+     * Since 6.12 a controller built without v1 files is left out of
+     * /proc/cgroups, so memory is only required to be listed below that. */
     const int memory = wz_cgroup_subsys_index("memory");
-    CHECK(memory >= 0, "memory should be listed in /proc/cgroups on any Linux host, got %d", memory);
-    printf("  (memory is subsystem %d on this host)\n", memory);
+    if (memory >= 0)
+    {
+        printf("  (memory is subsystem %d on this host)\n", memory);
+    }
+    else
+    {
+        CHECK(kernel_is_at_least(6, 12), "memory should be listed in /proc/cgroups below 6.12, got %d", memory);
+        printf("  (memory is not listed in /proc/cgroups on this host)\n");
+    }
 
     /* A named hierarchy has no controller, so it has no subsystem slot and the
      * BPF program has nothing to read. Userspace can still stat its
@@ -483,7 +492,14 @@ static void test_v1_subsys_configuration(void)
         }
         else
         {
-            printf("  (memory is %d by BTF, %d by /proc/cgroups row order)\n", memory_btf, memory);
+            if (memory >= 0)
+            {
+                printf("  (memory is %d by BTF, %d by /proc/cgroups row order)\n", memory_btf, memory);
+            }
+            else
+            {
+                printf("  (memory is %d by BTF and not listed in /proc/cgroups)\n", memory_btf);
+            }
 
             /* The name mapping, which is the one piece of this that could be
              * silently wrong: /proc/cgroups prints a controller's LEGACY name
@@ -504,7 +520,7 @@ static void test_v1_subsys_configuration(void)
                       memory_btf,
                       memory);
             }
-            else if (memory_btf != memory)
+            else if (memory >= 0 && memory_btf != memory)
             {
                 printf("  (6.12+ row skew present on this host: BTF %d vs row %d — the engine would use "
                        "BTF and warn)\n",
@@ -528,16 +544,17 @@ static void test_v1_subsys_configuration(void)
     CHECK(wz_cgroup_v1_subsys_read_allowed(WZ_CGROUP_MODE_LEGACY, -1) == 0,
           "a controller with no subsystem slot gives the program nothing to read");
 
-    /* The chooser. Both tests have to pass for a controller to serve, and on
-     * this (unified) host neither can: nothing is mounted as a v1 hierarchy,
-     * so the selector correctly finds nothing rather than picking a controller
-     * that is merely compiled in. */
+    /* The chooser. Both tests have to pass for a controller to serve. On a
+     * unified host neither can: nothing is mounted as a v1 hierarchy, so the
+     * selector correctly finds nothing rather than picking a controller that
+     * is merely compiled in. A hybrid host does mount v1 controllers, so one
+     * may be chosen there, but the shared policy must still refuse to read it. */
     {
         const char* chosen = NULL;
         const int selected = wz_cgroup_v1_select_subsys(&chosen);
-        const int unified = wz_cgroup_mode_has_usable_cgroup_id(wz_cgroup_mode());
+        const wz_cgroup_mode_t mode = wz_cgroup_mode();
 
-        if (unified)
+        if (mode == WZ_CGROUP_MODE_UNIFIED)
         {
             CHECK(selected == -1, "a unified host has no v1 hierarchy to key by, got index %d", selected);
             CHECK(chosen == NULL, "nothing should have been chosen");
@@ -547,6 +564,11 @@ static void test_v1_subsys_configuration(void)
         else
         {
             CHECK(selected < 0 || chosen != NULL, "a selected index must come with the controller's name");
+            if (mode == WZ_CGROUP_MODE_HYBRID && selected >= 0)
+            {
+                CHECK(wz_cgroup_v1_subsys_read_allowed(mode, selected) == 0,
+                      "a hybrid host must not read the '%s' controller it selected", chosen ? chosen : "?");
+            }
         }
         CHECK(wz_cgroup_v1_controller_mounted("no_such_controller") == 0, "an unknown controller is not mounted");
         CHECK(wz_cgroup_v1_controller_mounted(NULL) == 0, "a NULL controller must not crash or match");
