@@ -556,7 +556,8 @@ namespace remoted::endpoints::download
         }
 
         // Everything after authorization: locate, open, stream. Runs on the HTTP worker for a fresh
-        // registry hit or a WPK, and on a lookup worker when the verdict needed wazuh-db --
+        // registry hit, on the authorizer's I/O thread for a granted WPK, and on a lookup worker
+        // when the verdict needed wazuh-db --
         // IHttpResponder is thread-safe and exactly-once, and the payload is already released.
         void serve(const DownloadRequest& downloadRequest,
                    const std::string& agentId,
