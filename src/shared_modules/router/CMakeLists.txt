@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_definitions(-DPROMISE_TYPE=PromiseType::NORMAL)
+add_definitions(-DCPPHTTPLIB_USE_POLL)
 
 if (NOT SRC_FOLDER)
     get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)

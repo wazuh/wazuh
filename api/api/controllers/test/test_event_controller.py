@@ -34,10 +34,13 @@ async def test_forward_event(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
     """Verify 'forward_event' endpoint is working as expected."""
     with patch('api.controllers.event_controller.Body.validate_content_type'):
         with patch(
-            'api.controllers.event_controller.EventIngestModel.get_kwargs', return_value=AsyncMock()
+            'api.controllers.event_controller.EventIngestModel.get_kwargs',
+            return_value={'events': ['a', 'b', 'c']}
         ) as mock_getkwargs:
 
             result = await forward_event()
+            # The access log reads the count from here when it could not cache the body.
+            assert mock_request.context['events_count'] == 3
             mock_dapi.assert_called_once_with(
                 f=send_event_to_analysisd,
                 f_kwargs=mock_remove.return_value,

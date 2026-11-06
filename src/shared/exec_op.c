@@ -221,13 +221,35 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
     wfd->file_in = fp_in;
     wfd->file_out = fp_out;
 
-    switch (pid = fork(), pid) {
+    /* Block the termination signals across fork() so the child never runs the parent's handler: it would wake the parent's shutdown thread */
+    sigset_t blocked_signals;
+    sigset_t previous_signals;
+    sigemptyset(&blocked_signals);
+    sigaddset(&blocked_signals, SIGINT);
+    sigaddset(&blocked_signals, SIGQUIT);
+    sigaddset(&blocked_signals, SIGTERM);
+    sigaddset(&blocked_signals, SIGALRM);
+    pthread_sigmask(SIG_BLOCK, &blocked_signals, &previous_signals);
+
+    pid = fork();
+
+    if (pid != 0) {
+        pthread_sigmask(SIG_SETMASK, &previous_signals, NULL);
+    }
+
+    switch (pid) {
     case -1:
         // Error
         break;
 
     case 0:
         // Child code
+
+        signal(SIGINT, SIG_DFL);
+        signal(SIGQUIT, SIG_DFL);
+        signal(SIGTERM, SIG_DFL);
+        signal(SIGALRM, SIG_DFL);
+        pthread_sigmask(SIG_SETMASK, &previous_signals, NULL);
 
         if (flags & W_CHECK_WRITE && !waccess(path, W_OK)) {
             merror("At wpopenv(): file '%s' has write permissions.", path);

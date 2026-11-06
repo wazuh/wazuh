@@ -145,6 +145,16 @@ def test_load_rules_from_file_unknown(mock_load):
      {'exists': 'true'},
      [
          {'filename': 'two.xml', 'exists': 'true'},
+     ]),
+    # The same file listed twice, as with a rule_include of a file in a rule_dir, filtered out by two parameters
+    ([
+         {'filename': 'one.xml', 'relative_dirname': 'etc/rules', 'status': 'enabled'},
+         {'filename': 'two.xml', 'relative_dirname': 'ruleset/rules', 'status': 'disabled'},
+         {'filename': 'one.xml', 'relative_dirname': 'etc/rules', 'status': 'enabled'}
+     ],
+     {'status': 'disabled', 'relative_dirname': 'ruleset/rules'},
+     [
+         {'filename': 'two.xml', 'relative_dirname': 'ruleset/rules', 'status': 'disabled'},
      ])
 ])
 def test_remove_files(tmp_data, parameters, expected_result):
@@ -164,6 +174,42 @@ def test_format_rule_decoder_file(rule_file, rule_path, rule_status):
         ['rule_include', 'rule_exclude', 'rule_dir'])
 
     assert result == [{'filename': rule_file, 'relative_dirname': rule_path, 'status': rule_status}]
+
+
+a_ruleset = {'filename': 'a.xml', 'relative_dirname': 'ruleset/rules', 'status': 'enabled'}
+a_etc = {'filename': 'a.xml', 'relative_dirname': 'etc/rules', 'status': 'enabled'}
+b_ruleset = {'filename': 'b.xml', 'relative_dirname': 'ruleset/rules', 'status': 'disabled'}
+c_etc = {'filename': 'c.xml', 'relative_dirname': 'etc/rules', 'status': 'enabled'}
+
+
+@pytest.mark.parametrize('filenames, status, relative_dirname, expected_result', [
+    # c.xml is both included by its absolute path and in a rule_dir, so it is listed twice each time it is requested
+    (['c.xml', 'a.xml', 'c.xml'], None, None, [c_etc, c_etc, a_ruleset, a_etc, c_etc, c_etc]),
+    (['a.xml', 'missing.xml'], 'all', None, [a_ruleset, a_etc]),
+    (['a.xml', 'b.xml'], 'enabled', None, [a_ruleset, a_etc]),
+    (['a.xml', 'b.xml'], 'disabled', None, [b_ruleset]),
+    (['a.xml', 'c.xml'], None, 'etc/rules', [a_etc, c_etc, c_etc]),
+    (['b.xml', 'c.xml'], 'disabled', 'ruleset/rules', [b_ruleset]),
+    ([''], 'disabled', None, [b_ruleset]),
+    (['missing.xml'], None, None, []),
+    ([], None, None, []),
+])
+def test_format_rule_decoder_files(tmp_path, filenames, status, relative_dirname, expected_result):
+    """Test that format_rule_decoder_files gets the files of each name, keeping order and repetitions, and lists the
+    configured files only once."""
+    for item in (a_ruleset, a_etc, b_ruleset, c_etc):
+        os.makedirs(tmp_path / item['relative_dirname'], exist_ok=True)
+        (tmp_path / item['relative_dirname'] / item['filename']).touch()
+    conf = {'rule_dir': ['ruleset/rules', 'etc/rules'], 'rule_include': [str(tmp_path / 'etc/rules/c.xml')],
+            'rule_exclude': ['b.xml']}
+
+    with patch('wazuh.core.common.WAZUH_PATH', new=str(tmp_path)), \
+            patch('wazuh.core.rule.format_rule_decoder_file', wraps=rule.format_rule_decoder_file) as format_mock:
+        result = rule.format_rule_decoder_files(conf, {'status': status, 'relative_dirname': relative_dirname},
+                                                ['rule_include', 'rule_exclude', 'rule_dir'], filenames)
+
+    assert result == expected_result
+    assert format_mock.call_count == (1 if filenames else 0)
 
 
 @pytest.mark.parametrize('groups, general_groups', [

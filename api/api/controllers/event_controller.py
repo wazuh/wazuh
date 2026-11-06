@@ -36,6 +36,9 @@ async def forward_event(pretty: bool = False, wait_for_complete: bool = False) -
     """
     Body.validate_content_type(request, expected_content_type=JSON_CONTENT_TYPE)
     f_kwargs = await EventIngestModel.get_kwargs(request)
+    # The access log cannot see a body it did not cache (chunked, or over its size limit); this is
+    # the only layer that has read all of it.
+    request.context['events_count'] = len(f_kwargs.get('events') or [])
 
     dapi = DistributedAPI(f=send_event_to_analysisd,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

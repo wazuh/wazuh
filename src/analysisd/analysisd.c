@@ -239,6 +239,10 @@ pthread_mutex_t process_event_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t hourly_alert_mutex = PTHREAD_MUTEX_INITIALIZER;
 /* hot reload mutes */
 static pthread_rwlock_t g_hotreload_ruleset_mutex;
+/* hot reload lock for the rule matching threads */
+static pthread_rwlock_t g_hotreload_process_mutex;
+/* Seconds a rule matching thread waits for an event while holding the rule matching lock */
+#define HOTRELOAD_PROCESS_POP_TIMEOUT 1
 
 /* Reported mutexes */
 static pthread_mutex_t writer_threads_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -853,6 +857,7 @@ int main_analysisd(int argc, char **argv)
     pthread_rwlockattr_init(&rwlock_attr);
     pthread_rwlockattr_setkind_np(&rwlock_attr, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
     pthread_rwlock_init(&g_hotreload_ruleset_mutex, &rwlock_attr);
+    pthread_rwlock_init(&g_hotreload_process_mutex, &rwlock_attr);
     pthread_rwlockattr_destroy(&rwlock_attr);
 
     /* Load the logtest config before the socket that serves it (getconfig) is published */
@@ -2042,8 +2047,8 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         RuleNode *rulenode_pt;
         lf_logall = NULL;
 
-        /* Extract decoded event from the queue */
-        if (lf = queue_pop_ex(decode_queue_event_output), !lf) {
+        /* Extract decoded event from the queue, blocking the hot reload until it is processed */
+        if (lf = w_hotreload_process_event_pop(decode_queue_event_output, HOTRELOAD_PROCESS_POP_TIMEOUT), !lf) {
             continue;
         }
 
@@ -2072,6 +2077,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 if (!lf->action || !lf->srcip || !lf->dstip || !lf->srcport ||
                         !lf->dstport || !lf->protocol) {
                     w_free_event_info(lf);
+                    w_hotreload_process_event_done();
                     continue;
                 }
 
@@ -2288,6 +2294,7 @@ next_it:
         if (!lf->queue_added) {
             w_free_event_info(lf);
         }
+        w_hotreload_process_event_done();
     }
 }
 
@@ -2510,10 +2517,13 @@ bool w_hotreload_reload(OSList * list_msg) {
     mdebug1("Blocking input threads to reload ruleset");
     w_rwlock_wrlock(&g_hotreload_ruleset_mutex);
 
+    // Wait for the rule matching threads to finish the events in progress
+    mdebug1("Blocking rule matching threads to reload ruleset");
+    w_rwlock_wrlock(&g_hotreload_process_mutex);
+
     // Drain queues if still some events are pending
     mdebug1("Clearing pending events from queues");
     w_hotreload_drain_queues();
-    usleep(5000);
 
     minfo("Reloading ruleset");
 
@@ -2524,7 +2534,8 @@ bool w_hotreload_reload(OSList * list_msg) {
     w_hotreload_reload_internal_decoders();
 
     // Run the new ruleset
-    mdebug1("Unblocking input threads (Enable new ruleset)");
+    mdebug1("Unblocking input and rule matching threads (Enable new ruleset)");
+    w_rwlock_unlock(&g_hotreload_process_mutex);
     w_rwlock_unlock(&g_hotreload_ruleset_mutex);
 
     minfo("Ruleset reloaded successfully");
@@ -2586,6 +2597,24 @@ void w_hotreload_drain_queues() {
     for (int i = 0; queues_to_drain[i] != NULL; i++) {
         w_hotreload_drain_eventinfo_queue(queues_to_drain[i]);
     }
+}
+
+Eventinfo * w_hotreload_process_event_pop(w_queue_t * queue, time_t timeout) {
+    struct timespec abstime = { .tv_sec = time(NULL) + timeout, .tv_nsec = 0 };
+    Eventinfo * lf;
+
+    w_rwlock_rdlock(&g_hotreload_process_mutex);
+
+    // Release the lock when idle, so that a pending hot reload is not blocked by an empty queue
+    if (lf = queue_pop_ex_timedwait(queue, &abstime), !lf) {
+        w_rwlock_unlock(&g_hotreload_process_mutex);
+    }
+
+    return lf;
+}
+
+void w_hotreload_process_event_done(void) {
+    w_rwlock_unlock(&g_hotreload_process_mutex);
 }
 
 w_hotreload_ruleset_data_t * w_hotreload_switch_ruleset(w_hotreload_ruleset_data_t * new_ruleset) {

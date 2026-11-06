@@ -53,7 +53,12 @@ constexpr auto MAC_ADDRESS_COUNT_SEGMENTS
     6ull
 };
 
+// Routing socket messages pad each sockaddr to 4 bytes on Darwin and to sizeof(long) elsewhere
+#ifdef __APPLE__
+#define ROUNDUP(a) ((a) > 0 ? (1 + (((a)-1) | (sizeof(uint32_t) - 1))) : sizeof(uint32_t))
+#else
 #define ROUNDUP(a) ((a) > 0 ? (1 + (((a)-1) | (sizeof(long) - 1))) : sizeof(long))
+#endif
 
 enum OSPlatformType
 {

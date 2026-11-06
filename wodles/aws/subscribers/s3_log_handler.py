@@ -6,11 +6,12 @@ import csv
 import io
 import json
 import re
+import socket
 import sys
 
 from os import path
 from typing import List
-from urllib.parse import unquote
+from urllib.parse import unquote_plus
 
 try:
     import pyarrow.parquet as pq
@@ -23,6 +24,75 @@ import aws_tools
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import wazuh_integration
+
+# After wazuh_integration, which checks that boto3 is installed
+import botocore
+import urllib3
+
+UNAVAILABLE_OBJECT_ERROR_CODES = ('NoSuchKey', 'NoSuchBucket', 'InvalidBucketName', 'KeyTooLongError')
+# Same characters as str.lstrip() removes
+WHITESPACE_REGEX = re.compile(r'\s*')
+
+
+def is_object_unavailable(error: Exception) -> bool:
+    """Determine if fetching an object failed because its bucket or key does not exist or is not a valid name.
+
+    Retrying such a notification can never succeed.
+
+    Parameters
+    ----------
+    error : Exception
+        Error raised while fetching the object.
+
+    Returns
+    -------
+    bool
+        Whether the object named in the notification is unavailable.
+    """
+    if isinstance(error, botocore.exceptions.ParamValidationError):
+        return True
+    return isinstance(error, botocore.exceptions.ClientError) and \
+        error.response.get('Error', {}).get('Code') in UNAVAILABLE_OBJECT_ERROR_CODES
+
+
+def is_retryable_error(error: Exception) -> bool:
+    """Determine if an error comes from AWS or from the connection to it, so the object may be processed later.
+
+    Older botocore versions do not wrap the urllib3 errors raised while reading the object.
+
+    Parameters
+    ----------
+    error : Exception
+        Error raised while fetching or processing the object.
+
+    Returns
+    -------
+    bool
+        Whether the error may not happen in a later run.
+    """
+    return isinstance(error, (botocore.exceptions.ClientError, botocore.exceptions.BotoCoreError,
+                              urllib3.exceptions.HTTPError, ConnectionError, TimeoutError, socket.timeout))
+
+
+def is_unanswered_error(error: Exception) -> bool:
+    """Determine if a request for an object was sent and got no answer from AWS, e.g. because of the network or the
+    endpoint.
+
+    Unlike an answer from AWS, such as AccessDenied, or an error raised before sending the request, such as one
+    resolving the endpoint, it does not depend on the bucket named in the message.
+
+    Parameters
+    ----------
+    error : Exception
+        Error raised while fetching or processing the object.
+
+    Returns
+    -------
+    bool
+        Whether the request got no answer from AWS.
+    """
+    return isinstance(error, (botocore.exceptions.ConnectionError, botocore.exceptions.HTTPClientError,
+                              urllib3.exceptions.HTTPError, ConnectionError, TimeoutError, socket.timeout))
 
 
 class AWSS3LogHandler:
@@ -107,9 +177,11 @@ class AWSSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler):
             Extracted JSON event.
         """
         decoder = json.JSONDecoder()
-        while data:
-            json_data, json_index = decoder.raw_decode(data)
-            data = data[json_index:].lstrip()
+        # Move a position forward instead of slicing the data, which copied the rest of it for every event
+        position = 0
+        while position < len(data):
+            json_data, position = decoder.raw_decode(data, position)
+            position = WHITESPACE_REGEX.match(data, position).end()
             yield json_data
 
     @staticmethod
@@ -185,15 +257,15 @@ class AWSSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler):
                         return [dict({k: v for k, v in row.items() if v is not None},
                                      source='custom') for row in reader]
                     except MemoryError:
-                        aws_tools.error(f"The size of the {log_path} file exceeds the available memory.")
-                        sys.exit(9)
+                        aws_tools.error(f"The size of the {log_path!r} file exceeds the available memory.")
+                        raise
                 else:
                     aws_tools.debug("+++ Data in the file does not seem to be CSV. Trying with plain text.", 2)
                     try:
                         return [dict(full_log=event, source="custom") for event in f.read().splitlines()]
                     except OSError:
                         aws_tools.error(f"Data in the file does not seem to be plain text either.")
-                        sys.exit(9)
+                        raise
 
     def process_file(self, message_body: dict) -> None:
         """Parse an SQS message, obtain the events associated, and send them to Analysisd.
@@ -204,7 +276,7 @@ class AWSSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler):
             An SQS message received from the queue.
         """
 
-        log_path = unquote(message_body['log_path'])
+        log_path = unquote_plus(message_body['log_path'])
         bucket_path = message_body['bucket_path']
 
         formatted_logs = self.obtain_logs(bucket=bucket_path, log_path=log_path)
@@ -221,19 +293,19 @@ class AWSSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler):
             self._remove_none_fields(log)
             if 'full_log' in log:
                 # The processed logs origin is a plain text log file
-                if re.match(self.discard_regex, log['full_log']):
+                if self.text_event_should_be_skipped(log['full_log']):
                     aws_tools.debug(f'+++ The "{self.discard_regex.pattern}" regex found a match. '
                                     f'The event will be skipped.', 2)
                     continue
-                else:
-                    print(f'WARNING: The "{self.discard_regex.pattern}" regex did not find a match. '
-                          f'The event will be processed.')
+                elif self.discard_regex:
+                    aws_tools.debug(f'+++ The "{self.discard_regex.pattern}" regex did not find a match. '
+                                    f'The event will be processed.', 3)
             elif self.event_should_be_skipped(log):
                 aws_tools.debug(f'+++ The "{self.discard_regex.pattern}" regex found a match '
                                 f'in the "{self.discard_field}" '
                       f'field. The event will be skipped.', 2)
                 continue
-            else:
+            elif self.discard_field and self.discard_regex:
                 aws_tools.debug(
                                 f'+++ The "{self.discard_regex.pattern}" regex did not find a match in the '
                                 f'"{self.discard_field}" field. The event will be processed.', 3)
@@ -281,18 +353,14 @@ class AWSSLSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler)
         events : list
             Events contained inside the parquet file.
         """
-        aws_tools.debug(f'Processing file {log_path} in {bucket}', 2)
+        aws_tools.debug(f'Processing file {log_path!r} in {bucket!r}', 2)
         events = []
-        try:
-            raw_parquet = io.BytesIO(self.client.get_object(Bucket=bucket, Key=log_path)['Body'].read())
-        except Exception as e:
-            aws_tools.error(f'Could not get the parquet file {log_path} in {bucket}: {e}')
-            sys.exit(21)
+        raw_parquet = io.BytesIO(self.get_object_content(bucket, log_path))
         pfile = pq.ParquetFile(raw_parquet)
         for i in pfile.iter_batches():
             for j in i.to_pylist():
                 events.append(json.dumps(j, default=str))
-        aws_tools.debug(f'Found {len(events)} events in file {log_path}', 2)
+        aws_tools.debug(f'Found {len(events)} events in file {log_path!r}', 2)
         return events
 
     def process_file(self, message_body: dict) -> None:
@@ -365,7 +433,7 @@ class AWSSecurityHubSubscriberBucket(AWSSubscriberBucket):
 
             except (json.JSONDecodeError, AttributeError):
                 aws_tools.error(f"Data in the file does not contain JSON objects.")
-                sys.exit(9)
+                raise
 
     def process_file(self, message_body: dict) -> None:
         """Parse an SQS message, obtain the events associated, and send them to Analysisd.
@@ -375,7 +443,7 @@ class AWSSecurityHubSubscriberBucket(AWSSubscriberBucket):
         message_body : dict
             An SQS message received from the queue.
         """
-        log_path = message_body['log_path']
+        log_path = unquote_plus(message_body['log_path'])
         bucket_path = message_body['bucket_path']
 
         formatted_logs = self.obtain_logs(bucket=bucket_path, log_path=log_path)
@@ -394,7 +462,7 @@ class AWSSecurityHubSubscriberBucket(AWSSubscriberBucket):
                 aws_tools.debug(f'+++ The "{self.discard_regex.pattern}" regex found a match '
                                 f'in the "{self.discard_field}" field. The event will be skipped.', 2)
                 continue
-            else:
+            elif self.discard_field and self.discard_regex:
                 aws_tools.debug(
                     f'+++ The "{self.discard_regex.pattern}" regex did not find a match in the '
                     f'"{self.discard_field}" field. The event will be processed.', 3)

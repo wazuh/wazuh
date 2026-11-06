@@ -15,8 +15,8 @@ from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.rule import check_status, load_rules_from_file, format_rule_decoder_file, REQUIRED_FIELDS, \
-    RULE_REQUIREMENTS, SORT_FIELDS, RULE_FIELDS, RULE_FILES_FIELDS, RULE_FILES_REQUIRED_FIELDS
+from wazuh.core.rule import check_status, load_rules_from_file, format_rule_decoder_file, format_rule_decoder_files, \
+    REQUIRED_FIELDS, RULE_REQUIREMENTS, SORT_FIELDS, RULE_FIELDS, RULE_FILES_FIELDS, RULE_FILES_REQUIRED_FIELDS
 from wazuh.core.utils import process_array, safe_move, \
     validate_wazuh_xml, upload_file, full_copy, to_relative_path
 from wazuh.core.logtest import validate_dummy_logtest
@@ -116,9 +116,9 @@ def get_rules(rule_ids: list = None, status: str = None, group: str = None, pci_
     parameters = {'groups': group, 'pci_dss': pci_dss, 'gpg13': gpg13, 'gdpr': gdpr, 'hipaa': hipaa,
                   'nist_800_53': nist_800_53, 'tsc': tsc, 'mitre': mitre, 'relative_dirname': relative_dirname,
                   'filename': filename, 'id': rule_ids, 'level': levels, 'status': status}
-    original_rules = list(rules)
+    filtered_rules = list()
     no_existent_ids = rule_ids[:]
-    for r in original_rules:
+    for r in rules:
         if r['id'] in no_existent_ids:
             no_existent_ids.remove(r['id'])
         for key, value in parameters.items():
@@ -129,8 +129,10 @@ def get_rules(rule_ids: list = None, status: str = None, group: str = None, pci_
                         (key == 'filename' and r[key] not in filename) or \
                         (key == 'status' and r[key] not in value) or \
                         (not isinstance(value, list) and value not in r[key]):
-                    rules.remove(r)
                     break
+        else:
+            filtered_rules.append(r)
+    rules = filtered_rules
 
     for rule_id in no_existent_ids:
         result.add_failed_item(id_=rule_id, error=WazuhError(1208))
@@ -202,14 +204,11 @@ def get_rules_files(status: str = None, relative_dirname: str = None, filename: 
     ruleset_conf = configuration.get_ossec_conf(section='ruleset')
     if not ruleset_conf:
         raise WazuhError(1200)
-    rules_files = list()
     tags = ['rule_include', 'rule_exclude', 'rule_dir']
     if isinstance(filename, list):
-        for f in filename:
-            rules_files.extend(
-                format_rule_decoder_file(ruleset_conf['ruleset'],
-                                         {'status': status, 'relative_dirname': relative_dirname, 'filename': f},
-                                         tags))
+        rules_files = format_rule_decoder_files(ruleset_conf['ruleset'],
+                                                {'status': status, 'relative_dirname': relative_dirname},
+                                                tags, filename)
     else:
         rules_files = format_rule_decoder_file(ruleset_conf['ruleset'],
                                                {'status': status, 'relative_dirname': relative_dirname,

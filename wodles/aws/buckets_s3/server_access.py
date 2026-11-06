@@ -11,7 +11,7 @@ from aws_bucket import INVALID_CREDENTIALS_ERROR_CODE, INVALID_CREDENTIALS_ERROR
 from aws_bucket import INVALID_REQUEST_TIME_ERROR_CODE, INVALID_REQUEST_TIME_ERROR_MESSAGE
 from aws_bucket import THROTTLING_EXCEPTION_ERROR_CODE, THROTTLING_EXCEPTION_ERROR_MESSAGE
 from aws_bucket import UNKNOWN_ERROR_MESSAGE
-from aws_bucket import AWSCustomBucket
+from aws_bucket import AWSCustomBucket, KEY_DASH_DATE_REGEX
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_tools
@@ -24,6 +24,7 @@ class AWSServerAccess(AWSCustomBucket):
         AWSCustomBucket.__init__(self, **kwargs)
         self.date_regex = re.compile(r'(\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2})')
         self.date_format = '%Y-%m-%d'
+        self.key_date_regex = KEY_DASH_DATE_REGEX
 
     def iter_files_in_bucket(self, aws_account_id: str = None, aws_region: str = None):
         if aws_account_id is None:
@@ -61,6 +62,9 @@ class AWSServerAccess(AWSCustomBucket):
 
                     if not self._same_prefix(match_start, aws_account_id, aws_region):
                         aws_tools.debug(f"++ Skipping file with another prefix: {bucket_file['Key']}", 3)
+                        continue
+
+                    if not self.is_valid_listed_file(bucket_file, aws_account_id, aws_region):
                         continue
 
                     if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):

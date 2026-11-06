@@ -33,6 +33,11 @@ list(APPEND os_csyslogd_flags "-Wl,--wrap,jqueue_open -Wl,--wrap,jqueue_next -Wl
                                  -Wl,--wrap,OS_IsValidIP -Wl,--wrap,OS_ConnectUDP -Wl,--wrap,time -Wl,--wrap,Read_FileMon -Wl,--wrap,Init_FileQueue -Wl,--wrap,sleep \
                                  -Wl,--wrap,popen")
 
+list(APPEND os_csyslogd_names "test_csyscom")
+list(APPEND os_csyslogd_flags "-Wl,--wrap,close -Wl,--wrap,accept -Wl,--wrap,select -Wl,--wrap,FOREVER \
+                               -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,OS_RecvSecureTCP \
+                               -Wl,--wrap,OS_SendSecureTCP ${DEBUG_OP_WRAPPERS}")
+
 # Compiling tests
 list(LENGTH os_csyslogd_names count)
 math(EXPR count "${count} - 1")
