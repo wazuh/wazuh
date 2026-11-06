@@ -17,6 +17,8 @@
 #include <limits.h>
 #include <stdexcept>
 #include <string>
+#include <tuple>
+#include <vector>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <iostream>
@@ -793,4 +795,88 @@ TEST_F(PKGWrapperTest, DeadReceiptClearsNameOnly)
     // Other fields are still populated from the plist parsing phase.
     EXPECT_EQ(wrapper->source(), "receipts");
     EXPECT_EQ(wrapper->version(), "1.0");
+}
+
+namespace
+{
+    // Writes an XML Info.plist under appPath; returns false if any step fails.
+    bool writeAppInfoPlist(const std::string& appPath,
+                           const std::string& shortVersion,
+                           const std::string& bundleVersion)
+    {
+        const std::string contents { appPath + "/Contents" };
+
+        if (::mkdir(appPath.c_str(), 0700) != 0 || ::mkdir(contents.c_str(), 0700) != 0)
+        {
+            return false;
+        }
+
+        std::ofstream out { contents + "/Info.plist", std::ios::trunc };
+        out << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+            << "<plist version=\"1.0\">\n"
+            << "<dict>\n"
+            << "  <key>CFBundleName</key><string>VersionApp</string>\n"
+            << "  <key>CFBundleShortVersionString</key><string>" << shortVersion << "</string>\n"
+            << "  <key>CFBundleVersion</key><string>" << bundleVersion << "</string>\n"
+            << "</dict>\n"
+            << "</plist>\n";
+        out.close();
+        return static_cast<bool>(out);
+    }
+}
+
+// CFBundleVersion is only reported when it extends the short version by whole
+// numeric components; a plain text prefix is not enough. Each case runs with
+// an XML plist and again with the same plist converted to binary.
+TEST_F(PKGWrapperTest, BundleVersionPrefixMatchesWholeComponents)
+{
+    const std::vector<std::tuple<std::string, std::string, std::string>> cases
+    {
+        { "1.2", "1.2.345", "1.2.345" },
+        { "1.2", "1.2.3.4", "1.2.3.4" },
+        { "1.2", "1.2", "1.2" },
+        { "1.2", "1.21", "1.2" },
+        { "1.2", "1.2b3", "1.2" },
+        { "1.2", "1.2-345", "1.2" },
+        { "1.2.3", "1.2", "1.2.3" },
+        { "1.2", "1.2 (345)", "1.2" },
+        { "1.2", "1.2.", "1.2" },
+        { "1.2", "1.2..3", "1.2" },
+        { "1.2", "1.2.beta", "1.2" },
+        { "1.2", "1.2.3 (45)", "1.2" },
+        { "2", "2025", "2" },
+        { "2", "2.0.1", "2.0.1" },
+        { "1.2", "", "1.2" },
+        { "1.", "1.2", "1.2" },
+        { "2.0.", "2.0.1", "2.0.1" },
+        { "1.", "1..2", "1." },
+        { "1.", "1.beta", "1." },
+    };
+
+    ASSERT_FALSE(m_tempDir.empty());
+
+    const bool binaryPasses[] { false, true };
+    int index { 0 };
+
+    for (const auto binary : binaryPasses)
+    {
+        for (const auto& [shortVersion, bundleVersion, expected] : cases)
+        {
+            const std::string package { "VersionApp" + std::to_string(index++) + ".app" };
+            const std::string appPath { m_tempDir + "/" + package };
+            ASSERT_TRUE(writeAppInfoPlist(appPath, shortVersion, bundleVersion));
+
+            if (binary)
+            {
+                const std::string cmd { "plutil -convert binary1 '" + appPath + "/Contents/Info.plist'" };
+                ASSERT_EQ(0, ::system(cmd.c_str()));
+            }
+
+            PackageContext ctx { m_tempDir, package, "" };
+            std::shared_ptr<PKGWrapper> wrapper;
+            EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
+            EXPECT_EQ(wrapper->version(), expected)
+                    << "short=" << shortVersion << " bundle=" << bundleVersion << " binary=" << binary;
+        }
+    }
 }

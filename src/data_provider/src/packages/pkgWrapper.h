@@ -136,6 +136,55 @@ class PKGWrapper final : public IPackageWrapper
         }
 
     private:
+        // True when version equals prefix or continues it with one or more ".<digits>" components.
+        static bool extendsByNumericComponents(const std::string& version, const std::string& prefix)
+        {
+            if (!Utils::startsWith(version, prefix))
+            {
+                return false;
+            }
+
+            const auto suffix { version.substr(prefix.size()) };
+
+            if (suffix.empty())
+            {
+                return true;
+            }
+
+            // A prefix ending in '.' already opened the next component.
+            const bool prefixEndsWithDot { prefix.back() == '.' };
+
+            if (!prefixEndsWithDot && suffix.front() != '.')
+            {
+                return false;
+            }
+
+            bool componentHasDigit { !prefixEndsWithDot };
+
+            for (const auto c : suffix)
+            {
+                if (c == '.')
+                {
+                    if (!componentHasDigit)
+                    {
+                        return false;
+                    }
+
+                    componentHasDigit = false;
+                }
+                else if (std::isdigit(static_cast<unsigned char>(c)))
+                {
+                    componentHasDigit = true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
+            return componentHasDigit;
+        }
+
         static bool extractPlistScalarValue(const std::string& line,
                                             const std::string& tag,
                                             std::string& value)
@@ -282,7 +331,7 @@ class PKGWrapper final : public IPackageWrapper
 
                     if (!bundleShortVersionString.empty())
                     {
-                        if (Utils::startsWith(bundleVersion, bundleShortVersionString))
+                        if (extendsByNumericComponents(bundleVersion, bundleShortVersionString))
                         {
                             m_version = bundleVersion;
                         }
