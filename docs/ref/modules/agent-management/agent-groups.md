@@ -83,7 +83,8 @@ cannot be deleted, `1713` (*Invalid group ID. Some IDs are restricted for intern
 `agent-template.conf`), `1734` the agent is not in that
 group, `1737` the agent already has 128 groups, `1745` the agent's only group is `default`, `1751` the
 agent already belongs to the group, `1752` `force_single_group=true` was asked but the caller lacks
-`group:modify_assignments` over one of the agent's current groups (the message names them). An invalid
+`group:modify_assignments` over one of the agent's current groups (the message does not name them, since
+the caller may not be allowed to read them). An invalid
 group name never reaches these checks through the API: the request schema refuses it with a `400` that
 carries no error code (`title` *Bad Request* and a `detail` naming the parameter). Error `1722` (*Incorrect
 format for group_id*) is what the `agent_groups` tool below reports for the same name.

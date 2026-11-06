@@ -20,6 +20,36 @@ DATE_FORMAT = re.compile(r'\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}')
 
 logger = logging.getLogger('wazuh')
 
+# A single-quoted SQL string literal, with '' as the escaped quote (the form _substitute_params renders).
+_SQL_LITERAL = re.compile(r"('(?:[^']|'')*')")
+_GROUP_BY = re.compile(r"group by [^\s']+")
+
+
+def _strip_group_by(query: str) -> str:
+    """Remove the GROUP BY clause from a count query, never touching text inside string literals.
+
+    The query carries user-supplied values rendered as literals, so a value whose text looks like
+    `group by <token>` must stay intact: editing it would break the literal's quoting and let the rest of
+    the value be parsed as SQL. Only the first clause found outside literals is removed, with every other
+    occurrence of the same text outside literals.
+
+    Parameters
+    ----------
+    query : str
+        Count query to rewrite.
+
+    Returns
+    -------
+    str
+        Query without the GROUP BY clause.
+    """
+    # re.split with one capturing group alternates text outside literals (even indexes) and literals (odd ones)
+    parts = _SQL_LITERAL.split(query)
+    clause = next((m.group(0) for m in (_GROUP_BY.search(p) for p in parts[::2]) if m), None)
+    if clause is None:
+        return query
+    return ''.join(p if i % 2 else p.replace(clause, '') for i, p in enumerate(parts))
+
 
 class AsyncWazuhDBConnection:
     """
@@ -407,14 +437,8 @@ class WazuhDBConnection:
 
             regex = re.compile(r"\w+(?: \d*|)? sql select ([A-Z a-z0-9,*_` \.\-%\(\):\']+?) from")
             select = regex.match(query_lower).group(1)
-            gb_regex = re.compile(r"(group by [^\s]+)")
             countq = query_lower.replace(select, "count(*)", 1).replace(":limit", "").replace(":offset", "")
-            try:
-                group_by = gb_regex.search(query_lower)
-                if group_by:
-                    countq = countq.replace(group_by.group(1), '')
-            except IndexError:
-                pass
+            countq = _strip_group_by(countq)
 
             try:
                 total = list(self._send(countq)[0].values())[0]

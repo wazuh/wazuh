@@ -1203,6 +1203,37 @@ async def test_access_log_unreadable_keypair(mock_req):
         )
 
 
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_access_log_deeply_nested_token(mock_req):
+    """A bearer token whose header is nested too deep to decode must not turn the response into a 500.
+
+    PyJWT lets the decoder's RecursionError escape instead of raising a PyJWTError, and `access_log` runs
+    after the response has been produced: the logged user degrades to unknown.
+    """
+    response = MagicMock()
+    response.status_code = 401
+    endpoint = '/agents'
+
+    mock_req.json = AsyncMock(return_value={})
+    mock_req.method = 'GET'
+    mock_req.scope = {'path': endpoint}
+    mock_req.headers = {}
+    mock_req.query_params = {}
+
+    with patch('api.middlewares.custom_logging') as mock_custom_logging, \
+        patch('api.middlewares.generate_keypair', return_value=('private', 'public')), \
+        patch('api.middlewares.jwt.decode', side_effect=RecursionError), \
+        patch('api.middlewares.AbstractSecurityHandler.get_auth_header_value',
+              return_value=('bearer', 'token')):
+        await access_log(request=mock_req, response=response, prev_time=datetime(1970, 1, 1, 0, 0, 10).timestamp())
+
+        mock_custom_logging.assert_called_once_with(
+            UNKNOWN_USER_STRING, mock_req.client.host, mock_req.method, endpoint, mock_req.query_params,
+            {}, 0.0, response.status_code, hash_auth_context='', headers=mock_req.headers
+        )
+
+
 @freeze_time(datetime(1970, 1, 1, 0, 0, 0))
 @pytest.mark.asyncio
 @pytest.mark.parametrize("exception", [
@@ -1788,7 +1819,7 @@ async def test_check_expect_header_middleware_uses_runtime_max_upload_size():
     mock_request = MagicMock(headers={
         'Expect': '100-continue',
         'Content-Length': '10'
-    })
+    }, scope={'path': '/agents'})
 
     call_next_mock = AsyncMock(return_value=Response("Success"))
 
@@ -1801,6 +1832,24 @@ async def test_check_expect_header_middleware_uses_runtime_max_upload_size():
     # like every other size ceiling in the API, not the 417 an unmeetable expectation gets.
     assert exc_info.value.status == 413
     assert "Maximum content size limit (5) exceeded" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_check_expect_header_middleware_escapes_the_logged_path():
+    """The refused path is logged escaped: a percent-encoded line break must not forge an api.log entry."""
+    middleware = CheckExpectHeaderMiddleware(AsyncApp(__name__))
+
+    mock_request = MagicMock(headers={'Expect': '100-continue', 'Content-Length': '10'},
+                             scope={'path': '/x\n2026/11/06 12:00:01 ERROR: FORGED-LINE'})
+
+    with patch('api.middlewares.configuration.api_conf', new={'max_upload_size': 5}), \
+            patch('api.middlewares.logger') as mock_logger:
+        with pytest.raises(PayloadTooLargeException):
+            await middleware.dispatch(mock_request, AsyncMock())
+
+    args = mock_logger.warning.call_args.args
+    assert args[1] == '/x\\n2026/11/06 12:00:01 ERROR: FORGED-LINE'
+    assert '\n' not in args[0] % args[1:]
 
 
 @pytest.mark.asyncio
