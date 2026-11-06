@@ -19,7 +19,7 @@ try:
     from google.cloud import pubsub_v1 as pubsub
     import google.api_core.exceptions
 except ImportError as e:
-    raise exceptions.GCloudError(errcode=1003, package=e.name)
+    raise exceptions.GCloudError(errcode=1003, error=e) from e
 
 
 class WazuhGCloudSubscriber(WazuhGCloudIntegration):
