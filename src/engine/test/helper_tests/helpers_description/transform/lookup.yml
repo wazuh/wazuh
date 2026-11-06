@@ -1,0 +1,131 @@
+# Name of the helper function
+name: lookup
+
+metadata:
+  description: |
+    Copies the value stored under `key` in `object` to the target field.
+
+    Behavior:
+    - `object` is a literal object, a definition, or a reference to a field holding an object.
+    - `key` is a literal string or a reference to a string field. It is matched literally against the
+      top-level keys of the object: `a.b` names the member called `a.b`, it does not descend into `a` and
+      then `b`.
+    - The value may be of any JSON type; it replaces the target field, which is created when missing.
+    - When the target field is a schema field the value is validated against its type, and an object value
+      may only contain fields allowed under the target.
+
+    Build errors:
+    - `object` is a literal that is not an object, or a reference to a schema field that is not an object.
+    - `key` is a literal that is not a string.
+    - A number of arguments other than 2.
+    - The target field is not a schema field and does not start with `_`.
+
+    Notes:
+    - `lookup_merge` merges the value into the target instead of replacing it.
+    - `kvdb_get` does the same lookup against a KVDB.
+  group: object
+  fails_when:
+    - The key reference does not exist or is not a string.
+    - The object reference does not exist or is not an object.
+    - The key is not a member of the object.
+    - The value does not pass the schema validation of the target field.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  object:
+    type: object
+    generate: object
+    source: both
+  key:
+    type: string
+    generate: string
+    source: both
+
+# Key not found
+skipped:
+  - success_cases
+
+# Any JSON value may be written
+target_field:
+  type:
+    - object
+    - array
+    - string
+    - number
+    - boolean
+
+# The cases that pin the argument source come first: the generator stops reading them at the first case
+# that passes a literal object without a source
+test:
+  - arguments:
+      object:
+        source: value
+        value:
+          key: name
+          key2: surname
+      key:
+        source: value
+        value: key2
+    target_field: name
+    should_pass: true
+    expected: surname
+    description: A literal key selects the member of a literal object
+  - arguments:
+      object:
+        source: reference
+        value:
+          key: name
+          key2: surname
+      key:
+        source: reference
+        value: key2
+    target_field: name
+    should_pass: true
+    expected: surname
+    description: A referenced key selects the member of a referenced object
+  - arguments:
+      object:
+        key: name
+        key2: surname
+      key: key2
+    target_field: name
+    should_pass: true
+    expected: surname
+    description: The string value of the key replaces the target field
+  - arguments:
+      object:
+        key: name
+        key2:
+          age: 27
+          address: new york
+      key: key2
+    target_field: name
+    should_pass: true
+    expected:
+      age: 27
+      address: new york
+    description: The object value of the key replaces the target field
+  - arguments:
+      object:
+        "a.b": x
+        a:
+          b: y
+      key: "a.b"
+    target_field: name
+    should_pass: true
+    expected: x
+    description: A dotted key is matched literally against the member named a.b
+  - arguments:
+      object:
+        key: name
+        key2: surname
+      key: missing
+    target_field: name
+    should_pass: false
+    expected: name
+    description: Fails when the key is not a member of the object

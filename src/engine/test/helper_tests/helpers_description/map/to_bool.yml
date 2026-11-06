@@ -1,25 +1,40 @@
+# Name of the helper function
 name: to_bool
+
 metadata:
   description: |
-    Converts a numeric reference to boolean.
-    Rule: non-zero → true, zero → false.
-    In case of errors “target_field” will not be modified.
-    This helper function is typically used in the map stage.
-  keywords:
-    - boolean
-    - number
+    Converts a boolean, a number or a string holding a boolean to a boolean and maps it to the target field.
+
+    Behavior:
+    - A boolean is mapped as it is.
+    - A number gives `true` when it is not zero and `false` when it is `0` or `0.0`.
+    - The strings `true` and `false`, in any letter case, give the matching boolean.
+
+    Build errors:
+    - `value` is a literal.
+    - `value` is a schema field whose type is neither a boolean, a number nor a string.
+
+    Notes:
+    - Other strings (`"1"`, `"yes"`) and `null` are not converted.
+    - `parse_bool` parses the same strings as a transform helper.
+  group: number
+  fails_when:
+    - "`value` is missing"
+    - "`value` is neither a boolean, a number nor one of the strings `true` and `false`, or it is an integer above 2^63-1"
+
 helper_type: map
+
 is_variadic: false
 
 arguments:
-  number_to_convert:
-    type: number
-    generate:
-      - integer
-      - float
-      - double
+  value:
+    type:
+      - boolean
+      - number
+      - string
     source: reference
 
+# The generated strings are not booleans
 skipped:
   - success_cases
 
@@ -28,37 +43,56 @@ output:
 
 test:
   - arguments:
-      number_to_convert: 1
-    should_pass: true
-    expected: true
-    description: Converts integer 1 to true.
-  - arguments:
-      number_to_convert: 1.0
-    should_pass: true
-    expected: true
-    description: Converts float 1.0 to true.
-  - arguments:
-      number_to_convert: 0
+      value: false
     should_pass: true
     expected: false
-    description: Converts integer 0 to false.
+    description: A boolean is mapped as it is
   - arguments:
-      number_to_convert: 0.0
+      value: 1
+    should_pass: true
+    expected: true
+    description: Convert the integer 1 to true
+  - arguments:
+      value: 1.0
+    should_pass: true
+    expected: true
+    description: Convert the float 1.0 to true
+  - arguments:
+      value: 0
     should_pass: true
     expected: false
-    description: Converts float 0.0 to false.
+    description: Convert the integer 0 to false
   - arguments:
-      number_to_convert: 2
+      value: 0.0
+    should_pass: true
+    expected: false
+    description: Convert the float 0.0 to false
+  - arguments:
+      value: 2
     should_pass: true
     expected: true
-    description: Converts integer 2 to true (positive numbers are true).
+    description: Convert the integer 2 to true, as any non-zero number is true
   - arguments:
-      number_to_convert: -1
+      value: -1
     should_pass: true
     expected: true
-    description: Converts integer -1 to true (any non-zero number is true).
+    description: Convert the integer -1 to true, as any non-zero number is true
   - arguments:
-      number_to_convert: 0.5
+      value: 0.5
     should_pass: true
     expected: true
-    description: Converts float 0.5 to true (positive numbers are true).
+    description: Convert the float 0.5 to true, as any non-zero number is true
+  - arguments:
+      value: "true"
+    should_pass: true
+    expected: true
+    description: Convert the string true to true
+  - arguments:
+      value: "FALSE"
+    should_pass: true
+    expected: false
+    description: Convert the string FALSE to false, regardless of the letter case
+  - arguments:
+      value: "yes"
+    should_pass: false
+    description: Fail on a string that is not true or false

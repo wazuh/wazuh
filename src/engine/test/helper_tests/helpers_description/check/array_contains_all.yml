@@ -1,0 +1,150 @@
+# Name of the helper function
+name: array_contains_all
+
+metadata:
+  description: |
+    Checks whether every argument is an element of the target array.
+
+    Behavior:
+    - Variadic: from 1 to 150 arguments of any JSON type, literals or references.
+    - Each argument is compared with the elements using deep JSON equality: the types must match (`"1"` is not
+      `1`), numbers compare by value (`1` equals `1.0`), strings byte by byte, arrays element by element in
+      order, and objects member by member regardless of the member order.
+    - A reference whose value is an array is matched as a single element; it is not spread.
+    - True only when all the arguments are found. A reference that does not exist can never be found, so it
+      makes the check fail.
+
+    Build errors:
+    - No argument is given, or more than 150.
+
+    Notes:
+    - `array_contains_any` requires a single match; with one argument the two helpers are identical.
+    - `one_of` is the reverse check: the target value is searched in an argument array.
+    - `array_excludes_any` is not the negation of this helper: both are false for a missing or non-array
+      target.
+  group: array
+  fails_when:
+    - The target field does not exist.
+    - The target field is not an array.
+    - Any argument is not an element of the array.
+    - Any reference argument does not exist.
+
+helper_type: check
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: true
+
+# Arguments expected by the helper function
+arguments:
+  element:
+    type:
+      - object
+      - array
+      - number
+      - string
+      - boolean
+    source: both # includes values or references (their names start with $)
+
+# the generated success cases use elements that are not in the generated array
+skipped:
+  - success_cases
+
+target_field:
+  type: array
+  generate: all
+
+test:
+  - arguments:
+      element:
+        source: value
+        value: dracut
+      element_1:
+        source: reference
+        value: null
+    target_field:
+      - dracut
+      - lvm2
+    should_pass: false
+    description: A reference that does not exist can never be found, so the check fails although the other element is present.
+  - arguments:
+      element: dracut
+      element_1: vz-start
+      element_2: thin-provisioning-tools
+    target_field:
+      - mkinitramfs
+      - cryptroot
+      - framebuffer
+      - dracut
+      - thin-provisioning-tools
+      - lvm2
+      - vz-start
+    should_pass: true
+    description: All the specified strings are elements of the array.
+  - arguments:
+      element: dracut
+      element_1: vz-start
+      element_2: iscsi
+    target_field:
+      - mkinitramfs
+      - cryptroot
+      - framebuffer
+      - dracut
+      - thin-provisioning-tools
+      - lvm2
+      - vz-start
+    should_pass: false
+    description: One of the specified strings ("iscsi") is not an element of the array.
+  - arguments:
+      element: 2
+      element_1: 1
+      element_2: 5
+    target_field:
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+    should_pass: true
+    description: All the specified numbers are elements of the array.
+  - arguments:
+      element: dracut
+    target_field: dracut
+    should_pass: false
+    description: The target field is a string, not an array.
+  - arguments:
+      element:
+        key: value
+      element_1:
+        key1: value1
+      element_2:
+        key2: value2
+    target_field:
+      - key: value
+      - key1: value1
+      - key2: value2
+    should_pass: true
+    description: All the specified objects are elements of the array.
+  - arguments:
+      element:
+        key: value
+      element_1:
+        key-non-exists: value-non-exists
+      element_2:
+        keyn: valuen
+    target_field:
+      - key: value
+      - key1: value1
+      - key2: value2
+    should_pass: false
+    description: Two of the specified objects are not elements of the array.
+  - arguments:
+      element:
+        key: value
+      element_1: 1
+      element_2: value
+    target_field:
+      - key: value
+      - 1
+      - value
+    should_pass: true
+    description: The specified object, number and string are all elements of the array.

@@ -1,0 +1,81 @@
+# Name of the helper function
+name: trim
+
+metadata:
+  description: |
+    Removes from both ends of the target string the characters that belong to a set.
+
+    Behavior:
+    - `chars` is an optional literal string listing the characters to remove; when it is omitted the set is
+      the whitespace characters: space, tab, line feed, carriage return, form feed and vertical tab.
+    - At each end of the string, every character that is in the set is removed until the first character
+      that is not; the characters in the middle are kept.
+    - A string made only of characters of the set becomes the empty string.
+    - The result is written back to the target field; the operation succeeds even when nothing is removed.
+
+    Build errors:
+    - `chars` is not a literal string.
+    - More than 1 argument.
+
+    Notes:
+    - `chars` is a set, not a sequence: `xy` removes any run of `x` and `y` characters.
+    - `trim_start` and `trim_end` trim one end only; `replace` removes characters anywhere in the string.
+  group: string
+  fails_when:
+    - The target field does not exist or is not a string.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  chars:
+    type: string
+    generate: string
+    source: value
+    optional: true
+
+# the generator does not know that `chars` is optional: a call without it is valid; string generation is random
+skipped:
+  - success_cases
+  - fewer_arguments
+
+target_field:
+  type: string
+  generate: string
+
+test:
+  - target_field: "  \t hi there \n"
+    should_pass: true
+    expected: "hi there"
+    description: Without arguments the whitespace at both ends is removed
+  - target_field: "hi there"
+    should_pass: true
+    expected: "hi there"
+    description: Succeeds without changes when there is nothing to remove
+  - arguments:
+      chars: xy
+    target_field: xyxhixyy
+    should_pass: true
+    expected: hi
+    description: Removes any run of the given characters from both ends
+  - arguments:
+      chars: x
+    target_field: xxxx
+    should_pass: true
+    expected: ""
+    description: A string made only of the given characters becomes empty
+  - arguments:
+      chars: '-'
+    target_field: -- Hi wazuh! --
+    should_pass: true
+    expected: " Hi wazuh! "
+    description: Only the characters of the set are removed, the spaces next to them are kept
+  - arguments:
+      chars: '-='
+    target_field: '-=hi=-'
+    should_pass: true
+    expected: hi
+    description: The characters are matched as a set, in any order

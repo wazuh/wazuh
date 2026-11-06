@@ -1,0 +1,102 @@
+# Name of the helper function
+name: parse_quoted
+
+metadata:
+  description: |
+    Extracts the text enclosed in quotes from the input string and stores it in the target field.
+
+    Behavior:
+    - `quote` (default `"`) and `escape` (default `\`) are optional literal single characters and must
+      differ.
+    - The input must start with the quote character and end at the first unescaped quote, which must be
+      the end of the input.
+    - Inside the text the escape character must be followed by the quote or by the escape character;
+      anything else makes the operation fail.
+    - The stored value is the text between the quotes with every escape character removed: `\"` gives `"`
+      and an escaped escape `\\` disappears instead of giving one `\`.
+    - The string replaces the target field.
+
+    Build errors:
+    - `input` is not a reference, or references a schema field that is not a string.
+    - `quote` or `escape` is not a single-character literal string, or both are equal.
+    - More than 3 arguments.
+    - The target field is a schema field that is not text-like (text, keyword, wildcard and the like).
+
+    Notes:
+    - `parse_between` extracts between two different delimiters without escapes.
+  group: parse
+  fails_when:
+    - The input field does not exist or is not a string.
+    - The input does not start with the quote character.
+    - The escape character is followed by something other than the quote or the escape character.
+    - The closing quote is missing or is not the end of the input.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  input:
+    type: string
+    generate: string
+    source: reference
+  quote:
+    type: string
+    generate: string
+    source: value
+    optional: true
+  escape:
+    type: string
+    generate: string
+    source: value
+    optional: true
+
+# string generation is random, and the previous value of the target is replaced whatever its type
+skipped:
+  - success_cases
+  - different_target_field_type
+
+target_field:
+  type: string
+  generate: string
+
+test:
+  - arguments:
+      input: "\"Hello, my name is 'Wazuh'.\""
+    target_field: any_value
+    should_pass: true
+    expected: "Hello, my name is 'Wazuh'."
+    description: The text between the default double quotes is stored
+  - arguments:
+      input: "\"a \\\"b\\\" c\""
+    target_field: any_value
+    should_pass: true
+    expected: "a \"b\" c"
+    description: An escaped quote is kept and the escape character is removed
+  - arguments:
+      input: "\"a\\\\b\""
+    target_field: any_value
+    should_pass: true
+    expected: "ab"
+    description: An escaped escape character disappears entirely
+  - arguments:
+      input: "'hi'"
+      quote: "'"
+    target_field: any_value
+    should_pass: true
+    expected: hi
+    description: The quote character can be changed
+  - arguments:
+      input: "'escaped\\' quotes'"
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Fails because the input does not start with the default quote character
+  - arguments:
+      input: "don't start with quotes \"here"
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Fails because the input does not start with a quote

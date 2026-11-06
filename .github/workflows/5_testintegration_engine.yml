@@ -291,6 +291,9 @@ jobs:
     - name: Validate documentation generation
       run: engine-helper-test -e /tmp/actions generate-doc --input-dir ${{env.ENGINE_DIR}}/test/helper_tests/helpers_description/ -o /tmp/helper_docs/
 
+    - name: Check generated reference is committed
+      run: diff -u docs/ref/modules/engine/ref-helper-functions.md /tmp/helper_docs/ref-helper-functions.md
+
   api_tests:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: API Endpoints Test

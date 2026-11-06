@@ -1,0 +1,98 @@
+# Name of the helper function
+name: parse_date
+
+metadata:
+  description: |
+    Parses the input date string with `format` and stores it in the target field normalized to UTC.
+
+    Behavior:
+    - `format` is a literal string resolved when the asset is built, in one of three forms: a strftime-like
+      format containing `%` (for example `%Y-%m-%dT%H:%M:%S%Ez`); the name of a predefined format: ANSIC,
+      UnixDate, RubyDate, RFC822, RFC822Z, RFC850, RFC1123, RFC1123Z, RFC3339, RFC3164, SYSLOG, ISO8601,
+      ISO8601Z, HTTPDATE, NGINX_ERROR or POSTGRES; or a sample date, which must match exactly one of the
+      predefined formats.
+    - `locale` is optional: omitted or set to `_auto` it is C/POSIX, otherwise it must exist on the system.
+    - The whole input must match the format.
+    - A missing year is replaced by the current year.
+    - A `%Z` time zone name is resolved as an IANA zone and the local time is converted to UTC (in a daylight
+      saving gap or fold the earliest instant is chosen); a `%z` offset is subtracted; without either the
+      time is taken as UTC.
+    - The output is the string `YYYY-MM-DDTHH:MM:SS.mmmZ`, with millisecond precision (for example
+      `2025-09-01T15:30:00.000Z`), and replaces the target field.
+
+    Build errors:
+    - `input` is not a reference, or references a schema field that is not a string.
+    - `format` or `locale` is not a literal string, a sample date matches none or several of the predefined
+      formats, or the locale does not exist on the system.
+    - Fewer than 2 or more than 3 arguments.
+    - The target field is a schema field that is not date, date_nanos or text-like.
+
+    Notes:
+    - `date_to_epoch` converts a date string to a number and fails in daylight saving gaps and folds;
+      `epoch_to_date` and `now` produce date strings.
+  group: parse
+  fails_when:
+    - The input field does not exist or is not a string.
+    - The input does not match the format.
+    - The %Z zone name of the input is not a known IANA zone.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  input:
+    type: string
+    generate: string
+    source: reference
+  format:
+    type: string
+    generate: string
+    source: value
+  locale:
+    type: string
+    generate: string
+    source: value
+    optional: true
+
+# string generation is random
+skipped:
+  - success_cases
+
+target_field:
+  type: string
+  generate: string
+
+test:
+  - arguments:
+      input: "2025-09-01T10:30:00-05:00"
+      format: "%Y-%m-%dT%H:%M:%S%Ez"
+      locale: "_auto"
+    target_field: any_value
+    should_pass: true
+    expected: "2025-09-01T15:30:00.000Z"
+    description: The offset of an explicit format is subtracted to produce UTC
+  - arguments:
+      input: "01/09/2025 10:30"
+      format: "%d/%m/%Y %H:%M"
+      locale: "_auto"
+    target_field: any_value
+    should_pass: true
+    expected: "2025-09-01T10:30:00.000Z"
+    description: A date without zone is taken as UTC
+  - arguments:
+      input: "2025-09-01T10:30:00Z"
+      format: ISO8601Z
+    target_field: any_value
+    should_pass: true
+    expected: "2025-09-01T10:30:00.000Z"
+    description: A predefined format is selected by name
+  - arguments:
+      input: "2025/09/01 10:30"
+      format: "%Y-%m-%d %H:%M"
+      locale: "_auto"
+    target_field: any_value
+    should_pass: false
+    description: Fails when the input does not match the format

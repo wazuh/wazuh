@@ -141,7 +141,7 @@ getSemParser(const std::string& targetField, const std::string& delim, const std
             if (enableTrace)
             {
                 return base::Error {
-                    fmt::format("parse_key_value: key {} ({})", json::Json::DEPTH_ERROR_MSG, json::Json::MAX_DEPTH)};
+                    fmt::format("parse_kv: key {} ({})", json::Json::DEPTH_ERROR_MSG, json::Json::MAX_DEPTH)};
             }
             return base::Error {};
         }

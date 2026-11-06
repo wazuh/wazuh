@@ -100,7 +100,7 @@ normalize:
   - map:
       - event.action: authentication-failure
       - event.outcome: failure
-      - event.category: array_append(authentication)
+      - event.category: array_append_all(authentication)
 ```
 
 A decoder without `parents`, attached to its integration's default parent (or the root decoder), that only sets a field. Its `check` is a condition list rather than an expression:
@@ -156,7 +156,7 @@ normalize:
   - map:
       - event.action: authentication-failure
       - event.outcome: failure
-      - event.category: array_append(authentication)
+      - event.category: array_append_all(authentication)
 ```
 
 ## 7. Load and test the migrated decoder

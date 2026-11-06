@@ -512,7 +512,7 @@ TEST(KvParserDepth, TraceNamesLimit)
 
         auto traced = result.value().semParser(result.value().parsed, true);
         ASSERT_TRUE(std::holds_alternative<base::Error>(traced));
-        EXPECT_EQ(std::get<base::Error>(traced).message, "parse_key_value: key nesting depth exceeds the limit (256)");
+        EXPECT_EQ(std::get<base::Error>(traced).message, "parse_kv: key nesting depth exceeds the limit (256)");
 
         auto untraced = result.value().semParser(result.value().parsed, false);
         ASSERT_TRUE(std::holds_alternative<base::Error>(untraced));

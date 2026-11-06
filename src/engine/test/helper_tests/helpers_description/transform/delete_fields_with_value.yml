@@ -1,0 +1,191 @@
+# Name of the helper function
+name: delete_fields_with_value
+
+metadata:
+  description: |
+    Deletes the immediate children of the target object whose value equals `value`.
+
+    Behavior:
+    - The target field must be an object.
+    - `value` is a literal of any JSON type (`null` included) or a reference to a field.
+    - Every top-level member whose value is equal to `value` is removed. Equality is deep JSON equality: the
+      types must match (except that integers and floating-point values compare numerically, so `1` equals
+      `1.0`), object member order is ignored and arrays compare element by element.
+    - The check is not recursive: nested objects are not inspected.
+    - The operation succeeds even when nothing is deleted.
+
+    Build errors:
+    - A number of arguments other than 1.
+    - The target field is not a schema field and does not start with `_`.
+
+    Notes:
+    - A reference that does not exist in the event compares with nothing: nothing is deleted and the operation
+      succeeds.
+  group: object
+  fails_when:
+    - The target field does not exist or is not an object.
+
+helper_type: transform
+
+# Single, required argument: any JSON value or a reference
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  value:
+    type:
+      - number
+      - string
+      - object
+      - boolean
+      - array
+    source: both
+
+skipped:
+  - success_cases
+
+target_field:
+  type: object
+  generate: object
+
+test:
+  # string by value
+  - arguments:
+      value:
+        source: value
+        value: "N/A"
+    target_field:
+      a: "N/A"
+      b: "ok"
+      c: "N/A"
+    should_pass: true
+    expected:
+      b: "ok"
+    description: Deletes the children equal to the given string
+
+  # integer by value
+  - arguments:
+      value:
+        source: value
+        value: 1
+    target_field:
+      a: 1
+      b: 2
+      c: 1
+    should_pass: true
+    expected:
+      b: 2
+    description: Deletes the children equal to the integer 1
+
+  # double by value
+  - arguments:
+      value:
+        source: value
+        value: 1.0
+    target_field:
+      a: 1.0
+      b: 2.0
+      c: 1.0
+    should_pass: true
+    expected:
+      b: 2.0
+    description: Deletes the children equal to the given floating-point number
+
+  # integer vs double
+  - arguments:
+      value:
+        source: value
+        value: 1
+    target_field:
+      a: 1.0
+      b: 2
+    should_pass: true
+    expected:
+      b: 2
+    description: Numbers compare numerically, so the integer 1 deletes a child holding 1.0
+
+  # boolean by value (true)
+  - arguments:
+      value:
+        source: value
+        value: true
+    target_field:
+      a: true
+      b: false
+      c: true
+    should_pass: true
+    expected:
+      b: false
+    description: Deletes the children equal to the given boolean
+
+  # object by value (structural equality)
+  - arguments:
+      value:
+        source: value
+        value: { k: 1 }
+    target_field:
+      a: { k: 1 }
+      b: { k: 2 }
+      c: { k: 1 }
+    should_pass: true
+    expected:
+      b: { k: 2 }
+    description: Deletes the children equal to the given object
+
+  # array by value (structural equality)
+  - arguments:
+      value:
+        source: value
+        value: [1, 2]
+    target_field:
+      a: [1, 2]
+      b: [3]
+      c: [1, 2]
+    should_pass: true
+    expected:
+      b: [3]
+    description: Deletes the children equal to the given array
+
+  # no-op (no matches)
+  - arguments:
+      value:
+        source: value
+        value: "Z"
+    target_field:
+      a: "foo"
+      b: 2
+    should_pass: true
+    expected:
+      a: "foo"
+      b: 2
+    description: Succeeds without deleting anything when no child matches
+
+  # missing reference (no-op; the operation does not fail)
+  - arguments:
+      value:
+        source: reference
+        value: null
+    target_field:
+      a: "keep"
+      b: 1
+    should_pass: true
+    expected:
+      a: "keep"
+      b: 1
+    description: A missing reference deletes nothing and the operation succeeds
+
+  # null by value (no matches)
+  - arguments:
+      value:
+        source: value
+        value: null
+    target_field:
+      a: "keep"
+      b: 1
+      c: false
+    should_pass: true
+    expected:
+      a: "keep"
+      b: 1
+      c: false
+    description: A null literal deletes nothing when no child holds null

@@ -17,16 +17,16 @@ Read the [Engine introduction for related migrations](engine-introduction.md) fi
 
 | CDB `lookup` type | 5.x KVDB helper | Decoder stage |
 |-------------------|-----------------|---------------|
-| `match_key` | `kvdb_match('db_name')` | `check` |
-| `not_match_key` | `kvdb_not_match('db_name')` | `check` |
+| `match_key` | `in_kvdb('db_name')` | `check` |
+| `not_match_key` | `not_in_kvdb('db_name')` | `check` |
 | `match_key_value` | `kvdb_get('db_name', $field)` into a temporary field, then a check on that field | `normalize` (`map`, then `check` + `map`) |
-| `address_match_key` (exact IPs) | `kvdb_match('db_name')` | `check` |
-| `address_match_key` (network prefixes) | No KVDB equivalent — use `ip_cidr_match` instead (IPv4 only) | `check` |
-| `not_address_match_key` (exact IPs) | `kvdb_not_match('db_name')` | `check` |
-| `not_address_match_key` (network prefixes) | No KVDB equivalent — negate `ip_cidr_match` in a conditional expression: `NOT ip_cidr_match($source.ip, '10.0.0.0', '8')` | `check` |
+| `address_match_key` (exact IPs) | `in_kvdb('db_name')` | `check` |
+| `address_match_key` (network prefixes) | No KVDB equivalent — use `in_cidr` instead (IPv4 only) | `check` |
+| `not_address_match_key` (exact IPs) | `not_in_kvdb('db_name')` | `check` |
+| `not_address_match_key` (network prefixes) | No KVDB equivalent — negate `in_cidr` in a conditional expression: `NOT in_cidr($source.ip, '10.0.0.0/8')` | `check` |
 | `address_match_key_value` (exact IPs) | As `match_key_value` | `normalize` |
 
-The full signatures are in the [helper functions reference](../../ref/modules/engine/ref-helper-functions.md#kvdb_match).
+The full signatures are in the [helper functions reference](../../ref/modules/engine/ref-helper-functions.md#in_kvdb).
 
 ## 3. How to migrate CDB files to KVDB files
 
@@ -41,7 +41,7 @@ sudo cp -r /var/ossec/etc/lists /tmp/cdb-migration
 sudo cp -r /var/ossec/etc/rules/ /tmp/cdb-migration
 ```
 
-2. **Structure**: Write the skeleton of the KVDB. `metadata.title` is the KVDB name that helpers such as `kvdb_match('ips_list')` refer to; `id`, `metadata.title`, `enabled` and `content` are required, and `content` must be an object:
+2. **Structure**: Write the skeleton of the KVDB. `metadata.title` is the KVDB name that helpers such as `in_kvdb('ips_list')` refer to; `id`, `metadata.title`, `enabled` and `content` are required, and `content` must be an object:
 
 ```yaml
 id: <replace-with-a-new-uuidv4>
@@ -114,26 +114,26 @@ metadata:
   author: <ORGANIZATION/AUTHOR OF DECODER>
   date: <YYYY-MM-DD>
 check:
-  - source.ip: kvdb_match('list_one')
+  - source.ip: in_kvdb('list_one')
 normalize:
   - map:
-      - tags: array_append(list1)
+      - tags: array_append_all(list1)
 ```
 
 > [!NOTE]
-> `kvdb_match` works for exact IP keys. A 4.x `address_match_key` list could also hold network prefixes: keys ending in a dot (`10.`, `192.168.`, `192.168.1.`), matched against the leading octets of the address. There is no KVDB equivalent — replace each prefix with an `ip_cidr_match` check (`192.168.` is `192.168.0.0/16`):
+> `in_kvdb` works for exact IP keys. A 4.x `address_match_key` list could also hold network prefixes: keys ending in a dot (`10.`, `192.168.`, `192.168.1.`), matched against the leading octets of the address. There is no KVDB equivalent — replace the prefixes with an `in_cidr` check, one network per prefix (`192.168.` is `192.168.0.0/16`):
 >
 > ```yaml
 > check:
->   - source.ip: ip_cidr_match('192.168.0.0', '16')
+>   - source.ip: in_cidr('192.168.0.0/16')
 > ```
 >
-> The second argument is a prefix length or a dotted mask (`'255.255.0.0'`); the helper handles IPv4 only.
-> If a single CDB list mixed exact IPs and prefixes, split them: the exact IPs into a KVDB, the prefixes into `ip_cidr_match` checks. All conditions of a `check` list must hold, so an "exact IP **or** prefix" test needs a conditional expression, for example `check: kvdb_match($source.ip, 'list_one') OR ip_cidr_match($source.ip, '192.168.0.0', '16')`.
+> Each argument is a network in CIDR notation, with a prefix length (`'192.168.0.0/16'`) or a dotted mask (`'192.168.0.0/255.255.0.0'`); several networks can be listed in one call (`in_cidr('10.0.0.0/8', '192.168.0.0/16')`) and the check passes when the address is inside any of them. The helper handles IPv4 only.
+> If a single CDB list mixed exact IPs and prefixes, split them: the exact IPs into a KVDB, the prefixes into `in_cidr` checks. All conditions of a `check` list must hold, so an "exact IP **or** prefix" test needs a conditional expression, for example `check: in_kvdb($source.ip, 'list_one') OR in_cidr($source.ip, '192.168.0.0/16')`.
 
 #### Example: allowlist check (not_match_key)
 
-`not_match_key` alerted when a field value was **absent** from a CDB list — typically used to flag events from users or IPs not present in an allowlist. In 5.x, use `kvdb_not_match` in the decoder's `check` stage.
+`not_match_key` alerted when a field value was **absent** from a CDB list — typically used to flag events from users or IPs not present in an allowlist. In 5.x, use `not_in_kvdb` in the decoder's `check` stage.
 
 **4.x rule:**
 
@@ -168,13 +168,13 @@ metadata:
   author: <ORGANIZATION/AUTHOR OF DECODER>
   date: <YYYY-MM-DD>
 check:
-  - user.name: kvdb_not_match('authorized_users')
+  - user.name: not_in_kvdb('authorized_users')
 normalize:
   - map:
-      - tags: array_append(auth)
+      - tags: array_append_all(auth)
 ```
 
-The decoder only accepts the event when `user.name` is **not** a key in the `authorized_users` KVDB; for authorized users the `check` fails and the Engine tries the next sibling decoder. `kvdb_not_match` also fails when the field is absent or is not a string, so events without a user name are not flagged.
+The decoder only accepts the event when `user.name` is **not** a key in the `authorized_users` KVDB; for authorized users the `check` fails and the Engine tries the next sibling decoder. `not_in_kvdb` also fails when the field is absent or is not a string, so events without a user name are not flagged.
 
 #### Example: key lookup with value check
 
@@ -216,7 +216,7 @@ normalize:
   - check:
       - _threat_type: malware
     map:
-      - tags: array_append(malware)
+      - tags: array_append_all(malware)
 ```
 
 The first `normalize` block maps the KVDB value into `_threat_type`, a temporary field (removed before the event is indexed, unless the policy sets `cleanup_decoder_variables` to `false`); the second block only applies its `map` when that value equals `malware`. A `normalize` block whose `check` fails is skipped without rejecting the event, and `kvdb_get` leaves the field unset when the key is absent, so the decoder accepts every event its parent passes and only tags the matching ones. The check is an exact comparison; a 4.x `check_value` pattern that matched more than one value needs a helper such as `regex_match` or `contains` instead.
@@ -255,10 +255,10 @@ metadata:
   author: <ORGANIZATION/AUTHOR OF DECODER>
   date: <YYYY-MM-DD>
 check:
-  - source.ip: kvdb_match('list_two')
+  - source.ip: in_kvdb('list_two')
 normalize:
   - map:
-      - tags: array_append(list2)
+      - tags: array_append_all(list2)
 ```
 
 The child decoder only runs if its parent (`decoder/ip-blacklist-list-one/0`) already matched, so the AND condition is preserved through the parent–child relationship.
@@ -298,10 +298,10 @@ metadata:
   author: <ORGANIZATION/AUTHOR OF DECODER>
   date: <YYYY-MM-DD>
 check:
-  - source.ip: kvdb_match('list_one')
+  - source.ip: in_kvdb('list_one')
 normalize:
   - map:
-      - tags: array_append(list1)
+      - tags: array_append_all(list1)
 ```
 
 ```yaml
@@ -315,10 +315,10 @@ metadata:
   author: <ORGANIZATION/AUTHOR OF DECODER>
   date: <YYYY-MM-DD>
 check:
-  - source.ip: kvdb_match('list_two')
+  - source.ip: in_kvdb('list_two')
 normalize:
   - map:
-      - tags: array_append(list2)
+      - tags: array_append_all(list2)
 ```
 
 > [!NOTE]
@@ -328,8 +328,8 @@ normalize:
 
 | Area | 4.x CDB behavior | 5.x KVDB behavior |
 |------|------------------|-------------------|
-| **Network prefix matching** | `address_match_key` / `not_address_match_key` with prefix keys ending in a dot (e.g., `192.168.:`) | No KVDB equivalent. Replace each prefix with an explicit `ip_cidr_match` check in the decoder's `check` stage (IPv4 only). |
-| **Mixed exact-IP and prefix lists** | Single CDB file can hold both `1.2.3.4:` and `10.:` entries | Must be split: exact IPs into a KVDB, prefixes into explicit `ip_cidr_match` entries. |
+| **Network prefix matching** | `address_match_key` / `not_address_match_key` with prefix keys ending in a dot (e.g., `192.168.:`) | No KVDB equivalent. Replace each prefix with a network in an explicit `in_cidr` check in the decoder's `check` stage (IPv4 only). |
+| **Mixed exact-IP and prefix lists** | Single CDB file can hold both `1.2.3.4:` and `10.:` entries | Must be split: exact IPs into a KVDB, prefixes into explicit `in_cidr` entries. |
 | **OR with overlapping entries** | Two independent rules each fire when their condition is met | Sibling decoders implement OR, but only the first match fires per event. Use the AND (parent–child) pattern when an entry can appear in multiple lists and both labels are needed. |
 | **Rule-level logic** | `<list>` could appear alongside `<match>`, `<regex>`, or `<field>` in a rule | All conditions move into a single decoder's `check` block. Combine KVDB helpers with other check conditions in the same `check` list, or in one conditional expression when you need `OR`/`NOT`. |
 | **KVDB scope** | A CDB list declared in the manager configuration could be used by any rule | A KVDB can only be used by decoders of the integration that lists it in its `kvdbs`. |

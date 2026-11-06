@@ -1,0 +1,29 @@
+# Name of the helper function
+name: now_epoch
+
+metadata:
+  description: |
+    Maps the current time to the target field as the integer number of seconds since the Unix epoch.
+
+    Behavior:
+    - The system clock is truncated to whole seconds and written as a 64-bit integer.
+    - It is the wall-clock time at which the event is processed, not the event time.
+
+    Build errors:
+    - Any argument.
+    - A target whose schema type does not accept an integer, such as a `date` or `keyword` field.
+
+    Notes:
+    - `now` gives the same instant as a date string.
+    - `date_to_epoch` converts a date string and returns a double.
+  group: date
+  fails_when:
+    - "never under normal operation: the helper has no input"
+
+helper_type: map
+
+is_variadic: false
+
+output:
+  type: number
+  subset: integer

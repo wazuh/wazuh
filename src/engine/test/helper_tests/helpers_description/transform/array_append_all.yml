@@ -1,0 +1,113 @@
+# Name of the helper function
+name: array_append_all
+
+metadata:
+  description: |
+    Appends every argument to the array stored in the target field.
+
+    Behavior:
+    - The target field must be an array or be missing; a missing target is created as an empty array first.
+    - Each argument is a literal of any JSON type or a reference to a field, and is appended as one element,
+      in argument order, without removing duplicates.
+    - Every element must share one JSON type: the schema type of the target field when it has one, otherwise
+      the type of the first element already in the array, otherwise the type of the first argument that
+      resolves. Integers and floating-point values count as the same type (number).
+    - The operation is all-or-nothing: the array is rewritten only after every argument has been accepted,
+      so a failure leaves the target field unchanged.
+
+    Build errors:
+    - No arguments, or more than 150 arguments.
+    - A literal argument whose JSON type differs from the element type of a schema target field.
+    - The target field is not a schema field and does not start with `_`.
+
+    Notes:
+    - A reference that does not exist in the event fails the whole operation; `array_append_any` skips the
+      missing references instead.
+    - A target field that exists and is not an array makes the operation fail; it is never overwritten.
+    - `array_append_unique_all` skips the values that are already in the array.
+  group: array
+  fails_when:
+    - The target field exists and is not an array.
+    - Any reference argument does not exist in the event.
+    - An argument has a JSON type different from the element type of the array.
+    - The resulting array is rejected by the schema validation of the target field.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: true
+
+# Arguments expected by the helper function
+arguments:
+  value:
+    type:
+      - number
+      - string
+      - object
+      - boolean
+      - array
+    source: both
+
+# adding elements of different type of target_field is not allowed
+skipped:
+  - success_cases
+
+target_field:
+  type: array
+  generate: all
+
+test:
+  - arguments:
+      value:
+        source: reference
+        value: null
+      value_1:
+        source: value
+        value: 6
+    target_field: [1,2,3,4]
+    should_pass: false
+    expected: [1,2,3,4]
+    description: A missing reference fails the whole operation and nothing is appended
+  - arguments:
+      value: 5
+    target_field: [1,2,3,4]
+    should_pass: true
+    expected: [1,2,3,4,5]
+    description: A number is appended to an array of numbers
+  - arguments:
+      value: 5
+      value_1: 6
+    target_field: [1,2,3,4]
+    should_pass: true
+    expected: [1,2,3,4,5,6]
+    description: Several arguments are appended in argument order
+  - arguments:
+      value: 4
+    target_field: [1,2,3,4]
+    should_pass: true
+    expected: [1,2,3,4,4]
+    description: A value already present is appended again (no duplicate check)
+  - arguments:
+      value: hello
+    target_field: [1,2,3,4]
+    should_pass: false
+    expected: [1,2,3,4]
+    description: A string is rejected by an array of numbers
+  - arguments:
+      value: [1,2]
+    target_field: [1,2,3,4]
+    should_pass: false
+    expected: [1,2,3,4]
+    description: An array is rejected by an array of numbers
+  - arguments:
+      value: 2
+    target_field: [1.2,2.3,3.5,4.9]
+    should_pass: true
+    expected: [1.2,2.3,3.5,4.9,2]
+    description: An integer is accepted by an array of floating-point numbers
+  - arguments:
+      value: 5
+    target_field: text
+    should_pass: false
+    expected: text
+    description: A target field that is not an array makes the operation fail and is not overwritten
