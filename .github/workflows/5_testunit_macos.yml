@@ -56,7 +56,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-sonoma:
+  build-sequoia:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: macos-15
     timeout-minutes: 45
