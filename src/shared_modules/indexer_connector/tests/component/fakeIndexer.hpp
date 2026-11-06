@@ -96,10 +96,14 @@ public:
     }
 
     /**
-     * @brief Number of `GET /_cat/health` requests served since this server started.
+     * @brief Number of health-check requests served since this server started.
      *
-     * Lets a test assert how many health-check ROUNDS happened, which is the observable difference
-     * between connectors that each build their own monitor and connectors sharing one IndexerSession.
+     * Counts a request to EITHER health route -- the cluster-wide `GET /_cat/health` and the
+     * index-scoped `GET /_cluster/health/<pattern>` both add to it -- so what it measures is a
+     * health-check ROUND and not one literal path. That round count is the observable difference
+     * between connectors that each build their own monitor and connectors sharing one
+     * IndexerSession, and decoupling it from the path keeps it meaning the same thing when the
+     * probe moves from one route to the other.
      *
      * @return The request count.
      */
@@ -197,6 +201,41 @@ public:
                                                                        {"pending_tasks", "0"},
                                                                        {"max_task_wait_time", "-"},
                                                                        {"active_shards_percent", "100.0%"}}});
+
+                         std::stringstream ss;
+                         ss << response.dump();
+                         res.set_content(ss.str(), "application/json");
+                     });
+
+        // Endpoint where the health status of a set of indices is returned.
+        //
+        // Registered as a regular expression so that ANY index pattern matches, the
+        // `wazuh-*,.wazuh-*` the manager asks for included: httplib builds a RegexMatcher for every
+        // pattern that carries no `/:` path parameter and runs it over the URL-decoded request path,
+        // so the `*` and `,` of the suffix are matched as the literal characters they are.
+        m_server.Get(R"(/_cluster/health(/.*)?)",
+                     [this](const httplib::Request& req, httplib::Response& res)
+                     {
+                         ++m_healthRequests;
+                         // Unlike `/_cat/health`, which answers with an array of one row, the real
+                         // `_cluster/health` answers with a bare object. Both read the same
+                         // `m_health`, so setHealth() governs the two routes.
+                         const auto response = nlohmann::json::object({{"cluster_name", "wazuh-cluster"},
+                                                                       {"status", m_health},
+                                                                       {"timed_out", false},
+                                                                       {"number_of_nodes", 1},
+                                                                       {"number_of_data_nodes", 1},
+                                                                       {"discovered_master", true},
+                                                                       {"active_primary_shards", 166},
+                                                                       {"active_shards", 166},
+                                                                       {"relocating_shards", 0},
+                                                                       {"initializing_shards", 0},
+                                                                       {"unassigned_shards", 0},
+                                                                       {"delayed_unassigned_shards", 0},
+                                                                       {"number_of_pending_tasks", 0},
+                                                                       {"number_of_in_flight_fetch", 0},
+                                                                       {"task_max_waiting_in_queue_millis", 0},
+                                                                       {"active_shards_percent_as_number", 100.0}});
 
                          std::stringstream ss;
                          ss << response.dump();

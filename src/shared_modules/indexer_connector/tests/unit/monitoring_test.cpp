@@ -10,6 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
+#include "healthBody.hpp"
 #include "mocks/MockHTTPRequest.hpp"
 #include "monitoring.hpp"
 #include <algorithm>
@@ -29,6 +30,17 @@
 // Healt check interval for the servers
 constexpr auto MONITORING_HEALTH_CHECK_INTERVAL {1u};
 constexpr auto MONITORING_HEALTH_CHECK_INTERVAL_ZERO {0u};
+
+// The canned probe answers and the response-body factory live in healthBody.hpp so that every test
+// file shares one definition of what the health endpoint returns.
+using probe_test::answer;
+using probe_test::BREAKER;
+using probe_test::GREEN;
+using probe_test::healthBody;
+using probe_test::healthBodyWithoutStatus;
+using probe_test::PERMANENT_BREAKER;
+using probe_test::ProbeAnswer;
+using probe_test::UNAVAILABLE;
 
 /**
  * @brief Runs unit tests for Monitoring class
@@ -67,13 +79,11 @@ TEST_F(MonitoringTest, TestInstantiationWithValidServers)
                     // Green server - healthy response
                     if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                     {
-                        std::get<TPostRequestParameters<const std::string&>>(postParams)
-                            .onSuccess(R"([{"status":"green"}])");
+                        std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(healthBody("green"));
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams)
-                            .onSuccess(R"([{"status":"green"}])");
+                        std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(healthBody("green"));
                     }
                 }
                 else if (url.find("localhost:9110") != std::string::npos)
@@ -96,12 +106,11 @@ TEST_F(MonitoringTest, TestInstantiationWithValidServers)
                     if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                     {
                         std::get<TPostRequestParameters<const std::string&>>(postParams)
-                            .onSuccess(R"([{"status":"yellow"}])");
+                            .onSuccess(healthBody("yellow"));
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams)
-                            .onSuccess(R"([{"status":"yellow"}])");
+                        std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(healthBody("yellow"));
                     }
                 }
                 else if (url.find("localhost:9300") != std::string::npos)
@@ -109,13 +118,11 @@ TEST_F(MonitoringTest, TestInstantiationWithValidServers)
                     // Green server with delay - healthy response
                     if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                     {
-                        std::get<TPostRequestParameters<const std::string&>>(postParams)
-                            .onSuccess(R"([{"status":"green"}])");
+                        std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(healthBody("green"));
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams)
-                            .onSuccess(R"([{"status":"green"}])");
+                        std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(healthBody("green"));
                     }
                 }
             }));
@@ -174,13 +181,11 @@ TEST_F(MonitoringTest, TestCheckIfAnUnregisteredServerIsAvailable)
                     // Green server - healthy response
                     if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                     {
-                        std::get<TPostRequestParameters<const std::string&>>(postParams)
-                            .onSuccess(R"([{"status":"green"}])");
+                        std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(healthBody("green"));
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams)
-                            .onSuccess(R"([{"status":"green"}])");
+                        std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(healthBody("green"));
                     }
                 }
                 else if (url.find("localhost:9110") != std::string::npos)
@@ -202,13 +207,11 @@ TEST_F(MonitoringTest, TestCheckIfAnUnregisteredServerIsAvailable)
                     // Other servers return success by default
                     if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                     {
-                        std::get<TPostRequestParameters<const std::string&>>(postParams)
-                            .onSuccess(R"([{"status":"green"}])");
+                        std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(healthBody("green"));
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams)
-                            .onSuccess(R"([{"status":"green"}])");
+                        std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(healthBody("green"));
                     }
                 }
             }));
@@ -262,35 +265,78 @@ TEST_F(MonitoringTest, TestHTTPError)
 }
 
 /**
- * @brief Test instantiation and check the bad response of a server.
+ * @brief A 200 whose body cannot be parsed leaves the host down, and says why.
  *
+ * The probe's parser throws on an unparseable body (`.at(0)` over a discarded value raises
+ * nlohmann::json::type_error.304). In production that throw never reaches the caller: HTTPRequest::get
+ * catches it and reports it through onError, which is why constructing the monitor against such a
+ * host must SUCCEED and simply mark it down. Delivering the body through answer() is what makes the
+ * double behave that way -- see healthBody.hpp.
+ *
+ * Asserting the reason is the point, not decoration: HostState starts at Down, so a host that was
+ * never probed at all also reads as unavailable. What distinguishes "the probe ran and onError filled
+ * in a reason" from "nothing happened" is that the stored reason is NOT the fallback text the monitor
+ * writes when it has none. Hence the Not(HasSubstr(...)): getUnavailableServersDetails() returns
+ * "<host>: <reason>", so comparing the whole string for inequality would pass on the fallback path too
+ * and assert nothing.
  */
 TEST_F(MonitoringTest, TestBadResponseFromServer)
 {
-    const auto badResponseServer {"http://localhost:9500"};
+    const std::string badResponseServer {"http://localhost:9500"};
 
-    std::vector<std::string> servers;
-    servers.emplace_back(badResponseServer);
+    const std::vector<std::string> servers {badResponseServer};
 
     // Set up mock to simulate bad response (malformed JSON)
     EXPECT_CALL(m_mockHttpRequest, get(::testing::_, ::testing::_, ::testing::_))
-        .WillRepeatedly(::testing::Invoke(
-            [](const auto& /*requestParams*/, const auto& postParams, const auto& /*configParams*/)
-            {
-                // Simulate malformed JSON that cannot be parsed
-                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
-                {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess("{ invalid json }");
-                }
-                else
-                {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess("{ invalid json }");
-                }
-            }));
+        .WillRepeatedly(
+            ::testing::Invoke([](const auto& /*requestParams*/, const auto& postParams, const auto& /*configParams*/)
+                              { answer(postParams, ProbeAnswer {200, "{ invalid json }"}); }));
 
     std::shared_ptr<TestMonitoring> monitoring;
-    EXPECT_ANY_THROW(monitoring = std::make_shared<TestMonitoring>(
-                         servers, MONITORING_HEALTH_CHECK_INTERVAL, SecureCommunication {}, &m_mockHttpRequest));
+    EXPECT_NO_THROW(monitoring = std::make_shared<TestMonitoring>(
+                        servers, MONITORING_HEALTH_CHECK_INTERVAL, SecureCommunication {}, &m_mockHttpRequest));
+    ASSERT_NE(monitoring, nullptr);
+
+    EXPECT_FALSE(monitoring->isAvailable(badResponseServer));
+
+    const auto details = monitoring->getUnavailableServersDetails();
+    EXPECT_THAT(details, ::testing::HasSubstr(badResponseServer + ": "));
+    EXPECT_THAT(details, ::testing::Not(::testing::HasSubstr("Cluster reported unhealthy status")));
+}
+
+/**
+ * @brief The health probe must ask for the health endpoint, and only for it.
+ *
+ * Nothing else in this suite looks at the path: every other mock dispatches on the host part of the
+ * URL, so the probe could be pointed anywhere and the whole suite would stay green. This case pins
+ * the full URL -- not a substring, so that neither a prefix nor a suffix can be appended unnoticed.
+ *
+ * The capture is one-shot: the monitor thread re-issues the request every interval, and the
+ * constructor's own synchronous round is the one whose URL is asserted.
+ */
+TEST_F(MonitoringTest, TheProbeRequestsTheHealthUrl)
+{
+    const std::string server {"http://localhost:9250"};
+
+    std::once_flag captureOnce;
+    std::string probedUrl;
+
+    EXPECT_CALL(m_mockHttpRequest, get(::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly(::testing::Invoke(
+            [&captureOnce, &probedUrl](const auto& requestParams, const auto& postParams, const auto& /*configParams*/)
+            {
+                std::call_once(captureOnce,
+                               [&] { probedUrl = std::get<TRequestParameters<std::string>>(requestParams).url.url(); });
+                answer(postParams, GREEN);
+            }));
+
+    // The constructor probes synchronously on this thread, so the capture is complete once it returns.
+    const auto monitoring = std::make_shared<TestMonitoring>(std::vector<std::string> {server},
+                                                             MONITORING_HEALTH_CHECK_INTERVAL,
+                                                             SecureCommunication {},
+                                                             &m_mockHttpRequest);
+
+    EXPECT_EQ(probedUrl, server + "/_cat/health");
 }
 
 /**
@@ -313,12 +359,11 @@ TEST_F(MonitoringTest, TestMissingStatusField)
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
                     std::get<TPostRequestParameters<const std::string&>>(postParams)
-                        .onSuccess(R"([{"cluster":"test","node.total":"1"}])");
+                        .onSuccess(healthBodyWithoutStatus());
                 }
                 else
                 {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams)
-                        .onSuccess(R"([{"cluster":"test","node.total":"1"}])");
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(healthBodyWithoutStatus());
                 }
             }));
 
@@ -406,12 +451,12 @@ TEST_F(MonitoringTest, TestRedClusterStatus)
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
                     std::get<TPostRequestParameters<const std::string&>>(postParams)
-                        .onSuccess(R"([{"status":"red","cluster":"test"}])");
+                        .onSuccess(healthBody("red", R"(,"cluster":"test")"));
                 }
                 else
                 {
                     std::get<TPostRequestParameters<std::string&&>>(postParams)
-                        .onSuccess(R"([{"status":"red","cluster":"test"}])");
+                        .onSuccess(healthBody("red", R"(,"cluster":"test")"));
                 }
             }));
 
@@ -450,13 +495,11 @@ TEST_F(MonitoringTest, TestChangeServerStatusFromGreenToRed)
                 {
                     if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                     {
-                        std::get<TPostRequestParameters<const std::string&>>(postParams)
-                            .onSuccess(R"([{"status":"green"}])");
+                        std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(healthBody("green"));
                     }
                     else
                     {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams)
-                            .onSuccess(R"([{"status":"green"}])");
+                        std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(healthBody("green"));
                     }
                 }
                 else if (phase == 1)
@@ -467,12 +510,11 @@ TEST_F(MonitoringTest, TestChangeServerStatusFromGreenToRed)
                         if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                         {
                             std::get<TPostRequestParameters<const std::string&>>(postParams)
-                                .onSuccess(R"([{"status":"red"}])");
+                                .onSuccess(healthBody("red"));
                         }
                         else
                         {
-                            std::get<TPostRequestParameters<std::string&&>>(postParams)
-                                .onSuccess(R"([{"status":"red"}])");
+                            std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(healthBody("red"));
                         }
                     }
                     else
@@ -480,12 +522,11 @@ TEST_F(MonitoringTest, TestChangeServerStatusFromGreenToRed)
                         if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                         {
                             std::get<TPostRequestParameters<const std::string&>>(postParams)
-                                .onSuccess(R"([{"status":"green"}])");
+                                .onSuccess(healthBody("green"));
                         }
                         else
                         {
-                            std::get<TPostRequestParameters<std::string&&>>(postParams)
-                                .onSuccess(R"([{"status":"green"}])");
+                            std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(healthBody("green"));
                         }
                     }
                 }
@@ -578,12 +619,11 @@ namespace
             {
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams)
-                        .onSuccess(R"([{"status":"green"}])");
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(healthBody("green"));
                 }
                 else
                 {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(R"([{"status":"green"}])");
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(healthBody("green"));
                 }
                 return;
             }
@@ -736,45 +776,6 @@ TEST_F(MonitoringTest, TheDestructorDoesNotWaitOutTheRemainingRound)
     EXPECT_EQ(gate.calls(), static_cast<int>(servers.size()) + 1)
         << "the monitor kept probing hosts after stop was requested";
 }
-
-namespace
-{
-    /// A canned health-check answer: 200 goes to onSuccess with the body, anything else to onError.
-    struct ProbeAnswer
-    {
-        long statusCode;
-        std::string body;
-    };
-
-    const ProbeAnswer GREEN {200, R"([{"status":"green"}])"};
-    const ProbeAnswer UNAVAILABLE {503, ""};
-    const ProbeAnswer BREAKER {
-        429,
-        R"({"error":{"root_cause":[{"type":"circuit_breaking_exception","reason":"[parent] Data too large",)"
-        R"("durability":"TRANSIENT"}],"type":"circuit_breaking_exception","reason":"[parent] Data too large",)"
-        R"("durability":"TRANSIENT"},"status":429})"};
-    const ProbeAnswer PERMANENT_BREAKER {
-        429,
-        R"({"error":{"type":"circuit_breaking_exception","reason":"[parent] Data too large",)"
-        R"("durability":"PERMANENT"},"status":429})"};
-
-    template<typename TPostParams>
-    void answer(const TPostParams& postParams, const ProbeAnswer& probeAnswer)
-    {
-        if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
-        {
-            const auto& params = std::get<TPostRequestParameters<const std::string&>>(postParams);
-            probeAnswer.statusCode == 200 ? params.onSuccess(probeAnswer.body)
-                                          : params.onError("Client error", probeAnswer.statusCode, probeAnswer.body);
-        }
-        else
-        {
-            const auto& params = std::get<TPostRequestParameters<std::string&&>>(postParams);
-            probeAnswer.statusCode == 200 ? params.onSuccess(std::string {probeAnswer.body})
-                                          : params.onError("Client error", probeAnswer.statusCode, probeAnswer.body);
-        }
-    }
-} // namespace
 
 /**
  * @brief Monitoring tests that read the log: the global log function is swapped for a recorder and
