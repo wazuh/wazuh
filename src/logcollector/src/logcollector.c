@@ -99,6 +99,8 @@ STATIC int64_t w_set_to_pos(logreader *lf, int64_t pos, int mode);
  */
 STATIC int w_update_hash_node(char * path, int64_t pos);
 
+static bool w_file_head_changed(const char * path, const os_file_status_t * data);
+
 /* Global variables */
 int loop_timeout;
 int logr_queue;
@@ -800,9 +802,9 @@ void LogCollectorStart()
                         continue;
                     }
 #ifdef WIN32
-                    else if ((DWORD)current->size > (lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow))
+                    else if ((DWORD)current->size > (lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow) || w_file_head_changed(current->file, OSHash_Get_ex(files_status, current->file)))
 #else
-                    else if (current->size > tmp_stat.st_size || w_ftell(current->fp) > tmp_stat.st_size)
+                    else if (current->size > tmp_stat.st_size || w_ftell(current->fp) > tmp_stat.st_size || w_file_head_changed(current->file, OSHash_Get_ex(files_status, current->file)))
 #endif
                     {
                         current->exists = 1;
@@ -2685,6 +2687,36 @@ int can_read() {
     return ret;
 }
 
+static int w_hash_file_head(const char * path, int64_t nbytes, os_sha1 output) {
+    EVP_MD_CTX * context = EVP_MD_CTX_new();
+    int ret = OS_SHA1_File_Nbytes(path, &context, output, OS_BINARY, nbytes);
+    EVP_MD_CTX_free(context);
+    return ret;
+}
+
+static bool w_file_head_changed(const char * path, const os_file_status_t * data) {
+    os_sha1 output;
+
+    return data && data->head_offset && w_hash_file_head(path, data->head_offset, output) == 0
+           && strcmp(output, data->head_hash);
+}
+
+// disk_hash: SHA1 of the first data->offset bytes on disk, if the caller already computed it
+static void w_set_file_head(const char * path, os_file_status_t * data, const os_file_status_t * old, const char * disk_hash) {
+    int64_t len = data->offset < FILE_HEAD_SIZE ? data->offset : FILE_HEAD_SIZE;
+
+    // A head the file no longer matches is kept, so the next file check reports the truncation
+    if (old && (old->head_offset == len || w_file_head_changed(path, old))) {
+        data->head_offset = old->head_offset;
+        memcpy(data->head_hash, old->head_hash, sizeof(os_sha1));
+    } else if (disk_hash && len == data->offset) {
+        data->head_offset = len;
+        memcpy(data->head_hash, disk_hash, sizeof(os_sha1));
+    } else {
+        data->head_offset = len && w_hash_file_head(path, len, data->head_hash) == 0 ? len : 0;
+    }
+}
+
 int w_update_file_status(const char * path, int64_t pos, EVP_MD_CTX * context) {
 
     os_file_status_t * data;
@@ -2697,6 +2729,7 @@ int w_update_file_status(const char * path, int64_t pos, EVP_MD_CTX * context) {
     memcpy(data->hash, output, sizeof(os_sha1));
 
     data->offset = pos;
+    w_set_file_head(path, data, OSHash_Get_ex(files_status, path), NULL);
 
     if (OSHash_Update_ex(files_status, path, data) != 1) {
         if (OSHash_Add_ex(files_status, path, data) != 2) {
@@ -2890,6 +2923,7 @@ STATIC void w_load_files_status(cJSON * global_json) {
             continue;
         }
         data->context = context;
+        w_set_file_head(path_str, data, NULL, output);
 
         if (OSHash_Update_ex(files_status, path_str, data) != 1) {
             if (OSHash_Add_ex(files_status, path_str, data) != 2) {
@@ -3066,6 +3100,7 @@ STATIC int w_update_hash_node(char * path, int64_t pos) {
     }
     memcpy(data->hash, output, sizeof(os_sha1));
     data->context = context;
+    w_set_file_head(path, data, NULL, output);
 
     if (OSHash_Update_ex(files_status, path, data) != 1) {
         if (OSHash_Add_ex(files_status, path, data) != 2) {
