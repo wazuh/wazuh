@@ -426,13 +426,11 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
 {
     int lcount;
     size_t offset = 0;
-    char wdchar[260 + 1] = {0};
-    char final_path[MAX_LINE + 1];
+    char wdchar[FIM_PATH_MAX + 1] = {0};
+    char final_path[FIM_PATH_MAX * 2 + 2] = {0};
     win32rtfim *rtlocald;
     PFILE_NOTIFY_INFORMATION pinfo;
-    TCHAR finalfile[MAX_PATH];
-
-    memset(final_path, '\0', MAX_LINE + 1);
+    char finalfile[FIM_PATH_MAX];
 
     if (dwerror != ERROR_SUCCESS) {
         LPSTR messageBuffer = NULL;
@@ -454,7 +452,7 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
     /* Get hash to parse the data */
     w_rwlock_rdlock(&syscheck.directories_lock);
     w_mutex_lock(&syscheck.fim_realtime_mutex);
-    snprintf(wdchar, 260, "%s", (char*)overlap->hEvent);
+    snprintf(wdchar, sizeof(wdchar), "%s", (char*)overlap->hEvent);
     rtlocald = OSHash_Get_ex(syscheck.realtime->dirtb, wdchar);
     if (rtlocald == NULL) {
         merror(FIM_ERROR_REALTIME_WINDOWS_CALLBACK_EMPTY);
@@ -478,20 +476,18 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
             pinfo = (PFILE_NOTIFY_INFORMATION) &rtlocald->buffer[offset];
             offset += pinfo->NextEntryOffset;
 
-            lcount = WideCharToMultiByte(CP_ACP, 0, pinfo->FileName,
+            lcount = WideCharToMultiByte(CP_UTF8, 0, pinfo->FileName,
                                          pinfo->FileNameLength / sizeof(WCHAR),
-                                         finalfile, MAX_PATH - 1, NULL, NULL);
-            finalfile[lcount] = TEXT('\0');
-
-            final_path[MAX_LINE] = '\0';
+                                         finalfile, sizeof(finalfile) - 1, NULL, NULL);
+            finalfile[lcount] = '\0';
 
             if (rtlocald->dir) {
                 if (rtlocald->dir[strlen(rtlocald->dir) - 1] == PATH_SEP) {
-                    snprintf(final_path, MAX_LINE, "%s%s",
+                    snprintf(final_path, sizeof(final_path), "%s%s",
                             rtlocald->dir,
                             finalfile);
                 } else {
-                    snprintf(final_path, MAX_LINE, "%s\\%s",
+                    snprintf(final_path, sizeof(final_path), "%s\\%s",
                             rtlocald->dir,
                             finalfile);
                 }
@@ -576,7 +572,7 @@ int realtime_win32read(win32rtfim *rtlocald)
 }
 
 int realtime_adddir(const char *dir, directory_t *configuration) {
-    char wdchar[260 + 1];
+    char wdchar[FIM_PATH_MAX + 1];
     win32rtfim *rtlocald;
 
     assert(configuration != NULL);
@@ -622,8 +618,7 @@ int realtime_adddir(const char *dir, directory_t *configuration) {
     w_mutex_lock(&syscheck.fim_realtime_mutex);
 
     /* Set key for hash */
-    wdchar[260] = '\0';
-    snprintf(wdchar, 260, "%s", dir);
+    snprintf(wdchar, sizeof(wdchar), "%s", dir);
 
     rtlocald = OSHash_Get_ex(syscheck.realtime->dirtb, wdchar);
     if(rtlocald != NULL) {

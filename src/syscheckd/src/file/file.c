@@ -221,7 +221,7 @@ STATIC void handle_orphaned_delete(const char* path,
 
     // Validate and persist the orphaned delete event
     // Note: For orphaned deletes, we don't mark for deletion from DBSync since the item is already deleted
-    char item_desc[PATH_MAX + 32];
+    char item_desc[FIM_PATH_MAX + 32];
     snprintf(item_desc, sizeof(item_desc), "file %s", path);
 
     cJSON* sync_json = cJSON_GetObjectItem(result_json, "sync");
@@ -507,7 +507,7 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
 
     // Validate and persist the event
     // For INSERT/MODIFY operations that fail validation, mark for deletion from DBSync
-    char item_desc[PATH_MAX + 32];
+    char item_desc[FIM_PATH_MAX + 32];
     snprintf(item_desc, sizeof(item_desc), "file %s", path);
 
     char* path_copy = (resultType == INSERTED || resultType == MODIFIED) ? strdup(path) : NULL;
@@ -571,7 +571,6 @@ directory_t *fim_configuration_directory(const char *key, bool notify_not_found,
     OSListNode *node_it;
     int top = 0;
     int match = 0;
-    char *pathname = NULL;
 
     if (!key || *key == '\0') {
         return NULL;
@@ -582,16 +581,7 @@ directory_t *fim_configuration_directory(const char *key, bool notify_not_found,
         return NULL;
     }
 
-#ifdef WIN32
-     pathname = auto_to_ansi(key);
-     if (!pathname) {
-         return NULL;
-     }
- #else
-     os_strdup(key, pathname);
- #endif
-
-    trail_path_separator(full_path, pathname, sizeof(full_path));
+    trail_path_separator(full_path, key, sizeof(full_path));
 
     OSList_foreach(node_it, (OSList *)directories_list) {
         dir_it = node_it->data;
@@ -612,7 +602,6 @@ directory_t *fim_configuration_directory(const char *key, bool notify_not_found,
         mdebug2(FIM_CONFIGURATION_NOTFOUND, "file", key);
     }
 
-    os_free(pathname);
     return dir;
 }
 
@@ -1050,7 +1039,7 @@ static void fim_process_dir_entry(const char *dir,
         return;
     }
 
-    strncpy(f_name, dir, PATH_MAX);
+    strncpy(f_name, dir, FIM_PATH_MAX);
     path_size = strlen(dir);
     s_name = f_name + path_size;
 
@@ -1061,14 +1050,16 @@ static void fim_process_dir_entry(const char *dir,
     path_size = strlen(f_name);
 
 #ifdef WIN32
-    // PATH_MAX is 260 on Windows; reserve one char for the null terminator.
-    if (path_size + strlen(name) >= PATH_MAX) {
-        mwarn(FIM_ERROR_PATH_TOO_LONG, f_name, name, PATH_MAX);
+    // MAX_PATH counts UTF-16 units, not UTF-8 bytes; reserve one for the null terminator.
+    int wide_len = MultiByteToWideChar(CP_UTF8, 0, f_name, -1, NULL, 0) + MultiByteToWideChar(CP_UTF8, 0, name, -1, NULL, 0) - 2;
+
+    if (wide_len >= MAX_PATH || path_size + strlen(name) >= FIM_PATH_MAX) {
+        mwarn(FIM_ERROR_PATH_TOO_LONG, f_name, name, MAX_PATH);
         return;
     }
 #endif
 
-    snprintf(s_name, PATH_MAX + 2 - path_size, "%s", name);
+    snprintf(s_name, FIM_PATH_MAX + 2 - path_size, "%s", name);
 
     fim_checker(f_name, evt_data, configuration, dbsync_txn, ctx);
 }
@@ -1085,7 +1076,7 @@ int fim_directory(const char *dir,
         return OS_INVALID;
     }
 
-    os_calloc(PATH_MAX + 2, sizeof(char), f_name);
+    os_calloc(FIM_PATH_MAX + 2, sizeof(char), f_name);
 
 #ifdef WIN32
     // opendir()/readdir() drop names with characters outside the process ANSI
@@ -1360,8 +1351,8 @@ void fim_handle_delete_by_path(const char *path,
 
     if (fallback_cb == true) {
         // File not found in DB: fallback to LIKE pattern ("path/%")
-        char pattern[PATH_MAX] = {0};
-        snprintf(pattern, PATH_MAX, "%s%c%%", path, PATH_SEP);
+        char pattern[FIM_PATH_MAX + 3] = {0};
+        snprintf(pattern, sizeof(pattern), "%s%c%%", path, PATH_SEP);
 
         cb.callback = fim_db_remove_entry;
         fim_db_file_pattern_search(pattern, cb);

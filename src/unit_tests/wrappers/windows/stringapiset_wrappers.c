@@ -12,7 +12,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-int wrap_WideCharToMultiByte(__UNUSED_PARAM(UINT CodePage),
+int wrap_WideCharToMultiByte(UINT CodePage,
                              __UNUSED_PARAM(DWORD dwFlags),
                              LPCWCH lpWideCharStr,
                              int cchWideChar,
@@ -20,6 +20,7 @@ int wrap_WideCharToMultiByte(__UNUSED_PARAM(UINT CodePage),
                              int cbMultiByte,
                              __UNUSED_PARAM(LPCCH lpDefaultChar),
                              __UNUSED_PARAM(LPBOOL lpUsedDefaultChar)) {
+    check_expected(CodePage);
     check_expected(lpWideCharStr);
     check_expected(cchWideChar);
 

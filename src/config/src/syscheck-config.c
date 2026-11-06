@@ -709,7 +709,7 @@ char *format_path(char *dir) {
     }
 
 #ifdef WIN32
-    char buffer[PATH_MAX];
+    wchar_t buffer[MAX_PATH];
 
     /* Change forward slashes to backslashes on entry */
     tmp_str = strchr(dir, '/');
@@ -723,10 +723,14 @@ char *format_path(char *dir) {
         wm_strcat(&dir, "\\", '\0');
     }
 
-    if (!GetFullPathName(dir, PATH_MAX, buffer, NULL)) {
+    // FIM paths are UTF-8 internally.
+    wchar_t *wdir = auto_to_wide(dir);
+    DWORD len = wdir ? GetFullPathNameW(wdir, MAX_PATH, buffer, NULL) : 0;
+    os_free(wdir);
+
+    if (len == 0 || len >= MAX_PATH || (clean_path = wide_to_utf8(buffer)) == NULL) {
         return NULL;
     }
-    os_strdup(buffer, clean_path);
     str_lowercase(clean_path);
 #else
     os_strdup(dir, clean_path);
@@ -1401,6 +1405,14 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
             }
 
             free(node[i]->content);
+
+            // FIM compares paths in UTF-8; the expansion comes in the ANSI code page.
+            char *utf8_nodiff = auto_to_utf8(new_nodiff);
+            if (utf8_nodiff != NULL) {
+                os_free(new_nodiff);
+                new_nodiff = utf8_nodiff;
+            }
+
             str_lowercase(new_nodiff);
             node[i]->content = new_nodiff;
 #endif

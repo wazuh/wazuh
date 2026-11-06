@@ -3071,6 +3071,7 @@ void test_get_whodata_path_error_determining_buffer_size(void **state) {
     const char *win_path = "C:\\a\\path";
     char *ret;
 
+    expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
     expect_string(wrap_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
     expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
     will_return(wrap_WideCharToMultiByte, 0);
@@ -3088,10 +3089,12 @@ void test_get_whodata_path_error_copying_buffer(void **state) {
     const char *win_path = "C:\\a\\path";
     char *ret;
 
+    expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
     expect_string(wrap_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
     expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
     will_return(wrap_WideCharToMultiByte, 10);
 
+    expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
     expect_string(wrap_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
     expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
     will_return(wrap_WideCharToMultiByte, "");
@@ -3110,10 +3113,12 @@ void test_get_whodata_path_success(void **state) {
     const char *win_path = "C:\\a\\path";
     char *ret;
 
+    expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
     expect_string(wrap_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
     expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
     will_return(wrap_WideCharToMultiByte, 21);
 
+    expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
     expect_string(wrap_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
     expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
     will_return(wrap_WideCharToMultiByte, "C:\\another\\path.file");
@@ -4471,6 +4476,7 @@ void test_whodata_event_parse_fail_to_get_path(void **state) {
 
     // Inside get_whodata_path
     {
+        expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
         expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
         expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
         will_return(wrap_WideCharToMultiByte, 0);
@@ -4501,6 +4507,7 @@ void test_whodata_event_parse_filter_path(void **state) {
 
     // Inside get_whodata_path
     {
+        expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
         expect_memory(wrap_WideCharToMultiByte,
                       lpWideCharStr,
                       L"C:\\$recycle.bin\\test.file",
@@ -4508,6 +4515,7 @@ void test_whodata_event_parse_filter_path(void **state) {
         expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
         will_return(wrap_WideCharToMultiByte, 27);
 
+        expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
         expect_memory(wrap_WideCharToMultiByte,
                       lpWideCharStr,
                       L"C:\\$recycle.bin\\test.file",
@@ -4544,10 +4552,12 @@ void test_whodata_event_parse_wrong_types(void **state) {
 
     // Inside get_whodata_path
     {
+        expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
         expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
         expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
         will_return(wrap_WideCharToMultiByte, strlen(STR_TEST_PATH));
 
+        expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
         expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
         expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
         will_return(wrap_WideCharToMultiByte, STR_TEST_PATH);
@@ -4585,10 +4595,12 @@ void test_whodata_event_parse_32bit_process_id(void **state) {
 
     // Inside get_whodata_path
     {
+        expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
         expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
         expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
         will_return(wrap_WideCharToMultiByte, strlen(STR_TEST_PATH));
 
+        expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
         expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
         expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
         will_return(wrap_WideCharToMultiByte, STR_TEST_PATH);
@@ -4632,10 +4644,12 @@ void test_whodata_event_parse_32bit_hex_process_id(void **state) {
 
     // Inside get_whodata_path
     {
+        expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
         expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
         expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
         will_return(wrap_WideCharToMultiByte, strlen(STR_TEST_PATH));
 
+        expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
         expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
         expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
         will_return(wrap_WideCharToMultiByte, STR_TEST_PATH);
@@ -4678,10 +4692,12 @@ void test_whodata_event_parse_64bit_process_id(void **state) {
 
     // Inside get_whodata_path
     {
+        expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
         expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
         expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
         will_return(wrap_WideCharToMultiByte, strlen(STR_TEST_PATH));
 
+        expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
         expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
         expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
         will_return(wrap_WideCharToMultiByte, STR_TEST_PATH);
@@ -4843,10 +4859,12 @@ void test_whodata_callback_4656_fail_to_get_access_mask(void **state) {
     {
         // Inside get_whodata_path
         {
+            expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
             expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, strlen(STR_TEST_PATH));
 
+            expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
             expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, STR_TEST_PATH);
@@ -4900,10 +4918,12 @@ void test_whodata_callback_4656_non_monitored_directory(void **state) {
     {
         // Inside get_whodata_path
         {
+            expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
             expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, L"C:\\non\\monitored", wcslen(L"C:\\non\\monitored") * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, strlen("c:\\non\\monitored"));
 
+            expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
             expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, L"C:\\non\\monitored", wcslen(L"C:\\non\\monitored") * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, "c:\\non\\monitored");
@@ -4957,10 +4977,12 @@ void test_whodata_callback_4656_non_whodata_directory(void **state) {
     {
         // Inside get_whodata_path
         {
+            expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
             expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, strlen(STR_TEST_PATH));
 
+            expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
             expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, STR_TEST_PATH);
@@ -5013,10 +5035,12 @@ void test_whodata_callback_4656_path_above_recursion_level(void ** state) {
     {
         // Inside get_whodata_path
         {
+            expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
             expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, strlen(STR_TEST_PATH));
 
+            expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
             expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, STR_TEST_PATH);
@@ -5066,10 +5090,12 @@ void test_whodata_callback_4656_fail_to_add_event_to_hashmap(void ** state) {
     {
         // Inside get_whodata_path
         {
+            expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
             expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, strlen(STR_TEST_PATH));
 
+            expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
             expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, STR_TEST_PATH);
@@ -5132,10 +5158,12 @@ void test_whodata_callback_4656_duplicate_handle_id_fail_to_delete(void **state)
     {
         // Inside get_whodata_path
         {
+            expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
             expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, strlen(STR_TEST_PATH));
 
+            expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
             expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, STR_TEST_PATH);
@@ -5211,10 +5239,12 @@ void test_whodata_callback_4656_duplicate_handle_id_fail_to_readd(void **state) 
     {
         // Inside get_whodata_path
         {
+            expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
             expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, strlen(STR_TEST_PATH));
 
+            expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
             expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, STR_TEST_PATH);
@@ -5291,10 +5321,12 @@ void test_whodata_callback_4656_success(void **state) {
     {
         // Inside get_whodata_path
         {
+            expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
             expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, strlen(STR_TEST_PATH));
 
+            expect_value(wrap_WideCharToMultiByte, CodePage, CP_UTF8);
             expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, STR_TEST_PATH);
