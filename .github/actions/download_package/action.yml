@@ -10,8 +10,20 @@ description: >
 
 inputs:
   build_run_id:
-    description: "Run ID of the build workflow that produced the package."
-    required: true
+    description: >
+      Run ID of the build workflow that produced the package. Optional when base_branch is set:
+      the latest successful run of producer_workflow on that branch that has an artifact
+      matching name_regexp is used instead.
+    required: false
+    default: ""
+  base_branch:
+    description: "Branch or tag to look the latest build run up on when build_run_id is empty."
+    required: false
+    default: ""
+  github_token:
+    description: "Token used to list the producer workflow runs when build_run_id is empty."
+    required: false
+    default: ${{ github.token }}
   name_regexp:
     description: "Regexp the package name segment must match."
     required: false
@@ -57,6 +69,59 @@ runs:
         role-to-assume: ${{ inputs.aws_role }}
         aws-region: ${{ inputs.aws_region }}
 
+    - name: Resolve build run id
+      id: resolve
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github_token }}
+        GH_REPO: ${{ github.repository }}
+        INPUT_RUN_ID: ${{ inputs.build_run_id }}
+        BASE_BRANCH: ${{ inputs.base_branch }}
+        BUCKET: ${{ inputs.bucket }}
+        REPO: ${{ inputs.repository }}
+        PRODUCER_WF: ${{ inputs.producer_workflow }}
+        NAME_RE: ${{ inputs.name_regexp }}
+      run: |
+        set -euo pipefail
+        if [ -n "${INPUT_RUN_ID}" ]; then
+          echo "build_run_id=${INPUT_RUN_ID}" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        if [ -z "${BASE_BRANCH}" ]; then
+          echo "::error::Either build_run_id or base_branch is required"
+          exit 1
+        fi
+        if ! ids="$(gh run list --workflow "${PRODUCER_WF}.yml" --branch "${BASE_BRANCH}" --status success --limit 20 --json databaseId --jq '.[].databaseId')"; then
+          echo "::error::Could not list ${PRODUCER_WF}.yml runs on branch ${BASE_BRANCH}"
+          exit 1
+        fi
+        if [ -z "${ids}" ]; then
+          echo "::error::No successful ${PRODUCER_WF}.yml run found on branch ${BASE_BRANCH}"
+          exit 1
+        fi
+        # The newest run may be a different package flavor; take the newest one with a matching artifact.
+        errf="$(mktemp)"
+        trap 'rm -f "${errf}"' EXIT
+        for id in ${ids}; do
+          rc=0
+          listing="$(aws s3 ls "${BUCKET}/${REPO}/${PRODUCER_WF}/${id}/" --recursive 2>"${errf}")" || rc=$?
+          # aws s3 ls exits 1 with empty stderr for an empty prefix; any other failure is real, and warnings on success are ignored.
+          if [ "${rc}" -ne 0 ] && { [ "${rc}" -ne 1 ] || [ -s "${errf}" ]; }; then
+            cat "${errf}"
+            echo "::error::Could not list the S3 artifacts of ${PRODUCER_WF} run ${id}"
+            exit 1
+          fi
+          # aws.exe on Windows ends lines with CRLF, which breaks the end-of-line anchor below.
+          listing="$(tr -d '\r' <<< "${listing}")"
+          if grep -qE "/${PRODUCER_WF}/${id}/${NAME_RE}(\.zip)?$" <<< "${listing}"; then
+            echo "Resolved build run ${id} on branch ${BASE_BRANCH}"
+            echo "build_run_id=${id}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+        done
+        echo "::error::None of the latest successful ${PRODUCER_WF}.yml runs on branch ${BASE_BRANCH} has an artifact matching '${NAME_RE}'"
+        exit 1
+
     - name: Download package from S3 (Unix)
       if: runner.os != 'Windows'
       shell: bash
@@ -64,7 +129,7 @@ runs:
         BUCKET: ${{ inputs.bucket }}
         REPO: ${{ inputs.repository }}
         PRODUCER_WF: ${{ inputs.producer_workflow }}
-        BUILD_RUN_ID: ${{ inputs.build_run_id }}
+        BUILD_RUN_ID: ${{ steps.resolve.outputs.build_run_id }}
         NAME_RE: ${{ inputs.name_regexp }}
         DEST: ${{ inputs.path }}
         SUBDIR: ${{ inputs.extract_into_name_subdir }}
@@ -112,7 +177,7 @@ runs:
         BUCKET: ${{ inputs.bucket }}
         REPO: ${{ inputs.repository }}
         PRODUCER_WF: ${{ inputs.producer_workflow }}
-        BUILD_RUN_ID: ${{ inputs.build_run_id }}
+        BUILD_RUN_ID: ${{ steps.resolve.outputs.build_run_id }}
         NAME_RE: ${{ inputs.name_regexp }}
         DEST: ${{ inputs.path }}
         SUBDIR: ${{ inputs.extract_into_name_subdir }}
