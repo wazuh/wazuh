@@ -1059,7 +1059,7 @@ void test_HandleSecureMessage_OldMessage_NoShutdownMessage(void** state)
 void test_HandleSecureMessage_invalid_message(void** state)
 {
     char buffer[OS_MAXSTR + 1] = "!1234!";
-    message_t message = {.buffer = buffer, .size = 6, .sock = 1};
+    message_t message = {.buffer = buffer, .size = 6, .sock = 1, .counter = 1};
     struct sockaddr_in peer_info;
     w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
 
@@ -1093,6 +1093,10 @@ void test_HandleSecureMessage_invalid_message(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
+    // rem_getCounter
+    expect_value(__wrap_rem_getCounter, fd, message.sock);
+    will_return(__wrap_rem_getCounter, 0);
+
     expect_function_call(__wrap_key_lock_read);
 
     // OS_DeleteSocket
@@ -1103,13 +1107,10 @@ void test_HandleSecureMessage_invalid_message(void** state)
 
     // nb_close_socket
     expect_value(__wrap_nb_close_socket, sock, message.sock);
+    expect_value(__wrap_nb_close_socket, counter, message.counter);
     will_return(__wrap_nb_close_socket, 0);
     will_return(__wrap_nb_close_socket, 0);
     expect_function_call(__wrap_rem_dec_tcp);
-
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -1123,10 +1124,72 @@ void test_HandleSecureMessage_invalid_message(void** state)
     indexed_queue_free(control_msg_queue);
 }
 
+// A failing message queued before its fd was closed must not close the connection that reuses the fd
+static void handle_stale_invalid_message(size_t fence)
+{
+    char buffer[OS_MAXSTR + 1] = "!1234!";
+    message_t message = {.buffer = buffer, .size = 6, .sock = 1, .counter = 1};
+    struct sockaddr_in peer_info;
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
+
+    keyentry** keyentries;
+    os_calloc(1, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry* key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+
+    key->id = strdup("001");
+    key->sock = 1;
+    key->keyid = 1;
+
+    keys.keyentries[0] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = 0x0100007F;
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_function_call(__wrap_key_lock_read);
+
+    // OS_IsAllowedDynamicID
+    expect_string(__wrap_OS_IsAllowedDynamicID, id, "1234");
+    expect_string(__wrap_OS_IsAllowedDynamicID, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedDynamicID, 0);
+
+    expect_string(__wrap__mwarn, formatted_msg, "Received message is empty");
+
+    expect_function_call(__wrap_key_unlock);
+
+    // rem_getCounter
+    expect_value(__wrap_rem_getCounter, fd, message.sock);
+    will_return(__wrap_rem_getCounter, fence);
+
+    expect_function_call(__wrap_rem_inc_recv_unknown);
+
+    HandleSecureMessage(&message, control_msg_queue);
+
+    os_free(key->id);
+    os_free(key);
+    os_free(keyentries);
+    indexed_queue_free(control_msg_queue);
+}
+
+void test_HandleSecureMessage_invalid_message_stale_counter(void** state)
+{
+    handle_stale_invalid_message(1);
+}
+
+void test_HandleSecureMessage_invalid_message_older_counter(void** state)
+{
+    handle_stale_invalid_message(2);
+}
+
 void test_HandleSecureMessage_different_sock(void** state)
 {
     char buffer[OS_MAXSTR + 1] = "!12!";
-    message_t message = {.buffer = buffer, .size = 4, .sock = 1};
+    message_t message = {.buffer = buffer, .size = 4, .sock = 1, .counter = 1};
     struct sockaddr_in peer_info;
     w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
 
@@ -1162,6 +1225,10 @@ void test_HandleSecureMessage_different_sock(void** state)
 
     expect_string(__wrap__mwarn, formatted_msg, "Agent key already in use: agent ID '001'");
 
+    // rem_getCounter
+    expect_value(__wrap_rem_getCounter, fd, message.sock);
+    will_return(__wrap_rem_getCounter, 0);
+
     expect_function_call(__wrap_key_lock_read);
 
     // OS_DeleteSocket
@@ -1172,13 +1239,10 @@ void test_HandleSecureMessage_different_sock(void** state)
 
     // nb_close_socket
     expect_value(__wrap_nb_close_socket, sock, message.sock);
+    expect_value(__wrap_nb_close_socket, counter, message.counter);
     will_return(__wrap_nb_close_socket, 0);
     will_return(__wrap_nb_close_socket, 0);
     expect_function_call(__wrap_rem_dec_tcp);
-
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -1195,7 +1259,7 @@ void test_HandleSecureMessage_different_sock(void** state)
 void test_HandleSecureMessage_different_sock_2(void** state)
 {
     char buffer[OS_MAXSTR + 1] = "12!";
-    message_t message = {.buffer = buffer, .size = 4, .sock = 1};
+    message_t message = {.buffer = buffer, .size = 4, .sock = 1, .counter = 1};
     struct sockaddr_in peer_info;
     w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
 
@@ -1230,6 +1294,10 @@ void test_HandleSecureMessage_different_sock_2(void** state)
 
     expect_string(__wrap__mwarn, formatted_msg, "Agent key already in use: agent ID '001'");
 
+    // rem_getCounter
+    expect_value(__wrap_rem_getCounter, fd, message.sock);
+    will_return(__wrap_rem_getCounter, 0);
+
     expect_function_call(__wrap_key_lock_read);
 
     // OS_DeleteSocket
@@ -1240,13 +1308,10 @@ void test_HandleSecureMessage_different_sock_2(void** state)
 
     // nb_close_socket
     expect_value(__wrap_nb_close_socket, sock, message.sock);
+    expect_value(__wrap_nb_close_socket, counter, message.counter);
     will_return(__wrap_nb_close_socket, 0);
     will_return(__wrap_nb_close_socket, 0);
     expect_function_call(__wrap_rem_dec_tcp);
-
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -1324,6 +1389,7 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
 
     // nb_close_socket
     expect_value(__wrap_nb_close_socket, sock, key->sock);
+    expect_value(__wrap_nb_close_socket, counter, 0);
     will_return(__wrap_nb_close_socket, 0);
     will_return(__wrap_nb_close_socket, 0);
     expect_function_call(__wrap_rem_dec_tcp);
@@ -1419,6 +1485,7 @@ void test_HandleSecureMessage_close_idle_sock_2(void** state)
 
     // nb_close_socket
     expect_value(__wrap_nb_close_socket, sock, key->sock);
+    expect_value(__wrap_nb_close_socket, counter, 0);
     will_return(__wrap_nb_close_socket, 0);
     will_return(__wrap_nb_close_socket, 0);
     expect_function_call(__wrap_rem_dec_tcp);
@@ -1453,7 +1520,7 @@ void test_HandleSecureMessage_close_idle_sock_2(void** state)
 void test_HandleSecureMessage_close_idle_sock_disabled(void** state)
 {
     char buffer[OS_MAXSTR + 1] = "12!";
-    message_t message = {.buffer = buffer, .size = 4, .sock = 1};
+    message_t message = {.buffer = buffer, .size = 4, .sock = 1, .counter = 1};
     struct sockaddr_in peer_info;
     w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
 
@@ -1492,6 +1559,10 @@ void test_HandleSecureMessage_close_idle_sock_disabled(void** state)
 
     expect_string(__wrap__mwarn, formatted_msg, "Agent key already in use: agent ID '001'");
 
+    // rem_getCounter
+    expect_value(__wrap_rem_getCounter, fd, message.sock);
+    will_return(__wrap_rem_getCounter, 0);
+
     expect_function_call(__wrap_key_lock_read);
 
     // OS_DeleteSocket
@@ -1502,13 +1573,10 @@ void test_HandleSecureMessage_close_idle_sock_disabled(void** state)
 
     // nb_close_socket
     expect_value(__wrap_nb_close_socket, sock, message.sock);
+    expect_value(__wrap_nb_close_socket, counter, message.counter);
     will_return(__wrap_nb_close_socket, 0);
     will_return(__wrap_nb_close_socket, 0);
     expect_function_call(__wrap_rem_dec_tcp);
-
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -1526,7 +1594,7 @@ void test_HandleSecureMessage_close_idle_sock_disabled(void** state)
 void test_HandleSecureMessage_close_idle_sock_disabled_2(void** state)
 {
     char buffer[OS_MAXSTR + 1] = "!12!AAA";
-    message_t message = {.buffer = buffer, .size = 7, .sock = 1};
+    message_t message = {.buffer = buffer, .size = 7, .sock = 1, .counter = 1};
     struct sockaddr_in peer_info;
     w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
 
@@ -1566,6 +1634,10 @@ void test_HandleSecureMessage_close_idle_sock_disabled_2(void** state)
 
     expect_string(__wrap__mwarn, formatted_msg, "Agent key already in use: agent ID '001'");
 
+    // rem_getCounter
+    expect_value(__wrap_rem_getCounter, fd, message.sock);
+    will_return(__wrap_rem_getCounter, 0);
+
     expect_function_call(__wrap_key_lock_read);
 
     // OS_DeleteSocket
@@ -1576,13 +1648,10 @@ void test_HandleSecureMessage_close_idle_sock_disabled_2(void** state)
 
     // nb_close_socket
     expect_value(__wrap_nb_close_socket, sock, message.sock);
+    expect_value(__wrap_nb_close_socket, counter, message.counter);
     will_return(__wrap_nb_close_socket, 0);
     will_return(__wrap_nb_close_socket, 0);
     expect_function_call(__wrap_rem_dec_tcp);
-
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -1600,7 +1669,7 @@ void test_HandleSecureMessage_close_idle_sock_disabled_2(void** state)
 void test_HandleSecureMessage_close_idle_sock_recv_fail(void** state)
 {
     char buffer[OS_MAXSTR + 1] = "12!";
-    message_t message = {.buffer = buffer, .size = 0, .sock = 1};
+    message_t message = {.buffer = buffer, .size = 0, .sock = 1, .counter = 1};
     struct sockaddr_in peer_info;
     w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
 
@@ -1643,6 +1712,10 @@ void test_HandleSecureMessage_close_idle_sock_recv_fail(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
+    // rem_getCounter
+    expect_value(__wrap_rem_getCounter, fd, message.sock);
+    will_return(__wrap_rem_getCounter, 0);
+
     // Close new socket
     expect_function_call(__wrap_key_lock_read);
 
@@ -1654,13 +1727,10 @@ void test_HandleSecureMessage_close_idle_sock_recv_fail(void** state)
 
     // nb_close_socket
     expect_value(__wrap_nb_close_socket, sock, message.sock);
+    expect_value(__wrap_nb_close_socket, counter, message.counter);
     will_return(__wrap_nb_close_socket, 0);
     will_return(__wrap_nb_close_socket, 0);
     expect_function_call(__wrap_rem_dec_tcp);
-
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -1675,6 +1745,7 @@ void test_HandleSecureMessage_close_idle_sock_recv_fail(void** state)
 
     // nb_close_socket
     expect_value(__wrap_nb_close_socket, sock, key->sock);
+    expect_value(__wrap_nb_close_socket, counter, 0);
     will_return(__wrap_nb_close_socket, 0);
     will_return(__wrap_nb_close_socket, 0);
     expect_function_call(__wrap_rem_dec_tcp);
@@ -1699,7 +1770,7 @@ void test_HandleSecureMessage_close_idle_sock_recv_fail(void** state)
 void test_HandleSecureMessage_close_idle_sock_decrypt_fail(void** state)
 {
     char buffer[OS_MAXSTR + 1] = "12!";
-    message_t message = {.buffer = buffer, .size = 4, .sock = 1};
+    message_t message = {.buffer = buffer, .size = 4, .sock = 1, .counter = 1};
     struct sockaddr_in peer_info;
     w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
 
@@ -1751,6 +1822,10 @@ void test_HandleSecureMessage_close_idle_sock_decrypt_fail(void** state)
 
     expect_string(__wrap__mwarn, formatted_msg, "Decrypt the message fail, socket 1");
 
+    // rem_getCounter
+    expect_value(__wrap_rem_getCounter, fd, message.sock);
+    will_return(__wrap_rem_getCounter, 0);
+
     // Close new socket
     expect_function_call(__wrap_key_lock_read);
 
@@ -1762,13 +1837,10 @@ void test_HandleSecureMessage_close_idle_sock_decrypt_fail(void** state)
 
     // nb_close_socket
     expect_value(__wrap_nb_close_socket, sock, message.sock);
+    expect_value(__wrap_nb_close_socket, counter, message.counter);
     will_return(__wrap_nb_close_socket, 0);
     will_return(__wrap_nb_close_socket, 0);
     expect_function_call(__wrap_rem_dec_tcp);
-
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 1);
-    expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
@@ -1783,6 +1855,7 @@ void test_HandleSecureMessage_close_idle_sock_decrypt_fail(void** state)
 
     // nb_close_socket
     expect_value(__wrap_nb_close_socket, sock, key->sock);
+    expect_value(__wrap_nb_close_socket, counter, 0);
     will_return(__wrap_nb_close_socket, 0);
     will_return(__wrap_nb_close_socket, 0);
     expect_function_call(__wrap_rem_dec_tcp);
@@ -1886,6 +1959,7 @@ void test_HandleSecureMessage_close_idle_sock_control_msg_succes(void** state)
 
     // nb_close_socket
     expect_value(__wrap_nb_close_socket, sock, key->sock);
+    expect_value(__wrap_nb_close_socket, counter, 0);
     will_return(__wrap_nb_close_socket, 0);
     will_return(__wrap_nb_close_socket, 0);
     expect_function_call(__wrap_rem_dec_tcp);
@@ -2225,6 +2299,7 @@ void test_handle_new_tcp_connection_wnotify_fail(void** state)
 
     // nb_close_socket: the recv slot was never associated
     expect_value(__wrap_nb_close_socket, sock, sock_client);
+    expect_value(__wrap_nb_close_socket, counter, 0);
     will_return(__wrap_nb_close_socket, 0);
     will_return(__wrap_nb_close_socket, 1);
     expect_function_call(__wrap_rem_dec_tcp_unassociated);
@@ -2310,6 +2385,8 @@ static void expect_close_sock(int recv_unassociated)
     expect_function_call(__wrap_key_unlock);
 
     expect_value(__wrap_nb_close_socket, sock, UNASSOC_SOCK);
+
+    expect_value(__wrap_nb_close_socket, counter, 0);
     will_return(__wrap_nb_close_socket, 0);
     will_return(__wrap_nb_close_socket, recv_unassociated);
     if (recv_unassociated) {
@@ -2452,6 +2529,8 @@ void test_close_sock_close_fails(void** state)
     expect_function_call(__wrap_key_unlock);
 
     expect_value(__wrap_nb_close_socket, sock, UNASSOC_SOCK);
+
+    expect_value(__wrap_nb_close_socket, counter, 0);
     will_return(__wrap_nb_close_socket, -1);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [" UNASSOC_SOCK_STR "]");
@@ -2605,6 +2684,7 @@ void test_handle_incoming_data_from_tcp_socket_too_big_message(void** state)
 
     // nb_close_socket
     expect_value(__wrap_nb_close_socket, sock, sock_client);
+    expect_value(__wrap_nb_close_socket, counter, 0);
     will_return(__wrap_nb_close_socket, 0);
     will_return(__wrap_nb_close_socket, 0);
     expect_function_call(__wrap_rem_dec_tcp);
@@ -2637,6 +2717,7 @@ void test_handle_incoming_data_from_tcp_socket_case_0(void** state)
 
     // nb_close_socket
     expect_value(__wrap_nb_close_socket, sock, sock_client);
+    expect_value(__wrap_nb_close_socket, counter, 0);
     will_return(__wrap_nb_close_socket, 0);
     will_return(__wrap_nb_close_socket, 0);
     expect_function_call(__wrap_rem_dec_tcp);
@@ -2673,6 +2754,7 @@ void test_handle_incoming_data_from_tcp_socket_case_1(void** state)
 
     // nb_close_socket
     expect_value(__wrap_nb_close_socket, sock, sock_client);
+    expect_value(__wrap_nb_close_socket, counter, 0);
     will_return(__wrap_nb_close_socket, 0);
     will_return(__wrap_nb_close_socket, 0);
     expect_function_call(__wrap_rem_dec_tcp);
@@ -2735,6 +2817,7 @@ void test_handle_outgoing_data_to_tcp_socket_case_1_EPIPE(void** state)
 
     // nb_close_socket
     expect_value(__wrap_nb_close_socket, sock, sock_client);
+    expect_value(__wrap_nb_close_socket, counter, 0);
     will_return(__wrap_nb_close_socket, 0);
     will_return(__wrap_nb_close_socket, 0);
     expect_function_call(__wrap_rem_dec_tcp);
@@ -2922,6 +3005,8 @@ int main(void)
         cmocka_unit_test(test_HandleSecureMessage_invalid_family_address_af_x25),
         cmocka_unit_test(test_HandleSecureMessage_invalid_family_address_not_found),
         cmocka_unit_test(test_HandleSecureMessage_invalid_message),
+        cmocka_unit_test(test_HandleSecureMessage_invalid_message_stale_counter),
+        cmocka_unit_test(test_HandleSecureMessage_invalid_message_older_counter),
         cmocka_unit_test(test_HandleSecureMessage_shutdown_message),
         cmocka_unit_test(test_HandleSecureMessage_shutdown_message_embedded_null),
         cmocka_unit_test(test_HandleSecureMessage_HC_req_message),

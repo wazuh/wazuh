@@ -22,8 +22,10 @@
 int __wrap_nb_close_socket(__attribute__((unused)) netbuffer_t * recv,
                            __attribute__((unused)) netbuffer_t * send,
                            int sock,
+                           size_t counter,
                            int * was_unassociated) {
     check_expected(sock);
+    check_expected(counter);
 
     int retval = mock();
 
