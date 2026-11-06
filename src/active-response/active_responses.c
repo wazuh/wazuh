@@ -619,6 +619,80 @@ bool canonicalize_ip(const char *ip, char *output, size_t output_size) {
     return false;
 }
 
+bool format_hostsdeny_client(const char *ip, char *output, size_t output_size) {
+    static const unsigned char v4mapped_prefix[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff};
+    unsigned char addr4[sizeof(struct in_addr)];
+    unsigned char addr6[sizeof(struct in6_addr)];
+    char text[INET6_ADDRSTRLEN];
+    int written;
+
+    if (!ip || !output || output_size == 0) {
+        return false;
+    }
+
+    if (inet_pton(AF_INET, ip, addr4) == 1) {
+        return inet_ntop(AF_INET, addr4, output, output_size) != NULL;
+    }
+    if (inet_pton(AF_INET6, ip, addr6) != 1) {
+        return false;
+    }
+
+    // libwrap matches IPv4-mapped clients only as plain IPv4. Collapse only the "::ffff:" spelling,
+    // the one the manager strips before its white_list check; refuse any other mapped spelling.
+    if (memcmp(addr6, v4mapped_prefix, sizeof(v4mapped_prefix)) == 0) {
+        if (strncmp(ip, "::ffff:", 7) != 0 || inet_pton(AF_INET, ip + 7, addr4) != 1) {
+            return false;
+        }
+        return inet_ntop(AF_INET, addr4, output, output_size) != NULL;
+    }
+
+    if (!inet_ntop(AF_INET6, addr6, text, sizeof(text))) {
+        return false;
+    }
+
+    // hosts_access(5): an unbracketed IPv6 address is split at its first ':'.
+    written = snprintf(output, output_size, "[%s]", text);
+    return written > 0 && (size_t)written < output_size;
+}
+
+bool build_hostsdeny_rules(const char *srcip, bool freebsd, char *rule, size_t rule_size,
+                           char *legacy_rule, size_t legacy_size) {
+    char canonical_ip[NI_MAXHOST];
+    char client[NI_MAXHOST];
+    int written;
+
+    if (!rule || rule_size == 0 || !legacy_rule || legacy_size == 0) {
+        return false;
+    }
+    rule[0] = '\0';
+    legacy_rule[0] = '\0';
+
+    if (!canonicalize_ip(srcip, canonical_ip, sizeof(canonical_ip)) ||
+        !format_hostsdeny_client(srcip, client, sizeof(client))) {
+        return false;
+    }
+
+    written = freebsd ? snprintf(rule, rule_size, "ALL : %s : deny", client)
+                      : snprintf(rule, rule_size, "ALL:%s", client);
+    if (written < 0 || (size_t)written >= rule_size) {
+        rule[0] = '\0';
+        return false;
+    }
+
+    // Older versions wrote the canonical IP unbracketed; that line never matched and is only cleaned up.
+    if (strcmp(client, canonical_ip) != 0) {
+        written = freebsd ? snprintf(legacy_rule, legacy_size, "ALL : %s : deny", canonical_ip)
+                          : snprintf(legacy_rule, legacy_size, "ALL:%s", canonical_ip);
+        if (written < 0 || (size_t)written >= legacy_size) {
+            rule[0] = '\0';
+            legacy_rule[0] = '\0';
+            return false;
+        }
+    }
+
+    return true;
+}
+
 bool hosts_deny_rule_matches(const char *line, const char *rule) {
     if (!line || !rule) {
         return false;
