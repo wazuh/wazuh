@@ -31,7 +31,7 @@ static int g_failures;
         }                                                                                                            \
     } while (0)
 
-static atomic_int g_opens, g_symbols, g_closes, g_objects, g_warnings, g_errors, g_early;
+static atomic_int g_opens, g_symbols, g_closes, g_objects, g_warnings, g_errors, g_early, g_all_errors;
 static pthread_barrier_t g_start;
 static pthread_mutex_t g_gate = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t g_cond = PTHREAD_COND_INITIALIZER;
@@ -143,6 +143,7 @@ static int fake_map(struct bpf_object* obj, const char* name) { (void)obj; retur
 static struct ring_buffer* fake_rb(int fd, ring_buffer_sample_fn cb, void* ctx, const struct ring_buffer_opts* opts)
 { (void)fd; (void)cb; (void)ctx; (void)opts; return (struct ring_buffer*)1; }
 static void fake_free(struct ring_buffer* rb) { (void)rb; CHECK(g_live == 0, "ring freed with live links"); }
+static int fake_probe(int type, const void* opts) { (void)type; (void)opts; return 1; }
 
 static struct bpf_object* fake_open(const char* path, const struct bpf_object_open_opts* opts)
 {
@@ -198,6 +199,7 @@ void* __wrap_dlsym(void* module, const char* symbol)
         FAKE("bpf_object__find_map_fd_by_name", fake_map);
         FAKE("ring_buffer__new", fake_rb);
         FAKE("ring_buffer__free", fake_free);
+        FAKE("libbpf_probe_bpf_map_type", fake_probe);
 #undef FAKE
     }
     return strcmp(symbol, "bpf_object__open_file") == 0 ? (void*)fake_open : (void*)unused_symbol;
@@ -217,6 +219,10 @@ static void capture_log(int level, const char* msg, void* user)
     if (level == RT_LOG_ERROR && strstr(msg, "missing symbol"))
     {
         atomic_fetch_add(&g_errors, 1);
+    }
+    if (level == RT_LOG_ERROR)
+    {
+        atomic_fetch_add(&g_all_errors, 1);
     }
 }
 
@@ -283,7 +289,7 @@ static int scenario(int mode, int reverse)
     const int opens = atomic_load(&g_opens);
     const int symbols = atomic_load(&g_symbols);
     CHECK(opens == (mode == 2 ? 3 : mode == 3 ? 2 : 1), "dlopen count %d", opens);
-    CHECK(symbols == (mode == 2 ? 0 : mode == 1 ? 2 : 24), "dlsym count %d", symbols);
+    CHECK(symbols == (mode == 2 ? 0 : mode == 1 ? 2 : 25), "dlsym count %d", symbols);
     CHECK(mode == 2 || g_early == 0, "caller escaped before publication");
     CHECK(g_objects == ((mode == 0 || mode == 3) ? THREADS : 0), "object opens %d", g_objects);
     CHECK(g_closes == (mode == 1 ? 1 : 0), "dlclose count %d", g_closes);
@@ -317,6 +323,9 @@ static int ladder_scenario(int ladder, unsigned int mask)
     filter.log = capture_log;
     rt_handle_t handle = rt_open(&filter);
     CHECK((handle != NULL) == (ladder < 8), "ladder %d mask %u failed", ladder, mask);
+    /* A step that recovers is not an error; a ladder where every step fails is exactly one. */
+    CHECK(g_all_errors == (ladder < 8 ? 0 : 1), "ladder %d mask %u logged %d ERROR line(s)", ladder, mask,
+          (int)g_all_errors);
     const int rungs = ladder == 3 || ladder == 6 || ladder == 8 ? 3 : ladder == 1 || ladder == 7 ? 1 : 2;
     CHECK(g_rung == rungs, "expected %d rungs, got %d", rungs, g_rung);
     if (ladder >= 4 && ladder <= 6 && mask == RT_FILE_ALL_BITS)
