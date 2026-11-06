@@ -36,6 +36,25 @@ constexpr auto HEALTH_CHECK_TIMEOUT_MS = 5000u;
 // Name of the field that contains the server status
 constexpr auto SERVER_HEALTH_FIELD_NAME {"status"};
 
+/**
+ * @brief The indices the probe asks about: everything this manager reads or writes.
+ *
+ * `_cat/health` reported the whole cluster, so one unassigned primary in ANY index -- an alerting
+ * index, a user's own, a broken shard nobody uses -- marked every host unavailable and stopped all
+ * of the manager's indexer traffic. Scoping the probe to these patterns keeps availability tied to
+ * the indices the manager actually depends on.
+ *
+ * `wazuh-*` covers what it writes (events and findings data streams, `wazuh-states-*`, metrics,
+ * agent config and stats) and `.wazuh-*` what it reads (`.wazuh-cti-consumers`, `.wazuh-settings`,
+ * `.wazuh-threatintel-*`). A wildcard resolves a data stream to its backing indices, so the
+ * `.ds-wazuh-events-v5-*` behind `wazuh-events-v5-<category>` are covered through the stream name.
+ *
+ * Deliberately NOT operator-configurable: a mistyped pattern matches nothing, and `_cluster/health`
+ * answers `green` for an empty index list, so the manager would report healthy forever. The exact
+ * string is pinned by a unit test for that reason.
+ */
+constexpr auto MANAGER_INDEX_PATTERN {"wazuh-*,.wazuh-*"};
+
 auto constexpr MONITOR_NAME {"monitoring"};
 
 /**
@@ -112,6 +131,10 @@ class TMonitoring final
     /// Tag of the owning module, e.g. `wazuh-manager-modulesd:vulnerability-scanner(monitoring)`. Several modules
     /// monitor the same hosts, so a bare `monitoring` tag made their identical lines look like duplicates.
     LogFn m_logFn {makeLibLogFn(MONITOR_NAME)};
+    /// Index expression the probe asks about. `const` and set by the constructor before the monitor
+    /// thread exists, so the thread only ever reads it and it adds nothing to the shared state the
+    /// class comment reasons about.
+    const std::string m_indexPattern;
 
     /**
      * @brief Checks the health of a server.
@@ -150,40 +173,50 @@ class TMonitoring final
         HostState state {HostState::Down};
 
         // On success callback
-        const auto onSuccess = [&state](std::string response)
+        const auto onSuccess = [&state, &unavailableReason](std::string response)
         {
-            // Parse the response without throwing exceptions
-            // Response example:
-            // [
-            //     {
-            //         "epoch": "1726271464",
-            //         "timestamp": "23:51:04",
-            //         "cluster": "wazuh-cluster",
-            //         "status": "green",
-            //         "node.total": "1",
-            //         "node.data": "1",
-            //         "discovered_cluster_manager": "true",
-            //         "shards": "166",
-            //         "pri": "166",
-            //         "relo": "0",
-            //         "init": "0",
-            //         "unassign": "0",
-            //         "pending_tasks": "0",
-            //         "max_task_wait_time": "-",
-            //         "active_shards_percent": "100.0%"
-            //     }
-            // ]
+            // Parse the response without throwing exceptions.
+            //
+            // `_cluster/health` answers with a bare OBJECT (`_cat/health` used to answer with an
+            // array of one row, which is why this used to index [0]):
+            // {
+            //     "cluster_name": "wazuh-cluster",
+            //     "status": "green",
+            //     "timed_out": false,
+            //     "number_of_nodes": 3,
+            //     ...
+            //     "active_shards_percent_as_number": 100.0
+            // }
+            //
+            // Every shape that is not that is reported with a reason of this module's own making.
+            // Leaving it to an exception was how this read before, and the exception did not even
+            // surface here: HTTPRequest::get catches whatever escapes the success callback and
+            // funnels it into onError, so the host went Down carrying a raw nlohmann message.
+            const auto data = nlohmann::json::parse(response, nullptr, false);
 
-            const auto data = nlohmann::json::parse(response, nullptr, false).at(0);
+            if (data.is_discarded())
+            {
+                unavailableReason = "Malformed health response (not JSON)";
+                return;
+            }
+            if (!data.is_object())
+            {
+                unavailableReason = "Unexpected health response shape (expected a JSON object)";
+                return;
+            }
+            const auto health = data.find(SERVER_HEALTH_FIELD_NAME);
+            if (health == data.end() || !health->is_string())
+            {
+                unavailableReason =
+                    "Health response carries no '" + std::string {SERVER_HEALTH_FIELD_NAME} + "' string";
+                return;
+            }
 
             // Check if the server is green or yellow
-            if (!data.is_discarded() && data.contains(SERVER_HEALTH_FIELD_NAME))
+            const auto& serverHealth = health->get_ref<const std::string&>();
+            if (serverHealth.compare("green") == 0 || serverHealth.compare("yellow") == 0)
             {
-                const auto& serverHealth = data.at(SERVER_HEALTH_FIELD_NAME).get_ref<const std::string&>();
-                if (serverHealth.compare("green") == 0 || serverHealth.compare("yellow") == 0)
-                {
-                    state = HostState::Available;
-                }
+                state = HostState::Available;
             }
         };
 
@@ -275,8 +308,12 @@ class TMonitoring final
         };
 
         // Get the health of the server.
+        //
+        // No query parameters on purpose: the cluster-level answer already carries `status`, hidden
+        // indices are included without asking for them, and a `wait_for_*` would turn this poll into
+        // a blocking wait of up to its own timeout.
         thread_local std::string url;
-        url = serverAddress + "/_cat/health";
+        url = serverAddress + "/_cluster/health/" + m_indexPattern;
 
         m_httpRequest->get(RequestParameters {.url = HttpURL(url), .secureCommunication = authentication},
                            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
@@ -389,13 +426,17 @@ public:
      * @param interval Interval for monitoring.
      * @param authentication Object that provides secure communication.
      * @param httpRequest Optional HTTP request instance for dependency injection (for testing).
+     * @param indexPattern Index expression the probe asks about. Defaults to MANAGER_INDEX_PATTERN;
+     *                     a test passes its own to assert the URL that is actually built.
      */
     explicit TMonitoring(const std::vector<std::string>& serverAddresses,
                          const uint32_t interval = DEFAULT_MONITORING_INTERVAL,
                          const SecureCommunication& authentication = {},
-                         THttpRequest* httpRequest = nullptr)
+                         THttpRequest* httpRequest = nullptr,
+                         std::string indexPattern = MANAGER_INDEX_PATTERN)
         : m_interval(interval)
         , m_httpRequest(httpRequest ? httpRequest : &THttpRequest::instance())
+        , m_indexPattern(std::move(indexPattern))
     {
 
         // First, initialize the status of the servers.

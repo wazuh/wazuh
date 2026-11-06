@@ -207,10 +207,10 @@ curl --cacert /etc/wazuh-manager/certs/indexer-ca.pem \
      --cert   /etc/wazuh-manager/certs/indexer-connector.pem \
      --key    /etc/wazuh-manager/certs/indexer-connector-key.pem \
      -u "wazuh-manager:$(/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -g)" \
-     https://127.0.0.1:9200/_cluster/health
+     'https://127.0.0.1:9200/_cluster/health/wazuh-*,.wazuh-*'
 ```
 
-The connector treats a node as available when its health is `green` or `yellow`.
+The connector treats a node as available when its health is `green` or `yellow`. The index expression matters: the connector asks only about the manager's own indices, so querying `/_cluster/health` without it reports the whole cluster and can disagree with the connector's verdict.
 
 Then check the manager log for the connector's verdict on each node:
 
