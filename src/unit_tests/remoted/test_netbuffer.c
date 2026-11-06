@@ -103,7 +103,7 @@ static int test_teardown(void ** state) {
     will_return(__wrap_close, 0);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    nb_close_socket(netbuffer, &send_netbuffer, sock, &was_unassociated);
+    nb_close_socket(netbuffer, &send_netbuffer, sock, 0, &was_unassociated);
     os_free(netbuffer->buffers);
     os_free(netbuffer);
     os_free(send_netbuffer.buffers);
@@ -444,7 +444,7 @@ static int close_socket_ret(netbuffer_t * netbuffer, int fd, int close_ret, int 
     will_return(__wrap_close, close_ret);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    return nb_close_socket(netbuffer, &send_netbuffer, fd, was_unassociated);
+    return nb_close_socket(netbuffer, &send_netbuffer, fd, 0, was_unassociated);
 }
 
 static int close_slot(netbuffer_t * netbuffer, int fd) {
@@ -553,6 +553,44 @@ void test_nb_close_socket_double_close(void ** state) {
     assert_null(send_netbuffer.buffers[sock].bqueue);
 }
 
+// A message queued before the fd was closed must not close the new connection accepted on that fd.
+void test_nb_close_socket_stale_counter(void ** state) {
+    netbuffer_t *netbuffer = *state;
+    struct sockaddr_storage peer_info;
+    size_t older = ++global_counter;
+    size_t stale = ++global_counter;
+    int was_unassociated = 7;
+
+    memset(&peer_info, 0, sizeof(struct sockaddr_storage));
+
+    assert_int_equal(close_slot(netbuffer, sock), 1);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    nb_open(netbuffer, sock, &peer_info);
+    bqueue_t * recv_queue = netbuffer->buffers[sock].bqueue;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    assert_int_equal(nb_close_socket(netbuffer, &send_netbuffer, sock, stale, &was_unassociated), -1);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    assert_int_equal(nb_close_socket(netbuffer, &send_netbuffer, sock, older, &was_unassociated), -1);
+    assert_int_equal(was_unassociated, 7);
+    assert_ptr_equal(netbuffer->buffers[sock].bqueue, recv_queue);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_rem_setCounter);
+    expect_function_call(__wrap_close);
+    expect_value(__wrap_close, fd, sock);
+    will_return(__wrap_close, 0);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    assert_int_equal(nb_close_socket(netbuffer, &send_netbuffer, sock, ++global_counter, &was_unassociated), 0);
+    assert_int_equal(was_unassociated, 1);
+    assert_null(netbuffer->buffers[sock].bqueue);
+}
+
 void test_nb_reopen_resets_associated(void ** state) {
     netbuffer_t *netbuffer = *state;
     struct sockaddr_storage peer_info;
@@ -633,6 +671,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_nb_close_socket_slot_already_released, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_nb_close_socket_close_fails, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_nb_close_socket_double_close, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_nb_close_socket_stale_counter, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_nb_reopen_resets_associated, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_nb_unassociated_seq_open_close, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_nb_unassociated_seq_open_associate_close, test_setup, test_teardown),

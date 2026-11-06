@@ -80,6 +80,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
+static void close_message_sock(keystore * keys, const message_t * message);
 
 /* Get current timestamp */
 STATIC void *current_timestamp(void *none);
@@ -623,9 +624,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         if (*tmp_msg != '!') {
             merror(ENCFORMAT_ERROR, "(unknown)", srcip);
 
-            if (message->sock >= 0) {
-                _close_sock(&keys, message->sock);
-            }
+            close_message_sock(&keys, message);
 
             rem_inc_recv_unknown();
             return;
@@ -653,9 +652,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
             // Send key request by id
             push_request(buffer + 1, "id");
-            if (message->sock >= 0) {
-                _close_sock(&keys, message->sock);
-            }
+            close_message_sock(&keys, message);
 
             rem_inc_recv_unknown();
             return;
@@ -675,9 +672,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                     w_mutex_unlock(&keys.keyentries[agentid]->mutex);
                     key_unlock();
 
-                    if (message->sock >= 0) {
-                        _close_sock(&keys, message->sock);
-                    }
+                    close_message_sock(&keys, message);
 
                     rem_inc_recv_unknown();
                     return;
@@ -716,9 +711,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
             // Send key request by ip
             push_request(srcip, "ip");
-            if (message->sock >= 0) {
-                _close_sock(&keys, message->sock);
-            }
+            close_message_sock(&keys, message);
 
             rem_inc_recv_unknown();
             return;
@@ -738,9 +731,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                     w_mutex_unlock(&keys.keyentries[agentid]->mutex);
                     key_unlock();
 
-                    if (message->sock >= 0) {
-                        _close_sock(&keys, message->sock);
-                    }
+                    close_message_sock(&keys, message);
 
                     rem_inc_recv_unknown();
                     return;
@@ -757,9 +748,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
     if (recv_b <= 0) {
         mwarn("Received message is empty");
         key_unlock();
-        if (message->sock >= 0) {
-            _close_sock(&keys, message->sock);
-        }
+        close_message_sock(&keys, message);
 
         if (sock_idle >= 0) {
             _close_sock(&keys, sock_idle);
@@ -784,7 +773,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
         if (message->sock >= 0) {
             mwarn("Decrypt the message fail, socket %d", message->sock);
-            _close_sock(&keys, message->sock);
+            close_message_sock(&keys, message);
         }
 
         if (sock_idle >= 0) {
@@ -800,9 +789,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
               msg_length, OS_MAXSTR, keys.keyentries[agentid]->id);
         key_unlock();
 
-        if (message->sock >= 0) {
-            _close_sock(&keys, message->sock);
-        }
+        close_message_sock(&keys, message);
 
         if (sock_idle >= 0) {
             _close_sock(&keys, sock_idle);
@@ -1067,18 +1054,16 @@ void router_message_forward(char* msg, const char* agent_id, const char* agent_i
     }
 }
 
-// Close and remove socket from keystore
-int _close_sock(keystore * keys, int sock) {
+// Remove socket from keystore and close it, unless counter (0: any) is older than the last close of the fd
+static int close_sock(keystore * keys, int sock, size_t counter) {
     int retval = 0;
     int was_unassociated = 0;
-
-    rem_setCounter(sock, global_counter);
 
     key_lock_read();
     retval = OS_DeleteSocket(keys, sock);
     key_unlock();
 
-    if (!nb_close_socket(&netbuffer_recv, &netbuffer_send, sock, &was_unassociated)) {
+    if (!nb_close_socket(&netbuffer_recv, &netbuffer_send, sock, counter, &was_unassociated)) {
         // Decrement the subset first so it never exceeds tcp_sessions
         if (was_unassociated) {
             rem_dec_tcp_unassociated();
@@ -1090,6 +1075,20 @@ int _close_sock(keystore * keys, int sock) {
     mdebug1("TCP peer disconnected [%d]", sock);
 
     return retval;
+}
+
+// Close and remove socket from keystore
+int _close_sock(keystore * keys, int sock) {
+    rem_setCounter(sock, global_counter);
+
+    return close_sock(keys, sock, 0);
+}
+
+// A message queued before the last close of its fd must not close the connection that now reuses it
+static void close_message_sock(keystore * keys, const message_t * message) {
+    if (message->sock >= 0 && message->counter > rem_getCounter(message->sock)) {
+        close_sock(keys, message->sock, message->counter);
+    }
 }
 
 int key_request_connect() {

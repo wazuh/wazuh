@@ -17,6 +17,7 @@
 int __wrap_nb_close_socket(__attribute__((unused)) netbuffer_t * recv,
                            __attribute__((unused)) netbuffer_t * send,
                            int sock,
+                           size_t counter,
                            int * was_unassociated);
 
 int __wrap_nb_mark_associated(__attribute__((unused)) netbuffer_t * buffer, int sock, size_t counter);
