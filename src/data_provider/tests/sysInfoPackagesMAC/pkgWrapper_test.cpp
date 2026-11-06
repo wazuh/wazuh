@@ -847,6 +847,10 @@ TEST_F(PKGWrapperTest, BundleVersionPrefixMatchesWholeComponents)
         { "2", "2025", "2" },
         { "2", "2.0.1", "2.0.1" },
         { "1.2", "", "1.2" },
+        { "1.", "1.2", "1.2" },
+        { "2.0.", "2.0.1", "2.0.1" },
+        { "1.", "1..2", "1." },
+        { "1.", "1.beta", "1." },
     };
 
     ASSERT_FALSE(m_tempDir.empty());

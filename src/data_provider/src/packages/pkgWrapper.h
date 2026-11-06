@@ -151,12 +151,15 @@ class PKGWrapper final : public IPackageWrapper
                 return true;
             }
 
-            if (suffix.front() != '.')
+            // A prefix ending in '.' already opened the next component.
+            const bool prefixEndsWithDot { prefix.back() == '.' };
+
+            if (!prefixEndsWithDot && suffix.front() != '.')
             {
                 return false;
             }
 
-            bool componentHasDigit { true };
+            bool componentHasDigit { !prefixEndsWithDot };
 
             for (const auto c : suffix)
             {
