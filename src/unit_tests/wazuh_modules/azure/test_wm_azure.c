@@ -26,6 +26,7 @@
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
+#include "../../wrappers/wazuh/wazuh_modules/wmodules_wrappers.h"
 #include "../../wrappers/externals/pcre2/pcre2_wrappers.h"
 #include "../../wrappers/posix/pthread_wrappers.h"
 
@@ -186,10 +187,13 @@ void test_interval_execution(void **state) {
     expect_string_count(__wrap__mtinfo, tag, WM_AZURE_LOGTAG, -1);
     expect_string_count(__wrap__mtwarn, tag, WM_AZURE_LOGTAG, -1);
 
-    expect_any_count(__wrap_SendMSG, message, (TEST_MAX_DATES + 1) * 2);
-    expect_string_count(__wrap_SendMSG, locmsg, xml_rootcheck, (TEST_MAX_DATES + 1) * 2);
-    expect_value_count(__wrap_SendMSG, loc, ROOTCHECK_MQ, (TEST_MAX_DATES + 1) * 2);
-    will_return_count(__wrap_SendMSG, 1, (TEST_MAX_DATES + 1) * 2);
+    expect_value_count(__wrap_wm_sendmsg_with_reconnect, usec, 0, (TEST_MAX_DATES + 1) * 2);
+    expect_any_count(__wrap_wm_sendmsg_with_reconnect, queue, (TEST_MAX_DATES + 1) * 2);
+    expect_any_count(__wrap_wm_sendmsg_with_reconnect, message, (TEST_MAX_DATES + 1) * 2);
+    expect_string_count(__wrap_wm_sendmsg_with_reconnect, locmsg, xml_rootcheck, (TEST_MAX_DATES + 1) * 2);
+    expect_value_count(__wrap_wm_sendmsg_with_reconnect, loc, ROOTCHECK_MQ, (TEST_MAX_DATES + 1) * 2);
+    expect_string_count(__wrap_wm_sendmsg_with_reconnect, tag, WM_AZURE_LOGTAG, (TEST_MAX_DATES + 1) * 2);
+    will_return_count(__wrap_wm_sendmsg_with_reconnect, 0, (TEST_MAX_DATES + 1) * 2);
 
     expect_string(__wrap__mtinfo, formatted_msg, "Module started.");
     expect_any_always(__wrap_wm_exec, command);
@@ -231,10 +235,13 @@ void test_failed_execution_is_not_logged_as_finished(void **state) {
     expect_string_count(__wrap__mtwarn, tag, WM_AZURE_LOGTAG, -1);
     expect_string_count(__wrap__mterror, tag, WM_AZURE_LOGTAG, -1);
 
-    expect_any_count(__wrap_SendMSG, message, 2);
-    expect_string_count(__wrap_SendMSG, locmsg, xml_rootcheck, 2);
-    expect_value_count(__wrap_SendMSG, loc, ROOTCHECK_MQ, 2);
-    will_return_count(__wrap_SendMSG, 1, 2);
+    expect_value_count(__wrap_wm_sendmsg_with_reconnect, usec, 0, 2);
+    expect_any_count(__wrap_wm_sendmsg_with_reconnect, queue, 2);
+    expect_any_count(__wrap_wm_sendmsg_with_reconnect, message, 2);
+    expect_string_count(__wrap_wm_sendmsg_with_reconnect, locmsg, xml_rootcheck, 2);
+    expect_value_count(__wrap_wm_sendmsg_with_reconnect, loc, ROOTCHECK_MQ, 2);
+    expect_string_count(__wrap_wm_sendmsg_with_reconnect, tag, WM_AZURE_LOGTAG, 2);
+    will_return_count(__wrap_wm_sendmsg_with_reconnect, 0, 2);
 
     expect_string(__wrap__mtinfo, formatted_msg, "Module started.");
     expect_any(__wrap_wm_exec, command);

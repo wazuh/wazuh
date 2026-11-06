@@ -56,6 +56,9 @@ CHECK_DAEMONS="${SDAEMONS}"
 ## Locking for the start/stop
 LOCK="${DIR}/var/start-script-lock"
 LOCK_PID="${LOCK}/pid"
+# Held by the one run at a time that may replace a lock whose holder is gone.
+RECLAIM="${LOCK}.reclaim"
+RECLAIM_PID="${RECLAIM}/pid"
 
 # Seconds the lock loop waits. Below the unit's TimeoutSec (45, which bounds stop only; start and
 # reload both run under TimeoutStartSec=180 for the engine readiness wait, since systemd applies the
@@ -65,86 +68,137 @@ MAX_ITERATION="40"
 
 MAX_KILL_TRIES=30
 
-lock()
+# Writes this run's pid into the file $1 unless it is there already: of two runs that both believe they
+# made its directory, only the one that writes the pid owns it. Readable by every user: on the manager,
+# the API, which runs as another user, checks who holds the lock.
+write_pid()
 {
-    i=0;
-    unreachable=0;
-    marker_busy=0;
+    ( umask 022; set -C; echo "$$" > "$1" ) > /dev/null 2>&1
+}
 
-    # Providing a lock.
-    while [ 1 ]; do
-        if mkdir ${LOCK} > /dev/null 2>&1; then
-            # Lock acquired (setting the pid)
-            echo "$$" > ${LOCK_PID}
-            return;
+# Creates the directory $1 and writes this run's pid in it: true only when this run owns it. The pid is
+# read back: a run stalled between creating the pid file and writing it may have lost the directory to a
+# run that reclaimed it meanwhile, and then wrote into a file that is gone.
+take_dir()
+{
+    ( umask 022; mkdir "$1" ) > /dev/null 2>&1 && write_pid "$1/pid" && [ "$(cat "$1/pid" 2>/dev/null)" = "$$" ]
+}
+
+# True when the pid file $1 names no live process, or names none at all.
+pid_gone()
+{
+    ! kill -0 $(cat "$1" 2>/dev/null) > /dev/null 2>&1
+}
+
+# True when this run holds the lock.
+holds_lock()
+{
+    [ "$(cat ${LOCK_PID} 2>/dev/null)" = "$$" ]
+}
+
+# Replaces a lock whose holder is gone with this run's, unless another run took it meanwhile. Only the
+# holder of ${RECLAIM} gets here, so one run at a time. A live run writes its pid right after creating
+# the lock, so a pid-less lock gets that moment first.
+replace_stale_lock()
+{
+    [ -s ${LOCK_PID} ] || sleep 1
+    pid_gone ${LOCK_PID} && rm -rf ${LOCK} && take_dir ${LOCK}
+}
+
+# A ${RECLAIM} whose holder is gone, or that stays pid-less for several rounds in a row, was left by a
+# run that died holding it: remove it, so that a later round can take it. One held by a live run stays.
+clear_dead_reclaim()
+{
+    if [ -s ${RECLAIM_PID} ]; then
+        reclaim_pidless=0
+        if pid_gone ${RECLAIM_PID}; then
+            rm -rf ${RECLAIM}
         fi
-
-        # Waiting 1 second before trying again
-        sleep 1;
-        i=`expr $i + 1`;
-        pid=$(cat ${LOCK_PID} 2>/dev/null)
-
-        # Only consecutive pid-less rounds may open the gate below. Neither
-        # "$i" (a caller queued behind a live owner would inherit an open
-        # gate the moment that owner is gone) nor a round spent on a dead
-        # pid says anything about a lock that is still mid-acquisition.
-        if [ -z "${pid}" ]; then
-            unreachable=`expr ${unreachable} + 1`
-        else
-            unreachable=0
+    elif [ -d ${RECLAIM} ]; then
+        reclaim_pidless=`expr ${reclaim_pidless} + 1`
+        if [ "${reclaim_pidless}" -gt 4 ]; then
+            rm -rf ${RECLAIM}
+            reclaim_pidless=0
         fi
+    fi
+}
 
-        # An empty pid (no pid file) fails kill -0 just like a dead one.
-        kill -0 ${pid} >/dev/null 2>&1
-        if [ "$?" != "0" ]; then
-            # A dead pid is stale right away; a missing one may still be
-            # mid-acquisition, so it needs a few consecutive rounds first.
-            if [ -n "${pid}" ] || [ "${unreachable}" -gt 2 ]; then
-                # mkdir on this marker is exclusive like ${LOCK}'s own, so
-                # only one caller at a time may unlock and recreate ${LOCK}.
-                if mkdir "${LOCK}.reclaim" > /dev/null 2>&1; then
-                    marker_busy=0
-                    # Another caller may have reclaimed ${LOCK} meanwhile.
-                    rpid=$(cat ${LOCK_PID} 2>/dev/null)
-                    kill -0 ${rpid} >/dev/null 2>&1
-                    if [ ! $? = 0 ]; then
-                        unlock;
-                        if mkdir ${LOCK} > /dev/null 2>&1; then
-                            echo "$$" > ${LOCK_PID}
-                            rmdir "${LOCK}.reclaim" > /dev/null 2>&1
-                            return;
-                        fi
-                    fi
-                    rmdir "${LOCK}.reclaim" > /dev/null 2>&1
-                else
-                    # The marker is held only briefly; one still busy after
-                    # several consecutive rounds was left by a dead caller.
-                    marker_busy=`expr ${marker_busy} + 1`
-                    if [ "${marker_busy}" -gt 4 ]; then
-                        rmdir "${LOCK}.reclaim" > /dev/null 2>&1
-                        marker_busy=0
-                    fi
-                fi
-            fi
+# Takes ${RECLAIM} and, holding it, replaces a stale lock: true when this run now holds the lock.
+reclaim_lock()
+{
+    if ! take_dir ${RECLAIM}; then
+        clear_dead_reclaim
+        return 1
+    fi
+    reclaim_pidless=0
+    replace_stale_lock
+    reclaimed=$?
+    rm -rf ${RECLAIM}
+    return ${reclaimed}
+}
+
+# Waits up to MAX_ITERATION one-second rounds for the lock, reclaiming one whose holder is gone: a dead
+# pid is stale right away. A lock with no pid yet may be mid-acquisition, so only several consecutive
+# pid-less rounds make it stale. False when the lock is still held at the end.
+wait_for_lock()
+{
+    i=0
+    pidless=0
+    reclaim_pidless=0
+    until take_dir ${LOCK}; do
+        sleep 1
+        i=`expr $i + 1`
+        if [ -s ${LOCK_PID} ]; then
+            pidless=0
+        elif [ -d ${LOCK} ]; then
+            pidless=`expr ${pidless} + 1`
         fi
-
-        # We tried MAX_ITERATION times to acquire the lock.
+        if pid_gone ${LOCK_PID} && { [ -s ${LOCK_PID} ] || [ "${pidless}" -gt 2 ]; }; then
+            reclaim_lock && return 0
+        fi
         if [ "$i" = "${MAX_ITERATION}" ]; then
-            if [ $USE_JSON = true ]; then
-                echo -n '{"error":1,"message":"Another instance is locking this process."}'
-                echo "If you are sure that no other instance is running, please remove ${LOCK}" >&2
-            else
-                echo "ERROR: Another instance is locking this process."
-                echo "If you are sure that no other instance is running, please remove ${LOCK}"
-            fi
-            exit 1
+            return 1
         fi
     done
 }
 
+lock()
+{
+    if ! wait_for_lock; then
+        if [ $USE_JSON = true ]; then
+            echo -n '{"error":1,"message":"Another instance is locking this process."}'
+            echo "If you are sure that no other instance is running, please remove ${LOCK}" >&2
+        else
+            echo "ERROR: Another instance is locking this process."
+            echo "If you are sure that no other instance is running, please remove ${LOCK}"
+        fi
+        exit 1
+    fi
+    # A restart or reload killed holding the lock leaves its marker (see restart_service), and its start
+    # markers if killed while starting daemons: whoever takes the lock next drops them, or the API would
+    # keep reporting every daemon as restarting, or a stopped one as starting.
+    rm -f ${DIR}/var/run/.restart
+    rm -f ${DIR}/var/run/*.start
+}
+
+# Releases the lock if this run holds it: a run refused before it took the lock must not remove the
+# lock of the run that did.
 unlock()
 {
-    rm -rf ${LOCK}
+    if holds_lock; then
+        rm -rf ${LOCK}
+    fi
+}
+
+# Drops the start and restart markers and releases the lock of a refused run, if it holds the lock. A run
+# refused before it took the lock leaves those of the run that holds it.
+release_refused_run()
+{
+    if holds_lock; then
+        rm -f ${DIR}/var/run/*.start
+        rm -f ${DIR}/var/run/.restart
+        unlock
+    fi
 }
 
 # logs/ and var/run/ are writable by the wazuh-manager account, so any name in them may be a link (or a
@@ -217,16 +271,12 @@ clear_verdicts()
     fi
 }
 
-# abort_start: ends a refused start, restart, reload or check with exit 1. Every path but a check also drops
-# the start markers and releases the lock. unlock() is `rm -rf ${LOCK}`: on the start path, which has not taken
-# the lock yet, that releases nothing of ours (and would remove a lock another invocation holds), on the restart
-# path it releases ours. A check never took it and must not remove anyone else's.
+# abort_start: ends a refused start, restart, reload or check with exit 1. Every caller runs before lock(), so
+# the run holds no lock and no start marker of its own: release_refused_run() leaves those of the run that does.
 abort_start()
 {
     if [ "${CHECK_ONLY}" != true ]; then
-        rm -f ${DIR}/var/run/*.start
-        rm -f ${DIR}/var/run/.restart
-        unlock;
+        release_refused_run
     fi
     exit 1;
 }
@@ -539,11 +589,9 @@ resolvecredentials()
         # integration tests) look for it.
         log_lines ERROR "${CREDENTIALS_VERDICT}"
         refuse 21 "Unresolved credentials"
-        rm -f ${DIR}/var/run/*.start
-        rm -f ${DIR}/var/run/.restart
-        # unlock() is `rm -rf ${LOCK}`, so calling it on the start path -- which has not taken the
-        # lock yet -- is harmless, and on the restart path it releases the lock we are holding.
-        unlock;
+        # A start runs this before lock(), a restart or reload holding the lock: only the latter has
+        # start markers and a lock of its own to drop.
+        release_refused_run
         exit 1;
     fi
 }
@@ -685,8 +733,9 @@ start_failed()
     # kills only this script, so the daemons it already launched would keep running inside a
     # failed unit -- authd answering enrollments, wazuh-db serving a manager that is down. Stop
     # what this run started, the failed daemon included (it may have left a process behind);
-    # daemons that were already running (remoted across a reload) stay. With -j its report is
-    # dropped: the document above is the only one. stop_service() reuses $i, so it runs last.
+    # daemons that were already running (remoted across a reload) stay, though when a start fails
+    # under the unit its ExecStopPost then stops them too. With -j its report is dropped: the
+    # document above is the only one. stop_service() reuses $i, so it runs last.
     DAEMONS="${STARTED} ${i}"
     MAX_KILL_TRIES=10
     if [ $USE_JSON = true ]; then
@@ -719,12 +768,15 @@ start_service()
         else
             echo "Invalid cluster configuration, check the ${CONF_DIR}/${WAZUH_CONF} file."
         fi
+        # A restart or reload has already stopped the daemons: it is over, so is its marker.
+        rm -f ${DIR}/var/run/.restart
         unlock;
         exit 1;
     fi
 
     # We actually start them now. STARTED lists the daemons this run brought up, so that a failure stops
-    # those and only those: a daemon that was already running stays.
+    # those and only those: a daemon that was already running stays (until the unit's ExecStopPost, when a
+    # start under the unit fails).
     first=true
     STARTED=""
     if [ $USE_JSON = true ]; then
@@ -979,11 +1031,14 @@ check_service()
 
 restart_service()
 {
-    service_write ${DIR}/var/run/.restart replace < /dev/null
     validateconfig --skip-file-checks
     checkcredentials
     testconfig
     lock
+    # The marker the API reports as 'restarting' is written and removed only while holding the lock, and a
+    # run killed holding it (a systemctl restart merged into a reload kills the reload's script) leaves it
+    # for the next lock() to drop.
+    service_write ${DIR}/var/run/.restart replace < /dev/null
     if [ $USE_JSON = true ]; then
         stop_service > /dev/null 2>&1
     else

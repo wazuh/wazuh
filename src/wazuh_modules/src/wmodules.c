@@ -763,44 +763,6 @@ cJSON *getModulesInternalOptions(void) {
     return root;
 }
 
-// Send message to a queue waiting for a specific delay
-int wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, char loc) {
-
-#ifdef WIN32
-    int msec = usec / 1000;
-    Sleep(msec);
-#else
-    struct timeval timeout = {0, usec};
-    select(0, NULL, NULL, NULL, &timeout);
-#endif
-
-    if (SendMSG(queue, message, locmsg, loc) < 0) {
-        mdebug1("Unable to send message to queue: (%s)", strerror(errno));
-        return -1;
-    }
-
-    return 0;
-}
-
-// Send message to a queue waiting for a specific delay
-int wm_sendmsg_ex(int usec, int queue, const char *message, const char *locmsg, char loc, bool (*fn_prd)()) {
-
-#ifdef WIN32
-    int msec = usec / 1000;
-    Sleep(msec);
-#else
-    struct timeval timeout = {0, usec};
-    select(0, NULL, NULL, NULL, &timeout);
-#endif
-
-    if (SendMSGPredicated(queue, message, locmsg, loc, fn_prd) < 0) {
-        mdebug1("Unable to send message to queue: (%s)", strerror(errno));
-        return -1;
-    }
-
-    return 0;
-}
-
 /**
  Check the binary which executes a command has the specified hash.
  Returns:

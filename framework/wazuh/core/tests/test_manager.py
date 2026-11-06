@@ -82,7 +82,9 @@ def test_get_status(manager_conf_mock, manager_glob, manager_exists, test_manage
 
     manager_glob.side_effect = mock_glob
     manager_exists.side_effect = mock_exists
-    manager_status = status()
+    # A restart counts only while the start-script lock's holder is alive, which this test doesn't set up.
+    with patch('wazuh.core.cluster.utils.restart_in_progress', return_value=process_status == 'restarting'):
+        manager_status = status()
     assert isinstance(manager_status, dict)
     assert all(process_status == x for x in manager_status.values())
     if process_status == 'running':
