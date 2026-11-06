@@ -6,23 +6,17 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * eBPF Module (#37396) engine — load/attach/select/poll logic extracted
- * from src/syscheckd/src/ebpf/src/ebpf_whodata.cpp and generalized: no FIM
- * types, no callback-registration singleton, no fixed hook set. A caller
+ * eBPF Module engine: load/attach/select/poll for any consumer, with no FIM
+ * types, no callback-registration singleton and no fixed hook set. A caller
  * gets exactly the programs its rt_filter asks for.
  *
  * libbpf is loaded via dlopen() at rt_open() time, not linked at build time
  * (no `-lbpf` anywhere in this file or its CMake target): fimebpf.so is
  * hard-linked into wazuh-syscheckd (see src/syscheckd/CMakeLists.txt), so a
  * build-time libbpf dependency here would make the whole agent binary
- * refuse to start on any host without libbpf installed. Mirrors the same
- * reasoning already documented in ebpf_whodata.cpp's init_libbpf(). This
- * engine resolves the SYSTEM libbpf.so via soname; production's actual
- * cutover should instead resolve the same Wazuh-bundled relative path
- * ebpf_whodata.cpp's so__get_module_handle(LIB_INSTALL_PATH) already uses,
- * which isn't reachable from here without pulling in syscheckd's abspath()
- * helper — a real follow-up once this is actually linked into fimebpf,
- * called out rather than silently left as a system-libbpf assumption.
+ * refuse to start on any host without libbpf installed. rt_filter.libbpf_path
+ * names the copy to bind (the agent passes its bundled one); the system
+ * libbpf.so is only the fallback.
  *
  * Loading the object is the capability check: rt_open() tries the LSM d_path,
  * LSM walk and kprobe file hooks in turn, and only when none of them loads does
@@ -168,7 +162,7 @@ rt_log(const struct rt_log_target* target, int level, const char* fmt, ...)
  *
  * Still deliberately userspace-side: the hierarchy is a host constant, and
  * detecting it in the BPF program would need a config map written at load
- * time — see the RT_F_CGROUP_V1 note in rt_open(). */
+ * time. */
 
 #define RT_RESOLVE_SYM(field, sym)                                                                                   \
     do                                                                                                               \
@@ -583,23 +577,16 @@ static rt_handle_t open_attempt(const struct rt_filter* filter, int prefer_lsm, 
     h->cgroup_mode = wz_cgroup_mode();
     if (!wz_cgroup_mode_has_usable_cgroup_id(h->cgroup_mode))
     {
-        /* Worth an explicit line: on such a host cgroup_id correlates nothing,
-         * so a consumer that keys containers on it silently attributes every
-         * event on the node to one bogus cgroup.
-         *
-         * NOTE: the per-event RT_F_CGROUP_V1 flag is still never set by
-         * rt_file.bpf.c. Setting it there needs a config map written by
-         * userspace at load time and re-read by the program, which cannot be
-         * built or loaded in this development environment; until that lands,
-         * rt_host_cgroup_v1() is the only reliable source and a consumer MUST
-         * use it rather than testing ev->flags. */
-        /* The advice this used to give — "correlate on mnt_ns instead" — was
-         * written when the helper's limit looked like the kernel's. It is not:
-         * rt_set_cgroup_v1_subsys() points the program at a v1 controller's own
-         * cgroups, and from then on cgroup_id identifies a container and the
-         * allowlist filters normally. Measured on a pure v1 host: the helper
-         * returns 1 for every task, while the controller read returns 6403 and
-         * 6435 for two containers, matching stat() of their directories. */
+        /* Until a consumer calls rt_set_cgroup_v1_subsys(), cgroup_id
+         * correlates nothing here, so keying containers on it attributes every
+         * event on the node to one bogus cgroup. Once it points the program at
+         * a v1 controller's own cgroups, cgroup_id identifies a container and
+         * the allowlist filters normally. Measured on a pure v1 host: the
+         * helper returns 1 for every task, while the controller read returns
+         * 6403 and 6435 for two containers, matching stat() of their
+         * directories. Debug only: a consumer that needs container ids makes
+         * that call and reports its own failure, and one that does not need
+         * them has nothing to act on. */
         rt_log(&h->log,
                RT_LOG_DEBUG,
                "host cgroup hierarchy is %s: bpf_get_current_cgroup_id() reports the unified "

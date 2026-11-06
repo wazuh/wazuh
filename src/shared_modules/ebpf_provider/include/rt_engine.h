@@ -299,10 +299,7 @@ int rt_abi_minor(void);
  * This reports the HOST'S HIERARCHY, not whether attribution is available:
  * rt_set_cgroup_v1_subsys() makes cgroup_id usable on exactly these hosts.
  * Consumers deciding whether they can attribute events want
- * rt_cgroup_id_is_usable() instead.
- *
- * NOTE: the per-event RT_F_CGROUP_V1 flag is NOT yet set by the BPF program;
- * this accessor is currently the only reliable source. See rt_engine.c. */
+ * rt_cgroup_id_is_usable() instead. */
 int rt_host_cgroup_v1(rt_handle_t handle);
 
 #ifdef __cplusplus
