@@ -67,17 +67,27 @@ public:
     static std::shared_ptr<UnclassifiedDropReporter> forSpace(const std::string& spaceName);
 
     /**
-     * @brief Last source a caller sampled and the report period it was sampled in.
+     * @brief Sources a caller already added in the current report period.
      *
-     * Owned by one caller (each router worker's copy of the policy), never shared between threads: a repeated
-     * source skips the shared lock until the next report starts a new period.
+     * Owned by one caller (each router worker's copy of the policy), never shared between threads: a source in it
+     * skips the shared lock until the next report starts a new period. Bounded by MAX_SOURCES, like the shared set.
      */
     struct SourceCache
     {
-        std::string source;
-        uint64_t period {0};
-        bool valid {false};
+        std::set<std::string, std::less<>> sources; ///< Truncated sources as received, before sanitizing
+        uint64_t period {0};                        ///< Report period the sources belong to
     };
+
+    /**
+     * @brief Cut a source to at most MAX_SOURCE_LENGTH bytes, never inside a UTF-8 multi-byte sequence.
+     */
+    static std::string_view truncateSource(std::string_view source);
+
+    /**
+     * @brief Escape the control bytes of a source (`\xNN`), so an agent-controlled location cannot forge or hide
+     * lines in the plain-text log.
+     */
+    static std::string sanitizeSource(std::string_view source);
 
     /**
      * @brief Record a dropped unclassified event.

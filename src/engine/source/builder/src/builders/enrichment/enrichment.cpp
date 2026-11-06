@@ -125,10 +125,45 @@ std::shared_ptr<UnclassifiedDropReporter> UnclassifiedDropReporter::forSpace(con
     return reporter;
 }
 
+std::string_view UnclassifiedDropReporter::truncateSource(std::string_view source)
+{
+    if (source.size() <= MAX_SOURCE_LENGTH)
+    {
+        return source;
+    }
+
+    // Back off over UTF-8 continuation bytes (10xxxxxx) so the cut lands on a character boundary.
+    auto cut = MAX_SOURCE_LENGTH;
+    while (cut > 0 && (static_cast<unsigned char>(source[cut]) & 0xC0) == 0x80)
+    {
+        --cut;
+    }
+    return source.substr(0, cut);
+}
+
+std::string UnclassifiedDropReporter::sanitizeSource(std::string_view source)
+{
+    std::string sanitized;
+    sanitized.reserve(source.size());
+    for (const char ch : source)
+    {
+        const auto byte = static_cast<unsigned char>(ch);
+        if (byte < 0x20 || byte == 0x7F)
+        {
+            sanitized.append(fmt::format("\\x{:02X}", byte));
+        }
+        else
+        {
+            sanitized.push_back(ch);
+        }
+    }
+    return sanitized;
+}
+
 void UnclassifiedDropReporter::sampleSource(std::string_view source, SourceCache* cache)
 {
-    // Already sampled by this caller in the current period: skip the shared lock.
-    if (cache && cache->valid && cache->period == m_period.load(std::memory_order_relaxed) && cache->source == source)
+    // Already added by this caller in the current period: skip the shared lock.
+    if (cache && cache->period == m_period.load(std::memory_order_relaxed) && cache->sources.count(source) != 0)
     {
         return;
     }
@@ -140,17 +175,28 @@ void UnclassifiedDropReporter::sampleSource(std::string_view source, SourceCache
         return;
     }
 
-    if (m_sources.size() < MAX_SOURCES && m_sources.find(source) == m_sources.end())
+    if (m_sources.size() < MAX_SOURCES)
     {
-        m_sources.emplace(source);
-        m_sourcesFull.store(m_sources.size() >= MAX_SOURCES, std::memory_order_relaxed);
+        auto sanitized = sanitizeSource(source);
+        if (m_sources.find(sanitized) == m_sources.end())
+        {
+            m_sources.emplace(std::move(sanitized));
+            m_sourcesFull.store(m_sources.size() >= MAX_SOURCES, std::memory_order_relaxed);
+        }
     }
 
     if (cache)
     {
-        cache->source.assign(source);
-        cache->period = m_period.load(std::memory_order_relaxed);
-        cache->valid = true;
+        const auto period = m_period.load(std::memory_order_relaxed);
+        if (cache->period != period)
+        {
+            cache->sources.clear();
+            cache->period = period;
+        }
+        if (cache->sources.size() < MAX_SOURCES)
+        {
+            cache->sources.emplace(source);
+        }
     }
 }
 
@@ -161,7 +207,7 @@ UnclassifiedDropReporter::record(std::string_view location, Clock::time_point no
 
     if (!location.empty() && !m_sourcesFull.load(std::memory_order_relaxed))
     {
-        sampleSource(location.substr(0, MAX_SOURCE_LENGTH), cache);
+        sampleSource(truncateSource(location), cache);
     }
 
     auto nextReport = m_nextReport.load(std::memory_order_relaxed);
@@ -172,6 +218,8 @@ UnclassifiedDropReporter::record(std::string_view location, Clock::time_point no
         return std::nullopt;
     }
 
+    // Not atomic with the swap below: a source sampled between the two is listed in this warning while its event is
+    // counted in the next one. Only the warning text is affected; the counts always add up.
     const auto dropped = m_dropped.exchange(0, std::memory_order_relaxed);
     std::set<std::string, std::less<>> sources;
     {
@@ -210,11 +258,14 @@ base::Expression postOutputUnclassifiedCounter(const std::string& spaceName,
     return base::Term<base::EngineOp>::create(
         "postOutputUnclassified",
         // Each router worker builds its own policy, so the cache is only touched by that worker's thread
-        [unclassifiedCounter, dropReporter, cache = UnclassifiedDropReporter::SourceCache {}](
+        [unclassifiedCounter,
+         dropReporter,
+         cache = UnclassifiedDropReporter::SourceCache {},
+         ppIntegrationCategory = json::PointerPath {syntax::asset::CATEGORY_PATH},
+         ppLocation = json::PointerPath {base::eventParsers::EVENT_LOCATION_ID}](
             base::Event event) mutable -> base::result::Result<base::Event>
         {
             std::string_view category;
-            const json::PointerPath ppIntegrationCategory {syntax::asset::CATEGORY_PATH};
             if (event->getString(category, ppIntegrationCategory) == json::RetGet::Success
                 && category == cm::store::categories::UNCLASSIFIED_CATEGORY)
             {
@@ -223,7 +274,6 @@ base::Expression postOutputUnclassifiedCounter(const std::string& spaceName,
                 if (dropReporter)
                 {
                     std::string_view location;
-                    const json::PointerPath ppLocation {base::eventParsers::EVENT_LOCATION_ID};
                     event->getString(location, ppLocation);
                     if (auto warning = dropReporter->record(location, UnclassifiedDropReporter::Clock::now(), &cache))
                     {

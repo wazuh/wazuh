@@ -346,8 +346,7 @@ TEST(UnclassifiedDropReporterTest, SourceCacheSkipsRepeatedSourceWithinPeriod)
     const auto t0 = ReporterClock::time_point {std::chrono::hours {1}};
 
     ASSERT_TRUE(reporter.record("Wazuh-AWS", t0, &cache).has_value());
-    EXPECT_TRUE(cache.valid);
-    EXPECT_EQ(cache.source, "Wazuh-AWS");
+    EXPECT_EQ(cache.sources.count("Wazuh-AWS"), 1U);
     const auto firstPeriod = cache.period;
 
     // New period: the cached source is sampled again and counted every time
@@ -418,15 +417,71 @@ TEST(UnclassifiedDropReporterTest, SourcesAreBounded)
     {
         reporter.record(fmt::format("src{:02}", i), t0 + std::chrono::seconds {1});
     }
-    const std::string longSource(UnclassifiedDropReporter::MAX_SOURCE_LENGTH + 50, 'x');
-    reporter.record(longSource, t0 + std::chrono::seconds {1});
 
     auto warning = reporter.record("late", t0 + std::chrono::seconds {60});
     ASSERT_TRUE(warning.has_value());
-    EXPECT_THAT(*warning, HasSubstr(fmt::format(": {} unclassified", UnclassifiedDropReporter::MAX_SOURCES + 7)));
+    EXPECT_THAT(*warning, HasSubstr(fmt::format(": {} unclassified", UnclassifiedDropReporter::MAX_SOURCES + 6)));
     EXPECT_THAT(*warning, HasSubstr(fmt::format("src{:02}]", UnclassifiedDropReporter::MAX_SOURCES - 1)));
     EXPECT_THAT(*warning, Not(HasSubstr("late")));
-    EXPECT_THAT(*warning, Not(HasSubstr("xxxxx")));
+}
+
+// A long source is listed cut to MAX_SOURCE_LENGTH bytes
+TEST(UnclassifiedDropReporterTest, LongSourceIsTruncated)
+{
+    UnclassifiedDropReporter reporter("myspace");
+    const std::string longSource(UnclassifiedDropReporter::MAX_SOURCE_LENGTH + 50, 'x');
+
+    auto warning = reporter.record(longSource, ReporterClock::now());
+    ASSERT_TRUE(warning.has_value());
+    const std::string kept(UnclassifiedDropReporter::MAX_SOURCE_LENGTH, 'x');
+    EXPECT_THAT(*warning, HasSubstr("sources: [" + kept + "]"));
+}
+
+// The cut never splits a UTF-8 character: it backs off to the previous boundary
+TEST(UnclassifiedDropReporterTest, TruncationKeepsUtf8Boundary)
+{
+    // 127 ASCII bytes, then a 2-byte character occupying bytes 127-128: a byte cut at 128 would split it
+    const std::string prefix(UnclassifiedDropReporter::MAX_SOURCE_LENGTH - 1, 'a');
+    const std::string source = prefix + "\xC3\xB1" + "tail";
+
+    EXPECT_EQ(UnclassifiedDropReporter::truncateSource(source), prefix);
+    EXPECT_EQ(UnclassifiedDropReporter::truncateSource(prefix + "b\xC3\xB1"), prefix + "b");
+    EXPECT_EQ(UnclassifiedDropReporter::truncateSource("short"), "short");
+}
+
+// Control bytes of an agent-controlled location are escaped, so the plain log cannot be split or overwritten
+TEST(UnclassifiedDropReporterTest, ControlBytesAreEscaped)
+{
+    UnclassifiedDropReporter reporter("myspace");
+    auto warning = reporter.record("x\n2026/11/05 10:00:00 wazuh-manager-analysisd: CRITICAL: forged\r\x1B[2K\x7F",
+                                   ReporterClock::now());
+    ASSERT_TRUE(warning.has_value());
+    EXPECT_EQ(warning->find_first_of("\n\r\x1B\x7F"), std::string::npos);
+    EXPECT_THAT(*warning,
+                HasSubstr("x\\x0A2026/11/05 10:00:00 wazuh-manager-analysisd: CRITICAL: forged\\x0D\\x1B[2K\\x7F"));
+    EXPECT_EQ(UnclassifiedDropReporter::sanitizeSource("plain/path.log"), "plain/path.log");
+}
+
+// Interleaved sources of one worker are all cached, so none of them goes back to the shared set in the period
+TEST(UnclassifiedDropReporterTest, SourceCacheHoldsInterleavedSources)
+{
+    UnclassifiedDropReporter reporter("myspace", std::chrono::seconds {60});
+    UnclassifiedDropReporter::SourceCache cache;
+    const auto t0 = ReporterClock::time_point {std::chrono::hours {1}};
+    ASSERT_TRUE(reporter.record("first", t0, &cache).has_value());
+
+    for (int i = 0; i < 6; ++i)
+    {
+        reporter.record(i % 2 == 0 ? "Wazuh-AWS" : "/var/log/syslog", t0 + std::chrono::seconds {1}, &cache);
+    }
+    EXPECT_EQ(cache.sources.size(), 2U);
+    EXPECT_EQ(cache.sources.count("Wazuh-AWS"), 1U);
+    EXPECT_EQ(cache.sources.count("/var/log/syslog"), 1U);
+
+    auto warning = reporter.record("", t0 + std::chrono::seconds {60}, &cache);
+    ASSERT_TRUE(warning.has_value());
+    EXPECT_THAT(*warning, HasSubstr(": 7 unclassified event(s)"));
+    EXPECT_THAT(*warning, HasSubstr("sources: [/var/log/syslog, Wazuh-AWS]"));
 }
 
 // Production policies that drop unclassified events get their space's reporter
