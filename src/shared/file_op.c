@@ -1310,7 +1310,7 @@ int checkBinaryFile(const char *f_name) {
 
     str[OS_MAXSTR] = '\0';
 
-    fp = wfopen(f_name, "r");
+    fp = wfopen(f_name, "rb");
 
      if (!fp) {
         merror("Unable to open file '%s' due to [(%d)-(%s)].", f_name, errno, strerror(errno));
