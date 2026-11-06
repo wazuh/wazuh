@@ -2102,7 +2102,7 @@ The parser expressions are composed of various tokens or expressions, where thes
   - **Optional fields**: we indicate that a field parse expression is optional writing the interrogation symbol `?` at the beginning of the expression. If the parsing fails it will continue with the next expressions.
 
     E.g.: `<_field1>|<?_field2>|<_field3>` will match anything between `|` symbols three times, and the second may be empty or not.
-  - **Field choice**: Expresses a choice between two field expressions, meaning one of the fields must match. We write two field expressions splitted by the interrogation symbol `?`. As the first choice we can only use parsers that do not require end token, if we use one that does the expression will fail to compile because the end tokens are not sent to the parser.
+  - **Field choice**: Expresses a choice between two field expressions, meaning one of the fields must match. We write two field expressions split by the interrogation symbol `?`. As the first choice we can only use parsers that do not require end token, if we use one that does the expression will fail to compile because the end tokens are not sent to the parser.
 
     E.g.: `<source.ip>?<~/literal/->` will match an IP and map it to source ip or a hyphen, skipping it.
 
@@ -2157,7 +2157,7 @@ Some parsers need an anchor token to stop parsing, i.e. the text parser used by 
 
 E.g.:`<_header>:<message>` will parse and capture any text up to a double dots in the `_header` field, and the remaining of the log will be captured in the message field.
 
-This implicates that two field expressions must be splited by a literal unless the first one does not need an end token, while `<_custom/long><~>` is valid, as the long parsers does not need end token, `<_text><~>` will be invalid.
+This implicates that two field expressions must be split by a literal unless the first one does not need an end token, while `<_custom/long><~>` is valid, as the long parsers does not need end token, `<_text><~>` will be invalid.
 
 In choice expressions the end token is the same for both field expressions, it is the literal right after the second field expression. E.g, `<_custom_ip>?<~>|` will be valid, as both parsers require an end token, in this case the literal `|`. This implies the same as before, if one of the choices needs an end token, it must be followed by a literal.
 
@@ -2259,7 +2259,7 @@ These parsers will generate fields which are type-compatible with Wazuh Indexer.
 | geo_point   | -            | -                                                                                                    |
 | binary      | binary       | A codified base64 string.                                                                            |
 
-Aditionally we define some types for the purpose to use specific parsers, normally used to parse objects or structured types from an input text. This is the case for `url` field for example.
+Additionally we define some types for the purpose to use specific parsers, normally used to parse objects or structured types from an input text. This is the case for `url` field for example.
 
 | Type        | Parser     | Description                                                                                           |
 |-------------|------------|-------------------------------------------------------------------------------------------------------|
