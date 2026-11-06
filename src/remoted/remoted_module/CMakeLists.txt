@@ -22,7 +22,6 @@ target_include_directories(
           ${SRC_FOLDER}/shared_modules/utils # loggerHelper.h, singleton.hpp
           ${SRC_FOLDER}/shared_modules/common # commonDefs.h
           ${SRC_FOLDER}/external/cJSON # cJSON.h (pulled by commonDefs.h)
-          ${SRC_FOLDER}/external/cpp-httplib # httplib.h (for UDS HTTP client)
           ${SRC_FOLDER}/external/nlohmann) # nlohmann/json.hpp
 
 # ext_restinio pulls in ssl/crypto transitively (the shared jwt/ headers' EVP_MAC/EVP_KDF), so no explicit OpenSSL link

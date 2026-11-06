@@ -361,6 +361,14 @@ public:
             {
                 m_downstreamClient->stop();
             }
+            // VD's client may only stop now: phase 1b's ControlHandler teardown fails the task
+            // client's queued requests, and each of those still answers through VdClient::getOffset()
+            // on this thread. Every such call is bounded on its own (see sendBlocking()), so stopping
+            // it earlier would cost a timeout, not a hang -- this order just keeps that from happening.
+            if (m_vdHttpClient)
+            {
+                m_vdHttpClient->stop();
+            }
             if (m_authdClient)
             {
                 m_authdClient->stop();
@@ -371,6 +379,7 @@ public:
             // runtime hasn't been torn down yet (that's phase 4, below).
             m_forwarder.reset();
             m_downstreamClient.reset();
+            m_vdHttpClient.reset();
             m_deferredLimiter.reset();
             m_authdClient.reset();
             {
@@ -823,7 +832,13 @@ private:
             return descriptor.generation;
         };
 
-        auto vdClient = std::make_shared<remoted::common::VdClient>();
+        // VD's socket gets its own client: the forwarder's is tuned for the engine and inventory sync
+        // (10 MiB answers, configurable deadlines), while VD's answers are a few bytes and its deadlines
+        // are VdClient's and remoted.vd_scan_*. Stopped in stop() phase 2, after both handlers are gone.
+        m_vdHttpClient =
+            std::make_shared<remoted::downstream::AsioUdsHttpClient>(remoted::common::VdClient::httpClientConfig());
+        m_vdHttpClient->start();
+        auto vdClient = std::make_shared<remoted::common::VdClient>(m_vdHttpClient);
         m_controlHandler = std::make_unique<remoted::control::ControlHandler>(
             agentRegistry,
             std::make_shared<remoted::control::WazuhDBClient>(controlConfig.wdbSocketPath,
@@ -865,6 +880,7 @@ private:
         // server's route classes (offset is Liveness; scans are Control, deferred to a bounded
         // lane that never occupies a server thread), not by socket separation.
         m_scanVdHandler = std::make_unique<remoted::scanvd::ScanVdHandlerImpl>(vdClient,
+                                                                               m_vdHttpClient,
                                                                                m_scanVdMetrics,
                                                                                remoted::paths::kVdSocket,
                                                                                m_config.vd_scan_read_timeout_sec,
@@ -875,7 +891,8 @@ private:
                                              "/scan/vd",
                                              remoted::endpoints::scanvd::makeHandler(*m_scanVdHandler));
 
-        // The budget also carries VdClient's fixed offset round trip, so it exceeds the two options.
+        // The budget also carries VdClient's fixed offset round trip and the fixed connect deadline of both
+        // calls, so it exceeds the two options.
         warnIfBudgetExceedsRequestTimeout("/scan/vd",
                                           "vd_scan_read_timeout'/'vd_scan_write_timeout",
                                           m_scanVdHandler->getBudgetMs(),
@@ -1933,12 +1950,17 @@ private:
         {
             m_downstreamClient->stop();
         }
+        if (m_vdHttpClient)
+        {
+            m_vdHttpClient->stop();
+        }
         if (m_authdClient)
         {
             m_authdClient->stop();
         }
         m_forwarder.reset();
         m_downstreamClient.reset();
+        m_vdHttpClient.reset();
         m_deferredLimiter.reset();
         m_authdClient.reset();
         m_authGateway.reset();
@@ -2062,7 +2084,8 @@ private:
     std::unique_ptr<remoted::endpoints::AuthGateway> m_authGateway; ///< Auth layer wired onto m_httpServer.
     std::shared_ptr<remoted::downstream::DeferredWorkLimiter> m_deferredLimiter; ///< Bounds parked downstream work.
     std::shared_ptr<remoted::downstream::AsioUdsHttpClient> m_downstreamClient;  ///< Async UDS client (own io_context).
-    std::unique_ptr<remoted::downstream::DeferredForwarder> m_forwarder; ///< Forwards to the downstream service.
+    std::shared_ptr<remoted::downstream::AsioUdsHttpClient> m_vdHttpClient; ///< Client for VD's socket (offset, scans).
+    std::unique_ptr<remoted::downstream::DeferredForwarder> m_forwarder;    ///< Forwards to the downstream service.
 
     // The module's metric registry (shared_modules/metrics). Created ONCE and NEVER reset in
     // stop(): counters must survive the HTTP server's restart retries (an operator reading a

@@ -12,8 +12,12 @@
 #define VD_CLIENT_HPP
 
 #include "common/installPaths.hpp"
+#include "downstream/IDownstreamClient.hpp"
+#include "downstream/downstreamConfig.hpp"
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <mutex>
 #include <string>
 
@@ -57,18 +61,39 @@ namespace remoted::common
         static constexpr long OFFSET_READ_TIMEOUT_SECONDS = 1;
         static constexpr long OFFSET_WRITE_TIMEOUT_SECONDS = 1;
 
+        /// Connect deadline of every call to VD's socket (the offset query here and the scan request in
+        /// ScanVdHandlerImpl). A local socket either accepts at once or refuses at once -- a full accept
+        /// backlog fails a non-blocking connect immediately -- so this only bounds the odd case.
+        static constexpr int CONNECT_TIMEOUT_MS = 1000;
+
+        /// Cap on VD's answer to either call. Both are a few bytes of JSON; anything near this is not VD.
+        static constexpr std::size_t MAX_RESPONSE_BODY_BYTES = 64U * 1024U;
+
+        /// How long a blocking call waits beyond its own deadlines before giving up on the client: the
+        /// client's timers always fire first, this only bounds a client that never completes the call.
+        static constexpr int BACKSTOP_MARGIN_MS = 1000;
+
         /**
+         * @brief Configuration of the HTTP client the facade builds for VD's socket and hands to both
+         * VdClient and ScanVdHandlerImpl: one I/O thread, CONNECT_TIMEOUT_MS and MAX_RESPONSE_BODY_BYTES.
+         * Each call sets its own write and response deadlines; the configured ones are the offset
+         * query's and only apply to a request that sets none.
+         */
+        static remoted::downstream::DownstreamConfig httpClientConfig();
+
+        /**
+         * @param httpClient Client for VD's socket, shared with ScanVdHandlerImpl (see httpClientConfig()).
+         * Must not be null; it must stay running for as long as getOffset() can be called.
          * @param socketPath VD module UDS endpoint, as a raw filesystem path (e.g.
-         * remoted::paths::kVdSocket, relative to remoted's cwd, the installation directory) -- NOT a "unix://" URI;
-         * httplib::Client's single-string constructor only parses http(s) URLs, so the path is passed as-is together
-         * with set_address_family(AF_UNIX). Defaults to the real modulesd socket; overridable so tests can point this
-         * at a fake server instead.
+         * remoted::paths::kVdSocket, relative to remoted's cwd, the installation directory). Defaults to the
+         * real modulesd socket; overridable so tests can point this at a fake server instead.
          * @param cacheTtl See DEFAULT_CACHE_TTL. Overridable so tests can use a short/instant
          * value instead of waiting out the real default.
          * @param failureRetryInterval See DEFAULT_FAILURE_RETRY_INTERVAL. Same testability
          * rationale as cacheTtl.
          */
-        explicit VdClient(std::string socketPath = remoted::paths::kVdSocket,
+        explicit VdClient(std::shared_ptr<remoted::downstream::IDownstreamClient> httpClient,
+                          std::string socketPath = remoted::paths::kVdSocket,
                           std::chrono::milliseconds cacheTtl = DEFAULT_CACHE_TTL,
                           std::chrono::milliseconds failureRetryInterval = DEFAULT_FAILURE_RETRY_INTERVAL);
         ~VdClient() = default;
@@ -96,6 +121,7 @@ namespace remoted::common
 
         QueryResult queryVdModule() const;
 
+        std::shared_ptr<remoted::downstream::IDownstreamClient> m_httpClient;
         std::string m_socketPath;
         mutable std::mutex m_mutex;
         uint64_t m_cachedOffset;

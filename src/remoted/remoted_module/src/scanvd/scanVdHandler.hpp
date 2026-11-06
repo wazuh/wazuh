@@ -13,6 +13,7 @@
 
 #include "common/installPaths.hpp"
 #include "common/vdClient.hpp"
+#include "downstream/IDownstreamClient.hpp"
 #include "endpoints/scanVdEndpoint.hpp"
 #include "scanvd/scanVdMetrics.hpp"
 #include <cstddef>
@@ -45,25 +46,31 @@ namespace remoted::scanvd
         static constexpr long VD_SCAN_WRITE_TIMEOUT_SECONDS = 5;
         /// Total downstream budget for one scan at these timeouts, for the facade's startup check.
         /// Counts VdClient's offset query: getOffset() runs synchronously before the scan POST and,
-        /// on a stale cache, pays its own two deadlines inside this request.
+        /// on a stale cache, pays its own two deadlines inside this request. Each of the two calls
+        /// also has VdClient::CONNECT_TIMEOUT_MS to reach the socket.
         static constexpr long long budgetMsFor(long readSeconds, long writeSeconds) noexcept
         {
             return (static_cast<long long>(readSeconds) + writeSeconds +
                     remoted::common::VdClient::OFFSET_READ_TIMEOUT_SECONDS +
                     remoted::common::VdClient::OFFSET_WRITE_TIMEOUT_SECONDS) *
-                   1000;
+                       1000 +
+                   2LL * remoted::common::VdClient::CONNECT_TIMEOUT_MS;
         }
 
         /**
+         * @param httpClient Client for VD's socket, the same one VdClient holds (see
+         * VdClient::httpClientConfig()). Must not be null; it must stay running for as long as
+         * handleVdScan() can be called.
          * @param vdModulesdSocketPath VD module UDS endpoint used to trigger scans, as a raw
-         * filesystem path (e.g. remoted::paths::kVdSocket, relative to remoted's cwd) -- NOT a "unix://" URI; see
-         * vdClient.cpp for why. The same socket VdClient uses for /offset, passed separately
-         * because remoted and VD are independent binaries. Defaults to the real socket;
-         * overridable so tests can point this at a fake server instead.
+         * filesystem path (e.g. remoted::paths::kVdSocket, relative to remoted's cwd). The same
+         * socket VdClient uses for /offset, passed separately because remoted and VD are
+         * independent binaries. Defaults to the real socket; overridable so tests can point this
+         * at a fake server instead.
          * @param readTimeoutSeconds remoted.vd_scan_read_timeout (see remoted_module_config_t).
          * @param writeTimeoutSeconds remoted.vd_scan_write_timeout (see remoted_module_config_t).
          */
         ScanVdHandlerImpl(std::shared_ptr<remoted::common::VdClient> vdClient,
+                          std::shared_ptr<remoted::downstream::IDownstreamClient> httpClient,
                           ScanVdMetrics& metrics,
                           std::string vdModulesdSocketPath = remoted::paths::kVdSocket,
                           long readTimeoutSeconds = VD_SCAN_READ_TIMEOUT_SECONDS,

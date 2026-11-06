@@ -1565,8 +1565,9 @@ Seconds to wait for the write side of the same inline `POST /scan/vd` relay to V
 - **Default value:** `5`
 - **Allowed values:** Integer from `1` to `300`
 - **Note:** Same admission-only round trip as `remoted.vd_scan_read_timeout`. Both, plus the
-  fixed deadlines of the `/offset` query the scan gates on, make up the `/scan/vd` downstream
-  budget checked at startup against `http_request_timeout`.
+  fixed deadlines of the `/offset` query the scan gates on and a fixed 1-second connect deadline for
+  each of the two calls, make up the `/scan/vd` downstream budget checked at startup against
+  `http_request_timeout` (14 seconds with the defaults).
 
 ---
 
