@@ -49,7 +49,7 @@ typedef bool (*SynchronizeModuleCallback)(void);
 #endif
 
 /**
- * @brief Persists a table's contents in memory and triggers a full resync
+ * @brief Clears a table's index on the manager and queues the table's full contents to resend it
  * @param table_name The table to resync
  * @param handle Sync Protocol handle
  * @param directories_list The OSList of directory_t objects to use for configuration lookup (must not be NULL)
@@ -57,8 +57,8 @@ typedef bool (*SynchronizeModuleCallback)(void);
  *        caller will try again.
  * @return false when the table could not be resynced at all (version bump failed, rows could not be read,
  *         unknown table, or the manager refused the DataClean). true once the manager has accepted the
- *         DataClean -- a failure of the final synchronization still returns true, since the rows are
- *         already queued and the ordinary sync cycle will drain them.
+ *         DataClean and the rows are queued. Nothing is sent here: the caller sends them with
+ *         fim_recovery_sync_recovered_tables() once it has released the scan and realtime mutexes.
  */
 EXPORTED bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHandle* handle, const OSList* directories_list,
                                                     const char* retry_note);
@@ -93,13 +93,16 @@ EXPORTED bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncP
  * @param table_names Tables to resend
  * @param table_count Number of entries in table_names
  * @param directories_list The OSList of directory_t objects to use for configuration lookup
+ * @param recovered Optional, table_count entries: set to true for each table whose rows were queued for
+ *        resending, so the caller can send them once it releases the scan mutexes. Left untouched otherwise.
  * @return true when the id had changed and every table was resent, so the caller should record
  *         the first-sync marker as current. false when there was nothing to do (unknown id,
  *         nothing recorded yet, or the id is unchanged) or when a table failed to resync, in
  *         which case the identity marker is not recorded and the next cycle tries again with
  *         the tables not yet resent under this id.
  */
-EXPORTED bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table_names, int table_count, const OSList* directories_list);
+EXPORTED bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table_names, int table_count,
+                                            const OSList* directories_list, bool* recovered);
 
 /**
  * @brief Checks if a full sync is required by calculating the checksum-of-checksums for a table and comparing it with the manager's
@@ -124,9 +127,30 @@ EXPORTED IntegrityCheckResult_t fim_recovery_check_if_full_sync_required(char* t
  * @param table_count Number of entries in table_names
  * @param directories_list The OSList of directory_t objects to use for configuration lookup
  * @param integrity_interval Seconds between integrity checks of a table
+ * @param recovered Optional, table_count entries: set to true for each table whose rows were queued for
+ *        resending, so the caller can send them once it releases the scan mutexes. Left untouched otherwise.
  */
 EXPORTED void fim_recovery_run_integrity_checks(AgentSyncProtocolHandle* handle, char** table_names, int table_count,
-                                                const OSList* directories_list, int64_t integrity_interval);
+                                                const OSList* directories_list, int64_t integrity_interval,
+                                                bool* recovered);
+
+/**
+ * @brief Sends the rows the recoveries of this cycle queued, and reports each recovered index.
+ *
+ * Called after the scan and realtime mutexes are released: sending needs neither of them, and
+ * holding them across the manager round trips would keep the realtime thread from reading its
+ * events. One regular synchronization cycle covers every recovered table, since they share the
+ * queue. When that cycle stops at its block limit, the index is reported as completed with
+ * entries still queued for the next synchronization. Does nothing when no table was recovered,
+ * and sends nothing once a shutdown is in progress.
+ *
+ * @param handle Sync Protocol handle
+ * @param table_names Tables of this cycle
+ * @param table_count Number of entries in table_names and recovered
+ * @param recovered Which tables had their rows queued for resending
+ */
+EXPORTED void fim_recovery_sync_recovered_tables(AgentSyncProtocolHandle* handle, char** table_names, int table_count,
+                                                 const bool* recovered);
 
 /**
  * @brief Checks if integrity_interval has elapsed for a table

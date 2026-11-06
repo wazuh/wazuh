@@ -116,6 +116,15 @@ struct SyncModuleResult
     ///
     /// Not part of the C interface's SyncModuleResult_t: its modules never send those sessions.
     bool feedNotReady{false};
+
+    /// @brief True when the cycle stopped because it sent its per-cycle block limit
+    /// (agent.sync_max_blocks_per_cycle), not because the queue ran dry.
+    ///
+    /// Lets a module say that entries are still queued for a later cycle instead of implying the
+    /// manager has everything. It is not an exact count: a queue that empties with the very last
+    /// block allowed still sets it. The VD options fetch with no byte budget, so their first
+    /// block carries the whole queue and never reaches the limit.
+    bool reachedBlockLimit{false};
 };
 
 /// @brief Outcome of a module integrity check (IAgentSyncProtocol::requiresFullSync()).

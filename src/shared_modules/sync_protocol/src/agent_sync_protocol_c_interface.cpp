@@ -36,6 +36,8 @@ namespace
 
         cResult.sent_anything = cppResult.sentAnything;
 
+        cResult.reached_block_limit = cppResult.reachedBlockLimit;
+
         return cResult;
     }
 
@@ -211,29 +213,6 @@ extern "C" {
         }
     }
 
-    SyncModuleResult_t asp_sync_module_bounded(AgentSyncProtocolHandle* handle,
-                                               Mode_t mode,
-                                               uint32_t max_blocks)
-    {
-        try
-        {
-            if (!handle) return {false, {}, false, false, 0};
-
-            auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
-
-            return toCSyncModuleResult(wrapper->impl->synchronizeModuleBounded(static_cast<Mode>(mode),
-                                                                               static_cast<size_t>(max_blocks)));
-        }
-        catch (const std::exception& ex)
-        {
-            return {};
-        }
-        catch (...)
-        {
-            return {};
-        }
-    }
-
     IntegrityCheckResult_t asp_requires_full_sync(AgentSyncProtocolHandle* handle,
                                                   const char* index,
                                                   const char* checksum)
@@ -312,31 +291,9 @@ extern "C" {
 
             auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
 
-            SyncModuleResult cppResult = wrapper->impl->synchronizeMetadataOrGroups(static_cast<Mode>(mode),
-                                                                                    indices_vec,
-                                                                                    global_version);
-
-            SyncModuleResult_t cResult;
-
-            cResult.success = cppResult.success;
-
-            strncpy(cResult.failure_reason, cppResult.failureReason.c_str(), SYNC_FAILURE_REASON_MAX_LEN - 1);
-
-            cResult.failure_reason[SYNC_FAILURE_REASON_MAX_LEN - 1] = '\0';
-
-            cResult.stopped = cppResult.stopped;
-
-            cResult.manager_not_ready = cppResult.managerNotReady;
-
-            cResult.consecutive_failures = cppResult.consecutiveFailures;
-
-            cResult.awaiting_prerequisite = cppResult.awaitingPrerequisite;
-
-            cResult.local_transport_unavailable = cppResult.localTransportUnavailable;
-
-            cResult.sent_anything = cppResult.sentAnything;
-
-            return cResult;
+            return toCSyncModuleResult(wrapper->impl->synchronizeMetadataOrGroups(static_cast<Mode>(mode),
+                                                                                  indices_vec,
+                                                                                  global_version));
         }
         catch (const std::exception& ex)
         {

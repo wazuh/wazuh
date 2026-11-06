@@ -25,6 +25,7 @@
 #include "../wrappers/wazuh/shared_modules/agent_sync_protocol_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/fim_recovery_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/run_realtime_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/win_whodata_wrappers.h"
 
@@ -1375,6 +1376,90 @@ void test_fim_run_integrity_pause_still_waits_after_skip_is_consumed(void **stat
     syscheck.fim_pause_requested.data = 0;
 }
 
+/* A recovery queued in the integrity pass is sent after the scan and realtime mutexes are released,
+ * in one regular cycle, and a cycle that stops at its block limit says entries are still queued. */
+void test_fim_run_integrity_sends_recovered_tables_after_unlock(void **state) {
+    AgentSyncProtocolHandle* original_handle = syscheck.sync_handle;
+    uint32_t original_sync_interval = syscheck.sync_interval;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    static SyncModuleResult_t regular_result;
+    static SyncModuleResult_t recovery_result;
+
+    (void)state;
+
+    syscheck.sync_handle = handle;
+    syscheck.sync_interval = 1;
+    syscheck.fim_pause_requested.data = 0;
+    fim_flush_in_progress.data = 0;
+    fim_sync_module_running = 1;
+    /* fim_sync_lock_scan_mutex() takes these with the real pthread_mutex_trylock(), while the
+     * unlocks go through the ignored wrapper, so an earlier case that ran the recovery pass leaves
+     * them held. Start from released mutexes so this case reaches the pass. */
+    pthread_mutex_init(&syscheck.fim_scan_mutex, NULL);
+    pthread_mutex_init(&syscheck.fim_realtime_mutex, NULL);
+#ifdef TEST_WINAGENT
+    pthread_mutex_init(&syscheck.fim_registry_scan_mutex, NULL);
+#endif
+    stop_fim_integrity_on_sleep = true;
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+#ifdef TEST_WINAGENT
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+#endif
+
+    // No first sync yet, so the cycle runs without the initial wait; the regular sync sends
+    // nothing, so no marker is written. The loop stops on the wait that follows the cycle.
+    expect_string(__wrap_fim_db_get_last_sync_time, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
+    will_return(__wrap_fim_db_get_last_sync_time, 0);
+    expect_fim_startup_log(false);
+#ifdef TEST_WINAGENT
+    expect_value(wrap_Sleep, dwMilliseconds, 1000);
+#else
+    expect_value(__wrap_sleep, seconds, 1);
+#endif
+
+    __wrap_asp_sync_module_use_full_result(true);
+
+    // The regular sync of the cycle: nothing queued.
+    regular_result = (SyncModuleResult_t){0};
+    regular_result.success = true;
+    expect_string(__wrap__minfo, formatted_msg, "Starting FIM synchronization.");
+    expect_value(__wrap_asp_sync_module, handle, handle);
+    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
+    will_return(__wrap_asp_sync_module, &regular_result);
+    expect_string(__wrap__minfo, formatted_msg, "FIM synchronization finished: nothing to send.");
+
+    // Identity unchanged; the integrity pass queues a recovery of the file table.
+    will_return(__wrap_asp_get_agent_id, 0);
+    expect_function_call(__wrap_fim_recovery_run_integrity_checks);
+    __wrap_fim_recovery_run_integrity_checks_recover_first_table(true);
+
+    // After the unlock: one regular cycle, stopped at its block limit.
+    recovery_result = (SyncModuleResult_t){0};
+    recovery_result.success = true;
+    recovery_result.sent_anything = true;
+    recovery_result.reached_block_limit = true;
+    expect_string(__wrap__mdebug1, formatted_msg, "Starting recovery synchronization...");
+    expect_value(__wrap_asp_sync_module, handle, handle);
+    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
+    will_return(__wrap_asp_sync_module, &recovery_result);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Recovery of index '" FIM_FILES_SYNC_INDEX "' completed; some entries are still queued and will be "
+                  "sent in the next synchronization.");
+
+    expect_string(__wrap__mdebug1, formatted_msg, "FIM synchronization finished, waiting for 1 seconds before next run.");
+
+    call_real_fim_run_integrity();
+
+    __wrap_fim_recovery_run_integrity_checks_recover_first_table(false);
+    stop_fim_integrity_on_sleep = false;
+    syscheck.sync_handle = original_handle;
+    syscheck.sync_interval = original_sync_interval;
+    syscheck.fim_pause_requested.data = 0;
+}
+
 void test_fim_run_integrity_pause_and_flush_syncs_without_wait_and_marks_completion(void **state) {
     AgentSyncProtocolHandle* original_handle = syscheck.sync_handle;
     AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
@@ -1686,6 +1771,8 @@ int main(void) {
                                    teardown_asp_sync_module_full_result),
         cmocka_unit_test(test_fim_run_integrity_keeps_initial_wait_after_first_sync),
         cmocka_unit_test_teardown(test_fim_run_integrity_pause_still_waits_after_skip_is_consumed,
+                                   teardown_asp_sync_module_full_result),
+        cmocka_unit_test_teardown(test_fim_run_integrity_sends_recovered_tables_after_unlock,
                                    teardown_asp_sync_module_full_result),
         cmocka_unit_test_teardown(test_fim_run_integrity_pause_and_flush_syncs_without_wait_and_marks_completion,
                                    teardown_asp_sync_module_full_result),
