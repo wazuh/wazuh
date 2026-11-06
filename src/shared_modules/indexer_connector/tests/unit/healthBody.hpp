@@ -23,7 +23,7 @@
  * `file(GLOB SOURCES *.cpp)` and no CONFIGURE_DEPENDS, so a new .cpp here would be invisible to an
  * already-configured build tree. A header is picked up by the compiler, not by the glob.
  *
- * It is also the SINGLE PLACE that knows the shape of a /_cat/health answer. Every test that needs
+ * It is also the SINGLE PLACE that knows the shape of a /_cluster/health answer. Every test that needs
  * one builds it through healthBody()/healthBodyWithoutStatus(), so a change of probe endpoint --
  * and with it, of the response shape -- is one edit here instead of 33 scattered literals.
  */
@@ -32,6 +32,8 @@ namespace probe_test
     /**
      * @brief The body of a successful health probe, parameterized by cluster status.
      *
+     * `_cluster/health` answers with a bare object (`_cat/health` answered with an array of one row).
+     *
      * @param status Cluster status to report ("green", "yellow", "red", ...).
      * @param extraFields Optional extra JSON fields, written as a leading-comma fragment
      *                    (e.g. `R"(,"cluster":"test")"`).
@@ -39,7 +41,7 @@ namespace probe_test
      */
     inline std::string healthBody(const std::string& status, const std::string& extraFields = "")
     {
-        return R"([{"status":")" + status + R"(")" + extraFields + "}]";
+        return R"({"cluster_name":"wazuh-cluster","status":")" + status + R"(")" + extraFields + "}";
     }
 
     /**
@@ -52,7 +54,7 @@ namespace probe_test
      */
     inline std::string healthBodyWithoutStatus()
     {
-        return R"([{"cluster":"test","node.total":"1"}])";
+        return R"({"cluster_name":"wazuh-cluster","number_of_nodes":1})";
     }
 
     /// A canned health-check answer: 200 goes to onSuccess with the body, anything else to onError.

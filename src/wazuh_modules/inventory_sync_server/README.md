@@ -312,7 +312,7 @@ through these internal options.
 
 A third, session-level option — `inventory_sync_server_indexer_monitoring_interval_seconds`
 (10 s default, range 1–3600, mapped to `monitoring_interval_seconds`) — sets how often the
-shared session's health monitor polls each host with `GET /_cat/health`. It is one option, not a
+shared session's health monitor polls each host with `GET /_cluster/health/wazuh-*,.wazuh-*`. It is one option, not a
 sync/async pair, because both connectors share the session's single monitor. It bounds how stale
 the availability verdict behind the `503` admission gate can be: a host's death or recovery is
 noticed within roughly one interval (plus up to 5 s of probe timeout per unresponsive host, as
