@@ -212,7 +212,7 @@ deliver it, created within the last `2 * task_ttl + cleanup_interval` seconds. A
 agent credentials, gets the same `404` as a file that does not exist. If the task manager does not
 answer, `remoted` answers `503`, and the agent tries `agent.https_download_attempts` times (2 by default)
 before abandoning the upgrade. A task is delivered only once, so after a `404` or an abandoned upgrade,
-launch the upgrade again. In a cluster the agent may download from any node: the longer window keeps
+launch the upgrade again. In a cluster the agent may download from any node that holds the task: the longer window keeps
 the task open on the nodes that did not deliver it as long as on the node that did. See [Agent upgrades](../../ref/modules/task_manager/agent-upgrades.md).
 
 ### Delivery to agents below v5.0.0

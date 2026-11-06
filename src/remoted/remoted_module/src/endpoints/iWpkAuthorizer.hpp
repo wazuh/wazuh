@@ -44,8 +44,9 @@ namespace remoted::endpoints
          *                remoted::auth::AuthenticatedRequest (canonical, "001").
          * @param wpkFile The requested file name, already accepted by the WPK grammar.
          * @param done    Called once with the decision, on any thread, possibly before authorize()
-         *                returns. Once the implementation is stopped a pending request may be dropped
-         *                without a call, so stop it only when nothing can still be waiting on one.
+         *                returns. Once the implementation is stopped a pending request is dropped
+         *                without a call; remoted stops it first on shutdown, so the agent waiting on
+         *                one sees its connection close.
          */
         virtual void authorize(const std::string& agentId,
                                const std::string& wpkFile,
