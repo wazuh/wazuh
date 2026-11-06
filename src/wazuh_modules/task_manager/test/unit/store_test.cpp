@@ -469,7 +469,7 @@ namespace
     }
 } // namespace
 
-TEST_F(StoreTest, OpenAgentTasksReturnsPendingAndDeliveredRowsNotBeforeTheCutoff)
+TEST_F(StoreTest, OpenAgentTasksReturnsPendingAndDeliveredRowsNotBeforeTheCutoffs)
 {
     const auto now {static_cast<Timestamp>(std::time(nullptr))};
     const auto notBefore {now - 100};
@@ -481,7 +481,7 @@ TEST_F(StoreTest, OpenAgentTasksReturnsPendingAndDeliveredRowsNotBeforeTheCutoff
     ASSERT_TRUE(m_store->createAgentTask(agentTask("pending", "001", "remote_upgrade", now - 10)));
     ASSERT_TRUE(m_store->createAgentTask(agentTask("boundary", "001", "remote_upgrade", notBefore)));
 
-    const auto tasks {m_store->openAgentTasks("001", "remote_upgrade", notBefore)};
+    const auto tasks {m_store->openAgentTasks("001", "remote_upgrade", notBefore, notBefore)};
     ASSERT_EQ(tasks.size(), 3U);
     EXPECT_EQ(tasks[0].taskId, "pending");
     EXPECT_EQ(tasks[1].taskId, "delivered");
@@ -494,19 +494,34 @@ TEST_F(StoreTest, OpenAgentTasksTimesADeliveredRowByItsDeliveryTime)
     ASSERT_EQ(m_store->takePendingAgentTasks("001", 10).size(), 1U);
 
     // Created long before the cutoff but delivered after it: DELIVERY_TIME is the wall clock.
-    const auto tasks {m_store->openAgentTasks("001", "remote_upgrade", 5000)};
+    const auto tasks {m_store->openAgentTasks("001", "remote_upgrade", 5000, 5000)};
     ASSERT_EQ(tasks.size(), 1U);
     EXPECT_EQ(tasks[0].taskId, "t1");
 }
 
-TEST_F(StoreTest, OpenAgentTasksSkipsOtherAgentsTypesExpiredAndOlderRows)
+TEST_F(StoreTest, OpenAgentTasksAgesEachBranchByItsOwnCutoff)
+{
+    const auto now {static_cast<Timestamp>(std::time(nullptr))};
+
+    ASSERT_TRUE(m_store->createAgentTask(agentTask("delivered", "001", "remote_upgrade", now - 10)));
+    ASSERT_EQ(m_store->takePendingAgentTasks("001", 10).size(), 1U);
+    ASSERT_TRUE(m_store->createAgentTask(agentTask("expired", "001", "remote_upgrade", now - 20)));
+    ASSERT_EQ(m_store->expireAgentTasks(now - 15), 1);
+
+    // Both created inside the creation cutoff; the delivery is before the delivery cutoff.
+    const auto tasks {m_store->openAgentTasks("001", "remote_upgrade", now - 100, now + 60)};
+    ASSERT_EQ(tasks.size(), 1U);
+    EXPECT_EQ(tasks[0].taskId, "expired") << "an expired row is aged by its creation";
+}
+
+TEST_F(StoreTest, OpenAgentTasksSkipsOtherAgentsTypesAndOlderRows)
 {
     const auto now {static_cast<Timestamp>(std::time(nullptr))};
     const auto notBefore {now - 100};
 
-    // Expired inside the window, before anything else is pending so the sweep touches only it.
-    ASSERT_TRUE(m_store->createAgentTask(agentTask("expired", "001", "remote_upgrade", now - 10)));
-    ASSERT_EQ(m_store->expireAgentTasks(now - 9), 1);
+    // Expired before the cutoff, before anything else is pending so the sweep touches only it.
+    ASSERT_TRUE(m_store->createAgentTask(agentTask("expired", "001", "remote_upgrade", notBefore - 2)));
+    ASSERT_EQ(m_store->expireAgentTasks(notBefore - 1), 1);
 
     ASSERT_TRUE(m_store->createAgentTask(agentTask("other-agent-delivered", "002", "remote_upgrade", now - 10)));
     ASSERT_EQ(m_store->takePendingAgentTasks("002", 10).size(), 1U);
@@ -518,14 +533,14 @@ TEST_F(StoreTest, OpenAgentTasksSkipsOtherAgentsTypesExpiredAndOlderRows)
 
     ASSERT_TRUE(m_store->createAgentTask(agentTask("older", "001", "remote_upgrade", notBefore - 1)));
 
-    EXPECT_TRUE(m_store->openAgentTasks("001", "remote_upgrade", notBefore).empty());
+    EXPECT_TRUE(m_store->openAgentTasks("001", "remote_upgrade", notBefore, notBefore).empty());
 }
 
 TEST_F(StoreTest, OpenAgentTasksChangesNoRow)
 {
     ASSERT_TRUE(m_store->createAgentTask(agentTask("t1", "001", "remote_upgrade", 1000)));
 
-    ASSERT_EQ(m_store->openAgentTasks("001", "remote_upgrade", 0).size(), 1U);
+    ASSERT_EQ(m_store->openAgentTasks("001", "remote_upgrade", 0, 0).size(), 1U);
 
     const auto pending {m_store->takePendingAgentTasks("001", 10)};
     ASSERT_EQ(pending.size(), 1U);
