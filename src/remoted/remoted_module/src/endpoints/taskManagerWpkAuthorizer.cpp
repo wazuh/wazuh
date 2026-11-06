@@ -92,7 +92,7 @@ namespace remoted::endpoints
 
         WpkAuthorization classify(remoted::downstream::DownstreamError error,
                                   const remoted::downstream::DownstreamResponse& response,
-                                  uint32_t deadlineMs,
+                                  uint32_t limitMs,
                                   const std::string& socketPath)
         {
             using remoted::downstream::DownstreamError;
@@ -106,7 +106,7 @@ namespace remoted::endpoints
                                "Task manager WPK authorization timeout (%s, deadline=%u ms): %llu timeout(s) in the "
                                "last %d s.",
                                remoted::downstream::toString(error),
-                               deadlineMs,
+                               limitMs,
                                throttle.total,
                                remoted::common::LogThrottle::kDefaultWindowSeconds);
                 }
@@ -189,9 +189,10 @@ namespace remoted::endpoints
                                                        uint32_t connectTimeoutMs)
         : m_taskSocketPath {std::move(taskSocketPath)}
         , m_deadlineMs {deadlineMs}
+        , m_connectTimeoutMs {connectTimeoutMs}
     {
         remoted::downstream::DownstreamConfig clientConfig;
-        clientConfig.connectTimeoutMs = static_cast<int>(connectTimeoutMs);
+        clientConfig.connectTimeoutMs = static_cast<int>(m_connectTimeoutMs);
         clientConfig.writeTimeoutMs = static_cast<int>(m_deadlineMs);
         clientConfig.responseTimeoutMs = static_cast<int>(m_deadlineMs);
         clientConfig.ioThreads = 1;
@@ -248,7 +249,10 @@ namespace remoted::endpoints
                 auto decision {WpkAuthorization::Unavailable};
                 try
                 {
-                    decision = classify(error, response, m_deadlineMs, m_taskSocketPath);
+                    const auto limitMs = error == remoted::downstream::DownstreamError::ConnectTimeout
+                                             ? m_connectTimeoutMs
+                                             : m_deadlineMs;
+                    decision = classify(error, response, limitMs, m_taskSocketPath);
                     LOGFN_DEBUG2(logFn(),
                                  "Task manager %s WPK '%s' for agent '%s'.",
                                  decisionName(decision),
