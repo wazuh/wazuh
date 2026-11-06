@@ -29,9 +29,9 @@ namespace invsync::indexer
      * startup gate is built on.
      *
      * Constructing this is where the module pays, ONCE, for: validating `hosts`/`ssl.*`, merging CA
-     * certificates, reading the keystore, and one synchronous round of `GET /_cat/health` per host.
-     * Both connectors are then built from it and reuse all of that, which is what keeps adding the
-     * async connector from doubling the module's startup cost.
+     * certificates, reading the keystore, and one synchronous round of `GET /_cluster/health/wazuh-*,.wazuh-*` per
+     * host. Both connectors are then built from it and reuse all of that, which is what keeps adding the async
+     * connector from doubling the module's startup cost.
      *
      * Exposes the real session through session() because the connector adapters need to pass it to
      * their own constructors. Nothing else reads it.

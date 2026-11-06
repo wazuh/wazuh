@@ -336,7 +336,9 @@ TEST_F(MonitoringTest, TheProbeRequestsTheHealthUrl)
                                                              SecureCommunication {},
                                                              &m_mockHttpRequest);
 
-    EXPECT_EQ(probedUrl, server + "/_cat/health");
+    // The complete URL, pattern included: this is the one assertion that pins the DEFAULT pattern,
+    // the one that ships. A test-injected pattern would only exercise the plumbing (CA-11).
+    EXPECT_EQ(probedUrl, server + "/_cluster/health/wazuh-*,.wazuh-*");
 }
 
 /**

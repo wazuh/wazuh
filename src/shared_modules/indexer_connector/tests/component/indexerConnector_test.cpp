@@ -687,11 +687,11 @@ TEST_F(IndexerConnectorTest, AConnectorKeepsWorkingAfterItsSessionIsDestroyed)
 /**
  * @brief The fake serves the index-scoped health route, with the shape `_cluster/health` really has.
  *
- * Production still probes `/_cat/health`, so no connector drives `/_cluster/health/<pattern>` yet.
- * This case is what holds its contract in the meantime -- 200, a bare OBJECT (not the one-row array
- * `_cat/health` answers with) carrying `status`, and a health-request count that moves -- and what
- * proves that a path holding `*` and `,` reaches the regex handler at all, which is the part the
- * move of the probe depends on. It goes away with the old route.
+ * This is the route the connector probes with, so the rest of the suite drives it indirectly. What
+ * this case adds is the contract the others take for granted: 200, a bare OBJECT (not the one-row
+ * array the cluster-wide `_cat/health` answered with) carrying `status`, a health-request count that
+ * moves, and -- the part the whole change rests on -- that a path holding `*` and `,` reaches the
+ * regex handler at all.
  */
 TEST_F(IndexerConnectorTest, ScopedClusterHealthRouteAnswersAnObjectAndCountsAsAHealthRequest)
 {

@@ -98,12 +98,14 @@ public:
     /**
      * @brief Number of health-check requests served since this server started.
      *
-     * Counts a request to EITHER health route -- the cluster-wide `GET /_cat/health` and the
-     * index-scoped `GET /_cluster/health/<pattern>` both add to it -- so what it measures is a
-     * health-check ROUND and not one literal path. That round count is the observable difference
-     * between connectors that each build their own monitor and connectors sharing one
-     * IndexerSession, and decoupling it from the path keeps it meaning the same thing when the
-     * probe moves from one route to the other.
+     * Counts a request to the index-scoped `GET /_cluster/health/<pattern>` the connector probes
+     * with. It is deliberately not keyed to a literal path -- that is what let this counter keep
+     * its meaning across the move from the cluster-wide `/_cat/health` -- and what it measures is a
+     * health-check ROUND, the observable difference between connectors that each build their own
+     * monitor and connectors sharing one IndexerSession.
+     *
+     * The cluster-wide route is NOT served any more: serving both would let a regression back to
+     * `/_cat/health` pass the component suite unnoticed.
      *
      * @return The request count.
      */
@@ -181,32 +183,6 @@ public:
      */
     void run()
     {
-        // Endpoint where the health status is returned.
-        m_server.Get("/_cat/health",
-                     [this](const httplib::Request& req, httplib::Response& res)
-                     {
-                         ++m_healthRequests;
-                         const auto response = nlohmann::json::array({{{"epoch", "1726271464"},
-                                                                       {"timestamp", "23:51:04"},
-                                                                       {"cluster", "wazuh-cluster"},
-                                                                       {"status", m_health},
-                                                                       {"node.total", "1"},
-                                                                       {"node.data", "1"},
-                                                                       {"discovered_cluster_manager", "true"},
-                                                                       {"shards", "166"},
-                                                                       {"pri", "166"},
-                                                                       {"relo", "0"},
-                                                                       {"init", "0"},
-                                                                       {"unassign", "0"},
-                                                                       {"pending_tasks", "0"},
-                                                                       {"max_task_wait_time", "-"},
-                                                                       {"active_shards_percent", "100.0%"}}});
-
-                         std::stringstream ss;
-                         ss << response.dump();
-                         res.set_content(ss.str(), "application/json");
-                     });
-
         // Endpoint where the health status of a set of indices is returned.
         //
         // Registered as a regular expression so that ANY index pattern matches, the
@@ -217,9 +193,9 @@ public:
                      [this](const httplib::Request& req, httplib::Response& res)
                      {
                          ++m_healthRequests;
-                         // Unlike `/_cat/health`, which answers with an array of one row, the real
-                         // `_cluster/health` answers with a bare object. Both read the same
-                         // `m_health`, so setHealth() governs the two routes.
+                         // `_cluster/health` answers with a bare object, unlike the cluster-wide
+                         // `_cat/health` this replaced, which answered with an array of one row.
+                         // Driven by `m_health`, so setHealth() still governs what the probe sees.
                          const auto response = nlohmann::json::object({{"cluster_name", "wazuh-cluster"},
                                                                        {"status", m_health},
                                                                        {"timed_out", false},
