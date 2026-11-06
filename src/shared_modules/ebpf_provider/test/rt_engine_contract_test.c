@@ -65,7 +65,7 @@ static int g_failures = 0;
  * ------------------------------------------------------------------------- */
 static void test_event_abi_layout(void)
 {
-    CHECK(sizeof(struct rt_file_event) == 12416, "sizeof(struct rt_file_event) is %zu, expected 12416",
+    CHECK(sizeof(struct rt_file_event) == 12424, "sizeof(struct rt_file_event) is %zu, expected 12424",
           sizeof(struct rt_file_event));
 
     /* Head: the fields the engine itself reads before trusting the record. */
@@ -90,15 +90,21 @@ static void test_event_abi_layout(void)
           offsetof(struct rt_file_event, filename));
     CHECK(offsetof(struct rt_file_event, cwd) == 4192, "cwd moved to %zu", offsetof(struct rt_file_event, cwd));
 
-    /* The tail must stay the tail: an appended field is a MINOR bump and must
-     * not displace anything before it. */
-    CHECK(offsetof(struct rt_file_event, parent_comm) + RT_COMM_MAX == sizeof(struct rt_file_event),
-          "parent_comm is no longer the last member");
+    /* Additive MINOR bumps must leave the previous tail in place. */
+    CHECK(offsetof(struct rt_file_event, parent_comm) == 12384, "parent_comm moved to %zu",
+          offsetof(struct rt_file_event, parent_comm));
+    CHECK(offsetof(struct rt_file_event, euid) == 12416, "euid moved to %zu",
+          offsetof(struct rt_file_event, euid));
+    CHECK(offsetof(struct rt_file_event, login_uid) == 12420, "login_uid moved to %zu",
+          offsetof(struct rt_file_event, login_uid));
+    CHECK(offsetof(struct rt_file_event, login_uid) + sizeof(unsigned int) == sizeof(struct rt_file_event),
+          "login_uid is no longer the last member");
 }
 
 static void test_abi_accessors(void)
 {
     CHECK(rt_abi_major() == RT_ABI_MAJOR, "rt_abi_major() = %d, header says %d", rt_abi_major(), RT_ABI_MAJOR);
+    CHECK(rt_abi_minor() == 2, "rt_abi_minor() = %d, expected 2", rt_abi_minor());
     CHECK(rt_abi_minor() == RT_ABI_MINOR, "rt_abi_minor() = %d, header says %d", rt_abi_minor(), RT_ABI_MINOR);
 }
 

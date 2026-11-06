@@ -7,9 +7,8 @@ project(rt_engine C)
 # bpf_object__open_file(), not a generated skeleton) and the userspace
 # loader library (librt_engine) exposing rt_open()/rt_poll()/rt_close().
 #
-# Nothing consumes it yet: this lands the engine so it builds and can be
-# validated on its own, ahead of any caller (see 12-blocking-decisions.md,
-# Track E). FIM still loads modern.bpf.o through its own libbpf path.
+# Host FIM whodata and the container event drain each load rt_file.bpf.o
+# through this engine, using independent handles.
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
   message(STATUS "eBPF Module (rt_engine) is Linux-only; skipping on ${CMAKE_SYSTEM_NAME}.")
@@ -44,7 +43,17 @@ target_include_directories(rt_engine PRIVATE ${SRC_FOLDER}/shared_modules/common
 
 # libbpf is dlopen()'d at rt_open() time (see rt_engine.c's top comment) —
 # no -lbpf here on purpose. -ldl for dlopen/dlsym/dlclose/dlerror.
-target_link_libraries(rt_engine PUBLIC dl)
+#
+# pthread is named explicitly, not inherited. ensure_libbpf_loaded() serialises
+# the one-shot libbpf binding with a pthread mutex, and before glibc 2.34
+# libc.so.6 exports pthread_mutex_lock/unlock as stubs that are NOT thread-safe
+# — the real implementations live in libpthread. The agent's package images are
+# that old (centos:6, debian:7), so without this the mutex would silently
+# degrade to a no-op on exactly the builds that ship, and the race it exists to
+# close would still be open. It happens to work today only because every
+# consumer is loaded into a process that already uses threads; that is an
+# accident of the caller, not a property of this library.
+target_link_libraries(rt_engine PUBLIC dl pthread)
 
 # This static library is linked into fimebpf, a SHARED library — without
 # PIC, the final link fails ("relocation ... can not be used when making a
@@ -56,8 +65,7 @@ set_target_properties(rt_engine PROPERTIES POSITION_INDEPENDENT_CODE ON)
 # The BPF object — built when it can be, skipped when it cannot.
 # ------------------------------------------------------------------------------
 #
-# Three-way gate, mirroring how src/external/CMakeLists.txt already treats
-# modern.bpf.o: prefer a prebuilt object, else compile it if the toolchain AND a
+# Three-way gate: prefer a prebuilt object, else compile it if the toolchain AND a
 # vmlinux.h are both available, else skip with a diagnostic.
 #
 # `find_program(... REQUIRED)` is deliberately NOT used. A hard requirement here
@@ -106,8 +114,8 @@ set(RT_BPF_PREBUILT ${CMAKE_CURRENT_SOURCE_DIR}/prebuilt/${RT_BPF_ARCH}/rt_file.
 # The portable, per-architecture vmlinux.h the existing pipeline already uses
 # (fetched by external/libbpf-bootstrap's vmlinux.h ExternalProject). Preferred
 # over dumping the build host's own BTF, which yields an object most reliable
-# only on the kernel it was built against. Note it is absent whenever a prebuilt
-# modern.bpf.o short-circuits that ExternalProject, which is the common case.
+# only on the kernel it was built against. The packaged libbpf dependency does
+# not supply this header, so it is normally absent.
 set(RT_VMLINUX_VENDORED
     ${SRC_FOLDER}/external/libbpf-bootstrap/vmlinux.h/include/${RT_BPF_ARCH}/vmlinux.h)
 

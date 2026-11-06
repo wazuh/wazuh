@@ -31,7 +31,7 @@
  * event also carries abi_major so a consumer that opened the engine before
  * a live reload can still detect a mismatch. */
 #define RT_ABI_MAJOR 1
-#define RT_ABI_MINOR 1
+#define RT_ABI_MINOR 2
 /* MINOR 1: added cwd/parent_cwd/parent_comm. Purely additive (appended
  * after the existing fields) — found missing when starting the FIM
  * cutover: host FIM's existing whodata "who" attribution (dynamic_file_
@@ -39,12 +39,18 @@
  * first cut of this contract dropped them. Consumers built against MINOR 0
  * still work unmodified; they just never read the new tail fields. */
 
+/* MINOR 2: added euid/login_uid after parent_comm so host FIM whodata
+ * retains effective-user and audit-user attribution. Consumers built against
+ * MINOR 1 still work unmodified; they just never read the new tail fields. */
+
 enum rt_event_type
 {
     RT_EV_FILE_OPEN   = 1, /* create, or open with write intent */
     RT_EV_FILE_ATTR   = 2, /* chmod/chown/truncate/utimes */
     RT_EV_FILE_UNLINK = 3,
-    RT_EV_FILE_RENAME = 4, /* carries the destination path */
+    /* A rename produces two events, naming source and destination in
+     * unspecified order. */
+    RT_EV_FILE_RENAME = 4,
 };
 
 enum rt_flags
@@ -96,6 +102,10 @@ struct rt_file_event
     char cwd[RT_PATH_MAX];
     char parent_cwd[RT_PATH_MAX];
     char parent_comm[RT_COMM_MAX];
+
+    /* MINOR 2 additions — see the RT_ABI_MINOR comment above. */
+    unsigned int euid;
+    unsigned int login_uid;
 };
 
 #endif /* RT_EVENT_CONTRACT_H */

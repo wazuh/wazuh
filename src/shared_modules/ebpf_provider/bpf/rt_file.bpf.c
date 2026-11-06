@@ -7,9 +7,9 @@
  * Foundation.
  *
  * eBPF Module (#37396) — FILE event class only, per this pass's scope.
- * Path-walking logic ported from the FIM-embedded src/syscheckd/src/ebpf/
- * src/modern.bpf.c (proven working code, unchanged in substance) — the
- * change here is architectural: this program emits the shared, versioned
+ * Path-walking logic ported from the retired
+ * src/syscheckd/src/ebpf/src/modern.bpf.c (proven logic, now maintained only
+ * here). The change here is architectural: this program emits the shared, versioned
  * rt_file_event contract (rt_event_contract.h) instead of FIM's own ad hoc
  * struct, and every hook is autoload-gated independently by the loader
  * (rt_engine.c) per the calling consumer's rt_filter, not hardcoded here.
@@ -55,6 +55,19 @@
 #define statfunc    static __always_inline
 #define subprogfunc __attribute__((noinline))
 
+/* Minimal CO-RE shadow of struct task_struct, used only to read loginuid.
+ * Some vmlinux.h snapshots are generated from kernels built without
+ * CONFIG_AUDIT, in which case the real task_struct has no loginuid field
+ * and a direct current_task->loginuid access fails to compile. Declaring
+ * it here lets the CO-RE relocation engine resolve the field against the
+ * running kernel's BTF at load time instead of the build-time header,
+ * combined with bpf_core_field_exists() to skip gracefully if the running
+ * kernel also lacks CONFIG_AUDIT. */
+struct task_struct___local
+{
+    kuid_t loginuid;
+};
+
 struct buffer
 {
     __u8 data[PERCPU_BUF_SIZE];
@@ -90,7 +103,17 @@ struct
     __uint(max_entries, 1);
 } dpath_map SEC(".maps");
 
-/* cwd resolution used to have its own map (cwd_heap, mirroring modern.bpf.c)
+/* The VFS claims this mount just before setattr, unlink and rename, so
+ * each thread's last claim identifies the mount those kprobes reached. */
+struct
+{
+    __uint(type, BPF_MAP_TYPE_LRU_HASH);
+    __type(key, __u64);
+    __type(value, __u64);
+    __uint(max_entries, 1 << 14);
+} write_mnt_map SEC(".maps");
+
+/* cwd resolution used to have its own map (cwd_heap, mirroring the retired modern.bpf.c)
  * kept distinct from heaps_map out of caution rather than relying on
  * read-before-reuse ordering being safe. That caution is preserved exactly --
  * RT_SLOT_CWD is a different 32 KiB region from RT_SLOT_EVENT -- but as a slot
@@ -452,7 +475,7 @@ statfunc __u32 take_drop_counter(void)
 }
 
 /* Manual dentry/vfsmount walker for the kprobe attach path (bpf_d_path is
- * not callable from kprobe context). Ported verbatim from modern.bpf.c's
+ * not callable from kprobe context). Ported verbatim from the retired modern.bpf.c's
  * get_path_str_from_path().
  *
  * THE ONE SUBPROGRAM. Global linkage and all-scalar arguments are both load-
@@ -501,6 +524,7 @@ subprogfunc long rt_walk_dentry(__u64 dentry_addr, __u64 vfsmnt_addr, __u32 slot
             if (mnt != mnt_parent)
             {
                 dentry = BPF_CORE_READ(mnt, mnt_mountpoint);
+                mnt = mnt_parent;
                 mnt_parent = BPF_CORE_READ(mnt, mnt_parent);
                 vfsmnt = __builtin_preserve_access_index(&mnt->mnt);
                 continue;
@@ -554,7 +578,15 @@ subprogfunc long rt_walk_dentry(__u64 dentry_addr, __u64 vfsmnt_addr, __u32 slot
  * cross a subprogram boundary. */
 statfunc long rt_walk_path_at(struct dentry* dentry, struct vfsmount* mnt, __u32 slot)
 {
-    return rt_walk_dentry((__u64)(unsigned long)dentry, (__u64)(unsigned long)mnt, slot);
+    /* LSM arguments can retain trusted BTF pointer types through casts and
+     * register moves. Helper-written stack values are scalars, as required by
+     * the independently verified walker; copy the addresses, not the objects. */
+    __u64 dentry_addr = 0, mnt_addr = 0;
+    if (bpf_probe_read_kernel(&dentry_addr, sizeof(dentry_addr), &dentry) < 0 ||
+        bpf_probe_read_kernel(&mnt_addr, sizeof(mnt_addr), &mnt) < 0)
+        return -1;
+
+    return rt_walk_dentry(dentry_addr, mnt_addr, slot);
 }
 
 /* Re-derives the string from the (slot, offset) pair rt_walk_dentry returned.
@@ -590,7 +622,7 @@ statfunc void get_inode_dev(struct inode* inode_ptr, __u64* inode, __u64* dev)
     }
 }
 
-/* Ported from modern.bpf.c's get_task_cwd(). Resolves `task`'s current
+/* Ported from the retired modern.bpf.c's get_task_cwd(). Resolves `task`'s current
  * working directory into `dest`; returns -1 (dest left untouched by the
  * caller, which pre-clears it) on any failure in the chain. */
 statfunc int get_task_cwd(char* dest, int size, struct task_struct* task)
@@ -667,6 +699,17 @@ statfunc void submit_event(__u16 event_type, const char* filename, __u64 ino, __
     __u64 uid_gid = bpf_get_current_uid_gid();
     evt->uid = (__u32)uid_gid;
     evt->gid = (__u32)(uid_gid >> 32);
+    evt->euid = BPF_CORE_READ(current_task, cred, euid.val);
+
+    /* CONFIG_AUDIT-less kernels have no loginuid; zero would falsely
+     * attribute their events to root instead of leaving audit identity unset. */
+    struct task_struct___local* task_local = (struct task_struct___local*)current_task;
+    kuid_t loginuid = {(__u32)-1};
+    if (bpf_core_field_exists(task_local->loginuid))
+    {
+        loginuid = BPF_CORE_READ(task_local, loginuid);
+    }
+    evt->login_uid = loginuid.val;
 
     evt->inode = ino;
     evt->dev = dev;
@@ -684,7 +727,7 @@ statfunc void submit_event(__u16 event_type, const char* filename, __u64 ino, __
     bpf_probe_read_kernel_str(evt->filename, RT_PATH_MAX, filename);
 
     /* Direct null-byte writes rather than bpf_probe_read_kernel_str(..., "")
-     * — see modern.bpf.c's identical comment: libbpf < 0.6 can't resolve
+     * — see the retired modern.bpf.c's identical comment: libbpf < 0.6 can't resolve
      * relocations against the .rodata.str1.1 section an empty-string literal
      * would otherwise emit here, corrupting the object at load time. */
     evt->cwd[0] = '\0';
@@ -769,7 +812,7 @@ int kprobe__vfs_open(struct pt_regs* ctx)
 
 /* ---- open/create (LSM: namespace-correct bpf_d_path, needs "bpf" active LSM) ---- */
 SEC("lsm/file_open")
-int BPF_PROG(lsm_file_open, struct file* file)
+int BPF_PROG(file_open_dpath, struct file* file)
 {
     fmode_t f_mode = 0;
     bpf_probe_read_kernel(&f_mode, sizeof(f_mode), &file->f_mode);
@@ -795,19 +838,211 @@ int BPF_PROG(lsm_file_open, struct file* file)
     return 0;
 }
 
-/* ---- attribute change (portable across kernel versions via LINUX_KERNEL_VERSION) ---- */
+SEC("lsm/file_open")
+int BPF_PROG(file_open_walk, struct file* file)
+{
+    fmode_t f_mode = 0;
+    bpf_probe_read_kernel(&f_mode, sizeof(f_mode), &file->f_mode);
+    __u32 f_flags = 0;
+    bpf_probe_read_kernel(&f_flags, sizeof(f_flags), &file->f_flags);
+    if (!(f_mode & FMODE_CREATED) && !(f_flags & O_CREAT) && !(f_flags & O_ACCMODE))
+        return 0;
+
+    struct inode* f_inode = NULL;
+    bpf_probe_read_kernel(&f_inode, sizeof(f_inode), &file->f_inode);
+    if (!f_inode || !is_regular_file(f_inode))
+        return 0;
+
+    struct dentry* dentry = BPF_CORE_READ(file, f_path.dentry);
+    struct vfsmount* mnt = BPF_CORE_READ(file, f_path.mnt);
+    const char* full_path = rt_slot_str(RT_SLOT_EVENT, rt_walk_path_at(dentry, mnt, RT_SLOT_EVENT));
+    if (!full_path)
+        return 0;
+
+    __u64 inode = 0, dev = 0;
+    get_inode_dev(f_inode, &inode, &dev);
+    submit_event(RT_EV_FILE_OPEN, full_path, inode, dev);
+    return 0;
+}
+
+/* Keep the directory in dpath_map and the joined event path in its own
+ * slot: process-context collection later reuses only RT_SLOT_CWD. */
+statfunc const char* rt_lsm_dpath(struct path* dir, struct dentry* dentry)
+{
+    char* dir_path = bpf_map_lookup_elem(&dpath_map, &(__u32) {0});
+    struct buffer* buf = bpf_map_lookup_elem(&heaps_map, &(__u32) {RT_SLOT_EVENT});
+    if (!dir_path || !buf || bpf_d_path(dir, dir_path, RT_PATH_MAX) < 0)
+        return NULL;
+
+    /* d_name.name is `const unsigned char*`; cast as the retired modern.bpf.c did rather
+     * than leaving a -Wpointer-sign warning in the object build. */
+    const char* name = (const char*)BPF_CORE_READ(dentry, d_name.name);
+    if (!name)
+        return NULL;
+    long len = bpf_probe_read_kernel_str(buf->data, HALF_BUF_SIZE, dir_path);
+    if (len <= 1 || len >= HALF_BUF_SIZE)
+        return NULL;
+    __u32 off = len - 1;
+    if (buf->data[LIMIT_HALF(off - 1)] != '/')
+        buf->data[LIMIT_HALF(off++)] = '/';
+    off = LIMIT_HALF(off);
+    if (bpf_probe_read_kernel_str(&buf->data[off], HALF_BUF_SIZE - off, name) < 0)
+        return NULL;
+    return (const char*)buf->data;
+}
+
+SEC("lsm/path_unlink")
+int BPF_PROG(path_unlink_dpath, struct path* path, struct dentry* dentry)
+{
+    struct inode* d_inode = BPF_CORE_READ(dentry, d_inode);
+    if (!d_inode || !is_regular_file(d_inode))
+        return 0;
+    const char* full_path = rt_lsm_dpath(path, dentry);
+    if (!full_path)
+        return 0;
+    __u64 inode = 0, dev = 0;
+    get_inode_dev(d_inode, &inode, &dev);
+    submit_event(RT_EV_FILE_UNLINK, full_path, inode, dev);
+    return 0;
+}
+
+SEC("lsm/path_unlink")
+int BPF_PROG(path_unlink_walk, struct path* path, struct dentry* dentry)
+{
+    struct inode* d_inode = BPF_CORE_READ(dentry, d_inode);
+    if (!d_inode || !is_regular_file(d_inode))
+        return 0;
+    struct vfsmount* mnt = BPF_CORE_READ(path, mnt);
+    if (!mnt)
+        return 0;
+    const char* full_path = rt_slot_str(RT_SLOT_EVENT, rt_walk_path_at(dentry, mnt, RT_SLOT_EVENT));
+    if (!full_path)
+        return 0;
+    __u64 inode = 0, dev = 0;
+    get_inode_dev(d_inode, &inode, &dev);
+    submit_event(RT_EV_FILE_UNLINK, full_path, inode, dev);
+    return 0;
+}
+
+/* Independent source and destination programs each resolve one path; their
+ * events have no guaranteed order. */
+statfunc int path_rename_dpath_event(struct path* dir, struct dentry* dentry,
+                                    struct dentry* old_dentry)
+{
+    struct inode* d_inode = BPF_CORE_READ(old_dentry, d_inode);
+    if (!d_inode || !is_regular_file(d_inode))
+        return 0;
+    const char* full_path = rt_lsm_dpath(dir, dentry);
+    if (!full_path)
+        return 0;
+    __u64 inode = 0, dev = 0;
+    get_inode_dev(d_inode, &inode, &dev);
+    submit_event(RT_EV_FILE_RENAME, full_path, inode, dev);
+    return 0;
+}
+
+SEC("lsm/path_rename")
+int BPF_PROG(path_rename_dpath, struct path* old_dir, struct dentry* old_dentry,
+             struct path* new_dir, struct dentry* new_dentry, unsigned int flags)
+{
+    return path_rename_dpath_event(new_dir, new_dentry, old_dentry);
+}
+
+SEC("lsm/path_rename")
+int BPF_PROG(path_rename_old_dpath, struct path* old_dir, struct dentry* old_dentry,
+             struct path* new_dir, struct dentry* new_dentry, unsigned int flags)
+{
+    return path_rename_dpath_event(old_dir, old_dentry, old_dentry);
+}
+
+statfunc int path_rename_walk_event(struct path* dir, struct dentry* dentry,
+                                    struct dentry* old_dentry)
+{
+    struct inode* d_inode = BPF_CORE_READ(old_dentry, d_inode);
+    if (!d_inode || !is_regular_file(d_inode))
+        return 0;
+    struct vfsmount* mnt = BPF_CORE_READ(dir, mnt);
+    if (!mnt)
+        return 0;
+    const char* full_path = rt_slot_str(RT_SLOT_EVENT, rt_walk_path_at(dentry, mnt, RT_SLOT_EVENT));
+    if (!full_path)
+        return 0;
+    __u64 inode = 0, dev = 0;
+    get_inode_dev(d_inode, &inode, &dev);
+    submit_event(RT_EV_FILE_RENAME, full_path, inode, dev);
+    return 0;
+}
+
+SEC("lsm/path_rename")
+int BPF_PROG(path_rename_walk, struct path* old_dir, struct dentry* old_dentry,
+             struct path* new_dir, struct dentry* new_dentry, unsigned int flags)
+{
+    return path_rename_walk_event(new_dir, new_dentry, old_dentry);
+}
+
+SEC("lsm/path_rename")
+int BPF_PROG(path_rename_old_walk, struct path* old_dir, struct dentry* old_dentry,
+             struct path* new_dir, struct dentry* new_dentry, unsigned int flags)
+{
+    return path_rename_walk_event(old_dir, old_dentry, old_dentry);
+}
+
+/* Validate the dentry invariant rather than relying on a kernel version:
+ * enterprise kernels backport the newer security_inode_setattr signature. */
+statfunc struct dentry* resolve_dentry(struct dentry* dentry)
+{
+    struct inode* d_inode = NULL;
+    struct super_block *i_sb = NULL, *d_sb = NULL;
+
+    if (!dentry)
+        return NULL;
+
+    bpf_probe_read_kernel(&d_inode, sizeof(d_inode), &dentry->d_inode);
+    if (!d_inode)
+        return NULL;
+
+    bpf_probe_read_kernel(&i_sb, sizeof(i_sb), &d_inode->i_sb);
+    bpf_probe_read_kernel(&d_sb, sizeof(d_sb), &dentry->d_sb);
+
+    return (i_sb && i_sb == d_sb) ? dentry : NULL;
+}
+
+SEC("kprobe/mnt_want_write")
+int kprobe__mnt_want_write(struct pt_regs* ctx)
+{
+    __u64 id = bpf_get_current_pid_tgid();
+    __u64 mnt = PT_REGS_PARM1(ctx);
+    bpf_map_update_elem(&write_mnt_map, &id, &mnt, BPF_ANY);
+    return 0;
+}
+
+/* Match is_mounted() to exclude private mounts such as overlayfs's upper
+ * layer, and require the claimed mount to belong to this superblock.
+ * NULL lets the walker stop at the filesystem root. */
+statfunc struct vfsmount* get_write_mnt(struct super_block* sb)
+{
+    __u64 id = bpf_get_current_pid_tgid();
+    __u64* val = bpf_map_lookup_elem(&write_mnt_map, &id);
+    if (!val)
+        return NULL;
+
+    struct vfsmount* vfsmnt = (struct vfsmount*)*val;
+    unsigned long ns = (unsigned long)BPF_CORE_READ(container_of(vfsmnt, struct mount, mnt), mnt_ns);
+    if (!ns || ns >= (unsigned long)-4095 || BPF_CORE_READ(vfsmnt, mnt_sb) != sb)
+        return NULL;
+
+    return vfsmnt;
+}
+
+/* ---- attribute change ---- */
 SEC("kprobe/security_inode_setattr")
 int kprobe__security_inode_setattr(struct pt_regs* ctx)
 {
-    struct dentry* dentry;
-    if (LINUX_KERNEL_VERSION < KERNEL_VERSION(6, 0, 0))
-    {
-        dentry = (struct dentry*)PT_REGS_PARM1_CORE(ctx);
-    }
-    else
-    {
-        dentry = (struct dentry*)PT_REGS_PARM2_CORE(ctx);
-    }
+    /* CORE reads avoid conditional direct ctx accesses that strict verifiers
+     * reject as modified ctx pointer dereferences. */
+    struct dentry* dentry = resolve_dentry((struct dentry*)PT_REGS_PARM1_CORE(ctx));
+    if (!dentry)
+        dentry = resolve_dentry((struct dentry*)PT_REGS_PARM2_CORE(ctx));
     if (!dentry)
         return 0;
 
@@ -816,18 +1051,7 @@ int kprobe__security_inode_setattr(struct pt_regs* ctx)
     if (!d_inode || !is_regular_file(d_inode))
         return 0;
 
-    struct super_block* sb = NULL;
-    bpf_probe_read_kernel(&sb, sizeof(sb), &d_inode->i_sb);
-    if (!sb)
-        return 0;
-    struct mount* mnt_ptr = NULL;
-    bpf_probe_read_kernel(&mnt_ptr, sizeof(mnt_ptr), &sb->s_fs_info);
-    if (!mnt_ptr)
-        return 0;
-    struct vfsmount* mnt = NULL;
-    bpf_probe_read_kernel(&mnt, sizeof(mnt), &mnt_ptr->mnt);
-    if (!mnt)
-        return 0;
+    struct vfsmount* mnt = get_write_mnt(BPF_CORE_READ(d_inode, i_sb));
 
     const char* full_path = rt_slot_str(RT_SLOT_EVENT, rt_walk_path_at(dentry, mnt, RT_SLOT_EVENT));
     if (!full_path)
@@ -860,18 +1084,7 @@ int kprobe__vfs_unlink(struct pt_regs* ctx)
     if (!d_inode || !is_regular_file(d_inode))
         return 0;
 
-    struct super_block* sb = NULL;
-    bpf_probe_read_kernel(&sb, sizeof(sb), &d_inode->i_sb);
-    if (!sb)
-        return 0;
-    struct mount* mnt_ptr = NULL;
-    bpf_probe_read_kernel(&mnt_ptr, sizeof(mnt_ptr), &sb->s_fs_info);
-    if (!mnt_ptr)
-        return 0;
-    struct vfsmount* mnt = NULL;
-    bpf_probe_read_kernel(&mnt, sizeof(mnt), &mnt_ptr->mnt);
-    if (!mnt)
-        return 0;
+    struct vfsmount* mnt = get_write_mnt(BPF_CORE_READ(d_inode, i_sb));
 
     const char* full_path = rt_slot_str(RT_SLOT_EVENT, rt_walk_path_at(dentry, mnt, RT_SLOT_EVENT));
     if (!full_path)
@@ -883,44 +1096,29 @@ int kprobe__vfs_unlink(struct pt_regs* ctx)
     return 0;
 }
 
-/* ---- rename (kprobe fallback; reports the destination path, mirrors modern.bpf.c) ----
- *
- * FINDING (validated on a real kernel 7.0.0 VM, not just read): the shadow
- * struct below was WRONG for this kernel and silently produced zero events
- * — kprobe run_cnt confirmed the hook fires, but old_dentry/new_dentry read
- * garbage and failed the safety checks every time. This is the same
- * struct/logic as production's modern.bpf.c, meaning that code has the same
- * latent bug on any kernel with this newer struct renamedata layout: rename
- * events silently stop being detected, with no error surfaced anywhere.
- *
- * Confirmed actual layout via `grep -A10 '^struct renamedata ' vmlinux.h`
- * on the test VM:
- *   struct renamedata {
- *       struct mnt_idmap *mnt_idmap;
- *       struct dentry *old_parent;
- *       struct dentry *old_dentry;
- *       struct dentry *new_parent;
- *       struct dentry *new_dentry;
- *       struct delegated_inode *delegated_inode;
- *       unsigned int flags;
- *   };
- * — one mnt_idmap (not two mnt_userns fields), and old_dir/new_dir are
- * dentries (old_parent/new_parent), not inodes. old_dentry's offset is
- * unchanged (16 bytes in either layout) but new_dentry moved from offset 40
- * (this file's old, wrong assumption) to offset 32 — an 8-byte over-read
- * previously landing on delegated_inode's value instead.
- */
+/* Keep the 5.12-6.17 layout for kernels lacking renamedata BTF. The
+ * second namespace pointer keeps new_dentry at its original offset. */
 struct renamedata___local
 {
-    void* mnt_idmap;
-    struct dentry* old_parent;
+    void* old_mnt_userns;
+    struct inode* old_dir;
     struct dentry* old_dentry;
-    struct dentry* new_parent;
+    void* new_mnt_userns;
+    struct inode* new_dir;
     struct dentry* new_dentry;
 };
 
-SEC("kprobe/vfs_rename")
-int kprobe__vfs_rename(struct pt_regs* ctx)
+/* 6.18 replaces new_dir with new_parent and moves new_dentry; resolve
+ * that layout through CO-RE only when the running kernel has it. */
+struct renamedata___v618
+{
+    struct dentry* new_parent;
+    struct dentry* new_dentry;
+} __attribute__((preserve_access_index));
+
+/* Each independently attached half resolves one path to stay within verifier
+ * limits. Nothing serialises the source and destination events. */
+statfunc int vfs_rename_event(struct pt_regs* ctx, bool old)
 {
     struct dentry *old_dentry, *new_dentry;
 
@@ -935,7 +1133,11 @@ int kprobe__vfs_rename(struct pt_regs* ctx)
         if (!rd)
             return 0;
         bpf_probe_read_kernel(&old_dentry, sizeof(old_dentry), &rd->old_dentry);
-        bpf_probe_read_kernel(&new_dentry, sizeof(new_dentry), &rd->new_dentry);
+        struct renamedata___v618* rd618 = (void*)rd;
+        if (bpf_core_field_exists(rd618->new_parent))
+            new_dentry = BPF_CORE_READ(rd618, new_dentry);
+        else
+            bpf_probe_read_kernel(&new_dentry, sizeof(new_dentry), &rd->new_dentry);
     }
     if (!old_dentry || !new_dentry)
         return 0;
@@ -948,25 +1150,27 @@ int kprobe__vfs_rename(struct pt_regs* ctx)
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
 
-    struct super_block* sb = NULL;
-    bpf_probe_read_kernel(&sb, sizeof(sb), &d_inode->i_sb);
-    if (!sb)
-        return 0;
-    struct mount* mnt_ptr = NULL;
-    bpf_probe_read_kernel(&mnt_ptr, sizeof(mnt_ptr), &sb->s_fs_info);
-    if (!mnt_ptr)
-        return 0;
-    struct vfsmount* mnt = NULL;
-    bpf_probe_read_kernel(&mnt, sizeof(mnt), &mnt_ptr->mnt);
-    if (!mnt)
-        return 0;
+    struct vfsmount* mnt = get_write_mnt(BPF_CORE_READ(d_inode, i_sb));
 
-    const char* full_path = rt_slot_str(RT_SLOT_EVENT, rt_walk_path_at(new_dentry, mnt, RT_SLOT_EVENT));
+    const char* full_path = rt_slot_str(
+        RT_SLOT_EVENT, rt_walk_path_at(old ? old_dentry : new_dentry, mnt, RT_SLOT_EVENT));
     if (full_path)
     {
         submit_event(RT_EV_FILE_RENAME, full_path, inode, dev);
     }
     return 0;
+}
+
+SEC("kprobe/vfs_rename")
+int kprobe__vfs_rename(struct pt_regs* ctx)
+{
+    return vfs_rename_event(ctx, false);
+}
+
+SEC("kprobe/vfs_rename")
+int kprobe__vfs_rename_old(struct pt_regs* ctx)
+{
+    return vfs_rename_event(ctx, true);
 }
 
 char LICENSE[] SEC("license") = "GPL";

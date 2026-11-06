@@ -28,6 +28,7 @@
 
 #include "rt_engine.h"
 
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -66,6 +67,8 @@ struct counts
     unsigned long other;      /* anything else, including this process's own */
     unsigned int  first_uid;
     unsigned int  first_gid;
+    unsigned int  expected_login_uid;
+    pid_t         writer_pid;
     int           seen_any;
 };
 
@@ -75,10 +78,14 @@ static void on_event(const struct rt_file_event* ev, void* user)
 
     /* Only the child's events are interesting; the poller and everything else
      * on the host run as root and would drown the signal. */
-    if (ev->uid != TEST_UID && ev->uid != TEST_GID)
+    if (ev->pid != (unsigned int)c->writer_pid)
     {
         return;
     }
+
+    CHECK(ev->euid == TEST_UID, "euid=%u, expected %u", ev->euid, TEST_UID);
+    CHECK(ev->login_uid == c->expected_login_uid,
+          "login_uid=%u, expected %u", ev->login_uid, c->expected_login_uid);
 
     if (!c->seen_any)
     {
@@ -174,11 +181,35 @@ int main(int argc, char** argv)
     struct counts c;
     memset(&c, 0, sizeof(c));
 
+    /* fork inherits loginuid, and setuid/setgid do not change it. Reading it
+     * here therefore gives the writer's audit identity, even when unset. */
+    c.expected_login_uid = (unsigned int)-1;
+    FILE* loginuid = fopen("/proc/self/loginuid", "r");
+    if (loginuid)
+    {
+        CHECK(fscanf(loginuid, "%u", &c.expected_login_uid) == 1, "could not parse /proc/self/loginuid");
+        fclose(loginuid);
+    }
+    else
+    {
+        CHECK(errno == ENOENT, "could not read /proc/self/loginuid: %s", strerror(errno));
+    }
+    printf("expected writer euid=%u login_uid=%u\n", TEST_UID, c.expected_login_uid);
+
     const pid_t child = fork();
     if (child == 0)
     {
         generate_events_as_test_user(dir);
     }
+
+    if (child < 0)
+    {
+        rt_close(h);
+        rmdir(dir);
+        perror("fork");
+        return 1;
+    }
+    c.writer_pid = child;
 
     /* Poll while the child works, then drain what is left in the ring. */
     for (int i = 0; i < 40 && !c.seen_any; ++i)
@@ -186,7 +217,8 @@ int main(int argc, char** argv)
         rt_poll(h, on_event, &c, 100);
     }
     int status = 0;
-    waitpid(child, &status, 0);
+    CHECK(waitpid(child, &status, 0) == child, "could not wait for the writer");
+    CHECK(WIFEXITED(status) && WEXITSTATUS(status) == 0, "writer failed: status=%d", status);
     for (int i = 0; i < 10; ++i)
     {
         rt_poll(h, on_event, &c, 50);

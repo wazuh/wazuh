@@ -9,3 +9,7 @@ rt_engine_contract_test
 rt_engine_leak_test
 rt_engine_drops_test
 rt_engine_filter_test
+rt_engine_creds_test
+rt_engine_skip_test
+rt_engine_paths_test
+rt_engine_loader_test

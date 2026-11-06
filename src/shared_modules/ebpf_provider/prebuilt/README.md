@@ -24,9 +24,12 @@ warning in `ossec.log` since `c0e5f162bb`, but it is still the feature not
 running.
 
 Committing a binary to a source repository is not where this should end up. The
-better route is the one `modern.bpf.o` already takes: build it in the same
-out-of-repo image (clang-15, issue #28626) and ship it inside
+better route is the one `modern.bpf.o` used to take before it was retired: build
+it in the same out-of-repo image (clang-15, issue #28626) and ship it inside
 `libbpf-bootstrap.tar.gz`, so `external/CMakeLists.txt` finds it the same way.
+That tarball still exists and still carries `libbpf.so`, so the route is still
+open -- it just no longer has an occupant to copy from, which makes this a
+design to re-derive rather than a precedent to follow.
 That needs a deps-pipeline change and a `DEPS_VERSION` bump, which cannot be
 done from this repository — hence the committed objects for now. `CMakeLists.txt`
 is deliberately left preferring a prebuilt over compiling, so a deps-shipped
