@@ -18,7 +18,6 @@
 
 /* Read ucs2 files */
 void *read_ucs2_be(logreader *lf, int *rc, int drop_it) {
-    int __ms = 0;
     int __ms_reported = 0;
     char str[OS_MAXSTR_BE + 1];
     int lines = 0;
@@ -64,8 +63,40 @@ void *read_ucs2_be(logreader *lf, int *rc, int drop_it) {
             str[rbytes - 1] = '\0';
         } else if (truncated) {
             /* Message size > maximum allowed: send what we got so far */
-            __ms = 1;
             str[rbytes - 1] = '\0';
+
+            /* Discard the rest of the line now, before any continue below can skip it */
+            char rest[OS_SIZE_1024];
+            int64_t rest_offset = offset + rbytes;
+            int64_t rest_bytes;
+
+            while (fgets(rest, sizeof(rest), lf->fp) != NULL) {
+                rest_bytes = w_ftell(lf->fp) - rest_offset;
+
+                /* Flow control */
+                if (rest_bytes <= 0) {
+                    break;
+                }
+
+                if (is_valid_context_file) {
+                    OS_SHA1_Stream_Bytes(context, rest, (size_t) rest_bytes);
+                }
+
+                rest_offset += rest_bytes;
+
+                if (rest[rest_bytes - 1] == '\n') {
+                    break;
+                }
+            }
+
+            rbytes = rest_offset - offset;
+
+            if (!__ms_reported) {
+                merror("Large message size from file '%s' (length = %lld): '%.*s'...", lf->file, rbytes, sample_log_length, str);
+                __ms_reported = 1;
+            } else {
+                mdebug2("Large message size from file '%s' (length = %lld): '%.*s'...", lf->file, rbytes, sample_log_length, str);
+            }
         }
 
         char * p;
@@ -123,35 +154,6 @@ void *read_ucs2_be(logreader *lf, int *rc, int drop_it) {
             }
 
             os_free(utf8_string);
-        }
-        /* Incorrect message size */
-        if (__ms) {
-
-            if (!__ms_reported) {
-                merror("Large message size from file '%s' (length = %lld): '%.*s'...", lf->file, rbytes, sample_log_length, str);
-                __ms_reported = 1;
-            } else {
-                mdebug2("Large message size from file '%s' (length = %lld): '%.*s'...", lf->file, rbytes, sample_log_length, str);
-            }
-
-            for (offset += rbytes; fgets(str, OS_MAXSTR_BE - 2, lf->fp) != NULL; offset += rbytes) {
-                rbytes = w_ftell(lf->fp) - offset;
-
-                /* Flow control */
-                if (rbytes <= 0) {
-                    break;
-                }
-
-                if (is_valid_context_file) {
-                    OS_SHA1_Stream_Bytes(context, str, (size_t) rbytes);
-                }
-
-                /* Get the last occurrence of \n */
-                if (str[rbytes - 1] == '\n') {
-                    break;
-                }
-            }
-            __ms = 0;
         }
         current_position = w_ftell(lf->fp);
     }

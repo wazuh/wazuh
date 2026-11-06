@@ -21,7 +21,7 @@
 #include "../../os_crypto/sha1/sha1_op.h"
 #include "../wrappers/common.h"
 
-/* The UCS-2 readers read real files here: the property under test is that the
+/* The Windows readers read real files here: the property under test is that the
  * stored hash covers exactly the bytes up to the stored offset, so a restart
  * finds the file unchanged and resumes instead of reading it again from 0. */
 
@@ -32,10 +32,12 @@ extern int maximum_lines;
 
 void *read_ucs2_le(logreader *lf, int *rc, int drop_it);
 void *read_ucs2_be(logreader *lf, int *rc, int drop_it);
+void *read_syslog(logreader *lf, int *rc, int drop_it);
 
 static int64_t saved_offset;
 static char saved_hash[2 * SHA_DIGEST_LENGTH + 1];
 static int messages_sent;
+static char messages[4][64];
 
 /* Wraps */
 
@@ -68,10 +70,13 @@ int __wrap_w_update_file_status(__attribute__((unused)) const char * path, int64
     return 0;
 }
 
-int __wrap_w_msg_hash_queues_push(__attribute__((unused)) const char *str, __attribute__((unused)) char *file,
+int __wrap_w_msg_hash_queues_push(const char *str, __attribute__((unused)) char *file,
                                   __attribute__((unused)) unsigned long size,
                                   __attribute__((unused)) logtarget * targets,
                                   __attribute__((unused)) char queue_mq) {
+    if (messages_sent < 4) {
+        snprintf(messages[messages_sent], sizeof(messages[0]), "%s", str);
+    }
     messages_sent++;
     return 0;
 }
@@ -135,7 +140,7 @@ static void sha1_hex(const unsigned char * data, size_t len, char * hex) {
 }
 
 /* Write the buffer, run the reader once, and check the stored offset and hash */
-static void run_reader(test_buf_t * buf, bool big_endian, int64_t expected_offset, int expected_messages) {
+static void run_reader(test_buf_t * buf, void *(*reader)(logreader *, int *, int), int64_t expected_offset, int expected_messages) {
     char expected_hash[2 * SHA_DIGEST_LENGTH + 1];
     FILE * fp = fopen(TEST_FILE, "wb");
 
@@ -143,7 +148,7 @@ static void run_reader(test_buf_t * buf, bool big_endian, int64_t expected_offse
     assert_int_equal(fwrite(buf->data, 1, buf->len, fp), buf->len);
     fclose(fp);
 
-    logreader lf = { .file = TEST_FILE, .ucs2 = big_endian ? UCS2_BE : UCS2_LE };
+    logreader lf = { .file = TEST_FILE };
     lf.fp = fopen(TEST_FILE, "rb");
     assert_non_null(lf.fp);
 
@@ -152,11 +157,7 @@ static void run_reader(test_buf_t * buf, bool big_endian, int64_t expected_offse
     saved_hash[0] = '\0';
     messages_sent = 0;
 
-    if (big_endian) {
-        read_ucs2_be(&lf, &rc, 0);
-    } else {
-        read_ucs2_le(&lf, &rc, 0);
-    }
+    reader(&lf, &rc, 0);
 
     fclose(lf.fp);
     remove(TEST_FILE);
@@ -190,7 +191,7 @@ static void lines_hash_matches_file(bool big_endian) {
     append_bom(&buf, big_endian);
     append_utf16(&buf, "t6854 line one\r\nt6854 line two\r\nt6854 line three\r\n", big_endian);
 
-    run_reader(&buf, big_endian, (int64_t) buf.len, 3);
+    run_reader(&buf, big_endian ? read_ucs2_be : read_ucs2_le, (int64_t) buf.len, 3);
 }
 
 /* A line holding U+0000 is hashed whole: the line end is found by length, not by the first NUL */
@@ -203,7 +204,7 @@ static void nul_char_line_hash_matches_file(bool big_endian) {
     append_bytes(&buf, nul, 2);
     append_utf16(&buf, "after\r\nt6854 next line\r\n", big_endian);
 
-    run_reader(&buf, big_endian, (int64_t) buf.len, 2);
+    run_reader(&buf, big_endian ? read_ucs2_be : read_ucs2_le, (int64_t) buf.len, 2);
 }
 
 /* A last line without its line feed is not sent and not hashed: it is read again once complete */
@@ -215,7 +216,7 @@ static void partial_last_line_rolls_back(bool big_endian) {
     int64_t complete = (int64_t) buf.len;
     append_utf16(&buf, "t6854 half a li", big_endian);
 
-    run_reader(&buf, big_endian, complete, 1);
+    run_reader(&buf, big_endian ? read_ucs2_be : read_ucs2_le, complete, 1);
 }
 
 /* A line longer than the buffer is sent truncated, the rest of it is skipped, and every byte is hashed */
@@ -226,7 +227,42 @@ static void long_line_is_hashed_whole(bool big_endian) {
     append_long_line(&buf, MAX_LINE_WCHARS + 5000, big_endian);
     append_utf16(&buf, "t6854 after the long line\r\n", big_endian);
 
-    run_reader(&buf, big_endian, (int64_t) buf.len, 2);
+    run_reader(&buf, big_endian ? read_ucs2_be : read_ucs2_le, (int64_t) buf.len, 2);
+}
+
+/* An oversized line the reader skips is skipped whole: no part of it is sent, and the lines after it are */
+static void long_skipped_line_keeps_next_lines(bool big_endian) {
+    test_buf_t buf = { 0 };
+
+    append_bom(&buf, big_endian);
+    append_utf16(&buf, "t7184 first\r\n#", big_endian);
+    append_long_line(&buf, MAX_LINE_WCHARS + 5000, big_endian);
+    append_utf16(&buf, "t7184 after one\r\nt7184 after two\r\n", big_endian);
+
+    run_reader(&buf, big_endian ? read_ucs2_be : read_ucs2_le, (int64_t) buf.len, 3);
+    assert_non_null(strstr(messages[1], "t7184 after one"));
+    assert_non_null(strstr(messages[2], "t7184 after two"));
+}
+
+/* Same for the Windows syslog reader */
+void test_read_syslog_long_skipped_line(void ** state) {
+    test_buf_t buf = { 0 };
+    char * line = NULL;
+
+    os_calloc(MAX_LINE_WCHARS + 5004, sizeof(char), line);
+    line[0] = '#';
+    memset(line + 1, 'a', MAX_LINE_WCHARS + 5000);
+    strcat(line, "\r\n");
+
+    append_bytes(&buf, "t7184 first\r\n", 13);
+    append_bytes(&buf, line, strlen(line));
+    append_bytes(&buf, "t7184 after one\r\nt7184 after two\r\n", 34);
+    os_free(line);
+
+    run_reader(&buf, read_syslog, (int64_t) buf.len, 3);
+    assert_string_equal(messages[0], "t7184 first");
+    assert_string_equal(messages[1], "t7184 after one");
+    assert_string_equal(messages[2], "t7184 after two");
 }
 
 void test_read_ucs2_le_lines(void ** state) { lines_hash_matches_file(false); }
@@ -237,6 +273,8 @@ void test_read_ucs2_le_long_line(void ** state) { long_line_is_hashed_whole(fals
 void test_read_ucs2_le_nul_char(void ** state) { nul_char_line_hash_matches_file(false); }
 void test_read_ucs2_be_nul_char(void ** state) { nul_char_line_hash_matches_file(true); }
 void test_read_ucs2_be_long_line(void ** state) { long_line_is_hashed_whole(true); }
+void test_read_ucs2_le_long_skipped_line(void ** state) { long_skipped_line_keeps_next_lines(false); }
+void test_read_ucs2_be_long_skipped_line(void ** state) { long_skipped_line_keeps_next_lines(true); }
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -248,6 +286,9 @@ int main(void) {
         cmocka_unit_test(test_read_ucs2_be_long_line),
         cmocka_unit_test(test_read_ucs2_le_nul_char),
         cmocka_unit_test(test_read_ucs2_be_nul_char),
+        cmocka_unit_test(test_read_ucs2_le_long_skipped_line),
+        cmocka_unit_test(test_read_ucs2_be_long_skipped_line),
+        cmocka_unit_test(test_read_syslog_long_skipped_line),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
