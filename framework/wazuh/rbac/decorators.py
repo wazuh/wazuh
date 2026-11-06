@@ -530,9 +530,9 @@ def _has_update_permissions(update_actions: list = None, update_resources: list 
     Returns
     -------
     bool
-        True if user has 'manager:update_config' or 'cluster:update_config' (in black mode, the one
-        `update_ossec_conf` checks, unless a policy denies it), or `update_actions` on every requested resource when
-        given, False otherwise.
+        True if user has the permission `update_ossec_conf` checks on this node ('cluster:update_config' over the
+        local node when the cluster is enabled, 'manager:update_config' otherwise), or `update_actions` on every
+        requested resource when given, False otherwise.
     """
     perms = rbac.get() or {}
     if update_actions:
@@ -548,22 +548,16 @@ def _has_update_permissions(update_actions: list = None, update_resources: list 
             if not requested or None in requested or not set(requested) <= allow[res_id]:
                 return False
         return bool(target_params)
-    # In black mode an action no policy denies is allowed, so resolve the permission update_ossec_conf checks:
-    # cluster:update_config over the local node when the cluster is enabled, manager:update_config otherwise
-    if perms.get('rbac_mode') == 'black':
-        try:
-            cluster_config = read_config()
-            required = {'manager:update_config': ['*:*:*']} if cluster_config['disabled'] else \
-                {'cluster:update_config': [f"node:id:{cluster_config['node_name']}"]}
-            allow = _match_permissions(req_permissions=required, rbac_mode='black')
-        except Exception:
-            return False
-        return any(allow.values())
-    for action in ("manager:update_config", "cluster:update_config"):
-        action_map = perms.get(action)
-        if isinstance(action_map, dict) and any(effect == 'allow' for effect in action_map.values()):
-            return True
-    return False
+    # Resolve the permission update_ossec_conf checks: cluster:update_config over the local node when the cluster is
+    # enabled, manager:update_config otherwise
+    try:
+        cluster_config = read_config()
+        required = {'manager:update_config': ['*:*:*']} if cluster_config['disabled'] else \
+            {'cluster:update_config': [f"node:id:{cluster_config['node_name']}"]}
+        allow = _match_permissions(req_permissions=required, rbac_mode=perms['rbac_mode'])
+    except Exception:
+        return False
+    return any(allow.values())
 
 
 def _build_xml_mask_pattern(path: str) -> tuple:
