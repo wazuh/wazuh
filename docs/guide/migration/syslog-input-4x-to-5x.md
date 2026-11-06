@@ -60,6 +60,8 @@ Network device ──(UDP/TCP port 514)──► rsyslog ──► /var/log/remo
 
 Option A is simpler to operate: journald handles retention automatically and no agent configuration is needed beyond the default one. Option B is more portable and works on systems without systemd, and gives a clear per-host file for manual inspection.
 
+For syslog from network devices (firewalls, routers, switches), use Option B: Option A rebuilds each message's header in the journald reader, so device decoders that anchor on the original `<PRI>`, timestamp, and hostname can misfile or drop the event (see Option A below).
+
 ## Configuration mapping (4.x → 5.x)
 
 | 4.x `ossec.conf` | 5.x equivalent | Option |
@@ -123,6 +125,8 @@ The agent appears in the Wazuh dashboard under **Agent management -> Summary** w
 ## Option A: rsyslog → journald → logcollector
 
 rsyslog receives the syslog messages and writes them directly to the systemd journal using the `omjournal` output module. When the Wazuh agent is installed on a host where `journalctl` is available, its generated `ossec.conf` already includes a `<localfile>` with `<location>journald</location>` and `<log_format>journald</log_format>`, so no additional agent configuration is required. If that block is missing, add it.
+
+> **Not suitable for network-device syslog:** the agent's journald reader rebuilds each message as `TIMESTAMP _HOSTNAME SYSLOG_IDENTIFIER[PID]: MESSAGE`, discarding the device's original `<PRI>`, timestamp, and hostname (`_HOSTNAME` is always the collection host). Device decoders that anchor on the original header may therefore misfile the event or leave it unclassified — in testing, even a plain Linux `sshd` line failed this way. For network devices, use Option B below, which preserves the original line.
 
 > **Important:** The `_HOSTNAME` field in the systemd journal is a *trusted field* — journald always sets it to the local machine's hostname, and no application (including rsyslog) can override it.
 
@@ -216,8 +220,14 @@ module(load="imtcp")
 template(name="RemoteHostLogs" type="string"
          string="/var/log/remote/%FROMHOST-IP%.log")
 
+# Write each message exactly as the device sent it. %rawmsg% preserves the
+# original <PRI>, timestamp, hostname, and any RFC 5424 structured data.
+# Reformatting the message (for example with %msg%) strips those fields,
+# and device decoders that anchor on them then misfile or drop the event.
+template(name="RawLine" type="string" string="%rawmsg%\n")
+
 ruleset(name="remote_to_file") {
-    action(type="omfile" dynaFile="RemoteHostLogs")
+    action(type="omfile" dynaFile="RemoteHostLogs" template="RawLine")
 }
 
 input(type="imudp" port="514" ruleset="remote_to_file")
@@ -266,15 +276,15 @@ Edit the agent's configuration file at `/var/ossec/etc/ossec.conf` and add a `<l
 
 This single block covers all files written by rsyslog under `/var/log/remote/`, regardless of how many source hosts are added in the future.
 
-> **Message format and Wazuh decoder compatibility:** The `dynaFile` approach above uses rsyslog's default message format, which includes the syslog timestamp (`Jun  3 08:14:22`). The syslog decoders expect this RFC 3164 header, timestamp first. If you use a custom message template, it **must** include `%timereported:::date-rfc3164%` at the start:
+> **Message format and Wazuh decoder compatibility:** The configuration above writes each message unchanged with the `%rawmsg%` template, so each file holds byte-for-byte what the device sent. Do not reformat network-device syslog with a custom template: `%msg%` drops the leading `<PRI>` and any RFC 5424 structured data, and rsyslog rewrites headers it does not parse as RFC 3164 (for example, inserting a space after the first colon, or replacing the device hostname with the sender's address). Device decoders that anchor on the original header then fall back to `wazuh-core`, match the wrong integration, or extract fewer fields.
 >
 > ```
-> # Correct — timestamp is present, Wazuh syslog decoders match
-> template(name="MsgFmt" type="string" string="%timereported:::date-rfc3164% %HOSTNAME% %app-name%[%procid%]: %msg%\n")
-> action(type="omfile" file="/var/log/remote/syslog.log" template="MsgFmt")
+> # Correct — the original line is preserved, device decoders match
+> template(name="RawLine" type="string" string="%rawmsg%\n")
+> action(type="omfile" dynaFile="RemoteHostLogs" template="RawLine")
 >
-> # Wrong — no timestamp, events are left unclassified, without field extraction
-> template(name="MsgFmt" type="string" string="%HOSTNAME% %app-name%[%procid%]: %msg%\n")
+> # Wrong for network devices — <PRI> and structured data are stripped, events are misfiled or left unclassified
+> template(name="MsgFmt" type="string" string="%timereported:::date-rfc3164% %HOSTNAME% %app-name%[%procid%]: %msg%\n")
 > ```
 >
 > Events that no integration's decoder matches are unclassified (`wazuh.integration.category: unclassified`), with only `event.original` populated and no decoded fields. They are indexed, into `wazuh-events-v5-unclassified`, only when the policy's `index_unclassified_events` flag is set; it is `false` by default, and such events are then not indexed at all.
@@ -456,6 +466,8 @@ ruleset(name="remote_syslog") {
 input(type="imudp" port="514" ruleset="remote_syslog")
 input(type="imtcp" port="514" ruleset="remote_syslog")
 ```
+
+> **Note:** The template above reformats a generic test line for illustration. For syslog from network devices, use the `%rawmsg%` template from [Option B](#option-b-rsyslog--log-file--logcollector) instead, so the original line reaches the decoders unchanged.
 
 Remote logs appear in the output file:
 
