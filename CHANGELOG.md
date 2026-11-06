@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.12]
 
+### Manager
+
+#### Fixed
+
+- Hardened the cluster handshake and request queues. The master now rejects the reserved worker node name `master`, and a request that fails unexpectedly in the cluster request queues is discarded instead of stopping `wazuh-clusterd`. ([#41201](https://github.com/wazuh/wazuh/pull/41201))
+
 ## [v4.14.11]
 
 ### Manager
