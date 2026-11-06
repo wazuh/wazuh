@@ -18,6 +18,7 @@ from integration import WazuhGCloudIntegration
 try:
     from google.cloud import pubsub_v1 as pubsub
     import google.api_core.exceptions
+    import google.auth
 except ImportError as e:
     raise exceptions.GCloudError(errcode=1003, package=e.name)
 
@@ -31,7 +32,7 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
         Parameters
         ----------
         credentials_file : str
-            Path to credentials file.
+            Path to credentials file. If None, Application Default Credentials will be used.
         project : str
             Project name.
         subscription_id : str
@@ -62,14 +63,17 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
         Parameters
         ----------
         credentials_file : str
-            Path to credentials file.
+            Path to credentials file. If None, Application Default Credentials will be used.
 
         Returns
         -------
         pubsub.subscriber.Client
             Instance of subscriber client object created with the provided key.
         """
-        return pubsub.subscriber.Client.from_service_account_file(credentials_file)  # noqa: E501
+        if credentials_file:
+            return pubsub.subscriber.Client.from_service_account_file(credentials_file)  # noqa: E501
+        credentials, project = google.auth.default()
+        return pubsub.subscriber.Client(credentials=credentials)
 
     def get_subscription_path(self, project: str, subscription_id: str) -> str:
         """Get the subscription path.
