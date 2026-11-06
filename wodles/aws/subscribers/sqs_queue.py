@@ -2,7 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import botocore
 import sys
 from os import path
 
@@ -12,6 +11,11 @@ import sqs_message_processor
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import wazuh_integration
+# `botocore` must be imported after `wazuh_integration`: that module exits with
+# code 4 and the "boto3 module is required" message when `boto3` is missing.
+# Importing `botocore` first dies with an uncaught `ModuleNotFoundError` instead,
+# which the manager then reports only as `Unknown error.`
+import botocore
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_tools
