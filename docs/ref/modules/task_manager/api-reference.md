@@ -120,9 +120,10 @@ A missing or empty field, or a non-string one, answers `400` `parsing_error`. An
 `{"task_id": "<id>"}` or `{"task_id": null}`.
 
 The `task_id` is that of the agent's most recent `remote_upgrade` task (`create_time` descending, ties
-broken by `task_id` descending) that is either `pending` and created at most `task_ttl` seconds ago, or
-`delivered` and delivered at most `task_ttl` seconds ago (and still present: the cleanup pass deletes
-delivered rows 24 h after delivery), and whose `payload.wpk_file` equals the
+broken by `task_id` descending) that is either `delivered` and delivered at most `task_ttl` seconds ago
+(and still present: the cleanup pass deletes delivered rows 24 h after delivery), or `pending` or
+`expired` and created at most `2 * task_ttl + cleanup_interval` seconds ago (see
+[Agent upgrades](agent-upgrades.md)), and whose `payload.wpk_file` equals the
 requested name exactly. Rows whose payload is not an object with a string `wpk_file` are ignored.
 
 Read-only: it marks nothing delivered and neither reads nor changes the negative cache of

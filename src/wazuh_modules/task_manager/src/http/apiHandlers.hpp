@@ -75,6 +75,7 @@ namespace task_manager::http
                     int maxPayloadBytes,
                     int maxTasksPerPoll,
                     std::chrono::seconds agentTaskTtl,
+                    std::chrono::seconds cleanupInterval,
                     std::function<Timestamp()> now = {});
 
         // ---- agent tasks ---------------------------------------------------------------------
@@ -84,8 +85,9 @@ namespace task_manager::http
 
         /// @brief Name the open remote_upgrade task that lets an agent download one WPK, or null.
         ///
-        /// Read-only: no row and no negative-cache entry changes. Open means pending and created,
-        /// or delivered, within agentTaskTtl; the payload's wpk_file must equal the request's.
+        /// Read-only: no row and no negative-cache entry changes. Open means delivered within
+        /// agentTaskTtl, or not delivered here and created within 2 * agentTaskTtl +
+        /// cleanupInterval; the payload's wpk_file must equal the request's.
         ApiResponse authorizeWpkDownload(const nlohmann::json& body);
 
         // ---- manager tasks -------------------------------------------------------------------
@@ -109,6 +111,7 @@ namespace task_manager::http
         int m_maxPayloadBytes;
         int m_maxTasksPerPoll;
         std::chrono::seconds m_agentTaskTtl;
+        std::chrono::seconds m_cleanupInterval;
         std::function<Timestamp()> m_now;
     };
 
