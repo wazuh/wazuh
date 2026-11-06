@@ -252,8 +252,7 @@ inline bool validateBulkResponse(const std::string& response, const char* tag)
             if (status == HTTP_VERSION_CONFLICT)
             {
                 // A scripted update is retried by OpenSearch itself (retry_on_conflict), so a 409 that still comes
-                // back means a concurrent writer refused the write and this item's data was not stored. Only an
-                // `index`, `create` or `delete` 409 means "already applied".
+                // back means a concurrent writer refused the write and this item's data was not stored.
                 if (operation == "update")
                 {
                     const auto docIdIt = result.find("_id");

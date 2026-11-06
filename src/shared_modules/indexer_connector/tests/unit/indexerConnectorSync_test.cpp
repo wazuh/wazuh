@@ -7409,7 +7409,7 @@ TEST_F(IndexerConnectorSyncTest, FlushFailuresCarryTheirCause)
  * recovery this module's 500/503-then-re-POST design leans on -- must stage byte-identical
  * operations and be confirmed by the indexer, never duplicated and never reported as a failure.
  * A versioned item is a scripted update: the replay of the same version is rewritten by the
- * version-guarded script and answered 200 `updated`; the delete answers its version conflict.
+ * version-guarded script and answered 200 `updated`; the delete of a document that is already gone answers 404.
  */
 TEST_F(IndexerConnectorSyncTest, ReplayingAnAppliedSessionIsANoOpNotADuplicate)
 {
@@ -7427,13 +7427,11 @@ TEST_F(IndexerConnectorSyncTest, ReplayingAnAppliedSessionIsANoOpNotADuplicate)
                     respondBulkSuccess(postParams);
                     return;
                 }
-                // The replay: the update is rewritten at the same version, the delete is already applied.
-                respondBulkSuccess(
-                    postParams,
-                    R"({"took":1,"errors":true,"items":[)"
-                    R"({"update":{"_id":"cluster_agent1_doc1","status":200,"result":"updated"}},)"
-                    R"({"delete":{"_id":"cluster_agent1_doc2","status":409,)"
-                    R"("error":{"type":"version_conflict_engine_exception","reason":"already applied"}}}]})");
+                // The replay: the update is rewritten at the same version, the document is already deleted.
+                respondBulkSuccess(postParams,
+                                   R"({"took":1,"errors":true,"items":[)"
+                                   R"({"update":{"_id":"cluster_agent1_doc1","status":200,"result":"updated"}},)"
+                                   R"({"delete":{"_id":"cluster_agent1_doc2","status":404,"result":"not_found"}}]})");
             }));
 
     IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));

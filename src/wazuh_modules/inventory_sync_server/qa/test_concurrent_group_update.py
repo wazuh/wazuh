@@ -124,6 +124,8 @@ def _rounds(sync_client, update_client, cluster, indexer, agent_id, kind):
             retry = sync_client.post_stateful(_sync_session(cluster, agent_id, checksum, version, **fields),
                                               agent_id=agent_id)
             assert retry.status == 200, retry.body
+            if stale := _stale(indexer, agent_id, checksum):
+                lost[rnd] = len(stale)
         _assert_agent_fields(indexer, agent_id, fields)
     return lost
 
