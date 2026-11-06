@@ -246,6 +246,20 @@ namespace SchemaValidator
                             continue;
                         }
 
+                        if (fieldValue.is_array())
+                        {
+                            for (size_t i = 0; i < fieldValue.size(); ++i)
+                            {
+                                if (!fieldValue[i].is_null())
+                                {
+                                    std::string elementPath = fieldPath + "[" + std::to_string(i) + "]";
+                                    validateObject(fieldValue[i], fieldSchema["properties"], elementPath, result);
+                                }
+                            }
+
+                            continue;
+                        }
+
                         if (!fieldValue.is_object())
                         {
                             result.errors.push_back(fieldPath + ": Expected object, got " +
