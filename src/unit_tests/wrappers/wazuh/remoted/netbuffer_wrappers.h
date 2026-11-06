@@ -19,6 +19,8 @@ int __wrap_nb_close_socket(__attribute__((unused)) netbuffer_t * recv,
                            int sock,
                            int * was_unassociated);
 
+int __wrap_nb_claim_close(__attribute__((unused)) netbuffer_t * recv, int sock, size_t counter);
+
 int __wrap_nb_mark_associated(__attribute__((unused)) netbuffer_t * buffer, int sock, size_t counter);
 
 void __wrap_nb_open(__attribute__((unused)) netbuffer_t * buffer, int sock, const struct sockaddr_storage * peer_info);
