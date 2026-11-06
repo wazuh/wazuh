@@ -326,17 +326,6 @@ void AgentSyncProtocol::persistDifference(const std::string& id,
 
 SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
 {
-    return synchronizeModuleUpTo(mode, option, m_maxBlocksPerSync);
-}
-
-SyncModuleResult AgentSyncProtocol::synchronizeModuleBounded(Mode mode, size_t maxBlocks)
-{
-    const size_t limit = (maxBlocks > 0 && maxBlocks < m_maxBlocksPerSync) ? maxBlocks : m_maxBlocksPerSync;
-    return synchronizeModuleUpTo(mode, Option::SYNC, limit);
-}
-
-SyncModuleResult AgentSyncProtocol::synchronizeModuleUpTo(Mode mode, Option option, size_t maxBlocks)
-{
     // Validate synchronization mode
     if (mode != Mode::DELTA)
     {
@@ -394,7 +383,7 @@ SyncModuleResult AgentSyncProtocol::synchronizeModuleUpTo(Mode mode, Option opti
 
     clearSyncState();
 
-    return synchronizeDeltaByBlocks(option, maxBlocks);
+    return synchronizeDeltaByBlocks(option);
 }
 
 bool AgentSyncProtocol::isUncappedSyncOption(Option option) const
@@ -402,7 +391,7 @@ bool AgentSyncProtocol::isUncappedSyncOption(Option option) const
     return option == Option::VDFIRST || option == Option::VDSYNC;
 }
 
-SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option, size_t maxBlocks)
+SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
 {
     try
     {
@@ -429,7 +418,7 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option, size
     bool sentAny = false;
     size_t blocksSent = 0;
 
-    while (!shouldStop() && blocksSent < maxBlocks)
+    while (!shouldStop() && blocksSent < m_maxBlocksPerSync)
     {
         std::vector<PersistedData> dataToSync;
 
@@ -559,7 +548,8 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option, size
             .awaitingPrerequisite = awaitingPrerequisite,
             .localTransportUnavailable = false,
             .sentAnything = sentAny,
-            .feedNotReady = feedNotReady};
+            .feedNotReady = feedNotReady,
+            .reachedBlockLimit = success && blocksSent >= m_maxBlocksPerSync};
 }
 
 unsigned int AgentSyncProtocol::trackSyncOutcome(bool success, bool expectedFailure)

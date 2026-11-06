@@ -673,8 +673,9 @@ defaults). A first synchronization larger than that, such as the Windows registr
 several intervals to reach the indexer, and items queued after it wait their turn. Syscollector's
 vulnerability detection sync is bounded too, but it has no byte budget, so its first block already
 carries everything queued. FIM's recovery resync (after an agent ID change or a failed integrity check)
-runs while it holds the scan locks, so it sends at most 10 blocks per table whatever this option says,
-and the regular cycle sends the rest. The value is read once, when the agent starts.
+queues every entry while it holds the scan locks and sends them after releasing them, in one cycle with
+this same limit; if entries are left, it logs that they will be sent in the next synchronization. The
+value is read once, when the agent starts.
 
 ### Buffer Settings
 

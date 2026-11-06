@@ -66,17 +66,6 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @copydoc IAgentSyncProtocol::synchronizeModule
         SyncModuleResult synchronizeModule(Mode mode, Option option = Option::SYNC) override;
 
-        /// @brief synchronizeModule() with a tighter block limit for this one call.
-        ///
-        /// For callers that synchronize while holding locks other threads wait on, so the
-        /// time they hold them stays bounded. Whatever is left stays queued for the next
-        /// regular cycle.
-        ///
-        /// @param mode Synchronization mode.
-        /// @param maxBlocks Most blocks this call may send. Zero, or a value above the
-        ///                  instance's own limit, uses that limit.
-        SyncModuleResult synchronizeModuleBounded(Mode mode, size_t maxBlocks);
-
         /// @copydoc IAgentSyncProtocol::requiresFullSync
         IntegrityCheckResult requiresFullSync(const std::string& index,
                                               const std::string& checksum) override;
@@ -296,12 +285,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Whether this synchronization option must bypass FullSession size capping.
         bool isUncappedSyncOption(Option option) const;
 
-        /// @brief Shared body of synchronizeModule() and synchronizeModuleBounded().
-        SyncModuleResult synchronizeModuleUpTo(Mode mode, Option option, size_t maxBlocks);
-
         /// @brief Splits DELTA sync into capped FullSessions by fetching blocks from the queue,
-        ///        sending at most @p maxBlocks of them.
-        SyncModuleResult synchronizeDeltaByBlocks(Option option, size_t maxBlocks);
+        ///        sending at most m_maxBlocksPerSync of them.
+        SyncModuleResult synchronizeDeltaByBlocks(Option option);
 
         /// @brief Applies the /stateful HTTP result received from https_client callback
         ///        routing. This IS the sync protocol's response path: there is no EndAck
