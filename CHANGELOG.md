@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.12]
 
+### Ruleset
+
+#### Added
+
+- Added rules 92607 and 92608 to detect `curl` or `wget` calling the cloud instance metadata service (IMDS) and asking for IAM role credentials, from auditd events. ([#41060](https://github.com/wazuh/wazuh/pull/41060))
+
 ## [v4.14.11]
 
 ### Manager
