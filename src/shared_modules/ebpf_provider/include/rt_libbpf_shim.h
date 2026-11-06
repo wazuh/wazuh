@@ -56,6 +56,10 @@ struct ring_buffer_opts;
 /* Must match libbpf's declaration: the ring buffer calls this per record. */
 typedef int (*ring_buffer_sample_fn)(void* ctx, void* data, size_t size);
 
+/* BPF_MAP_TYPE_RINGBUF from the kernel's enum bpf_map_type (UAPI, so fixed),
+ * for libbpf_probe_bpf_map_type(). */
+#define RT_BPF_MAP_TYPE_RINGBUF 27
+
 #ifdef __cplusplus
 }
 #endif
