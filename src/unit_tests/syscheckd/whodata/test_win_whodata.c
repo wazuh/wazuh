@@ -4529,6 +4529,21 @@ void test_whodata_event_parse_filter_path(void **state) {
     assert_int_equal(result, -1);
 }
 
+void test_whodata_path_filter_recycle_bin_folder(void **state) {
+    char *path = "c:\\$recycle.bin";
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6289): File 'c:\\$recycle.bin' is in the recycle bin. It will be discarded.");
+
+    assert_int_equal(whodata_path_filter(&path), 1);
+}
+
+void test_whodata_path_filter_recycle_bin_prefix_folder(void **state) {
+    char *path = "c:\\$recycle.bin2\\test.file";
+
+    assert_int_equal(whodata_path_filter(&path), 0);
+}
+
 void test_whodata_event_parse_wrong_types(void **state) {
     EVT_VARIANT raw_data[] = {
         { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
@@ -8272,6 +8287,8 @@ int main(void) {
         cmocka_unit_test(test_whodata_event_parse_wrong_path_type),
         cmocka_unit_test(test_whodata_event_parse_fail_to_get_path),
         cmocka_unit_test(test_whodata_event_parse_filter_path),
+        cmocka_unit_test(test_whodata_path_filter_recycle_bin_folder),
+        cmocka_unit_test(test_whodata_path_filter_recycle_bin_prefix_folder),
         cmocka_unit_test(test_whodata_event_parse_wrong_types),
         cmocka_unit_test(test_whodata_event_parse_32bit_process_id),
         cmocka_unit_test(test_whodata_event_parse_32bit_hex_process_id),
