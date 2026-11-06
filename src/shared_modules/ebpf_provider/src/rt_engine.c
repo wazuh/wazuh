@@ -56,6 +56,8 @@
 #define LSM_LIST_FILE "/sys/kernel/security/lsm"
 #define KERNEL_BTF_FILE "/sys/kernel/btf/vmlinux"
 #define RT_PROG_NAME_MAX 64
+/* The kernel's ENOTSUPP, which userspace headers do not define. */
+#define RT_ENOTSUPP 524
 #define LIBBPF_SONAME_PRIMARY "libbpf.so.1"
 #define LIBBPF_SONAME_FALLBACK "libbpf.so"
 
@@ -87,9 +89,10 @@ struct libbpf_api
     int (*map_lookup_elem)(int, const void*, void*);
     int (*map_update_elem)(int, const void*, const void*, unsigned long long);
     int (*map_delete_elem)(int, const void*);
-    /* Preferred when present: one syscall, and atomic against the BPF side
-     * still incrementing the entry. Absent on kernels/libbpf builds without
-     * BPF_MAP_LOOKUP_AND_DELETE_ELEM for hash maps, hence optional. */
+    /* Preferred: one syscall, and atomic against the BPF side still
+     * incrementing the entry. Optional because an older libbpf lacks it, and
+     * kernels before 5.14 reject it for hash maps; rt_drain_drops() falls back
+     * to lookup plus delete in both cases. */
     int (*map_lookup_and_delete_elem)(int, const void*, void*);
 
     /* BTF, for reading a v1 controller's `enum cgroup_subsys_id` value out of
@@ -239,9 +242,9 @@ static int resolve_libbpf(const struct rt_log_target* log, const char* libbpf_pa
     RT_RESOLVE_SYM(map_update_elem, "bpf_map_update_elem");
     RT_RESOLVE_SYM(map_delete_elem, "bpf_map_delete_elem");
 
-    /* Optional — see the struct comment. Absence costs one extra syscall per
-     * reported cgroup and a narrow race with the BPF side, not correctness of
-     * the visible-loss guarantee. */
+    /* Optional — see the struct comment. The fallback costs one extra syscall
+     * per reported cgroup and a narrow race with the BPF side, not correctness
+     * of the visible-loss guarantee. */
     *(void**)(&g_libbpf.map_lookup_and_delete_elem) = dlsym(mod, "bpf_map_lookup_and_delete_elem");
     *(void**)(&g_libbpf.probe_map_type) = dlsym(mod, "libbpf_probe_bpf_map_type");
 
@@ -338,6 +341,8 @@ struct rt_engine_handle
     /* fd of cgroup_drops_map, or -1 when the loaded object predates it. */
     int cgroup_drops_fd;
     int cgroup_drops_absent_reported;
+    /* Set once the kernel has refused the atomic lookup-and-delete on it. */
+    int cgroup_drops_non_atomic;
 
     /* fds of the filtering maps, or -1 when the object predates them. */
     int filter_cfg_fd;
@@ -1269,18 +1274,25 @@ int rt_drain_drops(rt_handle_t handle, rt_drop_fn cb, void* user)
     {
         unsigned int drops = 0;
 
-        if (g_libbpf.map_lookup_and_delete_elem)
+        const int atomic = g_libbpf.map_lookup_and_delete_elem && !h->cgroup_drops_non_atomic;
+        int atomic_errno = 0;
+        if (atomic && g_libbpf.map_lookup_and_delete_elem(h->cgroup_drops_fd, &keys[i], &drops) != 0)
         {
-            if (g_libbpf.map_lookup_and_delete_elem(h->cgroup_drops_fd, &keys[i], &drops) != 0)
-            {
-                continue; /* raced with another drain, or already gone */
-            }
+            atomic_errno = errno ? errno : EIO;
         }
-        else
+
+        if (!atomic || atomic_errno != 0)
         {
             if (g_libbpf.map_lookup_elem(h->cgroup_drops_fd, &keys[i], &drops) != 0)
             {
-                continue;
+                continue; /* already gone */
+            }
+            /* Kernels before 5.14 implement the atomic call only for queue and
+             * stack maps and answer ENOTSUPP here. Any other error is taken as
+             * transient, so the next drain tries the atomic call again. */
+            if (atomic_errno == RT_ENOTSUPP)
+            {
+                h->cgroup_drops_non_atomic = 1;
             }
             /* Non-atomic fallback: a drop recorded between the lookup and the
              * delete is lost from the per-cgroup view. It is still counted in
