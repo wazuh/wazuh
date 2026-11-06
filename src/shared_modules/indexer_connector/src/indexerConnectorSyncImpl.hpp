@@ -121,6 +121,9 @@ inline void appendEscapedId(std::string& bulkData, std::string_view id)
     }
 }
 
+// Retries OpenSearch does inside a bulk `update` item on a seq_no conflict before answering 409.
+constexpr auto UPDATE_RETRY_ON_CONFLICT {5};
+
 /**
  * @brief Builds an update operation with Painless script for version checking
  * @param bulkData The string to append the update operation to
@@ -135,6 +138,10 @@ inline void appendEscapedId(std::string& bulkData, std::string_view id)
  *
  * The no-op is `ctx.op = 'none'`, the value the update API accepts; any other value is still skipped but
  * logged by OpenSearch as a WARN per document. `_update_by_query` scripts use `noop` instead and reject `none`.
+ *
+ * The action carries `retry_on_conflict`: the update API writes with the seq_no it read the document at, so a
+ * concurrent write to the same document (a group or metadata `_update_by_query` from another node) makes the
+ * item answer 409 and drop its data. With it, OpenSearch re-reads the document and re-runs the script instead.
  */
 inline void appendScriptedUpdate(
     std::string& bulkData, std::string_view index, std::string_view id, std::string_view version, std::string_view data)
@@ -144,7 +151,9 @@ inline void appendScriptedUpdate(
     bulkData.append(index);
     bulkData.append(R"(","_id":")");
     appendEscapedId(bulkData, id);
-    bulkData.append(R"("}})");
+    bulkData.append(R"(","retry_on_conflict":)");
+    bulkData.append(std::to_string(UPDATE_RETRY_ON_CONFLICT));
+    bulkData.append(R"(}})");
     bulkData.append("\n");
 
     // Build script that checks state.document_version field
@@ -168,7 +177,8 @@ inline void appendScriptedUpdate(
  * @throws std::exception if response parsing fails
  *
  * This function validates each document in the bulk response individually.
- * It treats version conflicts where the same document version already exists as success.
+ * It treats version conflicts where the same document version already exists as success for `index`, `delete`
+ * and `create` items; a version conflict on an `update` item is a failure, since its write was refused.
  * Memory-safe: uses nlohmann::json which handles large documents efficiently.
  */
 inline bool validateBulkResponse(const std::string& response, const char* tag)
@@ -241,6 +251,22 @@ inline bool validateBulkResponse(const std::string& response, const char* tag)
             // Version conflict - check if it's the acceptable type
             if (status == HTTP_VERSION_CONFLICT)
             {
+                // A scripted update is retried by OpenSearch itself (retry_on_conflict), so a 409 that still comes
+                // back means a concurrent writer refused the write and this item's data was not stored. Only an
+                // `index`, `create` or `delete` 409 means "already applied".
+                if (operation == "update")
+                {
+                    const auto docIdIt = result.find("_id");
+                    logWarn(tag,
+                            "Version conflict on the update of document '%s': the write was refused and its data was "
+                            "not stored",
+                            docIdIt != result.end() && docIdIt->is_string()
+                                ? docIdIt->get_ref<const std::string&>().c_str()
+                                : "unknown");
+                    realFailureCount++;
+                    continue;
+                }
+
                 bool isAcceptableConflict = false;
 
                 // Check if this is a version_conflict_engine_exception

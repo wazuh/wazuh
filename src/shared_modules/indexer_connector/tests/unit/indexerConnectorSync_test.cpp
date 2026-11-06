@@ -3038,11 +3038,11 @@ TEST_F(IndexerConnectorSyncTest, BulkResponseValidationVersionConflictAccepted)
             }));
 
     IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
-    connector.bulkIndex("1", "test-index", R"({"field":"value1"})", "5");
-    connector.bulkIndex("2", "test-index", R"({"field":"value2"})", "5");
-    connector.bulkIndex("3", "test-index", R"({"field":"value3"})", "5");
+    connector.bulkIndex("1", "test-index", R"({"field":"value1"})");
+    connector.bulkIndex("2", "test-index", R"({"field":"value2"})");
+    connector.bulkIndex("3", "test-index", R"({"field":"value3"})");
 
-    // Should not throw - version conflicts are acceptable
+    // Should not throw - an index item's version conflict is acceptable
     EXPECT_NO_THROW(connector.flush());
     EXPECT_TRUE(postCalled);
 }
@@ -3116,6 +3116,51 @@ TEST_F(IndexerConnectorSyncTest, BulkResponseUpdateItemVersionConflictIsAFailure
 
     EXPECT_THROW(connector.flush(), IndexerConnectorException)
         << "a 409 on a scripted update item means its data was NOT stored, it cannot be counted as success";
+}
+
+/// The 409 rule is decided per item operation, not per response: an `index` 409 next to an `update` 200 in the
+/// same bulk answer is still the accepted "already applied" conflict and must not fail the flush.
+TEST_F(IndexerConnectorSyncTest, BulkResponseIndexVersionConflictNextToAnUpdateIsStillAccepted)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [](auto /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                std::string mixedResponse = R"({
+                    "took": 10,
+                    "errors": true,
+                    "items": [
+                        {"update": {"_id": "1", "status": 200, "result": "updated"}},
+                        {"index": {
+                            "_id": "2",
+                            "status": 409,
+                            "error": {
+                                "type": "version_conflict_engine_exception",
+                                "reason": "[2]: version conflict, current version [5] is higher or equal to the one provided [5]"
+                            }
+                        }}
+                    ]
+                })";
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(mixedResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(mixedResponse));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndex("1", "test-index", R"({"field":"value1"})", "5");
+    connector.bulkIndex("2", "test-index", R"({"field":"value2"})");
+
+    EXPECT_NO_THROW(connector.flush()) << "an index 409 is accepted even when the same response carries update items";
 }
 
 TEST_F(IndexerConnectorSyncTest, BulkResponseValidationRealFailure)
@@ -7362,8 +7407,9 @@ TEST_F(IndexerConnectorSyncTest, FlushFailuresCarryTheirCause)
 /**
  * R-11, idempotency as a contract: replaying a session the indexer already applied -- the exact
  * recovery this module's 500/503-then-re-POST design leans on -- must stage byte-identical
- * operations and be confirmed by the indexer's version conflicts, never duplicated and never
- * reported as a failure.
+ * operations and be confirmed by the indexer, never duplicated and never reported as a failure.
+ * A versioned item is a scripted update: the replay of the same version is rewritten by the
+ * version-guarded script and answered 200 `updated`; the delete answers its version conflict.
  */
 TEST_F(IndexerConnectorSyncTest, ReplayingAnAppliedSessionIsANoOpNotADuplicate)
 {
@@ -7381,12 +7427,11 @@ TEST_F(IndexerConnectorSyncTest, ReplayingAnAppliedSessionIsANoOpNotADuplicate)
                     respondBulkSuccess(postParams);
                     return;
                 }
-                // The replay: every document already exists at this version.
+                // The replay: the update is rewritten at the same version, the delete is already applied.
                 respondBulkSuccess(
                     postParams,
                     R"({"took":1,"errors":true,"items":[)"
-                    R"({"index":{"_id":"cluster_agent1_doc1","status":409,)"
-                    R"("error":{"type":"version_conflict_engine_exception","reason":"already applied"}}},)"
+                    R"({"update":{"_id":"cluster_agent1_doc1","status":200,"result":"updated"}},)"
                     R"({"delete":{"_id":"cluster_agent1_doc2","status":409,)"
                     R"("error":{"type":"version_conflict_engine_exception","reason":"already applied"}}}]})");
             }));
