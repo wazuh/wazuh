@@ -193,6 +193,11 @@ REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.auth.keystore.entries_skipped", "keystore_entries_skipped"),
     ("remoted.auth.keystore.reloads.total", "keystore_reloads_total"),
     ("remoted.auth.keystore.reload_failures.total", "keystore_reload_failures_total"),
+    # Accepted /enroll answers by whether this node served the issued key before sending them
+    # (master only): enroll_unconfirmed_total moving means agents were answered with a key the
+    # node did not serve yet.
+    ("remoted.auth.keystore.enroll_confirmed.total", "keystore_enroll_confirmed_total"),
+    ("remoted.auth.keystore.enroll_unconfirmed.total", "keystore_enroll_unconfirmed_total"),
     # Per-endpoint response outcomes ("what the agent got"), one closed set x four endpoints.
     ("remoted.http.stateless.responses.2xx", "http_stateless_responses_2xx"),
     ("remoted.http.stateless.responses.400", "http_stateless_responses_400"),

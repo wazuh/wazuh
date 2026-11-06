@@ -95,6 +95,18 @@
       "value": 4004.0
     },
     {
+      "name": "remoted.auth.keystore.enroll_confirmed.total",
+      "type": "pull",
+      "enabled": true,
+      "value": 4005.0
+    },
+    {
+      "name": "remoted.auth.keystore.enroll_unconfirmed.total",
+      "type": "pull",
+      "enabled": true,
+      "value": 4006.0
+    },
+    {
       "name": "remoted.auth.reject.address_not_allowed",
       "type": "counter",
       "enabled": true,

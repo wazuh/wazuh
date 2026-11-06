@@ -14,12 +14,15 @@
 
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <functional>
+#include <mutex>
 #include <thread>
 
 #include <gtest/gtest.h>
 
 #include "auth/keystore.hpp"
+#include "enrollment/keyConfirmation.hpp"
 
 using namespace remoted::auth;
 
@@ -488,3 +491,185 @@ namespace
     }
 
 } // namespace
+
+// -----------------------------------------------------------------------------
+// confirm(): the enrollment path's last step before the 200 leaves -- the key
+// authd just issued must be served by this node by then.
+// -----------------------------------------------------------------------------
+
+namespace
+{
+    constexpr const char* kKeyA = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    constexpr const char* kKeyB = "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210";
+} // namespace
+
+TEST_F(KeystoreTest, ConfirmFindsAKeyTheTableAlreadyServesWithoutReloading)
+{
+    writeFile(std::string("001 agent1 any ") + kKeyA + "\n");
+    Keystore keystore(m_path, 60);
+    const auto reloadsBefore = keystore.reloadsTotal();
+
+    EXPECT_TRUE(keystore.confirm("001", kKeyA));
+
+    EXPECT_EQ(keystore.reloadsTotal(), reloadsBefore);
+    EXPECT_EQ(keystore.enrollConfirmationsTotal(), 1U);
+    EXPECT_EQ(keystore.enrollUnconfirmedTotal(), 0U);
+}
+
+TEST_F(KeystoreTest, ConfirmReloadsTheFileWhenTheTableLagsBehindIt)
+{
+    // Built on a path that does not exist yet: the inotify watch cannot be placed, so the watcher only
+    // polls (60 s here) and cannot reload before confirm() does. That makes the reload below confirm()'s.
+    Keystore keystore(m_path, 60);
+    ASSERT_EQ(keystore.reloadsTotal(), 0U);
+    ASSERT_FALSE(keyOf(keystore, 2).has_value());
+
+    // authd's writer rewrote the file with the new entry; this node's table does not have it yet.
+    writeFile(std::string("001 agent1 any ") + kKeyA + "\n002 agent2 any " + kKeyB + "\n");
+
+    EXPECT_TRUE(keystore.confirm("002", kKeyB));
+
+    const auto served = keyOf(keystore, 2);
+    ASSERT_TRUE(served.has_value());
+    EXPECT_EQ(served->size(), 32U);
+    EXPECT_EQ(keystore.enrollConfirmationsTotal(), 1U);
+    EXPECT_EQ(keystore.reloadsTotal(), 1U);
+}
+
+TEST_F(KeystoreTest, ConcurrentConfirmationsOfOnePassShareOneReload)
+{
+    // Same trick: no inotify watch, so every reload counted below is one that confirm() made.
+    Keystore keystore(m_path, 60);
+    ASSERT_EQ(keystore.reloadsTotal(), 0U);
+
+    // One writer pass landed eight entries at once (authd rewrites the file whole).
+    std::string contents;
+    std::vector<std::string> keys;
+    for (int i = 1; i <= 8; ++i)
+    {
+        std::string key(64, '0');
+        key[63] = static_cast<char>('0' + i);
+        keys.push_back(key);
+        contents += "00" + std::to_string(i) + " agent" + std::to_string(i) + " any " + key + "\n";
+    }
+    writeFile(contents);
+
+    // Eight enrollments confirming their own key at the same time, as AuthdClient's workers do. A
+    // latch holds them until all eight are ready, so they contend for the reload lock instead of
+    // running one after another.
+    std::mutex latchMutex;
+    std::condition_variable latchCv;
+    int ready = 0;
+    std::atomic<int> confirmed {0};
+    std::vector<std::thread> threads;
+    for (int i = 1; i <= 8; ++i)
+    {
+        threads.emplace_back(
+            [&, i]
+            {
+                {
+                    std::unique_lock<std::mutex> lock(latchMutex);
+                    ++ready;
+                    latchCv.notify_all();
+                    latchCv.wait(lock, [&] { return ready == 8; });
+                }
+                if (keystore.confirm("00" + std::to_string(i), keys[static_cast<std::size_t>(i - 1)]))
+                {
+                    ++confirmed;
+                }
+            });
+    }
+    for (auto& thread : threads)
+    {
+        thread.join();
+    }
+
+    EXPECT_EQ(confirmed.load(), 8);
+    EXPECT_EQ(keystore.enrollConfirmationsTotal(), 8U);
+    // The first one parsed; the seven that queued behind its reload found their key under the lock.
+    EXPECT_EQ(keystore.reloadsTotal(), 1U);
+}
+
+TEST_F(KeystoreTest, ConfirmIsFalseWhenTheFileDoesNotCarryTheKeyYet)
+{
+    writeFile(std::string("001 agent1 any ") + kKeyA + "\n");
+    Keystore keystore(m_path, 60);
+
+    // A worker's copy, or a master whose writer did not land the pass in time.
+    EXPECT_FALSE(keystore.confirm("002", kKeyB));
+
+    EXPECT_FALSE(keyOf(keystore, 2).has_value());
+    EXPECT_EQ(keystore.enrollConfirmationsTotal(), 0U);
+    EXPECT_EQ(keystore.enrollUnconfirmedTotal(), 1U);
+}
+
+TEST_F(KeystoreTest, ConfirmIsFalseWhileTheFileStillCarriesThePreviousKey)
+{
+    // A re-enrollment rotated the key in place; until the file shows the new one the agent's
+    // signed requests fail here, and the enrollment answer must not claim otherwise.
+    writeFile(std::string("001 agent1 any ") + kKeyA + "\n");
+    Keystore keystore(m_path, 60);
+
+    EXPECT_FALSE(keystore.confirm("001", kKeyB));
+    EXPECT_EQ(keystore.enrollUnconfirmedTotal(), 1U);
+
+    writeFile(std::string("001 agent1 any ") + kKeyB + "\n");
+    EXPECT_TRUE(keystore.confirm("001", kKeyB));
+    EXPECT_EQ(keystore.enrollConfirmationsTotal(), 1U);
+}
+
+TEST_F(KeystoreTest, ConfirmRejectsWhatCouldNeverBeServed)
+{
+    writeFile(std::string("001 agent1 any ") + kKeyA + "\n");
+    Keystore keystore(m_path, 60);
+    const auto reloadsBefore = keystore.reloadsTotal();
+
+    EXPECT_FALSE(keystore.confirm("agent1", kKeyA));  // not an agent id
+    EXPECT_FALSE(keystore.confirm("001", "not-hex")); // not a 32-byte key
+    EXPECT_FALSE(keystore.confirm("001", ""));
+
+    // Neither costs a parse.
+    EXPECT_EQ(keystore.reloadsTotal(), reloadsBefore);
+    EXPECT_EQ(keystore.enrollUnconfirmedTotal(), 3U);
+}
+
+TEST_F(KeystoreTest, ConfirmLeavesAnUnreadableFileAlone)
+{
+    writeFile(std::string("001 agent1 any ") + kKeyA + "\n");
+    Keystore keystore(m_path, 60);
+    std::remove(m_path.c_str());
+
+    // The previous table stays in service; the new key is simply not confirmed.
+    EXPECT_FALSE(keystore.confirm("002", kKeyB));
+    EXPECT_TRUE(keyOf(keystore, 1).has_value());
+    EXPECT_EQ(keystore.enrollUnconfirmedTotal(), 1U);
+}
+
+// -----------------------------------------------------------------------------
+// The facade's wiring: which node confirms.
+// -----------------------------------------------------------------------------
+
+TEST_F(KeystoreTest, TheMasterConfirmsThroughTheKeystore)
+{
+    writeFile(std::string("001 agent1 any ") + kKeyA + "\n");
+    auto keystore = std::make_shared<Keystore>(m_path, 60);
+
+    const auto confirm = remoted::enrollment::keyConfirmationFor(/*workerNode=*/false, keystore);
+    ASSERT_TRUE(static_cast<bool>(confirm));
+    EXPECT_TRUE(confirm("001", kKeyA));
+    EXPECT_FALSE(confirm("002", kKeyB));
+    EXPECT_EQ(keystore->enrollConfirmationsTotal(), 1U);
+    EXPECT_EQ(keystore->enrollUnconfirmedTotal(), 1U);
+}
+
+TEST_F(KeystoreTest, AWorkerDoesNotConfirm)
+{
+    // Its file arrives with the cluster synchronization: a confirmation would only ever fail and warn.
+    writeFile(std::string("001 agent1 any ") + kKeyA + "\n");
+    auto keystore = std::make_shared<Keystore>(m_path, 60);
+
+    const auto confirm = remoted::enrollment::keyConfirmationFor(/*workerNode=*/true, keystore);
+    EXPECT_FALSE(static_cast<bool>(confirm));
+    EXPECT_EQ(keystore->enrollConfirmationsTotal(), 0U);
+    EXPECT_EQ(keystore->enrollUnconfirmedTotal(), 0U);
+}

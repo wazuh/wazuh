@@ -21,6 +21,7 @@
 #include <cstddef>
 #include <functional>
 #include <memory>
+#include <string>
 
 namespace remoted::enrollment
 {
@@ -61,6 +62,16 @@ namespace remoted::enrollment
     };
 
     /**
+     * @brief Confirms that this node's keystore serves the credential (id, key column) authd just issued.
+     *
+     * Wired to Keystore::confirm() by the facade, on the master only. Returns whether the key is
+     * served; a false is logged (throttled), never a reason to fail the enrollment: authd has
+     * registered the agent either way, and a 200 that does not leave only costs the agent a timeout
+     * and a second enrollment.
+     */
+    using KeyConfirmFn = std::function<bool(const std::string& id, const std::string& keyHex)>;
+
+    /**
      * @brief Builds the `POST /enroll` route handler.
      *
      * Registered directly on IHttpServer (see remotedModuleFacade.hpp) -- NOT through AuthGateway --
@@ -93,7 +104,12 @@ namespace remoted::enrollment
      *      body's `ip`; else "any") and forwards to authd via @p authdClient, deferring the
      *      response until its callback fires.
      *   7. Maps authd's result to the HTTP response (200 + {id,name,ip,key}; a mapped status for
-     *      a business-rejection authd code; 503 for a transport failure/timeout).
+     *      a business-rejection authd code; 503 for a transport failure/timeout). Before an accepted
+     *      answer leaves, @p keyConfirm (when set) makes sure this node already serves the key: authd
+     *      on the master holds its answer until client.keys carries the entry, so what is left to
+     *      close is the keystore's own reload, and it is closed here rather than left to the
+     *      watcher -- otherwise the agent's first signed request can beat the reload and be refused
+     *      as unknown by the very node that enrolled it.
      *
      * @p httpMetrics adds the same remoted.http.<endpoint>.{responses.*,latency} accounting the four
      * AuthGateway endpoints get. /enroll needs its own wiring for it because it is NOT registered
@@ -101,6 +117,11 @@ namespace remoted::enrollment
      * responder in a MeteredResponder instead, which times from handler entry and covers every answer
      * -- including the one authd's callback delivers on another thread. Defaulted, so a caller that
      * does not care (the module's own tests) counts nothing.
+     *
+     * @p keyConfirm is captured by value and invoked on every accepted enrollment or re-enrollment,
+     * with the id and key authd answered, BEFORE the 200 is sent (step 7). A default-constructed one
+     * disables the step, which is what the facade does on a worker: there the file arrives with the
+     * cluster synchronization, seconds later, and a reload now would only ever find it missing.
      *
      * @warning The returned handler stores references to @p authenticator, @p authdClient and
      * @p metrics. The caller must guarantee all three outlive every route registered with this
@@ -114,7 +135,8 @@ namespace remoted::enrollment
                                             EnrollmentMetrics& metrics,
                                             std::shared_ptr<const remoted::decoding::IBodyDecoder> bodyDecoder,
                                             remoted::metrics::EndpointHttpMetrics httpMetrics = {},
-                                            RateGates rateGates = {});
+                                            RateGates rateGates = {},
+                                            KeyConfirmFn keyConfirm = {});
 
     /**
      * @brief The 429 body this route answers when the endpoint's rate limit refuses a request.

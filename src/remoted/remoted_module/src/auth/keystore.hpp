@@ -107,6 +107,30 @@ namespace remoted::auth
          */
         int reload();
 
+        /**
+         * @brief Make sure this table serves @p keyHex for agent @p id, reloading client.keys once if it
+         *        does not yet.
+         *
+         * The enrollment path's last step before the 200 leaves: authd on the master holds its answer
+         * until its writer has rewritten client.keys, so by the time the answer reaches this node the
+         * file carries the key -- what can still lag is this table, which the watcher refreshes on its
+         * own clock (an inotify wake-up, two hashes and a full parse, coalesced under load). One
+         * synchronous reload here closes that gap, and it is shared among the confirmations it
+         * satisfies: the check is repeated under the reload lock, so the enrollments that queued
+         * behind another one's reload find their key without parsing the file again. A key the file
+         * does not carry is not shared: each requester of such a key pays its own parse, serialized by
+         * the same lock.
+         *
+         * Never throws: a failure inside the parse leaves the previous table and counts as unconfirmed.
+         *
+         * @return true when the table now holds @p id with exactly @p keyHex. false when it still does
+         *         not (the file does not carry it yet -- a worker's copy arrives with the cluster
+         *         synchronization; on the master authd's writer did not land it in time -- or it
+         *         carries another key), or when @p id / @p keyHex are not an agent id and a 64-hex-char
+         *         key. Counted either way (enrollConfirmationsTotal() / enrollUnconfirmedTotal()).
+         */
+        bool confirm(const std::string& id, const std::string& keyHex);
+
         /// reload() failure reasons. Distinguished because they need different operator messages:
         /// an unreadable file is an install/permissions problem the caller must report, while an
         /// unstable one is transient and already reported by reload() itself.
@@ -169,6 +193,18 @@ namespace remoted::auth
             return m_reloadFailuresTotal.load(std::memory_order_relaxed);
         }
 
+        /// @brief confirm() calls that found, or reloaded into, the table the key authd had just issued.
+        std::uint64_t enrollConfirmationsTotal() const noexcept
+        {
+            return m_enrollConfirmationsTotal.load(std::memory_order_relaxed);
+        }
+
+        /// @brief confirm() calls that did not: the 200 left with a key this node could not serve yet.
+        std::uint64_t enrollUnconfirmedTotal() const noexcept
+        {
+            return m_enrollUnconfirmedTotal.load(std::memory_order_relaxed);
+        }
+
     private:
         /// One client.keys line's worth of state.
         struct AgentEntry
@@ -202,6 +238,13 @@ namespace remoted::auth
         /// false if nothing has changed (or the file is transiently unreachable). Guarded by
         /// m_reloadMutex, same as reload() itself -- see that field's comment.
         bool fileLooksChanged();
+
+        /// reload() with m_reloadMutex already held by the caller.
+        int reloadLocked();
+
+        /// Does the table hold @p agentId with exactly @p key? An entry whose key column did not
+        /// decode never matches.
+        bool holds(AgentId agentId, const std::vector<std::uint8_t>& key) const;
 
         std::string m_path;
         mutable std::mutex m_mutex;
@@ -240,6 +283,8 @@ namespace remoted::auth
         std::atomic<std::size_t> m_entriesSkipped {0};
         std::atomic<std::uint64_t> m_reloadsTotal {0};
         std::atomic<std::uint64_t> m_reloadFailuresTotal {0};
+        std::atomic<std::uint64_t> m_enrollConfirmationsTotal {0};
+        std::atomic<std::uint64_t> m_enrollUnconfirmedTotal {0};
         std::atomic<bool> m_lastLoadOk {false}; ///< Did the *last* reload() call succeed?
     };
 

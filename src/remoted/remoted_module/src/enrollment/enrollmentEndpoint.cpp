@@ -26,6 +26,7 @@
 #include <cctype>
 #include <cstdint>
 #include <ctime>
+#include <exception>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -47,6 +48,14 @@ namespace remoted::enrollment
         }
 
         remoted::common::LogThrottle& invalidBodyThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
+
+        // An accepted enrollment whose key this node could not confirm in its keystore before answering.
+        // Throttled: a stalled authd writer makes every enrollment say it.
+        remoted::common::LogThrottle& keyUnconfirmedThrottle()
         {
             static remoted::common::LogThrottle instance;
             return instance;
@@ -511,7 +520,8 @@ namespace remoted::enrollment
                                             EnrollmentMetrics& metrics,
                                             std::shared_ptr<const remoted::decoding::IBodyDecoder> bodyDecoder,
                                             remoted::metrics::EndpointHttpMetrics httpMetrics,
-                                            RateGates rateGates)
+                                            RateGates rateGates,
+                                            KeyConfirmFn keyConfirm)
     {
         return [&authenticator,
                 &authdClient,
@@ -519,8 +529,9 @@ namespace remoted::enrollment
                 &metrics,
                 bodyDecoder = std::move(bodyDecoder),
                 httpMetrics = std::move(httpMetrics),
-                rateGates = std::move(rateGates)](std::shared_ptr<const remoted::http::HttpRequest> request,
-                                                  std::shared_ptr<remoted::http::IHttpResponder> responder)
+                rateGates = std::move(rateGates),
+                keyConfirm = std::move(keyConfirm)](std::shared_ptr<const remoted::http::HttpRequest> request,
+                                                    std::shared_ptr<remoted::http::IHttpResponder> responder)
         {
             // The transport's own responder, kept for the rate-limit refusal below: that one counts
             // its status cell itself and must stay out of the latency histogram (rateLimitGate.hpp).
@@ -656,8 +667,71 @@ namespace remoted::enrollment
 
             authdClient.addAgent(
                 std::move(addRequest),
-                [responder, &metrics, usedEnrollmentToken, requestedReenrollment](AuthdResult result)
-                { responder->send(mapAuthdResult(result, metrics, usedEnrollmentToken, requestedReenrollment)); });
+                [responder, &metrics, usedEnrollmentToken, requestedReenrollment, keyConfirm](AuthdResult result)
+                {
+                    // Confirmed BEFORE the 200 leaves: the agent may sign its first request the instant
+                    // it holds the key, and this node must serve that key by then. authd held its answer
+                    // until client.keys carried the entry (authd.key_write_wait); the keystore's own
+                    // reload is the part that is closed here.
+                    if (result.errorCode == 0 && keyConfirm)
+                    {
+                        // Never at the price of the answer: authd has already registered (or rotated)
+                        // the agent, and a 200 that never leaves costs the agent an HTTP timeout and
+                        // another enrollment. A throw here would otherwise unwind into AuthdClient's
+                        // worker and be swallowed before send().
+                        // The confirmation itself goes first and allocates nothing of its own here: the
+                        // diagnostic is built only after it ran, so a failure to build it can skip the
+                        // warning but never the confirmation or its counter.
+                        bool confirmed = false;
+                        const char* failure = "client.keys does not serve it here yet";
+                        std::string thrown; // e.what() dies with the exception; copied only when there is one
+                        try
+                        {
+                            confirmed = keyConfirm(result.id, result.key);
+                        }
+                        catch (const std::exception& e)
+                        {
+                            try
+                            {
+                                thrown = e.what();
+                                failure = thrown.c_str();
+                            }
+                            catch (...)
+                            {
+                                failure = "exception";
+                            }
+                        }
+                        catch (...)
+                        {
+                            failure = "unknown exception";
+                        }
+                        if (!confirmed)
+                        {
+                            try
+                            {
+                                if (const auto throttle = keyUnconfirmedThrottle().record())
+                                {
+                                    LOGFN_WARN(logFn(),
+                                               "Enrolled agent %s but this node could not confirm its key before "
+                                               "answering (%s): the agent cannot authenticate here (unknown, or "
+                                               "an invalid signature after a rotation) until client.keys carries "
+                                               "the key and is reloaded. Check authd's writer "
+                                               "(authd.key_write_wait) and wazuh-db. %llu such enrollment(s) in the "
+                                               "last %d s.",
+                                               result.id.c_str(),
+                                               failure,
+                                               static_cast<unsigned long long>(throttle.total),
+                                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                                }
+                            }
+                            catch (...)
+                            {
+                                // Nothing left to say it with; the agent's answer matters more.
+                            }
+                        }
+                    }
+                    responder->send(mapAuthdResult(result, metrics, usedEnrollmentToken, requestedReenrollment));
+                });
         };
     }
 

@@ -27,6 +27,7 @@
 
 #include "admin/agentGroupsRoute.hpp"
 #include "auth/keystore.hpp"
+#include "auth/keystoreMetrics.hpp"
 #include "auth/passwordKeySource.hpp"
 #include "auth/tokenKeySource.hpp"
 #include "common/installPaths.hpp"
@@ -62,6 +63,7 @@
 #include "enrollment/enrollmentAuthenticator.hpp"
 #include "enrollment/enrollmentConfig.hpp"
 #include "enrollment/enrollmentEndpoint.hpp"
+#include "enrollment/keyConfirmation.hpp"
 #include "enrollment/metrics.hpp"
 #include "http_server/IHttpServer.hpp"
 #include "http_server/handshakeMetrics.hpp"
@@ -1000,15 +1002,19 @@ private:
             &m_enrollHttpMetrics,
             "POST /enroll (unverified: re-enrollment, no credential or spent token)"));
 
-        m_httpServer->addRoute(remoted::http::Method::Post,
-                               "/enroll",
-                               remoted::enrollment::makeHandler(*m_enrollmentAuthenticator,
-                                                                *m_authdClient,
-                                                                enrollConfig,
-                                                                m_enrollmentMetrics,
-                                                                enrollBodyDecoder,
-                                                                m_enrollHttpMetrics,
-                                                                std::move(enrollRateGates)));
+        // Master only (see keyConfirmation.hpp): the issued key is confirmed in this node's keystore
+        // before the 200 leaves; a worker's file arrives with the cluster synchronization.
+        m_httpServer->addRoute(
+            remoted::http::Method::Post,
+            "/enroll",
+            remoted::enrollment::makeHandler(*m_enrollmentAuthenticator,
+                                             *m_authdClient,
+                                             enrollConfig,
+                                             m_enrollmentMetrics,
+                                             enrollBodyDecoder,
+                                             m_enrollHttpMetrics,
+                                             std::move(enrollRateGates),
+                                             remoted::enrollment::keyConfirmationFor(m_config.worker_node, keystore)));
 
         registerRateLimitDiagnostics();
 
@@ -1187,7 +1193,7 @@ private:
         };
 
         m_metricsManager->registerPullMetric(
-            "remoted.auth.keystore.agents",
+            remoted::auth::METRIC_KEYSTORE_AGENTS,
             [target]
             {
                 const auto keystore = target();
@@ -1196,7 +1202,7 @@ private:
             "Agents with a usable key after the last successful client.keys load",
             "agents");
         m_metricsManager->registerPullMetric(
-            "remoted.auth.keystore.entries_skipped",
+            remoted::auth::METRIC_KEYSTORE_ENTRIES_SKIPPED,
             [target]
             {
                 const auto keystore = target();
@@ -1206,7 +1212,7 @@ private:
             "unparseable ip column, or undecodable key); comments and removed entries excluded",
             "entries");
         m_metricsManager->registerPullMetric(
-            "remoted.auth.keystore.reloads.total",
+            remoted::auth::METRIC_KEYSTORE_RELOADS_TOTAL,
             [target]
             {
                 const auto keystore = target();
@@ -1215,13 +1221,31 @@ private:
             "Successful client.keys loads (startup load included)",
             "count");
         m_metricsManager->registerPullMetric(
-            "remoted.auth.keystore.reload_failures.total",
+            remoted::auth::METRIC_KEYSTORE_RELOAD_FAILURES_TOTAL,
             [target]
             {
                 const auto keystore = target();
                 return keystore ? keystore->reloadFailuresTotal() : 0U;
             },
             "Failed client.keys loads: unreadable file, or torn reads on every attempt",
+            "count");
+        m_metricsManager->registerPullMetric(
+            remoted::auth::METRIC_KEYSTORE_ENROLL_CONFIRMED_TOTAL,
+            [target]
+            {
+                const auto keystore = target();
+                return keystore ? keystore->enrollConfirmationsTotal() : 0U;
+            },
+            "Accepted POST /enroll answers whose key this node served before sending them (master only)",
+            "count");
+        m_metricsManager->registerPullMetric(
+            remoted::auth::METRIC_KEYSTORE_ENROLL_UNCONFIRMED_TOTAL,
+            [target]
+            {
+                const auto keystore = target();
+                return keystore ? keystore->enrollUnconfirmedTotal() : 0U;
+            },
+            "Accepted POST /enroll answers sent with a key client.keys did not serve here yet (master only)",
             "count");
     }
 

@@ -115,6 +115,10 @@ _REMOTED_METRIC_GROUPS = {
         'entries_skipped': 'remoted.auth.keystore.entries_skipped',
         'reloads_total': 'remoted.auth.keystore.reloads.total',
         'reload_failures_total': 'remoted.auth.keystore.reload_failures.total',
+        # Keys confirmed in this node's keystore before the POST /enroll answer left (master only):
+        # `enroll_unconfirmed_total` moving means agents were answered with a key the node did not serve yet.
+        'enroll_confirmed_total': 'remoted.auth.keystore.enroll_confirmed.total',
+        'enroll_unconfirmed_total': 'remoted.auth.keystore.enroll_unconfirmed.total',
     },
     'downstream': {
         'downstream_5xx': 'remoted.forwarder.downstream_5xx',
