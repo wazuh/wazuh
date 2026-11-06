@@ -69,9 +69,9 @@ void expect_wreaddir_call(const char *dir, char **files);
 #ifndef WIN32
 off_t __wrap_FileSize(const char * path);
 #else
-DWORD __wrap_FileSizeWin(const char * file);
+int64_t __wrap_FileSizeWin(const char * file);
 #endif
-void expect_FileSize(const char *path, int ret);
+void expect_FileSize(const char *path, int64_t ret);
 
 int __wrap_rename_ex(const char *source, const char *destination);
 void expect_rename_ex(const char *source, const char *destination, int ret);

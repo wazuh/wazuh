@@ -201,13 +201,13 @@ off_t __wrap_FileSize(const char * path) {
     return mock();
 }
 #else
-DWORD __wrap_FileSizeWin(const char * file) {
+int64_t __wrap_FileSizeWin(const char * file) {
     check_expected(file);
     return mock();
 }
 #endif
 
-void expect_FileSize(const char *path, int ret) {
+void expect_FileSize(const char *path, int64_t ret) {
 #ifndef WIN32
     expect_string(__wrap_FileSize, path, path);
     will_return(__wrap_FileSize, ret);
