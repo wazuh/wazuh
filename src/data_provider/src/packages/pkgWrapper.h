@@ -136,6 +136,52 @@ class PKGWrapper final : public IPackageWrapper
         }
 
     private:
+        // True when version equals prefix or continues it with one or more ".<digits>" components.
+        static bool extendsByNumericComponents(const std::string& version, const std::string& prefix)
+        {
+            if (!Utils::startsWith(version, prefix))
+            {
+                return false;
+            }
+
+            const auto suffix { version.substr(prefix.size()) };
+
+            if (suffix.empty())
+            {
+                return true;
+            }
+
+            if (suffix.front() != '.')
+            {
+                return false;
+            }
+
+            bool componentHasDigit { true };
+
+            for (const auto c : suffix)
+            {
+                if (c == '.')
+                {
+                    if (!componentHasDigit)
+                    {
+                        return false;
+                    }
+
+                    componentHasDigit = false;
+                }
+                else if (std::isdigit(static_cast<unsigned char>(c)))
+                {
+                    componentHasDigit = true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
+            return componentHasDigit;
+        }
+
         static bool extractPlistScalarValue(const std::string& line,
                                             const std::string& tag,
                                             std::string& value)
@@ -282,12 +328,7 @@ class PKGWrapper final : public IPackageWrapper
 
                     if (!bundleShortVersionString.empty())
                     {
-                        const auto shortSize { bundleShortVersionString.size() };
-
-                        // Take CFBundleVersion only when it extends the short version by whole components.
-                        if (Utils::startsWith(bundleVersion, bundleShortVersionString) &&
-                                (bundleVersion.size() == shortSize ||
-                                 (bundleVersion[shortSize] == '.' && bundleVersion.size() > shortSize + 1)))
+                        if (extendsByNumericComponents(bundleVersion, bundleShortVersionString))
                         {
                             m_version = bundleVersion;
                         }
