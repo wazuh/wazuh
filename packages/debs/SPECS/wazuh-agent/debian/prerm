@@ -122,7 +122,9 @@ case "$1" in
           service wazuh-agent stop > /dev/null 2>&1
           touch ${WAZUH_TMP_DIR}/wazuh.restart
       fi
-      ${DIR}/bin/wazuh-control stop > /dev/null 2>&1
+      if [ -f ${DIR}/bin/wazuh-control ]; then
+        ${DIR}/bin/wazuh-control stop > /dev/null 2>&1
+      fi
 
     ;;
 
@@ -141,7 +143,9 @@ case "$1" in
       elif command -v service > /dev/null 2>&1 && service wazuh-agent status 2>/dev/null | grep "running" > /dev/null 2>&1; then
           service wazuh-agent stop > /dev/null 2>&1
       fi
-      ${DIR}/bin/wazuh-control stop > /dev/null 2>&1
+      if [ -f ${DIR}/bin/wazuh-control ]; then
+        ${DIR}/bin/wazuh-control stop > /dev/null 2>&1
+      fi
 
       # Save the conffiles, for postrm to keep as .save. tmp/ is writable by the wazuh group, which
       # could leave a link at tmp/conffiles for mkdir -p and cp to follow: whatever is there goes,
