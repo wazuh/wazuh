@@ -459,7 +459,8 @@ inside that directory; anything else is refused with *The WPK file does not exis
 that has an open `remote_upgrade` task for that file (see [Agent upgrades](agent-upgrades.md)). A `404`
 counted in `remoted.download.denied` means the task was no longer open, typically because the download
 came more than `task_ttl` seconds after the task was delivered (or, on a node that did not deliver it,
-more than `2 * task_ttl + cleanup_interval` seconds after it was created); one counted in
+more than `2 * task_ttl + cleanup_interval` seconds after it was created), or because the node that
+answered never created the task (it missed the upgrade request, or had not yet seen the agent); one counted in
 `remoted.download.not_found` means the file is missing from `var/upgrade/` on the node that answered. A
 `503` (`remoted.download.wpk_auth_unavailable`) means the task manager did not answer `remoted` in time.
 A task is handed out only once, so after a `404`, or a `503` the agent gave up on, launch the upgrade again.

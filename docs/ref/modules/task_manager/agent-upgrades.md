@@ -142,7 +142,10 @@ yet been deleted by the cleanup pass, which removes delivered rows 24 h after de
 second window covers clusters: each node holds its own copy of the task, only the node that delivers
 it marks it delivered, and a copy is handed out until the cleanup pass expires it, up to
 `task_ttl + cleanup_interval` after creation. A node that did not deliver the task therefore keeps it
-open as long as the delivering node can, and the agent may download from any node. It holds while
+open as long as the delivering node can, and the agent may download from any node that holds the
+task. A node holds it only if it received the upgrade request and already knew the agent's platform
+from a notify; one that did not answers the download with the same 404, and the upgrade has to be
+launched again. It holds while
 `2 * task_ttl + cleanup_interval` stays under 24 h, the age at which the cleanup pass deletes an
 expired row. Without one, the response is the same 404 as for a file that does
 not exist; if the task manager does not answer, the response is a 503. A 5.0.0 agent makes up to `agent.https_download_attempts` attempts in total (2 by default) and then abandons the upgrade; the task is already
