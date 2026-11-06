@@ -282,7 +282,12 @@ class PKGWrapper final : public IPackageWrapper
 
                     if (!bundleShortVersionString.empty())
                     {
-                        if (Utils::startsWith(bundleVersion, bundleShortVersionString))
+                        const auto shortSize { bundleShortVersionString.size() };
+
+                        // Take CFBundleVersion only when it extends the short version by whole components.
+                        if (Utils::startsWith(bundleVersion, bundleShortVersionString) &&
+                                (bundleVersion.size() == shortSize ||
+                                 (bundleVersion[shortSize] == '.' && bundleVersion.size() > shortSize + 1)))
                         {
                             m_version = bundleVersion;
                         }

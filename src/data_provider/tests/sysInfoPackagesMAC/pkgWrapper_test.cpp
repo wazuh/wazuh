@@ -17,6 +17,8 @@
 #include <limits.h>
 #include <stdexcept>
 #include <string>
+#include <tuple>
+#include <vector>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <iostream>
@@ -793,4 +795,59 @@ TEST_F(PKGWrapperTest, DeadReceiptClearsNameOnly)
     // Other fields are still populated from the plist parsing phase.
     EXPECT_EQ(wrapper->source(), "receipts");
     EXPECT_EQ(wrapper->version(), "1.0");
+}
+
+namespace
+{
+    void writeAppInfoPlist(const std::string& appPath,
+                           const std::string& shortVersion,
+                           const std::string& bundleVersion)
+    {
+        const std::string contents { appPath + "/Contents" };
+        ::mkdir(appPath.c_str(), 0700);
+        ::mkdir(contents.c_str(), 0700);
+
+        std::ofstream out { contents + "/Info.plist", std::ios::trunc };
+        out << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+            << "<plist version=\"1.0\">\n"
+            << "<dict>\n"
+            << "  <key>CFBundleName</key><string>VersionApp</string>\n"
+            << "  <key>CFBundleShortVersionString</key><string>" << shortVersion << "</string>\n"
+            << "  <key>CFBundleVersion</key><string>" << bundleVersion << "</string>\n"
+            << "</dict>\n"
+            << "</plist>\n";
+    }
+}
+
+// CFBundleVersion is only reported when it extends the short version by whole
+// dot-separated components; a plain text prefix is not enough.
+TEST_F(PKGWrapperTest, BundleVersionPrefixMatchesWholeComponents)
+{
+    const std::vector<std::tuple<std::string, std::string, std::string>> cases
+    {
+        { "1.2", "1.2.345", "1.2.345" },
+        { "1.2", "1.2", "1.2" },
+        { "1.2", "1.21", "1.2" },
+        { "1.2", "1.2b3", "1.2" },
+        { "1.2", "1.2-345", "1.2" },
+        { "1.2.3", "1.2", "1.2.3" },
+        { "1.2", "1.2 (345)", "1.2" },
+        { "1.2", "1.2.", "1.2" },
+        { "2", "2025", "2" },
+        { "2", "2.0.1", "2.0.1" },
+        { "1.2", "", "1.2" },
+    };
+
+    int index { 0 };
+
+    for (const auto& [shortVersion, bundleVersion, expected] : cases)
+    {
+        const std::string package { "VersionApp" + std::to_string(index++) + ".app" };
+        writeAppInfoPlist(m_tempDir + "/" + package, shortVersion, bundleVersion);
+
+        PackageContext ctx { m_tempDir, package, "" };
+        std::shared_ptr<PKGWrapper> wrapper;
+        EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
+        EXPECT_EQ(wrapper->version(), expected) << "short=" << shortVersion << " bundle=" << bundleVersion;
+    }
 }
