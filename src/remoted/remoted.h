@@ -168,10 +168,12 @@ void nb_open(netbuffer_t * buffer, int sock, const struct sockaddr_storage * pee
  * @param recv Receive network buffer.
  * @param send Send network buffer.
  * @param sock Socket to close.
+ * @param counter Counter of the message that triggers the close, or 0 to close unconditionally. A counter not above
+ *        the last close of this fd belongs to a previous connection, and nothing is closed.
  * @param was_unassociated Set on success: 1 if the receive slot was open and never associated, 0 otherwise.
- * @return close() result. On failure nothing is released and was_unassociated is not set.
+ * @return close() result, or -1 for a stale counter. On failure nothing is released and was_unassociated is not set.
  */
-int nb_close_socket(netbuffer_t * recv, netbuffer_t * send, int sock, int * was_unassociated);
+int nb_close_socket(netbuffer_t * recv, netbuffer_t * send, int sock, size_t counter, int * was_unassociated);
 
 /**
  * @brief Mark an open socket buffer slot as associated with an agent.
