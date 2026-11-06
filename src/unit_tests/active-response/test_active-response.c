@@ -428,6 +428,128 @@ void test_canonicalize_ip_invalid(void **state) {
     assert_false(canonicalize_ip(NULL, out, sizeof(out)));
 }
 
+// Tests for format_hostsdeny_client
+void test_format_hostsdeny_client_ipv4(void **state) {
+    (void)state;
+    char out[NI_MAXHOST] = {0};
+
+    assert_true(format_hostsdeny_client("10.0.0.1", out, sizeof(out)));
+    assert_string_equal(out, "10.0.0.1");
+}
+
+void test_format_hostsdeny_client_ipv6_bracketed(void **state) {
+    (void)state;
+    char out[NI_MAXHOST] = {0};
+
+    assert_true(format_hostsdeny_client("2001:0db8::0001", out, sizeof(out)));
+    assert_string_equal(out, "[2001:db8::1]");
+    assert_true(format_hostsdeny_client("::1", out, sizeof(out)));
+    assert_string_equal(out, "[::1]");
+}
+
+void test_format_hostsdeny_client_ipv4_mapped(void **state) {
+    (void)state;
+    char out[NI_MAXHOST] = {0};
+
+    assert_true(format_hostsdeny_client("::ffff:10.0.0.1", out, sizeof(out)));
+    assert_string_equal(out, "10.0.0.1");
+}
+
+void test_format_hostsdeny_client_ipv4_mapped_other_spellings(void **state) {
+    (void)state;
+    char out[NI_MAXHOST] = {0};
+
+    // The manager white_list only strips "::ffff:", so these spellings were never checked as IPv4.
+    assert_false(format_hostsdeny_client("::FFFF:127.0.0.1", out, sizeof(out)));
+    assert_false(format_hostsdeny_client("0:0:0:0:0:ffff:127.0.0.1", out, sizeof(out)));
+    assert_false(format_hostsdeny_client("0::ffff:127.0.0.1", out, sizeof(out)));
+    assert_false(format_hostsdeny_client("::ffff:7f00:1", out, sizeof(out)));
+}
+
+void test_format_hostsdeny_client_nat64_stays_ipv6(void **state) {
+    (void)state;
+    char out[NI_MAXHOST] = {0};
+
+    assert_true(format_hostsdeny_client("64:ff9b::1.2.3.4", out, sizeof(out)));
+    assert_string_equal(out, "[64:ff9b::102:304]");
+}
+
+void test_format_hostsdeny_client_buffer_too_small(void **state) {
+    (void)state;
+    char out[8] = {0};
+
+    assert_false(format_hostsdeny_client("2001:db8::1", out, sizeof(out)));
+}
+
+void test_format_hostsdeny_client_invalid(void **state) {
+    (void)state;
+    char out[NI_MAXHOST] = {0};
+
+    assert_false(format_hostsdeny_client("not_an_ip", out, sizeof(out)));
+    assert_false(format_hostsdeny_client("127.1", out, sizeof(out)));
+    assert_false(format_hostsdeny_client(NULL, out, sizeof(out)));
+    assert_false(format_hostsdeny_client("10.0.0.1", NULL, sizeof(out)));
+}
+
+// Tests for build_hostsdeny_rules
+void test_build_hostsdeny_rules_ipv4(void **state) {
+    (void)state;
+    char rule[OS_SIZE_256] = {0};
+    char legacy[OS_SIZE_256] = {0};
+
+    assert_true(build_hostsdeny_rules("10.0.0.1", false, rule, sizeof(rule), legacy, sizeof(legacy)));
+    assert_string_equal(rule, "ALL:10.0.0.1");
+    assert_string_equal(legacy, "");
+
+    assert_true(build_hostsdeny_rules("10.0.0.1", true, rule, sizeof(rule), legacy, sizeof(legacy)));
+    assert_string_equal(rule, "ALL : 10.0.0.1 : deny");
+    assert_string_equal(legacy, "");
+}
+
+void test_build_hostsdeny_rules_ipv6(void **state) {
+    (void)state;
+    char rule[OS_SIZE_256] = {0};
+    char legacy[OS_SIZE_256] = {0};
+
+    assert_true(build_hostsdeny_rules("2001:0DB8::0001", false, rule, sizeof(rule), legacy, sizeof(legacy)));
+    assert_string_equal(rule, "ALL:[2001:db8::1]");
+    assert_string_equal(legacy, "ALL:2001:db8::1");
+
+    assert_true(build_hostsdeny_rules("2001:db8::1", true, rule, sizeof(rule), legacy, sizeof(legacy)));
+    assert_string_equal(rule, "ALL : [2001:db8::1] : deny");
+    assert_string_equal(legacy, "ALL : 2001:db8::1 : deny");
+}
+
+void test_build_hostsdeny_rules_ipv4_mapped(void **state) {
+    (void)state;
+    char rule[OS_SIZE_256] = {0};
+    char legacy[OS_SIZE_256] = {0};
+
+    assert_true(build_hostsdeny_rules("::ffff:10.0.0.1", false, rule, sizeof(rule), legacy, sizeof(legacy)));
+    assert_string_equal(rule, "ALL:10.0.0.1");
+    assert_string_equal(legacy, "ALL:::ffff:10.0.0.1");
+
+    assert_true(build_hostsdeny_rules("::ffff:10.0.0.1", true, rule, sizeof(rule), legacy, sizeof(legacy)));
+    assert_string_equal(rule, "ALL : 10.0.0.1 : deny");
+    assert_string_equal(legacy, "ALL : ::ffff:10.0.0.1 : deny");
+}
+
+void test_build_hostsdeny_rules_rejected(void **state) {
+    (void)state;
+    char rule[OS_SIZE_256] = "stale";
+    char legacy[OS_SIZE_256] = "stale";
+    char small[12] = {0};
+
+    assert_false(build_hostsdeny_rules("::FFFF:127.0.0.1", false, rule, sizeof(rule), legacy, sizeof(legacy)));
+    assert_string_equal(rule, "");
+    assert_string_equal(legacy, "");
+    assert_false(build_hostsdeny_rules("127.1", false, rule, sizeof(rule), legacy, sizeof(legacy)));
+    assert_false(build_hostsdeny_rules(NULL, false, rule, sizeof(rule), legacy, sizeof(legacy)));
+    assert_false(build_hostsdeny_rules("10.0.0.1", false, NULL, sizeof(rule), legacy, sizeof(legacy)));
+    assert_false(build_hostsdeny_rules("2001:db8::1", false, small, sizeof(small), legacy, sizeof(legacy)));
+    assert_string_equal(small, "");
+}
+
 // Tests for hosts_deny_rule_matches
 void test_hosts_deny_rule_matches_exact(void **state) {
     (void)state;
@@ -461,6 +583,21 @@ int main(void) {
         cmocka_unit_test(test_canonicalize_ip_ipv6_compressed),
         cmocka_unit_test(test_canonicalize_ip_rejects_non_canonical),
         cmocka_unit_test(test_canonicalize_ip_invalid),
+
+        // format_hostsdeny_client tests
+        cmocka_unit_test(test_format_hostsdeny_client_ipv4),
+        cmocka_unit_test(test_format_hostsdeny_client_ipv6_bracketed),
+        cmocka_unit_test(test_format_hostsdeny_client_ipv4_mapped),
+        cmocka_unit_test(test_format_hostsdeny_client_ipv4_mapped_other_spellings),
+        cmocka_unit_test(test_format_hostsdeny_client_nat64_stays_ipv6),
+        cmocka_unit_test(test_format_hostsdeny_client_buffer_too_small),
+        cmocka_unit_test(test_format_hostsdeny_client_invalid),
+
+        // build_hostsdeny_rules tests
+        cmocka_unit_test(test_build_hostsdeny_rules_ipv4),
+        cmocka_unit_test(test_build_hostsdeny_rules_ipv6),
+        cmocka_unit_test(test_build_hostsdeny_rules_ipv4_mapped),
+        cmocka_unit_test(test_build_hostsdeny_rules_rejected),
 
         // hosts_deny_rule_matches tests
         cmocka_unit_test(test_hosts_deny_rule_matches_exact),
