@@ -1159,6 +1159,44 @@ void test_get_file_pointer_success(void **state)
 }
 
 #ifdef TEST_WINAGENT
+void test_w_get_file_size_from_info_low_only(void **state) {
+    BY_HANDLE_FILE_INFORMATION info = { .nFileSizeHigh = 0, .nFileSizeLow = 1024 };
+
+    assert_true(w_get_file_size_from_info(&info) == 1024);
+}
+
+void test_w_get_file_size_from_info_low_high_bit(void **state) {
+    BY_HANDLE_FILE_INFORMATION info = { .nFileSizeHigh = 0, .nFileSizeLow = 0x80000000 };
+
+    assert_true(w_get_file_size_from_info(&info) == 2147483648LL);
+}
+
+void test_w_get_file_size_from_info_4gib(void **state) {
+    BY_HANDLE_FILE_INFORMATION info = { .nFileSizeHigh = 1, .nFileSizeLow = 0 };
+
+    assert_true(w_get_file_size_from_info(&info) == 4294967296LL);
+}
+
+void test_w_get_file_size_from_info_high_and_low(void **state) {
+    BY_HANDLE_FILE_INFORMATION info = { .nFileSizeHigh = 1, .nFileSizeLow = 100 };
+
+    // The halves must be composed, not added (1 + 100 = 101).
+    assert_true(w_get_file_size_from_info(&info) == 4294967396LL);
+}
+
+void test_FileSizeWin_fail_get_handle(void **state) {
+    char buffer[OS_SIZE_128];
+    char *path = "C:\\a\\path";
+
+    expect_string(__wrap_utf8_CreateFile, utf8_path, path);
+    will_return(__wrap_utf8_CreateFile, INVALID_HANDLE_VALUE);
+
+    snprintf(buffer, OS_SIZE_128, FILE_ERROR, path);
+    expect_string(__wrap__mdebug2, formatted_msg, buffer);
+
+    assert_true(FileSizeWin(path) == -1);
+}
+
 void test_get_UTC_modification_time_success(void **state) {
     HANDLE hdle = (HANDLE)1234;
     FILETIME modification_date;
@@ -3301,6 +3339,11 @@ int main(void) {
         cmocka_unit_test(test_w_vet_opened_file_hard_link_foreign_dir_rejected),
         cmocka_unit_test(test_w_vet_opened_file_hard_link_writable_dir_rejected),
 #else
+        cmocka_unit_test(test_w_get_file_size_from_info_low_only),
+        cmocka_unit_test(test_w_get_file_size_from_info_low_high_bit),
+        cmocka_unit_test(test_w_get_file_size_from_info_4gib),
+        cmocka_unit_test(test_w_get_file_size_from_info_high_and_low),
+        cmocka_unit_test(test_FileSizeWin_fail_get_handle),
         cmocka_unit_test(test_get_UTC_modification_time_success),
         cmocka_unit_test(test_get_UTC_modification_time_fail_get_handle),
         cmocka_unit_test(test_get_UTC_modification_time_fail_get_filetime),

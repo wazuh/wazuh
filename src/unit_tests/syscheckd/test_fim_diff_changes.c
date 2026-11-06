@@ -637,6 +637,41 @@ void test_fim_diff_check_limits_size_limit_reached(void **state) {
     assert_int_equal(ret, 1);
 }
 
+void test_fim_diff_check_limits_size_limit_reached_large_file(void **state) {
+    diff_data *diff = *state;
+
+    diff->size_limit = 50 * 1024;
+    diff->file_origin = strdup(GENERIC_PATH);
+    diff->compress_folder = strdup(COMPRESS_FOLDER);
+    syscheck.file_size_enabled = 1;
+    syscheck.disk_quota_enabled = 0;
+
+    // 4 GiB + 1 MiB must not be seen as 1 MiB.
+    expect_FileSize(diff->file_origin, (4LL << 30) + (1024 * 1024));
+
+    expect_string(__wrap_IsDir, file, diff->compress_folder);
+    will_return(__wrap_IsDir, -1);
+
+    int ret = fim_diff_check_limits(diff);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_fim_diff_check_limits_size_error(void **state) {
+    diff_data *diff = *state;
+
+    diff->size_limit = 50 * 1024;
+    diff->file_origin = strdup(GENERIC_PATH);
+    syscheck.file_size_enabled = 1;
+    syscheck.disk_quota_enabled = 0;
+
+    expect_FileSize(diff->file_origin, -1);
+
+    int ret = fim_diff_check_limits(diff);
+
+    assert_int_equal(ret, 0);
+}
+
 void test_fim_diff_check_limits_estimate_compression(void **state) {
     diff_data *diff = *state;
 
@@ -2283,6 +2318,8 @@ int main(void) {
         // fim_diff_check_limits
         cmocka_unit_test_setup_teardown(test_fim_diff_check_limits, setup_diff_data, teardown_free_diff_data),
         cmocka_unit_test_setup_teardown(test_fim_diff_check_limits_size_limit_reached, setup_diff_data, teardown_free_diff_data),
+        cmocka_unit_test_setup_teardown(test_fim_diff_check_limits_size_limit_reached_large_file, setup_diff_data, teardown_free_diff_data),
+        cmocka_unit_test_setup_teardown(test_fim_diff_check_limits_size_error, setup_diff_data, teardown_free_diff_data),
         cmocka_unit_test_setup_teardown(test_fim_diff_check_limits_estimate_compression, setup_diff_data, teardown_free_diff_data),
 
         // fim_diff_delete_compress_folder
