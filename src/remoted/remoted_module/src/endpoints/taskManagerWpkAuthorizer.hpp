@@ -58,6 +58,7 @@ namespace remoted::endpoints
     private:
         std::string m_taskSocketPath;
         uint32_t m_deadlineMs;
+        uint32_t m_connectTimeoutMs;
         // Serializes stop() against an authorize() between its stopped check and sendAsync().
         mutable std::mutex m_mutex;
         bool m_stopped {false};
