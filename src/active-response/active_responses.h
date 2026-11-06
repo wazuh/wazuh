@@ -80,7 +80,7 @@ const cJSON* get_alert_from_json(const cJSON *input);
 /**
  * Get srcip from input and validate that it is a valid IP address
  * @param input Input
- * @return char * with the srcip or NULL on fail or invalid IP
+ * @return char * with the srcip (the IPv4 address of a "::ffff:" mapped one) or NULL on fail or invalid IP
  * */
 const char* get_srcip_from_json(const cJSON *input);
 

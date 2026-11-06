@@ -25,6 +25,13 @@ static char* build_json_keys_message(const char *ar_name, char **keys);
  * */
 static cJSON* get_srcip_from_win_eventdata(const cJSON *data);
 
+/**
+ * Validate a srcip, using the IPv4 address of a "::ffff:" mapped one
+ * @param srcip IP read from the alert
+ * @return srcip, its IPv4 part, or NULL if invalid
+ * */
+static const char* validate_srcip(const char *srcip);
+
 
 void write_debug_file(const char *ar_name, const char *msg) {
     char *timestamp = w_get_timestamp(time(NULL));
@@ -255,29 +262,24 @@ const char* get_srcip_from_json(const cJSON *input) {
     // Detect srcip from win.eventdata
     srcip_json = get_srcip_from_win_eventdata(data_json);
     if (cJSON_IsString(srcip_json)) {
-        const char *srcip = srcip_json->valuestring;
-
-        // Validate IP format
-        if (get_ip_version(srcip) == OS_INVALID) {
-            return NULL;
-        }
-
-        return srcip;
+        return validate_srcip(srcip_json->valuestring);
     }
     // Detect srcip from data
     srcip_json = cJSON_GetObjectItem(data_json, "srcip");
     if (cJSON_IsString(srcip_json)) {
-        const char *srcip = srcip_json->valuestring;
-
-        // Validate IP format
-        if (get_ip_version(srcip) == OS_INVALID) {
-            return NULL;
-        }
-
-        return srcip;
+        return validate_srcip(srcip_json->valuestring);
     }
 
     return NULL;
+}
+
+static const char* validate_srcip(const char *srcip) {
+    // Only this exact prefix, the one the manager also removes from an IPv4-mapped address.
+    if (strncmp(srcip, "::ffff:", 7) == 0 && get_ip_version(srcip + 7) == 4) {
+        srcip += 7;
+    }
+
+    return get_ip_version(srcip) == OS_INVALID ? NULL : srcip;
 }
 
 static cJSON* get_srcip_from_win_eventdata(const cJSON *data) {
