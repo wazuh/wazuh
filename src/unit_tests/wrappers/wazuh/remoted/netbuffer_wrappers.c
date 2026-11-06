@@ -34,6 +34,13 @@ int __wrap_nb_close_socket(__attribute__((unused)) netbuffer_t * recv,
     return retval;
 }
 
+int __wrap_nb_claim_close(__attribute__((unused)) netbuffer_t * recv, int sock, size_t counter) {
+    check_expected(sock);
+    check_expected(counter);
+
+    return mock();
+}
+
 int __wrap_nb_mark_associated(__attribute__((unused)) netbuffer_t * buffer, int sock, size_t counter) {
     check_expected(sock);
     check_expected(counter);

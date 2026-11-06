@@ -455,6 +455,105 @@ static int close_slot(netbuffer_t * netbuffer, int fd) {
     return was_unassociated;
 }
 
+// A successful claim sets the fence under the mutex; a rejected one only takes the mutex.
+static int claim_close(netbuffer_t * netbuffer, int fd, size_t counter, int expected) {
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    if (expected) {
+        expect_function_call(__wrap_rem_setCounter);
+    }
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    int retval = nb_claim_close(netbuffer, fd, counter);
+    assert_int_equal(retval, expected);
+
+    return retval;
+}
+
+void test_nb_claim_close_once(void ** state) {
+    netbuffer_t *netbuffer = *state;
+
+    global_counter = 9;
+
+    claim_close(netbuffer, sock, NB_CLOSE_ANY, 1);
+    assert_int_equal(netbuffer->buffers[sock].closing, 1);
+    assert_int_equal(fence_fd, sock);
+    assert_int_equal(fence_counter, 9);
+
+    claim_close(netbuffer, sock, NB_CLOSE_ANY, 0);
+}
+
+void test_nb_claim_close_released_slot(void ** state) {
+    netbuffer_t *netbuffer = *state;
+
+    assert_int_equal(close_slot(netbuffer, sock), 1);
+    claim_close(netbuffer, sock, NB_CLOSE_ANY, 0);
+}
+
+void test_nb_claim_close_out_of_range(void ** state) {
+    netbuffer_t *netbuffer = *state;
+
+    claim_close(netbuffer, sock + 1, NB_CLOSE_ANY, 0);
+}
+
+// A message counter at or below the fence of the last close belongs to a previous connection on the fd.
+void test_nb_claim_close_stale_counter(void ** state) {
+    netbuffer_t *netbuffer = *state;
+    struct sockaddr_storage peer_info;
+    size_t stale = ++global_counter;
+
+    memset(&peer_info, 0, sizeof(struct sockaddr_storage));
+
+    assert_int_equal(close_slot(netbuffer, sock), 1);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    nb_open(netbuffer, sock, &peer_info);
+    assert_int_equal(netbuffer->buffers[sock].closing, 0);
+
+    claim_close(netbuffer, sock, stale, 0);
+    assert_int_equal(netbuffer->buffers[sock].closing, 0);
+
+    claim_close(netbuffer, sock, stale + 1, 1);
+    assert_int_equal(netbuffer->buffers[sock].closing, 1);
+}
+
+// A failed close() keeps the slot open, so the claim must be given back for a later retry.
+void test_nb_claim_close_retry_after_close_fails(void ** state) {
+    netbuffer_t *netbuffer = *state;
+    int was_unassociated = 7;
+
+    claim_close(netbuffer, sock, NB_CLOSE_ANY, 1);
+    assert_int_equal(close_socket_ret(netbuffer, sock, -1, &was_unassociated), -1);
+    assert_int_equal(netbuffer->buffers[sock].closing, 0);
+
+    claim_close(netbuffer, sock, NB_CLOSE_ANY, 1);
+}
+
+void test_nb_recv_not_open(void ** state) {
+    netbuffer_t *netbuffer = *state;
+
+    assert_int_equal(close_slot(netbuffer, sock), 1);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    assert_int_equal(nb_recv(netbuffer, sock), NB_NOT_OPEN);
+    assert_null(netbuffer->buffers[sock].data);
+}
+
+void test_nb_send_not_open(void ** state) {
+    netbuffer_t *netbuffer = *state;
+
+    assert_int_equal(close_slot(netbuffer, sock), 1);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    assert_int_equal(nb_send(&send_netbuffer, sock), NB_NOT_OPEN);
+}
+
 void test_nb_mark_associated_once(void ** state) {
     netbuffer_t *netbuffer = *state;
 
@@ -624,6 +723,13 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_nb_send_err, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_nb_recv_incomplete_first_message, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_nb_recv_incomplete_second_message, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_nb_claim_close_once, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_nb_claim_close_released_slot, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_nb_claim_close_out_of_range, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_nb_claim_close_stale_counter, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_nb_claim_close_retry_after_close_fails, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_nb_recv_not_open, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_nb_send_not_open, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_nb_mark_associated_once, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_nb_mark_associated_closed_slot, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_nb_mark_associated_out_of_range, test_setup, test_teardown),
