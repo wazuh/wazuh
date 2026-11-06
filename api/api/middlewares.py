@@ -313,10 +313,11 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
 
     custom_logging(user, host, method, path, query, body, time_diff, response.status_code,
                    hash_auth_context=hash_auth_context, headers=headers)
-    if response.status_code == 403 and \
-        path in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} and \
-            method in {'GET', 'POST'}:
-        logger.warning(f'IP blocked due to exceeded number of logins attempts: {host}')
+    # No "IP blocked" warning here: any 403 answered further down the stack is
+    # not a lockout. A `run_as` login by a user without `allow_run_as` answers
+    # 403 (error 6004) and used to be misreported as a block on every refusal.
+    # The genuine lockout refusal is logged where it is issued, in
+    # `CheckBlockedIP.dispatch`.
     if response.status_code == 429:
         logger.warning(f'Maximum number of requests per minute reached. IP: {host}. User: {user}.')
 
@@ -683,7 +684,17 @@ class CheckBlockedIP(BaseHTTPMiddleware):
         """"Update and check if the client IP is locked."""
         if request.url.path in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} \
            and request.method in {'GET', 'POST'}:
-            await check_blocked_ip(request)
+            try:
+                await check_blocked_ip(request)
+            except BlockedIPException:
+                # This is the only place a lockout refusal is issued, so it is
+                # the only place the block warning is true: `access_log` must
+                # not infer a block from a 403 status, which any endpoint
+                # refusal (e.g. `run_as` without `allow_run_as`, error 6004)
+                # also produces. The exception is re-raised unchanged.
+                logger.warning('IP blocked due to exceeded number of logins attempts: '
+                               f'{request.client.host}')
+                raise
         return await call_next(request)
 
 
