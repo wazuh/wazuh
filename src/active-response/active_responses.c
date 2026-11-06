@@ -637,8 +637,9 @@ bool format_hostsdeny_client(const char *ip, char *output, size_t output_size) {
         return false;
     }
 
-    // libwrap matches IPv4-mapped clients only as plain IPv4. Collapse only the "::ffff:" spelling,
-    // the one the manager strips before its white_list check; refuse any other mapped spelling.
+    // libwrap matches IPv4-mapped clients only as plain IPv4. Only the "::ffff:a.b.c.d" spelling
+    // is converted; other mapped spellings are refused.
+    // The IPv4 and "::ffff:" blocks of one host share this rule, so the first timeout removes it.
     if (memcmp(addr6, v4mapped_prefix, sizeof(v4mapped_prefix)) == 0) {
         if (strncmp(ip, "::ffff:", 7) != 0 || inet_pton(AF_INET, ip + 7, addr4) != 1) {
             return false;
@@ -707,6 +708,33 @@ bool hosts_deny_rule_matches(const char *line, const char *rule) {
     }
 
     return strlen(rule) == len && strncmp(line, rule, len) == 0;
+}
+
+int hosts_deny_remove_rules(FILE *in, FILE *out, const char *rule, const char *legacy_rule, bool *removed) {
+    char line[OS_MAXSTR - 25];
+    bool has_legacy = legacy_rule && legacy_rule[0] != '\0';
+
+    if (!in || !out || !rule || !removed) {
+        return OS_INVALID;
+    }
+    *removed = false;
+
+    while (fgets(line, sizeof(line), in)) {
+        if (hosts_deny_rule_matches(line, rule) || (has_legacy && hosts_deny_rule_matches(line, legacy_rule))) {
+            *removed = true;
+            continue;
+        }
+        if (fputs(line, out) == EOF) {
+            return OS_INVALID;
+        }
+    }
+
+    // Buffered write errors (e.g. a full disk) only surface on flush.
+    if (ferror(in) || fflush(out) != 0 || ferror(out)) {
+        return OS_INVALID;
+    }
+
+    return OS_SUCCESS;
 }
 
 int lock(const char *lock_path, const char *lock_pid_path, const char *log_path, const char *proc_name) {

@@ -166,7 +166,7 @@ bool canonicalize_ip(const char *ip, char *output, size_t output_size);
 /**
  * Format a numeric IP as a hosts_access(5) client pattern: IPv4 as is, IPv6 in brackets
  * (e.g. "[2001:db8::1]") and "::ffff:a.b.c.d" as plain IPv4. Other IPv4-mapped spellings
- * are refused, since the manager white_list only strips the "::ffff:" prefix
+ * are refused
  * @param ip Numeric IP to format, as received in the alert
  * @param output Buffer that receives the client pattern
  * @param output_size Size of output
@@ -199,6 +199,18 @@ bool build_hostsdeny_rules(const char *srcip, bool freebsd, char *rule, size_t r
  * @retval false otherwise
  * */
 bool hosts_deny_rule_matches(const char *line, const char *rule);
+
+/**
+ * Copy a hosts.deny file without the Wazuh-managed rule and, if given, its legacy form
+ * @param in hosts.deny opened for reading
+ * @param out Temporary file opened for writing
+ * @param rule Rule to remove (exact line, see hosts_deny_rule_matches)
+ * @param legacy_rule Legacy rule to remove too; NULL or empty for none
+ * @param removed Set to true when at least one line was removed
+ * @retval OS_SUCCESS on success
+ * @retval OS_INVALID on invalid arguments or read/write error, including the final flush
+ * */
+int hosts_deny_remove_rules(FILE *in, FILE *out, const char *rule, const char *legacy_rule, bool *removed);
 
 /**
  * Write process pid to lock simultaneous executions of the script
