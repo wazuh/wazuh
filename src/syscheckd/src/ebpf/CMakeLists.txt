@@ -27,6 +27,9 @@ target_link_libraries(fimebpf wazuh)
 # Set additional compile flags for the loader (if needed)
 target_compile_options(fimebpf PRIVATE -Wall -Wextra)
 
+add_executable(ebpf_syscalls_test EXCLUDE_FROM_ALL tests/syscalls/ebpf_syscalls_test.cpp)
+target_link_libraries(ebpf_syscalls_test fimebpf pthread)
+
 if(UNIT_TEST)
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_link_libraries(fimebpf -fprofile-arcs)

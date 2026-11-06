@@ -55,6 +55,10 @@ All notable changes to this project will be documented in this file.
 
 ### Agent
 
+#### Changed
+
+- Added a workflow that validates the FIM eBPF whodata events of every syscall on several kernels and filesystems. ([#32502](https://github.com/wazuh/wazuh/issues/32502))
+
 #### Fixed
 
 - Hardened the macOS agent package so an upgrade no longer follows a symlink or hard link planted under `etc/`. ([#40696](https://github.com/wazuh/wazuh/pull/40696))
