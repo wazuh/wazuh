@@ -274,7 +274,8 @@ typedef void (*rt_drop_fn)(unsigned long long cgroup_id, unsigned int drops, voi
  * Returns the number of cgroups reported, 0 when nothing was lost, or -1 on a
  * bad handle or a BPF object with no per-cgroup map (an object older than this
  * engine — reported once through the log sink, not on every call). Safe with
- * cb == NULL, which discards the counts and just clears the map. */
+ * cb == NULL, which discards the counts and just clears the map. Not thread-safe
+ * to call concurrently on the same handle from two threads. */
 int rt_drain_drops(rt_handle_t handle, rt_drop_fn cb, void* user);
 
 /* The ABI this engine was compiled against, for a consumer that may have been
