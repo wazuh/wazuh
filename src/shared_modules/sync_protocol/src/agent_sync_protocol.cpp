@@ -747,11 +747,13 @@ IntegrityCheckResult AgentSyncProtocol::requiresFullSync(const std::string& inde
             m_logger(LOG_DEBUG, "Checksum validation failed for index: " + index + " after " +
                      std::to_string(CHECKSUM_MISMATCH_MAX_ATTEMPTS) +
                      " attempts - full sync required");
+
+            // Kept until the index is cleaned, so a recovery cut short is retried after one more
+            // 409, with the TTL counted from this one.
+            storeMismatchProgress(index, CHECKSUM_MISMATCH_MAX_ATTEMPTS - 1);
         }
     }
 
-    // The stored mismatches stay until the index is cleaned, so a recovery cut short is
-    // retried after a single 409 instead of a new confirmation.
     return {.status = IntegrityCheckStatus::MISMATCH,
             .failureReason = {},
             .stopped = false,

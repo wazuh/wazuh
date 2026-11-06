@@ -2775,6 +2775,8 @@ bool Syscollector::isVDIndex(const std::string& index)
            index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES;
 }
 
+// Only for the index's queue. Integrity checks run on m_spSyncProtocol for every index, so a clean
+// on the VD protocol must also clear the mismatches stored there (see resyncTableToManager()).
 IAgentSyncProtocol* Syscollector::protocolForIndex(const std::string& index) const
 {
     const bool isVDTable = isVDIndex(index);

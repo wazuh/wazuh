@@ -2516,6 +2516,23 @@ TEST_F(AgentSyncProtocolIntegrityProgressTest, RetriesAnInterruptedRecoveryAfter
     EXPECT_EQ(sessions, 1);
 }
 
+TEST_F(AgentSyncProtocolIntegrityProgressTest, ConfirmedMismatchRenewsTheStoredTimestamp)
+{
+    const auto halfHourAgo = nowMs() - 30 * 60 * 1000;
+    queue->setIntegrityProgress(INDEX, {.mismatches = 4, .lastMismatchMs = halfHourAgo});
+
+    const auto [result, sessions] = checkAnsweringEverySession(409);
+
+    EXPECT_EQ(result.status, IntegrityCheckStatus::MISMATCH);
+    EXPECT_EQ(sessions, 1);
+
+    // The TTL counts from the 409 that confirmed it, not from the one before.
+    const auto kept = queue->getIntegrityProgress(INDEX);
+    ASSERT_TRUE(kept.has_value());
+    EXPECT_EQ(kept->mismatches, 4u);
+    EXPECT_GT(kept->lastMismatchMs, halfHourAgo + 60 * 1000);
+}
+
 TEST_F(AgentSyncProtocolIntegrityProgressTest, ClearsMismatchProgressWhenTheIndexIsCleaned)
 {
     queue->setIntegrityProgress(INDEX, {.mismatches = 4, .lastMismatchMs = nowMs() - 60000});
