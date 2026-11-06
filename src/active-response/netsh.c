@@ -121,8 +121,10 @@ int main (int argc, char **argv) {
     wfd_t *wfd = NULL;
     char *netsh_path = NULL;
 
+    const bool ipv6 = (get_ip_version(srcip) == 6);
+
     snprintf(name, OS_MAXSTR -1, "name=\"%s\"", RULE_NAME);
-    snprintf(remoteip, OS_MAXSTR -1, "remoteip=%s/32", srcip);
+    snprintf(remoteip, OS_MAXSTR -1, "remoteip=%s/%s", srcip, ipv6 ? "128" : "32");
 
     // Checking if netsh.exe is present under the system directory. Fail closed:
     // falling back to the bare name would let CreateProcess resolve it via %PATH%
@@ -179,17 +181,23 @@ int main (int argc, char **argv) {
                 }
             }
         } else {
-            wfd = wpopenv(netsh_path, exec_args_delete, W_BIND_STDERR);
-            if (!wfd) {
-                memset(log_msg, '\0', OS_MAXSTR);
-                snprintf(log_msg, OS_MAXSTR -1, "Unable to run netsh, action: 'DELETE', rule: '%s'", RULE_NAME);
-                write_debug_file(argv[0], log_msg);
-            } else {
-                int rc = wpclose(wfd);
-                if (rc != 0) {
+            // IPv6 rules added by previous versions used the /32 prefix too.
+            for (int i = 0; i < (ipv6 ? 2 : 1); i++) {
+                if (i == 1) {
+                    snprintf(remoteip, OS_MAXSTR -1, "remoteip=%s/32", srcip);
+                }
+                wfd = wpopenv(netsh_path, exec_args_delete, W_BIND_STDERR);
+                if (!wfd) {
                     memset(log_msg, '\0', OS_MAXSTR);
-                    snprintf(log_msg, OS_MAXSTR -1, "netsh returned exit code %d", rc);
+                    snprintf(log_msg, OS_MAXSTR -1, "Unable to run netsh, action: 'DELETE', rule: '%s'", RULE_NAME);
                     write_debug_file(argv[0], log_msg);
+                } else {
+                    int rc = wpclose(wfd);
+                    if (rc != 0 && i == 0) {
+                        memset(log_msg, '\0', OS_MAXSTR);
+                        snprintf(log_msg, OS_MAXSTR -1, "netsh returned exit code %d", rc);
+                        write_debug_file(argv[0], log_msg);
+                    }
                 }
             }
         }

@@ -18,98 +18,74 @@
 
 #include "../wrappers/common.h"
 
-// Structs
-typedef struct test_struct {
-    struct addrinfo *addr;
-} test_struct_t;
-
-// Setup / Teardown
-
-static int test_setup(void **state) {
-    test_struct_t *init_data = NULL;
-
-    os_calloc(1,sizeof(test_struct_t),init_data);
-    os_calloc(1, sizeof(struct addrinfo), init_data->addr);
-    os_calloc(1, sizeof(struct sockaddr), init_data->addr->ai_addr);
-
-    *state = init_data;
-
-    test_mode = 1;
-
-    return OS_SUCCESS;
-}
-
-static int test_teardown(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-
-    os_free(data->addr->ai_addr);
-    os_free(data->addr);
-    os_free(data);
-
-    test_mode = 0;
-
-    return OS_SUCCESS;
-}
-
 // Tests
 void test_get_ip_version_success_ipv4(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *dummy_ipaddr = "";
-
-    data->addr->ai_family = AF_INET;
-
-    expect_string(__wrap_getaddrinfo, node, dummy_ipaddr);
-    will_return(__wrap_getaddrinfo, data->addr);
-    will_return(__wrap_getaddrinfo, 0);     //0 means success
-
-    int ret = get_ip_version(dummy_ipaddr);
-
-    assert_int_equal(ret, 4);
+    (void) state;
+    assert_int_equal(get_ip_version("10.0.0.1"), 4);
+    assert_int_equal(get_ip_version("0.0.0.0"), 4);
+    assert_int_equal(get_ip_version("255.255.255.255"), 4);
 }
 
 void test_get_ip_version_success_ipv6(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *dummy_ipaddr = "";
-
-    data->addr->ai_family = AF_INET6;
-
-    expect_string(__wrap_getaddrinfo, node, dummy_ipaddr);
-    will_return(__wrap_getaddrinfo, data->addr);
-    will_return(__wrap_getaddrinfo, 0);     //0 means success
-
-    int ret = get_ip_version(dummy_ipaddr);
-
-    assert_int_equal(ret, 6);
+    (void) state;
+    assert_int_equal(get_ip_version("2001:db8::1"), 6);
+    assert_int_equal(get_ip_version("2001:0db8:0000::0001"), 6);
 }
 
-void test_get_ip_version_no_success(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *dummy_ipaddr = "";
-
-    data->addr->ai_family = AF_INET6;
-
-    expect_string(__wrap_getaddrinfo, node, dummy_ipaddr);
-    will_return(__wrap_getaddrinfo, data->addr);
-    will_return(__wrap_getaddrinfo, 1);
-
-    int ret = get_ip_version(dummy_ipaddr);
-
-    assert_int_equal(ret, -1);    //OS_INVALID
+void test_get_ip_version_rejects_non_standard_ipv4_text(void **state) {
+    (void) state;
+    assert_int_equal(get_ip_version("010.0.0.1"), OS_INVALID);
+    assert_int_equal(get_ip_version("10.0.0.01"), OS_INVALID);
+    assert_int_equal(get_ip_version("167772161"), OS_INVALID);
+    assert_int_equal(get_ip_version("0x0a000001"), OS_INVALID);
+    assert_int_equal(get_ip_version("10.1"), OS_INVALID);
+    assert_int_equal(get_ip_version("0"), OS_INVALID);
 }
 
-void test_get_ip_version_success_invalid_ip(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *dummy_ipaddr = "";
+void test_get_ip_version_invalid(void **state) {
+    (void) state;
+    assert_int_equal(get_ip_version(NULL), OS_INVALID);
+    assert_int_equal(get_ip_version(""), OS_INVALID);
+    assert_int_equal(get_ip_version("256.0.0.1"), OS_INVALID);
+    assert_int_equal(get_ip_version("fe80::1%eth0"), OS_INVALID);
+    assert_int_equal(get_ip_version("10.0.0.1 "), OS_INVALID);
+    assert_int_equal(get_ip_version("host.example"), OS_INVALID);
+}
 
-    data->addr->ai_family = -1;         //invalid family
+// Tests for aix_filter_rule_matches
 
-    expect_string(__wrap_getaddrinfo, node, dummy_ipaddr);
-    will_return(__wrap_getaddrinfo, data->addr);
-    will_return(__wrap_getaddrinfo, 0);     //0 means success
+#define AIX_RULE(id, action, src, src_mask, dst, dst_mask, desc) \
+    id "|" action "|" src "|" src_mask "|" dst "|" dst_mask "|no|all|any|0|any|0|both|both|no|all packets|0|all|0|||" desc "\n"
+#define AIX_WAZUH_DESC "\"" AIX_FILTER_DESCRIPTION "\""
 
-    int ret = get_ip_version(dummy_ipaddr);
+void test_aix_filter_rule_matches_exact(void **state) {
+    (void) state;
+    assert_true(aix_filter_rule_matches(AIX_RULE("5", "deny", "10.0.0.1", "255.255.255.255", "0.0.0.0", "0.0.0.0", AIX_WAZUH_DESC), "10.0.0.1"));
+    assert_true(aix_filter_rule_matches(AIX_RULE("5", "deny", "10.0.0.1", "255.255.255.255", "0.0.0.0", "0.0.0.0", AIX_FILTER_DESCRIPTION), "10.0.0.1"));
+}
 
-    assert_int_equal(ret, -1);    //OS_INVALID
+void test_aix_filter_rule_matches_other_rules(void **state) {
+    (void) state;
+    assert_false(aix_filter_rule_matches(AIX_RULE("2", "deny", "110.0.0.1", "255.255.255.255", "0.0.0.0", "0.0.0.0", AIX_WAZUH_DESC), "10.0.0.1"));
+    assert_false(aix_filter_rule_matches(AIX_RULE("3", "deny", "10.0.0.10", "255.255.255.255", "0.0.0.0", "0.0.0.0", AIX_WAZUH_DESC), "10.0.0.1"));
+    assert_false(aix_filter_rule_matches(AIX_RULE("4", "permit", "0.0.0.0", "0.0.0.0", "10.0.0.1", "255.255.255.255", "allow ssh"), "10.0.0.1"));
+    assert_false(aix_filter_rule_matches(AIX_RULE("6", "permit", "10.0.0.1", "255.255.255.255", "0.0.0.0", "0.0.0.0", AIX_WAZUH_DESC), "10.0.0.1"));
+    assert_false(aix_filter_rule_matches(AIX_RULE("7", "deny", "10.0.0.0", "255.255.255.0", "0.0.0.0", "0.0.0.0", AIX_WAZUH_DESC), "10.0.0.0"));
+    assert_false(aix_filter_rule_matches(AIX_RULE("8", "deny", "10.0.0.1", "255.255.255.255", "10.1.1.1", "255.255.255.255", AIX_WAZUH_DESC), "10.0.0.1"));
+    assert_false(aix_filter_rule_matches(AIX_RULE("8", "deny", "10.0.0.1", "255.255.255.255", "10.1.1.1", "0.0.0.0", AIX_WAZUH_DESC), "10.0.0.1"));
+    assert_false(aix_filter_rule_matches(AIX_RULE("8", "deny", "10.0.0.1", "255.255.255.255", "0.0.0.0", "255.255.255.255", AIX_WAZUH_DESC), "10.0.0.1"));
+    assert_false(aix_filter_rule_matches(AIX_RULE("9", "deny", "10.0.0.1", "255.255.255.255", "0.0.0.0", "0.0.0.0", "admin block"), "10.0.0.1"));
+    assert_false(aix_filter_rule_matches(AIX_RULE("1", "permit", "0.0.0.0", "0.0.0.0", "0.0.0.0", "0.0.0.0", "Default Rule"), "0.0.0.0"));
+}
+
+void test_aix_filter_rule_matches_malformed(void **state) {
+    (void) state;
+    assert_false(aix_filter_rule_matches(NULL, "10.0.0.1"));
+    assert_false(aix_filter_rule_matches(AIX_RULE("5", "deny", "10.0.0.1", "255.255.255.255", "0.0.0.0", "0.0.0.0", AIX_WAZUH_DESC), NULL));
+    assert_false(aix_filter_rule_matches("", "10.0.0.1"));
+    assert_false(aix_filter_rule_matches("5|deny|10.0.0.1|255.255.255.255|" AIX_WAZUH_DESC "\n", "10.0.0.1"));
+    assert_false(aix_filter_rule_matches("Beginning of IPv4 filter rules.\n", "10.0.0.1"));
+    assert_false(aix_filter_rule_matches(AIX_WAZUH_DESC "|deny|10.0.0.1|255.255.255.255|0.0.0.0", "10.0.0.1"));
 }
 
 // Tests for is_valid_username
@@ -274,6 +250,51 @@ void test_is_valid_username_invalid_non_ascii(void **state) {
     (void) state;
     assert_int_equal(is_valid_username("caf\xc3\xa9"), 0);
     assert_int_equal(is_valid_username("\xff" "user"), 0);
+}
+
+// Tests for get_srcip_from_json
+
+static void assert_srcip(const char *json, const char *expected) {
+    cJSON *input = cJSON_Parse(json);
+    assert_non_null(input);
+    const char *srcip = get_srcip_from_json(input);
+    if (expected) {
+        assert_non_null(srcip);
+        assert_string_equal(srcip, expected);
+    } else {
+        assert_null(srcip);
+    }
+    cJSON_Delete(input);
+}
+
+#define SRCIP_JSON(ip) "{\"parameters\":{\"alert\":{\"data\":{\"srcip\":\"" ip "\"}}}}"
+#define WIN_IP_JSON(ip) "{\"parameters\":{\"alert\":{\"data\":{\"win\":{\"eventdata\":{\"ipAddress\":\"" ip "\"}}}}}}"
+
+void test_get_srcip_from_json_valid(void **state) {
+    (void) state;
+    assert_srcip(SRCIP_JSON("10.0.0.1"), "10.0.0.1");
+    assert_srcip(SRCIP_JSON("2001:db8::1"), "2001:db8::1");
+    assert_srcip(WIN_IP_JSON("10.0.0.1"), "10.0.0.1");
+}
+
+void test_get_srcip_from_json_mapped_ipv4(void **state) {
+    (void) state;
+    assert_srcip(SRCIP_JSON("::ffff:10.0.0.1"), "10.0.0.1");
+    assert_srcip(WIN_IP_JSON("::ffff:10.0.0.1"), "10.0.0.1");
+    // Any other spelling of the prefix stays an IPv6 address, as on the manager
+    assert_srcip(SRCIP_JSON("::FFFF:10.0.0.1"), "::FFFF:10.0.0.1");
+    assert_srcip(SRCIP_JSON("0:0:0:0:0:ffff:10.0.0.1"), "0:0:0:0:0:ffff:10.0.0.1");
+    assert_srcip(SRCIP_JSON("::ffff:a00:1"), "::ffff:a00:1");
+}
+
+void test_get_srcip_from_json_invalid(void **state) {
+    (void) state;
+    assert_srcip(SRCIP_JSON("010.0.0.1"), NULL);
+    assert_srcip(SRCIP_JSON("::ffff:010.0.0.1"), NULL);
+    assert_srcip(SRCIP_JSON("::ffff:167772161"), NULL);
+    assert_srcip(SRCIP_JSON("::ffff:"), NULL);
+    assert_srcip(SRCIP_JSON(""), NULL);
+    assert_srcip("{\"parameters\":{\"alert\":{\"data\":{}}}}", NULL);
 }
 
 // Tests for get_username_from_json (the getter must apply is_valid_username)
@@ -451,10 +472,16 @@ void test_hosts_deny_rule_matches_null(void **state) {
 int main(void) {
     const struct CMUnitTest tests[] = {
         // get_ip_version tests
-        cmocka_unit_test_setup_teardown(test_get_ip_version_success_ipv4, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_get_ip_version_success_ipv6, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_get_ip_version_no_success, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_get_ip_version_success_invalid_ip, test_setup, test_teardown),
+        cmocka_unit_test(test_get_ip_version_success_ipv4),
+        cmocka_unit_test(test_get_ip_version_success_ipv6),
+        cmocka_unit_test(test_get_ip_version_rejects_non_standard_ipv4_text),
+        cmocka_unit_test(test_get_ip_version_invalid),
+        cmocka_unit_test(test_aix_filter_rule_matches_exact),
+        cmocka_unit_test(test_aix_filter_rule_matches_other_rules),
+        cmocka_unit_test(test_aix_filter_rule_matches_malformed),
+        cmocka_unit_test(test_get_srcip_from_json_valid),
+        cmocka_unit_test(test_get_srcip_from_json_mapped_ipv4),
+        cmocka_unit_test(test_get_srcip_from_json_invalid),
 
         // canonicalize_ip tests
         cmocka_unit_test(test_canonicalize_ip_ipv4_canonical),

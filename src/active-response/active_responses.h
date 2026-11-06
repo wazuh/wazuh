@@ -80,7 +80,7 @@ const cJSON* get_alert_from_json(const cJSON *input);
 /**
  * Get srcip from input and validate that it is a valid IP address
  * @param input Input
- * @return char * with the srcip or NULL on fail or invalid IP
+ * @return char * with the srcip (the IPv4 address of a "::ffff:" mapped one) or NULL on fail or invalid IP
  * */
 const char* get_srcip_from_json(const cJSON *input);
 
@@ -142,7 +142,7 @@ int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, co
 
 /**
  * Check ip version from a string
- * Uses getaddrinfo() with AI_NUMERICHOST to validate IP format
+ * Accepts only the standard text form of an IPv4 address, or an IPv6 address
  * @param ip Ip to check version
  * @retval 4 If ip is ipv4
  * @retval 6 If ip is ipv6
@@ -172,6 +172,16 @@ bool canonicalize_ip(const char *ip, char *output, size_t output_size);
  * @retval false otherwise
  * */
 bool hosts_deny_rule_matches(const char *line, const char *rule);
+
+#define AIX_FILTER_DESCRIPTION "Access Denied by WAZUH"
+
+/**
+ * Check whether a "lsfilt -O" line is the AIX filter rule that firewall-drop created for srcip
+ * @param line Line from "lsfilt -v 4 -O"
+ * @param srcip IP to match exactly against the source address field
+ * @return true if the line is the deny rule srcip/32 -> 0.0.0.0/0 with the Wazuh description
+ * */
+bool aix_filter_rule_matches(const char *line, const char *srcip);
 
 /**
  * Write process pid to lock simultaneous executions of the script
