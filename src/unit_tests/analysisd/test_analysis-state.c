@@ -31,6 +31,7 @@ typedef struct test_struct {
 } test_struct_t;
 
 extern analysisd_state_t analysisd_state;
+extern eps_history_t eps_history;
 extern queue_status_t queue_status;
 extern OSHash *analysisd_agents_state;
 
@@ -335,6 +336,12 @@ void test_asys_create_state_json(void ** state) {
 
     assert_non_null(cJSON_GetObjectItem(eps, "seconds_over_limit"));
     assert_int_equal(cJSON_GetObjectItem(eps, "seconds_over_limit")->valueint, 1254);
+
+    assert_int_equal(cJSON_GetObjectItem(eps, "maximum")->valueint, 100);
+    assert_int_equal(cJSON_GetObjectItem(eps, "timeframe")->valueint, 30);
+    assert_int_equal(cJSON_GetObjectItem(eps, "seconds_with_drops")->valueint, 0);
+    assert_int_equal(cJSON_GetArraySize(cJSON_GetObjectItem(eps, "episodes")), 0);
+    assert_non_null(cJSON_GetObjectItem(eps, "peaks"));
 
     assert_non_null(cJSON_GetObjectItem(metrics, "events"));
     cJSON* events = cJSON_GetObjectItem(metrics, "events");
@@ -795,10 +802,179 @@ void test_w_analysisd_clean_agents_state_query_fail(void ** state) {
     os_free(test_data->agent_state);
 }
 
+static void reset_eps_history() {
+    memset(&eps_history, 0, sizeof(eps_history));
+    analysisd_state.events_received = 0;
+    analysisd_state.eps_state_breakdown.events_dropped = 0;
+    analysisd_state.eps_state_breakdown.events_dropped_not_eps = 0;
+    analysisd_state.eps_state_breakdown.seconds_with_drops = 0;
+}
+
+static void eps_second(time_t now, unsigned int received, unsigned int dropped, unsigned int admitted) {
+    analysisd_state.events_received += received;
+    analysisd_state.eps_state_breakdown.events_dropped += dropped;
+    w_eps_sample_second(now, admitted);
+}
+
+static cJSON* get_eps_json(cJSON* state_json) {
+    return cJSON_GetObjectItem(cJSON_GetObjectItem(state_json, "metrics"), "eps");
+}
+
+static void assert_peak(cJSON* eps, const char* window, const char* counter, int value, int timestamp) {
+    cJSON* peak = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(eps, "peaks"), window), counter);
+
+    assert_non_null(peak);
+    assert_int_equal(cJSON_GetObjectItem(peak, "value")->valueint, value);
+    assert_int_equal(cJSON_GetObjectItem(peak, "timestamp")->valueint, timestamp);
+}
+
+void test_w_eps_sample_second_peaks_by_window(void ** state) {
+    reset_eps_history();
+    Config.eps.timeframe = 1;
+
+    eps_second(1000, 3000, 0, 100);
+    eps_second(1200, 500, 0, 100);
+    eps_second(1390, 200, 50, 100);
+
+    will_return(__wrap_time, 1400);
+    will_return(__wrap_limit_reached, 0);
+    will_return(__wrap_limit_reached, true);
+
+    cJSON* state_json = asys_create_state_json();
+    cJSON* eps = get_eps_json(state_json);
+
+    assert_peak(eps, "1m", "received", 200, 1390);
+    assert_peak(eps, "1m", "dropped", 50, 1390);
+    assert_peak(eps, "1m", "admitted", 100, 1390);
+    assert_peak(eps, "5m", "received", 500, 1200);
+    assert_peak(eps, "5m", "admitted", 100, 1200);
+    assert_peak(eps, "1h", "received", 3000, 1000);
+    assert_peak(eps, "1h", "dropped", 50, 1390);
+    assert_peak(eps, "1h", "admitted", 100, 1000);
+    assert_int_equal(cJSON_GetObjectItem(eps, "seconds_with_drops")->valueint, 1);
+
+    cJSON_Delete(state_json);
+}
+
+void test_w_eps_sample_second_empty_window(void ** state) {
+    reset_eps_history();
+
+    eps_second(1000, 3000, 0, 100);
+
+    will_return(__wrap_time, 5000);
+    will_return(__wrap_limit_reached, 0);
+    will_return(__wrap_limit_reached, true);
+
+    cJSON* state_json = asys_create_state_json();
+    cJSON* eps = get_eps_json(state_json);
+
+    assert_peak(eps, "1h", "received", 0, 0);
+    assert_peak(eps, "1m", "dropped", 0, 0);
+
+    cJSON_Delete(state_json);
+}
+
+void test_w_eps_sample_second_history_wraps(void ** state) {
+    reset_eps_history();
+
+    eps_second(10000, 9999, 0, 0);
+
+    for (int i = 0; i < EPS_HISTORY_SECONDS; i++) {
+        eps_second(10000, 1, 0, 0);
+    }
+
+    assert_int_equal(eps_history.count, EPS_HISTORY_SECONDS);
+
+    will_return(__wrap_time, 10000);
+    will_return(__wrap_limit_reached, 0);
+    will_return(__wrap_limit_reached, true);
+
+    cJSON* state_json = asys_create_state_json();
+
+    assert_peak(get_eps_json(state_json), "1h", "received", 1, 10000);
+
+    cJSON_Delete(state_json);
+}
+
+void test_w_eps_sample_second_episode(void ** state) {
+    reset_eps_history();
+    Config.eps.timeframe = 1;
+
+    eps_second(1990, 4000, 0, 100);
+    eps_second(2000, 500, 10, 100);
+    eps_second(2001, 800, 20, 100);
+    eps_second(2002, 100, 0, 100);
+    eps_second(2003, 100, 0, 100);
+    eps_second(2004, 100, 0, 100);
+    eps_second(2005, 100, 0, 100);
+
+    assert_true(eps_history.episode_open);
+    assert_int_equal(eps_history.episodes_count, 0);
+
+    expect_string(__wrap__mwarn, formatted_msg, "EPS drop episode: 30 events dropped from 1970-01-01T00:33:20Z to "
+                  "1970-01-01T00:33:21Z (2 s), peak 800 EPS received, maximum 100 EPS (timeframe 1 s).");
+
+    eps_second(2006, 100, 0, 100);
+
+    assert_false(eps_history.episode_open);
+    assert_int_equal(analysisd_state.eps_state_breakdown.seconds_with_drops, 2);
+
+    will_return(__wrap_time, 2010);
+    will_return(__wrap_limit_reached, 0);
+    will_return(__wrap_limit_reached, true);
+
+    cJSON* state_json = asys_create_state_json();
+    cJSON* episodes = cJSON_GetObjectItem(get_eps_json(state_json), "episodes");
+
+    assert_int_equal(cJSON_GetArraySize(episodes), 1);
+    cJSON* episode = cJSON_GetArrayItem(episodes, 0);
+    assert_int_equal(cJSON_GetObjectItem(episode, "start")->valueint, 2000);
+    assert_int_equal(cJSON_GetObjectItem(episode, "end")->valueint, 2001);
+    assert_int_equal(cJSON_GetObjectItem(episode, "seconds")->valueint, 2);
+    assert_int_equal(cJSON_GetObjectItem(episode, "dropped")->valueint, 30);
+    assert_int_equal(cJSON_GetObjectItem(episode, "peak_received")->valueint, 800);
+
+    cJSON_Delete(state_json);
+}
+
+void test_w_eps_sample_second_episodes_wrap(void ** state) {
+    reset_eps_history();
+
+    for (int e = 0; e < EPS_EPISODES_MAX + 1; e++) {
+        time_t start = 1000 + e * 100;
+
+        eps_second(start, 200, e + 1, 100);
+        expect_any(__wrap__mwarn, formatted_msg);
+
+        for (int i = 1; i <= EPS_EPISODE_CLOSE_SECONDS; i++) {
+            eps_second(start + i, 50, 0, 50);
+        }
+    }
+
+    will_return(__wrap_time, 3000);
+    will_return(__wrap_limit_reached, 0);
+    will_return(__wrap_limit_reached, true);
+
+    cJSON* state_json = asys_create_state_json();
+    cJSON* episodes = cJSON_GetObjectItem(get_eps_json(state_json), "episodes");
+
+    assert_int_equal(cJSON_GetArraySize(episodes), EPS_EPISODES_MAX);
+    assert_int_equal(cJSON_GetObjectItem(cJSON_GetArrayItem(episodes, 0), "dropped")->valueint, 2);
+    assert_int_equal(cJSON_GetObjectItem(cJSON_GetArrayItem(episodes, EPS_EPISODES_MAX - 1), "dropped")->valueint, EPS_EPISODES_MAX + 1);
+
+    cJSON_Delete(state_json);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Test asys_create_state_json
         cmocka_unit_test_setup_teardown(test_asys_create_state_json, test_setup, test_teardown),
+        // Test w_eps_sample_second
+        cmocka_unit_test_setup_teardown(test_w_eps_sample_second_peaks_by_window, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_w_eps_sample_second_empty_window, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_w_eps_sample_second_history_wraps, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_w_eps_sample_second_episode, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_w_eps_sample_second_episodes_wrap, test_setup, test_teardown),
         // Test asys_create_agents_state_json
         cmocka_unit_test_setup_teardown(test_asys_create_agents_state_json, test_setup_agent, test_teardown_agent),
         // Test get_node

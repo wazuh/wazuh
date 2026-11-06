@@ -1124,6 +1124,10 @@ void OS_ReadMSG_analysisd(int m_queue)
         }
         w_set_available_credits_prev(credits);
 
+        if (Config.eps.maximum > 0 && Config.eps.timeframe > 0) {
+            w_eps_sample_second(time(NULL), get_eps_consumed_credits());
+        }
+
         update_limits();
     }
 }
