@@ -149,6 +149,7 @@ namespace task_manager::http
                              const int maxPayloadBytes,
                              const int maxTasksPerPoll,
                              const std::chrono::seconds agentTaskTtl,
+                             const std::chrono::seconds cleanupInterval,
                              std::function<Timestamp()> now)
         : m_store {store}
         , m_registry {registry}
@@ -158,6 +159,7 @@ namespace task_manager::http
         , m_maxPayloadBytes {maxPayloadBytes}
         , m_maxTasksPerPoll {maxTasksPerPoll}
         , m_agentTaskTtl {agentTaskTtl}
+        , m_cleanupInterval {cleanupInterval}
         , m_now {now ? std::move(now) : std::function<Timestamp()> {nowSeconds}}
     {
     }
@@ -373,8 +375,14 @@ namespace task_manager::http
 
         // The negative cache is deliberately not consulted: it only records that nothing is
         // PENDING, and a delivered task is exactly the one an agent is about to download.
-        const auto notBefore {m_now() - static_cast<Timestamp>(m_agentTaskTtl.count())};
-        const auto tasks {m_store.openAgentTasks(*agentId, REMOTE_UPGRADE_TASK_TYPE, notBefore)};
+        // A pending row is handed out until the cleanup pass expires it, at most agentTaskTtl +
+        // cleanupInterval after creation, and the node that hands it out authorizes agentTaskTtl
+        // more. A node that did not deliver it cannot tell that it was delivered elsewhere, so it
+        // keeps the row open for that whole span and never closes before the delivering node.
+        const auto now {m_now()};
+        const auto ttl {static_cast<Timestamp>(m_agentTaskTtl.count())};
+        const auto createdNotBefore {now - 2 * ttl - static_cast<Timestamp>(m_cleanupInterval.count())};
+        const auto tasks {m_store.openAgentTasks(*agentId, REMOTE_UPGRADE_TASK_TYPE, createdNotBefore, now - ttl)};
 
         for (const auto& task : tasks)
         {

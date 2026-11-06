@@ -1982,9 +1982,9 @@ before the pump runs; the per-chunk loop is deliberately uninstrumented) — cat
   times out are both **503** `dependency_unavailable` (counted as `remoted.download.no_row` and
   `remoted.download.unavailable`). **403** is only a selector that is not the agent's membership. The
   body is released before that wait. A `wpk` request is not authorized against
-  groups: it is served only if the authenticated agent has an open `remote_upgrade` task (pending and
-  created within the last `task_ttl` seconds, or delivered within the last `task_ttl` seconds and not
-  yet removed by the cleanup pass 24 h after delivery) for that
+  groups: it is served only if the authenticated agent has an open `remote_upgrade` task (delivered
+  within the last `task_ttl` seconds and not yet removed by the cleanup pass 24 h after delivery, or not
+  delivered by this node and created within the last `2 * task_ttl + cleanup_interval` seconds) for that
   exact `wpk_file`, asked of the task manager with `POST /v1/tasks/wpk-authorization`. Without such a
   task the answer is the same 404 as a missing file; if the task manager fails, the answer is 503
   `{"error":"Service unavailable","code":503}` and nothing is opened, without `Retry-After`. A 5.0.0

@@ -45,8 +45,8 @@ Each carries a free-form JSON `payload` defined by the producer and interpreted 
 `task_type` is not checked against this list: the store accepts any non-empty type.
 
 `task_ttl` also bounds how long a `remote_upgrade` task authorizes the download of its WPK: counted
-from its creation while it is pending and from its delivery once it is delivered (see
-[Agent upgrades](agent-upgrades.md)).
+from its delivery on the node that delivered it, and from its creation, for
+`2 * task_ttl + cleanup_interval`, on a node that did not (see [Agent upgrades](agent-upgrades.md)).
 
 Manager tasks are described in [Manager tasks](manager-tasks.md); the three recurring ones in [Recurring manager tasks](schedules.md).
 
@@ -127,7 +127,7 @@ workers (`manager_task_executor_threads`) + 1 scheduler + `cores / 2` upgrade ba
 
 | Table | Holds |
 | --- | --- |
-| `TASKS` | Agent tasks: `pending` → `delivered`, or `pending` → `expired` after `task_ttl`; a delivered task is removed 24 h after delivery, an expired one once it is 24 h old; `task_ttl` also bounds how long a `remote_upgrade` task authorizes the download of its WPK (counted from creation while pending, from delivery once delivered) |
+| `TASKS` | Agent tasks: `pending` → `delivered`, or `pending` → `expired` after `task_ttl`; a delivered task is removed 24 h after delivery, an expired one once it is 24 h old; `task_ttl` also bounds how long a `remote_upgrade` task authorizes the download of its WPK (from delivery once delivered here, otherwise `2 * task_ttl + cleanup_interval` from creation) |
 | `MANAGER_TASKS` | Manager tasks and their outcomes |
 | `MANAGER_TASK_SCHEDULES` | The mutable half of each recurring schedule |
 | `metadata` | Module bookkeeping |

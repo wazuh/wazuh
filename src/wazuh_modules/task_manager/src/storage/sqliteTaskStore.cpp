@@ -538,8 +538,10 @@ namespace task_manager::storage
                              });
     }
 
-    std::vector<AgentTask>
-    SqliteTaskStore::openAgentTasks(const std::string& agentId, const std::string& taskType, const Timestamp notBefore)
+    std::vector<AgentTask> SqliteTaskStore::openAgentTasks(const std::string& agentId,
+                                                           const std::string& taskType,
+                                                           const Timestamp createdNotBefore,
+                                                           const Timestamp deliveredNotBefore)
     {
         return inRead(
             [&](Session& session)
@@ -549,8 +551,8 @@ namespace task_manager::storage
                 auto& statement {session.stmt(Stmt::AgentTaskOpenByType)};
                 statement.bind(1, agentId);
                 statement.bind(2, taskType);
-                statement.bind(3, static_cast<std::int64_t>(notBefore));
-                statement.bind(4, static_cast<std::int64_t>(notBefore));
+                statement.bind(3, static_cast<std::int64_t>(createdNotBefore));
+                statement.bind(4, static_cast<std::int64_t>(deliveredNotBefore));
 
                 while (statement.step() == SQLITE_ROW)
                 {
