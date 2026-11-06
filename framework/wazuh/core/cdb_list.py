@@ -208,12 +208,15 @@ def validate_cdb_list(content: str):
     """Validate a CDB list.
 
     This regex allow any line like key:value. If key or value contains ":", the whole
-    key or value must be within quotes:
+    key or value must be within quotes. Quoted keys and values may also contain
+    characters used in Windows paths, such as backslash and dot:
     - test_key:test_value     VALID
     - "test:key":test_value   VALID
     - "test:key":"test:value" VALID
     - "test:key":test:value   INVALID
     - test:key:test_value     INVALID
+    - "C:\\Windows\\Microsoft.NET\\Framework\\csc.exe":"Test Path" VALID
+    - C:\\Windows\\Microsoft.NET\\Framework\\csc.exe:Test Path INVALID
 
     Parameters
     ----------
@@ -227,7 +230,10 @@ def validate_cdb_list(content: str):
     WazuhError(1112)
         Empty CDB list.
     """
-    regex_cdb = re.compile(r'(?:^"([\w\-: ]+?)"|^[^:"\s]+):(?:"([\w\-: ]*?)"$|[^:\"]*$)')
+    # Quoted sides accept any character except a quote, so Windows paths
+    # (backslash, dot, drive-letter colon) validate. Unquoted text still
+    # cannot contain ":" or '"', which keeps C:\...:value invalid.
+    regex_cdb = re.compile(r'(?:^"[^"]+"|^[^:"\s]+):(?:"[^"]*"$|[^:"]*$)')
 
     if len(content) == 0:
         raise WazuhError(1112)
