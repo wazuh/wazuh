@@ -2775,6 +2775,8 @@ bool Syscollector::isVDIndex(const std::string& index)
            index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES;
 }
 
+// Only for the index's queue. Integrity checks run on m_spSyncProtocol for every index, so a clean
+// on the VD protocol must also clear the mismatches stored there (see resyncTableToManager()).
 IAgentSyncProtocol* Syscollector::protocolForIndex(const std::string& index) const
 {
     const bool isVDTable = isVDIndex(index);
@@ -5234,6 +5236,12 @@ bool Syscollector::resyncTableToManager(const std::string& tableName,
         m_logFunction(LOG_WARNING, "Failed to clear index " + index + " before recovery resync for table " + tableName +
                       (cleanResult.failureReason.empty() ? "" : " (" + Utils::rightTrim(cleanResult.failureReason, ".") + ")") + "; " + retryNote);
         return false;
+    }
+
+    // Every index is checked on the plain protocol, so a VD index's stored mismatches live there.
+    if (protocol != m_spSyncProtocol.get() && m_spSyncProtocol)
+    {
+        m_spSyncProtocol->clearIntegrityProgress(index);
     }
 
     // LCOV_EXCL_START

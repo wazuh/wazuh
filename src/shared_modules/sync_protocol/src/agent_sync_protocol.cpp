@@ -82,6 +82,13 @@ namespace
     {
         return jsonErrorKind(std::string(body)) == "vulnerability feed not ready";
     }
+
+    // Wall-clock time, so stored timestamps stay comparable across restarts.
+    int64_t currentTimeMs()
+    {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(
+                   std::chrono::system_clock::now().time_since_epoch()).count();
+    }
 } // namespace
 
 // Various synchronization functions write a SyncResult into `m_syncState.lastSyncResult`
@@ -616,7 +623,25 @@ IntegrityCheckResult AgentSyncProtocol::requiresFullSync(const std::string& inde
     constexpr auto CHECKSUM_RETRY_DELAY = std::chrono::seconds(10);
 #endif
 
-    for (unsigned int attempt = 1; attempt <= CHECKSUM_MISMATCH_MAX_ATTEMPTS; ++attempt)
+    // Mismatches reported before a restart still count toward the budget.
+    unsigned int firstAttempt = 1;
+
+    if (const auto progress = loadMismatchProgress(index))
+    {
+        firstAttempt = progress->mismatches + 1;
+        m_logger(LOG_DEBUG, "Resuming checksum mismatch confirmation for index: " + index + " at attempt " +
+                 std::to_string(firstAttempt) + "/" + std::to_string(CHECKSUM_MISMATCH_MAX_ATTEMPTS));
+
+        const std::chrono::milliseconds elapsed {currentTimeMs() - progress->lastMismatchMs};
+
+        if (elapsed < CHECKSUM_RETRY_DELAY)
+        {
+            std::unique_lock<std::mutex> lock(m_syncState.mtx);
+            m_syncState.cv.waitFor(lock, CHECKSUM_RETRY_DELAY - elapsed, [this] { return shouldStop(); });
+        }
+    }
+
+    for (unsigned int attempt = firstAttempt; attempt <= CHECKSUM_MISMATCH_MAX_ATTEMPTS; ++attempt)
     {
         // Every attempt past the first one is only made after a 409, so stopping now leaves
         // that mismatch unconfirmed.
@@ -648,6 +673,7 @@ IntegrityCheckResult AgentSyncProtocol::requiresFullSync(const std::string& inde
                      " (attempt " + std::to_string(attempt) + "/" +
                      std::to_string(CHECKSUM_MISMATCH_MAX_ATTEMPTS) + ")");
             clearSyncState();
+            clearMismatchProgress(index);
             return {.status = IntegrityCheckStatus::VALID,
                     .failureReason = {},
                     .stopped = false,
@@ -711,6 +737,8 @@ IntegrityCheckResult AgentSyncProtocol::requiresFullSync(const std::string& inde
                      std::to_string(CHECKSUM_MISMATCH_MAX_ATTEMPTS) +
                      "); the indexer may not have caught up with a recent write yet, retrying.");
 
+            storeMismatchProgress(index, attempt);
+
             std::unique_lock<std::mutex> lock(m_syncState.mtx);
             m_syncState.cv.waitFor(lock, CHECKSUM_RETRY_DELAY, [this] { return shouldStop(); });
         }
@@ -719,6 +747,10 @@ IntegrityCheckResult AgentSyncProtocol::requiresFullSync(const std::string& inde
             m_logger(LOG_DEBUG, "Checksum validation failed for index: " + index + " after " +
                      std::to_string(CHECKSUM_MISMATCH_MAX_ATTEMPTS) +
                      " attempts - full sync required");
+
+            // Kept until the index is cleaned, so a recovery cut short is retried after one more
+            // 409, with the TTL counted from this one.
+            storeMismatchProgress(index, CHECKSUM_MISMATCH_MAX_ATTEMPTS - 1);
         }
     }
 
@@ -728,6 +760,83 @@ IntegrityCheckResult AgentSyncProtocol::requiresFullSync(const std::string& inde
             .managerNotReady = false,
             .localTransportUnavailable = false,
             .mismatchUnconfirmed = false};
+}
+
+std::optional<IntegrityProgress> AgentSyncProtocol::loadMismatchProgress(const std::string& index)
+{
+    if (!m_persistentQueue)
+    {
+        return std::nullopt;
+    }
+
+    try
+    {
+        const auto progress = m_persistentQueue->getIntegrityProgress(index);
+
+        if (!progress)
+        {
+            return std::nullopt;
+        }
+
+        // A negative age means the clock moved back, so the age cannot be trusted either.
+        const std::chrono::milliseconds age {currentTimeMs() - progress->lastMismatchMs};
+
+        if (progress->mismatches == 0 || progress->mismatches >= CHECKSUM_MISMATCH_MAX_ATTEMPTS ||
+                age.count() < 0 || age > CHECKSUM_MISMATCH_PROGRESS_TTL)
+        {
+            clearMismatchProgress(index);
+            return std::nullopt;
+        }
+
+        return progress;
+    }
+    catch (const std::exception& ex)
+    {
+        m_logger(LOG_WARNING, "Failed to read the checksum mismatch progress for index: " + index + ": " +
+                 ex.what());
+        return std::nullopt;
+    }
+}
+
+void AgentSyncProtocol::storeMismatchProgress(const std::string& index, unsigned int mismatches)
+{
+    if (!m_persistentQueue)
+    {
+        return;
+    }
+
+    try
+    {
+        m_persistentQueue->setIntegrityProgress(index, {.mismatches = mismatches, .lastMismatchMs = currentTimeMs()});
+    }
+    catch (const std::exception& ex)
+    {
+        m_logger(LOG_WARNING, "Failed to store the checksum mismatch progress for index: " + index + ": " +
+                 ex.what());
+    }
+}
+
+void AgentSyncProtocol::clearIntegrityProgress(const std::string& index)
+{
+    clearMismatchProgress(index);
+}
+
+void AgentSyncProtocol::clearMismatchProgress(const std::string& index)
+{
+    if (!m_persistentQueue)
+    {
+        return;
+    }
+
+    try
+    {
+        m_persistentQueue->clearIntegrityProgress(index);
+    }
+    catch (const std::exception& ex)
+    {
+        m_logger(LOG_WARNING, "Failed to clear the checksum mismatch progress for index: " + index + ": " +
+                 ex.what());
+    }
 }
 
 SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
@@ -897,6 +1006,7 @@ SyncModuleResult AgentSyncProtocol::notifyDataClean(const std::vector<std::strin
             for (const auto& index : indices)
             {
                 m_persistentQueue->clearItemsByIndex(index);
+                clearMismatchProgress(index);
             }
         }
         else

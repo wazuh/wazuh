@@ -81,6 +81,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         IntegrityCheckResult requiresFullSync(const std::string& index,
                                               const std::string& checksum) override;
 
+        /// @copydoc IAgentSyncProtocol::clearIntegrityProgress
+        void clearIntegrityProgress(const std::string& index) override;
+
         /// @copydoc IAgentSyncProtocol::synchronizeMetadataOrGroups
         SyncModuleResult synchronizeMetadataOrGroups(Mode mode, const std::vector<std::string>& indices, uint64_t globalVersion) override;
 
@@ -209,6 +212,15 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// and only reports a real mismatch once every attempt in this budget agrees.
         static constexpr unsigned int CHECKSUM_MISMATCH_MAX_ATTEMPTS = 5;
 
+        /// @brief How long the mismatches already reported for an index keep counting toward
+        ///        CHECKSUM_MISMATCH_MAX_ATTEMPTS after the last of them.
+        ///
+        /// They are kept in the persistent queue so a restart does not discard a confirmation
+        /// in progress, and until the index is cleaned so an interrupted recovery is retried
+        /// after one more 409. Past this age the confirmation starts over, so they only span a
+        /// check cut short by a stop or an integrity_interval shorter than this.
+        static constexpr auto CHECKSUM_MISMATCH_PROGRESS_TTL = std::chrono::hours(1);
+
         /// @brief Updates the consecutive-failure streak with the outcome of a synchronization.
         /// @param success Whether the synchronization succeeded.
         /// @param expectedFailure Whether it failed for an expected reason: a stop was requested,
@@ -334,6 +346,21 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 
         /// @brief Safely resets the synchronization state by acquiring a lock.
         void clearSyncState();
+
+        /// @brief Returns the stored mismatch progress of an index while it is still valid.
+        /// @param index The index to look up.
+        /// @return The progress, or std::nullopt if there is none, it expired or it cannot be read.
+        std::optional<IntegrityProgress> loadMismatchProgress(const std::string& index);
+
+        /// @brief Stores the number of mismatches reported in a row for an index.
+        ///        Storage errors are logged and leave the confirmation in memory only.
+        /// @param index The index the mismatches belong to.
+        /// @param mismatches The number of mismatches reported in a row.
+        void storeMismatchProgress(const std::string& index, unsigned int mismatches);
+
+        /// @brief Removes the stored mismatch progress of an index. Storage errors are logged.
+        /// @param index The index whose progress is removed.
+        void clearMismatchProgress(const std::string& index);
 
         /// @brief Converts internal Mode enum to protocol schema Mode.
         /// @param mode The internal Mode enum value.

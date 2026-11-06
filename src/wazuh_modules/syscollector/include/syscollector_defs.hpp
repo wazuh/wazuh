@@ -53,6 +53,9 @@
     FRIEND_TEST(SyscollectorIdentityTest, VDRecoveryAttachesTheDataContext);                                           \
     FRIEND_TEST(SyscollectorIdentityTest, PlainRecoveryLeavesTheVDContextAlone);                                       \
     FRIEND_TEST(SyscollectorIdentityTest, DeferredVDRecoveryDoesNotAttachContext);                                     \
+    FRIEND_TEST(SyscollectorIdentityTest, VDRecoveryClearsTheMismatchesStoredByThePlainProtocol);                      \
+    FRIEND_TEST(SyscollectorIdentityTest, PlainRecoveryLeavesTheStoredMismatchesToItsClean);                           \
+    FRIEND_TEST(SyscollectorIdentityTest, FailedVDCleanKeepsTheStoredMismatches);                                      \
     FRIEND_TEST(SyscollectorIdentityTest, IdentityChangedQueryReportsAChangedId);                                      \
     FRIEND_TEST(SyscollectorIdentityTest, IdentityChangedQueryIgnoresAnUnchangedId);                                   \
     FRIEND_TEST(SyscollectorIdentityTest, IdentityChangedQueryReportsAnUnknownId);                                     \

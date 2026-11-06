@@ -286,3 +286,21 @@ void PersistentQueue::deleteDatabase()
         throw;
     }
 }
+
+std::optional<IntegrityProgress> PersistentQueue::getIntegrityProgress(const std::string& index)
+{
+    std::lock_guard<std::mutex> storageLock(m_storageMutex);
+    return m_storage->getIntegrityProgress(index);
+}
+
+void PersistentQueue::setIntegrityProgress(const std::string& index, const IntegrityProgress& progress)
+{
+    std::lock_guard<std::mutex> storageLock(m_storageMutex);
+    m_storage->setIntegrityProgress(index, progress);
+}
+
+void PersistentQueue::clearIntegrityProgress(const std::string& index)
+{
+    std::lock_guard<std::mutex> storageLock(m_storageMutex);
+    m_storage->clearIntegrityProgress(index);
+}
