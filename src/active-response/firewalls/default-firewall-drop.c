@@ -279,21 +279,19 @@ int main (int argc, char **argv) {
                 write_debug_file(argv[0], "Unable to run lsfilt");
             } else {
                 char output_buf[OS_MAXSTR];
-                long *rule_ids = NULL;
-                size_t rule_count = 0;
+                long rule_id = 0;
 
+                // Remove a single copy, like "iptables -D": another one may belong to another block of the same IP.
                 while (fgets(output_buf, OS_MAXSTR, wfd->file_out)) {
                     if (aix_filter_rule_matches(output_buf, srcip)) {
-                        os_realloc(rule_ids, (rule_count + 1) * sizeof(long), rule_ids);
-                        rule_ids[rule_count++] = strtol(output_buf, NULL, 10);
+                        rule_id = strtol(output_buf, NULL, 10);
                     }
                 }
                 wpclose(wfd);
 
-                // lsfilt lists by ID and rmfilt renumbers the rules after the one removed: remove the last one first.
-                while (rule_count > 0) {
+                if (rule_id > 0) {
                     char rule_str[32];
-                    snprintf(rule_str, sizeof(rule_str), "%ld", rule_ids[--rule_count]);
+                    snprintf(rule_str, sizeof(rule_str), "%ld", rule_id);
                     char *exec_cmd2[6] = { rmfilt_path, "-v", "4", "-n", rule_str, NULL };
 
                     wfd_t *wfd2 = wpopenv(rmfilt_path, exec_cmd2, W_BIND_STDERR);
@@ -303,7 +301,6 @@ int main (int argc, char **argv) {
                         wpclose(wfd2);
                     }
                 }
-                os_free(rule_ids);
             }
         }
 

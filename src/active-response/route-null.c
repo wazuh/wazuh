@@ -240,7 +240,8 @@ int main (int argc, char **argv) {
             }
         }
     } else {
-        char *exec_args_delete[4] = { route_path, "DELETE", (char *)srcip, NULL };
+        // Without the mask, route deletes every route to this destination (e.g. the default one for 0.0.0.0).
+        char *exec_args_delete[6] = { route_path, "DELETE", (char *)srcip, "MASK", "255.255.255.255", NULL };
 
         wfd_t *wfd = wpopenv(route_path, exec_args_delete, W_BIND_STDERR);
         if (!wfd) {
