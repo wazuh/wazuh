@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.12]
 
+### Manager
+
+#### Fixed
+
+- Fixed `wazuh-maild` and `wazuh-monitord` ending an email notification early when its text or subject contained a line with a single dot. ([#41176](https://github.com/wazuh/wazuh/pull/41176))
+
 ## [v4.14.11]
 
 ### Manager
