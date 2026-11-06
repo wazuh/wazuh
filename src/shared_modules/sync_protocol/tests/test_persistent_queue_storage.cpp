@@ -27,6 +27,8 @@ struct QueueScenario
     bool resetSyncing;
     size_t expectedRows;
     Operation expectedOp;
+    std::vector<PersistedData> eventsAfter {};
+    std::string expectedId {};
 };
 
 inline void PrintTo(const QueueScenario& q, std::ostream* os)
@@ -91,13 +93,24 @@ TEST_P(PersistentQueueFullParamTest, HandlesSubmitFetchRemoveResetCorrectly)
         storage->resetAllSyncing();
     }
 
-    // 6. Verify final status
+    // 6. Events after the session ended
+    for (auto& ev : param.eventsAfter)
+    {
+        storage->submitOrCoalesce(ev);
+    }
+
+    // 7. Verify final status
     auto rows = storage->fetchAndMarkForSync();
     EXPECT_EQ(rows.size(), param.expectedRows);
 
     if (!rows.empty())
     {
         EXPECT_EQ(rows[0].operation, param.expectedOp);
+
+        if (!param.expectedId.empty())
+        {
+            EXPECT_EQ(rows[0].id, param.expectedId);
+        }
     }
 }
 
@@ -174,7 +187,7 @@ QueueScenario
     true, false,
     1, Operation::DELETE_
 },
-// 8. CREATE + Sync + DELETE during  sync + sync fail -> row deleted
+// 8. CREATE + Sync + DELETE during  sync + sync fail -> DELETE (the manager may have applied the CREATE)
 QueueScenario
 {
     "Case 8",
@@ -182,7 +195,7 @@ QueueScenario
     true,
     { PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0} },
     false, true,
-    0, Operation::DELETE_
+    1, Operation::DELETE_
 },
 // 9. CREATE + Sync + MODIFY during  sync + fail -> MODIFY
 QueueScenario
@@ -287,6 +300,62 @@ QueueScenario
     },
     false, true,
     1, Operation::CREATE
+},
+// 18. CREATE + Sync + sync fail, then DELETE -> DELETE
+QueueScenario
+{
+    "Case 18",
+    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
+    true, {}, false, true,
+    1, Operation::DELETE_,
+    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0} }
+},
+// 19. CREATE + Sync + MODIFY during sync + sync fail, then DELETE -> DELETE
+QueueScenario
+{
+    "Case 19",
+    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
+    true,
+    { PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY, 0} },
+    false, true,
+    1, Operation::DELETE_,
+    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0} }
+},
+// 20. CREATE + Sync + DELETE + CREATE during sync + sync fail, then DELETE -> DELETE
+QueueScenario
+{
+    "Case 20",
+    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
+    true,
+    {
+        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0},
+        PersistedData{0, "id1", "idx2", "{}", Operation::CREATE, 0}
+    },
+    false, true,
+    1, Operation::DELETE_,
+    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0} }
+},
+// 21. CREATE + Sync + CREATE of another id during sync + sync fail, then DELETE of that id
+//     -> only the first CREATE remains: the second one never left the agent
+QueueScenario
+{
+    "Case 21",
+    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
+    true,
+    { PersistedData{0, "id2", "idx", "{}", Operation::CREATE, 0} },
+    false, true,
+    1, Operation::CREATE,
+    { PersistedData{0, "id2", "idx", "{}", Operation::DELETE_, 0} },
+    "id1"
+},
+// 22. CREATE + Sync + sync success, then DELETE -> DELETE
+QueueScenario
+{
+    "Case 22",
+    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
+    true, {}, true, false,
+    1, Operation::DELETE_,
+    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0} }
 }
     )
 );

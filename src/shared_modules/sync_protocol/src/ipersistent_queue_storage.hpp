@@ -50,6 +50,8 @@ class IPersistentQueueStorage
         virtual void removeAllSynced() = 0;
 
         /// @brief Resets the status of all SYNCING messages for a module back to PENDING.
+        /// The manager may have applied them, so they are no longer treated as new: a later
+        /// DELETE of them is sent instead of coalesced away.
         virtual void resetAllSyncing() = 0;
 
         /// @brief Deletes all messages belonging to a specific index.

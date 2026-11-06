@@ -244,11 +244,13 @@ enum class SyncStatus : int {
 
 ```c
 enum class CreateStatus : int {
-    EXISTING = 0,     // Message existed prior to current session
-    NEW = 1,          // Message newly created during current session
-    NEW_DELETED = 2   // Message created then deleted before sync
+    EXISTING = 0,     // Message may already be known to the manager
+    NEW = 1,          // Message created and never part of a session
+    NEW_DELETED = 2   // Message created, then deleted while its creation was being synchronized
 };
 ```
+
+A `DELETE` of a `NEW` message that is still pending removes both, since the manager never saw the creation. Once a message has been part of a session it is `EXISTING`, whether the session succeeded or failed, because a failed session may still have been applied by the manager; its later `DELETE` is always sent.
 
 ---
 
