@@ -213,6 +213,106 @@ stages:
                 - test_i2
 
   # POST /security/rules
+  - name: Add a rule with an unknown key
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test_invalid_rule"
+        rule: {"bogus": 1}
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4003
+              id:
+                - test_invalid_rule
+          total_affected_items: 0
+          total_failed_items: 1
+
+  # POST /security/rules
+  - name: Add a rule with no operator
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test_invalid_rule"
+        rule: {}
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4003
+              id:
+                - test_invalid_rule
+          total_affected_items: 0
+          total_failed_items: 1
+
+  # POST /security/rules
+  - name: Add a rule with an empty operator
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test_invalid_rule"
+        rule: {"OR": []}
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4003
+              id:
+                - test_invalid_rule
+          total_affected_items: 0
+          total_failed_items: 1
+
+  # POST /security/rules
+  - name: Add a rule with an empty function
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test_invalid_rule"
+        rule: {"MATCH": {}}
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4003
+              id:
+                - test_invalid_rule
+          total_affected_items: 0
+          total_failed_items: 1
+
+  # POST /security/rules
   - name: Add a too long named rule
     request:
       verify: False
@@ -284,7 +384,7 @@ stages:
         name: "test_i1"
         policy:
           actions:
-            - "agent:update"
+            - "agent:modify_group"
           resources:
             - "agent:id:004"
             - "agent:id:005"
@@ -300,7 +400,7 @@ stages:
               name: test_i1
               policy:
                 actions:
-                  - agent:update
+                  - agent:modify_group
                 effect: allow
                 resources:
                   - agent:id:004
@@ -536,6 +636,116 @@ stages:
       status_code: 400
 
   # POST /security/policies
+  - name: Add a policy with an unknown effect
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test_invalid_policy"
+        policy:
+          actions:
+            - "agent:read"
+          resources:
+            - "agent:id:*"
+          effect: "maybe"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4006
+              id:
+                - test_invalid_policy
+          total_affected_items: 0
+          total_failed_items: 1
+
+  # POST /security/policies
+  - name: Add a policy with an unknown action
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test_invalid_policy"
+        policy:
+          actions:
+            - "agent:bogus"
+          resources:
+            - "agent:id:*"
+          effect: "allow"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4006
+              id:
+                - test_invalid_policy
+          total_affected_items: 0
+          total_failed_items: 1
+
+  # POST /security/policies
+  - name: Add a policy with an unknown resource type
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test_invalid_policy"
+        policy:
+          actions:
+            - "agent:read"
+          resources:
+            - "agent:bogusfield:*"
+          effect: "allow"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4006
+              id:
+                - test_invalid_policy
+          total_affected_items: 0
+          total_failed_items: 1
+
+  # POST /security/policies
+  - name: Add a policy with no actions
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test_invalid_policy"
+        policy:
+          actions: []
+          resources:
+            - "agent:id:*"
+          effect: "allow"
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+  # POST /security/policies
   - name: Add a too long named policy
     request:
       verify: False
@@ -575,6 +785,31 @@ stages:
         data:
           affected_items: !anything
           total_affected_items: 1
+
+  # POST /security/roles/{role_id}/policies/{policy}
+  - name: Create link role-policy again with a position (already linked)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles/103/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      params:
+        policy_ids: 105
+        position: 0
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4011
+              id:
+                - 105
+          total_affected_items: 0
+          total_failed_items: 1
 
   # POST /security/roles/{role_id}/policies/{policy}
   - name: Create link role-policy
@@ -1052,6 +1287,32 @@ stages:
                 - 3
           total_affected_items: 2
           total_failed_items: 3
+
+  # POST /security/user/{username}/roles/{role_id}
+  - name: Create link user-role again with a position (already linked roles)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/106/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      params:
+        role_ids: 3,4
+        position: 0
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4017
+              id:
+                - 3
+                - 4
+          total_affected_items: 0
+          total_failed_items: 2
 
 ---
 test_name: POST /security/user/authenticate/run_as

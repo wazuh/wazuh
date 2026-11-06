@@ -251,7 +251,9 @@ Stored in `api/configuration/security/security.yaml`, and read and changed throu
 JWT token expiration time in seconds.
 
 - **Default value:** `900` (15 minutes)
-- **Allowed values:** Integer; at least `30` through `PUT /security/config`
+- **Allowed values:** Integer from `30` to `2147483647` through `PUT /security/config` (out of range: `400`).
+  `security.yaml` accepts any integer up to `2147483647` (a larger one: the API does not start); the
+  `30` floor applies only to the endpoint
 - **Note:** Shorter timeouts increase security but require more frequent re-authentication
 
 ### rbac_mode

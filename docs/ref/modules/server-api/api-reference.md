@@ -54,7 +54,7 @@ The token expires after `auth_token_exp_timeout` seconds (900 by default). `DELE
 
 ### Update token expiration
 
-`auth_token_exp_timeout` takes an integer of at least `30` through this endpoint.
+`auth_token_exp_timeout` takes an integer from `30` to `2147483647` through this endpoint; any other value is `400`.
 
 ```bash
 curl -k -X PUT "https://localhost:55000/security/config" \
