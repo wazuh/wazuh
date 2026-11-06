@@ -26,7 +26,8 @@ namespace
 // Helper: create a minimal Policy object
 cm::store::dataType::Policy makePolicy(const std::string& originSpace = "testspace",
                                        bool indexDiscardedEvents = false,
-                                       bool cleanupDecoderVariables = true)
+                                       bool cleanupDecoderVariables = true,
+                                       bool indexUnclassifiedEvents = false)
 {
     return cm::store::dataType::Policy("Test Policy",                            // title
                                        true,                                     // enabled
@@ -37,7 +38,7 @@ cm::store::dataType::Policy makePolicy(const std::string& originSpace = "testspa
                                        {},                                       // outputs
                                        originSpace,                              // originSpace
                                        "",                                       // hash
-                                       false,                                    // indexUnclassifiedEvents
+                                       indexUnclassifiedEvents,                  // indexUnclassifiedEvents
                                        indexDiscardedEvents,                     // indexDiscardedEvents
                                        cleanupDecoderVariables                   // cleanupDecoderVariables
     );
@@ -330,6 +331,55 @@ TEST(UnclassifiedDropReporterTest, FirstDropReportsImmediately)
     EXPECT_THAT(*warning, HasSubstr("Space 'myspace': 1 unclassified event(s)"));
     EXPECT_THAT(*warning, HasSubstr("sources: [Wazuh-AWS]"));
     EXPECT_THAT(*warning, HasSubstr("index_unclassified_events=false"));
+    // Raw indexing is not known to the policy: the message neither claims raw copies are lost nor that an
+    // integration exists for every source
+    EXPECT_THAT(*warning, HasSubstr("not indexed as processed events"));
+    EXPECT_THAT(*warning, HasSubstr("a raw copy is kept only if index_raw_events is enabled"));
+    EXPECT_THAT(*warning, HasSubstr("if one is available"));
+}
+
+// A source a caller already sampled in the period skips the shared set, and is sampled again in the next period
+TEST(UnclassifiedDropReporterTest, SourceCacheSkipsRepeatedSourceWithinPeriod)
+{
+    UnclassifiedDropReporter reporter("myspace", std::chrono::seconds {60});
+    UnclassifiedDropReporter::SourceCache cache;
+    const auto t0 = ReporterClock::time_point {std::chrono::hours {1}};
+
+    ASSERT_TRUE(reporter.record("Wazuh-AWS", t0, &cache).has_value());
+    EXPECT_TRUE(cache.valid);
+    EXPECT_EQ(cache.source, "Wazuh-AWS");
+    const auto firstPeriod = cache.period;
+
+    // New period: the cached source is sampled again and counted every time
+    for (int i = 0; i < 5; ++i)
+    {
+        EXPECT_FALSE(reporter.record("Wazuh-AWS", t0 + std::chrono::seconds {1}, &cache).has_value());
+    }
+    EXPECT_EQ(cache.period, firstPeriod + 1);
+
+    auto warning = reporter.record("other", t0 + std::chrono::seconds {60}, &cache);
+    ASSERT_TRUE(warning.has_value());
+    EXPECT_THAT(*warning, HasSubstr(": 6 unclassified event(s)"));
+    EXPECT_THAT(*warning, HasSubstr("sources: [Wazuh-AWS, other]"));
+}
+
+// A caller whose cache holds a source another caller already added does not add it twice
+TEST(UnclassifiedDropReporterTest, SourceSharedByCallersListedOnce)
+{
+    UnclassifiedDropReporter reporter("myspace", std::chrono::seconds {60});
+    UnclassifiedDropReporter::SourceCache worker1;
+    UnclassifiedDropReporter::SourceCache worker2;
+    const auto t0 = ReporterClock::time_point {std::chrono::hours {1}};
+
+    ASSERT_TRUE(reporter.record("first", t0).has_value());
+    reporter.record("Wazuh-AWS", t0 + std::chrono::seconds {1}, &worker1);
+    reporter.record("Wazuh-AWS", t0 + std::chrono::seconds {1}, &worker2);
+    reporter.record("Wazuh-AWS", t0 + std::chrono::seconds {2}, &worker1);
+
+    auto warning = reporter.record("", t0 + std::chrono::seconds {60});
+    ASSERT_TRUE(warning.has_value());
+    EXPECT_THAT(*warning, HasSubstr(": 4 unclassified event(s)"));
+    EXPECT_THAT(*warning, HasSubstr("sources: [Wazuh-AWS]"));
 }
 
 // Drops inside the interval are accumulated and reported once it elapses
@@ -377,6 +427,28 @@ TEST(UnclassifiedDropReporterTest, SourcesAreBounded)
     EXPECT_THAT(*warning, HasSubstr(fmt::format("src{:02}]", UnclassifiedDropReporter::MAX_SOURCES - 1)));
     EXPECT_THAT(*warning, Not(HasSubstr("late")));
     EXPECT_THAT(*warning, Not(HasSubstr("xxxxx")));
+}
+
+// Production policies that drop unclassified events get their space's reporter
+TEST(UnclassifiedDropReporterTest, PolicyDroppingUnclassifiedGetsSpaceReporter)
+{
+    auto reporter = getUnclassifiedDropReporter(makePolicy("space_wiring"), false);
+    ASSERT_NE(reporter, nullptr);
+    EXPECT_EQ(reporter, UnclassifiedDropReporter::forSpace("space_wiring"));
+}
+
+// Test-mode policies never warn, whatever the policy says
+TEST(UnclassifiedDropReporterTest, TestModePolicyGetsNoReporter)
+{
+    EXPECT_EQ(getUnclassifiedDropReporter(makePolicy("space_wiring"), true), nullptr);
+}
+
+// Policies that index unclassified events drop none, so they get no reporter
+TEST(UnclassifiedDropReporterTest, PolicyIndexingUnclassifiedGetsNoReporter)
+{
+    const auto policy = makePolicy("space_wiring", false, true, true);
+    EXPECT_EQ(getUnclassifiedDropReporter(policy, false), nullptr);
+    EXPECT_EQ(getUnclassifiedDropReporter(policy, true), nullptr);
 }
 
 // Policies of the same space share one reporter; another space gets its own

@@ -67,23 +67,51 @@ public:
     static std::shared_ptr<UnclassifiedDropReporter> forSpace(const std::string& spaceName);
 
     /**
+     * @brief Last source a caller sampled and the report period it was sampled in.
+     *
+     * Owned by one caller (each router worker's copy of the policy), never shared between threads: a repeated
+     * source skips the shared lock until the next report starts a new period.
+     */
+    struct SourceCache
+    {
+        std::string source;
+        uint64_t period {0};
+        bool valid {false};
+    };
+
+    /**
      * @brief Record a dropped unclassified event.
      *
      * @param location Source of the event (`wazuh.protocol.location`), empty if unknown.
      * @param now Current time.
+     * @param cache Caller's sampling cache; nullptr samples every event.
      * @return std::optional<std::string> The warning to log, when the interval since the previous one elapsed.
      */
-    std::optional<std::string> record(std::string_view location, Clock::time_point now);
+    std::optional<std::string> record(std::string_view location, Clock::time_point now, SourceCache* cache = nullptr);
 
 private:
+    void sampleSource(std::string_view source, SourceCache* cache);
+
     const std::string m_spaceName;
     const Clock::duration m_interval;
-    std::atomic<uint64_t> m_dropped {0};
-    std::atomic<Clock::rep> m_nextReport {std::numeric_limits<Clock::rep>::min()};
+    alignas(64) std::atomic<uint64_t> m_dropped {0};
+    alignas(64) std::atomic<Clock::rep> m_nextReport {std::numeric_limits<Clock::rep>::min()};
+    std::atomic<uint64_t> m_period {0}; ///< Incremented, under m_sourcesMutex, by every report
     std::atomic<bool> m_sourcesFull {false};
     std::mutex m_sourcesMutex;
-    std::set<std::string> m_sources;
+    std::set<std::string, std::less<>> m_sources;
 };
+
+/**
+ * @brief Get the drop reporter a policy's post-output stage uses.
+ *
+ * @param policy Policy data.
+ * @param isTestMode Whether the policy is built in test mode.
+ * @return std::shared_ptr<UnclassifiedDropReporter> The space's shared reporter, or nullptr when the policy indexes
+ * unclassified events or is built in test mode (tester sessions, logtest, policy validation never warn).
+ */
+std::shared_ptr<UnclassifiedDropReporter> getUnclassifiedDropReporter(const cm::store::dataType::Policy& policy,
+                                                                      bool isTestMode);
 
 /**
  * @brief Create an expression that increments the unclassified events metric after output.

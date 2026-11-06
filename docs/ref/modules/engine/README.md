@@ -910,6 +910,14 @@ drop is reported immediately. Policies built in test mode (tester sessions, `/lo
 never warn. The [`space.<space>.events.unclassified`](#spacespaceeventsunclassified) metric counts every
 unclassified event, indexed or not.
 
+The warning says the events were not indexed *as processed events*: raw indexing (`index_raw_events`) runs
+before the policy and the policy does not know whether it is enabled, so the warning fires either way, and with
+raw indexing enabled a raw copy of each event is still kept. Its advice to enable an integration applies only
+when one exists for the source; a custom log format may have none.
+
+Each router worker samples sources through its own cache of the last source it added in the current report
+period, so a repeated source (the common case, such as `Wazuh-AWS`) does not take the shared lock on every event.
+
 ```mermaid
 flowchart TD
 

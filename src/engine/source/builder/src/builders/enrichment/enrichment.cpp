@@ -125,19 +125,43 @@ std::shared_ptr<UnclassifiedDropReporter> UnclassifiedDropReporter::forSpace(con
     return reporter;
 }
 
-std::optional<std::string> UnclassifiedDropReporter::record(std::string_view location, Clock::time_point now)
+void UnclassifiedDropReporter::sampleSource(std::string_view source, SourceCache* cache)
+{
+    // Already sampled by this caller in the current period: skip the shared lock.
+    if (cache && cache->valid && cache->period == m_period.load(std::memory_order_relaxed) && cache->source == source)
+    {
+        return;
+    }
+
+    // A contended lock only skips this event's source, never the count; the cache is not marked, so it retries.
+    std::unique_lock lock(m_sourcesMutex, std::try_to_lock);
+    if (!lock.owns_lock())
+    {
+        return;
+    }
+
+    if (m_sources.size() < MAX_SOURCES && m_sources.find(source) == m_sources.end())
+    {
+        m_sources.emplace(source);
+        m_sourcesFull.store(m_sources.size() >= MAX_SOURCES, std::memory_order_relaxed);
+    }
+
+    if (cache)
+    {
+        cache->source.assign(source);
+        cache->period = m_period.load(std::memory_order_relaxed);
+        cache->valid = true;
+    }
+}
+
+std::optional<std::string>
+UnclassifiedDropReporter::record(std::string_view location, Clock::time_point now, SourceCache* cache)
 {
     m_dropped.fetch_add(1, std::memory_order_relaxed);
 
-    // Sample the source; a contended lock only skips this event's source, never the count.
     if (!location.empty() && !m_sourcesFull.load(std::memory_order_relaxed))
     {
-        std::unique_lock lock(m_sourcesMutex, std::try_to_lock);
-        if (lock.owns_lock() && m_sources.size() < MAX_SOURCES)
-        {
-            m_sources.emplace(location.substr(0, MAX_SOURCE_LENGTH));
-            m_sourcesFull.store(m_sources.size() >= MAX_SOURCES, std::memory_order_relaxed);
-        }
+        sampleSource(location.substr(0, MAX_SOURCE_LENGTH), cache);
     }
 
     auto nextReport = m_nextReport.load(std::memory_order_relaxed);
@@ -149,21 +173,34 @@ std::optional<std::string> UnclassifiedDropReporter::record(std::string_view loc
     }
 
     const auto dropped = m_dropped.exchange(0, std::memory_order_relaxed);
-    std::set<std::string> sources;
+    std::set<std::string, std::less<>> sources;
     {
         std::lock_guard lock(m_sourcesMutex);
         sources.swap(m_sources);
         m_sourcesFull.store(false, std::memory_order_relaxed);
+        m_period.fetch_add(1, std::memory_order_relaxed);
     }
 
+    // Raw indexing runs before the policy and is not known here, so the message does not claim raw copies are lost.
     return fmt::format(
-        "Space '{}': {} unclassified event(s) not indexed since the last report (index_unclassified_events=false). "
-        "No enabled integration decoded them; sources: [{}]. Enable the integration of these sources, or enable "
-        "index_unclassified_events or index_raw_events to keep such events. Next report in {}s at the earliest.",
+        "Space '{}': {} unclassified event(s) not indexed as processed events since the last report "
+        "(index_unclassified_events=false); a raw copy is kept only if index_raw_events is enabled. No enabled "
+        "integration decoded them; sources: [{}]. Enable the integration for these sources if one is available, or "
+        "enable index_unclassified_events to index them as unclassified events. Next report in {}s at the earliest.",
         m_spaceName,
         dropped,
         sources.empty() ? std::string {"unknown"} : fmt::format("{}", fmt::join(sources, ", ")),
         std::chrono::duration_cast<std::chrono::seconds>(m_interval).count());
+}
+
+std::shared_ptr<UnclassifiedDropReporter> getUnclassifiedDropReporter(const cm::store::dataType::Policy& policy,
+                                                                      bool isTestMode)
+{
+    if (isTestMode || policy.shouldIndexUnclassifiedEvents())
+    {
+        return nullptr;
+    }
+    return UnclassifiedDropReporter::forSpace(policy.getOriginSpace());
 }
 
 base::Expression postOutputUnclassifiedCounter(const std::string& spaceName,
@@ -172,7 +209,9 @@ base::Expression postOutputUnclassifiedCounter(const std::string& spaceName,
 {
     return base::Term<base::EngineOp>::create(
         "postOutputUnclassified",
-        [unclassifiedCounter, dropReporter](base::Event event) -> base::result::Result<base::Event>
+        // Each router worker builds its own policy, so the cache is only touched by that worker's thread
+        [unclassifiedCounter, dropReporter, cache = UnclassifiedDropReporter::SourceCache {}](
+            base::Event event) mutable -> base::result::Result<base::Event>
         {
             std::string_view category;
             const json::PointerPath ppIntegrationCategory {syntax::asset::CATEGORY_PATH};
@@ -186,7 +225,7 @@ base::Expression postOutputUnclassifiedCounter(const std::string& spaceName,
                     std::string_view location;
                     const json::PointerPath ppLocation {base::eventParsers::EVENT_LOCATION_ID};
                     event->getString(location, ppLocation);
-                    if (auto warning = dropReporter->record(location, UnclassifiedDropReporter::Clock::now()))
+                    if (auto warning = dropReporter->record(location, UnclassifiedDropReporter::Clock::now(), &cache))
                     {
                         LOG_WARNING("{}", *warning);
                     }
