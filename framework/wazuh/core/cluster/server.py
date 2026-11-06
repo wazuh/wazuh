@@ -145,6 +145,9 @@ class AbstractServerHandler(c_common.Handler):
             raise exception.WazuhClusterError(3028, extra_message=data.decode())
         elif self.name == self.server.configuration['node_name']:
             raise exception.WazuhClusterError(3029)
+        elif self.name == 'master':
+            # 'master' is the name a worker uses for its master in DAPI requests
+            raise exception.WazuhClusterError(3054, extra_message=self.name)
         else:
             self.server.clients[self.name] = self
             self.tag = f'{self.tag} {self.name}'

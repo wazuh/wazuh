@@ -586,16 +586,23 @@ async def test_APIRequestQueue_run(loop_mock, import_module_mock):
             self.clients = {"names": ["w1", "w2"]}
 
     class RequestQueueMock:
+        """Return one request and then stop the loop."""
+        def __init__(self):
+            self.pending = True
+
         async def get(self):
+            if not self.pending:
+                raise asyncio.CancelledError
+            self.pending = False
             return 'wazuh*request_queue*test ' \
                    '{"f": {"__callable__": {"__name__": "join", "__qualname__": "join", "__module__": "join"}}}'
 
-    with patch.object(logger, "error", side_effect=Exception("break while true")) as logger_mock:
+    with patch.object(logger, "error") as logger_mock:
         server = ServerMock()
         apirequest = APIRequestQueue(server=server)
         apirequest.logger = logger
         apirequest.request_queue = RequestQueueMock()
-        with pytest.raises(Exception, match=".*break while true.*"):
+        with pytest.raises(asyncio.CancelledError):
             await apirequest.run()
         logger_mock.assert_called_once_with("Error in DAPI request. The destination node is "
                                             "not connected or does not exist: 'wazuh'.")
@@ -605,15 +612,54 @@ async def test_APIRequestQueue_run(loop_mock, import_module_mock):
             with patch.object(node, "send_string", return_value=b"noerror"):
                 with patch("wazuh.core.cluster.dapi.dapi.DistributedAPI", return_value=DistributedAPI_mock()):
                     server.clients = {"wazuh": node}
-                    with pytest.raises(Exception):
+                    apirequest.request_queue = RequestQueueMock()
+                    with pytest.raises(asyncio.CancelledError):
                         await apirequest.run()
 
             with patch.object(node, "send_string", Exception("break while true")):
                 with patch("wazuh.core.cluster.dapi.dapi.DistributedAPI", return_value=DistributedAPI_mock()):
                     with patch("wazuh.core.cluster.dapi.dapi.contextlib.suppress", side_effect=Exception()):
                         apirequest.logger = logging.getLogger("apirequest")
-                        with pytest.raises(Exception):
+                        apirequest.request_queue = RequestQueueMock()
+                        with pytest.raises(asyncio.CancelledError):
                             await apirequest.run()
+
+
+@patch("wazuh.core.cluster.dapi.dapi.DistributedAPI")
+async def test_APIRequestQueue_run_discards_unexpected_error(dapi_mock):
+    """Check that a request from a worker named 'master' is discarded on a node without `client` and that
+    the next request is processed."""
+
+    class ServerMock:
+        def __init__(self):
+            self.clients = {}
+
+    class RequestQueueMock:
+        def __init__(self):
+            self.requests = ['master*1 {}', 'wazuh*2 {}']
+
+        async def get(self):
+            if not self.requests:
+                raise asyncio.CancelledError
+            return self.requests.pop(0)
+
+    node = MagicMock()
+    node.send_string = AsyncMock(return_value=b"task_id")
+    node.send_request = AsyncMock()
+    dapi_mock.return_value.distribute_function = AsyncMock(return_value={})
+    server = ServerMock()
+    server.clients["wazuh"] = node
+    apirequest = APIRequestQueue(server=server)
+    apirequest.request_queue = RequestQueueMock()
+
+    with patch("wazuh.core.cluster.dapi.dapi.json.loads", return_value={"f": len}), \
+            patch.object(apirequest.logger, "error") as logger_mock:
+        with pytest.raises(asyncio.CancelledError):
+            await apirequest.run()
+
+    logger_mock.assert_called_once_with("Unexpected error processing a queued request, request discarded: "
+                                        "'ServerMock' object has no attribute 'client'", exc_info=True)
+    node.send_request.mock.assert_called_once_with(b"dapi_res", b"2 task_id")
 
 
 @patch("wazuh.core.cluster.dapi.dapi.contextlib.suppress", side_effect=Exception())
@@ -633,15 +679,22 @@ async def test_SendSyncRequestQueue_run(loop_mock, contexlib_mock):
             self.clients = {"names": ["w1", "w2"]}
 
     class RequestQueueMock:
+        """Return one request and then stop the loop."""
+        def __init__(self):
+            self.pending = True
+
         async def get(self):
+            if not self.pending:
+                raise asyncio.CancelledError
+            self.pending = False
             return "wazuh*request_queue*test {\"daemon_name\": \"test\"}"
 
-    with patch.object(logger, "error", side_effect=Exception("break while true")) as logger_mock:
+    with patch.object(logger, "error") as logger_mock:
         server = ServerMock()
         sendsync = SendSyncRequestQueue(server=server)
         sendsync.logger = logger
         sendsync.request_queue = RequestQueueMock()
-        with pytest.raises(Exception, match=".*break while true.*"):
+        with pytest.raises(asyncio.CancelledError):
             await sendsync.run()
         logger_mock.assert_called_once_with("Error in Sendsync. The destination node is "
                                             "not connected or does not exist: 'wazuh'.")
@@ -651,12 +704,49 @@ async def test_SendSyncRequestQueue_run(loop_mock, contexlib_mock):
             with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendsync", side_effect=Exception("break while true")):
                 server.clients = {"wazuh": node}
                 sendsync.logger = logging.getLogger("sendsync")
-                with pytest.raises(Exception):
+                sendsync.request_queue = RequestQueueMock()
+                with pytest.raises(asyncio.CancelledError):
                     await sendsync.run()
 
             with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendsync", side_effect="noerror"):
-                with pytest.raises(Exception):
+                sendsync.request_queue = RequestQueueMock()
+                with pytest.raises(asyncio.CancelledError):
                     await sendsync.run()
+
+
+@patch("wazuh.core.cluster.dapi.dapi.wazuh_sendsync")
+async def test_SendSyncRequestQueue_run_discards_unexpected_error(wazuh_sendsync_mock):
+    """Check that a malformed request is discarded and that the next request is processed."""
+
+    class ServerMock:
+        def __init__(self):
+            self.clients = {}
+
+    class RequestQueueMock:
+        def __init__(self):
+            self.requests = ['wazuh*1', 'wazuh*2 {"daemon_name": "test"}']
+
+        async def get(self):
+            if not self.requests:
+                raise asyncio.CancelledError
+            return self.requests.pop(0)
+
+    node = MagicMock()
+    node.send_string = AsyncMock(return_value=b"task_id")
+    node.send_request = AsyncMock()
+    wazuh_sendsync_mock.return_value = "ok"
+    server = ServerMock()
+    server.clients["wazuh"] = node
+    sendsync = SendSyncRequestQueue(server=server)
+    sendsync.request_queue = RequestQueueMock()
+
+    with patch.object(sendsync.logger, "error") as logger_mock:
+        with pytest.raises(asyncio.CancelledError):
+            await sendsync.run()
+
+    logger_mock.assert_called_once_with("Unexpected error processing a queued request, request discarded: "
+                                        "not enough values to unpack (expected 2, got 1)", exc_info=True)
+    node.send_request.mock.assert_called_once_with(b"sendsyn_res", b"2 task_id")
 
 
 @pytest.mark.asyncio

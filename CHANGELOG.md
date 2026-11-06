@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 
 - Fixed the configuration upload validation to also apply the `upload_configuration.remote_commands` setting to the `prefilter_cmd` option of the `syscheck` section. ([#40792](https://github.com/wazuh/wazuh/pull/40792))
 - Fixed the validation of the configuration uploaded through `PUT /manager/configuration` and `PUT /cluster/{node_id}/configuration` so that it handles comments, escaped markup and namespaces the way the daemons do. ([#40726](https://github.com/wazuh/wazuh/pull/40726))
+- Hardened the cluster handshake and request queues. The master now rejects the reserved worker node name `master`, and a request that fails unexpectedly in the cluster request queues is discarded instead of stopping `wazuh-clusterd`. ([#41203](https://github.com/wazuh/wazuh/pull/41203))
 
 ### Agent
 
