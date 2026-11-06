@@ -25,7 +25,12 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
 # Generate tests
 list(APPEND os_maild_names "test_printtable")
+list(APPEND os_maild_names "test_dot_stuff")
 list(APPEND os_maild_flags "${DEBUG_OP_WRAPPERS}")
+list(APPEND os_maild_flags "${DEBUG_OP_WRAPPERS}")
+list(APPEND os_maild_names "test_smtp_body")
+list(APPEND os_maild_flags "-Wl,--wrap,OS_ConnectTCP -Wl,--wrap,OS_SetRecvTimeout -Wl,--wrap,OS_SendTCP \
+                            -Wl,--wrap,OS_RecvTCP ${DEBUG_OP_WRAPPERS}")
 
 list(LENGTH os_maild_names count)
 math(EXPR count "${count} - 1")

@@ -92,6 +92,14 @@ int OS_Sendmail(MailConfig *mail, struct tm *p) __attribute__((nonnull));
 int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg) __attribute__((nonnull));
 int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, char *replyto, char *idsname, FILE *fp, const struct tm *p);
 
+/**
+ * @brief Prepare text for an SMTP DATA section (RFC 5321 4.5.2)
+ * @param text Text to send
+ * @param line_start In: whether text starts a line. Out: whether the next chunk will
+ * @return Allocated copy with every line break as CRLF and leading dots doubled
+ */
+char *OS_DotStuff(const char *text, bool *line_start);
+
 /* Mail timeout used by the file-queue */
 extern unsigned int mail_timeout;
 
