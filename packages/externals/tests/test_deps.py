@@ -1452,12 +1452,10 @@ def test_key_ignores_comment_in_external_block(key_repo):
 
 @pytest.mark.parametrize("rel,old,new,expected", [
     ("framework/cpython/compile.sh", "#!/bin/bash\n", "#!/bin/sh\n", {"cpython"}),
-    ("src/syscheckd/src/ebpf/src/modern.bpf.c", "\n", "\n#define EDITED 1\n", {"libbpf-bootstrap"}),
-    ("src/syscheckd/src/ebpf/src/modern.bpf.c", "\n", "\n// edited\n", {"libbpf-bootstrap"}),
     ("src/Makefile", "# deps-recipe: end\n", "X := 1 # trailing comment\n# deps-recipe: end\n", None),
     ("src/CMakeLists.txt", '  set(CMAKE_CXX_FLAGS_RELEASE "-O3 -s")\n', '  set(CMAKE_CXX_FLAGS_RELEASE "-O2 -s")\n', None),
     ("src/cmake/WazuhExternalFlags.cmake", "set(DEPS_BUILD_TYPE Release)\n", "set(DEPS_BUILD_TYPE MinSizeRel)\n", None),
-], ids=["shebang", "c-directive", "c-comment", "trailing-comment", "release-flags", "deps-build-type"])
+], ids=["shebang", "trailing-comment", "release-flags", "deps-build-type"])
 def test_key_keeps_lines_that_are_not_comments(rel, old, new, expected, key_repo):
     repo, document = key_repo
     before = deps.keys(document, repo)
@@ -1524,7 +1522,6 @@ def test_key_ignores_unused_cmake_modules(key_repo):
     ("framework/requirements.txt", {"cpython"}),
     ("src/Makefile#cpython-recipe", {"cpython"}),
     ("packages/externals/ebpf/build_ebpf.sh", {"libbpf-bootstrap"}),
-    ("src/syscheckd/src/ebpf/src/modern.bpf.c", {"libbpf-bootstrap"}),
     ("framework/cpython/custom/Setup.local", {"cpython"}),
     ("framework/.python-version", {"cpython"}),
 ])
@@ -1696,8 +1693,7 @@ def test_key_paths_literal():
         "framework/requirements.txt", "packages/externals/build_external.sh", "packages/externals/builder-images.json",
         "packages/externals/consolidate.sh", "packages/externals/dependencies.json", "packages/externals/ebpf/build_ebpf.sh",
         "packages/externals/generate_external.sh", "packages/externals/overlay/**", "packages/externals/patches/**",
-        "src/CMakeLists.txt", "src/Makefile", "src/cmake/WazuhExternalFlags.cmake", "src/external/CMakeLists.txt",
-        "src/syscheckd/src/ebpf/src/modern.bpf.c"])
+        "src/CMakeLists.txt", "src/Makefile", "src/cmake/WazuhExternalFlags.cmake", "src/external/CMakeLists.txt"])
 
 
 def test_recipe_unpaired_marker(key_repo):

@@ -20,7 +20,6 @@ on:
       - "src/deps.lock.mk"
       - "src/external/CMakeLists.txt"
       - "src/cmake/WazuhExternalFlags.cmake"
-      - "src/syscheckd/src/ebpf/src/modern.bpf.c"
       - "src/engine/tools/third-party-notices/**"
       - "THIRD-PARTY-NOTICES"
       - ".github/workflows/5_codequality_externals.yml"

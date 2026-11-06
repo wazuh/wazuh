@@ -55,7 +55,6 @@ on:
       - "src/deps.lock.mk"
       - "src/external/CMakeLists.txt"
       - "src/cmake/WazuhExternalFlags.cmake"
-      - "src/syscheckd/src/ebpf/src/modern.bpf.c"
       - ".github/workflows/5_builderpackage_externals.yml"
   workflow_dispatch:
 

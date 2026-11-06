@@ -2,7 +2,6 @@
 #include "gtest/gtest.h"
 #include "ebpf_mock_utils.hpp"
 #include "ebpf_whodata.h"
-#include "bpf_helpers.h"
 #include <bounded_queue.hpp>
 #include <iostream>
 
@@ -19,13 +18,8 @@ class PopEventsTest : public ::testing::Test
             MockFimebpf::mock_get_user = mock_get_user;
             MockFimebpf::mock_get_group = mock_get_group;
             MockFimebpf::SetMockFunctions();
-            bpf_helpers = std::make_unique<w_bpf_helpers_t>();
         }
 
-        virtual void TearDown()
-        {
-            bpf_helpers.reset();
-        }
 };
 
 template <typename T>

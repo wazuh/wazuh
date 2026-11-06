@@ -15,14 +15,13 @@
  * unconditionally — depend on a libbpf development package being installed on
  * the build host. This tree ships no such headers of its own: the deps tarball
  * provides libbpf.so/libbpf.a under external/libbpf-bootstrap/build/libbpf/ and
- * nothing else, and the ExternalProject that would fetch the rest is
- * short-circuited whenever a prebuilt modern.bpf.o is present
- * (src/external/CMakeLists.txt). So the include would resolve against whatever
+ * nothing else. So the include would resolve against whatever
  * /usr/include/bpf happens to hold, or fail.
  *
  * So the types are shadowed here instead — the same pattern, and for the same
- * reason, as src/syscheckd/src/ebpf/include/wrapper_bpf.h, which shadows the
- * skeleton types rather than including libbpf's own.
+ * reason, as the retired src/syscheckd/src/ebpf/include/wrapper_bpf.h, which
+ * shadowed skeleton types rather than including libbpf's own. This shim now
+ * owns the engine's type shadows.
  *
  * Everything rt_engine.c touches is an opaque pointer, so forward declarations
  * are enough; nothing here needs to match libbpf's layout, only its names. The

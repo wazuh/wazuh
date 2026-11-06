@@ -51,9 +51,8 @@ int ebpf_whodata_healthcheck();
  */
 int ebpf_whodata();
 
-int init_bpfobj();
-
-int healthcheck_event(void* ctx, void* data, size_t data_sz);
+struct rt_file_event;
+void healthcheck_event(const struct rt_file_event* event, void* ctx);
 
 #ifdef __cplusplus
 }
