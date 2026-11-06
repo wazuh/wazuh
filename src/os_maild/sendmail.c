@@ -29,7 +29,8 @@
 #define TO                  "To: %s\r\n"
 #define REPLYTO             "Reply-To: " __ossec_name " <%s>\r\n"
 /*#define CC                "Cc: <%s>\r\n"*/
-#define SUBJECT             "Subject: %s\r\n"
+/* Callers pass the length up to the first line break, so a subject cannot end the header */
+#define SUBJECT             "Subject: %.*s\r\n"
 #define ENDHEADER           "\r\n"
 #define ENDDATA             "\r\n.\r\n"
 #define QUITMSG             "QUIT\r\n"
@@ -283,7 +284,7 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
 
     /* Send subject */
     memset(snd_msg, '\0', 128);
-    snprintf(snd_msg, 127, SUBJECT, sms_msg->subject);
+    snprintf(snd_msg, 127, SUBJECT, (int)strcspn(sms_msg->subject, "\r\n"), sms_msg->subject);
 
     if (sendmail) {
         fprintf(sendmail->file_in, "%s", snd_msg);
@@ -299,7 +300,10 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
         OS_SendTCP(socket, ENDHEADER);
 
         /* Send body */
-        OS_SendTCP(socket, sms_msg->body);
+        bool line_start = true;
+        char *stuffed = OS_DotStuff(sms_msg->body, &line_start);
+        OS_SendTCP(socket, stuffed);
+        os_free(stuffed);
 
         /* Send end of data \r\n.\r\n */
         OS_SendTCP(socket, ENDDATA);
@@ -599,13 +603,13 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
 
     /* Check if global subject is available */
     if ((_g_subject_level != 0) && (_g_subject[0] != '\0')) {
-        snprintf(snd_msg, 256, SUBJECT, _g_subject);
+        snprintf(snd_msg, 256, SUBJECT, (int)strcspn(_g_subject, "\r\n"), _g_subject);
 
         /* Clear global values */
         _g_subject[0] = '\0';
         _g_subject_level = 0;
     } else {
-        snprintf(snd_msg, 256, SUBJECT, mailmsg->mail->subject);
+        snprintf(snd_msg, 256, SUBJECT, (int)strcspn(mailmsg->mail->subject, "\r\n"), mailmsg->mail->subject);
     }
 
     if (sendmail) {
@@ -619,11 +623,14 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     /* Send body */
 
     /* Send multiple emails together if we have to */
+    bool line_start = true;
     do {
         if (sendmail) {
             fprintf(sendmail->file_in, "%s", mailmsg->mail->body);
         } else {
-            OS_SendTCP(socket, mailmsg->mail->body);
+            char *stuffed = OS_DotStuff(mailmsg->mail->body, &line_start);
+            OS_SendTCP(socket, stuffed);
+            os_free(stuffed);
         }
         mailmsg = OS_PopLastMail();
     } while (mailmsg);
