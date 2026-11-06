@@ -1306,10 +1306,11 @@ int checkBinaryFile(const char *f_name) {
     fpos_t fp_pos;
     int64_t offset;
     int64_t rbytes;
+    int64_t len;
 
     str[OS_MAXSTR] = '\0';
 
-    fp = wfopen(f_name, "r");
+    fp = wfopen(f_name, "rb");
 
      if (!fp) {
         merror("Unable to open file '%s' due to [(%d)-(%s)].", f_name, errno, strerror(errno));
@@ -1328,16 +1329,17 @@ int checkBinaryFile(const char *f_name) {
             return 1;
         }
 
-        /* Get the last occurrence of \n */
-        if (str[rbytes - 1] == '\n') {
-            str[rbytes - 1] = '\0';
+        /* A read without \n (last line or a line longer than OS_MAXSTR) must be checked too */
+        len = rbytes;
 
-            if ((long)strlen(str) != rbytes - 1)
-            {
-                mdebug2("Line contains some zero-bytes (valid=" FTELL_TT "/ total=" FTELL_TT ").", FTELL_INT64 strlen(str), FTELL_INT64 rbytes - 1);
-                fclose(fp);
-                return 1;
-            }
+        if (str[len - 1] == '\n') {
+            str[--len] = '\0';
+        }
+
+        if ((int64_t)strlen(str) != len) {
+            mdebug2("Line contains some zero-bytes (valid=" FTELL_TT "/ total=" FTELL_TT ").", FTELL_INT64 strlen(str), FTELL_INT64 len);
+            fclose(fp);
+            return 1;
         }
     }
     fclose(fp);
