@@ -77,23 +77,22 @@ namespace remoted::common
         {
             std::lock_guard<std::mutex> lock(m_mutex);
 
-            const auto now = std::chrono::steady_clock::now();
-            const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_cacheTime);
             const auto ttl = m_lastAttemptFailed ? m_failureRetryInterval : m_cacheTtl;
 
             // Deliberately gated on m_hasAttempted rather than computing "elapsed since
             // construction" from m_cacheTime's initial time_point::min(): now - time_point::min()
-            // is far larger than milliseconds (or even the clock's native duration) can represent,
-            // so duration_cast of it is undefined behavior -- in practice it wraps around to a
+            // is far larger than the clock's native duration can represent, so the subtraction
+            // itself overflows (undefined behavior) -- in practice it wraps around to a
             // small/negative value, which made the very first call ever spuriously look
             // "within TTL" and return immediately without ever querying VD. m_hasAttempted sidesteps
-            // that entirely: it's only true once m_cacheTime holds an actual, real timestamp.
+            // that entirely: it's only true once m_cacheTime holds an actual, real timestamp, and
+            // the && below keeps the subtraction from being evaluated before that.
             //
             // Also deliberately NOT gated on m_hasValue: if VD has failed every single time since
             // startup, m_hasValue stays false forever, and gating on it too would mean every
             // caller retries immediately regardless of m_lastAttemptFailed/m_failureRetryInterval
             // -- exactly the hammering behavior this gate exists to prevent.
-            if (m_hasAttempted && elapsed < ttl)
+            if (m_hasAttempted && std::chrono::steady_clock::now() - m_cacheTime < ttl)
             {
                 LOGFN_DEBUG2(logFn(), "Returning cached VD offset: %llu", m_cachedOffset);
                 return m_hasValue ? m_cachedOffset : 0;
