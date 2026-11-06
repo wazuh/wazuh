@@ -104,7 +104,7 @@ std::string AuthFailuresProvider::rotatedBtmpPath() const
     // newest uncompressed regular sibling instead of assuming either name.
     const auto slash = m_btmpPath.find_last_of('/');
     const auto dir = (slash == std::string::npos) ? std::string(".") : m_btmpPath.substr(0, slash);
-    const auto base = (slash == std::string::npos) ? m_btmpPath : m_btmpPath.substr(slash + 1);
+    const auto base = m_btmpPath.substr(slash + 1);
 
     std::string newest;
     std::filesystem::file_time_type newestTime {};
