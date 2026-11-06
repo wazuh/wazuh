@@ -469,13 +469,84 @@ testconfig()
         fi
     done
 }
+# Seconds the engine may take to start, counted from its launch to the last readiness probe. The
+# launch alone blocks until the engine reports ready (or failed), and the readiness probes get what
+# is left. Together with the 10 s PID wait it stays below the unit's TimeoutStartSec=180, so a
+# stuck engine is reported here and not as a systemd timeout.
+ENGINE_START_BUDGET=120
+
+# Stops every process running this installation's engine binary: the launcher and the daemon it
+# forked. Used only when the launch outlives ENGINE_START_BUDGET; nothing else of this
+# installation runs that binary at that point, since pstatus() found no engine before the start.
+kill_wazuh_engine()
+{
+    local engine
+    local pids
+    local pid
+    local exe
+    local tries=0
+
+    engine=$(readlink -f "${DIR}/bin/wazuh-manager-analysisd")
+
+    while :; do
+        pids=""
+        for pid in $(ls /proc 2>/dev/null | grep -E '^[0-9]+$'); do
+            exe=$(readlink "/proc/${pid}/exe" 2>/dev/null)
+            if [ "$exe" = "$engine" ]; then
+                pids="${pids} ${pid}"
+            fi
+        done
+
+        if [ -z "$pids" ]; then
+            break
+        fi
+        # The start-up may be stuck before the engine handles SIGTERM: escalate after 10 s.
+        if [ $tries -lt 10 ]; then
+            kill $pids 2>/dev/null
+        else
+            kill -9 $pids 2>/dev/null
+        fi
+        tries=$((tries + 1))
+        sleep 1
+    done
+
+    # The engine never removes its PID file; pstatus() would clean it on the next start, but
+    # status would report a stale one until then.
+    rm -f ${DIR}/var/run/wazuh-manager-analysisd-*.pid
+}
+
+# Runs the engine and waits for its start-up verdict: without -f the launch only returns once the
+# engine is ready (0) or has failed (1, with the cause on stderr). The cause is the engine's to
+# print, so a failure here is not reported again as a missing PID or a dead process.
+launch_wazuh_engine()
+{
+    local status
+    local started
+
+    # -k: the launcher dies of SIGTERM while it waits, but the bound must not depend on that.
+    # timeout exits 124 after SIGTERM and 137 after the SIGKILL that follows it.
+    started=$(date +%s)
+    timeout -k 5 ${ENGINE_START_BUDGET} ${DIR}/bin/wazuh-manager-analysisd ${DEBUG_CLI}
+    status=$?
+
+    if [ $status -eq 124 ] || { [ $status -eq 137 ] &&
+            [ $(($(date +%s) - started)) -ge ${ENGINE_START_BUDGET} ]; }; then
+        echo "wazuh-manager-analysisd did not finish starting after ${ENGINE_START_BUDGET} seconds."
+        kill_wazuh_engine
+        return 1
+    fi
+    if [ $status -ne 0 ]; then
+        echo "wazuh-manager-analysisd failed to start (exit status ${status})."
+        return 1
+    fi
+    return 0
+}
+
 get_wazuh_engine_pid()
 {
     local max_ticks=100
     local ticks=0
     local pidfile
-
-    ${DIR}/bin/wazuh-manager-analysisd ${DEBUG_CLI}
 
     while [ $ticks -lt $max_ticks ]; do
         for pidfile in ${DIR}/var/run/wazuh-manager-analysisd-*.pid; do
@@ -511,7 +582,17 @@ except Exception:
 wait_for_wazuh_engine_ready()
 {
     local attempts=0
-    local max_attempts=120
+    local max_attempts
+    local launched_at
+
+    launched_at=$(date +%s)
+    launch_wazuh_engine || return 1
+
+    # The probes get the part of the budget the launch did not use, at least one.
+    max_attempts=$((ENGINE_START_BUDGET - ($(date +%s) - launched_at)))
+    if [ $max_attempts -lt 1 ]; then
+        max_attempts=1
+    fi
 
     ENGINE_PID=$(get_wazuh_engine_pid)
     if [ $? -ne 0 ]; then

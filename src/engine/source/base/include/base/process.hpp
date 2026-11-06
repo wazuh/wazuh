@@ -10,7 +10,10 @@
 #include <pthread.h>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 
+#include <csignal>
+#include <ctime>
 #include <grp.h>
 #include <pwd.h>
 #include <sys/types.h>
@@ -30,9 +33,14 @@ constexpr auto WAZUH_GROUP = "wazuh-manager"; ///< Group the engine drops to in 
  * @brief Injectable system calls of the process helpers (tests only). An empty member is the real call.
  *
  * A fake follows the contract of the call it replaces: on failure it returns -1 (fork, setsid, open, dup2, close,
- * fchmod, write, setgroups, setgid, setuid, seteuid) and sets errno, which the helpers read right after the call.
- * write returning 0 is a short write (errno is not read); sysconf returning a value <= 0 means "no size hint" (errno is
- * not read); umask never fails and its result is ignored.
+ * fchmod, write, setgroups, setgid, setuid, seteuid, pipe2, read, pthread_sigmask, sigtimedwait, fcntl) and sets errno,
+ * which the helpers read right after the call. write returning 0 is a short write (errno is not read); read returning 0
+ * is end of file (errno is not read); sysconf returning a value <= 0 means "no size hint" (errno is not read); umask
+ * never fails and its result is ignored.
+ *
+ * pthread_sigmask and sigtimedwait follow their POSIX contracts: pthread_sigmask returns an errno-style code (0 on
+ * success) and does NOT set errno, while sigtimedwait returns the signal number or -1 with errno set (EAGAIN when the
+ * timeout expires with nothing pending).
  */
 struct ProcessSysCalls
 {
@@ -48,23 +56,77 @@ struct ProcessSysCalls
     std::function<int(gid_t)> setgid;
     std::function<int(uid_t)> setuid;
     std::function<int(uid_t)> seteuid;
-    std::function<long(int)> sysconf; ///< Size hint of the reentrant user/group lookups
+    std::function<long(int)> sysconf;                ///< Size hint of the reentrant user/group lookups
+    std::function<int(int[2], int)> pipe2;           ///< Startup channel; O_CLOEXEC is applied to both ends
+    std::function<ssize_t(int, void*, size_t)> read; ///< Parent side of the startup channel
+    std::function<int(int, const sigset_t*, sigset_t*)> pthread_sigmask; ///< Guards the channel writes from SIGPIPE
+    std::function<int(const sigset_t*, siginfo_t*, const struct timespec*)> sigtimedwait; ///< Drains a pending SIGPIPE
+    std::function<int(int, int, int)> fcntl; ///< Lifts the channel above 0/1/2 (F_DUPFD_CLOEXEC)
 };
 
 /**
- * @brief Transforms the current process into a daemon.
+ * @brief Carries the startup verdict of a daemonized engine back to the process that launched it.
  *
- * fork (the parent exits with _exit), setsid, fork again (the first child exits with _exit), umask(027) and
- * stdin, stdout and stderr redirected to /dev/null.
+ * goDaemon() hands one of these to the grandchild. Until it reports, the process that ran the binary is still alive,
+ * blocked reading the channel, so whatever the caller does with the exit status reflects the startup and not the fork.
  *
- * The parents always leave with the real _exit (no atexit handlers, no static destructors): it stays outside
- * ProcessSysCalls (GoDaemonFunctionalTest.ParentsSkipExitHandlers checks it). With an empty umask member, umask(027) is
- * applied to the calling process.
+ * Single shot: reportReady() and reportFailure() write, close the channel and leave the object permanently
+ * disconnected. Every later call is a no-op. This is not cosmetic: main.cpp's catch blocks also cover the service
+ * loop, so a failure hours after startup would otherwise write into a descriptor the process has since reused.
+ *
+ * A default-constructed report is already disconnected, which is what foreground mode (-f) uses: every method is then
+ * a no-op and the binary behaves exactly as before.
+ *
+ * Move-only: a copy would duplicate the descriptor and close it twice.
+ */
+class StartupReport
+{
+public:
+    StartupReport() = default; ///< Disconnected: all methods are no-ops (foreground mode).
+    StartupReport(int writeFd, ProcessSysCalls sys);
+    ~StartupReport();
+
+    StartupReport(const StartupReport&) = delete;
+    StartupReport& operator=(const StartupReport&) = delete;
+    StartupReport(StartupReport&& other) noexcept;
+    StartupReport& operator=(StartupReport&& other) noexcept;
+
+    /// Reports a completed startup: the launching process exits 0. No-op if already reported.
+    void reportReady();
+
+    /// Reports a failed startup with its cause: the launching process writes the text to its stderr and exits 1.
+    void reportFailure(std::string_view reason);
+
+    /// True while the channel is open, i.e. a report would still reach the launching process.
+    bool connected() const { return m_fd >= 0; }
+
+private:
+    void disconnect();
+
+    int m_fd {-1};
+    ProcessSysCalls m_sys {};
+};
+
+/**
+ * @brief Transforms the current process into a daemon, keeping a channel back to the caller.
+ *
+ * fork, setsid, fork again, umask(027) and stdin, stdout and stderr redirected to /dev/null.
+ *
+ * Unlike a plain double fork, the ORIGINAL process does not leave with success as soon as it forks: it closes the
+ * write end of a pipe, blocks reading the verdict, and only then exits -- with 0 if the grandchild reported ready, and
+ * with EXIT_FAILURE otherwise, writing the reported cause to its still-connected stderr. End of file without a verdict
+ * (the grandchild died, was killed, or called exit()) counts as a failure, so a startup path that reports nothing can
+ * never be mistaken for a successful one.
+ *
+ * The intermediate child leaves with EXIT_SUCCESS as before. Both parents use the real _exit (no atexit handlers, no
+ * static destructors): it stays outside ProcessSysCalls (GoDaemonFunctionalTest.ParentsSkipExitHandlers checks it).
  *
  * @param sys System calls (the real ones by default).
- * @throws std::runtime_error if any step fails.
+ * @return The grandchild's handle on the channel. Only the grandchild ever returns from this function.
+ * @throws std::runtime_error if any step fails. When the channel already exists the cause is sent through it first, so
+ *         the caller sees the reason even though the throwing process is no longer the one it launched.
  */
-void goDaemon(const ProcessSysCalls& sys = {});
+[[nodiscard]] StartupReport goDaemon(const ProcessSysCalls& sys = {});
 
 /**
  * @brief Creates (or truncates) the PID file <path>/<name>-<pid>.pid with mode 0640 and content "<pid>\n".
