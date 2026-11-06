@@ -187,9 +187,11 @@ class AbstractServerHandler(c_common.Handler):
             raise exception.WazuhClusterError(3060, extra_message=node_name)
         elif node_name in self.server.clients:
             raise exception.WazuhClusterError(3028, extra_message=node_name)
-        elif node_name in (self.server.configuration['node_name'], 'master'):
-            # 'master' is the name a worker uses for its master in DAPI requests
+        elif node_name == self.server.configuration['node_name']:
             raise exception.WazuhClusterError(3029)
+        elif node_name == 'master':
+            # 'master' is the name a worker uses for its master in DAPI requests
+            raise exception.WazuhClusterError(3054, extra_message=node_name)
         else:
             self.name = node_name
             self._cancel_handshake_deadline()
