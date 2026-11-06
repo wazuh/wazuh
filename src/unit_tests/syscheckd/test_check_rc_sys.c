@@ -65,7 +65,7 @@ int __wrap_notify_rk(int rk_type, const char *msg)
 }
 
 /* Wrap directory operations */
-DIR *__wrap_wopendir(const char *name)
+DIR *__wrap_opendir(const char *name)
 {
     check_expected(name);
     return mock_type(DIR *);
@@ -152,11 +152,11 @@ static void expect_closedir(DIR *dp)
     expect_value(__wrap_closedir, dirp, dp);
 }
 
-/* Queue a wopendir expectation */
-static void expect_wopendir(const char *path, DIR *dp)
+/* Queue an opendir expectation */
+static void expect_opendir(const char *path, DIR *dp)
 {
-    expect_string(__wrap_wopendir, name, path);
-    will_return(__wrap_wopendir, dp);
+    expect_string(__wrap_opendir, name, path);
+    will_return(__wrap_opendir, dp);
 }
 
 /* Queue a skipFS expectation (default: don't skip) */
@@ -239,8 +239,8 @@ static void test_enoent_deleted_file_no_alert(void **state)
     /* -- read_sys_dir: lstat on "/" -- */
     expect_lstat("/", &dir_stat, 0, 0);
 
-    /* -- wopendir("/") -- */
-    expect_wopendir("/", fake_dp);
+    /* -- opendir("/") -- */
+    expect_opendir("/", fake_dp);
 
     /* -- First readdir pass: ".", "..", "bait.txt", NULL -- */
     expect_readdir(fake_dp, &dot_entry);
@@ -259,8 +259,8 @@ static void test_enoent_deleted_file_no_alert(void **state)
     /* -- First readdir returns NULL (end of loop) -- */
     expect_readdir(fake_dp, NULL);
 
-    /* -- Second wopendir for readdir re-verification -- */
-    expect_wopendir("/", fake_dp2);
+    /* -- Second opendir for readdir re-verification -- */
+    expect_opendir("/", fake_dp2);
 
     /* -- Second readdir pass: file is GONE (only ".", "..", NULL) -- */
     expect_readdir(fake_dp2, &dot_entry);
@@ -319,8 +319,8 @@ static void test_enoent_hidden_file_alerts(void **state)
     /* -- read_sys_dir: lstat on "/" -- */
     expect_lstat("/", &dir_stat, 0, 0);
 
-    /* -- wopendir("/") -- */
-    expect_wopendir("/", fake_dp);
+    /* -- opendir("/") -- */
+    expect_opendir("/", fake_dp);
 
     /* -- First readdir: ".", "..", "hidden.txt", NULL -- */
     expect_readdir(fake_dp, &dot_entry);
@@ -339,8 +339,8 @@ static void test_enoent_hidden_file_alerts(void **state)
     /* -- End of first readdir -- */
     expect_readdir(fake_dp, NULL);
 
-    /* -- Second wopendir for verification -- */
-    expect_wopendir("/", fake_dp2);
+    /* -- Second opendir for verification -- */
+    expect_opendir("/", fake_dp2);
 
     /* -- Second readdir: file is STILL listed! (rootkit hiding it from lstat) -- */
     expect_readdir(fake_dp2, &dot_entry);
@@ -399,8 +399,8 @@ static void test_eacces_still_alerts(void **state)
     /* -- read_sys_dir: lstat on "/" -- */
     expect_lstat("/", &dir_stat, 0, 0);
 
-    /* -- wopendir -- */
-    expect_wopendir("/", fake_dp);
+    /* -- opendir -- */
+    expect_opendir("/", fake_dp);
 
     /* -- readdir: ".", "..", "secret.txt", NULL -- */
     expect_readdir(fake_dp, &dot_entry);
@@ -422,7 +422,7 @@ static void test_eacces_still_alerts(void **state)
     /* -- readdir returns NULL -- */
     expect_readdir(fake_dp, NULL);
 
-    /* No second wopendir needed (no ENOENT suspects) */
+    /* No second opendir needed (no ENOENT suspects) */
 
     /* -- skipFS -- */
     expect_skipFS("/", 0);
@@ -467,8 +467,8 @@ static void test_existing_file_no_alert(void **state)
     /* -- read_sys_dir: lstat on "/" -- */
     expect_lstat("/", &dir_stat, 0, 0);
 
-    /* -- wopendir -- */
-    expect_wopendir("/", fake_dp);
+    /* -- opendir -- */
+    expect_opendir("/", fake_dp);
 
     /* -- readdir: ".", "..", "normal.txt", NULL -- */
     expect_readdir(fake_dp, &dot_entry);
@@ -487,7 +487,7 @@ static void test_existing_file_no_alert(void **state)
     /* -- readdir returns NULL -- */
     expect_readdir(fake_dp, NULL);
 
-    /* No second wopendir (no suspects) */
+    /* No second opendir (no suspects) */
 
     /* -- skipFS -- */
     expect_skipFS("/", 0);
@@ -533,8 +533,8 @@ static void test_multiple_suspects_mixed(void **state)
     /* -- read_sys_dir: lstat on "/" -- */
     expect_lstat("/", &dir_stat, 0, 0);
 
-    /* -- wopendir -- */
-    expect_wopendir("/", fake_dp);
+    /* -- opendir -- */
+    expect_opendir("/", fake_dp);
 
     /* -- First readdir: ".", "..", "deleted.txt", "hidden.txt", NULL -- */
     expect_readdir(fake_dp, &dot_entry);
@@ -556,8 +556,8 @@ static void test_multiple_suspects_mixed(void **state)
     /* -- End of first readdir -- */
     expect_readdir(fake_dp, NULL);
 
-    /* -- Second wopendir for verification -- */
-    expect_wopendir("/", fake_dp2);
+    /* -- Second opendir for verification -- */
+    expect_opendir("/", fake_dp2);
 
     /* -- Second readdir: only hidden.txt still listed (deleted.txt gone) -- */
     expect_readdir(fake_dp2, &dot_entry);
@@ -590,11 +590,11 @@ static void test_multiple_suspects_mixed(void **state)
 }
 
 /* ===================================================================
- * Test 6: Verification wopendir fails — conservative fallback alerts
+ * Test 6: Verification opendir fails — conservative fallback alerts
  * all suspects.
  * =================================================================== */
 
-static void test_wopendir_fail_fallback_alerts_all(void **state)
+static void test_opendir_fail_fallback_alerts_all(void **state)
 {
     (void)state;
     init_dot_entries();
@@ -616,8 +616,8 @@ static void test_wopendir_fail_fallback_alerts_all(void **state)
     /* -- read_sys_dir: lstat on "/" -- */
     expect_lstat("/", &dir_stat, 0, 0);
 
-    /* -- wopendir("/") -- */
-    expect_wopendir("/", fake_dp);
+    /* -- opendir("/") -- */
+    expect_opendir("/", fake_dp);
 
     /* -- First readdir: ".", "..", "suspect.txt", NULL -- */
     expect_readdir(fake_dp, &dot_entry);
@@ -636,8 +636,8 @@ static void test_wopendir_fail_fallback_alerts_all(void **state)
     /* -- End of first readdir -- */
     expect_readdir(fake_dp, NULL);
 
-    /* -- Second wopendir FAILS (returns NULL) -- */
-    expect_wopendir("/", NULL);
+    /* -- Second opendir FAILS (returns NULL) -- */
+    expect_opendir("/", NULL);
 
     /* -- Fallback: alert fires for suspect (conservative) -- */
     expect_notify_rk(ALERT_ROOTKIT_FOUND);
@@ -703,8 +703,8 @@ static void test_subdir_path_building(void **state)
     /* -- lstat on "/" -- */
     expect_lstat("/", &dir_stat, 0, 0);
 
-    /* -- wopendir("/") -- */
-    expect_wopendir("/", fake_dp_root);
+    /* -- opendir("/") -- */
+    expect_opendir("/", fake_dp_root);
 
     /* -- readdir("/") -> ".", "..", "etc", NULL -- */
     expect_readdir(fake_dp_root, &dot_entry);
@@ -725,8 +725,8 @@ static void test_subdir_path_building(void **state)
     /* -- lstat on "/etc" (read_sys_dir entry) -- */
     expect_lstat("/etc", &subdir_stat, 0, 0);
 
-    /* -- wopendir("/etc") -- */
-    expect_wopendir("/etc", fake_dp_etc);
+    /* -- opendir("/etc") -- */
+    expect_opendir("/etc", fake_dp_etc);
 
     /* -- readdir("/etc") -> ".", "..", "hidden.txt", NULL -- */
     expect_readdir(fake_dp_etc, &dot_entry);
@@ -745,8 +745,8 @@ static void test_subdir_path_building(void **state)
     /* -- End of readdir("/etc") -- */
     expect_readdir(fake_dp_etc, NULL);
 
-    /* -- Second wopendir("/etc") for verification -- */
-    expect_wopendir("/etc", fake_dp_etc2);
+    /* -- Second opendir("/etc") for verification -- */
+    expect_opendir("/etc", fake_dp_etc2);
 
     /* -- Verification readdir: hidden.txt still listed -> alert -- */
     expect_readdir(fake_dp_etc2, &dot_entry);
@@ -805,7 +805,7 @@ int main(void)
         cmocka_unit_test_setup(test_eacces_still_alerts, setup),
         cmocka_unit_test_setup(test_existing_file_no_alert, setup),
         cmocka_unit_test_setup(test_multiple_suspects_mixed, setup),
-        cmocka_unit_test_setup(test_wopendir_fail_fallback_alerts_all, setup),
+        cmocka_unit_test_setup(test_opendir_fail_fallback_alerts_all, setup),
         cmocka_unit_test_setup(test_subdir_path_building, setup),
     };
 

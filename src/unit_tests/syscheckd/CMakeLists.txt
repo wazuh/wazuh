@@ -345,7 +345,7 @@ endif()
 if(NOT ${TARGET} STREQUAL "winagent")
   set(CHECK_RC_SYS_FLAGS "-Wl,--wrap,lstat \
                            -Wl,--wrap,notify_rk \
-                           -Wl,--wrap,wopendir \
+                           -Wl,--wrap,opendir \
                            -Wl,--wrap,wfopen \
                            -Wl,--wrap,readdir \
                            -Wl,--wrap,closedir \

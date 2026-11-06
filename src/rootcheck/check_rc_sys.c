@@ -266,7 +266,7 @@ static int rc_collect_suspect(char ***suspects, size_t *count,
 static void rc_verify_suspects(const char *dir_name, char **suspects,
                                size_t suspect_count)
 {
-    DIR *dp = wopendir(dir_name);
+    DIR *dp = opendir(dir_name);
     size_t s;
 
     if (dp != NULL) {
