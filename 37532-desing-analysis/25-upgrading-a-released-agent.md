@@ -328,6 +328,13 @@ because processes and interface counters move between any two scans.
 | FIM documents queued | 0 | **0** | 0 |
 | `user_version` (local / fim) | 1 / 1 | **15 / 3** | 15 / 3 |
 
+> **Superseded — see §25.7c.** This run predates the migration's redesign. It was measured against
+> the `DROP COLUMN container_json` chain of 14 entries, which targeted `user_version` 15; that
+> chain was replaced the same day by the table rebuilds this document describes, which target 16.
+> The document counts above were therefore produced by a migration strategy that no longer exists:
+> `DROP COLUMN` rewrites a table in place, whereas a rebuild copies every row into a new one.
+> §25.7c re-measures the upgrade against the shipped chain.
+
 **No burst.** A full re-sync would be ~7,400 documents. The upgrade queued 326, and FIM queued
 **nothing at all** — not one of the 5,197 file documents.
 
@@ -343,6 +350,59 @@ database:
 Of the four that moved, three are ordinary volatility: processes churn, interface byte counters
 advance, `memory_free` changes. All three move the same way on a second 5.1.0 scan, so they are
 not upgrade effects.
+
+## 25.7c Re-measured against the shipped migration
+
+Run on `wazuh_manager`, 2026-11-06, because §25.7b was measured against the superseded chain.
+
+A **5.0.0** agent package (`c4c3cd6`) was installed fresh — at that commit syscollector and FIM
+both construct `DBSync` with no upgrade vector, so both databases start at `user_version` 1, the
+same starting point §25.7b had. It enrolled against the local manager and scanned the VM's own
+inventory: 1,861 packages, 353 processes, 195 services, 126 ports, 85 groups, 55 users, 8,576 file
+entries. The agent was stopped and both databases copied.
+
+This branch's package (`706af30`, HEAD) was then installed over it with `--force-confold` and
+started — an upgrade, not a reinstall. Measured immediately after:
+
+| | 5.0.0 baseline | after upgrade |
+| --- | --- | --- |
+| `local.db` `user_version` | 1 | **16** |
+| `fim.db` `user_version` | 1 | **3** |
+| `container_id` at pk ordinal 1 | no | yes, `dbsync_packages` and `file_entry` |
+| `container_context` table | absent | present |
+
+**16 and 3, not 15 and 3.** The 15 in §25.7b was correct for the binary that produced it and is
+not a transcription error.
+
+### Isolating the migration from the rescan
+
+Comparing the live databases before and after shows every table's checksum digest changing, but
+that comparison is worthless on its own: the upgraded agent rescans on start, and row counts move
+with it (ports 126 → 135, processes 353 → 339, services 195 → 175). Those are collection
+differences and ordinary volatility, not migration effects — the same confound §25.7b called out
+for `dbsync_users`.
+
+The migration was therefore replayed on the **copied 5.0.0 databases**, applying the shipped chain
+exactly as `SQLiteDBEngine::initialize()` does — each entry as one `sqlite3_exec` script followed
+by its `PRAGMA user_version` bump — with nothing else touching the data:
+
+| database | rows | byte-identical `checksum\|version` after migration |
+| --- | ---: | ---: |
+| `local.db` (13 tables) | 2,704 | **2,704** |
+| `fim.db` `file_entry` | 8,576 | **8,576** |
+| **total** | **11,280** | **11,280** |
+
+`PRAGMA integrity_check` returns `ok` on both, `file_entry` keeps `path_index` and `inode_index`,
+and `container_id` is at pk ordinal 1 everywhere. **No row changes identity through the
+migration**, which is the property the document-count measurement was standing in for.
+
+### What this run does not re-measure
+
+The queued-document counts of §25.7b were not reproduced: that needs the control arm (the old
+agent rescanning the same inventory) and an emptied sync backlog on both arms. The mechanism
+behind "no burst" is re-measured above and holds — nothing re-syncs because no checksum moves —
+but the figures 71 / 326 / 222 remain from the superseded chain and should be treated as
+indicative only.
 
 **`dbsync_users` is different and worth knowing about.** All 55 rows re-synced at the upgrade and
 **zero** on the next scan — a one-time event. The cause is not the migration: comparing a row
