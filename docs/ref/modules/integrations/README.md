@@ -30,8 +30,25 @@ reference).
 
 Most standard integrations **ship disabled**, among them `docker`, `aws`, `gcp`, `github`, `azure` and
 `aws-amazon-security-lake`. Until the matching integration is enabled, the
-agent module runs, the events reach the manager and are counted, but they stay **unclassified** and no
-document reaches the integration's indices, with no error anywhere.
+agent module runs and reports success, the events reach the manager and are counted, but they stay
+**unclassified** and no document reaches the integration's indices. With the default settings these events
+are **discarded**:
+
+- the policy indexes unclassified events (into `wazuh-events-v5-unclassified`) only when its
+  `index_unclassified_events` setting is enabled, and it is disabled by default (see
+  [Unclassified events](../engine/README.md#unclassified-events));
+- raw events are indexed only when `index_raw_events` is enabled, also disabled by default.
+
+The engine logs a warning in `logs/wazuh-manager.log` when the policy does not index unclassified events, at
+most once every 5 minutes per space, with how many were not indexed as processed events and their sources (for
+example `Wazuh-AWS`). The warning fires whether or not `index_raw_events` is enabled, because raw indexing
+happens before the policy runs: with raw indexing enabled, a raw copy of each of these events is still kept.
+A source may also be a custom log format that has no integration at all; then the only ways to keep its
+events are `index_unclassified_events`, `index_raw_events` or a decoder of your own.
+
+Without either setting, those events are gone: enabling the integration later does not recover them, and
+modules that track what they already collected (such as `aws-s3`, which records each processed S3 file) do not
+send them again.
 
 So before configuring an agent module:
 

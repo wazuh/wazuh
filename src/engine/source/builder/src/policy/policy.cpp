@@ -170,7 +170,10 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
     auto expr = factory::buildExpression(
         policyGraph, preEnrichmentExp, enrichmentExp, preFilterDiscardCounter, postFilterDiscardCounter);
 
-    auto postUnclassified = builders::enrichment::postOutputUnclassifiedCounter(spaceName, unclassifiedCounter);
+    // Warn (throttled, per space) about the unclassified events the policy drops; never for test-mode policies
+    auto dropReporter = builders::enrichment::getUnclassifiedDropReporter(policyData, isTestMode);
+    auto postUnclassified =
+        builders::enrichment::postOutputUnclassifiedCounter(spaceName, unclassifiedCounter, std::move(dropReporter));
     m_expression = base::Chain::create("policy_with_post_unclassified", {expr, postUnclassified});
 }
 
