@@ -261,11 +261,19 @@ Measured on a three-node cluster:
 
 | File | Master accepts after | Workers accept after | Rejection while waiting |
 |---|---|---|---|
-| `/etc/wazuh-manager/client.keys` | 0.04 s | 8.4 – 13.0 s | `401`, code `unknown_agent` |
+| `/etc/wazuh-manager/client.keys` | before the `200` of `/enroll` leaves when the master served it and the pass landed within `authd.key_write_wait` (authd waits for its writer, remoted confirms its keystore; past the bound or on a failed write the master is back to its own reload); its own reload otherwise, 0.04 s measured | 8.4 – 13.0 s | `401`, code `unknown_agent` |
 | `/etc/wazuh-manager/authd.pass` | immediately | ~23 s | `401`, code `enrollment_key_unavailable` |
 | `/etc/wazuh-manager/enrollment_tokens.json` | 0.13 s | 7.2 – 13.1 s | `401`, code `token_unknown` |
 
 **The agent recovers on its own**, in every case, without intervention.
+
+The `client.keys` row is the one every new agent meets. When the master's remoted served `POST /enroll`,
+the master serves the key by the time it answers (`authd` waits for its writer, remoted confirms its keystore;
+see [the two stores](../authd/architecture.md#the-two-stores)), so a request that lands back on the master is
+accepted at once — unless the wait expired or the file write failed, which the master logs and counts in
+`remoted.auth.keystore.enroll_unconfirmed.total`, and the master is then back to its own reload. A request the
+balancer sends to a worker still waits for the next `client.keys` synchronization, and a worker that served the
+enrollment is in the same position.
 
 What an operator actually sees is worse than one clean error, because a real agent enrolling through
 a balancer meets **three different failures in the same burst**:

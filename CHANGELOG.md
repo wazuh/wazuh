@@ -25,6 +25,7 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#38572](https://github.com/wazuh/wazuh/issues/38572) | Fixed a freshly enrolled agent being refused as `unknown_agent` by the node that enrolled it: `authd` now holds its answer to `POST /enroll` and `POST /agents` until its writer has put the key in `client.keys` (up to the new internal option `authd.key_write_wait`, 2 s by default; past it, or when the write fails, it answers as before with a throttled warning), and `remoted` reloads its keystore before sending the `200` when the key is not served yet, counting the outcome in `remoted.auth.keystore.enroll_confirmed.total` / `enroll_unconfirmed.total`. A worker still learns the key with the cluster synchronization. |
 | [#39590](https://github.com/wazuh/wazuh/issues/39590) | Aligned enriched-event examples, response documentation and developer comments with engine-side identity validation, and grouped cache operation metrics in the engine dashboard's Cache section. |
 | [#39590](https://github.com/wazuh/wazuh/issues/39590) | Updated the standalone enriched-event senders to derive raw identity headers from each H line, preserve complete batches from raw files, and support an explicit expected agent ID. |
 | [#39590](https://github.com/wazuh/wazuh/issues/39590) | Rejected dotted aliases of the agent identity in enriched-event metadata before enqueueing, including escaped member names. |
