@@ -37,42 +37,50 @@ rt_engine.o: src/rt_engine.c include/rt_engine.h include/rt_event_contract.h
 	$(CC) -O2 -Wall -Wextra $(INCLUDES) -c src/rt_engine.c -o $@
 
 rt_engine_harness: rt_engine.o rt_file.bpf.o test/rt_engine_harness.c
-	$(CC) -O2 -Wall -Wextra $(INCLUDES) -o $@ test/rt_engine_harness.c rt_engine.o -ldl
+	$(CC) -O2 -Wall -Wextra $(INCLUDES) -o $@ test/rt_engine_harness.c rt_engine.o -ldl -lpthread
 
 # Contract tests: no BPF object, no kernel, no root — so this target must not
 # depend on rt_file.bpf.o (that is the point of keeping them separate from the
 # harness, which does need a real kernel to be useful).
 rt_engine_contract_test: rt_engine.o test/rt_engine_contract_test.c
-	$(CC) -O2 -Wall -Wextra $(INCLUDES) -o $@ test/rt_engine_contract_test.c rt_engine.o -ldl
+	$(CC) -O2 -Wall -Wextra $(INCLUDES) -o $@ test/rt_engine_contract_test.c rt_engine.o -ldl -lpthread
 
-check: rt_engine_contract_test
+rt_engine_loader_test: rt_engine.o test/rt_engine_loader_test.c
+	$(CC) -O2 -Wall -Wextra $(INCLUDES) -o $@ test/rt_engine_loader_test.c rt_engine.o -ldl -lpthread -Wl,--wrap=dlopen,--wrap=dlsym,--wrap=dlclose,--wrap=fopen
+
+check: rt_engine_contract_test rt_engine_loader_test
 	./rt_engine_contract_test
+	./rt_engine_loader_test
 
 # Teardown test: needs a real kernel, the BPF object and root, so it is a
 # separate target from `check` and exits 77 (skipped) when it cannot load.
 rt_engine_leak_test: rt_engine.o test/rt_engine_leak_test.c
-	$(CC) -O2 -Wall -Wextra $(INCLUDES) -o $@ test/rt_engine_leak_test.c rt_engine.o -ldl
+	$(CC) -O2 -Wall -Wextra $(INCLUDES) -o $@ test/rt_engine_leak_test.c rt_engine.o -ldl -lpthread
 
 rt_engine_drops_test: rt_engine.o test/rt_engine_drops_test.c
-	$(CC) -O2 -Wall -Wextra $(INCLUDES) -o $@ test/rt_engine_drops_test.c rt_engine.o -ldl
+	$(CC) -O2 -Wall -Wextra $(INCLUDES) -o $@ test/rt_engine_drops_test.c rt_engine.o -ldl -lpthread
 
 rt_engine_filter_test: rt_engine.o test/rt_engine_filter_test.c
-	$(CC) -O2 -Wall -Wextra $(INCLUDES) -o $@ test/rt_engine_filter_test.c rt_engine.o -ldl
+	$(CC) -O2 -Wall -Wextra $(INCLUDES) -o $@ test/rt_engine_filter_test.c rt_engine.o -ldl -lpthread
 
 rt_engine_creds_test: rt_engine.o test/rt_engine_creds_test.c
-	$(CC) -O2 -Wall -Wextra $(INCLUDES) -o $@ test/rt_engine_creds_test.c rt_engine.o -ldl
+	$(CC) -O2 -Wall -Wextra $(INCLUDES) -o $@ test/rt_engine_creds_test.c rt_engine.o -ldl -lpthread
+
+rt_engine_paths_test: rt_engine.o test/rt_engine_paths_test.c
+	$(CC) -O2 -Wall -Wextra $(INCLUDES) -o $@ test/rt_engine_paths_test.c rt_engine.o -ldl -lpthread
 
 rt_engine_skip_test: rt_engine.o test/rt_engine_skip_test.c
-	$(CC) -O2 -Wall -Wextra $(INCLUDES) -o $@ test/rt_engine_skip_test.c rt_engine.o -ldl
+	$(CC) -O2 -Wall -Wextra $(INCLUDES) -o $@ test/rt_engine_skip_test.c rt_engine.o -ldl -lpthread
 
-check-kernel: rt_engine_leak_test rt_engine_drops_test rt_engine_filter_test rt_engine_creds_test rt_engine_skip_test rt_file.bpf.o
+check-kernel: rt_engine_leak_test rt_engine_drops_test rt_engine_filter_test rt_engine_creds_test rt_engine_skip_test rt_engine_paths_test rt_file.bpf.o
 	sudo ./rt_engine_leak_test ./rt_file.bpf.o
 	sudo ./rt_engine_drops_test ./rt_file.bpf.o
 	sudo ./rt_engine_filter_test ./rt_file.bpf.o
 	sudo ./rt_engine_creds_test ./rt_file.bpf.o
 	sudo ./rt_engine_skip_test ./rt_file.bpf.o
+	sudo ./rt_engine_paths_test ./rt_file.bpf.o
 
 clean:
-	rm -f rt_engine_harness rt_engine_contract_test rt_engine_leak_test rt_engine_drops_test rt_engine_filter_test rt_engine_creds_test rt_engine_skip_test rt_engine.o rt_file.bpf.o bpf/vmlinux.h
+	rm -f rt_engine_loader_test rt_engine_harness rt_engine_contract_test rt_engine_leak_test rt_engine_drops_test rt_engine_filter_test rt_engine_creds_test rt_engine_skip_test rt_engine_paths_test rt_engine.o rt_file.bpf.o bpf/vmlinux.h
 
 .PHONY: all check clean

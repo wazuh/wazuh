@@ -42,6 +42,7 @@
 
 #include <dlfcn.h>
 #include <errno.h>
+#include <pthread.h>
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -65,7 +66,8 @@
 #define LIBBPF_SONAME_FALLBACK "libbpf.so"
 
 /* Function-pointer table for every libbpf entry point this engine needs,
- * resolved via dlsym() once per process. Mirrors bpf_helpers.h's
+ * resolved via dlsym() once per process. Retains the retired syscheckd
+ * bpf_helpers.h's
  * w_bpf_helpers_t dispatch-table pattern (same reason: late-bound, so a
  * missing libbpf.so doesn't stop the containing .so from loading). */
 struct libbpf_api
@@ -181,14 +183,8 @@ rt_log(const struct rt_log_target* target, int level, const char* fmt, ...)
         }                                                                                                            \
     } while (0)
 
-static int ensure_libbpf_loaded(const struct rt_log_target* log, const char* libbpf_path)
+static int resolve_libbpf(const struct rt_log_target* log, const char* libbpf_path, char** bound_path)
 {
-    if (g_libbpf_resolved)
-    {
-        return g_libbpf.module != NULL;
-    }
-    g_libbpf_resolved = 1;
-
     /* The caller's own copy first. A bare soname binds whatever the host has,
      * and a host libbpf old enough to lack one of the symbols below fails the
      * open outright — see rt_filter.libbpf_path. */
@@ -273,8 +269,47 @@ static int ensure_libbpf_loaded(const struct rt_log_target* log, const char* lib
                bound);
     }
 
+    *bound_path = strdup(bound);
+    if (!*bound_path)
+    {
+        rt_log(log, RT_LOG_ERROR, "out of memory retaining the libbpf binding path");
+        dlclose(mod);
+        return 0;
+    }
     g_libbpf.module = mod;
     return 1;
+}
+
+static int ensure_libbpf_loaded(const struct rt_log_target* log, const char* libbpf_path)
+{
+    static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+    static char* bound_path = NULL;
+    static int mismatch_warned = 0;
+    int warn = 0;
+
+    /* Every caller takes the lock so the immutable table is published even
+     * to callers arriving after the first resolution has completed. */
+    pthread_mutex_lock(&mutex);
+    if (!g_libbpf_resolved)
+    {
+        resolve_libbpf(log, libbpf_path, &bound_path);
+        /* Failure is sticky too: a second consumer must not retry binding. */
+        g_libbpf_resolved = 1;
+    }
+    else if (bound_path && libbpf_path && libbpf_path[0] && strcmp(bound_path, libbpf_path) != 0 &&
+             !mismatch_warned)
+    {
+        mismatch_warned = 1;
+        warn = 1;
+    }
+    const int usable = g_libbpf.module != NULL;
+    pthread_mutex_unlock(&mutex);
+
+    if (warn)
+    {
+        rt_log(log, RT_LOG_WARN, "libbpf request '%s' ignored; process already bound to '%s'", libbpf_path, bound_path);
+    }
+    return usable;
 }
 
 /* Upper bound on attached programs. rt_file.bpf.c defines a handful of hooks
@@ -361,8 +396,8 @@ static int is_bpf_lsm_active(void)
 }
 
 /* Maps a BPF program's section name to the rt_event_type bit it serves, so
- * filter->type_mask alone decides what gets autoloaded — no per-consumer
- * branching in this function. */
+ * filter->type_mask selects event producers. Auxiliary dependencies are
+ * handled by select_programs(). */
 static unsigned int type_bit_for_section(const char* sec)
 {
     if (strstr(sec, "vfs_open") || strcmp(sec, "lsm/file_open") == 0)
@@ -373,20 +408,21 @@ static unsigned int type_bit_for_section(const char* sec)
     {
         return RT_FILE_ATTR_BIT;
     }
-    if (strstr(sec, "vfs_unlink"))
+    if (strstr(sec, "vfs_unlink") || strcmp(sec, "lsm/path_unlink") == 0)
     {
         return RT_FILE_UNLINK_BIT;
     }
-    if (strstr(sec, "vfs_rename"))
+    if (strstr(sec, "vfs_rename") || strcmp(sec, "lsm/path_rename") == 0)
     {
         return RT_FILE_RENAME_BIT;
     }
     return 0;
 }
 
-static void select_programs(struct bpf_object* obj, unsigned int type_mask, int prefer_lsm,
+static void select_programs(struct bpf_object* obj, unsigned int type_mask, int prefer_lsm, int prefer_dpath,
                             const struct rt_log_target* log)
 {
+    int need_write_mnt = 0;
     struct bpf_program* prog = NULL;
     while ((prog = g_libbpf.next_program(obj, prog)) != NULL)
     {
@@ -394,27 +430,53 @@ static void select_programs(struct bpf_object* obj, unsigned int type_mask, int 
         const char* name = g_libbpf.prog_name(prog);
         int keep = 0;
 
+        /* This auxiliary probe emits no event, so it has no type bit.
+         * Defer it until the dependent programs' actual selection is known. */
+        if (sec && strcmp(sec, "kprobe/mnt_want_write") == 0)
+        {
+            continue;
+        }
+
         if (sec && (type_bit_for_section(sec) & type_mask))
         {
             keep = 1;
 
-            /* Both file_open variants match RT_FILE_OPEN_BIT; keep only the
-             * one matching this run's LSM-activity probe. */
-            int is_lsm_variant = (strcmp(sec, "lsm/file_open") == 0);
-            int is_kprobe_open_variant = (strstr(sec, "kprobe/vfs_open") != NULL);
-            if (is_lsm_variant && !prefer_lsm)
+            const int is_lsm = strncmp(sec, "lsm/", 4) == 0;
+            const int replaced_kprobe = strcmp(sec, "kprobe/vfs_open") == 0 ||
+                                       strcmp(sec, "kprobe/vfs_unlink") == 0 ||
+                                       strcmp(sec, "kprobe/vfs_rename") == 0;
+            if (prefer_lsm ? replaced_kprobe : is_lsm)
             {
                 keep = 0;
             }
-            if (is_kprobe_open_variant && prefer_lsm)
+            if (is_lsm && name && strstr(name, prefer_dpath ? "_walk" : "_dpath"))
             {
                 keep = 0;
             }
         }
 
+        if (keep && sec && (strcmp(sec, "kprobe/security_inode_setattr") == 0 ||
+                            strcmp(sec, "kprobe/vfs_unlink") == 0 || strcmp(sec, "kprobe/vfs_rename") == 0))
+        {
+            need_write_mnt = 1;
+        }
+
         g_libbpf.set_autoload(prog, keep);
         rt_log(log, RT_LOG_DEBUG, "program '%s' (%s): autoload=%s", name ? name : "?", sec ? sec : "?",
                keep ? "true" : "false");
+    }
+
+    prog = NULL;
+    while ((prog = g_libbpf.next_program(obj, prog)) != NULL)
+    {
+        const char* sec = g_libbpf.section_name(prog);
+        if (sec && strcmp(sec, "kprobe/mnt_want_write") == 0)
+        {
+            const char* name = g_libbpf.prog_name(prog);
+            g_libbpf.set_autoload(prog, need_write_mnt);
+            rt_log(log, RT_LOG_DEBUG, "program '%s' (%s): autoload=%s", name ? name : "?", sec,
+                   need_write_mnt ? "true" : "false");
+        }
     }
 }
 
@@ -467,19 +529,10 @@ static int ringbuf_sample_cb(void* ctx, void* data, size_t size)
  * error path can forget the links again. */
 static void abort_open(struct rt_engine_handle* h)
 {
-    destroy_links(h);
-    if (h->rb)
-    {
-        g_libbpf.rb_free(h->rb);
-    }
-    if (h->obj)
-    {
-        g_libbpf.close_obj(h->obj);
-    }
-    free(h);
+    rt_close(h);
 }
 
-rt_handle_t rt_open(const struct rt_filter* filter)
+static rt_handle_t open_attempt(const struct rt_filter* filter, int prefer_lsm, int prefer_dpath, int* failure)
 {
     struct rt_log_target log = {NULL, NULL};
     if (filter)
@@ -561,13 +614,11 @@ rt_handle_t rt_open(const struct rt_filter* filter)
         return NULL;
     }
 
-    const int prefer_lsm = is_bpf_lsm_active();
-    rt_log(&h->log, RT_LOG_DEBUG, "active LSM list %s \"bpf\" -> preferring %s file_open variant",
-           prefer_lsm ? "includes" : "does not include", prefer_lsm ? "LSM" : "kprobe");
-    select_programs(h->obj, filter->type_mask, prefer_lsm, &h->log);
+    select_programs(h->obj, filter->type_mask, prefer_lsm, prefer_dpath, &h->log);
 
     if (g_libbpf.load(h->obj))
     {
+        *failure = 1;
         rt_log(&h->log, RT_LOG_ERROR,
                "bpf_object__load failed (capability probe failed — missing ringbuf/BTF/CO-RE support, "
                "or insufficient privilege)");
@@ -665,8 +716,9 @@ rt_handle_t rt_open(const struct rt_filter* filter)
         }
 
         struct bpf_link* link = g_libbpf.attach(prog);
-        if (!link)
+        if (!link || (unsigned long)link >= (unsigned long)-4095)
         {
+            *failure = 2;
             const char* name = g_libbpf.prog_name(prog);
             rt_log(&h->log, RT_LOG_ERROR, "failed to attach '%s'", name ? name : "?");
             abort_open(h);
@@ -707,6 +759,34 @@ rt_handle_t rt_open(const struct rt_filter* filter)
            h->link_count, RT_ABI_MAJOR, RT_ABI_MINOR,
            filter->cgroup_mode == RT_CGROUP_MODE_ALLOWLIST ? "allowlist" : "off", filter->skip_mask);
     return (rt_handle_t)h;
+}
+
+rt_handle_t rt_open(const struct rt_filter* filter)
+{
+    int failure = 0;
+    const int use_lsm = is_bpf_lsm_active();
+    rt_handle_t handle = open_attempt(filter, use_lsm, use_lsm, &failure);
+    if (handle || !use_lsm || !failure)
+    {
+        return handle;
+    }
+
+    /* Only verifier rejection warrants replacing d_path with the walker.
+     * Missing path hooks fail at attach and require the kprobe set instead. */
+    const struct rt_log_target log = {filter->log, filter->log_user};
+    if (failure == 1)
+    {
+        rt_log(&log, RT_LOG_INFO, "LSM dpath load failed; retrying with walk variants");
+        failure = 0;
+        handle = open_attempt(filter, 1, 0, &failure);
+        if (handle || !failure)
+        {
+            return handle;
+        }
+    }
+    rt_log(&log, RT_LOG_INFO, "LSM load/attach failed; retrying with kprobes");
+    failure = 0;
+    return open_attempt(filter, 0, 0, &failure);
 }
 
 int rt_set_cgroup_mode(rt_handle_t handle, int mode)
