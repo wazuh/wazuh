@@ -1,5 +1,5 @@
 /*
- * Wazuh remoted module - POST /enroll credential rejections
+ * Wazuh remoted module - credential rejections (POST /enroll and the bearer routes)
  * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
@@ -12,16 +12,18 @@
 
 #include "auth/authTypes.hpp"
 
-namespace remoted::enrollment
+namespace remoted::auth
 {
     /**
-     * @brief Whether a POST /enroll rejection is a failure of the credential the peer presented (or failed
-     *        to present), the ones the endpoint's credential-rejection WARNING counts.
+     * @brief Whether a rejection is a failure of the credential the peer presented (or failed to present),
+     *        the ones the credential-rejection WARNINGs count: POST /enroll's and AuthGateway's (every
+     *        bearer route).
      *
      * Not counted: a malformed request (protocol-version, body size, Content-Encoding), a manager-side
-     * fault, and the rejections raised only after the signature verified (StaleToken, IdentityMismatch):
-     * that peer holds the credential. Every value is listed, so a new AuthError fails the build (-Wswitch)
-     * until it is classified here.
+     * fault (MissingKey, already reported by its own throttled WARNING), a peer outside the agent's
+     * registered address (AddressNotAllowed, its own throttled INFO), and the rejections raised only after
+     * the signature verified (StaleToken, IdentityMismatch): that peer holds the credential. Every value
+     * is listed, so a new AuthError fails the build (-Wswitch) until it is classified here.
      */
     constexpr bool isCredentialRejection(remoted::auth::AuthError err) noexcept
     {
@@ -54,4 +56,4 @@ namespace remoted::enrollment
         return false;
     }
 
-} // namespace remoted::enrollment
+} // namespace remoted::auth
