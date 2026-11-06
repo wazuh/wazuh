@@ -6,23 +6,17 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * eBPF Module (#37396) engine — load/attach/select/poll logic extracted
- * from src/syscheckd/src/ebpf/src/ebpf_whodata.cpp and generalized: no FIM
- * types, no callback-registration singleton, no fixed hook set. A caller
+ * eBPF Module engine: load/attach/select/poll for any consumer, with no FIM
+ * types, no callback-registration singleton and no fixed hook set. A caller
  * gets exactly the programs its rt_filter asks for.
  *
  * libbpf is loaded via dlopen() at rt_open() time, not linked at build time
  * (no `-lbpf` anywhere in this file or its CMake target): fimebpf.so is
  * hard-linked into wazuh-syscheckd (see src/syscheckd/CMakeLists.txt), so a
  * build-time libbpf dependency here would make the whole agent binary
- * refuse to start on any host without libbpf installed. Mirrors the same
- * reasoning already documented in ebpf_whodata.cpp's init_libbpf(). This
- * engine resolves the SYSTEM libbpf.so via soname; production's actual
- * cutover should instead resolve the same Wazuh-bundled relative path
- * ebpf_whodata.cpp's so__get_module_handle(LIB_INSTALL_PATH) already uses,
- * which isn't reachable from here without pulling in syscheckd's abspath()
- * helper — a real follow-up once this is actually linked into fimebpf,
- * called out rather than silently left as a system-libbpf assumption.
+ * refuse to start on any host without libbpf installed. rt_filter.libbpf_path
+ * names the copy to bind (the agent passes its bundled one); the system
+ * libbpf.so is only the fallback.
  *
  * Loading the object is the capability check: rt_open() tries the LSM d_path,
  * LSM walk and kprobe file hooks in turn, and only when none of them loads does

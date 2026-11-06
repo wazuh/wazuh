@@ -1,19 +1,13 @@
 arch=x86
-vmlinux_btf=6.17 kernel BTF dump (bpftool btf dump file /sys/kernel/btf/vmlinux format c, Ubuntu 24.04.4, 6.17.0-35-generic)
+vmlinux_btf=7.0 kernel BTF dump (bpftool btf dump file /sys/kernel/btf/vmlinux format c, Ubuntu 24.04.5, 7.0.0-42-generic)
 clang=Ubuntu clang version 18.1.3 (1ubuntu1)
-load_verified=bpftool prog loadall, Ubuntu x86_64 7.0.0-42-generic, all 14
-  programs pinned; the full provider test suite also passes there. That host has
-  "bpf" in its active LSM list, so rt_open() takes the LSM dpath rung on it, and
-  its struct renamedata is the 5-field layout with new_dentry at offset 32 --
-  the variant the CO-RE branch resolves rather than the shadow struct's.
-notes=rebuilt for P0 (mnt_want_write/write_mnt_map, resolve_dentry, dual
-  renamedata layout, mount-boundary advance), the P2 ABI MINOR 2 contract
-  (euid/login_uid) and the P3 LSM parity work (14 programs, three-rung
-  dpath/walk/kprobe ladder). The header moved from the 6.6
-  dump the previous object used to a 6.17 one, which is the portable direction
-  per prebuilt/README.md: CO-RE resolves offsets against the running kernel, and
-  a newer header defines the types the dual-layout rename branch needs. That
-  change accounts for part of the object's growth from 1287696 bytes; the rest
-  is the P2 and P3 code. Current size is recorded in the check_files manifests.
-  The 4.18 (CentOS Stream 8) load verification recorded for the previous object
-  has NOT been repeated for this one; only the 6.17 host above was tested.
+load_verified=bpftool prog loadall, Ubuntu x86_64 7.0.0-42-generic, all 14 programs pinned;
+  the provider's kernel tests also pass with it on AlmaLinux 8.10 (4.18.0-553),
+  CentOS Linux 8.5 (4.18.0-348), Amazon Linux 2 (5.10), Amazon Linux 2023 (6.1),
+  Ubuntu 20.04 (5.15 HWE), openSUSE Leap 16.0 (6.12) and Ubuntu 26.04 (7.0).
+notes=rebuilt because include/rt_event_contract.h changed (a comment only);
+  bpf/rt_file.bpf.c is unchanged, and the object has the same 8 program
+  sections and 14 programs as the one it replaces. The header moved from 6.17
+  to 7.0, the portable direction per prebuilt/README.md: CO-RE resolves offsets
+  against the running kernel. Current size is recorded in the check_files
+  manifests.
