@@ -1,0 +1,146 @@
+name: 4.X - FIM eBPF healthcheck on distributions
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - "src/syscheckd/src/ebpf/src/**"
+      - "packages/externals/ebpf/**"
+      - ".github/workflows/4_testcomponent_fim-ebpf-healthcheck.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  build-ebpf:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install clang and Zig
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libelf-dev zlib1g-dev >/dev/null
+          wget -qO- https://apt.llvm.org/llvm.sh | sudo bash -s 20 >/dev/null
+          zig_version="$(sed -n 's/^ZIG_VERSION="\(.*\)"/\1/p' packages/externals/ebpf/build_ebpf.sh)"
+          curl -fsSL "https://ziglang.org/download/${zig_version}/zig-x86_64-linux-${zig_version}.tar.xz" | tar -xJ -C "${RUNNER_TEMP}"
+          echo "${RUNNER_TEMP}/zig-x86_64-linux-${zig_version}" >> "${GITHUB_PATH}"
+
+      - name: Build libbpf-bootstrap
+        run: bash packages/externals/ebpf/build_ebpf.sh >/dev/null
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: libbpf-bootstrap
+          path: output/amd64
+
+  build-package:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    strategy:
+      matrix:
+        system: [deb, rpm]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build wazuh-agent
+        run: |
+          # The git in the builder image cannot read the repository format written by actions/checkout
+          git config core.repositoryformatversion 0
+          tag="$(sed -n 's/.*"version": *"\(.*\)".*/\1/p' VERSION.json)"
+          bash .github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh "${{ secrets.GITHUB_TOKEN }}" "${{ github.actor }}" "pkg_${{ matrix.system }}_agent_builder_amd64" "${tag}"
+          bash packages/generate_package.sh -t agent -a amd64 --system ${{ matrix.system }} --dont-build-docker --tag "${tag}" -j "$(nproc)" -s "${PWD}/pkg"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: wazuh-agent-${{ matrix.system }}
+          path: pkg/wazuh-agent_*
+
+  healthcheck:
+    needs: [build-ebpf, build-package]
+    name: ${{ matrix.system }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { system: Rocky Linux 8, image: https://dl.rockylinux.org/pub/rocky/8/images/x86_64/Rocky-8-GenericCloud-Base.latest.x86_64.qcow2 }
+          - { system: Rocky Linux 9, image: https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud-Base.latest.x86_64.qcow2 }
+          # The image name changes with every release, it is read from SHA256SUMS
+          - { system: Amazon Linux 2023, image: https://cdn.amazonlinux.com/al2023/os-images/latest/kvm/ }
+          - { system: Debian 12, image: https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2 }
+          - { system: Debian 13, image: https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.qcow2 }
+          - { system: Ubuntu 22.04, image: https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img }
+          - { system: Ubuntu 24.04, image: https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img }
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: seed
+          merge-multiple: true
+
+      - name: Install QEMU
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq qemu-system-x86 qemu-utils genisoimage >/dev/null
+
+      - name: Download image
+        run: |
+          url="${{ matrix.image }}"
+          [[ "${url}" == */ ]] && url+="$(curl -fsSL "${url}SHA256SUMS" | awk '{print $2}')"
+          curl -fsSL -o disk.qcow2 "${url}"
+          qemu-img resize -q disk.qcow2 +4G
+
+      # The seed ISO carries the cloud-init data, the packages, the precompiled objects and the script run on first boot
+      - name: Prepare seed
+        run: |
+          echo "instance-id: healthcheck" > seed/meta-data
+          cat > seed/user-data <<'EOF'
+          #cloud-config
+          runcmd:
+            - mount -o ro LABEL=cidata /mnt && bash /mnt/healthcheck.sh > /dev/ttyS1 2>&1; poweroff
+          EOF
+          cat > seed/healthcheck.sh <<'EOF'
+          export WAZUH_MANAGER=127.0.0.1
+          if command -v dnf >/dev/null; then
+              dnf install -y -q /mnt/wazuh-agent_*.rpm >/dev/null
+          else
+              apt-get update -qq && apt-get install -y -qq -o DPkg::Lock::Timeout=300 /mnt/wazuh-agent_*.deb >/dev/null
+          fi
+          tar -xzf /mnt/libbpf-bootstrap.tar.gz -C /tmp
+          cp /tmp/libbpf-bootstrap/build/modern.bpf.o /tmp/libbpf-bootstrap/build/libbpf/libbpf.so /var/ossec/lib/
+          mkdir -p /root/fim
+          cat >> /var/ossec/etc/ossec.conf <<'CONF'
+          <ossec_config>
+            <syscheck>
+              <directories whodata="yes">/root/fim</directories>
+              <whodata><provider>ebpf</provider></whodata>
+            </syscheck>
+          </ossec_config>
+          CONF
+          systemctl restart wazuh-agent
+          log=/var/ossec/logs/ossec.log
+          for _ in $(seq 120); do grep -qE '\((6048|6959)\)' "${log}" && break; sleep 5; done
+          echo "Kernel: $(uname -r), LSM: $(cat /sys/kernel/security/lsm), agent: $(/var/ossec/bin/wazuh-control info -v)"
+          grep -E 'syscheckd: (ERROR|CRITICAL)|eBPF|BPF|libbpf' "${log}"
+          grep -q '(6048)' "${log}" && ! grep -qE 'syscheckd: (ERROR|CRITICAL)|\(6959\)' "${log}" && echo PASS || echo FAIL
+          EOF
+          genisoimage -quiet -output seed.iso -volid cidata -joliet -r seed
+
+      - name: Run healthcheck
+        run: |
+          sudo timeout 20m qemu-system-x86_64 -enable-kvm -cpu host -m 2048 -smp 2 -display none \
+            -drive file=disk.qcow2,if=virtio,format=qcow2 -drive file=seed.iso,if=virtio,format=raw \
+            -nic user,model=virtio -serial file:console.log -serial file:result.log || true
+          [ -s result.log ] || tail -n 50 console.log
+          cat result.log
+          grep -q '^PASS' result.log
