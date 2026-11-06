@@ -69,6 +69,12 @@ int authd_read_config(const char *path) {
      * seconds is generous for a local socket and still far below any human-noticeable stall. */
     config.wdb_timeout = getDefine_Int_default("authd", "wdb_timeout", 1, 300, 10);
 
+    /* How long an enrollment answer waits for the writer pass that lands its key in client.keys, so the
+     * agent is known to remoted by the time it holds the key. A healthy pass is milliseconds even on a
+     * ten-thousand-agent file; the bound exists for the pass that is not healthy, and it must stay well
+     * under the budget remoted gives a master's authd for the whole answer (5 s). 0 disables the wait. */
+    config.key_write_wait = getDefine_Int_default("authd", "key_write_wait", 0, 4000, 2000);
+
     /* The Task Manager's own key, deliberately: this is a pre-check on a bound that wazuh-db
      * enforces at creation, and two keys would let the two halves disagree. See the field's comment
      * for why authd checks it at all. */
@@ -86,7 +92,7 @@ int authd_read_config(const char *path) {
 
 /* getconfig "auth": the effective `auth` section of /etc/wazuh-manager/wazuh-manager.conf (schema defaults applied,
  * native types), exactly what authd_read_config() loaded. The internal options authd reads on top of it
- * (auth.timeout_*, authd.max_agents, authd.purge_delay) are not configuration-file options and are not
+ * (auth.timeout_*, authd.max_agents, authd.purge_delay, authd.key_write_wait) are not configuration-file options and are not
  * reported here. */
 cJSON *getAuthdConfig(void) {
     cJSON *root = cJSON_CreateObject();

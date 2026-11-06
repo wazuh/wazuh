@@ -65,6 +65,15 @@ typedef struct authd_config_t {
     /// stuck writer has no next cycle to self-heal from. Bounded, the same failure is a phase that
     /// simply did not complete, which the journal makes recoverable.
     int wdb_timeout;
+    /// Milliseconds a local-socket enrollment answer may be held back for the writer pass that puts
+    /// its key in client.keys (internal option `authd.key_write_wait`). 0 answers at once, as before.
+    ///
+    /// remoted authenticates agents from client.keys alone, so a key handed out before the file
+    /// carries it is refused as `unknown_agent` until the writer's pass lands and remoted reloads.
+    /// Waiting for that pass closes the window at its source; the bound keeps a stalled writer (a
+    /// wedged wazuh-db stretches its database phase toward wdb_timeout) from turning into a stalled
+    /// enrollment: past it the answer leaves exactly as it did before, with a warning.
+    int key_write_wait;
     /// Deletion tasks that may be outstanding before authd refuses new deletions at the request
     /// (`wazuh_modules.manager_task_max_pending_deletes`). 0 disables the bound.
     ///

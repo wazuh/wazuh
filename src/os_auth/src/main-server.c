@@ -79,6 +79,9 @@ static struct client * g_client_pool[AUTH_POOL];
 
 volatile int write_pending = 0;
 volatile int running = 1;
+volatile unsigned long long pass_started = 0;
+volatile unsigned long long pass_written = 0;
+volatile int last_pass_ok = 0;
 
 extern struct keynode *queue_insert;
 extern struct keynode *queue_remove;
@@ -88,6 +91,7 @@ extern struct keynode * volatile *remove_tail;
 pthread_mutex_t mutex_keys = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_authpass = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
+pthread_cond_t cond_written;
 
 static int g_stopFD[2] = {-1, -1};
 
@@ -651,6 +655,8 @@ int main(int argc, char **argv)
     }
 
     /* Start working threads */
+
+    authd_cond_written_init();
 
     if (status = pthread_create(&thread_local_server, NULL, (void *)&run_local_server, NULL), status != 0) {
         merror("Couldn't create thread: %s", strerror(status));
@@ -1592,6 +1598,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
 
     struct timespec global_t0, global_t1;
     struct timespec t0, t1;
+    unsigned long long pass = 0;
 
     while (running) {
         int inserted_agents = 0;
@@ -1653,6 +1660,9 @@ void* run_writer(__attribute__((unused)) void *arg) {
         insert_tail = &queue_insert;
         remove_tail = &queue_remove;
         write_pending = 0;
+        /* Numbered here, under the lock that queued the entries: anything queued from now on is the
+         * next pass's, which is what await_key_write() counts on. */
+        pass = authd_pass_begin();
         w_mutex_unlock(&mutex_keys);
 
         /* PHASE 1: the intent, before client.keys is rewritten.
@@ -1678,6 +1688,12 @@ void* run_writer(__attribute__((unused)) void *arg) {
          * disk. The in-memory keystore cannot serve as that gate: OS_DeleteKey() already ran, so it
          * says "deleted" while the file still says "alive". */
         keys_written = (OS_WriteKeys(copy_keys) >= 0);
+
+        /* The serving threads holding an answer for this pass are released here, before the
+         * timestamps and the database phase: client.keys is all remoted needs, and the database
+         * phase is the one that can stall. A failed write releases them too -- holding the answer
+         * would not make the file appear, and they report it. */
+        authd_pass_written(pass, keys_written);
 
         if (!keys_written) {
             merror("Couldn't write file client.keys");
@@ -1876,6 +1892,12 @@ void* run_writer(__attribute__((unused)) void *arg) {
         mdebug2("[Writer] Removed agents: %d", removed_agents);
         mdebug2("[Writer] Loop: %d ms.", (int)(1000. * (double)time_diff(&global_t0, &global_t1)));
     }
+
+    /* Nobody will write the file after this: a serving thread still holding an answer for a pass
+     * that will never come leaves now instead of at its deadline. */
+    w_mutex_lock(&mutex_keys);
+    w_cond_broadcast(&cond_written);
+    w_mutex_unlock(&mutex_keys);
 
     wdbc_close(&wdb_sock);
 

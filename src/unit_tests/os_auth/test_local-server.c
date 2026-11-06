@@ -46,12 +46,29 @@
  * Stub them here purely to satisfy the linker; their values are never exercised. */
 volatile int write_pending = 0;
 volatile int running = 0;
+volatile unsigned long long pass_started = 0;
+volatile unsigned long long pass_written = 0;
+volatile int last_pass_ok = 0;
 pthread_mutex_t mutex_keys = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
+pthread_cond_t cond_written;
 void authd_sigblock(void) {}
 
 // STATIC in local-server.c (empty under WAZUH_UNIT_TESTING): the token cases drive the protocol end to end.
 char* local_dispatch(const char *input);
+
+// STATIC too: the wait an enrollment answer makes for the writer pass that lands its key in client.keys.
+typedef enum key_write_wait_t {
+    KEY_WRITE_DISABLED,
+    KEY_WRITE_LANDED,
+    KEY_WRITE_FAILED,
+    KEY_WRITE_TIMEOUT,
+    KEY_WRITE_SHUTDOWN
+} key_write_wait_t;
+key_write_wait_t await_key_write(const char *name, const char *id, unsigned long long target);
+extern time_t key_write_warn_last[2];
+extern unsigned long key_write_warn_suppressed[2];
+extern __thread bool local_client_inline;
 
 /* wraps */
 
@@ -2155,6 +2172,400 @@ static void test_local_dispatch_unknown_function_is_9003(void **state) {
     }
 }
 
+
+/* ---------------------------------------------------------------- await_key_write() */
+
+/* The writer, reduced to what the waiter sees of it: after `delay_ms` it marks `pass` written with the
+ * given outcome and wakes the waiters, under mutex_keys exactly as run_writer() does. It logs nothing:
+ * cmocka keeps the logging expectations in thread-local storage, so a line from this thread would take
+ * the process down instead of failing the case. */
+typedef struct {
+    unsigned long long pass;
+    int ok;
+    int delay_ms;
+    int stop; /* set running = 0 instead of writing anything */
+} fake_writer_t;
+
+static void* fake_writer(void *arg) {
+    fake_writer_t *w = (fake_writer_t *)arg;
+    usleep((useconds_t)w->delay_ms * 1000);
+    w_mutex_lock(&mutex_keys);
+    if (w->stop) {
+        running = 0;
+    } else {
+        pass_written = w->pass;
+        last_pass_ok = w->ok;
+    }
+    w_cond_broadcast(&cond_written);
+    w_mutex_unlock(&mutex_keys);
+    return NULL;
+}
+
+static long elapsed_ms(const struct timespec *t0) {
+    struct timespec t1;
+    clock_gettime(CLOCK_MONOTONIC, &t1);
+    return (t1.tv_sec - t0->tv_sec) * 1000 + (t1.tv_nsec - t0->tv_nsec) / 1000000;
+}
+
+static int setup_key_write(void **state) {
+    (void) state;
+    authd_cond_written_init();
+    running = 1;
+    pass_started = 0;
+    pass_written = 0;
+    last_pass_ok = 0;
+    config.worker_node = FALSE;
+    config.key_write_wait = 2000;
+    memset(key_write_warn_last, 0, sizeof(key_write_warn_last));
+    memset(key_write_warn_suppressed, 0, sizeof(key_write_warn_suppressed));
+    local_client_inline = false;
+    return 0;
+}
+
+static int teardown_key_write(void **state) {
+    (void) state;
+    running = 0;
+    config.key_write_wait = 0;
+    pthread_cond_destroy(&cond_written);
+    return 0;
+}
+
+static key_write_wait_t await_locked(unsigned long long target) {
+    key_write_wait_t outcome;
+    w_mutex_lock(&mutex_keys);
+    outcome = await_key_write("agent1", "001", target);
+    w_mutex_unlock(&mutex_keys);
+    return outcome;
+}
+
+static void test_await_key_write_disabled_answers_at_once(void **state) {
+    (void) state;
+    struct timespec t0;
+
+    config.key_write_wait = 0;
+    pass_started = 3;
+    pass_written = 3;
+
+    clock_gettime(CLOCK_MONOTONIC, &t0);
+    assert_int_equal(await_locked(4), KEY_WRITE_DISABLED);
+    assert_true(elapsed_ms(&t0) < 500);
+}
+
+static void test_await_key_write_never_waits_on_a_worker(void **state) {
+    (void) state;
+    struct timespec t0;
+
+    config.worker_node = TRUE;
+
+    clock_gettime(CLOCK_MONOTONIC, &t0);
+    assert_int_equal(await_locked(1), KEY_WRITE_DISABLED);
+    assert_true(elapsed_ms(&t0) < 500);
+}
+
+static void test_await_key_write_already_landed(void **state) {
+    (void) state;
+
+    pass_started = 5;
+    pass_written = 5;
+    last_pass_ok = 1;
+
+    expect_any(__wrap__mdebug2, formatted_msg);
+    assert_int_equal(await_locked(5), KEY_WRITE_LANDED);
+}
+
+static void test_await_key_write_wakes_when_the_pass_lands(void **state) {
+    (void) state;
+    pthread_t tid;
+    fake_writer_t writer = { .pass = 1, .ok = 1, .delay_ms = 50 };
+    struct timespec t0;
+
+    pass_started = 0;
+    pass_written = 0;
+
+    clock_gettime(CLOCK_MONOTONIC, &t0);
+    assert_int_equal(pthread_create(&tid, NULL, fake_writer, &writer), 0);
+    expect_any(__wrap__mdebug2, formatted_msg);
+    assert_int_equal(await_locked(1), KEY_WRITE_LANDED);
+    /* Woken by the broadcast, not by the deadline. */
+    assert_true(elapsed_ms(&t0) < 1500);
+    pthread_join(tid, NULL);
+}
+
+static void test_await_key_write_an_older_pass_does_not_release_it(void **state) {
+    (void) state;
+    pthread_t tid;
+    /* The pass in flight when the entry was queued: its write must not be mistaken for ours. */
+    fake_writer_t writer = { .pass = 1, .ok = 1, .delay_ms = 20 };
+
+    config.key_write_wait = 150;
+    pass_started = 1;
+    pass_written = 0;
+
+    assert_int_equal(pthread_create(&tid, NULL, fake_writer, &writer), 0);
+    expect_any(__wrap__mwarn, formatted_msg);
+    assert_int_equal(await_locked(2), KEY_WRITE_TIMEOUT);
+    pthread_join(tid, NULL);
+}
+
+static void test_await_key_write_reports_a_failed_pass(void **state) {
+    (void) state;
+    pthread_t tid;
+    fake_writer_t writer = { .pass = 1, .ok = 0, .delay_ms = 20 };
+
+    assert_int_equal(pthread_create(&tid, NULL, fake_writer, &writer), 0);
+    expect_any(__wrap__mwarn, formatted_msg);
+    assert_int_equal(await_locked(1), KEY_WRITE_FAILED);
+    pthread_join(tid, NULL);
+}
+
+static void test_await_key_write_gives_up_at_the_bound(void **state) {
+    (void) state;
+    struct timespec t0;
+
+    config.key_write_wait = 100;
+
+    clock_gettime(CLOCK_MONOTONIC, &t0);
+    expect_any(__wrap__mwarn, formatted_msg);
+    assert_int_equal(await_locked(1), KEY_WRITE_TIMEOUT);
+    assert_true(elapsed_ms(&t0) >= 100);
+    assert_true(elapsed_ms(&t0) < 1500);
+}
+
+static void test_await_key_write_timeout_warning_is_throttled(void **state) {
+    (void) state;
+
+    config.key_write_wait = 20;
+
+    /* The first one in the window is a warning; the next ones are debug until the window closes. */
+    expect_any(__wrap__mwarn, formatted_msg);
+    assert_int_equal(await_locked(1), KEY_WRITE_TIMEOUT);
+    expect_any_count(__wrap__mdebug1, formatted_msg, 2);
+    assert_int_equal(await_locked(1), KEY_WRITE_TIMEOUT);
+    assert_int_equal(await_locked(1), KEY_WRITE_TIMEOUT);
+    assert_int_equal(key_write_warn_suppressed[0], 2);
+
+    /* The window closed: the next one is a warning again, and it carries the count. */
+    key_write_warn_last[0] = time(NULL) - 61;
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Answered the enrollment of agent 'agent1' (id '001') before its key reached client.keys: the writer "
+                  "pass did not complete within 20 ms (authd.key_write_wait), and 2 more like it in the last 61 s. "
+                  "Those agents cannot authenticate on this node until the pass lands; is wazuh-db stalled?");
+    assert_int_equal(await_locked(1), KEY_WRITE_TIMEOUT);
+    assert_int_equal(key_write_warn_suppressed[0], 0);
+}
+
+static void test_await_key_write_failed_pass_warning_is_throttled_on_its_own(void **state) {
+    (void) state;
+    pthread_t tid;
+    fake_writer_t first = { .pass = 1, .ok = 0, .delay_ms = 10 };
+    fake_writer_t second = { .pass = 2, .ok = 0, .delay_ms = 10 };
+
+    /* A failed write warns like a timeout does, once per window, and the two causes do not share a window. */
+    assert_int_equal(pthread_create(&tid, NULL, fake_writer, &first), 0);
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Answered the enrollment of agent 'agent1' (id '001') although the writer could not rewrite "
+                  "client.keys. The agent cannot authenticate on this node until a later pass succeeds.");
+    assert_int_equal(await_locked(1), KEY_WRITE_FAILED);
+    pthread_join(tid, NULL);
+
+    assert_int_equal(pthread_create(&tid, NULL, fake_writer, &second), 0);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    assert_int_equal(await_locked(2), KEY_WRITE_FAILED);
+    pthread_join(tid, NULL);
+    assert_int_equal(key_write_warn_suppressed[1], 1);
+    assert_int_equal(key_write_warn_suppressed[0], 0);
+
+    config.key_write_wait = 20;
+    expect_any(__wrap__mwarn, formatted_msg); /* the timeout's own first warning */
+    assert_int_equal(await_locked(3), KEY_WRITE_TIMEOUT);
+}
+
+static void test_await_key_write_never_holds_the_accept_loop(void **state) {
+    (void) state;
+    struct timespec t0;
+
+    /* The request served inline when every client thread is busy runs on the accept loop: no wait. */
+    local_client_inline = true;
+    clock_gettime(CLOCK_MONOTONIC, &t0);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    assert_int_equal(await_locked(1), KEY_WRITE_DISABLED);
+    assert_true(elapsed_ms(&t0) < 500);
+}
+
+static void test_await_key_write_leaves_on_shutdown(void **state) {
+    (void) state;
+    pthread_t tid;
+    fake_writer_t writer = { .delay_ms = 20, .stop = 1 };
+    struct timespec t0;
+
+    clock_gettime(CLOCK_MONOTONIC, &t0);
+    assert_int_equal(pthread_create(&tid, NULL, fake_writer, &writer), 0);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    assert_int_equal(await_locked(1), KEY_WRITE_SHUTDOWN);
+    assert_true(elapsed_ms(&t0) < 1500);
+    pthread_join(tid, NULL);
+}
+
+/* ---------------------------------------------------------------- the wait, through the real add path */
+
+/* The real local_add(): the entry is queued, the writer signalled, the answer built, and only then the
+ * thread waits for pass (pass_started + 1). These two cases run the add through local_dispatch() on a
+ * master with the keystore and journal environment of this group. */
+static int setup_key_write_env(void **state) {
+    /* mkdtemp() consumed the template when the token group set up; a fresh directory needs it back. */
+    strcpy(token_env_dir, "/tmp/authd_tokens_XXXXXX");
+    if (setup_token_env(state) != 0) {
+        return -1;
+    }
+    authd_cond_written_init();
+    running = 1;
+    pass_started = 0;
+    pass_written = 0;
+    last_pass_ok = 0;
+    local_client_inline = false;
+    memset(key_write_warn_last, 0, sizeof(key_write_warn_last));
+    memset(key_write_warn_suppressed, 0, sizeof(key_write_warn_suppressed));
+    return 0;
+}
+
+static int teardown_key_write_env(void **state) {
+    running = 0;
+    config.key_write_wait = 0;
+    pthread_cond_destroy(&cond_written);
+    return teardown_token_env(state);
+}
+
+static void test_add_answers_only_once_the_pass_that_carries_it_has_written(void **state) {
+    (void) state;
+    pthread_t tid;
+    /* pass_started is 0 when the add queues its entry, so the add waits for pass 1: a writer that marks
+     * pass 1 written (and not, say, pass 0) is what releases it. */
+    fake_writer_t writer = { .pass = 1, .ok = 1, .delay_ms = 60 };
+    struct timespec t0;
+    cJSON *response;
+
+    config.key_write_wait = 2000;
+
+    EXPECT_LOG_DEBUG2();
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+    expect_string(__wrap__minfo, formatted_msg, "Agent key generated for agent 'waits' (requested locally)");
+
+    clock_gettime(CLOCK_MONOTONIC, &t0);
+    assert_int_equal(pthread_create(&tid, NULL, fake_writer, &writer), 0);
+    response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"waits\",\"ip\":\"any\"}}");
+    pthread_join(tid, NULL);
+
+    assert_int_equal(response_error(response), 0);
+    /* Held until the fake writer's pass, not answered at once, and not held until the bound either. */
+    assert_true(elapsed_ms(&t0) >= 50);
+    assert_true(elapsed_ms(&t0) < 1500);
+    /* The entry was queued for the writer before the wait, as the writer needs it to be. */
+    assert_non_null(queue_insert);
+    assert_string_equal(queue_insert->name, "waits");
+    cJSON_Delete(response);
+}
+
+/* The writer's own two calls, in the writer's own order, from a thread: the add is released by the pass
+ * the real helpers number and publish, so renumbering, publishing a different pass or publishing before
+ * the write-done call would all leave the add at its bound. */
+static void* real_pass_writer(void *arg) {
+    int delay_ms = *(int *)arg;
+    unsigned long long pass;
+
+    usleep((useconds_t)delay_ms * 1000);
+    w_mutex_lock(&mutex_keys);
+    pass = authd_pass_begin(); /* the copy point: everything queued so far is this pass's */
+    w_mutex_unlock(&mutex_keys);
+    usleep(10000);             /* OS_WriteKeys() would run here, unlocked */
+    authd_pass_written(pass, true);
+    return NULL;
+}
+
+static void test_add_is_released_by_the_writer_helpers_in_their_order(void **state) {
+    (void) state;
+    pthread_t tid;
+    int delay_ms = 60;
+    struct timespec t0;
+    cJSON *response;
+
+    config.key_write_wait = 2000;
+
+    EXPECT_LOG_DEBUG2();
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+    expect_string(__wrap__minfo, formatted_msg, "Agent key generated for agent 'real-pass' (requested locally)");
+
+    clock_gettime(CLOCK_MONOTONIC, &t0);
+    assert_int_equal(pthread_create(&tid, NULL, real_pass_writer, &delay_ms), 0);
+    response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"real-pass\",\"ip\":\"any\"}}");
+    pthread_join(tid, NULL);
+
+    assert_int_equal(response_error(response), 0);
+    assert_true(elapsed_ms(&t0) >= 60);
+    assert_true(elapsed_ms(&t0) < 1500);
+    assert_int_equal(pass_started, 1);
+    assert_int_equal(pass_written, 1);
+    assert_true(last_pass_ok);
+    cJSON_Delete(response);
+}
+
+static void test_reenroll_waits_for_the_pass_too(void **state) {
+    (void) state;
+    char id[16];
+    struct timespec t0;
+    cJSON *response;
+
+    /* The rotation is queued for the writer like a first enrollment, and its answer waits the same way. */
+    config.key_write_wait = 120;
+
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG1();
+    EXPECT_LOG_DEBUG2();
+    expect_any(__wrap__mwarn, formatted_msg); /* the add's own timeout: nothing writes in this group */
+    add_agent("rotates", id, sizeof(id), NULL, 0);
+
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), REENROLL_SECRET));
+    expect_verify(id, REENROLL_SECRET, W_REENROLL_OK);
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+    /* The rotation's own timeout falls inside the add's warning window: throttled to debug. */
+
+    clock_gettime(CLOCK_MONOTONIC, &t0);
+    response = reenroll(id, "rotates");
+    assert_int_equal(response_error(response), 0);
+    assert_true(elapsed_ms(&t0) >= 120);
+    assert_true(elapsed_ms(&t0) < 1500);
+    cJSON_Delete(response);
+}
+
+static void test_add_answers_at_the_bound_when_no_pass_comes(void **state) {
+    (void) state;
+    struct timespec t0;
+    cJSON *response;
+
+    config.key_write_wait = 120;
+
+    EXPECT_LOG_DEBUG2();
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+    expect_any(__wrap__mwarn, formatted_msg); /* the timeout warning, before the answer leaves */
+    expect_string(__wrap__minfo, formatted_msg, "Agent key generated for agent 'bounded' (requested locally)");
+
+    clock_gettime(CLOCK_MONOTONIC, &t0);
+    response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"bounded\",\"ip\":\"any\"}}");
+
+    assert_int_equal(response_error(response), 0);
+    assert_true(elapsed_ms(&t0) >= 120);
+    assert_true(elapsed_ms(&t0) < 1500);
+    cJSON_Delete(response);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_local_add_clustered_success),
@@ -2220,7 +2631,28 @@ int main(void) {
         cmocka_unit_test(test_reenroll_on_worker_forwards_kid_and_bearer),
         cmocka_unit_test(test_local_dispatch_unknown_function_is_9003),
     };
+    const struct CMUnitTest key_write_tests[] = {
+        cmocka_unit_test_setup_teardown(test_await_key_write_disabled_answers_at_once, setup_key_write, teardown_key_write),
+        cmocka_unit_test_setup_teardown(test_await_key_write_never_waits_on_a_worker, setup_key_write, teardown_key_write),
+        cmocka_unit_test_setup_teardown(test_await_key_write_already_landed, setup_key_write, teardown_key_write),
+        cmocka_unit_test_setup_teardown(test_await_key_write_wakes_when_the_pass_lands, setup_key_write, teardown_key_write),
+        cmocka_unit_test_setup_teardown(test_await_key_write_an_older_pass_does_not_release_it, setup_key_write, teardown_key_write),
+        cmocka_unit_test_setup_teardown(test_await_key_write_reports_a_failed_pass, setup_key_write, teardown_key_write),
+        cmocka_unit_test_setup_teardown(test_await_key_write_gives_up_at_the_bound, setup_key_write, teardown_key_write),
+        cmocka_unit_test_setup_teardown(test_await_key_write_timeout_warning_is_throttled, setup_key_write, teardown_key_write),
+        cmocka_unit_test_setup_teardown(test_await_key_write_leaves_on_shutdown, setup_key_write, teardown_key_write),
+        cmocka_unit_test_setup_teardown(test_await_key_write_failed_pass_warning_is_throttled_on_its_own, setup_key_write, teardown_key_write),
+        cmocka_unit_test_setup_teardown(test_await_key_write_never_holds_the_accept_loop, setup_key_write, teardown_key_write),
+    };
     int failed = cmocka_run_group_tests(tests, NULL, NULL);
     failed += cmocka_run_group_tests(token_tests, setup_token_env, teardown_token_env);
+    failed += cmocka_run_group_tests(key_write_tests, NULL, NULL);
+    const struct CMUnitTest key_write_env_tests[] = {
+        cmocka_unit_test_setup_teardown(test_add_answers_only_once_the_pass_that_carries_it_has_written, setup_key_write_env, teardown_key_write_env),
+        cmocka_unit_test_setup_teardown(test_add_answers_at_the_bound_when_no_pass_comes, setup_key_write_env, teardown_key_write_env),
+        cmocka_unit_test_setup_teardown(test_add_is_released_by_the_writer_helpers_in_their_order, setup_key_write_env, teardown_key_write_env),
+        cmocka_unit_test_setup_teardown(test_reenroll_waits_for_the_pass_too, setup_key_write_env, teardown_key_write_env),
+    };
+    failed += cmocka_run_group_tests(key_write_env_tests, NULL, NULL);
     return failed;
 }
