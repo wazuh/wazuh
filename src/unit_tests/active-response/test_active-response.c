@@ -459,7 +459,7 @@ void test_format_hostsdeny_client_ipv4_mapped_other_spellings(void **state) {
     (void)state;
     char out[NI_MAXHOST] = {0};
 
-    // The manager white_list only strips "::ffff:", so these spellings were never checked as IPv4.
+    // Only the "::ffff:a.b.c.d" spelling is converted; other mapped spellings are refused.
     assert_false(format_hostsdeny_client("::FFFF:127.0.0.1", out, sizeof(out)));
     assert_false(format_hostsdeny_client("0:0:0:0:0:ffff:127.0.0.1", out, sizeof(out)));
     assert_false(format_hostsdeny_client("0::ffff:127.0.0.1", out, sizeof(out)));
@@ -570,6 +570,93 @@ void test_hosts_deny_rule_matches_null(void **state) {
     assert_false(hosts_deny_rule_matches("ALL:10.0.0.1", NULL));
 }
 
+// Tests for hosts_deny_remove_rules
+static FILE *hosts_deny_tmp(const char *content) {
+    FILE *fp = tmpfile();
+    assert_non_null(fp);
+    assert_int_equal(fputs(content, fp) >= 0, 1);
+    rewind(fp);
+    return fp;
+}
+
+static void assert_file_content(FILE *fp, const char *expected) {
+    char buf[OS_SIZE_1024] = {0};
+    rewind(fp);
+    size_t n = fread(buf, 1, sizeof(buf) - 1, fp);
+    buf[n] = '\0';
+    assert_string_equal(buf, expected);
+}
+
+void test_hosts_deny_remove_rules_new_and_legacy(void **state) {
+    (void)state;
+    bool removed = false;
+    FILE *in = hosts_deny_tmp("# admin\nALL: 110.0.0.1\nALL:2001:db8::1\nALL:[2001:db8::1]\nsshd: [2001:db8::1]\n");
+    FILE *out = tmpfile();
+
+    assert_int_equal(hosts_deny_remove_rules(in, out, "ALL:[2001:db8::1]", "ALL:2001:db8::1", &removed), OS_SUCCESS);
+    assert_true(removed);
+    assert_file_content(out, "# admin\nALL: 110.0.0.1\nsshd: [2001:db8::1]\n");
+
+    fclose(in);
+    fclose(out);
+}
+
+void test_hosts_deny_remove_rules_ipv4_exact_only(void **state) {
+    (void)state;
+    bool removed = false;
+    FILE *in = hosts_deny_tmp("ALL:10.0.0.10\nALL:10.0.0.1\nALL: 110.0.0.1\nALL:10.0.0.1");
+    FILE *out = tmpfile();
+
+    assert_int_equal(hosts_deny_remove_rules(in, out, "ALL:10.0.0.1", "", &removed), OS_SUCCESS);
+    assert_true(removed);
+    assert_file_content(out, "ALL:10.0.0.10\nALL: 110.0.0.1\n");
+
+    fclose(in);
+    fclose(out);
+}
+
+void test_hosts_deny_remove_rules_nothing_removed(void **state) {
+    (void)state;
+    bool removed = true;
+    const char *content = "# admin\nALL: 110.0.0.1\n";
+    FILE *in = hosts_deny_tmp(content);
+    FILE *out = tmpfile();
+
+    assert_int_equal(hosts_deny_remove_rules(in, out, "ALL:[2001:db8::1]", NULL, &removed), OS_SUCCESS);
+    assert_false(removed);
+    assert_file_content(out, content);
+
+    fclose(in);
+    fclose(out);
+}
+
+void test_hosts_deny_remove_rules_write_error(void **state) {
+    (void)state;
+    bool removed = false;
+    FILE *in = hosts_deny_tmp("# admin\nALL: 110.0.0.1\nALL:10.0.0.1\n");
+    // Writes to /dev/full fail with ENOSPC once flushed, like a full disk.
+    FILE *out = fopen("/dev/full", "w");
+    assert_non_null(out);
+
+    assert_int_equal(hosts_deny_remove_rules(in, out, "ALL:10.0.0.1", NULL, &removed), OS_INVALID);
+
+    fclose(in);
+    fclose(out);
+}
+
+void test_hosts_deny_remove_rules_invalid_args(void **state) {
+    (void)state;
+    bool removed = false;
+    FILE *fp = tmpfile();
+
+    assert_int_equal(hosts_deny_remove_rules(NULL, fp, "ALL:10.0.0.1", NULL, &removed), OS_INVALID);
+    assert_int_equal(hosts_deny_remove_rules(fp, NULL, "ALL:10.0.0.1", NULL, &removed), OS_INVALID);
+    assert_int_equal(hosts_deny_remove_rules(fp, fp, NULL, NULL, &removed), OS_INVALID);
+    assert_int_equal(hosts_deny_remove_rules(fp, fp, "ALL:10.0.0.1", NULL, NULL), OS_INVALID);
+
+    fclose(fp);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // get_ip_version tests
@@ -603,6 +690,13 @@ int main(void) {
         cmocka_unit_test(test_hosts_deny_rule_matches_exact),
         cmocka_unit_test(test_hosts_deny_rule_matches_substring_no_match),
         cmocka_unit_test(test_hosts_deny_rule_matches_null),
+
+        // hosts_deny_remove_rules tests
+        cmocka_unit_test(test_hosts_deny_remove_rules_new_and_legacy),
+        cmocka_unit_test(test_hosts_deny_remove_rules_ipv4_exact_only),
+        cmocka_unit_test(test_hosts_deny_remove_rules_nothing_removed),
+        cmocka_unit_test(test_hosts_deny_remove_rules_write_error),
+        cmocka_unit_test(test_hosts_deny_remove_rules_invalid_args),
 
         // is_valid_username tests
         cmocka_unit_test(test_is_valid_username_valid_simple),
