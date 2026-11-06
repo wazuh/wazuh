@@ -55,11 +55,10 @@ enum rt_event_type
 
 enum rt_flags
 {
-    /* cgroup_id is a cgroup-v1-ambiguous constant here, not a usable
-     * correlation key (bpf_get_current_cgroup_id() collapses to a fixed
-     * value on cgroup v1 hosts, e.g. RHEL8/AL2 — see spike #37396 ADR-002).
-     * Consumers needing container correlation on such hosts must fall back
-     * to mnt_ns instead. */
+    /* Reserved: rt_file.bpf.c never sets it. Whether cgroup_id identifies a
+     * container is a property of the handle, so ask rt_cgroup_id_is_usable().
+     * On a cgroup v1 host it does once rt_set_cgroup_v1_subsys() points the
+     * program at a controller, and cgroup_id is then that controller's id. */
     RT_F_CGROUP_V1    = 1 << 0,
     /* One or more events were dropped (ring buffer full, or this consumer's
      * own queue was full) before this one — makes loss visible in-band

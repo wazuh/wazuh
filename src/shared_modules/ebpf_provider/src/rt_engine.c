@@ -6,30 +6,22 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * eBPF Module (#37396) engine — load/attach/select/poll logic extracted
- * from src/syscheckd/src/ebpf/src/ebpf_whodata.cpp and generalized: no FIM
- * types, no callback-registration singleton, no fixed hook set. A caller
+ * eBPF Module engine: load/attach/select/poll for any consumer, with no FIM
+ * types, no callback-registration singleton and no fixed hook set. A caller
  * gets exactly the programs its rt_filter asks for.
  *
  * libbpf is loaded via dlopen() at rt_open() time, not linked at build time
  * (no `-lbpf` anywhere in this file or its CMake target): fimebpf.so is
  * hard-linked into wazuh-syscheckd (see src/syscheckd/CMakeLists.txt), so a
  * build-time libbpf dependency here would make the whole agent binary
- * refuse to start on any host without libbpf installed. Mirrors the same
- * reasoning already documented in ebpf_whodata.cpp's init_libbpf(). This
- * engine resolves the SYSTEM libbpf.so via soname; production's actual
- * cutover should instead resolve the same Wazuh-bundled relative path
- * ebpf_whodata.cpp's so__get_module_handle(LIB_INSTALL_PATH) already uses,
- * which isn't reachable from here without pulling in syscheckd's abspath()
- * helper — a real follow-up once this is actually linked into fimebpf,
- * called out rather than silently left as a system-libbpf assumption.
+ * refuse to start on any host without libbpf installed. rt_filter.libbpf_path
+ * names the copy to bind (the agent passes its bundled one); the system
+ * libbpf.so is only the fallback.
  *
- * Also simplified: no dedicated pre-flight ringbuf-creation probe (spike
- * #37396 ADR-002 recommends one instead of a numeric kernel-version gate).
- * Here, attempting bpf_object__load() IS the capability probe — if
- * BPF_MAP_TYPE_RINGBUF or BTF/CO-RE isn't supported, the load simply fails
- * and rt_open() returns NULL. A dedicated probe would give a clearer error
- * message per missing feature; that refinement is deferred.
+ * Loading the object is the capability check: rt_open() tries the LSM d_path,
+ * LSM walk and kprobe file hooks in turn, and only when none of them loads does
+ * report_open_failure() probe for kernel BTF and the BPF ring buffer to name
+ * the cause.
  */
 
 #include "rt_engine.h"
@@ -62,6 +54,7 @@
 
 #define BPF_OBJ_PATH_FALLBACK "rt_file.bpf.o"
 #define LSM_LIST_FILE "/sys/kernel/security/lsm"
+#define KERNEL_BTF_FILE "/sys/kernel/btf/vmlinux"
 #define LIBBPF_SONAME_PRIMARY "libbpf.so.1"
 #define LIBBPF_SONAME_FALLBACK "libbpf.so"
 
@@ -116,6 +109,9 @@ struct libbpf_api
     const void* (*btf_type_by_id)(const struct btf*, unsigned int);
     const char* (*btf_name_by_offset)(const struct btf*, unsigned int);
     void (*btf_free)(struct btf*);
+
+    /* Optional: only used to name the missing feature when nothing loads. */
+    int (*probe_map_type)(int, const void*);
 };
 
 static struct libbpf_api g_libbpf;
@@ -221,7 +217,7 @@ static int resolve_libbpf(const struct rt_log_target* log, const char* libbpf_pa
         rt_log(log, RT_LOG_ERROR, "dlopen(libbpf) failed: %s", dlerror());
         return 0;
     }
-    rt_log(log, RT_LOG_INFO, "libbpf bound from '%s'", bound);
+    rt_log(log, RT_LOG_DEBUG, "libbpf bound from '%s'", bound);
 
     RT_RESOLVE_SYM(open_file, "bpf_object__open_file");
     RT_RESOLVE_SYM(load, "bpf_object__load");
@@ -246,6 +242,7 @@ static int resolve_libbpf(const struct rt_log_target* log, const char* libbpf_pa
      * reported cgroup and a narrow race with the BPF side, not correctness of
      * the visible-loss guarantee. */
     *(void**)(&g_libbpf.map_lookup_and_delete_elem) = dlsym(mod, "bpf_map_lookup_and_delete_elem");
+    *(void**)(&g_libbpf.probe_map_type) = dlsym(mod, "libbpf_probe_bpf_map_type");
 
     /* Also optional, and for a different reason: these are a correctness
      * improvement on one rare class of host, not a requirement anywhere. A
@@ -263,7 +260,7 @@ static int resolve_libbpf(const struct rt_log_target* log, const char* libbpf_pa
     {
         g_libbpf.btf_load_vmlinux = NULL;
         rt_log(log,
-               RT_LOG_INFO,
+               RT_LOG_DEBUG,
                "libbpf at '%s' has no usable BTF API; a v1 controller's subsystem index will be taken from "
                "/proc/cgroups instead",
                bound);
@@ -532,6 +529,15 @@ static void abort_open(struct rt_engine_handle* h)
     rt_close(h);
 }
 
+static const char* file_hooks_name(int prefer_lsm, int prefer_dpath)
+{
+    if (!prefer_lsm)
+    {
+        return "kprobe";
+    }
+    return prefer_dpath ? "LSM d_path" : "LSM walk";
+}
+
 static rt_handle_t open_attempt(const struct rt_filter* filter, int prefer_lsm, int prefer_dpath, int* failure)
 {
     struct rt_log_target log = {NULL, NULL};
@@ -599,7 +605,7 @@ static rt_handle_t open_attempt(const struct rt_filter* filter, int prefer_lsm, 
          * bug, and an answer that only appears when the answer is bad leaves
          * the common case indistinguishable from the probe never running. */
         rt_log(&h->log,
-               RT_LOG_INFO,
+               RT_LOG_DEBUG,
                "host cgroup hierarchy is %s: cgroup_id is a usable correlation key",
                wz_cgroup_mode_name(h->cgroup_mode));
     }
@@ -619,9 +625,8 @@ static rt_handle_t open_attempt(const struct rt_filter* filter, int prefer_lsm, 
     if (g_libbpf.load(h->obj))
     {
         *failure = 1;
-        rt_log(&h->log, RT_LOG_ERROR,
-               "bpf_object__load failed (capability probe failed — missing ringbuf/BTF/CO-RE support, "
-               "or insufficient privilege)");
+        rt_log(&h->log, RT_LOG_DEBUG, "the kernel did not load the %s programs",
+               file_hooks_name(prefer_lsm, prefer_dpath));
         abort_open(h);
         return NULL;
     }
@@ -720,7 +725,8 @@ static rt_handle_t open_attempt(const struct rt_filter* filter, int prefer_lsm, 
         {
             *failure = 2;
             const char* name = g_libbpf.prog_name(prog);
-            rt_log(&h->log, RT_LOG_ERROR, "failed to attach '%s'", name ? name : "?");
+            rt_log(&h->log, RT_LOG_DEBUG, "failed to attach '%s' (%s programs)", name ? name : "?",
+                   file_hooks_name(prefer_lsm, prefer_dpath));
             abort_open(h);
             return NULL;
         }
@@ -755,10 +761,39 @@ static rt_handle_t open_attempt(const struct rt_filter* filter, int prefer_lsm, 
     }
 
     rt_log(&h->log, RT_LOG_INFO,
-           "eBPF engine ready: %u program(s) attached, ABI %d.%d, cgroup filter %s, skip mask 0x%x",
-           h->link_count, RT_ABI_MAJOR, RT_ABI_MINOR,
+           "eBPF engine ready: %u program(s) attached, file hooks %s, ABI %d.%d, cgroup filter %s, skip mask 0x%x",
+           h->link_count, file_hooks_name(prefer_lsm, prefer_dpath), RT_ABI_MAJOR, RT_ABI_MINOR,
            filter->cgroup_mode == RT_CGROUP_MODE_ALLOWLIST ? "allowlist" : "off", filter->skip_mask);
     return (rt_handle_t)h;
+}
+
+/* Names what kept every file-hook variant from loading or attaching. The two
+ * checks are the engine's hard requirements; only when both hold is the kernel
+ * left as the reason. */
+static void report_open_failure(const struct rt_filter* filter, int tried_lsm)
+{
+    const struct rt_log_target log = {filter->log, filter->log_user};
+    struct stat btf;
+
+    if (stat(KERNEL_BTF_FILE, &btf) != 0)
+    {
+        rt_log(&log, RT_LOG_ERROR, "the eBPF engine cannot start: this kernel has no BTF (%s)", KERNEL_BTF_FILE);
+    }
+    else if (g_libbpf.probe_map_type && g_libbpf.probe_map_type(RT_BPF_MAP_TYPE_RINGBUF, NULL) == 0)
+    {
+        rt_log(&log,
+               RT_LOG_ERROR,
+               "the eBPF engine cannot start: this kernel has no BPF ring buffer (Linux 5.8 or a distribution "
+               "backport is required)");
+    }
+    else
+    {
+        rt_log(&log,
+               RT_LOG_ERROR,
+               "the eBPF engine cannot start: the kernel rejected the %s programs, or this process lacks the "
+               "privilege to load them",
+               tried_lsm ? "LSM and kprobe" : "kprobe");
+    }
 }
 
 rt_handle_t rt_open(const struct rt_filter* filter)
@@ -766,27 +801,31 @@ rt_handle_t rt_open(const struct rt_filter* filter)
     int failure = 0;
     const int use_lsm = is_bpf_lsm_active();
     rt_handle_t handle = open_attempt(filter, use_lsm, use_lsm, &failure);
-    if (handle || !use_lsm || !failure)
-    {
-        return handle;
-    }
 
-    /* Only verifier rejection warrants replacing d_path with the walker.
-     * Missing path hooks fail at attach and require the kprobe set instead. */
-    const struct rt_log_target log = {filter->log, filter->log_user};
-    if (failure == 1)
+    if (!handle && use_lsm && failure)
     {
-        rt_log(&log, RT_LOG_INFO, "LSM dpath load failed; retrying with walk variants");
-        failure = 0;
-        handle = open_attempt(filter, 1, 0, &failure);
-        if (handle || !failure)
+        /* Only verifier rejection warrants replacing d_path with the walker.
+         * Missing path hooks fail at attach and require the kprobe set instead. */
+        const struct rt_log_target log = {filter->log, filter->log_user};
+        if (failure == 1)
         {
-            return handle;
+            rt_log(&log, RT_LOG_DEBUG, "retrying with the LSM walk programs");
+            failure = 0;
+            handle = open_attempt(filter, 1, 0, &failure);
+        }
+        if (!handle && failure)
+        {
+            rt_log(&log, RT_LOG_DEBUG, "retrying with the kprobe programs");
+            failure = 0;
+            handle = open_attempt(filter, 0, 0, &failure);
         }
     }
-    rt_log(&log, RT_LOG_INFO, "LSM load/attach failed; retrying with kprobes");
-    failure = 0;
-    return open_attempt(filter, 0, 0, &failure);
+
+    if (!handle && failure)
+    {
+        report_open_failure(filter, use_lsm);
+    }
+    return handle;
 }
 
 int rt_set_cgroup_mode(rt_handle_t handle, int mode)
@@ -901,7 +940,7 @@ static int rt_subsys_index_from_btf(const char* controller, const struct rt_log_
     if (!btf)
     {
         rt_log(log,
-               RT_LOG_INFO,
+               RT_LOG_DEBUG,
                "no kernel BTF available; taking the v1 subsystem index for '%s' from /proc/cgroups",
                controller);
         return -1;
@@ -1069,7 +1108,7 @@ int rt_set_cgroup_v1_subsys(rt_handle_t handle, const char* controller, unsigned
 
     h->v1_subsys_configured = 1;
     rt_log(&h->log,
-           RT_LOG_INFO,
+           RT_LOG_DEBUG,
            "reading container cgroup ids from v1 controller '%s' (subsystem %u, resolved from %s); cgroup "
            "filtering is available",
            controller ? controller : "?",
@@ -1215,18 +1254,14 @@ int rt_drain_drops(rt_handle_t handle, rt_drop_fn cb, void* user)
     {
         unsigned int drops = 0;
 
-        if (g_libbpf.map_lookup_and_delete_elem)
-        {
-            if (g_libbpf.map_lookup_and_delete_elem(h->cgroup_drops_fd, &keys[i], &drops) != 0)
-            {
-                continue; /* raced with another drain, or already gone */
-            }
-        }
-        else
+        /* Hash maps take the atomic call from Linux 5.14 on; an older kernel
+         * rejects it, so fall back rather than skip the key. */
+        if (!g_libbpf.map_lookup_and_delete_elem ||
+            g_libbpf.map_lookup_and_delete_elem(h->cgroup_drops_fd, &keys[i], &drops) != 0)
         {
             if (g_libbpf.map_lookup_elem(h->cgroup_drops_fd, &keys[i], &drops) != 0)
             {
-                continue;
+                continue; /* raced with another drain, or already gone */
             }
             /* Non-atomic fallback: a drop recorded between the lookup and the
              * delete is lost from the per-cgroup view. It is still counted in

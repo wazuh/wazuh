@@ -25,7 +25,8 @@ include_directories(
   ${SRC_FOLDER}/external/openssl/include
   # M4 package scanning reuses sysinfo's header-only parse helpers (parseDpkg,
   # parseRpm, BerkeleyRpmDBReader) without linking libsysinfo — see
-  # package_scanner.cpp. libdb + sqlite3 are the vendored deps those need.
+  # package_scanner.cpp. They need the vendored libdb, linked below, and
+  # sqlite3, which comes from wazuhext.
   ${SRC_FOLDER}/data_provider/src
   ${SRC_FOLDER}/data_provider/src/packages
   ${SRC_FOLDER}/shared_modules/utils
@@ -49,7 +50,6 @@ target_include_directories(CONTAINER_BASELINE_IMPL PUBLIC
 target_link_libraries(CONTAINER_BASELINE_IMPL PUBLIC
   wazuhext
   ${SRC_FOLDER}/external/libdb/build_unix/libdb.a
-  ${SRC_FOLDER}/external/sqlite/libsqlite3.a
 )
 
 set_target_properties(CONTAINER_BASELINE_IMPL PROPERTIES

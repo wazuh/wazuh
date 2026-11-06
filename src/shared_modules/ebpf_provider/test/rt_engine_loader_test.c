@@ -143,6 +143,7 @@ static int fake_map(struct bpf_object* obj, const char* name) { (void)obj; retur
 static struct ring_buffer* fake_rb(int fd, ring_buffer_sample_fn cb, void* ctx, const struct ring_buffer_opts* opts)
 { (void)fd; (void)cb; (void)ctx; (void)opts; return (struct ring_buffer*)1; }
 static void fake_free(struct ring_buffer* rb) { (void)rb; CHECK(g_live == 0, "ring freed with live links"); }
+static int fake_probe(int type, const void* opts) { (void)type; (void)opts; return 1; }
 
 static struct bpf_object* fake_open(const char* path, const struct bpf_object_open_opts* opts)
 {
@@ -198,6 +199,7 @@ void* __wrap_dlsym(void* module, const char* symbol)
         FAKE("bpf_object__find_map_fd_by_name", fake_map);
         FAKE("ring_buffer__new", fake_rb);
         FAKE("ring_buffer__free", fake_free);
+        FAKE("libbpf_probe_bpf_map_type", fake_probe);
 #undef FAKE
     }
     return strcmp(symbol, "bpf_object__open_file") == 0 ? (void*)fake_open : (void*)unused_symbol;
@@ -283,7 +285,7 @@ static int scenario(int mode, int reverse)
     const int opens = atomic_load(&g_opens);
     const int symbols = atomic_load(&g_symbols);
     CHECK(opens == (mode == 2 ? 3 : mode == 3 ? 2 : 1), "dlopen count %d", opens);
-    CHECK(symbols == (mode == 2 ? 0 : mode == 1 ? 2 : 24), "dlsym count %d", symbols);
+    CHECK(symbols == (mode == 2 ? 0 : mode == 1 ? 2 : 25), "dlsym count %d", symbols);
     CHECK(mode == 2 || g_early == 0, "caller escaped before publication");
     CHECK(g_objects == ((mode == 0 || mode == 3) ? THREADS : 0), "object opens %d", g_objects);
     CHECK(g_closes == (mode == 1 ? 1 : 0), "dlclose count %d", g_closes);
