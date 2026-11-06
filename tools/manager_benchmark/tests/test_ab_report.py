@@ -24,10 +24,36 @@ BENCH = os.path.join(HERE, '..')
 sys.path.insert(0, BENCH)
 import ab_report as ab
 
+SCRIPTS = ("ab_indexer.sh", "ab_report.py", "indexer_ingest_probe.sh", "indexer_credentials.sh")
 
-def run(side, scenario, metrics, kind="drain", verdict=("docs_per_s_drain",), warmup=False, index="1"):
-    return {"side": side, "scenario": scenario, "index": index, "kind": kind, "warmup": warmup,
-            "verdict_metrics": list(verdict), "metrics": metrics}
+
+def idx_env(tmp_path, **extra):
+    """The indexer credentials and CA a real (non dry) run needs: there is no default (P-9)."""
+    ca = tmp_path / "indexer-ca.pem"
+    ca.write_text("not a real CA: the stubs never verify it\n")
+    return dict({"INDEXER_USER": "bench", "INDEXER_PASSWORD": "pw", "INDEXER_CACERT": str(ca)}, **extra)
+
+
+def clean_env(**extra):
+    """os.environ without any indexer credential or CA the developer's shell may carry."""
+    env = {k: v for k, v in os.environ.items()
+           if k not in ("INDEXER_USER", "INDEXER_PASSWORD", "INDEXER_PASS", "INDEXER_CACERT",
+                        "INDEXER_INSECURE", "INDEXER_CREDENTIALS_FILE", "INDEXER_URL")}
+    env.update(extra)
+    return env
+
+
+def run(side, scenario, metrics, kind="drain", verdict=("docs_per_s_drain",), warmup=False, index="1",
+        dropped=0, fraction=0.5):
+    """One collected run. A drain run is comparable by default: it records indexer.events.dropped = 0
+    and indexes `fraction` of the events remoted accepted (I226)."""
+    doc = {"side": side, "scenario": scenario, "index": index, "kind": kind, "warmup": warmup,
+           "verdict_metrics": list(verdict), "metrics": dict(metrics)}
+    if kind == "drain":
+        doc["engine_events_dropped"] = dropped
+        if fraction is not None:
+            doc["metrics"].setdefault("indexed_fraction", fraction)
+    return doc
 
 
 def sides(ratio, base=1000.0, n=4):
@@ -121,43 +147,87 @@ def test_one_failing_scenario_fails_the_whole():
     assert result["overall"] == "FAIL"
 
 
-def drained(v1_docs, v2_docs, ratio=1.20, n=2, **extra):
-    """Drain runs where v2 is `ratio` times faster, each side having drained its own documents."""
-    return ([dict(run("v1", "drain-engine", {"docs_per_s_drain": 1000.0, "drain_seconds": 100.0,
-                                             "docs_drained": v1_docs},
-                      verdict=("docs_per_s_drain", "drain_seconds")), **extra) for _ in range(n)]
-            + [dict(run("v2", "drain-engine", {"docs_per_s_drain": 1000.0 * ratio,
-                                               "drain_seconds": 100.0 / ratio, "docs_drained": v2_docs},
-                        verdict=("docs_per_s_drain", "drain_seconds")), **extra) for _ in range(n)])
+def drained(v1_docs, v2_docs, ratio=1.20, n=2, v1_accepted=None, v2_accepted=None, v1_dropped=0, v2_dropped=0,
+            **extra):
+    """Drain runs where v2 is `ratio` times faster; each side drained its own documents out of the events
+    remoted accepted from it (default: twice the documents, the half-classified syslog sample)."""
+    def side(name, docs, accepted, dropped, rate, secs):
+        accepted = accepted if accepted is not None else 2 * docs
+        return [dict(run(name, "drain-engine", {"docs_per_s_drain": rate, "drain_seconds": secs,
+                                                "docs_drained": docs, "events_accepted": accepted},
+                         verdict=("docs_per_s_drain", "drain_seconds"), dropped=dropped,
+                         fraction=round(docs / accepted, 6)), **extra) for _ in range(n)]
+    return (side("v1", v1_docs, v1_accepted, v1_dropped, 1000.0, 100.0)
+            + side("v2", v2_docs, v2_accepted, v2_dropped, 1000.0 * ratio, 100.0 / ratio))
 
 
-def test_a_side_that_drained_fewer_documents_is_incomparable_not_a_win():
-    # v2 "drains 20 % faster" only because it dropped 40 % of the documents
-    result = ab.compare(drained(300000, 180000))
+def test_a_side_that_indexed_a_smaller_fraction_is_incomparable_not_a_win():
+    # both accepted 100,000 events; v2 "drains 20 % faster" only because it lost 40 % of the documents
+    result = ab.compare(drained(50000, 30000, v1_accepted=100000, v2_accepted=100000))
     entry = result["scenarios"]["drain-engine"]
     assert entry["verdict"] == "INCOMPARABLE" and result["overall"] == "INCOMPARABLE"
     for m in ("docs_per_s_drain", "drain_seconds"):
         assert entry["metrics"][m]["verdict"] == "INCOMPARABLE"
-        assert entry["metrics"][m]["docs_gap"] == pytest.approx(0.4)
-    assert any("300000" in n and "180000" in n and "40.0%" in n for n in entry["notes"])
+    assert entry["comparability"]["fraction_gap"] == pytest.approx(0.4)
+    assert any("0.5000" in n and "0.3000" in n and "40.00%" in n for n in entry["notes"])
 
 
-def test_the_same_documents_within_tolerance_are_judged():
-    entry = ab.compare(drained(300000, 298000))["scenarios"]["drain-engine"]   # 0.67 % apart
+def test_the_smoke_case_fewer_documents_but_the_same_fraction_is_judged():
+    """I226, the E12 smoke: v2 got more 503s from remoted (98,000 events accepted against 100,000), so it
+    drained 1.4 % fewer documents, but both sides indexed exactly half of what reached the engine."""
+    entry = ab.compare(drained(50000, 49000, v1_accepted=100000, v2_accepted=98000))["scenarios"]["drain-engine"]
     assert entry["verdict"] == "PASS"
-    entry = ab.compare(drained(300000, 296000))["scenarios"]["drain-engine"]   # 1.33 % apart
+    assert entry["comparability"]["fraction_gap"] == 0
+    assert any("documents drained differ by 2.0%" in n and "drain_seconds favours" in n for n in entry["notes"])
+
+
+def test_the_fraction_tolerance_is_one_percent_relative():
+    within = drained(49600, 50000, v1_accepted=100000, v2_accepted=100000)    # 0.496 vs 0.5: 0.8 %
+    assert ab.compare(within)["scenarios"]["drain-engine"]["verdict"] == "PASS"
+    beyond = drained(49400, 50000, v1_accepted=100000, v2_accepted=100000)    # 0.494 vs 0.5: 1.2 %
+    assert ab.compare(beyond)["scenarios"]["drain-engine"]["verdict"] == "INCOMPARABLE"
+    edge = drained(49500, 50000, v1_accepted=100000, v2_accepted=100000)      # exactly 1 %: comparable
+    assert ab.compare(edge)["scenarios"]["drain-engine"]["verdict"] == "PASS"
+
+
+def test_missing_indexed_fraction_is_incomparable():
+    runs = drained(50000, 50000)
+    runs[0]["metrics"].pop("indexed_fraction")          # one run without accepted events
+    entry = ab.compare(runs)["scenarios"]["drain-engine"]
     assert entry["verdict"] == "INCOMPARABLE"
+    assert any("indexed_fraction" in n and "missing" in n for n in entry["notes"])
 
 
-def test_missing_docs_drained_is_incomparable():
-    runs = drained(300000, 300000)
-    for r in runs:
-        r["metrics"].pop("docs_drained")
+@pytest.mark.parametrize("v1_dropped, v2_dropped, side", [(0, 7, "v2"), (3, 0, "v1")])
+def test_a_side_whose_engine_dropped_events_is_incomparable(v1_dropped, v2_dropped, side):
+    entry = ab.compare(drained(50000, 50000, v1_dropped=v1_dropped, v2_dropped=v2_dropped))["scenarios"]["drain-engine"]
+    assert entry["verdict"] == "INCOMPARABLE"
+    assert any(f"side {side} dropped events" in n and "indexer.events.dropped" in n for n in entry["notes"])
+
+
+def test_an_unknown_engine_drop_count_is_incomparable_and_so_is_one_dropping_run():
+    runs = drained(50000, 50000)
+    runs[1]["engine_events_dropped"] = None               # the engine API did not answer
+    entry = ab.compare(runs)["scenarios"]["drain-engine"]
+    assert entry["verdict"] == "INCOMPARABLE" and any("no indexer.events.dropped" in n for n in entry["notes"])
+    runs = drained(50000, 50000)
+    runs[-1]["engine_events_dropped"] = 1                 # a single run of a single side is enough
     assert ab.compare(runs)["scenarios"]["drain-engine"]["verdict"] == "INCOMPARABLE"
 
 
+def test_the_drop_guard_covers_a_drain_whose_verdict_is_not_a_document_drain():
+    """drain-syscollector (verdict sessions/s) has no fraction guard but still needs dropped == 0."""
+    runs = ([run("v1", "drain-syscollector", {"sessions_per_s": 10.0, "docs_drained": 36000},
+                 verdict=("sessions_per_s",), fraction=None) for _ in range(2)]
+            + [run("v2", "drain-syscollector", {"sessions_per_s": 11.0, "docs_drained": 36000},
+                   verdict=("sessions_per_s",), fraction=None) for _ in range(2)])
+    assert ab.compare(runs)["scenarios"]["drain-syscollector"]["verdict"] == "PASS"
+    runs[-1]["engine_events_dropped"] = 5
+    assert ab.compare(runs)["scenarios"]["drain-syscollector"]["verdict"] == "INCOMPARABLE"
+
+
 def test_incomparable_exits_with_2(tmp_path):
-    for i, r in enumerate(drained(300000, 180000)):
+    for i, r in enumerate(drained(50000, 30000, v1_accepted=100000, v2_accepted=100000)):
         d = tmp_path / f"results_ab-{r['side']}-drain-engine-{i}"
         d.mkdir()
         (d / "ab_metrics.json").write_text(json.dumps(r))
@@ -165,8 +235,8 @@ def test_incomparable_exits_with_2(tmp_path):
 
 
 def test_a_fail_beats_incomparable_in_the_overall():
-    runs = drained(300000, 180000) + [dict(r, scenario="drain-syscollector")
-                                      for r in drained(300000, 300000, ratio=0.5)]
+    runs = drained(50000, 30000, v1_accepted=100000, v2_accepted=100000) + [
+        dict(r, scenario="drain-syscollector") for r in drained(50000, 50000, ratio=0.5)]
     assert ab.compare(runs)["overall"] == "FAIL"
 
 
@@ -201,23 +271,74 @@ def test_provenance_hash_ignores_date_and_side_but_not_binaries(tmp_path):
     assert ab.provenance_hash(str(tmp_path / "nowhere")) is None
 
 
-def test_collect_keeps_docs_drained_and_the_provenance_hash(tmp_path):
+def test_collect_keeps_docs_drained_the_fraction_the_drop_count_and_the_provenance_hash(tmp_path):
     (tmp_path / "provenance.txt").write_text("side: v1\n" + "ab" * 32 + "  /x/bin/a\n")
     write_probe(tmp_path / "probe.csv", [0, 0, 0, 100, 200, 200, 200])
     (tmp_path / "drain.json").write_text(json.dumps({
-        "t_pause": 999.0, "t_resume": 1002.0, "drain_end": "quiet", "docs_final": 200, "expected_docs": 300}))
+        "t_pause": 999.0, "t_resume": 1002.0, "drain_end": "quiet", "docs_final": 200,
+        "events_sent": 500, "events_accepted": 400, "events_rejected_503": 100, "engine_events_dropped": 0}))
     doc = ab.collect(str(tmp_path), "v1", "drain-engine", "1", "drain", False, ["docs_per_s_drain"])
-    assert doc["metrics"]["docs_drained"] == 200
+    m = doc["metrics"]
+    assert m["docs_drained"] == 200 and m["events_accepted"] == 400 and m["indexed_fraction"] == 0.5
+    assert m["events_sent"] == 500 and m["events_rejected_503"] == 100
     assert doc["provenance_sha256"] == ab.provenance_hash(str(tmp_path / "provenance.txt"))
-    assert doc["drain_end"] == "quiet" and doc["expected_docs"] == 300
+    assert doc["drain_end"] == "quiet" and doc["engine_events_dropped"] == 0
+    assert "expected_docs" not in doc
 
 
-def test_expected_docs_by_mode(tmp_path):
-    (tmp_path / "sender_summary.json").write_text(json.dumps({"totals": {
-        "stateless": {"events_sent": 300000}, "sessions": {"documents_sent": 64000}}}))
-    assert ab.expected_docs(str(tmp_path), "agent") == 300000
-    assert ab.expected_docs(str(tmp_path), "uds") == 64000
-    assert ab.expected_docs(str(tmp_path / "nowhere"), "agent") == 0
+def test_collect_without_accepted_events_has_no_fraction(tmp_path):
+    write_probe(tmp_path / "probe.csv", [0, 0, 100, 100])
+    (tmp_path / "drain.json").write_text(json.dumps({"t_pause": 999.0, "t_resume": 1001.0, "drain_end": "quiet",
+                                                     "docs_final": 100, "engine_events_dropped": None}))
+    doc = ab.collect(str(tmp_path), "v2", "drain-engine", "1", "drain", False, ["docs_per_s_drain"])
+    assert "indexed_fraction" not in doc["metrics"] and doc["engine_events_dropped"] is None
+
+
+def smoke_summary(path, events_sent=100000, batches=1000, s202=986, s503=14):
+    path.write_text(json.dumps({"totals": {
+        "stateless": {"events_sent": events_sent, "sent": batches, "s202": s202, "s503": s503,
+                      "s400": 0, "s413": 0, "other": 0},
+        "sessions": {"documents_sent": 64000}}}))
+
+
+def test_accepted_events_subtract_the_batches_remoted_did_not_take(tmp_path):
+    """The smoke's v2-1 run: 1,000 batches of 100, 14 answered 503 -> 98,600 events reached the engine."""
+    smoke_summary(tmp_path / "sender_summary.json")
+    assert ab.accepted_counts(str(tmp_path), "agent") == {
+        "events_sent": 100000, "events_accepted": 98600, "events_rejected_503": 1400, "events_rejected": 1400}
+    assert ab.accepted_events(str(tmp_path), "agent") == 98600
+    assert ab.accepted_events(str(tmp_path), "uds") == 64000
+    assert ab.accepted_events(str(tmp_path / "nowhere"), "agent") == 0
+    smoke_summary(tmp_path / "sender_summary.json", s202=1000, s503=0)
+    assert ab.accepted_events(str(tmp_path), "agent") == 100000
+    smoke_summary(tmp_path / "sender_summary.json", s202=990, s503=4)       # 6 batches were 400/413/other
+    c = ab.accepted_counts(str(tmp_path), "agent")
+    assert c["events_accepted"] == 99000 and c["events_rejected_503"] == 400 and c["events_rejected"] == 1000
+    smoke_summary(tmp_path / "sender_summary.json", events_sent=0, batches=0, s202=0, s503=0)
+    assert ab.accepted_counts(str(tmp_path), "agent") is None
+
+
+def test_accepted_cli_prints_the_count_and_the_json(tmp_path, capsys):
+    smoke_summary(tmp_path / "sender_summary.json")
+    assert ab.main(["accepted", str(tmp_path), "--mode", "agent"]) == 0
+    assert capsys.readouterr().out.strip() == "98600"
+    assert ab.main(["accepted", str(tmp_path), "--mode", "agent", "--json"]) == 0
+    assert json.loads(capsys.readouterr().out)["events_rejected_503"] == 1400
+    assert ab.main(["accepted", str(tmp_path / "nowhere"), "--mode", "agent", "--json"]) == 0
+    assert json.loads(capsys.readouterr().out) == {}
+
+
+def test_engine_metric_reads_the_global_counter(monkeypatch, capsys):
+    import io
+    dump = {"global": [{"name": "router.events.dropped", "value": 9},
+                       {"name": "indexer.events.dropped", "value": 3.0}], "spaces": {}}
+    assert ab.engine_metric(dump, "indexer.events.dropped") == 3
+    assert ab.engine_metric(dump, "nope") is None
+    assert ab.engine_metric([], "indexer.events.dropped") is None
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(dump)))
+    assert ab.main(["engine-metric", "indexer.events.dropped"]) == 0 and capsys.readouterr().out.strip() == "3"
+    monkeypatch.setattr(sys, "stdin", io.StringIO("not json"))
+    assert ab.main(["engine-metric", "indexer.events.dropped"]) == 1 and capsys.readouterr().out == ""
 
 
 def test_markdown_names_the_rule_and_the_verdict():
@@ -333,12 +454,12 @@ def test_the_lock_reexec_replays_every_argument(tmp_path):
         ["bash", os.path.join(BENCH, "ab_indexer.sh"), "--scenario", "drain-engine", "--n", "2",
          "--snapshots", str(tmp_path / "snaps"), "--no-warmup"],
         capture_output=True, text=True, timeout=60,
-        env=dict(os.environ, AB_MEASURE_LOCK=str(lock), AB_REEXEC_PRINT="1"))
+        env=dict(os.environ, AB_MEASURE_LOCK=str(lock), AB_REEXEC_PRINT="1", **idx_env(tmp_path)))
     assert out.returncode == 0, out.stderr
     line = [l for l in out.stdout.splitlines() if l.startswith("REEXEC")][0]
     assert line.endswith("[--scenario] [drain-engine] [--n] [2] [--snapshots] [%s] [--no-warmup] [--locked]"
                          % (tmp_path / "snaps"))
-    assert f"flock {lock} bash " in line
+    assert f"flock -o {lock} bash " in line
 
 
 def test_the_lock_is_really_taken_and_the_child_gets_its_arguments(tmp_path):
@@ -347,7 +468,7 @@ def test_the_lock_is_really_taken_and_the_child_gets_its_arguments(tmp_path):
     it fails on purpose so that nothing after the first restore runs."""
     work = tmp_path / "bench"
     work.mkdir()
-    for name in ("ab_indexer.sh", "ab_report.py", "indexer_ingest_probe.sh"):
+    for name in SCRIPTS:
         (work / name).write_text(open(os.path.join(BENCH, name)).read())
     stub = work / "prepare_manager.sh"
     stub.write_text('#!/usr/bin/env bash\necho "STUB $*" > "$AB_STUB_OUT"\nexit 1\n')
@@ -358,7 +479,7 @@ def test_the_lock_is_really_taken_and_the_child_gets_its_arguments(tmp_path):
          "--snapshots", str(tmp_path / "snaps")],
         capture_output=True, text=True, timeout=60,
         env=dict(os.environ, AB_MEASURE_LOCK=str(tmp_path / "measure.lock"), AB_STUB_OUT=str(rec),
-                 AB_RAW_PATTERN="", PYTHON=sys.executable))
+                 AB_RAW_PATTERN="", PYTHON=sys.executable, **idx_env(tmp_path)))
     assert (tmp_path / "measure.lock").exists()
     assert "1 scenario(s), N=2 per side" in out.stdout, out.stdout + out.stderr    # not the default matrix
     assert "STUB --side v1 --side-only --snapshots %s" % (tmp_path / "snaps") in rec.read_text()
@@ -467,7 +588,7 @@ def test_restore_original_refuses_a_side(tmp_path):
 def curl_stub(tmp_path):
     """A curl that records its argv and its stdin, and answers like the indexer."""
     bindir = tmp_path / "stubbin"
-    bindir.mkdir()
+    bindir.mkdir(exist_ok=True)
     f = bindir / "curl"
     f.write_text('#!/usr/bin/env bash\necho "ARGV $*" >> "$CURL_LOG"\ncat >> "$CURL_LOG"\n'
                  'case "$*" in *_stats*) echo \'{"_all":{"total":{"indexing":{"index_total":7}}}}\';;'
@@ -480,7 +601,7 @@ def test_indexer_credentials_go_on_stdin_not_in_argv(tmp_path):
     """P3-9: the probe and the cleaner give curl the user through `-K -`."""
     log = tmp_path / "curl.log"
     env = dict(os.environ, PATH=f"{curl_stub(tmp_path)}:{os.environ['PATH']}", CURL_LOG=str(log),
-               INDEXER_USER="admin", INDEXER_PASSWORD='s3cr"et\\pw', PYTHON=sys.executable)
+               PYTHON=sys.executable, **idx_env(tmp_path, INDEXER_USER="admin", INDEXER_PASSWORD='s3cr"et\\pw'))
     out = subprocess.run(["bash", os.path.join(BENCH, "indexer_ingest_probe.sh"), "--once",
                           "--patterns", "wazuh-events*"], capture_output=True, text=True, env=env, timeout=60)
     assert out.returncode == 0 and out.stdout.strip() == "3", out.stderr
@@ -533,9 +654,14 @@ def bench_copy(tmp_path):
     """A copy of the scripts under test in its own directory: SCRIPT_DIR is where results_* land."""
     work = tmp_path / "bench"
     work.mkdir()
-    for name in ("ab_indexer.sh", "ab_report.py", "indexer_ingest_probe.sh"):
+    for name in SCRIPTS:
         (work / name).write_text(open(os.path.join(BENCH, name)).read())
         (work / name).chmod(0o755)
+    # the agent cleaner talks to the API: a stub that succeeds unless AB_CLEANUP_FAIL is set
+    write_stub(work / "cleanup_agents.sh",
+               'echo "cleanup $*" >> "${AB_CLEANUP_LOG:-/dev/null}"\n'
+               '[[ -n "${AB_CLEANUP_FAIL:-}" ]] && { echo "cleanup_agents: ERROR: 3 agent(s) still registered" >&2; exit 1; }\n'
+               'exit 0\n')
     return work
 
 
@@ -551,7 +677,9 @@ def stale_runs(work, campaign, ratio=1.02, n=4, scenario="drain-engine"):
 
 def run_campaign(work, tmp_path, extra_env=None, args=("--scenario", "drain-engine", "--n", "2", "--no-warmup")):
     env = dict(os.environ, AB_MEASURE_LOCK=str(tmp_path / "measure.lock"), PYTHON=sys.executable,
-               AB_RAW_PATTERN="", AB_STUB_OUT=str(tmp_path / "stub.out"), **(extra_env or {}))
+               AB_RAW_PATTERN="", AB_STUB_OUT=str(tmp_path / "stub.out"), AB_TEST_SKIP_READY="1",
+               AB_TEST_CLEANUP_SLEEP_S="0", **idx_env(tmp_path))
+    env.update(extra_env or {})
     return subprocess.run(["bash", str(work / "ab_indexer.sh"), *args, "--snapshots", str(tmp_path / "snaps")],
                           capture_output=True, text=True, env=env, timeout=120)
 
@@ -597,7 +725,7 @@ def test_collect_stamps_the_campaign(tmp_path):
     assert json.loads((tmp_path / "ab_metrics.json").read_text())["campaign"] == "c-1"
 
 
-def probe_harness(tmp_path, sequence, quiet=2, timeout=30, expected=0, floor=1):
+def probe_harness(tmp_path, sequence, quiet=2, timeout=30, floor=1):
     """Source ab_indexer.sh (hook) with a probe that answers `sequence` (the last value repeats; `grow`
     = the call number; `fail` = exit 1) and run wait_quiet. Returns (stdout line fields, calls)."""
     work = bench_copy(tmp_path)
@@ -610,7 +738,7 @@ def probe_harness(tmp_path, sequence, quiet=2, timeout=30, expected=0, floor=1):
                '[[ "$v" == grow ]] && v=$n\n[[ "$v" == fail ]] && exit 1\necho "$v"\n')
     script = (f'AB_SOURCE_ONLY=1 source "{work}/ab_indexer.sh" --scenario drain-engine '
               f'--quiet-seconds {quiet} --drain-timeout {timeout}\n'
-              f'wait_quiet "p*" {expected}; echo "rc=$? end=$DRAIN_END final=$DRAIN_FINAL"\n')
+              f'wait_quiet "p*"; echo "rc=$? end=$DRAIN_END final=$DRAIN_FINAL"\n')
     out = subprocess.run(["bash", "-c", script], capture_output=True, text=True, timeout=120,
                          env=dict(os.environ, AB_SEQ=str(seq), AB_STATE=str(state), AB_TEST_QUIET_FLOOR_S=str(floor)))
     line = [l for l in out.stdout.splitlines() if l.startswith("rc=")]
@@ -619,24 +747,21 @@ def probe_harness(tmp_path, sequence, quiet=2, timeout=30, expected=0, floor=1):
     return fields, int(state.read_text())
 
 
-def test_wait_quiet_ends_on_expected(tmp_path):
-    fields, calls = probe_harness(tmp_path, [1, 2, 3, 3, 3, 3], expected=3)
-    assert fields == {"rc": "0", "end": "expected", "final": "3"} and calls == 3
+def test_wait_quiet_has_no_expected_end_only_quiet(tmp_path):
+    """I226: no total is known ahead, so even a count equal to everything the sender sent waits for the quiet."""
+    fields, calls = probe_harness(tmp_path, [1, 2, 3, 3, 3, 3], quiet=3)
+    assert fields == {"rc": "0", "end": "quiet", "final": "3"} and calls == 6
+    src = open(os.path.join(BENCH, "ab_indexer.sh")).read()
+    assert "DRAIN_END=expected" not in src and "expected_docs" not in src
 
 
-def test_wait_quiet_expected_is_not_reached_by_a_failed_probe_or_zero(tmp_path):
-    # expected 0 means unknown: it ends on quiet, never on `expected`
-    (tmp_path / "a").mkdir()
-    (tmp_path / "b").mkdir()
-    fields, _ = probe_harness(tmp_path / "a", [5, 5, 5], expected=0)
-    assert fields["end"] == "quiet"
-    # a probe that fails keeps the loop waiting (-1 is never >= expected)
-    fields, _ = probe_harness(tmp_path / "b", ["fail"], expected=1, timeout=3)
+def test_wait_quiet_a_failed_probe_keeps_waiting(tmp_path):
+    fields, _ = probe_harness(tmp_path, ["fail"], timeout=3)
     assert fields["end"] == "timeout"
 
 
 def test_wait_quiet_ends_on_quiet_after_the_count_stops_growing(tmp_path):
-    fields, calls = probe_harness(tmp_path, [5, 5, 6, 7, 7, 7], quiet=2, expected=100)
+    fields, calls = probe_harness(tmp_path, [5, 5, 6, 7, 7, 7], quiet=2)
     assert fields == {"rc": "0", "end": "quiet", "final": "7"}
     assert calls == 6            # the window restarts at every change: 7, 7, 7 -> two stable samples
 
@@ -647,7 +772,7 @@ def test_wait_quiet_a_failing_probe_is_not_quiet(tmp_path):
 
 
 def test_wait_quiet_times_out_while_the_count_keeps_growing(tmp_path):
-    fields, _ = probe_harness(tmp_path, ["grow"], quiet=2, timeout=3, expected=0)
+    fields, _ = probe_harness(tmp_path, ["grow"], quiet=2, timeout=3)
     assert fields["rc"] == "1" and fields["end"] == "timeout" and int(fields["final"]) >= 2
 
 
@@ -659,7 +784,8 @@ def test_a_failed_docker_pause_aborts_the_drain_run(tmp_path):
     bindir = tmp_path / "fakebin"
     bindir.mkdir()
     write_stub(bindir / "docker", 'echo "docker $*" >> "$AB_DOCKER_LOG"\n[[ "$1" == pause ]] && exit 1\nexit 0\n')
-    write_stub(bindir / "curl", 'cat >/dev/null\necho \'{"count":0}\'\n')
+    write_stub(bindir / "curl", 'cat >/dev/null\ncase "$*" in *_stats*) echo \'{"_all":{"total":{"indexing":'
+                                '{"index_total":0}}}}\';; *) echo \'{"count":0}\';; esac\n')
     (tmp_path / "home").mkdir()
     out = run_campaign(work, tmp_path, {
         "PATH": f"{bindir}:{os.environ['PATH']}", "AB_DOCKER_LOG": str(tmp_path / "docker.log"),
@@ -700,7 +826,8 @@ def test_the_drain_backlog_fits_both_queues():
         text = open(os.path.join(BENCH, "ab_options", conf)).read()
         assert f"analysisd.indexer_queue_max_bytes={quota}" in text
     v2 = open(os.path.join(BENCH, "ab_options", "v2.conf")).read()
-    assert "wazuh_modules.indexer_client_global_quota_bytes=2147483648" in v2
+    assert "analysisd.indexer_client_global_quota_bytes=2147483648" in v2
+    assert "wazuh_modules.indexer_client_global_quota_bytes" not in v2   # modulesd's key does not reach the engine (I227)
     assert events == 100000
     assert events * (3072 + 2048) <= quota // 2          # v2, 3 KiB payload: under half the quota
     assert events * 3072 <= quota // 2                   # v1 charges the payload only
@@ -725,5 +852,432 @@ def test_drain_syscollector_waits_on_the_inventory_indices_only(tmp_path):
                ' *wazuh-states-\\**_count*) echo \'{"count":150}\';; *) echo \'{"count":0}\';; esac\n')
     res = subprocess.run(["bash", os.path.join(BENCH, "indexer_ingest_probe.sh"), "--once", "--patterns", pattern],
                          capture_output=True, text=True, timeout=60,
-                         env=dict(os.environ, PATH=f"{bindir}:{os.environ['PATH']}", PYTHON=sys.executable))
+                         env=dict(os.environ, PATH=f"{bindir}:{os.environ['PATH']}", PYTHON=sys.executable,
+                                  **idx_env(tmp_path)))
     assert res.stdout.strip() == "100", res.stderr
+
+
+# ---------------------------------------------------------------------------
+# E12 (I226): the lock the daemons inherited, the probe's address, the cleaner's password, the drain record
+# ---------------------------------------------------------------------------
+def test_the_daemons_a_run_starts_do_not_inherit_the_measure_lock(tmp_path):
+    """A1 of the E12 smoke: `flock LOCK bash ...` without -o left the lock's descriptor open in the manager
+    daemons that prepare_manager.sh --side restarts, so the lock stayed taken after the campaign. Here the
+    restore stub leaves a detached daemon behind; once the campaign is over the lock must be free."""
+    work = bench_copy(tmp_path)
+    pidfile = tmp_path / "daemon.pid"
+    write_stub(work / "prepare_manager.sh",
+               f'sleep 30 </dev/null >/dev/null 2>&1 &\necho $! > "{pidfile}"\nexit 1\n')
+    lock = tmp_path / "measure.lock"
+    try:
+        out = run_campaign(work, tmp_path)
+        assert "1 scenario(s) aborted" in out.stdout, out.stdout + out.stderr
+        pid = int(pidfile.read_text())
+        os.kill(pid, 0)                                            # the daemon outlives the campaign
+        free = subprocess.run(["flock", "-n", str(lock), "true"], timeout=10)
+        assert free.returncode == 0, "the measure lock is still held by a daemon the run started"
+    finally:
+        if pidfile.exists():
+            try:
+                os.kill(int(pidfile.read_text()), 9)
+            except ProcessLookupError:
+                pass
+
+
+def print_url(env_extra):
+    env = dict(os.environ, PYTHON=sys.executable, **env_extra)
+    env.pop("INDEXER_URL", None) if "INDEXER_URL" not in env_extra else None
+    return subprocess.run(["bash", os.path.join(BENCH, "indexer_ingest_probe.sh"), "--print-url"],
+                          capture_output=True, text=True, env=env, timeout=30).stdout.strip()
+
+
+def test_the_probe_address_comes_from_the_manager_config_else_127_0_0_1(tmp_path):
+    """A2 of the E12 smoke: `localhost` is not in the e2e node's certificate (IP:127.0.0.1, DNS:wazuh-indexer)."""
+    conf = tmp_path / "wazuh-manager.conf"
+    conf.write_text("<wazuh_config><indexer><hosts><host>https://10.1.2.3:9200</host>"
+                    "<host>https://10.9.9.9:9200</host></hosts></indexer></wazuh_config>\n")
+    assert print_url({"WAZUH_MANAGER_CONF": str(conf)}) == "https://10.1.2.3:9200"
+    conf.write_text("<wazuh_config><indexer><hosts><host>wazuh-indexer:9200</host></hosts></indexer></wazuh_config>")
+    assert print_url({"WAZUH_MANAGER_CONF": str(conf)}) == "https://wazuh-indexer:9200"
+    assert print_url({"WAZUH_MANAGER_CONF": str(tmp_path / "none.conf")}) == "https://127.0.0.1:9200"
+    conf.write_text("<not xml")
+    assert print_url({"WAZUH_MANAGER_CONF": str(conf)}) == "https://127.0.0.1:9200"
+    assert print_url({"WAZUH_MANAGER_CONF": str(conf), "INDEXER_URL": "https://idx:9201/"}) == "https://idx:9201"
+    for script in ("indexer_ingest_probe.sh", "ab_indexer.sh"):
+        assert "https://localhost:9200" not in open(os.path.join(BENCH, script)).read()
+
+
+def test_ab_indexer_uses_the_derived_address(tmp_path):
+    conf = tmp_path / "wazuh-manager.conf"
+    conf.write_text("<wazuh_config><indexer><hosts><host>https://10.1.2.3:9200</host></hosts></indexer></wazuh_config>")
+    env = dict(os.environ, PYTHON=sys.executable, WAZUH_MANAGER_CONF=str(conf))
+    env.pop("INDEXER_URL", None)
+    out = subprocess.run(["bash", "-c", f'AB_SOURCE_ONLY=1 source "{BENCH}/ab_indexer.sh" --scenario drain-engine; '
+                          'echo "URL=$INDEXER_URL"'], capture_output=True, text=True, env=env, timeout=30)
+    assert "URL=https://10.1.2.3:9200" in out.stdout, out.stderr
+    env["WAZUH_MANAGER_CONF"] = str(tmp_path / "none")
+    out = subprocess.run(["bash", "-c", f'AB_SOURCE_ONLY=1 source "{BENCH}/ab_indexer.sh" --scenario drain-engine; '
+                          'echo "URL=$INDEXER_URL"'], capture_output=True, text=True, env=env, timeout=30)
+    assert "URL=https://127.0.0.1:9200" in out.stdout
+
+
+def api_stub(tmp_path, left_after_delete=False, failed_items=0):
+    """A curl that plays the Server API: login (body to -o, status on stdout, as cleanup_agents.sh asks), GET
+    /agents (two bench agents until the DELETE, then none unless `left_after_delete`), DELETE. It logs its argv
+    and stdin (the -K config) to $CURL_LOG. The password sources are test_scripts.py's."""
+    bindir = tmp_path / "apibin"
+    bindir.mkdir()
+    state = tmp_path / "deleted"
+    write_stub(bindir / "curl",
+               'echo "ARGV $*" >> "$CURL_LOG"\ncat >> "$CURL_LOG"\n'
+               'case "$*" in\n'
+               '  *authenticate*) out=""; prev=""; for a in "$@"; do [[ "$prev" == -o ]] && out="$a"; prev="$a"; done\n'
+               '     if [[ -n "$out" ]]; then echo \'{"data":{"token":"tok-123"}}\' > "$out"; echo -n 200;\n'
+               '     else echo \'{"data":{"token":"tok-123"}}\'; fi ;;\n'
+               f'  *"-X DELETE"*) touch "{state}"; echo \'{{"data":{{"total_affected_items":2,"total_failed_items":{failed_items}}}}}\' ;;\n'
+               f'  *) if [[ -e "{state}" && -z "{"1" if left_after_delete else ""}" ]]; then echo \'{{"data":{{"affected_items":[]}}}}\';\n'
+               '     else echo \'{"data":{"affected_items":[{"id":"001","name":"bench-a"},{"id":"002","name":"bench-b"}]}}\'; fi ;;\n'
+               'esac\n')
+    return bindir
+
+
+def cleanup(tmp_path, env_extra, **stub):
+    log = tmp_path / "curl.log"
+    env = {k: v for k, v in os.environ.items() if k not in ("WAZUH_API_PASS", "WAZUH_MANAGER_API_PASSWORD")}
+    env.update({"PATH": f"{api_stub(tmp_path, **stub)}:{os.environ['PATH']}", "CURL_LOG": str(log),
+                "PYTHON": sys.executable})
+    env.update(env_extra)
+    out = subprocess.run(["bash", os.path.join(BENCH, "cleanup_agents.sh")], capture_output=True, text=True,
+                         env=env, timeout=60)
+    return out, (log.read_text() if log.exists() else "")
+
+
+
+
+
+def test_cleanup_agents_fails_loudly_when_agents_survive_the_delete(tmp_path):
+    out, _ = cleanup(tmp_path, {"WAZUH_API_PASS": "pw"}, left_after_delete=True)
+    assert out.returncode == 1 and "still registered after the DELETE" in out.stderr and "001,002" in out.stderr
+
+
+def test_cleanup_agents_fails_loudly_on_failed_items(tmp_path):
+    out, _ = cleanup(tmp_path, {"WAZUH_API_PASS": "pw"}, failed_items=1)
+    assert out.returncode == 1 and "failed items: 1" in out.stderr
+
+
+def test_cleanup_agents_fails_when_the_login_is_refused(tmp_path):
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    write_stub(bindir / "curl", 'cat >/dev/null\necho \'{"title":"Unauthorized"}\'\n')
+    env = dict(os.environ, PATH=f"{bindir}:{os.environ['PATH']}", WAZUH_API_PASS="bad", PYTHON=sys.executable)
+    out = subprocess.run(["bash", os.path.join(BENCH, "cleanup_agents.sh")], capture_output=True, text=True,
+                         env=env, timeout=60)
+    assert out.returncode == 1 and "could not authenticate" in out.stderr
+
+
+def drain_stubs(tmp_path, work, dropped="0"):
+    """Stubs for one whole drain run: restore OK, a sender that writes the smoke's sender_summary.json, docker,
+    and a curl that answers the indexer (0 documents until the sender ran, then 49,300) and the engine API."""
+    write_stub(work / "prepare_manager.sh", 'exit 0\n')
+    write_stub(work / "run_benchmark.sh",
+               'while [[ $# -gt 0 ]]; do [[ "$1" == --label ]] && label="$2"; shift; done\n'
+               'd="$(dirname "$0")/results_$label"; mkdir -p "$d"\n'
+               'echo \'{"totals":{"stateless":{"events_sent":100000,"sent":1000,"s202":986,"s503":14}}}\''
+               ' > "$d/sender_summary.json"\n'
+               'touch "$AB_SENT_MARK"\n')
+    bindir = tmp_path / "fakebin"
+    bindir.mkdir()
+    write_stub(bindir / "docker", 'exit 0\n')
+    write_stub(bindir / "curl",
+               'cat >/dev/null\n'
+               'case "$*" in\n'
+               '  *--unix-socket*) [[ "$AB_DROPPED" == none ]] && exit 7;'
+               ' echo "{\\"global\\":[{\\"name\\":\\"indexer.events.dropped\\",\\"value\\":$AB_DROPPED}]}" ;;\n'
+               '  *_delete_by_query*) rm -f "$AB_SENT_MARK"; echo \'{}\' ;;\n'
+               '  *_stats*) echo \'{"_all":{"total":{"indexing":{"index_total":1}}}}\' ;;\n'
+               '  *) if [[ -e "$AB_SENT_MARK" ]]; then echo \'{"count":49300}\'; else echo \'{"count":0}\'; fi ;;\n'
+               'esac\n')
+    (tmp_path / "home").mkdir()
+    return {"PATH": f"{bindir}:{os.environ['PATH']}", "AB_SENT_MARK": str(tmp_path / "sent.mark"),
+            "AB_DROPPED": dropped, "WAZUH_MANAGER_HOME": str(tmp_path / "home"), "AB_TEST_QUIET_FLOOR_S": "1",
+            "AB_CLEANUP_LOG": str(tmp_path / "cleanup.log")}
+
+
+def test_a_drain_run_records_the_accepted_events_and_the_engine_drop_count(tmp_path):
+    work = bench_copy(tmp_path)
+    env = drain_stubs(tmp_path, work, dropped="0")
+    out = run_campaign(work, tmp_path, env, args=("--scenario", "drain-engine", "--n", "2", "--no-warmup",
+                                                   "--quiet-seconds", "1"))
+    assert "0 scenario(s) aborted" in out.stdout, out.stdout + out.stderr
+    drain = json.loads((work / "results_ab-v1-drain-engine-1" / "drain.json").read_text())
+    assert drain["drain_end"] == "quiet" and drain["docs_final"] == 49300
+    assert drain["events_sent"] == 100000 and drain["events_accepted"] == 98600
+    assert drain["events_rejected_503"] == 1400 and drain["engine_events_dropped"] == 0
+    assert "expected_docs" not in drain
+    m = json.loads((work / "results_ab-v1-drain-engine-1" / "ab_metrics.json").read_text())
+    assert m["engine_events_dropped"] == 0 and m["metrics"]["events_accepted"] == 98600
+    assert (tmp_path / "cleanup.log").read_text().count("cleanup") == 4      # every agent-mode run cleans
+
+
+@pytest.mark.parametrize("dropped, reason", [("12", "dropped events"), ("none", "no indexer.events.dropped")])
+def test_a_drain_campaign_whose_engine_dropped_or_did_not_answer_is_incomparable(tmp_path, dropped, reason):
+    work = bench_copy(tmp_path)
+    env = drain_stubs(tmp_path, work, dropped=dropped)
+    out = run_campaign(work, tmp_path, env, args=("--scenario", "drain-engine", "--n", "2", "--no-warmup",
+                                                   "--quiet-seconds", "1"))
+    drain = json.loads((work / "results_ab-v2-drain-engine-1" / "drain.json").read_text())
+    assert drain["engine_events_dropped"] == (None if dropped == "none" else 12)
+    assert "Overall: INCOMPARABLE" in out.stdout and reason in out.stdout and out.returncode == 2, out.stdout
+
+
+def test_a_failed_agent_cleanup_aborts_the_run(tmp_path):
+    """D111: a cleanup that leaves bench-* agents makes the next enrollment answer 409: the run is not measured."""
+    work = bench_copy(tmp_path)
+    env = drain_stubs(tmp_path, work)
+    env["AB_CLEANUP_FAIL"] = "1"
+    out = run_campaign(work, tmp_path, env)
+    assert "cleanup_agents.sh failed" in out.stderr and "still registered" in out.stderr
+    assert not (tmp_path / "sent.mark").exists(), "the sender must not run after a failed cleanup"
+    assert "1 scenario(s) aborted" in out.stdout and out.returncode != 0
+
+
+def sessions_drain(v1_docs, v2_docs, v1_abandoned=32, v2_abandoned=32):
+    return ([run("v1", "drain-syscollector", {"sessions_per_s": 15.7, "docs_drained": d, "sessions_abandoned": v1_abandoned},
+                 verdict=("sessions_per_s",), fraction=None) for d in v1_docs]
+            + [run("v2", "drain-syscollector", {"sessions_per_s": 18.8, "docs_drained": d, "sessions_abandoned": v2_abandoned},
+                   verdict=("sessions_per_s",), fraction=None) for d in v2_docs])
+
+
+def test_a_sessions_drain_that_retained_fewer_documents_is_incomparable_not_a_win():
+    """The E12 campaign: v2's inventory sync answered 503 while the indexer was paused, the sender gave up
+    after its retry budget, and v2 indexed 10,000-22,000 documents against v1's 36,000: its higher
+    sessions/s measured how fast it rejected. That must not read as a PASS."""
+    entry = ab.compare(sessions_drain([36000] * 4, [22000, 18000, 22000, 10000], 32, 54))["scenarios"]["drain-syscollector"]
+    assert entry["verdict"] == "INCOMPARABLE"
+    assert entry["metrics"]["sessions_per_s"]["verdict"] == "INCOMPARABLE"
+    assert any("v1 drained 36000 documents, v2 20000" in n and "abandoned" in n for n in entry["notes"])
+    assert entry["comparability"]["docs_gap"] == pytest.approx(0.4444, abs=1e-4)
+
+
+def test_a_sessions_drain_with_the_same_documents_is_judged():
+    entry = ab.compare(sessions_drain([36000] * 2, [36000, 35800]))["scenarios"]["drain-syscollector"]
+    assert entry["verdict"] == "PASS"
+    entry = ab.compare(sessions_drain([36000] * 2, [35640] * 2))["scenarios"]["drain-syscollector"]   # exactly 1 %
+    assert entry["verdict"] == "PASS"
+    entry = ab.compare(sessions_drain([36000] * 2, [35600] * 2))["scenarios"]["drain-syscollector"]   # 1.1 %
+    assert entry["verdict"] == "INCOMPARABLE"
+    runs = sessions_drain([36000] * 2, [36000] * 2)
+    runs[0]["metrics"].pop("docs_drained")
+    assert ab.compare(runs)["scenarios"]["drain-syscollector"]["verdict"] == "INCOMPARABLE"
+
+
+def test_collect_counts_the_abandoned_sessions(tmp_path):
+    (tmp_path / "sender_summary.json").write_text(json.dumps({"totals": {"sessions": {
+        "sent": 636, "ok": 42, "retries_exhausted": 54, "abandoned_on_drain": 2, "documents_sent": 550000}}}))
+    doc = ab.collect(str(tmp_path), "v2", "drain-syscollector", "1", "drain", False, ["sessions_per_s"])
+    assert doc["metrics"]["sessions_abandoned"] == 56
+    (tmp_path / "sender_summary.json").write_text(json.dumps({"totals": {"sessions": {"sent": 0}}}))
+    assert "sessions_abandoned" not in ab.collect(str(tmp_path), "v2", "s", "1", "drain", False, [])["metrics"]
+
+
+def test_syscollector_drain_scenario_never_abandons_a_session():
+    """I227: the syscollector A/B drain must not abandon sessions shed with 503 during the pause (the 2026-10-27
+    campaign was INCOMPARABLE because the sender gave up after ~5 s of 503s): retries are unbounded, cut by drain."""
+    scenario = json.load(open(os.path.join(BENCH, "scenarios", "ab_drain_syscollector_debian.json")))
+    retry = scenario["defaults"]["retry"]
+    assert retry["enabled"] is True and retry["max_attempts"] == 0
+    assert scenario["pacing"]["drain_timeout"] not in ("", "0", "0s")
+
+
+# ---------------------------------------------------------------------------
+# E12 retomada: P-9 (no default indexer credential, no silent -k), A2 (readiness), A6 (index_total)
+# ---------------------------------------------------------------------------
+def run_probe(tmp_path, env_extra, args=("--once", "--patterns", "wazuh-events*")):
+    log = tmp_path / "curl.log"
+    env = clean_env(PATH=f"{curl_stub(tmp_path)}:{os.environ['PATH']}", CURL_LOG=str(log), PYTHON=sys.executable,
+                    WAZUH_MANAGER_CONF=str(tmp_path / "no-manager.conf"),
+                    INDEXER_CREDENTIALS_FILE=str(tmp_path / "no-credentials.env"))
+    env.update(env_extra)
+    out = subprocess.run(["bash", os.path.join(BENCH, "indexer_ingest_probe.sh"), *args],
+                         capture_output=True, text=True, env=env, timeout=60)
+    return out, (log.read_text() if log.exists() else "")
+
+
+def argv_lines(log):
+    return [l for l in log.splitlines() if l.startswith("ARGV")]
+
+
+@pytest.mark.parametrize("partial", [{}, {"INDEXER_USER": "admin"}, {"INDEXER_PASSWORD": "pw"}])
+def test_the_probe_without_credentials_fails_and_never_tries_admin_admin(tmp_path, partial):
+    """P-9: no INDEXER_USER/INDEXER_PASSWORD pair and no credentials file -> a clear error, exit 1, no request."""
+    out, log = run_probe(tmp_path, dict(partial, INDEXER_CACERT=str(idx_env(tmp_path)["INDEXER_CACERT"])))
+    assert out.returncode == 1, out.stdout + out.stderr
+    assert ("no indexer credentials" in out.stderr) if not partial else ("set both INDEXER_USER" in out.stderr)
+    assert log == "", "the probe must not send a request without credentials"
+    for script in ("indexer_ingest_probe.sh", "ab_indexer.sh", "indexer_control.sh"):
+        src = open(os.path.join(BENCH, script)).read()
+        assert ":-admin}" not in src and "admin:admin" not in src and "curl -sk" not in src, script
+
+
+def test_the_credentials_file_is_parsed_never_sourced(tmp_path):
+    marker = tmp_path / "PWNED"
+    creds = tmp_path / "credentials.env"
+    creds.write_text(f"WAZUH_INDEXER_KIBANASERVER_PASSWORD=other\nWAZUH_INDEXER_ADMIN_PASSWORD=a=b$(touch {marker})\n")
+    out, log = run_probe(tmp_path, {"INDEXER_CREDENTIALS_FILE": str(creds),
+                                    "INDEXER_CACERT": idx_env(tmp_path)["INDEXER_CACERT"]})
+    assert out.returncode == 0 and out.stdout.strip() == "3", out.stderr
+    assert f'user = "admin:a=b$(touch {marker})"' in log                # the value, split at the first '='
+    assert not marker.exists(), "the credentials file was executed"
+    assert "a=b" not in "".join(argv_lines(log)) and "a=b" not in out.stdout + out.stderr
+
+
+def test_the_default_ca_is_the_managers_indexer_ca_and_k_needs_insecure(tmp_path):
+    creds = {"INDEXER_USER": "admin", "INDEXER_PASSWORD": "pw"}
+    default_ca = "/etc/wazuh-manager/certs/indexer-ca.pem"
+    out, log = run_probe(tmp_path, creds)
+    if os.access(default_ca, os.R_OK):                                    # a host with an installed manager
+        assert out.returncode == 0, out.stderr
+        assert all(f"--cacert {default_ca}" in l and " -k" not in l for l in argv_lines(log)), log
+    else:                                                                  # elsewhere: refused, naming it
+        assert out.returncode == 1 and default_ca in out.stderr and log == ""
+    # the CA the manager's config names wins over the default
+    ca = tmp_path / "configured-ca.pem"
+    ca.write_text("ca\n")
+    conf = tmp_path / "wazuh-manager.conf"
+    conf.write_text("<wazuh_config><indexer><hosts><host>https://10.1.2.3:9200</host></hosts><ssl>"
+                    f"<certificate_authorities><ca>{ca}</ca></certificate_authorities></ssl></indexer></wazuh_config>")
+    (tmp_path / "curl.log").unlink(missing_ok=True)
+    out, log = run_probe(tmp_path, dict(creds, WAZUH_MANAGER_CONF=str(conf)))
+    assert out.returncode == 0 and all(f"--cacert {ca}" in l for l in argv_lines(log)), out.stderr + log
+    assert all("https://10.1.2.3:9200/" in l for l in argv_lines(log))
+    # INDEXER_CACERT wins over both; an unreadable one is an error, not a fallback to -k
+    (tmp_path / "curl.log").unlink(missing_ok=True)
+    out, log = run_probe(tmp_path, dict(creds, WAZUH_MANAGER_CONF=str(conf), INDEXER_CACERT=str(tmp_path / "gone.pem")))
+    assert out.returncode == 1 and "gone.pem is not readable" in out.stderr and log == ""
+    # -k only when asked for, and said aloud
+    out, log = run_probe(tmp_path, dict(creds, INDEXER_INSECURE="1"))
+    assert out.returncode == 0 and all(" -k" in l and "--cacert" not in l for l in argv_lines(log))
+    assert "NOT verified" in out.stderr
+
+
+def test_ab_indexer_without_credentials_stops_before_the_lock_and_the_manager(tmp_path):
+    work = bench_copy(tmp_path)
+    write_stub(work / "prepare_manager.sh", 'touch "$AB_STUB_OUT"\nexit 0\n')
+    env = clean_env(AB_MEASURE_LOCK=str(tmp_path / "locks" / "measure.lock"), PYTHON=sys.executable,
+                    AB_STUB_OUT=str(tmp_path / "restored"), WAZUH_MANAGER_CONF=str(tmp_path / "none.conf"),
+                    INDEXER_CREDENTIALS_FILE=str(tmp_path / "none.env"))
+    out = subprocess.run(["bash", str(work / "ab_indexer.sh"), "--scenario", "drain-engine", "--n", "2",
+                          "--snapshots", str(tmp_path / "snaps")], capture_output=True, text=True, env=env, timeout=60)
+    assert out.returncode == 1 and "no indexer credentials" in out.stderr, out.stdout + out.stderr
+    assert not (tmp_path / "locks").exists() and not (tmp_path / "restored").exists()
+    # a dry run needs none: it touches nothing
+    assert dry("ab_indexer.sh", "--scenario", "drain-engine", "--snapshots", str(tmp_path),
+               env={"INDEXER_CREDENTIALS_FILE": str(tmp_path / "none.env")}).returncode == 0
+
+
+def bind_socket(path):
+    import socket
+    path.parent.mkdir(parents=True, exist_ok=True)
+    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    s.bind(str(path))
+    s.close()                                  # the socket file stays: [[ -S ]] is what the script checks
+
+
+def ready_harness(tmp_path, before="", after="", sockets=("inventory-sync-http.sock", "engine-api-http.sock")):
+    """Source ab_indexer.sh (hook), take the log mark, append `after` to the log, run wait_manager_ready."""
+    home = tmp_path / "home"
+    (home / "logs").mkdir(parents=True)
+    log = home / "logs" / "wazuh-manager.log"
+    log.write_text(before)
+    for name in sockets:
+        bind_socket(home / "queue" / "sockets" / name)
+    script = (f'AB_SOURCE_ONLY=1 source "{BENCH}/ab_indexer.sh" --scenario drain-engine\n'
+              'mark="$(manager_log_mark)"\n'
+              f'printf "%s" "$AFTER" >> "{log}"\n'
+              'wait_manager_ready "$mark"; echo "rc=$?"\n')
+    env = dict(os.environ, WAZUH_MANAGER_HOME=str(home), AFTER=after, AB_TEST_READY_TIMEOUT_S="2",
+               AB_TEST_READY_SETTLE_S="0")
+    env.pop("AB_ENGINE_API_SOCKET", None)
+    env.pop("AB_TEST_SKIP_READY", None)
+    return subprocess.run(["bash", "-c", script], capture_output=True, text=True, env=env, timeout=60)
+
+
+READY = "2026/11/06 18:00:00 wazuh-manager-modulesd: inventory-sync-server: INFO: The indexer is reachable; inventory documents can be delivered.\n"
+
+
+def test_wait_manager_ready_needs_the_reachable_line_after_the_restart_and_both_sockets(tmp_path):
+    """A2: the line must be logged AFTER the mark (a line of the previous start does not count)."""
+    out = ready_harness(tmp_path / "a", after="noise\n" + READY)
+    assert "rc=0" in out.stdout and "ready: inventory_sync reachable" in out.stdout, out.stdout + out.stderr
+    out = ready_harness(tmp_path / "b", before=READY, after="noise\n")
+    assert "rc=1" in out.stdout and "ready: timeout" in out.stderr
+    out = ready_harness(tmp_path / "c", after=READY, sockets=("inventory-sync-http.sock",))
+    assert "rc=1" in out.stdout and "ready: timeout" in out.stderr
+
+
+def test_a_manager_that_never_gets_ready_aborts_the_run(tmp_path):
+    work = bench_copy(tmp_path)
+    env = drain_stubs(tmp_path, work)
+    env.update({"AB_TEST_READY_TIMEOUT_S": "1", "AB_TEST_SKIP_READY": ""})
+    out = run_campaign(work, tmp_path, env)
+    assert "manager not ready" in out.stderr and "1 scenario(s) aborted" in out.stdout, out.stdout + out.stderr
+    assert not (tmp_path / "sent.mark").exists(), "the sender must not run before the manager is ready"
+    assert dry("ab_indexer.sh", "--scenario", "drain-engine", "--snapshots", str(tmp_path)).stdout.count(
+        "The indexer is reachable") >= 1
+
+
+def test_a_deferred_agent_deletion_is_retried_not_fatal(tmp_path):
+    """A2(b): authd applies the DELETE later; the first cleanups still list bench-* agents."""
+    work = bench_copy(tmp_path)
+    env = drain_stubs(tmp_path, work)
+    count = tmp_path / "cleanup.count"
+    write_stub(work / "cleanup_agents.sh",
+               f'n=$(cat "{count}" 2>/dev/null || echo 0); n=$((n+1)); echo $n > "{count}"\n'
+               '(( n % 3 == 0 )) && exit 0\necho "cleanup_agents: ERROR: 25 agent(s) still registered" >&2; exit 1\n')
+    out = run_campaign(work, tmp_path, env, args=("--scenario", "drain-engine", "--n", "2", "--no-warmup",
+                                                   "--quiet-seconds", "1"))
+    assert "0 scenario(s) aborted" in out.stdout, out.stdout + out.stderr
+    assert "cleanup_agents.sh attempt 1/6 failed" in out.stderr and int(count.read_text()) == 12   # 4 runs x 3 tries
+    env["AB_TEST_CLEANUP_TRIES"] = "2"
+    count.unlink()
+    out = run_campaign(work, tmp_path, env)
+    assert "cleanup_agents.sh failed" in out.stderr and int(count.read_text()) == 2
+
+
+def test_index_total_delta_needs_the_pre_pause_baseline(tmp_path):
+    """A6: the E12 v2 drain-engine run: the first sample's _stats did not answer (the pause raced it), the
+    whole drain fitted between two samples, so every complete row read 506301 and the delta came out 0."""
+    probe = tmp_path / "probe.csv"
+    probe.write_text("epoch,pattern,count,index_total\n"
+                     "1000,wazuh-events*,0,\n1001,wazuh-events*,,\n1035,wazuh-events*,0,506301\n"
+                     "1037,wazuh-events*,49050,506301\n1040,wazuh-events*,49050,506301\n")
+    (tmp_path / "drain.json").write_text(json.dumps({"t_pause": 1000.1, "t_resume": 1034.8}))
+    m = ab.collect(str(tmp_path), "v2", "drain-engine", "1", "drain", False, [])["metrics"]
+    assert "index_total_delta" not in m                    # unknown, not 0
+    assert m["docs_indexed"] == 49050 and m["docs_drained"] == 49050   # the count series keeps the baseline row
+    probe.write_text("epoch,pattern,count,index_total\n"
+                     "999,wazuh-events*,0,457251\n1001,wazuh-events*,,\n"
+                     "1037,wazuh-events*,49050,506301\n1040,wazuh-events*,49050,506301\n")
+    m = ab.collect(str(tmp_path), "v2", "drain-engine", "1", "drain", False, [])["metrics"]
+    assert m["index_total_delta"] == 49050
+
+
+def test_a_drain_run_takes_the_probe_baseline_before_the_pause(tmp_path):
+    """A6: a probe whose _stats never answers gets no baseline: the run aborts before `docker pause`."""
+    work = bench_copy(tmp_path)
+    env = drain_stubs(tmp_path, work)
+    write_stub(tmp_path / "fakebin" / "curl", 'cat >/dev/null\ncase "$*" in *_stats*) exit 7;; esac\necho \'{"count":0}\'\n')
+    write_stub(tmp_path / "fakebin" / "docker", 'echo "docker $*" >> "$AB_DOCKER_LOG"\n')
+    env.update({"AB_TEST_BASELINE_TIMEOUT_S": "1", "AB_DOCKER_LOG": str(tmp_path / "docker.log")})
+    out = run_campaign(work, tmp_path, env)
+    assert "no complete baseline sample" in out.stderr and "1 scenario(s) aborted" in out.stdout, out.stderr
+    assert not (tmp_path / "docker.log").exists() and not (tmp_path / "sent.mark").exists()
+    # with the stubs that answer both, the first row of every probe.csv is a complete baseline
+    (tmp_path / "ok").mkdir()
+    work2 = bench_copy(tmp_path / "ok")
+    env2 = drain_stubs(tmp_path / "ok", work2)
+    out = run_campaign(work2, tmp_path / "ok", env2, args=("--scenario", "drain-engine", "--n", "2", "--no-warmup",
+                                                            "--quiet-seconds", "1"))
+    assert "0 scenario(s) aborted" in out.stdout, out.stdout + out.stderr
+    first = (work2 / "results_ab-v1-drain-engine-1" / "probe.csv").read_text().splitlines()[1].split(",")
+    assert first[2] != "" and first[3] != ""

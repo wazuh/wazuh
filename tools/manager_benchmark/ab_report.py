@@ -16,9 +16,15 @@ Two subcommands:
       Reads what one run left (sender_summary.json, summary.json, probe.csv, drain.json) and
       writes RESULTS_DIR/ab_metrics.json. ab_indexer.sh calls it after every run.
 
-  expected RESULTS_DIR --mode agent|uds
-      Prints the documents the sender says it sent (stateless events_sent in agent mode, session
-      documents_sent in uds mode), 0 when unknown: the target ab_indexer.sh waits for.
+  accepted RESULTS_DIR --mode agent|uds
+      Prints what the manager ACCEPTED from the sender, 0 when unknown (ab_indexer.sh records it in
+      drain.json): in agent mode the stateless events_sent minus the events of the batches remoted
+      did not answer 202 (a 503 is not retried by the sender, so those events never reach the
+      engine); in uds mode the session documents_sent (attempts, retries included: informative).
+
+  engine-metric NAME
+      Reads an engine `POST /metrics/dump` answer on stdin and prints the integer value of the
+      global metric NAME (e.g. indexer.events.dropped); exit 1 and nothing printed when absent.
 
   report [--root DIR] [--json FILE] [--markdown FILE] [--campaign ID]
       Reads every DIR/results_ab-*/ab_metrics.json (warm-up runs dropped), takes the MEDIAN per
@@ -38,13 +44,24 @@ It is applied ONLY to the metrics a scenario names as its verdict metrics: docs/
 drain of the drain scenarios, and sessions/s of the invsync drain one. Fixed-rate scenarios are
 no-regression runs (latency, CPU, RSS): their ratios are reported with no verdict. The overall
 verdict is FAIL if any verdict metric fails, INCOMPLETE if a side has no runs or mixes builds,
-INCOMPARABLE if the two sides did not drain the same documents, PASS otherwise.
+INCOMPARABLE if the drain is not comparable (below), PASS otherwise.
 
-Two guards keep the ratio honest:
-  * The drain metrics (docs_per_s_drain, drain_seconds) are judged only when both sides drained the
-    same number of documents, the medians of docs_drained within DOC_TOLERANCE (1 %). A side that
-    drops documents (a full queue) drains sooner and would otherwise "win": the verdict is then
-    INCOMPARABLE and the note gives the gap.
+The guards that keep the ratio honest (I226):
+  * Drain comparability is the INDEXED FRACTION, not the raw document count. Remoted answers some
+    stateless batches 503 under the burst and the sender does not retry them, and the ruleset may
+    leave part of the sample unclassified (not indexed), so the two sides never index the same
+    absolute number of documents. What must match is indexed_fraction = docs_drained / events
+    accepted (the events that reached the engine): the medians of the two sides within
+    FRACTION_TOLERANCE (1 %, relative) for the scenarios whose verdict is a drain metric
+    (docs_per_s_drain, drain_seconds). A side that drops documents indexes a smaller fraction.
+  * A drain whose verdict is NOT a document drain (drain-syscollector: sessions/s) must have drained
+    the same documents on both sides, medians of docs_drained within DOC_TOLERANCE (1 %). There the
+    sender retries every 503, so both sides are offered the same documents; a side that retained fewer
+    sessions (abandoned after the sender's retry budget, `sessions_abandoned`) indexes fewer and its
+    sessions/s measures how fast it rejected, not how fast it sent.
+  * Every run of a drain scenario must record the engine's indexer.events.dropped (ab_indexer.sh
+    reads it from the engine API at the end of the run) and it must be 0 on both sides; a drop or
+    an unknown value makes the scenario INCOMPARABLE, with the reason in its notes.
   * Every run records the sha256 of its provenance snapshot (the binaries of provenance.txt). A side
     whose measured runs come from more than one set (another HEAD, another snapshot) is INCOMPLETE.
 Exit status: 0 PASS, 1 FAIL, 2 INCOMPLETE or INCOMPARABLE.
@@ -67,11 +84,15 @@ HIGH_SPREAD = 0.10          # (max - min) / median of one side above this: ask f
 
 # Orientation: for these a bigger number is better, for the rest a smaller one is.
 HIGHER_IS_BETTER = {"docs_per_s_drain", "sessions_per_s", "events_per_s", "docs_indexed", "docs_drained"}
-DRAIN_METRICS = {"docs_per_s_drain", "drain_seconds"}   # judged only on the same drained documents
-DOC_TOLERANCE = 0.01        # the two sides' median docs_drained may differ by this fraction
+DRAIN_METRICS = {"docs_per_s_drain", "drain_seconds"}   # judged only on the same indexed fraction
+FRACTION_TOLERANCE = 0.01   # the two sides' median indexed_fraction may differ by this (relative)
+DOC_NOTE_TOLERANCE = 0.01   # above it, a note: drain_seconds favours the side with fewer documents
+DOC_TOLERANCE = 0.01        # sessions drains: the two sides' median docs_drained may differ by this
+DROPPED_METRIC = "indexer.events.dropped"
 
 METRIC_ORDER = [
-    "docs_per_s_drain", "drain_seconds", "docs_drained", "sessions_per_s", "events_per_s", "docs_indexed",
+    "docs_per_s_drain", "drain_seconds", "docs_drained", "indexed_fraction", "events_accepted",
+    "events_sent", "events_rejected_503", "sessions_per_s", "sessions_abandoned", "events_per_s", "docs_indexed",
     "latency_p50_ms", "latency_p99_ms", "cpu_pct_avg", "rss_mb_max", "index_total_delta",
 ]
 
@@ -90,8 +111,9 @@ def _load_json(path: str) -> dict[str, Any]:
 def read_probe(path: str) -> list[dict[str, float | None]]:
     """probe.csv rows as {epoch, count, index_total} with the patterns summed per second.
 
-    A second where any pattern failed to answer is dropped: a hole must not read as a count of
-    zero (the drain would look like it restarted).
+    A second where any pattern failed to answer its _count is dropped: a hole must not read as a
+    count of zero (the drain would look like it restarted). A second whose _count answered but whose
+    _stats did not keeps its count, with index_total None (the diagnostic is then unknown, never 0).
     """
     per_second: dict[float, dict[str, Any]] = {}
     try:
@@ -104,13 +126,28 @@ def read_probe(path: str) -> list[dict[str, float | None]]:
                 slot = per_second.setdefault(epoch, {"count": 0, "index_total": 0, "ok": True})
                 try:
                     slot["count"] += int(row["count"])
-                    slot["index_total"] += int(row["index_total"])
                 except (KeyError, TypeError, ValueError):
                     slot["ok"] = False
+                try:
+                    if slot["index_total"] is not None:
+                        slot["index_total"] += int(row["index_total"])
+                except (KeyError, TypeError, ValueError):
+                    slot["index_total"] = None
     except OSError:
         return []
     return [{"epoch": e, "count": s["count"], "index_total": s["index_total"]}
             for e, s in sorted(per_second.items()) if s["ok"]]
+
+
+def index_total_delta(rows: list[dict[str, Any]]) -> int | None:
+    """Indexing operations during the run: _stats' index_total is cumulative since the node started
+    (a cleanup does not reset it), so the delta needs the baseline the FIRST sample took before the
+    pause and the sender. Without it (that sample's _stats did not answer) the delta is unknown: None,
+    not the 0 a later baseline gives when the whole drain fits between two samples (E12 A6)."""
+    if not rows or rows[0]["index_total"] is None:
+        return None
+    last = [r["index_total"] for r in rows if r["index_total"] is not None][-1]
+    return last - rows[0]["index_total"]
 
 
 def drain_metrics(rows: list[dict[str, Any]], t_resume: float) -> dict[str, float]:
@@ -155,14 +192,48 @@ def provenance_hash(path: str) -> str | None:
     return hashlib.sha256("\n".join(lines).encode()).hexdigest()
 
 
-def expected_docs(results_dir: str, mode: str) -> int:
-    """The documents the sender declares it sent: events for the engine lane, documents for sessions."""
+def accepted_counts(results_dir: str, mode: str) -> dict[str, int] | None:
+    """What the manager accepted from the sender, from its sender_summary.json; None when unknown.
+
+    agent mode: the stateless lane. `events_sent` counts the events of EVERY batch, answered or not;
+    a batch answered anything but 202 (in practice remoted's 503 under the burst) is not retried, so
+    its events never reach the engine. The batches of one lane have one size (events_per_batch), so
+    the rejected events are events_sent * rejected_batches / batches.
+    uds mode: the sessions' documents_sent (every attempt's documents: informative, no guard uses it).
+    """
     totals = _load_json(os.path.join(results_dir, "sender_summary.json")).get("totals", {})
-    key = ("stateless", "events_sent") if mode == "agent" else ("sessions", "documents_sent")
     try:
-        return int(totals.get(key[0], {}).get(key[1], 0) or 0)
-    except (TypeError, ValueError):
-        return 0
+        if mode == "agent":
+            st = totals.get("stateless", {})
+            sent, batches = int(st.get("events_sent", 0) or 0), int(st.get("sent", 0) or 0)
+            ok, s503 = int(st.get("s202", 0) or 0), int(st.get("s503", 0) or 0)
+            if sent <= 0 or batches <= 0:
+                return None
+            accepted = round(sent * ok / batches)
+            return {"events_sent": sent, "events_accepted": accepted,
+                    "events_rejected_503": round(sent * s503 / batches),
+                    "events_rejected": sent - accepted}
+        docs = int(totals.get("sessions", {}).get("documents_sent", 0) or 0)
+        return {"events_sent": docs, "events_accepted": docs} if docs > 0 else None
+    except (AttributeError, TypeError, ValueError):
+        return None
+
+
+def accepted_events(results_dir: str, mode: str) -> int:
+    """The accepted events (documents in uds mode), 0 when unknown."""
+    counts = accepted_counts(results_dir, mode)
+    return counts["events_accepted"] if counts else 0
+
+
+def engine_metric(dump: dict[str, Any], name: str) -> int | None:
+    """The integer value of the global metric `name` in an engine /metrics/dump answer, or None."""
+    for m in dump.get("global", []) if isinstance(dump, dict) else []:
+        if isinstance(m, dict) and m.get("name") == name:
+            try:
+                return int(float(m.get("value")))
+            except (TypeError, ValueError):
+                return None
+    return None
 
 
 def collect(results_dir: str, side: str, scenario: str, index: str, kind: str,
@@ -177,6 +248,9 @@ def collect(results_dir: str, side: str, scenario: str, index: str, kind: str,
     for key, name in (("sessions_per_second", "sessions_per_s"), ("events_per_second", "events_per_s")):
         if through.get(key) is not None:
             metrics[name] = float(through[key])
+    sess = sender.get("totals", {}).get("sessions", {})
+    if isinstance(sess, dict) and sess.get("sent"):
+        metrics["sessions_abandoned"] = int(sess.get("retries_exhausted", 0) or 0) + int(sess.get("abandoned_on_drain", 0) or 0)
     lat = sender.get("latency_ms", {})
     series = lat.get("session") or lat.get("stateless") or {}
     if series.get("p50") is not None:
@@ -189,9 +263,16 @@ def collect(results_dir: str, side: str, scenario: str, index: str, kind: str,
         metrics["rss_mb_max"] = round(sum(float(p.get("rss_mb_max", 0)) for p in procs.values()), 3)
     if rows:
         metrics["docs_indexed"] = rows[-1]["count"] - rows[0]["count"]
-        metrics["index_total_delta"] = rows[-1]["index_total"] - rows[0]["index_total"]
+        delta = index_total_delta(rows)
+        if delta is not None:
+            metrics["index_total_delta"] = delta
     if kind == "drain" and "t_resume" in drain:
         metrics.update(drain_metrics(rows, float(drain["t_resume"])))
+    for key in ("events_sent", "events_accepted", "events_rejected_503"):
+        if isinstance(drain.get(key), int):
+            metrics[key] = drain[key]
+    if kind == "drain" and metrics.get("events_accepted", 0) > 0 and "docs_drained" in metrics:
+        metrics["indexed_fraction"] = round(metrics["docs_drained"] / metrics["events_accepted"], 6)
 
     doc = {
         "side": side, "scenario": scenario, "index": index, "kind": kind, "warmup": warmup,
@@ -201,7 +282,7 @@ def collect(results_dir: str, side: str, scenario: str, index: str, kind: str,
     }
     if kind == "drain" and drain:
         doc["drain_end"] = drain.get("drain_end")
-        doc["expected_docs"] = drain.get("expected_docs")
+        doc["engine_events_dropped"] = drain.get("engine_events_dropped")
     with open(os.path.join(results_dir, "ab_metrics.json"), "w", encoding="utf-8") as fh:
         json.dump(doc, fh, indent=2)
         fh.write("\n")
@@ -235,6 +316,79 @@ def spread(values: list[float]) -> float:
     return (max(values) - min(values)) / med if med else 0.0
 
 
+def drain_guards(entry: dict[str, Any], v1_runs: list[dict[str, Any]], v2_runs: list[dict[str, Any]],
+                 verdict_metrics: list[str]) -> bool:
+    """The comparability of a drain scenario (I226). Appends the reasons to entry["notes"], records
+    the medians in entry["comparability"], and returns True when the verdict metrics are INCOMPARABLE."""
+    if entry["kind"] != "drain" or not verdict_metrics or not v1_runs or not v2_runs:
+        return False
+    bad = False
+    comp: dict[str, Any] = {}
+    # 1. the engine dropped nothing, on either side, in any measured run
+    for side, side_runs in (("v1", v1_runs), ("v2", v2_runs)):
+        values = [r.get("engine_events_dropped") for r in side_runs]
+        comp[f"{side}_engine_events_dropped"] = values
+        unknown = [r.get("index") for r, v in zip(side_runs, values) if not isinstance(v, int)]
+        dropped = [(r.get("index"), v) for r, v in zip(side_runs, values) if isinstance(v, int) and v != 0]
+        if dropped:
+            bad = True
+            entry["notes"].append(
+                f"drain INCOMPARABLE: side {side} dropped events ({DROPPED_METRIC} = "
+                + ", ".join(f"{v} in run {i}" for i, v in dropped) + "): it drains what its queue kept")
+        if unknown:
+            bad = True
+            entry["notes"].append(
+                f"drain INCOMPARABLE: side {side} has no {DROPPED_METRIC} for run(s) "
+                + ", ".join(str(i) for i in unknown) + " (the engine API did not answer at the end of the run)")
+    # 2. the same indexed fraction of the accepted events, when the verdict is a document drain
+    if DRAIN_METRICS & set(verdict_metrics):
+        fa = [r["metrics"]["indexed_fraction"] for r in v1_runs if "indexed_fraction" in r["metrics"]]
+        fb = [r["metrics"]["indexed_fraction"] for r in v2_runs if "indexed_fraction" in r["metrics"]]
+        if len(fa) < len(v1_runs) or len(fb) < len(v2_runs):
+            bad = True
+            entry["notes"].append("drain INCOMPARABLE: indexed_fraction (docs drained / events accepted) "
+                                  "missing from a run (no accepted events in its drain.json)")
+        if fa and fb:
+            ma, mb = statistics.median(fa), statistics.median(fb)
+            gap = abs(ma - mb) / max(ma, mb) if max(ma, mb) else 0.0
+            comp.update(v1_indexed_fraction=ma, v2_indexed_fraction=mb, fraction_gap=round(gap, 6))
+            if round(gap, 6) > FRACTION_TOLERANCE:   # 1 % exactly is within (float noise rounded away)
+                bad = True
+                entry["notes"].append(
+                    f"drain INCOMPARABLE: v1 indexed {ma:.4f} of the accepted events, v2 {mb:.4f} "
+                    f"(gap {gap:.2%}, tolerance {FRACTION_TOLERANCE:.0%}): one side lost documents")
+        da = [r["metrics"]["docs_drained"] for r in v1_runs if "docs_drained" in r["metrics"]]
+        db = [r["metrics"]["docs_drained"] for r in v2_runs if "docs_drained" in r["metrics"]]
+        if da and db:
+            ma, mb = statistics.median(da), statistics.median(db)
+            gap = abs(ma - mb) / max(ma, mb) if max(ma, mb) else 0.0
+            if gap > DOC_NOTE_TOLERANCE:
+                entry["notes"].append(
+                    f"documents drained differ by {gap:.1%} (v1 {ma:g}, v2 {mb:g}: remoted accepted different "
+                    "numbers of events); drain_seconds favours the side with fewer, docs_per_s_drain does not")
+    else:
+        # 3. a sessions drain (the sender retries every 503): the same documents on both sides
+        da = [r["metrics"]["docs_drained"] for r in v1_runs if "docs_drained" in r["metrics"]]
+        db = [r["metrics"]["docs_drained"] for r in v2_runs if "docs_drained" in r["metrics"]]
+        if len(da) < len(v1_runs) or len(db) < len(v2_runs):
+            bad = True
+            entry["notes"].append("drain INCOMPARABLE: docs_drained missing from a run")
+        if da and db:
+            ma, mb = statistics.median(da), statistics.median(db)
+            gap = abs(ma - mb) / max(ma, mb) if max(ma, mb) else 0.0
+            comp.update(v1_docs_drained=ma, v2_docs_drained=mb, docs_gap=round(gap, 6))
+            if round(gap, 6) > DOC_TOLERANCE:
+                bad = True
+                ab_ = [r["metrics"].get("sessions_abandoned") for r in v1_runs]
+                bb_ = [r["metrics"].get("sessions_abandoned") for r in v2_runs]
+                entry["notes"].append(
+                    f"drain INCOMPARABLE: v1 drained {ma:g} documents, v2 {mb:g} (gap {gap:.1%}, tolerance "
+                    f"{DOC_TOLERANCE:.0%}); sessions abandoned after the sender's retry budget v1 {ab_}, v2 {bb_}: "
+                    "the side that retained fewer sessions indexed fewer documents")
+    entry["comparability"] = comp
+    return bad
+
+
 def compare(runs: list[dict[str, Any]]) -> dict[str, Any]:
     """Per scenario and metric: the medians of both sides, their spread, the ratio, the verdict."""
     by_scenario: dict[str, dict[str, list[dict[str, Any]]]] = {}
@@ -264,21 +418,7 @@ def compare(runs: list[dict[str, Any]]) -> dict[str, Any]:
                     f"side {side} mixes {len(sets)} sets of binaries (provenance sha256): "
                     "the runs of different builds or snapshots cannot share a median")
         names = {m for r in v1_runs + v2_runs for m in r["metrics"]}
-        docs_gap = None   # relative gap of the sides' median drained documents, None = comparable
-        if entry["kind"] == "drain" and DRAIN_METRICS & set(verdict_metrics):
-            da = [r["metrics"]["docs_drained"] for r in v1_runs if "docs_drained" in r["metrics"]]
-            db = [r["metrics"]["docs_drained"] for r in v2_runs if "docs_drained" in r["metrics"]]
-            if da and db:
-                ma, mb = statistics.median(da), statistics.median(db)
-                gap = abs(ma - mb) / max(ma, mb) if max(ma, mb) else 0.0
-                if gap > DOC_TOLERANCE:
-                    docs_gap = gap
-                    entry["notes"].append(
-                        f"drain metrics INCOMPARABLE: v1 drained {ma:g} documents, v2 {mb:g} "
-                        f"(gap {gap:.1%}, tolerance {DOC_TOLERANCE:.0%}): the side that drops documents drains sooner")
-            elif v1_runs and v2_runs:
-                docs_gap = float("nan")
-                entry["notes"].append("drain metrics INCOMPARABLE: docs_drained missing from a side")
+        incomparable = drain_guards(entry, v1_runs, v2_runs, verdict_metrics)
         for metric in [m for m in METRIC_ORDER if m in names] + sorted(names - set(METRIC_ORDER)):
             a = [r["metrics"][metric] for r in v1_runs if metric in r["metrics"]]
             b = [r["metrics"][metric] for r in v2_runs if metric in r["metrics"]]
@@ -290,9 +430,8 @@ def compare(runs: list[dict[str, Any]]) -> dict[str, Any]:
                 cell["ratio"] = None if ratio is None else round(ratio, 4)
                 cell["raw_ratio_v2_over_v1"] = (
                     round(cell["v2_median"] / cell["v1_median"], 4) if cell["v1_median"] else None)
-                if metric in verdict_metrics and metric in DRAIN_METRICS and docs_gap is not None:
+                if metric in verdict_metrics and incomparable:
                     cell["verdict"] = "INCOMPARABLE"
-                    cell["docs_gap"] = None if docs_gap != docs_gap else round(docs_gap, 4)
                 elif metric in verdict_metrics and ratio is not None:
                     cell["verdict"] = classify(ratio)
                 if max(cell["v1_spread"], cell["v2_spread"]) > HIGH_SPREAD:
@@ -359,6 +498,18 @@ def render_markdown(result: dict[str, Any]) -> str:
             lines.append(
                 f"| {metric} | {c['v1_median']:g} | {c['v2_median']:g} | {c['v1_spread']:.1%} | "
                 f"{c['v2_spread']:.1%} | {ratio} | {c.get('verdict', '-')} |")
+        comp = entry.get("comparability") or {}
+        if comp:
+            parts = []
+            if "v1_indexed_fraction" in comp:
+                parts.append(f"indexed fraction v1 {comp['v1_indexed_fraction']:.4f}, v2 {comp['v2_indexed_fraction']:.4f} "
+                             f"(gap {comp['fraction_gap']:.2%}, tolerance {FRACTION_TOLERANCE:.0%})")
+            if "docs_gap" in comp:
+                parts.append(f"docs drained v1 {comp['v1_docs_drained']:g}, v2 {comp['v2_docs_drained']:g} "
+                             f"(gap {comp['docs_gap']:.1%}, tolerance {DOC_TOLERANCE:.0%})")
+            parts.append(f"{DROPPED_METRIC} v1 {comp.get('v1_engine_events_dropped')}, "
+                         f"v2 {comp.get('v2_engine_events_dropped')}")
+            lines.append("\nComparability: " + "; ".join(parts))
         for note in entry["notes"]:
             lines.append(f"\nNote: {note}")
     return "\n".join(lines) + "\n"
@@ -381,9 +532,13 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--verdict-metric", action="append", default=[])
     c.add_argument("--campaign", default=None, help="campaign id stamped in ab_metrics.json")
 
-    e = sub.add_parser("expected", help="print the documents the sender says it sent")
+    e = sub.add_parser("accepted", help="print the events the manager accepted from the sender")
     e.add_argument("results_dir")
     e.add_argument("--mode", required=True, choices=("agent", "uds"))
+    e.add_argument("--json", action="store_true", help="every count of accepted_counts as JSON ({} when unknown)")
+
+    g = sub.add_parser("engine-metric", help="print one global metric of an engine /metrics/dump read on stdin")
+    g.add_argument("name")
 
     r = sub.add_parser("report", help="compare the runs under --root")
     r.add_argument("--root", default=os.path.dirname(os.path.abspath(__file__)))
@@ -398,8 +553,21 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(doc["metrics"], indent=2))
         return 0
 
-    if args.command == "expected":
-        print(expected_docs(args.results_dir, args.mode))
+    if args.command == "accepted":
+        if args.json:
+            print(json.dumps(accepted_counts(args.results_dir, args.mode) or {}))
+        else:
+            print(accepted_events(args.results_dir, args.mode))
+        return 0
+
+    if args.command == "engine-metric":
+        try:
+            value = engine_metric(json.load(sys.stdin), args.name)
+        except ValueError:
+            value = None
+        if value is None:
+            return 1
+        print(value)
         return 0
 
     if not os.path.isdir(args.root):
