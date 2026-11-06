@@ -10,9 +10,10 @@
  *     gcc -Iinclude -I../common -o /tmp/rt_engine_drops_test test/rt_engine_drops_test.c src/rt_engine.c -ldl
  * The -I../common is for the shared cgroup hierarchy probe.
  *
- * eBPF Module (#37396) — proves per-cgroup drop attribution, and with it the
- * cgroup_id join every container consumer depends on. Needs a real kernel,
- * cgroup v2, a built rt_file.bpf.o and root; exits 77 (CTest's skip
+ * eBPF Module — proves per-cgroup drop attribution, and with it the cgroup_id
+ * join every container consumer depends on. Needs a real kernel, a cgroup
+ * layout that can identify a container (unified, hybrid, or v1 with a usable
+ * controller), a built rt_file.bpf.o and root; exits 77 (CTest's skip
  * convention) otherwise.
  *
  * The method: create two cgroups, put a child process in each, have both
@@ -25,10 +26,10 @@
  *
  *   2. The cgroup_id the kernel reports equals the cgroup directory's INODE.
  *      Every container consumer joins events to containers on that identity —
- *      container_instances stores the inode, the event carries
- *      bpf_get_current_cgroup_id() — and nothing in the tree asserted the two
- *      are the same number. This test does: it compares the drained keys
- *      against stat() of the directories it created.
+ *      container_instances stores the inode, the event carries the id the
+ *      program reads (the unified one, or the v1 controller's on a legacy
+ *      host). This test compares the drained keys against stat() of the
+ *      directories it created.
  */
 
 #include "rt_engine.h"
@@ -92,7 +93,7 @@ static void engine_log(int level, const char* msg, void* user)
     }
 }
 
-/* Create a cgroup v2 directory and return its inode, or 0 on failure. */
+/* Create a cgroup directory and return its inode, or 0 on failure. */
 static unsigned long long make_cgroup(const char* path)
 {
     if (mkdir(path, 0755) != 0)
@@ -164,26 +165,44 @@ int main(int argc, char** argv)
 {
     const char* obj = (argc > 1) ? argv[1] : "rt_file.bpf.o";
 
-    const char* cg_a = "/sys/fs/cgroup/rt_drop_a";
-    const char* cg_b = "/sys/fs/cgroup/rt_drop_b";
+    char cg_a[256];
+    char cg_b[256];
     const char* dir_a = "/tmp/rt_drop_a";
     const char* dir_b = "/tmp/rt_drop_b";
 
     printf("rt_engine per-cgroup drop attribution test (object: %s)\n", obj);
 
-    /* These tests create cgroups directly under /sys/fs/cgroup, so they need
-     * the unified hierarchy mounted AT THE ROOT — which is a stricter
-     * requirement than "cgroup_id is usable". A hybrid host has a working v2
-     * hierarchy at /sys/fs/cgroup/unified and would pass
-     * wz_cgroup_mode_has_usable_cgroup_id(), but make_cgroup() below would
-     * write into a v1 tmpfs there and the test would fail for a reason that
-     * has nothing to do with what it is checking. Hence the exact comparison
-     * against UNIFIED rather than the usable-key helper. */
-    if (wz_cgroup_mode() != WZ_CGROUP_MODE_UNIFIED)
+    /* The test cgroups go where the engine reads ids from, chosen exactly as
+     * in rt_engine_filter_test.c: the root on a unified host, the unified
+     * mount on a hybrid one, and the shared selector's controller on a legacy
+     * one. Anywhere else the drained keys would come from a different kernfs
+     * tree than the directories they are compared against. */
+    const wz_cgroup_mode_t mode = wz_cgroup_mode();
+    const char* controller = NULL;
+    int subsys = -1;
+
+    if (wz_cgroup_mode_has_usable_cgroup_id(mode))
     {
-        printf("not a cgroup v2 unified hierarchy at the root (%s) — skipping\n",
-               wz_cgroup_mode_name(wz_cgroup_mode()));
-        return SKIP_EXIT;
+        const char* root = (mode == WZ_CGROUP_MODE_HYBRID) ? "/sys/fs/cgroup/unified" : "/sys/fs/cgroup";
+        snprintf(cg_a, sizeof(cg_a), "%s/rt_drop_a", root);
+        snprintf(cg_b, sizeof(cg_b), "%s/rt_drop_b", root);
+    }
+    else
+    {
+        subsys = wz_cgroup_v1_select_subsys(&controller);
+        if (subsys < 0 || controller == NULL)
+        {
+            printf("no controller on this host can identify a container (%s) — skipping\n",
+                   wz_cgroup_mode_name(mode));
+            return SKIP_EXIT;
+        }
+        snprintf(cg_a, sizeof(cg_a), "/sys/fs/cgroup/%s/rt_drop_a", controller);
+        snprintf(cg_b, sizeof(cg_b), "/sys/fs/cgroup/%s/rt_drop_b", controller);
+    }
+    printf("  host hierarchy    : %s\n", wz_cgroup_mode_name(mode));
+    if (controller != NULL)
+    {
+        printf("  keying controller : %s (subsystem %d)\n", controller, subsys);
     }
 
     const unsigned long long inode_a = make_cgroup(cg_a);
@@ -213,6 +232,17 @@ int main(int argc, char** argv)
     if (!h)
     {
         printf("rt_open failed — skipping\n");
+        rmdir(cg_a);
+        rmdir(cg_b);
+        return SKIP_EXIT;
+    }
+    /* Configured before any child writes, so every drop is counted against the
+     * controller's id rather than the helper's meaningless one. */
+    if ((subsys >= 0 && rt_set_cgroup_v1_subsys(h, controller, (unsigned int)subsys) != 0) ||
+        rt_cgroup_id_is_usable(h) == 0)
+    {
+        printf("the engine reports no usable container identifier — skipping\n");
+        rt_close(h);
         rmdir(cg_a);
         rmdir(cg_b);
         return SKIP_EXIT;
