@@ -28,6 +28,8 @@
 #
 # The whole window holds an exclusive flock on AB_MEASURE_LOCK (default results_ab/measure.lock
 # next to this script; plan 18 uses /tmp/plan18-medida.lock), so nothing else builds or measures.
+# The lock is held by the `flock -o` process only: its descriptor is closed before this script runs
+# again under it, so the manager daemons a run restarts never inherit it (they outlive the campaign).
 #
 # --dry-run prints the whole plan -- runs, labels, restorations, cleanups -- and touches no
 # manager, container, indexer or lock. Run a smoke first: one scenario, --n 2 (N is per side and
@@ -43,10 +45,14 @@
 # The end of a run (wait_quiet): the indexer's summed _count has not grown for --quiet-seconds
 # (default and FLOOR 60 s: a lower value is raised to 60, because after an `unpause` the sender
 # legitimately idles for a node health probe (10 s), its backoff (up to 15 s) and the async flush
-# (20 s) before it writes again), OR it reached the total the sender declares it sent (sender_summary.json:
-# stateless events_sent in agent mode, session documents_sent in uds mode), OR --drain-timeout
-# (the hard cap, 600 s: the run is then NOT a valid measurement). How it ended is recorded in
-# drain.json ("drain_end": expected|quiet|timeout, "docs_final", "expected_docs").
+# (20 s) before it writes again), OR --drain-timeout (the hard cap, 600 s: the run is then NOT a
+# valid measurement). There is no "expected total" end (I226): remoted answers part of the burst 503
+# (not retried) and the ruleset may leave part of the sample unindexed, so no total is known ahead.
+# drain.json records how it ended ("drain_end": quiet|timeout, "docs_final"), what the manager
+# ACCEPTED from the sender ("events_sent", "events_accepted", "events_rejected_503": ab_report.py
+# accepted) and the engine's indexer.events.dropped read from its API at the end of the run
+# ("engine_events_dropped", null when the API did not answer). ab_report.py judges the drain only
+# when both sides indexed the same FRACTION of the accepted events (+-1 %) and dropped nothing.
 #
 # A campaign is one real invocation: it stamps a campaign id (UTC time + random) on every run it
 # collects, and its final report reads ONLY the runs of that id, so results of an earlier, longer or
@@ -54,8 +60,16 @@
 # incomplete/incomparable), and never 0 when a scenario aborted (failed > 0 -> at least 2).
 #
 # Environment: AB_MEASURE_LOCK, AB_SOURCE_ONLY and AB_TEST_* (test hooks), AB_REEXEC_PRINT (test hook: print the re-exec command line and exit), AB_SNAPSHOTS, AB_RAW_PATTERN, AB_RUN_ARGS (extra run_benchmark.sh
-#   flags, e.g. "--cluster cluster01"), INDEXER_URL / INDEXER_USER / INDEXER_PASSWORD /
-#   INDEXER_CACERT (the indexer; see indexer_ingest_probe.sh), WAZUH_MANAGER_HOME.
+#   flags, e.g. "--cluster cluster01"), INDEXER_URL (without it the address is the first
+#   <indexer><hosts><host> of the manager's config, else https://127.0.0.1:9200), the indexer's
+#   credentials and CA (indexer_credentials.sh: INDEXER_USER + INDEXER_PASSWORD, else the
+#   WAZUH_INDEXER_ADMIN_PASSWORD of INDEXER_CREDENTIALS_FILE / the e2e .credentials.env /
+#   /etc/wazuh-indexer/export/credentials.env, parsed, never sourced -- NO default: a real campaign
+#   without one exits 1 before taking the lock; INDEXER_CACERT, else the manager config's indexer
+#   CA, else /etc/wazuh-manager/certs/indexer-ca.pem; `-k` only with INDEXER_INSECURE=1),
+#   WAZUH_MANAGER_HOME, AB_ENGINE_API_SOCKET (default $WAZUH_MANAGER_HOME/queue/sockets/engine-api-http.sock),
+#   and the cleaner's WAZUH_API_USER / WAZUH_API_PASS (see cleanup_agents.sh: without them it reads
+#   /etc/wazuh-manager/export/credentials.env as root; a run whose agent cleanup fails is aborted).
 #   The indexer is paused with `docker pause` (indexer_control.sh drives `service`, which does
 #   not exist inside the e2e container).
 # ---------------------------------------------------------------------------
@@ -66,9 +80,12 @@ PYTHON="${PYTHON:-python3}"
 WAZUH_HOME="${WAZUH_MANAGER_HOME:-/var/wazuh-manager}"
 AB_MEASURE_LOCK="${AB_MEASURE_LOCK:-$SCRIPT_DIR/results_ab/measure.lock}"
 SNAPSHOTS="${AB_SNAPSHOTS:-$SCRIPT_DIR/results_ab/snapshots}"
-INDEXER_URL="${INDEXER_URL:-https://localhost:9200}"
-INDEXER_USER="${INDEXER_USER:-admin}"
-INDEXER_PASSWORD="${INDEXER_PASSWORD:-${INDEXER_PASS:-admin}}"
+INDEXER_URL="${INDEXER_URL:-$(WAZUH_MANAGER_CONF="${WAZUH_MANAGER_CONF:-}" "$SCRIPT_DIR/indexer_ingest_probe.sh" --print-url 2>/dev/null)}"
+INDEXER_URL="${INDEXER_URL:-https://127.0.0.1:9200}"
+ENGINE_API_SOCKET="${AB_ENGINE_API_SOCKET:-$WAZUH_HOME/queue/sockets/engine-api-http.sock}"
+# shellcheck source=indexer_credentials.sh
+source "$SCRIPT_DIR/indexer_credentials.sh"
+INDEXER_TLS_ARGS=()   # set, with INDEXER_USER / INDEXER_PASSWORD, below the AB_SOURCE_ONLY hook
 CONTAINER="wazuh-indexer"
 N=4
 WARMUP=true
@@ -212,10 +229,15 @@ check_clean_allow() {
 check_clean_allow || exit 1
 
 idx_curl() {  # the credentials go to curl on stdin (-K -), never in its argv
-    local args=(-s -g --max-time 60 -K -) u="${INDEXER_USER}:${INDEXER_PASSWORD}"
-    u="${u//\\/\\\\}"; u="${u//\"/\\\"}"
-    if [[ -n "${INDEXER_CACERT:-}" ]]; then args+=(--cacert "$INDEXER_CACERT"); else args+=(-k); fi
-    printf 'user = "%s"\n' "$u" | curl "${args[@]}" "$@"
+    indexer_curl_user_line | curl -s -g --max-time 60 -K - "${INDEXER_TLS_ARGS[@]}" "$@"
+}
+
+# indexer_ingest_probe.sh with this campaign's address, credentials and CA (resolved once, below).
+# `probe ... &` leaves a subshell's PID in $!: stop it with kill_probe, which also stops the sampler.
+probe() {
+    INDEXER_URL="$INDEXER_URL" INDEXER_USER="${INDEXER_USER:-}" INDEXER_PASSWORD="${INDEXER_PASSWORD:-}" \
+        INDEXER_CACERT="${INDEXER_CACERT:-}" INDEXER_INSECURE="${INDEXER_INSECURE:-}" \
+        "$SCRIPT_DIR/indexer_ingest_probe.sh" "$@"
 }
 
 clean_indexer() {  # empties each allow-listed pattern; the templates and mappings stay
@@ -224,8 +246,7 @@ clean_indexer() {  # empties each allow-listed pattern; the templates and mappin
         idx_curl -X POST "${INDEXER_URL}/${p}/_delete_by_query?conflicts=proceed&refresh=true&wait_for_completion=true" \
             -H 'Content-Type: application/json' -d '{"query":{"match_all":{}}}' >/dev/null
     done
-    count="$(INDEXER_URL="$INDEXER_URL" INDEXER_USER="$INDEXER_USER" INDEXER_PASSWORD="$INDEXER_PASSWORD" \
-        "$SCRIPT_DIR/indexer_ingest_probe.sh" --once --patterns "$(IFS=,; echo "${CLEAN_ALLOW[*]}")")" || return 1
+    count="$(probe --once --patterns "$(IFS=,; echo "${CLEAN_ALLOW[*]}")")" || return 1
     [[ "$count" == "0" ]] || { echo "ab_indexer: the indexer still holds $count documents after cleaning" >&2; return 1; }
 }
 
@@ -257,32 +278,42 @@ pause_indexer() {
     echo "ab_indexer: docker pause $CONTAINER failed: the drain run would not be a drain" >&2
     return 1
 }
+kill_probe() {
+    [[ -n "$PROBE_PID" ]] || return 0
+    pkill -TERM -P "$PROBE_PID" 2>/dev/null; kill "$PROBE_PID" 2>/dev/null; wait "$PROBE_PID" 2>/dev/null
+}
 abort_run() {  # label
-    kill "$PROBE_PID" 2>/dev/null; wait "$PROBE_PID" 2>/dev/null
+    kill_probe
     trap - EXIT
     echo "ab_indexer: $1 aborted: the run is NOT a valid measurement" >&2
 }
 
-DRAIN_END=""     # how wait_quiet ended: expected | quiet | timeout
+DRAIN_END=""     # how wait_quiet ended: quiet | timeout
 DRAIN_FINAL=""   # the summed _count at that moment
 
-# The total documents the sender says it sent, from its summary (0 when unknown).
-expected_docs() {  # results_dir mode
-    "$PYTHON" "$SCRIPT_DIR/ab_report.py" expected "$1" --mode "$2" 2>/dev/null || echo 0
+# What the manager accepted from the sender, as the JSON of `ab_report.py accepted --json` ({} unknown).
+accepted_json() {  # results_dir mode
+    "$PYTHON" "$SCRIPT_DIR/ab_report.py" accepted "$1" --mode "$2" --json 2>/dev/null || echo '{}'
 }
 
-wait_quiet() {  # patterns expected -> returns when the summed _count reached `expected` (> 0), or
-                # has not grown for QUIET_S seconds; fails (the hard cap) after DRAIN_TIMEOUT_S
-    local patterns="$1" expected="${2:-0}" prev=-1 cur stable=0 deadline=$((SECONDS + DRAIN_TIMEOUT_S))
+# The engine's indexer.events.dropped since its last restart (every run restarts the manager), or
+# `null` when the engine API does not answer.
+engine_dropped() {
+    local v
+    v="$(curl -s --max-time 5 --unix-socket "$ENGINE_API_SOCKET" -X POST http://localhost/metrics/dump \
+        -H 'Content-Type: application/json' -d '{}' 2>/dev/null \
+        | "$PYTHON" "$SCRIPT_DIR/ab_report.py" engine-metric indexer.events.dropped 2>/dev/null)" || v=""
+    [[ "$v" =~ ^[0-9]+$ ]] && echo "$v" || echo null
+}
+
+wait_quiet() {  # patterns -> returns when the summed _count has not grown for QUIET_S seconds;
+                # fails (the hard cap) after DRAIN_TIMEOUT_S
+    local patterns="$1" prev=-1 cur stable=0 deadline=$((SECONDS + DRAIN_TIMEOUT_S))
     DRAIN_END=""; DRAIN_FINAL=""
     while (( SECONDS < deadline )); do
-        cur="$(INDEXER_URL="$INDEXER_URL" INDEXER_USER="$INDEXER_USER" INDEXER_PASSWORD="$INDEXER_PASSWORD" \
-            "$SCRIPT_DIR/indexer_ingest_probe.sh" --once --patterns "$patterns" 2>/dev/null)" || cur=-1
+        cur="$(probe --once --patterns "$patterns" 2>/dev/null)" || cur=-1
         if [[ "$cur" == "$prev" && "$cur" != "-1" ]]; then stable=$((stable + 1)); else stable=0; fi
         prev="$cur"
-        if [[ "$cur" != "-1" ]] && (( expected > 0 && cur >= expected )); then
-            DRAIN_END=expected; DRAIN_FINAL=$cur; return 0
-        fi
         if (( stable >= QUIET_S )); then DRAIN_END=quiet; DRAIN_FINAL=$cur; return 0; fi
         sleep 1
     done
@@ -292,6 +323,59 @@ wait_quiet() {  # patterns expected -> returns when the summed _count reached `e
 }
 
 PROBE_PID=""
+
+# (E12 A2) After a restore the run must start from a manager that is up and sees the indexer:
+# `wazuh-manager-control restart` returns before modulesd binds the inventory-sync socket, and v2's
+# inventory_sync can start "not reachable" and re-probe only 60 s later (its 503s reject the agent
+# deletions of the cleanup and, under a paused indexer, the socket appears ~8 s late). Wait, from the
+# log line LOG_MARK on, for inventory_sync's "The indexer is reachable" and for both UDS sockets.
+# AB_TEST_READY_TIMEOUT_S / AB_TEST_READY_SETTLE_S shorten it; AB_TEST_SKIP_READY=1 skips it (test
+# hooks: a simulated campaign has no manager log to wait on).
+READY_TIMEOUT_S="${AB_TEST_READY_TIMEOUT_S:-150}"
+READY_SETTLE_S="${AB_TEST_READY_SETTLE_S:-3}"
+READY_LINE='inventory-sync-server: INFO: The indexer is reachable'
+manager_log_mark() {  # the line number the next log line will have
+    echo $(( $(wc -l < "$WAZUH_HOME/logs/wazuh-manager.log" 2>/dev/null || echo 0) + 1 ))
+}
+wait_manager_ready() {  # log_mark
+    local mark="$1" log="$WAZUH_HOME/logs/wazuh-manager.log" deadline=$((SECONDS + READY_TIMEOUT_S)) t0=$SECONDS
+    [[ -n "${AB_TEST_SKIP_READY:-}" ]] && return 0
+    until tail -n "+$mark" "$log" 2>/dev/null | grep -qF "$READY_LINE" \
+          && [[ -S "$WAZUH_HOME/queue/sockets/inventory-sync-http.sock" && -S "$ENGINE_API_SOCKET" ]]; do
+        (( SECONDS >= deadline )) && { echo "    ready: timeout after $((SECONDS - t0)) s" >&2; return 1; }
+        sleep 1
+    done
+    sleep "$READY_SETTLE_S"
+    echo "    ready: inventory_sync reachable and sockets up after $((SECONDS - t0)) s"
+}
+
+# (E12 A2) The DELETE of the agents is applied asynchronously by authd: a cleanup right after a
+# restart can answer "Deleted: N" and still list the agents. Retry until no bench-* is left.
+CLEANUP_TRIES="${AB_TEST_CLEANUP_TRIES:-6}"
+CLEANUP_SLEEP_S="${AB_TEST_CLEANUP_SLEEP_S:-10}"
+cleanup_agents_retry() {  # label
+    local try
+    for ((try = 1; try <= CLEANUP_TRIES; try++)); do
+        "$SCRIPT_DIR/cleanup_agents.sh" >/dev/null && return 0
+        (( try < CLEANUP_TRIES )) || break
+        echo "ab_indexer: $1: cleanup_agents.sh attempt $try/$CLEANUP_TRIES failed; retrying in ${CLEANUP_SLEEP_S} s" >&2
+        sleep "$CLEANUP_SLEEP_S"
+    done
+    return 1
+}
+
+# The probe's first sample with BOTH fields (count and index_total), or fail after the timeout.
+BASELINE_TIMEOUT_S="${AB_TEST_BASELINE_TIMEOUT_S:-30}"
+wait_probe_baseline() {  # probe.csv
+    local deadline=$((SECONDS + BASELINE_TIMEOUT_S))
+    until tail -n +2 "$1" 2>/dev/null | grep -qE '^[^,]+,[^,]+,[0-9]+,[0-9]+$'; do
+        if (( SECONDS >= deadline )); then
+            echo "ab_indexer: the probe took no complete baseline sample (_count and _stats) in ${BASELINE_TIMEOUT_S}s" >&2
+            return 1
+        fi
+        sleep 0.2
+    done
+}
 
 run_one() {  # row side index position (e.g. 3/10)
     local row="$1" side="$2" i="$3" pos="$4" name kind file mode resume patterns verdicts label dir warm=""
@@ -306,19 +390,25 @@ run_one() {  # row side index position (e.g. 3/10)
     echo "    restore side $side:"
     if $DRY_RUN; then
         "$SCRIPT_DIR/prepare_manager.sh" --side "$side" --side-only --dry-run --snapshots "$SNAPSHOTS" | sed 's/^/      /'
+        echo "      wait until the log says \"$READY_LINE\" and both UDS sockets exist (cap ${READY_TIMEOUT_S}s)"
     else
+        local log_mark
+        log_mark="$(manager_log_mark)"
         "$SCRIPT_DIR/prepare_manager.sh" --side "$side" --side-only --snapshots "$SNAPSHOTS" || return 1
+        wait_manager_ready "$log_mark" || {
+            echo "ab_indexer: $label: manager not ready: the run is NOT a valid measurement" >&2; return 1; }
     fi
     echo "    provenance: $dir/provenance.txt (sha256 of analysisd, modulesd, lib/*.so; conf validate)"
     echo "    clean the indexer by allow-list: ${CLEAN_ALLOW[*]} (never .wazuh-threatintel-* / .wazuh-cti-consumers)"
-    [[ "$mode" == "agent" ]] && echo "    clean bench-* agents: cleanup_agents.sh"
+    [[ "$mode" == "agent" ]] && echo "    clean bench-* agents: cleanup_agents.sh (up to $CLEANUP_TRIES tries, ${CLEANUP_SLEEP_S}s apart)"
     echo "    probe: indexer_ingest_probe.sh --patterns $patterns$([[ -n "${AB_RAW_PATTERN:-}" && "$mode" == agent ]] && echo ",$AB_RAW_PATTERN") -> $dir/probe.csv"
     case "$resume" in
-        after-run) echo "    docker pause $CONTAINER; run the sender; docker unpause $CONTAINER; wait until the count reaches the sender's total or is quiet ${QUIET_S}s (cap ${DRAIN_TIMEOUT_S}s)" ;;
-        timed)     echo "    docker pause $CONTAINER; run the sender; docker unpause after ${PAUSE_S}s; wait until the count reaches the sender's total or is quiet ${QUIET_S}s (cap ${DRAIN_TIMEOUT_S}s)" ;;
-        *)         echo "    run the sender; wait until the count reaches the sender's total or is quiet ${QUIET_S}s (cap ${DRAIN_TIMEOUT_S}s)" ;;
+        after-run) echo "    docker pause $CONTAINER; run the sender; docker unpause $CONTAINER; wait until the count is quiet ${QUIET_S}s (cap ${DRAIN_TIMEOUT_S}s)" ;;
+        timed)     echo "    docker pause $CONTAINER; run the sender; docker unpause after ${PAUSE_S}s; wait until the count is quiet ${QUIET_S}s (cap ${DRAIN_TIMEOUT_S}s)" ;;
+        *)         echo "    run the sender; wait until the count is quiet ${QUIET_S}s (cap ${DRAIN_TIMEOUT_S}s)" ;;
     esac
     echo "    run_benchmark.sh --scenario $file --label $label --mode $mode --seed $SEED ${AB_RUN_ARGS:-}"
+    [[ "$kind" == "drain" ]] && echo "    drain.json: events accepted (ab_report.py accepted), indexer.events.dropped from $ENGINE_API_SOCKET"
     echo "    ab_report.py collect $dir --side $side --scenario $name --index $i --kind $kind${verdicts:+ verdict: $verdicts}"
     $DRY_RUN && return 0
 
@@ -328,12 +418,18 @@ run_one() {  # row side index position (e.g. 3/10)
     rm -f "$dir/ab_metrics.json" "$dir/drain.json"   # a run that aborts must not leave an older run's numbers
     write_provenance "$dir" "$side"
     clean_indexer || return 1
-    [[ "$mode" == "agent" ]] && { "$SCRIPT_DIR/cleanup_agents.sh" >/dev/null 2>&1 || true; }
+    # A failed cleanup leaves bench-* agents that make the next enrollment answer 409: abort the run.
+    if [[ "$mode" == "agent" ]] && ! cleanup_agents_retry "$label"; then
+        echo "ab_indexer: $label: cleanup_agents.sh failed: the run is NOT a valid measurement" >&2
+        return 1
+    fi
 
-    INDEXER_URL="$INDEXER_URL" INDEXER_USER="$INDEXER_USER" INDEXER_PASSWORD="$INDEXER_PASSWORD" \
-        "$SCRIPT_DIR/indexer_ingest_probe.sh" --out "$dir/probe.csv" --patterns "$probe_patterns" &
+    probe --out "$dir/probe.csv" --patterns "$probe_patterns" &
     PROBE_PID=$!
-    trap 'unpause_indexer; kill "$PROBE_PID" 2>/dev/null' EXIT
+    trap 'unpause_indexer; kill_probe' EXIT
+    # The baseline: _stats/indexing's index_total is cumulative since the node started, so
+    # index_total_delta needs a sample taken BEFORE the pause and the sender (E12 A6).
+    wait_probe_baseline "$dir/probe.csv" || { abort_run "$label"; return 1; }
 
     args=(--scenario "$SCRIPT_DIR/$file" --label "$label" --mode "$mode" --seed "$SEED")
     [[ "$mode" == "agent" ]] && args+=(--enroll-settle 240s)
@@ -355,16 +451,25 @@ run_one() {  # row side index position (e.g. 3/10)
         *)
             "$SCRIPT_DIR/run_benchmark.sh" "${args[@]}" || rc=$? ;;
     esac
-    local expected
-    expected="$(expected_docs "$dir" "$mode")"
-    # The agent-mode probe also counts AB_RAW_PATTERN (one raw copy per event): the target doubles, so a
-    # sum of events + raw copies cannot reach it before the drain is over.
-    [[ -n "${AB_RAW_PATTERN:-}" && "$mode" == "agent" ]] && expected=$((expected * 2))
-    wait_quiet "$probe_patterns" "$expected" || rc=1
-    kill "$PROBE_PID" 2>/dev/null; wait "$PROBE_PID" 2>/dev/null
+    wait_quiet "$probe_patterns" || rc=1
+    kill_probe
     trap - EXIT
-    [[ -n "$t_resume" ]] && printf '{"t_pause": %s, "t_resume": %s, "drain_end": "%s", "docs_final": %s, "expected_docs": %s}\n' \
-        "$t_pause" "$t_resume" "$DRAIN_END" "${DRAIN_FINAL:--1}" "$expected" > "$dir/drain.json"
+    if [[ -n "$t_resume" ]]; then
+        "$PYTHON" -I -c '
+import json, sys
+t_pause, t_resume, end, final, accepted, dropped, out = sys.argv[1:]
+doc = {"t_pause": float(t_pause), "t_resume": float(t_resume), "drain_end": end, "docs_final": int(final)}
+try:
+    doc.update({k: v for k, v in json.loads(accepted).items() if isinstance(v, int)})
+except ValueError:
+    pass
+doc["engine_events_dropped"] = None if dropped == "null" else int(dropped)
+with open(out, "w") as fh:
+    json.dump(doc, fh)
+    fh.write("\n")
+' "$t_pause" "$t_resume" "$DRAIN_END" "${DRAIN_FINAL:--1}" "$(accepted_json "$dir" "$mode")" "$(engine_dropped)" \
+            "$dir/drain.json"
+    fi
     # exit 3 = the sender's measurement is valid but its `expected` block failed: kept, flagged
     if (( rc != 0 && rc != 3 )); then
         echo "ab_indexer: $label ended with exit $rc: the run is NOT a valid measurement" >&2
@@ -383,15 +488,23 @@ run_one() {  # row side index position (e.g. 3/10)
 # shellcheck disable=SC2317  # `exit` is reached when executed instead of sourced
 if [[ -n "${AB_SOURCE_ONLY:-}" ]]; then return 0 2>/dev/null || exit 0; fi
 
+# No default credential and no silent -k (P-9): a real campaign without them stops here, before the lock.
+if ! $DRY_RUN; then
+    indexer_resolve_credentials || exit 1
+    indexer_resolve_tls || exit 1
+fi
+
 # The measurement window is exclusive: re-exec under the lock (a dry run takes none).
 if ! $DRY_RUN && [[ -z "${AB_LOCKED:-}" ]]; then
     mkdir -p "$(dirname "$AB_MEASURE_LOCK")"
     if [[ -n "${AB_REEXEC_PRINT:-}" ]]; then   # test hook: show the command, run nothing
-        printf 'REEXEC flock %s bash %s' "$AB_MEASURE_LOCK" "$0"
+        printf 'REEXEC flock -o %s bash %s' "$AB_MEASURE_LOCK" "$0"
         printf ' [%s]' "${ORIG_ARGS[@]}"; printf ' [--locked]\n'
         exit 0
     fi
-    AB_LOCKED=1 exec flock "$AB_MEASURE_LOCK" "${BASH:-bash}" "$0" "${ORIG_ARGS[@]}" --locked
+    # -o: flock keeps the lock and closes its descriptor before running the child, so nothing the run
+    # starts (the manager daemons restarted by prepare_manager.sh --side) inherits it (I226).
+    AB_LOCKED=1 exec flock -o "$AB_MEASURE_LOCK" "${BASH:-bash}" "$0" "${ORIG_ARGS[@]}" --locked
 fi
 
 # One id per real campaign: UTC time + random. ab_report.py report reads only the runs stamped with it.

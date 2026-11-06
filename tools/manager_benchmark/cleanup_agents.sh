@@ -61,23 +61,30 @@ if [[ -z "$TOKEN" ]]; then
     exit 1
 fi
 
-if $REMOVE_ALL; then
-    echo "Fetching all agents..."
-    AGENTS_JSON=$(curl -s -k "${API_URL}/agents?limit=100000&select=id,name&offset=0" \
-        -H "Authorization: Bearer ${TOKEN}")
-else
-    echo "Fetching benchmark agents (name starts with 'bench-')..."
-    AGENTS_JSON=$(curl -s -k "${API_URL}/agents?limit=100000&select=id,name&q=name~bench-&offset=0" \
-        -H "Authorization: Bearer ${TOKEN}")
-fi
+die() { echo "cleanup_agents: ERROR: $*" >&2; exit 1; }
 
-AGENT_IDS=$(echo "$AGENTS_JSON" | "$PYTHON" -c '
+cfg_escape() { local s="$1"; s="${s//\\/\\\\}"; s="${s//\"/\\\"}"; printf '%s' "$s"; }
+
+api_curl() {  # the token goes on stdin, never in argv
+    local auth="$1"; shift
+    printf '%s\n' "$auth" | curl -s -k -K - "$@"
+}
+
+BEARER="header = \"Authorization: Bearer $(cfg_escape "$TOKEN")\""
+
+list_agents() {  # prints the comma-separated ids to delete
+    local query="limit=100000&select=id,name&offset=0"
+    $REMOVE_ALL || query="${query}&q=name~bench-"
+    api_curl "$BEARER" "${API_URL}/agents?${query}" | "$PYTHON" -c '
 import sys, json
 data = json.load(sys.stdin)
 items = data.get("data", {}).get("affected_items", [])
-ids = [item["id"] for item in items if item["id"] != "000"]
-print(",".join(ids))
-')
+print(",".join(item["id"] for item in items if item["id"] != "000"))
+'
+}
+
+if $REMOVE_ALL; then echo "Fetching all agents..."; else echo "Fetching benchmark agents (name starts with 'bench-')..."; fi
+AGENT_IDS="$(list_agents)" || die "could not list the agents at ${API_URL}"
 
 if [[ -z "$AGENT_IDS" ]]; then
     echo "No agents to remove."
@@ -87,15 +94,21 @@ fi
 NUM_AGENTS=$(echo "$AGENT_IDS" | tr ',' '\n' | wc -l)
 echo "Found $NUM_AGENTS agent(s) to remove."
 
-RESULT=$(curl -s -k -X DELETE "${API_URL}/agents?agents_list=${AGENT_IDS}&status=all&older_than=0s" \
-    -H "Authorization: Bearer ${TOKEN}")
+RESULT=$(api_curl "$BEARER" -X DELETE "${API_URL}/agents?agents_list=${AGENT_IDS}&status=all&older_than=0s")
 
-echo "$RESULT" | "$PYTHON" -c '
+FAILED=$(echo "$RESULT" | "$PYTHON" -c '
 import sys, json
-data = json.load(sys.stdin)
-d = data.get("data", {})
-deleted = d.get("total_affected_items", 0)
-failed = d.get("total_failed_items", 0)
-print("Deleted: {}, Failed: {}".format(deleted, failed))
-'
+try:
+    d = json.load(sys.stdin).get("data", {})
+except ValueError:
+    print("unreadable"); sys.exit()
+print("Deleted: {}, Failed: {}".format(d.get("total_affected_items", 0), d.get("total_failed_items", 0)), file=sys.stderr)
+print(d.get("total_failed_items", 0))
+') || FAILED=unreadable
+[[ "$FAILED" == "0" ]] || die "the DELETE did not remove every agent (failed items: ${FAILED})"
+
+LEFT="$(list_agents)" || die "could not list the agents after the DELETE"
+if [[ -n "$LEFT" ]]; then
+    die "$(echo "$LEFT" | tr ',' '\n' | wc -l) agent(s) still registered after the DELETE: ${LEFT}"
+fi
 echo "Done."

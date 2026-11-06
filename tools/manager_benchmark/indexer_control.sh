@@ -8,7 +8,7 @@
 #   restart           stop + start
 #   status            service wazuh-indexer status
 #   init-security     /usr/share/wazuh-indexer/bin/indexer-security-init.sh
-#   wait-healthy      poll https://localhost:9200 until cluster is up (or timeout)
+#   wait-healthy      poll the indexer's /_cluster/health until it is up (or timeout)
 #
 # Notes:
 #   * Requires root or sudo for service control.
@@ -16,13 +16,23 @@
 #     on a working cluster. Use --force if you really want to.
 #   * A standalone helper: no script here calls it. Run it by hand around a run,
 #     e.g. `stop` during a run to observe the manager with the indexer down.
+#   * wait-healthy has no default credential and verifies the certificate: see
+#     indexer_credentials.sh (INDEXER_USER/INDEXER_PASSWORD or the indexer's published
+#     /etc/wazuh-indexer/export/credentials.env; INDEXER_CACERT or the manager's indexer CA;
+#     `-k` only with INDEXER_INSECURE=1).
 # ---------------------------------------------------------------------------
 set -euo pipefail
 
-INDEXER_HOST="${INDEXER_HOST:-localhost}"
-INDEXER_PORT="${INDEXER_PORT:-9200}"
-INDEXER_USER="${INDEXER_USER:-admin}"
-INDEXER_PASS="${INDEXER_PASS:-admin}"
+# shellcheck source=indexer_credentials.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/indexer_credentials.sh"
+# INDEXER_URL, else https://INDEXER_HOST:INDEXER_PORT, else the manager config's first indexer host,
+# else https://127.0.0.1:9200 (the e2e node's certificate names 127.0.0.1, not localhost).
+if [[ -z "${INDEXER_URL:-}" && -n "${INDEXER_HOST:-}" ]]; then
+    INDEXER_URL="https://${INDEXER_HOST}:${INDEXER_PORT:-9200}"
+fi
+INDEXER_URL="${INDEXER_URL:-$(indexer_conf_url)}"
+INDEXER_URL="${INDEXER_URL:-https://127.0.0.1:9200}"
+INDEXER_URL="${INDEXER_URL%/}"
 INIT_SCRIPT="/usr/share/wazuh-indexer/bin/indexer-security-init.sh"
 WAIT_HEALTHY_TIMEOUT="${WAIT_HEALTHY_TIMEOUT:-120}"
 
@@ -40,10 +50,10 @@ Commands:
                        Default timeout: ${WAIT_HEALTHY_TIMEOUT}s
 
 Environment overrides:
-  INDEXER_HOST           default: $INDEXER_HOST
-  INDEXER_PORT           default: $INDEXER_PORT
-  INDEXER_USER           default: $INDEXER_USER
-  INDEXER_PASS           default: $INDEXER_PASS
+  INDEXER_URL            now: $INDEXER_URL (or INDEXER_HOST / INDEXER_PORT)
+  INDEXER_USER, INDEXER_PASSWORD   no default (else INDEXER_CREDENTIALS_FILE or the
+                         indexer's /etc/wazuh-indexer/export/credentials.env)
+  INDEXER_CACERT         default: the manager's indexer CA; INDEXER_INSECURE=1 for -k
   WAIT_HEALTHY_TIMEOUT   default: ${WAIT_HEALTHY_TIMEOUT}s
 
 Examples:
@@ -79,13 +89,16 @@ cmd_init_security() {
 
 cmd_wait_healthy() {
     local timeout="${1:-$WAIT_HEALTHY_TIMEOUT}"
-    local url="https://${INDEXER_HOST}:${INDEXER_PORT}/_cluster/health"
+    local url="${INDEXER_URL}/_cluster/health"
     local deadline=$(( $(date +%s) + timeout ))
+    indexer_resolve_credentials || return 1
+    indexer_resolve_tls || return 1
 
     echo "[indexer] waiting for $url (timeout ${timeout}s)..."
     while (( $(date +%s) < deadline )); do
         local body
-        if body=$(curl -sk -u "${INDEXER_USER}:${INDEXER_PASS}" --max-time 5 "$url" 2>/dev/null); then
+        # the credentials go on stdin (-K -), never in argv
+        if body=$(indexer_curl_user_line | curl -s -K - "${INDEXER_TLS_ARGS[@]}" --max-time 5 "$url" 2>/dev/null); then
             if echo "$body" | grep -qE '"status"[[:space:]]*:[[:space:]]*"(green|yellow)"'; then
                 echo "[indexer] healthy: $body"
                 return 0
