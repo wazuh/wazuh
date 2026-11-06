@@ -50,8 +50,14 @@ static int nb_release_slot(netbuffer_t * buffer, int sock) {
     return was_unassociated;
 }
 
-int nb_close_socket(netbuffer_t * recv, netbuffer_t * send, int sock, int * was_unassociated) {
+int nb_close_socket(netbuffer_t * recv, netbuffer_t * send, int sock, size_t counter, int * was_unassociated) {
     w_mutex_lock(&mutex);
+
+    // A message older than the last close of this fd must not close the connection that reuses it
+    if (counter && counter <= rem_getCounter(sock)) {
+        w_mutex_unlock(&mutex);
+        return -1;
+    }
 
     // nb_recv() queues under this mutex, so no message of this connection can carry a counter past this fence
     rem_setCounter(sock, global_counter);
