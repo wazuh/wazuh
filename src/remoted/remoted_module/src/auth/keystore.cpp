@@ -439,7 +439,54 @@ namespace remoted::auth
     int Keystore::reload()
     {
         std::lock_guard<std::mutex> reloadLock(m_reloadMutex);
+        return reloadLocked();
+    }
 
+    bool Keystore::holds(AgentId agentId, const std::vector<std::uint8_t>& key) const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        const auto it = m_keys.find(agentId);
+        return it != m_keys.end() && !it->second.key.empty() && it->second.key == key;
+    }
+
+    bool Keystore::confirm(const std::string& id, const std::string& keyHex)
+    {
+        bool confirmed = false;
+        try
+        {
+            const auto agentId = parseAgentId(id);
+            const auto key = decodeKey(keyHex);
+            if (agentId && !key.empty())
+            {
+                // The watcher may already have won the race; a parse is only paid for when it has not.
+                if (!holds(*agentId, key))
+                {
+                    std::lock_guard<std::mutex> reloadLock(m_reloadMutex);
+                    // Checked again under the lock: the reload another enrollment just finished may
+                    // have carried this one's key too (authd writes a pass's entries in one rewrite).
+                    // A key the file does not carry is not shared: each of its requesters pays its
+                    // own parse.
+                    if (!holds(*agentId, key))
+                    {
+                        reloadLocked();
+                    }
+                }
+                confirmed = holds(*agentId, key);
+            }
+        }
+        catch (...)
+        {
+            // An allocation failure, in the decoding or in the parse: the previous table stays, the
+            // key is not confirmed, and the answer is counted exactly once, like every other outcome.
+            // The caller never sees the throw (it answers the agent either way).
+            confirmed = false;
+        }
+        (confirmed ? m_enrollConfirmationsTotal : m_enrollUnconfirmedTotal).fetch_add(1, std::memory_order_relaxed);
+        return confirmed;
+    }
+
+    int Keystore::reloadLocked()
+    {
         for (int attempt = 0; attempt < kMaxReadAttempts; ++attempt)
         {
             const auto preHash = hashFileOrNullopt(m_path);

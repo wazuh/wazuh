@@ -339,6 +339,13 @@ deliberately coarser than the manager's own diagnosis (which stays in its log an
 | `token_unknown` / `token_expired` / `token_revoked` | `Bearer error="invalid_token", error_description="token_…"` | `POST /enroll` only: the enrollment token's own state | obtain a new token from the operator |
 | `enrollment_key_unavailable` | `Bearer` (no error code: the server could not judge the credential) | `POST /enroll` only, Password mode: the manager's enrollment password is not available on this node | retry later; nothing to fix on the agent |
 
+On the node that enrolled the agent — the master — `unknown_agent` is not expected right after the
+`200`: authd holds the answer until its writer has put the key in `client.keys`
+([`authd.key_write_wait`](../authd/configuration.md#authdkey_write_wait)), and `/enroll` reloads this
+node's keystore before sending it when the key is not served yet
+(`remoted.auth.keystore.enroll_confirmed.total`). On a worker the key arrives with the cluster's
+`client.keys` synchronization, seconds later; see [the load balancer page](../cluster/lb.md#71-replicated-state-brief-401s-after-enrollment).
+
 Everything below the `401` rows keeps a numeric `code` equal to the HTTP status.
 
 | Condition                                                                                                                                                                               | HTTP  | `error` message                             |

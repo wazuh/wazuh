@@ -184,16 +184,25 @@ thread validates the request, and under `mutex_keys`:
 1. checks for duplicate id, name and IP, applying the [force](#force-replacement) rules;
 2. adds the entry to the in-memory keystore (`OS_AddNewAgent`), which assigns the id;
 3. appends the new key to `queue_insert`, sets `write_pending` and signals `cond_pending`;
-4. releases the mutex and answers the caller with the key.
+4. builds the answer, then waits (`await_key_write()`, releasing `mutex_keys` meanwhile) until the
+   writer pass that copies the queue has rewritten `client.keys` — `pass_started`/`pass_written` number
+   the passes and `cond_written` is broadcast right after `OS_WriteKeys()` — or until
+   `authd.key_write_wait` elapses (2 s by default, 0 disables the wait);
+5. releases the mutex and answers the caller with the key.
 
 Port 1515 differs in one step: `w_auth_add_agent()` only adds the entry, and `enqueue_pending_key()`
 queues it after the `OSSEC K:` answer has been written — or deletes it from the keystore again when
 that write fails.
 
-The agent has a usable key at that point, but **remoted does not know about it yet**: the key reaches
-`client.keys` on the writer's next pass, and remoted reloads the file on its own cadence. Enrollment
-latency is therefore the writer's pass time plus remoted's reload — which is exactly why nothing slow
-may live in that pass.
+The agent has a usable key at that point, and on the master `client.keys` already carries it: the
+wait in step 4 is what makes that true, and remoted's `/enroll` reloads its own keystore before
+sending the `200` when the key is not served yet. Enrollment latency is therefore the writer's pass
+time plus one reload of the file — which is exactly why nothing slow may live in that pass. The wait
+is bounded because the pass is not always healthy (a stalled wazuh-db holds its database phase for
+`authd.wdb_timeout` per call): past the bound the answer leaves as it did before the wait existed,
+with a throttled warning, and the agent is unknown to remoted until the pass lands. Workers never
+wait (no writer), and the port-1515 path does not either (its answer is written before the entry is
+queued).
 
 **One rotation at a time, per agent** (issue #39078, H02). A re-enrollment reserves the agent **before** the request reads its `reenroll_secret` from wazuh-db, and
 the reservation is released by the **writer**, once the new credentials are in the database. That placement is the whole fix: the row keeps naming the old secret

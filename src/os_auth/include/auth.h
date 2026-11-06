@@ -530,4 +530,29 @@ extern pthread_mutex_t mutex_keys;
 extern pthread_cond_t cond_pending;
 extern authd_config_t config;
 
+/* --- The writer pass, as seen by the serving threads ----------------------------------------------
+ *
+ * remoted learns a key from client.keys alone, and only the writer rewrites that file. A serving
+ * thread that just queued an entry can therefore hold its answer until the pass that carries the
+ * entry has rewritten the file (await_key_write(), local-server.c), and these two counters are how it
+ * knows which pass that is: both are guarded by mutex_keys, both only ever grow, and a pass is
+ * numbered when the writer copies the queues -- so an entry queued while pass N is in flight (the
+ * queues already copied) belongs to pass N + 1. cond_written is broadcast when a pass has written the
+ * file, success or failure (last_pass_ok says which), and once more when the writer exits. */
+extern volatile unsigned long long pass_started;
+extern volatile unsigned long long pass_written;
+extern volatile int last_pass_ok;
+extern pthread_cond_t cond_written;
+
+/* Initialise cond_written on the monotonic clock, before any thread waits on it: the wait is bounded
+ * by a deadline, and a stepped wall clock must neither stretch nor cut it. */
+void authd_cond_written_init(void);
+
+/* The writer's two sides of that contract. authd_pass_begin() numbers the pass: called with mutex_keys
+ * HELD, in the same critical section that copies the queues, so every entry queued from then on belongs
+ * to the next pass. authd_pass_written() publishes its outcome: called WITHOUT the lock, right after
+ * OS_WriteKeys() returned -- before the timestamps and the database phase -- and releases the waiters. */
+unsigned long long authd_pass_begin(void);
+void authd_pass_written(unsigned long long pass, bool keys_written);
+
 #endif /* AUTHD_H */

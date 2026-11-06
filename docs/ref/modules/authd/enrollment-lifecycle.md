@@ -452,16 +452,22 @@ same id after losing its key; it is
 handed out exactly once per enrollment, it is never returned by `get`, it is never written to
 `client.keys`, and each successful re-enrollment replaces both values with a new pair.
 
-The response does not wait for persistence or remoted's reload. Those may finish before or after
-the agent receives it.
+The response waits for `client.keys` — the writer pass that carries the entry, up to
+[`authd.key_write_wait`](configuration.md#authdkey_write_wait) — but not for the database row: that
+may land before or after the agent receives it.
 
 ## Step 11: The writer settles it
 
 The insert/rotation and removal queues feed one writer thread. Serving threads also perform I/O:
 they append the identity journal, and some validation paths query wazuh-db.
 
-The serving thread appended the new entry to the in-memory `queue_insert` and signalled the writer;
-it did **not** wait. The writer then, in order:
+The serving thread appended the new entry to the in-memory `queue_insert`, signalled the writer, and
+**waits** — holding the answer it already built — for the pass that will copy the queue to finish
+step 2 below, or for [`authd.key_write_wait`](configuration.md#authdkey_write_wait) to elapse,
+whichever is first. The writer releases the waiters right after that step, before touching Wazuh DB;
+on a timeout or a failed key-file write the answer leaves anyway with a warning (one per minute per
+cause, carrying the count), and on shutdown with a debug line. The writer
+then, in order:
 
 1. **Journals any deletion intent** to `queue/authd/pending-purges` — local, a temp file and a rename.
 2. **Attempts to rewrite `client.keys` whole**, atomically, then writes `agents-timestamp`.
@@ -531,13 +537,26 @@ The full phase ordering of the deletion half is in
 
 ## Step 12: The agent becomes usable
 
-remoted authenticates agents by reading `client.keys`, and reloads it on its own cadence. Until that
-reload lands, the new key can receive `401`: an unknown agent for a fresh id, or an invalid signature
-when the previous key is still loaded after a rotation.
+remoted authenticates agents by reading `client.keys`, and reloads it on its own cadence. On the
+master that cadence is not what the agent waits on: by the time authd's answer reaches remoted the
+file carries the key (step 11), and remoted's `/enroll` reloads its keystore once, before sending the
+`200`, when the key is not served yet. The agent that signs its first request the instant it holds
+the key is known to the node that enrolled it.
 
-**Time until the key becomes usable depends on the writer's pass and remoted's reload**, and on a
-worker also on the cluster sync that carries `client.keys` down from the master. Slow work in the
-writer can delay that availability; see [the two stores](architecture.md#the-two-stores).
+The guarantee holds when the pass landed and remoted confirmed the key. What can leave a window:
+on authd's side, a wait that expired or was not made (`authd.key_write_wait=0`, the inline request of
+a saturated local server, shutdown) or a failed file write — each answered as before, with its own
+log line, and not necessarily unconfirmed: remoted's reload may still find the key; on remoted's side,
+a confirmation that fails because the file does not carry the key yet, cannot be read, or the key in
+authd's answer does not decode — that is what the throttled `could not confirm` warning and
+`enroll_unconfirmed.total` count, one per answer, whatever authd did; and the worker. In every case
+but the worker the key is served once a later pass or reload succeeds, and the agent receives `401` until then — an unknown agent for a fresh id, or
+an invalid signature when the previous key is still loaded after a rotation (remoted's
+`enroll_unconfirmed.total` counts each such answer). And on a **worker** the
+file arrives with the cluster sync, seconds later; remoted does not reload or count there, since the
+file cannot carry the key yet. When the worker received the enrollment, the master's `authd` still
+waits for its file, but the master's remoted never saw the answer: its table catches up with the
+watcher, not before the `200`. See [the two stores](architecture.md#the-two-stores).
 
 Once the key is in place, ordinary authenticated agent routes use `wazuh-agent+jwt`. A later
 re-enrollment still uses `wazuh-enroll+jwt`, signed from the re-enrollment secret; probes and CA

@@ -22,6 +22,7 @@
 #include <fstream>
 #include <memory>
 #include <mutex>
+#include <stdexcept>
 #include <string>
 #include <unistd.h>
 
@@ -66,6 +67,12 @@ namespace
             m_response = std::move(response);
             m_done = true;
             m_cv.notify_all();
+        }
+
+        bool sent()
+        {
+            std::lock_guard<std::mutex> lock(m_mu);
+            return m_done;
         }
 
         HttpResponse wait(std::chrono::milliseconds timeout = 2s)
@@ -1352,4 +1359,203 @@ TEST(EnrollmentEndpointTest, ASpentTokenIsChargedToTheUnverifiedBucket)
     EXPECT_FALSE(run.authdReached);
 
     std::remove(store.c_str());
+}
+
+// -----------------------------------------------------------------------------
+// Keystore confirmation: an accepted enrollment's key is confirmed in this
+// node's keystore before the 200 is sent, so the node honors the credential
+// the instant the agent holds it.
+// -----------------------------------------------------------------------------
+
+namespace
+{
+    // Builds a handler wired with `keyConfirm` and runs one dispatch, mirroring run() above.
+    HttpResponse runWithConfirm(const Config& config,
+                                const std::string& authdPath,
+                                KeyConfirmFn keyConfirm,
+                                std::shared_ptr<CapturingResponder> responder = std::make_shared<CapturingResponder>())
+    {
+        EnrollmentAuthenticator authenticator {EnrollmentAuthConfig {false}, nullptr};
+        wazuh::metrics::Manager metricsManager;
+        EnrollmentMetrics metrics = makeEnrollmentMetrics(metricsManager);
+
+        AuthdClient authdClient(authdPath,
+                                /*isWorkerNode=*/false,
+                                /*connectTimeoutMs=*/0,
+                                config.authdResponseTimeoutMs,
+                                /*maxQueueSize=*/0);
+
+        auto handler = makeHandler(
+            authenticator, authdClient, config, metrics, passthroughDecoder(), {}, {}, std::move(keyConfirm));
+
+        auto request = std::make_shared<const HttpRequest>(makeRequest(R"({"name":"agent1","version":"5.0.0"})", ""));
+        handler(request, responder);
+        return responder->wait();
+    }
+
+    constexpr const char* kIssuedKey = "ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751";
+} // namespace
+
+TEST(EnrollmentEndpointTest, AcceptedEnrollmentIsConfirmedWithAuthdsIdAndKey)
+{
+    auto stub = fixedAuthdServer(std::string(R"({"error":0,"data":{"id":"067","name":"agent1","ip":"any","key":")") +
+                                 kIssuedKey + R"("}})");
+
+    std::mutex mu;
+    int calls = 0;
+    std::string id, key;
+    const auto response = runWithConfirm(openModeConfig(),
+                                         stub.path,
+                                         [&](const std::string& i, const std::string& k)
+                                         {
+                                             std::lock_guard<std::mutex> lock(mu);
+                                             ++calls;
+                                             id = i;
+                                             key = k;
+                                             return true;
+                                         });
+
+    EXPECT_EQ(response.status, 200);
+    std::lock_guard<std::mutex> lock(mu);
+    EXPECT_EQ(calls, 1);
+    EXPECT_EQ(id, "067");
+    EXPECT_EQ(key, kIssuedKey);
+}
+
+TEST(EnrollmentEndpointTest, ConfirmationHappensBeforeTheResponseIsSent)
+{
+    // The point of confirming: this node must honor the key by the time the agent can hold it.
+    auto stub = fixedAuthdServer(std::string(R"({"error":0,"data":{"id":"067","name":"agent1","ip":"any","key":")") +
+                                 kIssuedKey + R"("}})");
+
+    auto responder = std::make_shared<CapturingResponder>();
+    std::atomic<int> calls {0};
+    std::atomic<bool> sentBeforeConfirm {true};
+    const auto response = runWithConfirm(
+        openModeConfig(),
+        stub.path,
+        [&](const std::string&, const std::string&)
+        {
+            ++calls;
+            sentBeforeConfirm = responder->sent();
+            return true;
+        },
+        responder);
+
+    EXPECT_EQ(response.status, 200);
+    EXPECT_EQ(calls.load(), 1);
+    EXPECT_FALSE(sentBeforeConfirm.load());
+}
+
+TEST(EnrollmentEndpointTest, AcceptedReenrollmentIsConfirmedWithTheRotatedKey)
+{
+    // A real re-enrollment: the frozen agent-kid bearer travels to authd, which answers the rotated
+    // key; that key must be confirmed exactly like a first enrollment's (the file carried the previous
+    // key until authd's writer pass landed).
+    const std::string path = makeUniqueSocketPath("enrollment_endpoint_reenroll_confirm");
+    std::mutex mu;
+    std::string authdRequest;
+    FakeUdsServer authd(path,
+                        [&](const std::string& req)
+                        {
+                            std::lock_guard<std::mutex> lock(mu);
+                            authdRequest = req;
+                            return std::string(R"({"error":0,"data":{"id":"001","name":"agent1","ip":"any","key":")") +
+                                   kIssuedKey + R"(","reenroll_secret":"c2VjcmV0"}})";
+                        });
+
+    EnrollmentAuthenticator authenticator {EnrollmentAuthConfig {false}, nullptr};
+    wazuh::metrics::Manager metricsManager;
+    EnrollmentMetrics metrics = makeEnrollmentMetrics(metricsManager);
+    Config config = openModeConfig();
+    AuthdClient authdClient(path, false, 0, config.authdResponseTimeoutMs, 0);
+
+    std::string confirmedId, confirmedKey;
+    auto handler = makeHandler(authenticator,
+                               authdClient,
+                               config,
+                               metrics,
+                               passthroughDecoder(),
+                               {},
+                               {},
+                               [&](const std::string& id, const std::string& key)
+                               {
+                                   std::lock_guard<std::mutex> lock(mu);
+                                   confirmedId = id;
+                                   confirmedKey = key;
+                                   return true;
+                               });
+
+    auto request = makeRequest(kValidBody);
+    request.headers.emplace("authorization", "Bearer " + std::string {tvt::kAgentKidJwt});
+    auto responder = std::make_shared<CapturingResponder>();
+    handler(std::make_shared<const HttpRequest>(request), responder);
+    const auto response = responder->wait();
+
+    EXPECT_EQ(response.status, 200);
+    std::lock_guard<std::mutex> lock(mu);
+    // It was a re-enrollment on the wire, and the rotated key is what was confirmed.
+    EXPECT_EQ(nlohmann::json::parse(authdRequest)["arguments"]["reenroll"]["kid"], std::string {tvt::kAgentKid});
+    EXPECT_EQ(confirmedId, "001");
+    EXPECT_EQ(confirmedKey, kIssuedKey);
+}
+
+TEST(EnrollmentEndpointTest, RejectedEnrollmentNeverReachesTheConfirmation)
+{
+    auto stub = fixedAuthdServer(R"({"error":9008,"message":"ERROR: Duplicate agent name: agent1"})");
+
+    std::atomic<int> calls {0};
+    const auto response = runWithConfirm(openModeConfig(),
+                                         stub.path,
+                                         [&](const std::string&, const std::string&)
+                                         {
+                                             ++calls;
+                                             return true;
+                                         });
+
+    EXPECT_EQ(response.status, 409);
+    EXPECT_EQ(calls.load(), 0);
+}
+
+TEST(EnrollmentEndpointTest, AnUnconfirmedKeyStillAnswers200)
+{
+    // authd has registered the agent either way (whether it can authenticate is then up to the
+    // entry client.keys carries), so a keystore that cannot confirm the key must never turn a
+    // successful enrollment into an error.
+    auto stub = fixedAuthdServer(std::string(R"({"error":0,"data":{"id":"067","name":"agent1","ip":"any","key":")") +
+                                 kIssuedKey + R"("}})");
+
+    int calls = 0;
+    std::string confirmedId;
+    const auto response = runWithConfirm(openModeConfig(),
+                                         stub.path,
+                                         [&calls, &confirmedId](const std::string& id, const std::string&)
+                                         {
+                                             ++calls;
+                                             confirmedId = id;
+                                             return false;
+                                         });
+
+    EXPECT_EQ(calls, 1);
+    EXPECT_EQ(confirmedId, "067");
+    EXPECT_EQ(response.status, 200);
+}
+
+TEST(EnrollmentEndpointTest, AConfirmationThatThrowsStillAnswers200)
+{
+    // Best effort: a throw out of the keystore (an allocation, say) must not unwind past send()
+    // -- AuthdClient's worker would swallow it and the agent would wait for the HTTP timeout, then
+    // enroll again, rotating a credential authd had already issued.
+    auto stub = fixedAuthdServer(std::string(R"({"error":0,"data":{"id":"067","name":"agent1","ip":"any","key":")") +
+                                 kIssuedKey + R"("}})");
+
+    auto responder = std::make_shared<CapturingResponder>();
+    const auto response = runWithConfirm(
+        openModeConfig(),
+        stub.path,
+        [](const std::string&, const std::string&) -> bool { throw std::runtime_error("keystore unavailable"); },
+        responder);
+
+    EXPECT_EQ(response.status, 200);
+    EXPECT_TRUE(responder->sent());
 }

@@ -50,7 +50,10 @@ The load-bearing property of this layout is that **the writer thread never waits
 not own**. It is the only thread that persists `client.keys`, and remoted authenticates agents by
 reading that file, so anything slow in the writer's pass delays every enrollment — including agents
 unrelated to the work in progress. That is why the indexer purge sits behind a queue and a second
-thread instead of being called inline.
+thread instead of being called inline. The serving threads, on the other hand, **do wait on the
+writer**: an enrollment is answered only once the pass that carries its entry has rewritten the file
+(bounded by [`authd.key_write_wait`](configuration.md#authdkey_write_wait)), so the two properties
+compound — every millisecond in the pass is now a millisecond in the enrollment answer.
 
 ## Threads
 
@@ -83,11 +86,20 @@ flowchart TB
   and **remoted authenticates agents by reading it** — so an agent whose key has not reached the file
   yet is rejected as unknown (`401`), even though the key it holds is perfectly valid.
 
-**Enrollment latency is the writer's pass time plus remoted's reload.** That is the reason nothing
-slow may live in the writer's pass, and the reason the indexer purge sits behind a queue and a second
-thread instead of being called inline.
+That lag is closed on the master at both ends. authd holds the answer of a local-socket enrollment
+(`/enroll`, `POST /agents`) until the writer pass carrying the entry has rewritten `client.keys`
+(up to [`authd.key_write_wait`](configuration.md#authdkey_write_wait), 2 s by default), and remoted's
+`/enroll` then reloads its own copy of the file before sending the `200` when the key is not served
+yet. The agent therefore meets a node that already knows it. Past the bound — a stalled Wazuh DB can
+hold the writer's database phase for `authd.wdb_timeout` per call — authd answers as it always did,
+warns, and the agent is unknown until the pass lands.
 
-On a **worker node** the gap is structural rather than incidental — see [Cluster](#cluster).
+**Enrollment latency is therefore the writer's pass time plus one reload of `client.keys`.** That
+is the reason nothing slow may live in the writer's pass, and the reason the indexer purge sits
+behind a queue and a second thread instead of being called inline.
+
+On a **worker node** the gap is structural rather than incidental, and nothing here closes it — see
+[Cluster](#cluster).
 
 ## Enrollment
 

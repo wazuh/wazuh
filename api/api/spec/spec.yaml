@@ -2324,6 +2324,14 @@ components:
                       type: integer
                       format: int64
                       description: "Keystore reloads that failed, leaving the previous contents in place"
+                    enroll_confirmed_total:
+                      type: integer
+                      format: int64
+                      description: "Accepted POST /enroll answers whose key this node served before sending them (master only)"
+                    enroll_unconfirmed_total:
+                      type: integer
+                      format: int64
+                      description: "Accepted POST /enroll answers sent with a key client.keys did not serve here yet (master only)"
                 downstream:
                   type: object
                   description: "Delivery of accepted requests to the services behind the daemon. A failure here is answered to the agent with 503 and also counted in `responses.<endpoint>.503`"
@@ -7220,6 +7228,8 @@ paths:
                             entries_skipped: 0
                             reloads_total: 3
                             reload_failures_total: 0
+                            enroll_confirmed_total: 2
+                            enroll_unconfirmed_total: 0
                           downstream:
                             downstream_5xx: 0
                             route_mismatch: 0

@@ -32,6 +32,22 @@
 // verifier has its own, tighter cap; this only keeps an absurd payload from reaching it.
 #define REENROLL_BEARER_MAX_CHARS 4096
 
+/* What await_key_write() found when it let the answer go. */
+typedef enum key_write_wait_t {
+    KEY_WRITE_DISABLED, /* authd.key_write_wait is 0 (or this is a worker): no wait, as before */
+    KEY_WRITE_LANDED,   /* the pass carrying the entry rewrote client.keys */
+    KEY_WRITE_FAILED,   /* that pass ran and OS_WriteKeys() failed; the writer has logged it */
+    KEY_WRITE_TIMEOUT,  /* authd.key_write_wait elapsed first */
+    KEY_WRITE_SHUTDOWN  /* the daemon is stopping */
+} key_write_wait_t;
+
+STATIC key_write_wait_t await_key_write(const char *name, const char *id, unsigned long long target);
+
+/* The request being served inline by the accept loop itself, when the client-thread cap is reached
+ * (run_local_server()): holding that thread for key_write_wait would stop every other local client
+ * from being accepted, so that one answer leaves as it did before the wait existed. */
+STATIC __thread bool local_client_inline = false;
+
 typedef enum auth_local_err {
     EINTERNAL = 0,
     EJSON,
@@ -400,8 +416,12 @@ void* run_local_server(__attribute__((unused)) void *arg) {
 
         if (!try_reserve_local_client_slot()) {
             // At the cap: service this one inline, before accepting the next, rather than spawning
-            // past the ceiling or dropping the client. Self-limiting, as this loop always was.
+            // past the ceiling or dropping the client. Self-limiting, as this loop always was. Its
+            // enrollment answer does not wait for client.keys (await_key_write()): this is the thread
+            // that accepts every other local client.
+            local_client_inline = true;
             service_local_client(peer);
+            local_client_inline = false;
             continue;
         }
 
@@ -419,6 +439,12 @@ void* run_local_server(__attribute__((unused)) void *arg) {
         }
         pthread_detach(tid);
     }
+
+    // Waiters of await_key_write() check `running` only when woken: wake them, or each would hold its
+    // answer until its own deadline.
+    w_mutex_lock(&mutex_keys);
+    w_cond_broadcast(&cond_written);
+    w_mutex_unlock(&mutex_keys);
 
     // Drain in-flight client threads: they are detached and main-server.c joins only this thread,
     // so returning while one is inside local_add() lets teardown race an OS_WriteKeys() and
@@ -820,6 +846,159 @@ fail:
     return output;
 }
 
+void authd_cond_written_init(void) {
+    pthread_condattr_t attr;
+    int error;
+
+    if (error = pthread_condattr_init(&attr), error) {
+        merror_exit("At pthread_condattr_init(): %s", strerror(error));
+    }
+    if (error = pthread_condattr_setclock(&attr, CLOCK_MONOTONIC), error) {
+        merror_exit("At pthread_condattr_setclock(): %s", strerror(error));
+    }
+    if (error = pthread_cond_init(&cond_written, &attr), error) {
+        merror_exit("At pthread_cond_init(): %s", strerror(error));
+    }
+    pthread_condattr_destroy(&attr);
+}
+
+unsigned long long authd_pass_begin(void) {
+    return ++pass_started;
+}
+
+void authd_pass_written(unsigned long long pass, bool keys_written) {
+    w_mutex_lock(&mutex_keys);
+    pass_written = pass;
+    last_pass_ok = keys_written;
+    w_cond_broadcast(&cond_written);
+    w_mutex_unlock(&mutex_keys);
+}
+
+/* The warning for an answer that left before its key reached the file, once per window and per cause
+ * with the count of the ones it stands for: a stalled writer makes every enrollment say it, and one
+ * line a minute carries the same information as one per agent. Called with mutex_keys held. */
+#define KEY_WRITE_WARN_WINDOW 60
+#define KEY_WRITE_WARN_TIMEOUT 0
+#define KEY_WRITE_WARN_FAILED 1
+STATIC time_t key_write_warn_last[2] = {0, 0};
+STATIC unsigned long key_write_warn_suppressed[2] = {0, 0};
+
+static void key_write_fallback_warn(int cause, const char *name, const char *id) {
+    time_t *last = &key_write_warn_last[cause];
+    unsigned long *suppressed = &key_write_warn_suppressed[cause];
+    time_t now = time(NULL);
+    char reason[256];
+    char consequence[160];
+
+    if (cause == KEY_WRITE_WARN_TIMEOUT) {
+        snprintf(reason, sizeof(reason), "before its key reached client.keys: the writer pass did not complete within "
+                 "%d ms (authd.key_write_wait)", config.key_write_wait);
+        snprintf(consequence, sizeof(consequence), "until the pass lands; is wazuh-db stalled?");
+    } else {
+        /* The writer has already logged the failed write itself. */
+        snprintf(reason, sizeof(reason), "although the writer could not rewrite client.keys");
+        snprintf(consequence, sizeof(consequence), "until a later pass succeeds.");
+    }
+
+    if (*last != 0 && now >= *last && now - *last < KEY_WRITE_WARN_WINDOW) {
+        (*suppressed)++;
+        mdebug1("Answered the enrollment of agent '%s' (id '%s') %s.", name, id, reason);
+        return;
+    }
+
+    /* "Cannot authenticate" rather than "unknown": a first enrollment is refused as unknown_agent, a
+     * rotation as invalid_signature (the file still carries the previous key). */
+    if (*suppressed == 0) {
+        mwarn("Answered the enrollment of agent '%s' (id '%s') %s. The agent cannot authenticate on this node %s",
+              name, id, reason, consequence);
+    } else {
+        mwarn("Answered the enrollment of agent '%s' (id '%s') %s, and %lu more like it in the last %ld s. Those "
+              "agents cannot authenticate on this node %s", name, id, reason, *suppressed, (long)(now - *last), consequence);
+    }
+    *last = now;
+    *suppressed = 0;
+}
+
+/* Hold the answer until the writer pass that carries the entry just queued has rewritten client.keys.
+ *
+ * Called with mutex_keys HELD, after the entry was queued and the writer signalled, with `target` the
+ * pass number that will copy it (pass_started + 1 at that moment) and the answer already built: the lock
+ * is released while waiting, so `keys` must not be read again afterwards -- another thread may have
+ * removed the entry meanwhile. Other enrollments, the writer and `get` are not held up: they take the
+ * lock while this thread waits, and the local server runs one thread per connection.
+ *
+ * Bounded by authd.key_write_wait. On a timeout, a failed pass or shutdown the answer leaves exactly as
+ * it did when nothing waited: the key is in memory and a later pass lands it. Rolling the enrollment
+ * back instead is not an option -- the identity journal already holds the credential and a token use is
+ * already consumed. 0 disables the wait, which is the previous behaviour. */
+STATIC key_write_wait_t await_key_write(const char *name, const char *id, unsigned long long target) {
+    struct timespec deadline;
+    struct timespec t0;
+    key_write_wait_t outcome;
+
+    if (config.key_write_wait <= 0 || config.worker_node) {
+        return KEY_WRITE_DISABLED;
+    }
+    if (local_client_inline) {
+        mdebug1("Answered the enrollment of agent '%s' (id '%s') without waiting for client.keys: served by the "
+                "accept loop itself (every local client thread is busy).", name, id);
+        return KEY_WRITE_DISABLED;
+    }
+
+    clock_gettime(CLOCK_MONOTONIC, &t0);
+    deadline = t0;
+    deadline.tv_sec += config.key_write_wait / 1000;
+    deadline.tv_nsec += (long)(config.key_write_wait % 1000) * 1000000L;
+    if (deadline.tv_nsec >= 1000000000L) {
+        deadline.tv_sec++;
+        deadline.tv_nsec -= 1000000000L;
+    }
+
+    while (pass_written < target && running) {
+        int error = pthread_cond_timedwait(&cond_written, &mutex_keys, &deadline);
+
+        if (error == ETIMEDOUT) {
+            break;
+        }
+        if (error != 0) {
+            merror("At pthread_cond_timedwait(): %s", strerror(error));
+            break;
+        }
+    }
+
+    if (pass_written >= target) {
+        outcome = last_pass_ok ? KEY_WRITE_LANDED : KEY_WRITE_FAILED;
+    } else if (!running) {
+        outcome = KEY_WRITE_SHUTDOWN;
+    } else {
+        outcome = KEY_WRITE_TIMEOUT;
+    }
+
+    switch (outcome) {
+    case KEY_WRITE_LANDED: {
+        struct timespec t1;
+        clock_gettime(CLOCK_MONOTONIC, &t1);
+        mdebug2("Key of agent '%s' (id '%s') in client.keys after %d ms (writer pass %llu).", name, id,
+                (int)((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000), target);
+        break;
+    }
+    case KEY_WRITE_FAILED:
+        key_write_fallback_warn(KEY_WRITE_WARN_FAILED, name, id);
+        break;
+    case KEY_WRITE_TIMEOUT:
+        key_write_fallback_warn(KEY_WRITE_WARN_TIMEOUT, name, id);
+        break;
+    case KEY_WRITE_SHUTDOWN:
+        mdebug1("Answered the enrollment of agent '%s' (id '%s') without waiting for client.keys: shutting down.",
+                name, id);
+        break;
+    case KEY_WRITE_DISABLED:
+        break;
+    }
+
+    return outcome;
+}
+
 cJSON* local_add(const char *id,
                  const char *name,
                  const char *ip,
@@ -1032,6 +1211,12 @@ cJSON* local_add(const char *id,
     w_cond_signal(&cond_pending);
 
     response = local_create_agent_response(keys.keyentries[index]->id, name, _ip, keys.keyentries[index]->raw_key, reenroll_secret);
+
+    /* The answer is built; now it waits for the file, so the agent is known to remoted by the time it
+     * holds the key. The pass that will copy the entry is the next one to start (see auth.h). Nothing
+     * below reads `keys`: the lock is released while waiting. */
+    await_key_write(name, assigned_id, pass_started + 1);
+
     w_mutex_unlock(&mutex_keys);
     OPENSSL_cleanse(reenroll_secret, sizeof(reenroll_secret));
 
@@ -1206,6 +1391,11 @@ static cJSON* local_reenroll(const char *kid, const char *bearer, const char *na
     w_cond_signal(&cond_pending);
 
     response = local_create_agent_response(kid, name, _ip, new_key, new_secret);
+
+    /* As in local_add(): the file still carries the previous key, which remoted would keep
+     * honouring -- and the new one refusing -- until the pass lands. */
+    await_key_write(name, kid, pass_started + 1);
+
     w_mutex_unlock(&mutex_keys);
     OPENSSL_cleanse(new_key, sizeof(new_key));
     OPENSSL_cleanse(new_secret, sizeof(new_secret));

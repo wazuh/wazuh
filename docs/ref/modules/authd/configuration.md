@@ -284,6 +284,9 @@ authd.purge_delay=120
 # Seconds authd allows for one wazuh-db round trip
 authd.wdb_timeout=10
 
+# Milliseconds an enrollment answer waits for its key to reach client.keys (0 = answer at once)
+authd.key_write_wait=2000
+
 # Deletions still waiting to reach the indexer before new ones are refused (0 = unlimited)
 wazuh_modules.manager_task_max_pending_deletes=20000
 ```
@@ -353,6 +356,48 @@ With an unbounded client a wedged wazuh-db would **hang** it, and a stuck writer
 recover in; bounded, the same failure is just a phase that did not complete, and the next cycle
 retries it. There is no reason to raise this on a healthy manager — a local socket answers in
 milliseconds.
+
+### authd.key_write_wait
+
+How long an enrollment answer is held back for the writer pass that puts its key in `client.keys`.
+
+- **Default value:** `2000`
+- **Allowed values:** `0` to `4000` (milliseconds); `0` answers at once
+
+remoted authenticates agents from `client.keys` alone. Before this wait, authd answered `/enroll` and
+`POST /agents` the moment the key existed in memory, and the writer landed it in the file on its
+next pass: an agent that signed its first request right away was refused as `unknown_agent` by the
+very node that had just enrolled it. The serving thread now waits, under this bound, until the pass
+that carries its entry has rewritten the file; the answer then leaves, and remoted confirms its own
+keystore before forwarding it. The cost is the pass itself — a few milliseconds on a file of ten
+thousand agents — plus, under a burst, the remainder of the pass already in flight, which includes
+its Wazuh DB round trips.
+
+The bound exists for the pass that is not healthy: a stalled Wazuh DB stretches the writer's database
+phase toward [`authd.wdb_timeout`](#authdwdb_timeout) per call, and no enrollment may hang on it. Past
+the bound the answer leaves exactly as it did before, with a warning — `Answered the enrollment of agent
+… before its key reached client.keys` on a timeout, `… although the writer could not rewrite client.keys`
+on a failed write, each at most one per minute with the count of the ones it stands for — and the agent
+cannot authenticate on this node until the pass lands: `unknown_agent` for a first enrollment,
+`invalid_signature` for a rotation whose previous key the file still carries. During such a stall every enrollment on the master pays the
+full bound, so the node's enrollment throughput falls to roughly remoted's authd worker count divided by
+the bound (a few per second with the defaults); what does not fit in remoted's queue is answered `503`
+and the agent retries.
+
+It is the budget of the wait itself, not of the whole answer: validation, the identity journal, the
+socket round trip and remoted's own keystore confirmation sit outside it, and a thread that holds the
+keystore lock across a slow call (the duplicate-name check reads the holder's row from Wazuh DB under
+it) delays the waiter's return past the bound. The sum must stay under the budget remoted gives the
+master's authd for the whole answer, `remote.https.authd_response_timeout` (5 seconds by default), which
+is why 4000 is the ceiling; lowering that remoted option below this one turns every slow pass into a
+`503`. The Server API's `POST /agents` uses a blocking socket with no timeout of its own and simply
+waits, so a bulk insert — the identity migration tool, a restore script — now pays one pass per agent.
+
+`0` disables the wait in authd only: remoted still confirms the key in its keystore before answering, and
+then finds it missing whenever the writer has not landed it yet. Only the master waits: a worker
+forwards the request and has no writer. The port-1515 path does not wait either — its answer is written
+before the entry is queued, and 4.x agents retry on their own — and neither does the one request the
+local server answers inline when all its client threads are busy, since that thread is the accept loop.
 
 ### wazuh_modules.manager_task_max_pending_deletes
 

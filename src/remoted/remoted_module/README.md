@@ -2391,6 +2391,21 @@ Unit tests under `test/unit/` (`jwtVerify_test.cpp`, `jwtSigner_test.cpp`, `jwtE
 against a scratch `client.keys` file it writes to `/tmp`, through `Keystore` -- there is no
 in-memory stand-in.
 
+**A just-issued key is confirmed before the `200` leaves.** On the master, `authd` holds its answer
+to an enrollment until its writer has rewritten `client.keys` with the entry (`authd.key_write_wait`),
+so when `/enroll`'s callback runs the file carries the key -- what can still lag is this module's
+own table, which the watcher refreshes on its own clock. The callback therefore calls
+`Keystore::confirm(id, key)` (`enrollment::KeyConfirmFn`, wired by the facade on the master only)
+before `send()`: a hit costs a map lookup, a miss one synchronous reload under `m_reloadMutex`, with
+the check repeated under that lock so the enrollments a writer pass landed together share one parse
+(a key the file does not carry is not shared: each of its requesters parses once more, serialized). A
+key still absent after the reload (authd's wait expired -- its log says so) is answered anyway, with a throttled summary
+warning and `remoted.auth.keystore.enroll_unconfirmed.total`; the agent is then `unknown_agent` here
+until the file catches up, which is what it always was. Only that summary is throttled: the per-line
+warnings `reload()` logs for a file with unusable rows repeat on every reload a confirmation makes, as
+they do on the watcher's. A worker's copy of the file arrives with the
+cluster synchronization, so no confirmation is attempted there.
+
 **Agent key lookup:** `Keystore` reads `/etc/wazuh-manager/client.keys` directly and parses it
 the same way the manager's own `OS_ReadKeys()` does (id/name/ip/key columns, `#`/`!`-marked removed
 entries skipped), independent of remoted's C `keystore`. This was a deliberate choice over reaching
