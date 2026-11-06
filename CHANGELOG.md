@@ -26,6 +26,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-execd` keeping every repeated offender for the life of the process, so its memory grew with each new source that triggered an active response. ([#40540](https://github.com/wazuh/wazuh/pull/40540))
 - Fixed the `azure-logs` configuration reported by the Server API leaving out the requests and containers of each source. ([#40579](https://github.com/wazuh/wazuh/pull/40579))
 - Fixed a memory leak in `wazuh-modulesd` each time the `azure-logs` configuration was requested. ([#40579](https://github.com/wazuh/wazuh/pull/40579))
+- Fixed `wazuh-modulesd` wodles, such as `azure-logs`, hanging when osquery or docker-listener started at the same time. ([#41158](https://github.com/wazuh/wazuh/pull/41158))
 - Fixed the vulnerability scanner reporting no OS vulnerabilities for Windows 10 agents older than 20H2, which have no display version. ([#40489](https://github.com/wazuh/wazuh/pull/40489))
 - Fixed the Azure Log Analytics integration never collecting the records ingested after a run with a `TimeGenerated` older than the newest record processed. ([#40538](https://github.com/wazuh/wazuh/pull/40538))
 - Fixed the Azure Log Analytics integration skipping new records for up to a day after reading a record with a `TimeGenerated` ahead of the current time. ([#40538](https://github.com/wazuh/wazuh/pull/40538))
