@@ -22,7 +22,7 @@ target_link_libraries(ACTIVE-RESPONSE_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 # Generate active-response tests
 if(NOT ${TARGET} STREQUAL "winagent")
     list(APPEND active-response_names "test_active-response")
-    list(APPEND active-response_flags "-Wl,--wrap,getaddrinfo -Wl,--wrap,fcntl")
+    list(APPEND active-response_flags "-Wl,--wrap,getaddrinfo -Wl,--wrap,fcntl -Wl,--wrap,wpopenv -Wl,--wrap,wpclose -Wl,--wrap,sleep -Wl,--wrap,getpid")
     list(APPEND active-response_names "test_ip-customblock")
     list(APPEND active-response_flags "-Wl,--wrap,getaddrinfo -Wl,--wrap,fcntl")
 endif()

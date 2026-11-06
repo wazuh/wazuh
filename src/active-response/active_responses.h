@@ -17,6 +17,7 @@
 #endif
 
 #define COMMANDSIZE_4096 4096
+#define AR_COMMAND_ATTEMPTS 5
 
 #define VERSION 1
 #define AR_MODULE_NAME "active-response"
@@ -189,5 +190,15 @@ int lock(const char *lock_path, const char *lock_pid_path, const char *log_path,
  * @param log_path Messages log file
  * */
 void unlock(const char *lock_path, const char *log_path);
+
+/**
+ * Run a command and check that it exits with 0. Retries with a growing delay
+ * while it cannot be started or exits with 4. Logs the command when it fails
+ * @param ar_name Active response name for the log
+ * @param path Binary to run
+ * @param argv NULL-terminated argument list
+ * @return OS_SUCCESS or OS_INVALID
+ * */
+int execute_command_with_retry(const char *ar_name, const char *path, char * const *argv);
 
 #endif

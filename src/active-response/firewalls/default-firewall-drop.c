@@ -83,7 +83,6 @@ int main (int argc, char **argv) {
         char lock_path[COMMANDSIZE_4096];
         char lock_pid_path[COMMANDSIZE_4096];
         char *iptables = NULL;
-        wfd_t *wfd = NULL;
 
         // Checking if iptables is present
         if (get_binary_path(iptables_tmp, &iptables) < 0) {
@@ -117,45 +116,12 @@ int main (int argc, char **argv) {
             return OS_INVALID;
         }
 
-        int count = 0;
-        bool flag = true;
-        while (flag) {
-            char *exec_cmd1[8] = { iptables, arg, "INPUT", "-s", (char *)srcip, "-j", "DROP", NULL };
+        char *exec_cmd1[8] = { iptables, arg, "INPUT", "-s", (char *)srcip, "-j", "DROP", NULL };
+        char *exec_cmd2[8] = { iptables, arg, "FORWARD", "-s", (char *)srcip, "-j", "DROP", NULL };
 
-            wfd = wpopenv(iptables, exec_cmd1, W_BIND_STDERR);
-            if (!wfd) {
-                count++;
-                if (count > 4) {
-                    flag = false;
-                    write_debug_file(argv[0], "Unable to run iptables");
-                } else {
-                    sleep(count);
-                }
-            } else {
-                flag = false;
-                wpclose(wfd);
-            }
-        }
+        execute_command_with_retry(argv[0], iptables, exec_cmd1);
+        execute_command_with_retry(argv[0], iptables, exec_cmd2);
 
-        count = 0;
-        flag = true;
-        while (flag) {
-            char *exec_cmd2[8] = { iptables, arg, "FORWARD", "-s", (char *)srcip, "-j", "DROP", NULL };
-
-            wfd = wpopenv(iptables, exec_cmd2, W_BIND_STDERR);
-            if (!wfd) {
-                count++;
-                if (count > 4) {
-                    flag = false;
-                    write_debug_file(argv[0], "Unable to run iptables");
-                } else {
-                    sleep(count);
-                }
-            } else {
-                flag = false;
-                wpclose(wfd);
-            }
-        }
         unlock(lock_path, argv[0]);
         os_free(iptables);
 
