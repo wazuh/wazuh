@@ -266,7 +266,7 @@ def test_AbstractServerHandler_hello(event_loop):
     with pytest.raises(WazuhClusterError, match=".* 3029 .*"):
         abstract_server_handler.hello(b"elif_test")
 
-    with pytest.raises(WazuhClusterError, match=".* 3029 .*"):
+    with pytest.raises(WazuhClusterError, match=".* 3054 .* master"):
         abstract_server_handler.hello(b"master")
     assert "master" not in abstract_server_handler.server.clients
 
