@@ -238,13 +238,14 @@ def test_mask_sensitive_config_raw_xml_haproxy_helper_passwords(db_setup):
 
 
 def test_mask_sensitive_config_with_permissions(db_setup):
-    db_setup.rbac.set({'rbac_mode': 'white', 'manager:update_config': {'*:*': 'allow'}})
+    db_setup.rbac.set({'rbac_mode': 'white', 'manager:update_config': {'*:*:*': 'allow'}})
 
     @db_setup.mask_sensitive_config()
     def get_conf():
         return _conf_payload()
 
-    result = get_conf()
+    with patch.object(db_setup, 'read_config', return_value={'disabled': True, 'node_name': 'node01'}):
+        result = get_conf()
     assert result["authd.pass"] == "P4ssW0rd!"
     assert result["integration"][0]["hook_url"] == "https://hooks.slack.com/services/T000/B000/XXXX"
 
@@ -296,13 +297,14 @@ def test_mask_sensitive_config_on_wazuh_result(db_setup):
 
 
 def test_mask_sensitive_config_on_wazuh_result_with_permissions(db_setup):
-    db_setup.rbac.set({'rbac_mode': 'white', 'manager:update_config': {'*:*': 'allow'}})
+    db_setup.rbac.set({'rbac_mode': 'white', 'manager:update_config': {'*:*:*': 'allow'}})
 
     @db_setup.mask_sensitive_config()
     def get_conf_result():
         return _agent_conf_wazuh_result_payload()
 
-    res = get_conf_result()
+    with patch.object(db_setup, 'read_config', return_value={'disabled': True, 'node_name': 'node01'}):
+        res = get_conf_result()
     assert res['data']["key"] == "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH"
 
 
@@ -326,18 +328,6 @@ def test_has_update_permissions_no_perms(db_setup):
     """Returns False when RBAC context holds no relevant action."""
     db_setup.rbac.set({'rbac_mode': 'white'})
     assert db_setup._has_update_permissions() is False
-
-
-def test_has_update_permissions_with_manager_update_config(db_setup):
-    """Returns True when manager:update_config is granted."""
-    db_setup.rbac.set({'rbac_mode': 'white', 'manager:update_config': {'*:*': 'allow'}})
-    assert db_setup._has_update_permissions() is True
-
-
-def test_has_update_permissions_with_cluster_update_config(db_setup):
-    """Returns True when cluster:update_config is granted."""
-    db_setup.rbac.set({'rbac_mode': 'white', 'cluster:update_config': {'node:id:master-node': 'allow'}})
-    assert db_setup._has_update_permissions() is True
 
 
 def test_has_update_permissions_read_only_role(db_setup):
@@ -374,18 +364,6 @@ def test_has_update_permissions_deny_cluster_update_config(db_setup):
     """Returns False when cluster:update_config has effect=deny."""
     db_setup.rbac.set({'rbac_mode': 'white', 'cluster:update_config': {'node:id:master-node': 'deny'}})
     assert db_setup._has_update_permissions() is False
-
-
-def test_has_update_permissions_mixed_deny_allow_allows(db_setup):
-    """Returns True when at least one resource carries allow, even if others carry deny."""
-    db_setup.rbac.set({
-        'rbac_mode': 'white',
-        'manager:update_config': {
-            'node:id:worker-1': 'deny',
-            'node:id:master': 'allow'
-        }
-    })
-    assert db_setup._has_update_permissions() is True
 
 
 def test_has_update_permissions_all_deny(db_setup):
@@ -500,25 +478,27 @@ def test_mask_sensitive_config_raw_xml_without_permissions(db_setup):
 
 def test_mask_sensitive_config_raw_xml_with_permissions(db_setup):
     """Raw XML is returned unmodified for users with update-config permissions."""
-    db_setup.rbac.set({'rbac_mode': 'white', 'manager:update_config': {'*:*': 'allow'}})
+    db_setup.rbac.set({'rbac_mode': 'white', 'manager:update_config': {'*:*:*': 'allow'}})
 
     @db_setup.mask_sensitive_config()
     def get_conf_raw():
         return _XML_WITH_CLUSTER_KEY
 
-    result = get_conf_raw()
+    with patch.object(db_setup, 'read_config', return_value={'disabled': True, 'node_name': 'node01'}):
+        result = get_conf_raw()
     assert result == _XML_WITH_CLUSTER_KEY
 
 
 def test_mask_sensitive_config_raw_xml_cluster_perm(db_setup):
-    """cluster:update_config is also accepted as a privileged permission."""
-    db_setup.rbac.set({'rbac_mode': 'white', 'cluster:update_config': {'*:*': 'allow'}})
+    """cluster:update_config over the local node is the privileged permission when the cluster is enabled."""
+    db_setup.rbac.set({'rbac_mode': 'white', 'cluster:update_config': {'node:id:*': 'allow'}})
 
     @db_setup.mask_sensitive_config()
     def get_conf_raw():
         return _XML_WITH_CLUSTER_KEY
 
-    result = get_conf_raw()
+    with patch.object(db_setup, 'read_config', return_value={'disabled': False, 'node_name': 'master-node'}):
+        result = get_conf_raw()
     assert result == _XML_WITH_CLUSTER_KEY
 
 
@@ -688,6 +668,27 @@ def test_mask_sensitive_config_raw_xml_escaped_less_than(db_setup):
 def test_has_update_permissions_black_mode(db_setup, disabled, perms, expected):
     """In black mode the mask follows the permission update_ossec_conf checks, granted unless a policy denies it."""
     db_setup.rbac.set({'rbac_mode': 'black', **perms})
+    with patch.object(db_setup, 'read_config', return_value={'disabled': disabled, 'node_name': 'master-node'}):
+        assert db_setup._has_update_permissions() is expected
+
+
+@pytest.mark.parametrize('disabled, perms, expected', [
+    (False, {}, False),
+    (False, {'cluster:update_config': {'node:id:worker1': 'allow'}}, False),
+    (False, {'manager:update_config': {'*:*:*': 'allow'}}, False),
+    (False, {'cluster:update_config': {'node:id:master-node': 'allow'}}, True),
+    (False, {'cluster:update_config': {'node:id:worker1': 'allow', 'node:id:master-node': 'deny'}}, False),
+    (False, {'cluster:update_config': {'node:id:*': 'allow'}}, True),
+    (False, {'cluster:update_config': {'node:id:*': 'allow', 'node:id:master-node': 'deny'}}, False),
+    (True, {}, False),
+    (True, {'manager:update_config': {'*:*:*': 'allow'}}, True),
+    (True, {'manager:update_config': {'*:*:*': 'deny'}}, False),
+    (True, {'cluster:update_config': {'node:id:*': 'allow'}}, False),
+    (True, {'cluster:update_config': {'node:id:master-node': 'allow'}}, False),
+])
+def test_has_update_permissions_white_mode(db_setup, disabled, perms, expected):
+    """In white mode the mask is lifted only by an allow of the permission update_ossec_conf checks on this node."""
+    db_setup.rbac.set({'rbac_mode': 'white', **perms})
     with patch.object(db_setup, 'read_config', return_value={'disabled': disabled, 'node_name': 'master-node'}):
         assert db_setup._has_update_permissions() is expected
 
