@@ -89,9 +89,9 @@ EXPORTED FIMDBErrorCode fim_db_get_path(const char* file_path,
                                         callback_context_t data);
 
 /**
- * @brief Find entries based on pattern search.
+ * @brief Find entries whose path starts with a literal prefix.
  *
- * @param pattern Pattern to be searched.
+ * @param pattern Literal path prefix followed by '%' (without it, the path is matched exactly). Matched byte for byte.
  * @param data Pointer to the data structure where the callback context will be stored.
  *
  * @retval FIMDB_OK on success.

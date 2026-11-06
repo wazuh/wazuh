@@ -538,3 +538,106 @@ TEST_F(DBTestFixture, TestFimDBDeletePathWithSpecialCharsInPath)
         ASSERT_EQ(count, 0);
     });
 }
+
+static void callbackCollectPaths(void* return_data, void* user_data)
+{
+    static_cast<std::vector<std::string>*>(user_data)->push_back(static_cast<char*>(return_data));
+}
+
+static void insertFilesWithPaths(const std::vector<std::string>& paths)
+{
+    for (const auto& path : paths)
+    {
+        nlohmann::json item = insertStatement1["data"].front();
+        item["path"] = path;
+        const auto fileFIMTest { std::make_unique<FileItem>(item) };
+        ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added), FIMDB_OK);
+    }
+}
+
+static std::vector<std::string> searchPaths(const char* pattern)
+{
+    std::vector<std::string> found;
+    callback_context_t callback_data { callbackCollectPaths, &found };
+
+    EXPECT_EQ(fim_db_file_pattern_search(pattern, callback_data), FIMDB_OK);
+
+    return found;
+}
+
+TEST_F(DBTestFixture, TestFimDBFilePatternSearchPrefixBoundaries)
+{
+    insertFilesWithPaths({"/data/a", "/data/a.", "/data/a/f1", "/data/a/sub/f2", "/data/a0", "/data/a0/x", "/data/a1", "/data/ab/f3"});
+
+    EXPECT_EQ(searchPaths("/data/a/%"), (std::vector<std::string> {"/data/a/f1", "/data/a/sub/f2"}));
+    EXPECT_EQ(searchPaths("/data/ab/%"), (std::vector<std::string> {"/data/ab/f3"}));
+    EXPECT_EQ(searchPaths("/data/a"), (std::vector<std::string> {"/data/a"}));
+}
+
+TEST_F(DBTestFixture, TestFimDBFilePatternSearchPrefixWithPercentChar)
+{
+    insertFilesWithPaths({"/data/a/f1", "/data/axb/f4", "/data/%/x", "/data/%/y/z"});
+
+    EXPECT_EQ(searchPaths("/data/%/%"), (std::vector<std::string> {"/data/%/x", "/data/%/y/z"}));
+    EXPECT_TRUE(searchPaths("/data/%x/%").empty());
+}
+
+TEST_F(DBTestFixture, TestFimDBFilePatternSearchPrefixWithUnderscoreChar)
+{
+    insertFilesWithPaths({"/data/a_b/f1", "/data/a/b/f2", "/data/axb/f3"});
+
+    EXPECT_EQ(searchPaths("/data/a_b/%"), (std::vector<std::string> {"/data/a_b/f1"}));
+}
+
+TEST_F(DBTestFixture, TestFimDBFilePatternSearchPrefixExactBytes)
+{
+    insertFilesWithPaths({"/data/dir/f", "/data/Dir/f"});
+
+    EXPECT_EQ(searchPaths("/data/Dir/%"), (std::vector<std::string> {"/data/Dir/f"}));
+    EXPECT_EQ(searchPaths("/data/dir/%"), (std::vector<std::string> {"/data/dir/f"}));
+    EXPECT_TRUE(searchPaths("/data/DIR/%").empty());
+}
+
+TEST_F(DBTestFixture, TestFimDBFilePatternSearchWindowsStylePrefix)
+{
+    insertFilesWithPaths({"c:\\data\\a\\b\\f", "c:\\data\\a_b\\f", "c:\\data\\a_b]", "c:\\data\\a_b]x", "c:\\data\\axb\\f"});
+
+    EXPECT_EQ(searchPaths("c:\\data\\a_b\\%"), (std::vector<std::string> {"c:\\data\\a_b\\f"}));
+}
+
+TEST_F(DBTestFixture, TestFimDBFilePatternSearchNonAsciiPrefix)
+{
+    insertFilesWithPaths({"/data/caf\xC3\xA9", "/data/caf\xC3\xA9x", "/data/cafe"});
+
+    EXPECT_EQ(searchPaths("/data/caf\xC3\xA9%"), (std::vector<std::string> {"/data/caf\xC3\xA9", "/data/caf\xC3\xA9x"}));
+}
+
+TEST_F(DBTestFixture, TestFimDBFilePatternSearchPrefixEndingInTilde)
+{
+    insertFilesWithPaths({"/data/a}", "/data/a~", "/data/a~x", "/data/a\x7F", "/data/a\x7F" "x"});
+
+    EXPECT_EQ(searchPaths("/data/a~%"), (std::vector<std::string> {"/data/a~", "/data/a~x"}));
+}
+
+TEST_F(DBTestFixture, TestFimDBFilePatternSearchPrefixEndingInDelete)
+{
+    insertFilesWithPaths({"/data/a~", "/data/a\x7F", "/data/a\x7F" "x", "/data/b"});
+
+    EXPECT_EQ(searchPaths("/data/a\x7F%"), (std::vector<std::string> {"/data/a\x7F", "/data/a\x7F" "x"}));
+}
+
+TEST_F(DBTestFixture, TestFimDBFilePatternSearchEmptyPrefix)
+{
+    insertFilesWithPaths({"/data/a/f1"});
+
+    EXPECT_TRUE(searchPaths("").empty());
+    EXPECT_TRUE(searchPaths("%").empty());
+}
+
+TEST_F(DBTestFixture, TestFimDBFilePatternSearchInjectionPayloadReturnsNoRows)
+{
+    insertFilesWithPaths({"/etc/wgetrc"});
+
+    EXPECT_TRUE(searchPaths("\" UNION SELECT path FROM file_entry--").empty());
+    EXPECT_TRUE(searchPaths("\" UNION SELECT path FROM file_entry--%").empty());
+}

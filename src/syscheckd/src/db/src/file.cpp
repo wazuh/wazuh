@@ -438,8 +438,40 @@ void DB::searchFile(const SearchData& data, std::function<void(const std::string
         std::string encodedPath = std::get<SEARCH_FIELD_PATH>(data);
         FIMDBCreator<OS_TYPE>::encodeString(encodedPath);
 
-        queryBuilder.rowFilter("WHERE path LIKE ?")
-        .rowFilterBindText(encodedPath);
+        const bool isPrefix = !encodedPath.empty() && '%' == encodedPath.back();
+
+        if (isPrefix)
+        {
+            encodedPath.pop_back();
+        }
+
+        if (encodedPath.empty())
+        {
+            return;
+        }
+
+        if (!isPrefix)
+        {
+            queryBuilder.rowFilter("WHERE path = ?")
+            .rowFilterBindText(encodedPath);
+        }
+        else if (static_cast<unsigned char>(encodedPath.back()) < 0x7F)
+        {
+            // Range scan: the upper bound is the prefix with its last byte incremented.
+            auto upperBound { encodedPath };
+            ++upperBound.back();
+
+            queryBuilder.rowFilter("WHERE path >= ? AND path < ?")
+            .rowFilterBindText(encodedPath)
+            .rowFilterBindText(upperBound);
+        }
+        else
+        {
+            // Incrementing a non-ASCII last byte could yield an invalid UTF-8 bound, so compare the prefix directly.
+            queryBuilder.rowFilter("WHERE substr(path, 1, length(?)) = ?")
+            .rowFilterBindText(encodedPath)
+            .rowFilterBindText(encodedPath);
+        }
     }
     else
     {
