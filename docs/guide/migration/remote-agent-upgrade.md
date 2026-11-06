@@ -204,6 +204,17 @@ The agent-facing task payload contains four fields:
 | `installer`   | Installer script inside the WPK (`upgrade.sh` on Linux/macOS, `upgrade.bat` on Windows) |
 | `wpk_version` | Version the WPK installs. Consulted only by the legacy delivery path, to decide whether to send the manager's CA (see [Trust anchor delivery](#trust-anchor-delivery-to-legacy-agents)). Empty on the custom-WPK path, where the file name is not authoritative about what it installs |
 
+### Who may download the WPK
+
+`remoted` serves the WPK only to the agent that holds an open `remote_upgrade` task for exactly that
+`wpk_file`: delivered within the last `task_ttl` seconds (3600 by default), or, on a node that did not
+deliver it, created within the last `2 * task_ttl + cleanup_interval` seconds. Any other request, including a script that fetches a package by name with
+agent credentials, gets the same `404` as a file that does not exist. If the task manager does not
+answer, `remoted` answers `503`, and the agent tries `agent.https_download_attempts` times (2 by default)
+before abandoning the upgrade. A task is delivered only once, so after a `404` or an abandoned upgrade,
+launch the upgrade again. In a cluster the agent may download from any node that holds the task: the longer window keeps
+the task open on the nodes that did not deliver it as long as on the node that did. See [Agent upgrades](../../ref/modules/task_manager/agent-upgrades.md).
+
 ### Delivery to agents below v5.0.0
 
 For agents below v5.0.0, `remoted` pushes the WPK bytes to the agent itself, with the same

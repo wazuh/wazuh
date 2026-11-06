@@ -152,7 +152,7 @@ Task manager module. Also serves remote agent upgrades.
 
 | Option | Type | Default | Constraints | Description |
 |---|---|---|---|---|
-| `task_ttl` | integer | `3600` | >= 0 | Seconds a pending agent task may wait, from its creation, before it is expired. Manager tasks never expire. |
+| `task_ttl` | integer | `3600` | >= 0 | Seconds a pending agent task may wait, from its creation, before it is expired. Manager tasks never expire. It also bounds how long a remote_upgrade task authorizes the download of its WPK: a task the node delivered for task_ttl from its delivery, until the cleanup pass deletes it 24 h after delivery, and a task it did not deliver for twice task_ttl plus cleanup_interval from its creation. |
 | `cleanup_interval` | integer | `300` | >= 0 | Seconds between cleanup passes. |
 | `max_payload_bytes` | integer | `1048576` | >= 0 | Maximum task payload. |
 | `max_tasks_per_poll` | integer | `100` | >= 0 | Tasks handed out per poll. |

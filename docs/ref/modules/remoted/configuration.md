@@ -1471,7 +1471,8 @@ Concurrent task-manager requests the control plane may have in flight.
 
 #### remoted.control_tm_deadline
 
-Milliseconds a single task-manager round-trip may take.
+Milliseconds a single task-manager round-trip may take. It also bounds the WPK authorization query of
+`POST /download`.
 
 - **Default value:** `2000`
 - **Allowed values:** Integer from `100` to `30000`
