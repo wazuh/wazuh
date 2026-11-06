@@ -234,3 +234,40 @@ def test_subscriber_import_error_raises_GCloudError():
 
     assert exc_info.value.errcode == 1003
     assert 'google.cloud.pubsub_v1' in str(exc_info.value)
+
+
+def test_subscriber_import_error_without_name_keeps_real_error():
+    """A bare ImportError (no .name) must not report 'The 'None' module is required'."""
+    import runpy
+    import sys
+    import google.cloud
+
+    subscriber_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'pubsub', 'subscriber.py')
+
+    class _BareImportErrorFinder:
+        def find_spec(self, fullname, path=None, target=None):
+            if fullname == 'google.cloud.pubsub_v1':
+                raise ImportError('custom version conflict')
+            return None
+
+    _sentinel = object()
+    saved_mod = sys.modules.get('google.cloud.pubsub_v1', _sentinel)
+    saved_attr = getattr(google.cloud, 'pubsub_v1', _sentinel)
+    sys.modules.pop('google.cloud.pubsub_v1', None)
+    if saved_attr is not _sentinel:
+        delattr(google.cloud, 'pubsub_v1')
+    sys.meta_path.insert(0, _BareImportErrorFinder())
+
+    try:
+        with pytest.raises(GCloudError) as exc_info:
+            runpy.run_path(subscriber_path, run_name='subscriber_import_error_noname_test')
+    finally:
+        sys.meta_path.pop(0)
+        if saved_mod is not _sentinel:
+            sys.modules['google.cloud.pubsub_v1'] = saved_mod
+        if saved_attr is not _sentinel:
+            google.cloud.pubsub_v1 = saved_attr
+
+    assert exc_info.value.errcode == 1003
+    assert 'custom version conflict' in str(exc_info.value)
+    assert "'None'" not in str(exc_info.value)

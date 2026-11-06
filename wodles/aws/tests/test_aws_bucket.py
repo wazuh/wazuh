@@ -1580,3 +1580,24 @@ def test_custom_bucket_load_information_reraises_value_error_when_pattern_not_fo
         mock_decompress.return_value.__exit__ = MagicMock(return_value=False)
         with pytest.raises(ValueError):
             instance.load_information_from_file('fake_key')
+
+
+def test_aws_bucket_import_error_exits_4():
+    """Importing aws_bucket without botocore prints an error and exits with code 4."""
+    import builtins
+    import runpy
+    real_import = builtins.__import__
+
+    def mock_import(name, *args, **kwargs):
+        if name == 'botocore' or name.startswith('botocore.'):
+            raise ImportError
+        return real_import(name, *args, **kwargs)
+
+    module_path = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', 'buckets_s3', 'aws_bucket.py'))
+    with patch('builtins.__import__', side_effect=mock_import), \
+            patch('builtins.print') as mock_print, \
+            pytest.raises(SystemExit) as e:
+        runpy.run_path(module_path, run_name='aws_bucket_import_error_test')
+
+    assert e.value.code == 4
+    mock_print.assert_any_call('ERROR: boto3 module is required.')

@@ -8,6 +8,7 @@ import sys
 
 try:
     import boto3
+    from botocore import config, exceptions
 except ImportError:
     print('ERROR: boto3 module is required.')
     sys.exit(4)
@@ -24,7 +25,6 @@ import re
 import zipfile
 import zlib
 
-from botocore import config, exceptions
 from datetime import datetime
 from datetime import timezone
 from os import path

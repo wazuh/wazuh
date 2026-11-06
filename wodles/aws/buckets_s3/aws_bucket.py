@@ -4,7 +4,12 @@
 
 import copy
 import sys
-import botocore
+try:
+    import botocore
+except ImportError:
+    print('ERROR: boto3 module is required.')
+    sys.exit(4)
+
 import json
 import csv
 import zipfile

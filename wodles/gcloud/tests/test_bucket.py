@@ -505,3 +505,40 @@ def test_bucket_import_error_raises_GCloudError():
 
     assert exc_info.value.errcode == 1003
     assert "'pytz' module is required" in str(exc_info.value)
+
+
+def test_bucket_import_error_without_name_keeps_real_error():
+    """A bare ImportError (no .name) must not report 'The 'None' module is required'."""
+    import runpy
+    import sys
+    import google.cloud
+
+    bucket_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'buckets', 'bucket.py')
+
+    class _BareImportErrorFinder:
+        def find_spec(self, fullname, path=None, target=None):
+            if fullname == 'google.cloud.storage':
+                raise ImportError('custom version conflict')
+            return None
+
+    _sentinel = object()
+    saved_mod = sys.modules.get('google.cloud.storage', _sentinel)
+    saved_attr = getattr(google.cloud, 'storage', _sentinel)
+    sys.modules.pop('google.cloud.storage', None)
+    if saved_attr is not _sentinel:
+        delattr(google.cloud, 'storage')
+    sys.meta_path.insert(0, _BareImportErrorFinder())
+
+    try:
+        with pytest.raises(exceptions.GCloudError) as exc_info:
+            runpy.run_path(bucket_path, run_name='bucket_import_error_noname_test')
+    finally:
+        sys.meta_path.pop(0)
+        if saved_mod is not _sentinel:
+            sys.modules['google.cloud.storage'] = saved_mod
+        if saved_attr is not _sentinel:
+            google.cloud.storage = saved_attr
+
+    assert exc_info.value.errcode == 1003
+    assert 'custom version conflict' in str(exc_info.value)
+    assert "'None'" not in str(exc_info.value)
