@@ -56,6 +56,8 @@ namespace
     Hook<std::function<void()>> g_beforePublishArmedDue;
     Hook<std::function<void()>> g_midAdmitBatch;
     Hook<std::function<void()>> g_inSettleBulk;
+    /// Issue 15: a plain atomic, no hook (encode() is on every producer's path).
+    std::atomic<std::size_t> g_encodeSizeSkew {0};
 
     template<class F>
     F copyOf(const Hook<F>& hook)
@@ -237,6 +239,11 @@ namespace indexer_client::detail::seams
         }
     }
 
+    std::size_t encodeSizeSkew()
+    {
+        return g_encodeSizeSkew.load(std::memory_order_relaxed);
+    }
+
     std::optional<std::size_t> stripeCount()
     {
         static const std::optional<std::size_t> fixed = []() -> std::optional<std::size_t>
@@ -341,6 +348,11 @@ namespace indexer_client::testing_hooks
         store(g_inSettleBulk, std::move(hook));
     }
 
+    void setEncodeSizeSkew(std::size_t bytes)
+    {
+        g_encodeSizeSkew.store(bytes, std::memory_order_relaxed);
+    }
+
     void setQueryConflictBaseMs(std::optional<std::int64_t> milliseconds)
     {
         std::lock_guard<std::mutex> lock(g_hooksMutex);
@@ -376,6 +388,7 @@ namespace indexer_client::testing_hooks
             clear(g_midAdmitBatch);
             clear(g_inSettleBulk);
         }
+        g_encodeSizeSkew.store(0, std::memory_order_relaxed);
         setProbeAutoStart(true);
     }
 } // namespace indexer_client::testing_hooks

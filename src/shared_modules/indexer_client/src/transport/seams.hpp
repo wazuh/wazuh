@@ -70,6 +70,9 @@ namespace indexer_client::detail::seams
     /// E6e (A): in Bucket::settleBulk, before each op is counted, with the bucket's mutex held (may throw: the ops
     /// settled so far are released and the rest go back to resolveBulk's settlement; must not block on the bucket).
     void inSettleBulk();
+    /// Issue 15 (D64): bytes added to encode()'s precomputed line size (testing_hooks::setEncodeSizeSkew; 0 by
+    /// default), so a case can break the size invariant on purpose.
+    std::size_t encodeSizeSkew();
     /// E6e (B): K, the stripes of a staging bucket, fixed by INDEXER_CLIENT_TEST_STRIPES (an integer 1-64, read once;
     /// anything else aborts the run); nullopt when unset or empty (the library's K).
     std::optional<std::size_t> stripeCount();
@@ -112,6 +115,10 @@ namespace indexer_client::detail::seams
     [[gnu::always_inline]] inline void beforePublishArmedDue() {}
     [[gnu::always_inline]] inline void midAdmitBatch() {}
     [[gnu::always_inline]] inline void inSettleBulk() {}
+    [[gnu::always_inline]] inline std::size_t encodeSizeSkew()
+    {
+        return 0;
+    }
     [[gnu::always_inline]] inline std::optional<std::size_t> stripeCount()
     {
         return std::nullopt;

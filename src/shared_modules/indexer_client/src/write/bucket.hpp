@@ -165,8 +165,9 @@ namespace indexer_client::detail::write
         int lastHttpStatus {0};
         std::string lastItemErrorType;
         std::string lastReason;
-        /// E6e (D): the bucket that took the op (set by the writer / Group::add, or by its custody), for a debug assert
-        /// in WritePath::resolve only: the caller passes the bucket (no per-op reference count to touch).
+        /// E6e (D): the bucket that took the op (set by the writer / Group::add, or by its custody), only for the owner
+        /// check of WritePath::resolve and Bucket::settleBulk (issue 15: an internal error, logged and counted, never
+        /// an abort): the caller passes the bucket (no per-op reference count to touch).
         const Bucket* owner {nullptr};
         /// The effective ConflictPolicy is Retry (I73): a 409 item goes back to the retry lane. Set before admit,
         /// immutable afterwards (read lock-free by the sender).
@@ -403,11 +404,12 @@ namespace indexer_client::detail::write
                GlobalBudget& budget,
                std::weak_ptr<WritePath> owner = {},
                std::weak_ptr<ClientState> client = {});
-        /// Fails the cancel(tag) waiters still registered with ClientClosed (I80). I99 (N6): asserts (debug) that
-        /// nothing is queued; in release completes what is (tickets / group slots, Dropped(ClientClosed), no callback),
-        /// returns its charge under `owner` and counts a usage error. A delivered op still charged (its batch let go
-        /// unresolved) gets its payload back to the global cap under `owner` (D67); its later resolution, through the
-        /// branch of WritePath::resolve without a bucket, returns only what is still its own (a post op's reserve).
+        /// Fails the cancel(tag) waiters still registered with ClientClosed (I80). I99 (N6): nothing is expected
+        /// queued; if something is, every build (issue 15, no assert) logs an internal error, completes it (tickets /
+        /// group slots, Dropped(ClientClosed), no callback), returns its charge under `owner` and counts a usage error.
+        /// A delivered op still charged (its batch let go unresolved) gets its payload back to the global cap under
+        /// `owner` (D67); its later resolution, through the branch of WritePath::resolve without a bucket, returns only
+        /// what is still its own (a post op's reserve).
         ~Bucket();
         Bucket(const Bucket&) = delete;
         Bucket& operator=(const Bucket&) = delete;
@@ -565,7 +567,7 @@ namespace indexer_client::detail::write
         /// GlobalBudget::release of everything released and the completed cancel(tag) waiters. `settled` grows by one
         /// for every op fully settled, so a throw (only an allocation of the interval keys, or the seam inSettleBulk)
         /// leaves the rest to the caller. At most SETTLE_CHUNK ops per call is the caller's choice. Each op must be
-        /// this bucket's (asserted in debug builds, as WritePath::resolve).
+        /// this bucket's (checked as in WritePath::resolve: an internal error, logged and counted, never an abort).
         void settleBulk(BulkItem* items, std::size_t count, std::size_t& settled);
         /// Releases `count` RESULT_RESERVEs (after the callback ran, when the last Ticket died, or when a committed
         /// group's GroupState died).

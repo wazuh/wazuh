@@ -13,7 +13,6 @@
 #include "write/bucket.hpp"
 
 #include <algorithm>
-#include <cassert>
 #include <chrono>
 #include <exception>
 #include <thread>
@@ -185,9 +184,10 @@ namespace indexer_client::detail::write
     {
         // No other reference exists, so no lock.
         // I99 (N6), the last net: with the close fixed (admit has no window, a racing enqueueGroup refuses, a Client
-        // destroyed on a runtime thread sweeps) nothing is still queued here. A debug build asserts it; a release build
-        // completes what is left (ticket or group slot; the callback is not called) and returns its charge to the
-        // global cap while the write path, owner of that budget, is alive. Only the ops' own charge: a ticket's armed
+        // destroyed on a runtime thread sweeps) nothing is still queued here. If something is, every build (issue 15,
+        // D64: no assert, the manager's Release builds keep it live) logs an internal error and completes what is left
+        // (ticket or group slot; the callback is not called) and returns its charge to the global cap while the write
+        // path, owner of that budget, is alive. Only the ops' own charge: a ticket's armed
         // reserve and a GroupState return theirs; an op with a callback or one of post (no ticket, no group) has nobody
         // else to.
         bool staged = !m_unstaged.empty();
@@ -197,9 +197,9 @@ namespace indexer_client::detail::write
         }
         // E6e (B): staged (or unstaged) post ops were never charged and have nobody to complete: only the usage error.
         const bool leftovers = !m_pending.empty() || !m_lane.empty() || staged;
-        assert(!leftovers && "a bucket destroyed with queued operations");
         if (leftovers)
         {
+            internalError("a bucket destroyed with queued operations; they are completed Dropped(ClientClosed)");
             countUsageError();
             auto owner = m_owner.lock();
             std::uint64_t charge = 0;
@@ -1682,8 +1682,12 @@ namespace indexer_client::detail::write
                 for (std::size_t i = 0; i < count; ++i)
                 {
                     auto& item = items[i];
-                    // E6e (D), G-diff P3-5: the caller's bucket must be the op's, as WritePath::resolve asserts.
-                    assert(item.op->owner == nullptr || item.op->owner == this);
+                    // E6e (D), G-diff P3-5: the caller's bucket must be the op's, as WritePath::resolveWon checks.
+                    // Issue 15 (D64): no assert; logged, counted and settled here all the same.
+                    if (item.op->owner != nullptr && item.op->owner != this)
+                    {
+                        internalError("settleBulk: an operation settled by a bucket other than its own");
+                    }
                     seams::inSettleBulk(); // SettleThrowsTwiceFallsBackPerOp: stands for the interval keys' throw.
                     countResolvedLocked(
                         item.result.status, item.result.cause, item.result.itemErrorType, item.result.reason);

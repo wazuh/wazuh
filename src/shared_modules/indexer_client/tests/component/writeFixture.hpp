@@ -20,7 +20,9 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cstdarg>
 #include <cstdint>
+#include <cstdio>
 #include <limits>
 #include <map>
 #include <memory>
@@ -558,6 +560,63 @@ protected:
     indexer_client::RuntimeRef m_ref;
     std::shared_ptr<write_component::wr::WritePath> m_path;
     std::shared_ptr<write_component::TestSink> m_sink;
+};
+
+/// Issue 15 (D64): the write cases that break an internal invariant on purpose. Every ERROR line of the library is kept
+/// (the log function is installed before the case starts its runtime, I56), and the case reads
+/// testing_hooks::internalErrors() around the broken invariant: logged and counted, never an abort.
+class WriteInternalErrorTest : public WriteTest
+{
+protected:
+    /// loggerHelper.h's LOGLEVEL_ERROR, as the library passes it to the log function.
+    static constexpr int ERROR_LEVEL = 3;
+
+    void SetUp() override
+    {
+        WriteTest::SetUp();
+        auto lines = m_errors;
+        indexer_client::setLogFunction(
+            [lines](const int level, const char*, const char*, const int, const char*, const char* format, va_list args)
+            {
+                if (level != ERROR_LEVEL)
+                {
+                    return;
+                }
+                va_list copy;
+                va_copy(copy, args);
+                char buffer[1024];
+                std::vsnprintf(buffer, sizeof(buffer), format, copy);
+                va_end(copy);
+                std::lock_guard<std::mutex> lock(lines->mutex);
+                lines->text.emplace_back(buffer);
+            });
+    }
+
+    void TearDown() override
+    {
+        WriteTest::TearDown();
+        indexer_client::setLogFunction({}); // The runtime is down: valid again (I56).
+    }
+
+    /// ERROR lines containing `part`.
+    std::size_t errors(const std::string& part) const
+    {
+        std::lock_guard<std::mutex> lock(m_errors->mutex);
+        std::size_t n = 0;
+        for (const auto& line : m_errors->text)
+        {
+            n += line.find(part) != std::string::npos ? 1 : 0;
+        }
+        return n;
+    }
+
+private:
+    struct Lines final
+    {
+        std::mutex mutex;
+        std::vector<std::string> text;
+    };
+    std::shared_ptr<Lines> m_errors = std::make_shared<Lines>();
 };
 
 #endif // _INDEXER_CLIENT_TESTS_COMPONENT_WRITE_FIXTURE_HPP
