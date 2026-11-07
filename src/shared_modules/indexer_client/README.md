@@ -139,6 +139,16 @@ RuntimeOwner::shutdown()                  owner thread, joins every runtime thre
   logged to stderr, counted (`detail::testing::usageErrors()`) and turned into a non-blocking
   `requestClose()` plus an immediate sweep; it never aborts, not even in debug builds. That path does not release the consumer
   name (only `awaitClosed()` does, or the client state's own destruction), so the name stays taken until the state dies.
+- **Internal errors never abort** (issue 15, D64). The manager's Release flags (`-O3 -s`, `src/CMakeLists.txt`) do not define
+  `NDEBUG`, so an `assert` would abort the packaged manager: the library has none. A broken internal invariant is logged at ERROR
+  (`internal error (please report it): ...`), counted (`testing_hooks::internalErrors()`, test build only) and followed by its
+  recovery: `encode()` finds the precomputed size of an operation's lines different from the encoded bytes → the operation is
+  refused `InvalidState` (`internal error: ...`) before it is charged (counted with the bucket's `InvalidArgument` refusals);
+  a `Bucket` destroyed with operations still queued → it completes them (a ticket or group slot gets `Dropped(ClientClosed)`,
+  the callback is not called), returns their charge and also counts a usage error; an operation resolved through a bucket other
+  than its own (`OpState::owner`, `WritePath::resolve` and `Bucket::settleBulk`) → the resolution goes on with the caller's
+  bucket. The component cases `WriteInternalErrorTest.*` break each invariant on purpose (the seam `encodeSizeSkew`, a bucket
+  built directly).
 - **Reentrancy.** Every wait in the library (`Ticket::wait`, `GroupTicket::wait`,
   `CancelTicket::wait`, `PitSession::next`, blocking queries, `awaitClosed`) is the library's own
   and returns `Cause::Reentrancy` when called from a runtime thread. From a callback a consumer
@@ -1950,8 +1960,8 @@ installed through `WritePath::setSink`, a callback result log). Every case ends 
 
 | File | Cases |
 |---|---|
-| `writeEncoding_test.cpp` | `EncodingPerKind`, `EncodingRejectsInvalid`, `EncodingConflictRetryLine`, `EncodingPreservingShapes` (the frozen byte vectors E6 reuses), `EncodingPreservingRejects`, `SubmitCarriesReason` |
-| `writeAdmission_test.cpp` | `ChargeIsWireBytesPlusReserve`, `GlobalCapAcrossBuckets`, `OverflowReject`, `OverflowBlockTimeout`, `OverflowDropNewest`, `OverflowDropOldest`, `OverflowBlockWakes`, `BlockedProducerWakesOnClose`, `NoDropWithoutCounter`, `BlockFromRuntimeThreadIsReentrancy`, `PayloadTooLargeAtSubmit` |
+| `writeEncoding_test.cpp` | `EncodingPerKind`, `EncodingRejectsInvalid`, `EncodingConflictRetryLine`, `EncodingPreservingShapes` (the frozen byte vectors E6 reuses), `EncodingPreservingRejects`, `SubmitCarriesReason`, `WriteInternalErrorTest.EncodeSizeMismatchRefusedNotAborted` (issue 15) |
+| `writeAdmission_test.cpp` | `ChargeIsWireBytesPlusReserve`, `GlobalCapAcrossBuckets`, `OverflowReject`, `OverflowBlockTimeout`, `OverflowDropNewest`, `OverflowDropOldest`, `OverflowBlockWakes`, `BlockedProducerWakesOnClose`, `NoDropWithoutCounter`, `BlockFromRuntimeThreadIsReentrancy`, `PayloadTooLargeAtSubmit`, `WriteInternalErrorTest.BucketDestroyedWithQueuedOpsCompletesThem` and `WriteInternalErrorTest.ForeignBucketResolutionLoggedNotAborted` (issue 15) |
 | `writeScheduler_test.cpp` | `ThresholdsFormBatches`, `DrrNoStarvation`, `DrrShareByWeight`, `DocumentNeverSplitDebtCarries`, `ThreadsStayKPlusMWithBuckets`, `DrrTinyQuantumFastForwards`, `MaxAgeExpiringDuringAPassIsServed`, `DrrDebtBulkReachesMaxBytes`, `DrrDebtShareByWeight`, `DrrDebtKeptWhenEmpty` |
 | `writeClose_test.cpp` | `SubmitRacesClose`, `CloseAndShutdownResolveRetained`, `ShutdownWithHeldBatch`, `DefaultSinkIsTheBulkSender` |
 | `writeReserve_test.cpp` | `ResultReserveMeasured` (allocation counter, five phases; skipped under ASAN/TSAN) |
@@ -2091,7 +2101,10 @@ The three test jobs set `INDEXER_CLIENT_TEST_TIME_SCALE: "2"`.
 `.github/workflows/5_testintegration_indexer_client.yml`: job `indexerclient-opensearch`, with a `services.opensearch` container
 `opensearchproject/opensearch:3.6.0` (single node, security off, `search.keep_alive_interval=1s`, `point_in_time.init.keep_alive=1s` — static: with
 its 30 s default a PIT requested at 1 s would live 30 s — and no disk threshold). It runs
-`ctest -L indexer_client_opensearch_test` with `INDEXER_CLIENT_OPENSEARCH_URL=http://localhost:9200`.
+`ctest -L indexer_client_opensearch_test` with `INDEXER_CLIENT_OPENSEARCH_URL=http://localhost:9200`. A second service,
+`opensearch-small` (`localhost:9202`), is the same node with `http.max_content_length: 16kb` for the 413 case
+(`INDEXER_CLIENT_OPENSEARCH_SMALL_URL`), and `INDEXER_CLIENT_OPENSEARCH_CONTAINER=${{ job.services.opensearch.id }}` lets the
+outage case stop and start the first one with the runner's `docker`.
 
 **Time scale.** `tests/fake/testTimeScale.hpp`: `INDEXER_CLIENT_TEST_TIME_SCALE` is an integer 1-20 (empty means 1; an invalid value aborts), multiplied
 by 3 under TSAN; the variable is read on the first call. `scaled()` covers the limits that proved host-sensitive: the D35 margins of the transport
@@ -2112,9 +2125,25 @@ Its suites:
 | `OpenSearchPit.*` | real expiry yields `PitExpired` on a 404 `search_context_missing_exception`, confirmed delete, slices with the same id |
 | `OpenSearchSizes.*`, `OpenSearchLoad.*` | informative measurements |
 | `OpenSearchHealth.RequireClusterFailsFast` | the require-cluster case fails fast |
+| `OpenSearchFailures.*`, `OpenSearchSettingGuard.*` | a document the strict mapping refuses, the shard limit, a missing index without auto-creation (D108); the cluster settings they change are restored |
+| `OpenSearchPayloadLimit.BulkOverTheLimitIsSplitUntilEverythingLands` | issue 26, on the `INDEXER_CLIENT_OPENSEARCH_SMALL_URL` node: a group three times its `http.max_content_length` is split after the 413 until every operation is `Ok` (one document per operation, more than one bulk); one document over the limit ends `Failed(PayloadTooLarge)` with 413 and is not indexed |
+| `OpenSearchOutage.StoppedNodeLosesNothingAndDuplicatesNothing` | issue 27: `docker stop` of the `INDEXER_CLIENT_OPENSEARCH_CONTAINER` node. While it is down a submit returns at once and nothing resolves; a client closed then ends every operation `Dropped(ClientClosed)` without the node; after `docker start` the queued operations land, the documents indexed before are there, and resending every id leaves one document per id. The node is started again whatever the case does |
 
-Locally: start the container with those settings, then
-`INDEXER_CLIENT_OPENSEARCH_URL=http://localhost:<port> ctest --test-dir src/build -V -L indexer_client_opensearch_test`.
+The 413 and outage cases have their own variables, gated like the URL (SKIP locally without them, FAIL under `GITHUB_ACTIONS`):
+`INDEXER_CLIENT_OPENSEARCH_SMALL_URL` is a second node started with a low `http.max_content_length` (a static node setting: it
+cannot be lowered through `_cluster/settings`), and `INDEXER_CLIENT_OPENSEARCH_CONTAINER` is the docker container of the
+`INDEXER_CLIENT_OPENSEARCH_URL` node, which the outage case stops and starts (a name or id; `wazuh-indexer` is refused).
+Locally: start both containers with those settings, for example
+
+```bash
+node=(--memory=2g -e discovery.type=single-node -e DISABLE_SECURITY_PLUGIN=true -e DISABLE_INSTALL_DEMO_CONFIG=true
+      -e "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m" -e search.keep_alive_interval=1s -e point_in_time.init.keep_alive=1s
+      -e cluster.routing.allocation.disk.threshold_enabled=false)
+docker run -d --name ic-os-suite -p 9211:9200 "${node[@]}" opensearchproject/opensearch:3.6.0
+docker run -d --name ic-os-small -p 9212:9200 "${node[@]}" -e http.max_content_length=16kb opensearchproject/opensearch:3.6.0
+INDEXER_CLIENT_OPENSEARCH_URL=http://localhost:9211 INDEXER_CLIENT_OPENSEARCH_SMALL_URL=http://localhost:9212 \
+  INDEXER_CLIENT_OPENSEARCH_CONTAINER=ic-os-suite ctest --test-dir src/build -V -L indexer_client_opensearch_test
+```
 
 **D54.** `latency_target_ms` stays at 2 s: against a real OpenSearch the bulks showed no latency-driven window reduction. The figures are not kept here; the `OpenSearchSizes.*` and `OpenSearchLoad.*` suites print them.
 
