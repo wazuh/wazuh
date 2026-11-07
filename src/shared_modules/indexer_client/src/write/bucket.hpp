@@ -405,7 +405,9 @@ namespace indexer_client::detail::write
                std::weak_ptr<ClientState> client = {});
         /// Fails the cancel(tag) waiters still registered with ClientClosed (I80). I99 (N6): asserts (debug) that
         /// nothing is queued; in release completes what is (tickets / group slots, Dropped(ClientClosed), no callback),
-        /// returns its charge under `owner` and counts a usage error.
+        /// returns its charge under `owner` and counts a usage error. A delivered op still charged (its batch let go
+        /// unresolved) gets its payload back to the global cap under `owner` (D67); its later resolution, through the
+        /// branch of WritePath::resolve without a bucket, returns only what is still its own (a post op's reserve).
         ~Bucket();
         Bucket(const Bucket&) = delete;
         Bucket& operator=(const Bucket&) = delete;
