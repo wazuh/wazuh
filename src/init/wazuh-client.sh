@@ -275,6 +275,48 @@ add_to_cgroup()
     fi
 }
 
+# The agent's log, which start_service() reads to tell why a daemon did not start. logs/ belongs
+# to the agent's user: the log is read only as a regular file, and never waited on for more than a
+# few seconds where timeout(1) exists (a FIFO swapped in). Only the last 256 KiB of what is read are
+# searched, so a device swapped in cannot grow grep's line without bound, and NUL bytes (left by a
+# truncation) are dropped first, since GNU grep would otherwise take it for binary and print nothing.
+OSSEC_LOG="${DIR}/logs/ossec.log"
+LOG_START=0
+if command -v timeout > /dev/null 2>&1; then
+    LOG_TIMEOUT="timeout 5"
+else
+    LOG_TIMEOUT=""
+fi
+
+# Size of the agent's log in bytes, or nothing when it is not a regular file.
+log_size()
+{
+    if [ -f "${OSSEC_LOG}" ] && [ ! -L "${OSSEC_LOG}" ]; then
+        ${LOG_TIMEOUT} wc -c "${OSSEC_LOG}" 2>/dev/null | awk '{ print $1 }'
+    fi
+}
+
+# What daemon $1 or one of its components ("wazuh-agentd:https-client") logged at level(s) $2 (an
+# ERE, e.g. 'ERROR|CRITICAL') since this start began, with control characters removed. Matches the
+# debug format too ("wazuh-agentd[123] agentd.c:176 at AgentdStart(): CRITICAL:"), and lines with
+# bytes that are not valid in the locale (LC_ALL=C). A log that shrank since then was rotated: it is
+# read from its start. $3, when given, is the log's size, already measured by the caller.
+log_since()
+{
+    [ "${LOG_START}" != "none" ] || return 0
+    _ls_size=$3
+    [ -n "${_ls_size}" ] || _ls_size=`log_size`
+    [ -n "${_ls_size}" ] || return 0
+    _ls_from=${LOG_START}
+    if [ "${_ls_size}" -lt "${_ls_from}" ]; then
+        _ls_from=0
+    fi
+    ${LOG_TIMEOUT} tail -c +`expr ${_ls_from} + 1` "${OSSEC_LOG}" 2>/dev/null | tail -c 262144 \
+        | tr -d '\000' \
+        | LC_ALL=C grep -E "^[0-9/]+ [0-9:]+ $1(:[^ []+)?(\[[0-9]+\] [^ ]+ at [^ ]+\(\))?: ($2):" 2>/dev/null \
+        | LC_ALL=C tr -d '\001-\010\013-\037\177'
+}
+
 # Start function
 start_service()
 {
@@ -287,6 +329,21 @@ start_service()
 
     start_deadline=`expr \`date +%s\` + ${MAX_ITERATION}`
     STARTED=""
+
+    # A daemon that exits after going to the background (wazuh-agentd refusing an enrollment
+    # token, say) leaves no PID file, which looks the same as one still starting. What it logged
+    # since here tells them apart, and is the reason this start shows when one does not come up.
+    # A log that does not exist yet is all this start's. One that exists but cannot be measured
+    # (not a regular file) is not read at all: there would be no telling this start's lines from
+    # older ones, and an old CRITICAL must not fail a start.
+    LOG_START=`log_size`
+    if [ -z "${LOG_START}" ]; then
+        if [ -e "${OSSEC_LOG}" ] || [ -L "${OSSEC_LOG}" ]; then
+            LOG_START="none"
+        else
+            LOG_START=0
+        fi
+    fi
 
     # We actually start them now.
     for i in ${SDAEMONS}; do
@@ -309,10 +366,21 @@ start_service()
             if [ $? != 0 ]; then
                 failed=true
             else
+                log_seen=""
                 while [ $failed = false ]; do
                     pstatus ${i};
                     if [ $? = 1 ]; then
                         break;
+                    fi
+                    # A CRITICAL is only logged on the way to exit, the daemon's own or one of its
+                    # components': the daemon is gone. The log is searched again only once its size changed.
+                    log_now=`log_size`
+                    if [ -n "${log_now}" ] && [ "${log_now}" != "${log_seen}" ]; then
+                        log_seen=${log_now}
+                        if [ -n "`log_since ${i} CRITICAL ${log_now}`" ]; then
+                            failed=true
+                            break;
+                        fi
                     fi
                     sleep 1;
                     if [ "`date +%s`" -ge "${start_deadline}" ]; then
@@ -321,7 +389,8 @@ start_service()
                 done
             fi
             if [ $failed = true ]; then
-                echo "${i} did not start";
+                echo "${i} did not start; see ${OSSEC_LOG} for the reason";
+                log_since ${i} 'ERROR|CRITICAL' | tail -n 5
                 # Stop what this start brought up, so the agent is not left half started; daemons
                 # that were already running stay. A reload keeps wazuh-agentd up, so it stops nothing.
                 # The deadline already took most of the unit's TimeoutSec: one second per daemon.
