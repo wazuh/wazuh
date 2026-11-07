@@ -478,6 +478,27 @@ def fake_system_cas(tmp_path):
     _reset_ssl_cache()
 
 
+@pytest.fixture
+def wazuh_log_capture(caplog):
+    """Capture the `wazuh` logger's records whatever its propagation: `wazuh.core.wlogging` sets
+    `propagate = False` on it when another test configured logging first, and then caplog's root handler
+    sees nothing (the same reason `core/tests/test_stats.py` asserts on the module's logger). The handler is
+    attached to the logger itself, and propagation is cut while it is, so no record is counted twice."""
+    import logging
+
+    logger = logging.getLogger("wazuh")
+    old_level, old_propagate = logger.level, logger.propagate
+    logger.addHandler(caplog.handler)
+    logger.setLevel(logging.WARNING)
+    logger.propagate = False
+    try:
+        yield caplog
+    finally:
+        logger.removeHandler(caplog.handler)
+        logger.setLevel(old_level)
+        logger.propagate = old_propagate
+
+
 def _warnings(caplog):
     return [r for r in caplog.records if r.levelname == "WARNING" and "certificate verification disabled" in r.getMessage()]
 
@@ -565,7 +586,7 @@ def _no_trust_warnings(caplog):
     return [r for r in caplog.records if r.levelname == "WARNING" and "no default trust" in r.getMessage()]
 
 
-def test_create_ssl_context_no_ca_no_store_no_default_trust_fails_closed_with_one_warning(fake_system_cas, caplog):
+def test_create_ssl_context_no_ca_no_store_no_default_trust_fails_closed_with_one_warning(fake_system_cas, caplog, wazuh_log_capture):
     """No CA, none of the 5 system paths and an empty OpenSSL default trust: verification stays
     on (every https connection fails) and one warning says why -- never CERT_NONE."""
     context = _RecordingContext(default_cas=0)
@@ -583,7 +604,7 @@ def test_create_ssl_context_no_ca_no_store_no_default_trust_fails_closed_with_on
     assert "indexer.ssl.certificate_authorities" in warnings[0].getMessage()
 
 
-def test_create_ssl_context_no_ca_no_store_uses_default_trust(fake_system_cas, caplog):
+def test_create_ssl_context_no_ca_no_store_uses_default_trust(fake_system_cas, caplog, wazuh_log_capture):
     """None of the 5 system paths, but OpenSSL's default trust loaded CAs: verify against it."""
     context = _RecordingContext(default_cas=146)
     with patch("wazuh.core.indexer.indexer.ssl.create_default_context", return_value=context) as mock_create, \
@@ -603,7 +624,7 @@ def test_create_ssl_context_real_context_without_store_keeps_verifying(fake_syst
 
 
 @pytest.mark.parametrize("ca_certs", [[], ["/path/ca.pem"]], ids=["no-ca", "configured-ca"])
-def test_create_ssl_context_false_disables_verification(fake_system_cas, caplog, ca_certs):
+def test_create_ssl_context_false_disables_verification(fake_system_cas, caplog, wazuh_log_capture, ca_certs):
     open(fake_system_cas[0], "w").close()
     context = _RecordingContext()
     with patch("wazuh.core.indexer.indexer.ssl.create_default_context", return_value=context) as mock_create, \
@@ -621,7 +642,7 @@ def test_create_ssl_context_false_disables_verification(fake_system_cas, caplog,
     assert "verify_certificates is false" in warnings[0].getMessage()
 
 
-def test_create_ssl_context_true_with_ca_does_not_warn(fake_system_cas, caplog):
+def test_create_ssl_context_true_with_ca_does_not_warn(fake_system_cas, caplog, wazuh_log_capture):
     context = _RecordingContext()
     with patch("wazuh.core.indexer.indexer.ssl.create_default_context", return_value=context), \
             caplog.at_level("WARNING", logger="wazuh"):
