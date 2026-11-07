@@ -12,10 +12,13 @@ The verdict tests build sides at 0.90, 0.97 and 1.02 of each other: the three pl
 fail loudly.
 """
 import json
+from pathlib import Path
 import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 
 import pytest
 
@@ -1184,8 +1187,18 @@ def bind_socket(path):
 
 
 def ready_harness(tmp_path, before="", after="", sockets=("inventory-sync-http.sock", "engine-api-http.sock")):
-    """Source ab_indexer.sh (hook), take the log mark, append `after` to the log, run wait_manager_ready."""
-    home = tmp_path / "home"
+    """Source ab_indexer.sh (hook), take the log mark, append `after` to the log, run wait_manager_ready.
+
+    The fake manager home lives in a short directory under /tmp, not in `tmp_path`: a UNIX socket path is capped
+    at 108 bytes (AF_UNIX), and pytest's per-test directories on CI runners exceed it."""
+    short = tempfile.mkdtemp(prefix="ab-", dir="/tmp")
+    try:
+        return _ready_harness(Path(short) / "home", before, after, sockets)
+    finally:
+        shutil.rmtree(short, ignore_errors=True)
+
+
+def _ready_harness(home, before, after, sockets):
     (home / "logs").mkdir(parents=True)
     log = home / "logs" / "wazuh-manager.log"
     log.write_text(before)
