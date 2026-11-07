@@ -40,7 +40,7 @@ struct FetchSpec
     nlohmann::json sort;                        ///< Sort array; drives `search_after`.
     std::optional<nlohmann::json> sourceFilter; ///< Optional `_source` filter.
     std::string pageTokenPointer;               ///< Pointer into a hit giving its token; "" disables tokens.
-    std::size_t pageSize {100};                 ///< Hits per request.
+    std::size_t pageSize {100};                 ///< Hits per request (at most: see PageSizer).
     std::size_t slices {1};                     ///< Parallel PIT slices. Only legal on a full fetch.
 };
 
@@ -67,6 +67,10 @@ struct FetchOutcome
  *    would silently skip whatever the slower slices had not delivered yet.
  *  - **The first slice to fail ends the fetch for all of them**, so the siblings do not keep paying
  *    full download cost for pages the sink can no longer keep.
+ *  - **A page too large for a query is asked again with half the hits** (same PIT, `search_after`
+ *    and slice), down to one hit; the size grows back after a few pages that fit. Only a single
+ *    document over the cap fails the fetch. The end of the data is a page shorter than the size it
+ *    asked for, not than `pageSize`.
  */
 class PitPaginator final
 {
@@ -158,6 +162,66 @@ public:
     }
 
 private:
+    /**
+     * @brief The hits a page asks for: `pageSize`, halved while responses are too large for a query.
+     *
+     * After a cut, the size doubles back (capped at `pageSize`) once REGROW_AFTER pages in a row
+     * fitted, so one large stretch of documents does not slow the rest of the fetch down for good.
+     */
+    class PageSizer final
+    {
+    public:
+        /// Pages in a row that must fit before the size doubles back.
+        static constexpr std::size_t REGROW_AFTER = 4;
+
+        explicit PageSizer(std::size_t pageSize)
+            : m_max {std::max<std::size_t>(pageSize, 1)}
+            , m_size {m_max}
+        {
+        }
+
+        std::size_t size() const noexcept
+        {
+            return m_size;
+        }
+
+        /// Halve the size. @return False when it is already 1 (nothing left to cut).
+        bool shrink() noexcept
+        {
+            m_fitted = 0;
+            if (m_size <= 1)
+            {
+                return false;
+            }
+            m_size /= 2;
+            return true;
+        }
+
+        /// A page fitted at the current size.
+        void grow() noexcept
+        {
+            if (m_size < m_max && ++m_fitted >= REGROW_AFTER)
+            {
+                m_size = std::min(m_max, m_size * 2);
+                m_fitted = 0;
+            }
+        }
+
+    private:
+        std::size_t m_max;
+        std::size_t m_size;
+        std::size_t m_fitted {0};
+    };
+
+    static std::string sliceLabel(const std::optional<std::size_t>& sliceId, std::size_t slices)
+    {
+        if (!sliceId.has_value())
+        {
+            return {};
+        }
+        return " (slice " + std::to_string(*sliceId + 1) + "/" + std::to_string(slices) + ")";
+    }
+
     /// One slice's pages (or the whole fetch when @p sliceId is empty), until the source runs dry.
     FetchOutcome pageLoop(const FetchSpec& spec,
                           content_manager::IContentSink& sink,
@@ -177,6 +241,7 @@ private:
             }
 
             std::optional<nlohmann::json> searchAfter;
+            PageSizer sizer {spec.pageSize};
             while (!m_abandon.load(std::memory_order_acquire))
             {
                 if (m_stop.load())
@@ -185,8 +250,30 @@ private:
                     break;
                 }
 
-                const auto hits = m_port.search(
-                    m_session.pit(), spec.pageSize, spec.query, spec.sort, searchAfter, spec.sourceFilter, slice);
+                const auto size = sizer.size();
+                nlohmann::json hits;
+                try
+                {
+                    hits = m_port.search(
+                        m_session.pit(), size, spec.query, spec.sort, searchAfter, spec.sourceFilter, slice);
+                }
+                catch (const content_manager::ResponseTooLargeError&)
+                {
+                    // The same page again (same PIT, cursor and slice) with half the hits; one hit that is still
+                    // too large is the error it always was.
+                    if (!sizer.shrink())
+                    {
+                        throw;
+                    }
+                    logDebug1(WM_CONTENTUPDATER,
+                              "Page of '%s'%s too large for a query at %zu hits; retrying it with %zu.",
+                              std::string {topic}.c_str(),
+                              sliceLabel(sliceId, spec.slices).c_str(),
+                              size,
+                              sizer.size());
+                    continue;
+                }
+                sizer.grow();
                 const auto& hitArray = hits.at("hits");
                 if (!hitArray.is_array() || hitArray.empty())
                 {
@@ -209,7 +296,8 @@ private:
                 }
 
                 advanceHighest(outcome.highestPageToken, pageToken);
-                if (hitArray.size() < spec.pageSize)
+                // Against the size this page asked for: a page cut down for size is not the end.
+                if (hitArray.size() < size)
                 {
                     break;
                 }

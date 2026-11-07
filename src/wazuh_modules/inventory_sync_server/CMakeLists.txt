@@ -58,7 +58,7 @@ endif()
 target_link_libraries(
   inventory_sync_server
   PUBLIC wazuh_metrics
-  PRIVATE pthread wazuh_uds_http_server wazuhext indexer_connector vulnerability_scanner)
+  PRIVATE pthread wazuh_uds_http_server wazuhext indexer_client vulnerability_scanner)
 
 set_target_properties(inventory_sync_server PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE
                                                       BUILD_RPATH "$ORIGIN/../lib")
@@ -66,6 +66,9 @@ set_target_properties(inventory_sync_server PROPERTIES BUILD_RPATH_USE_ORIGIN TR
 if(UNIT_TEST)
   enable_testing()
   add_coverage_libraries(inventory_sync_server)
+  # D81: libstdc++'s assertions in the library under test, so an access through an empty std::optional (or out of a
+  # vector's range) aborts the suite instead of reading garbage. Test builds only: release code is unchanged.
+  target_compile_definitions(inventory_sync_server PRIVATE _GLIBCXX_ASSERTIONS)
   add_subdirectory(test)
 endif()
 

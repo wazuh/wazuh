@@ -9,4 +9,6 @@ file(GLOB CONTENT_MANAGER_TEST_TOOL_SRC "*.cpp")
 
 add_executable(content_manager_test_tool ${CONTENT_MANAGER_TEST_TOOL_SRC})
 
-target_link_libraries(content_manager_test_tool content_manager indexer_connector pthread)
+# The tool starts the process's indexer_client runtime itself, as a host does (RuntimeOwner + Client), and hands the
+# Client to content_manager's v2 adapter.
+target_link_libraries(content_manager_test_tool content_manager indexer_client pthread)

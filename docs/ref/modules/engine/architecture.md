@@ -70,7 +70,7 @@ cmlib --> indexer
 indexer --> cmlib
 ```
 
-The diagram shows the engine boundary and its relationships with the outside world. Events enter through the **Server** module, are routed by the **Orchestrator** to the active security policies, and are processed by the **Backend** using the executable graph produced by the **Builder**. Content (decoders, integrations, policies, KVDBs) is pulled from `wazuh-indexer` by the **Engine Content Manager** through the shared **Content Manager** library, which the engine links in-process; the **Indexer Connector** carries outbound processed events and the engine's own remote configuration.
+The diagram shows the engine boundary and its relationships with the outside world. Events enter through the **Server** module, are routed by the **Orchestrator** to the active security policies, and are processed by the **Backend** using the executable graph produced by the **Builder**. Content (decoders, integrations, policies, KVDBs) is pulled from `wazuh-indexer` by the **Engine Content Manager** through the shared **Content Manager** library, which the engine links in-process; the **Indexer Connector** carries outbound processed events, while the engine's own remote configuration is read through its `analysisd` indexer client.
 
 ---
 
@@ -87,7 +87,7 @@ The diagram shows the engine boundary and its relationships with the outside wor
 | KVDB | Per-space key-value lookups used by decoders and filters | [Key Value Databases (KVDBs)](./README.md#key-value-databases-kvdbs) |
 | IOC | Global Indicator-of-Compromise databases consumed by enrichment | [IOC enrichment](./README.md#ioc-enrichment) |
 | Geo | GeoIP/ASN enrichment using MaxMind databases | [Geo enrichment](./README.md#geo-enrichment) |
-| Indexer Connector | Engine's own `wazuh-indexer` channel: outbound events, inbound configuration | [Output process](./README.md#output-process) |
+| Indexer Connector | Engine's own `wazuh-indexer` channel: outbound events (the remote configuration is read through the `analysisd` indexer client) | [Output process](./README.md#output-process) |
 | Content Manager (shared library) | Downloads ruleset and IoC content from `wazuh-indexer`; linked in-process, shared with Vulnerability Detection | `src/engine/source/cmcontent/README.md` |
 | Stream Log | Async rotating log channels backing file outputs and the event dumper | [Output directory structure](./README.md#output-directory-structure) |
 | Configuration | Local settings (`analysisd.*` internal options, `WAZUH_*` environment variables, the `<indexer>` section of `wazuh-manager.conf`) plus runtime settings pulled from `wazuh-indexer` | [Engine configuration](./configuration.md) |
@@ -134,9 +134,9 @@ The Geo module performs GeoIP and ASN lookups using MaxMind MMDB databases. Like
 
 ### Indexer Connector
 
-The Indexer Connector carries the engine's own `wazuh-indexer` traffic: **outbound** processed events (driven by policy outputs) and **inbound** runtime configuration (consumed by the Configuration module).
+The Indexer Connector carries the engine's **outbound** processed events (driven by policy outputs) and raw events to `wazuh-indexer`, posting them to the `events` and `raw` buckets of the `analysisd` indexer client. The **inbound** runtime configuration (consumed by the Configuration module) is read through the engine's `analysisd` indexer client.
 
-**Content downloads do not go through it.** Ruleset and IoC content is pulled by the shared **Content Manager** library (`shared_modules/content_manager`), the same library the Vulnerability Detection module uses. It opens no connection of its own: the engine builds one indexer connector and hands it to both, so there is one health monitor and one place to configure the indexer. Downloads use only the connector's synchronous read calls, never its indexing queue, so they do not delay events.
+**Content downloads do not go through it.** Ruleset and IoC content is pulled by the shared **Content Manager** library (`shared_modules/content_manager`), the same library the Vulnerability Detection module uses. Since the engine moved its reads to the `indexer_client` runtime, the library reaches the indexer through the engine's own `analysisd` indexer client, the same one the remote configuration read uses (see [Indexer client](./configuration.md#indexer-client-settings)); the event writes use that same client too (buckets `events` and `raw`), so the engine holds one connection to the indexer. Downloads never use the writes' buckets, so they do not delay events.
 
 ### Content Manager (shared library)
 

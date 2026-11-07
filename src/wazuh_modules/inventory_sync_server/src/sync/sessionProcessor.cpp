@@ -11,6 +11,7 @@
 #include "sync/sessionProcessor.hpp"
 
 #include "common/jsonNestingDepth.hpp"
+#include "indexer/indexerClientSyncAdapter.hpp" // translateCause
 #include "sync/stateIndexAllowlist.hpp"
 #include "sync/syncQueryBuilder.hpp"
 
@@ -18,6 +19,7 @@
 #include "loggerHelper.h"
 #include "wazuhCommon.hpp"
 
+#include <algorithm>
 #include <json.hpp>
 
 #include <set>
@@ -382,10 +384,13 @@ namespace invsync::sync
             return noop();
         }
 
-        // deleteByQuery STAGES into the connector (it is flushed, not immediate), so the flush
-        // right here is what makes "200 answered" mean "deletes applied" -- and what keeps a
-        // follow-up SyncData of the same agent (a full resync's second request) from being
-        // reordered ahead of the deletes.
+        // deleteByQuery is IMMEDIATE, not staged: it returns once the indexer applied it, so "200
+        // answered" means "deletes applied" -- and, since the worker serves this agent's sessions
+        // in order, a follow-up SyncData of the same agent (a full resync's second request) cannot
+        // overtake the deletes. The connector first waits for every write it still has pending
+        // (D49), so neither can the deletes overtake an earlier session's documents. The flush()
+        // below sends nothing then; it stays as a harmless no-op so a connector that does stage
+        // keeps the same durability contract.
         for (const auto& index : indices)
         {
             connector.deleteByQuery(index, session.agentId, m_managerClusterName);
@@ -396,19 +401,85 @@ namespace invsync::sync
     }
 
     ProcessOutcome SessionProcessor::executeDeleteAgent(const std::string& agentId,
-                                                        indexer::IIndexerConnectorSync& connector) const
+                                                        indexer::IIndexerConnectorSync& connector,
+                                                        const AgentDeletionDeps& deletion,
+                                                        std::chrono::steady_clock::time_point until) const
     {
-        // The BY-QUERY half of a whole-agent deletion, and only that half: this connector is the one
-        // that writes state documents, so it is the one that can delete them in order (on the
-        // agent's own shard, behind that agent's in-flight sessions). The agent's `/config` and
-        // `/stats` documents are written by the ASYNC connector, and the deletion route deletes them by
-        // document id on that connector's own queue instead -- see AGENT_DELETION_SCOPE_BY_ID and
-        // deleteAgentEndpoint.hpp for why a by-query pass from here could not order against a report
-        // that queue had accepted but not yet pushed.
+        using Clock = std::chrono::steady_clock;
+        using indexer::ConnectorError;
+
+        // The two halves of a whole-agent deletion, both on the agent's own shard worker (I147c), so two deletions
+        // of one agent never overlap and both are ordered behind the agent's in-flight sessions.
         //
-        // deleteByQuery stages; the flush is the durability of the 200, exactly like
-        // executeCleans() -- a 404 for a not-yet-created index counts as success inside the
-        // connector, so re-running a delete is harmless (that is authd's retry contract).
+        // BY-ID (AGENT_DELETION_SCOPE_BY_ID: `wazuh-agent-config`, `wazuh-agent-stats`, whose `_id` IS the agent id).
+        // POST /config and POST /stats write them through the `agent-state` bucket, which is `ordered`: an op is
+        // never sent before an earlier op of its (index, _id) has a final outcome. So:
+        //  1. cancel(agent), not awaited: the agent's pending reports are dropped, an in-flight one is marked (it is
+        //     never requeued; if its bulk succeeds it stays applied, and the ordered key keeps our delete behind it).
+        //  2. ONE Group with both deletes, tagged with the agent and committed at once (I147d), so a refused add
+        //     leaves nothing half-queued. A client closing between the adds and commit() is seen only in the
+        //     ticket, after the by-query: harmless, the deletion is idempotent and answers 503 either way.
+        //  3. Its ticket is awaited after the by-query, inside the same budget (`until`).
+        //
+        // The residual, named rather than implied (obj. 11): cancel(agent) also lifts the ambiguous-retry pin of a
+        // report that timed out on a node (IC README § Ordered buckets, the D38 window, and § Cancellation), so the
+        // ordered key no longer holds our delete behind it. That node may still apply the report after the delete
+        // reached another one, and the document reappears. The sweeper note()d below deletes such late documents
+        // by id one window later, best effort.
+        std::shared_ptr<indexer_client::IWriter> writer;
+        indexer_client::GroupTicket ticket;
+        // Every failure after the cancel cancels again, without waiting: our own committed deletes are then
+        // dropped instead of landing after the 503, and the dispatcher's retry starts from a clean key.
+        const auto cancelAgent = [&writer, &agentId]()
+        {
+            try
+            {
+                static_cast<void>(writer->cancel(agentId));
+            }
+            catch (...) // LCOV_EXCL_LINE -- the library answers through the ticket; never let it escape.
+            {
+            }
+        };
+
+        if (deletion.byId)
+        {
+            writer = deletion.agentState.lock();
+            if (!writer)
+            {
+                throw ConnectorError("the agent-state writer is gone (the module is stopping)",
+                                     ConnectorError::Cause::Unavailable);
+            }
+
+            cancelAgent(); // Step 1: drop what the agent still has pending in the bucket.
+
+            auto group = writer->group();
+            for (const auto& index : AGENT_DELETION_SCOPE_BY_ID)
+            {
+                indexer_client::Op op;
+                op.kind = indexer_client::Op::Kind::Delete;
+                op.index = std::string {index};
+                op.id = agentId;
+                op.tag = agentId;
+                if (const auto cause = group.add(std::move(op)); cause != indexer_client::Cause::None)
+                {
+                    const auto reason = group.lastAddReason();
+                    cancelAgent(); // The Group is abandoned uncommitted when it goes out of scope.
+                    throw ConnectorError(std::string {"by-id delete refused ("} + indexer_client::toString(cause) +
+                                             (reason.empty() ? "" : ": " + reason) + ")",
+                                         indexer::translateCause(cause));
+                }
+            }
+            ticket = group.commit();
+        }
+
+        // BY-QUERY (AGENT_DELETION_SCOPE_BY_QUERY: this cluster's `wazuh-states-*`), written by the sync pipeline,
+        // so this worker's connector deletes it in order.
+        //
+        // deleteAgentByQuery is immediate, exactly like executeCleans()'s deleteByQuery: it returns once applied
+        // (the durability of the 200), after the connector waited for every write it still had pending (D49), and
+        // it bounds itself with the deletion route's budget (I145, I145b) instead of an agent request's. A 404 for a
+        // not-yet-created index counts as success inside the connector, so re-running a delete is harmless (that is
+        // the dispatcher's retry contract). The trailing flush() is the same harmless no-op as in executeCleans().
         //
         // KNOWN LIMITATION, deliberate, and confined to this half: a _delete_by_query is a SEARCH,
         // so it only sees refreshed segments. This deletion arrives behind the agent's last session
@@ -419,19 +490,86 @@ namespace invsync::sync
         // load and lets the other workers' writes for this agent land first. Repeating the deletion
         // is the recovery.
         std::string scope;
-        for (const auto& index : AGENT_DELETION_SCOPE_BY_QUERY)
+        try
         {
-            connector.deleteByQuery(std::string {index}, agentId, m_managerClusterName);
-            scope += scope.empty() ? "" : ", ";
-            scope += index;
+            for (const auto& index : AGENT_DELETION_SCOPE_BY_QUERY)
+            {
+                connector.deleteAgentByQuery(std::string {index}, agentId, m_managerClusterName);
+                scope += scope.empty() ? "" : ", ";
+                scope += index;
+            }
+            connector.flush();
         }
-        connector.flush();
+        catch (...)
+        {
+            if (writer)
+            {
+                cancelAgent();
+            }
+            throw;
+        }
 
-        // "state documents", not "every document": the other half of the scope is queued on the
-        // async connector by the endpoint, and its outcome is not observable from here. And
-        // "completed", not "deleted every": the refresh interval can hide what the agent's last
-        // session wrote -- see the KNOWN LIMITATION above.
-        LOGFN_INFO(logFn(), "Deletion of agent %s state documents completed (%s).", agentId.c_str(), scope.c_str());
+        if (deletion.byId)
+        {
+            // The by-id wait, in slices so `closing` and the shared deadline are honoured while the bucket works.
+            while (!ticket.ready())
+            {
+                if (deletion.closing && deletion.closing->load(std::memory_order_acquire))
+                {
+                    cancelAgent();
+                    throw ConnectorError("the module is closing before the by-id deletes resolved",
+                                         ConnectorError::Cause::Unavailable);
+                }
+                const auto now = Clock::now();
+                if (now >= until)
+                {
+                    cancelAgent();
+                    throw ConnectorError("the deletion budget ran out before the by-id deletes resolved",
+                                         ConnectorError::Cause::Unavailable);
+                }
+                static_cast<void>(ticket.wait(std::min(now + deletion.slice, until)));
+            }
+
+            const auto results = ticket.wait(Clock::now());
+            if (!results.ok())
+            {
+                cancelAgent();
+                throw ConnectorError(std::string {"by-id deletes failed ("} + indexer_client::toString(results.cause) +
+                                         (results.reason.empty() ? "" : ": " + results.reason) + ")",
+                                     indexer::translateCause(results.cause));
+            }
+            for (const auto& result : results.value)
+            {
+                // Ok covers Deleted and NotFound (deleting an absent document is the idempotent retry). A missing
+                // INDEX is a permanent item failure to the library, but here it means there is nothing to delete
+                // -- the same answer the by-query half gives a 404 (I147b).
+                const bool indexMissing = result.status == indexer_client::Status::Failed &&
+                                          result.cause == indexer_client::Cause::ItemPermanent &&
+                                          result.httpStatus == 404 &&
+                                          result.itemErrorType == "index_not_found_exception";
+                if (result.status != indexer_client::Status::Ok && !indexMissing)
+                {
+                    cancelAgent();
+                    throw ConnectorError(std::string {"a by-id delete failed ("} +
+                                             indexer_client::toString(result.cause) +
+                                             (result.reason.empty() ? "" : ": " + result.reason) + ")",
+                                         indexer::translateCause(result.cause));
+                }
+            }
+
+            if (const auto sweeper = deletion.sweeper.lock())
+            {
+                sweeper->note(agentId);
+            }
+        }
+
+        // "completed", not "deleted every": the refresh interval can hide what the agent's last session wrote (see
+        // the KNOWN LIMITATION above), and a late report can outlive the by-id half until the sweep (see the top).
+        LOGFN_INFO(logFn(),
+                   "Deletion of agent %s %s completed (%s).",
+                   agentId.c_str(),
+                   deletion.byId ? "state, configuration and statistics documents" : "state documents",
+                   scope.c_str());
         return ok();
     }
 

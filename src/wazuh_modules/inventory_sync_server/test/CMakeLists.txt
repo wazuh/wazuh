@@ -31,10 +31,11 @@ target_link_libraries(
   # inventorySyncServerModule_test.cpp builds a real cJSON tree to exercise the C-ABI's borrow
   # contract; wazuhext is where cJSON lives (see the module's CMakeLists.txt).
   wazuhext
-  # indexerGating_test.cpp's file-local fake connectors implement IIndexerConnector directly and
-  # need no indexer_connector symbols themselves, but inventorySyncServerModule_test.cpp's default
-  # (unmocked) startup path resolves into the real IndexerConnectorSync inside the linked .so.
-  indexer_connector)
+  # indexerClientSyncAdapter_test.cpp, indexerGating_test.cpp, metricsEndpoint_test.cpp,
+  # agentDeleteSweeper_test.cpp and agentStateOrdering_test.cpp drive the real adapter on a real runtime of
+  # the client library; the .so is shared with the module's own use of it, so the process still holds a
+  # single runtime.
+  indexer_client)
 
 target_include_directories(
   inventory_sync_server_utest
@@ -56,9 +57,16 @@ target_include_directories(
           ${SRC_FOLDER}/external/llhttp/include
           # vulnerabilityScannerSync.hpp: the NEUTRAL coordination header the coordinator tests
           # exercise -- never the scanner's facade.
-          ${SRC_FOLDER}/wazuh_modules/vulnerability_scanner/include)
+          ${SRC_FOLDER}/wazuh_modules/vulnerability_scanner/include
+          # The client library's public headers (RuntimeOwner, Client, Group) and its in-process fake
+          # indexer (header-only test fixture: rules, bulk responder, node health), which the adapter
+          # suite serves its runtime from. httplib is what the fake is written on.
+          ${SRC_FOLDER}/shared_modules/indexer_client/include
+          ${SRC_FOLDER}/shared_modules/indexer_client/tests/fake
+          ${SRC_FOLDER}/external/cpp-httplib)
 
-target_compile_definitions(inventory_sync_server_utest PRIVATE ASIO_STANDALONE)
+# D81: the same libstdc++ assertions as the library under test (its CMakeLists.txt).
+target_compile_definitions(inventory_sync_server_utest PRIVATE ASIO_STANDALONE _GLIBCXX_ASSERTIONS)
 
 add_test(NAME inventory_sync_server_utest COMMAND inventory_sync_server_utest)
 set_tests_properties(inventory_sync_server_utest PROPERTIES LABELS inventory_sync_server_utest)

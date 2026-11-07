@@ -32,10 +32,12 @@ from the indexer.
   here exercises indexer permissions — a role whose write/delete privileges do
   not cover the `wazuh-agent-config` / `wazuh-agent-stats` patterns would pass
   this suite and fail in production.
-- `config.json` sets `flush_interval_seconds: 1` on purpose. It reaches the
-  ASYNCHRONOUS connector (the one `POST /config` and `POST /stats` write
-  through), whose default 20 s timer would otherwise make every test that reads
-  those two indices wait for it.
+- `config.json` carries only the indexer host and the credentials: there is no flush timer to tune any more.
+  `POST /config` and `POST /stats` post into the `agent-state` bucket of the indexer client, which sends on its
+  own size and age bounds (age 5 s by default), so a test that reads one of those two indices back waits up to
+  that age; `test_delete_agent.py` budgets for it. The testtool also takes an optional `internal_options` string
+  (`key=value` lines of the indexer client runtime's options): `test_agent_sweep.py` boots a server of its own
+  with `wazuh_modules.indexer_client_request_timeout_ms=2000`, which shortens the post-deletion sweep window.
 
 ## Running locally
 
@@ -60,7 +62,8 @@ Environment overrides: `INVSYNC_TESTTOOL` (harness binary), `FLATC`,
 | `test_cleans_and_resync.py` | Cleans single/multi-index (agent-scoped, deduplicated), forbidden-index noop, and the composed full resync (D19: Cleans + ModuleDelta) |
 | `test_checksum.py` | **ModuleCheck for real** (the legacy suite's hole): match, mismatch→409, agent scoping, `search_after` pagination past 1000 documents, empty-set aggregate |
 | `test_metadata_groups.py` | MetadataDelta/GroupDelta across declared indices, the `global_version` stale-writer guard, MetadataCheck repair-if-needed, forbidden-indices noop |
-| `test_delete_agent.py` | `POST /_internal/agents/delete`: agent-scoped wipe across the whole deletion scope — `wazuh-states-*` by query, **plus** `wazuh-agent-config` and `wazuh-agent-stats` by document id on the asynchronous connector that writes them — 404-as-success retries, body validation (including both JSON spellings of the agent id), FIFO vs the agent's own sessions, and a `/config`/`/stats` report still in that connector's queue when the deletion runs (queued behind it, so it cannot land afterwards). The tests refresh the indices before deleting, because the server does not. The route answers at COMPLETION, so these cases deliberately do **not** poll for the by-query half — the documents are already gone when the response arrives, and the absence of a `wait_for_docs()` IS the assertion. Carries one **skipped** test recording the remaining known limitation: a `wazuh-states-*` document written inside the index refresh interval survives the deletion |
+| `test_delete_agent.py` | `POST /_internal/agents/delete`: agent-scoped wipe across the whole deletion scope — `wazuh-states-*` by query, **plus** `wazuh-agent-config` and `wazuh-agent-stats` by document id, one Group on the `agent-state` bucket that writes them — 404-as-success retries (an agent with no `wazuh-agent-*` indices answers 200 and creates none), body validation (including both JSON spellings of the agent id), FIFO vs the agent's own sessions, and a `/config`/`/stats` report still pending in that bucket when the deletion runs (cancelled, or ordered ahead of its delete, so it cannot land afterwards). The tests refresh the indices before deleting, because the server does not. The route answers at COMPLETION — the by-query done and flushed, the by-id deletes resolved — so these cases deliberately do **not** poll for the purge: the documents are already gone when the response arrives, and the absence of a `wait_for_docs()` IS the assertion. Carries one **skipped** test recording the remaining known limitation: a `wazuh-states-*` document written inside the index refresh interval survives the deletion |
+| `test_agent_sweep.py` | The post-deletion sweep, on a server of its own (request timeout 2 s, so a 7 s window): a `wazuh-agent-stats` document written straight into the indexer after the deletion's 200 — as a node that had timed out on the report would apply it — is gone within two windows, and `sync.agent_delete.sweep.residual` on `GET /metrics` grew by exactly that one |
 | `test_vd_lane.py` | VD-flagged sessions under `--no-vd`: the legitimate-skip row indexes + 200, VD Cleans take the normal pipeline, and `GET /metrics` reflects the lane traffic. Also `POST /_internal/vd/scan`, the on-demand rescan the Task Manager drives: answered at COMPLETION, agent id read from the body with no agent header, body rejections, and nothing indexed (it carries no inventory). Under `--no-vd` its outcome is `503 {"error":"no vulnerability scanner on this node"}` — deliberately not a `200`, which the dispatcher records as `completed` and therefore as a scan that ran; retrying is bounded by `vd_scan`'s attempt budget, so the row dead-letters instead of looping. The Ok path needs a real scanner and runs in the vulnerability-detection integration workflow |
 
 Deliberately NOT here: capacity/budget rejections (413/503) and scan-failure

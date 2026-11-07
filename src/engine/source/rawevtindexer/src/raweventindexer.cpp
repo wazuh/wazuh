@@ -8,10 +8,9 @@
 namespace raweventindexer
 {
 
-RawEventIndexer::RawEventIndexer(std::weak_ptr<wiconnector::IWIndexerConnector> connector, std::string_view indexName)
+RawEventIndexer::RawEventIndexer(std::weak_ptr<wiconnector::IWIndexerConnector> connector)
     : m_enabled(false)
     , m_connector(std::move(connector))
-    , m_indexName(indexName)
 {
     if (m_connector.expired())
     {
@@ -19,7 +18,7 @@ RawEventIndexer::RawEventIndexer(std::weak_ptr<wiconnector::IWIndexerConnector> 
     }
 }
 
-void RawEventIndexer::index(const std::string& data)
+void RawEventIndexer::index(std::string&& data)
 {
     if (!m_enabled.load(std::memory_order_acquire))
     {
@@ -29,46 +28,39 @@ void RawEventIndexer::index(const std::string& data)
     auto connector = m_connector.lock();
     if (connector)
     {
-        connector->index(m_indexName, data);
+        connector->index(std::string(wiconnector::RAW_EVENTS_INDEX), std::move(data));
     }
+}
+
+void RawEventIndexer::index(const std::string& data)
+{
+    // Checked before the copy, so a disabled indexer pays nothing
+    if (!m_enabled.load(std::memory_order_acquire))
+    {
+        return;
+    }
+
+    index(std::string(data));
 }
 
 void RawEventIndexer::index(const char* data)
 {
-    if (!data || *data == '\0')
+    if (!data || *data == '\0' || !m_enabled.load(std::memory_order_acquire))
     {
         return;
     }
 
-    if (!m_enabled.load(std::memory_order_acquire))
-    {
-        return;
-    }
-
-    auto connector = m_connector.lock();
-    if (connector)
-    {
-        connector->index(m_indexName, std::string_view(data));
-    }
+    index(std::string(data));
 }
 
 void RawEventIndexer::index(std::string_view data)
 {
-    if (data.empty())
+    if (data.empty() || !m_enabled.load(std::memory_order_acquire))
     {
         return;
     }
 
-    if (!m_enabled.load(std::memory_order_acquire))
-    {
-        return;
-    }
-
-    auto connector = m_connector.lock();
-    if (connector)
-    {
-        connector->index(m_indexName, data);
-    }
+    index(std::string(data));
 }
 
 void RawEventIndexer::enable()

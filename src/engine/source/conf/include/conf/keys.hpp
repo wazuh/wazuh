@@ -32,6 +32,7 @@ constexpr std::string_view INDEXER_HOST = "analysisd.indexer_hosts";
 constexpr std::string_view INDEXER_SSL_CA_BUNDLE = "analysisd.indexer_ssl_certificate_authorities";
 constexpr std::string_view INDEXER_SSL_CERTIFICATE = "analysisd.indexer_ssl_certificate";
 constexpr std::string_view INDEXER_SSL_KEY = "analysisd.indexer_ssl_key";
+constexpr std::string_view INDEXER_SSL_VERIFY_CERTIFICATES = "analysisd.indexer_ssl_verify_certificates";
 constexpr std::string_view INDEXER_QUEUE_MAX_BYTES = "analysisd.indexer_queue_max_bytes";
 constexpr std::string_view INDEXER_BULK_MAX_BYTES = "analysisd.indexer_bulk_max_bytes";
 constexpr std::string_view INDEXER_FLUSH_INTERVAL = "analysisd.indexer_flush_interval";

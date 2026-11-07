@@ -210,7 +210,7 @@ Replace `127.0.0.1` with your indexer IP address if it's running on a different 
 files must stay directly in `/etc/wazuh-manager/certs`, given as absolute paths: a relative path resolves against
 the installation directory `/var/wazuh-manager`, and the credential check refuses any file outside `certs/`
 ([Configured file names](credentials.md#configured-file-names)). See the
-[indexer connector configuration](../modules/indexer_connector/configuration.md) for every option.
+[indexer client configuration](../modules/indexer_client/configuration.md) for every option.
 
 ### Start the manager
 

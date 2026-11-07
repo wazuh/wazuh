@@ -16,6 +16,8 @@
 #include "os_net.h"
 #ifndef CLIENT
 #include "mconf-config.h"
+#include "indexer-config.h"
+#include "wm_indexer_runtime.h"
 #endif
 #include <sys/types.h>
 
@@ -89,6 +91,9 @@ static const void *default_modules[] = {
  * @retval OS_INVALID if there is an error
  * */
 static int wm_initialize_default_modules(wmodule **wmodules);
+#ifndef CLIENT
+static bool wm_vulnerability_scanner_enabled(void);
+#endif
 
 // Read XML configuration and internal options
 
@@ -195,6 +200,15 @@ int wm_config() {
     // Inventory sync server: the POST /stateful ingestion pipeline plus the agent-deletion route.
     if ((module = wm_inventory_sync_server_read()))
         wm_add(module);
+
+    // indexer_client runtime: when a consumer exists (inventory sync, or an enabled vulnerability scanner), loads its
+    // library and validates the wazuh_modules.indexer_client_* options against <indexer> before the fork (so "-t"
+    // fails on them too); without one it does nothing. It logs why it fails.
+    if (wm_indexer_runtime_configure(indexer_config,
+                                     wm_find_module(WM_INVENTORY_SYNC_SERVER_CONTEXT.name) != NULL
+                                         || wm_vulnerability_scanner_enabled()) < 0) {
+        return OS_INVALID;
+    }
 
     // The database module won't be available on agents
     if ((module = wm_database_read()))
@@ -849,3 +863,38 @@ static int wm_initialize_default_modules(wmodule **wmodules) {
     }
     return OS_SUCCESS;
 }
+
+#ifndef CLIENT
+/**
+ * @brief Whether the vulnerability scanner will run: its module exists and `enabled` says yes.
+ *
+ * Same decision tree as wm_inventory_sync_server.c's vd_configured_enabled and the scanner's own
+ * start(): no "enabled" key -> enabled; a boolean as is; a string through w_parse_bool() (anything
+ * it does not read as "yes" is disabled); any other type -> enabled. Keep the three in step.
+ *
+ * @return true when the scanner is a consumer of the indexer_client runtime.
+ */
+static bool wm_vulnerability_scanner_enabled(void) {
+    const wmodule *module = wm_find_module(WM_VULNERABILITY_SCANNER_CONTEXT.name);
+    const wm_vulnerability_scanner_t *data;
+    const cJSON *enabled;
+
+    if (!module || !module->data) {
+        return false;
+    }
+
+    data = (const wm_vulnerability_scanner_t *)module->data;
+    enabled = data->vulnerability_detection ? cJSON_GetObjectItem(data->vulnerability_detection, "enabled") : NULL;
+
+    if (!enabled) {
+        return true;
+    }
+    if (cJSON_IsBool(enabled)) {
+        return cJSON_IsTrue(enabled);
+    }
+    if (cJSON_IsString(enabled)) {
+        return w_parse_bool(enabled->valuestring) == 1;
+    }
+    return true;
+}
+#endif

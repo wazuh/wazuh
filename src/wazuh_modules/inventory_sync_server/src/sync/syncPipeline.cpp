@@ -10,6 +10,7 @@
 
 #include "sync/syncPipeline.hpp"
 
+#include "indexer/connectorFailure.hpp"
 #include "loggerHelper.h"
 
 #include <wazuh_metrics/manager.hpp>
@@ -19,6 +20,7 @@
 #include <exception>
 #include <functional>
 #include <stdexcept>
+#include <string_view>
 #include <utility>
 
 namespace
@@ -33,9 +35,8 @@ namespace
 
     constexpr auto SHUTTING_DOWN_BODY {R"({"error":"Service unavailable","code":503})"};
     constexpr auto INDEXER_UNAVAILABLE_BODY {R"({"error":"Service unavailable","code":503})"};
-    constexpr auto INTERNAL_ERROR_BODY {R"({"error":"Internal error","code":500})"};
-    constexpr auto INDEXER_CONTENTION_BODY {
-        R"({"error":"indexer contention","code":503,"reason":"version_conflicts"})"};
+    /// How often a worker holding agents for an abandoned write looks whether it resolved.
+    constexpr std::chrono::milliseconds ABANDONED_HOLD_POLL {250};
 } // namespace
 
 namespace invsync::sync
@@ -63,27 +64,20 @@ namespace invsync::sync
                                           "Enqueue refusals: the pipeline queue byte cap "
                                           "('wazuh_modules.inventory_sync_server_sync_queue_bytes') was reached",
                                           "count");
-        m_bulkFlushes = m_metrics->getOrCreateCounter(
-            invsync::metrics::BULK_FLUSHES, "Successful pipeline group-commit flushes", "count");
+        m_bulkFlushes =
+            m_metrics->getOrCreateCounter(invsync::metrics::BULK_FLUSHES,
+                                          "Pipeline group-commit flushes that confirmed at least one session",
+                                          "count");
         m_bulkBytesTotal = m_metrics->getOrCreateCounter(
             invsync::metrics::BULK_BYTES_TOTAL,
-            "Request payload bytes of the sessions flushed by group commits (wire FlatBuffer "
+            "Request payload bytes of the sessions group commits confirmed (wire FlatBuffer "
             "bytes; the serialized indexer bytes are sync.bytes.ingested)",
             "bytes");
         m_bulkSessionsTotal = m_metrics->getOrCreateCounter(
-            invsync::metrics::BULK_SESSIONS_TOTAL, "Sessions answered by group-commit flushes", "count");
-        m_indexerBulkRequests =
-            m_metrics->getOrCreateCounter(invsync::metrics::INDEXER_BULK_REQUESTS,
-                                          "_bulk HTTP requests the sync connectors actually sent (splits "
-                                          "and retries included), vs. sync.bulk.flushes group commits",
-                                          "count");
-        m_indexerBulkBytes = m_metrics->getOrCreateCounter(
-            invsync::metrics::INDEXER_BULK_BYTES, "NDJSON payload bytes those _bulk requests carried", "bytes");
-        m_indexerConflictRetries =
-            m_metrics->getOrCreateCounter(invsync::metrics::INDEXER_CONFLICT_RETRIES,
-                                          "By-query version conflicts waited out and retried; a conflict that "
-                                          "clears never reaches sync.bulk.flush.failures.documents",
-                                          "count");
+            invsync::metrics::BULK_SESSIONS_TOTAL, "Sessions answered 200 by group-commit flushes", "count");
+        // sync.indexer.bulk.requests / bulk.bytes.total / conflict.retries are pull metrics of the
+        // facade now (read from the indexer client's own counters, I140); only the exhausted
+        // conflicts are an outcome the pipeline decides.
         m_indexerConflictExhausted =
             m_metrics->getOrCreateCounter(invsync::metrics::INDEXER_CONFLICT_EXHAUSTED,
                                           "By-query operations whose version-conflict allowance ran out, "
@@ -96,14 +90,18 @@ namespace invsync::sync
                 std::string {invsync::metrics::BULK_FLUSH_FAILURES_PREFIX} + cause, description, "count");
         };
         m_flushFailuresDocuments = failureCounter(
-            "documents", "Group-commit flushes failed because the indexer rejected documents or confirmed nothing");
+            "documents", "Sessions failed because the indexer rejected their documents or confirmed nothing");
         m_flushFailuresExhausted =
-            failureCounter("exhausted", "Group-commit flushes failed by an exhausted retry budget (429, transport)");
-        m_flushFailuresOther = failureCounter("other", "Group-commit flushes failed for any other reason");
+            failureCounter("exhausted", "Sessions failed by an exhausted retry budget (429, transport)");
+        m_flushFailuresUnavailable =
+            failureCounter("unavailable",
+                           "Sessions failed because the indexer could not take the work now: no usable node, "
+                           "throttled, queue full, transport, 5xx, closing");
+        m_flushFailuresOther = failureCounter("other", "Sessions failed for any other reason");
         m_bulkSessionsFailed = m_metrics->getOrCreateCounter(
             invsync::metrics::BULK_SESSIONS_FAILED,
-            "Sessions answered 500/503 by a failed group commit -- the blast radius: one bad flush "
-            "punishes every session in its batch",
+            "Sessions answered 500/503 by a group commit: each session answers for its own operations, "
+            "so the healthy sessions of the same batch still get their 200",
             "count");
         m_durationBulk = m_metrics->getOrCreateHistogram(
             invsync::metrics::SESSION_DURATION_BULK, "Enqueue-to-response time of bulk sessions", "microseconds");
@@ -305,45 +303,56 @@ namespace invsync::sync
         return false;
     }
 
-    void SyncPipeline::respondConnectorFailure(std::vector<Item>& items,
-                                               indexer::IIndexerConnectorSync& connector,
-                                               indexer::ConnectorError::Cause cause)
+    void SyncPipeline::respondFailure(Item& item, indexer::ConnectorError::Cause cause)
     {
-        // 503 when the indexer is the problem (the agent retries next cycle, like Offline today);
-        // 503 + Retry-After when a by-query lost its race against a competing writer of the same
-        // agent's documents (the documents are consistent; the header keeps the re-send from
-        // racing it again); 500 when it is neither (the agent also retries, but the log line is
-        // operator-actionable).
-        bool available {false};
-        try
-        {
-            available = connector.isAvailable();
-        }
-        catch (...) // LCOV_EXCL_LINE -- isAvailable() does not throw in the real connector
-        {
-        }
-
-        if (available && cause == indexer::ConnectorError::Cause::ConflictsExhausted)
+        // Decided by the cause alone (I135): the cause already says whether the indexer was the
+        // problem, so nothing re-asks isAvailable() after the fact.
+        const auto failure = indexer::failureResponse(cause, m_config.conflictRetryAfterSeconds);
+        if (cause == indexer::ConnectorError::Cause::ConflictsExhausted)
         {
             m_indexerConflictExhausted->add();
-            const std::vector<std::pair<std::string, std::string>> headers {
-                {"Retry-After", std::to_string(m_config.conflictRetryAfterSeconds)}};
-            for (auto& item : items)
-            {
-                respond(item, 503, INDEXER_CONTENTION_BODY, headers);
-            }
-            return;
         }
-
-        const auto status = available ? 500 : 503;
-        const auto& body = available ? INTERNAL_ERROR_BODY : INDEXER_UNAVAILABLE_BODY;
-        for (auto& item : items)
+        if (failure.retryAfter)
         {
-            respond(item, status, body);
+            respond(item, failure.status, failure.body, {{"Retry-After", *failure.retryAfter}});
+        }
+        else
+        {
+            respond(item, failure.status, failure.body);
         }
     }
 
-    void SyncPipeline::flushAndRespond(std::vector<Item>& batch,
+    void SyncPipeline::respondConnectorFailure(std::vector<Item>& items, indexer::ConnectorError::Cause cause)
+    {
+        for (auto& item : items)
+        {
+            respondFailure(item, cause);
+        }
+    }
+
+    void SyncPipeline::countFlushFailure(indexer::ConnectorError::Cause cause)
+    {
+        const std::string_view suffix {indexer::failureMetric(cause)};
+        if (suffix == "documents")
+        {
+            m_flushFailuresDocuments->add();
+        }
+        else if (suffix == "exhausted")
+        {
+            m_flushFailuresExhausted->add();
+        }
+        else if (suffix == "unavailable")
+        {
+            m_flushFailuresUnavailable->add();
+        }
+        else
+        {
+            m_flushFailuresOther->add();
+        }
+    }
+
+    void SyncPipeline::flushAndRespond(Shard& shard,
+                                       std::vector<Item>& batch,
                                        std::size_t& batchBytes,
                                        indexer::IIndexerConnectorSync& connector)
     {
@@ -352,51 +361,131 @@ namespace invsync::sync
             return;
         }
 
+        // The whole durability contract in one call: flushSessions() sends the staged operations on
+        // THIS thread and answers, per session in staging order, whether the indexer took ALL of
+        // that session's operations (I136) -- REQ-SYNC-4 without registerNotify. A session answers
+        // for its own operations only: one rejected document no longer fails its batch-mates.
+        std::vector<indexer::SessionOutcome> outcomes;
+        // LCOV_EXCL_START -- flushSessions() reports indexer failures in its outcomes; this guards a
+        // connector that throws anyway, so its sessions are still answered.
         try
         {
-            // The whole durability contract in one call: flush() sends the staged operations on
-            // THIS thread and only returns cleanly when the indexer took them (REQ-SYNC-4 without
-            // registerNotify -- there is no callback machinery left to go stale).
-            connector.flush();
-            m_bulkFlushes->add();
-            m_bulkBytesTotal->add(batchBytes);
-            m_bulkSessionsTotal->add(batch.size());
-            for (auto& item : batch)
-            {
-                respond(item, 200, R"({"status":"ok"})");
-            }
+            outcomes = connector.flushSessions(batch.size());
         }
         catch (const std::exception& e)
         {
-            LOGFN_WARN(
-                logFn(), "A bulk flush of %zu session(s) failed: %s. The agents will retry.", batch.size(), e.what());
             const auto* typed = dynamic_cast<const indexer::ConnectorError*>(&e);
-            const auto cause = typed ? typed->cause() : indexer::ConnectorError::Cause::Other;
-            switch (cause)
-            {
-                case indexer::ConnectorError::Cause::DocumentRejected:
-                case indexer::ConnectorError::Cause::ConflictsExhausted: m_flushFailuresDocuments->add(); break;
-                case indexer::ConnectorError::Cause::RetryExhausted: m_flushFailuresExhausted->add(); break;
-                case indexer::ConnectorError::Cause::Other: m_flushFailuresOther->add(); break;
-            }
-            m_bulkSessionsFailed->add(batch.size());
-            respondConnectorFailure(batch, connector, cause);
+            outcomes.assign(batch.size(),
+                            indexer::SessionOutcome {
+                                false, typed ? typed->cause() : indexer::ConnectorError::Cause::Other, e.what()});
+        }
+        // LCOV_EXCL_STOP
+        if (outcomes.size() != batch.size())
+        {
+            // A connector bug, not an indexer outcome: never answer a session with another's result.
+            LOGFN_ERROR(logFn(),
+                        "A bulk flush answered %zu outcome(s) for %zu session(s); answering every session 500.",
+                        outcomes.size(),
+                        batch.size());
+            outcomes.assign(batch.size(),
+                            indexer::SessionOutcome {false, indexer::ConnectorError::Cause::Other, "outcome mismatch"});
         }
 
-        // Drained here, once per flush attempt, so auto-flushes fired during staging are also
-        // picked up by the next group commit's drain.
-        drainConnectorStats(connector);
+        std::size_t okSessions {0};
+        std::size_t okBytes {0};
+        std::size_t failedSessions {0};
+        const indexer::SessionOutcome* firstFailure {nullptr};
+        const Item* firstFailedItem {nullptr};
+        for (std::size_t i = 0; i < batch.size(); ++i)
+        {
+            auto& item = batch[i];
+            const auto& outcome = outcomes[i];
+            if (outcome.ok)
+            {
+                ++okSessions;
+                okBytes += item.request ? item.request->body.size() : 0;
+                respond(item, 200, R"({"status":"ok"})");
+                continue;
+            }
+
+            ++failedSessions;
+            if (!firstFailure)
+            {
+                firstFailure = &outcome;
+                firstFailedItem = &item;
+            }
+            countFlushFailure(outcome.cause);
+            holdForAbandonedWrite(shard, connector, item.session.agentId);
+            respondFailure(item, outcome.cause);
+        }
+
+        if (okSessions > 0)
+        {
+            m_bulkFlushes->add();
+            m_bulkSessionsTotal->add(okSessions);
+            m_bulkBytesTotal->add(okBytes);
+        }
+        if (failedSessions > 0)
+        {
+            m_bulkSessionsFailed->add(failedSessions);
+            // One line per flush, not per session: a sick indexer fails whole batches at once.
+            LOGFN_WARN(logFn(),
+                       "A bulk flush failed %zu of %zu session(s) (first: agent %s, %s). The agents will retry.",
+                       failedSessions,
+                       batch.size(),
+                       firstFailedItem->session.agentId.c_str(),
+                       firstFailure->reason.empty() ? "no reason given" : firstFailure->reason.c_str());
+        }
 
         batch.clear();
         batchBytes = 0;
     }
 
-    void SyncPipeline::drainConnectorStats(indexer::IIndexerConnectorSync& connector)
+    void SyncPipeline::holdForAbandonedWrite(Shard& shard,
+                                             indexer::IIndexerConnectorSync& connector,
+                                             const std::string& agentId)
     {
-        const auto requestStats = connector.takeBulkRequestStats();
-        m_indexerBulkRequests->add(requestStats.requests);
-        m_indexerBulkBytes->add(requestStats.bytes);
-        m_indexerConflictRetries->add(requestStats.conflictRetries);
+        // A chunk given up on (batch deadline) may still be on the wire, and the scan lane writes through ANOTHER
+        // connector whose barrier cannot see it: answered and released now, the lane could index this agent's
+        // documents and the late `_bulk` overwrite them. One more Pipeline count keeps the lane parking the agent
+        // (the pipeline's own holds are reentrant, so this shard keeps serving it, and nothing here waits).
+        if (!m_registry || !connector.holdsAbandonedWrite())
+        {
+            return;
+        }
+        if (m_registry->tryAcquire(agentId, vd::AgentInFlightRegistry::Lane::Pipeline, /*reentrant=*/true))
+        {
+            shard.abandonedHolds.push_back(agentId);
+            shard.abandonedHoldUntil = std::chrono::steady_clock::now() + m_config.abandonedWriteHold;
+        }
+    }
+
+    void SyncPipeline::releaseAbandonedHolds(Shard& shard, indexer::IIndexerConnectorSync& connector, bool force)
+    {
+        if (shard.abandonedHolds.empty())
+        {
+            return;
+        }
+        const bool stillHeld = connector.holdsAbandonedWrite();
+        const bool expired = std::chrono::steady_clock::now() >= shard.abandonedHoldUntil;
+        if (stillHeld && !expired && !force)
+        {
+            return;
+        }
+        if (stillHeld)
+        {
+            LOGFN_WARN(logFn(),
+                       "A bulk flush was abandoned with a write still unresolved (%s); its %zu agent(s) (first: %s) "
+                       "are released and a late write of that batch may still be applied by the indexer.",
+                       force ? "the pipeline is stopping" : "past the request timeout",
+                       shard.abandonedHolds.size(),
+                       shard.abandonedHolds.front().c_str());
+        }
+        for (const auto& agentId : shard.abandonedHolds)
+        {
+            m_registry->release(agentId, vd::AgentInFlightRegistry::Lane::Pipeline);
+        }
+        shard.abandonedHolds.clear();
     }
 
     void SyncPipeline::workerLoop(std::size_t index)
@@ -409,6 +498,8 @@ namespace invsync::sync
 
         while (true)
         {
+            releaseAbandonedHolds(shard, connector, false);
+
             Item item;
             bool hasItem {false};
             {
@@ -417,28 +508,36 @@ namespace invsync::sync
                 {
                     // Wait for stop, or for SOMETHING dispatchable: a non-empty queue whose every
                     // agent is scan-busy must keep sleeping (the registry's release listener wakes
-                    // this cv), or the worker would spin.
-                    shard.cv.wait(lock,
-                                  [this, &shard]
-                                  {
-                                      if (m_stopping.load(std::memory_order_acquire))
-                                      {
-                                          return true;
-                                      }
-                                      if (!m_registry)
-                                      {
-                                          return !shard.queue.empty();
-                                      }
-                                      return std::any_of(shard.queue.begin(),
-                                                         shard.queue.end(),
-                                                         [this](const Item& queued)
-                                                         {
-                                                             return m_registry->couldAcquire(
-                                                                 queued.session.agentId,
-                                                                 vd::AgentInFlightRegistry::Lane::Pipeline,
-                                                                 /*reentrant=*/true);
-                                                         });
-                                  });
+                    // this cv), or the worker would spin. While agents are held for an abandoned
+                    // write the wait is sliced, so the holds are dropped once it resolves.
+                    const auto dispatchable = [this, &shard]
+                    {
+                        if (m_stopping.load(std::memory_order_acquire))
+                        {
+                            return true;
+                        }
+                        if (!m_registry)
+                        {
+                            return !shard.queue.empty();
+                        }
+                        return std::any_of(shard.queue.begin(),
+                                           shard.queue.end(),
+                                           [this](const Item& queued)
+                                           {
+                                               return m_registry->couldAcquire(
+                                                   queued.session.agentId,
+                                                   vd::AgentInFlightRegistry::Lane::Pipeline,
+                                                   /*reentrant=*/true);
+                                           });
+                    };
+                    if (shard.abandonedHolds.empty())
+                    {
+                        shard.cv.wait(lock, dispatchable);
+                    }
+                    else
+                    {
+                        shard.cv.wait_for(lock, ABANDONED_HOLD_POLL, dispatchable);
+                    }
                 }
                 hasItem = popDispatchable(shard, item);
             }
@@ -462,7 +561,7 @@ namespace invsync::sync
                     }
                     else
                     {
-                        flushAndRespond(batch, batchBytes, connector);
+                        flushAndRespond(shard, batch, batchBytes, connector);
                     }
                     continue; // re-check the queue before blocking
                 }
@@ -503,11 +602,17 @@ namespace invsync::sync
                 // Same batch-cut rule as an Immediate session: the deletion executes its own I/O
                 // now, and staged writes of an EARLIER session of this agent must reach the indexer
                 // first or the delete-then-reinsert order would invert.
-                flushAndRespond(batch, batchBytes, connector);
+                flushAndRespond(shard, batch, batchBytes, connector);
+
+                // The deletion's budget starts once the batch is answered, not at admission: it bounds
+                // this deletion's own I/O (the by-query and the by-id wait share it, I145), not the time
+                // the item spent queued or the flush of earlier sessions.
+                const auto until = std::chrono::steady_clock::now() + m_config.agentDeletion.budget;
 
                 try
                 {
-                    auto outcome = m_processor.executeDeleteAgent(item.session.agentId, connector);
+                    auto outcome =
+                        m_processor.executeDeleteAgent(item.session.agentId, connector, m_config.agentDeletion, until);
                     respond(item, outcome.status, outcome.body);
                 }
                 catch (const std::exception& e)
@@ -517,10 +622,8 @@ namespace invsync::sync
                                item.session.agentId.c_str(),
                                e.what());
                     const auto* typed = dynamic_cast<const indexer::ConnectorError*>(&e);
-                    std::vector<Item> just;
-                    just.push_back(std::move(item));
-                    respondConnectorFailure(
-                        just, connector, typed ? typed->cause() : indexer::ConnectorError::Cause::Other);
+                    holdForAbandonedWrite(shard, connector, item.session.agentId);
+                    respondFailure(item, typed ? typed->cause() : indexer::ConnectorError::Cause::Other);
                 }
                 continue;
             }
@@ -530,7 +633,7 @@ namespace invsync::sync
                 // Batch cut: an immediate session executes its own I/O NOW, so the staged batch
                 // must reach the indexer first or this session's effects (deletes, a checksum
                 // read) would overtake bulk writes of an EARLIER session of the same agent.
-                flushAndRespond(batch, batchBytes, connector);
+                flushAndRespond(shard, batch, batchBytes, connector);
 
                 try
                 {
@@ -544,14 +647,9 @@ namespace invsync::sync
                                item.session.agentId.c_str(),
                                e.what());
                     const auto* typed = dynamic_cast<const indexer::ConnectorError*>(&e);
-                    std::vector<Item> just {std::move(item)};
-                    respondConnectorFailure(
-                        just, connector, typed ? typed->cause() : indexer::ConnectorError::Cause::Other);
+                    holdForAbandonedWrite(shard, connector, item.session.agentId);
+                    respondFailure(item, typed ? typed->cause() : indexer::ConnectorError::Cause::Other);
                 }
-
-                // flushAndRespond above returns without draining when the batch is empty, and the
-                // session's own I/O happened after it either way.
-                drainConnectorStats(connector);
                 continue;
             }
 
@@ -572,11 +670,10 @@ namespace invsync::sync
 
             if (stagingFailed)
             {
-                // The connector's buffer state is unknown (an auto-flush inside bulkIndex may have
-                // failed halfway through this session), so the open batch is poisoned with it:
-                // answer everything and drain whatever is left in the buffer. If that leftover
-                // flush indexes a partial session, the re-POST overwrites it -- idempotence is
-                // what makes this recovery safe.
+                // Only an exception foreign to the connector lands here (a staging rejection marks
+                // its session instead of throwing, I142), so the open batch's staging state is
+                // unknown: answer everything 500 and discard what is staged rather than send it.
+                // The agents re-POST; idempotence is what makes this recovery safe.
                 std::vector<Item> failed;
                 failed.reserve(batch.size() + 1);
                 failed.push_back(std::move(item));
@@ -587,15 +684,19 @@ namespace invsync::sync
                 batch.clear();
                 batchBytes = 0;
                 m_bulkSessionsFailed->add(failed.size());
-                respondConnectorFailure(failed, connector);
                 try
                 {
-                    connector.flush();
+                    connector.discard();
                 }
-                catch (...)
+                catch (...) // LCOV_EXCL_LINE -- discard() drops local state only
                 {
-                    // Already answered; the buffer was dropped by the connector's own cleanup.
+                    // Nothing staged survives a discard; the sessions are answered below.
                 }
+                for (const auto& failedItem : failed)
+                {
+                    holdForAbandonedWrite(shard, connector, failedItem.session.agentId);
+                }
+                respondConnectorFailure(failed, indexer::ConnectorError::Cause::Other);
                 continue;
             }
 
@@ -605,14 +706,21 @@ namespace invsync::sync
                 continue;
             }
 
+            // Closes this session's range, so the batch's flushSessions() can answer it for its own
+            // operations (I136). Only after a staged outcome: a session that staged nothing is not
+            // in the batch.
+            connector.endSession();
             batch.push_back(std::move(item));
             batchBytes += itemBytes;
 
             if (batchBytes >= m_config.bulkFlushBytes)
             {
-                flushAndRespond(batch, batchBytes, connector);
+                flushAndRespond(shard, batch, batchBytes, connector);
             }
         }
+
+        // Stopping: the adapters' `closing` already cut every wait; nothing is kept held past the worker.
+        releaseAbandonedHolds(shard, connector, true);
     }
 
 } // namespace invsync::sync

@@ -1,0 +1,240 @@
+name: 5.X - Indexer client library - Unit tests
+
+on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - ".github/workflows/5_testunit_indexer_client.yml"
+      # The library and its tests include nothing in-tree outside the module: asio, nlohmann, curl's
+      # headers, googletest and cpp-httplib come from src/external, and curl/OpenSSL are linked through
+      # wazuhext (src/external/CMakeLists.txt, listed below).
+      - "src/shared_modules/indexer_client/**"
+      # Configure path: build_target_cpp configures src/ as one tree -- src/CMakeLists.txt (includes
+      # src/cmake/*.cmake, reads VERSION.json, registers this module) and src/external/CMakeLists.txt,
+      # which defines ext_asio and ext_httplib linked here.
+      - "src/CMakeLists.txt"
+      - "src/cmake/**"
+      - "src/external/CMakeLists.txt"
+      - "VERSION.json"
+      # build_external_deps runs `make deps`/`make build-external` (src/Makefile; its ref list comes
+      # from tools/get_git_refs.sh) and builds the http-request submodule; a submodule bump changes
+      # only the gitlink path, which `http-request/**` would never match.
+      - "src/Makefile"
+      - "src/deps.lock.mk"
+      - "tools/get_git_refs.sh"
+      - "src/shared_modules/http-request"
+      # Result-affecting actions this workflow executes (upload_s3_artifact only reports, see the
+      # uds_http_server workflow).
+      - ".github/actions/build_external_deps/**"
+      - ".github/actions/build_target_cpp/**"
+      - ".github/actions/coverage_cpp/**"
+      - ".github/actions/test_cpp/**"
+      # Prose: no build or test reads it.
+      - "!src/shared_modules/indexer_client/README.md"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  indexerclient-modules:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@v5.3.2
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Project dependencies
+        uses: ./.github/actions/build_external_deps
+
+      # The library is pinned to C++17 (its headers must build in strict-C++17 consumers), so a
+      # C++20-ism fails here, not in a consumer's build.
+      - name: Indexer client - Build tests
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "indexer_client_utest"
+          test: "true"
+          asan: "false"
+
+      # Valgrind is off: the runtime tests start and join real thread pools and asio loops against
+      # deadlines; under Valgrind's serialized execution they time out for the wrong reason. The
+      # ASAN job below covers the memory-safety surface (teardown order of the runtime threads).
+      - name: Indexer client - Run tests
+        uses: ./.github/actions/test_cpp
+        env:
+          INDEXER_CLIENT_TEST_TIME_SCALE: "2"
+        with:
+          valgrind: "false"
+          target: "indexer_client_utest"
+
+      - name: Indexer client - Build component tests
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "indexer_client_component_test"
+          test: "true"
+          asan: "false"
+
+      # The component suite drives the curl transport against an in-process fake over real sockets.
+      - name: Indexer client - Run component tests
+        uses: ./.github/actions/test_cpp
+        env:
+          INDEXER_CLIENT_TEST_TIME_SCALE: "2"
+        with:
+          valgrind: "false"
+          target: "indexer_client_component_test"
+
+      - name: Indexer client - Coverage
+        uses: ./.github/actions/coverage_cpp
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          path: src/shared_modules/indexer_client
+          test_directory: src/shared_modules/indexer_client
+          id: indexer_client
+          validate_function_coverage: "false"
+
+  indexerclient-asan:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    # build_target_cpp builds serially; under ASAN+UBSan the component suite alone took over 44 min that way and the job hit its
+    # limit. The runner has 4 vCPUs, and `cmake --build` reads CMAKE_BUILD_PARALLEL_LEVEL, so only this job builds in parallel.
+    timeout-minutes: 90
+    env:
+      CMAKE_BUILD_PARALLEL_LEVEL: "4"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Project dependencies
+        uses: ./.github/actions/build_external_deps
+
+      - name: Indexer client - Build tests
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "indexer_client_utest"
+          test: "true"
+          asan: "true"
+
+      # The shutdown and restart tests are only real regression checks under a sanitizer: a thread
+      # left running past shutdown(), or a task touching a destroyed runtime, usually still passes
+      # without one.
+      - name: Indexer client - Run tests
+        uses: ./.github/actions/test_cpp
+        env:
+          INDEXER_CLIENT_TEST_TIME_SCALE: "2"
+        with:
+          target: "indexer_client_utest"
+          valgrind: "false"
+
+      - name: Indexer client - Build component tests
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "indexer_client_component_test"
+          test: "true"
+          asan: "true"
+
+      # The *Long load cases (~90 s of wall clock each run) only measure rates: the normal job runs them, ASAN adds nothing.
+      - name: Indexer client - Run component tests
+        uses: ./.github/actions/test_cpp
+        env:
+          GTEST_FILTER: "-*Long"
+          INDEXER_CLIENT_TEST_TIME_SCALE: "2"
+        with:
+          target: "indexer_client_component_test"
+          valgrind: "false"
+
+  indexerclient-tsan:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Project dependencies
+        uses: ./.github/actions/build_external_deps
+
+      # The TSAN runtime aborts at startup on ubuntu-24.04 runners with 32 bits of ASLR entropy
+      # (vm.mmap_rnd_bits); lower it before running anything instrumented.
+      - name: Lower ASLR entropy for TSAN
+        run: sudo sysctl -w vm.mmap_rnd_bits=28
+
+      - name: Indexer client - Build tests
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "indexer_client_utest"
+          test: "true"
+          asan: "false"
+          tsan: "true"
+          flags: "-DCMAKE_BUILD_TYPE=Debug"
+
+      # Data races between the runtime threads, the asio loops and the callers only show up under
+      # TSAN; halt on the first report so a race fails the job instead of scrolling by.
+      - name: Indexer client - Run tests
+        uses: ./.github/actions/test_cpp
+        env:
+          TSAN_OPTIONS: "halt_on_error=1 second_deadlock_stack=1"
+          INDEXER_CLIENT_TEST_TIME_SCALE: "2"
+        with:
+          target: "indexer_client_utest"
+          valgrind: "false"
+
+      - name: Indexer client - Build component tests
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "indexer_client_component_test"
+          test: "true"
+          asan: "false"
+          tsan: "true"
+          flags: "-DCMAKE_BUILD_TYPE=Debug"
+
+      # The *Long load cases (~90 s of wall clock each run) only measure rates: the normal job runs them, TSAN adds nothing.
+      - name: Indexer client - Run component tests
+        uses: ./.github/actions/test_cpp
+        env:
+          GTEST_FILTER: "-*Long"
+          INDEXER_CLIENT_TEST_TIME_SCALE: "2"
+        with:
+          target: "indexer_client_component_test"
+          valgrind: "false"
+
+  indexerclient-bench-build:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Project dependencies
+        uses: ./.github/actions/build_external_deps
+
+      # Build only: the benchmark measures rates and is run by hand; this keeps it compiling in a
+      # Release tree (the configuration it is measured in).
+      - name: Indexer client - Build benchmark
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "indexer_client_bench"
+          test: "false"
+          flags: "-DINDEXER_CLIENT_BENCH=ON -DCMAKE_BUILD_TYPE=Release"

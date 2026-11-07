@@ -1,0 +1,53 @@
+/*
+ * Wazuh indexer client
+ * Copyright (C) Wazuh Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
+ */
+
+#include "indexer_client/types.hpp"
+
+namespace indexer_client
+{
+    const char* toString(Cause cause) noexcept
+    {
+        switch (cause)
+        {
+            case Cause::None: return "none";
+            case Cause::TransportTimeout: return "transport_timeout";
+            case Cause::TransportConnect: return "transport_connect";
+            case Cause::TransportTls: return "transport_tls";
+            case Cause::Throttled: return "throttled";
+            case Cause::PayloadTooLarge: return "payload_too_large";
+            case Cause::Server5xx: return "server_5xx";
+            case Cause::Client4xx: return "client_4xx";
+            case Cause::ItemRetryable: return "item_retryable";
+            case Cause::ItemPermanent: return "item_permanent";
+            case Cause::VersionConflict: return "version_conflict";
+            case Cause::Unavailable: return "unavailable";
+            case Cause::QueueFull: return "queue_full";
+            case Cause::SubmitTimeout: return "submit_timeout";
+            case Cause::WaitTimeout: return "wait_timeout";
+            case Cause::GroupTooLarge: return "group_too_large";
+            case Cause::RetryExhausted: return "retry_exhausted";
+            case Cause::Shutdown: return "shutdown";
+            case Cause::ClientClosed: return "client_closed";
+            case Cause::Cancelled: return "cancelled";
+            case Cause::Reentrancy: return "reentrancy";
+            case Cause::PitExpired: return "pit_expired";
+            case Cause::PitStaleGeneration: return "pit_stale_generation";
+            case Cause::NotFound: return "not_found";
+            case Cause::InvalidConfig: return "invalid_config";
+            case Cause::InvalidArgument: return "invalid_argument";
+            case Cause::InvalidState: return "invalid_state";
+            case Cause::UsageError: return "usage_error";
+            case Cause::Ambiguous: return "ambiguous";
+        }
+        return "unknown";
+    }
+} // namespace indexer_client

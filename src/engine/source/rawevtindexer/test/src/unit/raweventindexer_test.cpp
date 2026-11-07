@@ -11,6 +11,8 @@
 using ::testing::Eq;
 using ::testing::StrictMock;
 
+static_assert(wiconnector::RAW_EVENTS_INDEX == "wazuh-events-raw-v5", "operator contract: the raw events index name");
+
 class RawEventIndexerUnitTest : public ::testing::Test
 {
 protected:
@@ -27,13 +29,13 @@ TEST_F(RawEventIndexerUnitTest, ConstructorThrowsIfConnectorIsExpired)
 
 TEST_F(RawEventIndexerUnitTest, ConstructorAlwaysStartsDisabled)
 {
-    raweventindexer::RawEventIndexer indexer(m_connector, "wazuh-events-raw-v5");
+    raweventindexer::RawEventIndexer indexer(m_connector);
     EXPECT_FALSE(indexer.isEnabled());
 }
 
 TEST_F(RawEventIndexerUnitTest, EnableDisableTogglesState)
 {
-    raweventindexer::RawEventIndexer indexer(m_connector, "wazuh-events-raw-v5");
+    raweventindexer::RawEventIndexer indexer(m_connector);
     EXPECT_FALSE(indexer.isEnabled());
 
     indexer.enable();
@@ -43,20 +45,33 @@ TEST_F(RawEventIndexerUnitTest, EnableDisableTogglesState)
     EXPECT_FALSE(indexer.isEnabled());
 }
 
-TEST_F(RawEventIndexerUnitTest, IndexStringWhenEnabledCallsConnector)
+TEST_F(RawEventIndexerUnitTest, IndexConstStringWhenEnabledCallsConnector)
 {
-    raweventindexer::RawEventIndexer indexer(m_connector, "custom-raw-index");
+    raweventindexer::RawEventIndexer indexer(m_connector);
     indexer.enable();
 
-    EXPECT_CALL(*m_connector, index(Eq(std::string_view {"custom-raw-index"}), Eq(std::string_view {"payload"})));
-    indexer.index(std::string {"payload"});
+    const std::string payload {"payload"};
+    EXPECT_CALL(*m_connector, index(Eq(wiconnector::RAW_EVENTS_INDEX), Eq(std::string_view {"payload"})));
+    indexer.index(payload);
+    EXPECT_EQ(payload, "payload");
+}
+
+TEST_F(RawEventIndexerUnitTest, IndexRvalueStringWhenEnabledCallsConnector)
+{
+    raweventindexer::RawEventIndexer indexer(m_connector);
+    indexer.enable();
+
+    EXPECT_CALL(*m_connector, index(Eq(wiconnector::RAW_EVENTS_INDEX), Eq(std::string_view {"payload-rv"})));
+    indexer.index(std::string {"payload-rv"});
 }
 
 TEST_F(RawEventIndexerUnitTest, IndexDoesNothingWhenDisabled)
 {
-    raweventindexer::RawEventIndexer indexer(m_connector, "custom-raw-index");
+    raweventindexer::RawEventIndexer indexer(m_connector);
 
     EXPECT_CALL(*m_connector, index(::testing::_, ::testing::_)).Times(0);
+    const std::string payload {"payload"};
+    indexer.index(payload);
     indexer.index(std::string {"payload"});
     indexer.index("payload");
     indexer.index(std::string_view {"payload"});
@@ -64,7 +79,7 @@ TEST_F(RawEventIndexerUnitTest, IndexDoesNothingWhenDisabled)
 
 TEST_F(RawEventIndexerUnitTest, IndexCStringNullOrEmptyReturnsEarly)
 {
-    raweventindexer::RawEventIndexer indexer(m_connector, "custom-raw-index");
+    raweventindexer::RawEventIndexer indexer(m_connector);
     indexer.enable();
 
     EXPECT_CALL(*m_connector, index(::testing::_, ::testing::_)).Times(0);
@@ -74,7 +89,7 @@ TEST_F(RawEventIndexerUnitTest, IndexCStringNullOrEmptyReturnsEarly)
 
 TEST_F(RawEventIndexerUnitTest, IndexStringViewEmptyReturnsEarly)
 {
-    raweventindexer::RawEventIndexer indexer(m_connector, "custom-raw-index");
+    raweventindexer::RawEventIndexer indexer(m_connector);
     indexer.enable();
 
     EXPECT_CALL(*m_connector, index(::testing::_, ::testing::_)).Times(0);
@@ -83,26 +98,26 @@ TEST_F(RawEventIndexerUnitTest, IndexStringViewEmptyReturnsEarly)
 
 TEST_F(RawEventIndexerUnitTest, IndexCStringWhenEnabledCallsConnector)
 {
-    raweventindexer::RawEventIndexer indexer(m_connector, "custom-raw-index");
+    raweventindexer::RawEventIndexer indexer(m_connector);
     indexer.enable();
 
-    EXPECT_CALL(*m_connector, index(Eq(std::string_view {"custom-raw-index"}), Eq(std::string_view {"payload-c"})));
+    EXPECT_CALL(*m_connector, index(Eq(wiconnector::RAW_EVENTS_INDEX), Eq(std::string_view {"payload-c"})));
     indexer.index("payload-c");
 }
 
 TEST_F(RawEventIndexerUnitTest, IndexStringViewWhenEnabledCallsConnector)
 {
-    raweventindexer::RawEventIndexer indexer(m_connector, "custom-raw-index");
+    raweventindexer::RawEventIndexer indexer(m_connector);
     indexer.enable();
 
-    EXPECT_CALL(*m_connector, index(Eq(std::string_view {"custom-raw-index"}), Eq(std::string_view {"payload-sv"})));
+    EXPECT_CALL(*m_connector, index(Eq(wiconnector::RAW_EVENTS_INDEX), Eq(std::string_view {"payload-sv"})));
     indexer.index(std::string_view {"payload-sv"});
 }
 
 TEST_F(RawEventIndexerUnitTest, IndexNoThrowIfConnectorExpiresAfterConstruction)
 {
     auto connector = std::make_shared<StrictMock<wiconnector::mocks::MockWIndexerConnector>>();
-    raweventindexer::RawEventIndexer indexer(connector, "custom-raw-index");
+    raweventindexer::RawEventIndexer indexer(connector);
     indexer.enable();
 
     connector.reset();
@@ -111,7 +126,7 @@ TEST_F(RawEventIndexerUnitTest, IndexNoThrowIfConnectorExpiresAfterConstruction)
 
 TEST_F(RawEventIndexerUnitTest, OnRemoteConfigEnablesAndDisablesIndexer)
 {
-    raweventindexer::RawEventIndexer indexer(m_connector, "custom-raw-index");
+    raweventindexer::RawEventIndexer indexer(m_connector);
 
     EXPECT_NO_THROW(indexer.hotReloadConf(json::Json("true")));
     EXPECT_TRUE(indexer.isEnabled());
@@ -122,8 +137,44 @@ TEST_F(RawEventIndexerUnitTest, OnRemoteConfigEnablesAndDisablesIndexer)
 
 TEST_F(RawEventIndexerUnitTest, OnRemoteConfigRejectsNonBooleanPayload)
 {
-    raweventindexer::RawEventIndexer indexer(m_connector, "custom-raw-index");
+    raweventindexer::RawEventIndexer indexer(m_connector);
 
     EXPECT_THROW(indexer.hotReloadConf(json::Json("\"true\"")), std::invalid_argument);
     EXPECT_FALSE(indexer.isEnabled());
+}
+
+namespace
+{
+/// Hand-written connector: records where the body's bytes live, which a gmock action cannot show (it copies).
+class RecordingConnector final : public wiconnector::IWIndexerConnector
+{
+public:
+    std::string lastIndex;
+    const char* lastDataPtr {nullptr};
+
+    void index(std::string index, std::string data) override
+    {
+        lastIndex = std::move(index);
+        lastDataPtr = data.data();
+    }
+    json::Json getEngineRemoteConfig() override { return json::Json {}; }
+    uint64_t getQueueSize() override { return 0; }
+    uint64_t getDroppedEvents() override { return 0; }
+    double getQueueUsagePercent() override { return 0.0; }
+};
+} // namespace
+
+// The worker's payload is a temporary: it must reach the connector without a copy
+TEST(RawEventIndexerMoveTest, RvalueBodyIsMovedToConnector)
+{
+    auto connector = std::make_shared<RecordingConnector>();
+    raweventindexer::RawEventIndexer indexer(connector);
+    indexer.enable();
+
+    std::string body(4096, 'x'); // beyond any small-string buffer
+    const auto* bodyPtr = body.data();
+    indexer.index(std::move(body));
+
+    EXPECT_EQ(connector->lastIndex, wiconnector::RAW_EVENTS_INDEX);
+    EXPECT_EQ(connector->lastDataPtr, bodyPtr);
 }

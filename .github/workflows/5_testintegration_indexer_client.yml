@@ -1,0 +1,115 @@
+name: 5.X - Indexer client library - Integration tests
+
+on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - ".github/workflows/5_testintegration_indexer_client.yml"
+      # The library and its tests include nothing in-tree outside the module: asio, nlohmann, curl's
+      # headers, googletest and cpp-httplib come from src/external, and curl/OpenSSL are linked through
+      # wazuhext (src/external/CMakeLists.txt, listed below).
+      - "src/shared_modules/indexer_client/**"
+      # Configure path: build_target_cpp configures src/ as one tree -- src/CMakeLists.txt (includes
+      # src/cmake/*.cmake, reads VERSION.json, registers this module) and src/external/CMakeLists.txt,
+      # which defines ext_asio and ext_httplib linked here.
+      - "src/CMakeLists.txt"
+      - "src/cmake/**"
+      - "src/external/CMakeLists.txt"
+      - "VERSION.json"
+      # build_external_deps runs `make deps`/`make build-external` (src/Makefile; its ref list comes
+      # from tools/get_git_refs.sh) and builds the http-request submodule; a submodule bump changes
+      # only the gitlink path, which `http-request/**` would never match.
+      - "src/Makefile"
+      - "src/deps.lock.mk"
+      - "tools/get_git_refs.sh"
+      - "src/shared_modules/http-request"
+      # Result-affecting actions this workflow executes (upload_s3_artifact only reports, see the
+      # uds_http_server workflow).
+      - ".github/actions/build_external_deps/**"
+      - ".github/actions/build_target_cpp/**"
+      - ".github/actions/test_cpp/**"
+      # Prose: no build or test reads it.
+      - "!src/shared_modules/indexer_client/README.md"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  indexerclient-opensearch:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    services:
+      # Same environment as the local runs: single node, security plugin off (plain HTTP, no
+      # initial password); the one-second keep-alive sweep and initial PIT keep-alive (static
+      # settings; the latter otherwise raises every PIT to 30 s) make expired search contexts
+      # observable in seconds, and the disabled disk threshold avoids flood_stage write blocks.
+      opensearch:
+        image: opensearchproject/opensearch:3.6.0
+        env:
+          discovery.type: single-node
+          DISABLE_SECURITY_PLUGIN: "true"
+          DISABLE_INSTALL_DEMO_CONFIG: "true"
+          OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+          search.keep_alive_interval: 1s
+          point_in_time.init.keep_alive: 1s
+          cluster.routing.allocation.disk.threshold_enabled: "false"
+        ports: ["9200:9200"]
+        options: >-
+          --health-cmd "curl -fsS http://localhost:9200/_cluster/health"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 30
+      # The node of the 413 split case: the same environment plus a low http.max_content_length,
+      # a static node setting (it cannot be lowered through _cluster/settings on the node above).
+      opensearch-small:
+        image: opensearchproject/opensearch:3.6.0
+        env:
+          discovery.type: single-node
+          DISABLE_SECURITY_PLUGIN: "true"
+          DISABLE_INSTALL_DEMO_CONFIG: "true"
+          OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+          search.keep_alive_interval: 1s
+          point_in_time.init.keep_alive: 1s
+          cluster.routing.allocation.disk.threshold_enabled: "false"
+          http.max_content_length: 16kb
+        ports: ["9202:9200"]
+        options: >-
+          --health-cmd "curl -fsS http://localhost:9200/_cluster/health"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Project dependencies
+        uses: ./.github/actions/build_external_deps
+
+      # Release without gcov: the suite measures real exchanges against the server, not coverage.
+      - name: Indexer client - Build OpenSearch tests
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "indexer_client_opensearch_test"
+          test: "false"
+          flags: "-DUNIT_TEST=ON"
+
+      # Without any of the three variables the suite fails under GITHUB_ACTIONS instead of skipping.
+      # The outage case stops and starts the container of the first service (docker on the runner)
+      # and always leaves it started.
+      - name: Indexer client - Run OpenSearch tests
+        uses: ./.github/actions/test_cpp
+        env:
+          INDEXER_CLIENT_OPENSEARCH_URL: http://localhost:9200
+          INDEXER_CLIENT_OPENSEARCH_SMALL_URL: http://localhost:9202
+          INDEXER_CLIENT_OPENSEARCH_CONTAINER: ${{ job.services.opensearch.id }}
+        with:
+          target: "indexer_client_opensearch_test"

@@ -27,10 +27,12 @@ relayed back to the agent IS the session result — no acks, no retransmission, 
   `wazuh-manager-authd` created when the agent was removed. It reaches every index holding
   the agent's documents in two halves, one per writer: `wazuh-states-*` by delete-by-query on the
   agent's worker shard (so it orders correctly against in-flight sessions of that same agent), and
-  the `wazuh-agent-config` / `wazuh-agent-stats` documents by document id, queued on the asynchronous
-  connector that writes them (so it orders after a `/config` or `/stats` report that connector has
-  accepted but not yet pushed). It answers at COMPLETION — the `200` means the delete-by-query ran
-  and flushed — which is what lets the task be recorded as `completed` and have that mean purged.
+  the `wazuh-agent-config` / `wazuh-agent-stats` documents by document id, deleted through the
+  `agent-state` bucket that writes them (so it orders after a `/config` or `/stats` report that bucket
+  has accepted, and a best-effort sweep removes what a late write leaves). The whole deletion runs in
+  the agent's shard worker. It answers at COMPLETION — the `200` means the delete-by-query ran and
+  flushed and the by-id deletes were confirmed — which is what lets the task be recorded as `completed`
+  and have that mean purged.
 - **On-demand scan endpoint** (`POST /_internal/vd/scan`): manager-internal and UDS-local, called by
   the Task Manager's dispatcher to rescan one agent on the same scan lane, so the scan can never run
   while a session of that agent is being applied. Also answered at completion.
@@ -118,10 +120,13 @@ agent's documents). The situations an operator will recognize:
   deletion(s) with 503 ... no configured indexer host is currently healthy`). Once it succeeds the
   module logs `Deletion of agent <id> state documents completed`. Documents can still survive a
   successful deletion in two narrow cases: a `wazuh-states-*` document written inside the index
-  refresh interval is invisible to the deletion's search, and the `wazuh-agent-config` /
-  `wazuh-agent-stats` deletes, which are only queued in memory, are lost if modulesd stops before
-  they are pushed. Repeating the deletion clears both; it is idempotent, so re-running it is always
-  safe. `src/wazuh_modules/inventory_sync_server/tools/send_delete_agent.py --verify` repeats it and
+  refresh interval is invisible to the deletion's search, and a late `/stats` or `/config` write
+  (one that timed out on an indexer node and was applied there after the delete) can recreate its
+  document; a best-effort sweep removes the latter a little over a request-timeout later (see
+  [Architecture](architecture.md#the-post-deletion-sweep)). The by-id deletes themselves are no longer
+  fire-and-forget: the `200` is sent only once the indexer confirmed them, and a stop or an indexer
+  failure in between answers `503` so the task is retried. Repeating the deletion clears what is left;
+  it is idempotent, so re-running it is always safe. `src/wazuh_modules/inventory_sync_server/tools/send_delete_agent.py --verify` repeats it and
   counts the agent's documents before and after, which is the quickest way to see what a `200`
   actually did (see [Test Tools](test-tools.md)).
 - **Where are the metrics?** `GET /metrics` on the module's socket, UDS-local (agents can never
@@ -144,7 +149,9 @@ agent's documents). The situations an operator will recognize:
 - [Vulnerability Scanner](../vulnerability-scanner/README.md) - executed synchronously by the scan
   lane for VD sessions; coordinates feed-update scans through a shared per-agent registry.
 - [Keystore](../keystore/README.md) - the encrypted credential store the indexer connectors read.
-- [Indexer Connector](../indexer_connector/README.md) - the library used to reach the indexer.
+- [Indexer Client](../indexer_client/README.md) - the library this module reaches the indexer through, in
+  the runtime modulesd owns, configured by the
+  [`indexer_client_*` options](../indexer_client/configuration.md#the-wazuh_modulesindexer_client_-family).
 
 ## Development
 

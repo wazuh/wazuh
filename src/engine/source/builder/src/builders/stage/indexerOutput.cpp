@@ -135,28 +135,23 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
     }
 
     auto name = fmt::format("write.output({}/{})", syntax::asset::INDEXER_OUTPUT_KEY, indexName);
-    const auto successTrace = fmt::format("{} -> Success", name);
-    const auto failureTrace = fmt::format("{} -> The indexer connector is disabled", name);
-    const auto failureTrace2 = fmt::format("{} -> Couldn't get field {} from event", name, "{}");
-    const auto failureTrace3 = fmt::format("{} -> Index name '{}' exceeds 255 characters limit", name, "{}");
+    const auto skippedTrace = fmt::format("{} -> Success (skipped in test mode)", name);
+    // The name may hold `${field}` placeholders, so it never becomes a format string: these traces are concatenated
+    const auto missingFieldTrace = name + " -> Couldn't get field ";
+    const auto tooLongTrace = name + " -> Index name '";
 
-    // Get shared ptr
+    // In test mode nothing is indexed (I183), so the stage builds without a connector (event processing off, I189)
+    const auto isTestMode = buildCtx->isTestMode();
     auto wic = iConnector.lock();
-    if (!wic)
+    if (!wic && !isTestMode)
     {
         throw std::runtime_error("Indexer connector is not available");
     }
 
     return base::Term<base::EngineOp>::create(
         name,
-        [indexName,
-         placeholderPPVec,
-         wic,
-         successTrace,
-         failureTrace,
-         failureTrace2,
-         failureTrace3,
-         isTestMode = buildCtx->isTestMode()](base::Event event) -> base::result::Result<base::Event>
+        [indexName, placeholderPPVec, wic = std::move(wic), skippedTrace, missingFieldTrace, tooLongTrace, isTestMode](
+            base::Event event) -> base::result::Result<base::Event>
         {
             std::string finalIndexName = indexName;
             for (const auto& [placeholder, jsonPathPP] : placeholderPPVec)
@@ -164,7 +159,7 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
                 std::string fieldValue;
                 if (event->getString(fieldValue, jsonPathPP) != json::RetGet::Success)
                 {
-                    RETURN_FAILURE(isTestMode, event, fmt::format(failureTrace2, placeholder));
+                    RETURN_FAILURE(isTestMode, event, missingFieldTrace + placeholder + " from event");
                 }
 
                 // Replace all occurrences of the placeholder in the indexName
@@ -178,12 +173,18 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
 
             if (finalIndexName.size() > 255)
             {
-                RETURN_FAILURE(isTestMode, event, fmt::format(failureTrace3, finalIndexName));
+                RETURN_FAILURE(isTestMode, event, tooLongTrace + finalIndexName + "' exceeds 255 characters limit");
             }
 
-            wic->index(finalIndexName, event->str());
+            // The checks above still run in test mode; only the write is skipped
+            if (isTestMode)
+            {
+                return base::result::makeSuccess<decltype(event)>(event, skippedTrace);
+            }
 
-            RETURN_SUCCESS(isTestMode, event, successTrace);
+            wic->index(std::move(finalIndexName), event->str());
+
+            return base::result::makeSuccess<decltype(event)>(event);
         });
 }
 
