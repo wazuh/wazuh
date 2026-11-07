@@ -17,6 +17,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <map>
+#include <string_view>
 #include <thread>
 
 #include <unistd.h>
@@ -70,22 +71,6 @@ namespace indexer_client::opensearch
         /// URLs that already failed their wait in this process, with the last probe's answer.
         std::map<std::string, std::string> g_unreachable;
 
-        /// Polls /_cluster/health until it answers or the budget runs out; empty on success, else the last answer.
-        std::string waitForCluster(const std::string& url, std::chrono::milliseconds budget)
-        {
-            const auto end = std::chrono::steady_clock::now() + budget;
-            while (true)
-            {
-                auto last = probeOnce(url);
-                const auto now = std::chrono::steady_clock::now();
-                if (last.empty() || now >= end)
-                {
-                    return last;
-                }
-                std::this_thread::sleep_for(std::min<std::chrono::steady_clock::duration>(500ms, end - now));
-            }
-        }
-
         /// Global environment: wipes the suite's indices left by an earlier run before the first case.
         class SuiteEnvironment final : public ::testing::Environment
         {
@@ -105,27 +90,66 @@ namespace indexer_client::opensearch
                     return;
                 }
                 deleteIndices(std::string(INDEX_PREFIX) + "*");
+                // The node of the 413 case (issue 26), when there is one and it answers.
+                if (const auto small = variable(SMALL_URL_ENV); !small.empty())
+                {
+                    if (const auto reason = waitForCluster(small, testing::scaled(120s)); !reason.empty())
+                    {
+                        g_unreachable[small] = reason;
+                        return;
+                    }
+                    deleteIndices(std::string(INDEX_PREFIX) + "*", small);
+                }
             }
         };
 
         [[maybe_unused]] const auto* const ENVIRONMENT = ::testing::AddGlobalTestEnvironment(new SuiteEnvironment);
     } // namespace
 
-    std::string clusterUrl()
+    std::string waitForCluster(const std::string& url, std::chrono::milliseconds budget)
     {
-        const char* url = std::getenv(URL_ENV);
-        return url == nullptr ? std::string() : std::string(url);
+        const auto end = std::chrono::steady_clock::now() + budget;
+        while (true)
+        {
+            auto last = probeOnce(url);
+            const auto now = std::chrono::steady_clock::now();
+            if (last.empty() || now >= end)
+            {
+                return last;
+            }
+            std::this_thread::sleep_for(std::min<std::chrono::steady_clock::duration>(500ms, end - now));
+        }
     }
 
-    void requireCluster(const char* url, std::chrono::milliseconds budget)
+    std::string clusterUrl()
     {
-        if (url == nullptr || *url == '\0')
+        return variable(URL_ENV);
+    }
+
+    std::string variable(const char* env)
+    {
+        const char* value = std::getenv(env);
+        return value == nullptr ? std::string() : std::string(value);
+    }
+
+    void requireVariable(const char* env)
+    {
+        if (variable(env).empty())
         {
             if (std::getenv("GITHUB_ACTIONS") != nullptr)
             {
-                FAIL() << URL_ENV << " is not set under GITHUB_ACTIONS: the OpenSearch suite must not be skipped in CI";
+                FAIL() << env << " is not set under GITHUB_ACTIONS: the OpenSearch suite must not be skipped in CI";
             }
-            GTEST_SKIP() << URL_ENV << " is not set";
+            GTEST_SKIP() << env << " is not set";
+        }
+    }
+
+    void requireCluster(const char* url, std::chrono::milliseconds budget, const char* env)
+    {
+        if (url == nullptr || *url == '\0')
+        {
+            requireVariable(env);
+            return;
         }
         if (const auto known = g_unreachable.find(url); known != g_unreachable.end())
         {
@@ -146,7 +170,17 @@ namespace indexer_client::opensearch
                     const std::string& contentType,
                     const std::map<std::string, std::string>& headers)
     {
-        auto http = makeHttp(clusterUrl());
+        return rawAt(clusterUrl(), method, path, body, contentType, headers);
+    }
+
+    RawResponse rawAt(const std::string& url,
+                      const std::string& method,
+                      const std::string& path,
+                      const std::string& body,
+                      const std::string& contentType,
+                      const std::map<std::string, std::string>& headers)
+    {
+        auto http = makeHttp(url);
         httplib::Headers hdrs;
         for (const auto& [name, value] : headers)
         {
@@ -224,10 +258,25 @@ namespace indexer_client::opensearch
         return std::string(INDEX_PREFIX) + name + "-" + std::to_string(::getpid());
     }
 
-    void deleteIndices(const std::string& pattern)
+    std::int64_t countDocuments(const std::string& url, const std::string& index)
+    {
+        if (rawAt(url, "POST", "/" + index + "/_refresh").status != 200)
+        {
+            return -1;
+        }
+        const auto counted = rawAt(url, "GET", "/" + index + "/_count");
+        const auto body = nlohmann::json::parse(counted.body, nullptr, false);
+        if (counted.status != 200 || !body.is_object() || !body.contains("count"))
+        {
+            return -1;
+        }
+        return body["count"].get<std::int64_t>();
+    }
+
+    void deleteIndices(const std::string& pattern, const std::string& url)
     {
         // By name: a wildcard DELETE depends on action.destructive_requires_name.
-        const auto listed = raw("GET", "/_cat/indices/" + pattern + "?h=index&format=json&expand_wildcards=all");
+        const auto listed = rawAt(url, "GET", "/_cat/indices/" + pattern + "?h=index&format=json&expand_wildcards=all");
         if (listed.status != 200)
         {
             return;
@@ -239,7 +288,7 @@ namespace indexer_client::opensearch
         }
         for (const auto& entry : indices)
         {
-            raw("DELETE", "/" + entry.at("index").get<std::string>());
+            rawAt(url, "DELETE", "/" + entry.at("index").get<std::string>());
         }
     }
 
@@ -294,14 +343,25 @@ namespace indexer_client::opensearch
 
     void OpenSearchTest::SetUp()
     {
+        // The URL_ENV node always gates (the suite's own), then the case's node when it is another one.
         requireCluster(std::getenv(URL_ENV), testing::scaled(120s));
         if (HasFatalFailure() || IsSkipped())
         {
             return;
         }
+        const char* env = urlVariable();
+        if (std::string_view(env) != URL_ENV)
+        {
+            requireCluster(std::getenv(env), testing::scaled(120s), env);
+            if (HasFatalFailure() || IsSkipped())
+            {
+                return;
+            }
+        }
+        m_url = variable(env);
         m_index = caseIndex();
-        deleteIndices(m_index);
-        auto started = RuntimeOwner::start(ProcessId::Standalone, OpenSearchSource(clusterUrl(), runtimeOptions()));
+        deleteIndices(m_index, m_url);
+        auto started = RuntimeOwner::start(ProcessId::Standalone, OpenSearchSource(m_url, runtimeOptions()));
         ASSERT_TRUE(started.ok()) << started.reason;
         m_started = true;
         m_ref = started.value;
@@ -326,8 +386,13 @@ namespace indexer_client::opensearch
         }
         if (!m_index.empty())
         {
-            deleteIndices(m_index);
+            deleteIndices(m_index, m_url);
         }
+    }
+
+    const char* OpenSearchTest::urlVariable() const
+    {
+        return URL_ENV;
     }
 
     std::map<std::string, std::string> OpenSearchTest::runtimeOptions() const
