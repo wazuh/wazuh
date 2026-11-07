@@ -605,7 +605,9 @@ namespace indexer_client::detail::write
             std::string().swap(op.tag);
             if (returnReserve)
             {
-                m_budget.release(RESULT_RESERVE); // The bucket's own charge died with it; the global cap's did not.
+                // The bucket's own charge died with it; the global cap's did not. A delivered op's payload went back
+                // in ~Bucket (D67).
+                m_budget.release(RESULT_RESERVE);
             }
         }
         if (closing)

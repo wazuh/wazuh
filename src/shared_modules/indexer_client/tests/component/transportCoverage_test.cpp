@@ -653,8 +653,8 @@ TEST_F(TransportTest, LeastLoadedLoopWinsOverRoundRobin)
     FakeIndexer fake;
     Rule slow;
     slow.pathRegex = "/slow";
-    // Window that makes the case (scaled()): /slow must still be in flight on loop 0 when /b and /c have completed.
-    slow.latency = scaled(2000ms);
+    // D121: /slow is held until the test releases it, so it is in flight on loop 0 however long /b and /c take.
+    slow.hold = true;
     fake.addRule(slow);
     fake.start();
     auto transport = startRuntime(2, 1);
@@ -662,7 +662,8 @@ TEST_F(TransportTest, LeastLoadedLoopWinsOverRoundRobin)
     auto collector = Collector::create();
 
     const auto a = submitTo(*transport, collector, request(HttpMethod::Get, fake.baseUrl() + "/slow")); // loop 0
-    const auto b = submitTo(*transport, collector, request(HttpMethod::Get, fake.baseUrl() + "/b"));    // loop 1
+    ASSERT_TRUE(fake.waitHeld(1, scaled(10000ms))) << "held " << fake.heldNow();
+    const auto b = submitTo(*transport, collector, request(HttpMethod::Get, fake.baseUrl() + "/b")); // loop 1
     ASSERT_TRUE(collector->waitKey(b.key, scaled(10000ms)));
     const auto c = submitTo(*transport, collector, request(HttpMethod::Get, fake.baseUrl() + "/c")); // round-robin: 0
     ASSERT_TRUE(collector->waitKey(c.key, scaled(10000ms)));
@@ -672,6 +673,7 @@ TEST_F(TransportTest, LeastLoadedLoopWinsOverRoundRobin)
     EXPECT_EQ(stats.completedPerLoop[0], 0u);
     EXPECT_EQ(stats.completedPerLoop[1], 2u);
     EXPECT_EQ(stats.inFlightPerLoop[0], 1u);
+    fake.releaseHeld();
     ASSERT_TRUE(collector->waitKey(a.key, scaled(10000ms)));
     stats = transport->stats();
     EXPECT_EQ(stats.completedPerLoop[0], 1u);

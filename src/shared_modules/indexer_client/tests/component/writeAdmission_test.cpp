@@ -1063,3 +1063,56 @@ TEST_F(WriteTest, PostReserveReturnedOnClientDestroyed)
     delivered.clear();
     EXPECT_TRUE(eventually([&] { return globalCharge() == 0; }, 2s)) << "global " << globalCharge();
 }
+
+// D67: posted ops delivered to the sink, whose client is destroyed on a runtime thread (the close does not wait and
+// what is delivered keeps its course) and whose batches the sink lets go unresolved: the bucket dies with them in
+// m_delivered. ~Bucket returns their payload to the global cap and their late resolution, through the branch of
+// resolve without a bucket, returns their RESULT_RESERVE: the global cap is back to 0, each charge returned once.
+TEST_F(WriteTest, DeliveredPayloadReturnedWhenBucketDiesFirst)
+{
+    ASSERT_NO_FATAL_FAILURE(start(1, 2));
+    auto sink = installSink();
+    const auto one = chargeOf(indexOp(id(0), 300)) + R;
+    std::vector<std::shared_ptr<wr::OpState>> delivered;
+    {
+        auto c = client("c", {bucketSpec("b", 1u << 20, ic::Overflow::Kind::Reject, 64 * 1024, 2)});
+        {
+            auto writer = c->writer("b");
+            for (std::uint64_t k = 0; k < 4; ++k)
+            {
+                ASSERT_TRUE(writer->post(indexOp(id(k), 300)).accepted);
+            }
+        }
+        ASSERT_TRUE(sink->waitDispatched(2));
+        EXPECT_EQ(stats("b").retained, 4u);
+        EXPECT_EQ(globalCharge(), 4 * one);
+        // The test keeps the delivered OpStates but not their batches: nothing but the client keeps the bucket.
+        for (auto& batch : sink->take())
+        {
+            for (auto& op : batch.ops)
+            {
+                delivered.push_back(op);
+            }
+        }
+        ASSERT_EQ(delivered.size(), 4u);
+        std::promise<void> destroyed;
+        auto holder = std::make_shared<std::shared_ptr<ic::Client>>(std::move(c));
+        ASSERT_TRUE(m_path->postToPool(
+            [holder, &destroyed]
+            {
+                holder->reset(); // On a runtime thread: closed without waiting; the delivered ops keep their course.
+                destroyed.set_value();
+            }));
+        destroyed.get_future().wait();
+    }
+    ASSERT_TRUE(eventually([&] { return m_path->stats().buckets.empty(); }, 2s)) << "the bucket is gone";
+    EXPECT_EQ(globalCharge(), 4 * R) << "~Bucket returned the delivered payloads; the reserves are the ops' own";
+    std::size_t won = 0;
+    for (const auto& op : delivered)
+    {
+        won += m_path->resolve(nullptr, op, TestSink::ok()) ? 1 : 0; // The sink's late answer.
+    }
+    EXPECT_EQ(won, 4u) << "nothing had resolved them";
+    delivered.clear();
+    EXPECT_EQ(globalCharge(), 0u);
+}

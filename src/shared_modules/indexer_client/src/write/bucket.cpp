@@ -240,6 +240,27 @@ namespace indexer_client::detail::write
                 m_budget.release(charge);
             }
         }
+        // D67: a delivered op whose batch was let go unresolved outlives its bucket. Whenever it resolves, it goes
+        // through the branch of WritePath::resolve without a bucket, which returns only a post op's RESULT_RESERVE: its
+        // payload charge goes back to the global cap here, once (payloadCharged; nothing else releases it once the
+        // bucket is gone), claimed or not.
+        if (!m_delivered.empty())
+        {
+            std::uint64_t delivered = 0;
+            for (const auto& entry : m_delivered)
+            {
+                const auto& op = entry.second;
+                if (op && op->payloadCharged)
+                {
+                    op->payloadCharged = false;
+                    delivered += op->payload;
+                }
+            }
+            if (delivered != 0 && m_owner.lock())
+            {
+                m_budget.release(delivered);
+            }
+        }
         // The cancel(tag) waiters still registered can never reach 0 (I80).
         for (auto& waiter : m_cancelWaiters)
         {
