@@ -789,7 +789,9 @@ inline. `Dropped(ClientClosed)` and `Dropped(Shutdown)` are also counted per cli
 bucket's (one bucket belongs to one client), so a submitted, posted or group operation counts alike, and an operation whose bucket
 is gone has no client left to count. An operation of `post` (no ticket, no callback, no group) returns its `RESULT_RESERVE` at its
 resolution, in the same take of the bucket's mutex that releases its payload (`Bucket::releasePayload`), or to the global cap
-when its bucket is gone; one left queued in a dying bucket gets it back from `~Bucket`.
+when its bucket is gone; one left queued in a dying bucket gets it back from `~Bucket`. An operation still delivered when its
+bucket dies (its batch let go unresolved) gets its payload back to the global cap from `~Bucket`, once; its later resolution
+returns only what is still its own.
 
 ### Close and shutdown
 
