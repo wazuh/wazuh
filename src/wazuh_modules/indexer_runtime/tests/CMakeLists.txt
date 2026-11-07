@@ -19,7 +19,8 @@ target_link_libraries(
   indexer_client
   keystore
   wazuhext
-  pthread)
+  pthread
+  ${CMAKE_DL_LIBS})
 
 target_include_directories(wm_indexer_runtime_utest PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../include
                                                             ${CMAKE_CURRENT_LIST_DIR}/../src ${SRC_FOLDER}/external/nlohmann)

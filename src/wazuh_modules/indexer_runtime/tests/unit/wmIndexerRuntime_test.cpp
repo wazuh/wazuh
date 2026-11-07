@@ -10,6 +10,8 @@
 
 #include <gtest/gtest.h>
 
+#include <dlfcn.h>
+
 #include <algorithm>
 #include <chrono>
 #include <cstdarg>
@@ -312,6 +314,27 @@ TEST(WmIndexerRuntimeExit, StateUsableDuringExit)
         },
         ::testing::ExitedWithCode(0),
         "");
+}
+
+// Issue 18: the published RuntimeRef must live on the heap, never in static storage. A static one would be destroyed by
+// exit() under a module thread whose join expired; StateUsableDuringExit cannot see that (the weak_ptr's control block
+// is kept alive by libindexer_client, so reading the destroyed object still looks fine, even under ASAN). dladdr()
+// finds every address inside a loaded image (the test binary or a shared object, .data and .bss included) and none on
+// the heap; the control check proves it tells them apart on this platform.
+TEST_F(WmIndexerRuntime, PublishedRefIsOnTheHeap)
+{
+    static const indexer_client::RuntimeRef staticControl;
+    Dl_info info {};
+    ASSERT_NE(dladdr(&staticControl, &info), 0) << "dladdr() cannot tell static storage apart here";
+
+    useCredentials("admin", kSecret);
+    ASSERT_EQ(configure(), 0) << reason;
+    ASSERT_EQ(start(), 0) << reason;
+    const void* published = wmir_ref();
+    ASSERT_NE(published, nullptr);
+    info = Dl_info {};
+    EXPECT_EQ(dladdr(published, &info), 0)
+        << "the published RuntimeRef is in the static storage of " << (info.dli_fname ? info.dli_fname : "(unknown)");
 }
 
 TEST_F(WmIndexerRuntime, SecondStartRejected)
