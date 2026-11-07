@@ -335,7 +335,7 @@ void AgentInfoImpl::releaseResources()
 {
     // Never free while the run loop may still be using these members. The join that is
     // supposed to guarantee the loop finished is not authoritative: stop_wmodules() and
-    // wm_handler() only log when the shutdown budget expires and then carry on to
+    // wm_shutdown_run() (modulesd's main thread) only log when the shutdown budget expires and then carry on to
     // process exit, so the destructor can reach here with the loop still running.
     // Freeing then is a use-after-free, so skip it and let process teardown reclaim the
     // handles -- the same trade-off the removed run-loop wait used to make, minus the

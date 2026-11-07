@@ -359,7 +359,7 @@ TEST_F(AgentInfoImplTest, StopSignalsWithoutWaitingAndReleaseIsSeparate)
 TEST_F(AgentInfoImplTest, ReleaseResourcesRefusesWhileRunLoopIsActive)
 {
     // stop() no longer waits for the run loop, and the join that is supposed to guarantee
-    // the loop finished is not authoritative: stop_wmodules() and wm_handler() only log
+    // the loop finished is not authoritative: stop_wmodules() and wm_shutdown_run() only log
     // when their shutdown budget expires and then carry on to process exit, which runs
     // ~AgentInfoImpl() -> releaseResources(). Freeing m_dBSync / the sync protocol with the
     // loop still inside synchronizeMetadataOrGroups() would be a use-after-free, so the
