@@ -383,6 +383,14 @@ namespace indexer_client
                 std::string metricName;
             };
             std::map<std::string, ClientEntry> clients;
+            /// D133: the clients whose name was released once the stop began (a shutdown deadline is fixed or the
+            /// admission is closed), kept strongly so that the last summary still counts what their close dropped:
+            /// the close order (client.hpp) runs each consumer's awaitClosed, which releases the name, before
+            /// shutdown(). runtimeLiveClients() returns them too; stopAndJoin releases them right after the last
+            /// summary and keeps none afterwards (`closedReleased`). Only the ClientState and its buckets: awaitClosed
+            /// already fixed its callback cutoff, so no callback of the consumer starts through them.
+            std::vector<std::shared_ptr<ClientState>> closedClients;
+            bool closedReleased {false};
 
             /// Created by start() once every runtime thread exists; stopped first by stopAndJoin() (I22c, D28).
             std::shared_ptr<Transport> transport;
@@ -461,6 +469,16 @@ namespace indexer_client
                     // the deletes the drain gave up. No mutex held; the loops still run, the timer is stopped.
                     logSummary->finish();
                 }
+                {
+                    // D133: the clients closed during the stop were only kept for that summary. Dropped outside the
+                    // mutex (their buckets die here unless something else still holds them).
+                    std::vector<std::shared_ptr<ClientState>> closed;
+                    {
+                        std::lock_guard<std::mutex> lock(mutex);
+                        closedReleased = true;
+                        closed.swap(closedClients);
+                    }
+                }
                 if (pitTimers)
                 {
                     pitTimers->stop();
@@ -490,7 +508,20 @@ namespace indexer_client
             if (auto state = runtime.lock(); state && state->sameEpoch(epoch))
             {
                 std::lock_guard<std::mutex> lock(state->mutex);
-                state->clients.erase(name);
+                const auto found = state->clients.find(name);
+                if (found == state->clients.end())
+                {
+                    return;
+                }
+                if ((state->shutdownDeadline || !state->accepting) && !state->closedReleased)
+                {
+                    // D133: kept for the last summary. lock() fails when the release comes from ~ClientState.
+                    if (auto client = found->second.state.lock())
+                    {
+                        state->closedClients.push_back(std::move(client));
+                    }
+                }
+                state->clients.erase(found);
             }
         }
 
@@ -511,6 +542,7 @@ namespace indexer_client
         std::vector<std::shared_ptr<ClientState>> runtimeLiveClients(const std::weak_ptr<RuntimeState>& runtime)
         {
             std::vector<std::weak_ptr<ClientState>> weak;
+            std::vector<std::shared_ptr<ClientState>> alive;
             if (auto state = runtime.lock())
             {
                 std::lock_guard<std::mutex> lock(state->mutex);
@@ -519,10 +551,10 @@ namespace indexer_client
                 {
                     weak.push_back(entry.second.state);
                 }
+                alive = state->closedClients; // D133: their names are released already.
             }
             // Locked outside the runtime mutex: a client whose last reference dies here releases its name under it.
-            std::vector<std::shared_ptr<ClientState>> alive;
-            alive.reserve(weak.size());
+            alive.reserve(alive.size() + weak.size());
             for (const auto& entry : weak)
             {
                 if (auto client = entry.lock())

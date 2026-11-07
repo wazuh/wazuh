@@ -67,7 +67,7 @@ Because the probe starts when the runtime does, **the indexer is free to start a
 
 Shutdown shares one deadline with the rest of modulesd. On `wazuh-manager-control stop` or `restart`, modulesd fixes the runtime's deadline at 25 s after the stop began, then asks every module to stop; each consumer closes admission (new writes are refused), lets what is queued drain, and gives up what is left at the deadline minus twice `callback_budget_ms`. After the module threads end (28 s in total), modulesd joins the runtime threads.
 
-What is queued but not yet sent when the deadline passes is dropped and counted (`dropped.shutdown`, `dropped.client_closed`): the queues are in memory only. The Inventory Sync Server's `/stateful` batches are answered `503` without flushing and the agents re-send on their next cycle; see its [shutdown description](../inventory-sync-server/architecture.md#shutdown).
+What is queued but not yet sent when the deadline passes is dropped and counted (`dropped.shutdown`, `dropped.client_closed`): the queues are in memory only. The last summary lines of each bucket, logged when the runtime stops, include those drops (`shutdown=<n>`, `client_closed=<n>`, `<n> dropped`). The Inventory Sync Server's `/stateful` batches are answered `503` without flushing and the agents re-send on their next cycle; see its [shutdown description](../inventory-sync-server/architecture.md#shutdown).
 
 ## Credentials and certificates
 

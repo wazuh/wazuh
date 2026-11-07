@@ -50,7 +50,8 @@ namespace indexer_client::detail
     void releaseClientName(const std::weak_ptr<RuntimeState>& runtime, std::uint64_t epoch, const std::string& name);
 
     /// E5c (N23): the live clients of a runtime, from its weak registry (written by RuntimeRef::client(), erased by
-    /// releaseClientName), locked after the runtime mutex is dropped; empty once the runtime is gone. The caller may
+    /// releaseClientName), locked after the runtime mutex is dropped, plus (D133) those whose name was released once
+    /// the stop began, which the runtime keeps until its last summary; empty once the runtime is gone. The caller may
     /// end up holding a client's last reference: dropping it releases the name (takes the runtime mutex) and, on a
     /// runtime thread, destroys its buckets there.
     std::vector<std::shared_ptr<ClientState>> runtimeLiveClients(const std::weak_ptr<RuntimeState>& runtime);

@@ -45,7 +45,9 @@
 //     The interval's length is printed in whole seconds, rounded up, never below 1.
 //   - per client: the delta of callbackOverruns and the maximum duration of the interval (WARN), through the weak
 //     client registry of RuntimeState (written by RuntimeRef::client(), erased by releaseClientName). The body keeps
-//     no client reference while it emits.
+//     no client reference while it emits. D133: a client whose name is released once the stop began (a shutdown
+//     deadline fixed or the admission closed: the close order runs awaitClosed before shutdown()) is kept by the
+//     runtime and summarized like a live one until stopAndJoin drops it right after the last summary.
 //   - a WARN when a PIT delete expired (given up) in the interval, with the id truncated.
 // The summary body has its own mutex (the timer's handler and the final summary may overlap). stopAndJoin disarms the
 // summary and stops its timer BEFORE writePath->stop(), and emits the last summary synchronously AFTER

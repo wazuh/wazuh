@@ -477,6 +477,44 @@ TEST_F(LogSummaryTest, SummaryTimerFiresAndFlushesAtStop)
     EXPECT_FALSE(ic::detail::testing::flushLogSummary());
 }
 
+// D133 (ClosedDuringShutdownInLastSummary): the close order of modulesd (client.hpp: beginShutdown, then each consumer
+// requestClose()s, awaitClosed()s and drops its Client, then shutdown()) still puts what that close dropped in the last
+// summary: one op held by the sink (Dropped(Shutdown) by the sweep) and two still pending (Dropped(ClientClosed)). The
+// consumer name is released by awaitClosed as before (a new client may take it). Mutant: releaseClientName without the
+// retention (the old code) => no line for 'closing/b'.
+TEST_F(LogSummaryTest, ClosedDuringShutdownInLastSummary)
+{
+    ASSERT_NO_FATAL_FAILURE(start());
+    installSink(TestSink::Mode::Hold, 1);
+    auto c = client("closing", {bucketSpec("b", 1u << 20, ic::Overflow::Kind::Reject, 0, 1)});
+    auto writer = c->writer("b");
+    ASSERT_TRUE(writer->submit(indexOp("held")).accepted);
+    ASSERT_TRUE(m_sink->waitDispatched(1));
+    ASSERT_TRUE(writer->submit(indexOp("p1")).accepted);
+    ASSERT_TRUE(writer->submit(indexOp("p2")).accepted);
+    writer.reset();
+
+    ASSERT_EQ(ic::RuntimeOwner::beginShutdown(std::chrono::steady_clock::now() + 2s), ic::Cause::None);
+    c->requestClose();
+    const auto report = c->awaitClosed(std::chrono::steady_clock::now() + 1s);
+    ASSERT_TRUE(report.ok()) << ic::toString(report.cause);
+    EXPECT_EQ(report.value.droppedShutdown, 1u);
+    EXPECT_EQ(report.value.droppedClientClosed, 2u);
+    c.reset(); // The consumer's handle is gone before the runtime stops (VD and invsync reset theirs).
+    auto again = m_ref.client("closing", {bucketSpec("b", 1u << 20, ic::Overflow::Kind::Reject, 0, 1)});
+    EXPECT_TRUE(again.ok()) << "awaitClosed still releases the consumer name: " << again.reason;
+    again.value.reset();
+    EXPECT_EQ(m_logs.count(INFO, "Indexer client bucket 'closing/b' in the last "), 0u) << m_logs.dump();
+
+    ASSERT_EQ(ic::RuntimeOwner::shutdown(), ic::Cause::None);
+    const auto warns = m_logs.atLeast(WARN, "Indexer client bucket 'closing/b' unsuccessful operations in the last");
+    ASSERT_EQ(warns.size(), 1u) << m_logs.dump();
+    EXPECT_NE(warns.front().text.find("shutdown=1"), std::string::npos) << warns.front().text;
+    EXPECT_NE(warns.front().text.find("client_closed=2"), std::string::npos) << warns.front().text;
+    EXPECT_EQ(m_logs.count(INFO, "Indexer client bucket 'closing/b' in the last "), 1u) << m_logs.dump();
+    EXPECT_EQ(m_logs.count(INFO, ": 3 accepted, 0 ok, 0 failed, 3 dropped."), 1u) << m_logs.dump();
+}
+
 /// The PIT cases: QueryTest plus the log sink.
 class LogSummaryPitTest : public QueryTest
 {
