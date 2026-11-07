@@ -187,7 +187,7 @@ namespace indexer_client::detail::write
         state->tag = std::move(tag);
         state->hasKey = hasKey;
         state->keyHash = keyHash;
-        state->owner = bucket.get(); // E6e (D): for the debug assert only.
+        state->owner = bucket.get(); // E6e (D): for the owner check only (issue 15).
         state->group = group;
 
         std::lock_guard<std::mutex> lock(group->groupMutex);

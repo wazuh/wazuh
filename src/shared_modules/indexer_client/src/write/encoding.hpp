@@ -211,7 +211,10 @@ namespace indexer_client::detail::write
     ///     longer than 64 or outside [A-Za-z0-9_@-], two equal paths or one a segment prefix of another, and with
     ///     IndexVersionedScript `state`, `state.document_version` or a path under it (it would defeat the guard).
     /// A per-op Retry on Index/IndexAutoId/IndexDataStream/Delete is accepted and only changes how a 409 item is
-    /// treated (futile for `create`: its 409 means "exists"). On failure `op` is untouched.
+    /// treated (futile for `create`: its 409 means "exists"). One failure is not the caller's (issue 15, D64):
+    /// InvalidState "internal error: ..." when the precomputed size and the encoded lines disagree (a library bug,
+    /// logged at ERROR and counted by detail::internalError; the callers count it with the bucket's InvalidArgument
+    /// refusals, as the op never entered the bucket). On failure `op` is untouched.
     /// E6e (D): with `heads`, the line of IndexAutoId / IndexDataStream comes from that table through a per-thread
     /// cache of THREAD_CACHE entries keyed by (heads->generation(), kind, index) — a hit validates neither the index
     /// nor builds a line; a miss validates as always, then finds or interns the line in the table (a full table: the op

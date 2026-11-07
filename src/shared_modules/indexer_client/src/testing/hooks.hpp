@@ -83,6 +83,12 @@ namespace indexer_client::testing_hooks
 
     /// Posts refused because their loop had closed, since process start.
     std::uint64_t postsRejected();
+
+    /// Issue 15 (D64): internal invariants found broken (each logged at ERROR, none aborted), since process start.
+    std::uint64_t internalErrors();
+    /// Issue 15 (D64): added to encode()'s precomputed size of every line it builds (0 restores it), so a case can make
+    /// that size and the encoded bytes disagree.
+    void setEncodeSizeSkew(std::size_t bytes);
 } // namespace indexer_client::testing_hooks
 
 #endif // _INDEXER_CLIENT_TESTING_HOOKS_HPP

@@ -1116,3 +1116,106 @@ TEST_F(WriteTest, DeliveredPayloadReturnedWhenBucketDiesFirst)
     delivered.clear();
     EXPECT_EQ(globalCharge(), 0u);
 }
+
+namespace
+{
+    /// An OpState of post as WriterImpl::prepare builds it (no ticket, callback nor group), for a bucket built
+    /// directly.
+    std::shared_ptr<wr::OpState> directOp(const std::string& key)
+    {
+        auto encoded = wr::encode(indexOp(key, 64), ic::ConflictPolicy {});
+        EXPECT_TRUE(encoded.ok()) << encoded.reason;
+        auto op = std::make_shared<wr::OpState>();
+        op->head = std::move(encoded.value.head);
+        op->body = std::move(encoded.value.body);
+        op->payload = wr::chargeSize(op->headView(), op->body);
+        op->reserveCharged = true;
+        op->firstSubmit = now();
+        return op;
+    }
+} // namespace
+
+// Issue 15 (D64): a bucket destroyed with operations still queued (the close makes it unreachable: forced here on a
+// bucket built directly, never closed). No abort in any build: ~Bucket logs an internal error, counts it and a usage
+// error, and completes what is left as its comment says — the ticket gets Dropped(ClientClosed) — while the queued
+// post op has nobody to tell. Mutant: the assert back in ~Bucket (this case aborts the suite).
+TEST_F(WriteInternalErrorTest, BucketDestroyedWithQueuedOpsCompletesThem)
+{
+    wr::GlobalBudget budget(1u << 30);
+    auto bucket = std::make_shared<wr::Bucket>("direct", bucketSpec("q", 1u << 20), budget);
+    auto withTicket = directOp("a");
+    auto ticket = std::make_shared<ic::detail::TicketState>();
+    withTicket->ticket = ticket;
+    ASSERT_EQ(bucket->admit(withTicket, now(), now()).cause, ic::Cause::None);
+    auto posted = directOp("b");
+    ASSERT_EQ(bucket->admit(posted, now(), now()).cause, ic::Cause::None);
+    ASSERT_EQ(bucket->stats().retained, 2u);
+
+    const auto internalBefore = ic::testing_hooks::internalErrors();
+    const auto usageBefore = ic::detail::testing::usageErrors();
+    bucket.reset(); // The last reference: ~Bucket with two ops queued.
+
+    EXPECT_EQ(ic::testing_hooks::internalErrors(), internalBefore + 1);
+    EXPECT_EQ(ic::detail::testing::usageErrors(), usageBefore + 1);
+    EXPECT_EQ(errors("a bucket destroyed with queued operations"), 1u);
+    ASSERT_TRUE(ticket->isReady()) << "the ticket of a queued op is completed by ~Bucket";
+    const auto result = ticket->waitUntil(now());
+    ASSERT_TRUE(result.ok());
+    EXPECT_EQ(result.value.status, ic::Status::Dropped);
+    EXPECT_EQ(result.value.cause, ic::Cause::ClientClosed);
+    EXPECT_TRUE(withTicket->claimed.load());
+    EXPECT_TRUE(posted->claimed.load());
+}
+
+// Issue 15 (D64): an op resolved through a bucket other than its own (OpState::owner) — WritePath::resolve, and
+// resolveBulk's Bucket::settleBulk for a post op. No abort in any build: each mismatch is logged and counted, and the
+// resolution goes on with the caller's bucket (two twin buckets, so the swapped charges still balance to 0). Mutant:
+// either assert back (this case aborts the suite).
+TEST_F(WriteInternalErrorTest, ForeignBucketResolutionLoggedNotAborted)
+{
+    ASSERT_NO_FATAL_FAILURE(start());
+    wr::GlobalBudget budget(1u << 30);
+    // Two ops per bucket, one batch of exactly two (maxDocs), so both are delivered when sliced.
+    auto first =
+        std::make_shared<wr::Bucket>("direct", bucketSpec("one", 1u << 20, ic::Overflow::Kind::Reject, 0, 2), budget);
+    auto second =
+        std::make_shared<wr::Bucket>("direct", bucketSpec("two", 1u << 20, ic::Overflow::Kind::Reject, 0, 2), budget);
+    std::vector<std::shared_ptr<wr::OpState>> ofFirst;
+    std::vector<std::shared_ptr<wr::OpState>> ofSecond;
+    for (const auto& key : {"k1", "k2"})
+    {
+        ofFirst.push_back(directOp(key));
+        ofFirst.back()->owner = first.get();
+        ASSERT_EQ(first->admit(ofFirst.back(), now(), now()).cause, ic::Cause::None);
+        ofSecond.push_back(directOp(key));
+        ofSecond.back()->owner = second.get();
+        ASSERT_EQ(second->admit(ofSecond.back(), now(), now()).cause, ic::Cause::None);
+    }
+    ASSERT_EQ(first->slice(now()).ops.size(), 2u);
+    ASSERT_EQ(second->slice(now()).ops.size(), 2u);
+    const auto before = ic::testing_hooks::internalErrors();
+
+    // WritePath::resolve: each op through the other bucket.
+    EXPECT_TRUE(m_path->resolve(second, ofFirst[0], TestSink::ok()));
+    EXPECT_TRUE(m_path->resolve(first, ofSecond[0], TestSink::ok()));
+    EXPECT_EQ(ic::testing_hooks::internalErrors(), before + 2);
+    EXPECT_EQ(errors("resolved through a bucket other than its own"), 2u);
+
+    // resolveBulk -> Bucket::settleBulk (post ops): the same, one per op.
+    std::vector<wr::BulkItem> intoSecond {wr::BulkItem {ofFirst[1].get(), TestSink::ok()}};
+    std::vector<wr::BulkItem> intoFirst {wr::BulkItem {ofSecond[1].get(), TestSink::ok()}};
+    EXPECT_EQ(m_path->resolveBulk(second, intoSecond), 1u);
+    EXPECT_EQ(m_path->resolveBulk(first, intoFirst), 1u);
+    EXPECT_EQ(ic::testing_hooks::internalErrors(), before + 4);
+    EXPECT_EQ(errors("settled by a bucket other than its own"), 2u);
+
+    for (const auto& bucket : {first, second})
+    {
+        const auto s = bucket->stats();
+        EXPECT_EQ(s.resolvedOk, 2u);
+        EXPECT_EQ(s.retained, 0u);
+        EXPECT_EQ(s.charge, 0u) << "twin ops: the swapped releases still balance";
+        expectInvariants(s);
+    }
+    EXPECT_EQ(budget.charge(), 0u);
+}

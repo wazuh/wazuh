@@ -63,6 +63,10 @@ namespace indexer_client
         /// Usage errors detected by the library (I37), process-wide; read through detail::testing::usageErrors().
         std::atomic<std::uint64_t> g_usageErrors {0};
 
+        /// Internal invariants found broken and survived (issue 15, D64), process-wide; read by the test build only
+        /// (testing_hooks::internalErrors()). The production signal is the ERROR line internalError() writes.
+        std::atomic<std::uint64_t> g_internalErrors {0};
+
 #ifdef INDEXER_CLIENT_TESTING
         /// testing_hooks::setProbeAutoStart (test build only).
         std::atomic<bool> g_probeAutoStart {true};
@@ -1114,6 +1118,19 @@ namespace indexer_client
             g_usageErrors.fetch_add(1);
         }
 
+        void internalError(const char* what) noexcept
+        {
+            g_internalErrors.fetch_add(1);
+            try
+            {
+                logError(TAG, "internal error (please report it): %s", what);
+            }
+            catch (...)
+            {
+                // Counted: a log sink that throws must not turn the recovery into a crash.
+            }
+        }
+
         bool withNoRuntime(const std::function<void()>& action)
         {
             if (t_onRuntimeThread)
@@ -1209,6 +1226,11 @@ namespace indexer_client
         void setProbeAutoStart(bool enabled)
         {
             g_probeAutoStart.store(enabled);
+        }
+
+        std::uint64_t internalErrors()
+        {
+            return g_internalErrors.load();
         }
     } // namespace testing_hooks
 #endif

@@ -13,7 +13,6 @@
 #include "write/writer.hpp"
 
 #include <algorithm>
-#include <cassert>
 #include <chrono>
 #include <string>
 #include <string_view>
@@ -365,7 +364,7 @@ namespace indexer_client::detail::write
                 op->payload = chargeSize(op->headView(), op->body);
                 op->reserveCharged = true;
                 op->firstSubmit = std::chrono::steady_clock::now();
-                op->owner = m_bucket.get(); // E6e (D): a plain pointer for the debug assert; no weak count per op.
+                op->owner = m_bucket.get(); // E6e (D): a plain pointer for the owner check; no weak count per op.
                 op->conflictRetry = effective.kind == ConflictPolicy::Kind::Retry;
                 // encode() only moved the body out: the tag and the key fields are still the request's (I79, I80).
                 op->tag = std::move(request.tag);
@@ -530,8 +529,13 @@ namespace indexer_client::detail::write
 
     void WritePath::resolveWon(const std::shared_ptr<Bucket>& bucket, OpState& op, OpResult result)
     {
-        // E6e (D): the caller's bucket must be the op's (a wrong one would corrupt the accounting in silence).
-        assert(!bucket || op.owner == nullptr || op.owner == bucket.get());
+        // E6e (D): the caller's bucket must be the op's (a wrong one would corrupt the accounting in silence). Issue 15
+        // (D64): no assert (the manager's Release builds keep it live); a mismatch is logged and counted, and the
+        // resolution goes on with the caller's bucket (the op's own is not reachable from a plain pointer).
+        if (bucket && op.owner != nullptr && op.owner != bucket.get())
+        {
+            internalError("resolve: an operation resolved through a bucket other than its own");
+        }
         // The winner owns the op's ticket and callback from here on; the sink or a sweep may still hold the OpState.
         auto ticket = std::move(op.ticket);
         auto callback = std::move(op.callback);

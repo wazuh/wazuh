@@ -1106,3 +1106,46 @@ TEST_F(WriteTest, TrustedBodiesSkipScan)
     expectInvariants(stats("t"));
     expectInvariants(stats("b"));
 }
+
+// Issue 15 (D64): the precomputed size of the lines and the encoded bytes disagree (a library bug, forced here by the
+// seam encodeSizeSkew). No abort in any build (the manager's Release builds keep assert live): the op is refused
+// InvalidState before it is charged or queued, an ERROR line says why, testing_hooks::internalErrors() counts it, and
+// `op` is untouched. Through submit the refusal is counted with the bucket's InvalidArgument ones. Mutant: the assert
+// back in encode() (this case aborts the suite).
+TEST_F(WriteInternalErrorTest, EncodeSizeMismatchRefusedNotAborted)
+{
+    ASSERT_NO_FATAL_FAILURE(start());
+    installSink();
+    auto c = client("c", {bucketSpec("b", 1u << 20)});
+    auto writer = c->writer("b");
+    const auto before = ic::testing_hooks::internalErrors();
+    ic::testing_hooks::setEncodeSizeSkew(1);
+
+    auto direct = indexOp("x", 300);
+    const auto body = direct.body;
+    const auto encoded = wr::encode(std::move(direct), ic::ConflictPolicy {});
+    EXPECT_FALSE(encoded.ok());
+    EXPECT_EQ(encoded.cause, ic::Cause::InvalidState);
+    EXPECT_EQ(encoded.reason.rfind("internal error:", 0), 0u) << encoded.reason;
+    EXPECT_EQ(direct.body, body) << "on failure the op is untouched"; // NOLINT(bugprone-use-after-move)
+    EXPECT_EQ(ic::testing_hooks::internalErrors(), before + 1);
+
+    const auto submit = writer->submit(indexOp("y", 300));
+    EXPECT_FALSE(submit.accepted);
+    EXPECT_EQ(submit.cause, ic::Cause::InvalidState);
+    EXPECT_EQ(submit.reason.rfind("internal error:", 0), 0u) << submit.reason;
+    EXPECT_EQ(ic::testing_hooks::internalErrors(), before + 2);
+    EXPECT_EQ(errors("precomputed size of an operation and its encoded lines disagree"), 2u);
+
+    const auto s = stats("b");
+    EXPECT_EQ(s.invalidArgument, 1u);
+    EXPECT_EQ(s.accepted, 0u);
+    EXPECT_EQ(s.charge, 0u);
+    EXPECT_EQ(globalCharge(), 0u);
+    expectInvariants(s);
+
+    // The size right again: the same op encodes, and nothing else was counted.
+    ic::testing_hooks::setEncodeSizeSkew(0);
+    EXPECT_TRUE(wr::encode(indexOp("x", 300), ic::ConflictPolicy {}).ok());
+    EXPECT_EQ(ic::testing_hooks::internalErrors(), before + 2);
+}
