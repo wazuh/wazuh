@@ -1778,9 +1778,14 @@ with activity logs its INFO line every interval (one line per minute per active 
 The counting happens in `Bucket::countResolved` under the bucket mutex; the timer swaps the interval out. The timer is weak-captured (it never
 keeps the summary alive) and the body releases its client references before it emits. The runtime's stop (`stopAndJoin`) disarms the summary
 and stops the timer **before** `writePath->stop()`, and emits the **last summary synchronously after** `writePath->stop()` and the PIT drain: the
-shutdown sweep's `Dropped(Shutdown)` and the PIT deletes the drain gives up are in it, for the buckets whose Client is still alive then. A
-consumer that releases its Client before the runtime stops gets no final line for its buckets: the engine does (`EngineIndexerRuntime::finishStop()`
-resets its Client before `RuntimeOwner::shutdown()`), so the events it discards at stop (I186) are not in any summary line today (D122). The summary body has its own mutex, so a timer run still in
+shutdown sweep's `Dropped(Shutdown)` and the PIT deletes the drain gives up are in it, for the buckets of every Client still registered then
+and of every Client closed **during the stop** (D133). The close order (`client.hpp`) has each consumer run `awaitClosed`, which releases its
+name, before `RuntimeOwner::shutdown()`; modulesd's VD and Inventory Sync Server then drop their Client. So a Client whose name is released
+once the stop began (`beginShutdown` fixed the deadline, or `stopAndJoin` closed the admission) is kept by the runtime — its `ClientState` and
+buckets only; `awaitClosed` already fixed its callback cutoff — and summarized like a live one: its last lines carry what that close dropped
+(`shutdown=<n>`, `client_closed=<n>`, `<n> dropped`). `stopAndJoin` drops it right after the last summary. A Client closed before the stop
+began is not kept: its activity since the previous summary is not logged. The engine shuts the runtime down before it closes its Client
+(`EngineIndexerRuntime::finishStop()`), so its Client is still registered then. The summary body has its own mutex, so a timer run still in
 progress and the final one may overlap. Limiter changes (window, target, pace) stay at DEBUG.
 
 **What is never logged at INFO or above:** a document body, a `reason`, an id or a URL, except the 16-byte prefix of a PIT id in the PIT WARN. The summary's only free text from
