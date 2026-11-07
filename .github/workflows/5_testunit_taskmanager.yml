@@ -25,7 +25,7 @@ on:
       - "src/shared_modules/uds_http_server/include/**"
       - "src/shared_modules/uds_http_server/src/**"
       # Headers from shared_modules/utils and common/commonDefs.h (included by
-      # utils/loggerHelper.h:15). utils/flatbuffers is built by build_external_deps/action.yml:55-63.
+      # utils/loggerHelper.h:15). utils/flatbuffers is built by build_external_deps/action.yml:65-73.
       # utils' own tests and benchmark are another component's tree; only their CMakeLists.txt are on
       # the configure path (utils/CMakeLists.txt).
       - "src/shared_modules/utils/**"
@@ -45,7 +45,7 @@ on:
       - "src/wazuh_modules/CMakeLists.txt"
       # build_external_deps runs make deps/build-external (src/Makefile:610, ref list from
       # tools/get_git_refs.sh at src/Makefile:708) and builds the http-request submodule
-      # (action.yml:35-43), linked here as urlrequest. A submodule bump changes only the gitlink
+      # (action.yml:54-62), linked here as urlrequest. A submodule bump changes only the gitlink
       # path, which no '/**' pattern matches.
       - "src/Makefile"
       - "src/deps.lock.mk"

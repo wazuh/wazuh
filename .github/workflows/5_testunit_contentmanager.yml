@@ -24,7 +24,7 @@ on:
       - "!src/shared_modules/keystore/qa/**"
       # Headers from shared_modules/utils (rocksDBWrapper.hpp, loggerHelper.h, timeHelper.h) and
       # common/commonDefs.h (included by utils/loggerHelper.h). utils/flatbuffers is built by
-      # build_external_deps/action.yml:55-63. utils' own tests and benchmark are another component's
+      # build_external_deps/action.yml:65-73. utils' own tests and benchmark are another component's
       # tree; only their CMakeLists.txt are on the configure path (utils/CMakeLists.txt).
       - "src/shared_modules/utils/**"
       - "!src/shared_modules/utils/tests/**"
@@ -40,7 +40,7 @@ on:
       - "src/external/CMakeLists.txt"
       - "VERSION.json"
       # build_external_deps runs make deps/build-external (src/Makefile:610, ref list from
-      # tools/get_git_refs.sh at src/Makefile:708) and builds http-request (action.yml:35-43), which
+      # tools/get_git_refs.sh at src/Makefile:708) and builds http-request (action.yml:54-62), which
       # the v1 connector used to link as urlrequest. A submodule bump changes only the gitlink path.
       - "src/Makefile"
       - "src/deps.lock.mk"
