@@ -9,8 +9,13 @@
 
 # Drives the agent's wazuh-control (wazuh-client.sh) start, restart and reload against a throwaway
 # install directory whose daemons are stubs: each one starts a background sleep and writes its pid
-# file, as a daemon does once it is up, unless a fail-<daemon> file asks it to exit 1. Checks which
-# daemons are left running when one of them does not start.
+# file, as a daemon does once it is up, unless a fail-<daemon> file asks it to exit 1. A log-<daemon>
+# file is appended to logs/ossec.log as the daemon starts (after emptying it, with a rotate-<daemon>
+# file; after turning a symlinked log into a regular copy of its target, with a realfile-<daemon>
+# file), a gone-<daemon> file makes it exit 0 with no pid file, as a daemon that dies once in the
+# background, and a late-<daemon> file makes it write its pid file 2 s after exiting, as one still
+# starting. Checks which daemons are left running when one of them does not start, and what the
+# start reports.
 #
 #   ./test_wazuh_control.sh
 
@@ -45,6 +50,18 @@ if [ "$1" = "-t" ]; then
     exit 0
 fi
 [ -f "${dir}/fail-${name}" ] && exit 1
+[ -f "${dir}/rotate-${name}" ] && : > "${dir}/logs/ossec.log"
+if [ -f "${dir}/realfile-${name}" ]; then
+    content=$(cat "${dir}/logs/ossec.log")
+    rm -f "${dir}/logs/ossec.log"
+    printf '%s\n' "${content}" > "${dir}/logs/ossec.log"
+fi
+[ -f "${dir}/log-${name}" ] && cat "${dir}/log-${name}" >> "${dir}/logs/ossec.log"
+[ -f "${dir}/gone-${name}" ] && exit 0
+if [ -f "${dir}/late-${name}" ]; then
+    ( sleep 2; sleep 300 > /dev/null 2>&1 & echo $! > "${dir}/var/run/${name}-$!.pid" ) > /dev/null 2>&1 &
+    exit 0
+fi
 sleep 300 > /dev/null 2>&1 &
 echo $! > "${dir}/var/run/${name}-$!.pid"
 exit 0
@@ -87,7 +104,7 @@ new_tree() {
 
     local dir="${WORK}/$1" daemon
 
-    mkdir -p "${dir}/bin" "${dir}/var/run" "${dir}/tmp" "${dir}/queue/sockets" "${dir}/stubbin"
+    mkdir -p "${dir}/bin" "${dir}/var/run" "${dir}/tmp" "${dir}/queue/sockets" "${dir}/stubbin" "${dir}/logs"
     sed -e "s|^SYSTEMD_RUNTIME_DIR=.*|SYSTEMD_RUNTIME_DIR=\"${dir}/run-systemd\"|" \
         -e "s|^SELF_CGROUP=.*|SELF_CGROUP=\"${dir}/cgroup\"|" \
         -e "s|^SYSTEMD_SETTLE_TIMEOUT=.*|SYSTEMD_SETTLE_TIMEOUT=\"3\"|" \
@@ -217,6 +234,135 @@ new_tree start_fail
 touch "${WORK}/start_fail/fail-wazuh-agentd"
 check "start fails when a daemon does not start" "1" "$(control start_fail start)"
 check "the daemons that start brought up are stopped" "" "$(running start_fail)"
+check "a daemon that does not start points to ossec.log" "1" \
+    "$(grep -c "^wazuh-agentd did not start; see ${WORK}/start_fail/logs/ossec.log for the reason$" "${WORK}/start_fail/start.out")"
+
+# wazuh-agentd refusing the enrollment token once in the background: it logs why and exits before
+# writing its pid file. The start ends on the CRITICAL, without waiting for its deadline, and shows it.
+REFUSED_ERROR="2026/11/06 17:52:56 wazuh-agentd: ERROR: Enrollment token X was revoked (token_revoked). A new enrollment token is needed."
+REFUSED_CRITICAL="2026/11/06 17:52:56 wazuh-agentd: CRITICAL: Enrollment-token bootstrap failed; refusing to enroll unverified."
+new_tree start_refused
+echo "2026/11/06 17:00:00 wazuh-agentd: INFO: Started (pid: 1)." > "${WORK}/start_refused/logs/ossec.log"
+printf '%s\n%s\n' "${REFUSED_ERROR}" "${REFUSED_CRITICAL}" > "${WORK}/start_refused/log-wazuh-agentd"
+touch "${WORK}/start_refused/gone-wazuh-agentd"
+started_at=$(date +%s)
+check "start fails when a daemon logs a CRITICAL and exits" "1" "$(control start_refused start)"
+check "a CRITICAL ends the start before its deadline" "true" \
+    "$([ $(( $(date +%s) - started_at )) -lt 10 ] && echo true || echo false)"
+check "the daemons that start brought up are stopped after a CRITICAL" "" "$(running start_refused)"
+check "the start shows why the daemon did not start" "wazuh-agentd did not start; see ${WORK}/start_refused/logs/ossec.log for the reason
+${REFUSED_ERROR}
+${REFUSED_CRITICAL}" "$(sed -n '/did not start/,/CRITICAL/p' "${WORK}/start_refused/start.out")"
+
+# A CRITICAL logged before this start belongs to an earlier one. The daemon writes its pid file
+# late, so the start reads the log while waiting for it.
+new_tree start_old_critical
+echo "${REFUSED_CRITICAL}" > "${WORK}/start_old_critical/logs/ossec.log"
+touch "${WORK}/start_old_critical/late-wazuh-agentd"
+check "a CRITICAL from an earlier start does not fail this one" "0" "$(control start_old_critical start)"
+check "every daemon runs despite an earlier CRITICAL" "${DAEMONS}" "$(running start_old_critical)"
+
+# A component of the daemon logs under its own tag, and its CRITICAL ends the daemon all the same
+# (the https-client during the enrollment-token bootstrap).
+COMPONENT_ERROR="2026/11/06 17:52:56 wazuh-agentd:https-client: ERROR: Could not load the certificate authority."
+COMPONENT_CRITICAL="2026/11/06 17:52:56 wazuh-agentd:https-client: CRITICAL: Invalid TLS configuration."
+new_tree start_component
+printf '%s\n%s\n' "${COMPONENT_ERROR}" "${COMPONENT_CRITICAL}" > "${WORK}/start_component/log-wazuh-agentd"
+touch "${WORK}/start_component/gone-wazuh-agentd"
+started_at=$(date +%s)
+check "a CRITICAL from one of the daemon's components fails the start" "1" "$(control start_component start)"
+check "a component's CRITICAL ends the start before its deadline" "true" \
+    "$([ $(( $(date +%s) - started_at )) -lt 10 ] && echo true || echo false)"
+check "the start shows what the daemon's components logged" "${COMPONENT_ERROR}
+${COMPONENT_CRITICAL}" "$(grep 'https-client' "${WORK}/start_component/start.out")"
+
+# With agent.debug on, each line carries the pid, the source line and the function after the tag.
+DEBUG_CRITICAL="2026/11/06 17:52:56 wazuh-agentd[123] agentd.c:176 at AgentdStart(): CRITICAL: Enrollment-token bootstrap failed; refusing to enroll unverified."
+DEBUG_COMPONENT="2026/11/06 17:52:56 wazuh-agentd:https-client[123] moduleConfig.cpp:211 at fromC(): CRITICAL: Invalid TLS configuration."
+for line in "${DEBUG_CRITICAL}" "${DEBUG_COMPONENT}"; do
+    new_tree start_debug
+    echo "${line}" > "${WORK}/start_debug/log-wazuh-agentd"
+    touch "${WORK}/start_debug/gone-wazuh-agentd"
+    started_at=$(date +%s)
+    check "a CRITICAL in the debug format fails the start (${line#* * }) " "1" "$(control start_debug start)"
+    check "a CRITICAL in the debug format ends the start before its deadline (${line#* * })" "true" \
+        "$([ $(( $(date +%s) - started_at )) -lt 10 ] && echo true || echo false)"
+    check "the start shows the CRITICAL in the debug format (${line#* * })" "${line}" \
+        "$(grep 'CRITICAL' "${WORK}/start_debug/start.out")"
+    drop_tree start_debug
+done
+
+# A byte that is not valid UTF-8 does not hide the line from a UTF-8 locale's grep.
+new_tree start_bytes
+printf '2026/11/06 17:52:56 wazuh-agentd: CRITICAL: bad \377byte\n' > "${WORK}/start_bytes/log-wazuh-agentd"
+touch "${WORK}/start_bytes/gone-wazuh-agentd"
+started_at=$(date +%s)
+check "a CRITICAL with a byte invalid in the locale fails the start" "1" \
+    "$(LC_ALL=C.UTF-8 LANG=C.UTF-8 control start_bytes start)"
+check "a CRITICAL with a byte invalid in the locale ends the start before its deadline" "true" \
+    "$([ $(( $(date +%s) - started_at )) -lt 10 ] && echo true || echo false)"
+
+# NUL bytes in the log (left by a truncation) do not make grep take it for binary and print nothing.
+new_tree start_nul
+printf '\000\000\000\n%s\n' "${REFUSED_CRITICAL}" > "${WORK}/start_nul/log-wazuh-agentd"
+touch "${WORK}/start_nul/gone-wazuh-agentd"
+started_at=$(date +%s)
+check "a CRITICAL after NUL bytes fails the start" "1" "$(LC_ALL=C control start_nul start)"
+check "a CRITICAL after NUL bytes ends the start before its deadline" "true" \
+    "$([ $(( $(date +%s) - started_at )) -lt 10 ] && echo true || echo false)"
+check "the start shows a CRITICAL after NUL bytes" "${REFUSED_CRITICAL}" \
+    "$(grep 'CRITICAL' "${WORK}/start_nul/start.out")"
+check "grep's own messages do not reach the output" "0" "$(grep -c 'binary file' "${WORK}/start_nul/start.out")"
+
+# A log that exists but cannot be measured when the start begins (a symlink, here) is not read during
+# that start, even once it turns into a regular file: an old CRITICAL in it must not fail the start.
+new_tree start_unmeasured
+echo "${REFUSED_CRITICAL}" > "${WORK}/start_unmeasured/elsewhere.log"
+ln -s "${WORK}/start_unmeasured/elsewhere.log" "${WORK}/start_unmeasured/logs/ossec.log"
+touch "${WORK}/start_unmeasured/realfile-wazuh-agentd" "${WORK}/start_unmeasured/late-wazuh-agentd"
+check "an old CRITICAL in a log that could not be measured does not fail the start" "0" \
+    "$(control start_unmeasured start)"
+check "every daemon runs despite an old CRITICAL in a log that could not be measured" "${DAEMONS}" \
+    "$(running start_unmeasured)"
+
+# Another daemon whose name starts like it is not the daemon.
+new_tree start_other_daemon
+echo "2026/11/06 17:52:56 wazuh-agentd-helper: CRITICAL: not this daemon." > "${WORK}/start_other_daemon/log-wazuh-agentd"
+touch "${WORK}/start_other_daemon/late-wazuh-agentd"
+check "a CRITICAL from a daemon with a longer name does not fail the start" "0" "$(control start_other_daemon start)"
+
+# A log rotated during the start is read from its beginning.
+new_tree start_rotated
+head -c 4096 /dev/zero | tr '\0' 'x' > "${WORK}/start_rotated/logs/ossec.log"
+echo >> "${WORK}/start_rotated/logs/ossec.log"
+echo "${REFUSED_CRITICAL}" > "${WORK}/start_rotated/log-wazuh-agentd"
+touch "${WORK}/start_rotated/rotate-wazuh-agentd" "${WORK}/start_rotated/gone-wazuh-agentd"
+started_at=$(date +%s)
+check "a CRITICAL in a log rotated during the start fails it" "1" "$(control start_rotated start)"
+check "a CRITICAL in a rotated log ends the start before its deadline" "true" \
+    "$([ $(( $(date +%s) - started_at )) -lt 10 ] && echo true || echo false)"
+
+# What the start shows comes from a file the agent's user writes: no control characters reach the
+# terminal.
+new_tree start_escape
+printf '2026/11/06 17:52:56 wazuh-agentd: CRITICAL: \033[2Jcleared\a\n' > "${WORK}/start_escape/log-wazuh-agentd"
+touch "${WORK}/start_escape/gone-wazuh-agentd"
+control start_escape start > /dev/null
+check "the start shows the reason without control characters" "2026/11/06 17:52:56 wazuh-agentd: CRITICAL: [2Jcleared" \
+    "$(grep 'cleared' "${WORK}/start_escape/start.out")"
+
+# logs/ belongs to the agent's user: a symlinked ossec.log is not read, and a FIFO is not waited on.
+new_tree start_log_symlink
+echo "${REFUSED_CRITICAL}" > "${WORK}/start_log_symlink/elsewhere.log"
+ln -s "${WORK}/start_log_symlink/elsewhere.log" "${WORK}/start_log_symlink/logs/ossec.log"
+touch "${WORK}/start_log_symlink/fail-wazuh-agentd"
+control start_log_symlink start > /dev/null
+check "a symlinked ossec.log is not shown" "0" "$(grep -c 'CRITICAL' "${WORK}/start_log_symlink/start.out")"
+
+new_tree start_log_fifo
+mkfifo "${WORK}/start_log_fifo/logs/ossec.log"
+check "a FIFO in place of ossec.log does not hang the start" "0" "$(control start_log_fifo start)"
+check "every daemon runs with a FIFO in place of ossec.log" "${DAEMONS}" "$(running start_log_fifo)"
 
 # Starting the daemons that are down must not take down the ones already running.
 new_tree start_partial
