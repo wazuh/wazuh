@@ -63,14 +63,16 @@ def _metric(client, name):
 def test_sweep_removes_late_report(sweep_client, indexer, agent_id):
     # An ordinary deletion of an agent that reported once: both by-id deletes succeed, so it is note()d.
     assert sweep_client.post_stats({"modules": {"agent": {"uptime": 1}}}, agent_id=agent_id).status == 200
-    assert indexer.wait_for_docs(agent_id, 1, index=AGENT_STATS_INDEX, timeout=30), "the report never landed"
+    landed = indexer.wait_for_docs(agent_id, 1, index=AGENT_STATS_INDEX, timeout=30)
+    assert landed, "the report never landed"
     residual_before = _metric(sweep_client, RESIDUAL)
 
     assert sweep_client.delete_agent({"agent_id": agent_id}).status == 200
     assert indexer.agent_docs(agent_id, index=AGENT_STATS_INDEX) == [], "the deletion itself must remove it"
 
-    # The late write: a report applied after the delete, as a node that had timed out on it would.
-    indexer.put_doc(AGENT_STATS_INDEX, agent_id, {"wazuh": {"agent": {"id": agent_id}}, "late": True})
+    # The late write: the same report applied again after the delete, as a node that had timed out on it would.
+    # It is the document the server built, so it fits the index's strict mapping (an invented field is a 400).
+    indexer.put_doc(AGENT_STATS_INDEX, agent_id, landed[0]["_source"])
     assert indexer.get(AGENT_STATS_INDEX, agent_id) is not None, "the late document must exist before the sweep"
 
     # It is due one window after the deletion and the sweep ticks once per window: gone within two windows
