@@ -113,12 +113,14 @@ phases that `main.cpp` places around the scheduler's stop:
 
 1. `beginStop()`, before the scheduler stops: fixes the shutdown deadline (now + 3 s, `STOP_BUDGET`) and closes the
    Client's admission (`requestClose()`), so a read in flight returns `ClientClosed`. `WIndexerConnector::shutdown()` follows.
-2. `finishStop()`, after the scheduler has stopped: `awaitClosed` without a drain, releases the Client and joins the runtime.
+2. `finishStop()`, after the scheduler has stopped: joins the runtime (`RuntimeOwner::shutdown()`) with the Client still
+   registered, then `awaitClosed` without a drain and releases the Client.
 
 Nothing waits for the queue to drain (I186, as the v1): `finishStop()` does not wait for the buckets, and what is still queued when the runtime closes is discarded. Between `beginStop()` (which closes the Client's admission) and `finishStop()` the library may still send what is already queued while the scheduler stops; the whole stop fits in 3 s. The discarded events are
-not counted in `getDroppedEvents()` (its bucket part is the snapshot from before `shutdown()`) and, today, not logged
-either: `finishStop()` releases the Client before `RuntimeOwner::shutdown()`, so the library's last summary sees no
-engine bucket and emits no line for them (D122). `finishStop()` without a
+not counted in `getDroppedEvents()` (its bucket part is the snapshot from before `shutdown()`), but they are logged:
+the runtime's stop resolves them `Dropped(Shutdown)` and its last summary, which only sees the clients still registered
+(`awaitClosed` releases the consumer name, hence the order), emits the engine's buckets with them (`... unsuccessful
+operations in the last <n> s: shutdown=<count>.` and `... <count> dropped.`; D122, issue 37). `finishStop()` without a
 previous `beginStop()` runs both phases; each phase runs once.
 
 ### Configuration

@@ -572,15 +572,18 @@ TEST_F(EngineIndexerRuntimeTest, NoDocumentCountClosesABulk)
     fake->addRule(indexer_client::testing::bulkRule(responder));
     const auto src = source(countingProvider());
     wiconnector::EngineWriteOptions options;
-    options.flushInterval = std::chrono::seconds {3};
+    // Issue 34: no flush interval can expire while the test posts, however slow the runner; the test fires the flush
+    // itself below. Nothing here depends on how long the posts take.
+    options.flushInterval = std::chrono::hours {1};
     std::vector<std::string> warnings;
     ASSERT_TRUE(runtime->start(indexer_client::ProcessId::Analysisd, src, options, warnings).ok());
     const auto client = runtime->client();
     ASSERT_NE(client, nullptr);
     ASSERT_TRUE(waitUntil([&client] { return client->health().anyAvailable(); }));
 
-    // More documents than the library's default bulk.maxDocs (10 000), far below the bulk's bytes: as in the v1,
-    // only the flush interval sends them, all in one bulk.
+    // More documents than the library's default bulk.maxDocs (10 000), far below the bulk's bytes: as in the v1, no
+    // document count closes a bulk, so they wait for the flush and leave all in one bulk. With a document count the
+    // first 10 000 would leave on their own (or the flush would cut the bulk there) and two bulks would arrive.
     constexpr std::size_t DOCS {10001};
     const auto writer = client->writer(wiconnector::ENGINE_EVENTS_BUCKET);
     ASSERT_NE(writer, nullptr);
@@ -592,6 +595,9 @@ TEST_F(EngineIndexerRuntimeTest, NoDocumentCountClosesABulk)
         op.body = R"({"n":)" + std::to_string(i) + "}";
         ASSERT_TRUE(writer->post(std::move(op)).accepted) << i;
     }
+    // The flush, on the test's clock: closing the Client's admission makes every queued document due at once (the
+    // flush interval's expiry, brought forward), and the bulk is cut by the same rules (bytes, documents).
+    runtime->beginStop();
     ASSERT_TRUE(waitUntil([&responder] { return responder->opCount() >= DOCS; }, 15s)) << responder->opCount();
     const auto bulks = responder->received();
     ASSERT_EQ(bulks.size(), 1U);
@@ -601,7 +607,7 @@ TEST_F(EngineIndexerRuntimeTest, NoDocumentCountClosesABulk)
 TEST_F(EngineIndexerRuntimeTest, FinishStopDiscardsWhatIsQueued)
 {
     // No drain (I186): the indexer holds every `_bulk`, so a stop that waited for the queue would sit out the whole
-    // STOP_BUDGET. finishStop() gives the queue up at once instead.
+    // STOP_BUDGET. finishStop() gives the queue up at once instead, and the library's last summary says so per bucket.
     auto responder =
         std::make_shared<indexer_client::testing::BulkResponder>(indexer_client::testing::BulkScript::items().held());
     fake->addRule(indexer_client::testing::bulkRule(responder));
@@ -609,12 +615,13 @@ TEST_F(EngineIndexerRuntimeTest, FinishStopDiscardsWhatIsQueued)
     std::vector<std::string> warnings;
     ASSERT_TRUE(
         runtime->start(indexer_client::ProcessId::Analysisd, src, wiconnector::EngineWriteOptions {}, warnings).ok());
-    const auto client = runtime->client();
+    auto client = runtime->client();
     ASSERT_NE(client, nullptr);
     ASSERT_TRUE(waitUntil([&client] { return client->health().anyAvailable(); }));
 
     const auto writer = client->writer(wiconnector::ENGINE_EVENTS_BUCKET);
     ASSERT_NE(writer, nullptr);
+    client.reset(); // finishStop() releases the last Client handle, as in the engine.
     for (int i = 0; i < 3; ++i)
     {
         indexer_client::Op op;
@@ -631,4 +638,13 @@ TEST_F(EngineIndexerRuntimeTest, FinishStopDiscardsWhatIsQueued)
     EXPECT_LT(elapsed, EngineIndexerRuntime::STOP_BUDGET / 2)
         << std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count() << " ms: the queue was drained";
     EXPECT_FALSE(indexer_client::RuntimeOwner::running());
+
+    // Issue 37: the runtime's last summary still sees the engine's Client, so the three discarded events are logged
+    // for the `events` bucket (synchronously, inside finishStop()).
+    const auto logged = sink->text();
+    EXPECT_NE(logged.find("indexer-client Indexer client bucket 'analysisd/events' in the last "), std::string::npos)
+        << logged;
+    EXPECT_NE(logged.find(": 3 accepted, 0 ok, 0 failed, 3 dropped."), std::string::npos) << logged;
+    EXPECT_NE(logged.find("unsuccessful operations in the last "), std::string::npos) << logged;
+    EXPECT_NE(logged.find("shutdown=3"), std::string::npos) << logged;
 }
