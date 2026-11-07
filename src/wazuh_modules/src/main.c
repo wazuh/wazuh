@@ -443,7 +443,6 @@ int wm_wait_shutdown_signal(void)
                 continue;
             }
             merror("Couldn't wait on the shutdown pipe: %s (%d)", strerror(errno), errno);
-            pipe_ok = false;
             break;
         }
 
@@ -453,7 +452,6 @@ int wm_wait_shutdown_signal(void)
 
         if (!(pfd.revents & POLLIN)) {
             merror("Couldn't wait on the shutdown pipe: unexpected poll events (0x%x)", (unsigned int)pfd.revents);
-            pipe_ok = false;
             break;
         }
 
