@@ -13,7 +13,6 @@
 #include "write/encoding.hpp"
 
 #include <array>
-#include <cassert>
 #include <charconv>
 #include <cstddef>
 #include <cstdio>
@@ -21,6 +20,9 @@
 #include <string>
 #include <utility>
 #include <vector>
+
+#include "runtime/runtimeInternal.hpp"
+#include "transport/seams.hpp"
 
 namespace indexer_client::detail::write
 {
@@ -649,6 +651,8 @@ namespace indexer_client::detail::write
             }
         }
 
+        size += seams::encodeSizeSkew(); // 0 outside the size-invariant cases (issue 15).
+
         std::string lines;
         lines.reserve(size);
         lines.append(prefix);
@@ -695,7 +699,16 @@ namespace indexer_client::detail::write
             lines.append(op.body);
             lines.append(SCRIPT_TAIL);
         }
-        assert(lines.size() == size && "the exact size and the encoded lines disagree");
+        if (lines.size() != size)
+        {
+            // Issue 15 (D64): a bug in the size computation above, never an abort (the manager's Release builds keep
+            // assert live). The lines may be right or not: the op is refused before it is charged or queued.
+            internalError("encode: the precomputed size of an operation and its encoded lines disagree; operation "
+                          "refused");
+            return Outcome<Encoded>::failure(Cause::InvalidState,
+                                             "internal error: the encoded size of the operation disagrees with its "
+                                             "precomputed size");
+        }
 
         Encoded encoded;
         if (sharedKind)

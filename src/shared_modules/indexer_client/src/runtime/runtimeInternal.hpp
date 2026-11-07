@@ -61,6 +61,12 @@ namespace indexer_client::detail
     /// Counts one usage error (I37) in the process-wide counter read by detail::testing::usageErrors().
     void countUsageError();
 
+    /// Issue 15 (D64): an internal invariant was found broken. Logs `what` at ERROR and counts it (read by the test
+    /// build through testing_hooks::internalErrors()); never aborts, in any build. The caller then takes its recovery
+    /// path (encode(): the op is refused InvalidState; ~Bucket: completes what is left; a resolution with a bucket
+    /// other than the op's: carries on with the caller's).
+    void internalError(const char* what) noexcept;
+
     /// Runs `action` under the lock that serializes RuntimeOwner::start() and shutdown() when no runtime exists (no
     /// runtime thread can be running); false, without running it, otherwise (setLogFunction, I56).
     bool withNoRuntime(const std::function<void()>& action);
