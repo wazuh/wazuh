@@ -343,9 +343,18 @@ void EngineIndexerRuntime::finishStop()
     beginStop();
     m_stopFinished = true;
 
+    // The runtime first, with the Client still registered (issue 37): its stop discards whatever is still queued at
+    // once (no drain, I186: every op Dropped(Shutdown)) and its last summary, which only sees the live clients, then
+    // logs the engine's buckets with what they discarded. awaitClosed() releases the consumer name, so it comes after.
+    const auto cause = indexer_client::RuntimeOwner::shutdown();
+    if (cause != indexer_client::Cause::None)
+    {
+        LOG_ERROR("[indexer-client] The runtime refused to shut down: {}", indexer_client::toString(cause));
+    }
+
     if (m_client)
     {
-        // No drain (I186): whatever is still queued is discarded now.
+        // Nothing is left to drain; the deadline is now so a refused shutdown above still discards the queue.
         const auto closed = m_client->awaitClosed(std::chrono::steady_clock::now());
         if (!closed.ok())
         {
@@ -354,12 +363,6 @@ void EngineIndexerRuntime::finishStop()
                         closed.reason.c_str());
         }
         m_client.reset();
-    }
-
-    const auto cause = indexer_client::RuntimeOwner::shutdown();
-    if (cause != indexer_client::Cause::None)
-    {
-        LOG_ERROR("[indexer-client] The runtime refused to shut down: {}", indexer_client::toString(cause));
     }
 }
 

@@ -54,8 +54,8 @@ indexer_client::Outcome<std::vector<indexer_client::BucketSpec>> engineBucketSpe
  * Every call must come from the thread that called start() (the runtime's owner: the engine's main thread). The stop
  * is in two phases so the engine can place them around its scheduler (I191): beginStop() before the scheduler stops —
  * fixes the shutdown deadline and closes the Client's admission, so a read in flight returns ClientClosed — and
- * finishStop() after it — waits for the Client without draining (I186) and joins the runtime. finishStop() alone runs
- * both phases; each phase runs once.
+ * finishStop() after it — joins the runtime, which discards what is queued (I186) and logs it in its last summary,
+ * then waits for the Client and releases it. finishStop() alone runs both phases; each phase runs once.
  */
 class EngineIndexerRuntime final
 {
@@ -96,7 +96,7 @@ public:
     /// Phase 1: beginShutdown(now + STOP_BUDGET) and requestClose() on the Client.
     void beginStop();
 
-    /// Phase 2: awaitClosed(now) on the Client, release it, and RuntimeOwner::shutdown().
+    /// Phase 2: RuntimeOwner::shutdown() (its last summary still sees the Client), then awaitClosed(now), release it.
     void finishStop();
 
 private:

@@ -327,10 +327,12 @@ it (the remote configuration read at most 10 s), so a start-up with the indexer 
 #### Stop
 
 On shutdown the engine stops the indexer client in two phases: it closes the client to new work and stops the writes
-before the scheduler stops (a read in flight returns as closed), and after the scheduler it waits for the client and
-joins the runtime. Nothing queued is drained: the events still queued or waiting for a retry are discarded, as the
-earlier connector did, and are neither counted in `indexer.events.dropped` nor reported in the log (see
-[Indexer metrics](README.md#indexer-metrics)). The whole stop is bounded by 3 seconds.
+before the scheduler stops (a read in flight returns as closed), and after the scheduler it joins the runtime and then
+releases the client. Nothing queued is drained: the events still queued or waiting for a retry are discarded, as the
+earlier connector did. They are not counted in `indexer.events.dropped` (see
+[Indexer metrics](README.md#indexer-metrics)), but the indexer client's last summary reports them per bucket: a
+warning `Indexer client bucket 'analysisd/<bucket>' unsuccessful operations in the last <n> s: shutdown=<count>.` and
+the `... <count> dropped.` total of the informational line that follows. The whole stop is bounded by 3 seconds.
 
 ### Indexer connection (standalone only)
 
