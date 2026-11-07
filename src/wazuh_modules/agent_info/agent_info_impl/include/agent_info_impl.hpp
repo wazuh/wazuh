@@ -418,7 +418,7 @@ class AgentInfoImpl
 
         /// @brief True only while start()'s run loop is executing.
         /// Read by releaseResources() to refuse tearing down members the loop may still
-        /// be using. The join in stop_wmodules() / wm_handler() is not authoritative --
+        /// be using. The join in stop_wmodules() / wm_shutdown_run() is not authoritative --
         /// both only log when the budget expires and then continue to process exit -- so
         /// the destructor can be reached with this loop still running.
         std::atomic<bool> m_runLoopActive{false};

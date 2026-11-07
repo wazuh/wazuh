@@ -177,6 +177,7 @@ inventory_sync_server/
 │   └── vd/                            # the vulnerability-detection lane:
 │       ├── IVdScanner.hpp             #   what the lane needs from a scanner (feedReady, scan, scanAgent)
 │       ├── vdScannerFactory.hpp       #   declares makeProductionVdScanner()
+│       ├── vdScannerAdapter.hpp       #   BasicVdScannerAdapter<TFacade>: the adapter body, facade-agnostic (unit-tested over a fake)
 │       ├── vdScannerAdapter.cpp       #   the ONE TU that includes the scanner's headers
 │       ├── vdScanLane.*               #   bounded queue + workers: scan -> ok -> index -> respond
 │       ├── agentInFlightRegistry.hpp  #   per-agent cross-lane exclusion (pipeline <-> lane)

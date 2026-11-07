@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#include <cstdlib>
+#include <cstring>
 #include <memory>
+#include <new>
 #include <string>
 
 #include "builders/baseBuilders_test.hpp"
@@ -578,18 +581,102 @@ TEST_F(IndexerOutputOperationTest, IndexesOutsideTestMode)
     EXPECT_FALSE(result.hasTrace());
 }
 
+namespace tracking
+{
+/// Heap blocks live on the armed thread, so a test can tell how many buffers hold a given text at one instant.
+/// Replaces the global operator new/delete of this test binary; every other thread and every allocation made while
+/// not armed goes straight to malloc/free.
+constexpr std::size_t MAX_TRACKED_BLOCKS = 8192;
+
+struct TrackedBlock
+{
+    void* ptr {nullptr};
+    std::size_t size {0};
+};
+
+thread_local bool trackingArmed = false;
+TrackedBlock trackedBlocks[MAX_TRACKED_BLOCKS];
+
+void trackBlock(void* ptr, std::size_t size) noexcept
+{
+    for (auto& block : trackedBlocks)
+    {
+        if (block.ptr == nullptr)
+        {
+            block = {ptr, size};
+            return;
+        }
+    }
+}
+
+void untrackBlock(void* ptr) noexcept
+{
+    for (auto& block : trackedBlocks)
+    {
+        if (block.ptr == ptr)
+        {
+            block = {};
+            return;
+        }
+    }
+}
+
+/// Number of live tracked blocks that start with @p text.
+std::size_t liveBlocksHolding(const std::string& text)
+{
+    std::size_t count = 0;
+    for (const auto& block : trackedBlocks)
+    {
+        if (block.ptr != nullptr && block.size >= text.size() && std::memcmp(block.ptr, text.data(), text.size()) == 0)
+        {
+            ++count;
+        }
+    }
+    return count;
+}
+
+/// Arms the tracking for the current thread for its lifetime.
+class TrackingScope
+{
+public:
+    TrackingScope()
+    {
+        for (auto& block : trackedBlocks)
+        {
+            block = {};
+        }
+        trackingArmed = true;
+    }
+    ~TrackingScope()
+    {
+        trackingArmed = false;
+        for (auto& block : trackedBlocks)
+        {
+            block = {};
+        }
+    }
+    TrackingScope(const TrackingScope&) = delete;
+    TrackingScope& operator=(const TrackingScope&) = delete;
+};
+
+} // namespace tracking
+
 namespace
 {
-/// Hand-written connector: records the capacity of the index name it receives, which a gmock action cannot show.
+using namespace tracking;
+
+/// Hand-written connector: the name arrives by value, so a copy and a move look the same from the callee. What tells
+/// them apart is how many live buffers hold the name when the call is made: the caller's own (still alive until it
+/// returns) and the parameter's. Moved, they are the same buffer; copied, there are two.
 class RecordingConnector final : public wiconnector::IWIndexerConnector
 {
 public:
     std::string lastIndex;
-    std::size_t lastIndexCapacity {0};
+    std::size_t liveBuffersWithName {0};
 
     void index(std::string index, std::string) override
     {
-        lastIndexCapacity = index.capacity();
+        liveBuffersWithName = liveBlocksHolding(index);
         lastIndex = std::move(index);
     }
     json::Json getEngineRemoteConfig() override { return json::Json {}; }
@@ -599,8 +686,41 @@ public:
 };
 } // namespace
 
-// The resolved index name is moved into the connector: it keeps the buffer of the template it was built in, which is
-// larger than the name (a copy would get a buffer of the name's size)
+} // namespace indexeroutputtest
+
+void* operator new(std::size_t size)
+{
+    void* ptr = std::malloc(size == 0 ? 1 : size);
+    if (ptr == nullptr)
+    {
+        throw std::bad_alloc();
+    }
+    if (indexeroutputtest::tracking::trackingArmed)
+    {
+        indexeroutputtest::tracking::trackBlock(ptr, size);
+    }
+    return ptr;
+}
+
+void operator delete(void* ptr) noexcept
+{
+    if (indexeroutputtest::tracking::trackingArmed)
+    {
+        indexeroutputtest::tracking::untrackBlock(ptr);
+    }
+    std::free(ptr);
+}
+
+void operator delete(void* ptr, std::size_t) noexcept
+{
+    ::operator delete(ptr);
+}
+
+namespace indexeroutputtest
+{
+
+// The resolved index name is moved into the connector, not copied. The name is longer than any small-string buffer,
+// so it lives on the heap; the check does not depend on the capacity the standard library gives a copy.
 TEST_F(IndexerOutputOperationTest, ResolvedIndexNameIsMoved)
 {
     auto connector = std::make_shared<RecordingConnector>();
@@ -610,9 +730,12 @@ TEST_F(IndexerOutputOperationTest, ResolvedIndexNameIsMoved)
     auto expression = builder(json::Json(R"({"index": "wazuh-events-v5-${wazuh.integration.category}"})"), mocks->ctx);
 
     auto event = std::make_shared<json::Json>(messageStr.c_str());
-    ASSERT_TRUE(expression->getPtr<base::Term<base::EngineOp>>()->getFn()(event).success());
+    {
+        TrackingScope scope;
+        ASSERT_TRUE(expression->getPtr<base::Term<base::EngineOp>>()->getFn()(event).success());
+    }
     EXPECT_EQ(connector->lastIndex, "wazuh-events-v5-applications");
-    EXPECT_GE(connector->lastIndexCapacity, std::string("wazuh-events-v5-${wazuh.integration.category}").size());
+    EXPECT_EQ(connector->liveBuffersWithName, 1u);
 }
 
 } // namespace indexeroutputtest
