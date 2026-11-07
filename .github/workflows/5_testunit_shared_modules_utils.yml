@@ -35,9 +35,6 @@ on:
       # builds the http-request submodule (its "Build http-request" step, also configured by
       # add_subdirectory(shared_modules/http-request) in src/CMakeLists.txt). A submodule bump changes
       # only the gitlink path, which `http-request/**` would never match.
-      # Not listed on purpose: the action's standalone shared_modules/keystore build. utils_utest
-      # links none of its output, and a change that breaks it is caught on its own PR by
-      # 5_testcomponent_keystore.yml, which fires on that tree and runs this same action.
       - "src/Makefile"
       - "src/deps.lock.mk"
       - "tools/get_git_refs.sh"

@@ -52,10 +52,9 @@ on:
       # (its "Build http-request" step, also configured by add_subdirectory(shared_modules/http-request)
       # in src/CMakeLists.txt). A submodule bump changes only
       # the gitlink path, which `http-request/**` would never match.
-      # Not listed on purpose: the action's other two standalone builds (shared_modules/keystore and
-      # utils/flatbuffers). No target built here links or includes their output, and a change that
-      # breaks either is caught on its own PR by the lanes that fire on those trees and run this same
-      # action (5_testcomponent_keystore.yml, 5_testunit_shared_modules_utils.yml).
+      # Not listed on purpose: the action's other standalone build (utils/flatbuffers). No target built
+      # here links or includes its output, and a change that breaks it is caught on its own PR by
+      # 5_testunit_shared_modules_utils.yml, which fires on that tree and runs this same action.
       - "src/Makefile"
       - "src/deps.lock.mk"
       - "tools/get_git_refs.sh"
