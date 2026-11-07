@@ -111,7 +111,11 @@ jobs:
   indexerclient-asan:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    # build_target_cpp builds serially; under ASAN+UBSan the component suite alone took over 44 min that way and the job hit its
+    # limit. The runner has 4 vCPUs, and `cmake --build` reads CMAKE_BUILD_PARALLEL_LEVEL, so only this job builds in parallel.
+    timeout-minutes: 90
+    env:
+      CMAKE_BUILD_PARALLEL_LEVEL: "4"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
