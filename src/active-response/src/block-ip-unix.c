@@ -450,6 +450,12 @@ firewall_result_t try_npf(const char *srcip, int action, int ip_version, const c
     char *exec_cmd2[] = {npfctl_path, "table", "wazuh_blacklist", (char *)table_operation, (char *)srcip, NULL};
 
     int ret = execute_command_with_retry(argv0, npfctl_path, exec_cmd2);
+
+    // npfctl add also fails when the address is already in the table
+    if (ret != OS_SUCCESS && action == ENABLE_COMMAND) {
+        char *exec_cmd3[] = {npfctl_path, "table", "wazuh_blacklist", "test", (char *)srcip, NULL};
+        ret = execute_command_with_retry(argv0, npfctl_path, exec_cmd3);
+    }
     os_free(npfctl_path);
 
     return ret == OS_SUCCESS ? FIREWALL_SUCCESS : FIREWALL_EXECUTION_FAILED;
