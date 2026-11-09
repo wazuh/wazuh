@@ -44,8 +44,10 @@ void OS_CSyslogD(SyslogConfig **syslog_config);
 void OS_CSyslogD(SyslogConfig **syslog_config) __attribute__((noreturn));
 #endif
 
-/* Characters escaped with a backslash in each output; CR and LF become \r and \n */
-#define SPLUNK_ESCAPE       "\\\"\r\n"
+/* Characters escaped with a backslash in each output; CR and LF become \r and \n.
+ * Splunk's default KV_MODE=auto has no escapes inside quoted values, so its
+ * characters are replaced instead of escaped (see field_escape()) */
+#define SPLUNK_ESCAPE       "\"\r\n"
 #define CEF_EXT_ESCAPE      "\\=\r\n"
 #define CEF_HEADER_ESCAPE   "\\|\r\n"
 
