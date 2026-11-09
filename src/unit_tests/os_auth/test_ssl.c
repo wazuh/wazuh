@@ -98,6 +98,23 @@ void test_wrap_SSL_read_multi_record(void **state) {
     assert_int_equal(ret, (3* MAX_SSL_PACKET_SIZE) + 1024);
 }
 
+// The default cipher list must not keep any static-RSA (no forward secrecy) key exchange suite.
+void test_default_ciphers_exclude_static_rsa(void **state) {
+    SSL_CTX *ctx = get_ssl_context(DEFAULT_CIPHERS, 0);
+    assert_non_null(ctx);
+
+    STACK_OF(SSL_CIPHER) *sk = SSL_CTX_get_ciphers(ctx);
+    assert_non_null(sk);
+    assert_true(sk_SSL_CIPHER_num(sk) > 0);
+
+    for (int i = 0; i < sk_SSL_CIPHER_num(sk); i++) {
+        const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(sk, i);
+        assert_int_not_equal(SSL_CIPHER_get_kx_nid(cipher), NID_kx_rsa);
+    }
+
+    SSL_CTX_free(ctx);
+}
+
 /*************************/
 int main(void) {
 
@@ -106,6 +123,7 @@ int main(void) {
         cmocka_unit_test(test_wrap_SSL_read_success),
         cmocka_unit_test(test_wrap_SSL_read_full_single_record),
         cmocka_unit_test(test_wrap_SSL_read_multi_record),
+        cmocka_unit_test(test_default_ciphers_exclude_static_rsa),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

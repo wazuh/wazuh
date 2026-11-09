@@ -78,7 +78,7 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     config->flags.use_source_ip = 0;
     config->flags.clear_removed = 0;
     config->flags.use_password = 0;
-    config->ciphers = strdup("HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH");
+    config->ciphers = strdup("HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:!kRSA:@STRENGTH");
     config->flags.verify_host = 0;
     config->manager_cert = strdup(manager_cert);
     config->manager_key = strdup(manager_key);
