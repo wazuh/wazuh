@@ -152,10 +152,6 @@ set(REVISION_FILE "${CMAKE_MATCH_1}")
 add_definitions(-DVERSION="${VERSION_FILE}")
 add_definitions(-DREVISION="${REVISION_FILE}")
 
-# cpp-httplib falls back to select(), which fails for descriptors >= FD_SETSIZE. It is header-only, so every
-# translation unit that includes it must be built with the same setting.
-add_definitions(-DCPPHTTPLIB_USE_POLL)
-
 # If REVISION OR FILE is empty fail
 if("${REVISION_FILE}" STREQUAL "")
   message(FATAL_ERROR "REVISION file is empty")
@@ -254,6 +250,11 @@ endif()
 # External dependencies
 add_subdirectory(external)
 # deps-recipe: end
+
+# cpp-httplib falls back to select(), which fails for descriptors >= FD_SETSIZE. It is header-only, so every
+# translation unit that includes it must be built with the same setting. Defined after add_subdirectory(external)
+# and outside the deps-recipe blocks, as the external dependencies do not include it and no pool key changes.
+add_definitions(-DCPPHTTPLIB_USE_POLL)
 
 # Compiler hardening of the manager's own binaries and shared libraries, the engine included: stack protector,
 # _FORTIFY_SOURCE=2, PIE and full RELRO (the protections #38571 gave the 4.x Makefile build).
