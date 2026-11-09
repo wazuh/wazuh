@@ -9,7 +9,7 @@
  * Foundation.
  */
 
-// pipe2(), on glibc
+// pipe2()
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
@@ -487,9 +487,9 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
         // Both ends close on exec: a command another thread launches meanwhile must not inherit
         // the write end, or this command's reader would not see end of file until that one exits
         // too. The child still gets a usable stdout and stderr, since dup2() clears the flag on
-        // the copies. pipe2() sets the flag atomically; without it (glibc < 2.9 or no glibc), a fork
+        // the copies. pipe2() sets the flag atomically; without it (not Linux, or glibc < 2.9), a fork
         // in another thread between pipe() and the fcntl() calls can still leak the ends.
-#if defined(__GLIBC__) && (__GLIBC__ > 2 || __GLIBC_MINOR__ >= 9)
+#if defined(__linux__) && !(defined(__GLIBC__) && __GLIBC__ == 2 && __GLIBC_MINOR__ < 9)
         if (pipe2(pipe_fd, O_CLOEXEC) < 0) {
             merror("At wm_exec(): pipe2(): %s", strerror(errno));
             return -1;
@@ -652,6 +652,12 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
             pid_t reaped = waitpid(pid, &status, WNOHANG);
 
             if (reaped == 0 && secs) {
+                // A command just stopped by the timeout closes its output before it can be reaped
+                if (retval == WM_ERROR_TIMEOUT) {
+                    gettime(&timeout);
+                    timeout.tv_sec += 1;
+                }
+
                 if (reaped = wm_exec_wait_child(pid, &status, &timeout), reaped == 0) {
                     retval = WM_ERROR_TIMEOUT;
                     reaped = wm_exec_stop_command(pid, &status);

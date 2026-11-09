@@ -442,9 +442,16 @@ static void test_wm_exec_output_not_held_by_concurrent_child(void ** state) {
     fork_spawns_holder = false;
     const time_t elapsed = time(NULL) - start;
 
-    __real_kill(holder_pid, SIGKILL);
-    waitpid(holder_pid, NULL, 0);
+    assert_true(holder_pid > 0);
+    // A holder that already exited would not hold the pipe, and the test would prove nothing
+    const bool holder_alive = waitpid(holder_pid, NULL, WNOHANG) == 0;
 
+    if (holder_alive) {
+        __real_kill(holder_pid, SIGKILL);
+        waitpid(holder_pid, NULL, 0);
+    }
+
+    assert_true(holder_alive);
     assert_int_equal(ret, 0);
     assert_int_equal(status, 0);
     assert_non_null(output);
