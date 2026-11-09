@@ -11,6 +11,8 @@
 #ifndef ROOTCHECK_H
 #define ROOTCHECK_H
 
+#include <sys/types.h>
+
 #include "list_op.h"
 #include "rootcheck-config.h"
 #include <cJSON.h>
