@@ -36,6 +36,7 @@ class SysInfoNetworkWindowsWrapperMock: public INetworkInterfaceWrapper
         MOCK_METHOD(std::string, netmaskV6, (), (const override));
         MOCK_METHOD(std::string, broadcastV6, (), (const override));
         MOCK_METHOD(std::string, gateway, (), (const override));
+        MOCK_METHOD(std::string, gatewayV6, (), (const override));
         MOCK_METHOD(std::string, metrics, (), (const override));
         MOCK_METHOD(std::string, metricsV6, (), (const override));
         MOCK_METHOD(std::string, dhcp, (), (const override));
@@ -142,6 +143,7 @@ TEST_F(SysInfoNetworkWindowsTest, Test_COMMON_DATA)
     EXPECT_CALL(*mock, stats()).Times(1).WillOnce(Return(LinkStats{0, 1, 2, 3, 4, 5, 6, 7}));
     EXPECT_CALL(*mock, mtu()).Times(1).WillOnce(Return(mtu));
     EXPECT_CALL(*mock, gateway()).Times(1).WillOnce(Return(gateway));
+    EXPECT_CALL(*mock, gatewayV6()).Times(1).WillOnce(Return("fe80::1"));
 
     EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSPlatformType::WINDOWS>::create(mock)->buildNetworkData(networkInfo));
 
@@ -161,4 +163,5 @@ TEST_F(SysInfoNetworkWindowsTest, Test_COMMON_DATA)
 
     EXPECT_EQ(mtu, networkInfo.at("mtu").get<uint32_t>());
     EXPECT_EQ(gateway, networkInfo.at("gateway").get_ref<const std::string&>());
+    EXPECT_EQ("fe80::1", networkInfo.at("gateway6").get_ref<const std::string&>());
 }

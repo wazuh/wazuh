@@ -118,4 +118,5 @@ void WindowsNetworkImpl<Utils::NetworkWindowsHelper::COMMON_DATA>::buildNetworkD
 
     networkCommon["mtu"]        = m_interfaceAddress->mtu();
     networkCommon["gateway"]    = m_interfaceAddress->gateway();
+    networkCommon["gateway6"]   = m_interfaceAddress->gatewayV6();
 }

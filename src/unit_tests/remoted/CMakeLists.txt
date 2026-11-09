@@ -119,7 +119,7 @@ list(APPEND remoted_flags "-Wl,--wrap,time -Wl,--wrap,rem_get_qsize -Wl,--wrap,r
 list(APPEND remoted_names "test_remcom")
 list(APPEND remoted_flags "-Wl,--wrap,rem_create_state_json -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,select -Wl,--wrap,close -Wl,--wrap,accept \
                            -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,getRemoteConfig -Wl,--wrap,rem_create_agents_state_json  \
-                           -Wl,--wrap,assign_group_to_agent \
+                           -Wl,--wrap,assign_group_to_agent -Wl,--wrap,req_sender \
                            -Wl,--wrap,wdb_get_agents_ids_of_current_node -Wl,--wrap,json_parse_agents -Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS}")
 
 list(LENGTH remoted_names count)

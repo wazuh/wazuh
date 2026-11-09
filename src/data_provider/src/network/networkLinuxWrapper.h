@@ -12,11 +12,16 @@
 #ifndef _NETWORK_LINUX_WRAPPER_H
 #define _NETWORK_LINUX_WRAPPER_H
 
+#include <algorithm>
+#include <cctype>
 #include <ifaddrs.h>
+#include <memory>
+#include <netinet/in.h>
 #include <net/if_arp.h>
 #include <sys/socket.h>
 #include "inetworkWrapper.h"
 #include "networkHelper.h"
+#include "networkLinuxAddressResolver.h"
 #include "filesystemHelper.h"
 #include "stringHelper.h"
 #include "sharedDefs.h"
@@ -121,6 +126,18 @@ static const std::map<std::string, std::string> DHCP_STATUS =
     { "no",                     "disabled"          },
     { "manual",                 "disabled"          },
     { "bootp",                  "BOOTP"             },
+    // SUSE (wicked) BOOTPROTO values that start a DHCPv4 client
+    { "dhcp4",                  "enabled"           },
+    { "dhcp+autoip",            "enabled"           },
+    // Boolean spellings that ifcfg-rh accepts for DHCPV6C
+    { "1",                      "enabled"           },
+    { "true",                   "enabled"           },
+    { "y",                      "enabled"           },
+    { "t",                      "enabled"           },
+    { "0",                      "disabled"          },
+    { "false",                  "disabled"          },
+    { "n",                      "disabled"          },
+    { "f",                      "disabled"          },
 };
 
 namespace GatewayFileFields
@@ -138,6 +155,24 @@ namespace GatewayFileFields
         MTU,
         Window,
         IRTT,
+        Size
+    };
+}
+
+namespace GatewayV6FileFields
+{
+    enum
+    {
+        Destination,
+        DestinationPrefix,
+        Source,
+        SourcePrefix,
+        NextHop,
+        Metric,
+        RefCnt,
+        Use,
+        Flags,
+        Iface,
         Size
     };
 }
@@ -192,8 +227,17 @@ namespace NetDevFileFields
 class NetworkLinuxInterface final : public INetworkInterfaceWrapper
 {
         ifaddrs* m_interfaceAddress;
+        std::string m_interfaceName;
         std::string m_gateway;
         std::string m_metrics;
+        std::shared_ptr<const IPv4AddressFlags> m_addressFlags;
+
+        // Prefix length of an IPv4 entry, counted from its netmask; 0 without one.
+        unsigned int prefixLength() const
+        {
+            const auto netmask { reinterpret_cast<const sockaddr_in*>(m_interfaceAddress->ifa_netmask) };
+            return netmask ? static_cast<unsigned int>(__builtin_popcount(ntohl(netmask->sin_addr.s_addr))) : 0;
+        }
 
         static std::string getNameInfo(const sockaddr* inputData, const socklen_t socketLen)
         {
@@ -218,21 +262,6 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
             return retVal.get();
         }
 
-        static std::string getRedHatDHCPStatus(const std::vector<std::string>& fields)
-        {
-            std::string retVal { "enabled" };
-            const auto value { fields.at(RHInterfaceConfig::Value) };
-
-            const auto it { DHCP_STATUS.find(value) };
-
-            if (DHCP_STATUS.end() != it)
-            {
-                retVal = it->second;
-            }
-
-            return retVal;
-        }
-
         static std::string getDebianDHCPStatus(const std::string& family, const std::vector<std::string>& fields)
         {
             std::string retVal { "enabled" };
@@ -253,9 +282,12 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
         }
 
     public:
-        explicit NetworkLinuxInterface(ifaddrs* addrs)
+        // interfaceName is the link holding the entry; for IPv4 entries ifa_name is the address label.
+        NetworkLinuxInterface(ifaddrs* addrs, const std::string& interfaceName, std::shared_ptr<const IPv4AddressFlags> addressFlags = nullptr)
             : m_interfaceAddress{ addrs }
+            , m_interfaceName{ interfaceName }
             , m_gateway{UNKNOWN_VALUE}
+            , m_addressFlags{ std::move(addressFlags) }
         {
             if (!addrs)
             {
@@ -296,7 +328,7 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
 
         std::string name() const override
         {
-            return m_interfaceAddress->ifa_name ? Utils::substrOnFirstOccurrence(m_interfaceAddress->ifa_name, ":") : "";
+            return m_interfaceName;
         }
 
         std::string adapter() const override
@@ -360,6 +392,101 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
         std::string gateway() const override
         {
             return m_gateway;
+        }
+
+        std::string gatewayV6() const override
+        {
+            return parseGatewayV6(Utils::getFileContent(std::string(WM_SYS_NET_DIR) + "ipv6_route"), this->name());
+        }
+
+        // Next hop of the ::/0 route of ifName in /proc/net/ipv6_route format
+        static std::string parseGatewayV6(const std::string& routeTable, const std::string& ifName)
+        {
+            constexpr auto IPV6_HEX_LENGTH { 32 };
+            constexpr auto RTF_UP_GATEWAY { 0x0003 };
+            const std::string ANY_ADDRESS(IPV6_HEX_LENGTH, '0');
+            const auto isHex
+            {
+                [](const std::string & value)
+                {
+                    return !value.empty() && std::all_of(value.begin(), value.end(), [](const unsigned char c)
+                    {
+                        return std::isxdigit(c) != 0;
+                    });
+                }
+            };
+            std::string retVal { UNKNOWN_VALUE };
+
+            for (auto& line : Utils::split(routeTable, '\n'))
+            {
+                Utils::replaceAll(line, "\t", " ");
+                line = Utils::trimRepeated(Utils::trim(line), ' ');
+                const auto fields { Utils::split(line, ' ') };
+
+                if (GatewayV6FileFields::Size == fields.size() &&
+                        fields.at(GatewayV6FileFields::Iface).compare(ifName) == 0 &&
+                        fields.at(GatewayV6FileFields::Destination).compare(ANY_ADDRESS) == 0 &&
+                        fields.at(GatewayV6FileFields::DestinationPrefix).compare("00") == 0 &&
+                        fields.at(GatewayV6FileFields::SourcePrefix).compare("00") == 0 &&
+                        fields.at(GatewayV6FileFields::NextHop).size() == IPV6_HEX_LENGTH &&
+                        fields.at(GatewayV6FileFields::NextHop).compare(ANY_ADDRESS) != 0 &&
+                        isHex(fields.at(GatewayV6FileFields::NextHop)) &&
+                        fields.at(GatewayV6FileFields::Flags).size() <= 8 &&
+                        isHex(fields.at(GatewayV6FileFields::Flags)) &&
+                        (std::stoul(fields.at(GatewayV6FileFields::Flags), nullptr, 16) & RTF_UP_GATEWAY) == RTF_UP_GATEWAY)
+                {
+                    const auto& nextHop { fields.at(GatewayV6FileFields::NextHop) };
+                    in6_addr address {};
+
+                    for (size_t i = 0; i < sizeof(address.s6_addr); ++i)
+                    {
+                        address.s6_addr[i] = static_cast<uint8_t>(std::stoul(nextHop.substr(i * 2, 2), nullptr, 16));
+                    }
+
+                    retVal = Utils::NetworkHelper::IAddressToBinary(AF_INET6, &address);
+                    break;
+                }
+            }
+
+            return retVal;
+        }
+
+        // Value of an ifcfg entry without surrounding whitespace and one pair of matching quotes
+        static std::string stripQuotes(const std::string& value)
+        {
+            auto retVal { Utils::trim(value, " \t\r") };
+
+            if (retVal.size() >= 2 && (retVal.front() == '"' || retVal.front() == '\'') && retVal.back() == retVal.front())
+            {
+                retVal = retVal.substr(1, retVal.size() - 2);
+            }
+
+            return retVal;
+        }
+
+        // Values are compared case-insensitively, as NetworkManager's ifcfg-rh plugin does. A value
+        // outside the table says nothing, so the runtime check can still answer.
+        static std::string getRedHatDHCPStatus(const std::vector<std::string>& fields)
+        {
+            std::string retVal { "unknown" };
+            const auto value { Utils::toLowerCase(stripQuotes(fields.at(RHInterfaceConfig::Value))) };
+
+            const auto it { DHCP_STATUS.find(value) };
+
+            if (DHCP_STATUS.end() != it)
+            {
+                retVal = it->second;
+            }
+
+            return retVal;
+        }
+
+        // The configuration files win. Without an answer from them, an address that is not permanent
+        // was installed with a lifetime, which is what a DHCP client does. A permanent address, or no
+        // flags, says nothing either way.
+        static std::string resolveDhcp(const std::string& fileResult, const bool flagsKnown, const uint32_t flags)
+        {
+            return ("unknown" == fileResult && flagsKnown && !(flags & IFA_F_PERMANENT)) ? "enabled" : fileResult;
         }
 
         std::string metrics() const override
@@ -443,7 +570,22 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
                 }
             }
 
-            return retVal;
+            // Netplan, NetworkManager keyfiles and similar leave no file for the checks above
+            auto flagsKnown { false };
+            uint32_t flags { 0 };
+
+            if (AF_INET == family && m_addressFlags)
+            {
+                const auto it { m_addressFlags->find(IPv4AddressKey { ifName, this->address(), prefixLength() }) };
+
+                if (m_addressFlags->end() != it)
+                {
+                    flagsKnown = true;
+                    flags = it->second;
+                }
+            }
+
+            return resolveDhcp(retVal, flagsKnown, flags);
         }
 
         uint32_t mtu() const override

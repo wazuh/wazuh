@@ -28,8 +28,9 @@ from .utils import ERROR_MESSAGE, TIMEOUT, local_internal_options
 
 pytestmark = [pytest.mark.server]
 
-# Bucket types whose marker the module rewinds to the day before the last processed key
-LATE_ARRIVAL_BUCKET_TYPES = {'cloudtrail', 'alb', 'clb', 'nlb'}
+# Bucket types whose marker the module cuts to the year folder of the last processed key, instead of rewinding it to
+# the day before
+YEAR_MARKER_BUCKET_TYPES = {'config'}
 
 # Set test configurator for the module
 configurator.module = 'only_logs_after_test_module'
@@ -910,12 +911,13 @@ def test_bucket_multiple_calls(
                        key=key,
                        client=s3_client)
 
-    # The module rewinds the marker of these types to the day before the last processed key, to read the files
-    # delivered after a greater key of the same prefix
-    if bucket_type in LATE_ARRIVAL_BUCKET_TYPES:
-        date_match = re.search(r'\d{4}/\d{2}/\d{2}', last_marker_key)
-        rewind_day = datetime.strptime(date_match.group(), '%Y/%m/%d') - timedelta(days=1)
-        last_marker_key = f'{last_marker_key[:date_match.start()]}{rewind_day:%Y/%m/%d}'
+    # The module rewinds the marker to the day before the last processed key, to read the files of that day written
+    # after a greater key of the same prefix. The date of the key is the first one, with '/' or '-' as separator
+    if bucket_type not in YEAR_MARKER_BUCKET_TYPES:
+        date_match = re.search(r'\d{4}([/-])\d{2}\1\d{2}', last_marker_key)
+        date_format = f'%Y{date_match.group(1)}%m{date_match.group(1)}%d'
+        rewind_day = datetime.strptime(date_match.group(), date_format) - timedelta(days=1)
+        last_marker_key = f'{last_marker_key[:date_match.start()]}{rewind_day.strftime(date_format)}'
 
     pattern = fr"{MARKER}{last_marker_key}"
 

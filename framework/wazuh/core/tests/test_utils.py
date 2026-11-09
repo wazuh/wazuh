@@ -5,7 +5,11 @@
 
 import datetime
 import os
+import time
+from collections import OrderedDict
 from collections.abc import KeysView
+from contextlib import nullcontext
+from copy import deepcopy
 from io import StringIO
 from requests import exceptions
 from shutil import copyfile, Error
@@ -339,6 +343,30 @@ def test_process_array(array, q, filters, limit, search_text, sort_by, select, d
     assert result == {'items': expected_items, 'totalItems': expected_total_items}
 
 
+@pytest.mark.parametrize('array, expected_indexes', [
+    ([], []),
+    (['framework', 'API', 'API'], [0, 1]),
+    # Dictionaries are equal regardless of the order of their keys
+    ([{'a': 1, 'b': 2}, {'b': 2, 'a': 1}, {'a': 1}], [0, 2]),
+    # Nested values; list order matters
+    ([{'x': [1, {'y': 2}]}, {'x': [1, {'y': 2}]}, {'x': [{'y': 2}, 1]}], [0, 2]),
+    # A list and a tuple are not equal
+    ([[1, 2], (1, 2), [1, 2], (1, 2)], [0, 1]),
+    # Numbers that compare equal are repeated items
+    ([1, 1.0, True, '1', 0, False, None], [0, 3, 4, 6]),
+    ([{'id': 1}, {'id': 1.0}, {'id': '1'}], [0, 2]),
+    # Unhashable values that cannot be turned into a key are compared by equality
+    ([{'a': {1, 2}}, {'a': {2, 1}}, {'a': {3}}], [0, 2]),
+    ([OrderedDict(a=1, b=2), OrderedDict(b=2, a=1), {'a': 1, 'b': 2}], [0, 1]),
+])
+def test_get_distinct_items(array, expected_indexes):
+    """Test that get_distinct_items keeps the first occurrence of each item, in order, comparing items by equality."""
+    result = utils.get_distinct_items(array)
+
+    assert len(result) == len(expected_indexes)
+    assert all(item is array[index] for item, index in zip(result, expected_indexes))
+
+
 @patch('wazuh.core.utils.len', return_value=1)
 @patch('wazuh.core.utils.cut_array')
 @patch('wazuh.core.utils.select_array', return_value=ANY)
@@ -459,6 +487,195 @@ def test_tail():
 
     assert isinstance(result, list)
     assert len(result) == 20
+
+
+@patch('wazuh.core.utils.os.kill')
+@patch('wazuh.core.utils.psutil.Process')
+def test_clean_pid_files_kills_stale_orphan(mock_process, mock_kill):
+    """A pidfile whose PID predates the file and matches the daemon's cmdline is killed."""
+    with TemporaryDirectory() as tmp_dir:
+        pid_file = os.path.join(tmp_dir, 'wazuh-apid_auth-123.pid')
+        with open(pid_file, 'w') as fp:
+            fp.write('123\n')
+
+        mock_process.return_value.cmdline.return_value = \
+            ['python3', '/var/ossec/api/scripts/wazuh_apid.py']
+        mock_process.return_value.create_time.return_value = os.path.getmtime(pid_file) - 10
+
+        with patch('wazuh.core.utils.common.OSSEC_PIDFILE_PATH', tmp_dir):
+            utils.clean_pid_files('wazuh-apid')
+
+        mock_kill.assert_called_once_with(123, utils.SIGKILL)
+        assert not os.path.exists(pid_file)
+
+
+@patch('wazuh.core.utils.os.kill')
+@patch('wazuh.core.utils.psutil.Process')
+def test_clean_pid_files_does_not_kill_recycled_pid(mock_process, mock_kill):
+    """Regression for wazuh/wazuh#38695.
+
+    A live process whose PID matches a stale pidfile but was created after the file
+    was written recycled that PID from the kernel; it is not the process that wrote
+    the file (for example, it can be the daemon's own freshly started instance) and
+    must not be killed.
+    """
+    with TemporaryDirectory() as tmp_dir:
+        pid_file = os.path.join(tmp_dir, 'wazuh-apid_auth-456.pid')
+        with open(pid_file, 'w') as fp:
+            fp.write('456\n')
+
+        mock_process.return_value.cmdline.return_value = \
+            ['python3', '/var/ossec/api/scripts/wazuh_apid.py']
+        mock_process.return_value.create_time.return_value = os.path.getmtime(pid_file) + 10
+
+        with patch('wazuh.core.utils.common.OSSEC_PIDFILE_PATH', tmp_dir):
+            utils.clean_pid_files('wazuh-apid')
+
+        mock_kill.assert_not_called()
+        assert not os.path.exists(pid_file)
+
+
+@patch('wazuh.core.utils.os.kill')
+@patch('wazuh.core.utils.psutil.Process')
+def test_clean_pid_files_does_not_kill_itself(mock_process, mock_kill):
+    """The calling process must never be treated as its own orphan child."""
+    with TemporaryDirectory() as tmp_dir:
+        own_pid = os.getpid()
+        pid_file = os.path.join(tmp_dir, f'wazuh-apid_auth-{own_pid}.pid')
+        with open(pid_file, 'w') as fp:
+            fp.write(f'{own_pid}\n')
+
+        mock_process.return_value.cmdline.return_value = \
+            ['python3', '/var/ossec/api/scripts/wazuh_apid.py']
+        mock_process.return_value.create_time.return_value = os.path.getmtime(pid_file) - 10
+
+        with patch('wazuh.core.utils.common.OSSEC_PIDFILE_PATH', tmp_dir):
+            utils.clean_pid_files('wazuh-apid')
+
+        mock_kill.assert_not_called()
+        assert not os.path.exists(pid_file)
+
+
+@patch('wazuh.core.utils.os.kill')
+@patch('wazuh.core.utils.psutil.Process')
+def test_clean_pid_files_handles_access_denied(mock_process, mock_kill):
+    """A PID recycled by a process owned by another user must not crash the daemon's startup.
+
+    psutil.AccessDenied is not an OSError subclass, so it needs its own coverage: reading
+    cmdline() for a process this daemon can't introspect must be treated the same as not
+    being able to identify it, not left to propagate and abort the caller's startup.
+    """
+    with TemporaryDirectory() as tmp_dir:
+        pid_file = os.path.join(tmp_dir, 'wazuh-apid_auth-789.pid')
+        with open(pid_file, 'w') as fp:
+            fp.write('789\n')
+
+        mock_process.return_value.cmdline.side_effect = utils.psutil.AccessDenied(pid=789)
+
+        with patch('wazuh.core.utils.common.OSSEC_PIDFILE_PATH', tmp_dir):
+            utils.clean_pid_files('wazuh-apid')
+
+        mock_kill.assert_not_called()
+        assert not os.path.exists(pid_file)
+
+
+@patch('wazuh.core.utils.os.kill')
+@patch('wazuh.core.utils.psutil.Process')
+def test_clean_pid_files_handles_empty_cmdline(mock_process, mock_kill):
+    """A PID recycled by a process with no argv (e.g. a kernel thread) must not crash startup.
+
+    cmdline() can legitimately return an empty list; joined into an empty string it never
+    matches the daemon name, so the process is treated as not belonging to the daemon.
+    """
+    with TemporaryDirectory() as tmp_dir:
+        pid_file = os.path.join(tmp_dir, 'wazuh-apid_auth-321.pid')
+        with open(pid_file, 'w') as fp:
+            fp.write('321\n')
+
+        mock_process.return_value.cmdline.return_value = []
+        mock_process.return_value.create_time.return_value = os.path.getmtime(pid_file) + 10
+
+        with patch('wazuh.core.utils.common.OSSEC_PIDFILE_PATH', tmp_dir):
+            utils.clean_pid_files('wazuh-apid')
+
+        mock_kill.assert_not_called()
+        assert not os.path.exists(pid_file)
+
+
+@patch('wazuh.core.utils.os.kill')
+@patch('wazuh.core.utils.psutil.Process')
+def test_clean_pid_files_handles_kill_failure(mock_process, mock_kill, capsys):
+    """A confirmed orphan whose SIGKILL itself fails must be reported as a kill failure,
+    not folded into the generic 'could not identify' message used for identification
+    failures (psutil errors raised before the process is confirmed to be a stale owner).
+    """
+    with TemporaryDirectory() as tmp_dir:
+        pid_file = os.path.join(tmp_dir, 'wazuh-apid_auth-654.pid')
+        with open(pid_file, 'w') as fp:
+            fp.write('654\n')
+
+        mock_process.return_value.cmdline.return_value = \
+            ['python3', '/var/ossec/api/scripts/wazuh_apid.py']
+        mock_process.return_value.create_time.return_value = os.path.getmtime(pid_file) - 10
+        mock_kill.side_effect = OSError('No such process')
+
+        with patch('wazuh.core.utils.common.OSSEC_PIDFILE_PATH', tmp_dir):
+            utils.clean_pid_files('wazuh-apid')
+
+        mock_kill.assert_called_once_with(654, utils.SIGKILL)
+        assert not os.path.exists(pid_file)
+        output = capsys.readouterr().out
+        assert 'identified but could not be terminated' in output
+        assert 'Could not identify process' not in output
+
+
+@patch('wazuh.core.utils.os.kill')
+@patch('wazuh.core.utils.psutil.Process')
+def test_clean_pid_files_kills_stale_orphan_started_with_debug_flag(mock_process, mock_kill):
+    """A stale orphan started with '-d' (persisted debug mode) is still recognized and killed.
+
+    cmdline()'s last argument is '-d' in that case, not the script path; matching against
+    the joined cmdline instead of only its last element is what keeps this case working.
+    """
+    with TemporaryDirectory() as tmp_dir:
+        pid_file = os.path.join(tmp_dir, 'wazuh-apid_auth-987.pid')
+        with open(pid_file, 'w') as fp:
+            fp.write('987\n')
+
+        mock_process.return_value.cmdline.return_value = \
+            ['python3', '/var/ossec/api/scripts/wazuh_apid.py', '-d']
+        mock_process.return_value.create_time.return_value = os.path.getmtime(pid_file) - 10
+
+        with patch('wazuh.core.utils.common.OSSEC_PIDFILE_PATH', tmp_dir):
+            utils.clean_pid_files('wazuh-apid')
+
+        mock_kill.assert_called_once_with(987, utils.SIGKILL)
+        assert not os.path.exists(pid_file)
+
+
+@patch('wazuh.core.utils.os.kill')
+@patch('wazuh.core.utils.psutil.Process')
+def test_clean_pid_files_tolerates_vanished_pidfile(mock_process, mock_kill):
+    """A pidfile removed by someone else while it is being inspected must not abort the startup."""
+    with TemporaryDirectory() as tmp_dir:
+        pid_file = os.path.join(tmp_dir, 'wazuh-apid_auth-135.pid')
+        with open(pid_file, 'w') as fp:
+            fp.write('135\n')
+
+        def vanish(_path):
+            os.remove(pid_file)
+            raise FileNotFoundError(pid_file)
+
+        mock_process.return_value.cmdline.return_value = \
+            ['python3', '/var/ossec/api/scripts/wazuh_apid.py']
+        mock_process.return_value.create_time.return_value = 0
+
+        with patch('wazuh.core.utils.common.OSSEC_PIDFILE_PATH', tmp_dir), \
+                patch('wazuh.core.utils.path.getmtime', side_effect=vanish):
+            utils.clean_pid_files('wazuh-apid')
+
+        mock_kill.assert_not_called()
+        assert not os.path.exists(pid_file)
 
 
 @patch('wazuh.core.utils.chmod')
@@ -2119,6 +2336,127 @@ def test_validate_wazuh_xml_ko(effect, expected_exception):
     with patch('wazuh.core.utils.load_wazuh_xml', side_effect=effect):
         with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
             utils.validate_wazuh_xml(input_file)
+
+
+LOCALFILE_COMMAND = ('<localfile><log_format>command</log_format>'
+                     '<command>touch /tmp/pwn</command></localfile>')
+WODLE_COMMAND = '<wodle name="command"><command>touch /tmp/pwn</command></wodle>'
+
+
+@pytest.mark.parametrize('new_conf, error_code', [
+    (f'<ossec_config>{LOCALFILE_COMMAND}</ossec_config>', 1124),
+    (f'<ossec_config>{WODLE_COMMAND}</ossec_config>', 1124),
+    ('<ossec_config><localfile><log_format>comm<!--x-->and</log_format>'
+     '<command>touch /tmp/pwn</command></localfile></ossec_config>', 1124),
+    ('<ossec_config><localfile><log_format>command</log_format>'
+     '<command>touch<!--x--> /tmp/pwn</command></localfile></ossec_config>', 1124),
+    (f'<ossec_config xmlns="urn:x">{LOCALFILE_COMMAND}</ossec_config>', 1124),
+    ('<ossec_config><localfile xmlns="urn:x"><log_format>command</log_format>'
+     '<command>touch /tmp/pwn</command></localfile></ossec_config>', 1124),
+    ('<ossec_config><wodle name="command" xmlns="urn:x"><command>touch /tmp/pwn</command></wodle></ossec_config>',
+     1124),
+    (f'<ossec_config>\n&lt;!--\n{LOCALFILE_COMMAND}\n--&gt;\n</ossec_config>', 1124),
+    (f'<ossec_config><!-- x !> {LOCALFILE_COMMAND} <!-- y --></ossec_config>', 1124),
+    (f'<ossec_config><!--> {LOCALFILE_COMMAND} <!-- y --></ossec_config>', 1124),
+    (f'<ossec_config><!---> {LOCALFILE_COMMAND} <!-- y --></ossec_config>', 1124),
+    (f'<ossec_config><![CDATA[ !> {LOCALFILE_COMMAND} ]]></ossec_config>', 1113),
+    (f'<ossec_config><![CDATA[ <!-- !> {LOCALFILE_COMMAND} ]]> --></ossec_config>', 1113),
+    (f'<ossec_config><labels a="<!--x"/>{LOCALFILE_COMMAND}<!-- y -->"/></ossec_config>', 1113),
+    ('<ossec_config><localfile><log_format>command</log_format><command>touch /tmp/pwn</command>'
+     '\\<log_format>syslog\\</log_format></localfile></ossec_config>', 1124),
+    ('<ossec_config><wodle name="command">\\</wodle><command>touch /tmp/pwn</command>\\<wodle>\\<x/></wodle>'
+     '</ossec_config>', 1124),
+    ('<ossec_config xmlns:x="urn:x"><localfile><x:log_format>command</x:log_format>'
+     '<command>touch /tmp/pwn</command><log_format>syslog</log_format></localfile></ossec_config>', 1113),
+])
+def test_validate_wazuh_xml_remote_commands_ko(new_conf, error_code, tmp_path):
+    """Check commands are rejected whatever the way they are hidden from the XML parser of the API."""
+    original_conf = tmp_path / 'ossec.conf'
+    original_conf.write_text('<ossec_config><global><jsonout_output>yes</jsonout_output></global></ossec_config>')
+    api_conf = deepcopy(utils.configuration.api_conf)
+    api_conf['upload_configuration']['remote_commands'] = {'localfile': {'allow': False, 'exceptions': []},
+                                                           'wodle_command': {'allow': False, 'exceptions': []}}
+
+    with patch('wazuh.core.utils.configuration.api_conf', new=api_conf), \
+            patch('wazuh.core.utils.common.OSSEC_CONF', new=str(original_conf)):
+        with pytest.raises(exception.WazuhError, match=rf'.* {error_code} .*'):
+            utils.validate_wazuh_xml(new_conf, config_file=True)
+
+
+def test_validate_wazuh_xml_remote_commands(tmp_path):
+    """Check a configuration with comments, entities and no commands is still accepted."""
+    new_conf = """
+<!-- Global -- settings -->
+<ossec_config>
+  <global>
+    <jsonout_output>yes</jsonout_output> <!-- trailing -->
+  </global>
+  <labels
+    >
+    <label key="expression">a &lt; b &amp;&amp; c &gt; d</label>
+  </labels>
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/var/log/syslog</location>
+  </localfile>
+  <!--
+  <localfile>
+    <log_format>command</log_format>
+    <command>touch /tmp/pwn</command>
+  </localfile>
+  -->
+</ossec_config>
+"""
+    original_conf = tmp_path / 'ossec.conf'
+    original_conf.write_text('<ossec_config><global><jsonout_output>yes</jsonout_output></global></ossec_config>')
+    api_conf = deepcopy(utils.configuration.api_conf)
+    api_conf['upload_configuration']['remote_commands'] = {'localfile': {'allow': False, 'exceptions': []},
+                                                           'wodle_command': {'allow': False, 'exceptions': []}}
+
+    with patch('wazuh.core.utils.configuration.api_conf', new=api_conf), \
+            patch('wazuh.core.utils.common.OSSEC_CONF', new=str(original_conf)):
+        utils.validate_wazuh_xml(new_conf, config_file=True)
+
+
+@pytest.mark.parametrize('original_command, new_command, error_code', [
+    (None, 'cmd1 && cmd2', None),
+    (None, 'cmd1 &amp;&amp; cmd2', 1124),
+    ('cmd3 &amp; cmd4', 'cmd3 &amp; cmd4', None),
+    ('cmd3 &amp; cmd4', 'cmd3 & cmd4', 1124),
+])
+def test_validate_wazuh_xml_remote_commands_exceptions_are_raw(original_command, new_command, error_code, tmp_path):
+    """Check an entity in a command is not decoded, as the daemons read it, when matching the exceptions."""
+    def conf(command):
+        return ('<ossec_config><localfile><log_format>command</log_format>'
+                f'<command>{command}</command></localfile></ossec_config>' if command else '<ossec_config/>')
+
+    original_conf = tmp_path / 'ossec.conf'
+    original_conf.write_text(conf(original_command))
+    api_conf = deepcopy(utils.configuration.api_conf)
+    api_conf['upload_configuration']['remote_commands'] = {'localfile': {'allow': False, 'exceptions': ['cmd1 && cmd2']},
+                                                           'wodle_command': {'allow': False, 'exceptions': []}}
+
+    with patch('wazuh.core.utils.configuration.api_conf', new=api_conf), \
+            patch('wazuh.core.utils.common.OSSEC_CONF', new=str(original_conf)):
+        with pytest.raises(exception.WazuhError, match=rf'.* {error_code} .*') if error_code else nullcontext():
+            utils.validate_wazuh_xml(conf(new_command), config_file=True)
+
+
+def test_validate_wazuh_xml_unterminated_comments_are_linear():
+    """Check a long run of unterminated '<!' is rejected without the time growing quadratically."""
+    start = time.perf_counter()
+    with pytest.raises(exception.WazuhError, match=r'.* 1113 .*'):
+        utils.validate_wazuh_xml(f"<ossec_config>{'<!' * 40000}</ossec_config>")
+
+    assert time.perf_counter() - start < 2
+
+
+def test_load_wazuh_xml_ignores_namespaces():
+    """Check load_wazuh_xml keeps the tag names when a namespace is declared, as the os_xml library does."""
+    root = utils.load_wazuh_xml(None, '<ossec_config xmlns="urn:x"><localfile><log_format>syslog</log_format>'
+                                      '</localfile></ossec_config>')
+
+    assert [element.tag for element in root.iter()] == ['root_tag', 'ossec_config', 'localfile', 'log_format']
 
 
 @patch('wazuh.core.utils.full_copy')

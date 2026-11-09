@@ -12,6 +12,9 @@
 #ifndef _NETWORK_BSD_WRAPPER_H
 #define _NETWORK_BSD_WRAPPER_H
 
+#include <algorithm>
+#include <cstddef>
+#include <cstring>
 #include <ifaddrs.h>
 #include <net/if.h>
 #include <net/if_types.h>
@@ -23,6 +26,12 @@
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#ifdef __APPLE__
+#include <SystemConfiguration/SystemConfiguration.h>
+#include <vector>
+#endif
+#include <memory>
+#include <set>
 #include "inetworkWrapper.h"
 #include "networkHelper.h"
 #include "makeUnique.h"
@@ -43,10 +52,235 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
 {
         ifaddrs* m_interfaceAddress;
         const std::string m_scanTime;
+        std::shared_ptr<const std::set<std::string>> m_dhcpLeaseInterfaces;
+
+        // Routing messages trim trailing zero bytes of a sockaddr, so a short one is padded with zeros
+        static sockaddr_storage paddedSockaddr(const sockaddr* address)
+        {
+            sockaddr_storage storage {};
+            std::memcpy(&storage, address, std::min<size_t>(address->sa_len, sizeof(storage)));
+            return storage;
+        }
+
+        static bool isUnspecified(const sockaddr_storage& storage, const int family)
+        {
+            if (AF_INET == family)
+            {
+                return INADDR_ANY == reinterpret_cast<const sockaddr_in*>(&storage)->sin_addr.s_addr;
+            }
+
+            if (AF_INET6 == family)
+            {
+                return IN6_IS_ADDR_UNSPECIFIED(&reinterpret_cast<const sockaddr_in6*>(&storage)->sin6_addr);
+            }
+
+            return false;
+        }
+
+        std::string gatewayByFamily(const int family) const
+        {
+            std::string retVal;
+            size_t tableSize { 0 };
+            int mib[] = { CTL_NET, AF_ROUTE, 0, AF_UNSPEC, NET_RT_FLAGS, RTF_UP | RTF_GATEWAY };
+            const auto sdl { reinterpret_cast<sockaddr_dl*>(m_interfaceAddress->ifa_addr) };
+
+            if (sdl && sysctl(mib, sizeof(mib) / sizeof(int), nullptr, &tableSize, nullptr, 0) == 0)
+            {
+                std::unique_ptr<char[]> table { std::make_unique<char[]>(tableSize) };
+
+                if (sysctl(mib, sizeof(mib) / sizeof(int), table.get(), &tableSize, nullptr, 0) == 0)
+                {
+                    retVal = parseGateway(table.get(), tableSize, sdl->sdl_index, family);
+                }
+            }
+
+            return retVal;
+        }
 
     public:
-        explicit NetworkBSDInterface(ifaddrs* addrs)
+        // Returns the gateway of the default route of the given family on the interface, from a routing table dump
+        static std::string parseGateway(const char* table, const size_t tableSize, const unsigned short ifIndex, const int family)
+        {
+            const char* const end { table + tableSize };
+
+            for (const char* p = table; p + sizeof(rt_msghdr) <= end;)
+            {
+                const auto msg { reinterpret_cast<const rt_msghdr*>(p) };
+
+                if (msg->rtm_msglen < sizeof(rt_msghdr) || p + msg->rtm_msglen > end)
+                {
+                    break;
+                }
+
+                const char* const msgEnd { p + msg->rtm_msglen };
+                p = msgEnd;
+
+                if ((msg->rtm_addrs & (RTA_DST | RTA_GATEWAY)) != (RTA_DST | RTA_GATEWAY) ||
+                        (msg->rtm_flags & (RTF_UP | RTF_GATEWAY)) != (RTF_UP | RTF_GATEWAY) ||
+                        (msg->rtm_flags & (RTF_REJECT | RTF_BLACKHOLE)) ||
+                        msg->rtm_index != ifIndex)
+                {
+                    continue;
+                }
+
+                // Addresses follow the header in RTA_* order: destination, gateway, netmask
+                const sockaddr* addresses[3] {};
+                const char* next { reinterpret_cast<const char*>(msg + 1) };
+                const auto count { (msg->rtm_addrs & RTA_NETMASK) ? 3 : 2 };
+                auto complete { true };
+
+                for (auto i = 0; i < count; ++i)
+                {
+                    const auto sa { reinterpret_cast<const sockaddr*>(next) };
+
+                    if (next + offsetof(sockaddr, sa_data) > msgEnd || next + sa->sa_len > msgEnd)
+                    {
+                        complete = false;
+                        break;
+                    }
+
+                    addresses[i] = sa;
+                    next += ROUNDUP(sa->sa_len);
+                }
+
+                if (!complete ||
+                        addresses[0]->sa_family != family ||
+                        !isUnspecified(paddedSockaddr(addresses[0]), family) ||
+                        (addresses[2] && !isUnspecified(paddedSockaddr(addresses[2]), family)) ||
+                        addresses[1]->sa_family != family)
+                {
+                    continue;
+                }
+
+                auto gateway { paddedSockaddr(addresses[1]) };
+
+                if (AF_INET == family)
+                {
+                    return Utils::NetworkHelper::IAddressToBinary(AF_INET, &reinterpret_cast<sockaddr_in*>(&gateway)->sin_addr);
+                }
+
+                auto& address { reinterpret_cast<sockaddr_in6*>(&gateway)->sin6_addr };
+
+                // The kernel embeds the scope id in bytes 2-3 of link-local addresses
+                if (IN6_IS_ADDR_LINKLOCAL(&address))
+                {
+                    address.s6_addr[2] = 0;
+                    address.s6_addr[3] = 0;
+                }
+
+                return Utils::NetworkHelper::IAddressToBinary(AF_INET6, &address);
+            }
+
+            return "";
+        }
+
+#ifdef __APPLE__
+        // A DHCP lease is published under State:/Network/Service/<id>/DHCP next to State:/Network/Service/<id>/IPv4,
+        // which names the interface. services is the dictionary SCDynamicStoreCopyMultiple() returns for both keys.
+        static std::set<std::string> findDhcpLeaseInterfaces(CFDictionaryRef services)
+        {
+            std::set<std::string> retVal;
+            const std::string ipv4Suffix { "/IPv4" };
+            const std::string servicePrefix { "State:/Network/Service/" };
+            const auto count { CFDictionaryGetCount(services) };
+            std::vector<const void*> keys(static_cast<size_t>(count));
+            std::vector<const void*> values(static_cast<size_t>(count));
+            CFDictionaryGetKeysAndValues(services, keys.data(), values.data());
+
+            for (CFIndex i = 0; i < count; ++i)
+            {
+                char keyBuffer[256] {};
+                char nameBuffer[IFNAMSIZ] {};
+                const auto key { static_cast<CFStringRef>(keys[i]) };
+                const auto state { static_cast<CFDictionaryRef>(values[i]) };
+
+                if (CFGetTypeID(key) != CFStringGetTypeID() ||
+                        CFGetTypeID(state) != CFDictionaryGetTypeID() ||
+                        !CFStringGetCString(key, keyBuffer, sizeof(keyBuffer), kCFStringEncodingUTF8))
+                {
+                    continue;
+                }
+
+                const std::string keyName { keyBuffer };
+                const auto interfaceName { static_cast<CFStringRef>(CFDictionaryGetValue(state, kSCPropInterfaceName)) };
+
+                if (keyName.size() <= servicePrefix.size() + ipv4Suffix.size() ||
+                        keyName.compare(keyName.size() - ipv4Suffix.size(), ipv4Suffix.size(), ipv4Suffix) != 0 ||
+                        !interfaceName ||
+                        CFGetTypeID(interfaceName) != CFStringGetTypeID() ||
+                        !CFStringGetCString(interfaceName, nameBuffer, sizeof(nameBuffer), kCFStringEncodingUTF8))
+                {
+                    continue;
+                }
+
+                const auto dhcpKey { CFStringCreateWithCString(nullptr, (keyName.substr(0, keyName.size() - ipv4Suffix.size()) + "/DHCP").c_str(), kCFStringEncodingUTF8) };
+
+                if (dhcpKey)
+                {
+                    if (CFDictionaryContainsKey(services, dhcpKey))
+                    {
+                        retVal.insert(nameBuffer);
+                    }
+
+                    CFRelease(dhcpKey);
+                }
+            }
+
+            return retVal;
+        }
+
+        // Interfaces with a DHCP lease, read from the system configuration once for the whole scan.
+        static std::set<std::string> queryDhcpLeaseInterfaces()
+        {
+            std::set<std::string> retVal;
+            const auto store { SCDynamicStoreCreate(nullptr, CFSTR("wazuh-sysinfo"), nullptr, nullptr) };
+
+            if (!store)
+            {
+                return retVal;
+            }
+
+            const auto ipv4Pattern { SCDynamicStoreKeyCreateNetworkServiceEntity(nullptr, kSCDynamicStoreDomainState, kSCCompAnyRegex, kSCEntNetIPv4) };
+            const auto dhcpPattern { SCDynamicStoreKeyCreateNetworkServiceEntity(nullptr, kSCDynamicStoreDomainState, kSCCompAnyRegex, kSCEntNetDHCP) };
+
+            if (ipv4Pattern && dhcpPattern)
+            {
+                const void* patternValues[] { ipv4Pattern, dhcpPattern };
+                const auto patterns { CFArrayCreate(nullptr, patternValues, 2, &kCFTypeArrayCallBacks) };
+
+                if (patterns)
+                {
+                    const auto services { SCDynamicStoreCopyMultiple(store, nullptr, patterns) };
+
+                    if (services)
+                    {
+                        retVal = findDhcpLeaseInterfaces(services);
+                        CFRelease(services);
+                    }
+
+                    CFRelease(patterns);
+                }
+            }
+
+            if (ipv4Pattern)
+            {
+                CFRelease(ipv4Pattern);
+            }
+
+            if (dhcpPattern)
+            {
+                CFRelease(dhcpPattern);
+            }
+
+            CFRelease(store);
+            return retVal;
+        }
+#endif
+
+        // dhcpLeaseInterfaces are the interfaces with a DHCP lease, when the platform can tell.
+        explicit NetworkBSDInterface(ifaddrs* addrs, std::shared_ptr<const std::set<std::string>> dhcpLeaseInterfaces = nullptr)
             : m_interfaceAddress{addrs}
+            , m_dhcpLeaseInterfaces{ std::move(dhcpLeaseInterfaces) }
         {
             if (!addrs)
             {
@@ -119,44 +353,12 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
 
         std::string gateway() const override
         {
-            std::string retVal;
-            size_t tableSize { 0 };
-            int mib[] = { CTL_NET, AF_ROUTE, 0, AF_UNSPEC, NET_RT_FLAGS, RTF_UP | RTF_GATEWAY };
+            return gatewayByFamily(AF_INET);
+        }
 
-            if (sysctl(mib, sizeof(mib) / sizeof(int), nullptr, &tableSize, nullptr, 0) == 0)
-            {
-                std::unique_ptr<char[]> table { std::make_unique<char[]>(tableSize) };
-
-                if (sysctl(mib, sizeof(mib) / sizeof(int), table.get(), &tableSize, nullptr, 0) == 0)
-                {
-                    size_t messageLength { 0 };
-
-                    for (char* p = table.get(); p < table.get() + tableSize; p += messageLength)
-                    {
-                        auto msg { reinterpret_cast<rt_msghdr*>(p) };
-                        auto sa { reinterpret_cast<sockaddr*>(msg + 1) };
-                        auto sdl { reinterpret_cast<sockaddr_dl*>(m_interfaceAddress->ifa_addr) };
-
-                        if (sdl &&
-                                (msg->rtm_addrs & RTA_GATEWAY) == RTA_GATEWAY &&
-                                msg->rtm_index == sdl->sdl_index)
-                        {
-                            auto sock { reinterpret_cast<sockaddr*>(reinterpret_cast<char*>(sa) + ROUNDUP(sa->sa_len)) };
-
-                            if (sock && AF_INET == sock->sa_family)
-                            {
-                                retVal = Utils::NetworkHelper::IAddressToBinary(AF_INET, &reinterpret_cast<sockaddr_in*>(sock)->sin_addr);
-                            }
-
-                            break;
-                        }
-
-                        messageLength = msg->rtm_msglen;
-                    }
-                }
-            }
-
-            return retVal;
+        std::string gatewayV6() const override
+        {
+            return gatewayByFamily(AF_INET6);
         }
 
         std::string metrics() const override
@@ -171,6 +373,11 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
 
         std::string dhcp() const override
         {
+            if (AF_INET == this->family() && m_dhcpLeaseInterfaces && m_dhcpLeaseInterfaces->count(this->name()))
+            {
+                return "enabled";
+            }
+
             return "unknown";
         }
 

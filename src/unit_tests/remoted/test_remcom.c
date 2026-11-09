@@ -36,10 +36,40 @@ static int test_teardown(void ** state) {
     return 0;
 }
 
+static int closed_fds[2];
+static size_t closed_fds_count;
+
+static int setup_closed_fds(void ** state) {
+    closed_fds_count = 0;
+    return 0;
+}
+
+static void assert_closed_fds(int peer, int socket) {
+    assert_int_equal(closed_fds_count, 2);
+    assert_int_equal(closed_fds[0], peer);
+    assert_int_equal(closed_fds[1], socket);
+}
+
 // Wrappers
 
 int __wrap_accept() {
     return mock();
+}
+
+// Counts every close, so an extra one fails the assertion; only the first two are kept.
+int __wrap_close(int fd) {
+    if (closed_fds_count < sizeof(closed_fds) / sizeof(closed_fds[0])) {
+        closed_fds[closed_fds_count] = fd;
+    }
+
+    closed_fds_count++;
+    return 0;
+}
+
+void __wrap_req_sender(int peer, char *buffer, ssize_t length) {
+    check_expected(peer);
+    check_expected(buffer);
+    check_expected(length);
 }
 
 /* Tests */
@@ -435,14 +465,24 @@ void test_remcom_main(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Local requests thread finished");
 
     remcom_main(NULL);
+
+    assert_closed_fds(peer, socket);
 }
 
-void test_remcom_main_max_size(void **state)
+void test_remcom_main_full_size_request(void **state)
 {
     int socket = 0;
     int peer = 1111;
+    char *input = NULL;
 
-    char *input = "{\"command\":\"getstats\"}";
+    char *response = "{\"error\":2,\"message\":\"Invalid JSON input\",\"data\":{}}";
+    size_t response_size = strlen(response);
+
+    // The receive fills the whole buffer with no terminator, as a request of exactly OS_MAXSTR
+    // bytes does. Without the extra byte, parsing it reads past the buffer.
+    os_calloc(OS_MAXSTR + 1, sizeof(char), input);
+    memset(input, 'x', OS_MAXSTR);
+    input[0] = '{';
 
     expect_string(__wrap__mdebug1, formatted_msg, "Local requests thread ready");
 
@@ -458,13 +498,56 @@ void test_remcom_main_max_size(void **state)
     expect_value(__wrap_OS_RecvSecureTCP, sock, peer);
     expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
     will_return(__wrap_OS_RecvSecureTCP, input);
-    will_return(__wrap_OS_RecvSecureTCP, OS_MAXLEN);
+    will_return(__wrap_OS_RecvSecureTCP, OS_MAXSTR);
 
-    expect_string(__wrap__merror, formatted_msg, "Received message > '4194304'");
+    expect_value(__wrap_OS_SendSecureTCP, sock, peer);
+    expect_value(__wrap_OS_SendSecureTCP, size, response_size);
+    expect_string(__wrap_OS_SendSecureTCP, msg, response);
+    will_return(__wrap_OS_SendSecureTCP, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Local requests thread finished");
 
     remcom_main(NULL);
+
+    assert_closed_fds(peer, socket);
+    os_free(input);
+}
+
+void test_remcom_main_non_json_request_keeps_peer_open(void **state)
+{
+    int socket = 0;
+    int peer = 1111;
+
+    char *input = "001 agent request";
+    size_t input_size = strlen(input);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Local requests thread ready");
+
+    expect_string(__wrap_OS_BindUnixDomain, path, REMOTE_LOCAL_SOCK);
+    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_BindUnixDomain, socket);
+
+    will_return(__wrap_select, 1);
+
+    will_return(__wrap_accept, peer);
+
+    expect_value(__wrap_OS_RecvSecureTCP, sock, peer);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureTCP, input);
+    will_return(__wrap_OS_RecvSecureTCP, input_size);
+
+    expect_value(__wrap_req_sender, peer, peer);
+    expect_string(__wrap_req_sender, buffer, input);
+    expect_value(__wrap_req_sender, length, input_size);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Local requests thread finished");
+
+    remcom_main(NULL);
+
+    // req_sender() owns the peer from here on, so only the listening socket is closed.
+    assert_int_equal(closed_fds_count, 1);
+    assert_int_equal(closed_fds[0], socket);
 }
 
 void test_remcom_main_empty(void **state)
@@ -495,6 +578,8 @@ void test_remcom_main_empty(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Local requests thread finished");
 
     remcom_main(NULL);
+
+    assert_closed_fds(peer, socket);
 }
 
 void test_remcom_main_error(void **state)
@@ -525,6 +610,8 @@ void test_remcom_main_error(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Local requests thread finished");
 
     remcom_main(NULL);
+
+    assert_closed_fds(peer, socket);
 }
 
 void test_remcom_main_sockerror(void **state)
@@ -555,6 +642,8 @@ void test_remcom_main_sockerror(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Local requests thread finished");
 
     remcom_main(NULL);
+
+    assert_closed_fds(peer, socket);
 }
 
 void test_remcom_main_accept_error(void **state)
@@ -729,16 +818,18 @@ int main(void) {
         cmocka_unit_test_teardown(test_remcom_dispatch_empty_command, test_teardown),
         cmocka_unit_test_teardown(test_remcom_dispatch_invalid_json, test_teardown),
         // Test remcom_main
-        cmocka_unit_test(test_remcom_main),
-        cmocka_unit_test(test_remcom_main_max_size),
-        cmocka_unit_test(test_remcom_main_empty),
-        cmocka_unit_test(test_remcom_main_error),
-        cmocka_unit_test(test_remcom_main_sockerror),
+        cmocka_unit_test_setup(test_remcom_main, setup_closed_fds),
+        cmocka_unit_test_setup(test_remcom_main_non_json_request_keeps_peer_open, setup_closed_fds),
+        cmocka_unit_test_setup(test_remcom_main_empty, setup_closed_fds),
+        cmocka_unit_test_setup(test_remcom_main_error, setup_closed_fds),
+        cmocka_unit_test_setup(test_remcom_main_sockerror, setup_closed_fds),
         cmocka_unit_test(test_remcom_main_accept_error),
         cmocka_unit_test(test_remcom_main_select_zero),
         cmocka_unit_test(test_remcom_main_select_error_eintr),
         cmocka_unit_test(test_remcom_main_select_error),
         cmocka_unit_test(test_remcom_main_bind_error),
+        // Last, as AddressSanitizer aborts the run if the request is read unterminated.
+        cmocka_unit_test_setup(test_remcom_main_full_size_request, setup_closed_fds),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

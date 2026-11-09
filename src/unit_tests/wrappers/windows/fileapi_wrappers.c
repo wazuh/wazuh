@@ -151,6 +151,8 @@ BOOL wrap_GetFileTime(HANDLE     hFile,
     return mock_type(BOOL);
 }
 
+// mock_type() keys on __func__, so the find data is filled inside each wrapper.
+// Reparse points also take their reparse tag.
 HANDLE wrap_FindFirstFile(LPCWSTR lpFileName,  LPWIN32_FIND_DATAW lpFindFileData) {
     char *file_name;
     check_expected(lpFileName);
@@ -159,9 +161,16 @@ HANDLE wrap_FindFirstFile(LPCWSTR lpFileName,  LPWIN32_FIND_DATAW lpFindFileData
     if (file_name != NULL) {
         MultiByteToWideChar(CP_UTF8, 0, file_name, -1, lpFindFileData->cFileName, MAX_PATH);
         lpFindFileData->dwFileAttributes = mock_type(DWORD);
+        lpFindFileData->dwReserved0 = lpFindFileData->dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT ? mock_type(DWORD) : 0;
     }
 
-    return mock_type(HANDLE);
+    HANDLE ret = mock_type(HANDLE);
+
+    // A failed call also takes its last error
+    if (ret == INVALID_HANDLE_VALUE) {
+        SetLastError(mock_type(DWORD));
+    }
+    return ret;
 }
 
 BOOL wrap_FindNextFile(HANDLE hFindFile, LPWIN32_FIND_DATAW lpFindFileData) {
@@ -171,8 +180,16 @@ BOOL wrap_FindNextFile(HANDLE hFindFile, LPWIN32_FIND_DATAW lpFindFileData) {
     if (file_name != NULL) {
         MultiByteToWideChar(CP_UTF8, 0, file_name, -1, lpFindFileData->cFileName, MAX_PATH);
         lpFindFileData->dwFileAttributes = mock_type(DWORD);
+        lpFindFileData->dwReserved0 = lpFindFileData->dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT ? mock_type(DWORD) : 0;
     }
-    return mock_type(BOOL);
+
+    BOOL ret = mock_type(BOOL);
+
+    // ERROR_NO_MORE_FILES is the end of a listing
+    if (!ret) {
+        SetLastError(mock_type(DWORD));
+    }
+    return ret;
 }
 
 UINT wrap_GetDriveTypeA(LPCSTR lpRootPathName) {

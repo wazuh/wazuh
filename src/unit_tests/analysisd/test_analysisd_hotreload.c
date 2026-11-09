@@ -14,6 +14,7 @@
 #include <cmocka.h>
 
 #include "../../analysisd/hotreload.h"
+#include "../../analysisd/analysisd.h"
 #include "../wrappers/wazuh/os_xml/os_xml_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
@@ -30,8 +31,51 @@ extern time_t os_analysisd_acm_purge_ts;
 // Global test variables
 bool g_test_load_acm_store = true;
 
+/* rwlock wrappers: record the lock operations to check the locking order */
+typedef enum { TEST_RWLOCK_RDLOCK, TEST_RWLOCK_WRLOCK, TEST_RWLOCK_UNLOCK, TEST_RWLOCK_SWITCH } rwlock_op_t;
+
+typedef struct {
+    rwlock_op_t op;
+    pthread_rwlock_t * lock;
+} rwlock_call_t;
+
+static rwlock_call_t g_rwlock_calls[16];
+static size_t g_rwlock_calls_count = 0;
+
+static void rwlock_calls_reset(void) { g_rwlock_calls_count = 0; }
+
+static void rwlock_calls_record(rwlock_op_t op, pthread_rwlock_t * lock) {
+    if (g_rwlock_calls_count < sizeof(g_rwlock_calls) / sizeof(g_rwlock_calls[0])) {
+        g_rwlock_calls[g_rwlock_calls_count].op = op;
+        g_rwlock_calls[g_rwlock_calls_count].lock = lock;
+    }
+    g_rwlock_calls_count++;
+}
+
+int __real_pthread_rwlock_rdlock(pthread_rwlock_t * rwlock);
+int __wrap_pthread_rwlock_rdlock(pthread_rwlock_t * rwlock) {
+    rwlock_calls_record(TEST_RWLOCK_RDLOCK, rwlock);
+    return __real_pthread_rwlock_rdlock(rwlock);
+}
+
+int __real_pthread_rwlock_wrlock(pthread_rwlock_t * rwlock);
+int __wrap_pthread_rwlock_wrlock(pthread_rwlock_t * rwlock) {
+    rwlock_calls_record(TEST_RWLOCK_WRLOCK, rwlock);
+    return __real_pthread_rwlock_wrlock(rwlock);
+}
+
+int __real_pthread_rwlock_unlock(pthread_rwlock_t * rwlock);
+int __wrap_pthread_rwlock_unlock(pthread_rwlock_t * rwlock) {
+    rwlock_calls_record(TEST_RWLOCK_UNLOCK, rwlock);
+    return __real_pthread_rwlock_unlock(rwlock);
+}
+
 /* Internal decoder reload wrappers */
-void __wrap_RootcheckHotReload(void) { function_called(); }
+// The internal decoders are reloaded right after switching the ruleset
+void __wrap_RootcheckHotReload(void) {
+    rwlock_calls_record(TEST_RWLOCK_SWITCH, NULL);
+    function_called();
+}
 
 void __wrap_SyscollectorHotReload(void) { function_called(); }
 
@@ -993,9 +1037,8 @@ void test_w_hotreload_create_ruleset_fail_acm(void ** state) {
     assert_null(ruleset);
 }
 
-void test_w_hotreload_create_ruleset_success(void ** state) {
-
-    OSList list_msg = {0};
+/* Mock a successful w_hotreload_create_ruleset() */
+static void expect_create_ruleset_success(void) {
 
     expect_function_call_any(__wrap_OS_CreateEventList);
 
@@ -1052,26 +1095,167 @@ void test_w_hotreload_create_ruleset_success(void ** state) {
 
     // Success ACM Init
     {
-        g_test_load_acm_store = true;  
+        g_test_load_acm_store = true;
         will_return(__wrap_Accumulate_Init, 1);
     }
+}
 
+/* Mock the release of a ruleset created by w_hotreload_create_ruleset() */
+static void expect_clean_created_ruleset(void) {
+    will_return(__wrap_OSHash_Free, NULL);
+    will_return(__wrap_OSStore_Free, NULL);
+    will_return(__wrap_OSHash_Free, NULL);
+    expect_function_call(__wrap_OSList_CleanOnlyNodes);
+    expect_function_call(__wrap_w_analysisd_accumulate_free);
+}
+
+void test_w_hotreload_create_ruleset_success(void ** state) {
+
+    OSList list_msg = {0};
+
+    expect_create_ruleset_success();
 
     w_hotreload_ruleset_data_t * ruleset = NULL;
     ruleset = w_hotreload_create_ruleset(&list_msg);
     assert_non_null(ruleset);
 
     // Clean
-    // Free expected
-    {
-        will_return(__wrap_OSHash_Free, NULL);
-        will_return(__wrap_OSStore_Free, NULL);
-        will_return(__wrap_OSHash_Free, NULL);
-        expect_function_call(__wrap_OSList_CleanOnlyNodes);
-        expect_function_call(__wrap_w_analysisd_accumulate_free);
-    }
+    expect_clean_created_ruleset();
     w_hotreload_clean_ruleset(&ruleset);
     os_free(ruleset);
+}
+
+/* Tests for w_hotreload_process_event_pop and w_hotreload_process_event_done */
+void test_w_hotreload_process_event_pop_event(void ** state) {
+    w_queue_t * queue = queue_init(2);
+    struct _Eventinfo * event = (struct _Eventinfo *) 0x1;
+    assert_int_equal(queue_push(queue, event), 0);
+
+    rwlock_calls_reset();
+
+    assert_ptr_equal(w_hotreload_process_event_pop(queue, 1), event);
+
+    // The lock is kept while the event is processed
+    assert_int_equal(g_rwlock_calls_count, 1);
+    assert_int_equal(g_rwlock_calls[0].op, TEST_RWLOCK_RDLOCK);
+
+    w_hotreload_process_event_done();
+
+    assert_int_equal(g_rwlock_calls_count, 2);
+    assert_int_equal(g_rwlock_calls[1].op, TEST_RWLOCK_UNLOCK);
+    assert_ptr_equal(g_rwlock_calls[1].lock, g_rwlock_calls[0].lock);
+
+    queue_free(queue);
+}
+
+void test_w_hotreload_process_event_pop_timeout(void ** state) {
+    w_queue_t * queue = queue_init(1);
+
+    rwlock_calls_reset();
+
+    assert_null(w_hotreload_process_event_pop(queue, 0));
+
+    // The lock is released when no event arrives, so that a hot reload is not blocked
+    assert_int_equal(g_rwlock_calls_count, 2);
+    assert_int_equal(g_rwlock_calls[0].op, TEST_RWLOCK_RDLOCK);
+    assert_int_equal(g_rwlock_calls[1].op, TEST_RWLOCK_UNLOCK);
+    assert_ptr_equal(g_rwlock_calls[1].lock, g_rwlock_calls[0].lock);
+
+    queue_free(queue);
+}
+
+/* Tests for w_hotreload_reload */
+void test_w_hotreload_reload_fail_create_ruleset(void ** state) {
+    OSList list_msg = {0};
+
+    expect_function_call_any(__wrap_OS_CreateEventList);
+    will_return(__wrap_OS_ReadXML, -1);
+    will_return(__wrap_OS_ReadXML, "unknown");
+    will_return(__wrap_OS_ReadXML, 5);
+    expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_ERROR);
+    expect_value(__wrap__os_analysisd_add_logmsg, list, &list_msg);
+    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg,
+                  "(1226): Error reading XML file 'etc/ossec.conf': unknown (line 5).");
+    expect_string(__wrap__mdebug1, formatted_msg, "Error creating ruleset for hotreload");
+
+    rwlock_calls_reset();
+
+    assert_true(w_hotreload_reload(&list_msg));
+
+    // No thread is blocked when the new ruleset cannot be created
+    assert_int_equal(g_rwlock_calls_count, 0);
+}
+
+void test_w_hotreload_reload_success(void ** state) {
+    OSList list_msg = {0};
+    w_queue_t * queues[] = {queue_init(1), queue_init(1), queue_init(1), queue_init(1), queue_init(1)};
+    w_hotreload_ruleset_data_t * empty_ruleset = NULL;
+    w_hotreload_ruleset_data_t * previous_ruleset = NULL;
+    w_hotreload_ruleset_data_t * new_ruleset = NULL;
+
+    decode_queue_event_output = queues[0];
+    writer_queue_log = queues[1];
+    writer_queue = queues[2];
+    writer_queue_log_statistical = queues[3];
+    writer_queue_log_firewall = queues[4];
+
+    // Start from an empty current ruleset
+    os_calloc(1, sizeof(w_hotreload_ruleset_data_t), empty_ruleset);
+    previous_ruleset = w_hotreload_switch_ruleset(empty_ruleset);
+    os_free(previous_ruleset);
+    os_free(empty_ruleset);
+
+    // Get the address of the rule matching lock
+    rwlock_calls_reset();
+    assert_null(w_hotreload_process_event_pop(decode_queue_event_output, 0));
+    pthread_rwlock_t * process_lock = g_rwlock_calls[0].lock;
+
+    expect_create_ruleset_success();
+    expect_string(__wrap__mdebug1, formatted_msg, "Blocking input threads to reload ruleset");
+    expect_string(__wrap__mdebug1, formatted_msg, "Blocking rule matching threads to reload ruleset");
+    expect_string(__wrap__mdebug1, formatted_msg, "Clearing pending events from queues");
+    expect_string(__wrap__minfo, formatted_msg, "Reloading ruleset");
+    expect_function_call(__wrap_RootcheckHotReload);
+    expect_function_call(__wrap_SyscollectorHotReload);
+    expect_function_call(__wrap_CiscatHotReload);
+    expect_function_call(__wrap_HostinfoHotReload);
+    expect_function_call(__wrap_WinevtHotReload);
+    expect_function_call(__wrap_SecurityConfigurationAssessmentHotReload);
+    expect_function_call(__wrap_fim_hot_reload);
+    expect_string(__wrap__mdebug1, formatted_msg, "Unblocking input and rule matching threads (Enable new ruleset)");
+    expect_string(__wrap__minfo, formatted_msg, "Ruleset reloaded successfully");
+
+    rwlock_calls_reset();
+
+    assert_false(w_hotreload_reload(&list_msg));
+
+    // Both locks are held as writer while the ruleset is switched, and released in reverse order
+    assert_int_equal(g_rwlock_calls_count, 5);
+    assert_int_equal(g_rwlock_calls[0].op, TEST_RWLOCK_WRLOCK);
+    assert_ptr_not_equal(g_rwlock_calls[0].lock, process_lock);
+    assert_int_equal(g_rwlock_calls[1].op, TEST_RWLOCK_WRLOCK);
+    assert_ptr_equal(g_rwlock_calls[1].lock, process_lock);
+    assert_int_equal(g_rwlock_calls[2].op, TEST_RWLOCK_SWITCH);
+    assert_int_equal(g_rwlock_calls[3].op, TEST_RWLOCK_UNLOCK);
+    assert_ptr_equal(g_rwlock_calls[3].lock, process_lock);
+    assert_int_equal(g_rwlock_calls[4].op, TEST_RWLOCK_UNLOCK);
+    assert_ptr_equal(g_rwlock_calls[4].lock, g_rwlock_calls[0].lock);
+
+    // Clean the new ruleset, now the current one
+    os_calloc(1, sizeof(w_hotreload_ruleset_data_t), empty_ruleset);
+    new_ruleset = w_hotreload_switch_ruleset(empty_ruleset);
+    os_free(empty_ruleset);
+    expect_clean_created_ruleset();
+    w_hotreload_clean_ruleset(&new_ruleset);
+
+    for (size_t i = 0; i < sizeof(queues) / sizeof(queues[0]); i++) {
+        queue_free(queues[i]);
+    }
+    decode_queue_event_output = NULL;
+    writer_queue_log = NULL;
+    writer_queue = NULL;
+    writer_queue_log_statistical = NULL;
+    writer_queue_log_firewall = NULL;
 }
 
 
@@ -1111,7 +1295,13 @@ int main(void) {
 
         /* Test for w_hotreload_clean_ruleset */
 
+        /* Test for w_hotreload_process_event_pop and w_hotreload_process_event_done */
+        cmocka_unit_test(test_w_hotreload_process_event_pop_event),
+        cmocka_unit_test(test_w_hotreload_process_event_pop_timeout),
+
         /* w_hotreload_reload */
+        cmocka_unit_test(test_w_hotreload_reload_fail_create_ruleset),
+        cmocka_unit_test(test_w_hotreload_reload_success),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

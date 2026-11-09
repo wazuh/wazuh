@@ -2,7 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import re
 import sys
 from os import path
 import json
@@ -67,19 +66,6 @@ class AWSGuardDutyBucket(AWSCustomBucket):
                     'log_key': downloaded_file})
             return cursor.fetchone()[0] > 0
         return AWSCustomBucket.already_processed(self, downloaded_file, aws_account_id, aws_region, **kwargs)
-
-    def build_s3_filter_args(self, aws_account_id, aws_region, iterating=False, custom_delimiter='', **kwargs):
-        filter_args = AWSCustomBucket.build_s3_filter_args(
-            self, aws_account_id, aws_region, iterating, custom_delimiter, **kwargs)
-
-        if self.type == "GuardDutyNative" and not iterating and 'StartAfter' in filter_args:
-            start_after = filter_args['StartAfter']
-            match = re.match(r'(.*?/GuardDuty/[^/]+/\d{4}/\d{2}/\d{2}/)', start_after)
-            if match:
-                filter_args['StartAfter'] = match.group(1)
-                aws_tools.debug(f"+++ GuardDuty: Rewound marker to day folder: {filter_args['StartAfter']}", 2)
-
-        return filter_args
 
     def iter_regions_and_accounts(self, account_id, regions):
         if self.type == "GuardDutyNative":

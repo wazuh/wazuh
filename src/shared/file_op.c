@@ -2145,6 +2145,26 @@ static int should_preserve_path(const char * relative_path, const char ** ignore
     return 0;
 }
 
+/* Builds the path of a directory entry and its path relative to the base directory, both in buffers of size
+ * bytes. Returns 0 if it does not fit. */
+static int cldir_entry_paths(const char * name, const char * base_dir, const char * entry, char * path,
+                             char * relative_path, size_t size) {
+    size_t base_len = strlen(base_dir);
+    int length = snprintf(path, size, "%s/%s", name, entry);
+
+    if (length < 0 || (size_t)length >= size) {
+        return 0;
+    }
+
+    if (strncmp(base_dir, path, base_len) == 0 && path[base_len] == '/') {
+        snprintf(relative_path, size, "%s", path + base_len + 1);
+    } else {
+        snprintf(relative_path, size, "%s", entry);
+    }
+
+    return 1;
+}
+
 /**
  * @brief Internal recursive implementation to clean a directory while preserving ignored paths
  *
@@ -2153,17 +2173,135 @@ static int should_preserve_path(const char * relative_path, const char ** ignore
  * to the original base directory throughout the recursion to correctly calculate relative
  * paths for matching against the ignore list.
  *
+ * On Windows the directory is listed with the wide-character API, so entry names are compared and removed
+ * as UTF-8, the encoding of the ignore list. readdir() would return them in the ANSI code page.
+ *
  * @param name The current directory to clean (changes during recursion)
  * @param base_dir The original base directory (remains constant during recursion)
  * @param ignore NULL-terminated array of relative paths to preserve (can be NULL)
  * @return 0 on success, -1 on error
  */
+#ifdef WIN32
+/* A path of MAX_PATH UTF-16 units takes up to three UTF-8 bytes per unit */
+#define CLDIR_WIN_PATH_SIZE (MAX_PATH * 3 + 1)
+
+static int cldir_ex_ignore_recursive(const char * name, const char * base_dir, const char ** ignore);
+static int w_win32_to_errno(DWORD error);
+bool w_win_reparse_tag_is_plain(DWORD tag);
+
+/* Sets errno from a Win32 error, since callers check it for ENOENT. Always returns -1. */
+static int cldir_win_error(DWORD error) {
+    errno = w_win32_to_errno(error);
+    return -1;
+}
+
+/* Junctions, symlinks and unknown reparse points are removed without following them. Plain ones, such as cloud
+ * file placeholders, hold their own content. */
+static int cldir_win_is_link(const WIN32_FIND_DATAW * fd) {
+    return (fd->dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) && !w_win_reparse_tag_is_plain(fd->dwReserved0);
+}
+
+/* Removes a file, or a directory and its content. */
+static int cldir_remove_entry(const char * path, const char * base_dir, const WIN32_FIND_DATAW * fd) {
+    if (!(fd->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+        return utf8_DeleteFile(path) ? 0 : cldir_win_error(GetLastError());
+    }
+
+    if (!cldir_win_is_link(fd) && cldir_ex_ignore_recursive(path, base_dir, NULL) < 0) {
+        return -1;
+    }
+
+    return utf8_RemoveDirectory(path) ? 0 : cldir_win_error(GetLastError());
+}
+
+static int cldir_ex_ignore_recursive(const char * name, const char * base_dir, const char ** ignore) {
+    WIN32_FIND_DATAW fd;
+    HANDLE hFind;
+    DWORD error;
+    wchar_t *wpattern;
+    char *entry;
+    char path[CLDIR_WIN_PATH_SIZE];
+    char relative_path[CLDIR_WIN_PATH_SIZE];
+    int result = 0;
+
+    if (is_network_path(name)) {
+        errno = EACCES;
+        mwarn(NETWORK_PATH_EXECUTED, name);
+        return -1;
+    }
+
+    if (snprintf(path, sizeof(path), "%s\\*", name) >= (int)sizeof(path)) {
+        errno = ENAMETOOLONG;
+        return -1;
+    }
+
+    if (wpattern = auto_to_wide(path), !wpattern) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    hFind = FindFirstFileW(wpattern, &fd);
+    error = GetLastError();
+    os_free(wpattern);
+
+    if (hFind == INVALID_HANDLE_VALUE) {
+        return cldir_win_error(error);
+    }
+
+    do {
+        if (wcscmp(fd.cFileName, L".") == 0 || wcscmp(fd.cFileName, L"..") == 0) {
+            continue;
+        }
+
+        if (entry = wide_to_utf8(fd.cFileName), !entry) {
+            errno = EINVAL;
+            result = -1;
+            break;
+        }
+
+        if (!cldir_entry_paths(name, base_dir, entry, path, relative_path, sizeof(path))) {
+            os_free(entry);
+            errno = ENAMETOOLONG;
+            result = -1;
+            break;
+        }
+        os_free(entry);
+
+        if (should_preserve_path(relative_path, ignore)) {
+            if ((fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && !cldir_win_is_link(&fd)) {
+                // Recursively clean the directory, preserving protected files
+                if (cldir_ex_ignore_recursive(path, base_dir, ignore) < 0) {
+                    result = -1;
+                    break;
+                }
+
+                // If it still contains protected files, the removal fails, which is fine
+                utf8_RemoveDirectory(path);
+            }
+            continue;
+        }
+
+        // Not in ignore list, remove it
+        if (cldir_remove_entry(path, base_dir, &fd) < 0) {
+            result = -1;
+            break;
+        }
+    } while (FindNextFileW(hFind, &fd));
+
+    // A listing that stops early must not read as a clean directory
+    if (result == 0 && (error = GetLastError()) != ERROR_NO_MORE_FILES) {
+        result = cldir_win_error(error);
+    }
+
+    FindClose(hFind);
+    return result;
+}
+#else
 static int cldir_ex_ignore_recursive(const char * name, const char * base_dir, const char ** ignore) {
     DIR *dir;
     struct dirent *dirent = NULL;
     char path[PATH_MAX + 1];
     char relative_path[PATH_MAX + 1];
-    size_t base_len = strlen(base_dir);
 
     dir = wopendir(name);
 
@@ -2177,15 +2315,9 @@ static int cldir_ex_ignore_recursive(const char * name, const char * base_dir, c
             continue;
         }
 
-        if (snprintf(path, PATH_MAX + 1, "%s/%s", name, dirent->d_name) > PATH_MAX) {
+        if (!cldir_entry_paths(name, base_dir, dirent->d_name, path, relative_path, sizeof(path))) {
             closedir(dir);
             return -1;
-        }
-
-        if (strncmp(base_dir, path, base_len) == 0 && path[base_len] == '/') {
-            snprintf(relative_path, PATH_MAX + 1, "%s", path + base_len + 1);
-        } else {
-            snprintf(relative_path, PATH_MAX + 1, "%s", dirent->d_name);
         }
 
         if (should_preserve_path(relative_path, ignore)) {
@@ -2211,9 +2343,45 @@ static int cldir_ex_ignore_recursive(const char * name, const char * base_dir, c
 
     return closedir(dir);
 }
+#endif
+
+#ifdef WIN32
+/* Converts the ignore list to the UTF-8 names the files get on disk. auto_to_utf8() reads a name that is not
+ * valid UTF-8 in the ANSI code page, as wfopen() does when it creates the file. */
+static char ** cldir_win_ignore_list(const char ** ignore) {
+    char **list = NULL;
+    size_t count = 0;
+
+    if (!ignore) {
+        return NULL;
+    }
+
+    while (ignore[count]) {
+        count++;
+    }
+
+    os_calloc(count + 1, sizeof(char *), list);
+
+    for (size_t i = 0; i < count; i++) {
+        if (list[i] = auto_to_utf8(ignore[i]), !list[i]) {
+            os_strdup(ignore[i], list[i]);
+        }
+    }
+
+    return list;
+}
+#endif
 
 int cldir_ex_ignore(const char * name, const char ** ignore) {
+#ifdef WIN32
+    char **list = cldir_win_ignore_list(ignore);
+    int result = cldir_ex_ignore_recursive(name, name, (const char **)list);
+
+    free_strarray(list);
+    return result;
+#else
     return cldir_ex_ignore_recursive(name, name, ignore);
+#endif
 }
 
 
@@ -2835,6 +3003,8 @@ static int w_win32_to_errno(DWORD error) {
     case ERROR_FILE_EXISTS:
     case ERROR_ALREADY_EXISTS:
         return EEXIST;
+    case ERROR_DIR_NOT_EMPTY:
+        return ENOTEMPTY;
     case ERROR_DISK_FULL:
         return ENOSPC;
     case ERROR_INVALID_NAME:

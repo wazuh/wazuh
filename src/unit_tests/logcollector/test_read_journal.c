@@ -288,6 +288,88 @@ void test_read_journald_dump_entry_error(void ** state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "(1611): Failed to get the message from the journal");
 
+    // The entry is skipped and the loop goes on
+    will_return(__wrap_can_read, 0);
+
+    assert_null(read_journald(&lf, &rc, 0));
+    assert_false(journald_isDisabled());
+}
+
+void test_read_journald_dump_entry_error_keeps_reading(void ** state) {
+
+    // Prepare environment
+    w_journal_context_t ctxt = {0};
+    set_gs_journald_global(0, false, &ctxt);
+
+    // Prepare args
+    logreader lf = {0};
+    w_journal_log_config_t journal_log = {0};
+    lf.journal_log = &journal_log;
+    int rc = 0;
+
+    // First entry cannot be formatted
+    will_return(__wrap_can_read, 1);
+    will_return(__wrap_w_journal_context_next_newest_filtered, 1);
+    will_return(__wrap_w_journal_entry_dump, NULL);
+    will_return(__wrap_w_journal_entry_to_string, NULL);
+    expect_function_call(__wrap_w_journal_entry_free);
+    expect_string(__wrap__mdebug1, formatted_msg, "(1611): Failed to get the message from the journal");
+
+    // The newer entry is still read and sent
+    will_return(__wrap_can_read, 1);
+    will_return(__wrap_w_journal_context_next_newest_filtered, 1);
+    will_return(__wrap_w_journal_entry_dump, 0x1);
+    will_return(__wrap_w_journal_entry_to_string, strdup("newer entry"));
+    expect_function_call(__wrap_w_journal_entry_free);
+    will_return(__wrap_isDebug, 0);
+    expect_string(__wrap_w_msg_hash_queues_push, str, "newer entry");
+    expect_value(__wrap_w_msg_hash_queues_push, size, strlen("newer entry") + 1);
+    will_return(__wrap_w_msg_hash_queues_push, 0);
+
+    // No more entries
+    will_return(__wrap_can_read, 1);
+    will_return(__wrap_w_journal_context_next_newest_filtered, 0);
+    expect_string(__wrap__mdebug2, formatted_msg, "(9006): No new entries in the journal.");
+
+    assert_null(read_journald(&lf, &rc, 0));
+    assert_false(journald_isDisabled());
+}
+
+static int saved_maximum_lines;
+
+static int setup_maximum_lines_2(void ** state) {
+    saved_maximum_lines = maximum_lines;
+    maximum_lines = 2;
+    return 0;
+}
+
+static int teardown_maximum_lines(void ** state) {
+    maximum_lines = saved_maximum_lines;
+    return 0;
+}
+
+void test_read_journald_dump_entry_error_counts_toward_max_lines(void ** state) {
+
+    // Prepare environment
+    w_journal_context_t ctxt = {0};
+    set_gs_journald_global(0, false, &ctxt);
+
+    // Prepare args
+    logreader lf = {0};
+    w_journal_log_config_t journal_log = {0};
+    lf.journal_log = &journal_log;
+    int rc = 0;
+
+    // Two entries that cannot be formatted use up the whole pass
+    for (int i = 0; i < 2; i++) {
+        will_return(__wrap_can_read, 1);
+        will_return(__wrap_w_journal_context_next_newest_filtered, 1);
+        will_return(__wrap_w_journal_entry_dump, NULL);
+        will_return(__wrap_w_journal_entry_to_string, NULL);
+        expect_function_call(__wrap_w_journal_entry_free);
+        expect_string(__wrap__mdebug1, formatted_msg, "(1611): Failed to get the message from the journal");
+    }
+
     assert_null(read_journald(&lf, &rc, 0));
     assert_false(journald_isDisabled());
 }
@@ -385,6 +467,9 @@ int main(void) {
         cmocka_unit_test(test_read_journald_next_entry_error),
         cmocka_unit_test(test_read_journald_next_entry_no_new_entry),
         cmocka_unit_test(test_read_journald_dump_entry_error),
+        cmocka_unit_test(test_read_journald_dump_entry_error_keeps_reading),
+        cmocka_unit_test_setup_teardown(test_read_journald_dump_entry_error_counts_toward_max_lines,
+                                        setup_maximum_lines_2, teardown_maximum_lines),
         cmocka_unit_test(test_read_journald_dump_entry_max_len),
         cmocka_unit_test(test_read_journald_dump_entry_debug),
     };

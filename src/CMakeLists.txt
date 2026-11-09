@@ -88,6 +88,10 @@ set(REVISION_FILE "${CMAKE_MATCH_1}")
 add_definitions(-DVERSION="${VERSION_FILE}")
 add_definitions(-DREVISION="${REVISION_FILE}")
 
+# cpp-httplib falls back to select(), which fails for descriptors >= FD_SETSIZE. It is header-only, so every
+# translation unit that includes it must be built with the same setting.
+add_definitions(-DCPPHTTPLIB_USE_POLL)
+
 ## If REVISION OR FILE is empty fail
 if("${REVISION_FILE}" STREQUAL "")
     message(FATAL_ERROR "REVISION file is empty")

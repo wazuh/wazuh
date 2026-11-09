@@ -367,6 +367,14 @@ void w_macos_release_log_show(void);
  * @brief This function is called to release macOS log's "stream" resources
  */
 void w_macos_release_log_stream(void);
+
+/**
+ * @brief Reads the macOS `log` output every MACOS_LOG_READ_INTERVAL_MS until its process stops
+ *
+ * @param arg Unused
+ * @return NULL
+ */
+void * w_macos_log_reader(void * arg);
 #endif
 
 #endif /* LOGREADER_H */

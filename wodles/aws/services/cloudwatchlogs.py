@@ -308,19 +308,19 @@ class AWSCloudWatchLogs(aws_service.AWSService):
                                 f'+++ The "{self.discard_regex.pattern}" regex found a match in the "{self.discard_field}" '
                                 f'field. The event will be skipped.', 2)
                             continue
-                        else:
+                        elif self.discard_field and self.discard_regex:
                             aws_tools.debug(
                                 f'+++ The "{self.discard_regex.pattern}" regex did not find a match in the '
                                 f'"{self.discard_field}" field. The event will be processed.', 3)
                     except ValueError:
                         # event_msg is not a JSON object, check if discard_regex.pattern matches the given string
                         aws_tools.debug(f"+++ Retrieved log event is not a JSON object.", 3)
-                        if re.match(self.discard_regex, event_msg):
+                        if self.text_event_should_be_skipped(event_msg):
                             aws_tools.debug(
                                 f'+++ The "{self.discard_regex.pattern}" regex found a match. The event will be skipped.',
                                 2)
                             continue
-                        else:
+                        elif self.discard_regex:
                             aws_tools.debug(f'+++ The "{self.discard_regex.pattern}" regex did not find a match. '
                                   f'The event will be processed.', 3)
                     aws_tools.debug('The message is "{}"'.format(event_msg), 2)

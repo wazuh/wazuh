@@ -251,6 +251,7 @@ void *DstUser_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char 
     }
 #endif
 
+    os_free(lf->dstuser);
     lf->dstuser = field;
     return (NULL);
 }
@@ -264,6 +265,7 @@ void *SrcUser_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char 
     }
 #endif
 
+    os_free(lf->srcuser);
     lf->srcuser = field;
     return (NULL);
 }
@@ -277,6 +279,7 @@ void *SrcIP_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *o
     }
 #endif
 
+    os_free(lf->srcip);
     lf->srcip = field;
 
 #ifdef LIBGEOIP_ENABLED
@@ -300,6 +303,7 @@ void *DstIP_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *o
     }
 #endif
 
+    os_free(lf->dstip);
     lf->dstip = field;
 
 #ifdef LIBGEOIP_ENABLED
@@ -325,6 +329,7 @@ void *SrcPort_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char 
     }
 #endif
 
+    os_free(lf->srcport);
     lf->srcport = field;
     return (NULL);
 }
@@ -338,6 +343,7 @@ void *DstPort_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char 
     }
 #endif
 
+    os_free(lf->dstport);
     lf->dstport = field;
     return (NULL);
 }
@@ -351,6 +357,7 @@ void *Protocol_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char
     }
 #endif
 
+    os_free(lf->protocol);
     lf->protocol = field;
     return (NULL);
 }
@@ -364,6 +371,7 @@ void *Action_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *
     }
 #endif
 
+    os_free(lf->action);
     lf->action = field;
     return (NULL);
 }
@@ -377,6 +385,7 @@ void *ID_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *orde
     }
 #endif
 
+    os_free(lf->id);
     lf->id = field;
     return (NULL);
 }
@@ -390,6 +399,7 @@ void *Url_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *ord
     }
 #endif
 
+    os_free(lf->url);
     lf->url = field;
     return (NULL);
 }
@@ -403,6 +413,7 @@ void *Data_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *or
     }
 #endif
 
+    os_free(lf->data);
     lf->data = field;
     return (NULL);
 }
@@ -416,6 +427,7 @@ void *Extra_Data_FP(Eventinfo *lf, char *field, __attribute__((unused)) const ch
     }
 #endif
 
+    os_free(lf->extra_data);
     lf->extra_data = field;
     return (NULL);
 }
@@ -429,6 +441,7 @@ void *Status_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *
     }
 #endif
 
+    os_free(lf->status);
     lf->status = field;
     return (NULL);
 }
@@ -442,6 +455,7 @@ void *SystemName_FP(Eventinfo *lf, char *field, __attribute__((unused)) const ch
     }
 #endif
 
+    os_free(lf->systemname);
     lf->systemname = field;
     return (NULL);
 }

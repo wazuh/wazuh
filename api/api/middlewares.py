@@ -279,6 +279,10 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
     # issued token.
     elif path == RUN_AS_LOGIN_ENDPOINT and not logger.isEnabledFor(logging.DEBUG):
         body = {'auth_context': AUTH_CONTEXT_NOT_LOGGED}
+    # A /events batch the middleware did not cache (chunked, or over MAX_LOGGED_BODY_SIZE) still
+    # reports the event count the endpoint left in the context.
+    elif path == '/events' and not body_read and (events_count := context.get('events_count')) is not None:
+        body = {'events': events_count}
 
     custom_logging(user, host, method, path, query, body, time_diff, response.status_code,
                    hash_auth_context=hash_auth_context, headers=headers)

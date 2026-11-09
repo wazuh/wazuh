@@ -64,7 +64,7 @@ void ExecdStart(int q) __attribute__((noreturn));
 #endif
 void ExecdRun(char *exec_msg, int *childcount);
 void ExecdTimeoutRun(int *childcount);
-void ExecdShutdown(int sig) __attribute__((noreturn));
+void ExecdShutdown(int sig);
 #endif
 
 size_t wcom_unmerge(const char *file_path, char **output);
