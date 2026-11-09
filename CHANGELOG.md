@@ -198,6 +198,7 @@
 | [#32915](https://github.com/wazuh/wazuh/issues/32915) | Fixed `agent_control` not displaying agent status information. |
 | [#35071](https://github.com/wazuh/wazuh/issues/35071) | Fixed SCA handling of invalid operators and missing values in regex patterns. |
 | [#35162](https://github.com/wazuh/wazuh/issues/35162) | Fixed FIM inventory reporting file modification time as 1970-01-01. |
+| [#41236](https://github.com/wazuh/wazuh/pull/41236) | Hardened agent Auditd plugin socket creation. |
 | [#35169](https://github.com/wazuh/wazuh/issues/35169) | Fixed agent automatic reload failing after receiving centralized configuration. |
 | [#35248](https://github.com/wazuh/wazuh/issues/35248) | Fixed syscollector false positive package detection on macOS. |
 | [#35329](https://github.com/wazuh/wazuh/issues/35329) | Fixed agent uninstall on Windows after a WPK upgrade. |
