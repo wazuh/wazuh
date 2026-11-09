@@ -4298,6 +4298,9 @@ TEST_F(SyscollectorImpTest, invalidUtf8DoesNotAbortScan)
 
 TEST_F(SyscollectorImpTest, incompleteInterfaceDoesNotAbortNetworkScan)
 {
+#ifdef WIN32
+    GTEST_SKIP() << "Skipping incompleteInterfaceDoesNotAbortNetworkScan test on Windows due to exception handling issues in Wine environment";
+#endif
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
     EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
