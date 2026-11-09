@@ -155,6 +155,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/wazuh-manager/data/tzdb/iana/*,wazuh-manager,wazuh-manager,640,file,-rw-r-----,,
 /var/wazuh-manager/tmp,root,wazuh-manager,1770,directory,drwxrwx--T,,
 /var/wazuh-manager/var,root,wazuh-manager,750,directory,drwxr-x---,,
+/var/wazuh-manager/var/audit,root,wazuh-manager,750,directory,drwxr-x---,,
 /var/wazuh-manager/var/db,root,wazuh-manager,770,directory,drwxrwx---,,
 /var/wazuh-manager/var/db/mitre.db,root,wazuh-manager,660,file,-rw-rw----,,
 /var/wazuh-manager/var/download,root,wazuh-manager,770,directory,drwxrwx---,,
