@@ -194,7 +194,7 @@ static void expect_program(const char *program, bool available)
 
 /* cmocka keeps the pointer, so the message must be a literal */
 #define expect_tools(tools) do { \
-    expect_string(__wrap__mtdebug1, tag, "rootcheck"); \
+    expect_string(__wrap__mtdebug1, tag, "wazuh-rootcheck"); \
     expect_string(__wrap__mtdebug1, formatted_msg, "Using " tools " for the port check."); \
 } while (0)
 
@@ -334,7 +334,7 @@ static void test_broken_ss_falls_back_to_netstat(void **state)
     ss_runs = false;
 
     expect_program("ss", true);
-    expect_string(__wrap__mtwarn, tag, "rootcheck");
+    expect_string(__wrap__mtwarn, tag, "wazuh-rootcheck");
     expect_string(__wrap__mtwarn, formatted_msg, "ss or awk failed to run. Not using ss for the port check.");
     expect_program("netstat", true);
     expect_tools("netstat");
@@ -359,7 +359,7 @@ static void test_ss_error_is_not_hidden(void **state)
         expect_program("ss", true);
         expect_program("netstat", false);
         expect_tools("ss");
-        expect_string(__wrap__mtwarn, tag, "rootcheck");
+        expect_string(__wrap__mtwarn, tag, "wazuh-rootcheck");
         expect_string(__wrap__mtwarn, formatted_msg, "1 port listing commands failed during the port check.");
         expect_notify_rk(ALERT_OK, ALL_PORTS_OK);
 
