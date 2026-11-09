@@ -517,7 +517,13 @@ Decision 3 is not a convenience — it is the load-bearing property the whole fa
 on, so it is stated here as a contract: **every operation the pipeline applies must be
 idempotent.** The mechanisms that make it hold today: document ids are deterministic
 (`<cluster>_<agentId>_<documentId>`), upserts carry the agent's document version
-(a scripted update with `external_gte` semantics: a replay of the same version is rewritten by the version-guarded script and answered `200`, while a `409` on an update means a concurrent writer refused it and, once the indexer's own `retry_on_conflict` retries are spent, fails the flush), deletes address those same ids, and the by-query
+(a version-guarded scripted update with `external_gte` semantics: a replay of the same version is
+rewritten by the script and answered `200`, while a `409` on the update means a concurrent writer
+— a group or metadata by-query of the same agent applied by another node — refused it; the update
+carries `retry_on_conflict` (5), and a `409` that survives it is retried on the `inventory` bucket
+and, once that budget is spent, fails the sessions that staged that value with `503` so the agent
+sends them again; the batch deadline can answer that same `503` before the budget is spent),
+deletes address those same ids, and the by-query
 paths (cleans, whole-agent deletion, metadata/group updates) are re-runnable by construction.
 That is what makes every recovery in this module safe: a `500`/`503` answered to a whole batch, a
 partially auto-flushed session, a group commit that died halfway — in all cases the agent re-POSTs

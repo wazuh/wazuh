@@ -277,7 +277,10 @@ Sync I/O goes through `IndexerClientSyncAdapter` (`src/indexer/indexerClientSync
 - **Bucket spec** (`inventoryBucketSpec`): `bulk.maxBytes` = `indexer_sync_connector_max_bulk_size`;
   `quotaBytes = clamp(max(64 MiB, bulk + 2048 + 1 MiB), <= global quota)`, with the bulk clipped
   and a WARN when it does not fit; retry attempts/duration/delay from the `indexer_sync_max_retry_*`
-  options; overflow `Block` (2 s in production); 409 is success; ambiguous 5xx is retried; not ordered.
+  options; overflow `Block` (2 s in production); 409 is success, except on the versioned upsert
+  (`IndexVersionedScript`), which carries its own `Retry` policy: `retry_on_conflict` =
+  `UPDATE_RETRY_ON_CONFLICT` (5), and a 409 that survives it is requeued until the bucket's retry budget
+  fails the session (5.0.0 #41191); ambiguous 5xx is retried; not ordered.
 - **Chunks.** A worker stages adds in an open `Group`; before the add that would pass the per-worker
   cap (`chunkCap` = 0.8 * quota / (2 * (pipeline + lane workers)), defined in `indexer_client/chunking.hpp` and shared with the
   vulnerability scanner) the chunk is committed. At most one
