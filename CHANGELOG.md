@@ -64,6 +64,7 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
+- Fixed the Windows agent never subscribing to an event channel whose first subscription failed when the agent started, as happens to `Microsoft-Windows-Windows Defender/Operational` when the agent starts before the channel's publisher is registered on boot (`EvtSubscribe()` returns 15007), which left the channel unmonitored until the agent was restarted. The subscription is now retried every `reconnect_time` seconds. ([#41037](https://github.com/wazuh/wazuh/pull/41037))
 - Hardened the macOS agent package so an upgrade no longer follows a symlink or hard link planted under `etc/`. ([#40696](https://github.com/wazuh/wazuh/pull/40696))
 - Hardened how the agent handles requests received from the manager. ([#40467](https://github.com/wazuh/wazuh/pull/40467))
 - Fixed `agent-auth` failing at random with `SSL error (2)` because it did not set the receive timeout of its enrollment socket. ([#40468](https://github.com/wazuh/wazuh/pull/40468))
