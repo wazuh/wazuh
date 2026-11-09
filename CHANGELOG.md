@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.12]
 
+### Manager
+
+#### Fixed
+
+- Fixed the Cisco IOS decoders not matching messages whose timestamp includes a timezone offset (such as `UTC+1` or `CET-1`), with or without a sequence number, so those events raised no alert. ([#41195](https://github.com/wazuh/wazuh/pull/41195))
+
 ## [v4.14.11]
 
 ### Manager
