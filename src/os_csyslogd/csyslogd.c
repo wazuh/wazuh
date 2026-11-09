@@ -149,10 +149,36 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
     }
 }
 
+/* Copy value escaping the characters in escape (none if NULL) */
+char *field_escape(const char *value, const char *escape)
+{
+    char *escaped;
+    size_t i = 0;
+
+    if (value == NULL) {
+        return NULL;
+    }
+
+    os_malloc(2 * strlen(value) + 1, escaped);
+
+    for (; *value != '\0'; value++) {
+        if (escape != NULL && strchr(escape, *value) != NULL) {
+            escaped[i++] = '\\';
+            escaped[i++] = (*value == '\r') ? 'r' : (*value == '\n') ? 'n' : *value;
+        } else {
+            escaped[i++] = *value;
+        }
+    }
+
+    escaped[i] = '\0';
+    return escaped;
+}
+
 /* Format Field for output */
-int field_add_string(char *dest, size_t size, const char *format, const char *value )
+int field_add_string(char *dest, size_t size, const char *format, const char *value, const char *escape )
 {
     char buffer[OS_MAXSTR];
+    char *escaped = NULL;
     int len = 0;
     int dest_sz = size - strlen(dest);
 
@@ -168,7 +194,15 @@ int field_add_string(char *dest, size_t size, const char *format, const char *va
                 ((value[0] != 'u') && (value[1] != 'n') && (value[4] != 'k'))
             )
        ) {
-        len = snprintf(buffer, sizeof(buffer) - dest_sz - 1, format, value);
+        escaped = field_escape(value, escape);
+        len = snprintf(buffer, sizeof(buffer) - dest_sz - 1, format, escaped);
+        os_free(escaped);
+
+        /* A cut field would leave its quotes or an escape sequence open */
+        if (len > dest_sz) {
+            return -1;
+        }
+
         strncat(dest, buffer, dest_sz);
     }
 
@@ -176,17 +210,18 @@ int field_add_string(char *dest, size_t size, const char *format, const char *va
 }
 
 /* Add a field, but truncate if too long */
-int field_add_truncated(char *dest, size_t size, const char *format, const char *value, int fmt_size )
+int field_add_truncated(char *dest, size_t size, const char *format, const char *value, int fmt_size, const char *escape )
 {
     char buffer[OS_MAXSTR];
 
     int available_sz = size - strlen(dest);
-    int total_sz = strlen(value) + strlen(format) - fmt_size;
     int field_sz = available_sz - strlen(format) + fmt_size;
 
     int len = 0;
+    int cut = 0;
+    int backslashes = 0;
     char trailer[] = "...";
-    char *truncated = NULL;
+    char *escaped = NULL;
 
     /* Not enough room in the buffer? */
     if (available_sz <= 0 ) {
@@ -198,25 +233,29 @@ int field_add_truncated(char *dest, size_t size, const char *format, const char 
         ((value[0] != '(') && (value[1] != 'u') && (value[2] != 'n')) ||
         ((value[0] != 'u') && (value[1] != 'n') && (value[4] != 'k'))
        ) {
+        escaped = field_escape(value, escape);
 
-        if ( (truncated = (char *) malloc(field_sz + 1)) != NULL ) {
-            if ( total_sz > available_sz ) {
-                /* Truncate and add a trailer */
-                os_substr(truncated, value, 0, field_sz - strlen(trailer));
-                strcat(truncated, trailer);
-            } else {
-                strncpy(truncated, value, field_sz);
+        /* snprintf below keeps one byte of available_sz for the terminator */
+        if ((int)strlen(escaped) >= field_sz) {
+            cut = field_sz - (int)sizeof(trailer);
+
+            if (cut < 0) {
+                os_free(escaped);
+                return -1;
             }
 
-            len = snprintf(buffer, available_sz, format, truncated);
-            strncat(dest, buffer, available_sz);
-        } else {
-            /* Memory Error */
-            len = -3;
+            /* Truncate and add a trailer, without leaving half an escape sequence */
+            while (escape != NULL && backslashes < cut && escaped[cut - 1 - backslashes] == '\\') {
+                backslashes++;
+            }
+            cut -= backslashes % 2;
+            strcpy(escaped + cut, trailer);
         }
+
+        len = snprintf(buffer, available_sz, format, escaped);
+        strncat(dest, buffer, available_sz);
+        os_free(escaped);
     }
-    /* Free the temporary pointer */
-    free(truncated);
 
     return len;
 }
