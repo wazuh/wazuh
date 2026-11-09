@@ -548,8 +548,7 @@ def _has_update_permissions(update_actions: list = None, update_resources: list 
             if not requested or None in requested or not set(requested) <= allow[res_id]:
                 return False
         return bool(target_params)
-    # Resolve the permission update_ossec_conf checks: cluster:update_config over the local node when the cluster is
-    # enabled, manager:update_config otherwise
+    # Same permission update_ossec_conf checks
     try:
         cluster_config = read_config()
         required = {'manager:update_config': ['*:*:*']} if cluster_config['disabled'] else \

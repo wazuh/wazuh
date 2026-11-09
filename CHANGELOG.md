@@ -54,6 +54,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-remoted` accepting a shared group file with NUL bytes and no line feed, such as a compiled CDB list, which blocked the delivery of the shared configuration to every agent of the group. The file is now rejected like any other binary file. ([#40727](https://github.com/wazuh/wazuh/issues/40727))
 - Fixed the GCP Pub/Sub integration stopping at a message too large for the Wazuh socket without acknowledging the batch, so the batch was received again on every run and the messages before that one were sent again. The message is now skipped with an error, as is an event too large in the `gcp-bucket` integration, and the messages already sent are acknowledged when a run stops. ([#41170](https://github.com/wazuh/wazuh/pull/41170))
 - Fixed a data race in the shared list getters that let the `wazuh-analysisd` rule matching threads read the newest event of an `if_matched_sid` or `if_matched_group` list without synchronizing with the thread that added it. ([#41215](https://github.com/wazuh/wazuh/pull/41215))
+- Fixed the configuration endpoints showing the cluster key and credentials unmasked in RBAC white mode to users with a configuration update permission over another node, or with the update permission that does not apply to the node. ([#41208](https://github.com/wazuh/wazuh/pull/41208))
 
 ### Agent
 
