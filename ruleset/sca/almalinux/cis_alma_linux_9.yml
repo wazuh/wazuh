@@ -11404,7 +11404,7 @@ checks:
           - "Credentials In Files"
     condition: none
     rules:
-      - 'f:/etc/passwd -> !r:^[\w@-]+:x:'
+      - 'f:/etc/passwd -> r:(?-i)^[^:]*:(?!x:)'
 
   # 6.2.2 Ensure /etc/shadow password fields are not empty. (Automated)
   - id: 32686

@@ -12211,7 +12211,7 @@ checks:
           - "Pluggable Authentication Modules"
     condition: all
     rules:
-      - 'not f:/etc/passwd -> !r:^[\w@-]+: x:'
+      - 'not f:/etc/passwd -> r:(?-i)^[^:]*:(?!x:)'
 
   # 6.2.2 Ensure password fields are not empty (Automated)
   - id: 18689
