@@ -642,6 +642,14 @@ start_service()
     rm -f ${DIR}/var/run/*.start
 }
 
+pid_matches_daemon()
+{
+    # Linux task comm names are limited to 15 bytes plus the terminating null byte.
+    expected_comm=$(printf '%.15s' "$2")
+    actual_comm=$(cat "/proc/$1/comm" 2>/dev/null) || return 1
+    [ "${actual_comm}" = "${expected_comm}" ]
+}
+
 pstatus()
 {
     pfile=$1;
@@ -661,6 +669,18 @@ pstatus()
                 rm -f ${DIR}/var/run/${pfile}-${pid}.pid
                 continue;
             fi
+
+            case "${pfile}" in
+                wazuh-remoted|wazuh-manager-remoted)
+                    if ! pid_matches_daemon "${pid}" "${pfile}"; then
+                        if [ $USE_JSON = false ] && [ -z "${_pstatus_quiet}" ]; then
+                            echo "${pfile}: Process ${pid} does not match ${pfile}, removing..."
+                        fi
+                        rm -f "${DIR}/var/run/${pfile}-${pid}.pid"
+                        continue
+                    fi
+                    ;;
+            esac
 
             kill -0 ${pid} > /dev/null 2>&1
             if [ $? = 0 ]; then
