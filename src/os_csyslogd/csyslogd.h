@@ -44,10 +44,16 @@ void OS_CSyslogD(SyslogConfig **syslog_config);
 void OS_CSyslogD(SyslogConfig **syslog_config) __attribute__((noreturn));
 #endif
 
+/* Characters escaped with a backslash in each output; CR and LF become \r and \n */
+#define SPLUNK_ESCAPE       "\\\"\r\n"
+#define CEF_EXT_ESCAPE      "\\=\r\n"
+#define CEF_HEADER_ESCAPE   "\\|\r\n"
+
 /* Conditional Field Formatting */
+char *field_escape(const char *value, const char *escape);
 int field_add_int(char *dest, size_t size, const char *format, const int value );
-int field_add_string(char *dest, size_t size, const char *format, const char *value );
-int field_add_truncated(char *dest, size_t size, const char *format, const char *value,  int fmt_size );
+int field_add_string(char *dest, size_t size, const char *format, const char *value, const char *escape );
+int field_add_truncated(char *dest, size_t size, const char *format, const char *value,  int fmt_size, const char *escape );
 
 /** Global variables **/
 
