@@ -373,8 +373,22 @@ static void test_csyslogd_json_log_no_dataCSyslogD(void **state) {
 static void test_field_escape_splunk(void **state) {
     char *escaped = field_escape(SPECIAL_VALUE, SPLUNK_ESCAPE);
 
-    assert_string_equal(escaped, "a\\\"b\\\\c=d|e\\r\\nf");
+    assert_string_equal(escaped, "a'b\\c=d|e  f");
     os_free(escaped);
+}
+
+static void test_field_escape_splunk_trailing_backslashes(void **state) {
+    char *one = field_escape("a\\", SPLUNK_ESCAPE);
+    char *two = field_escape("a\\\\", SPLUNK_ESCAPE);
+    char *three = field_escape("a\\\\\\", SPLUNK_ESCAPE);
+
+    /* An odd run before the closing quote gets one more backslash */
+    assert_string_equal(one, "a\\\\");
+    assert_string_equal(two, "a\\\\");
+    assert_string_equal(three, "a\\\\\\\\");
+    os_free(one);
+    os_free(two);
+    os_free(three);
 }
 
 static void test_field_escape_cef_extension(void **state) {
@@ -407,7 +421,7 @@ static void test_field_add_string_splunk_quote(void **state) {
 
     int len = field_add_string(dest, OS_SIZE_2048, " acct=\"%s\",", "x\",forged=\"CEO", SPLUNK_ESCAPE);
 
-    assert_string_equal(dest, "start acct=\"x\\\",forged=\\\"CEO\",");
+    assert_string_equal(dest, "start acct=\"x',forged='CEO\",");
     assert_int_equal(len, strlen(dest) - strlen("start"));
 }
 
@@ -453,12 +467,22 @@ static void test_field_add_string_does_not_fit(void **state) {
     assert_string_equal(dest, "0123456789");
 }
 
+static void test_field_add_string_default_does_not_fit(void **state) {
+    char dest[OS_SIZE_2048] = "0123456789";
+
+    /* Without escaping the field is cut, as it always was */
+    int len = field_add_string(dest, 20, " user: %s;", "abcdefghij", NULL);
+
+    assert_int_equal(len, 18);
+    assert_string_equal(dest, "0123456789 user: abc");
+}
+
 static void test_field_add_truncated_splunk(void **state) {
     char dest[OS_SIZE_2048] = "";
 
     field_add_truncated(dest, OS_SIZE_61440, " message=\"%s\"", "ssh2\", tag=\"x\\", 2, SPLUNK_ESCAPE);
 
-    assert_string_equal(dest, " message=\"ssh2\\\", tag=\\\"x\\\\\"");
+    assert_string_equal(dest, " message=\"ssh2', tag='x\\\\\"");
 }
 
 static void test_field_add_truncated_cef(void **state) {
@@ -496,22 +520,29 @@ static void test_field_add_truncated_keeps_closing_quote(void **state) {
     assert_string_equal(dest, " message=\"abcde...\"");
 }
 
-static void test_field_add_truncated_splunk_split_escape(void **state) {
+static void test_field_add_truncated_splunk_quote_at_cut(void **state) {
     char dest[OS_SIZE_2048] = "";
 
-    /* The cut falls between the backslash and the quote of \" */
     field_add_truncated(dest, 20, " message=\"%s\"", "aaaa\"bbbbbbbb", 2, SPLUNK_ESCAPE);
 
-    assert_string_equal(dest, " message=\"aaaa...\"");
+    assert_string_equal(dest, " message=\"aaaa'...\"");
 }
 
-static void test_field_add_truncated_splunk_whole_escape(void **state) {
+static void test_field_add_truncated_splunk_line_break_at_cut(void **state) {
     char dest[OS_SIZE_2048] = "";
 
-    /* The cut falls right after a whole \\ */
-    field_add_truncated(dest, 20, " message=\"%s\"", "aaa\\bbbbbbb", 2, SPLUNK_ESCAPE);
+    field_add_truncated(dest, 20, " message=\"%s\"", "aaaa\rbbbbbbbb", 2, SPLUNK_ESCAPE);
 
-    assert_string_equal(dest, " message=\"aaa\\\\...\"");
+    assert_string_equal(dest, " message=\"aaaa ...\"");
+}
+
+static void test_field_add_truncated_splunk_backslash_at_cut(void **state) {
+    char dest[OS_SIZE_2048] = "";
+
+    /* Splunk does not escape backslashes, so the one at the cut is kept */
+    field_add_truncated(dest, 20, " message=\"%s\"", "aaaa\\bbbbbbb", 2, SPLUNK_ESCAPE);
+
+    assert_string_equal(dest, " message=\"aaaa\\...\"");
 }
 
 static void test_field_add_truncated_cef_split_escape(void **state) {
@@ -543,6 +574,7 @@ int main() {
         cmocka_unit_test_setup_teardown(test_csyslogd_json_unableUDP_CSyslogD, test_csyslogd_json_setup, test_csyslogd_teardown),
         cmocka_unit_test_setup_teardown(test_csyslogd_json_log_no_dataCSyslogD, test_csyslogd_json_setup, test_csyslogd_teardown),
         cmocka_unit_test(test_field_escape_splunk),
+        cmocka_unit_test(test_field_escape_splunk_trailing_backslashes),
         cmocka_unit_test(test_field_escape_cef_extension),
         cmocka_unit_test(test_field_escape_cef_header),
         cmocka_unit_test(test_field_escape_none),
@@ -553,13 +585,15 @@ int main() {
         cmocka_unit_test(test_field_add_string_default),
         cmocka_unit_test(test_field_add_string_exact_fit),
         cmocka_unit_test(test_field_add_string_does_not_fit),
+        cmocka_unit_test(test_field_add_string_default_does_not_fit),
         cmocka_unit_test(test_field_add_truncated_splunk),
         cmocka_unit_test(test_field_add_truncated_cef),
         cmocka_unit_test(test_field_add_truncated_default),
         cmocka_unit_test(test_field_add_truncated_exact_fit),
         cmocka_unit_test(test_field_add_truncated_keeps_closing_quote),
-        cmocka_unit_test(test_field_add_truncated_splunk_split_escape),
-        cmocka_unit_test(test_field_add_truncated_splunk_whole_escape),
+        cmocka_unit_test(test_field_add_truncated_splunk_quote_at_cut),
+        cmocka_unit_test(test_field_add_truncated_splunk_line_break_at_cut),
+        cmocka_unit_test(test_field_add_truncated_splunk_backslash_at_cut),
         cmocka_unit_test(test_field_add_truncated_cef_split_escape),
         cmocka_unit_test(test_field_add_truncated_default_backslash)
     };

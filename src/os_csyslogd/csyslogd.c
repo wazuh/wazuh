@@ -149,11 +149,17 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
     }
 }
 
-/* Copy value escaping the characters in escape (none if NULL) */
+/* Copy value escaping the characters in escape (none if NULL).
+ * A double quote in escape marks a quoted value, which carries no escape
+ * sequences: the quote becomes a single quote, CR and LF become a space, and a
+ * trailing odd run of backslashes gets one more so that a receiver that honors
+ * \" (Splunk KV_MODE=auto_escaped) keeps the closing quote */
 char *field_escape(const char *value, const char *escape)
 {
     char *escaped;
     size_t i = 0;
+    size_t backslashes = 0;
+    int quoted = escape != NULL && strchr(escape, '"') != NULL;
 
     if (value == NULL) {
         return NULL;
@@ -163,10 +169,23 @@ char *field_escape(const char *value, const char *escape)
 
     for (; *value != '\0'; value++) {
         if (escape != NULL && strchr(escape, *value) != NULL) {
+            if (quoted) {
+                escaped[i++] = (*value == '"') ? '\'' : ' ';
+                continue;
+            }
             escaped[i++] = '\\';
             escaped[i++] = (*value == '\r') ? 'r' : (*value == '\n') ? 'n' : *value;
         } else {
             escaped[i++] = *value;
+        }
+    }
+
+    if (quoted) {
+        while (backslashes < i && escaped[i - 1 - backslashes] == '\\') {
+            backslashes++;
+        }
+        if (backslashes % 2) {
+            escaped[i++] = '\\';
         }
     }
 
@@ -199,7 +218,7 @@ int field_add_string(char *dest, size_t size, const char *format, const char *va
         os_free(escaped);
 
         /* A cut field would leave its quotes or an escape sequence open */
-        if (len > dest_sz) {
+        if (len > dest_sz && escape != NULL) {
             return -1;
         }
 
@@ -245,7 +264,7 @@ int field_add_truncated(char *dest, size_t size, const char *format, const char 
             }
 
             /* Truncate and add a trailer, without leaving half an escape sequence */
-            while (escape != NULL && backslashes < cut && escaped[cut - 1 - backslashes] == '\\') {
+            while (escape != NULL && strchr(escape, '\\') != NULL && backslashes < cut && escaped[cut - 1 - backslashes] == '\\') {
                 backslashes++;
             }
             cut -= backslashes % 2;
