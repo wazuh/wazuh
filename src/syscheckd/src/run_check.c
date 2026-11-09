@@ -323,6 +323,12 @@ STATIC bool fim_has_configured_directories(void) {
  * @return true if there are configured registries, false otherwise
  */
 STATIC bool fim_has_configured_registries(void) {
+    // Wildcard patterns are expanded on every registry scan, so they count as configuration
+    // even when no key matches them yet.
+    if (syscheck.registry_wildcards != NULL) {
+        return true;
+    }
+
     if (syscheck.registry == NULL) {
         return false;
     }
@@ -1590,6 +1596,9 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
         }
 
         w_rwlock_unlock(&syscheck.directories_lock);
+#if defined(__linux__) && defined(ENABLE_AUDIT)
+        fim_ebpf_update_dirs();
+#endif
         w_mutex_unlock(&syscheck.fim_scan_mutex);
         mdebug1(FIM_LINKCHECK_FINALIZE);
     }

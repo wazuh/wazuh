@@ -58,6 +58,9 @@ BOOL utf8_MoveFileEx(const char* old_name, const char* new_name, DWORD flags);
 /// Delete a file with utf8 path
 BOOL utf8_DeleteFile(const char* utf8_path);
 
+/// Remove an empty directory with utf8 path
+BOOL utf8_RemoveDirectory(const char* utf8_path);
+
 /// Get file attributes
 DWORD utf8_GetFileAttributes(const char* utf8_path);
 

@@ -2889,6 +2889,7 @@ static void test_fim_checker_fim_directory(void **state) {
     expect_value(wrap_FindNextFile, hFindFile, (HANDLE)1);
     will_return(wrap_FindNextFile, NULL);
     will_return(wrap_FindNextFile, (BOOL)0);
+    will_return(wrap_FindNextFile, ERROR_NO_MORE_FILES);
 
     snprintf(skip_directory_message, OS_MAXSTR,
         "(6347): Directory '%s' is already on the max recursion_level (0), it will not be scanned.", expanded_path_test);
@@ -2958,6 +2959,7 @@ static void expect_win_empty_dir(const char *dir, wchar_t *wpat, size_t wpat_len
     expect_value(wrap_FindNextFile, hFindFile, (HANDLE)1);
     will_return(wrap_FindNextFile, NULL);
     will_return(wrap_FindNextFile, (BOOL)0);
+    will_return(wrap_FindNextFile, ERROR_NO_MORE_FILES);
 }
 
 static void test_fim_scan_db_full_double_scan(void **state) {
@@ -3473,6 +3475,7 @@ static void test_fim_directory(void **state) {
     expect_value(wrap_FindNextFile, hFindFile, (HANDLE)1);
     will_return(wrap_FindNextFile, NULL);
     will_return(wrap_FindNextFile, (BOOL)0);
+    will_return(wrap_FindNextFile, ERROR_NO_MORE_FILES);
 #else
     will_return(__wrap_opendir, 1);
     will_return(__wrap_readdir, fim_data->entry);
@@ -3513,6 +3516,7 @@ static void test_fim_directory_non_ascii_name(void **state) {
     expect_value(wrap_FindNextFile, hFindFile, (HANDLE)1);
     will_return(wrap_FindNextFile, NULL);
     will_return(wrap_FindNextFile, (BOOL)0);
+    will_return(wrap_FindNextFile, ERROR_NO_MORE_FILES);
 
     // 'A' is lowercased to 'a' (ASCII); the non-ASCII uppercase 'Ğ' (0xc4 0x9e) is
     // preserved byte for byte. A Unicode case fold (the removed LCMapStringW) would
@@ -3540,6 +3544,7 @@ static void test_fim_directory_ignore(void **state) {
     expect_value(wrap_FindNextFile, hFindFile, (HANDLE)1);
     will_return(wrap_FindNextFile, NULL);
     will_return(wrap_FindNextFile, (BOOL)0);
+    will_return(wrap_FindNextFile, ERROR_NO_MORE_FILES);
 #else
     will_return(__wrap_opendir, 1);
     will_return(__wrap_readdir, fim_data->entry);
@@ -3569,6 +3574,7 @@ static void test_fim_directory_opendir_error(void **state) {
     expect_memory(wrap_FindFirstFile, lpFileName, L"test\\*", (wcslen(L"test\\*") + 1) * sizeof(wchar_t));
     will_return(wrap_FindFirstFile, NULL);
     will_return(wrap_FindFirstFile, INVALID_HANDLE_VALUE);
+    will_return(wrap_FindFirstFile, ERROR_ACCESS_DENIED);
     will_return(__wrap_win_strerror, "Permission denied");
 #else
     will_return(__wrap_opendir, 0);

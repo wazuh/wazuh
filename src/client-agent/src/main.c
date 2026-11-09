@@ -14,6 +14,7 @@
 #include "agentd.h"
 #include "token_bootstrap.h"
 #include "enrollment_token.h"
+#include "openssl_init.h"
 #include <getopt.h>
 
 #if defined(__GLIBC__)
@@ -123,6 +124,8 @@ int main(int argc, char **argv)
 
     /* Set the name */
     OS_SetName(ARGV0);
+
+    w_openssl_init();
 
 	/* Change working directory */
     if (chdir(home_path) == -1) {

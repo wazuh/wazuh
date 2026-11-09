@@ -26,8 +26,13 @@ typedef __attribute__((aligned(4))) unsigned int __u32;
 
 #define TASK_COMM_LEN 32
 
+// Operation of an event, see modern.bpf.c
+#define OP_OPEN   1
+#define OP_DONE   3
 
 struct file_event {
+    __u32 op;
+    __u32 tid;
     __u32 pid;
     __u32 ppid;
     __u32 uid;
@@ -37,10 +42,14 @@ struct file_event {
     uint64_t inode;
     uint64_t dev;
     char comm[TASK_COMM_LEN];
-    char filename[PATH_MAX];
-    char cwd[PATH_MAX];
-    char parent_cwd[PATH_MAX];
     char parent_comm[TASK_COMM_LEN];
+    char paths[3 * PATH_MAX]; // filename, cwd and parent_cwd, each NUL-terminated; only the used part is sent
+};
+
+struct op_done {
+    __u32 op;
+    __u32 tid;
+    int64_t ret;
 };
 
 struct dynamic_file_event {
@@ -92,6 +101,8 @@ typedef const char *(*bpf_program__section_name_t)(const struct bpf_program *pro
 typedef const char *(*bpf_program__name_t)(const struct bpf_program *prog);
 typedef int (*libbpf_print_fn_t)(int level, const char *format, va_list args);
 typedef libbpf_print_fn_t (*libbpf_set_print_t)(libbpf_print_fn_t fn);
+typedef int (*bpf_map_update_elem_t)(int fd, const void *key, const void *value, uint64_t flags);
+typedef int (*bpf_map_delete_elem_t)(int fd, const void *key);
 
 typedef int(*init_ring_buffer_t)(ring_buffer** rb, ring_buffer_sample_fn sample_cb);
 typedef void(*ebpf_pop_events_t)(fim::BoundedQueue<std::unique_ptr<dynamic_file_event>>& kernel_queue);
@@ -121,6 +132,8 @@ typedef struct {
     bpf_program__section_name_t bpf_program_section_name;
     bpf_program__name_t bpf_program_name;
     libbpf_set_print_t libbpf_set_print;
+    bpf_map_update_elem_t bpf_map_update_elem;
+    bpf_map_delete_elem_t bpf_map_delete_elem;
 
     bpf_object__open_skeleton_t bpf_object_open_skeleton;
     bpf_object__destroy_skeleton_t bpf_object_destroy_skeleton;

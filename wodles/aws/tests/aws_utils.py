@@ -5,6 +5,7 @@
 import os
 import sys
 import copy
+from datetime import datetime, timezone
 from unittest.mock import patch
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
@@ -26,7 +27,7 @@ TEST_ACCESS_KEY = "test_access_key"
 TEST_SECRET_KEY = "test_secret_key"
 TEST_AWS_PROFILE = "test_aws_profile"
 TEST_IAM_ROLE_ARN = "arn:aws:iam::123455678912:role/Role"
-TEST_IAM_ROLE_DURATION = '3600'
+TEST_IAM_ROLE_DURATION = 3600
 TEST_ACCOUNT_ID = "123456789123"
 TEST_ACCOUNT_ALIAS = "test_account_alias"
 TEST_ORGANIZATION_ID = "test_organization_id"
@@ -63,6 +64,7 @@ LIST_OBJECT_V2 = {'CommonPrefixes': [{'Prefix': f'AWSLogs/{TEST_REGION}/'},
 
 LIST_OBJECT_V2_NO_PREFIXES = {'Contents': [{
     'Key': '',
+    'LastModified': datetime(2022, 1, 1, tzinfo=timezone.utc),
     'OtherKey': 'value'}],
     'IsTruncated': False
 }
