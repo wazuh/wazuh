@@ -126,18 +126,21 @@ char * __wrap_getenv(const char *name) {
 // these run against the real file system (OS_PIDFILE is the relative "var/run", so the tests chdir
 // into a private temp dir to keep every file operation out of the shared working directory).
 static char createpid_cwd[PATH_MAX + 1];
-static char createpid_dir[PATH_MAX + 1];
+static char createpid_dir[64];
 
 static int setup_createpid(void **state) {
     (void) state;
-    // Reach the real file system only after every step that could fail, so test_mode is never left at
-    // 0 for the tests that follow if setup aborts.
+    char path[96];
+    // Build the layout by absolute path and chdir last, so a failure before the chdir leaves the
+    // working directory and test_mode untouched for the tests that follow.
     assert_non_null(getcwd(createpid_cwd, sizeof(createpid_cwd)));
     snprintf(createpid_dir, sizeof(createpid_dir), "/tmp/wazuh_createpid_XXXXXX");
     assert_non_null(mkdtemp(createpid_dir));
+    snprintf(path, sizeof(path), "%s/var", createpid_dir);
+    assert_int_equal(mkdir(path, 0750), 0);
+    snprintf(path, sizeof(path), "%s/var/run", createpid_dir);
+    assert_int_equal(mkdir(path, 0770), 0);
     assert_int_equal(chdir(createpid_dir), 0);
-    assert_int_equal(mkdir("var", 0750), 0);
-    assert_int_equal(mkdir("var/run", 0770), 0);
     test_mode = 0;
     return 0;
 }
@@ -164,6 +167,12 @@ void test_CreatePID_success(void **state)
     struct stat statbuf;
     char line[32] = {0};
     FILE * fp;
+
+    // Pre-create the file with a different mode so the mode assertion pins fchmod(): in append mode the
+    // open would otherwise leave an existing file's permissions untouched.
+    int fd = open("var/run/test-2345.pid", O_WRONLY | O_CREAT | O_TRUNC, 0600);
+    assert_int_not_equal(fd, -1);
+    close(fd);
 
     assert_int_equal(CreatePID("test", 2345), 0);
 
