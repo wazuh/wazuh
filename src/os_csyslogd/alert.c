@@ -149,7 +149,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config) {
         char *comment = field_escape(al_data->comment, CEF_HEADER_ESCAPE);
         char *location = field_escape(al_data->location, CEF_EXT_ESCAPE);
 
-        snprintf(syslog_msg, OS_SIZE_2048,
+        if (snprintf(syslog_msg, OS_SIZE_2048,
                  "<%u>%s CEF:0|%s|%s|%s|%u|%s|%u|dvc=%s cs1=%s cs1Label=Location",
                  syslog_config->priority,
                  tstamp,
@@ -159,7 +159,19 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config) {
                  al_data->rule,
                  comment,
                  (al_data->level > 10) ? 10 : al_data->level,
-                 hostname, location);
+                 hostname, location) >= OS_SIZE_2048) {
+            /* Leave the values out rather than cut the header inside a field */
+            snprintf(syslog_msg, OS_SIZE_2048,
+                     "<%u>%s CEF:0|%s|%s|%s|%u||%u|dvc=%s",
+                     syslog_config->priority,
+                     tstamp,
+                     __author,
+                     __ossec_name,
+                     __ossec_version,
+                     al_data->rule,
+                     (al_data->level > 10) ? 10 : al_data->level,
+                     hostname);
+        }
         os_free(comment);
         os_free(location);
         field_add_string(syslog_msg, OS_SIZE_2048, " cat=%s", al_data->group, CEF_EXT_ESCAPE );
@@ -276,7 +288,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config) {
         char *location = field_escape(al_data->location, SPLUNK_ESCAPE);
 
         /* Build a Splunk Style Key/Value string for logging */
-        snprintf(syslog_msg, OS_SIZE_2048,
+        if (snprintf(syslog_msg, OS_SIZE_2048,
                  "<%u>%s %s ossec: crit=%u id=%u description=\"%s\" component=\"%s\",",
 
                  /* syslog header */
@@ -285,7 +297,12 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config) {
                  /* OSSEC metadata */
                  al_data->level, al_data->rule, comment,
                  location
-                );
+                ) >= OS_SIZE_2048) {
+            /* Leave the values out rather than cut the header with a quote open */
+            snprintf(syslog_msg, OS_SIZE_2048, "<%u>%s %s ossec: crit=%u id=%u",
+                     syslog_config->priority, tstamp, hostname,
+                     al_data->level, al_data->rule);
+        }
         os_free(comment);
         os_free(location);
         /* Event specifics */

@@ -76,27 +76,38 @@ static void test_splunk_message(void **state) {
     send_alert(SPLUNK_CSYSLOG, make_alert(COMMENT, LOCATION, "9.9.9.9", 5555, "admin", LOG_2001),
                HEADER_DATE " indexer2 ossec: crit=5 id=5760 description=\"" COMMENT "\" component=\"" LOCATION "\","
                " classification=\"" GROUP "\", src_ip=\"9.9.9.9\", src_port=5555, acct=\"admin\","
-               " message=\"Nov  5 15:00:00 victim sshd[2001]: Failed password for admin from 9.9.9.9 port 5555 ssh2\\\","
-               " action=\\\"blocked\\\", src_user=\\\"CEO\\\", tag=\\\"FORGED_LAB\"");
+               " message=\"Nov  5 15:00:00 victim sshd[2001]: Failed password for admin from 9.9.9.9 port 5555 ssh2',"
+               " action='blocked', src_user='CEO', tag='FORGED_LAB\"");
 }
 
 static void test_splunk_user_quote(void **state) {
     send_alert(SPLUNK_CSYSLOG, make_alert(COMMENT, LOCATION, "9.9.9.7", 5557, "x\",forged=\"CEO", LOG_2003),
                HEADER_DATE " indexer2 ossec: crit=5 id=5760 description=\"" COMMENT "\" component=\"" LOCATION "\","
-               " classification=\"" GROUP "\", src_ip=\"9.9.9.7\", src_port=5557, acct=\"x\\\",forged=\\\"CEO\","
-               " message=\"Nov  5 15:00:02 victim sshd[2003]: Failed password for x\\\",forged=\\\"CEO from 9.9.9.7 port 5557 ssh2\"");
+               " classification=\"" GROUP "\", src_ip=\"9.9.9.7\", src_port=5557, acct=\"x',forged='CEO\","
+               " message=\"Nov  5 15:00:02 victim sshd[2003]: Failed password for x',forged='CEO from 9.9.9.7 port 5557 ssh2\"");
 }
 
 static void test_splunk_user_trailing_backslash(void **state) {
     send_alert(SPLUNK_CSYSLOG, make_alert(COMMENT, LOCATION, "9.9.9.5", 5559, "evil\\", LOG_2005),
                HEADER_DATE " indexer2 ossec: crit=5 id=5760 description=\"" COMMENT "\" component=\"" LOCATION "\","
                " classification=\"" GROUP "\", src_ip=\"9.9.9.5\", src_port=5559, acct=\"evil\\\\\","
-               " message=\"Nov  5 15:00:04 victim sshd[2005]: Failed password for evil\\\\ from 9.9.9.5 port 5559 ssh2\"");
+               " message=\"Nov  5 15:00:04 victim sshd[2005]: Failed password for evil\\ from 9.9.9.5 port 5559 ssh2\"");
 }
 
 static void test_splunk_header(void **state) {
     send_alert(SPLUNK_CSYSLOG, make_alert("a|b\\c \"q\" k=v", "(agent) any->/var/log/a\"b", "9.9.9.9", 5555, "admin", "log"),
-               HEADER_DATE " indexer2 ossec: crit=5 id=5760 description=\"a|b\\\\c \\\"q\\\" k=v\" component=\"(agent) any->/var/log/a\\\"b\","
+               HEADER_DATE " indexer2 ossec: crit=5 id=5760 description=\"a|b\\c 'q' k=v\" component=\"(agent) any->/var/log/a'b\","
+               " classification=\"" GROUP "\", src_ip=\"9.9.9.9\", src_port=5555, acct=\"admin\", message=\"log\"");
+}
+
+static void test_splunk_header_does_not_fit(void **state) {
+    char location[2001];
+
+    memset(location, 'a', sizeof(location) - 1);
+    location[sizeof(location) - 1] = '\0';
+
+    send_alert(SPLUNK_CSYSLOG, make_alert(COMMENT, location, "9.9.9.9", 5555, "admin", "log"),
+               HEADER_DATE " indexer2 ossec: crit=5 id=5760"
                " classification=\"" GROUP "\", src_ip=\"9.9.9.9\", src_port=5555, acct=\"admin\", message=\"log\"");
 }
 
@@ -129,6 +140,18 @@ static void test_cef_header(void **state) {
                " src=9.9.9.9 spt=5555 shost=9.9.9.9 suser=admin suser=admin msg=log\\r\\n");
 }
 
+static void test_cef_header_does_not_fit(void **state) {
+    char comment[1001];
+
+    /* 1000 backslashes become 2000 bytes once escaped */
+    memset(comment, '\\', sizeof(comment) - 1);
+    comment[sizeof(comment) - 1] = '\0';
+
+    send_alert(CEF_CSYSLOG, make_alert(comment, LOCATION, "9.9.9.9", 5555, "admin", "log"),
+               CEF_HEADER "|5|dvc=indexer2 cat=" GROUP
+               " src=9.9.9.9 spt=5555 shost=9.9.9.9 suser=admin suser=admin msg=log");
+}
+
 static void test_default_unescaped(void **state) {
     send_alert(DEFAULT_CSYSLOG, make_alert(COMMENT, LOCATION, "9.9.9.7", 5557, "x\",forged=\"CEO", LOG_2003),
                HEADER_DATE " indexer2 ossec: Alert Level: 5; Rule: 5760 - " COMMENT "; Location: " LOCATION ";"
@@ -141,10 +164,12 @@ int main() {
         cmocka_unit_test(test_splunk_user_quote),
         cmocka_unit_test(test_splunk_user_trailing_backslash),
         cmocka_unit_test(test_splunk_header),
+        cmocka_unit_test(test_splunk_header_does_not_fit),
         cmocka_unit_test(test_cef_message_quote),
         cmocka_unit_test(test_cef_message_keys),
         cmocka_unit_test(test_cef_user),
         cmocka_unit_test(test_cef_header),
+        cmocka_unit_test(test_cef_header_does_not_fit),
         cmocka_unit_test(test_default_unescaped),
     };
 
