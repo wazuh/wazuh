@@ -185,7 +185,6 @@ static void test_get_agent_ip_legacy_win32_update_ipv4_gateway_ipv6_success(void
 static void test_get_agent_ip_legacy_win32_dual_stack_gateway_ipv6_success(void ** state) {
 
     const char * address = {"FE80:0000:0000:0000:0A00:27FF:FEE0:D046"};
-    time_mock_value += TIME_INCREMENT + 1;
     error_code_sysinfo_network = 0;
     test_case_selector = 9;
 
@@ -198,7 +197,6 @@ static void test_get_agent_ip_legacy_win32_dual_stack_gateway_ipv6_success(void 
 static void test_get_agent_ip_legacy_win32_ipv6_only_gateway_ipv6_success(void ** state) {
 
     const char * address = {"FE80:0000:0000:0000:0A00:27FF:FEE0:D046"};
-    time_mock_value += TIME_INCREMENT + 1;
     error_code_sysinfo_network = 0;
     test_case_selector = 10;
 
@@ -211,7 +209,6 @@ static void test_get_agent_ip_legacy_win32_ipv6_only_gateway_ipv6_success(void *
 static void test_get_agent_ip_legacy_win32_ipv4_only_gateway_ipv4_success(void ** state) {
 
     const char * address = {"111.222.333.444"};
-    time_mock_value += TIME_INCREMENT + 1;
     error_code_sysinfo_network = 0;
     test_case_selector = 11;
 
