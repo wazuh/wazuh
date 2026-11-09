@@ -349,7 +349,9 @@ STATIC char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) {
     const cJSON *package_obj = cJSON_GetObjectItem(json_object, "file");
     const cJSON *installer_obj = cJSON_GetObjectItem(json_object, "installer");
     int status = 0;
-    char *out;
+    // wm_exec() only sets the output on a non-negative return, so it must start as NULL
+    // for the os_free() below to be a no-op on the failure paths.
+    char *out = NULL;
 
     int req_timeout = getDefine_Int("execd", "request_timeout", 1, 3600);
 
