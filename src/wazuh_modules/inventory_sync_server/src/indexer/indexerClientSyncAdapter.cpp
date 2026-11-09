@@ -545,6 +545,14 @@ namespace invsync::indexer
                 op.body = std::string {data};
                 op.version = std::string {version};
                 op.tag = tag;
+                if (kind == indexer_client::Op::Kind::IndexVersionedScript)
+                {
+                    // A concurrent agent update must not drop the value (UPDATE_RETRY_ON_CONFLICT, 5.0.0 #41191).
+                    indexer_client::ConflictPolicy retry;
+                    retry.kind = indexer_client::ConflictPolicy::Kind::Retry;
+                    retry.retryOnConflict = UPDATE_RETRY_ON_CONFLICT;
+                    op.onConflict = retry;
+                }
                 return op;
             };
 

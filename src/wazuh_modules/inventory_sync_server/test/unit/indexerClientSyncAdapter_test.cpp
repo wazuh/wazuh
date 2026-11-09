@@ -613,6 +613,105 @@ TEST_F(IndexerClientSyncAdapter, SessionRangesMapToResultsWhenASessionSpansChunk
     EXPECT_GE(node.bulk->received().size(), 2U) << "the second session really spanned chunks";
 }
 
+// ---- Version conflicts of the versioned upsert (5.0.0 #41191) ------------------------------------
+
+namespace
+{
+    /// The bodies of every `_bulk` the node received, in arrival order.
+    std::vector<std::string> bulkBodies(const FakeIndexer& fake)
+    {
+        std::vector<std::string> bodies;
+        for (const auto& request : fake.requests())
+        {
+            if (request.path.size() >= 6 && request.path.compare(request.path.size() - 6, 6, "/_bulk") == 0)
+            {
+                bodies.push_back(request.body);
+            }
+        }
+        return bodies;
+    }
+} // namespace
+
+TEST_F(IndexerClientSyncAdapter, OnlyTheVersionedUpsertCarriesRetryOnConflict)
+{
+    auto node = startNode();
+    auto& adapter = startAll(testSpec(), options(1 * MIB));
+
+    adapter.bulkIndex("v", INDEX, document('v'), "7");
+    stage(adapter, "i", document('i'));
+    adapter.bulkDelete("d", INDEX);
+    adapter.endSession();
+    const auto outcomes = adapter.flushSessions(1);
+
+    ASSERT_EQ(1U, outcomes.size());
+    EXPECT_TRUE(outcomes[0].ok) << outcomes[0].reason;
+    const auto bodies = bulkBodies(*node.fake);
+    ASSERT_EQ(1U, bodies.size());
+    const std::string update = std::string(R"({"update":{"_index":")") + INDEX + R"(","_id":"v","retry_on_conflict":)" +
+                               std::to_string(invsync::indexer::UPDATE_RETRY_ON_CONFLICT) + "}}\n";
+    EXPECT_NE(std::string::npos, bodies[0].find(update)) << bodies[0];
+    EXPECT_NE(std::string::npos, bodies[0].find(std::string(R"({"index":{"_index":")") + INDEX + R"(","_id":"i"}})"))
+        << bodies[0];
+    EXPECT_NE(std::string::npos, bodies[0].find(std::string(R"({"delete":{"_index":")") + INDEX + R"(","_id":"d"}})"))
+        << bodies[0];
+    std::size_t carriers {0};
+    for (auto at = bodies[0].find("retry_on_conflict"); at != std::string::npos;
+         at = bodies[0].find("retry_on_conflict", at + 1))
+    {
+        ++carriers;
+    }
+    EXPECT_EQ(1U, carriers) << "only the update line carries retry_on_conflict: " << bodies[0];
+}
+
+TEST_F(IndexerClientSyncAdapter, ConflictOnTheVersionedUpsertIsSentAgain)
+{
+    // The indexer still answers 409 after its own retry_on_conflict: the value is sent again, never reported stored.
+    auto node = startNode();
+    node.bulk->push(BulkScript::items({{0, BulkItem::conflict()}}));
+    auto& adapter = startAll(testSpec(), options(1 * MIB));
+
+    adapter.bulkIndex("K", INDEX, R"({"v":"A"})", "7");
+    adapter.endSession();
+    const auto outcomes = adapter.flushSessions(1);
+
+    ASSERT_EQ(1U, outcomes.size());
+    EXPECT_TRUE(outcomes[0].ok) << outcomes[0].reason;
+    EXPECT_EQ(2U, sourcesOf(node, "K").size()) << "the conflicted update was not sent again";
+}
+
+TEST_F(IndexerClientSyncAdapter, PersistentConflictOnTheVersionedUpsertFailsTheSession)
+{
+    // Every attempt conflicts: once the bucket's retry budget is spent the session fails (the agent re-sends it)
+    // instead of being answered as stored.
+    auto node = startNode(BulkScript::all(BulkItem::conflict()));
+    auto& adapter = startAll(testSpec(), options(1 * MIB));
+
+    adapter.bulkIndex("K", INDEX, R"({"v":"A"})", "7");
+    adapter.endSession();
+    const auto outcomes = adapter.flushSessions(1);
+
+    ASSERT_EQ(1U, outcomes.size());
+    EXPECT_FALSE(outcomes[0].ok);
+    EXPECT_EQ(ConnectorError::Cause::RetryExhausted, outcomes[0].cause) << outcomes[0].reason;
+    EXPECT_GE(sourcesOf(node, "K").size(), 2U);
+}
+
+TEST_F(IndexerClientSyncAdapter, ConflictOnIndexOrDeleteStaysSuccess)
+{
+    // An `index` or `delete` answered 409 keeps the bucket's Success policy: stored as it was, sent once.
+    auto node = startNode(BulkScript::all(BulkItem::conflict()));
+    auto& adapter = startAll(testSpec(), options(1 * MIB));
+
+    stage(adapter, "i", document('i'));
+    adapter.bulkDelete("d", INDEX);
+    adapter.endSession();
+    const auto outcomes = adapter.flushSessions(1);
+
+    ASSERT_EQ(1U, outcomes.size());
+    EXPECT_TRUE(outcomes[0].ok) << outcomes[0].reason;
+    EXPECT_EQ(2U, receivedOps(node).size());
+}
+
 TEST_F(IndexerClientSyncAdapter, AddRefusalFailsOnlyItsSession)
 {
     // A small bucket whose room is almost all taken by other writers' held ops: the first and the last

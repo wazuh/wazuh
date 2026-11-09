@@ -38,6 +38,18 @@ namespace invsync::indexer
     constexpr std::size_t RESULT_RESERVE_BYTES {2048};
 
     /**
+     * @brief `retry_on_conflict` of a versioned sync value's scripted `update` (5.0.0 #41191).
+     *
+     * The update writes with the seq_no it read the document at, so a concurrent `_update_by_query` of the same
+     * agent (a group or metadata session applied by another manager node) makes the item answer 409 and drop its
+     * data. With it the indexer re-reads the document and re-runs the script; a 409 that still comes back is retried
+     * on the bucket's retry lane and, once that budget runs out, fails the session (`RetryExhausted`), so the agent
+     * sends it again instead of getting a 200 for data the index does not hold. Only the versioned upsert carries it:
+     * `index` and `delete` keep the bucket's `Success` policy for a 409.
+     */
+    constexpr std::uint32_t UPDATE_RETRY_ON_CONFLICT {5};
+
+    /**
      * @brief Time budgets of the adapter's calls (I145, I145b).
      *
      * `stateful` bounds a `/stateful` batch (from its first add) and each query of an Immediate
