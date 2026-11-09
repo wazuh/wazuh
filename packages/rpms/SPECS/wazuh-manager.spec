@@ -984,6 +984,7 @@ rm -fr %{buildroot}
 %attr(640, wazuh-manager, wazuh-manager) %{_localstatedir}/data/tzdb/iana/*
 %dir %attr(1770, root, wazuh-manager) %{_localstatedir}/tmp
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/var
+%dir %attr(750, root, wazuh-manager) %{_localstatedir}/var/audit
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/var/db
 %attr(660, root, wazuh-manager) %{_localstatedir}/var/db/mitre.db
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/var/download
