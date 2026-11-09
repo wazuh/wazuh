@@ -77,6 +77,7 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
 
                 /* Flow control */
                 if (rest_bytes <= 0) {
+                    rest_offset += rest_bytes;
                     break;
                 }
 
