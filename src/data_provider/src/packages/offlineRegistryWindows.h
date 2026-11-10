@@ -44,9 +44,19 @@ class OffregApi final
             return m_openHive ? m_openHive(file.c_str(), hive) : ERROR_PROC_NOT_FOUND;
         }
 
+        // Some versions of offreg.dll (Windows Server 2012 R2 and 2016) close the file once it is read. It is
+        // protected during the call, so the handle stays owned by the caller on every version.
         DWORD openHive(const HANDLE file, ORHKEY* hive) const
         {
-            return m_openHiveByHandle ? m_openHiveByHandle(file, hive) : ERROR_PROC_NOT_FOUND;
+            if (!m_openHiveByHandle)
+            {
+                return ERROR_PROC_NOT_FOUND;
+            }
+
+            SetHandleInformation(file, HANDLE_FLAG_PROTECT_FROM_CLOSE, HANDLE_FLAG_PROTECT_FROM_CLOSE);
+            const auto result {m_openHiveByHandle(file, hive)};
+            SetHandleInformation(file, HANDLE_FLAG_PROTECT_FROM_CLOSE, 0);
+            return result;
         }
 
         DWORD closeHive(const ORHKEY hive) const
