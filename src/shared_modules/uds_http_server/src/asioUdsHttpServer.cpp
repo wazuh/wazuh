@@ -552,7 +552,8 @@ namespace wazuh::uds_http
 
                 if (m_phase == Phase::Response)
                 {
-                    // The handler already answered; only the interim write is still outstanding.
+                    // The handler already answered and only the interim write is outstanding. Not a
+                    // session without a deadline: parking the answer re-armed this timer as Phase::Write.
                     if (m_parkedResponse)
                     {
                         return;
@@ -1132,9 +1133,12 @@ namespace wazuh::uds_http
                 if (m_interimWriting)
                 {
                     // Never two writes in flight: the interim completion delivers the first final answer.
+                    // From here only that write stands between the answer and the wire, so it gets the
+                    // bound of any write; a later answer neither replaces the first nor extends it.
                     if (!m_parkedResponse)
                     {
                         m_parkedResponse = std::move(response);
+                        armTimer(Phase::Write, std::chrono::seconds {m_state->config.writeTimeoutSec});
                     }
                     return;
                 }
