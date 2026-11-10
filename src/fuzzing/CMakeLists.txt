@@ -46,3 +46,39 @@ set_target_properties(fuzz_xml PROPERTIES
     LINKER_LANGUAGE C
     RUNTIME_OUTPUT_DIRECTORY "${FUZZING_OUTPUT_DIR}"
     )
+
+add_executable(fuzz_shared_stringop fuzz_shared_stringop.c)
+
+target_include_directories(fuzz_shared_stringop PRIVATE
+    ${SRC_FOLDER}
+    ${SRC_FOLDER}/shared
+    ${SRC_FOLDER}/shared/include
+    # string_op.h includes <cJSON.h>; the header comes with the externals
+    # prepared by `make deps TARGET=agent`.
+    ${SRC_FOLDER}/external/cJSON
+    )
+
+add_dependencies(fuzz_shared_stringop wazuh)
+target_link_libraries(fuzz_shared_stringop PRIVATE
+    ${CMAKE_BINARY_DIR}/lib/libwazuh.a
+    ${SRC_FOLDER}/external/sqlite/libsqlite3.a
+    ${SRC_FOLDER}/external/cJSON/libcjson.a
+    ${SRC_FOLDER}/external/zlib/libz.a
+    ${SRC_FOLDER}/external/bzip2/libbz2.a
+    pthread
+    dl
+    rt
+    m
+    )
+
+if(DEFINED ENV{LIB_FUZZING_ENGINE} AND NOT "$ENV{LIB_FUZZING_ENGINE}" STREQUAL "")
+  target_link_options(fuzz_shared_stringop PRIVATE "$ENV{LIB_FUZZING_ENGINE}")
+else()
+  target_compile_options(fuzz_shared_stringop PRIVATE -fsanitize=fuzzer)
+  target_link_options(fuzz_shared_stringop PRIVATE -fsanitize=fuzzer)
+endif()
+
+set_target_properties(fuzz_shared_stringop PROPERTIES
+    LINKER_LANGUAGE C
+    RUNTIME_OUTPUT_DIRECTORY "${FUZZING_OUTPUT_DIR}"
+    )
