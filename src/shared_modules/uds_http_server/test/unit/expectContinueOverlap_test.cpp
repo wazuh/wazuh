@@ -501,3 +501,40 @@ TEST(ExpectContinueOverlapTest, APeerLeavingDuringTheInterimWriteFreesTheSession
         << "a session whose peer left is freed, not kept with its parked answer";
     EXPECT_EQ(1, handled.load());
 }
+
+// An interim write that never completes must not keep a parked answer, and its connection slot, until
+// stop(): parking arms the write deadline, and past it the session is closed like any stalled write.
+TEST(ExpectContinueOverlapTest, AParkedAnswerWhoseInterimWriteNeverCompletesIsClosedAtTheWriteDeadline)
+{
+    LogRecorder::clear();
+    const auto path = uniqueSocketPath("ovstalled");
+    std::atomic<int> handled {0};
+    auto server = makeUdsHttpServer();
+    server->addRoute(Method::Post,
+                     "/events",
+                     [&](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+                     {
+                         responder->send(HttpResponse::json(200, "{}"));
+                         ++handled;
+                     });
+    auto config = configFor(path);
+    config.writeTimeoutSec = 1;
+    server->start(config);
+    HeldInterimWrite held; // never released before the session is closed
+
+    Peer peer {path};
+    ASSERT_TRUE(peer.connected());
+    peer.send(headExpecting(2));
+    ASSERT_TRUE(held.waitHeld());
+    peer.send("{}");
+    ASSERT_TRUE(waitFor([&] { return handled.load() == 1; }));
+
+    const auto parked = std::chrono::steady_clock::now();
+    EXPECT_EQ("", peer.readToEof()) << "closed without an answer: the interim write never went out";
+    EXPECT_LT(std::chrono::steady_clock::now() - parked, std::chrono::seconds {3})
+        << "closed at the 1 s write deadline, not at the 5 s response deadline or at stop()";
+    EXPECT_TRUE(waitFor([&] { return server->diagnostics().liveSessions == 0; }));
+    EXPECT_TRUE(LogRecorder::waitForMessageContaining("last phase: writing the response"));
+    EXPECT_FALSE(LogRecorder::sawMessageContaining("(last: /events,"))
+        << "an answered handler is not reported as an unanswered one";
+}
