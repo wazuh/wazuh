@@ -538,3 +538,39 @@ TEST(ExpectContinueOverlapTest, AParkedAnswerWhoseInterimWriteNeverCompletesIsCl
     EXPECT_FALSE(LogRecorder::sawMessageContaining("(last: /events,"))
         << "an answered handler is not reported as an unanswered one";
 }
+
+// A body-timeout 400 chosen while the interim write is in flight is final: a body that arrives after it
+// must not reach the handler, or the operation would run while its client is told it was refused.
+TEST(ExpectContinueOverlapTest, ABodyArrivingAfterAParkedBodyTimeoutAnswerNeverReachesTheHandler)
+{
+    LogRecorder::clear();
+    const auto path = uniqueSocketPath("ovlatebody");
+    std::atomic<int> handled {0};
+    auto server = makeUdsHttpServer();
+    server->addRoute(Method::Post,
+                     "/events",
+                     [&](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+                     {
+                         ++handled;
+                         responder->send(HttpResponse::json(200, "{}"));
+                     });
+    auto config = configFor(path);
+    config.bodyTimeoutSec = 1;
+    config.answerBodyTimeout = true;
+    server->start(config);
+    HeldInterimWrite held;
+
+    Peer peer {path};
+    ASSERT_TRUE(peer.connected());
+    peer.send(headExpecting(2));
+    ASSERT_TRUE(held.waitHeld());
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("the body did not arrive within 1 s"))
+        << "the body timeout chose its 400 while the interim write was held";
+    peer.send("{}");
+    EXPECT_FALSE(waitFor([&] { return handled.load() != 0; }, std::chrono::milliseconds {300}))
+        << "the late body was dispatched after its 400 was chosen";
+
+    held.release();
+    expectInterimThenOneFinal(peer.readToEof(), 400);
+    EXPECT_EQ(0, handled.load());
+}
