@@ -29,7 +29,19 @@ void test_get_ip_version_success_ipv4(void **state) {
 void test_get_ip_version_success_ipv6(void **state) {
     (void) state;
     assert_int_equal(get_ip_version("2001:db8::1"), 6);
-    assert_int_equal(get_ip_version("2001:0db8:0000::0001"), 6);
+    assert_int_equal(get_ip_version("2001:DB8::1"), 6);
+    assert_int_equal(get_ip_version("::1"), 6);
+    assert_int_equal(get_ip_version("::ffff:10.0.0.1"), 6);
+}
+
+void test_get_ip_version_rejects_non_standard_ipv6_text(void **state) {
+    (void) state;
+    assert_int_equal(get_ip_version("2001:0db8:0000::0001"), OS_INVALID);
+    assert_int_equal(get_ip_version("2001:db8:0:0:0:0:0:1"), OS_INVALID);
+    assert_int_equal(get_ip_version("2001:db8::0001"), OS_INVALID);
+    assert_int_equal(get_ip_version("2001:db8::0.0.0.1"), OS_INVALID);
+    assert_int_equal(get_ip_version("0:0:0:0:0:0:0:1"), OS_INVALID);
+    assert_int_equal(get_ip_version("::ffff:a00:1"), OS_INVALID);
 }
 
 void test_get_ip_version_rejects_non_standard_ipv4_text(void **state) {
@@ -281,10 +293,10 @@ void test_get_srcip_from_json_mapped_ipv4(void **state) {
     (void) state;
     assert_srcip(SRCIP_JSON("::ffff:10.0.0.1"), "10.0.0.1");
     assert_srcip(WIN_IP_JSON("::ffff:10.0.0.1"), "10.0.0.1");
-    // Any other spelling of the prefix stays an IPv6 address, as on the manager
+    // Any other case of the prefix stays an IPv6 address, as on the manager
     assert_srcip(SRCIP_JSON("::FFFF:10.0.0.1"), "::FFFF:10.0.0.1");
-    assert_srcip(SRCIP_JSON("0:0:0:0:0:ffff:10.0.0.1"), "0:0:0:0:0:ffff:10.0.0.1");
-    assert_srcip(SRCIP_JSON("::ffff:a00:1"), "::ffff:a00:1");
+    assert_srcip(SRCIP_JSON("0:0:0:0:0:ffff:10.0.0.1"), NULL);
+    assert_srcip(SRCIP_JSON("::ffff:a00:1"), NULL);
 }
 
 void test_get_srcip_from_json_invalid(void **state) {
@@ -475,6 +487,7 @@ int main(void) {
         cmocka_unit_test(test_get_ip_version_success_ipv4),
         cmocka_unit_test(test_get_ip_version_success_ipv6),
         cmocka_unit_test(test_get_ip_version_rejects_non_standard_ipv4_text),
+        cmocka_unit_test(test_get_ip_version_rejects_non_standard_ipv6_text),
         cmocka_unit_test(test_get_ip_version_invalid),
         cmocka_unit_test(test_aix_filter_rule_matches_exact),
         cmocka_unit_test(test_aix_filter_rule_matches_other_rules),

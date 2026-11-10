@@ -29,7 +29,7 @@ void test_ip_customblock_valid_ipv4(void **state) {
 
 void test_ip_customblock_valid_ipv6(void **state) {
     (void) state;
-    assert_int_equal(get_ip_version("2001:0db8::1"), 6);
+    assert_int_equal(get_ip_version("2001:db8::1"), 6);
 }
 
 void test_ip_customblock_invalid_ip_with_dots_and_slashes(void **state) {

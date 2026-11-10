@@ -550,6 +550,21 @@ int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, co
     return retVal;
 }
 
+// get_ipv6_string() expands the address, this keeps the inet_ntop text.
+static bool get_ipv6_text(struct in6_addr *addr6, char *text, size_t size) {
+#ifdef WIN32
+    typedef PCSTR (WINAPI * inet_ntop_t)(INT, PVOID, PSTR, size_t);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
+    inet_ntop_t InetNtop = (inet_ntop_t)GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_ntop");
+#pragma GCC diagnostic pop
+
+    return InetNtop && InetNtop(AF_INET6, addr6, text, size);
+#else
+    return inet_ntop(AF_INET6, addr6, text, size) != NULL;
+#endif
+}
+
 int get_ip_version(const char *ip) {
     struct in_addr addr4;
     struct in6_addr addr6;
@@ -567,8 +582,12 @@ int get_ip_version(const char *ip) {
         return OS_INVALID;
     }
 
+    // Same for IPv6, case-insensitive.
     if (get_ipv6_numeric(ip, &addr6) == OS_SUCCESS) {
-        return 6;
+        if (get_ipv6_text(&addr6, text, sizeof(text)) && strcasecmp(text, ip) == 0) {
+            return 6;
+        }
+        return OS_INVALID;
     }
 
     return OS_INVALID;
