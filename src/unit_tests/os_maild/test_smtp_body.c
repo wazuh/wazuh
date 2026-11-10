@@ -170,6 +170,33 @@ static void test_sendsms_cuts_subject_at_line_break(void **state) {
     assert_body_sent(STUFFED_BODY);
 }
 
+/* SMS_SUBJECT can fill SUBJECT_SIZE - 1 characters */
+static void test_sendsms_long_subject_keeps_crlf(void **state) {
+    char *gran_to[] = { "sms@example.com", NULL };
+    int gran_set[] = { SMS_FORMAT };
+    MailConfig mail = { 0 };
+    char subject[SUBJECT_SIZE];
+    char expected[SUBJECT_SIZE];
+    MailMsg sms = { .subject = subject, .body = BODY };
+    struct tm tm = { 0 };
+
+    memset(subject, 'x', SUBJECT_SIZE - 2);
+    subject[SUBJECT_SIZE - 2] = '\0';
+    snprintf(expected, sizeof(expected), "Subject: %.115s\r\n\r\n", subject);
+
+    mail.smtpserver = SMTP_HOST;
+    mail.from = "wazuh@example.com";
+    mail.gran_to = gran_to;
+    mail.gran_set = gran_set;
+
+    expect_smtp_connect();
+    will_return(__wrap_OS_SetRecvTimeout, 0);
+
+    assert_int_equal(OS_Sendsms(&mail, &tm, &sms), 0);
+    assert_non_null(strstr(smtp_sent, expected));
+    assert_body_sent(STUFFED_BODY);
+}
+
 static void test_sendmail_cuts_subject_at_line_break(void **state) {
     char *to[] = { "rcpt@example.com", NULL };
     MailConfig mail = { 0 };
@@ -229,6 +256,7 @@ int main(void) {
         cmocka_unit_test_setup(test_sendsms_stuffs_body, setup),
         cmocka_unit_test_setup(test_sendmail_stuffs_grouped_bodies, setup),
         cmocka_unit_test_setup(test_sendsms_cuts_subject_at_line_break, setup),
+        cmocka_unit_test_setup(test_sendsms_long_subject_keeps_crlf, setup),
         cmocka_unit_test_setup(test_sendmail_cuts_subject_at_line_break, setup),
         cmocka_unit_test_setup(test_sendmail_cuts_grouped_subject_at_line_break, setup),
     };

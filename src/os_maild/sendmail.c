@@ -244,9 +244,10 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
         OS_SendTCP(socket, snd_msg);
     }
 
-    /* Send subject */
+    /* Send subject; 115 characters keep the CRLF within the 126 that snprintf writes */
     memset(snd_msg, '\0', 128);
-    snprintf(snd_msg, 127, SUBJECT, (int)strcspn(sms_msg->subject, "\r\n"), sms_msg->subject);
+    int subject_len = (int)strcspn(sms_msg->subject, "\r\n");
+    snprintf(snd_msg, 127, SUBJECT, subject_len < 115 ? subject_len : 115, sms_msg->subject);
 
     if (sendmail) {
         fprintf(sendmail->file_in, "%s", snd_msg);
