@@ -1,0 +1,2 @@
+[libfuzzer]
+detect_leaks=0
