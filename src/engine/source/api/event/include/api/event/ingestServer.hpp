@@ -37,9 +37,9 @@ struct IngestLimits
 IngestLimits validateIngestLimits(const IngestLimits& limits);
 
 /**
- * @brief The ingest server's options for @p limits: its connection cap, byte budget and body cap, max(2, nproc/4)
- * handlers with a queue as long as the connection cap, interim "100 Continue" answers, and the settings that raise
- * the budget and the connection cap named in the transport's 503 log lines.
+ * @brief The ingest server's options for @p limits: its connection cap, byte budget and body cap, two I/O threads,
+ * max(2, nproc/4) handlers with a queue as long as the connection cap, interim "100 Continue" answers, and
+ * the settings that raise the budget and the connection cap named in the transport's 503 log lines.
  */
 httpsrv::UdsServerOptions ingestServerOptions(const IngestLimits& limits);
 
@@ -47,8 +47,8 @@ httpsrv::UdsServerOptions ingestServerOptions(const IngestLimits& limits);
  * @brief Builds (without starting) the server for POST /events/enriched.
  *
  * The route is a Data route capped at limits.maxBodyBytes (a larger declared body is answered 413
- * before it is read); "Expect: 100-continue" is answered once a request is admitted; the executor
- * runs max(2, nproc/4) handlers with a queue as long as the connection cap.
+ * before it is read); "Expect: 100-continue" is answered once a request is admitted. The transport
+ * uses two I/O threads; the executor runs max(2, nproc/4) handlers with a queue as long as the connection cap.
  */
 std::shared_ptr<httpsrv::UdsServer> makeIngestServer(const std::shared_ptr<::router::IRouterAPI>& orchestrator,
                                                      const std::shared_ptr<::dumper::IDumper>& dumper,

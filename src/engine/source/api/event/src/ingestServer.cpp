@@ -58,6 +58,7 @@ httpsrv::UdsServerOptions ingestServerOptions(const IngestLimits& limits)
     options.maxConnections = limits.maxConnections;
     options.maxInFlightBytes = limits.maxInFlightBytes;
     options.maxBodySize = limits.maxBodyBytes;
+    options.ioThreads = 2;
     options.executorThreads = std::max<std::size_t>(2, cpp_get_nproc() / 4);
     options.executorQueue = limits.maxConnections;
     options.expectContinue = true;
