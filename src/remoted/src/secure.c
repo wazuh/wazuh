@@ -516,15 +516,16 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
 
     // The engine refuses a /stateless batch over its ingest cap from the declared length, and remoted
     // forwards the body exactly as decoded. A decoded cap above the engine's turns a batch the agent could
-    // split (413) into a refused write here and a 503 it retries unchanged. The engine's key is read with a
-    // wide range so a bad value cannot stop remoted; the engine refuses to start with a value outside its
-    // own range (validateIngestLimits() in its ingest server), so only an accepted one is compared.
-    const long long engine_max_body_default = 67108864;
-    const long long engine_max_body_min = 33554432;
-    const long long engine_max_body_max = 1073741824;
-    const long long engine_max_body = getDefine_Int_default(
-        "analysisd", "server_enriched_events_max_body_bytes", 0, INT_MAX, (int)engine_max_body_default);
-    if (engine_max_body >= engine_max_body_min && engine_max_body <= engine_max_body_max) {
+    // split (413) into a refused write here and a 503 it retries unchanged. The key is the engine's, which
+    // refuses to start on a bad value: remoted only compares against it, so a value it cannot use skips the
+    // check with a warning instead of stopping remoted, and is never replaced by the engine's default.
+    int engine_max_body_read = 67108864; // The engine's default, used when its key is absent.
+    if (getDefine_Int_nonfatal(
+            "analysisd", "server_enriched_events_max_body_bytes", 33554432, 1073741824, &engine_max_body_read) < 0) {
+        mwarn("'analysisd.server_enriched_events_max_body_bytes' is not an integer between 33554432 and 1073741824; "
+              "remoted's body caps are not checked against the engine's ingest cap.");
+    } else {
+        const long long engine_max_body = engine_max_body_read;
         if (rm_config->auth_max_decoded_body_size > engine_max_body) {
             // Never below the wire cap: a body accepted on the wire must still be accepted once decoded.
             const long long capped =
