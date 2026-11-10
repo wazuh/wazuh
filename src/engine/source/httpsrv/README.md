@@ -138,7 +138,7 @@ and [private](../../../../docs/ref/modules/engine/private-api-reference.md) API 
 
 | Sub-module | Routes | Server |
 |------------|--------|--------|
-| `api::metrics` | `POST /metrics/{enable,get,list,dump}` | API (Liveness, inline) |
+| `api::metrics` | `POST /metrics/{enable,get,list,dump}` | API (Control, on the request workers, 4 KiB body cap) |
 | `api::geo` | `POST /_internal/geo/db/{get,list}` | API |
 | `api::router` | `POST /_internal/router/route/{post,delete,get,reload,patchPriority}`, `POST /_internal/router/table/get` | API |
 | `api::tester` | `POST /_internal/tester/session/{post,delete,get,reload}`, `POST /_internal/tester/table/get`, `POST /_internal/tester/run/post`, `POST /logtest`, `DELETE /logtest` | API |
