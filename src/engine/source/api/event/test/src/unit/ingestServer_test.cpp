@@ -189,6 +189,12 @@ TEST_F(IngestServerTest, OptionsNameTheSettingsThatRaiseItsLimits)
     EXPECT_EQ("analysisd.server_enriched_events_max_connections", options.connectionCapOptionHint);
 }
 
+// CPU count must not expand the transport pool: handlers have a separate executor.
+TEST_F(IngestServerTest, OptionsUseTwoIoThreads)
+{
+    EXPECT_EQ(2U, ingestServerOptions(limits()).ioThreads);
+}
+
 TEST_F(IngestServerTest, AcceptsABatchOnTheSocket)
 {
     EXPECT_CALL(*router, postEvent(testing::_)).Times(1);

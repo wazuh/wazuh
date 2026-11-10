@@ -22,6 +22,7 @@
 
 #include <base/logging.hpp>
 #include <httpsrv/udsServer.hpp>
+#include <proc.hpp>
 
 namespace Log
 {
@@ -313,6 +314,28 @@ private:
     std::vector<std::string> m_lines;
 };
 } // namespace
+
+// Check the effective transport pool, including the backwards-compatible automatic default.
+TEST_F(UdsServerTest, IoThreadCountReachesTheTransport)
+{
+    for (const std::size_t count : {0U, 2U, 4U})
+    {
+        SCOPED_TRACE(count);
+        TransportLogCapture log;
+        auto opts = options();
+        opts.ioThreads = count;
+        UdsServer server {opts};
+        server.addRoute(Method::POST, "/events", [](const Request&, Response& response) { response.status = 200; });
+        const auto path = socketPath("io");
+        server.start(path);
+
+        const auto effective = count == 0 ? static_cast<std::size_t>(cpp_get_nproc()) : count;
+        EXPECT_TRUE(log.contains(", " + std::to_string(effective) + " I/O thread(s), "));
+        EXPECT_EQ(200,
+                  statusOf(roundTrip(path, "POST /events HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\n\r\n")));
+        server.shutdown();
+    }
+}
 
 // The connection-limit line names the setting that raises the limit, as given in the options.
 TEST_F(UdsServerTest, ConnectionLimitLogNamesTheConfiguredSetting)
