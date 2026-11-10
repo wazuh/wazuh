@@ -35,7 +35,6 @@ void OS_Exec(int *execq, int *arq, int *sock, const Eventinfo *lf, const active_
     char * exec_msg = NULL;
     char * msg = NULL;
     const char *ip;
-    const char *win_ip;
     const char *user;
     char *filename = NULL;
 
@@ -49,13 +48,14 @@ void OS_Exec(int *execq, int *arq, int *sock, const Eventinfo *lf, const active_
         }
     }
 
-    /* Active responses take the address from these fields before srcip */
-    win_ip = FindField(lf, "win.eventdata.ipAddress");
-    if (!win_ip) {
-        win_ip = FindField(lf, "win.eventdata.destinationIp");
-    }
-    if (win_ip && !get_ip(win_ip)) {
-        return;
+    /* Active responses take the address from these fields before srcip. Which one depends on the alert JSON,
+     * which drops empty values and turns "[...]" values into arrays, so every value is checked. */
+    for (int i = 0; i < lf->nfields; i++) {
+        if ((!strcasecmp(lf->fields[i].key, "win.eventdata.ipAddress") ||
+             !strcasecmp(lf->fields[i].key, "win.eventdata.destinationIp")) &&
+            lf->fields[i].value && *lf->fields[i].value && !get_ip(lf->fields[i].value)) {
+            return;
+        }
     }
 
     os_calloc(OS_MAXSTR + 1, sizeof(char), exec_msg);
