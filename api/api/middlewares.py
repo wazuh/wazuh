@@ -768,13 +768,18 @@ class SecureH11Protocol(H11Protocol):
         """Send the 400 for a request the HTTP parser rejected.
 
         Copy of `H11Protocol.send_400_response` (uvicorn 0.31.0) with the default headers prepended, as
-        `RequestResponseCycle.send()` does for every other response.
+        `RequestResponseCycle.send()` does for every other response, and no 400 once our response has
+        started, where h11 refuses one.
 
         Parameters
         ----------
         msg : str
             Response body.
         """
+        if self.conn.our_state not in (h11.IDLE, h11.SEND_RESPONSE):
+            # h11 sends a Response only in IDLE or SEND_RESPONSE; past that, closing is all that is left.
+            self.transport.close()
+            return
         headers = self.server_state.default_headers + [
             (b"content-type", b"text/plain; charset=utf-8"),
             (b"connection", b"close"),

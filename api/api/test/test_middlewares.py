@@ -1688,6 +1688,74 @@ async def test_secure_h11_protocol_400_carries_the_security_headers(chunks):
 
 
 @pytest.mark.asyncio
+async def test_secure_h11_protocol_closes_without_a_400_once_a_response_went_out():
+    """Check that a parser error after the response was sent closes the connection without raising.
+
+    The application answers before reading the chunked body, so the server's h11 state is already past
+    the response when the malformed chunk size arrives, and h11 refuses to send a 400 then.
+    """
+    async def unread_body_app(scope, receive, send):
+        await send({'type': 'http.response.start', 'status': 401, 'headers': [(b'content-length', b'0')]})
+        await send({'type': 'http.response.body', 'body': b''})
+
+    protocol, transport, state = build_secure_h11_protocol(app=unread_body_app)
+    protocol.data_received(b'POST /agents HTTP/1.1\r\nHost: x\r\nTransfer-Encoding: chunked\r\n\r\n')
+    await wait_for_tasks(state)
+    sent = transport.output
+
+    protocol.data_received(b'ZZZ\r\n')
+
+    assert transport.closed
+    assert transport.output == sent
+
+
+@pytest.mark.asyncio
+async def test_secure_h11_protocol_400_for_a_malformed_body_carries_the_security_headers():
+    """Check that a malformed chunk while the application still reads the body gets the 400."""
+    async def reading_app(scope, receive, send):
+        while (await receive())['type'] != 'http.disconnect':
+            pass
+
+    protocol, transport, state = build_secure_h11_protocol(app=reading_app)
+    protocol.data_received(b'POST /agents HTTP/1.1\r\nHost: x\r\nTransfer-Encoding: chunked\r\n\r\n')
+    protocol.data_received(b'ZZZ\r\n')
+    # FakeTransport.close() does not call back, so the application is told about the disconnection here
+    protocol.connection_lost(None)
+    await wait_for_tasks(state)
+
+    status, headers, body = parse_response(transport)
+    assert status == 400
+    assert body == b'Invalid HTTP request received.'
+    assert_each_security_header_once(headers)
+    assert transport.closed
+
+
+@pytest.mark.asyncio
+async def test_secure_h11_protocol_400_after_a_keep_alive_response_carries_the_security_headers():
+    """Check that a malformed request following a completed keep-alive exchange still gets the 400."""
+    app = Starlette(routes=[Route('/', lambda request: PlainTextResponse('ok'))])
+    protocol, transport, state = build_secure_h11_protocol(app=app)
+    protocol.data_received(b'GET / HTTP/1.1\r\nHost: x\r\n\r\n')
+    await wait_for_tasks(state)
+    protocol.data_received(b'GET / HTTP/1.1\r\nHost: x\r\nE2-header-without-colon\r\n\r\n')
+
+    client = h11.Connection(h11.CLIENT)
+    client.send(h11.Request(method='GET', target='/', headers=[('Host', 'x')]))
+    client.send(h11.EndOfMessage())
+    client.receive_data(transport.output)
+    client.receive_data(b'')
+    while not isinstance(client.next_event(), h11.EndOfMessage):
+        pass
+    client.start_next_cycle()
+    client.send(h11.Request(method='GET', target='/', headers=[('Host', 'x')]))
+    response = client.next_event()
+
+    assert response.status_code == 400
+    assert_each_security_header_once(list(response.headers))
+    assert transport.closed
+
+
+@pytest.mark.asyncio
 async def test_secure_h11_protocol_500_carries_the_security_headers():
     """Check that the 500 uvicorn sends for an app that fails before starting its response carries
     the security headers."""
