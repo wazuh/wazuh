@@ -46,15 +46,7 @@ class OffregApi final
 
         DWORD openHive(const HANDLE file, ORHKEY* hive) const
         {
-            if (!m_openHiveByHandle)
-            {
-                return ERROR_PROC_NOT_FOUND;
-            }
-
-            SetHandleInformation(file, HANDLE_FLAG_PROTECT_FROM_CLOSE, HANDLE_FLAG_PROTECT_FROM_CLOSE);
-            const auto result {m_openHiveByHandle(file, hive)};
-            SetHandleInformation(file, HANDLE_FLAG_PROTECT_FROM_CLOSE, 0);
-            return result;
+            return m_openHiveByHandle ? m_openHiveByHandle(file, hive) : ERROR_PROC_NOT_FOUND;
         }
 
         DWORD closeHive(const ORHKEY hive) const
@@ -161,7 +153,7 @@ class TOfflineHive final
         }
 
         explicit TOfflineHive(const HANDLE file)
-            : m_result {TApi::instance().openHive(file, &m_hive)}
+            : m_result {openKeepingFile(file, &m_hive)}
         {
             if (m_result != ERROR_SUCCESS)
             {
@@ -192,6 +184,14 @@ class TOfflineHive final
         }
 
     private:
+        static DWORD openKeepingFile(const HANDLE file, ORHKEY* hive)
+        {
+            SetHandleInformation(file, HANDLE_FLAG_PROTECT_FROM_CLOSE, HANDLE_FLAG_PROTECT_FROM_CLOSE);
+            const auto result {TApi::instance().openHive(file, hive)};
+            SetHandleInformation(file, HANDLE_FLAG_PROTECT_FROM_CLOSE, 0);
+            return result;
+        }
+
         ORHKEY m_hive {nullptr};
         const DWORD m_result;
 };

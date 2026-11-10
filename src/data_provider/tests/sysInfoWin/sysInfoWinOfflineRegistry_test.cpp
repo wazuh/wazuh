@@ -48,6 +48,7 @@ class FakeOffregApi
             openHiveResult = ERROR_SUCCESS;
             openHandles = 0;
             openedHandle = nullptr;
+            closeFileOnOpen = false;
         }
 
         Key& key(const std::wstring& path)
@@ -90,6 +91,12 @@ class FakeOffregApi
         DWORD openHive(const HANDLE file, ORHKEY* hive) const
         {
             openedHandle = file;
+
+            if (closeFileOnOpen)
+            {
+                CloseHandle(file);
+            }
+
             return openHive(std::wstring {}, hive);
         }
 
@@ -192,6 +199,7 @@ class FakeOffregApi
         DWORD openHiveResult {ERROR_SUCCESS};
         mutable int openHandles {0};
         mutable HANDLE openedHandle {nullptr};
+        bool closeFileOnOpen {false};
 
     private:
         static std::vector<std::wstring> split(const std::wstring& path)
@@ -381,6 +389,19 @@ TEST_F(SysInfoWinOfflineRegistryTest, HiveIsReadThroughTheHandleItIsGiven)
     }
 
     EXPECT_EQ(0, api().openHandles);
+}
+
+TEST_F(SysInfoWinOfflineRegistryTest, FileHandleIsKeptWhenTheLibraryClosesIt)
+{
+    // offreg.dll closes the file it is given on Windows Server 2012 R2 and 2016.
+    api().closeFileOnOpen = true;
+    const auto file {CreateEventW(nullptr, TRUE, FALSE, nullptr)};
+    ASSERT_NE(nullptr, file);
+
+    const TestOfflineHive hive {file};
+
+    EXPECT_EQ(static_cast<DWORD>(ERROR_SUCCESS), hive.result());
+    EXPECT_TRUE(CloseHandle(file));
 }
 
 TEST_F(SysInfoWinOfflineRegistryTest, StorePackageReadFromAClassesHiveFile)
