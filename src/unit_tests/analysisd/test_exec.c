@@ -38,7 +38,7 @@ static int test_setup(void **state) {
     test_struct_t *init_data = NULL;
     os_calloc(1, sizeof(test_struct_t), init_data);
     os_calloc(1, sizeof(Eventinfo), init_data->lf);
-    os_calloc(1, sizeof(DynamicField), init_data->lf->fields);
+    os_calloc(2, sizeof(DynamicField), init_data->lf->fields);
     os_calloc(1, sizeof(*init_data->lf->generated_rule), init_data->lf->generated_rule);
     os_calloc(1, sizeof(OSDecoderInfo), init_data->lf->decoder_info);
     os_calloc(1, sizeof(active_response), init_data->ar);
@@ -1033,6 +1033,93 @@ void test_server_win_ipaddress_not_white_list(void **state)
     Config.white_list = NULL;
 }
 
+/* The alert JSON drops the empty ipAddress, so the agent acts on destinationIp */
+void test_server_win_empty_ipaddress_destinationip_white_list(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    int execq = 10;
+    int arq = 11;
+    int sock = -1;
+
+    data->ar->location = AS_ONLY;
+    data->lf->decoder_info->name = "json";
+    data->lf->fields[0].key = "win.eventdata.ipAddress";
+    data->lf->fields[0].value = "";
+    data->lf->fields[1].key = "win.eventdata.destinationIp";
+    data->lf->fields[1].value = "192.0.2.2";
+    data->lf->nfields = 2;
+
+    Config.ar = 2;
+    Config.white_list = (os_ip **)1;
+
+    expect_string(__wrap_OS_IPFoundList, ip_address, "192.0.2.2");
+    will_return(__wrap_OS_IPFoundList, 1);
+
+    OS_Exec(&execq, &arq, &sock, data->lf, data->ar);
+
+    Config.white_list = NULL;
+}
+
+/* The alert JSON turns "[...]" into an array, which the agent skips for destinationIp */
+void test_server_win_array_ipaddress_destinationip_white_list(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    int execq = 10;
+    int arq = 11;
+    int sock = -1;
+
+    data->ar->location = AS_ONLY;
+    data->lf->decoder_info->name = "json";
+    data->lf->fields[0].key = "win.eventdata.ipAddress";
+    data->lf->fields[0].value = "[\"203.0.113.9\"]";
+    data->lf->fields[1].key = "win.eventdata.destinationIp";
+    data->lf->fields[1].value = "192.0.2.2";
+    data->lf->nfields = 2;
+
+    Config.ar = 2;
+    Config.white_list = (os_ip **)1;
+
+    expect_string(__wrap_OS_IPFoundList, ip_address, "[\"203.0.113.9\"]");
+    will_return(__wrap_OS_IPFoundList, 0);
+
+    expect_string(__wrap_OS_IPFoundList, ip_address, "192.0.2.2");
+    will_return(__wrap_OS_IPFoundList, 1);
+
+    OS_Exec(&execq, &arq, &sock, data->lf, data->ar);
+
+    Config.white_list = NULL;
+}
+
+/* The alert JSON drops the empty ipAddress and keeps the duplicate, which the agent finds case-insensitively */
+void test_server_win_empty_and_duplicate_ipaddress_white_list(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    int execq = 10;
+    int arq = 11;
+    int sock = -1;
+
+    data->ar->location = AS_ONLY;
+    data->lf->decoder_info->name = "json";
+    data->lf->fields[0].key = "win.eventdata.ipAddress";
+    data->lf->fields[0].value = "";
+    data->lf->fields[1].key = "win.eventdata.IpAddress";
+    data->lf->fields[1].value = "192.0.2.1";
+    data->lf->nfields = 2;
+
+    Config.ar = 2;
+    Config.white_list = (os_ip **)1;
+
+    expect_string(__wrap_OS_IPFoundList, ip_address, "192.0.2.1");
+    will_return(__wrap_OS_IPFoundList, 1);
+
+    OS_Exec(&execq, &arq, &sock, data->lf, data->ar);
+
+    Config.white_list = NULL;
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1071,6 +1158,9 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_server_win_destinationip_white_list, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_server_srcip_and_win_ipaddress_white_list, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_server_win_ipaddress_not_white_list, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_server_win_empty_ipaddress_destinationip_white_list, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_server_win_array_ipaddress_destinationip_white_list, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_server_win_empty_and_duplicate_ipaddress_white_list, test_setup, test_teardown),
 
         // send_exec_msg
         cmocka_unit_test(test_send_exec_msg),
