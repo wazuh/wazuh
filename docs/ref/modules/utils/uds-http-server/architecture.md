@@ -43,7 +43,9 @@ names lower-cased. A repeated header name keeps its last value and is listed in 
 after admission, and only while the body is still outstanding. A final response ready during
 the interim write waits for it to complete. The first final response is preserved, whether it
 comes from the handler or the response backstop; later attempts cannot replace it. A handler
-whose response is already waiting does not produce an unanswered-handler timeout warning.
+whose response is already waiting does not produce an unanswered-handler timeout warning. The wait is
+bounded by the write timeout, counted from the first parked response: an interim write still pending
+then closes the connection.
 
 While a reply is deferred there is no read pending, so a one-byte read watches the socket:
 a peer that gives up (EOF) or violates the one-request-per-connection contract (any byte)
