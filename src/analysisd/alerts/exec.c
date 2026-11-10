@@ -28,13 +28,14 @@
 #define STATIC static
 #endif
 
-STATIC const char *get_ip(const Eventinfo *lf);
+STATIC const char *get_ip(const char *srcip);
 int conn_error_sent = 0;
 
 void OS_Exec(int *execq, int *arq, int *sock, const Eventinfo *lf, const active_response *ar) {
     char * exec_msg = NULL;
     char * msg = NULL;
     const char *ip;
+    const char *win_ip;
     const char *user;
     char *filename = NULL;
 
@@ -42,10 +43,19 @@ void OS_Exec(int *execq, int *arq, int *sock, const Eventinfo *lf, const active_
     /* Clean the IP */
     ip = "-";
     if (lf->srcip) {
-        ip = get_ip(lf);
+        ip = get_ip(lf->srcip);
         if(ip == NULL) {
             return;
         }
+    }
+
+    /* Active responses take the address from these fields before srcip */
+    win_ip = FindField(lf, "win.eventdata.ipAddress");
+    if (!win_ip) {
+        win_ip = FindField(lf, "win.eventdata.destinationIp");
+    }
+    if (win_ip && !get_ip(win_ip)) {
+        return;
     }
 
     os_calloc(OS_MAXSTR + 1, sizeof(char), exec_msg);
@@ -281,17 +291,17 @@ void OS_Exec(int *execq, int *arq, int *sock, const Eventinfo *lf, const active_
 /**
  * @brief get the IP.
  *
- * @param[in] lf Event information.
+ * @param[in] srcip Address to check against the white lists.
  * @return const char* on success or NULL on failure.
  */
-STATIC const char* get_ip(const Eventinfo *lf)
+STATIC const char* get_ip(const char *srcip)
 {
     const char *ip;
 
-    if (strncmp(lf->srcip, "::ffff:", 7) == 0) {
-        ip = lf->srcip + 7;
+    if (strncasecmp(srcip, "::ffff:", 7) == 0) {
+        ip = srcip + 7;
     } else {
-        ip = lf->srcip;
+        ip = srcip;
     }
 
     /* Check if IP is to be ignored */
