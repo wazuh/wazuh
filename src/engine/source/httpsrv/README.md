@@ -172,7 +172,11 @@ header). It coexists with the cpp-httplib `httpsrv::Server` while the engine mov
   stopping ⇒ `503 {"error":"Server shutting down","code":503}`; handler threw ⇒ `500` `Internal server error`
   (`text/plain`). The transport adds its own `404/405/411/413/431/503/504` (see
   `docs/ref/modules/utils/uds-http-server/`).
-- **Shutdown** (`shutdown()` for one server, `shutdownAll()` for several, default deadline 10 s):
+- **Shutdown** (`shutdown()` for one server, `shutdownAll()` for several, default deadline 10 s). The
+  deadline is the grace admitted requests get, counted from the call: steps 1 and 2 run within it (step 1
+  can block while the transport answers requests not yet dispatched) and the executor keeps working
+  meanwhile; there is no second window after them. Steps 4 and 5 come after the deadline, so a whole
+  shutdown can take longer than it:
   1. `stopAccepting()` on every server — no new request reaches a handler, replies still go out;
   2. `closeAdmission()` on every executor — nothing new is queued, queued requests keep running;
   3. `drainUntil(deadline)` in parallel — at the deadline, unstarted requests get the shutdown `503`
@@ -250,7 +254,7 @@ engineRemoteServer->start(confManager.get<std::string>(conf::key::SERVER_ENRICHE
 ```
 
 The main thread then polls `engineRemoteServer->isRunning()` every 100 ms and, when a shutdown signal
-arrives, calls `shutdown(DEFAULT_SHUTDOWN_DEADLINE)` (stop accepting, drain for up to 10 s, stop).
+arrives, calls `shutdown(DEFAULT_SHUTDOWN_DEADLINE)` (stop accepting and drain until 10 s after the call, then stop).
 
 ## Thread Safety
 

@@ -14,7 +14,9 @@
 namespace httpsrv
 {
 
-/// Time an engine server gives admitted requests to finish once the daemon is stopping.
+/// Grace an engine server gives admitted requests once the daemon is stopping, counted from the shutdown() or
+/// shutdownAll() call: stopAccepting() runs within it while the executor keeps working, and no second window
+/// follows. Stopping the transport and waiting for running handlers come after it, so a whole shutdown can last longer.
 constexpr std::chrono::seconds DEFAULT_SHUTDOWN_DEADLINE {10};
 
 /**
@@ -112,8 +114,8 @@ public:
     /// @}
 
     /**
-     * @brief All the shutdown steps for this server alone. Returns only once no handler runs, so the caller can
-     * destroy what the handlers use.
+     * @brief All the shutdown steps for this server alone, with @p deadline counted from this call. Returns only
+     * once no handler runs, so the caller can destroy what the handlers use; that can be after the deadline.
      */
     ShutdownReport shutdown(std::chrono::milliseconds deadline = DEFAULT_SHUTDOWN_DEADLINE);
 
@@ -126,8 +128,8 @@ private:
 
 /**
  * @brief Shuts several servers down together: every server stops accepting first, then every
- * executor closes admission, all drain in parallel up to one deadline, and only then is each
- * transport stopped. Null entries are skipped.
+ * executor closes admission, all drain in parallel up to one deadline counted from this call, and only
+ * then is each transport stopped. Null entries are skipped.
  */
 void shutdownAll(const std::vector<UdsServer*>& servers,
                  std::chrono::milliseconds deadline = DEFAULT_SHUTDOWN_DEADLINE);

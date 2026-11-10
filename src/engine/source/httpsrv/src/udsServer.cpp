@@ -319,6 +319,8 @@ void UdsServer::stop()
 
 ShutdownReport UdsServer::shutdown(std::chrono::milliseconds deadline)
 {
+    // The grace starts now: stopAccepting() can block while the transport answers what was not dispatched,
+    // and the executor keeps working meanwhile.
     const auto until = std::chrono::steady_clock::now() + deadline;
     stopAccepting();
     closeAdmission();
@@ -381,6 +383,7 @@ void registerMetrics(const std::weak_ptr<UdsServer>& server, const std::string& 
 
 void shutdownAll(const std::vector<UdsServer*>& servers, std::chrono::milliseconds deadline)
 {
+    // One grace for every server, counted from here, as in UdsServer::shutdown().
     const auto until = std::chrono::steady_clock::now() + deadline;
 
     // 1. No server lets a new request reach a handler; I/O stays up so replies still go out.
