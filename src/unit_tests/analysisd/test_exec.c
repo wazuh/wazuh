@@ -30,7 +30,7 @@ typedef struct test_struct {
     active_response *ar;
 } test_struct_t;
 
-const char *get_ip(const Eventinfo *lf);
+const char *get_ip(const char *srcip);
 
 // Setup / Teardown
 
@@ -869,13 +869,11 @@ void test_send_exec_msg_OS_TIMEOUT(void **state){
 
 void test_get_ip_success(void **state)
 {
-    test_struct_t *data  = (test_struct_t *)*state;
     Config.white_list = (os_ip **)1;
     Config.hostname_white_list = (OSMatch **) realloc(Config.hostname_white_list, sizeof(OSMatch *)*2);
     os_calloc(1, sizeof(OSMatch), Config.hostname_white_list[0]);
     Config.hostname_white_list[1] = NULL;
     char *expected_ip = "192.168.0.100";
-    data->lf->srcip = expected_ip;
 
     expect_string(__wrap_OS_IPFoundList, ip_address, expected_ip);
     will_return(__wrap_OS_IPFoundList, 0);
@@ -883,10 +881,156 @@ void test_get_ip_success(void **state)
     expect_string(__wrap_OSMatch_Execute, str, expected_ip);
     will_return(__wrap_OSMatch_Execute, 0);
 
-    assert_string_equal(expected_ip, get_ip(data->lf));
+    assert_string_equal(expected_ip, get_ip(expected_ip));
 
     os_free(Config.hostname_white_list[0]);
     os_free(Config.hostname_white_list);
+}
+
+void test_get_ip_white_list(void **state)
+{
+    Config.white_list = (os_ip **)1;
+
+    expect_string(__wrap_OS_IPFoundList, ip_address, "192.0.2.1");
+    will_return(__wrap_OS_IPFoundList, 1);
+
+    assert_null(get_ip("192.0.2.1"));
+
+    Config.white_list = NULL;
+}
+
+void test_get_ip_ipv4_mapped_uppercase(void **state)
+{
+    Config.white_list = (os_ip **)1;
+
+    expect_string(__wrap_OS_IPFoundList, ip_address, "192.0.2.1");
+    will_return(__wrap_OS_IPFoundList, 1);
+
+    assert_null(get_ip("::FFFF:192.0.2.1"));
+
+    Config.white_list = NULL;
+}
+
+void test_server_win_ipaddress_white_list(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    int execq = 10;
+    int arq = 11;
+    int sock = -1;
+
+    data->ar->location = AS_ONLY;
+    data->lf->decoder_info->name = "windows_eventchannel";
+    data->lf->fields[0].key = "win.eventdata.ipAddress";
+    data->lf->fields[0].value = "192.0.2.1";
+    data->lf->nfields = 1;
+
+    Config.ar = 2;
+    Config.white_list = (os_ip **)1;
+
+    expect_string(__wrap_OS_IPFoundList, ip_address, "192.0.2.1");
+    will_return(__wrap_OS_IPFoundList, 1);
+
+    OS_Exec(&execq, &arq, &sock, data->lf, data->ar);
+
+    Config.white_list = NULL;
+}
+
+void test_server_win_destinationip_white_list(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    int execq = 10;
+    int arq = 11;
+    int sock = -1;
+
+    data->ar->location = AS_ONLY;
+    data->lf->decoder_info->name = "windows_eventchannel";
+    data->lf->fields[0].key = "win.eventdata.destinationIp";
+    data->lf->fields[0].value = "192.0.2.2";
+    data->lf->nfields = 1;
+
+    Config.ar = 2;
+    Config.white_list = (os_ip **)1;
+
+    expect_string(__wrap_OS_IPFoundList, ip_address, "192.0.2.2");
+    will_return(__wrap_OS_IPFoundList, 1);
+
+    OS_Exec(&execq, &arq, &sock, data->lf, data->ar);
+
+    Config.white_list = NULL;
+}
+
+/* The agent acts on win.eventdata.ipAddress even when srcip is present */
+void test_server_srcip_and_win_ipaddress_white_list(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    int execq = 10;
+    int arq = 11;
+    int sock = -1;
+
+    data->ar->location = AS_ONLY;
+    data->lf->decoder_info->name = "json";
+    data->lf->srcip = "203.0.113.20";
+    data->lf->fields[0].key = "win.eventdata.ipAddress";
+    data->lf->fields[0].value = "192.0.2.3";
+    data->lf->nfields = 1;
+
+    Config.ar = 2;
+    Config.white_list = (os_ip **)1;
+
+    expect_string(__wrap_OS_IPFoundList, ip_address, "203.0.113.20");
+    will_return(__wrap_OS_IPFoundList, 0);
+
+    expect_string(__wrap_OS_IPFoundList, ip_address, "192.0.2.3");
+    will_return(__wrap_OS_IPFoundList, 1);
+
+    OS_Exec(&execq, &arq, &sock, data->lf, data->ar);
+
+    Config.white_list = NULL;
+}
+
+void test_server_win_ipaddress_not_white_list(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    int execq = 10;
+    int arq = 11;
+    int sock = -1;
+
+    data->ar->location = AS_ONLY;
+    data->lf->decoder_info->name = "windows_eventchannel";
+    data->lf->fields[0].key = "win.eventdata.ipAddress";
+    data->lf->fields[0].value = "203.0.113.9";
+    data->lf->nfields = 1;
+
+    char *exec_msg = "{\"version\":1,\"origin\":{\"name\":\"node01\",\"module\":\"wazuh-analysisd\"},\"command\":\"restart-wazuh0\",\"parameters\":{\"extra_args\":[],\"alert\":[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]}}";
+    const char *alert_info = "[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]";
+    char *node = NULL;
+
+    os_strdup("node01", node);
+
+    Config.ar = 2;
+    Config.white_list = (os_ip **)1;
+
+    expect_string(__wrap_OS_IPFoundList, ip_address, "203.0.113.9");
+    will_return(__wrap_OS_IPFoundList, 0);
+
+    will_return(__wrap_Eventinfo_to_jsonstr, strdup(alert_info));
+
+    will_return(__wrap_OS_ReadXML, 1);
+
+    will_return(__wrap_OS_GetOneContentforElement, node);
+
+    expect_value(__wrap_OS_SendUnix, socket, execq);
+    expect_string(__wrap_OS_SendUnix, msg, exec_msg);
+    expect_value(__wrap_OS_SendUnix, size, 0);
+    will_return(__wrap_OS_SendUnix, 1);
+
+    OS_Exec(&execq, &arq, &sock, data->lf, data->ar);
+
+    Config.white_list = NULL;
 }
 
 int main(void)
@@ -919,6 +1063,14 @@ int main(void)
 
         // get_ip
         cmocka_unit_test_setup_teardown(test_get_ip_success, test_setup, test_teardown),
+        cmocka_unit_test(test_get_ip_white_list),
+        cmocka_unit_test(test_get_ip_ipv4_mapped_uppercase),
+
+        // white_list on the address used by the active response
+        cmocka_unit_test_setup_teardown(test_server_win_ipaddress_white_list, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_server_win_destinationip_white_list, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_server_srcip_and_win_ipaddress_white_list, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_server_win_ipaddress_not_white_list, test_setup, test_teardown),
 
         // send_exec_msg
         cmocka_unit_test(test_send_exec_msg),
