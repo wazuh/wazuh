@@ -157,16 +157,11 @@ int main (int argc, char **argv) {
     }
 
     // Executing it
-    wfd = wpopenv(npfctl_path, exec_cmd2, W_BIND_STDOUT);
-    if (!wfd) {
-        memset(log_msg, '\0', OS_MAXSTR);
-        snprintf(log_msg, OS_MAXSTR - 1, "Error executing '%s' : %s", npfctl_path, strerror(errno));
-        write_debug_file(argv[0], log_msg);
+    if (execute_command_with_retry(argv[0], npfctl_path, exec_cmd2) != OS_SUCCESS) {
         cJSON_Delete(input_json);
         os_free(npfctl_path);
         return OS_INVALID;
     }
-    wpclose(wfd);
 
     write_debug_file(argv[0], "Ended");
 
