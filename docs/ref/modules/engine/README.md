@@ -2609,7 +2609,7 @@ Total number of events received by the server.
 
 ---
 
-The `server.ingest.*` metrics describe the event ingest server (`engine-ingest-http.sock`). The counters are cumulative since the daemon started; the others are current levels. Every `503` and `413` on that socket is counted here, including the ones answered before the request reaches the event handler.
+The `server.ingest.*` metrics describe the event ingest server (`engine-ingest-http.sock`). The counters are cumulative since the daemon started; the others are current levels. Every `413` and every admission `503` on that socket (byte budget, connection and session caps, a full handler queue, shutdown) is counted here, including the ones answered before the request reaches the event handler. Two answers are not: the `503` `Handler produced no response` (a handler that released a request without answering) and the `504` response backstop. Both appear only as the transport's throttled warnings in the engine log.
 
 ##### `server.ingest.inflight.bytes`
 
