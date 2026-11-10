@@ -164,6 +164,8 @@ header). It coexists with the cpp-httplib `httpsrv::Server` while the engine mov
   kept alive by `owner`), `Response` (status, body, content type) and the synchronous
   `RouteHandler = void(const Request&, Response&)`. `Request::fromOwned()` builds one outside a
   transport (tests).
+- **I/O pool**: `ioThreads` sizes the transport pool independently of the handler executor.
+  The event ingest server fixes it at two threads; zero keeps the transport default of one per available CPU.
 - **Executor** (`BoundedExecutor`): the transport's I/O threads never run a handler. Each admitted
   request becomes a job of a fixed pool with a bounded queue (`executorThreads`, `executorQueue`).
 - **Answers the server writes itself**: executor queue full ⇒ `503 {"error":"Server busy","code":503}`;
@@ -189,11 +191,12 @@ header). It coexists with the cpp-httplib `httpsrv::Server` while the engine mov
   server registers `"ingest"`; the operator catalog is in the engine book's
   [Metrics](../../../../docs/ref/modules/engine/README.md#metrics).
 - `Options`: name and log tag, `maxConnections`, `maxInFlightBytes` (0 = transport default),
-  `maxBodySize`, executor size, `expectContinue` (answer `Expect: 100-continue` once admitted),
+  `maxBodySize`, `ioThreads` (0 = one per available CPU), executor size, `expectContinue`
+  (answer `Expect: 100-continue` once admitted),
   `detailedLogging` (one TRACE line per request, no bodies), and `budgetOptionHint` / `connectionCapOptionHint`
   (the settings named, as "consider raising", in the transport's budget and connection-limit `503` log lines; the
-  ingest server sets `analysisd.server_enriched_events_max_inflight_bytes` and `…_max_connections`). I/O threads,
-  timeouts and the `0660` socket mode are the transport's.
+  ingest server sets `analysisd.server_enriched_events_max_inflight_bytes` and `…_max_connections`).
+  Timeouts and the `0660` socket mode are the transport's.
 
 ## Dependencies
 
