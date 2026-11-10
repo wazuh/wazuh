@@ -1071,6 +1071,12 @@ namespace wazuh::uds_http
 
             void dispatch()
             {
+                // A final answer chosen before the body completed (the body-timeout 400, a shutdown 503)
+                // only waits for the interim write: the request it answered never reaches a handler.
+                if (m_parkedResponse)
+                {
+                    return;
+                }
                 m_dispatched = true;
                 m_state->undispatched.fetch_sub(1, std::memory_order_relaxed);
                 m_state->dispatchesRunning.fetch_add(1, std::memory_order_relaxed);
