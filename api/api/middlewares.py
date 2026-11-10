@@ -14,6 +14,8 @@ import asyncio
 
 from typing import Optional
 
+import h11
+
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
@@ -28,6 +30,8 @@ from connexion.security import AbstractSecurityHandler
 from content_size_limit_asgi import ContentSizeLimitMiddleware
 
 from secure import Secure, ContentSecurityPolicy, XFrameOptions, Server
+
+from uvicorn.protocols.http.h11_impl import H11Protocol, STATUS_PHRASES
 
 from wazuh.core.exception import WazuhInternalError
 from wazuh.core.utils import get_utc_now
@@ -752,27 +756,35 @@ class WazuhAccessLoggerMiddleware(BaseHTTPMiddleware):
         return response
 
 
-class SecureHeadersMiddleware(BaseHTTPMiddleware):
-    """Secure headers Middleware."""
+class SecureH11Protocol(H11Protocol):
+    """uvicorn h11 protocol whose parser-error 400 carries the server's default headers.
 
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        """Check and modifies the response headers with secure package.
+    uvicorn prepends its default headers (`uvicorn.Config(headers=...)`, i.e. `secure_headers`) to every
+    response that goes through the ASGI cycle, but writes the 400 for a request h11 rejects straight to
+    the transport, before any ASGI call, with only its own two headers.
+    """
+
+    def send_400_response(self, msg: str) -> None:
+        """Send the 400 for a request the HTTP parser rejected.
+
+        Copy of `H11Protocol.send_400_response` (uvicorn 0.31.0) with the default headers prepended, as
+        `RequestResponseCycle.send()` does for every other response.
 
         Parameters
         ----------
-        request : Request
-            HTTP Request received.
-        call_next :  RequestResponseEndpoint
-            Endpoint callable to be executed.
-
-        Returns
-        -------
-        Response
-            Returned response.
+        msg : str
+            Response body.
         """
-        resp = await call_next(request)
-        secure_headers.framework.starlette(resp)
-        return resp
+        headers = self.server_state.default_headers + [
+            (b"content-type", b"text/plain; charset=utf-8"),
+            (b"connection", b"close"),
+        ]
+        event = h11.Response(status_code=400, headers=headers, reason=STATUS_PHRASES[400])
+        self.transport.write(self.conn.send(event))
+        self.transport.write(self.conn.send(event=h11.Data(data=msg.encode("ascii"))))
+        self.transport.write(self.conn.send(event=h11.EndOfMessage()))
+        self.transport.close()
+
 
 class CheckExpectHeaderMiddleware(BaseHTTPMiddleware):
     """Middleware to check for the 'Expect' header in incoming requests."""
@@ -900,7 +912,6 @@ def setup_middlewares(app: AsyncApp):
     app.add_middleware(CheckBlockedIP, MiddlewarePosition.BEFORE_SECURITY)
     app.add_middleware(CheckAuthContextSizeMiddleware, MiddlewarePosition.BEFORE_SECURITY)
     app.add_middleware(WazuhAccessLoggerMiddleware, MiddlewarePosition.BEFORE_EXCEPTION)
-    app.add_middleware(SecureHeadersMiddleware, MiddlewarePosition.BEFORE_EXCEPTION)
 
     # Enable CORS
     if api_conf['cors']['enabled']:
