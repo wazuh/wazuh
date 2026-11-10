@@ -8,6 +8,7 @@
  */
 
 #include "active_responses.h"
+#include "../os_net/os_net.h"
 
 /**
  * Build JSON message with keys to be sent to execd
@@ -23,6 +24,13 @@ static char* build_json_keys_message(const char *ar_name, char **keys);
  * @return cJSON * with the ipAddress or NULL on fail
  * */
 static cJSON* get_srcip_from_win_eventdata(const cJSON *data);
+
+/**
+ * Validate a srcip, using the IPv4 address of a "::ffff:" mapped one
+ * @param srcip IP read from the alert
+ * @return srcip, its IPv4 part, or NULL if invalid
+ * */
+static const char* validate_srcip(const char *srcip);
 
 
 void write_debug_file(const char *ar_name, const char *msg) {
@@ -254,29 +262,24 @@ const char* get_srcip_from_json(const cJSON *input) {
     // Detect srcip from win.eventdata
     srcip_json = get_srcip_from_win_eventdata(data_json);
     if (cJSON_IsString(srcip_json)) {
-        const char *srcip = srcip_json->valuestring;
-
-        // Validate IP format
-        if (get_ip_version(srcip) == OS_INVALID) {
-            return NULL;
-        }
-
-        return srcip;
+        return validate_srcip(srcip_json->valuestring);
     }
     // Detect srcip from data
     srcip_json = cJSON_GetObjectItem(data_json, "srcip");
     if (cJSON_IsString(srcip_json)) {
-        const char *srcip = srcip_json->valuestring;
-
-        // Validate IP format
-        if (get_ip_version(srcip) == OS_INVALID) {
-            return NULL;
-        }
-
-        return srcip;
+        return validate_srcip(srcip_json->valuestring);
     }
 
     return NULL;
+}
+
+static const char* validate_srcip(const char *srcip) {
+    // Only this exact prefix, the one the manager also removes from an IPv4-mapped address.
+    if (strncmp(srcip, "::ffff:", 7) == 0 && get_ip_version(srcip + 7) == 4) {
+        srcip += 7;
+    }
+
+    return get_ip_version(srcip) == OS_INVALID ? NULL : srcip;
 }
 
 static cJSON* get_srcip_from_win_eventdata(const cJSON *data) {
@@ -547,55 +550,47 @@ int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, co
     return retVal;
 }
 
+// get_ipv6_string() expands the address, this keeps the inet_ntop text.
+static bool get_ipv6_text(struct in6_addr *addr6, char *text, size_t size) {
+#ifdef WIN32
+    typedef PCSTR (WINAPI * inet_ntop_t)(INT, PVOID, PSTR, size_t);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
+    inet_ntop_t InetNtop = (inet_ntop_t)GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_ntop");
+#pragma GCC diagnostic pop
+
+    return InetNtop && InetNtop(AF_INET6, addr6, text, size);
+#else
+    return inet_ntop(AF_INET6, addr6, text, size) != NULL;
+#endif
+}
+
 int get_ip_version(const char *ip) {
-    struct addrinfo hint, *res = NULL;
-    int ret;
-    int version = OS_INVALID;
+    struct in_addr addr4;
+    struct in6_addr addr6;
+    char text[IPSIZE + 1];
 
     if (!ip) {
         return OS_INVALID;
     }
 
-#ifdef WIN32
-    // Active-response binaries are short-lived processes that never call WSAStartup().
-    // Without it getaddrinfo() fails with WSANOTINITIALISED, so initialize Winsock here.
-    WSADATA wsaData;
-    int wsa_started = (WSAStartup(MAKEWORD(2, 2), &wsaData) == 0);
-#endif
-
-    memset(&hint, '\0', sizeof hint);
-
-    hint.ai_family = AF_UNSPEC;
-    hint.ai_flags = AI_NUMERICHOST;
-
-    ret = getaddrinfo(ip, NULL, &hint, &res);
-    if (ret != 0) {
-        // getaddrinfo failed, res may not be initialized
-#ifdef WIN32
-        if (wsa_started) {
-            WSACleanup();
+    // Only the standard dotted-decimal text, whatever else the platform parser accepts.
+    if (get_ipv4_numeric(ip, &addr4) == OS_SUCCESS) {
+        if (get_ipv4_string(addr4, text, sizeof(text)) == OS_SUCCESS && strcmp(text, ip) == 0) {
+            return 4;
         }
-#endif
         return OS_INVALID;
     }
 
-    // getaddrinfo succeeded, check the address family
-    if (res != NULL) {
-        if (res->ai_family == AF_INET) {
-            version = 4;
-        } else if (res->ai_family == AF_INET6) {
-            version = 6;
+    // Same for IPv6, case-insensitive.
+    if (get_ipv6_numeric(ip, &addr6) == OS_SUCCESS) {
+        if (get_ipv6_text(&addr6, text, sizeof(text)) && strcasecmp(text, ip) == 0) {
+            return 6;
         }
-        freeaddrinfo(res);
+        return OS_INVALID;
     }
 
-#ifdef WIN32
-    if (wsa_started) {
-        WSACleanup();
-    }
-#endif
-
-    return version;
+    return OS_INVALID;
 }
 
 #ifndef WIN32
@@ -633,6 +628,28 @@ bool hosts_deny_rule_matches(const char *line, const char *rule) {
     }
 
     return strlen(rule) == len && strncmp(line, rule, len) == 0;
+}
+
+bool aix_filter_rule_matches(const char *line, const char *srcip) {
+    char buf[OS_MAXSTR];
+    char *save_ptr = NULL;
+
+    if (!line || !srcip || !strstr(line, AIX_FILTER_DESCRIPTION)) {
+        return false;
+    }
+
+    // lsfilt -O: id|action|src|src_mask|dst|dst_mask|...|description, as created by genfilt on add.
+    snprintf(buf, sizeof(buf), "%s", line);
+    const char *id = strtok_r(buf, "|", &save_ptr);
+    const char *action = strtok_r(NULL, "|", &save_ptr);
+    const char *src = strtok_r(NULL, "|", &save_ptr);
+    const char *src_mask = strtok_r(NULL, "|", &save_ptr);
+    const char *dst = strtok_r(NULL, "|", &save_ptr);
+    const char *dst_mask = strtok_r(NULL, "|", &save_ptr);
+
+    return id && action && src && src_mask && dst && dst_mask &&
+           !strcmp(action, "deny") && !strcmp(src, srcip) && !strcmp(src_mask, "255.255.255.255") &&
+           !strcmp(dst, "0.0.0.0") && !strcmp(dst_mask, "0.0.0.0");
 }
 
 int lock(const char *lock_path, const char *lock_pid_path, const char *log_path, const char *proc_name) {
