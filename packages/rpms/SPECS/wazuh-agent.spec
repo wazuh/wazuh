@@ -929,6 +929,7 @@ rm -fr %{buildroot}
 %attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/rocky/*
 %dir %attr(1770, root, wazuh) %{_localstatedir}/tmp
 %dir %attr(750, root, wazuh) %{_localstatedir}/var
+%dir %attr(750, root, wazuh) %{_localstatedir}/var/audit
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/incoming
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/run
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/selinux
