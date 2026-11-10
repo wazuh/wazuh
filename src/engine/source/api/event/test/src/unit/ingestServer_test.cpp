@@ -5,7 +5,9 @@
 #include <sys/un.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <atomic>
+#include <cctype>
 #include <cstring>
 #include <stdexcept>
 #include <string>
@@ -203,6 +205,14 @@ TEST_F(IngestServerTest, AcceptsABatchOnTheSocket)
 
     EXPECT_EQ(200, statusOf(response)) << response;
     EXPECT_EQ("", bodyOf(response));
+    auto responseHead = response.substr(0, response.find("\r\n\r\n"));
+    std::transform(responseHead.begin(),
+                   responseHead.end(),
+                   responseHead.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
+    EXPECT_EQ(std::string::npos, responseHead.find("\r\ncontent-type:"))
+        << "an accepted batch carries no Content-Type:\n"
+        << response;
 }
 
 // The cap is enforced from the declared length: the producer learns it before sending the body.

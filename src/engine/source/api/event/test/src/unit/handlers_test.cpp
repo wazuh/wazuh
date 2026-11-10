@@ -139,6 +139,7 @@ TEST_P(EventHandlerTest, Handler)
     ASSERT_NO_THROW(routeHandler(request, response));
     EXPECT_EQ(response.status, expected.status);
     EXPECT_EQ(response.body, expected.body);
+    EXPECT_EQ(response.contentType, expected.contentType);
 
     // Once the router is gone the handler answers 500 instead of failing.
     m_iHandler.reset();
@@ -183,6 +184,7 @@ INSTANTIATE_TEST_SUITE_P(Api,
                                  {
                                      httpsrv::Response res;
                                      res.status = 200;
+                                     res.contentType.clear(); // an accepted batch carries no Content-Type
                                      return res;
                                  },
                                  [](auto& mock) { EXPECT_CALL(mock, postEvent(testing::_)); }),
@@ -233,6 +235,7 @@ INSTANTIATE_TEST_SUITE_P(Api,
                                  {
                                      httpsrv::Response res;
                                      res.status = 200;
+                                     res.contentType.clear(); // an accepted batch carries no Content-Type
                                      return res;
                                  },
                                  [](auto& mock) { EXPECT_CALL(mock, postEvent(testing::_)).Times(2); }),
@@ -299,6 +302,7 @@ INSTANTIATE_TEST_SUITE_P(Api,
                                  {
                                      httpsrv::Response res;
                                      res.status = 200;
+                                     res.contentType.clear(); // an accepted batch carries no Content-Type
                                      return res;
                                  },
                                  [](auto& mock) { EXPECT_CALL(mock, postEvent(testing::_)); }),
@@ -322,6 +326,7 @@ INSTANTIATE_TEST_SUITE_P(Api,
                                  {
                                      httpsrv::Response res;
                                      res.status = 200;
+                                     res.contentType.clear(); // an accepted batch carries no Content-Type
                                      return res;
                                  },
                                  [](auto& mock) { EXPECT_CALL(mock, postEvent(testing::_)).Times(2); })));
