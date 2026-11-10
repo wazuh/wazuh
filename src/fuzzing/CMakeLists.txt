@@ -46,3 +46,39 @@ set_target_properties(fuzz_xml PROPERTIES
     LINKER_LANGUAGE C
     RUNTIME_OUTPUT_DIRECTORY "${FUZZING_OUTPUT_DIR}"
     )
+
+add_executable(fuzz_os_signature fuzz_os_signature.c)
+
+target_include_directories(fuzz_os_signature PRIVATE
+    ${SRC_FOLDER}
+    ${SRC_FOLDER}/shared
+    ${SRC_FOLDER}/shared/include
+    )
+
+add_dependencies(fuzz_os_signature wazuh)
+target_link_libraries(fuzz_os_signature PRIVATE
+    ${CMAKE_BINARY_DIR}/lib/libwazuh.a
+    ${SRC_FOLDER}/external/sqlite/libsqlite3.a
+    ${SRC_FOLDER}/external/cJSON/libcjson.a
+    ${SRC_FOLDER}/external/zlib/libz.a
+    ${SRC_FOLDER}/external/bzip2/libbz2.a
+    # signature.c links against OpenSSL; the static lib comes with the
+    # externals prepared by `make deps TARGET=agent`.
+    ${SRC_FOLDER}/external/openssl/libcrypto.a
+    pthread
+    dl
+    rt
+    m
+    )
+
+if(DEFINED ENV{LIB_FUZZING_ENGINE} AND NOT "$ENV{LIB_FUZZING_ENGINE}" STREQUAL "")
+  target_link_options(fuzz_os_signature PRIVATE "$ENV{LIB_FUZZING_ENGINE}")
+else()
+  target_compile_options(fuzz_os_signature PRIVATE -fsanitize=fuzzer)
+  target_link_options(fuzz_os_signature PRIVATE -fsanitize=fuzzer)
+endif()
+
+set_target_properties(fuzz_os_signature PROPERTIES
+    LINKER_LANGUAGE C
+    RUNTIME_OUTPUT_DIRECTORY "${FUZZING_OUTPUT_DIR}"
+    )
