@@ -21,6 +21,28 @@ static void process_option(char ***syscheck_option, xml_node *node);
 /* Set check_all options in a directory/file */
 static void fim_set_check_all(int *opt);
 
+#ifdef WIN32
+// ExpandEnvironmentStringsA replaces characters outside the ANSI code page; FIM paths are UTF-8.
+static char *expand_env_utf8(const char *input) {
+    char *output = NULL;
+    wchar_t *winput = auto_to_wide(input);
+    DWORD size = winput ? ExpandEnvironmentStringsW(winput, NULL, 0) : 0;
+
+    if (size > 0) {
+        wchar_t *woutput;
+        os_calloc(size, sizeof(wchar_t), woutput);
+        DWORD len = ExpandEnvironmentStringsW(winput, woutput, size);
+        if (len > 0 && len <= size) {
+            output = wide_to_utf8(woutput);
+        }
+        os_free(woutput);
+    }
+
+    os_free(winput);
+    return output;
+}
+#endif
+
 directory_t *fim_create_directory(const char *path,
                                   int options,
                                   const char *filerestrict,
@@ -1395,24 +1417,14 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
         if (strcmp(node[i]->element,xml_nodiff) == 0) {
 #ifdef WIN32
             /* For Windows, we attempt to expand environment variables */
-            char *new_nodiff = NULL;
-            os_calloc(2048, sizeof(char), new_nodiff);
+            char *new_nodiff = expand_env_utf8(node[i]->content);
 
-            if (!ExpandEnvironmentStrings(node[i]->content, new_nodiff, 2047)){
+            if (new_nodiff == NULL) {
                 merror("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
-                free(new_nodiff);
                 continue;
             }
 
             free(node[i]->content);
-
-            // FIM compares paths in UTF-8; the expansion comes in the ANSI code page.
-            char *utf8_nodiff = auto_to_utf8(new_nodiff);
-            if (utf8_nodiff != NULL) {
-                os_free(new_nodiff);
-                new_nodiff = utf8_nodiff;
-            }
-
             str_lowercase(new_nodiff);
             node[i]->content = new_nodiff;
 #endif
@@ -2440,15 +2452,9 @@ static char **get_paths_from_env_variable (char *environment_variable) {
 
 #ifdef WIN32
     static const char *DELIM = ";";
-    DWORD env_var_size = ExpandEnvironmentStrings(environment_variable, NULL, 0);
-    if (env_var_size <= 0) {
+    expandedpath = expand_env_utf8(environment_variable);
+    if (expandedpath == NULL) {
         merror(FIM_ERROR_EXPAND_ENV_VAR, environment_variable, GetLastError());
-        goto end;
-    }
-    os_calloc(env_var_size, sizeof(char), expandedpath);
-    if(!ExpandEnvironmentStrings(environment_variable, expandedpath, env_var_size)){
-        merror(FIM_ERROR_EXPAND_ENV_VAR, environment_variable, GetLastError());
-        os_free(expandedpath);
         goto end;
     }
     str_lowercase(expandedpath);

@@ -311,6 +311,30 @@ void test_Read_Syscheck_Config_diff_nodiff_mixed(void **state)
     assert_null(syscheck.nodiff_regex[3]);
 }
 
+#ifdef TEST_WINAGENT
+void test_Read_Syscheck_Config_env_utf8(void **state)
+{
+    (void) state;
+
+    // "C:\fimŞirket": 'Ş' is outside the ANSI code page
+    assert_true(SetEnvironmentVariableW(L"FIM_TEST_DIR", L"C:\\fim\x015Eirket"));
+
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+
+    Read_Syscheck_Config("test_syscheck_env_utf8.conf");
+    SetEnvironmentVariableW(L"FIM_TEST_DIR", NULL);
+
+    assert_string_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path, "c:\\fim\xc5\x9eirket");
+    assert_string_equal(syscheck.ignore[0], "c:\\fim\xc5\x9eirket\\ignored.txt");
+    assert_string_equal(syscheck.nodiff[0], "c:\\fim\xc5\x9eirket\\db.conf");
+}
+#endif
+
 void test_read_data_unit_short_values(void **state)
 {
     (void) state;
@@ -940,6 +964,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_unparsed, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_invalid_diff_limit, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_diff_nodiff_mixed, setup_read_config, restart_syscheck),
+#ifdef TEST_WINAGENT
+        cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_env_utf8, setup_read_config, restart_syscheck),
+#endif
         cmocka_unit_test(test_read_data_unit_short_values),
         cmocka_unit_test_setup_teardown(test_getSyscheckConfig, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_getSyscheckConfig_no_audit, setup_read_config, restart_syscheck),
