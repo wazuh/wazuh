@@ -6,14 +6,20 @@ from copy import deepcopy
 from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import patch, MagicMock, AsyncMock, call
+import asyncio
 import binascii
 import hashlib
 import json
 import jwt
+import h11
 import pytest
 
+from starlette.applications import Starlette
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import PlainTextResponse, Response
+from starlette.routing import Route
+from uvicorn.config import Config
+from uvicorn.server import ServerState
 
 from connexion import AsyncApp
 from connexion.middleware import MiddlewarePosition
@@ -30,7 +36,7 @@ from api.middlewares import charge_unauthenticated_request, charge_authenticated
     settle_login_attempt, cleanup_general_request_stats, cleanup_login_attempt_stats, get_client_key, \
     UNKNOWN_USER_STRING, LOGIN_ENDPOINT, \
     RUN_AS_LOGIN_ENDPOINT, AUTH_CONTEXT_MAX_PAYLOAD_SIZE, CheckAuthContextSizeMiddleware, CheckRateLimitsMiddleware, \
-    CheckAuthenticatedRateLimitMiddleware, WazuhAccessLoggerMiddleware, CheckBlockedIP, SecureHeadersMiddleware, \
+    CheckAuthenticatedRateLimitMiddleware, WazuhAccessLoggerMiddleware, CheckBlockedIP, SecureH11Protocol, \
     CheckExpectHeaderMiddleware, secure_headers, access_log, get_declared_content_length, read_capped_body, \
     CACHED_BODY_KEY, AUTH_CONTEXT_NOT_LOGGED
 from api.alogging import MAX_LOGGED_BODY_SIZE
@@ -1527,22 +1533,268 @@ async def test_access_log_survives_an_unparsable_body(mock_req):
     assert mock_custom_logging.call_args.args[5] == {}
 
 
+class FakeTransport:
+    """asyncio transport that keeps what the protocol writes, so no socket is opened."""
+
+    def __init__(self):
+        self.output = b''
+        self.closed = False
+
+    def get_extra_info(self, name, default=None):
+        return {'sockname': ('127.0.0.1', 55000), 'peername': ('127.0.0.1', 4000),
+                'sslcontext': None}.get(name, default)
+
+    def write(self, data):
+        self.output += data
+
+    def close(self):
+        self.closed = True
+
+    def is_closing(self):
+        return self.closed
+
+    def pause_reading(self):
+        pass
+
+    def resume_reading(self):
+        pass
+
+    def set_protocol(self, protocol):
+        pass
+
+
+async def unreachable_app(scope, receive, send):
+    """ASGI app for the requests the parser rejects before any ASGI call."""
+    raise AssertionError('the ASGI app was called')
+
+
+def build_secure_h11_protocol(app=unreachable_app, **config_kwargs):
+    """Build a `SecureH11Protocol` connected to a `FakeTransport`, as `uvicorn.Server` would serve it.
+
+    Parameters
+    ----------
+    app : Callable
+        ASGI application.
+    config_kwargs : dict
+        Extra `uvicorn.Config` arguments.
+
+    Returns
+    -------
+    tuple
+        Protocol, transport and the `ServerState` they share.
+    """
+    config = Config(app, headers=secure_headers.headers_tuple(), http=SecureH11Protocol, ws='none',
+                    lifespan='off', log_config=None, **config_kwargs)
+    config.load()
+    state = ServerState()
+    state.default_headers = config.encoded_headers
+    protocol = config.http_protocol_class(config=config, server_state=state, app_state={},
+                                          _loop=asyncio.get_running_loop())
+    transport = FakeTransport()
+    protocol.connection_made(transport)
+
+    return protocol, transport, state
+
+
+async def wait_for_tasks(state):
+    """Let the request-response cycles the protocol scheduled run to completion.
+
+    Parameters
+    ----------
+    state : ServerState
+        Server state holding the cycles' tasks.
+    """
+    # Bounded by time, not by loop iterations: Starlette runs a sync endpoint in a worker thread.
+    if state.tasks:
+        await asyncio.wait(set(state.tasks), timeout=10)
+    if state.tasks:
+        pytest.fail('the request-response cycle did not finish')
+
+
+def parse_response(transport):
+    """Parse what the server wrote to the transport as an HTTP/1.1 response.
+
+    Parameters
+    ----------
+    transport : FakeTransport
+        Transport the protocol wrote to.
+
+    Returns
+    -------
+    tuple
+        Status code, header list and body.
+    """
+    client = h11.Connection(h11.CLIENT)
+    client.send(h11.Request(method='GET', target='/', headers=[('Host', 'x')]))
+    client.receive_data(transport.output)
+    if transport.closed:
+        # Marks the end of a body delimited by the connection close, as the 400's is
+        client.receive_data(b'')
+    response, body = None, b''
+    while True:
+        event = client.next_event()
+        if isinstance(event, h11.Response):
+            response = event
+        elif isinstance(event, h11.Data):
+            body += event.data
+        elif isinstance(event, h11.EndOfMessage):
+            break
+        else:
+            pytest.fail(f'unexpected h11 event {event!r}')
+
+    return response.status_code, list(response.headers), body
+
+
+def assert_each_security_header_once(headers):
+    """Check that every pair of `secure_headers` is in `headers` exactly once.
+
+    Parameters
+    ----------
+    headers : list
+        Response headers, as h11 parses them (lowercase names).
+    """
+    names = [name for name, _ in headers]
+    for name, value in secure_headers.headers_tuple():
+        assert names.count(name.lower().encode()) == 1, name
+        assert (name.lower().encode(), value.encode()) in headers, name
+
+
 @pytest.mark.asyncio
-async def test_secure_headers_middleware(mock_req):
-    """Test access logging."""
-    response = MagicMock()
-    dispatch_mock = AsyncMock(return_value=response)
+@pytest.mark.parametrize('chunks', [
+    [b'GET / HTTP/1.1\r\nHost: x\r\nE2-header-without-colon\r\n\r\n'],
+    [request[i:i + 64 * 1024]
+     for request in [b'GET / HTTP/1.1\r\nHost: x\r\nX-Big: ' + b'a' * 300 * 1024 + b'\r\n\r\n']
+     for i in range(0, len(request), 64 * 1024)],
+], ids=['header-without-colon', 'oversized-header'])
+async def test_secure_h11_protocol_400_carries_the_security_headers(chunks):
+    """Check that the 400 uvicorn writes for a request h11 rejects carries the security headers.
 
-    middleware = SecureHeadersMiddleware(AsyncApp(__name__))
-    operation = MagicMock(name="operation")
-    operation.method = "post"
+    That response is written straight to the transport, outside the ASGI cycle that prepends the
+    server's default headers to every other response.
+    """
+    protocol, transport, _ = build_secure_h11_protocol()
 
-    with TestContext(operation=operation), patch('api.middlewares.secure_headers') as mock_secure:
-        secure_headers.framework.starlette = MagicMock()
-        ret_response = await middleware.dispatch(request=mock_req, call_next=dispatch_mock)
-        mock_secure.framework.starlette.assert_called_once_with(response)
-        dispatch_mock.assert_awaited_once_with(mock_req)
-        assert ret_response == response
+    for chunk in chunks:
+        if transport.is_closing():
+            break
+        protocol.data_received(chunk)
+
+    status, headers, body = parse_response(transport)
+    assert status == 400
+    assert body == b'Invalid HTTP request received.'
+    assert (b'connection', b'close') in headers
+    assert_each_security_header_once(headers)
+    assert transport.closed
+
+
+@pytest.mark.asyncio
+async def test_secure_h11_protocol_closes_without_a_400_once_a_response_went_out():
+    """Check that a parser error after the response was sent closes the connection without raising.
+
+    The application answers before reading the chunked body, so the server's h11 state is already past
+    the response when the malformed chunk size arrives, and h11 refuses to send a 400 then.
+    """
+    async def unread_body_app(scope, receive, send):
+        await send({'type': 'http.response.start', 'status': 401, 'headers': [(b'content-length', b'0')]})
+        await send({'type': 'http.response.body', 'body': b''})
+
+    protocol, transport, state = build_secure_h11_protocol(app=unread_body_app)
+    protocol.data_received(b'POST /agents HTTP/1.1\r\nHost: x\r\nTransfer-Encoding: chunked\r\n\r\n')
+    await wait_for_tasks(state)
+    sent = transport.output
+
+    protocol.data_received(b'ZZZ\r\n')
+
+    assert transport.closed
+    assert transport.output == sent
+
+
+@pytest.mark.asyncio
+async def test_secure_h11_protocol_400_for_a_malformed_body_carries_the_security_headers():
+    """Check that a malformed chunk while the application still reads the body gets the 400."""
+    async def reading_app(scope, receive, send):
+        while (await receive())['type'] != 'http.disconnect':
+            pass
+
+    protocol, transport, state = build_secure_h11_protocol(app=reading_app)
+    protocol.data_received(b'POST /agents HTTP/1.1\r\nHost: x\r\nTransfer-Encoding: chunked\r\n\r\n')
+    protocol.data_received(b'ZZZ\r\n')
+    # FakeTransport.close() does not call back, so the application is told about the disconnection here
+    protocol.connection_lost(None)
+    await wait_for_tasks(state)
+
+    status, headers, body = parse_response(transport)
+    assert status == 400
+    assert body == b'Invalid HTTP request received.'
+    assert_each_security_header_once(headers)
+    assert transport.closed
+
+
+@pytest.mark.asyncio
+async def test_secure_h11_protocol_400_after_a_keep_alive_response_carries_the_security_headers():
+    """Check that a malformed request following a completed keep-alive exchange still gets the 400."""
+    app = Starlette(routes=[Route('/', lambda request: PlainTextResponse('ok'))])
+    protocol, transport, state = build_secure_h11_protocol(app=app)
+    protocol.data_received(b'GET / HTTP/1.1\r\nHost: x\r\n\r\n')
+    await wait_for_tasks(state)
+    protocol.data_received(b'GET / HTTP/1.1\r\nHost: x\r\nE2-header-without-colon\r\n\r\n')
+
+    client = h11.Connection(h11.CLIENT)
+    client.send(h11.Request(method='GET', target='/', headers=[('Host', 'x')]))
+    client.send(h11.EndOfMessage())
+    client.receive_data(transport.output)
+    client.receive_data(b'')
+    while not isinstance(client.next_event(), h11.EndOfMessage):
+        pass
+    client.start_next_cycle()
+    client.send(h11.Request(method='GET', target='/', headers=[('Host', 'x')]))
+    response = client.next_event()
+
+    assert response.status_code == 400
+    assert_each_security_header_once(list(response.headers))
+    assert transport.closed
+
+
+@pytest.mark.asyncio
+async def test_secure_h11_protocol_500_carries_the_security_headers():
+    """Check that the 500 uvicorn sends for an app that fails before starting its response carries
+    the security headers."""
+    async def failing_app(scope, receive, send):
+        raise RuntimeError('failed before http.response.start')
+
+    protocol, transport, state = build_secure_h11_protocol(app=failing_app)
+    protocol.data_received(b'GET / HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n')
+    await wait_for_tasks(state)
+
+    status, headers, _ = parse_response(transport)
+    assert status == 500
+    assert_each_security_header_once(headers)
+
+
+@pytest.mark.asyncio
+async def test_secure_h11_protocol_503_carries_the_security_headers():
+    """Check that the 503 uvicorn sends when `limit_concurrency` is exceeded carries the security headers."""
+    protocol, transport, state = build_secure_h11_protocol(limit_concurrency=0)
+    protocol.data_received(b'GET / HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n')
+    await wait_for_tasks(state)
+
+    status, headers, _ = parse_response(transport)
+    assert status == 503
+    assert_each_security_header_once(headers)
+
+
+@pytest.mark.asyncio
+async def test_secure_h11_protocol_200_carries_each_security_header_once():
+    """Check that an application response carries each security header once and no uvicorn `server`."""
+    app = Starlette(routes=[Route('/', lambda request: PlainTextResponse('ok'))])
+    protocol, transport, state = build_secure_h11_protocol(app=app)
+    protocol.data_received(b'GET / HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n')
+    await wait_for_tasks(state)
+
+    status, headers, _ = parse_response(transport)
+    assert status == 200
+    assert_each_security_header_once(headers)
+    assert (b'server', b'uvicorn') not in headers
 
 
 @pytest.mark.asyncio
@@ -1570,7 +1822,6 @@ async def test_check_block_ip_middleware(endpoint, method, call_check, mock_req)
 
     with TestContext(operation=operation), \
         patch('api.middlewares.check_blocked_ip') as mock_block_ip:
-        secure_headers.framework.starlette = MagicMock()
         ret_response = await middleware.dispatch(request=mock_req, call_next=dispatch_mock)
         if call_check:
             mock_block_ip.assert_called_once_with(mock_req)

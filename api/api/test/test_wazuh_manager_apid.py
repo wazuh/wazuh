@@ -431,6 +431,8 @@ def _prepare_start(apid):
             super().__init__(f'API error {code}')
             self.code = code
 
+    from api.middlewares import SecureH11Protocol, secure_headers
+
     apid.check_database_integrity = MagicMock()
     # start() now refuses to run when rbac.db is absent instead of creating it, so point the guard at
     # a file that exists and is non-empty. APID_PATH is this script itself: any real file will do.
@@ -455,6 +457,10 @@ def _prepare_start(apid):
     apid.api_conf = {'https': {'enabled': True}}
     apid.security_conf = {}
     apid.uvicorn = MagicMock()
+    # The real ones: with a mocked `secure_headers`, `Config.encoded_headers` is [] before and after
+    # `load()`, so a missing or early seed of the server's default headers would go unnoticed.
+    apid.secure_headers = secure_headers
+    apid.SecureH11Protocol = SecureH11Protocol
     apid.APIError = FakeAPIError
     return FakeAPIError
 
@@ -499,9 +505,39 @@ def test_start_hands_the_bound_sockets_to_uvicorn(apid):
     bind_mock.assert_called_once_with(['0.0.0.0', '::'], 55000)
     config_kwargs = apid.uvicorn.Config.call_args.kwargs
     assert 'host' not in config_kwargs and 'port' not in config_kwargs
-    assert config_kwargs == {'server_header': False, 'loop': 'uvloop', 'proxy_headers': False}
+    assert config_kwargs == {'server_header': False, 'loop': 'uvloop', 'proxy_headers': False,
+                             'headers': apid.secure_headers.headers_tuple(), 'http': apid.SecureH11Protocol,
+                             'ws': 'none'}
+    apid.uvicorn.Config.return_value.load.assert_called_once_with()
+    # Loaded before the Server is built, so the encoded headers it is seeded with are the final ones.
+    calls = [name for name, _, _ in apid.uvicorn.mock_calls]
+    assert calls.index('Config().load') < calls.index('Server')
     apid.uvicorn.Server.assert_called_once_with(apid.uvicorn.Config.return_value)
     apid.uvicorn.Server.return_value.run.assert_called_once_with(sockets=bound)
+
+
+def test_start_serves_the_security_headers_from_the_first_connection(apid):
+    """The server's default headers are the security headers before it accepts any connection.
+
+    uvicorn fills `server_state.default_headers` on its first tick, after the sockets are already
+    listening, so a request served before it would get none of them; `start()` seeds them first.
+    """
+    from uvicorn import Config
+
+    _prepare_start(apid)
+    apid.uvicorn.Config.side_effect = lambda app, **kwargs: Config(app, **kwargs)
+    server = apid.uvicorn.Server.return_value
+    seeded = []
+    server.run.side_effect = lambda **kwargs: seeded.append(server.server_state.default_headers)
+    with patch.object(apid, '_bind_listening_sockets', return_value=[MagicMock()]):
+        apid.start({'host': ['0.0.0.0'], 'port': 55000, 'server_header': False})
+
+    config = apid.uvicorn.Server.call_args.args[0]
+    encoded = [(key.lower().encode(), value.encode()) for key, value in apid.secure_headers.headers_tuple()]
+    assert config.http_protocol_class is apid.SecureH11Protocol
+    assert config.ws_protocol_class is None
+    assert config.encoded_headers == encoded
+    assert seeded == [encoded]
 
 
 def test_start_ignores_forwarded_headers_from_loopback(apid):
@@ -571,20 +607,34 @@ def test_start_aborts_when_shutdown_was_requested_before_the_server_started(apid
 
 
 def test_start_logs_an_oserror_raised_by_uvicorn_startup(apid):
-    """An `OSError` from uvicorn's own startup (an `ssl.SSLError` from `Config.load()`) is logged.
+    """An `OSError` raised inside `Server.run()`, while uvicorn starts serving on the sockets, is logged.
 
     `__main__` only print()s the exception, and the process is daemonized with stdout on
     /dev/null by then, so without logging here apid would exit 1 leaving no trace of why.
     """
     _prepare_start(apid)
-    ssl_error = OSError('[SSL] PEM lib')
-    apid.uvicorn.Server.return_value.run.side_effect = ssl_error
+    startup_error = OSError(errno.EBADF, 'Bad file descriptor')
+    apid.uvicorn.Server.return_value.run.side_effect = startup_error
     with patch.object(apid, '_bind_listening_sockets', return_value=[MagicMock()]):
         with pytest.raises(OSError) as exc_info:
             apid.start({'host': ['0.0.0.0'], 'port': 55000, 'server_header': False})
 
-    assert exc_info.value is ssl_error
-    apid.logger.error.assert_called_once_with(ssl_error)
+    assert exc_info.value is startup_error
+    apid.logger.error.assert_called_once_with(startup_error)
+
+
+def test_start_logs_an_oserror_raised_by_config_load(apid):
+    """An `OSError` from `Config.load()` (an `ssl.SSLError` loading the TLS files) is logged too."""
+    _prepare_start(apid)
+    load_error = OSError('[SSL] PEM lib')
+    apid.uvicorn.Config.return_value.load.side_effect = load_error
+    with patch.object(apid, '_bind_listening_sockets', return_value=[MagicMock()]):
+        with pytest.raises(OSError) as exc_info:
+            apid.start({'host': ['0.0.0.0'], 'port': 55000, 'server_header': False})
+
+    assert exc_info.value is load_error
+    apid.logger.error.assert_called_once_with(load_error)
+    apid.uvicorn.Server.assert_not_called()
 
 
 def test_drop_privileges_clears_supplementary_groups_before_switching_ids(apid):

@@ -187,7 +187,7 @@ mask is not served.
 
 ## Security Headers
 
-The API sets the following security headers on all responses:
+The API sets the following security headers on every final response, including the ones uvicorn writes itself (interim `1xx` responses excepted):
 
 | Header | Value |
 |--------|-------|
@@ -200,9 +200,17 @@ The API sets the following security headers on all responses:
 | `Referrer-Policy` | `no-referrer, strict-origin-when-cross-origin` |
 | `Cache-Control` | `no-store` |
 
-They are applied by `SecureHeadersMiddleware` in `api/api/middlewares.py` with the `secure` Python
-library (pinned at `0.3.0` in `framework/requirements.txt`): `Server`, `Content-Security-Policy` and
-`X-Frame-Options` are set explicitly, the others are that library's defaults.
+`secure_headers` in `api/api/middlewares.py` defines them with the `secure` Python library (pinned at
+`0.3.0` in `framework/requirements.txt`): `Server`, `Content-Security-Policy` and `X-Frame-Options` are
+set explicitly, the others are that library's defaults. `start()` in `api/scripts/wazuh_manager_apid.py`
+hands the list to uvicorn (`uvicorn.Config(headers=...)`), which prepends it to every response it writes:
+the application's and its own `500` when the application fails before answering. `SecureH11Protocol` in
+`api/api/middlewares.py` adds the same headers to the `400 Invalid HTTP request received.` that uvicorn
+writes when the HTTP parser rejects a request (for example a header line without `:` or oversized
+headers). The provisional `100 Continue` carries none; the final response does.
+
+Because uvicorn prepends these headers instead of replacing existing ones, an endpoint or middleware that
+set one of them would send it twice. None does.
 
 ---
 

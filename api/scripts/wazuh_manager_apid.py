@@ -457,9 +457,19 @@ def start(params: dict):
         # from any peer in FORWARDED_ALLOW_IPS (127.0.0.1 by default), so a local user could pick
         # the address the login lockout, the rate limits and api.log see. Nothing in front of the
         # API is a trusted proxy.
+        #
+        # uvicorn prepends `headers` to every response it writes, its own 500 and 503 included, and
+        # SecureH11Protocol adds them to the 400 for a request the parser rejects. Being prepended, a
+        # header an endpoint sets again is sent twice. `http` names the class that carries the 400
+        # override, and `ws='none'` keeps uvicorn's WebSocket handshake rejection, which does not
+        # carry them, from ever being served.
         config = uvicorn.Config(app, **{key: value for key, value in params.items()
-                                        if key not in ('host', 'port')}, proxy_headers=False)
+                                        if key not in ('host', 'port')}, proxy_headers=False,
+                                headers=secure_headers.headers_tuple(), http=SecureH11Protocol, ws='none')
+        config.load()
         server = uvicorn.Server(config)
+        # uvicorn fills the default headers on its first tick, after the sockets are already listening.
+        server.server_state.default_headers = config.encoded_headers
         server.run(sockets=sockets)
     except OSError as exc:
         # __main__'s handler only print()s, and pyDaemon() has sent stdout to /dev/null by now,
@@ -584,7 +594,7 @@ if __name__ == '__main__':
     from api.api_exception import APIError, ExpectFailedException
     from api.configuration import api_conf, security_conf
     from api.constants import API_LOG_PATH
-    from api.middlewares import setup_middlewares
+    from api.middlewares import SecureH11Protocol, secure_headers, setup_middlewares
     from api.parameter_validator import WazuhParameterValidator
     from api.signals import lifespan_handler
     from api.uri_parser import APIUriParser
