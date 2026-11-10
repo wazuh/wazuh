@@ -86,7 +86,7 @@ JSON = 'application/json'
         pytest.param((405, JSON, '{"error":"Method not allowed for this endpoint","code":405}'),
                      'Error 405: Method not allowed for this endpoint', id='wrong-method-405'),
         pytest.param((503, JSON, '{"error":"Server busy","code":503}'), 'Error 503: Server busy', id='busy-503'),
-        pytest.param((503, JSON, '{"error":"Server shutting down","code":503}'), 'Error 503: Server shutting down',
+        pytest.param((503, JSON, '{"error":"Server is shutting down","code":503}'), 'Error 503: Server is shutting down',
                      id='stopping-503'),
         pytest.param((504, JSON, '{"error":"Handler did not respond in time","code":504}'),
                      'Error 504: Handler did not respond in time', id='timeout-504'),

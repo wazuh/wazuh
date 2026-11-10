@@ -647,7 +647,7 @@ TEST_F(ServerTest, ShutdownAnswersUnstartedRequests503AtTheDeadline)
     running.get();
 
     EXPECT_EQ(503, statusOf(queuedResponse));
-    EXPECT_EQ(R"({"error":"Server shutting down","code":503})", bodyOf(queuedResponse));
+    EXPECT_EQ(R"({"error":"Server is shutting down","code":503})", bodyOf(queuedResponse));
     EXPECT_EQ(1U, report.rejected);
     EXPECT_EQ(1U, report.abandoned);
 }
