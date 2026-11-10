@@ -320,7 +320,15 @@ void os_logging_config(){
     flags.log_plain = 1;
     flags.log_json = 0;
     OS_ClearXML(&xml);
+#ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
+    /* Fuzzing builds run outside a wazuh installation, so there is no
+       configuration file to read. Fall back to plain stderr logging
+       instead of exiting, keeping shared code paths that log errors
+       reachable by fuzzers. Production builds keep the original exit. */
+    return;
+#else
     mlerror_exit(LOGLEVEL_ERROR, XML_ERROR, WAZUHCONF, xml.err, xml.err_line);
+#endif
   }
 
   logformat = OS_GetOneContentforElement(&xml, xmlf);
