@@ -660,17 +660,23 @@ float DirSize(const char *path) {
 int CreatePID(const char *name, int pid)
 {
     char file[256];
+    char pidfile[256];
     FILE *fp;
 
+    snprintf(pidfile, sizeof(pidfile), "%s-%d.pid", name, pid);
     snprintf(file, 255, "%s/%s-%d.pid", OS_PIDFILE, name, pid);
 
-    fp = wfopen(file, "a");
+    fp = w_fopen_nofollow(OS_PIDFILE, pidfile, "a");
     if (!fp) {
         return (-1);
     }
 
     fprintf(fp, "%d\n", pid);
+#ifndef WIN32
+    if (fchmod(fileno(fp), 0640) != 0) {
+#else
     if (chmod(file, 0640) != 0) {
+#endif
         merror(CHMOD_ERROR, file, errno, strerror(errno));
         fclose(fp);
         return (-1);

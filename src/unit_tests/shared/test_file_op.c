@@ -122,68 +122,93 @@ char * __wrap_getenv(const char *name) {
     return mock_type(char *);
 }
 
+// CreatePID opens the PID file without following symlinks and sets its mode on the descriptor, so
+// these run against the real file system (OS_PIDFILE is the relative "var/run", so the tests chdir
+// into a private temp dir to keep every file operation out of the shared working directory).
+static char createpid_cwd[PATH_MAX + 1];
+static char createpid_dir[64];
+
+static int setup_createpid(void **state) {
+    (void) state;
+    char path[96];
+    // Build the layout by absolute path and chdir last, so a failure before the chdir leaves the
+    // working directory and test_mode untouched for the tests that follow.
+    assert_non_null(getcwd(createpid_cwd, sizeof(createpid_cwd)));
+    snprintf(createpid_dir, sizeof(createpid_dir), "/tmp/wazuh_createpid_XXXXXX");
+    assert_non_null(mkdtemp(createpid_dir));
+    snprintf(path, sizeof(path), "%s/var", createpid_dir);
+    assert_int_equal(mkdir(path, 0750), 0);
+    snprintf(path, sizeof(path), "%s/var/run", createpid_dir);
+    assert_int_equal(mkdir(path, 0770), 0);
+    assert_int_equal(chdir(createpid_dir), 0);
+    test_mode = 0;
+    return 0;
+}
+
+static int teardown_createpid(void **state) {
+    (void) state;
+    // Clean up with test_mode still 0 so the wrapped remove() reaches the real file system, then
+    // restore the global state last. Nothing here asserts, so test_mode is always put back.
+    remove("var/run/test-2345.pid");
+    remove("var/run/other");
+    remove("var/run");
+    remove("var");
+    if (chdir(createpid_cwd) == 0) {
+        remove(createpid_dir);
+    }
+    errno = 0;
+    test_mode = 1;
+    return 0;
+}
+
 void test_CreatePID_success(void **state)
 {
     (void) state;
-    int ret;
-    char* content = NULL;
+    struct stat statbuf;
+    char line[32] = {0};
+    FILE * fp;
 
-    *state = content;
+    // Pre-create the file with a different mode so the mode assertion pins fchmod(): in append mode the
+    // open would otherwise leave an existing file's permissions untouched.
+    int fd = open("var/run/test-2345.pid", O_WRONLY | O_CREAT | O_TRUNC, 0600);
+    assert_int_not_equal(fd, -1);
+    close(fd);
 
-    expect_string(__wrap_fopen, path, "var/run/test-2345.pid");
-    expect_string(__wrap_fopen, mode, "a");
-    will_return(__wrap_fopen, 1);
+    assert_int_equal(CreatePID("test", 2345), 0);
 
-    expect_value(__wrap_fprintf, __stream, 1);
-    expect_string(__wrap_fprintf, formatted_msg, "2345\n");
-    will_return(__wrap_fprintf, 0);
+    assert_int_equal(stat("var/run/test-2345.pid", &statbuf), 0);
+    assert_int_equal(statbuf.st_mode & 0777, 0640);
 
-    expect_string(__wrap_chmod, path, "var/run/test-2345.pid");
-    will_return(__wrap_chmod, 0);
-
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 0);
-
-    ret = CreatePID("test", 2345);
-    assert_int_equal(0, ret);
+    fp = fopen("var/run/test-2345.pid", "r");
+    assert_non_null(fp);
+    assert_non_null(fgets(line, sizeof(line), fp));
+    fclose(fp);
+    assert_string_equal(line, "2345\n");
 }
 
-void test_CreatePID_failure_chmod(void **state)
+void test_CreatePID_does_not_follow_symlink(void **state)
 {
     (void) state;
-    int ret;
+    struct stat statbuf;
+    int fd = open("var/run/other", O_WRONLY | O_CREAT | O_TRUNC, 0600);
+    assert_int_not_equal(fd, -1);
+    close(fd);
+    assert_int_equal(symlink("other", "var/run/test-2345.pid"), 0);
 
-    expect_string(__wrap_fopen, path, "var/run/test-2345.pid");
-    expect_string(__wrap_fopen, mode, "a");
-    will_return(__wrap_fopen, 1);
+    assert_int_equal(CreatePID("test", 2345), -1);
 
-    expect_value(__wrap_fprintf, __stream, 1);
-    expect_string(__wrap_fprintf, formatted_msg, "2345\n");
-    will_return(__wrap_fprintf, 0);
-
-    expect_string(__wrap_chmod, path, "var/run/test-2345.pid");
-    will_return(__wrap_chmod, 1);
-
-    expect_string(__wrap__merror, formatted_msg, "(1127): Could not chmod object 'var/run/test-2345.pid' due to [(0)-(Success)].");
-
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 0);
-
-    ret = CreatePID("test", 2345);
-    assert_int_equal(-1, ret);
+    // the pointed-to file keeps its mode and stays empty
+    assert_int_equal(stat("var/run/other", &statbuf), 0);
+    assert_int_equal(statbuf.st_mode & 0777, 0600);
+    assert_int_equal(statbuf.st_size, 0);
 }
 
-void test_CreatePID_failure_fopen(void **state)
+void test_CreatePID_failure_open(void **state)
 {
     (void) state;
-    int ret;
+    remove("var/run");
 
-    expect_string(__wrap_fopen, path, "var/run/test-2345.pid");
-    expect_string(__wrap_fopen, mode, "a");
-    will_return(__wrap_fopen, NULL);
-
-    ret = CreatePID("test", 2345);
-    assert_int_equal(-1, ret);
+    assert_int_equal(CreatePID("test", 2345), -1);
 }
 
 void test_DeletePID_success(void **state)
@@ -3426,9 +3451,9 @@ int main(void) {
     const struct CMUnitTest tests[] = {
 #ifndef TEST_WINAGENT
 #ifndef W_VETTED_TEST_NO_O_NOFOLLOW
-        cmocka_unit_test(test_CreatePID_success),
-        cmocka_unit_test(test_CreatePID_failure_chmod),
-        cmocka_unit_test(test_CreatePID_failure_fopen),
+        cmocka_unit_test_setup_teardown(test_CreatePID_success, setup_createpid, teardown_createpid),
+        cmocka_unit_test_setup_teardown(test_CreatePID_does_not_follow_symlink, setup_createpid, teardown_createpid),
+        cmocka_unit_test_setup_teardown(test_CreatePID_failure_open, setup_createpid, teardown_createpid),
         cmocka_unit_test(test_DeletePID_success),
         cmocka_unit_test(test_DeletePID_failure),
         cmocka_unit_test(test_w_is_compressed_gz_file_uncompressed),
