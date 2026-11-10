@@ -373,7 +373,13 @@ void test_remcom_main_non_json_request_keeps_peer_open(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "Local requests thread finished");
 
+    // A non-JSON request reaches req_sender() only with legacy delivery enabled.
+    const bool legacy_enabled = logr.legacy_enabled;
+    logr.legacy_enabled = true;
+
     remcom_main(NULL);
+
+    logr.legacy_enabled = legacy_enabled;
 
     // req_sender() owns the peer from here on, so only the listening socket is closed.
     assert_int_equal(closed_fds_count, 1);
