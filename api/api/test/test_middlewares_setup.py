@@ -263,6 +263,29 @@ def test_body_below_the_ceiling_reaches_the_endpoint(path, method, content_type,
     assert response.json() == expected
 
 
+@pytest.mark.parametrize('method, path, body, headers, status', [
+    ('POST', '/groups', b'{"group_id":"x"}', {'Content-Type': 'application/json'}, 200),
+    ('PUT', '/upload', b'x' * (MAX_UPLOAD_SIZE + 1), {'Content-Type': 'application/octet-stream'}, 413),
+    ('GET', '/missing', None, {}, 404),
+], ids=['200', '413', '404'])
+def test_the_app_sets_none_of_the_security_headers(method, path, body, headers, status, clean_rate_limit_state):
+    """Check that the application stack sets none of `secure_headers`.
+
+    uvicorn prepends them to every response, so one the application also set would go out twice. TestClient
+    bypasses uvicorn, so none of them can appear here unless the application sets it.
+    """
+    api_conf = build_api_conf()
+    client = TestClient(build_app(api_conf))
+
+    with patch.object(middlewares.configuration, 'api_conf', new=api_conf), \
+         patch('api.middlewares.access_log'):
+        response = client.request(method, path, content=body, headers=headers)
+
+    assert response.status_code == status
+    names = {name.lower() for name, _ in middlewares.secure_headers.headers_tuple()}
+    assert names.isdisjoint(response.headers.keys())
+
+
 @pytest.mark.parametrize('value, expected', [
     ('*', ['*']),
     ('https://allowed.example', ['https://allowed.example']),

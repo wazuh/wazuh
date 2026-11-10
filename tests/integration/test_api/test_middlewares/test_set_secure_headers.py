@@ -7,8 +7,8 @@ copyright: Copyright (C) Wazuh Inc.
 
 type: integration
 
-brief: These tests will check if the set_secure_headers middleware of the API handled by the 'wazuh-manager-apid' daemon is
-       working properly. The Wazuh API is an open source 'RESTful' API that allows for interaction with the Wazuh
+brief: These tests will check that the responses of the API handled by the 'wazuh-manager-apid' daemon carry its security
+       headers. The Wazuh API is an open source 'RESTful' API that allows for interaction with the Wazuh
        manager from a web browser, command line tool like 'cURL' or any script or program that can make web requests.
 
 components:
@@ -90,7 +90,7 @@ daemons_handler_configuration = {'all_daemons': True}
 def test_set_secure_headers(test_configuration, test_metadata, add_configuration, truncate_monitored_files,
                             daemons_handler, wait_for_api_start):
     """
-    description: Check if the set_secure_headers API middleware works.
+    description: Check that an API response carries the security headers with their exact values.
                  For this purpose, the test makes an API request and checks that the response headers fulfill the REST
                  recommended standard.
 
@@ -155,7 +155,8 @@ def test_set_secure_headers(test_configuration, test_metadata, add_configuration
                                                                     f"Expected: {security_headers_keys}\n" \
                                                                     f"Current: {response.headers.keys()}"
     # Check the value of each security header
-    assert all(security_headers[key] in response.headers[key] for key in security_headers), 'The values of the ' \
+    # Exact match: requests joins a repeated header into one comma-separated value
+    assert all(security_headers[key] == response.headers[key] for key in security_headers), 'The values of the ' \
                                                                                             'security headers are ' \
                                                                                             'not the expected.\n' \
                                                                                             'Expected: ' \
