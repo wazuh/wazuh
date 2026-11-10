@@ -2023,7 +2023,7 @@ components:
     PayloadTooLarge_413:
       description: |
         Payload Too Large. The declared body (`Content-Length`) exceeds `analysisd.server_api_payload_max_bytes`
-        (4096 bytes on `GET /status` and `POST /metrics/*`); the body is not read. Split or shrink the request:
+        (4096 bytes on `GET /status` and `POST /metrics/*`, or that limit when it is lower); the body is not read. Split or shrink the request:
         a retry fails again.
       content:
         text/plain:

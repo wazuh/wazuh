@@ -116,7 +116,8 @@ body that does not arrive within 10 s (`API_BODY_TIMEOUT_SEC`) answered `400` as
 TRACE, metrics `"api"`.
 `ApiRouteRegistrar` is the `IRouteRegistrar` the API modules register on: a Control route without its own cap
 gets `analysisd.server_api_payload_max_bytes` (0 = unlimited), a Liveness route 4 KiB
-(`API_LIVENESS_BODY_CAP`), each with the documented `413` text from `payloadTooLargeText()`
+(`API_LIVENESS_BODY_CAP`). A non-zero configured limit is also a ceiling for every route: one with a lower cap
+of its own keeps it, any other gets the limit. Each capped route answers the documented `413` text from `payloadTooLargeText()`
 (`Payload too large. Max allowed: <n> bytes (<n/1024> KiB).`).
 
 ## Server Instances
@@ -125,7 +126,7 @@ The engine creates up to two server instances in `main.cpp`:
 
 | Instance | Name | Socket key | Body limit | Logging | Purpose |
 |----------|------|------------|------------|---------|---------|
-| `apiServer` | `"API services"` | `conf::key::SERVER_API_SOCKET` (`engine-api-http.sock`) | `analysisd.server_api_payload_max_bytes` per route, `0` unlimited (a negative value is logged and treated as `0`); `GET /status` and `POST /metrics/*` 4 KiB; no byte budget | Detailed | Management API, built by `makeApiServer()`; routes registered through `ApiRouteRegistrar` |
+| `apiServer` | `"API services"` | `conf::key::SERVER_API_SOCKET` (`engine-api-http.sock`) | `analysisd.server_api_payload_max_bytes` per route, `0` unlimited (a negative value is logged and treated as `0`); `GET /status` and `POST /metrics/*` 4 KiB, or the configured limit when lower; no byte budget | Detailed | Management API, built by `makeApiServer()`; routes registered through `ApiRouteRegistrar` |
 | `engineRemoteServer` | `"Event ingest"` | `conf::key::SERVER_ENRICHED_EVENTS_SOCKET` (`engine-ingest-http.sock`) | `analysisd.server_enriched_events_max_body_bytes` (64 MiB), plus a connection cap and an in-flight byte budget | Minimal | Event ingestion (`/events/enriched`), built by `api::event::makeIngestServer()`; created only when `analysisd.server_enable_event_processing` is true |
 
 ## API Route Registration

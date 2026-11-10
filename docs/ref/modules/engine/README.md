@@ -2710,7 +2710,7 @@ The `server.api.*` metrics describe the engine API server (`engine-api-http.sock
 | `server.api.shed.executor_full` | Cumulative `503 {"error":"Server busy","code":503}`: every worker busy and the queue full |
 | `server.api.shed.shutdown` | Cumulative `503`: the request arrived or was still queued while the engine was stopping |
 | `server.api.handler_errors` | Cumulative `500 Internal server error`: a handler raised an unexpected error |
-| `server.api.rejected.too_large` | Cumulative `413`: the request declared a body over `analysisd.server_api_payload_max_bytes` (4 KiB on `/status` and `/metrics/*`) |
+| `server.api.rejected.too_large` | Cumulative `413`: the request declared a body over `analysisd.server_api_payload_max_bytes` (4 KiB on `/status` and `/metrics/*`, or that limit when it is lower) |
 | `server.api.inflight.bytes`, `server.api.inflight.requests`, `server.api.shed.budget` | Always `0` (no byte budget) |
 
 **Used for:** telling a busy or misused API (`shed.*`, `rejected.too_large`) apart from failing handlers (`handler_errors`).

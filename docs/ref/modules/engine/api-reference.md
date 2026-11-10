@@ -37,8 +37,8 @@ These apply to every route on `engine-api-http.sock`:
   body `Internal server error`.
 - A body larger than `analysisd.server_api_payload_max_bytes` (default `0`, unlimited) is answered with 413 and the
   plain-text message `Payload too large. Max allowed: <n> bytes (<n/1024> KiB).`, decided from the declared
-  `Content-Length` before the body is read. `GET /status` and `POST /metrics/*` are capped at 4096 bytes. Routes with
-  their own per-type limits (the content routes) answer their 413 with a JSON body.
+  `Content-Length` before the body is read. `GET /status` and `POST /metrics/*` are capped at 4096 bytes, or at that
+  limit when it is lower. Routes with their own per-type limits (the content routes) answer their 413 with a JSON body.
 - The server closes the connection after each response, and answers `Expect: 100-continue` with `100 Continue`.
   Statuses decided before a handler runs carry a JSON body `{"error":"<message>","code":<status>}`: 404 (unknown
   path), 405 with an `Allow` header (known path, other method; every route is `POST` except `GET /status`,
