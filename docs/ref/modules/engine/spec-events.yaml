@@ -233,8 +233,6 @@ paths:
                 dataSessionLimit:
                   value: {"error":"Data session limit reached","code":503}
                 shuttingDown:
-                  value: {"error":"Server shutting down","code":503}
-                transportShuttingDown:
                   value: {"error":"Server is shutting down","code":503}
                 noResponse:
                   value: {"error":"Handler produced no response","code":503}

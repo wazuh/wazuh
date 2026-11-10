@@ -70,7 +70,7 @@ implements it; the API modules register through `ApiRouteRegistrar` (below).
   `POST /metrics/*` routes do not: reading a metric takes the registry lock and runs pull getters in other
   modules, so they are Control routes on the workers, with a 4 KiB body cap.
 - **Answers the server writes itself**: executor queue full ⇒ `503 {"error":"Server busy","code":503}`;
-  stopping ⇒ `503 {"error":"Server shutting down","code":503}`; handler threw ⇒ `500` `Internal server error`
+  stopping ⇒ `503 {"error":"Server is shutting down","code":503}` (the transport's own text for the same case); handler threw ⇒ `500` `Internal server error`
   (`text/plain`). The transport adds its own `404/405/411/413/414/431/503/504` (see
   `docs/ref/modules/utils/uds-http-server/`).
 - **Shutdown** (`shutdown()` for one server, `shutdownAll()` for several, default deadline 10 s). The

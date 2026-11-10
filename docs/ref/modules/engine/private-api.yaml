@@ -1858,12 +1858,22 @@ components:
             stopping:
               summary: The engine is stopping
               value:
-                error: Server shutting down
+                error: Server is shutting down
                 code: 503
             connections:
               summary: Connection limit reached
               value:
                 error: Too many concurrent connections
+                code: 503
+            controlSessions:
+              summary: Too many requests in flight on the API's routes
+              value:
+                error: Control session limit reached
+                code: 503
+            livenessSessions:
+              summary: Too many GET /status requests in flight
+              value:
+                error: Liveness session limit reached
                 code: 503
     TransportError:
       description: |
