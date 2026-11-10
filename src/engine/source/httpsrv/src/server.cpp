@@ -25,7 +25,7 @@ namespace
 {
 constexpr auto SERVER_HEADER = "wazuh-manager-analysisd";
 constexpr auto BUSY_BODY = R"({"error":"Server busy","code":503})";
-constexpr auto SHUTTING_DOWN_BODY = R"({"error":"Server shutting down","code":503})";
+constexpr auto SHUTTING_DOWN_BODY = R"({"error":"Server is shutting down","code":503})";
 constexpr auto INTERNAL_ERROR_BODY = "Internal server error";
 
 /// One log line per window for a repeating condition; the line says how many occurrences it covers.
