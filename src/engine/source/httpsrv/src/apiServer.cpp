@@ -65,6 +65,11 @@ void ApiRouteRegistrar::addRoute(Method method, const std::string& path, RouteHa
             default: break;
         }
     }
+    // The configured limit is a ceiling for every route: a route's own cap can only lower it.
+    if (m_payloadMaxBytes != 0 && (options.maxBodyBytes == UNLIMITED_BODY || options.maxBodyBytes > m_payloadMaxBytes))
+    {
+        options.maxBodyBytes = m_payloadMaxBytes;
+    }
     if (options.maxBodyBytes != 0 && options.maxBodyBytes != UNLIMITED_BODY && options.payloadTooLargeBody.empty())
     {
         options.payloadTooLargeBody = payloadTooLargeText(options.maxBodyBytes);

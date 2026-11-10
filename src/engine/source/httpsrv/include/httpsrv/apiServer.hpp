@@ -53,8 +53,9 @@ std::shared_ptr<Server> makeApiServer();
 /**
  * @brief Registers the API modules' routes on the API server with the API's body limits.
  *
- * A Control route that does not set its own cap gets the configured payload limit (0: none) and, when capped,
- * the documented 413 text; a Liveness route is capped at API_LIVENESS_BODY_CAP with the same text.
+ * A Control route that does not set its own cap gets the configured payload limit (0: none); a Liveness route
+ * is capped at API_LIVENESS_BODY_CAP. A configured limit is also a ceiling for every route: one with a lower
+ * cap of its own keeps it, any other gets the limit. A capped route answers the documented 413 text.
  */
 class ApiRouteRegistrar : public IRouteRegistrar
 {
