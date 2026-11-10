@@ -444,6 +444,22 @@ def test_upload_group_configuration(mock_open, mock_wazuh_uid, mock_wazuh_gid):
                                 mock_remove.assert_called_once()
 
 
+def test_upload_group_configuration_error_names_agent_conf_not_tmp_file():
+    """The verify-agent-conf error must name agent.conf, not the internal temp file path."""
+    verifier_output = "Syscheck remote configuration in 'mock_tmp_file' is corrupted."
+    with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')), \
+            patch('wazuh.core.configuration.tempfile.mkstemp', return_value=['mock_handle', 'mock_tmp_file']), \
+            patch('builtins.open'), \
+            patch('wazuh.core.configuration.subprocess.check_output',
+                  side_effect=subprocess.CalledProcessError(cmd='verify-agent-conf', returncode=1, output=b'ERROR')), \
+            patch('wazuh.core.configuration.re.findall', return_value=[verifier_output]), \
+            patch('wazuh.core.configuration.os.path.exists', return_value=True), \
+            patch('wazuh.core.configuration.remove'):
+        with pytest.raises(WazuhError, match="agent.conf") as exc_info:
+            configuration.upload_group_configuration('default', "<agent_config>new_config</agent_config>")
+    assert 'mock_tmp_file' not in str(exc_info.value)
+
+
 @patch('builtins.open')
 def test_upload_group_configuration_removes_tmp_file_on_xml_error(mock_open):
     """A body that does not parse as XML must not leave its temporary file behind."""
