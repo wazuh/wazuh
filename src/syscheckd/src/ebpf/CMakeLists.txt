@@ -28,7 +28,7 @@ target_link_libraries(fimebpf wazuh)
 target_compile_options(fimebpf PRIVATE -Wall -Wextra)
 
 add_executable(ebpf_syscalls_test EXCLUDE_FROM_ALL tests/syscalls/ebpf_syscalls_test.cpp)
-target_link_libraries(ebpf_syscalls_test fimebpf pthread)
+target_link_libraries(ebpf_syscalls_test fimebpf pthread ${CMAKE_DL_LIBS})
 
 if(UNIT_TEST)
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
