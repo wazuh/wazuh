@@ -20,8 +20,7 @@ constexpr std::chrono::seconds DEFAULT_SHUTDOWN_DEADLINE {10};
 /**
  * @brief Settings of one UdsServer.
  *
- * I/O threads, timeouts and the socket mode (0660) are the transport's defaults on purpose; only
- * what an engine server needs to size is exposed.
+ * Pool sizes can be set independently. Timeouts and the socket mode (0660) keep the transport's defaults.
  */
 struct UdsServerOptions
 {
@@ -30,6 +29,7 @@ struct UdsServerOptions
     std::size_t maxConnections {1024};
     std::size_t maxInFlightBytes {0}; ///< 0 keeps the transport's default byte budget.
     std::size_t maxBodySize {0};      ///< Server-wide declared-length cap; 0 = none of its own.
+    std::size_t ioThreads {0};        ///< 0 keeps the transport default (one thread per available CPU).
     std::size_t executorThreads {2};
     std::size_t executorQueue {64};
     bool expectContinue {false};  ///< Answer "Expect: 100-continue" once a request is admitted.

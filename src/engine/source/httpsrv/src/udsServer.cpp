@@ -265,6 +265,7 @@ void UdsServer::start(const std::filesystem::path& socketPath)
     uds::UdsHttpServerConfig config;
     config.socketPath = socketPath.string();
     config.maxConnections = options.maxConnections;
+    config.ioThreads = options.ioThreads;
     if (options.maxInFlightBytes != 0)
     {
         config.maxInFlightBytes = options.maxInFlightBytes;
