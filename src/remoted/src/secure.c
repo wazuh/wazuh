@@ -2261,7 +2261,7 @@ void *dispach_events_thread(void *arg) {
         .user_agent         = "wazuh-manager-remoted/1.0",
         .timeout_ms         = 5000,
         .connect_timeout_ms = 2000,
-        .keepalive          = true
+        .keepalive          = false                         // the ingest server closes after each response
     };
 
     uhttp_client_t *cli = NULL;
