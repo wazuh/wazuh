@@ -16,10 +16,13 @@ if(NOT TARGET wazuh_uds_http_server)
                    ${CMAKE_BINARY_DIR}/shared_modules/uds_http_server EXCLUDE_FROM_ALL)
 endif()
 
-# Under ThreadSanitizer the engine links the transport's instrumented copy (see
-# shared_modules/uds_http_server/CMakeLists.txt): with the plain archive TSAN reports false races.
+# Under a sanitizer the engine links the transport's instrumented copy (see
+# shared_modules/uds_http_server/CMakeLists.txt): with the plain archive TSAN reports false races and
+# ASAN checks nothing inside the transport.
 if(ENGINE_ENABLE_TSAN)
   set(HTTPSRV_UDS_TRANSPORT wazuh_uds_http_server_tsan)
+elseif(ENGINE_ENABLE_ASAN)
+  set(HTTPSRV_UDS_TRANSPORT wazuh_uds_http_server_asan)
 else()
   set(HTTPSRV_UDS_TRANSPORT wazuh_uds_http_server)
 endif()

@@ -74,6 +74,13 @@ if(ENGINE_ENABLE_TSAN)
   target_compile_options(wazuh_uds_http_server_tsan PRIVATE -fsanitize=thread -fno-omit-frame-pointer)
 endif()
 
+# AddressSanitizer checks only instrumented code, so the engine's ASAN build links this copy too.
+# Always defined, and built only when linked: under UNIT_TEST the engine turns ENGINE_ENABLE_ASAN on
+# itself, after this directory is processed, so testing it here would miss a fresh configure.
+wazuh_uds_http_server_library(wazuh_uds_http_server_asan)
+target_compile_options(wazuh_uds_http_server_asan PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+set_target_properties(wazuh_uds_http_server_asan PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
 if(UNIT_TEST)
   set(BENCHMARK_TEST OFF)
   enable_testing()
