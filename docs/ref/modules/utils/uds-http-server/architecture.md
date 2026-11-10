@@ -45,7 +45,8 @@ the interim write waits for it to complete. The first final response is preserve
 comes from the handler or the response backstop; later attempts cannot replace it. A handler
 whose response is already waiting does not produce an unanswered-handler timeout warning. The wait is
 bounded by the write timeout, counted from the first parked response: an interim write still pending
-then closes the connection.
+then closes the connection. A response chosen before the body completed (the body-timeout `400`, a
+shutdown `503`) also ends the request: a body that arrives afterwards is never handed to the handler.
 
 While a reply is deferred there is no read pending, so a one-byte read watches the socket:
 a peer that gives up (EOF) or violates the one-request-per-connection contract (any byte)
