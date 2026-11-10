@@ -67,9 +67,9 @@ std::string roundTrip(const std::string& path, const std::string& raw)
 }
 
 /// A head declaring @p length body bytes, sent without them: a 413 must come from the declared length.
-std::string headDeclaring(const std::string& target, std::size_t length)
+std::string headDeclaring(const std::string& target, std::size_t length, const std::string& method = "POST")
 {
-    return "POST " + target + " HTTP/1.1\r\nHost: localhost\r\nContent-Length: " + std::to_string(length)
+    return method + " " + target + " HTTP/1.1\r\nHost: localhost\r\nContent-Length: " + std::to_string(length)
            + "\r\nConnection: close\r\n\r\n";
 }
 
@@ -283,6 +283,63 @@ TEST_F(ApiServerTest, LivenessRouteIsCappedAt4KiBWithTheDocumentedText)
     EXPECT_EQ(413, statusOf(rejected));
     EXPECT_EQ("Payload too large. Max allowed: 4096 bytes (4 KiB).", bodyOf(rejected));
     EXPECT_EQ(200, statusOf(accepted));
+}
+
+// The configured limit is a ceiling for every route, the status and metrics routes' own 4 KiB included.
+TEST_F(ApiServerTest, TheConfiguredLimitCapsRoutesWithTheirOwnCap)
+{
+    const auto path = socketPath("ceiling");
+    auto server = httpsrv::makeApiServer();
+    ApiRouteRegistrar routes {server, 1024};
+    RouteOptions liveness;
+    liveness.cls = RouteClass::Liveness;
+    RouteOptions ownCap;
+    ownCap.maxBodyBytes = 4096;
+    routes.addRoute(Method::GET, "/status", ok, liveness);
+    routes.addRoute(Method::POST, "/metrics/get", ok, ownCap);
+    routes.addRoute(Method::POST, "/_internal/content/namespace/import", ok);
+    server->start(path);
+
+    for (const std::string target : {"/status", "/metrics/get", "/_internal/content/namespace/import"})
+    {
+        SCOPED_TRACE(target);
+        const auto rejected = roundTrip(path, headDeclaring(target, 1025, target == "/status" ? "GET" : "POST"));
+        EXPECT_EQ(413, statusOf(rejected));
+        EXPECT_EQ("Payload too large. Max allowed: 1024 bytes (1 KiB).", bodyOf(rejected));
+    }
+    EXPECT_EQ(200, statusOf(roundTrip(path, post("/metrics/get", std::string(1024, 'x')))));
+    server->shutdown(1s);
+}
+
+// A route's own cap below the configured limit is kept; a route without one gets the limit.
+TEST_F(ApiServerTest, ARouteCapBelowTheConfiguredLimitIsKept)
+{
+    constexpr std::size_t LIMIT {64U * 1024U * 1024U};
+    const auto path = socketPath("owncap");
+    auto server = httpsrv::makeApiServer();
+    ApiRouteRegistrar routes {server, LIMIT};
+    RouteOptions liveness;
+    liveness.cls = RouteClass::Liveness;
+    RouteOptions ownCap;
+    ownCap.maxBodyBytes = 4096;
+    routes.addRoute(Method::GET, "/status", ok, liveness);
+    routes.addRoute(Method::POST, "/metrics/get", ok, ownCap);
+    routes.addRoute(Method::POST, "/_internal/content/namespace/import", ok);
+    server->start(path);
+
+    for (const std::string target : {"/status", "/metrics/get"})
+    {
+        SCOPED_TRACE(target);
+        const auto rejected = roundTrip(path, headDeclaring(target, 4097, target == "/status" ? "GET" : "POST"));
+        EXPECT_EQ(413, statusOf(rejected));
+        EXPECT_EQ("Payload too large. Max allowed: 4096 bytes (4 KiB).", bodyOf(rejected));
+    }
+    const auto overLimit = roundTrip(path, headDeclaring("/_internal/content/namespace/import", LIMIT + 1));
+    EXPECT_EQ(413, statusOf(overLimit));
+    EXPECT_EQ("Payload too large. Max allowed: 67108864 bytes (65536 KiB).", bodyOf(overLimit));
+    EXPECT_EQ(200, statusOf(roundTrip(path, post("/_internal/content/namespace/import", std::string(8192, 'x')))))
+        << "above the routes' own 4 KiB, within the configured limit";
+    server->shutdown(1s);
 }
 
 TEST_F(ApiServerTest, PublishesApiMetrics)
