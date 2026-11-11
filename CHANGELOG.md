@@ -186,6 +186,7 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#41248](https://github.com/wazuh/wazuh/pull/41248) | Hardened the FIM database search for the entries stored under a removed path. |
 | [#40349](https://github.com/wazuh/wazuh/pull/40349) | Fixed `wazuh-modulesd` waiting indefinitely on a command that ignored its timeout; the command's process group is now stopped after `wazuh_modules.kill_timeout`. |
 | [#40349](https://github.com/wazuh/wazuh/pull/40349) | Fixed the Office 365 and GitHub modules skipping the rest of a collection window after a response larger than `curl_max_size`; only that response is now skipped, with a warning. |
 | [#40349](https://github.com/wazuh/wazuh/pull/40349) | Fixed the AWS and GCP modules stopping when a command could not be run. |
