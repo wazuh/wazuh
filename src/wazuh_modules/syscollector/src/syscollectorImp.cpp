@@ -2605,6 +2605,9 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
     // True when either protocol stopped at its per-cycle block limit, so entries may still be
     // queued for the next cycle.
     bool reachedBlockLimit = false;
+    // True when either protocol was stopped mid-cycle. A stop between two blocks still reports
+    // success, so a caller logging an outcome has to check this first.
+    bool stopped = false;
     std::string failureReason;
 
     // Sync regular (non-VD) data
@@ -2613,6 +2616,7 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
         SyncModuleResult result = m_spSyncProtocol->synchronizeModule(mode, Option::SYNC);
         sentAnything = sentAnything || result.sentAnything;
         reachedBlockLimit = reachedBlockLimit || result.reachedBlockLimit;
+        stopped = stopped || result.stopped;
 
         if (result.success)
         {
@@ -2687,6 +2691,7 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
         SyncModuleResult vdResult = synchronizeVDTables(mode);
         sentAnything = sentAnything || vdResult.sentAnything;
         reachedBlockLimit = reachedBlockLimit || vdResult.reachedBlockLimit;
+        stopped = stopped || vdResult.stopped;
 
         if (!vdResult.success)
         {
@@ -2777,6 +2782,7 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
     // is the field persistVDFirstSyncIfNeeded() gates the VD first-sync marker on.
     return {.success = overallSuccess,
             .failureReason = std::move(failureReason),
+            .stopped = stopped,
             .sentAnything = sentAnything,
             .reachedBlockLimit = reachedBlockLimit};
 }
@@ -5334,7 +5340,14 @@ bool Syscollector::resyncTableToManager(const std::string& tableName,
     m_logFunction(LOG_DEBUG, "Starting recovery synchronization...");
     const SyncModuleResult recoveryResult = syncModule(Mode::DELTA);
 
-    if (recoveryResult.success && recoveryResult.reachedBlockLimit)
+    if (recoveryResult.stopped || m_stopping.load())
+    {
+        // A stop between two blocks reports success while rows are still queued, so neither
+        // "completed" message would be true. The rows stay in the on-disk queue.
+        m_logFunction(LOG_INFO, "Recovery of index " + index + " interrupted: module is stopping. The queued entries "
+                      "will be sent by a later synchronization.");
+    }
+    else if (recoveryResult.success && recoveryResult.reachedBlockLimit)
     {
         // The cycle stopped at its block limit, so the queue may still hold rows of this index;
         // the next synchronization sends them.

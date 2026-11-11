@@ -1353,13 +1353,13 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                 mdebug1("Pending flush request completed via normal sync path.");
             }
 
-            // Lock FIM's scheduled and realtime scans only for the recovery/integrity
-            // process, which reads and writes the file_entry table. Skipped once shutdown
-            // is in progress.
             // Tables whose rows a recovery below queued for resending; sent once the mutexes are
             // released.
             bool recovered[sizeof(table_names) / sizeof(table_names[0])] = {false};
 
+            // Lock FIM's scheduled and realtime scans only for the recovery/integrity
+            // process, which reads and writes the file_entry table. Skipped once shutdown
+            // is in progress.
             if (sync_result.success && fim_sync_module_running &&
                 fim_sync_lock_scan_mutex()) {
                 // #38601: identity before integrity. If this agent's id changed, the manager
@@ -1375,7 +1375,8 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                 // table mismatches, so it did the same work later rather than less of it.
                 // Only the queueing part of that primitive stays here (the version bump, the
                 // table read, the DataClean and the persist); sending the queued rows waits for
-                // the unlock below.
+                // the unlock below. The DataClean and the integrity checksum requests are still
+                // manager round trips made with the mutexes held.
                 if (fim_resync_on_agent_id_change(syscheck.sync_handle, table_names, table_count,
                                                   directories_snapshot, recovered)) {
                     // Both markers move together, and only once the resync above proved the
