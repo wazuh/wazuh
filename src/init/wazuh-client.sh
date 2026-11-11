@@ -56,12 +56,24 @@ SELF_CGROUP="/proc/$$/cgroup"
 # (45), after which systemd itself leaves those states.
 SYSTEMD_SETTLE_TIMEOUT="95"
 
+# Whether pid $1 runs daemon $2. The pid file of an agent that did not stop cleanly (a crash, a power
+# loss) can name a pid that another process took since, for instance after a reboot: it must be
+# neither stopped nor taken for that daemon. Matches the program's name, not its path, so a daemon
+# started through a symlink to the installation still counts.
+pid_runs_daemon()
+{
+    _prd_args=`ps -p $1 -o args= 2>/dev/null` || return 1
+    case "${_prd_args%% *}" in
+        */$2|$2) return 0 ;;
+    esac
+    return 1
+}
+
 checkpid()
 {
     for i in ${DAEMONS}; do
         for j in `cat ${DIR}/var/run/${i}-*.pid 2>/dev/null`; do
-            ps -p $j > /dev/null 2>&1
-            if [ ! $? = 0 ]; then
+            if ! pid_runs_daemon $j $i; then
                 echo "Deleting PID file '${DIR}/var/run/${i}-${j}.pid' not used..."
                 rm ${DIR}/var/run/${i}-${j}.pid
             fi
@@ -506,8 +518,7 @@ pstatus()
     ls ${DIR}/var/run/${pfile}-*.pid > /dev/null 2>&1
     if [ $? = 0 ]; then
         for pid in `cat ${DIR}/var/run/${pfile}-*.pid 2>/dev/null`; do
-            ps -p ${pid} > /dev/null 2>&1
-            if [ ! $? = 0 ]; then
+            if ! pid_runs_daemon ${pid} ${pfile}; then
                 if [ "X${_pstatus_quiet}" = "X" ]; then
                     echo "${pfile}: Process ${pid} not used by Wazuh, removing .."
                 fi

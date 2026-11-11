@@ -8,14 +8,14 @@
 # Foundation.
 
 # Drives the agent's wazuh-control (wazuh-client.sh) start, restart and reload against a throwaway
-# install directory whose daemons are stubs: each one starts a background sleep and writes its pid
-# file, as a daemon does once it is up, unless a fail-<daemon> file asks it to exit 1. A log-<daemon>
-# file is appended to logs/ossec.log as the daemon starts (after emptying it, with a rotate-<daemon>
-# file; after turning a symlinked log into a regular copy of its target, with a realfile-<daemon>
-# file), a gone-<daemon> file makes it exit 0 with no pid file, as a daemon that dies once in the
-# background, and a late-<daemon> file makes it write its pid file 2 s after exiting, as one still
-# starting. Checks which daemons are left running when one of them does not start, and what the
-# start reports.
+# install directory whose daemons are stubs: each one starts a background sleep under the daemon's
+# path, as wazuh-control recognizes a daemon by its program name, and writes its pid file, as a
+# daemon does once it is up, unless a fail-<daemon> file asks it to exit 1. A log-<daemon> file is
+# appended to logs/ossec.log as the daemon starts (after emptying it, with a rotate-<daemon> file;
+# after turning a symlinked log into a regular copy of its target, with a realfile-<daemon> file), a
+# gone-<daemon> file makes it exit 0 with no pid file, as a daemon that dies once in the background,
+# and a late-<daemon> file makes it write its pid file 2 s after exiting, as one still starting.
+# Checks which daemons are left running when one of them does not start, and what the start reports.
 #
 #   ./test_wazuh_control.sh
 
@@ -42,7 +42,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-DAEMON_STUB='#!/bin/sh
+DAEMON_STUB='#!/bin/bash
 dir=$(cd "$(dirname "$0")/.." && pwd)
 name=$(basename "$0")
 if [ "$1" = "-t" ]; then
@@ -59,10 +59,10 @@ fi
 [ -f "${dir}/log-${name}" ] && cat "${dir}/log-${name}" >> "${dir}/logs/ossec.log"
 [ -f "${dir}/gone-${name}" ] && exit 0
 if [ -f "${dir}/late-${name}" ]; then
-    ( sleep 2; sleep 300 > /dev/null 2>&1 & echo $! > "${dir}/var/run/${name}-$!.pid" ) > /dev/null 2>&1 &
+    ( sleep 2; (exec -a "$0" sleep 300) > /dev/null 2>&1 & echo $! > "${dir}/var/run/${name}-$!.pid" ) > /dev/null 2>&1 &
     exit 0
 fi
-sleep 300 > /dev/null 2>&1 &
+(exec -a "$0" sleep 300) > /dev/null 2>&1 &
 echo $! > "${dir}/var/run/${name}-$!.pid"
 exit 0
 '
@@ -373,6 +373,41 @@ done
 touch "${WORK}/start_partial/fail-wazuh-modulesd"
 check "start fails again on the daemon that is down" "1" "$(control start_partial start)"
 check "only what that start brought up is stopped" "wazuh-execd wazuh-agentd wazuh-syscheckd" "$(running start_partial)"
+
+# The pid file of an agent that did not stop cleanly can name a pid that another process took since,
+# for instance after a reboot. A stop must leave that process alone, and a start must not take it for
+# the daemon.
+new_tree pid_taken_stop
+sleep 300 > /dev/null 2>&1 &
+other=$!
+echo "${other}" > "${WORK}/pid_taken_stop/var/run/wazuh-execd-${other}.pid"
+check "stop succeeds when another process has a daemon's pid" "0" "$(control pid_taken_stop stop)"
+check "stop leaves that process running" "running" "$(kill -0 "${other}" 2>/dev/null && echo running)"
+check "stop drops the pid file that names it" "" "$(ls "${WORK}/pid_taken_stop/var/run")"
+kill "${other}"
+drop_tree pid_taken_stop
+
+new_tree pid_taken_start
+sleep 300 > /dev/null 2>&1 &
+other=$!
+echo "${other}" > "${WORK}/pid_taken_start/var/run/wazuh-execd-${other}.pid"
+check "start succeeds when another process has a daemon's pid" "0" "$(control pid_taken_start start)"
+check "start brings up that daemon" "1" "$(grep -c '^Started wazuh-execd' "${WORK}/pid_taken_start/start.out")"
+check "start leaves that process running" "running" "$(kill -0 "${other}" 2>/dev/null && echo running)"
+check "start drops the pid file that names it" "" \
+    "$(ls "${WORK}/pid_taken_start/var/run/wazuh-execd-${other}.pid" 2>/dev/null)"
+kill "${other}"
+drop_tree pid_taken_start
+
+# Daemons are recognized by their program name, so an installation reached through a symlink stops
+# the daemons it started under its real path.
+new_tree pid_symlink
+control pid_symlink start > /dev/null
+ln -s "${WORK}/pid_symlink" "${WORK}/pid_symlink_link"
+PATH="${WORK}/pid_symlink/stubbin:${PATH}" "${WORK}/pid_symlink_link/bin/wazuh-control" stop > /dev/null 2>&1
+check "stop through a symlink to the installation stops every daemon" "" "$(running pid_symlink)"
+rm -f "${WORK}/pid_symlink_link"
+drop_tree pid_symlink
 
 new_tree restart_fail
 control restart_fail start > /dev/null
