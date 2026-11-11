@@ -57,7 +57,10 @@ relative one resolves against the manager home, `/var/wazuh-manager`), but the
 before every start and refuses any other location, a relative path included:
 `INVALID indexer.ssl.certificate: /var/wazuh-manager/client.pem is outside /etc/wazuh-manager/certs, the only place the resolver checks (set in /etc/wazuh-manager/wazuh-manager.conf)`,
 and `wazuh-manager-control` stops with `Invalid credentials. Exiting` (error 22 in `-j` output).
-`wazuh-manager-conf validate` does not look at these files: the resolver owns them. A listed file that
+`wazuh-manager-conf validate` refuses the same paths first, unless `--skip-file-checks`:
+`(1244): Invalid configuration at '/indexer/ssl/certificate': /var/wazuh-manager/client.pem is outside /etc/wazuh-manager/certs, the only place the credential resolver accepts it (the manager refuses to start)`
+(a listed CA is named by its index, `/indexer/ssl/certificate_authorities/0`). It does not check that
+the files exist: the resolver owns them. A listed file that
 is absent, and that the resolver cannot import from a co-located indexer, refuses the start with
 `MISSING <path>` and `Unresolved credentials. Exiting` (error 21).
 

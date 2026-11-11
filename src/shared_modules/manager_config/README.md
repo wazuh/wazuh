@@ -28,7 +28,7 @@ credential resolver (`src/init/credentials/wazuh-manager-resolve-credentials.py`
 | RF-2 | Canonical JSON with the schema's types: `yes`/`no` → boolean, digits → integer where allowed, repeated or comma-separated values → arrays, the attribute forms of the dialect (`<backup database="…">`, `<disconnected_time enabled="…">`) → nested objects, enums matched in any case and normalized to the schema's spelling | `src/xmlToJson.cpp` |
 | RF-3 | Validation against the embedded draft-04 schema; each error is reported with its JSON pointer and keyword — the first by the loader, every one, in the order of the file, by `validateAll()` (`wazuh-manager-conf validate`) | `src/schemaValidate.cpp`, `src/manager_config.cpp` |
 | RF-4 | Defaults declared in the schema are filled into the effective document (a missing section = its defaults) | `src/defaults.cpp` |
-| RF-5 | Uniform, fatal cross-field rules: certificate/key pairing, no `.`/`..` prefix segments, distinct listener ports, existence of the HTTPS/authd certificate files (relative to the manager home; nothing recreates them at start — the credential resolver issues them once at installation, or the operator provisions them, e.g. with wazuh-certs-tool — so the `file not found` verdict carries that hint; `indexer.ssl.*` is not checked here: the credential resolver owns those files — imported from the indexer's export or staged by the operator — and refuses the start itself, before any daemon runs, when they are missing or invalid) | `src/semantics.cpp` |
+| RF-5 | Uniform, fatal cross-field rules: certificate/key pairing, no `.`/`..` prefix segments, distinct listener ports, existence of the HTTPS/authd certificate files (relative to the manager home; nothing recreates them at start — the credential resolver issues them once at installation, or the operator provisions them, e.g. with wazuh-certs-tool — so the `file not found` verdict carries that hint; the existence of `indexer.ssl.*` is not checked here: the credential resolver owns those files — imported from the indexer's export or staged by the operator — and refuses the start itself, before any daemon runs, when they are missing), and the location of `indexer.ssl.*` (directly in `/etc/wazuh-manager/certs`, the resolver's rule) | `src/semantics.cpp` |
 | RF-6 | `sectionJson()` / `documentJson()` canonical JSON (cJSON-parseable); C API without exceptions or C++ types across the boundary | `src/manager_config.cpp`, `src/manager_config_c.cpp` |
 | RNF-1 | C++17, STATIC, manager only, pugixml + rapidjson PRIVATE | `CMakeLists.txt` |
 | RNF-2 | Schema embedded at build time (`generated/embeddedSchema.hpp`) | `CMakeLists.txt` |
@@ -69,6 +69,16 @@ credential resolver (`src/init/credentials/wazuh-manager-resolve-credentials.py`
   directory, which a custom home never moves), so unit tests turn the checks off or name the files explicitly under a
   temporary home; an operator-written relative path still means "relative to the manager home". Only `remote.https.{certificate,key,ca,ca_certificate}` and
   `auth.{ssl_agent_ca,ssl_manager_cert,ssl_manager_key}` are checked, and an empty value is skipped.
+- **`indexer.ssl.*` is checked for its location, never for its existence.** The credential resolver may import the
+  indexer CA and the connector pair from a co-located indexer's export at `--prestart`, which runs after the
+  file-checked validation of a start, so requiring the files would refuse a fresh co-located start. Where they lie is
+  the configuration's alone, and the resolver refuses any path outside `/etc/wazuh-manager/certs` before it looks for
+  the file (error 22) — a 4.x `/etc/filebeat/certs/...` passed `validate` and then stopped the start. With file
+  checks on, each listed CA, `certificate` and `key` must therefore pass the resolver's `certs_name()` rule: resolved
+  against the home (so a relative path is refused), no empty, `.` or `..` component, and directly in
+  `Utils::MANAGER_CONF_DIR/certs`. It is a file check because it is about this host's layout, and because the
+  resolver reads the document through `dump --skip-file-checks`. The two copies of the rule are kept identical by
+  hand.
 - **`cluster.key` is required and has no default**: a well-known default key would be a shared secret; the installer
   always generates one. `cluster` and `indexer` are the only `required` properties at the document root:
   every manager runs as a cluster node, and `wazuh-manager-analysisd` cannot start with zero indexer hosts,

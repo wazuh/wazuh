@@ -708,15 +708,103 @@ TEST(Semantics, CheckFilesResolvesRelativeToHome)
     auto absoluteOk = manager_config::Document::parse(wrap(certificates((dir / "etc" / "certs").string())), elsewhere);
     EXPECT_TRUE(std::holds_alternative<manager_config::Document>(absoluteOk))
         << std::get<manager_config::Error>(absoluteOk).what();
-    // indexer.ssl.* is never checked: the installer does not create those files.
-    auto indexerOk =
-        manager_config::Document::parse(std::string("<wazuh_config><indexer><hosts><host>https://h:9200</host></hosts>"
-                                                    "<ssl><certificate>etc/certs/missing.pem</certificate></ssl>"
-                                                    "</indexer>") +
-                                            certificates("etc/certs") + CLUSTER_SECTION + "</wazuh_config>",
-                                        options);
+    // indexer.ssl.* is never checked for existence: the credential resolver imports those files at --prestart.
+    auto indexerOk = manager_config::Document::parse(
+        std::string("<wazuh_config><indexer><hosts><host>https://h:9200</host></hosts>"
+                    "<ssl><certificate>/etc/wazuh-manager/certs/missing.pem</certificate>"
+                    "<key>/etc/wazuh-manager/certs/missing-key.pem</key></ssl>"
+                    "</indexer>") +
+            certificates("etc/certs") + CLUSTER_SECTION + "</wazuh_config>",
+        options);
     EXPECT_TRUE(std::holds_alternative<manager_config::Document>(indexerOk))
         << std::get<manager_config::Error>(indexerOk).what();
+    std::filesystem::remove_all(dir);
+}
+
+namespace
+{
+    std::string indexerSsl(const std::string& ssl)
+    {
+        // The remoted/authd files are existence-checked: they come from the test's home, so only indexer.ssl.*
+        // can fail.
+        return "<wazuh_config><indexer><hosts><host>https://h:9200</host></hosts><ssl>" + ssl + "</ssl></indexer>" +
+               certificates("etc/certs") + CLUSTER_SECTION + "</wazuh_config>";
+    }
+
+    std::vector<std::string> pointersOf(const std::vector<manager_config::Error>& errors)
+    {
+        std::vector<std::string> pointers;
+        for (const auto& error : errors)
+        {
+            pointers.push_back(error.pointer);
+        }
+        return pointers;
+    }
+} // namespace
+
+TEST(Semantics, IndexerSslPathsMustBeDirectlyInTheCertsDirectory)
+{
+    // The 4.x paths: the credential resolver refuses each one at start (error 22), so validate must too.
+    const std::string filebeat {"<certificate_authorities><ca>/etc/filebeat/certs/root-ca.pem</ca>"
+                                "</certificate_authorities>"
+                                "<certificate>/etc/filebeat/certs/wazuh-server.pem</certificate>"
+                                "<key>/etc/filebeat/certs/wazuh-server-key.pem</key>"};
+    const auto dir = std::filesystem::temp_directory_path() / "manager_config_utest_indexer_ssl";
+    std::filesystem::create_directories(dir / "etc" / "certs");
+    for (const char* name : {"remoted.pem", "remoted-key.pem", "root-ca.pem"})
+    {
+        std::ofstream(dir / "etc" / "certs" / name) << "x";
+    }
+    manager_config::LoadOptions options;
+    options.home = dir;
+    const auto errors = manager_config::validateAll(indexerSsl(filebeat), options);
+    EXPECT_EQ(pointersOf(errors),
+              (std::vector<std::string> {"/indexer/ssl/certificate_authorities/0",
+                                         "/indexer/ssl/certificate",
+                                         "/indexer/ssl/key"}));
+    ASSERT_FALSE(errors.empty());
+    EXPECT_NE(errors[0].message.find("/etc/filebeat/certs/root-ca.pem is outside /etc/wazuh-manager/certs"),
+              std::string::npos)
+        << errors[0].what();
+    auto ko = manager_config::Document::parse(indexerSsl(filebeat), options);
+    ASSERT_TRUE(std::holds_alternative<manager_config::Error>(ko));
+    EXPECT_EQ(std::get<manager_config::Error>(ko).pointer, "/indexer/ssl/certificate_authorities/0");
+
+    // Each CA is judged on its own, by index.
+    EXPECT_EQ(pointersOf(manager_config::validateAll(
+                  indexerSsl("<certificate_authorities><ca>/etc/wazuh-manager/certs/indexer-ca.pem</ca>"
+                             "<ca>/etc/ssl/certs/ca.pem</ca></certificate_authorities>"),
+                  options)),
+              (std::vector<std::string> {"/indexer/ssl/certificate_authorities/1"}));
+
+    // Not directly inside, or through an empty, "." or ".." component: refused like the resolver does.
+    for (const char* path : {"/etc/wazuh-manager/certs/sub/indexer-ca.pem",
+                             "/etc/wazuh-manager/certs/../certs/indexer-ca.pem",
+                             "/etc/wazuh-manager/./certs/indexer-ca.pem",
+                             "/etc//wazuh-manager/certs/indexer-ca.pem",
+                             "/etc/wazuh-manager/certs/..",
+                             "/etc/wazuh-manager/certs/",
+                             "/etc/wazuh-manager/certs",
+                             // Relative paths resolve against the home, never against the configuration directory.
+                             "certs/indexer-ca.pem",
+                             "etc/certs/indexer-ca.pem"})
+    {
+        const auto ssl = std::string {"<certificate_authorities><ca>"} + path + "</ca></certificate_authorities>";
+        EXPECT_EQ(pointersOf(manager_config::validateAll(indexerSsl(ssl), options)),
+                  (std::vector<std::string> {"/indexer/ssl/certificate_authorities/0"}))
+            << path;
+    }
+
+    // Accepted without the file: whether it exists is the resolver's verdict (it may import it at --prestart).
+    const std::string installed {"<certificate_authorities><ca>/etc/wazuh-manager/certs/indexer-ca.pem</ca>"
+                                 "</certificate_authorities>"
+                                 "<certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>"
+                                 "<key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>"};
+    EXPECT_TRUE(manager_config::validateAll(indexerSsl(installed), options).empty());
+
+    // Like every file check, skipped by --skip-file-checks: the daemons, the engine and the resolver's own dump
+    // load without it.
+    EXPECT_TRUE(manager_config::validateAll(indexerSsl(filebeat), noFiles()).empty());
     std::filesystem::remove_all(dir);
 }
 
@@ -884,22 +972,22 @@ TEST(CApi, LoadSectionDocumentValidateFree)
 {
     const auto home = std::filesystem::temp_directory_path() / "manager_config_utest_capi";
     std::filesystem::create_directories(home / "etc" / "certs");
-    for (const char* name : {"remoted.pem",
-                             "remoted-key.pem",
-                             "root-ca.pem",
-                             "indexer-ca.pem",
-                             "indexer-connector.pem",
-                             "indexer-connector-key.pem"})
+    const std::vector<std::string> checked {"remoted.pem", "remoted-key.pem", "root-ca.pem"};
+    for (const auto& name : checked)
     {
         std::ofstream(home / "etc" / "certs" / name) << "x";
     }
     // The installer writes absolute /etc/wazuh-manager/certs/... paths; a copy with relative ones resolves
-    // against `home` instead of the build host's real configuration directory.
+    // against `home` instead of the build host's real configuration directory. Only the files checked for
+    // existence move: indexer.ssl.* must stay in /etc/wazuh-manager/certs, which is checked without the files.
     std::string generated = slurp(VECTORS / "valid" / "generated-manager.conf");
-    const std::string absoluteCerts {"/etc/wazuh-manager/certs/"};
-    for (auto at = generated.find(absoluteCerts); at != std::string::npos; at = generated.find(absoluteCerts, at))
+    for (const auto& name : checked)
     {
-        generated.replace(at, absoluteCerts.size(), "etc/certs/");
+        const std::string absolute {"/etc/wazuh-manager/certs/" + name + "<"};
+        for (auto at = generated.find(absolute); at != std::string::npos; at = generated.find(absolute, at))
+        {
+            generated.replace(at, absolute.size(), "etc/certs/" + name + "<");
+        }
     }
     const auto file = (home / "generated-manager.conf").string();
     std::ofstream(file) << generated;
