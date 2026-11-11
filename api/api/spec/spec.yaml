@@ -2760,9 +2760,6 @@ components:
                                 disconnect-agents:
                                   type: integer
                                   format: int32
-                                find-agent:
-                                  type: integer
-                                  format: int32
                                 get-agent-info:
                                   type: integer
                                   format: int32
@@ -2772,13 +2769,7 @@ components:
                                 get-all-agents:
                                   type: integer
                                   format: int32
-                                get-groups-integrity:
-                                  type: integer
-                                  format: int32
                                 insert-agent:
-                                  type: integer
-                                  format: int32
-                                reset-agents-connection:
                                   type: integer
                                   format: int32
                                 select-agent-group:
@@ -2812,9 +2803,6 @@ components:
                               type: object
                               properties:
                                 get-group-agents:
-                                  type: integer
-                                  format: int32
-                                select-group-belong:
                                   type: integer
                                   format: int32
                             group:
@@ -2917,9 +2905,6 @@ components:
                                 disconnect-agents:
                                   type: integer
                                   format: int32
-                                find-agent:
-                                  type: integer
-                                  format: int32
                                 get-agent-info:
                                   type: integer
                                   format: int32
@@ -2929,13 +2914,7 @@ components:
                                 get-all-agents:
                                   type: integer
                                   format: int32
-                                get-groups-integrity:
-                                  type: integer
-                                  format: int32
                                 insert-agent:
-                                  type: integer
-                                  format: int32
-                                reset-agents-connection:
                                   type: integer
                                   format: int32
                                 select-agent-group:
@@ -2969,9 +2948,6 @@ components:
                               type: object
                               properties:
                                 get-group-agents:
-                                  type: integer
-                                  format: int32
-                                select-group-belong:
                                   type: integer
                                   format: int32
                             group:

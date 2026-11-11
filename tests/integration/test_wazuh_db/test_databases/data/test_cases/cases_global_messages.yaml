@@ -37,9 +37,6 @@
     - input: global get-agent-info 1
       output: ok [{"id":1,"name":"TestName1","ip":"0.0.0.1","register_ip":"0.0.0.1","internal_key":"TopSecret","date_add":1599223378,"group":"TestGroup1","group_sync_status":"synced","sync_status":"synced","connection_status":"never_connected","disconnection_time":0,"status_code":0}]
       stage: global get-agent-info after insert
-    - input: global find-agent {"name":"TestName1","ip":"0.0.0.1"}
-      output: ok [{"id":1}]
-      stage: global find-agent success
     - input: global delete-agent 2
       output: ok
       stage: global delete-agent previous insert
@@ -170,39 +167,6 @@
       output: ok [{"id":3,"name":"TestName3","ip":"0.0.0.3","register_ip":"0.0.0.3","internal_key":"TopSecret","os_name":"TestOsName","os_version":"TestOsVersion","os_major":"TestOsMajor","os_minor":"TestOsMinor","os_platform":"TestOsPlatfor","os_arch":"TestOsArch","date_add":1599223378,"last_keepalive":200,"group_sync_status":"synced","sync_status":"synced","connection_status":"never_connected","disconnection_time":0,"status_code":0}]
       stage: global get-agent-info success after sync-agent-info-set success
 
-- name: Reset connection status
-  description: Check success use cases for reset connection status command.
-  configuration_parameters:
-  metadata:
-    test_case:
-    - input: global update-connection-status {"id":1,"connection_status":"pending","sync_status":"synced","status_code":1}
-      output: ok
-      stage: global update-connection-status pending success
-    - input: global update-connection-status {"id":3,"connection_status":"active","sync_status":"synced","status_code":0}
-      output: ok
-      stage: global update-connection-status active success
-    - input: global sql SELECT id,sync_status FROM agent
-      output: ok [{"id":1,"sync_status":"synced"},{"id":2,"sync_status":"synced"},{"id":3,"sync_status":"synced"}]
-      stage: global checking sync_status before reset-agents-connection
-    - input: global reset-agents-connection syncreq
-      output: ok
-      stage: global reset-agents-connection success
-    - input: global sql SELECT id,sync_status FROM agent
-      output: ok [{"id":1,"sync_status":"syncreq"},{"id":2,"sync_status":"synced"},{"id":3,"sync_status":"syncreq"}]
-      stage: global checking sync_status after reset-agents-connection
-    - input: global get-agent-info 1
-      output: ok [{"id":1,"name":"TestName1","ip":"0.0.0.1","register_ip":"0.0.0.1","internal_key":"TopSecret","os_name":"TestOsName","os_version":"TestOsVersion","os_major":"TestOsMajor","os_minor":"TestOsMinor","os_platform":"TestOsPlatfor","os_arch":"TestOsArch","version":"TestVersion","date_add":1599223378,"last_keepalive":*,"group":"TestGroup1","group_sync_status":"synced","sync_status":"syncreq","connection_status":"disconnected","disconnection_time":*,"status_code":5}]
-      stage: global agent get-agent-info success post reset connection status
-      use_regex: "yes"
-    - input: global get-agent-info 2
-      output: ok [{"id":2,"name":"TestName2","date_add":1599223378,"group_sync_status":"synced","sync_status":"synced","connection_status":"never_connected","disconnection_time":0,"status_code":0}]
-      stage: global agent get-agent-info success post reset connection status
-      use_regex: "yes"
-    - input: global get-agent-info 3
-      output: ok [{"id":3,"name":"TestName3","ip":"0.0.0.3","register_ip":"0.0.0.3","internal_key":"TopSecret","os_name":"TestOsName","os_version":"TestOsVersion","os_major":"TestOsMajor","os_minor":"TestOsMinor","os_platform":"TestOsPlatfor","os_arch":"TestOsArch","date_add":1599223378,"last_keepalive":*,"group_sync_status":"synced","sync_status":"syncreq","connection_status":"disconnected","disconnection_time":*,"status_code":5}]
-      stage: global agent get-agent-info success post reset connection status
-      use_regex: "yes"
-
 - name: get-agents-by-connection-status command
   description: Check success use cases for get-agents-by-connection-status command on global DB.
   configuration_parameters:
@@ -226,15 +190,12 @@
     - input: global get-agents-by-connection-status 0 active
       output: ok [{"id":3}]
       stage: global get-agents-by-connection-status active success
-    - input: global sql SELECT id,sync_status FROM agent
-      output: ok [{"id":1,"sync_status":"syncreq"},{"id":2,"sync_status":"syncreq"},{"id":3,"sync_status":"syncreq"}]
-      stage: global checking sync_status before reset-agents-connection
-    - input: global reset-agents-connection synced
+    - input: global update-connection-status {"id":2,"connection_status":"disconnected","sync_status":"synced","status_code":4}
       output: ok
-      stage: global reset-agents-connection
-    - input: global sql SELECT id,sync_status FROM agent
-      output: ok [{"id":1,"sync_status":"syncreq"},{"id":2,"sync_status":"synced"},{"id":3,"sync_status":"synced"}]
-      stage: global checking sync_status after reset-agents-connection
+      stage: global update-connection-status disconnected for agent 2
+    - input: global update-connection-status {"id":3,"connection_status":"disconnected","sync_status":"synced","status_code":4}
+      output: ok
+      stage: global update-connection-status disconnected for agent 3
     - input: global get-agents-by-connection-status 0 disconnected
       output: ok [{"id":2},{"id":3}]
       stage: global get-agents-by-connection-status disconnected success
@@ -327,7 +288,7 @@
       stage: global delete-agent cleanup
 
 - name: Group membership commands
-  description: Check success and error use cases for get-distinct-groups, get-group-agents, select-group-belong and recalculate-agent-group-hashes commands on global DB.
+  description: Check success and error use cases for get-distinct-groups, get-group-agents and recalculate-agent-group-hashes commands on global DB.
   configuration_parameters:
   metadata:
     test_case:
@@ -371,12 +332,6 @@
     - input: global get-group-agents GroupA
       output: err Invalid arguments, 'last_id' not found.
       stage: global get-group-agents missing last_id error
-    - input: global select-group-belong 1
-      output: ok ["GroupA"]
-      stage: global select-group-belong agent 1 success
-    - input: global select-group-belong 2
-      output: ok ["GroupB"]
-      stage: global select-group-belong agent 2 success
     - input: global recalculate-agent-group-hashes
       output: ok
       stage: global recalculate-agent-group-hashes success
@@ -392,16 +347,6 @@
     - input: global delete-group GroupB
       output: ok
       stage: global delete-group GroupB cleanup
-
-- name: vacuum command
-  description: Check success use case for vacuum command on global DB.
-  configuration_parameters:
-  metadata:
-    test_case:
-    - input: global vacuum
-      output: ok {"fragmentation_after_vacuum":*}
-      stage: global vacuum success
-      use_regex: "yes"
 
 - name: Synchronization value
   description: Check global db synchronization value

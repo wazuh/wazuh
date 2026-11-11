@@ -109,7 +109,7 @@ credential resolver (`src/init/credentials/wazuh-manager-resolve-credentials.py`
 - **An empty file is invalid** (XML needs a root); the minimal valid document is
   `<wazuh_config><cluster><key>...32 alphanumeric...</key></cluster><indexer><hosts><host>scheme://host:port</host>
   </hosts></indexer></wazuh_config>` — every other option keeps its schema default.
-- **`validate` reports every problem in one run; the loader stops at the first** (#40814). A 4.x
+- **`validate` reports every problem in one run; the loader stops at the first**. A 4.x
   configuration carried into `wazuh-manager.conf` breaks dozens of rules, and fixing them one run at a time
   turned the migration into a loop. `validateAll()` therefore collects in three passes over one document:
   `xmlToJson` records element-level problems (a duplicate, stray text, a wrong list item, nesting too deep)
