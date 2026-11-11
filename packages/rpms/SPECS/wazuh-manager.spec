@@ -334,6 +334,15 @@ if [ $1 = 2 ]; then
     . "$FILE_PATH"
     updateIndexerTemplate "%{_localstatedir}/etc/ossec.conf" $CONFIG_INDEXER_TEMPLATE
   fi
+
+  # Hand back to wazuh what wazuh-apid created while running as root. These paths are
+  # writable by the wazuh account, so skip symlinks and hard links.
+  if [ -d %{_localstatedir}/logs/api ]; then
+    find %{_localstatedir}/logs/api ! -type l \( -type d -o -links 1 \) -user root -exec chown -h wazuh:wazuh {} +
+  fi
+  if [ -d %{_localstatedir}/api/configuration/security ]; then
+    find %{_localstatedir}/api/configuration/security -maxdepth 1 -name security.yaml -type f -links 1 -user root -exec chown -h wazuh:wazuh {} +
+  fi
 fi
 
 %define _vdfilename vd_1.0.0_vd_4.13.0.tar.xz

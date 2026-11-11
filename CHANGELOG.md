@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 
 #### Changed
 
-- `wazuh-apid` now ignores the `drop_privileges` API configuration option and always runs as the `wazuh` user unless it is started with `-r`, and logs a warning when the option is set in `api.yaml`. ([#41287](https://github.com/wazuh/wazuh/pull/41287))
+- `wazuh-apid` now ignores the `drop_privileges` API configuration option and always runs as the `wazuh` user unless it is started with `-r`, and logs a warning when the option is set in `api.yaml`. Upgrades return to the `wazuh` user the rotated API logs and `security.yaml` that an API run as root created. ([#41287](https://github.com/wazuh/wazuh/pull/41287))
 
 ### Agent
 
