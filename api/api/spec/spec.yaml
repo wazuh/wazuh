@@ -10620,7 +10620,6 @@ paths:
                       node_api_config:
                         host: 0.0.0.0
                         port: 55000
-                        drop_privileges: true
                         experimental_features: false
                         max_upload_size: 10485760
                         auth_context_max_payload_size: 65536
@@ -10668,7 +10667,6 @@ paths:
                       node_api_config:
                         host: 0.0.0.0
                         port: 55000
-                        drop_privileges: true
                         experimental_features: false
                         max_upload_size: 10485760
                         auth_context_max_payload_size: 65536
@@ -10716,7 +10714,6 @@ paths:
                       node_api_config:
                         host: 0.0.0.0
                         port: 55000
-                        drop_privileges: true
                         experimental_features: false
                         max_upload_size: 10485760
                         auth_context_max_payload_size: 65536
@@ -13531,7 +13528,6 @@ paths:
                       node_api_config:
                         host: 0.0.0.0
                         port: 55000
-                        drop_privileges: true
                         experimental_features: false
                         max_upload_size: 10485760
                         auth_context_max_payload_size: 65536
