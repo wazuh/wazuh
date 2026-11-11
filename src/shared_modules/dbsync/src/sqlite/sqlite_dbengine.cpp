@@ -693,12 +693,11 @@ void SQLiteDBEngine::initialize(const std::string&              path,
                 for (size_t i = dbVersion - 1; i < upgradeStatements.size(); ++i)
                 {
                     auto transaction = m_sqliteFactory->createTransaction(m_sqliteConnection);
-                    const auto stmt {m_sqliteFactory->createStatement(m_sqliteConnection, upgradeStatements[i])};
-
-                    if (SQLITE_DONE != stmt->step())
-                    {
-                        throw dbengine_error {STEP_ERROR_UPDATE_STMT};
-                    }
+                    // sqlite3_exec, so one entry may hold a whole script: a schema change that
+                    // takes several statements lands as one step. Such a script must not open a
+                    // transaction of its own, since this one is already open. A failure throws
+                    // sqlite_error with SQLite's own code, which the handlers below classify.
+                    m_sqliteConnection->execute(upgradeStatements[i]);
 
                     // Inside the transaction, so a restart between the upgrade and the version bump
                     // cannot leave an upgraded schema at the old version, which would run the same
@@ -709,29 +708,19 @@ void SQLiteDBEngine::initialize(const std::string&              path,
             }
             catch (const SQLite::sqlite_error& e)
             {
-                // Only a statement SQLite rejects (SQLITE_ERROR: no such column, no such table) means
-                // the schema is not the one the upgrade expects. A busy or locked database, a full
-                // disk or an I/O error is transient: rethrow it instead of deleting a database the
-                // next start can still upgrade. Masked, in case extended result codes are enabled.
-                if (SQLITE_ERROR != (e.id() & 0xff))
+                // A statement SQLite rejects (SQLITE_ERROR: no such column, no such table) means
+                // the schema is not the one the upgrade expects. A constraint failure also means
+                // the stored rows cannot fit the upgraded schema and will fail on every start.
+                // A busy or locked database, a full disk or an I/O error is transient: rethrow it
+                // instead of deleting a database the next start can still upgrade. Masked, in case
+                // extended result codes are enabled.
+                if (SQLITE_ERROR != (e.id() & 0xff) && SQLITE_CONSTRAINT != (e.id() & 0xff))
                 {
                     throw;
                 }
 
                 // A schema the upgrade cannot handle would fail the same way on every start. The
                 // database only holds what its owner collects again, so start over instead.
-                m_sqliteConnection.reset();
-                reCreateDbLambda();
-                m_recreateReason = "Database '" + path + "' could not be upgraded from version " +
-                                   std::to_string(dbVersion) + " and was created again: " + e.what();
-            }
-            catch (const dbengine_error& e)
-            {
-                if (STEP_ERROR_UPDATE_STMT.first != e.id())
-                {
-                    throw;
-                }
-
                 m_sqliteConnection.reset();
                 reCreateDbLambda();
                 m_recreateReason = "Database '" + path + "' could not be upgraded from version " +

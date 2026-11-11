@@ -7,6 +7,10 @@
 
 #include "container_baseline_fim.h"
 #include "container_baseline_fim_bridge.h"
+extern "C"
+{
+#include "container_baseline_host_api.h"
+}
 #include "db.h"
 #include "container_event_drain.hpp"
 #include "rt_engine.h"
@@ -16,6 +20,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <functional>
 #include <future>
 #include <mutex>
 #include <cstdarg>
@@ -28,12 +33,21 @@
 extern "C" void container_reporting_test_host(int limit);
 extern "C" void container_reporting_test_row_limit(int limit);
 
+/* Defined in container_baseline_fim.cpp under WAZUH_UNIT_TESTING: the drain's own
+ * reconcile handler, which has internal linkage there. */
+void fim_container_reconcile_batch_for_testing(const fim_container_events::ReconcileRequest& request);
+
 #include "container_list_refresh.hpp"
 
 namespace
 {
     std::map<std::string, bool> admission;
+
+    /* Run inside the wrapped walk, while fim_run_container_baseline() holds the
+     * transaction lock. Only AReportedRemovalWaitsForAWalkHoldingTheLock sets it. */
+    std::function<void()> inside_walk;
     std::map<std::string, std::vector<std::string>> files;
+    std::map<std::string, std::string> contexts;
     std::vector<std::pair<std::string, int>> persisted;
     std::vector<std::string> warnings;
     bool listed = false;
@@ -53,11 +67,14 @@ namespace
     bool waitFor(const std::function<bool()>& ready, std::chrono::milliseconds timeout)
     {
         const auto deadline = std::chrono::steady_clock::now() + timeout;
+
         while (!ready())
         {
             if (std::chrono::steady_clock::now() >= deadline) return false;
+
             std::this_thread::sleep_for(std::chrono::milliseconds {10});
         }
+
         return true;
     }
 
@@ -106,6 +123,15 @@ namespace
      * assumed. */
     bool distinct_ids_malformed = false;
     std::size_t persist_attempts = 0;
+
+    /* Makes that query fail outright, which is a different thing from answering
+     * a malformed shape: the sweep then knows nothing about which containers
+     * hold rows. */
+    bool fail_distinct_ids = false;
+
+    /* Makes container b's sweep transaction fail to open, so its rows survive a
+     * sweep that believed it removed them. */
+    bool fail_txn_start = false;
     int file_size = 1;
 
     class ContainerReportingTest : public testing::Test
@@ -115,12 +141,14 @@ namespace
             {
                 admission = {{"a", true}, {"b", true}};
                 files.clear();
+                contexts.clear();
                 persisted.clear();
                 warnings.clear();
                 listed = false;
                 connector_available = true;
                 pending_replies = 0;
                 baseline_walks = 0;
+                inside_walk = {};
                 admission_list_requests = 0;
                 resolver_list_requests = 0;
                 drain_reply_provider = {};
@@ -138,6 +166,8 @@ namespace
                 distinct_id_queries = 0;
                 distinct_ids_malformed = false;
                 persist_attempts = 0;
+                fail_distinct_ids = false;
+                fail_txn_start = false;
                 file_size = 1;
                 fim_db_init(FIM_DB_MEMORY, [](modules_log_level_t, const char*) {}, 1000, 0, nullptr);
                 fim_container_doc_budget_release("a");
@@ -191,6 +221,8 @@ extern "C" cJSON* __wrap_fim_db_get_distinct_container_ids(const char* table_nam
 {
     ++distinct_id_queries;
 
+    if (fail_distinct_ids) return nullptr;
+
     if (distinct_ids_malformed)
     {
         /* Member VALUES that are real container ids, because
@@ -226,23 +258,27 @@ extern "C" ssize_t __real_recv(int fd, void* buffer, size_t length, int flags);
 extern "C" int __wrap_connect(int fd, const sockaddr* address, socklen_t length)
 {
     drain_reply_fd = -1;
+
     if (address->sa_family == AF_UNIX && drain_reply_provider
-        && drain_socket_path == reinterpret_cast<const sockaddr_un*>(address)->sun_path)
+            && drain_socket_path == reinterpret_cast<const sockaddr_un*>(address)->sun_path)
     {
         drain_list_reply = drain_reply_provider();
         ++resolver_list_requests;
+
         if (drain_list_reply.empty())
         {
             errno = ECONNREFUSED;
             return -1;
         }
     }
+
     if (address->sa_family == AF_UNIX && !drain_list_reply.empty()
-        && drain_socket_path == reinterpret_cast<const sockaddr_un*>(address)->sun_path)
+            && drain_socket_path == reinterpret_cast<const sockaddr_un*>(address)->sun_path)
     {
         drain_reply_fd = fd;
         return 0;
     }
+
     return __real_connect(fd, address, length);
 }
 
@@ -254,19 +290,25 @@ extern "C" ssize_t __wrap_send(int fd, const void* buffer, size_t length, int fl
 extern "C" ssize_t __wrap_recv(int fd, void* buffer, size_t length, int flags)
 {
     if (fd != drain_reply_fd) return __real_recv(fd, buffer, length, flags);
+
     const auto count = std::min(length, drain_list_reply.size());
     std::memcpy(buffer, drain_list_reply.data(), count);
     drain_list_reply.erase(0, count);
+
     if (on_listing_reply)
     {
         auto callback = std::move(on_listing_reply);
         callback();
     }
+
     return static_cast<ssize_t>(count);
 }
 
 // Deterministic degraded startup, independent of the host's BPF installation.
-extern "C" rt_handle_t __wrap_rt_open(const struct rt_filter*) { return nullptr; }
+extern "C" rt_handle_t __wrap_rt_open(const struct rt_filter*)
+{
+    return nullptr;
+}
 
 extern "C" void __wrap__mdebug1(const char*, int, const char*, const char*, ...) {}
 extern "C" void __wrap__minfo(const char*, int, const char*, const char*, ...) {}
@@ -291,6 +333,15 @@ extern "C" int __wrap_fim_collect_container_monitored_paths(cb_monitored_path_t*
     return 0;
 }
 
+extern "C" TXN_HANDLE __real_fim_db_transaction_start(const char* table, result_callback_t callback, void* ctx);
+extern "C" TXN_HANDLE __wrap_fim_db_transaction_start(const char* table, result_callback_t callback, void* ctx)
+{
+    if (fail_txn_start && std::string(table).find("\"b\"") != std::string::npos)
+        return nullptr;
+
+    return __real_fim_db_transaction_start(table, callback, ctx);
+}
+
 extern "C" void __wrap_fim_free_container_monitored_paths(cb_monitored_path_t*) {}
 extern "C" int __wrap_fim_container_baseline_available(const char*)
 {
@@ -304,7 +355,7 @@ extern "C" int __wrap_cbaseline_list_containers_ex(const char*,
 {
     ++admission_list_requests;
     EXPECT_TRUE(!listed || fim_container_admission_pending())
-        << "reuse the warm-up-guarded listing outside admission retries";
+            << "reuse the warm-up-guarded listing outside admission retries";
     listed = true;
 
     /* A listing that failed says nothing about its own coverage, matching the
@@ -357,6 +408,7 @@ extern "C" int __wrap_cbaseline_list_containers_ex(const char*,
         auto callback = std::move(on_listing_reply);
         callback();
     }
+
     return static_cast<int>(admission.size());
 }
 
@@ -364,6 +416,7 @@ extern "C" int __wrap_cbaseline_run_fim_dbsync(const char*,
                                                const cb_monitored_path_t*,
                                                int,
                                                cb_dbsync_row_sink_t sink,
+                                               cb_container_context_sink_t context_sink,
                                                cb_container_status_sink_t status,
                                                cb_rate_limit_fn,
                                                void* ctx)
@@ -373,6 +426,11 @@ extern "C" int __wrap_cbaseline_run_fim_dbsync(const char*,
 
     for (const auto& [id, paths] : files)
     {
+        auto [context, inserted] = contexts.try_emplace(
+        id, nlohmann::json{{"container", {{"id", id}}}}.dump());
+        static_cast<void>(inserted);
+        context_sink(id.c_str(), context->second.c_str(), ctx);
+
         for (const auto& path : paths)
         {
             const nlohmann::json row = {{"container_id", id}, {"path", path}, {"version", 1}, {"size", file_size}};
@@ -383,6 +441,9 @@ extern "C" int __wrap_cbaseline_run_fim_dbsync(const char*,
         result.container_id = id.c_str();
         status(&result, ctx);
     }
+
+    // After the rows, so the walk has done real work while it blocks.
+    if (inside_walk) inside_walk();
 
     return static_cast<int>(files.size());
 }
@@ -444,9 +505,10 @@ TEST_F(ContainerReportingTest, ASilentSourcesOmittedContainersKeepTheirStoredRep
     EXPECT_NE(warnings[0].find("stale-container cleanup is not running"), std::string::npos);
 
     const nlohmann::json withheld = {{"container_id", "c"}, {"path", "/etc/three"},
-        {"version", 1}, {"sync", 0}, {"size", 1}};
+        {"version", 1}, {"sync", 0}, {"size", 1}
+    };
     EXPECT_EQ(fim_persist_baseline_row("c:/etc/three", OPERATION_MODIFY, "wazuh-states-fim-files",
-                                      withheld.dump().c_str(), 1), 0)
+                                       cJSON_Parse(withheld.dump().c_str()), 1), 0)
             << "unknown admission must not promote an event-driven update either";
     EXPECT_EQ(persisted.size(), 1u);
 
@@ -805,7 +867,7 @@ TEST(ContainerListRefresh, AnUnkeyedContainerThatDisappearsLeavesTheAdmissionVie
     delta.admitted = {"a", "stuck"};
 
     const auto plan = planListRefresh(
-        delta, {{"a", true}, {"gone", true}, {"stuck", true}}, {}, /*previousUnkeyed=*/{"gone", "stuck"});
+    delta, {{"a", true}, {"gone", true}, {"stuck", true}}, {}, /*previousUnkeyed=*/ {"gone", "stuck"});
 
     ASSERT_TRUE(plan.act);
     EXPECT_EQ(plan.admissionView, (std::map<std::string, bool> {{"a", true}, {"stuck", true}}));
@@ -840,7 +902,7 @@ TEST(ContainerListRefresh, AnUnkeyedContainerThatGetsAKeyStaysInTheView)
     delta.admitted = {"late"};
     delta.events = {keyed};
 
-    const auto plan = planListRefresh(delta, {{"late", true}}, {}, /*previousUnkeyed=*/{"late"});
+    const auto plan = planListRefresh(delta, {{"late", true}}, {}, /*previousUnkeyed=*/ {"late"});
 
     ASSERT_TRUE(plan.act);
     EXPECT_EQ(plan.admissionView.count("late"), 1U) << "keyed, not gone -- and the reply says which";
@@ -862,7 +924,7 @@ TEST(ContainerListRefresh, AReplyThatCannotEnumerateRetiresNothingAndKeepsTheUnk
     delta.complete = false;
     delta.unkeyedKnown = false; // an older container_instances
 
-    const auto plan = planListRefresh(delta, {{"stuck", true}}, {}, /*previousUnkeyed=*/{"stuck"});
+    const auto plan = planListRefresh(delta, {{"stuck", true}}, {}, /*previousUnkeyed=*/ {"stuck"});
 
     ASSERT_TRUE(plan.act);
     ASSERT_FALSE(plan.enumerated);
@@ -945,7 +1007,7 @@ TEST(ContainerListRefresh, AnIncompleteResyncStillWithdrawsContainersThatHaveGon
 
     EXPECT_EQ(kinds.count("stuck"), 0U)
             << "a container the resolver cannot key has not gone anywhere; withdrawing it "
-               "turns its next event into an escalation";
+            "turns its next event into an escalation";
     ASSERT_EQ(kinds.count("alive"), 1U);
     EXPECT_EQ(kinds["alive"], CgroupDeltaEvent::Kind::changed);
 }
@@ -1208,14 +1270,17 @@ TEST_F(ContainerReportingTest, AnUnadmittedContainersModificationNeverDemotesARe
     // and updateContainerReporting() retracts by selecting sync=1 -- so the row
     // would drop out of the only query that could ever withdraw it.
     const char* reported = R"({"container_id":"b","path":"/etc/one","version":1,"size":1,"sync":1})";
-    EXPECT_EQ(fim_persist_baseline_row("b:/etc/one", OPERATION_MODIFY, "wazuh-states-fim-files", reported, 2),
+    EXPECT_EQ(fim_persist_baseline_row("b:/etc/one", OPERATION_MODIFY, "wazuh-states-fim-files",
+                                       cJSON_Parse(reported), 2),
               FIM_CONTAINER_SYNC_UNCHANGED)
             << "the stored column must be left for the retraction to find";
     EXPECT_TRUE(persisted.empty()) << "a withheld container still reports nothing";
 
     // A row the manager never had is plainly withheld, exactly as before.
     const char* unreported = R"({"container_id":"b","path":"/etc/two","version":1,"size":1,"sync":0})";
-    EXPECT_EQ(fim_persist_baseline_row("b:/etc/two", OPERATION_MODIFY, "wazuh-states-fim-files", unreported, 2), 0)
+    EXPECT_EQ(
+        fim_persist_baseline_row("b:/etc/two", OPERATION_MODIFY, "wazuh-states-fim-files", cJSON_Parse(unreported), 2),
+        0)
             << "nothing is owed for a row the manager never saw";
     EXPECT_TRUE(persisted.empty());
 }
@@ -1629,7 +1694,9 @@ TEST_F(ContainerReportingTest, AFullBudgetIsNotOfferedItsWithheldRowsAgain)
     // Two reported, one over the ceiling.
     int reported = 0;
 
-    for (const char* path : {"/etc/one", "/etc/two", "/etc/three"})
+    for (const char* path :
+            {"/etc/one", "/etc/two", "/etc/three"
+            })
     {
         reported += (syncFlag("a", path) == 1) ? 1 : 0;
     }
@@ -1810,7 +1877,8 @@ TEST_F(ContainerReportingTest, AnUnreachableConnectorDoesNotLeaveTheNodeHeldForE
     config.connector_socket_path = std::string(directory) + "/connector";
     ContainerEventDrainTestPeer::initialize(config);
     drain_socket_path = config.connector_socket_path;
-    const std::string reply = R"({"status":"ok","containers":[{"container_id":"a","cgroup_id":"11","synced":true},{"container_id":"b","cgroup_id":"12","synced":false}],"admitted":["a"],"known_unkeyed":[]})";
+    const std::string reply =
+        R"({"status":"ok","containers":[{"container_id":"a","cgroup_id":"11","synced":true},{"container_id":"b","cgroup_id":"12","synced":false}],"admitted":["a"],"known_unkeyed":[]})";
     ContainerEventDrain::instance().release();
     drain_list_reply = reply + "\n";
     ContainerEventDrainTestPeer::refresh();
@@ -1890,7 +1958,9 @@ TEST_F(ContainerReportingTest, TheAdmissionListingDoesNotHoldTheRecoveryTransact
     entered.get_future().wait();
     const bool acquired = fim_container_state_trylock();
     EXPECT_TRUE(acquired) << "recovery must not wait behind the listing RPC";
+
     if (acquired) fim_container_state_unlock();
+
     reply.set_value();
     baseline.get();
 }
@@ -1899,7 +1969,7 @@ TEST_F(ContainerReportingTest, AnEngineFailureStillWarnsThatChangesWillNotBeDete
 {
     fim_container_events_start();
     fim_container_events_stop();
-    EXPECT_EQ(std::count_if(warnings.begin(), warnings.end(), [](const auto& warning)
+    EXPECT_EQ(std::count_if(warnings.begin(), warnings.end(), [](const auto & warning)
     {
         return warning.find("changes will NOT be detected after the initial baseline") != std::string::npos;
     }), 1);
@@ -1998,7 +2068,7 @@ TEST_F(ContainerReportingTest, AdmissionPollingContinuesBeyondTheOldDeadlineAndT
     ASSERT_TRUE(waitFor([&] { return resolver_list_requests.load() > beforeOutage + 1; }, std::chrono::seconds {2}));
     EXPECT_EQ(fim_container_admission_pending(), 1);
     ContainerEventDrainTestPeer::advanceAdmissionTime(fim_container_events::kConsumerOutageBudget
-                                                    + std::chrono::milliseconds {1});
+                                                      + std::chrono::milliseconds {1});
     ASSERT_TRUE(waitFor([] { return !fim_container_admission_pending(); }, std::chrono::seconds {2}));
     fim_container_events_stop_admission();
     EXPECT_EQ(syncFlag("a", "/etc/one"), 1);
@@ -2294,12 +2364,12 @@ TEST(ContainerListRefresh, ASilentSourceAllowsNamedVerdictsWithoutAuthorisingAbs
     delta.admittedKnown = true;
     delta.containers = {named};
     const auto plan = planListRefresh(delta, {{"a", true}, {"silent", true}, {"withheld", false}},
-                                     {"a", "silent", "withheld"});
+    {"a", "silent", "withheld"});
 
     EXPECT_FALSE(plan.enumerated);
     EXPECT_FALSE(plan.installWholeList);
     EXPECT_EQ(plan.admissionView, (std::map<std::string, bool>
-                                  {{"a", false}, {"silent", true}, {"withheld", false}}));
+    {{"a", false}, {"silent", true}, {"withheld", false}}));
     ASSERT_EQ(plan.events.size(), 1u);
     EXPECT_NE(plan.events[0].kind, fim_container_events::CgroupDeltaEvent::Kind::removed);
     EXPECT_EQ(decideAdmissionPublish(true, false, true, plan.enumerated, delta.sourcesPending),
@@ -2310,4 +2380,259 @@ TEST(ContainerListRefresh, ASilentSourceAllowsNamedVerdictsWithoutAuthorisingAbs
               AdmissionPublish::defer) << "source readiness does not release the startup walk";
     EXPECT_EQ(decideAdmissionPublish(true, false, true, plan.enumerated), AdmissionPublish::defer)
             << "an old connector still cannot authorise installation";
+}
+
+TEST_F(ContainerReportingTest, ContextIsPreservedAndUpdatedAcrossReconciles)
+{
+    files["a"] = {"/etc/one"};
+    fim_run_container_baseline();
+    cJSON* block = fim_db_get_container_context("a");
+    ASSERT_NE(nullptr, block);
+    EXPECT_STREQ("a", cJSON_GetStringValue(cJSON_GetObjectItem(block, "id")));
+    cJSON_Delete(block);
+
+    listed = false;
+    fim_run_container_baseline();
+    block = fim_db_get_container_context("a");
+    ASSERT_NE(nullptr, block);
+    EXPECT_STREQ("a", cJSON_GetStringValue(cJSON_GetObjectItem(block, "id")));
+    cJSON_Delete(block);
+
+    contexts["a"] = R"({"container":{"id":"a","labels":{"revision":"2"}}})";
+    listed = false;
+    fim_run_container_baseline();
+    block = fim_db_get_container_context("a");
+    ASSERT_NE(nullptr, block);
+    const cJSON* labels = cJSON_GetObjectItem(block, "labels");
+    EXPECT_STREQ("2", cJSON_GetStringValue(cJSON_GetObjectItem(labels, "revision")));
+    cJSON_Delete(block);
+}
+
+namespace
+{
+    bool warned(const char* fragment)
+    {
+        for (const auto& warning : warnings)
+        {
+            if (warning.find(fragment) != std::string::npos)
+                return true;
+        }
+
+        return false;
+    }
+
+    bool hasContext(const char* container)
+    {
+        fim_db_clear_container_contexts();
+        cJSON* block = fim_db_get_container_context(container);
+        const bool present = block != nullptr;
+        cJSON_Delete(block);
+        return present;
+    }
+} // namespace
+
+TEST_F(ContainerReportingTest, ScheduledSweepRemovesAnAbsentContainersRowsAndContext)
+{
+    files = {{"a", {"/etc/one"}}, {"b", {"/etc/one"}}};
+    fim_run_container_baseline();
+    ASSERT_EQ(syncFlag("b", "/etc/one"), 1);
+    ASSERT_TRUE(hasContext("b"));
+
+    admission.erase("b");
+    files.erase("b");
+    listed = false;
+    fim_container_sweep_absent();
+
+    EXPECT_EQ(fim_db_count_container_rows("b", nullptr), 0);
+    EXPECT_FALSE(hasContext("b"));
+    EXPECT_EQ(syncFlag("a", "/etc/one"), 1);
+    EXPECT_TRUE(hasContext("a"));
+}
+
+TEST_F(ContainerReportingTest, ScheduledSweepKeepsAllRowsAndContextsWhenTheConnectorIsUnreachable)
+{
+    files = {{"a", {"/etc/one"}}, {"b", {"/etc/one"}}};
+    fim_run_container_baseline();
+    ASSERT_EQ(syncFlag("a", "/etc/one"), 1);
+    ASSERT_EQ(syncFlag("b", "/etc/one"), 1);
+    ASSERT_TRUE(hasContext("a"));
+    ASSERT_TRUE(hasContext("b"));
+
+    connector_available = false;
+    admission.clear();
+    files.clear();
+    listed = false;
+    persisted.clear();
+    fim_container_sweep_absent();
+
+    EXPECT_EQ(syncFlag("a", "/etc/one"), 1);
+    EXPECT_EQ(syncFlag("b", "/etc/one"), 1);
+    EXPECT_TRUE(hasContext("a"));
+    EXPECT_TRUE(hasContext("b"));
+    EXPECT_TRUE(persisted.empty());
+}
+
+TEST_F(ContainerReportingTest, ScheduledSweepKeepsListedContainersIncludingStoppedOnes)
+{
+    files = {{"a", {"/etc/one"}}, {"b", {"/etc/one"}}};
+    fim_run_container_baseline();
+    ASSERT_EQ(syncFlag("a", "/etc/one"), 1);
+    ASSERT_EQ(syncFlag("b", "/etc/one"), 1);
+    ASSERT_TRUE(hasContext("a"));
+    ASSERT_TRUE(hasContext("b"));
+
+    // A stopped container produces no walk rows but is still in the runtime's list.
+    files.erase("b");
+    listed = false;
+    persisted.clear();
+    fim_container_sweep_absent();
+
+    EXPECT_EQ(syncFlag("a", "/etc/one"), 1);
+    EXPECT_EQ(syncFlag("b", "/etc/one"), 1);
+    EXPECT_TRUE(hasContext("a"));
+    EXPECT_TRUE(hasContext("b"));
+    EXPECT_TRUE(persisted.empty());
+}
+
+TEST_F(ContainerReportingTest, AReportedRemovalWaitsForAWalkHoldingTheLock)
+{
+    // The one writer of container rows that used to run unserialised. A removal
+    // sweep racing a walk of the same container could delete that walk's rows,
+    // see none remaining, release the budget and drop the context -- and then the
+    // walk's own transaction re-inserted rows with no context to describe them.
+    //
+    // Proven by blocking inside the walk, which holds the transaction lock, and
+    // showing the removal cannot finish until the walk lets go.
+    files = {{"a", {"/etc/one"}}};
+
+    std::mutex mutex;
+    std::condition_variable cv;
+    bool walkParked {false};
+    bool releaseWalk {false};
+    bool sweepEntered {false};
+    bool sweepReturned {false};
+
+    inside_walk = [&]
+    {
+        std::unique_lock<std::mutex> lock {mutex};
+        walkParked = true;
+        cv.notify_all();
+        cv.wait(lock, [&] { return releaseWalk; });
+    };
+
+    std::thread walk {[] { fim_run_container_baseline(); }};
+
+    {
+        std::unique_lock<std::mutex> lock {mutex};
+        ASSERT_TRUE(cv.wait_for(lock, std::chrono::seconds(10), [&] { return walkParked; }))
+                << "the walk never reached the hook";
+    }
+
+    std::thread removal {[&]
+        {
+            {
+                std::lock_guard<std::mutex> lock {mutex};
+                sweepEntered = true;
+            }
+            cv.notify_all();
+
+            fim_container_events::ReconcileRequest request;
+            request.mode = fim_container_events::ReconcileMode::containerGone;
+            request.container_id = "a";
+            fim_container_reconcile_batch_for_testing(request);
+
+            {
+                std::lock_guard<std::mutex> lock {mutex};
+                sweepReturned = true;
+            }
+            cv.notify_all();
+        }};
+
+    {
+        std::unique_lock<std::mutex> lock {mutex};
+        ASSERT_TRUE(cv.wait_for(lock, std::chrono::seconds(10), [&] { return sweepEntered; }))
+                << "the removal thread never started";
+
+        // It must still be blocked on the transaction lock. Without it the sweep
+        // runs to completion here, inside the walk, which is the race itself.
+        EXPECT_FALSE(cv.wait_for(lock, std::chrono::milliseconds(500), [&] { return sweepReturned; }))
+                << "the removal swept while a walk held the transaction lock";
+
+        releaseWalk = true;
+    }
+
+    cv.notify_all();
+    walk.join();
+
+    {
+        std::unique_lock<std::mutex> lock {mutex};
+        EXPECT_TRUE(cv.wait_for(lock, std::chrono::seconds(10), [&] { return sweepReturned; }))
+                << "the removal never ran once the walk released the lock";
+    }
+
+    removal.join();
+    inside_walk = {};
+
+    // And it did sweep: the rows and the context are gone, not merely deferred.
+    EXPECT_EQ(fim_db_count_container_rows("a", nullptr), 0);
+    EXPECT_FALSE(hasContext("a"));
+}
+
+TEST_F(ContainerReportingTest, UnreadableContainerIdsSkipThePruneToo)
+{
+    files = {{"a", {"/etc/one"}}, {"b", {"/etc/one"}}};
+    fim_run_container_baseline();
+    ASSERT_EQ(fim_db_set_container_context("b", R"({"container":{"id":"b"}})"), FIMDB_OK);
+
+    // b leaves, but its rows cannot be enumerated: pruning its context against
+    // the live list would strand rows whose DELETEs need it.
+    admission.erase("b");
+    files.erase("b");
+    fail_distinct_ids = true;
+    listed = false;
+    fim_run_container_baseline();
+
+    EXPECT_TRUE(warned("could not read container ids"));
+    EXPECT_EQ(fim_db_count_container_rows("b", nullptr), 1);
+    EXPECT_TRUE(hasContext("b"));
+
+    fail_distinct_ids = false;
+    listed = false;
+    fim_run_container_baseline();
+    EXPECT_EQ(fim_db_count_container_rows("b", nullptr), 0);
+    EXPECT_FALSE(hasContext("b"));
+}
+
+TEST_F(ContainerReportingTest, FailedSweepKeepsTheContextUntilARetrySucceeds)
+{
+    files = {{"a", {"/etc/one"}}, {"b", {"/etc/one"}}};
+    fim_run_container_baseline();
+    ASSERT_EQ(fim_db_set_container_context("b", R"({"container":{"id":"b"}})"), FIMDB_OK);
+
+    admission.erase("b");
+    files.erase("b");
+    fail_txn_start = true;
+    listed = false;
+    fim_run_container_baseline();
+
+    EXPECT_TRUE(warned("could not confirm the rows of removed container 'b'"));
+    EXPECT_EQ(fim_db_count_container_rows("b", nullptr), 1);
+    EXPECT_TRUE(hasContext("b")) << "the prune must keep an unswept container's context";
+
+    fail_txn_start = false;
+    persisted.clear();
+    listed = false;
+    fim_run_container_baseline();
+    EXPECT_EQ(fim_db_count_container_rows("b", nullptr), 0);
+    EXPECT_FALSE(hasContext("b"));
+    EXPECT_TRUE(persisted.empty()) << "the departure already retracted b's document";
+}
+
+TEST_F(ContainerReportingTest, AnUnregisteredHostStillReleasesTheRow)
+{
+    // The row is owned by fim_persist_baseline_row on every path; this one
+    // leaked it. LeakSanitizer or Valgrind is what fails on a regression.
+    fim_container_baseline_set_host_api(nullptr);
+    EXPECT_EQ(fim_persist_baseline_row("a:/etc/one", OPERATION_CREATE, "idx", cJSON_CreateObject(), 1), -1);
+    EXPECT_TRUE(persisted.empty());
 }

@@ -550,6 +550,10 @@ TEST(CgroupContainerMapTest, ApplyDeltaRemovedWithdrawsTheCgroup)
     ASSERT_EQ(1u, delta.removed.size());
     EXPECT_EQ(20u, delta.removed.front()) << "the kernel must stop admitting a cgroup that is gone";
     EXPECT_EQ(CgroupClass::unknown, map.classify(20).klass);
+
+    // An explicit removal is the ONE case that authorises deleting stored rows.
+    ASSERT_EQ(1u, delta.gone.size());
+    EXPECT_EQ("a", delta.gone.front());
 }
 
 TEST(CgroupContainerMapTest, AStoppedContainerLosesItsCgroupButIsNotReAdded)
@@ -567,6 +571,12 @@ TEST(CgroupContainerMapTest, AStoppedContainerLosesItsCgroupButIsNotReAdded)
     EXPECT_EQ(30u, delta.removed.front());
     EXPECT_TRUE(delta.added.empty()) << "a stop is not a discovery";
     EXPECT_EQ(CgroupClass::unknown, map.classify(30).klass);
+
+    // THE assertion that keeps a stopped container's baseline alive. A stop and
+    // a removal both land in `removed` because both lose the key, but only a
+    // removal may reach `gone`, which the consumer deletes rows off. Collapsing
+    // the two would erase the file state of every container anyone stops.
+    EXPECT_TRUE(delta.gone.empty()) << "a stopped container was reported as gone";
 }
 
 TEST(CgroupContainerMapTest, ARestartSwapsTheCgroupAndCountsAsNewlyAdded)
@@ -587,6 +597,7 @@ TEST(CgroupContainerMapTest, ARestartSwapsTheCgroupAndCountsAsNewlyAdded)
 
     EXPECT_EQ(CgroupClass::unknown, map.classify(40).klass);
     EXPECT_EQ("a", map.classify(41).container_id);
+    EXPECT_TRUE(delta.gone.empty()) << "a restart is not a removal";
 }
 
 TEST(CgroupContainerMapTest, AChangeThatKeepsTheSameCgroupMovesNothing)
@@ -601,6 +612,7 @@ TEST(CgroupContainerMapTest, AChangeThatKeepsTheSameCgroupMovesNothing)
 
     EXPECT_TRUE(delta.added.empty());
     EXPECT_TRUE(delta.removed.empty());
+    EXPECT_TRUE(delta.gone.empty());
     EXPECT_EQ("a", map.classify(50).container_id);
 }
 
@@ -643,4 +655,24 @@ TEST(CgroupContainerMapTest, ApplyDeltaConvergesToTheSameMapAsInstall)
     }
 
     EXPECT_EQ(viaInstall.containerCount(), viaDelta.containerCount());
+}
+
+TEST(CgroupContainerMapTest, InstallNeverReportsAContainerAsGone)
+{
+    // install() replaces the whole map from a snapshot, so a container that was
+    // present before and is absent now has simply dropped out of one list. That
+    // is not a statement that it was removed: the connector may have failed to
+    // list it for a cycle, and a resync carries no removal events at all.
+    //
+    // Deleting rows off an absence like this is the failure the whole-node
+    // sweep exists to do carefully, against a list it has confirmed it could
+    // obtain. `gone` must stay empty here so nobody can shortcut it.
+    CgroupContainerMap map;
+    map.install({{60, "a"}, {61, "b"}});
+
+    const auto delta = map.install({{60, "a"}});
+
+    ASSERT_EQ(1u, delta.removed.size());
+    EXPECT_EQ(61u, delta.removed.front()) << "b's cgroup must leave the kernel filter";
+    EXPECT_TRUE(delta.gone.empty()) << "absence from a snapshot is not a removal";
 }

@@ -59,7 +59,10 @@ namespace fim_container_events
     /* CONSUMER OUTAGE policy: tolerate brief connector failures before the first
      * verdict, but never hold a node indefinitely when the connector is down.
      * This is independent of the producer's admission settlement bound. */
-    constexpr auto kConsumerOutageBudget = std::chrono::seconds {60};
+    constexpr auto kConsumerOutageBudget = std::chrono::seconds
+    {
+        60
+    };
 
     /* Both listing writers call this under the container state lock, including
      * successful pending replies. Returns true only when it releases a hold. */
@@ -85,6 +88,27 @@ namespace fim_container_events
 
         int poll_timeout_ms{200};
         int resolver_interval_ms{5000};
+
+        /* How often the whole-node reconciliation pass runs: list the containers
+         * that exist, refresh the set allowed to report from that list, and delete
+         * the rows and contexts of the ones that do not.
+         *
+         * A floor, not the mechanism. A container the connector reports removed is
+         * swept on the next list refresh (resolver_interval_ms above, or sooner on
+         * a notification); this covers only what no notification can report — a
+         * removal that happened across a resync, since a full-list reply carries no
+         * removal events, and a container the module never learned about (D19).
+         *
+         * Not an XML option, unlike syscollector's container_baseline_interval,
+         * because there is no tradeoff to expose: this pass collects nothing, reads
+         * no files and walks nothing. It is one IPC round trip and one scan of the
+         * stored container ids. Configurability is also how syscollector acquired
+         * the trap described in container_sweep_schedule.hpp.
+         *
+         * 300000 ms is ~5x the connector's 60 s removal grace, so anything the
+         * notification missed resolves within a small multiple of the window that
+         * authorised the removal. */
+        int sweep_interval_ms{300000};
 
         /* D16's settle bound (12-blocking-decisions.md): how long a staged path is
          * held before it is re-read, when the pid that triggered it has not exited

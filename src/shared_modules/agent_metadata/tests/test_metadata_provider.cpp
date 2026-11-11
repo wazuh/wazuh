@@ -363,9 +363,12 @@ TEST_F(MetadataProviderTest, ReadsNeverMixTwoConcurrentRecords)
     std::atomic<bool> stop {false};
     std::atomic<int> reads {0};
     std::atomic<int> mixed {0};
+    std::atomic<int> started {0};
 
     auto reader = [&]()
     {
+        started++;
+
         while (!stop.load())
         {
             agent_metadata_t copy {};
@@ -396,6 +399,14 @@ TEST_F(MetadataProviderTest, ReadsNeverMixTwoConcurrentRecords)
 
     std::thread reader1(reader);
     std::thread reader2(reader);
+
+    // Both readers must be in their loop before the writer starts, or a writer
+    // that outruns thread creation ends the test with no read even attempted --
+    // which says nothing about whether a read can be torn.
+    while (started.load() < 2)
+    {
+        std::this_thread::yield();
+    }
 
     for (int i = 0; i < 5000; ++i)
     {
