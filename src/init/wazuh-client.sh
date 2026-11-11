@@ -248,6 +248,80 @@ is_systemd() {
     [ -d "${SYSTEMD_RUNTIME_DIR}" ]
 }
 
+# Whether this call has to go through wazuh-agent.service: systemd runs this installation's agent
+# and the call is not one of the unit's own Exec lines (see systemd_redirect).
+systemd_supervises_call()
+{
+    [ "X${WAZUH_CONTROL_SKIP_SYSTEMD}" = "X1" ] && return 1
+    is_systemd || return 1
+    command -v systemctl > /dev/null 2>&1 || return 1
+    [ -r "${SELF_CGROUP}" ] || return 1
+    unit_runs_this_installation || return 1
+    ! called_by_unit_exec_line
+}
+
+# Whether the unit's PIDFile= is this installation's, compared through their real directories so
+# that a symlinked installation path or a trailing slash still match.
+unit_runs_this_installation()
+{
+    _ur_pidfile=$(systemctl show -p PIDFile "${SYSTEMD_UNIT}" 2>/dev/null | sed -n 's/^PIDFile=//p')
+    case "${_ur_pidfile}" in
+        */wazuh-agentd.pid) ;;
+        *) return 1 ;;
+    esac
+    _ur_unit_run=$(cd "$(dirname "${_ur_pidfile}")" 2>/dev/null && pwd -P)
+    [ -n "${_ur_unit_run}" ] || return 1
+    [ "X${_ur_unit_run}" = "X$(cd "${DIR}/var/run" 2>/dev/null && pwd -P)" ]
+}
+
+# Whether systemd runs this call for one of the unit's Exec lines: it sits in the unit's cgroup and
+# its pid, or its parent's, is the unit's ControlPID.
+called_by_unit_exec_line()
+{
+    grep -Eq '/wazuh-agent\.service(/|$)' "${SELF_CGROUP}" || return 1
+    _cu_control_pid=$(systemctl show -p ControlPID "${SYSTEMD_UNIT}" 2>/dev/null | sed -n 's/^ControlPID=//p')
+    case "${_cu_control_pid}" in
+        "$$"|"${PPID}") return 0 ;;
+    esac
+    return 1
+}
+
+# Waits up to SYSTEMD_SETTLE_TIMEOUT seconds while the unit is starting or reloading, and leaves
+# the state it ends in in UNIT_STATE.
+wait_for_unit_to_settle()
+{
+    UNIT_STATE=$(systemctl is-active "${SYSTEMD_UNIT}" 2>/dev/null)
+    case "${UNIT_STATE}" in
+        activating|reloading) ;;
+        *) return ;;
+    esac
+    echo "${SYSTEMD_UNIT} is ${UNIT_STATE}: waiting for it to finish."
+    _ws_deadline=`expr \`date +%s\` + ${SYSTEMD_SETTLE_TIMEOUT}`
+    while [ "`date +%s`" -lt "${_ws_deadline}" ]; do
+        sleep 1
+        UNIT_STATE=$(systemctl is-active "${SYSTEMD_UNIT}" 2>/dev/null)
+        case "${UNIT_STATE}" in
+            activating|reloading) ;;
+            *) return ;;
+        esac
+    done
+}
+
+# Run by start with the lock held. Between the unit's ExecStartPre, which releases the lock, and its
+# ExecStart, which takes it, a start here would bring the daemons up outside the unit: ExecStart
+# would find them running, systemd would refuse the PID file and ExecStopPost would stop the agent.
+# So while the unit is starting, this releases the lock, waits for the unit and takes the lock
+# again. Checked with the lock held, a start the unit begins afterwards waits for the lock in
+# ExecStartPre, which then stops what this run starts and lets ExecStart bring it up inside.
+wait_for_unit_start()
+{
+    systemd_supervises_call || return
+    [ "$(systemctl is-active "${SYSTEMD_UNIT}" 2>/dev/null)" = "activating" ] || return
+    unlock
+    wait_for_unit_to_settle
+    lock
+}
+
 # Hands stop, restart and reload to systemctl while systemd supervises the agent, and returns
 # otherwise. Run outside systemd, they take the daemons away from the unit: it tracks
 # wazuh-agentd through PIDFile=, so when this script stops it systemd runs ExecStop, which waits
@@ -276,50 +350,15 @@ is_systemd() {
 #   reload then starts the daemons that are down, as it does without systemd.
 # - a reload while the unit is stopping, which waits for this script's lock like before.
 # - a unit still starting or reloading after SYSTEMD_SETTLE_TIMEOUT seconds.
-# - start: on a running unit systemctl start does nothing, while this script still brings up a
-#   daemon that is down.
+# - start, which is never handed over: on a running unit systemctl start does nothing, while this
+#   script still brings up a daemon that is down. It only waits while the unit is starting (see
+#   wait_for_unit_start).
 # WAZUH_CONTROL_SKIP_SYSTEMD=1 keeps every action in this script.
 systemd_redirect()
 {
-    [ "X${WAZUH_CONTROL_SKIP_SYSTEMD}" = "X1" ] && return
-    is_systemd || return
-    command -v systemctl > /dev/null 2>&1 || return
-    [ -r "${SELF_CGROUP}" ] || return
-
-    # The unit's PIDFile= and this installation's, compared through their real directories so
-    # that a symlinked installation path or a trailing slash still match.
-    _sr_pidfile=$(systemctl show -p PIDFile "${SYSTEMD_UNIT}" 2>/dev/null | sed -n 's/^PIDFile=//p')
-    case "${_sr_pidfile}" in
-        */wazuh-agentd.pid) ;;
-        *) return ;;
-    esac
-    _sr_unit_run=$(cd "$(dirname "${_sr_pidfile}")" 2>/dev/null && pwd -P)
-    [ -n "${_sr_unit_run}" ] || return
-    [ "X${_sr_unit_run}" = "X$(cd "${DIR}/var/run" 2>/dev/null && pwd -P)" ] || return
-
-    if grep -Eq '/wazuh-agent\.service(/|$)' "${SELF_CGROUP}"; then
-        _sr_control_pid=$(systemctl show -p ControlPID "${SYSTEMD_UNIT}" 2>/dev/null | sed -n 's/^ControlPID=//p')
-        case "${_sr_control_pid}" in
-            "$$"|"${PPID}") return ;;
-        esac
-    fi
-
-    _sr_state=$(systemctl is-active "${SYSTEMD_UNIT}" 2>/dev/null)
-    case "${_sr_state}" in
-        activating|reloading)
-            echo "${SYSTEMD_UNIT} is ${_sr_state}: waiting for it to finish."
-            _sr_deadline=`expr \`date +%s\` + ${SYSTEMD_SETTLE_TIMEOUT}`
-            while [ "`date +%s`" -lt "${_sr_deadline}" ]; do
-                sleep 1
-                _sr_state=$(systemctl is-active "${SYSTEMD_UNIT}" 2>/dev/null)
-                case "${_sr_state}" in
-                    activating|reloading) ;;
-                    *) break ;;
-                esac
-            done
-            ;;
-    esac
-    case "${_sr_state}" in
+    systemd_supervises_call || return
+    wait_for_unit_to_settle
+    case "${UNIT_STATE}" in
         active) ;;
         deactivating) [ "$1" = "reload" ] && return ;;
         *) return ;;
@@ -627,6 +666,7 @@ start)
     testconfig
     check_folders
     lock
+    wait_for_unit_start
     start_service
     unlock
     ;;

@@ -509,8 +509,66 @@ check "restart with a configuration error keeps the daemons" "${before}" "$(pids
 new_tree sd_start
 systemd_host sd_start active "${SESSION_CGROUP}"
 check "start on an active unit runs in wazuh-control" "0" "$(control sd_start start)"
-check "start on an active unit does not call systemctl" "" "$(systemctl_calls sd_start)"
+check "start on an active unit only asks whose unit it is and whether it is starting" "${PROBE}" \
+    "$(systemctl_calls sd_start)"
 check "start on an active unit brings the daemons up" "${DAEMONS}" "$(running sd_start)"
+
+# A start while the unit is starting waits for it, without the lock: between ExecStartPre and
+# ExecStart it would otherwise bring the daemons up outside the unit, and the unit would fail.
+new_tree sd_start_wait
+systemd_host sd_start_wait activating "${SESSION_CGROUP}"
+control sd_start_wait start > /dev/null &
+waiter=$!
+sleep 1
+check "start while the unit is starting leaves the lock free while it waits" "" \
+    "$(ls -d "${WORK}/sd_start_wait/var/start-script-lock" 2>/dev/null)"
+wait "${waiter}"
+check "start while the unit is starting says it waits" "1" \
+    "$(grep -c '^wazuh-agent.service is activating: waiting for it to finish.$' "${WORK}/sd_start_wait/start.out")"
+check "start on a unit that stays starting still brings the daemons up" "${DAEMONS}" "$(running sd_start_wait)"
+drop_tree sd_start_wait
+
+# The race itself: while that start waits, the unit's ExecStart takes the lock and brings the daemons
+# up. The waiting start then finds them running and starts none of its own. The tree has one cgroup
+# file for every process, so it moves to the unit's once the first start has looked at it.
+new_tree sd_start_race
+systemd_host sd_start_race activating "${SESSION_CGROUP}"
+tree="${WORK}/sd_start_race"
+PATH="${tree}/stubbin:${PATH}" "${tree}/bin/wazuh-control" start > "${tree}/waiter.out" 2>&1 &
+waiter=$!
+sleep 1
+printf '%s\n' "${UNIT_CGROUP}" > "${tree}/cgroup"
+control_as_exec sd_start_race start self > /dev/null
+started="$(pids sd_start_race)"
+echo active > "${tree}/unit-state"
+wait "${waiter}"
+check "ExecStart during a waiting start brings the daemons up" "5" "$(grep -c '^Started ' "${tree}/start.out")"
+check "the waiting start then starts none of its own" "0 5" \
+    "$(grep -c '^Started ' "${tree}/waiter.out") $(grep -c 'already running' "${tree}/waiter.out")"
+check "the daemons ExecStart started keep running" "${started}" "$(pids sd_start_race)"
+drop_tree sd_start_race
+
+# The unit's own ExecStart runs while the unit is starting, and must not wait for itself.
+for who in self parent; do
+    new_tree sd_start_exec
+    systemd_host sd_start_exec activating "${UNIT_CGROUP}"
+    check "start from ExecStart (${who}) while the unit is starting runs at once" "0" \
+        "$(control_as_exec sd_start_exec start "${who}")"
+    check "start from ExecStart (${who}) does not ask the unit's state" "show -p PIDFile wazuh-agent.service
+show -p ControlPID wazuh-agent.service" "$(systemctl_calls sd_start_exec)"
+    check "start from ExecStart (${who}) brings the daemons up" "${DAEMONS}" "$(running sd_start_exec)"
+    drop_tree sd_start_exec
+done
+
+# A start that something the daemons launched runs inside the unit's cgroup waits like any other.
+new_tree sd_start_child
+systemd_host sd_start_child activating "${UNIT_CGROUP}"
+echo 1 > "${WORK}/sd_start_child/control-pid"
+echo active > "${WORK}/sd_start_child/unit-settle"
+control sd_start_child start > /dev/null
+check "start launched by a daemon while the unit is starting asks whether it is" "${PROBE_IN}
+is-active wazuh-agent.service" "$(systemctl_calls sd_start_child)"
+drop_tree sd_start_child
 
 # Inside the unit's cgroup, an active unit means the call comes from something the daemons
 # launched (an upgrade's installer): it goes to systemctl.
