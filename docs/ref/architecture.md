@@ -262,7 +262,10 @@ of them, so a stop that hangs can take up to 90 seconds.
 A `systemctl restart` that arrives while a reload is still running is merged into the reload: systemd skips
 `ExecStop` and, with `KillMode=process`, kills only the reload's script. The unit's `ExecStopPost` runs
 `wazuh-manager-control stop` on that path too, so the start that follows brings up every daemon, `remoted`
-included.
+included. It skips the stop when the start or stop failed on its own (`SERVICE_RESULT=exit-code`), so a failed
+start leaves running daemons alone: a start refused by the configuration check, or one that gave up on the
+lock, stops nothing, and a start that failed partway has already stopped what it started. A start cut by
+`TimeoutStartSec` still gets the stop.
 
 `restart` and `reload` write `var/run/.restart` once they hold the start-script lock, and remove it before
 releasing the lock. While it is there the API reports `restarting` for every daemon that has no `.failed`
@@ -277,7 +280,7 @@ the markers of the run that holds it. A lock whose holder is gone is reclaimed, 
 after a few seconds for a missing one, through a marker, `var/start-script-lock.reclaim`, that records its own
 holder the same way. The agent's `wazuh-control` uses the same lock.
 
-The agent's `wazuh-agent` unit has the same `ExecStopPost`. There it also runs when `wazuh-agentd` exits on its
+The agent's `wazuh-agent` unit has the same `ExecStopPost`, without the `exit-code` check. There it also runs when `wazuh-agentd` exits on its
 own with a failure (a crash, or an exit with an error): systemd 233 and later skip `ExecStop` then, and
 `ExecStopPost` stops the other agent daemons, so the unit ends `failed` with nothing left running, as `ExecStop`
 already did on older systemd.
