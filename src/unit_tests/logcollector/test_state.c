@@ -43,6 +43,9 @@ extern cJSON * g_lc_json_stats;
 extern w_lc_state_storage_t * g_lc_states_global;
 extern w_lc_state_storage_t * g_lc_states_interval;
 extern w_lc_state_type_t g_lc_state_type;
+extern bool g_lc_state_open_failing;
+extern int g_lc_state_open_errno;
+extern time_t g_lc_state_open_warned;
 
 void free_state_file(w_lc_state_file_t * data) {
     if (data == NULL) {
@@ -62,6 +65,14 @@ void free_state_file(w_lc_state_file_t * data) {
 }
 
 /* setup/teardown */
+static int setup_state_open_failure(void **state) {
+    g_lc_state_open_failing = false;
+    g_lc_state_open_errno = 0;
+    g_lc_state_open_warned = 0;
+    g_lc_state_type = LC_STATE_GLOBAL | LC_STATE_INTERVAL;
+    return 0;
+}
+
 static int setup_local_hashmap(void **state) {
     if (mock_hashmap == NULL) {
         will_return(__wrap_time, (time_t) 50);
@@ -879,7 +890,7 @@ void test_w_logcollector_state_dump_fail_open(void ** state) {
     will_return(__wrap_cJSON_Print, strdup("Test 123"));
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_w_fopen_nofollow(LOGCOLLECTOR_STATE_DIR, LOGCOLLECTOR_STATE_NAME, "w", NULL);
+    expect_w_fopen_nofollow_errno(LOGCOLLECTOR_STATE_DIR, LOGCOLLECTOR_STATE_NAME, "w", NULL, EACCES);
 
     const char * error_msg = "(1103): Could not open file "
                              "'" LOGCOLLECTOR_STATE "' due to";
@@ -935,44 +946,108 @@ static void queue_state_dump(FILE * open_result, int open_errno) {
     will_return(__wrap_cJSON_Print, strdup("Test 123"));
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_w_fopen_nofollow(LOGCOLLECTOR_STATE_DIR, LOGCOLLECTOR_STATE_NAME, "w", open_result);
+    expect_w_fopen_nofollow_errno(LOGCOLLECTOR_STATE_DIR, LOGCOLLECTOR_STATE_NAME, "w", open_result, open_errno);
 
     if (open_result) {
         will_return(__wrap_fwrite, 1);
         expect_value(__wrap_fclose, _File, open_result);
         will_return(__wrap_fclose, 0);
     }
-
-    errno = open_errno;
 }
 
 void test_w_logcollector_state_dump_open_error_logged_once(void ** state) {
 
     const char * error_msg = "(1103): Could not open file "
-                             "'" LOGCOLLECTOR_STATE "' due to";
+                             "'" LOGCOLLECTOR_STATE "' due to [(13)-";
 
     // First failure: error.
-    queue_state_dump(NULL, ELOOP);
+    queue_state_dump(NULL, EACCES);
     expect_memory(__wrap__merror, formatted_msg, error_msg, strlen(error_msg));
     w_logcollector_state_dump();
 
-    // Same cause again: debug only.
-    queue_state_dump(NULL, ELOOP);
+    // Same cause again: debug only, never a warning.
+    queue_state_dump(NULL, EACCES);
     expect_memory(__wrap__mdebug2, formatted_msg, error_msg, strlen(error_msg));
     w_logcollector_state_dump();
 
-    // Different cause: error again.
-    queue_state_dump(NULL, EMLINK);
-    expect_memory(__wrap__merror, formatted_msg, error_msg, strlen(error_msg));
+    queue_state_dump(NULL, EACCES);
+    expect_memory(__wrap__mdebug2, formatted_msg, error_msg, strlen(error_msg));
     w_logcollector_state_dump();
 
     // A successful dump resets it, so the next failure is an error again.
     queue_state_dump((FILE *) 100, 0);
     w_logcollector_state_dump();
 
-    queue_state_dump(NULL, EMLINK);
+    queue_state_dump(NULL, EACCES);
     expect_memory(__wrap__merror, formatted_msg, error_msg, strlen(error_msg));
     w_logcollector_state_dump();
+
+    queue_state_dump((FILE *) 100, 0);
+    w_logcollector_state_dump();
+}
+
+void test_w_logcollector_state_dump_open_unexpected_entry_warned_periodically(void ** state) {
+
+    const char * eloop_msg = "(1103): Could not open file "
+                             "'" LOGCOLLECTOR_STATE "' due to [(40)-";
+    const char * emlink_msg = "(1103): Could not open file "
+                              "'" LOGCOLLECTOR_STATE "' due to [(31)-";
+
+    // First failure: error.
+    queue_state_dump(NULL, ELOOP);
+    will_return(__wrap_time, 1000);
+    expect_memory(__wrap__merror, formatted_msg, eloop_msg, strlen(eloop_msg));
+    w_logcollector_state_dump();
+
+    // Same cause within the warning period: debug.
+    queue_state_dump(NULL, ELOOP);
+    will_return(__wrap_time, 4599);
+    expect_memory(__wrap__mdebug2, formatted_msg, eloop_msg, strlen(eloop_msg));
+    w_logcollector_state_dump();
+
+    // Once the period elapses: warning, and the period starts again.
+    queue_state_dump(NULL, ELOOP);
+    will_return(__wrap_time, 4600);
+    expect_memory(__wrap__mwarn, formatted_msg, eloop_msg, strlen(eloop_msg));
+    w_logcollector_state_dump();
+
+    queue_state_dump(NULL, ELOOP);
+    will_return(__wrap_time, 4660);
+    expect_memory(__wrap__mdebug2, formatted_msg, eloop_msg, strlen(eloop_msg));
+    w_logcollector_state_dump();
+
+    queue_state_dump(NULL, ELOOP);
+    will_return(__wrap_time, 8200);
+    expect_memory(__wrap__mwarn, formatted_msg, eloop_msg, strlen(eloop_msg));
+    w_logcollector_state_dump();
+
+    // Different cause: error again.
+    queue_state_dump(NULL, EMLINK);
+    will_return(__wrap_time, 8260);
+    expect_memory(__wrap__merror, formatted_msg, emlink_msg, strlen(emlink_msg));
+    w_logcollector_state_dump();
+
+    queue_state_dump((FILE *) 100, 0);
+    w_logcollector_state_dump();
+}
+
+void test_w_logcollector_state_dump_open_unexpected_entry_errnos(void ** state) {
+
+    const int errors[] = {EINVAL, ENXIO, EISDIR};
+    const char * error_msg = "(1103): Could not open file "
+                             "'" LOGCOLLECTOR_STATE "' due to";
+
+    for (size_t i = 0; i < sizeof(errors) / sizeof(errors[0]); i++) {
+        queue_state_dump(NULL, errors[i]);
+        will_return(__wrap_time, 1000);
+        expect_memory(__wrap__merror, formatted_msg, error_msg, strlen(error_msg));
+        w_logcollector_state_dump();
+
+        queue_state_dump(NULL, errors[i]);
+        will_return(__wrap_time, 4600);
+        expect_memory(__wrap__mwarn, formatted_msg, error_msg, strlen(error_msg));
+        w_logcollector_state_dump();
+    }
 
     queue_state_dump((FILE *) 100, 0);
     w_logcollector_state_dump();
@@ -1252,10 +1327,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_logcollector_generate_state_ok, setup_global_variables, teardown_global_variables),
 
         // Tests w_logcollector_state_dump
-        cmocka_unit_test(test_w_logcollector_state_dump_fail_open),
-        cmocka_unit_test(test_w_logcollector_state_dump_fail_write),
-        cmocka_unit_test(test_w_logcollector_state_dump_ok),
-        cmocka_unit_test(test_w_logcollector_state_dump_open_error_logged_once),
+        cmocka_unit_test_setup(test_w_logcollector_state_dump_fail_open, setup_state_open_failure),
+        cmocka_unit_test_setup(test_w_logcollector_state_dump_fail_write, setup_state_open_failure),
+        cmocka_unit_test_setup(test_w_logcollector_state_dump_ok, setup_state_open_failure),
+        cmocka_unit_test_setup(test_w_logcollector_state_dump_open_error_logged_once, setup_state_open_failure),
+        cmocka_unit_test_setup(test_w_logcollector_state_dump_open_unexpected_entry_warned_periodically, setup_state_open_failure),
+        cmocka_unit_test_setup(test_w_logcollector_state_dump_open_unexpected_entry_errnos, setup_state_open_failure),
 
         // Tests w_logcollector_state_main
         cmocka_unit_test(test_w_logcollector_state_main_bad_interval),

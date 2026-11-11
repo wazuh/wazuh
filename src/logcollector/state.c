@@ -29,6 +29,12 @@ w_lc_state_storage_t * g_lc_states_interval;    ///< interval state struct stora
 pthread_mutex_t g_lc_raw_stats_mutex;  ///< g_lc_states_* structs mutual exclusion mechanism
 pthread_mutex_t g_lc_json_stats_mutex; ///< g_lc_json_stats mutual exclusion mechanism
 
+#define W_LC_STATE_OPEN_WARN_PERIOD 3600 ///< Seconds between warnings while an unexpected open failure persists
+
+STATIC bool g_lc_state_open_failing;   ///< the last state file open failed
+STATIC int g_lc_state_open_errno;      ///< errno of the last failed open
+STATIC time_t g_lc_state_open_warned;  ///< last time an unexpected open failure was reported
+
 /**
  * @brief Trigger the generation of states
  *
@@ -77,6 +83,15 @@ STATIC void _w_logcollector_state_delete_file(w_lc_state_storage_t * state, char
  */
 STATIC void w_logcollector_state_dump();
 
+/**
+ * @brief Report a failure to open the state file
+ *
+ * A new cause is logged as an error. While the same cause repeats, an unexpected entry at the state file path
+ * is warned about every W_LC_STATE_OPEN_WARN_PERIOD seconds, anything else only at debug level.
+ * @param error errno of the failed open
+ */
+STATIC void w_logcollector_state_open_failed(int error);
+
 #ifdef WIN32
 DWORD WINAPI w_logcollector_state_main(void * args) {
 #else
@@ -102,6 +117,31 @@ void * w_logcollector_state_main(void * args) {
 #endif
 }
 
+STATIC void w_logcollector_state_open_failed(int error) {
+
+    const bool unexpected = error == ELOOP || error == EMLINK || error == EINVAL || error == ENXIO || error == EISDIR;
+
+    if (!g_lc_state_open_failing || error != g_lc_state_open_errno) {
+        merror(FOPEN_ERROR, LOGCOLLECTOR_STATE, error, strerror(error));
+        if (unexpected) {
+            g_lc_state_open_warned = time(NULL);
+        }
+    } else if (unexpected) {
+        const time_t now = time(NULL);
+        if (now - g_lc_state_open_warned >= W_LC_STATE_OPEN_WARN_PERIOD) {
+            mwarn(FOPEN_ERROR, LOGCOLLECTOR_STATE, error, strerror(error));
+            g_lc_state_open_warned = now;
+        } else {
+            mdebug2(FOPEN_ERROR, LOGCOLLECTOR_STATE, error, strerror(error));
+        }
+    } else {
+        mdebug2(FOPEN_ERROR, LOGCOLLECTOR_STATE, error, strerror(error));
+    }
+
+    g_lc_state_open_failing = true;
+    g_lc_state_open_errno = error;
+}
+
 STATIC void w_logcollector_state_dump() {
 
     cJSON * lc_state_json = w_logcollector_state_get();
@@ -114,26 +154,16 @@ STATIC void w_logcollector_state_dump() {
     lc_state_str[len] = '\n';
     lc_state_str[len + 1] = '\0';
 
-    // Report an open failure once per cause instead of on every interval.
-    static bool open_failing = false;
-    static int open_errno = 0;
     FILE * lc_state_file = NULL;
 
     if (lc_state_file = w_fopen_nofollow(LOGCOLLECTOR_STATE_DIR, LOGCOLLECTOR_STATE_NAME, "w"), lc_state_file != NULL) {
-        open_failing = false;
+        g_lc_state_open_failing = false;
         if (fwrite(lc_state_str, sizeof(char), len + 1, lc_state_file) < 1) {
             merror(FWRITE_ERROR, LOGCOLLECTOR_STATE, errno, strerror(errno));
         }
         fclose(lc_state_file);
     } else {
-        const int error = errno;
-        if (!open_failing || error != open_errno) {
-            merror(FOPEN_ERROR, LOGCOLLECTOR_STATE, error, strerror(error));
-        } else {
-            mdebug2(FOPEN_ERROR, LOGCOLLECTOR_STATE, error, strerror(error));
-        }
-        open_failing = true;
-        open_errno = error;
+        w_logcollector_state_open_failed(errno);
     }
 
     os_free(lc_state_str);
