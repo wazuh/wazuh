@@ -11,8 +11,8 @@ brief: These tests check that 'systemctl restart wazuh-agent' restarts every age
        arrives while a 'systemctl reload wazuh-agent' is still running, which is what an agent
        does by itself after a shared configuration change. systemd merges such a restart into the
        running reload job, skips ExecStop and, with KillMode=process, only signals the main process
-       (wazuh-agentd) and the reload script. Regression test for #41047: the daemons the reload had
-       just started kept running, and wazuh-modulesd lost its socket to the new wazuh-agentd.
+       (wazuh-agentd) and the reload script. Before the fix the daemons the reload had just
+       started kept running, and wazuh-modulesd lost its socket to the new wazuh-agentd.
 
 components:
     - agentd

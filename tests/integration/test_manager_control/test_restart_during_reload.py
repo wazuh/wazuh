@@ -10,9 +10,9 @@ type: integration
 brief: These tests check that 'systemctl restart wazuh-manager' restarts every manager daemon when
        it arrives while a 'systemctl reload wazuh-manager' is still running. systemd merges such a
        restart into the running reload job, skips ExecStop and, with KillMode=process and no main
-       process to track, only signals the reload script. Regression test for #41047: the start
-       that followed found the daemons still up, so the restart was lost, and wazuh-manager-remoted,
-       which a reload never restarts, kept running.
+       process to track, only signals the reload script. Before the fix the start that followed
+       found the daemons still up, so the restart was lost, and wazuh-manager-remoted, which a
+       reload never restarts, kept running.
 
 components:
     - manager_control

@@ -92,7 +92,7 @@ def test_pidless_lock_is_reclaimed(free_lock, leaked_marker):
         A lock directory with no pid file is what an owner leaves behind when it dies between
         'mkdir ${LOCK}' and writing its pid. It must be reclaimed within a few retry rounds,
         also when the previous reclaimer died holding the exclusive reclaim marker before it wrote
-        its own pid, so 'status' never reports the lock error. Regression for #39114.
+        its own pid, so 'status' never reports the lock error.
 
     test_phases:
         - setup:

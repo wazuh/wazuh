@@ -10,8 +10,8 @@ type: integration
 brief: These tests check that wazuh-control reclaims a start-script lock its owner left behind: a lock
        directory with no pid file, which an owner killed between creating it and writing its pid
        leaves (a systemctl restart merged into a running reload kills the reload's script at any
-       point), and a lock whose pid is dead. The manager's wazuh-manager-control already did this
-       (#39114); the agent's waited out its 40 rounds and failed, so the unit could not start again.
+       point), and a lock whose pid is dead. The manager's wazuh-manager-control already did this;
+       the agent's waited out its 40 rounds and failed, so the unit could not start again.
        They also pin the guards the recovery relies on, as for the manager: a lock whose owner has
        not written its pid yet is live, and the reclaim marker is only removed once its holder is
        gone. The tests live in tests/integration/start_lock.py, shared with wazuh-manager-control.
@@ -32,6 +32,7 @@ os_platform:
 
 references:
     - https://github.com/wazuh/wazuh/issues/41047
+    - https://github.com/wazuh/wazuh/issues/39114
 
 tags:
     - agent_control
