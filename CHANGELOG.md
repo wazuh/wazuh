@@ -26,7 +26,7 @@ All notable changes to this project will be documented in this file.
 #### Changed
 
 - Removed static-RSA key exchange from the default TLS cipher list of `wazuh-authd` (`<ciphers>` now ends in `!kRSA:@STRENGTH`), so enrollment over TLS 1.2 always uses an ephemeral key exchange. Existing installations keep their `ossec.conf` value and need to update it by hand. ([#41249](https://github.com/wazuh/wazuh/pull/41249))
-- `wazuh-apid` now ignores the `drop_privileges` API configuration option and always runs as the `wazuh` user unless it is started with `-r`, and logs a warning when the option is set in `api.yaml`. ([#41287](https://github.com/wazuh/wazuh/pull/41287))
+- `wazuh-apid` now ignores the `drop_privileges` API configuration option and always runs as the `wazuh` user unless it is started with `-r`, and logs a warning when the option is set in `api.yaml`. Upgrades return to the `wazuh` user the rotated API logs and `security.yaml` that an API run as root created. ([#41287](https://github.com/wazuh/wazuh/pull/41287))
 
 ### Agent
 
