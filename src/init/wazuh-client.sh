@@ -33,6 +33,24 @@ MAX_ITERATION="60"
 
 MAX_KILL_TRIES=30
 
+# Succeed when process $2 is daemon $1.
+# comm is truncated on some systems (15 characters on Linux, 14 on HP-UX) and
+# is a full path on others, so compare the base name as a prefix of the daemon
+# name, with at least 14 characters or all of it.
+is_daemon_process()
+{
+    idp_comm=`UNIX95= ps -p $2 -o comm= 2>/dev/null | sed 's/^ *//; s/ *$//'`
+    idp_comm=${idp_comm##*/}
+    idp_min=${#1}
+    [ "${idp_min}" -gt 14 ] && idp_min=14
+    case "$1" in
+        "${idp_comm}"*)
+            [ -n "${idp_comm}" ] && [ "${#idp_comm}" -ge "${idp_min}" ] && return 0
+            ;;
+    esac
+    return 1
+}
+
 # Print, one per line, the PIDs of the running instances of daemon $1.
 # A PID is used only when its file is named <daemon>-<pid>.pid, holds exactly
 # that PID (as the daemons write it) and the process is that daemon. Any other
@@ -69,21 +87,10 @@ daemon_pids()
             continue
         fi
 
-        # comm is truncated on some systems (15 characters on Linux, 14 on
-        # HP-UX) and is a full path on others, so compare the base name as a
-        # prefix of the daemon name, with at least 14 characters or all of it.
-        dp_comm=`UNIX95= ps -p ${dp_pid} -o comm= 2>/dev/null | sed 's/^ *//; s/ *$//'`
-        dp_comm=${dp_comm##*/}
-        dp_min=${#dp_name}
-        [ "${dp_min}" -gt 14 ] && dp_min=14
-        case "${dp_name}" in
-            "${dp_comm}"*)
-                if [ -n "${dp_comm}" ] && [ "${#dp_comm}" -ge "${dp_min}" ]; then
-                    echo "${dp_pid}"
-                    continue
-                fi
-                ;;
-        esac
+        if is_daemon_process ${dp_name} ${dp_pid}; then
+            echo "${dp_pid}"
+            continue
+        fi
         echo "Ignoring PID file '${dp_file}': process ${dp_pid} is not ${dp_name}, removing .." >&2
         rm -f "${dp_file}"
     done
@@ -201,7 +208,6 @@ is_systemd() {
 # Add daemons to agentd cgroup if systemd is used in legacy systems
 add_to_cgroup()
 {
-    AGENTD_PID=$(daemon_pids wazuh-agentd | head -n 1)
     CGROUP_PATH="/sys/fs/cgroup/systemd/system.slice/wazuh-agent.service/cgroup.procs"
 
     # Check if cgroup path exists
@@ -210,8 +216,6 @@ add_to_cgroup()
     else
         for daemon in ${DAEMONS}; do
             for pid in $(daemon_pids ${daemon}); do
-                [ "$pid" = "$AGENTD_PID" ] && continue
-
                 # Try to write to cgroup, capture any errors
                 if ! echo "$pid" >> "$CGROUP_PATH" 2>/dev/null; then
                     echo "Warning: Failed to add PID $pid to cgroup (${daemon})" >&2
@@ -342,8 +346,10 @@ stop_service()
         for pid in `daemon_pids ${i}`; do
             if ! wait_pid ${pid}
             then
-                # Check again: the PID may belong to another process by now.
-                if daemon_pids ${i} 2>/dev/null | grep -qx "${pid}"; then
+                # Check the process again, not its file: the daemon may have
+                # removed its PID file and still be exiting, while a PID taken
+                # over by another program must not be killed.
+                if is_daemon_process ${i} ${pid}; then
                     echo "Process ${i} couldn't be terminated. It will be killed.";
                     kill -9 ${pid}
                 fi
