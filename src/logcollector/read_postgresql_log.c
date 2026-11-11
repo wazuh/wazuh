@@ -130,10 +130,10 @@ void *read_postgresql_log(logreader *lf, int *rc, int drop_it) {
             }
 
             /* Append to the saved buffer, leaving room for the separator and the terminator */
-            if (sizeof(buffer) - buffer_len > strlen(str) + 1) {
+            if (sizeof(buffer) - buffer_len > strlen(p) + 1) {
                 buffer[buffer_len] = ' ';
                 buffer[buffer_len + 1] = '\0';
-                strncat(buffer, str, str_len + 3);
+                strncat(buffer, p, str_len + 3);
             }
         }
 

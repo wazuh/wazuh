@@ -59,6 +59,7 @@ void __wrap_OS_SHA1_Stream_Bytes(EVP_MD_CTX *c, const char * buf, size_t len) {
 }
 
 int __wrap_w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logtarget *log_target, char queue_mq) {
+    check_expected(str);
     check_expected(size);
     return mock_type(int);
 }
@@ -145,6 +146,7 @@ static void run_reader_hidden(void *(*reader)(logreader *, int *, int), const ch
     will_return(__wrap_w_update_file_status, 0);
 
     will_return(__wrap_check_ignore_and_restrict, false);
+    expect_any(__wrap_w_msg_hash_queues_push, str);
     expect_value(__wrap_w_msg_hash_queues_push, size, expected_len + 1);
     will_return(__wrap_w_msg_hash_queues_push, 0);
 
@@ -182,22 +184,68 @@ void test_read_mssql_log_newline_line_fits(void **state) {
     run_reader(read_mssql_log, MSSQL_HEADER, cont_len, true, strlen(MSSQL_HEADER) + 1 + cont_len);
 }
 
-void test_read_postgresql_log_last_line_fills_buffer(void **state) {
-    size_t cont_len = OS_MAX_LOG_SIZE - strlen(PGSQL_HEADER) - 1;
+/* The leading tab of a PostgreSQL continuation line is not appended, so it does not count against the free space */
 
+void test_read_postgresql_log_last_line_fills_buffer(void **state) {
+    size_t cont_len = OS_MAX_LOG_SIZE - strlen(PGSQL_HEADER);
+
+    // No room left for the terminator: the continuation is dropped
     run_reader(read_postgresql_log, PGSQL_HEADER, cont_len, false, strlen(PGSQL_HEADER));
 }
 
 void test_read_postgresql_log_last_line_fits(void **state) {
-    size_t cont_len = OS_MAX_LOG_SIZE - strlen(PGSQL_HEADER) - 2;
+    size_t cont_len = OS_MAX_LOG_SIZE - strlen(PGSQL_HEADER) - 1;
 
-    run_reader(read_postgresql_log, PGSQL_HEADER, cont_len, false, strlen(PGSQL_HEADER) + 1 + cont_len);
+    run_reader(read_postgresql_log, PGSQL_HEADER, cont_len, false, strlen(PGSQL_HEADER) + 1 + cont_len - 1);
 }
 
 void test_read_postgresql_log_newline_line_fits(void **state) {
-    size_t cont_len = OS_MAX_LOG_SIZE - strlen(PGSQL_HEADER) - 2;
+    size_t cont_len = OS_MAX_LOG_SIZE - strlen(PGSQL_HEADER) - 1;
 
-    run_reader(read_postgresql_log, PGSQL_HEADER, cont_len, true, strlen(PGSQL_HEADER) + 1 + cont_len);
+    run_reader(read_postgresql_log, PGSQL_HEADER, cont_len, true, strlen(PGSQL_HEADER) + 1 + cont_len - 1);
+}
+
+void test_read_postgresql_log_strips_continuation_indentation(void **state) {
+    logreader lf = {0};
+    lf.file = "test.log";
+    lf.fp = (FILE *) 1;
+    int rc;
+
+    // PostgreSQL starts each continuation line with a tab, followed by the statement's own indentation
+    char *lines[] = {
+        "[2026-11-10 11:00:13 UTC] LOG:  statement: SELECT 'rv2-pg'\n",
+        "\t   AS x,\n",
+        "\t\t1 AS y;\n",
+    };
+    const char *expected = "[2026-11-10 11:00:13 UTC] LOG:  statement: SELECT 'rv2-pg' AS x, 1 AS y;";
+
+    mock_position = 0;
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 0);
+    will_return(__wrap_w_get_hash_context, true);
+
+    for (size_t i = 0; i < sizeof(lines) / sizeof(lines[0]); i++) {
+        expect_line(lines[i]);
+    }
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, NULL);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 0);
+    will_return(__wrap_w_update_file_status, 0);
+
+    will_return(__wrap_check_ignore_and_restrict, false);
+    expect_string(__wrap_w_msg_hash_queues_push, str, expected);
+    expect_value(__wrap_w_msg_hash_queues_push, size, strlen(expected) + 1);
+    will_return(__wrap_w_msg_hash_queues_push, 0);
+
+    expect_any_count(__wrap__mdebug2, formatted_msg, 2);
+
+    read_postgresql_log(&lf, &rc, 0);
+
+    assert_int_equal(rc, 0);
 }
 
 void test_read_mssql_log_hashes_bytes_after_nul(void **state) {
@@ -206,7 +254,8 @@ void test_read_mssql_log_hashes_bytes_after_nul(void **state) {
 }
 
 void test_read_postgresql_log_hashes_bytes_after_nul(void **state) {
-    run_reader_hidden(read_postgresql_log, PGSQL_HEADER, 5, false, 5, strlen(PGSQL_HEADER) + 1 + 5);
+    // Only "AAAA" reaches the message, but the 12 bytes of the line are hashed
+    run_reader_hidden(read_postgresql_log, PGSQL_HEADER, 5, false, 5, strlen(PGSQL_HEADER) + 1 + 4);
 }
 
 int main(void) {
@@ -217,6 +266,7 @@ int main(void) {
         cmocka_unit_test(test_read_postgresql_log_last_line_fills_buffer),
         cmocka_unit_test(test_read_postgresql_log_last_line_fits),
         cmocka_unit_test(test_read_postgresql_log_newline_line_fits),
+        cmocka_unit_test(test_read_postgresql_log_strips_continuation_indentation),
         cmocka_unit_test(test_read_mssql_log_hashes_bytes_after_nul),
         cmocka_unit_test(test_read_postgresql_log_hashes_bytes_after_nul),
     };
