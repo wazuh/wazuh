@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 
 - Hardened the FIM database search for the entries stored under a removed path. ([#41248](https://github.com/wazuh/wazuh/pull/41248))
 - Hardened how `wazuh-logcollector` writes its state file. ([#41300](https://github.com/wazuh/wazuh/pull/41300))
+- Fixed FIM on Windows skipping the files under any drive-root folder whose name starts with `$Recycle.Bin`, not only the recycle bin itself. ([#41216](https://github.com/wazuh/wazuh/pull/41216))
 
 ## [v4.14.11]
 

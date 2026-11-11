@@ -786,7 +786,14 @@ int w_update_sacl(const char *obj_path);
 #endif
 
 #ifdef WIN32
-#define check_removed_file(x) ({ strstr(x, ":\\$recycle.bin") ? 1 : 0; })
+#define RECYCLE_BIN_ROOT ":\\$recycle.bin"
+// Match the recycle bin folder, its contents or its streams, not a folder name that starts with it.
+#define check_removed_file(x) ({                                                        \
+    const char *recycle_bin_pos = strstr(x, RECYCLE_BIN_ROOT);                          \
+    recycle_bin_pos != NULL && (recycle_bin_pos[sizeof(RECYCLE_BIN_ROOT) - 1] == '\\' || \
+                                recycle_bin_pos[sizeof(RECYCLE_BIN_ROOT) - 1] == ':' ||  \
+                                recycle_bin_pos[sizeof(RECYCLE_BIN_ROOT) - 1] == '\0');  \
+})
 
 /**
  * @brief Get the number of realtime watches opened by FIM.
