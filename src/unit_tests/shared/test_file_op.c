@@ -1162,26 +1162,26 @@ void test_get_file_pointer_success(void **state)
 void test_w_get_file_size_from_info_low_only(void **state) {
     BY_HANDLE_FILE_INFORMATION info = { .nFileSizeHigh = 0, .nFileSizeLow = 1024 };
 
-    assert_true(w_get_file_size_from_info(&info) == 1024);
+    assert_int_equal(w_get_file_size_from_info(&info), 1024);
 }
 
 void test_w_get_file_size_from_info_low_high_bit(void **state) {
     BY_HANDLE_FILE_INFORMATION info = { .nFileSizeHigh = 0, .nFileSizeLow = 0x80000000 };
 
-    assert_true(w_get_file_size_from_info(&info) == 2147483648LL);
+    assert_int_equal(w_get_file_size_from_info(&info), 2147483648LL);
 }
 
 void test_w_get_file_size_from_info_4gib(void **state) {
     BY_HANDLE_FILE_INFORMATION info = { .nFileSizeHigh = 1, .nFileSizeLow = 0 };
 
-    assert_true(w_get_file_size_from_info(&info) == 4294967296LL);
+    assert_int_equal(w_get_file_size_from_info(&info), 4294967296LL);
 }
 
 void test_w_get_file_size_from_info_high_and_low(void **state) {
     BY_HANDLE_FILE_INFORMATION info = { .nFileSizeHigh = 1, .nFileSizeLow = 100 };
 
     // The halves must be composed, not added (1 + 100 = 101).
-    assert_true(w_get_file_size_from_info(&info) == 4294967396LL);
+    assert_int_equal(w_get_file_size_from_info(&info), 4294967396LL);
 }
 
 void test_FileSizeWin_fail_get_handle(void **state) {
@@ -1194,7 +1194,30 @@ void test_FileSizeWin_fail_get_handle(void **state) {
     snprintf(buffer, OS_SIZE_128, FILE_ERROR, path);
     expect_string(__wrap__mdebug2, formatted_msg, buffer);
 
-    assert_true(FileSizeWin(path) == -1);
+    assert_int_equal(FileSizeWin(path), -1);
+}
+
+void test_FileSizeWin_success_over_4gib(void **state) {
+    const int64_t expected = (5LL << 30) + 123;
+    char *path = "test_filesizewin.tmp";
+    LARGE_INTEGER end = { .QuadPart = expected };
+
+    HANDLE file = CreateFileW(L"test_filesizewin.tmp", GENERIC_READ | GENERIC_WRITE,
+                              FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, CREATE_ALWAYS,
+                              FILE_ATTRIBUTE_NORMAL | FILE_FLAG_DELETE_ON_CLOSE, NULL);
+    assert_true(file != INVALID_HANDLE_VALUE);
+    assert_true(SetFilePointerEx(file, end, NULL, FILE_BEGIN));
+    assert_true(SetEndOfFile(file));
+
+    expect_string(__wrap_utf8_CreateFile, utf8_path, path);
+    will_return(__wrap_utf8_CreateFile, file);
+    expect_value(wrap_CloseHandle, hObject, file);
+    will_return(wrap_CloseHandle, 1);
+
+    int64_t size = FileSizeWin(path);
+    CloseHandle(file);
+
+    assert_int_equal(size, expected);
 }
 
 void test_get_UTC_modification_time_success(void **state) {
@@ -3344,6 +3367,7 @@ int main(void) {
         cmocka_unit_test(test_w_get_file_size_from_info_4gib),
         cmocka_unit_test(test_w_get_file_size_from_info_high_and_low),
         cmocka_unit_test(test_FileSizeWin_fail_get_handle),
+        cmocka_unit_test(test_FileSizeWin_success_over_4gib),
         cmocka_unit_test(test_get_UTC_modification_time_success),
         cmocka_unit_test(test_get_UTC_modification_time_fail_get_handle),
         cmocka_unit_test(test_get_UTC_modification_time_fail_get_filetime),
