@@ -1,6 +1,6 @@
 # Summary
 
-This reference lists every helper function available to decoders, filters and outputs. Check helpers are used in `check` stages and `first_of` branches; map helpers are used in `map` stages (some modify the target field in place).
+This reference lists every helper function available to decoders, filters and outputs. Check helpers are used in `check` stages and `first_of` branches; map helpers are used in `map` stages (some modify the target field in place). Names follow the convention stated in the [Helper functions](README.md#helper-functions) section of the engine README. A new helper is registered in the engine's `register.hpp` and described in a YAML file next to its siblings (`src/engine/test/helper_tests/helpers_description/`), from which this page is generated.
 
 ## Index
 
@@ -23,12 +23,6 @@ This reference lists every helper function available to decoders, filters and ou
 
 ### Comparison
 
-- [int_eq](#int_eq) — check
-- [int_gt](#int_gt) — check
-- [int_gte](#int_gte) — check
-- [int_lt](#int_lt) — check
-- [int_lte](#int_lte) — check
-- [int_ne](#int_ne) — check
 - [number_eq](#number_eq) — check
 - [number_gt](#number_gt) — check
 - [number_gte](#number_gte) — check
@@ -1592,7 +1586,8 @@ Build errors:
 - Any argument is given.
 
 Notes:
-- There is no integer-only type check; the `int_*` comparisons are the only helpers that tell `2` from `2.0`.
+- There is no integer-only type check: `2` and `2.0` are both numbers, and the `number_*` comparisons treat
+  them as equal.
 - `is_not_number` is not the negation of this helper: both are false for a missing field.
 
 
@@ -2232,914 +2227,6 @@ check:
 
 
 ---
-# int_eq
-
-**Kind:** check helper (used in `check`)
-
-**On failure:** the check is false.
-
-## Signature
-
-```
-check: int_eq($target_field, value)
-```
-
-## Arguments
-
-| parameter | Type | Source | Accepted values |
-| --------- | ---- | ------ | --------------- |
-| value | number | value or reference | Integers between `-2^63` and `2^63-1` |
-
-
-## Target field
-
-| Type | Possible values |
-| ---- | --------------- |
-| number | Integers between `-2^63` and `2^63-1` |
-
-
-## Description
-
-Checks whether the target integer is equal to `value`, as exact 64-bit integers.
-
-Behavior:
-- The target must hold a JSON integer; a floating-point value, even `2.0`, is not an integer and gives
-  false.
-- `value` is a literal integer or a reference to an integer field; the comparison is exact, so no
-  precision is lost above 2^53.
-- Values above 2^63-1 are not 64-bit integers and give false.
-
-Build errors:
-- `value` is a literal that is not an integer: a floating-point number (`2.0`), a quoted number, a boolean,
-  null or a value above 2^63-1.
-- `value` is a reference to a schema field whose type is not an integer type (`integer`, `long`, `short`
-  or `byte`).
-- The target is a schema field whose type is not numeric.
-
-Notes:
-- `number_eq` converts both operands to double and treats `2` and `2.0` as equal.
-- The comparison operators (`!=`, `>`, `>=`, `<`, `<=`) map to the `number_*` helpers for a numeric literal
-  and to the `string_*` helpers for a string literal, never to the `int_*` ones.
-- `int_ne` is not the negation of this helper: both are false for a missing or non-integer target.
-
-
-## Fails when
-
-- The target field does not exist.
-- The target field is not an integer (a floating-point value such as `2.0` included).
-- The reference given as `value` does not exist or is not an integer.
-- The two integers differ.
-
-## Examples
-
-### Example 1
-
-The two integers differ.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: int_eq(22)
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": 2
-}
-```
-
-*The check was performed with errors*
-
-### Example 2
-
-The two integers are equal.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: int_eq($value)
-```
-
-#### Input Event
-
-```json
-{
-  "value": 22,
-  "target_field": 22
-}
-```
-
-*The check was successful*
-
-### Example 3
-
-A floating-point target is not an integer, even without a fractional part.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: int_eq(2)
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": 2.0
-}
-```
-
-*The check was performed with errors*
-
-### Example 4
-
-The target field is a string, not an integer.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: int_eq($value)
-```
-
-#### Input Event
-
-```json
-{
-  "value": 2,
-  "target_field": "2"
-}
-```
-
-*The check was performed with errors*
-
-### Example 5
-
-A floating-point literal is rejected at build time.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: int_eq(2.5)
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": 2
-}
-```
-
-*The check was performed with errors*
-
-
-
----
-# int_gt
-
-**Kind:** check helper (used in `check`)
-
-**On failure:** the check is false.
-
-## Signature
-
-```
-check: int_gt($target_field, value)
-```
-
-## Arguments
-
-| parameter | Type | Source | Accepted values |
-| --------- | ---- | ------ | --------------- |
-| value | number | value or reference | Integers between `-2^63` and `2^63-1` |
-
-
-## Target field
-
-| Type | Possible values |
-| ---- | --------------- |
-| number | Integers between `-2^63` and `2^63-1` |
-
-
-## Description
-
-Checks whether the target integer is greater than `value`, as exact 64-bit integers.
-
-Behavior:
-- The target must hold a JSON integer; a floating-point value, even `2.0`, is not an integer and gives
-  false.
-- `value` is a literal integer or a reference to an integer field; the comparison is exact, so no
-  precision is lost above 2^53.
-- Values above 2^63-1 are not 64-bit integers and give false.
-
-Build errors:
-- `value` is a literal that is not an integer: a floating-point number (`2.0`), a quoted number, a boolean,
-  null or a value above 2^63-1.
-- `value` is a reference to a schema field whose type is not an integer type (`integer`, `long`, `short`
-  or `byte`).
-- The target is a schema field whose type is not numeric.
-
-Notes:
-- `number_gt` converts both operands to double and also accepts floating-point values.
-- The `>` operator with a numeric literal maps to `number_gt`, never to this helper.
-
-
-## Fails when
-
-- The target field does not exist.
-- The target field is not an integer (a floating-point value such as `2.0` included).
-- The reference given as `value` does not exist or is not an integer.
-- The target integer is less than or equal to `value`.
-
-## Examples
-
-### Example 1
-
-The target integer is greater than the value.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: int_gt(1)
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": 100
-}
-```
-
-*The check was successful*
-
-### Example 2
-
-The target integer is less than the value.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: int_gt($value)
-```
-
-#### Input Event
-
-```json
-{
-  "value": 50,
-  "target_field": 20
-}
-```
-
-*The check was performed with errors*
-
-### Example 3
-
-Equal integers are not greater.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: int_gt(1000)
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": 1000
-}
-```
-
-*The check was performed with errors*
-
-### Example 4
-
-A floating-point target is not an integer, so the check fails although it is greater.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: int_gt($value)
-```
-
-#### Input Event
-
-```json
-{
-  "value": 1,
-  "target_field": 100.0
-}
-```
-
-*The check was performed with errors*
-
-
-
----
-# int_gte
-
-**Kind:** check helper (used in `check`)
-
-**On failure:** the check is false.
-
-## Signature
-
-```
-check: int_gte($target_field, value)
-```
-
-## Arguments
-
-| parameter | Type | Source | Accepted values |
-| --------- | ---- | ------ | --------------- |
-| value | number | value or reference | Integers between `-2^63` and `2^63-1` |
-
-
-## Target field
-
-| Type | Possible values |
-| ---- | --------------- |
-| number | Integers between `-2^63` and `2^63-1` |
-
-
-## Description
-
-Checks whether the target integer is greater than or equal to `value`, as exact 64-bit integers.
-
-Behavior:
-- The target must hold a JSON integer; a floating-point value, even `2.0`, is not an integer and gives
-  false.
-- `value` is a literal integer or a reference to an integer field; the comparison is exact, so no
-  precision is lost above 2^53.
-- Values above 2^63-1 are not 64-bit integers and give false.
-
-Build errors:
-- `value` is a literal that is not an integer: a floating-point number (`2.0`), a quoted number, a boolean,
-  null or a value above 2^63-1.
-- `value` is a reference to a schema field whose type is not an integer type (`integer`, `long`, `short`
-  or `byte`).
-- The target is a schema field whose type is not numeric.
-
-Notes:
-- `number_gte` converts both operands to double and also accepts floating-point values.
-- The `>=` operator with a numeric literal maps to `number_gte`, never to this helper.
-- Not the negation of `int_lt`: both are false for a missing or non-integer target.
-
-
-## Fails when
-
-- The target field does not exist.
-- The target field is not an integer (a floating-point value such as `2.0` included).
-- The reference given as `value` does not exist or is not an integer.
-- The target integer is less than `value`.
-
-## Examples
-
-### Example 1
-
-The target integer is less than the value.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: int_gte(22)
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": 2
-}
-```
-
-*The check was performed with errors*
-
-### Example 2
-
-Equal integers satisfy the check.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: int_gte($value)
-```
-
-#### Input Event
-
-```json
-{
-  "value": 22,
-  "target_field": 22
-}
-```
-
-*The check was successful*
-
-### Example 3
-
-The target integer is greater than the value.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: int_gte(2)
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": 22
-}
-```
-
-*The check was successful*
-
-### Example 4
-
-A floating-point target is not an integer, so the check fails although the values are equal.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: int_gte($value)
-```
-
-#### Input Event
-
-```json
-{
-  "value": 22,
-  "target_field": 22.0
-}
-```
-
-*The check was performed with errors*
-
-
-
----
-# int_lt
-
-**Kind:** check helper (used in `check`)
-
-**On failure:** the check is false.
-
-## Signature
-
-```
-check: int_lt($target_field, value)
-```
-
-## Arguments
-
-| parameter | Type | Source | Accepted values |
-| --------- | ---- | ------ | --------------- |
-| value | number | value or reference | Integers between `-2^63` and `2^63-1` |
-
-
-## Target field
-
-| Type | Possible values |
-| ---- | --------------- |
-| number | Integers between `-2^63` and `2^63-1` |
-
-
-## Description
-
-Checks whether the target integer is less than `value`, as exact 64-bit integers.
-
-Behavior:
-- The target must hold a JSON integer; a floating-point value, even `2.0`, is not an integer and gives
-  false.
-- `value` is a literal integer or a reference to an integer field; the comparison is exact, so no
-  precision is lost above 2^53.
-- Values above 2^63-1 are not 64-bit integers and give false.
-
-Build errors:
-- `value` is a literal that is not an integer: a floating-point number (`2.0`), a quoted number, a boolean,
-  null or a value above 2^63-1.
-- `value` is a reference to a schema field whose type is not an integer type (`integer`, `long`, `short`
-  or `byte`).
-- The target is a schema field whose type is not numeric.
-
-Notes:
-- `number_lt` converts both operands to double and also accepts floating-point values.
-- The `<` operator with a numeric literal maps to `number_lt`, never to this helper.
-
-
-## Fails when
-
-- The target field does not exist.
-- The target field is not an integer (a floating-point value such as `2.0` included).
-- The reference given as `value` does not exist or is not an integer.
-- The target integer is greater than or equal to `value`.
-
-## Examples
-
-### Example 1
-
-The target integer is less than the value.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: int_lt(22)
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": 2
-}
-```
-
-*The check was successful*
-
-### Example 2
-
-The target integer is greater than the value.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: int_lt($value)
-```
-
-#### Input Event
-
-```json
-{
-  "value": 2,
-  "target_field": 22
-}
-```
-
-*The check was performed with errors*
-
-### Example 3
-
-Equal integers are not less.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: int_lt(100)
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": 100
-}
-```
-
-*The check was performed with errors*
-
-### Example 4
-
-A floating-point target is not an integer, so the check fails although it is less.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: int_lt($value)
-```
-
-#### Input Event
-
-```json
-{
-  "value": 22,
-  "target_field": 2.0
-}
-```
-
-*The check was performed with errors*
-
-
-
----
-# int_lte
-
-**Kind:** check helper (used in `check`)
-
-**On failure:** the check is false.
-
-## Signature
-
-```
-check: int_lte($target_field, value)
-```
-
-## Arguments
-
-| parameter | Type | Source | Accepted values |
-| --------- | ---- | ------ | --------------- |
-| value | number | value or reference | Integers between `-2^63` and `2^63-1` |
-
-
-## Target field
-
-| Type | Possible values |
-| ---- | --------------- |
-| number | Integers between `-2^63` and `2^63-1` |
-
-
-## Description
-
-Checks whether the target integer is less than or equal to `value`, as exact 64-bit integers.
-
-Behavior:
-- The target must hold a JSON integer; a floating-point value, even `2.0`, is not an integer and gives
-  false.
-- `value` is a literal integer or a reference to an integer field; the comparison is exact, so no
-  precision is lost above 2^53.
-- Values above 2^63-1 are not 64-bit integers and give false.
-
-Build errors:
-- `value` is a literal that is not an integer: a floating-point number (`2.0`), a quoted number, a boolean,
-  null or a value above 2^63-1.
-- `value` is a reference to a schema field whose type is not an integer type (`integer`, `long`, `short`
-  or `byte`).
-- The target is a schema field whose type is not numeric.
-
-Notes:
-- `number_lte` converts both operands to double and also accepts floating-point values.
-- The `<=` operator with a numeric literal maps to `number_lte`, never to this helper.
-- Not the negation of `int_gt`: both are false for a missing or non-integer target.
-
-
-## Fails when
-
-- The target field does not exist.
-- The target field is not an integer (a floating-point value such as `2.0` included).
-- The reference given as `value` does not exist or is not an integer.
-- The target integer is greater than `value`.
-
-## Examples
-
-### Example 1
-
-The target integer is less than the value.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: int_lte(22)
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": 2
-}
-```
-
-*The check was successful*
-
-### Example 2
-
-Equal integers satisfy the check.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: int_lte($value)
-```
-
-#### Input Event
-
-```json
-{
-  "value": 22,
-  "target_field": 22
-}
-```
-
-*The check was successful*
-
-### Example 3
-
-The target integer is greater than the value.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: int_lte(2)
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": 22
-}
-```
-
-*The check was performed with errors*
-
-### Example 4
-
-A floating-point target is not an integer, so the check fails although the values are equal.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: int_lte($value)
-```
-
-#### Input Event
-
-```json
-{
-  "value": 22,
-  "target_field": 22.0
-}
-```
-
-*The check was performed with errors*
-
-
-
----
-# int_ne
-
-**Kind:** check helper (used in `check`)
-
-**On failure:** the check is false.
-
-## Signature
-
-```
-check: int_ne($target_field, value)
-```
-
-## Arguments
-
-| parameter | Type | Source | Accepted values |
-| --------- | ---- | ------ | --------------- |
-| value | number | value or reference | Integers between `-2^63` and `2^63-1` |
-
-
-## Target field
-
-| Type | Possible values |
-| ---- | --------------- |
-| number | Integers between `-2^63` and `2^63-1` |
-
-
-## Description
-
-Checks whether the target integer differs from `value`, as exact 64-bit integers.
-
-Behavior:
-- The target must hold a JSON integer; a floating-point value, even `2.0`, is not an integer and gives
-  false.
-- `value` is a literal integer or a reference to an integer field; the comparison is exact, so no
-  precision is lost above 2^53.
-- A missing or non-integer target gives false, so this is not the same as `NOT int_eq(...)`, which is
-  true for a missing field.
-
-Build errors:
-- `value` is a literal that is not an integer: a floating-point number (`2.0`), a quoted number, a boolean,
-  null or a value above 2^63-1.
-- `value` is a reference to a schema field whose type is not an integer type (`integer`, `long`, `short`
-  or `byte`).
-- The target is a schema field whose type is not numeric.
-
-Notes:
-- `number_ne` converts both operands to double and treats `2` and `2.0` as equal.
-- The `!=` operator with a numeric literal maps to `number_ne`, never to this helper.
-
-
-## Fails when
-
-- The target field does not exist.
-- The target field is not an integer (a floating-point value such as `2.0` included).
-- The reference given as `value` does not exist or is not an integer.
-- The two integers are equal.
-
-## Examples
-
-### Example 1
-
-The two integers differ.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: int_ne(22)
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": 2
-}
-```
-
-*The check was successful*
-
-### Example 2
-
-The two integers are equal.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: int_ne($value)
-```
-
-#### Input Event
-
-```json
-{
-  "value": 22,
-  "target_field": 22
-}
-```
-
-*The check was performed with errors*
-
-### Example 3
-
-A floating-point target is not an integer, so the check fails although the values differ.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: int_ne(22)
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": 2.0
-}
-```
-
-*The check was performed with errors*
-
-### Example 4
-
-The target field is a string, not an integer, so the check fails although the values differ.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: int_ne($value)
-```
-
-#### Input Event
-
-```json
-{
-  "value": 22,
-  "target_field": "2"
-}
-```
-
-*The check was performed with errors*
-
-
-
----
 # number_eq
 
 **Kind:** check helper (used in `check`)
@@ -3171,26 +2258,32 @@ check: number_eq($target_field, value)
 Checks whether the target number is equal to `value`.
 
 Behavior:
-- Both operands are converted to double before the comparison, so `2` equals `2.0`.
+- Two integers are compared exactly as 64-bit integers, whatever their magnitude: `9007199254740993` and
+  `9007199254740992` are different numbers.
+- When either operand is a floating-point number, both are compared as doubles: `2` equals `2.0` and `3` is
+  greater than `2.9`. Nothing is rounded or truncated.
+- Integers are exact from -2^63 to 2^64-1; an integer beyond that range is read as a double.
+- An integer compared with a floating-point number is exact only up to 2^53 (the precision of a double); above
+  that the integer loses its low bits in the conversion. Keep large counters and epoch timestamps (milliseconds
+  or nanoseconds) as integers on both sides.
 - `value` is a literal integer or floating-point number, or a reference to a numeric field.
-- Integers above 2^53 lose precision in the conversion: `9007199254740993` compares equal to
-  `9007199254740992`.
+- Strings, booleans and null are never numbers, not even `"2"`: the check fails.
 
 Build errors:
-- `value` is a literal that is not a number (a quoted number, a boolean or null), or an integer above 2^63-1.
+- `value` is a literal that is not a number (a quoted number, a boolean or null).
 - `value` is a reference to a schema field whose type is not numeric.
 - The target is a schema field whose type is not numeric.
 
 Notes:
-- `int_eq` compares exact 64-bit integers and tells `2` from `2.0`.
-- `one_of` compares the target against several candidates with the same numeric equality.
+- The `==` operator (`$field == 2`) is the generic `filter` and also treats `2` and `2.0` as equal; this helper is the form to use when the right side is a reference.
+- `one_of` compares the target against several candidates.
 - `number_ne` is not the negation of this helper: both are false for a missing or non-number target.
 
 
 ## Fails when
 
 - The target field does not exist.
-- The target field is not a number, or is an integer above 2^63-1.
+- The target field is not a number.
 - The reference given as `value` does not exist or is not a number.
 - The two numbers differ.
 
@@ -3198,28 +2291,28 @@ Notes:
 
 ### Example 1
 
-The two numbers differ.
+An integer and a floating-point number with the same value are equal.
 
 #### Asset
 
 ```yaml
 check:
-  - target_field: number_eq(2.6)
+  - target_field: number_eq(2)
 ```
 
 #### Input Event
 
 ```json
 {
-  "target_field": 2
+  "target_field": 2.0
 }
 ```
 
-*The check was performed with errors*
+*The check was successful*
 
 ### Example 2
 
-The two numbers differ.
+An integer and a floating-point number that differ are not equal; nothing is rounded.
 
 #### Asset
 
@@ -3232,8 +2325,8 @@ check:
 
 ```json
 {
-  "value": 6,
-  "target_field": 5.5
+  "value": 2.9,
+  "target_field": 3
 }
 ```
 
@@ -3241,28 +2334,28 @@ check:
 
 ### Example 3
 
-The two floating-point numbers are equal.
+Two integers above 2^53 are compared exactly, so they differ.
 
 #### Asset
 
 ```yaml
 check:
-  - target_field: number_eq(2.3)
+  - target_field: number_eq(9007199254740992)
 ```
 
 #### Input Event
 
 ```json
 {
-  "target_field": 2.3
+  "target_field": 9007199254740993
 }
 ```
 
-*The check was successful*
+*The check was performed with errors*
 
 ### Example 4
 
-An integer and a floating-point number with the same value are equal.
+Two equal integers above 2^53 are equal.
 
 #### Asset
 
@@ -3275,14 +2368,57 @@ check:
 
 ```json
 {
-  "value": 2,
-  "target_field": 2.0
+  "value": 9007199254740993,
+  "target_field": 9007199254740993
 }
 ```
 
 *The check was successful*
 
 ### Example 5
+
+Unsigned 64-bit integers are compared exactly.
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_eq(18446744073709551615)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": 18446744073709551615
+}
+```
+
+*The check was successful*
+
+### Example 6
+
+The two floating-point numbers are equal.
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_eq($value)
+```
+
+#### Input Event
+
+```json
+{
+  "value": 2.5,
+  "target_field": 2.5
+}
+```
+
+*The check was successful*
+
+### Example 7
 
 The target field is a string, not a number.
 
@@ -3337,26 +2473,31 @@ check: number_gt($target_field, value)
 Checks whether the target number is greater than `value`.
 
 Behavior:
-- Both operands are converted to double before the comparison, so integers and floating-point numbers can
-  be mixed freely.
+- Two integers are compared exactly as 64-bit integers, whatever their magnitude: `9007199254740993` and
+  `9007199254740992` are different numbers.
+- When either operand is a floating-point number, both are compared as doubles: `2` equals `2.0` and `3` is
+  greater than `2.9`. Nothing is rounded or truncated.
+- Integers are exact from -2^63 to 2^64-1; an integer beyond that range is read as a double.
+- An integer compared with a floating-point number is exact only up to 2^53 (the precision of a double); above
+  that the integer loses its low bits in the conversion. Keep large counters and epoch timestamps (milliseconds
+  or nanoseconds) as integers on both sides.
 - `value` is a literal integer or floating-point number, or a reference to a numeric field.
-- Integers above 2^53 lose precision in the conversion: `9007199254740993` compares equal to
-  `9007199254740992`.
+- Strings, booleans and null are never numbers, not even `"2"`: the check fails.
 
 Build errors:
-- `value` is a literal that is not a number (a quoted number, a boolean or null), or an integer above 2^63-1.
+- `value` is a literal that is not a number (a quoted number, a boolean or null).
 - `value` is a reference to a schema field whose type is not numeric.
 - The target is a schema field whose type is not numeric.
 
 Notes:
 - The `>` operator with a numeric literal (`$field > 5`) maps to this helper.
-- `int_gt` compares exact 64-bit integers.
+- Not the negation of `number_lte`: both are false for a missing or non-number target.
 
 
 ## Fails when
 
 - The target field does not exist.
-- The target field is not a number, or is an integer above 2^63-1.
+- The target field is not a number.
 - The reference given as `value` does not exist or is not a number.
 - The target number is less than or equal to `value`.
 
@@ -3364,20 +2505,20 @@ Notes:
 
 ### Example 1
 
-The target number is greater than the value.
+A floating-point target is greater than an integer value.
 
 #### Asset
 
 ```yaml
 check:
-  - target_field: number_gt(1.5)
+  - target_field: number_gt(2)
 ```
 
 #### Input Event
 
 ```json
 {
-  "target_field": 4.6
+  "target_field": 2.5
 }
 ```
 
@@ -3385,7 +2526,7 @@ check:
 
 ### Example 2
 
-A floating-point target is greater than an integer value.
+An integer target is greater than a floating-point value; nothing is rounded.
 
 #### Asset
 
@@ -3398,8 +2539,8 @@ check:
 
 ```json
 {
-  "value": 1,
-  "target_field": 2.2
+  "value": 2.9,
+  "target_field": 3
 }
 ```
 
@@ -3407,28 +2548,28 @@ check:
 
 ### Example 3
 
-The target number is less than the value.
+Two integers above 2^53 are compared exactly.
 
 #### Asset
 
 ```yaml
 check:
-  - target_field: number_gt(3.8)
+  - target_field: number_gt(9007199254740992)
 ```
 
 #### Input Event
 
 ```json
 {
-  "target_field": 2.2
+  "target_field": 9007199254740993
 }
 ```
 
-*The check was performed with errors*
+*The check was successful*
 
 ### Example 4
 
-Equal numbers are not greater.
+An unsigned 64-bit target is greater than the largest signed value.
 
 #### Asset
 
@@ -3441,14 +2582,57 @@ check:
 
 ```json
 {
-  "value": 3,
-  "target_field": 3
+  "value": 9223372036854775807,
+  "target_field": 18446744073709551615
+}
+```
+
+*The check was successful*
+
+### Example 5
+
+Equal numbers are not greater.
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_gt(2)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": 2
 }
 ```
 
 *The check was performed with errors*
 
-### Example 5
+### Example 6
+
+The target number is less than the value.
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_gt($value)
+```
+
+#### Input Event
+
+```json
+{
+  "value": 3.8,
+  "target_field": 2.2
+}
+```
+
+*The check was performed with errors*
+
+### Example 7
 
 The target field is a string, not a number.
 
@@ -3503,27 +2687,31 @@ check: number_gte($target_field, value)
 Checks whether the target number is greater than or equal to `value`.
 
 Behavior:
-- Both operands are converted to double before the comparison, so integers and floating-point numbers can
-  be mixed freely and `2` equals `2.0`.
+- Two integers are compared exactly as 64-bit integers, whatever their magnitude: `9007199254740993` and
+  `9007199254740992` are different numbers.
+- When either operand is a floating-point number, both are compared as doubles: `2` equals `2.0` and `3` is
+  greater than `2.9`. Nothing is rounded or truncated.
+- Integers are exact from -2^63 to 2^64-1; an integer beyond that range is read as a double.
+- An integer compared with a floating-point number is exact only up to 2^53 (the precision of a double); above
+  that the integer loses its low bits in the conversion. Keep large counters and epoch timestamps (milliseconds
+  or nanoseconds) as integers on both sides.
 - `value` is a literal integer or floating-point number, or a reference to a numeric field.
-- Integers above 2^53 lose precision in the conversion: `9007199254740993` compares equal to
-  `9007199254740992`.
+- Strings, booleans and null are never numbers, not even `"2"`: the check fails.
 
 Build errors:
-- `value` is a literal that is not a number (a quoted number, a boolean or null), or an integer above 2^63-1.
+- `value` is a literal that is not a number (a quoted number, a boolean or null).
 - `value` is a reference to a schema field whose type is not numeric.
 - The target is a schema field whose type is not numeric.
 
 Notes:
 - The `>=` operator with a numeric literal (`$field >= 5`) maps to this helper.
-- `int_gte` compares exact 64-bit integers.
 - Not the negation of `number_lt`: both are false for a missing or non-number target.
 
 
 ## Fails when
 
 - The target field does not exist.
-- The target field is not a number, or is an integer above 2^63-1.
+- The target field is not a number.
 - The reference given as `value` does not exist or is not a number.
 - The target number is less than `value`.
 
@@ -3531,69 +2719,26 @@ Notes:
 
 ### Example 1
 
-The target number is less than the value.
+An integer and a floating-point number with the same value are equal.
 
 #### Asset
 
 ```yaml
 check:
-  - target_field: number_gte(2.6)
+  - target_field: number_gte(2)
 ```
 
 #### Input Event
 
 ```json
 {
-  "target_field": 2
-}
-```
-
-*The check was performed with errors*
-
-### Example 2
-
-The target number is less than the value.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: number_gte($value)
-```
-
-#### Input Event
-
-```json
-{
-  "value": 2,
-  "target_field": 1.5
-}
-```
-
-*The check was performed with errors*
-
-### Example 3
-
-Equal floating-point numbers satisfy the check.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: number_gte(2.2)
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": 2.2
+  "target_field": 2.0
 }
 ```
 
 *The check was successful*
 
-### Example 4
+### Example 2
 
 Equal integers satisfy the check.
 
@@ -3615,26 +2760,69 @@ check:
 
 *The check was successful*
 
-### Example 5
+### Example 3
 
-An integer and a floating-point number with the same value are equal.
+An unsigned 64-bit target is greater than a negative value.
 
 #### Asset
 
 ```yaml
 check:
-  - target_field: number_gte(2)
+  - target_field: number_gte(-1)
 ```
 
 #### Input Event
 
 ```json
 {
-  "target_field": 2.0
+  "target_field": 18446744073709551615
 }
 ```
 
 *The check was successful*
+
+### Example 4
+
+Two integers above 2^53 are compared exactly, so the target is less.
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_gte($value)
+```
+
+#### Input Event
+
+```json
+{
+  "value": 9007199254740993,
+  "target_field": 9007199254740992
+}
+```
+
+*The check was performed with errors*
+
+### Example 5
+
+The target number is less than the value.
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_gte(2.6)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": 2
+}
+```
+
+*The check was performed with errors*
 
 ### Example 6
 
@@ -3692,26 +2880,31 @@ check: number_lt($target_field, value)
 Checks whether the target number is less than `value`.
 
 Behavior:
-- Both operands are converted to double before the comparison, so integers and floating-point numbers can
-  be mixed freely.
+- Two integers are compared exactly as 64-bit integers, whatever their magnitude: `9007199254740993` and
+  `9007199254740992` are different numbers.
+- When either operand is a floating-point number, both are compared as doubles: `2` equals `2.0` and `3` is
+  greater than `2.9`. Nothing is rounded or truncated.
+- Integers are exact from -2^63 to 2^64-1; an integer beyond that range is read as a double.
+- An integer compared with a floating-point number is exact only up to 2^53 (the precision of a double); above
+  that the integer loses its low bits in the conversion. Keep large counters and epoch timestamps (milliseconds
+  or nanoseconds) as integers on both sides.
 - `value` is a literal integer or floating-point number, or a reference to a numeric field.
-- Integers above 2^53 lose precision in the conversion: `9007199254740993` compares equal to
-  `9007199254740992`.
+- Strings, booleans and null are never numbers, not even `"2"`: the check fails.
 
 Build errors:
-- `value` is a literal that is not a number (a quoted number, a boolean or null), or an integer above 2^63-1.
+- `value` is a literal that is not a number (a quoted number, a boolean or null).
 - `value` is a reference to a schema field whose type is not numeric.
 - The target is a schema field whose type is not numeric.
 
 Notes:
 - The `<` operator with a numeric literal (`$field < 5`) maps to this helper.
-- `int_lt` compares exact 64-bit integers.
+- Not the negation of `number_gte`: both are false for a missing or non-number target.
 
 
 ## Fails when
 
 - The target field does not exist.
-- The target field is not a number, or is an integer above 2^63-1.
+- The target field is not a number.
 - The reference given as `value` does not exist or is not a number.
 - The target number is greater than or equal to `value`.
 
@@ -3740,7 +2933,7 @@ check:
 
 ### Example 2
 
-The target number is less than the value.
+A floating-point target is less than an integer value; nothing is rounded.
 
 #### Asset
 
@@ -3753,8 +2946,8 @@ check:
 
 ```json
 {
-  "value": 2.1,
-  "target_field": 1.6
+  "value": 3,
+  "target_field": 2.9
 }
 ```
 
@@ -3762,7 +2955,50 @@ check:
 
 ### Example 3
 
-The target number is greater than the value.
+Two integers above 2^53 are compared exactly.
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_lt(9007199254740993)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": 9007199254740992
+}
+```
+
+*The check was successful*
+
+### Example 4
+
+A negative target is less than an unsigned 64-bit value.
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_lt($value)
+```
+
+#### Input Event
+
+```json
+{
+  "value": 18446744073709551615,
+  "target_field": -1
+}
+```
+
+*The check was successful*
+
+### Example 5
+
+An integer and a floating-point number with the same value are equal, so the target is not less.
 
 #### Asset
 
@@ -3775,13 +3011,13 @@ check:
 
 ```json
 {
-  "target_field": 2.2
+  "target_field": 2.0
 }
 ```
 
 *The check was performed with errors*
 
-### Example 4
+### Example 6
 
 Equal numbers are not less.
 
@@ -3803,7 +3039,7 @@ check:
 
 *The check was performed with errors*
 
-### Example 5
+### Example 7
 
 The target field is a string, not a number.
 
@@ -3858,27 +3094,31 @@ check: number_lte($target_field, value)
 Checks whether the target number is less than or equal to `value`.
 
 Behavior:
-- Both operands are converted to double before the comparison, so integers and floating-point numbers can
-  be mixed freely and `2` equals `2.0`.
+- Two integers are compared exactly as 64-bit integers, whatever their magnitude: `9007199254740993` and
+  `9007199254740992` are different numbers.
+- When either operand is a floating-point number, both are compared as doubles: `2` equals `2.0` and `3` is
+  greater than `2.9`. Nothing is rounded or truncated.
+- Integers are exact from -2^63 to 2^64-1; an integer beyond that range is read as a double.
+- An integer compared with a floating-point number is exact only up to 2^53 (the precision of a double); above
+  that the integer loses its low bits in the conversion. Keep large counters and epoch timestamps (milliseconds
+  or nanoseconds) as integers on both sides.
 - `value` is a literal integer or floating-point number, or a reference to a numeric field.
-- Integers above 2^53 lose precision in the conversion: `9007199254740993` compares equal to
-  `9007199254740992`.
+- Strings, booleans and null are never numbers, not even `"2"`: the check fails.
 
 Build errors:
-- `value` is a literal that is not a number (a quoted number, a boolean or null), or an integer above 2^63-1.
+- `value` is a literal that is not a number (a quoted number, a boolean or null).
 - `value` is a reference to a schema field whose type is not numeric.
 - The target is a schema field whose type is not numeric.
 
 Notes:
 - The `<=` operator with a numeric literal (`$field <= 5`) maps to this helper.
-- `int_lte` compares exact 64-bit integers.
 - Not the negation of `number_gt`: both are false for a missing or non-number target.
 
 
 ## Fails when
 
 - The target field does not exist.
-- The target field is not a number, or is an integer above 2^63-1.
+- The target field is not a number.
 - The reference given as `value` does not exist or is not a number.
 - The target number is greater than `value`.
 
@@ -3907,7 +3147,7 @@ check:
 
 ### Example 2
 
-The target number is less than the value.
+An integer and a floating-point number with the same value are equal.
 
 #### Asset
 
@@ -3921,13 +3161,56 @@ check:
 ```json
 {
   "value": 2,
-  "target_field": 1.2
+  "target_field": 2.0
 }
 ```
 
 *The check was successful*
 
 ### Example 3
+
+The largest signed value is less than an unsigned 64-bit value.
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_lte(18446744073709551615)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": 9223372036854775807
+}
+```
+
+*The check was successful*
+
+### Example 4
+
+Two integers above 2^53 are compared exactly, so the target is greater.
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_lte($value)
+```
+
+#### Input Event
+
+```json
+{
+  "value": 9007199254740992,
+  "target_field": 9007199254740993
+}
+```
+
+*The check was performed with errors*
+
+### Example 5
 
 The target number is greater than the value.
 
@@ -3947,49 +3230,6 @@ check:
 ```
 
 *The check was performed with errors*
-
-### Example 4
-
-The target number is greater than the value.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: number_lte($value)
-```
-
-#### Input Event
-
-```json
-{
-  "value": 2,
-  "target_field": 22
-}
-```
-
-*The check was performed with errors*
-
-### Example 5
-
-An integer and a floating-point number with the same value are equal.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: number_lte(2)
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": 2.0
-}
-```
-
-*The check was successful*
 
 ### Example 6
 
@@ -4047,28 +3287,32 @@ check: number_ne($target_field, value)
 Checks whether the target number differs from `value`.
 
 Behavior:
-- Both operands are converted to double before the comparison, so `2` and `2.0` are equal and the check
-  fails for them.
+- Two integers are compared exactly as 64-bit integers, whatever their magnitude: `9007199254740993` and
+  `9007199254740992` are different numbers.
+- When either operand is a floating-point number, both are compared as doubles: `2` equals `2.0` and `3` is
+  greater than `2.9`. Nothing is rounded or truncated.
+- Integers are exact from -2^63 to 2^64-1; an integer beyond that range is read as a double.
+- An integer compared with a floating-point number is exact only up to 2^53 (the precision of a double); above
+  that the integer loses its low bits in the conversion. Keep large counters and epoch timestamps (milliseconds
+  or nanoseconds) as integers on both sides.
 - `value` is a literal integer or floating-point number, or a reference to a numeric field.
-- Integers above 2^53 lose precision in the conversion: `9007199254740993` compares equal to
-  `9007199254740992`.
+- Strings, booleans and null are never numbers, not even `"2"`: the check fails.
 - A missing or non-number target gives false, so this is not the same as `NOT number_eq(...)`, which is
   true for a missing field.
 
 Build errors:
-- `value` is a literal that is not a number (a quoted number, a boolean or null), or an integer above 2^63-1.
+- `value` is a literal that is not a number (a quoted number, a boolean or null).
 - `value` is a reference to a schema field whose type is not numeric.
 - The target is a schema field whose type is not numeric.
 
 Notes:
 - The `!=` operator with a numeric literal (`$field != 5`) maps to this helper.
-- `int_ne` compares exact 64-bit integers and tells `2` from `2.0`.
 
 
 ## Fails when
 
 - The target field does not exist.
-- The target field is not a number, or is an integer above 2^63-1.
+- The target field is not a number.
 - The reference given as `value` does not exist or is not a number.
 - The two numbers are equal.
 
@@ -4097,7 +3341,7 @@ check:
 
 ### Example 2
 
-The two numbers differ.
+Two integers above 2^53 are compared exactly, so they differ.
 
 #### Asset
 
@@ -4110,57 +3354,14 @@ check:
 
 ```json
 {
-  "value": 1,
-  "target_field": 2.3
+  "value": 9007199254740992,
+  "target_field": 9007199254740993
 }
 ```
 
 *The check was successful*
 
 ### Example 3
-
-The two floating-point numbers are equal.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: number_ne(2.2)
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": 2.2
-}
-```
-
-*The check was performed with errors*
-
-### Example 4
-
-The two integers are equal.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: number_ne($value)
-```
-
-#### Input Event
-
-```json
-{
-  "value": 2,
-  "target_field": 2
-}
-```
-
-*The check was performed with errors*
-
-### Example 5
 
 An integer and a floating-point number with the same value are equal, so the check fails.
 
@@ -4176,6 +3377,49 @@ check:
 ```json
 {
   "target_field": 2.0
+}
+```
+
+*The check was performed with errors*
+
+### Example 4
+
+The two floating-point numbers are equal.
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_ne($value)
+```
+
+#### Input Event
+
+```json
+{
+  "value": 2.2,
+  "target_field": 2.2
+}
+```
+
+*The check was performed with errors*
+
+### Example 5
+
+The two integers are equal.
+
+#### Asset
+
+```yaml
+check:
+  - target_field: number_ne(2)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": 2
 }
 ```
 
@@ -4391,7 +3635,7 @@ Build errors:
 
 Notes:
 - The `>` operator with a string literal (`$field > 'x'`) maps to this helper.
-- Use `number_gt` or `int_gt` to compare numbers; strings are never compared numerically.
+- Use `number_gt` to compare numbers; strings are never compared numerically.
 
 
 ## Fails when
@@ -4698,7 +3942,7 @@ Build errors:
 
 Notes:
 - The `<` operator with a string literal (`$field < 'x'`) maps to this helper.
-- Use `number_lt` or `int_lt` to compare numbers; strings are never compared numerically.
+- Use `number_lt` to compare numbers; strings are never compared numerically.
 
 
 ## Fails when
@@ -12315,7 +11559,7 @@ Build errors:
 Notes:
 - `array_contains_all` and `array_contains_any` are the reverse check: the target is the array and the
   arguments are the candidates.
-- `string_eq`, `number_eq` and `int_eq` compare against a single candidate with type-specific rules.
+- `string_eq` and `number_eq` compare against a single candidate with type-specific rules.
 
 
 ## Fails when

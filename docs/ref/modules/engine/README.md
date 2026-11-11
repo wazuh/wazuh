@@ -1433,7 +1433,7 @@ The complete list of helpers, grouped by topic, is in the [helper functions refe
 
 - Names are `snake_case` English words; the only abbreviations are `ip`, `ipv4`, `ipv6`, `cidr`, `json`, `xml`, `csv`, `dsv`, `kv`, `kvdb`, `regex`, `uri`, `fqdn`, `sha1`, `hex`, `iana`, `asn`, `epoch`, `int`, `bool` and the comparison operators `eq`, `ne`, `gt`, `gte`, `lt`, `lte`.
 - A check helper reads as a sentence about the target field: `exists($f)`, `contains($f, 'x')`, `one_of($f, [...])`, `is_key_of($f, $table)`, `in_kvdb($f, 'db')`, `in_cidr($f, '10.0.0.0/8')`, `is_string($f)`. A negated check puts `not` right before the verb: `not_exists`, `is_not_string`, `not_in_kvdb`, `regex_not_match`.
-- Typed comparisons are `string_`, `number_` or `int_` followed by `eq`, `ne`, `gt`, `gte`, `lt` or `lte`; for a literal value prefer the operators (`$f >= 5`), the helpers are for comparing two fields.
+- Typed comparisons are `string_` or `number_` followed by `eq`, `ne`, `gt`, `gte`, `lt` or `lte`. `number_*` compares two integers exactly and switches to double only when a floating-point number is involved; for a literal value prefer the operators (`$f >= 5`), the helpers are for comparing two fields.
 - A check over several values says how many must be present: `array_contains_all`, `array_contains_any`, `array_contains_none`. A map helper that takes several references fails when one is missing (`array_append`, `array_append_unique`, `concat`); its `_any` variant (`array_append_any`, `array_append_unique_any`, `concat_any`) uses the references that resolve and fails only when none does.
 - A helper that produces a value is named after what it produces: `to_int`, `parse_json`, `hex_to_int`, `epoch_to_date`, `now`, `geoip`, `asn`, `sha1`, `community_id`, `syslog_facility`, `iana_protocol_number`. A helper that modifies the event is a verb: `delete`, `rename`, `merge`, `replace`, `split`, `trim`, `lookup`, `snake_case_keys`, `discard_event`.
 - An option is a trailing quoted word, not a separate helper: `merge($src, 'deep')`, `lookup_merge($table, $key, 'deep')`, `kvdb_lookup_merge('db', $key, 'deep')`, `to_int($n, 'round')`, `parse_xml($s, 'windows')`, `array_to_object($arr, 'Name', 'Value', 'raw_keys')`.
@@ -1513,7 +1513,7 @@ Where op is any of the following:
 
 When using any operator other than `==`, only string or number values are allowed.
 
-`==` compares the field with the value whatever its type (the value may also be a reference). Every other operator desugars to the typed comparison helper selected by the type of the value: `string_<op>` for a string and `number_<op>` for a number, where `<op>` is `ne` (`!=`), `lt` (`<`), `lte` (`<=`), `gt` (`>`) or `gte` (`>=`) — `check: $event.severity > 3` is `number_gt($event.severity, 3)`. The same helpers, together with `string_eq`, `number_eq` and the exact-integer `int_eq`, `int_ne`, `int_gt`, `int_gte`, `int_lt` and `int_lte`, are the form to use when the right side is a reference (`number_gt($a, $b)`).
+`==` compares the field with the value whatever its type (the value may also be a reference). Every other operator desugars to the typed comparison helper selected by the type of the value: `string_<op>` for a string and `number_<op>` for a number, where `<op>` is `ne` (`!=`), `lt` (`<`), `lte` (`<=`), `gt` (`>`) or `gte` (`>=`) — `check: $event.severity > 3` is `number_gt($event.severity, 3)`. The same helpers, together with `string_eq` and `number_eq`, are the form to use when the right side is a reference (`number_gt($a, $b)`).
 
 When using the default map or check operations for string values, values are parsed according to standard YAML
 (or JSON) types. If a value is a string and begins with the reference symbol `$`, it is treated as a potential
@@ -2100,7 +2100,7 @@ check: $event.category=="registry" AND $event.type=="change" AND ($registry.path
 ```
 
 ```yaml
-check: int_lt($http.response.status_code, 400)
+check: number_lt($http.response.status_code, 400)
 ```
 
 ```yaml

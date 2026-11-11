@@ -18,7 +18,7 @@ metadata:
     Notes:
     - `array_contains_all` and `array_contains_any` are the reverse check: the target is the array and the
       arguments are the candidates.
-    - `string_eq`, `number_eq` and `int_eq` compare against a single candidate with type-specific rules.
+    - `string_eq` and `number_eq` compare against a single candidate with type-specific rules.
   group: array
   fails_when:
     - The target field does not exist.

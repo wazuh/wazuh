@@ -162,7 +162,7 @@ FilterOp opBuilderHelperStringContains(const Reference& targetField,
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
  * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @return Expression The lifter with the `double_equal` filter.
+ * @return Expression The lifter with the `number_eq` filter.
  * @throw std::runtime_error if the parameter is not a number.
  */
 FilterOp opBuilderHelperNumberEqual(const Reference& targetField,
@@ -178,7 +178,7 @@ FilterOp opBuilderHelperNumberEqual(const Reference& targetField,
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
  * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @return Expression The lifter with the `double_not_equal` filter.
+ * @return Expression The lifter with the `number_ne` filter.
  * @throw std::runtime_error if the parameter is not a number.
  */
 FilterOp opBuilderHelperNumberNotEqual(const Reference& targetField,
@@ -194,7 +194,7 @@ FilterOp opBuilderHelperNumberNotEqual(const Reference& targetField,
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
  * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @return Expression The lifter with the `double_less` filter.
+ * @return Expression The lifter with the `number_lt` filter.
  * @throw std::runtime_error if the parameter is not a number.
  */
 FilterOp opBuilderHelperNumberLessThan(const Reference& targetField,
@@ -210,7 +210,7 @@ FilterOp opBuilderHelperNumberLessThan(const Reference& targetField,
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
  * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @return Expression The lifter with the `double_less_or_equal` filter.
+ * @return Expression The lifter with the `number_lte` filter.
  * @throw std::runtime_error if the parameter is not a number.
  */
 FilterOp opBuilderHelperNumberLessThanEqual(const Reference& targetField,
@@ -226,7 +226,7 @@ FilterOp opBuilderHelperNumberLessThanEqual(const Reference& targetField,
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
  * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @return Expression The lifter with the `double_greater` filter.
+ * @return Expression The lifter with the `number_gt` filter.
  * @throw std::runtime_error if the parameter is not a number.
  */
 
@@ -243,7 +243,7 @@ FilterOp opBuilderHelperNumberGreaterThan(const Reference& targetField,
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
  * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @return Expression The lifter with the `double_greater_or_equal` filter.
+ * @return Expression The lifter with the `number_gte` filter.
  * @throw std::runtime_error if the parameter is not a number.
  */
 FilterOp opBuilderHelperNumberGreaterThanEqual(const Reference& targetField,
@@ -251,105 +251,8 @@ FilterOp opBuilderHelperNumberGreaterThanEqual(const Reference& targetField,
                                                const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 //*************************************************
-//*              Int filters                      *
+//*       Bit, regex, IP and array filters        *
 //*************************************************
-
-/**
- * @brief Builds helper integer equal operation.
- * Checks that the field is equal to an integer or another numeric field
- *
- * The filter checks if a field in the JSON event is equal to a value.
- * Only pass events if the fields are equal and the values are a integer.
- * @param targetField target field of the helper
- * @param opArgs Vector of operation arguments containing numeric values to be converted.
- * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @return Expression The lifter with the `int_eq` filter.
- * @throw std::runtime_error if the parameter is not a integer.
- */
-FilterOp opBuilderHelperIntEqual(const Reference& targetField,
-                                 const std::vector<OpArg>& opArgs,
-                                 const std::shared_ptr<const IBuildCtx>& buildCtx);
-
-/**
- * @brief Builds helper integer not equal operation.
- * Checks that the field is not equal to an integer or another numeric field
- *
- * The filter checks if a field in the JSON event is not equal to a value.
- * Only pass events if the fields are not equal and the values are a integer.
- * @param targetField target field of the helper
- * @param opArgs Vector of operation arguments containing numeric values to be converted.
- * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @return Expression The lifter with the `int_ne` filter.
- * @throw std::runtime_error if the parameter is not a integer.
- */
-FilterOp opBuilderHelperIntNotEqual(const Reference& targetField,
-                                    const std::vector<OpArg>& opArgs,
-                                    const std::shared_ptr<const IBuildCtx>& buildCtx);
-
-/**
- * @brief Builds helper integer less than operation.
- * Checks that the field is less than to an integer or another numeric field
- *
- * The filter checks if a field in the JSON event is less than a value.
- * Only pass events if the fields are less than and the values are a integer.
- * @param targetField target field of the helper
- * @param opArgs Vector of operation arguments containing numeric values to be converted.
- * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @return Expression The lifter with the `int_lt` filter.
- * @throw std::runtime_error if the parameter is not a integer.
- */
-FilterOp opBuilderHelperIntLessThan(const Reference& targetField,
-                                    const std::vector<OpArg>& opArgs,
-                                    const std::shared_ptr<const IBuildCtx>& buildCtx);
-
-/**
- * @brief Builds helper integer less than equal operation.
- * Checks that the field is less than equal to an integer or another numeric field
- *
- * The filter checks if a field in the JSON event is less than equal a value.
- * Only pass events if the fields are less than equal and the values are a integer.
- * @param targetField target field of the helper
- * @param opArgs Vector of operation arguments containing numeric values to be converted.
- * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @return Expression The lifter with the `int_lte` filter.
- * @throw std::runtime_error if the parameter is not a integer.
- */
-FilterOp opBuilderHelperIntLessThanEqual(const Reference& targetField,
-                                         const std::vector<OpArg>& opArgs,
-                                         const std::shared_ptr<const IBuildCtx>& buildCtx);
-
-/**
- * @brief Builds helper integer greater than operation.
- * Checks that the field is greater than to an integer or another numeric field
- *
- * The filter checks if a field in the JSON event is greater than a value.
- * Only pass events if the fields are greater than and the values are a integer.
- * @param targetField target field of the helper
- * @param opArgs Vector of operation arguments containing numeric values to be converted.
- * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @return Expression The lifter with the `int_gt` filter.
- * @throw std::runtime_error if the parameter is not a integer.
- */
-
-FilterOp opBuilderHelperIntGreaterThan(const Reference& targetField,
-                                       const std::vector<OpArg>& opArgs,
-                                       const std::shared_ptr<const IBuildCtx>& buildCtx);
-
-/**
- * @brief Builds helper integer greater than equal operation.
- * Checks that the field is greater than equal to an integer or another numeric field
- *
- * The filter checks if a field in the JSON event is greater than equal a value.
- * Only pass events if the fields are greater than equal and the values are a integer.
- * @param targetField target field of the helper
- * @param opArgs Vector of operation arguments containing numeric values to be converted.
- * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @return Expression The lifter with the `int_gte` filter.
- * @throw std::runtime_error if the parameter is not a integer.
- */
-FilterOp opBuilderHelperIntGreaterThanEqual(const Reference& targetField,
-                                            const std::vector<OpArg>& opArgs,
-                                            const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
  * @brief Builds helper Binary and operation.

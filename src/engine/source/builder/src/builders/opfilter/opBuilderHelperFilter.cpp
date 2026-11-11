@@ -5,6 +5,7 @@
 #include <charconv>
 #include <limits>
 #include <optional>
+#include <type_traits>
 #include <unordered_set>
 #include <variant>
 
@@ -46,182 +47,123 @@ enum class Operator
 enum class Type
 {
     STRING,
-    NUMBER,
-    INT
+    NUMBER
 };
 
 /**
- * @brief Get the Int Cmp Function object
+ * @brief Numeric operand of a comparison: an exact 64-bit integer (signed or unsigned) or a double.
  *
- * @param targetField Reference of the field to compare, obtained from the YAML key
- * @param op Operator to use
- * @param rightParameter Right parameter to compare, obtained from the YAML value
- * @return std::function<FilterResult(base::Event)>
- *
- * @throws std::runtime_error
- *   - if the right parameter is a value and not a valid integer
- *   - if helper::base::Parameter::Type is not supported
+ * Integers that fit in int64_t are read as int64_t; only integers above INT64_MAX are read as uint64_t.
  */
-FilterOp getIntCmpFunction(const std::string& targetField,
-                           Operator op,
-                           const OpArg& rightParameter,
-                           const std::shared_ptr<const IBuildCtx>& buildCtx)
+using NumericValue = std::variant<int64_t, uint64_t, double>;
+
+/**
+ * @brief Reads the number at @p path of @p doc as a NumericValue.
+ *
+ * @param doc Document to read from
+ * @param path JSON pointer path of the value, empty for the root
+ * @return std::optional<NumericValue> The number, or std::nullopt if the value is missing or not a number
+ */
+std::optional<NumericValue> getNumericValue(const json::Json& doc, std::string_view path = "")
 {
-    // Depending on rValue type we store the reference or the integer value
-    std::variant<std::string, int64_t> rValue {};
-
-    if (rightParameter->isValue())
+    if (const auto asInt = doc.getIntAsInt64(path); asInt.has_value())
     {
-        try
-        {
-            rValue = std::static_pointer_cast<Value>(rightParameter)->value().getInt64().value();
-        }
-        catch (const std::exception& e)
-        {
-            throw std::runtime_error(fmt::format(R"(Expected an integer but got '{}'.)",
-                                                 std::static_pointer_cast<Value>(rightParameter)->value().str()));
-        }
+        return NumericValue {asInt.value()};
     }
-    else
+    if (const auto asUint = doc.getUint64(path); asUint.has_value())
     {
-        auto ref = std::static_pointer_cast<Reference>(rightParameter);
-        if (buildCtx->validator().hasField(ref->dotPath()))
+        return NumericValue {asUint.value()};
+    }
+    if (const auto asDouble = doc.getNumberAsDouble(path); asDouble.has_value())
+    {
+        return NumericValue {asDouble.value()};
+    }
+    return std::nullopt;
+}
+
+/**
+ * @brief Three-way comparison of two numeric operands.
+ *
+ * Two integers are compared exactly, whatever their width or sign; when either operand is a double both are
+ * compared as doubles.
+ *
+ * @param l Left operand
+ * @param r Right operand
+ * @return int Negative when l < r, zero when l == r, positive when l > r
+ */
+int compareNumericValues(const NumericValue& l, const NumericValue& r)
+{
+    return std::visit(
+        [](const auto& lv, const auto& rv) -> int
         {
-            const auto refType = buildCtx->validator().getType(ref->dotPath());
-            if (refType != schemf::Type::INTEGER && refType != schemf::Type::LONG && refType != schemf::Type::SHORT
-                && refType != schemf::Type::BYTE)
+            using L = std::decay_t<decltype(lv)>;
+            using R = std::decay_t<decltype(rv)>;
+            if constexpr (std::is_floating_point_v<L> || std::is_floating_point_v<R>)
             {
-                throw std::runtime_error(
-                    fmt::format("Expected a reference of an integer type (integer, long, short or byte) but got "
-                                "reference '{}' of type '{}'",
-                                ref->dotPath(),
-                                schemf::typeToStr(refType)));
+                const auto ld = static_cast<double>(lv);
+                const auto rd = static_cast<double>(rv);
+                return (ld < rd) ? -1 : ((ld > rd) ? 1 : 0);
             }
-        }
-        rValue = std::static_pointer_cast<Reference>(rightParameter)->jsonPath();
-    }
-
-    // Depending on the operator we return the correct function
-    std::function<bool(int64_t l, int64_t r)> cmpFunction;
-    switch (op)
-    {
-        case Operator::EQ:
-            cmpFunction = [](int64_t l, int64_t r)
+            else if constexpr (std::is_same_v<L, int64_t> && std::is_same_v<R, uint64_t>)
             {
-                return l == r;
-            };
-            break;
-        case Operator::NE:
-            cmpFunction = [](int64_t l, int64_t r)
-            {
-                return l != r;
-            };
-            break;
-        case Operator::GT:
-            cmpFunction = [](int64_t l, int64_t r)
-            {
-                return l > r;
-            };
-            break;
-        case Operator::GE:
-            cmpFunction = [](int64_t l, int64_t r)
-            {
-                return l >= r;
-            };
-            break;
-        case Operator::LT:
-            cmpFunction = [](int64_t l, int64_t r)
-            {
-                return l < r;
-            };
-            break;
-        case Operator::LE:
-            cmpFunction = [](int64_t l, int64_t r)
-            {
-                return l <= r;
-            };
-            break;
-        default: break;
-    }
-
-    // Tracing messages
-    const auto name = buildCtx->context().opName;
-    const auto successTrace {fmt::format("[{}] -> Success", name)};
-
-    const std::string failureTrace1 {fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField)};
-    const std::string failureTrace2 {fmt::format("[{}] -> Failure: Reference not found", name)};
-    const std::string failureTrace3 {fmt::format("[{}] -> Failure: Comparison is false", name)};
-
-    // Function that implements the helper
-    return [=, isTestMode = buildCtx->isTestMode()](base::ConstEvent event) -> FilterResult
-    {
-        // We assert that references exists, checking if the optional from Json getter is
-        // empty ot not. Then if is a reference we get the value from the event, otherwise
-        // we get the value from the parameter
-
-        auto lValue = event->getIntAsInt64(targetField);
-        if (!lValue.has_value())
-        {
-            RETURN_FAILURE(isTestMode, false, failureTrace1);
-        }
-
-        int64_t resolvedValue {0};
-        if (std::holds_alternative<std::string>(rValue))
-        {
-            auto resolvedRValue = event->getIntAsInt64(std::get<std::string>(rValue));
-            if (!resolvedRValue.has_value())
-            {
-                RETURN_FAILURE(isTestMode, false, failureTrace2);
+                if (lv < 0)
+                {
+                    return -1;
+                }
+                const auto lu = static_cast<uint64_t>(lv);
+                return (lu < rv) ? -1 : ((lu > rv) ? 1 : 0);
             }
-            resolvedValue = resolvedRValue.value();
-        }
-        else
-        {
-            resolvedValue = std::get<int64_t>(rValue);
-        }
-
-        if (cmpFunction(lValue.value(), resolvedValue))
-        {
-            RETURN_SUCCESS(isTestMode, true, successTrace);
-        }
-        else
-        {
-            RETURN_FAILURE(isTestMode, false, failureTrace3);
-        }
-    };
+            else if constexpr (std::is_same_v<L, uint64_t> && std::is_same_v<R, int64_t>)
+            {
+                if (rv < 0)
+                {
+                    return 1;
+                }
+                const auto ru = static_cast<uint64_t>(rv);
+                return (lv < ru) ? -1 : ((lv > ru) ? 1 : 0);
+            }
+            else
+            {
+                return (lv < rv) ? -1 : ((lv > rv) ? 1 : 0);
+            }
+        },
+        l,
+        r);
 }
 
 /**
  * @brief Get the Number Cmp Function object
  *
+ * Two integers (signed or unsigned 64-bit) are compared exactly; when either operand is a floating-point number
+ * both are compared as doubles.
+ *
  * @param targetField Reference of the field to compare, obtained from the YAML key
  * @param op Operator to use
  * @param rightParameter Right parameter to compare, obtained from the YAML value
- * @return std::function<FilterResult(base::Event)>
+ * @param buildCtx Build context
+ * @return FilterOp
  *
  * @throws std::runtime_error
- *   - if the right parameter is a value and not a valid integer
- *   - if helper::base::Parameter::Type is not supported
+ *   - if the right parameter is a value and not a number
+ *   - if the right parameter is a reference to a schema field that is not a number
  */
 FilterOp getNumberCmpFunction(const std::string& targetField,
                               Operator op,
                               const OpArg& rightParameter,
                               const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    // Depending on rValue type we store the reference or the integer value
-    std::variant<std::string, double> rValue {};
+    // Depending on rValue type we store the reference or the numeric value
+    std::variant<std::string, NumericValue> rValue {};
 
     if (rightParameter->isValue())
     {
-        try
+        const auto value = std::static_pointer_cast<Value>(rightParameter)->value();
+        const auto number = getNumericValue(value);
+        if (!number.has_value())
         {
-            rValue = std::static_pointer_cast<Value>(rightParameter)->value().getNumberAsDouble().value();
+            throw std::runtime_error(fmt::format(R"(Expected a number but got '{}'.)", value.str()));
         }
-        catch (const std::exception& e)
-        {
-            throw std::runtime_error(fmt::format(R"(Expected an number but got '{}'.)",
-                                                 std::static_pointer_cast<Value>(rightParameter)->value().str()));
-        }
+        rValue = number.value();
     }
     else
     {
@@ -238,44 +180,44 @@ FilterOp getNumberCmpFunction(const std::string& targetField,
         rValue = std::static_pointer_cast<Reference>(rightParameter)->jsonPath();
     }
 
-    // Depending on the operator we return the correct function
-    std::function<bool(double l, double r)> cmpFunction;
+    // Depending on the operator we return the predicate over the three-way comparison result
+    std::function<bool(int cmp)> cmpFunction;
     switch (op)
     {
         case Operator::EQ:
-            cmpFunction = [](double l, double r)
+            cmpFunction = [](int cmp)
             {
-                return l == r;
+                return cmp == 0;
             };
             break;
         case Operator::NE:
-            cmpFunction = [](double l, double r)
+            cmpFunction = [](int cmp)
             {
-                return l != r;
+                return cmp != 0;
             };
             break;
         case Operator::GT:
-            cmpFunction = [](double l, double r)
+            cmpFunction = [](int cmp)
             {
-                return l > r;
+                return cmp > 0;
             };
             break;
         case Operator::GE:
-            cmpFunction = [](double l, double r)
+            cmpFunction = [](int cmp)
             {
-                return l >= r;
+                return cmp >= 0;
             };
             break;
         case Operator::LT:
-            cmpFunction = [](double l, double r)
+            cmpFunction = [](int cmp)
             {
-                return l < r;
+                return cmp < 0;
             };
             break;
         case Operator::LE:
-            cmpFunction = [](double l, double r)
+            cmpFunction = [](int cmp)
             {
-                return l <= r;
+                return cmp <= 0;
             };
             break;
         default: break;
@@ -292,20 +234,19 @@ FilterOp getNumberCmpFunction(const std::string& targetField,
     // Function that implements the helper
     return [=, isTestMode = buildCtx->isTestMode()](base::ConstEvent event) -> FilterResult
     {
-        // We assert that references exists, checking if the optional from Json getter is
-        // empty ot not. Then if is a reference we get the value from the event, otherwise
-        // we get the value from the parameter
+        // The target must hold a number; a reference on the right side must resolve to a number too,
+        // otherwise the value parsed at build time is used
 
-        auto lValue = event->getNumberAsDouble(targetField);
+        const auto lValue = getNumericValue(*event, targetField);
         if (!lValue.has_value())
         {
             RETURN_FAILURE(isTestMode, false, failureTrace1);
         }
 
-        double resolvedValue {0.0};
+        NumericValue resolvedValue {};
         if (std::holds_alternative<std::string>(rValue))
         {
-            auto resolvedRValue = event->getNumberAsDouble(std::get<std::string>(rValue));
+            const auto resolvedRValue = getNumericValue(*event, std::get<std::string>(rValue));
             if (!resolvedRValue.has_value())
             {
                 RETURN_FAILURE(isTestMode, false, failureTrace2);
@@ -314,10 +255,10 @@ FilterOp getNumberCmpFunction(const std::string& targetField,
         }
         else
         {
-            resolvedValue = std::get<double>(rValue);
+            resolvedValue = std::get<NumericValue>(rValue);
         }
 
-        if (cmpFunction(lValue.value(), resolvedValue))
+        if (cmpFunction(compareNumericValues(lValue.value(), resolvedValue)))
         {
             RETURN_SUCCESS(isTestMode, true, successTrace);
         }
@@ -512,11 +453,6 @@ FilterOp opBuilderComparison(const std::string& targetField,
     // Get the expression depending on the type
     switch (t)
     {
-        case Type::INT:
-        {
-            auto opFn = getIntCmpFunction(targetField, op, parameters[0], buildCtx);
-            return opFn;
-        }
         case Type::STRING:
         {
             auto opFn = getStringCmpFunction(targetField, op, parameters[0], buildCtx);
@@ -533,68 +469,10 @@ FilterOp opBuilderComparison(const std::string& targetField,
 }
 
 //*************************************************
-//*               Int Cmp filters                 *
+//*              Number Cmp filters               *
 //*************************************************
 
-// field: +int_eq/int|$ref/
-FilterOp opBuilderHelperIntEqual(const Reference& targetField,
-                                 const std::vector<OpArg>& opArgs,
-                                 const std::shared_ptr<const IBuildCtx>& buildCtx)
-{
-    auto op = opBuilderComparison(targetField.jsonPath(), opArgs, Operator::EQ, Type::INT, buildCtx);
-    return op;
-}
-
-// field: +int_ne/int|$ref/
-FilterOp opBuilderHelperIntNotEqual(const Reference& targetField,
-                                    const std::vector<OpArg>& opArgs,
-                                    const std::shared_ptr<const IBuildCtx>& buildCtx)
-{
-    auto op = opBuilderComparison(targetField.jsonPath(), opArgs, Operator::NE, Type::INT, buildCtx);
-    return op;
-}
-
-// field: +int_lt/int|$ref/
-FilterOp opBuilderHelperIntLessThan(const Reference& targetField,
-                                    const std::vector<OpArg>& opArgs,
-                                    const std::shared_ptr<const IBuildCtx>& buildCtx)
-{
-    auto op = opBuilderComparison(targetField.jsonPath(), opArgs, Operator::LT, Type::INT, buildCtx);
-    return op;
-}
-
-// field: +int_lte/int|$ref/
-FilterOp opBuilderHelperIntLessThanEqual(const Reference& targetField,
-                                         const std::vector<OpArg>& opArgs,
-                                         const std::shared_ptr<const IBuildCtx>& buildCtx)
-{
-    auto op = opBuilderComparison(targetField.jsonPath(), opArgs, Operator::LE, Type::INT, buildCtx);
-    return op;
-}
-
-// field: +int_gt/int|$ref/
-FilterOp opBuilderHelperIntGreaterThan(const Reference& targetField,
-                                       const std::vector<OpArg>& opArgs,
-                                       const std::shared_ptr<const IBuildCtx>& buildCtx)
-{
-    auto op = opBuilderComparison(targetField.jsonPath(), opArgs, Operator::GT, Type::INT, buildCtx);
-    return op;
-}
-
-// field: +int_gte/int|$ref/
-FilterOp opBuilderHelperIntGreaterThanEqual(const Reference& targetField,
-                                            const std::vector<OpArg>& opArgs,
-                                            const std::shared_ptr<const IBuildCtx>& buildCtx)
-{
-    auto op = opBuilderComparison(targetField.jsonPath(), opArgs, Operator::GE, Type::INT, buildCtx);
-    return op;
-}
-
-//*************************************************
-//*               Double Cmp filters                 *
-//*************************************************
-
-// field: +double_equal/number|$ref/
+// field: +number_eq/number|$ref/
 FilterOp opBuilderHelperNumberEqual(const Reference& targetField,
                                     const std::vector<OpArg>& opArgs,
                                     const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -603,7 +481,7 @@ FilterOp opBuilderHelperNumberEqual(const Reference& targetField,
     return op;
 }
 
-// field: +double_not_equal/number|$ref/
+// field: +number_ne/number|$ref/
 FilterOp opBuilderHelperNumberNotEqual(const Reference& targetField,
                                        const std::vector<OpArg>& opArgs,
                                        const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -612,7 +490,7 @@ FilterOp opBuilderHelperNumberNotEqual(const Reference& targetField,
     return op;
 }
 
-// field: +double_less/number|$ref/
+// field: +number_lt/number|$ref/
 FilterOp opBuilderHelperNumberLessThan(const Reference& targetField,
                                        const std::vector<OpArg>& opArgs,
                                        const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -621,7 +499,7 @@ FilterOp opBuilderHelperNumberLessThan(const Reference& targetField,
     return op;
 }
 
-// field: +double_less_or_equal/number|$ref/
+// field: +number_lte/number|$ref/
 FilterOp opBuilderHelperNumberLessThanEqual(const Reference& targetField,
                                             const std::vector<OpArg>& opArgs,
                                             const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -630,7 +508,7 @@ FilterOp opBuilderHelperNumberLessThanEqual(const Reference& targetField,
     return op;
 }
 
-// field: +double_greater/number|$ref/
+// field: +number_gt/number|$ref/
 FilterOp opBuilderHelperNumberGreaterThan(const Reference& targetField,
                                           const std::vector<OpArg>& opArgs,
                                           const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -639,7 +517,7 @@ FilterOp opBuilderHelperNumberGreaterThan(const Reference& targetField,
     return op;
 }
 
-// field: +double_greater_or_equal/number|$ref/
+// field: +number_gte/number|$ref/
 FilterOp opBuilderHelperNumberGreaterThanEqual(const Reference& targetField,
                                                const std::vector<OpArg>& opArgs,
                                                const std::shared_ptr<const IBuildCtx>& buildCtx)

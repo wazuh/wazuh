@@ -16,7 +16,8 @@ metadata:
     - Any argument is given.
 
     Notes:
-    - There is no integer-only type check; the `int_*` comparisons are the only helpers that tell `2` from `2.0`.
+    - There is no integer-only type check: `2` and `2.0` are both numbers, and the `number_*` comparisons treat
+      them as equal.
     - `is_not_number` is not the negation of this helper: both are false for a missing field.
   group: type
   fails_when:

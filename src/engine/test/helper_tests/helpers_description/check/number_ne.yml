@@ -6,26 +6,30 @@ metadata:
     Checks whether the target number differs from `value`.
 
     Behavior:
-    - Both operands are converted to double before the comparison, so `2` and `2.0` are equal and the check
-      fails for them.
+    - Two integers are compared exactly as 64-bit integers, whatever their magnitude: `9007199254740993` and
+      `9007199254740992` are different numbers.
+    - When either operand is a floating-point number, both are compared as doubles: `2` equals `2.0` and `3` is
+      greater than `2.9`. Nothing is rounded or truncated.
+    - Integers are exact from -2^63 to 2^64-1; an integer beyond that range is read as a double.
+    - An integer compared with a floating-point number is exact only up to 2^53 (the precision of a double); above
+      that the integer loses its low bits in the conversion. Keep large counters and epoch timestamps (milliseconds
+      or nanoseconds) as integers on both sides.
     - `value` is a literal integer or floating-point number, or a reference to a numeric field.
-    - Integers above 2^53 lose precision in the conversion: `9007199254740993` compares equal to
-      `9007199254740992`.
+    - Strings, booleans and null are never numbers, not even `"2"`: the check fails.
     - A missing or non-number target gives false, so this is not the same as `NOT number_eq(...)`, which is
       true for a missing field.
 
     Build errors:
-    - `value` is a literal that is not a number (a quoted number, a boolean or null), or an integer above 2^63-1.
+    - `value` is a literal that is not a number (a quoted number, a boolean or null).
     - `value` is a reference to a schema field whose type is not numeric.
     - The target is a schema field whose type is not numeric.
 
     Notes:
     - The `!=` operator with a numeric literal (`$field != 5`) maps to this helper.
-    - `int_ne` compares exact 64-bit integers and tells `2` from `2.0`.
   group: comparison
   fails_when:
     - The target field does not exist.
-    - The target field is not a number, or is an integer above 2^63-1.
+    - The target field is not a number.
     - The reference given as `value` does not exist or is not a number.
     - The two numbers are equal.
 
@@ -59,10 +63,15 @@ test:
     should_pass: true
     description: The two numbers differ.
   - arguments:
-      value: 1
-    target_field: 2.3
+      value: 9007199254740992
+    target_field: 9007199254740993
     should_pass: true
-    description: The two numbers differ.
+    description: Two integers above 2^53 are compared exactly, so they differ.
+  - arguments:
+      value: 2
+    target_field: 2.0
+    should_pass: false
+    description: An integer and a floating-point number with the same value are equal, so the check fails.
   - arguments:
       value: 2.2
     target_field: 2.2
@@ -73,11 +82,6 @@ test:
     target_field: 2
     should_pass: false
     description: The two integers are equal.
-  - arguments:
-      value: 2
-    target_field: 2.0
-    should_pass: false
-    description: An integer and a floating-point number with the same value are equal, so the check fails.
   - arguments:
       value: 2
     target_field: "3"

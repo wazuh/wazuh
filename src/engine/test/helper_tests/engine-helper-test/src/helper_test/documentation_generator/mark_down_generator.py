@@ -14,7 +14,10 @@ import yaml
 REFERENCE_INTRO = (
     "This reference lists every helper function available to decoders, filters and outputs. "
     "Check helpers are used in `check` stages and `first_of` branches; map helpers are used in "
-    "`map` stages (some modify the target field in place)."
+    "`map` stages (some modify the target field in place). Names follow the convention stated in the "
+    "[Helper functions](README.md#helper-functions) section of the engine README. A new helper is "
+    "registered in the engine's `register.hpp` and described in a YAML file next to its siblings "
+    "(`src/engine/test/helper_tests/helpers_description/`), from which this page is generated."
 )
 
 # Index headings that are not the capitalized group name.

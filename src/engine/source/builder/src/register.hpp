@@ -45,6 +45,41 @@ namespace builder::detail
 const base::Name STORE_GEO_CONFIG_DOC_NAME {"enrichment/geo/0"};
 const base::Name STORE_IOC_CONFIG_DOC_NAME {"enrichment/ioc/0"};
 
+/*
+ * Helper naming convention. Full text: src/engine/source/builder/src/builders/README.md ("Naming Convention");
+ * the copy for content authors is docs/ref/modules/engine/README.md ("Helper functions"). Every name registered
+ * below follows it:
+ *
+ *  1. snake_case, ASCII, complete English words. Accepted abbreviations: ip ipv4 ipv6 cidr json xml csv dsv kv
+ *     kvdb regex uri fqdn sha1 hex iana asn epoch int bool eq ne gt gte lt lte.
+ *  2. A check helper reads as a sentence whose subject is the target: exists, contains, one_of, is_key_of,
+ *     in_kvdb, in_cidr, is_string. Negation goes right before the verb (not_exists, is_not_string, not_in_kvdb,
+ *     regex_not_match); a negated helper is false on a missing field, so it is not `NOT x(...)`.
+ *  3. A check over several values says how many must be present: array_contains_all / _any / _none. A map
+ *     helper over several references is strict by default (array_append, concat); its _any variant uses the
+ *     references that resolve and fails only when none does.
+ *  4. Typed comparisons are <type>_<op> with type in {string, number} and op in {eq, ne, gt, gte, lt, lte}.
+ *     number_* compares two integers exactly and as doubles when either operand is floating-point; no int_*.
+ *  5. A map helper is named by what it produces: to_<type>, parse_<format> (the parse-stage parser's name),
+ *     <x>_to_<y> (hex_to_int, epoch_to_date), decode_<enc>, now / now_epoch, or the domain noun (geoip, sha1).
+ *  6. A helper that modifies the event is an imperative verb: delete, rename, merge, replace, split, trim,
+ *     lookup, snake_case_keys, discard_event.
+ *  7. A mode is a trailing literal on a fixed-arity helper (merge($src, 'deep'), to_int($n, 'round'),
+ *     parse_xml($s, 'windows')) and a name suffix on a variadic one (rule 3), never a sibling helper; the one
+ *     exception is trim / trim_start / trim_end.
+ *  8. A type noun prefixes the verb only when the same verb means something else on another target type
+ *     (array_contains_all vs contains, number_gte vs string_gte); a domain noun appears when the helper reads
+ *     something that is not the target (kvdb_lookup, in_kvdb, iana_*, syslog_*). Otherwise the verb is bare.
+ *  9. Arguments: data input first ($reference), then options (literals).
+ *
+ * Adding a helper: register it below under its kind, add
+ * src/engine/test/helper_tests/helpers_description/<check|map|transform>/<name>.yml with the same name (the
+ * engine-helper-test tool validates it and generates its tests), and regenerate
+ * docs/ref/modules/engine/ref-helper-functions.md with `engine-helper-test generate-doc` (CI diffs the committed
+ * copy). The set of names registered here and the set of YAML files must stay equal. Renaming a helper is a hard
+ * break: there are no aliases and no rename hints, so the content that uses it moves in the same release.
+ */
+
 /**
  * @brief Register all operation (helper) builders in the registry.
  *
@@ -68,23 +103,6 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
         "array_contains_any", {schemf::elementValidationToken(), builders::opfilter::opBuilderHelperContainsAny});
     registry->template add<builders::OpBuilderEntry>(
         "array_contains_none", {schemf::elementValidationToken(), builders::opfilter::opBuilderHelperNotContainsAny});
-    registry->template add<builders::OpBuilderEntry>(
-        "int_eq", {schemf::JTypeToken::create(json::Json::Type::Number), builders::opfilter::opBuilderHelperIntEqual});
-    registry->template add<builders::OpBuilderEntry>(
-        "int_gt",
-        {schemf::JTypeToken::create(json::Json::Type::Number), builders::opfilter::opBuilderHelperIntGreaterThan});
-    registry->template add<builders::OpBuilderEntry>(
-        "int_gte",
-        {schemf::JTypeToken::create(json::Json::Type::Number), builders::opfilter::opBuilderHelperIntGreaterThanEqual});
-    registry->template add<builders::OpBuilderEntry>(
-        "int_lt",
-        {schemf::JTypeToken::create(json::Json::Type::Number), builders::opfilter::opBuilderHelperIntLessThan});
-    registry->template add<builders::OpBuilderEntry>(
-        "int_lte",
-        {schemf::JTypeToken::create(json::Json::Type::Number), builders::opfilter::opBuilderHelperIntLessThanEqual});
-    registry->template add<builders::OpBuilderEntry>(
-        "int_ne",
-        {schemf::JTypeToken::create(json::Json::Type::Number), builders::opfilter::opBuilderHelperIntNotEqual});
     registry->template add<builders::OpBuilderEntry>(
         "number_eq",
         {schemf::JTypeToken::create(json::Json::Type::Number), builders::opfilter::opBuilderHelperNumberEqual});

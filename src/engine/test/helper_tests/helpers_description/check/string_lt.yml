@@ -17,7 +17,7 @@ metadata:
 
     Notes:
     - The `<` operator with a string literal (`$field < 'x'`) maps to this helper.
-    - Use `number_lt` or `int_lt` to compare numbers; strings are never compared numerically.
+    - Use `number_lt` to compare numbers; strings are never compared numerically.
   group: comparison
   fails_when:
     - The target field does not exist.
