@@ -421,6 +421,47 @@ def test_update_user_allowed(db_setup, rbac_context, user_id, context, current_u
     assert result['affected_items'][0]['id'] == int(user_id)
 
 
+@pytest.mark.parametrize('user_id, current_user, context, denied', [
+    # A run_as account (flag on): its run_as token is held to every role, those not created yet included.
+    ('100', 'administrator', _white_role_update(set()), None),
+    ('100', 'administrator', _white_role_update(RUN_AS_REACHABLE), None),
+    # An account without the flag: its run_as token is held to the account's own roles.
+    ('101', 'normal', _white_role_update(set()), {103, 104, 105}),
+])
+def test_update_user_run_as_token_is_not_its_own_account(db_setup, rbac_context, user_id, current_user, context,
+                                                         denied):
+    """A run_as token names the shared account it logged in through, not the end user who holds it.
+
+    Its roles are only those the authorization context resolved to, so resetting the password of that
+    account is resetting someone else's: exempting it would hand the account, and every role it reaches,
+    to anyone mapped to a role with 'security:update' over it.
+    """
+    security, _, _ = db_setup
+    rbac_context(context)
+
+    with pytest.raises(WazuhPermissionError) as exc:
+        security.update_user(user_id=[user_id], password='Password1234', current_user=current_user, run_as=True)
+
+    assert exc.value.code == 4000
+    if denied is not None:
+        assert exc.value.ids == denied
+
+
+@pytest.mark.parametrize('user_id, current_user, context', [
+    ('100', 'administrator', EVERY_ROLE_UPDATE),
+    ('101', 'normal', _white_role_update({103, 104, 105})),
+])
+def test_update_user_run_as_token_with_the_roles(db_setup, rbac_context, user_id, current_user, context):
+    """A run_as token that covers what the account reaches may reset its password, like any other caller."""
+    security, _, _ = db_setup
+    rbac_context(context)
+
+    result = security.update_user(user_id=[user_id], password='Password1234', current_user=current_user,
+                                  run_as=True).to_dict()
+
+    assert result['affected_items'][0]['id'] == int(user_id)
+
+
 def test_update_user_black_mode_honours_a_deny(db_setup, rbac_context):
     """In black mode everything is allowed but an explicit deny, which still refuses the reset."""
     security, _, _ = db_setup
