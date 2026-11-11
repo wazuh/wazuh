@@ -164,6 +164,44 @@ int get_ip_version(const char *ip);
 bool canonicalize_ip(const char *ip, char *output, size_t output_size);
 
 /**
+ * Format a numeric IP as a hosts_access(5) client pattern: IPv4 as is, IPv6 in brackets
+ * (e.g. "[2001:db8::1]") and "::ffff:a.b.c.d" as plain IPv4. Other IPv4-mapped spellings
+ * are refused
+ * @param ip Numeric IP to format, as received in the alert
+ * @param output Buffer that receives the client pattern
+ * @param output_size Size of output
+ * @retval true on success
+ * @retval false on error, invalid IP or unsupported IPv4-mapped spelling
+ * */
+bool format_hostsdeny_client(const char *ip, char *output, size_t output_size);
+
+/**
+ * Key that identifies the address a hosts.deny rule blocks: the formatted client without
+ * brackets, so every spelling of one address (e.g. "10.0.0.1" and "::ffff:10.0.0.1") maps to it
+ * @param srcip Numeric IP, as received in the alert
+ * @param key Buffer that receives the key
+ * @param key_size Size of key
+ * @retval true on success
+ * @retval false on error, invalid or unsupported IP
+ * */
+bool hostsdeny_block_key(const char *srcip, char *key, size_t key_size);
+
+/**
+ * Build the hosts.deny (or FreeBSD hosts.allow) rule for an IP, plus the unbracketed rule older
+ * versions wrote for IPv6, which is only removed. legacy_rule is empty when there is none
+ * @param srcip Numeric IP, as received in the alert
+ * @param freebsd Use the FreeBSD hosts.allow format ("ALL : <client> : deny")
+ * @param rule Buffer that receives the rule
+ * @param rule_size Size of rule
+ * @param legacy_rule Buffer that receives the legacy rule, or an empty string
+ * @param legacy_size Size of legacy_rule
+ * @retval true on success
+ * @retval false on error, invalid or unsupported IP
+ * */
+bool build_hostsdeny_rules(const char *srcip, bool freebsd, char *rule, size_t rule_size,
+                           char *legacy_rule, size_t legacy_size);
+
+/**
  * Check whether a hosts.deny file line is exactly the Wazuh-managed rule
  * (trailing EOL/whitespace ignored), so substrings never match
  * @param line Line read from hosts.deny
@@ -172,6 +210,18 @@ bool canonicalize_ip(const char *ip, char *output, size_t output_size);
  * @retval false otherwise
  * */
 bool hosts_deny_rule_matches(const char *line, const char *rule);
+
+/**
+ * Copy a hosts.deny file without the Wazuh-managed rule and, if given, its legacy form
+ * @param in hosts.deny opened for reading
+ * @param out Temporary file opened for writing
+ * @param rule Rule to remove (exact line, see hosts_deny_rule_matches)
+ * @param legacy_rule Legacy rule to remove too; NULL or empty for none
+ * @param removed Set to true when at least one line was removed
+ * @retval OS_SUCCESS on success
+ * @retval OS_INVALID on invalid arguments or read/write error, including the final flush
+ * */
+int hosts_deny_remove_rules(FILE *in, FILE *out, const char *rule, const char *legacy_rule, bool *removed);
 
 /**
  * Write process pid to lock simultaneous executions of the script
