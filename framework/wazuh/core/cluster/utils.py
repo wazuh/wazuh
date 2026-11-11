@@ -38,6 +38,10 @@ SERVICE_CONTROL_TIMEOUT = 5
 SERVICE_CONTROL_CHECK_TIMEOUT = 4
 SERVICE_CONTROL_POLL_INTERVAL = 0.05
 SERVICE_CONTROL_MAX_OUTPUT = 4096
+# Written by wazuh-manager-control (src/init/wazuh-server.sh), relative to WAZUH_PATH: the marker of a restart or
+# reload in progress, and the pid of the run that holds the start-script lock (LOCK_PID there).
+RESTART_MARKER = os.path.join('var', 'run', '.restart')
+START_LOCK_PID = os.path.join('var', 'start-script-lock', 'pid')
 
 
 def read_cluster_config(config_file=None) -> typing.Dict:
@@ -85,11 +89,11 @@ def restart_in_progress() -> bool:
     bool
         True if the marker exists and the process holding the start-script lock is alive.
     """
-    if not os.path.exists(os.path.join(common.WAZUH_PATH, 'var', 'run', '.restart')):
+    if not os.path.exists(os.path.join(common.WAZUH_PATH, RESTART_MARKER)):
         return False
 
     try:
-        with open(os.path.join(common.WAZUH_PATH, 'var', 'start-script-lock', 'pid')) as pid_file:
+        with open(os.path.join(common.WAZUH_PATH, START_LOCK_PID)) as pid_file:
             pid = int(pid_file.read().strip())
     except (OSError, ValueError):
         # ValueError: not a number, or bytes that aren't text.

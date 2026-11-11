@@ -54,6 +54,8 @@ SDAEMONS=$(reverse_list "${DAEMONS}")
 CHECK_DAEMONS="${SDAEMONS}"
 
 ## Locking for the start/stop
+# The API reads LOCK_PID and var/run/.restart (RESTART_MARKER and START_LOCK_PID in
+# framework/wazuh/core/cluster/utils.py) to tell a restart in progress: a test there checks both paths.
 LOCK="${DIR}/var/start-script-lock"
 LOCK_PID="${LOCK}/pid"
 # Held by the one run at a time that may replace a lock whose holder is gone.

@@ -5,6 +5,7 @@
 import logging
 import json
 import os
+import re
 import sys
 from unittest.mock import MagicMock, patch
 
@@ -163,6 +164,25 @@ def test_restart_in_progress(tmp_path, marker, lock_pid, holder_alive, expected)
 
     if expected:
         process_exists_mock.assert_called_once_with(1234)
+
+
+def test_restart_paths_match_control_script():
+    """Check that restart_in_progress() reads the marker and the lock pid where wazuh-manager-control writes them.
+
+    Nothing else ties the two: if the script renamed either one, the API would never report 'restarting' again, and
+    no error would show it.
+    """
+    script_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), *[os.pardir] * 5, 'src', 'init',
+                               'wazuh-server.sh')
+    with open(script_path) as script_file:
+        script = script_file.read()
+
+    lock = re.search(r'^LOCK="\$\{DIR\}/(.+)"$', script, re.MULTILINE)
+    lock_pid = re.search(r'^LOCK_PID="\$\{LOCK\}/(.+)"$', script, re.MULTILINE)
+    assert lock and lock_pid, 'LOCK and LOCK_PID are not set where expected in wazuh-server.sh'
+    assert os.path.join(lock.group(1), lock_pid.group(1)) == utils.START_LOCK_PID
+    assert re.search(r'^\s*service_write \$\{DIR\}/' + re.escape(utils.RESTART_MARKER) + r' replace ', script,
+                     re.MULTILINE), 'restart_service() does not write the marker restart_in_progress() reads'
 
 
 def test_restart_in_progress_binary_pid(tmp_path):
