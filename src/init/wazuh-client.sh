@@ -52,8 +52,9 @@ SYSTEMD_RUNTIME_DIR="/run/systemd/system"
 SELF_CGROUP="/proc/$$/cgroup"
 
 # Seconds to wait for wazuh-agent.service to finish starting or reloading before handing it an
-# action. Longer than the unit's TimeoutSec (45), after which systemd itself leaves those states.
-SYSTEMD_SETTLE_TIMEOUT="50"
+# action. Longer than a start can take: ExecStartPre and ExecStart each get the unit's TimeoutSec
+# (45), after which systemd itself leaves those states.
+SYSTEMD_SETTLE_TIMEOUT="95"
 
 checkpid()
 {
