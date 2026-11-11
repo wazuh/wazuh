@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.12]
 
+### Manager
+
+#### Changed
+
+- Deprecated the `drop_privileges` API configuration option. `wazuh-apid` now always runs as the `wazuh` user unless it is started with `-r`, and logs a warning when the option is set in `api.yaml`.
+
 ### Agent
 
 #### Fixed
