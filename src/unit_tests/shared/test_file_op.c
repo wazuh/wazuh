@@ -1206,6 +1206,11 @@ void test_FileSizeWin_success_over_4gib(void **state) {
                               FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, CREATE_ALWAYS,
                               FILE_ATTRIBUTE_NORMAL | FILE_FLAG_DELETE_ON_CLOSE, NULL);
     assert_true(file != INVALID_HANDLE_VALUE);
+
+    // Sparse, so the 5 GiB size does not take disk space.
+    DWORD bytes = 0;
+    DeviceIoControl(file, FSCTL_SET_SPARSE, NULL, 0, NULL, 0, &bytes, NULL);
+
     assert_true(SetFilePointerEx(file, end, NULL, FILE_BEGIN));
     assert_true(SetEndOfFile(file));
 
