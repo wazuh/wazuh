@@ -338,7 +338,7 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
     };
 }
 
-// <field>: kvdb_get('db', key)
+// <field>: kvdb_lookup('db', key)
 TransformBuilder getOpBuilderKVDBGet(std::shared_ptr<IKVDBManager> kvdbManager)
 {
     return [kvdbManager](const Reference& targetField,
@@ -349,7 +349,7 @@ TransformBuilder getOpBuilderKVDBGet(std::shared_ptr<IKVDBManager> kvdbManager)
     };
 }
 
-// <field>: kvdb_get_merge('db', key[, 'deep'])
+// <field>: kvdb_lookup_merge('db', key[, 'deep'])
 TransformBuilder getOpBuilderKVDBGetMerge(std::shared_ptr<IKVDBManager> kvdbManager)
 {
     return [kvdbManager](const Reference& targetField,
@@ -474,7 +474,7 @@ FilterBuilder getOpBuilderKVDBNotMatch(std::shared_ptr<IKVDBManager> kvdbManager
     };
 }
 
-// <field>: kvdb_get_append(<db>, <key_array>)
+// <field>: kvdb_lookup_append(<db>, <key_array>)
 TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbManager)
 {
     return [kvdbManager](const Reference& targetField,

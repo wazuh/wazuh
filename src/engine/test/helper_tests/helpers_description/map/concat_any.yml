@@ -8,7 +8,7 @@ metadata:
 
     Behavior:
     - Every argument is a literal or a reference of type string, number or object.
-    - A missing reference contributes nothing; the other arguments are concatenated as `concat_all`
+    - A missing reference contributes nothing; the other arguments are concatenated as `concat`
       does: strings as is, literal numbers and objects as compact JSON, referenced integers in
       decimal, referenced doubles with 6 fixed decimals and referenced objects as compact JSON.
     - At least one argument must resolve: a literal always does.
@@ -19,7 +19,7 @@ metadata:
     - A referenced schema field whose type is not string, number or object.
 
     Notes:
-    - `concat_all` fails as soon as one reference is missing; both give the same result when every
+    - `concat` fails as soon as one reference is missing; both give the same result when every
       reference exists.
     - `array_append_any` is the array counterpart: it skips missing references too.
   group: string

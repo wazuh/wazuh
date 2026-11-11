@@ -240,9 +240,9 @@ def build_tester_decoder_json(name: str, uuid: str, check_expr: str) -> str:
             "normalize": [
                 {
                     "map": [
-                        {"event.category": "array_append_all(test)"},
+                        {"event.category": "array_append(test)"},
                         {"event.kind": "metric"},
-                        {"event.type": "array_append_all(info)"},
+                        {"event.type": "array_append(info)"},
                     ]
                 }
             ],

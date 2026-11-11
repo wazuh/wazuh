@@ -15,7 +15,7 @@ metadata:
     - `value` is a schema field whose type is not a string.
 
     Notes:
-    - A single string is hashed: to hash several values, build the string with `concat_all` first.
+    - A single string is hashed: to hash several values, build the string with `concat` first.
   group: string
   fails_when:
     - "`value` is missing or is not a string"

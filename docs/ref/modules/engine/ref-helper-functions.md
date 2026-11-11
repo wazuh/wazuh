@@ -44,7 +44,7 @@ This reference lists every helper function available to decoders, filters and ou
 
 ### String
 
-- [concat_all](#concat_all) — map
+- [concat](#concat) — map
 - [concat_any](#concat_any) — map
 - [contains](#contains) — check
 - [decode_hex](#decode_hex) — map
@@ -66,14 +66,13 @@ This reference lists every helper function available to decoders, filters and ou
 
 ### Array
 
-- [array_append_all](#array_append_all) — map
+- [array_append](#array_append) — map
 - [array_append_any](#array_append_any) — map
-- [array_append_unique_all](#array_append_unique_all) — map
+- [array_append_unique](#array_append_unique) — map
 - [array_append_unique_any](#array_append_unique_any) — map
 - [array_contains_all](#array_contains_all) — check
 - [array_contains_any](#array_contains_any) — check
-- [array_excludes_all](#array_excludes_all) — check
-- [array_excludes_any](#array_excludes_any) — check
+- [array_contains_none](#array_contains_none) — check
 - [array_length_eq](#array_length_eq) — check
 - [array_to_object](#array_to_object) — map
 - [array_to_object_changes](#array_to_object_changes) — map
@@ -131,9 +130,9 @@ This reference lists every helper function available to decoders, filters and ou
 
 - [in_kvdb](#in_kvdb) — check
 - [kvdb_decode_bitmask](#kvdb_decode_bitmask) — map
-- [kvdb_get](#kvdb_get) — map
-- [kvdb_get_append](#kvdb_get_append) — map
-- [kvdb_get_merge](#kvdb_get_merge) — map
+- [kvdb_lookup](#kvdb_lookup) — map
+- [kvdb_lookup_append](#kvdb_lookup_append) — map
+- [kvdb_lookup_merge](#kvdb_lookup_merge) — map
 - [not_in_kvdb](#not_in_kvdb) — check
 
 ### Parse
@@ -160,7 +159,6 @@ This reference lists every helper function available to decoders, filters and ou
 - [parse_short](#parse_short) — map
 - [parse_unsigned_long](#parse_unsigned_long) — map
 - [parse_uri](#parse_uri) — map
-- [parse_user_agent](#parse_user_agent) — map
 - [parse_xml](#parse_xml) — map
 
 ### Event
@@ -171,6 +169,8 @@ This reference lists every helper function available to decoders, filters and ou
 # exists
 
 **Kind:** check helper (used in `check`)
+
+**On failure:** the check is false.
 
 ## Signature
 
@@ -301,6 +301,8 @@ check:
 # is_array
 
 **Kind:** check helper (used in `check`)
+
+**On failure:** the check is false.
 
 ## Signature
 
@@ -438,6 +440,8 @@ check:
 
 **Kind:** check helper (used in `check`)
 
+**On failure:** the check is false.
+
 ## Signature
 
 ```
@@ -567,6 +571,8 @@ check:
 
 **Kind:** check helper (used in `check`)
 
+**On failure:** the check is false.
+
 ## Signature
 
 ```
@@ -681,6 +687,8 @@ check:
 # is_not_boolean
 
 **Kind:** check helper (used in `check`)
+
+**On failure:** the check is false.
 
 ## Signature
 
@@ -813,6 +821,8 @@ check:
 # is_not_null
 
 **Kind:** check helper (used in `check`)
+
+**On failure:** the check is false.
 
 ## Signature
 
@@ -987,6 +997,8 @@ check:
 # is_not_number
 
 **Kind:** check helper (used in `check`)
+
+**On failure:** the check is false.
 
 ## Signature
 
@@ -1164,6 +1176,8 @@ check:
 
 **Kind:** check helper (used in `check`)
 
+**On failure:** the check is false.
+
 ## Signature
 
 ```
@@ -1279,6 +1293,8 @@ check:
 
 **Kind:** check helper (used in `check`)
 
+**On failure:** the check is false.
+
 ## Signature
 
 ```
@@ -1393,6 +1409,8 @@ check:
 # is_null
 
 **Kind:** check helper (used in `check`)
+
+**On failure:** the check is false.
 
 ## Signature
 
@@ -1543,6 +1561,8 @@ check:
 # is_number
 
 **Kind:** check helper (used in `check`)
+
+**On failure:** the check is false.
 
 ## Signature
 
@@ -1744,6 +1764,8 @@ check:
 
 **Kind:** check helper (used in `check`)
 
+**On failure:** the check is false.
+
 ## Signature
 
 ```
@@ -1879,6 +1901,8 @@ check:
 # is_string
 
 **Kind:** check helper (used in `check`)
+
+**On failure:** the check is false.
 
 ## Signature
 
@@ -2035,6 +2059,8 @@ check:
 # not_exists
 
 **Kind:** check helper (used in `check`)
+
+**On failure:** the check is false.
 
 ## Signature
 
@@ -2210,6 +2236,8 @@ check:
 
 **Kind:** check helper (used in `check`)
 
+**On failure:** the check is false.
+
 ## Signature
 
 ```
@@ -2378,6 +2406,8 @@ check:
 
 **Kind:** check helper (used in `check`)
 
+**On failure:** the check is false.
+
 ## Signature
 
 ```
@@ -2522,6 +2552,8 @@ check:
 # int_gte
 
 **Kind:** check helper (used in `check`)
+
+**On failure:** the check is false.
 
 ## Signature
 
@@ -2669,6 +2701,8 @@ check:
 
 **Kind:** check helper (used in `check`)
 
+**On failure:** the check is false.
+
 ## Signature
 
 ```
@@ -2813,6 +2847,8 @@ check:
 # int_lte
 
 **Kind:** check helper (used in `check`)
+
+**On failure:** the check is false.
 
 ## Signature
 
@@ -2960,6 +2996,8 @@ check:
 
 **Kind:** check helper (used in `check`)
 
+**On failure:** the check is false.
+
 ## Signature
 
 ```
@@ -3105,6 +3143,8 @@ check:
 # number_eq
 
 **Kind:** check helper (used in `check`)
+
+**On failure:** the check is false.
 
 ## Signature
 
@@ -3270,6 +3310,8 @@ check:
 
 **Kind:** check helper (used in `check`)
 
+**On failure:** the check is false.
+
 ## Signature
 
 ```
@@ -3433,6 +3475,8 @@ check:
 # number_gte
 
 **Kind:** check helper (used in `check`)
+
+**On failure:** the check is false.
 
 ## Signature
 
@@ -3621,6 +3665,8 @@ check:
 
 **Kind:** check helper (used in `check`)
 
+**On failure:** the check is false.
+
 ## Signature
 
 ```
@@ -3784,6 +3830,8 @@ check:
 # number_lte
 
 **Kind:** check helper (used in `check`)
+
+**On failure:** the check is false.
 
 ## Signature
 
@@ -3971,6 +4019,8 @@ check:
 # number_ne
 
 **Kind:** check helper (used in `check`)
+
+**On failure:** the check is false.
 
 ## Signature
 
@@ -4160,6 +4210,8 @@ check:
 
 **Kind:** check helper (used in `check`)
 
+**On failure:** the check is false.
+
 ## Signature
 
 ```
@@ -4300,6 +4352,8 @@ check:
 # string_gt
 
 **Kind:** check helper (used in `check`)
+
+**On failure:** the check is false.
 
 ## Signature
 
@@ -4463,6 +4517,8 @@ check:
 
 **Kind:** check helper (used in `check`)
 
+**On failure:** the check is false.
+
 ## Signature
 
 ```
@@ -4603,6 +4659,8 @@ check:
 # string_lt
 
 **Kind:** check helper (used in `check`)
+
+**On failure:** the check is false.
 
 ## Signature
 
@@ -4766,6 +4824,8 @@ check:
 
 **Kind:** check helper (used in `check`)
 
+**On failure:** the check is false.
+
 ## Signature
 
 ```
@@ -4907,6 +4967,8 @@ check:
 
 **Kind:** check helper (used in `check`)
 
+**On failure:** the check is false.
+
 ## Signature
 
 ```
@@ -5045,14 +5107,16 @@ check:
 
 
 ---
-# concat_all
+# concat
 
 **Kind:** map helper (used in `map`)
+
+**On failure:** the target field is not written and the decoder continues with the next operation.
 
 ## Signature
 
 ```
-target_field: concat_all(value, [...])
+target_field: concat(value, [...])
 ```
 
 ## Arguments
@@ -5108,7 +5172,7 @@ Concatenate several strings in argument order
 ```yaml
 normalize:
   - map:
-      - target_field: concat_all('hello', ' ', 'no', 'yes', 'yes')
+      - target_field: concat('hello', ' ', 'no', 'yes', 'yes')
 ```
 
 #### Input Event
@@ -5136,7 +5200,7 @@ Fail when a referenced field is missing
 ```yaml
 normalize:
   - map:
-      - target_field: concat_all($value, 'hello')
+      - target_field: concat($value, 'hello')
 ```
 
 #### Input Event
@@ -5164,7 +5228,7 @@ Concatenate a referenced object, a literal number and a referenced string
 ```yaml
 normalize:
   - map:
-      - target_field: concat_all($value, 2, $value_2)
+      - target_field: concat($value, 2, $value_2)
 ```
 
 #### Input Event
@@ -5201,7 +5265,7 @@ Write a referenced double with 6 decimals and a literal double as compact JSON
 ```yaml
 normalize:
   - map:
-      - target_field: concat_all($value, '-', 1.5)
+      - target_field: concat($value, '-', 1.5)
 ```
 
 #### Input Event
@@ -5232,7 +5296,7 @@ Write a referenced integer in decimal
 ```yaml
 normalize:
   - map:
-      - target_field: concat_all($value, ' items')
+      - target_field: concat($value, ' items')
 ```
 
 #### Input Event
@@ -5261,6 +5325,8 @@ normalize:
 
 **Kind:** map helper (used in `map`)
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -5288,7 +5354,7 @@ that are missing, and maps the resulting string to the target field.
 
 Behavior:
 - Every argument is a literal or a reference of type string, number or object.
-- A missing reference contributes nothing; the other arguments are concatenated as `concat_all`
+- A missing reference contributes nothing; the other arguments are concatenated as `concat`
   does: strings as is, literal numbers and objects as compact JSON, referenced integers in
   decimal, referenced doubles with 6 fixed decimals and referenced objects as compact JSON.
 - At least one argument must resolve: a literal always does.
@@ -5299,7 +5365,7 @@ Build errors:
 - A referenced schema field whose type is not string, number or object.
 
 Notes:
-- `concat_all` fails as soon as one reference is missing; both give the same result when every
+- `concat` fails as soon as one reference is missing; both give the same result when every
   reference exists.
 - `array_append_any` is the array counterpart: it skips missing references too.
 
@@ -5468,6 +5534,8 @@ normalize:
 # contains
 
 **Kind:** check helper (used in `check`)
+
+**On failure:** the check is false.
 
 ## Signature
 
@@ -5653,6 +5721,8 @@ check:
 
 **Kind:** map helper (used in `map`)
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -5664,7 +5734,7 @@ target_field: decode_hex(hex, [mode])
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
 | hex | string | reference | Any hexadecimal |
-| mode (optional) | string | value | quoted |
+| mode (option, optional) | string | value | quoted |
 
 
 ## Output
@@ -6249,6 +6319,8 @@ normalize:
 
 **Kind:** check helper (used in `check`)
 
+**On failure:** the check is false.
+
 ## Signature
 
 ```
@@ -6434,6 +6506,8 @@ check:
 
 **Kind:** map helper (used in `map`)
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -6470,7 +6544,7 @@ Build errors:
 - `array` is a schema field whose elements are not strings.
 
 Notes:
-- `concat_all` and `concat_any` concatenate separate arguments and convert numbers and objects.
+- `concat` and `concat_any` concatenate separate arguments and convert numbers and objects.
 - `split` is the inverse operation.
 
 
@@ -6671,6 +6745,8 @@ normalize:
 
 **Kind:** map helper (used in `map`)
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -6839,6 +6915,8 @@ normalize:
 # regex_extract
 
 **Kind:** map helper (used in `map`)
+
+**On failure:** the target field is not written and the decoder continues with the next operation.
 
 ## Signature
 
@@ -7050,6 +7128,8 @@ normalize:
 
 **Kind:** map helper (used in `map`)
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -7246,6 +7326,8 @@ normalize:
 
 **Kind:** check helper (used in `check`)
 
+**On failure:** the check is false.
+
 ## Signature
 
 ```
@@ -7386,6 +7468,8 @@ check:
 # regex_not_match
 
 **Kind:** check helper (used in `check`)
+
+**On failure:** the check is false.
 
 ## Signature
 
@@ -7530,6 +7614,8 @@ check:
 **Kind:** map helper (used in `map`)
 
 **Modifies the target in place:** yes
+
+**On failure:** the target field is not written and the decoder continues with the next operation.
 
 ## Signature
 
@@ -7764,6 +7850,8 @@ normalize:
 
 **Kind:** map helper (used in `map`)
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -7798,7 +7886,7 @@ Build errors:
 - `value` is a schema field whose type is not a string.
 
 Notes:
-- A single string is hashed: to hash several values, build the string with `concat_all` first.
+- A single string is hashed: to hash several values, build the string with `concat` first.
 
 
 ## Fails when
@@ -7877,6 +7965,8 @@ normalize:
 **Kind:** map helper (used in `map`)
 
 **Modifies the target in place:** yes
+
+**On failure:** the target field is not written and the decoder continues with the next operation.
 
 ## Signature
 
@@ -8084,6 +8174,8 @@ normalize:
 
 **Kind:** check helper (used in `check`)
 
+**On failure:** the check is false.
+
 ## Signature
 
 ```
@@ -8269,6 +8361,8 @@ check:
 **Kind:** map helper (used in `map`)
 
 **Modifies the target in place:** yes
+
+**On failure:** the target field is not written and the decoder continues with the next operation.
 
 ## Signature
 
@@ -8500,6 +8594,8 @@ normalize:
 
 **Modifies the target in place:** yes
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -8670,6 +8766,8 @@ normalize:
 
 **Modifies the target in place:** yes
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -8838,6 +8936,8 @@ normalize:
 
 **Kind:** map helper (used in `map`)
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -9003,16 +9103,18 @@ normalize:
 
 
 ---
-# array_append_all
+# array_append
 
 **Kind:** map helper (used in `map`)
 
 **Modifies the target in place:** yes
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
-target_field: array_append_all(value, [...])
+target_field: array_append(value, [...])
 ```
 
 ## Arguments
@@ -9052,7 +9154,7 @@ Notes:
 - A reference that does not exist in the event fails the whole operation; `array_append_any` skips the
   missing references instead.
 - A target field that exists and is not an array makes the operation fail; it is never overwritten.
-- `array_append_unique_all` skips the values that are already in the array.
+- `array_append_unique` skips the values that are already in the array.
 
 
 ## Fails when
@@ -9073,7 +9175,7 @@ A missing reference fails the whole operation and nothing is appended
 ```yaml
 normalize:
   - map:
-      - target_field: array_append_all($value, 6)
+      - target_field: array_append($value, 6)
 ```
 
 #### Input Event
@@ -9115,7 +9217,7 @@ A number is appended to an array of numbers
 ```yaml
 normalize:
   - map:
-      - target_field: array_append_all($value)
+      - target_field: array_append($value)
 ```
 
 #### Input Event
@@ -9158,7 +9260,7 @@ Several arguments are appended in argument order
 ```yaml
 normalize:
   - map:
-      - target_field: array_append_all(5, 6)
+      - target_field: array_append(5, 6)
 ```
 
 #### Input Event
@@ -9200,7 +9302,7 @@ A value already present is appended again (no duplicate check)
 ```yaml
 normalize:
   - map:
-      - target_field: array_append_all($value)
+      - target_field: array_append($value)
 ```
 
 #### Input Event
@@ -9243,7 +9345,7 @@ A string is rejected by an array of numbers
 ```yaml
 normalize:
   - map:
-      - target_field: array_append_all('hello')
+      - target_field: array_append('hello')
 ```
 
 #### Input Event
@@ -9283,7 +9385,7 @@ An array is rejected by an array of numbers
 ```yaml
 normalize:
   - map:
-      - target_field: array_append_all($value)
+      - target_field: array_append($value)
 ```
 
 #### Input Event
@@ -9331,7 +9433,7 @@ An integer is accepted by an array of floating-point numbers
 ```yaml
 normalize:
   - map:
-      - target_field: array_append_all(2)
+      - target_field: array_append(2)
 ```
 
 #### Input Event
@@ -9372,7 +9474,7 @@ A target field that is not an array makes the operation fail and is not overwrit
 ```yaml
 normalize:
   - map:
-      - target_field: array_append_all($value)
+      - target_field: array_append($value)
 ```
 
 #### Input Event
@@ -9403,6 +9505,8 @@ normalize:
 **Kind:** map helper (used in `map`)
 
 **Modifies the target in place:** yes
+
+**On failure:** the target field is not written and the decoder continues with the next operation.
 
 ## Signature
 
@@ -9448,7 +9552,7 @@ Build errors:
 - The target field is not a schema field and does not start with `_`.
 
 Notes:
-- With literal arguments only, the behavior is the same as `array_append_all`.
+- With literal arguments only, the behavior is the same as `array_append`.
 - A target field that exists and is not an array makes the operation fail; it is never overwritten.
 
 
@@ -9680,16 +9784,18 @@ normalize:
 
 
 ---
-# array_append_unique_all
+# array_append_unique
 
 **Kind:** map helper (used in `map`)
 
 **Modifies the target in place:** yes
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
-target_field: array_append_unique_all(value, [...])
+target_field: array_append_unique(value, [...])
 ```
 
 ## Arguments
@@ -9731,7 +9837,7 @@ Build errors:
 - The target field is not a schema field and does not start with `_`.
 
 Notes:
-- A duplicate does not fail the operation by itself: `array_append_unique_all(5, 6)` on `[1, 5]` succeeds
+- A duplicate does not fail the operation by itself: `array_append_unique(5, 6)` on `[1, 5]` succeeds
   and adds `6`; only a call that adds nothing fails.
 - A target field that exists and is not an array makes the operation fail; it is never overwritten.
 
@@ -9755,7 +9861,7 @@ A missing reference fails the whole operation and nothing is appended
 ```yaml
 normalize:
   - map:
-      - target_field: array_append_unique_all($value, 9)
+      - target_field: array_append_unique($value, 9)
 ```
 
 #### Input Event
@@ -9793,7 +9899,7 @@ Fails because the only argument is already in the array
 ```yaml
 normalize:
   - map:
-      - target_field: array_append_unique_all($value)
+      - target_field: array_append_unique($value)
 ```
 
 #### Input Event
@@ -9835,7 +9941,7 @@ Fails because the only argument is already in the array
 ```yaml
 normalize:
   - map:
-      - target_field: array_append_unique_all(5)
+      - target_field: array_append_unique(5)
 ```
 
 #### Input Event
@@ -9877,7 +9983,7 @@ A new value is appended
 ```yaml
 normalize:
   - map:
-      - target_field: array_append_unique_all($value)
+      - target_field: array_append_unique($value)
 ```
 
 #### Input Event
@@ -9920,7 +10026,7 @@ The value already present is skipped and the new one is appended
 ```yaml
 normalize:
   - map:
-      - target_field: array_append_unique_all(5, 6)
+      - target_field: array_append_unique(5, 6)
 ```
 
 #### Input Event
@@ -9963,7 +10069,7 @@ A value repeated in the same call is appended once
 ```yaml
 normalize:
   - map:
-      - target_field: array_append_unique_all($value, 7)
+      - target_field: array_append_unique($value, 7)
 ```
 
 #### Input Event
@@ -10000,7 +10106,7 @@ Numbers compare numerically, so 1.0 counts as the 1 already in the array
 ```yaml
 normalize:
   - map:
-      - target_field: array_append_unique_all(1.0)
+      - target_field: array_append_unique(1.0)
 ```
 
 #### Input Event
@@ -10035,6 +10141,8 @@ normalize:
 **Kind:** map helper (used in `map`)
 
 **Modifies the target in place:** yes
+
+**On failure:** the target field is not written and the decoder continues with the next operation.
 
 ## Signature
 
@@ -10083,7 +10191,7 @@ Build errors:
 - The target field is not a schema field and does not start with `_`.
 
 Notes:
-- With literal arguments only, the behavior is the same as `array_append_unique_all`.
+- With literal arguments only, the behavior is the same as `array_append_unique`.
 - A target field that exists and is not an array makes the operation fail; it is never overwritten.
 
 
@@ -10282,6 +10390,8 @@ normalize:
 
 **Kind:** check helper (used in `check`)
 
+**On failure:** the check is false.
+
 ## Signature
 
 ```
@@ -10321,8 +10431,8 @@ Build errors:
 Notes:
 - `array_contains_any` requires a single match; with one argument the two helpers are identical.
 - `one_of` is the reverse check: the target value is searched in an argument array.
-- `array_excludes_any` is not the negation of this helper: both are false for a missing or non-array
-  target.
+- `NOT array_contains_all(...)` is the negation; note that this helper is false for a missing or non-array
+  target, so the negation is true in those cases.
 
 
 ## Fails when
@@ -10569,6 +10679,8 @@ check:
 
 **Kind:** check helper (used in `check`)
 
+**On failure:** the check is false.
+
 ## Signature
 
 ```
@@ -10609,7 +10721,7 @@ Notes:
 - `array_contains_all` requires every argument to be found; with one argument the two helpers are
   identical.
 - `one_of` is the reverse check: the target value is searched in an argument array.
-- `array_excludes_all` is not the negation of this helper: both are false for a missing or non-array
+- `array_contains_none` is not the negation of this helper: both are false for a missing or non-array
   target and for a reference that does not exist.
 
 
@@ -10869,14 +10981,16 @@ check:
 
 
 ---
-# array_excludes_all
+# array_contains_none
 
 **Kind:** check helper (used in `check`)
+
+**On failure:** the check is false.
 
 ## Signature
 
 ```
-check: array_excludes_all($target_field, element, [...])
+check: array_contains_none($target_field, element, [...])
 ```
 
 ## Arguments
@@ -10910,8 +11024,8 @@ Build errors:
 - No argument is given, or more than 150.
 
 Notes:
-- `array_excludes_any` requires a single absent argument; with one argument the two helpers are
-  identical.
+- `array_contains_any` is the positive counterpart; both are false for a missing or non-array target, so
+  neither is the `NOT` of the other.
 - Not the negation of `array_contains_any`: both are false for a missing or non-array target and for a
   reference that does not exist.
 
@@ -10933,7 +11047,7 @@ A reference that does not exist cannot be proven absent, so the check fails alth
 
 ```yaml
 check:
-  - target_field: array_excludes_all('iscsi', $element_1)
+  - target_field: array_contains_none('iscsi', $element_1)
 ```
 
 #### Input Event
@@ -10958,7 +11072,7 @@ All the specified strings are elements of the array.
 
 ```yaml
 check:
-  - target_field: array_excludes_all($element, 'vz-start', 'thin-provisioning-tools')
+  - target_field: array_contains_none($element, 'vz-start', 'thin-provisioning-tools')
 ```
 
 #### Input Event
@@ -10988,7 +11102,7 @@ One of the specified strings ("dracut") is an element of the array.
 
 ```yaml
 check:
-  - target_field: array_excludes_all('dracut', 'hello', 'wazuh')
+  - target_field: array_contains_none('dracut', 'hello', 'wazuh')
 ```
 
 #### Input Event
@@ -11017,7 +11131,7 @@ One of the specified numbers (1) is an element of the array.
 
 ```yaml
 check:
-  - target_field: array_excludes_all($element, 1, 8)
+  - target_field: array_contains_none($element, 1, 8)
 ```
 
 #### Input Event
@@ -11045,7 +11159,7 @@ The target field is a string, not an array.
 
 ```yaml
 check:
-  - target_field: array_excludes_all('iscsi')
+  - target_field: array_contains_none('iscsi')
 ```
 
 #### Input Event
@@ -11066,7 +11180,7 @@ One of the specified objects is an element of the array.
 
 ```yaml
 check:
-  - target_field: array_excludes_all($element, {"key-non-exists":"value-non-exists"}, {"keyn":"valuen"})
+  - target_field: array_contains_none($element, {"key-non-exists":"value-non-exists"}, {"keyn":"valuen"})
 ```
 
 #### Input Event
@@ -11100,7 +11214,7 @@ One of the specified values (1000) is an element of the array.
 
 ```yaml
 check:
-  - target_field: array_excludes_all({"keyn":"valuen"}, 1000, 'valuen')
+  - target_field: array_contains_none({"keyn":"valuen"}, 1000, 'valuen')
 ```
 
 #### Input Event
@@ -11127,7 +11241,7 @@ None of the specified values is an element of the array.
 
 ```yaml
 check:
-  - target_field: array_excludes_all($element, 10, 'valuen')
+  - target_field: array_contains_none($element, 10, 'valuen')
 ```
 
 #### Input Event
@@ -11152,318 +11266,11 @@ check:
 
 
 ---
-# array_excludes_any
-
-**Kind:** check helper (used in `check`)
-
-## Signature
-
-```
-check: array_excludes_any($target_field, element, [...])
-```
-
-## Arguments
-
-| parameter | Type | Source | Accepted values |
-| --------- | ---- | ------ | --------------- |
-| element | object, array, number, string, boolean | value or reference | Any value of the listed types |
-
-
-## Target field
-
-| Type | Possible values |
-| ---- | --------------- |
-| array | [number, string, boolean, object, array] |
-
-
-## Description
-
-Checks whether at least one argument is not an element of the target array.
-
-Behavior:
-- Variadic: from 1 to 150 arguments of any JSON type, literals or references.
-- Each argument is compared with the elements using deep JSON equality: the types must match (`"1"` is not
-  `1`), numbers compare by value (`1` equals `1.0`), strings byte by byte, arrays element by element in
-  order, and objects member by member regardless of the member order.
-- A reference whose value is an array is matched as a single element; it is not spread.
-- True as soon as one argument that resolves is absent from the array, that is, when not all of the
-  arguments are present. References that do not exist are skipped: they do not count as absent.
-
-Build errors:
-- No argument is given, or more than 150.
-
-Notes:
-- `array_excludes_all` requires that none of the arguments is present; with one argument the two helpers
-  are identical.
-- Not the negation of `array_contains_all`: both are false for a missing or non-array target and when the
-  only arguments are references that do not exist.
-
-
-## Fails when
-
-- The target field does not exist.
-- The target field is not an array.
-- Every argument that resolves is an element of the array.
-- Every argument is a reference that does not exist.
-
-## Examples
-
-### Example 1
-
-A reference that does not exist is skipped, and the other element is absent from the array.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: array_excludes_any('iscsi', $element_1)
-```
-
-#### Input Event
-
-```json
-{
-  "element_1": null,
-  "target_field": [
-    "dracut",
-    "lvm2"
-  ]
-}
-```
-
-*The check was successful*
-
-### Example 2
-
-The only argument is a reference that does not exist, which does not count as absent.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: array_excludes_any($element)
-```
-
-#### Input Event
-
-```json
-{
-  "element": null,
-  "target_field": [
-    "dracut",
-    "lvm2"
-  ]
-}
-```
-
-*The check was performed with errors*
-
-### Example 3
-
-All the specified strings are elements of the array.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: array_excludes_any('dracut', 'vz-start', 'thin-provisioning-tools')
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": [
-    "mkinitramfs",
-    "cryptroot",
-    "framebuffer",
-    "dracut",
-    "thin-provisioning-tools",
-    "lvm2",
-    "vz-start"
-  ]
-}
-```
-
-*The check was performed with errors*
-
-### Example 4
-
-One of the specified strings ("iscsi") is not an element of the array.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: array_excludes_any($element, 'vz-start', 'iscsi')
-```
-
-#### Input Event
-
-```json
-{
-  "element": "dracut",
-  "target_field": [
-    "mkinitramfs",
-    "cryptroot",
-    "framebuffer",
-    "dracut",
-    "thin-provisioning-tools",
-    "lvm2",
-    "vz-start"
-  ]
-}
-```
-
-*The check was successful*
-
-### Example 5
-
-All the specified numbers are elements of the array.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: array_excludes_any(2, 1, 5)
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": [
-    1,
-    2,
-    3,
-    4,
-    5
-  ]
-}
-```
-
-*The check was performed with errors*
-
-### Example 6
-
-The target field is a string, not an array.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: array_excludes_any($element)
-```
-
-#### Input Event
-
-```json
-{
-  "element": "iscsi",
-  "target_field": "dracut"
-}
-```
-
-*The check was performed with errors*
-
-### Example 7
-
-All the specified objects are elements of the array.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: array_excludes_any({"key":"value"}, {"key1":"value1"}, {"key2":"value2"})
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": [
-    {
-      "key": "value"
-    },
-    {
-      "key1": "value1"
-    },
-    {
-      "key2": "value2"
-    }
-  ]
-}
-```
-
-*The check was performed with errors*
-
-### Example 8
-
-Two of the specified objects are not elements of the array.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: array_excludes_any($element, {"key-non-exists":"value-non-exists"}, {"keyn":"valuen"})
-```
-
-#### Input Event
-
-```json
-{
-  "element": {
-    "key": "value"
-  },
-  "target_field": [
-    {
-      "key": "value"
-    },
-    {
-      "key1": "value1"
-    },
-    {
-      "key2": "value2"
-    }
-  ]
-}
-```
-
-*The check was successful*
-
-### Example 9
-
-The specified object, number and string are all elements of the array.
-
-#### Asset
-
-```yaml
-check:
-  - target_field: array_excludes_any({"key":"value"}, 1, 'value')
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": [
-    {
-      "key": "value"
-    },
-    1,
-    "value"
-  ]
-}
-```
-
-*The check was performed with errors*
-
-
-
----
 # array_length_eq
 
 **Kind:** check helper (used in `check`)
+
+**On failure:** the check is false.
 
 ## Signature
 
@@ -11705,6 +11512,8 @@ check:
 
 **Kind:** map helper (used in `map`)
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -11718,7 +11527,7 @@ target_field: array_to_object(source_array, key_path, value_path, [mode])
 | source_array | array | reference | Any array |
 | key_path | string | value | Any string |
 | value_path | string | value | Any string |
-| mode (optional) | string | value | raw_keys |
+| mode (option, optional) | string | value | raw_keys |
 
 
 ## Output
@@ -12110,6 +11919,8 @@ normalize:
 
 **Kind:** map helper (used in `map`)
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -12124,7 +11935,7 @@ target_field: array_to_object_changes(source_array, key_path, new_value_path, ol
 | key_path | string | value | Any string |
 | new_value_path | string | value | Any string |
 | old_value_path | string | value | Any string |
-| mode (optional) | string | value | raw_keys |
+| mode (option, optional) | string | value | raw_keys |
 
 
 ## Output
@@ -12465,6 +12276,8 @@ normalize:
 
 **Kind:** check helper (used in `check`)
 
+**On failure:** the check is false.
+
 ## Signature
 
 ```
@@ -12692,6 +12505,8 @@ check:
 
 **Modifies the target in place:** yes
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -12842,6 +12657,8 @@ normalize:
 
 **Modifies the target in place:** yes
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -12886,6 +12703,8 @@ Notes:
 **Kind:** map helper (used in `map`)
 
 **Modifies the target in place:** yes
+
+**On failure:** the target field is not written and the decoder continues with the next operation.
 
 ## Signature
 
@@ -13323,6 +13142,8 @@ normalize:
 
 **Kind:** check helper (used in `check`)
 
+**On failure:** the check is false.
+
 ## Signature
 
 ```
@@ -13556,6 +13377,8 @@ check:
 
 **Kind:** check helper (used in `check`)
 
+**On failure:** the check is false.
+
 ## Signature
 
 ```
@@ -13773,6 +13596,8 @@ check:
 
 **Modifies the target in place:** yes
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -13816,7 +13641,7 @@ Build errors:
 
 Notes:
 - `lookup_merge` merges the value into the target instead of replacing it.
-- `kvdb_get` does the same lookup against a KVDB.
+- `kvdb_lookup` does the same lookup against a KVDB.
 
 
 ## Fails when
@@ -14056,6 +13881,8 @@ normalize:
 
 **Modifies the target in place:** yes
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -14068,7 +13895,7 @@ target_field: lookup_merge(object, key, [mode])
 | --------- | ---- | ------ | --------------- |
 | object | object | value or reference | Any object |
 | key | string | value or reference | Any string |
-| mode (optional) | string | value | deep |
+| mode (option, optional) | string | value | deep |
 
 
 ## Target field
@@ -14105,7 +13932,7 @@ Build errors:
 Notes:
 - In `deep` mode an object or array in the value whose counterpart in the target has another type fails
   the operation; the members merged before the conflict stay modified.
-- `merge` merges a whole field (and deletes it afterwards); `kvdb_get_merge` merges a KVDB value.
+- `merge` merges a whole field (and deletes it afterwards); `kvdb_lookup_merge` merges a KVDB value.
 
 
 ## Fails when
@@ -14521,6 +14348,8 @@ normalize:
 
 **Modifies the target in place:** yes
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -14532,7 +14361,7 @@ target_field: merge(source, [mode])
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
 | source | object | reference | An object, or an array when the target field is an array |
-| mode (optional) | string | value | deep |
+| mode (option, optional) | string | value | deep |
 
 
 ## Target field
@@ -15009,6 +14838,8 @@ normalize:
 
 **Modifies the target in place:** yes
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -15096,6 +14927,8 @@ normalize:
 
 **Modifies the target in place:** yes
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -15106,7 +14939,7 @@ target_field: snake_case_keys([mode])
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| mode (optional) | string | value | deep |
+| mode (option, optional) | string | value | deep |
 
 
 ## Target field
@@ -16064,6 +15897,8 @@ normalize:
 
 **Kind:** map helper (used in `map`)
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -16074,7 +15909,7 @@ target_field: float_calculate(operator, operand_left, operand_right, [...])
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| operator | string | value | mul, div, sub, sum |
+| operator (option) | string | value | mul, div, sub, sum |
 | operand_left | number | value or reference | Any number |
 | operand_right | number | value or reference | Any number |
 
@@ -16729,6 +16564,8 @@ normalize:
 
 **Kind:** check helper (used in `check`)
 
+**On failure:** the check is false.
+
 ## Signature
 
 ```
@@ -16996,6 +16833,8 @@ check:
 
 **Kind:** map helper (used in `map`)
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -17201,6 +17040,8 @@ normalize:
 
 **Kind:** map helper (used in `map`)
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -17211,7 +17052,7 @@ target_field: int_calculate(operator, operand_left, operand_right, [...])
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| operator | string | value | mul, div, sub, sum |
+| operator (option) | string | value | mul, div, sub, sum |
 | operand_left | number | value or reference | Integers between `-2^63` and `2^63-1` |
 | operand_right | number | value or reference | Integers between `-2^63` and `2^63-1` |
 
@@ -17623,6 +17464,8 @@ normalize:
 
 **Kind:** map helper (used in `map`)
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -18015,6 +17858,8 @@ normalize:
 
 **Kind:** map helper (used in `map`)
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -18026,7 +17871,7 @@ target_field: to_int(value, [mode])
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
 | value | number | reference | Any number, or a string holding a decimal number |
-| mode (optional) | string | value | truncate, round |
+| mode (option, optional) | string | value | truncate, round |
 
 
 ## Output
@@ -18473,6 +18318,8 @@ normalize:
 
 **Kind:** map helper (used in `map`)
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -18508,7 +18355,7 @@ Build errors:
 - `value` is a literal.
 
 Notes:
-- `concat_all` writes a referenced number with the same text.
+- `concat` writes a referenced number with the same text.
 - `to_int` and `to_bool` are the conversions in the other direction.
 
 
@@ -18707,6 +18554,8 @@ normalize:
 # date_to_epoch
 
 **Kind:** map helper (used in `map`)
+
+**On failure:** the target field is not written and the decoder continues with the next operation.
 
 ## Signature
 
@@ -19711,6 +19560,8 @@ normalize:
 
 **Kind:** map helper (used in `map`)
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -19920,6 +19771,8 @@ normalize:
 
 **Kind:** map helper (used in `map`)
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -19959,6 +19812,8 @@ Notes:
 
 **Kind:** map helper (used in `map`)
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -19997,6 +19852,8 @@ Notes:
 # asn
 
 **Kind:** map helper (used in `map`)
+
+**On failure:** the target field is not written and the decoder continues with the next operation.
 
 ## Signature
 
@@ -20090,6 +19947,8 @@ normalize:
 # community_id
 
 **Kind:** map helper (used in `map`)
+
+**On failure:** the target field is not written and the decoder continues with the next operation.
 
 ## Signature
 
@@ -20604,6 +20463,8 @@ normalize:
 
 **Kind:** map helper (used in `map`)
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -20712,6 +20573,8 @@ normalize:
 # iana_protocol_name
 
 **Kind:** map helper (used in `map`)
+
+**On failure:** the target field is not written and the decoder continues with the next operation.
 
 ## Signature
 
@@ -21462,6 +21325,8 @@ normalize:
 
 **Kind:** map helper (used in `map`)
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -21885,6 +21750,8 @@ normalize:
 
 **Kind:** check helper (used in `check`)
 
+**On failure:** the check is false.
+
 ## Signature
 
 ```
@@ -22093,6 +21960,8 @@ check:
 
 **Kind:** map helper (used in `map`)
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -22298,6 +22167,8 @@ normalize:
 
 **Kind:** check helper (used in `check`)
 
+**On failure:** the check is false.
+
 ## Signature
 
 ```
@@ -22495,6 +22366,8 @@ check:
 
 **Kind:** check helper (used in `check`)
 
+**On failure:** the check is false.
+
 ## Signature
 
 ```
@@ -22668,6 +22541,8 @@ check:
 # is_public_ip
 
 **Kind:** check helper (used in `check`)
+
+**On failure:** the check is false.
 
 ## Signature
 
@@ -22886,6 +22761,8 @@ check:
 # syslog_facility
 
 **Kind:** map helper (used in `map`)
+
+**On failure:** the target field is not written and the decoder continues with the next operation.
 
 ## Signature
 
@@ -23130,6 +23007,8 @@ normalize:
 
 **Kind:** map helper (used in `map`)
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -23372,6 +23251,8 @@ normalize:
 
 **Kind:** check helper (used in `check`)
 
+**On failure:** the check is false.
+
 ## Signature
 
 ```
@@ -23597,6 +23478,8 @@ The examples for this helper use the following KVDB resource during tests:
 
 **Modifies the target in place:** yes
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -23648,7 +23531,7 @@ Build errors:
 Notes:
 - A mask with no decodable bit (a mask of `0` included) makes the operation fail and leaves the target
   unchanged.
-- `kvdb_get_append` appends the values of a list of keys instead of the values of the set bits.
+- `kvdb_lookup_append` appends the values of a list of keys instead of the values of the set bits.
 
 
 ## Fails when
@@ -23999,16 +23882,18 @@ The examples for this helper use the following KVDB resource during tests:
 ```
 
 ---
-# kvdb_get
+# kvdb_lookup
 
 **Kind:** map helper (used in `map`)
 
 **Modifies the target in place:** yes
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
-target_field: kvdb_get(db, key)
+target_field: kvdb_lookup(db, key)
 ```
 
 ## Arguments
@@ -24048,7 +23933,7 @@ Build errors:
 Notes:
 - A key that is not in the KVDB makes the operation fail and leaves the event unchanged; the following
   operations of the map block still run.
-- `kvdb_get_merge` merges the value into the target and `kvdb_get_append` appends one value per key.
+- `kvdb_lookup_merge` merges the value into the target and `kvdb_lookup_append` appends one value per key.
 
 
 ## Fails when
@@ -24068,7 +23953,7 @@ The key is read from a referenced field before the lookup
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get('windows_kerberos_status_code_to_code_name', $key)
+      - target_field: kvdb_lookup('windows_kerberos_status_code_to_code_name', $key)
 ```
 
 #### Input Event
@@ -24100,7 +23985,7 @@ Rejected at build time because the KVDB does not exist
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get('non-existing-db', $key)
+      - target_field: kvdb_lookup('non-existing-db', $key)
 ```
 
 #### Input Event
@@ -24132,7 +24017,7 @@ Fails and leaves the target unchanged when the key is not in the KVDB
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get('windows_kerberos_status_code_to_code_name', '0x99')
+      - target_field: kvdb_lookup('windows_kerberos_status_code_to_code_name', '0x99')
 ```
 
 #### Input Event
@@ -24162,7 +24047,7 @@ Stores a string value of the KVDB in the target field
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get('windows_kerberos_status_code_to_code_name', $key)
+      - target_field: kvdb_lookup('windows_kerberos_status_code_to_code_name', $key)
 ```
 
 #### Input Event
@@ -24194,7 +24079,7 @@ Stores another string value of the KVDB in the target field
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get('windows_kerberos_status_code_to_code_name', '0x6')
+      - target_field: kvdb_lookup('windows_kerberos_status_code_to_code_name', '0x6')
 ```
 
 #### Input Event
@@ -24224,7 +24109,7 @@ Stores an object value of the KVDB in the target field
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get('windows_kerberos_status_code_to_code_name', $key)
+      - target_field: kvdb_lookup('windows_kerberos_status_code_to_code_name', $key)
 ```
 
 #### Input Event
@@ -24276,7 +24161,7 @@ Stores an array value of the KVDB in the target field
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get('windows_kerberos_status_code_to_code_name', 'bitmask_test_values')
+      - target_field: kvdb_lookup('windows_kerberos_status_code_to_code_name', 'bitmask_test_values')
 ```
 
 #### Input Event
@@ -24380,16 +24265,18 @@ The examples for this helper use the following KVDB resource during tests:
 ```
 
 ---
-# kvdb_get_append
+# kvdb_lookup_append
 
 **Kind:** map helper (used in `map`)
 
 **Modifies the target in place:** yes
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
-target_field: kvdb_get_append(db, keys)
+target_field: kvdb_lookup_append(db, keys)
 ```
 
 ## Arguments
@@ -24430,7 +24317,7 @@ Build errors:
 - A number of arguments other than 2.
 
 Notes:
-- Unlike `array_append_all`, a target that is not an array is replaced instead of failing the operation.
+- Unlike `array_append`, a target that is not an array is replaced instead of failing the operation.
 
 
 ## Fails when
@@ -24451,7 +24338,7 @@ Appends the value of each key of a referenced array
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get_append('windows_kerberos_status_code_to_code_name', $keys)
+      - target_field: kvdb_lookup_append('windows_kerberos_status_code_to_code_name', $keys)
 ```
 
 #### Input Event
@@ -24495,7 +24382,7 @@ Fails and appends nothing when a key of the referenced array is not in the KVDB
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get_append('windows_kerberos_status_code_to_code_name', $keys)
+      - target_field: kvdb_lookup_append('windows_kerberos_status_code_to_code_name', $keys)
 ```
 
 #### Input Event
@@ -24535,7 +24422,7 @@ Rejected at build time because the KVDB does not exist
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get_append('non-existing-db', ["0x0","0x1"])
+      - target_field: kvdb_lookup_append('non-existing-db', ["0x0","0x1"])
 ```
 
 #### Input Event
@@ -24569,7 +24456,7 @@ Appends one value per key, in key order
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get_append('windows_kerberos_status_code_to_code_name', $keys)
+      - target_field: kvdb_lookup_append('windows_kerberos_status_code_to_code_name', $keys)
 ```
 
 #### Input Event
@@ -24610,7 +24497,7 @@ Fails and appends nothing when one of the keys is not in the KVDB
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get_append('windows_kerberos_status_code_to_code_name', ["0x0","0x99","0x6"])
+      - target_field: kvdb_lookup_append('windows_kerberos_status_code_to_code_name', ["0x0","0x99","0x6"])
 ```
 
 #### Input Event
@@ -24640,7 +24527,7 @@ Appends the values to an existing array
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get_append('windows_kerberos_status_code_to_code_name', $keys)
+      - target_field: kvdb_lookup_append('windows_kerberos_status_code_to_code_name', $keys)
 ```
 
 #### Input Event
@@ -24681,7 +24568,7 @@ Fails and leaves the target unchanged when none of the keys is in the KVDB
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get_append('windows_kerberos_status_code_to_code_name', ["0x99","0x98"])
+      - target_field: kvdb_lookup_append('windows_kerberos_status_code_to_code_name', ["0x99","0x98"])
 ```
 
 #### Input Event
@@ -24715,7 +24602,7 @@ An array value of the KVDB is appended as a single nested element
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get_append('windows_kerberos_status_code_to_code_name', $keys)
+      - target_field: kvdb_lookup_append('windows_kerberos_status_code_to_code_name', $keys)
 ```
 
 #### Input Event
@@ -24769,7 +24656,7 @@ A target that is not an array is replaced by the new array
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get_append('windows_kerberos_status_code_to_code_name', ["0x0"])
+      - target_field: kvdb_lookup_append('windows_kerberos_status_code_to_code_name', ["0x0"])
 ```
 
 #### Input Event
@@ -24859,16 +24746,18 @@ The examples for this helper use the following KVDB resource during tests:
 ```
 
 ---
-# kvdb_get_merge
+# kvdb_lookup_merge
 
 **Kind:** map helper (used in `map`)
 
 **Modifies the target in place:** yes
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
-target_field: kvdb_get_merge(db, key, [mode])
+target_field: kvdb_lookup_merge(db, key, [mode])
 ```
 
 ## Arguments
@@ -24877,7 +24766,7 @@ target_field: kvdb_get_merge(db, key, [mode])
 | --------- | ---- | ------ | --------------- |
 | db | string | value | Any string |
 | key | string | value or reference | Any string |
-| mode (optional) | string | value | deep |
+| mode (option, optional) | string | value | deep |
 
 
 ## Target field
@@ -24938,7 +24827,7 @@ Fails when the KVDB value of a referenced key is a string and the target is an o
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get_merge('windows_kerberos_status_code_to_code_name', $key)
+      - target_field: kvdb_lookup_merge('windows_kerberos_status_code_to_code_name', $key)
 ```
 
 #### Input Event
@@ -24974,7 +24863,7 @@ Rejected at build time because the KVDB does not exist
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get_merge('non-existing-db', $key)
+      - target_field: kvdb_lookup_merge('non-existing-db', $key)
 ```
 
 #### Input Event
@@ -25014,7 +24903,7 @@ Fails and leaves the target unchanged when the key is not in the KVDB
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get_merge('windows_kerberos_status_code_to_code_name', '0x99')
+      - target_field: kvdb_lookup_merge('windows_kerberos_status_code_to_code_name', '0x99')
 ```
 
 #### Input Event
@@ -25052,7 +24941,7 @@ Fails when the KVDB value is a string and the target is an object
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get_merge('windows_kerberos_status_code_to_code_name', $key)
+      - target_field: kvdb_lookup_merge('windows_kerberos_status_code_to_code_name', $key)
 ```
 
 #### Input Event
@@ -25088,7 +24977,7 @@ Fails when the KVDB value is a string and the target is an array
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get_merge('windows_kerberos_status_code_to_code_name', '0x1')
+      - target_field: kvdb_lookup_merge('windows_kerberos_status_code_to_code_name', '0x1')
 ```
 
 #### Input Event
@@ -25122,7 +25011,7 @@ Merges the KVDB object into the target, the KVDB winning on shared keys and loca
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get_merge('windows_kerberos_status_code_to_code_name', $key)
+      - target_field: kvdb_lookup_merge('windows_kerberos_status_code_to_code_name', $key)
 ```
 
 #### Input Event
@@ -25178,7 +25067,7 @@ Appends the KVDB array elements that are not already in the target array
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get_merge('windows_kerberos_status_code_to_code_name', 'bitmask_test_values')
+      - target_field: kvdb_lookup_merge('windows_kerberos_status_code_to_code_name', 'bitmask_test_values')
 ```
 
 #### Input Event
@@ -25227,7 +25116,7 @@ In deep mode the scalar members of the KVDB object overwrite the shared keys as 
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get_merge('windows_kerberos_status_code_to_code_name', $key, 'deep')
+      - target_field: kvdb_lookup_merge('windows_kerberos_status_code_to_code_name', $key, 'deep')
 ```
 
 #### Input Event
@@ -25283,7 +25172,7 @@ In deep mode arrays merge as the same de-duplicated union
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get_merge('windows_kerberos_status_code_to_code_name', 'bitmask_test_values', 'deep')
+      - target_field: kvdb_lookup_merge('windows_kerberos_status_code_to_code_name', 'bitmask_test_values', 'deep')
 ```
 
 #### Input Event
@@ -25333,7 +25222,7 @@ In deep mode a key that is not in the KVDB fails as well
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get_merge('windows_kerberos_status_code_to_code_name', $key, 'deep')
+      - target_field: kvdb_lookup_merge('windows_kerberos_status_code_to_code_name', $key, 'deep')
 ```
 
 #### Input Event
@@ -25434,6 +25323,8 @@ The examples for this helper use the following KVDB resource during tests:
 # not_in_kvdb
 
 **Kind:** check helper (used in `check`)
+
+**On failure:** the check is false.
 
 ## Signature
 
@@ -25660,6 +25551,8 @@ The examples for this helper use the following KVDB resource during tests:
 
 **Modifies the target in place:** yes
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -25842,6 +25735,8 @@ normalize:
 **Kind:** map helper (used in `map`)
 
 **Modifies the target in place:** yes
+
+**On failure:** the target field is not written and the decoder continues with the next operation.
 
 ## Signature
 
@@ -26030,6 +25925,8 @@ normalize:
 **Kind:** map helper (used in `map`)
 
 **Modifies the target in place:** yes
+
+**On failure:** the target field is not written and the decoder continues with the next operation.
 
 ## Signature
 
@@ -26350,6 +26247,8 @@ normalize:
 
 **Modifies the target in place:** yes
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -26636,6 +26535,8 @@ normalize:
 **Kind:** map helper (used in `map`)
 
 **Modifies the target in place:** yes
+
+**On failure:** the target field is not written and the decoder continues with the next operation.
 
 ## Signature
 
@@ -26926,6 +26827,8 @@ normalize:
 
 **Modifies the target in place:** yes
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -27170,6 +27073,8 @@ normalize:
 
 **Modifies the target in place:** yes
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -27368,6 +27273,8 @@ normalize:
 
 **Modifies the target in place:** yes
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -27551,6 +27458,8 @@ normalize:
 **Kind:** map helper (used in `map`)
 
 **Modifies the target in place:** yes
+
+**On failure:** the target field is not written and the decoder continues with the next operation.
 
 ## Signature
 
@@ -27764,6 +27673,8 @@ normalize:
 
 **Modifies the target in place:** yes
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -27933,6 +27844,8 @@ normalize:
 **Kind:** map helper (used in `map`)
 
 **Modifies the target in place:** yes
+
+**On failure:** the target field is not written and the decoder continues with the next operation.
 
 ## Signature
 
@@ -28125,6 +28038,8 @@ normalize:
 **Kind:** map helper (used in `map`)
 
 **Modifies the target in place:** yes
+
+**On failure:** the target field is not written and the decoder continues with the next operation.
 
 ## Signature
 
@@ -28381,6 +28296,8 @@ normalize:
 
 **Modifies the target in place:** yes
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -28609,6 +28526,8 @@ normalize:
 
 **Modifies the target in place:** yes
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -28826,6 +28745,8 @@ normalize:
 **Kind:** map helper (used in `map`)
 
 **Modifies the target in place:** yes
+
+**On failure:** the target field is not written and the decoder continues with the next operation.
 
 ## Signature
 
@@ -29084,6 +29005,8 @@ normalize:
 
 **Modifies the target in place:** yes
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -29311,6 +29234,8 @@ normalize:
 **Kind:** map helper (used in `map`)
 
 **Modifies the target in place:** yes
+
+**On failure:** the target field is not written and the decoder continues with the next operation.
 
 ## Signature
 
@@ -29692,6 +29617,8 @@ normalize:
 
 **Modifies the target in place:** yes
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -29877,6 +29804,8 @@ normalize:
 **Kind:** map helper (used in `map`)
 
 **Modifies the target in place:** yes
+
+**On failure:** the target field is not written and the decoder continues with the next operation.
 
 ## Signature
 
@@ -30135,6 +30064,8 @@ normalize:
 
 **Modifies the target in place:** yes
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -30320,6 +30251,8 @@ normalize:
 
 **Modifies the target in place:** yes
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -30504,6 +30437,8 @@ normalize:
 **Kind:** map helper (used in `map`)
 
 **Modifies the target in place:** yes
+
+**On failure:** the target field is not written and the decoder continues with the next operation.
 
 ## Signature
 
@@ -30736,99 +30671,13 @@ normalize:
 
 
 ---
-# parse_user_agent
-
-**Kind:** map helper (used in `map`)
-
-**Modifies the target in place:** yes
-
-## Signature
-
-```
-target_field: parse_user_agent(input)
-```
-
-## Arguments
-
-| parameter | Type | Source | Accepted values |
-| --------- | ---- | ------ | --------------- |
-| input | string | reference | Any string |
-
-
-## Target field
-
-| Type | Possible values |
-| ---- | --------------- |
-| object | Any object |
-
-
-## Description
-
-Copies the input user agent string to the `original` member of the target object.
-
-Behavior:
-- The whole non-empty input is stored, unchanged, in `<target>.original`; any other member of the target
-  is kept, and a target that is not an object becomes one.
-- Nothing else is extracted: no name, version, operating system or device.
-
-Build errors:
-- `input` is not a reference, or references a schema field that is not a string.
-- A number of arguments other than 1.
-- The target field is a schema field that is not an object.
-
-Notes:
-- It is equivalent to mapping `<target>.original: $input`, except that an empty input fails.
-
-
-## Fails when
-
-- The input field does not exist or is not a string.
-- The input is empty.
-
-## Examples
-
-### Example 1
-
-The user agent string is stored unchanged in the original member
-
-#### Asset
-
-```yaml
-normalize:
-  - map:
-      - target_field: parse_user_agent($input)
-```
-
-#### Input Event
-
-```json
-{
-  "input": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110",
-  "target_field": "any_value"
-}
-```
-
-#### Outcome Event
-
-```json
-{
-  "input": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110",
-  "target_field": {
-    "original": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110"
-  }
-}
-```
-
-*The operation was successful*
-
-
-
----
 # parse_xml
 
 **Kind:** map helper (used in `map`)
 
 **Modifies the target in place:** yes
+
+**On failure:** the target field is not written and the decoder continues with the next operation.
 
 ## Signature
 
@@ -30841,7 +30690,7 @@ target_field: parse_xml(input, [mode])
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
 | input | string | reference | Any string |
-| mode (optional) | string | value | windows |
+| mode (option, optional) | string | value | windows |
 
 
 ## Target field
@@ -31079,6 +30928,8 @@ normalize:
 
 **Modifies the target in place:** yes
 
+**On failure:** the target field is not written and the decoder continues with the next operation.
+
 ## Signature
 
 ```
@@ -31161,6 +31012,8 @@ normalize:
 # index_unclassified_events
 
 **Kind:** check helper (used in `check`)
+
+**On failure:** the check is false.
 
 ## Signature
 

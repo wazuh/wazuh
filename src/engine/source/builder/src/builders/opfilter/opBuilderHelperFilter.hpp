@@ -452,21 +452,6 @@ FilterOp opBuilderHelperContainsAny(const Reference& targetField,
                                     const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
- * @brief Create the `array_excludes_any` helper function: passes when the target field is an array and at
- * least one of the given values is NOT an element of it (missing reference arguments are skipped).
- *
- * @param targetField target field of the helper
- * @param opArgs Vector of operation arguments containing numeric values to be converted.
- * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @return FilterOp
- *
- * @throws std::runtime_error if cannot create the filter.
- */
-FilterOp opBuilderHelperNotContains(const Reference& targetField,
-                                    const std::vector<OpArg>& opArgs,
-                                    const std::shared_ptr<const IBuildCtx>& buildCtx);
-
-/**
  * @brief Checks if the string stored in the field ends with the value provided.
  *
  * @param targetField target field of the helper
@@ -509,7 +494,7 @@ FilterOp opBuilderHelperIsIpv6(const Reference& targetField,
                                const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
- * @brief Create the `array_excludes_all` helper function: passes when the target field is an array that
+ * @brief Create the `array_contains_none` helper function: passes when the target field is an array that
  * contains none of the given values (a missing reference argument makes it fail).
  *
  * @param targetField target field of the helper

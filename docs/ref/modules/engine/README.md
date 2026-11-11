@@ -1427,16 +1427,16 @@ All other operations are accessed through the helper functions.
 
 The syntax for calling a helper function is `helper_name(args…)`. Helper functions come in two categories, named after the stage that uses them:
 - **Check helpers**: used in `check` stages — in the checklist form or inside a conditional expression — and in `first_of` branches. They test a condition on the target field: the operation succeeds when the condition holds and fails otherwise, and the event is never modified.
-- **Map helpers**: used in `map` operations. They compute a value for the target field; some of them instead read the target field and modify it in place (for example `array_append_all`, `trim`, `merge` or `delete`).
+- **Map helpers**: used in `map` operations. They compute a value for the target field; some of them instead read the target field and modify it in place (for example `array_append`, `trim`, `merge` or `delete`).
 
 The complete list of helpers, grouped by topic, is in the [helper functions reference](ref-helper-functions.md). Their names follow one convention:
 
 - Names are `snake_case` English words; the only abbreviations are `ip`, `ipv4`, `ipv6`, `cidr`, `json`, `xml`, `csv`, `dsv`, `kv`, `kvdb`, `regex`, `uri`, `fqdn`, `sha1`, `hex`, `iana`, `asn`, `epoch`, `int`, `bool` and the comparison operators `eq`, `ne`, `gt`, `gte`, `lt`, `lte`.
 - A check helper reads as a sentence about the target field: `exists($f)`, `contains($f, 'x')`, `one_of($f, [...])`, `is_key_of($f, $table)`, `in_kvdb($f, 'db')`, `in_cidr($f, '10.0.0.0/8')`, `is_string($f)`. A negated check puts `not` right before the verb: `not_exists`, `is_not_string`, `not_in_kvdb`, `regex_not_match`.
 - Typed comparisons are `string_`, `number_` or `int_` followed by `eq`, `ne`, `gt`, `gte`, `lt` or `lte`; for a literal value prefer the operators (`$f >= 5`), the helpers are for comparing two fields.
-- When a helper takes several values, its name says how many must be usable: `_all` (every one) or `_any` (at least one), as in `array_contains_all` / `array_contains_any`, `array_excludes_any` / `array_excludes_all`, `array_append_all` / `array_append_any`, `concat_all` / `concat_any`.
+- A check over several values says how many must be present: `array_contains_all`, `array_contains_any`, `array_contains_none`. A map helper that takes several references fails when one is missing (`array_append`, `array_append_unique`, `concat`); its `_any` variant (`array_append_any`, `array_append_unique_any`, `concat_any`) uses the references that resolve and fails only when none does.
 - A helper that produces a value is named after what it produces: `to_int`, `parse_json`, `hex_to_int`, `epoch_to_date`, `now`, `geoip`, `asn`, `sha1`, `community_id`, `syslog_facility`, `iana_protocol_number`. A helper that modifies the event is a verb: `delete`, `rename`, `merge`, `replace`, `split`, `trim`, `lookup`, `snake_case_keys`, `discard_event`.
-- An option is a trailing quoted word, not a separate helper: `merge($src, 'deep')`, `lookup_merge($table, $key, 'deep')`, `kvdb_get_merge('db', $key, 'deep')`, `to_int($n, 'round')`, `parse_xml($s, 'windows')`, `array_to_object($arr, 'Name', 'Value', 'raw_keys')`.
+- An option is a trailing quoted word, not a separate helper: `merge($src, 'deep')`, `lookup_merge($table, $key, 'deep')`, `kvdb_lookup_merge('db', $key, 'deep')`, `to_int($n, 'round')`, `parse_xml($s, 'windows')`, `array_to_object($arr, 'Name', 'Value', 'raw_keys')`.
 
 #### Check helpers
 When using a check helper, the syntax is:
@@ -1454,7 +1454,7 @@ target_field: map_helper(args)
 
 The helper maps the *target_field* if the operation succeeds. If the operation fails, the *target_field* remains unchanged.
 
-Some map helpers do not compute a value from their arguments alone: they read the current value of *target_field* and modify it in place. `array_append_all` and `array_append_any` add elements to the array stored in the target, `trim` removes characters from the string stored in it, `merge` merges another object into it, `rename` and `delete` move or remove it, and so on; the reference entry of each helper states whether it works in place. Such a helper also fails when the target does not have the type it expects (for example `array_append_all` on a field that holds a string), on top of the reasons any map helper may fail for: a missing reference passed as an argument, an argument of the wrong type, etc.
+Some map helpers do not compute a value from their arguments alone: they read the current value of *target_field* and modify it in place. `array_append` and `array_append_any` add elements to the array stored in the target, `trim` removes characters from the string stored in it, `merge` merges another object into it, `rename` and `delete` move or remove it, and so on; the reference entry of each helper states whether it works in place. Such a helper also fails when the target does not have the type it expects (for example `array_append` on a field that holds a string), on top of the reasons any map helper may fail for: a missing reference passed as an argument, an argument of the wrong type, etc.
 
 ***It is important to understand that every operation can succeed or fail, and this is the foundation for defining the operation graph.***
 
@@ -1692,7 +1692,7 @@ This pattern is useful when the event already contains a code and you want to en
 ```yaml
 normalize:
   - map:
-      - event: kvdb_get_merge('event_defaults_by_code', $event.code)
+      - event: kvdb_lookup_merge('event_defaults_by_code', $event.code)
 ```
 
 If `event.code` is `http`, the value stored under `content.http` is merged into `event`.
@@ -1712,9 +1712,9 @@ The check succeeds only if the current value of `source.ip` exists as a key in t
 
 The KVDB helper reference includes functions for direct lookups, lookups of several keys at once, merges (shallow, or recursive with the optional `deep` mode), membership checks, and bitmask decoding:
 
-- [`kvdb_get`](ref-helper-functions.md#kvdb_get)
-- [`kvdb_get_append`](ref-helper-functions.md#kvdb_get_append)
-- [`kvdb_get_merge`](ref-helper-functions.md#kvdb_get_merge) (with the optional `deep` mode)
+- [`kvdb_lookup`](ref-helper-functions.md#kvdb_lookup)
+- [`kvdb_lookup_append`](ref-helper-functions.md#kvdb_lookup_append)
+- [`kvdb_lookup_merge`](ref-helper-functions.md#kvdb_lookup_merge) (with the optional `deep` mode)
 - [`in_kvdb`](ref-helper-functions.md#in_kvdb)
 - [`not_in_kvdb`](ref-helper-functions.md#not_in_kvdb)
 - [`kvdb_decode_bitmask`](ref-helper-functions.md#kvdb_decode_bitmask)
@@ -1848,25 +1848,25 @@ normalize:
   - check: "$_system.auth.ssh.event == Accepted OR $_system.auth.ssh.event == USER_PROCESS"
     map:
       - event.action: "logged-in"
-      - event.category: "array_append_all(authentication, session)"
+      - event.category: "array_append(authentication, session)"
       - event.outcome: "success"
-      - event.type: "array_append_all(info)"
+      - event.type: "array_append(info)"
 
   # --- Block 4: SSH logout / session end ---
   - check: "$_system.auth.ssh.event == DEAD_PROCESS OR $_system.auth.ssh.event == disconnect"
     map:
       - event.action: "logged-out"
-      - event.category: "array_append_all(authentication, session)"
+      - event.category: "array_append(authentication, session)"
       - event.outcome: "success"
-      - event.type: "array_append_all(end)"
+      - event.type: "array_append(end)"
 
   # --- Block 5: SSH authentication failure ---
   - check: "$_system.auth.ssh.event == Invalid OR $_system.auth.ssh.event == Failed OR $_system.auth.ssh.event == failures OR $_system.auth.ssh.event == fatal"
     map:
       - event.action: "authentication-failure"
-      - event.category: "array_append_all(authentication)"
+      - event.category: "array_append(authentication)"
       - event.outcome: "failure"
-      - event.type: "array_append_all(info)"
+      - event.type: "array_append(info)"
 
   # --- Block 6: sudo commands ---
   - check:
@@ -1876,20 +1876,20 @@ normalize:
       - "<user.name> : TTY=<_system.auth.sudo.tty> ; PWD=<_system.auth.sudo.pwd> ; USER=<user.effective.name> ; COMMAND=<_system.auth.sudo.command>"
     map:
       - event.action: "sudo"
-      - event.category: "array_append_all(authentication, process)"
-      - event.type: "array_append_all(start)"
+      - event.category: "array_append(authentication, process)"
+      - event.type: "array_append(start)"
 
   # --- Block 7–8: session open / close (generic) ---
   - check:
       - message: "contains(\"session opened\")"
     map:
       - event.action: "logged-in"
-      - event.type: "array_append_all(start)"
+      - event.type: "array_append(start)"
   - check:
       - message: "contains(\"session closed\")"
     map:
       - event.action: "logged-out"
-      - event.type: "array_append_all(end)"
+      - event.type: "array_append(end)"
 
   # --- Block 9: PAM authentication ---
   - check:
@@ -1897,8 +1897,8 @@ normalize:
     parse|message:
       - "pam_unix\\(<~>:<~>\\): authentication <_system.auth.pam.session.action>; logname=<?_system.auth.pam.foruser.name> uid=<?user.id> euid=<?user.effective.id> tty=<?_system.auth.pam.tty> ruser=<?_system.auth.pam.remote.user> rhost=<?source.ip>  user=<?user.name>"
     map:
-      - event.category: "array_append_all(authentication)"
-      - event.type: "array_append_all(info)"
+      - event.category: "array_append(authentication)"
+      - event.type: "array_append(info)"
 
   # --- Block 10: PAM session open/close ---
   - check:
@@ -1907,7 +1907,7 @@ normalize:
       - "pam_unix\\(<~>:<~>\\): session <_system.auth.pam.session.action> for user <_system.auth.pam.foruser.name> by <_system.auth.pam.byuser.name>\\(uid=<user.id>\\)"
       - "pam_unix\\(<~>:<~>\\): session <_system.auth.pam.session.action> for user <_system.auth.pam.foruser.name>"
     map:
-      - event.category: "array_append_all(session)"
+      - event.category: "array_append(session)"
 
   # --- Block 11: user/group management ---
   - check: "$process.name == groupadd OR $process.name == useradd"
@@ -1919,13 +1919,13 @@ normalize:
       - "<~> user '<user.name>'"
   - check: "$process.name == groupadd OR $process.name == groupdel OR $process.name == groupmod OR $process.name == useradd OR $process.name == userdel OR $process.name == usermod"
     map:
-      - event.category: "array_append_all(iam)"
+      - event.category: "array_append(iam)"
   - check: "$process.name == useradd OR $process.name == userdel OR $process.name == usermod"
     map:
-      - event.type: "array_append_all(user)"
+      - event.type: "array_append(user)"
   - check: "$process.name == groupadd OR $process.name == groupdel OR $process.name == groupmod"
     map:
-      - event.type: "array_append_all(group)"
+      - event.type: "array_append(group)"
 
   # --- Block 12: final field cleanup and catch-all mappings ---
   - map:
@@ -1935,7 +1935,7 @@ normalize:
       - user.effective.name: "replace(\"'\", '')"
       - source.address: "$source.ip"
       - related.user: "array_append_any($user.name, $user.effective.name)"
-      - related.ip: "array_append_all($source.ip)"
+      - related.ip: "array_append($source.ip)"
       - process.command_line: "$_system.auth.sudo.command"
       - process.working_directory: "$_system.auth.sudo.pwd"
   - check: "exists($source.address) AND NOT is_ipv4($source.address) AND NOT is_ipv6($source.address) AND contains($source.address, \".\")"
@@ -2220,7 +2220,7 @@ Example:
 - map:
     - event.kind: event
     - event.dataset: apache.access
-    - event.category: array_append_all('web')
+    - event.category: array_append('web')
     - event.module: apache
     - service.type: apache
     - event.outcome: success

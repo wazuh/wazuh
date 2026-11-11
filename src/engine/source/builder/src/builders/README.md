@@ -30,7 +30,7 @@ and the underlying schema that defines the event structure.
 
 ## Overview
 
-Every helper function (e.g. `int_eq`, `parse_ip`, `map`, `concat_all`) is registered with a
+Every helper function (e.g. `int_eq`, `parse_ip`, `map`, `concat`) is registered with a
 **validation intent** and an **operation builder**. The validation intent declares what type
 constraints the helper imposes on the target field. When a decoder uses a helper on a specific
 field, the engine validates – at **build time** if possible, otherwise at **runtime** – that
@@ -102,7 +102,7 @@ include:
 | Factory | Token Type | Meaning |
 |---------|-----------|---------|
 | `schemf::runtimeValidation()` | `nullptr` | Skip build-time validation entirely; only validate at runtime. |
-| `schemf::elementValidationToken()` | `BaseToken` (no type) | Array-element-level validation. Used by `array_contains_all`, `array_append_all`, etc. |
+| `schemf::elementValidationToken()` | `BaseToken` (no type) | Array-element-level validation. Used by `array_contains_all`, `array_append`, etc. |
 | `schemf::JTypeToken::create(json::Json::Type::Number)` | `JTypeToken` | Target field must map to JSON `Number`. |
 | `schemf::JTypeToken::create(json::Json::Type::String)` | `JTypeToken` | Target field must map to JSON `String`. |
 | `schemf::JTypeToken::create(json::Json::Type::Object)` | `JTypeToken` | Target field must map to JSON `Object`. |
@@ -269,7 +269,7 @@ the element validator to each element individually.
 
 Filter and transform operations do **not** get runtime type wrapping: `runType()` returns any builder that is not a
 `MapBuilder` unchanged, even when the `ValidationResult` carries a validator. So `int_eq` (a check helper),
-`parse_ip` and `array_append_all` (transforms) are checked only at build time.
+`parse_ip` and `array_append` (transforms) are checked only at build time.
 
 ---
 
@@ -466,7 +466,7 @@ registry->template add<builders::OpBuilderEntry>(
 - **Build-time**: Checks that the target field's JSON type is `Number`.
 - **Runtime**: None. The dispatch returns the target type's validator (e.g. `LONG` → `getLongValidator()`), but
   `int_eq` is a `FilterBuilder`, which `runType()` does not wrap. A `MapBuilder` registered with a
-  `JTypeToken` (e.g. `concat_all`, `to_string`) would have its output validated per element (for arrays) or directly.
+  `JTypeToken` (e.g. `concat`, `to_string`) would have its output validated per element (for arrays) or directly.
 
 ### 2. Static `STypeToken` — `parse_ip`
 
@@ -492,11 +492,11 @@ registry->template add<builders::OpBuilderEntry>("exists",
 - **Runtime**: None. The target type's validator is returned, but `exists` is a filter; only a map helper
   registered with `runtimeValidation()` would be wrapped.
 
-### 4. `elementValidationToken()` — `array_append_all`
+### 4. `elementValidationToken()` — `array_append`
 
 ```cpp
 registry->template add<builders::OpBuilderEntry>(
-    "array_append_all", {schemf::elementValidationToken(), builders::optransform::getArrayAppendBuilder(false, false)});
+    "array_append", {schemf::elementValidationToken(), builders::optransform::getArrayAppendBuilder(false, false)});
 ```
 
 - **Build-time**: `BaseToken` — only the target field classification runs.
@@ -536,24 +536,25 @@ Every helper name registered in `register.hpp` follows these rules (the engine R
    right before the verb: `not_exists`, `is_not_string`, `not_in_kvdb`, `regex_not_match`. Every negated helper is
    false on a missing field (it is not `NOT x(...)`), and its description says so; `not_exists` is the one exact
    complement.
-3. **Quantifiers are explicit suffixes on variadic helpers**: `_all` (every argument) and `_any` (at least one):
-   `array_contains_all/any`, `array_excludes_any/all`, `array_append_all/any`, `array_append_unique_all/any`,
-   `concat_all/any`. `_any` on an appending/concatenating helper means "use the arguments that resolve; fail if none does
-   or if a resolved one has an incompatible type".
+3. **A check over several values says how many must be present**: `array_contains_all`, `array_contains_any`,
+   `array_contains_none`. A map helper that takes several references is strict by default (`array_append`,
+   `array_append_unique`, `concat`: a missing reference fails); its `_any` variant (`array_append_any`,
+   `array_append_unique_any`, `concat_any`) uses the references that resolve and fails only when none does or when
+   a resolved one has an incompatible type.
 4. **Typed comparisons** are `<type>_<op>`, `type ∈ {string, number, int}`, `op ∈ {eq, ne, gt, gte, lt, lte}`.
    The `!= < <= > >=` operators desugar to the `string_*`/`number_*` forms (`helperParser.hpp`).
 5. **Map helpers are named by what they produce**: `to_<type>`, `parse_<format>` (same names as the parse-stage
    parsers), `<x>_to_<y>` (`hex_to_int`, `epoch_to_date`, `array_to_object`), `decode_<enc>`, `now`/`now_epoch`,
    or the domain noun when the output is that thing (`geoip`, `asn`, `sha1`, `community_id`, `syslog_facility`).
 6. **Transform helpers are imperative verbs**: `delete`, `rename`, `merge`, `replace`, `split`, `trim`, `lookup`,
-   `array_append_all`, `snake_case_keys`, `discard_event`.
+   `array_append`, `snake_case_keys`, `discard_event`.
 7. **Variants**: on a fixed-arity helper a mode is a trailing literal (`merge($src, 'deep')`,
    `to_int($n, 'round')`, `parse_xml($s, 'windows')`, `decode_hex($s, 'quoted')`, `snake_case_keys('deep')`,
    `array_to_object(..., 'raw_keys')`); on a variadic helper it is a name suffix (rule 3). The only named-sibling
    exception is `trim`/`trim_start`/`trim_end`, where a mode literal would be ambiguous with the optional `chars`.
 8. **A type noun prefixes a verb only when the same verb would mean something else on another target type**
    (`array_contains_all` vs `contains`, `number_gte` vs `string_gte`); a domain noun appears when the helper reads
-   something that is not the target (`kvdb_get`, `in_kvdb`, `iana_*`, `syslog_*`). Otherwise the verb is bare.
+   something that is not the target (`kvdb_lookup`, `in_kvdb`, `iana_*`, `syslog_*`). Otherwise the verb is bare.
 9. **Argument order**: data input first (`$reference`), then options (literals). Documented argument names are
    meaningful (`substring`, `prefix`, `regex`, `separator`, `cidr`, `key_path`), never C++ identifiers.
 

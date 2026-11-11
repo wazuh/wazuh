@@ -1228,15 +1228,6 @@ FilterOp opBuilderHelperContains(const Reference& targetField,
     return opBuilderHelperArrayPresence(targetField, opArgs, false, true, buildCtx);
 }
 
-// field: +array_excludes_any/value1/value2/...valueN
-FilterOp opBuilderHelperNotContains(const Reference& targetField,
-                                    const std::vector<OpArg>& opArgs,
-                                    const std::shared_ptr<const IBuildCtx>& buildCtx)
-{
-    return opBuilderHelperArrayPresence(targetField, opArgs, true, false, buildCtx);
-}
-
-// field: +array_contains_any/value1/value2/...valueN
 FilterOp opBuilderHelperContainsAny(const Reference& targetField,
                                     const std::vector<OpArg>& opArgs,
                                     const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -1244,7 +1235,7 @@ FilterOp opBuilderHelperContainsAny(const Reference& targetField,
     return opBuilderHelperArrayPresence(targetField, opArgs, true, true, buildCtx);
 }
 
-// field: +array_excludes_all/value1/value2/...valueN
+// field: +array_contains_none/value1/value2/...valueN
 FilterOp opBuilderHelperNotContainsAny(const Reference& targetField,
                                        const std::vector<OpArg>& opArgs,
                                        const std::shared_ptr<const IBuildCtx>& buildCtx)

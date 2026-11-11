@@ -1,9 +1,9 @@
 # Name of the helper function
-name: array_excludes_any
+name: array_contains_none
 
 metadata:
   description: |
-    Checks whether at least one argument is not an element of the target array.
+    Checks whether none of the arguments is an element of the target array.
 
     Behavior:
     - Variadic: from 1 to 150 arguments of any JSON type, literals or references.
@@ -11,23 +11,23 @@ metadata:
       `1`), numbers compare by value (`1` equals `1.0`), strings byte by byte, arrays element by element in
       order, and objects member by member regardless of the member order.
     - A reference whose value is an array is matched as a single element; it is not spread.
-    - True as soon as one argument that resolves is absent from the array, that is, when not all of the
-      arguments are present. References that do not exist are skipped: they do not count as absent.
+    - True only when every argument is absent from the array. A reference that does not exist cannot be
+      proven absent, so it makes the check fail.
 
     Build errors:
     - No argument is given, or more than 150.
 
     Notes:
-    - `array_excludes_all` requires that none of the arguments is present; with one argument the two helpers
-      are identical.
-    - Not the negation of `array_contains_all`: both are false for a missing or non-array target and when the
-      only arguments are references that do not exist.
+    - `array_contains_any` is the positive counterpart; both are false for a missing or non-array target, so
+      neither is the `NOT` of the other.
+    - Not the negation of `array_contains_any`: both are false for a missing or non-array target and for a
+      reference that does not exist.
   group: array
   fails_when:
     - The target field does not exist.
     - The target field is not an array.
-    - Every argument that resolves is an element of the array.
-    - Every argument is a reference that does not exist.
+    - Any argument is an element of the array.
+    - Any reference argument does not exist.
 
 helper_type: check
 
@@ -64,17 +64,8 @@ test:
     target_field:
       - dracut
       - lvm2
-    should_pass: true
-    description: A reference that does not exist is skipped, and the other element is absent from the array.
-  - arguments:
-      element:
-        source: reference
-        value: null
-    target_field:
-      - dracut
-      - lvm2
     should_pass: false
-    description: The only argument is a reference that does not exist, which does not count as absent.
+    description: A reference that does not exist cannot be proven absent, so the check fails although the other element is absent.
   - arguments:
       element: dracut
       element_1: vz-start
@@ -91,8 +82,8 @@ test:
     description: All the specified strings are elements of the array.
   - arguments:
       element: dracut
-      element_1: vz-start
-      element_2: iscsi
+      element_1: hello
+      element_2: wazuh
     target_field:
       - mkinitramfs
       - cryptroot
@@ -101,12 +92,12 @@ test:
       - thin-provisioning-tools
       - lvm2
       - vz-start
-    should_pass: true
-    description: One of the specified strings ("iscsi") is not an element of the array.
+    should_pass: false
+    description: One of the specified strings ("dracut") is an element of the array.
   - arguments:
-      element: 2
+      element: 7
       element_1: 1
-      element_2: 5
+      element_2: 8
     target_field:
       - 1
       - 2
@@ -114,25 +105,12 @@ test:
       - 4
       - 5
     should_pass: false
-    description: All the specified numbers are elements of the array.
+    description: One of the specified numbers (1) is an element of the array.
   - arguments:
       element: iscsi
     target_field: dracut
     should_pass: false
     description: The target field is a string, not an array.
-  - arguments:
-      element:
-        key: value
-      element_1:
-        key1: value1
-      element_2:
-        key2: value2
-    target_field:
-      - key: value
-      - key1: value1
-      - key2: value2
-    should_pass: false
-    description: All the specified objects are elements of the array.
   - arguments:
       element:
         key: value
@@ -144,16 +122,27 @@ test:
       - key: value
       - key1: value1
       - key2: value2
-    should_pass: true
-    description: Two of the specified objects are not elements of the array.
+    should_pass: false
+    description: One of the specified objects is an element of the array.
   - arguments:
       element:
-        key: value
-      element_1: 1
-      element_2: value
+        keyn: valuen
+      element_1: 1000
+      element_2: valuen
     target_field:
       - key: value
-      - 1
+      - 1000
       - value
     should_pass: false
-    description: The specified object, number and string are all elements of the array.
+    description: One of the specified values (1000) is an element of the array.
+  - arguments:
+      element:
+        key1: value1
+      element_1: 10
+      element_2: valuen
+    target_field:
+      - key: value
+      - 1000
+      - value
+    should_pass: true
+    description: None of the specified values is an element of the array.

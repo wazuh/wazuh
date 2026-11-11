@@ -128,10 +128,6 @@ INSTANTIATE_TEST_SUITE_P(
                             R"({"source": "[content]"})",
                             {makeValue(R"("[")"), makeValue(R"("]")")}},
         HlpParserTestParam {"parse_alphanumeric", alphanumericParseBuilder, R"({"source": "abc123"})", {}},
-        HlpParserTestParam {"parse_user_agent",
-                            userAgentParseBuilder,
-                            R"({"source": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"})",
-                            {}},
         HlpParserTestParam {"parse_file", filePathParseBuilder, R"({"source": "/usr/local/bin/test"})", {}}),
     [](const testing::TestParamInfo<HlpParserTestParam>& info) { return info.param.name; });
 

@@ -1,5 +1,5 @@
 # Name of the helper function
-name: concat_all
+name: concat
 
 metadata:
   description: |

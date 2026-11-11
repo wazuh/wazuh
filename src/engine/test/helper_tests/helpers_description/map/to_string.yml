@@ -16,7 +16,7 @@ metadata:
     - `value` is a literal.
 
     Notes:
-    - `concat_all` writes a referenced number with the same text.
+    - `concat` writes a referenced number with the same text.
     - `to_int` and `to_bool` are the conversions in the other direction.
   group: number
   fails_when:

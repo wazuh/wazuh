@@ -28,7 +28,7 @@ metadata:
     - The target field is not a schema field and does not start with `_`.
 
     Notes:
-    - With literal arguments only, the behavior is the same as `array_append_unique_all`.
+    - With literal arguments only, the behavior is the same as `array_append_unique`.
     - A target field that exists and is not an array makes the operation fail; it is never overwritten.
   group: array
   fails_when:

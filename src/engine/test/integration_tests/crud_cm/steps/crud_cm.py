@@ -143,9 +143,9 @@ def build_good_decoder_json(name: str) -> str:
             "normalize": [
                 {
                     "map": [
-                        {"event.category": "array_append_all(_test)"},
+                        {"event.category": "array_append(_test)"},
                         {"event.kind": "metric"},
-                        {"event.type": "array_append_all(info)"},
+                        {"event.type": "array_append(info)"},
                         {"_test.value": "to_int($_tmp_value.metric, 'truncate')"},
                     ]
                 },
@@ -172,7 +172,7 @@ def build_decoder_json_without_name() -> str:
             "normalize": [
                 {
                     "map": [
-                        {"event.category": "array_append_all(_test)"},
+                        {"event.category": "array_append(_test)"},
                     ]
                 }
             ],
@@ -193,7 +193,7 @@ def build_decoder_json_with_invalid_name(bad_name: str) -> str:
             "normalize": [
                 {
                     "map": [
-                        {"event.category": "array_append_all(_test)"},
+                        {"event.category": "array_append(_test)"},
                     ]
                 }
             ],
@@ -214,7 +214,7 @@ def build_decoder_json_with_id(name: str, uuid: str, updated: bool = False) -> s
         "normalize": [
             {
                 "map": [
-                    {"event.category": "array_append_all(_test)"},
+                    {"event.category": "array_append(_test)"},
                 ]
             }
         ],
@@ -224,7 +224,7 @@ def build_decoder_json_with_id(name: str, uuid: str, updated: bool = False) -> s
         payload["normalize"] = [
             {
                 "map": [
-                    {"event.category": "array_append_all(_test)"},
+                    {"event.category": "array_append(_test)"},
                     {"_test.value": "to_int($_tmp_value.metric, 'truncate')"},
                     {"_test.updated": True},
                 ]

@@ -1,22 +1,17 @@
 # Name of the helper function
-name: array_append_unique_all
+name: array_append
 
 metadata:
   description: |
-    Appends to the array stored in the target field the arguments that are not already in it.
+    Appends every argument to the array stored in the target field.
 
     Behavior:
     - The target field must be an array or be missing; a missing target is created as an empty array first.
     - Each argument is a literal of any JSON type or a reference to a field, and is appended as one element,
-      in argument order.
-    - An argument equal to an element already in the array (the elements appended by the same call included)
-      is skipped silently. Equality is deep JSON equality: object member order is ignored and numbers compare
-      numerically, so `1` equals `1.0`.
-    - A reference that does not exist in the event fails the whole operation.
+      in argument order, without removing duplicates.
     - Every element must share one JSON type: the schema type of the target field when it has one, otherwise
       the type of the first element already in the array, otherwise the type of the first argument that
       resolves. Integers and floating-point values count as the same type (number).
-    - The operation fails when no new element was added.
     - The operation is all-or-nothing: the array is rewritten only after every argument has been accepted,
       so a failure leaves the target field unchanged.
 
@@ -26,15 +21,15 @@ metadata:
     - The target field is not a schema field and does not start with `_`.
 
     Notes:
-    - A duplicate does not fail the operation by itself: `array_append_unique_all(5, 6)` on `[1, 5]` succeeds
-      and adds `6`; only a call that adds nothing fails.
+    - A reference that does not exist in the event fails the whole operation; `array_append_any` skips the
+      missing references instead.
     - A target field that exists and is not an array makes the operation fail; it is never overwritten.
+    - `array_append_unique` skips the values that are already in the array.
   group: array
   fails_when:
     - The target field exists and is not an array.
     - Any reference argument does not exist in the event.
     - An argument has a JSON type different from the element type of the array.
-    - No new element was added because every argument is already in the array.
     - The resulting array is rejected by the schema validation of the target field.
 
 helper_type: transform
@@ -68,46 +63,51 @@ test:
         value: null
       value_1:
         source: value
-        value: 9
-    target_field: [1,2]
+        value: 6
+    target_field: [1,2,3,4]
     should_pass: false
-    expected: [1,2]
+    expected: [1,2,3,4]
     description: A missing reference fails the whole operation and nothing is appended
-  - arguments:
-      value: hello
-    target_field: [hola, hello, salut, ciao]
-    should_pass: false
-    expected: [hola, hello, salut, ciao]
-    description: Fails because the only argument is already in the array
-  - arguments:
-      value: 5
-    target_field: [1,2,3,4,5]
-    should_pass: false
-    expected: [1,2,3,4,5]
-    description: Fails because the only argument is already in the array
   - arguments:
       value: 5
     target_field: [1,2,3,4]
     should_pass: true
     expected: [1,2,3,4,5]
-    description: A new value is appended
+    description: A number is appended to an array of numbers
   - arguments:
       value: 5
       value_1: 6
-    target_field: [1,2,3,4,5]
+    target_field: [1,2,3,4]
     should_pass: true
     expected: [1,2,3,4,5,6]
-    description: The value already present is skipped and the new one is appended
+    description: Several arguments are appended in argument order
   - arguments:
-      value: 7
-      value_1: 7
-    target_field: [1]
+      value: 4
+    target_field: [1,2,3,4]
     should_pass: true
-    expected: [1,7]
-    description: A value repeated in the same call is appended once
+    expected: [1,2,3,4,4]
+    description: A value already present is appended again (no duplicate check)
   - arguments:
-      value: 1.0
-    target_field: [1,2]
+      value: hello
+    target_field: [1,2,3,4]
     should_pass: false
-    expected: [1,2]
-    description: Numbers compare numerically, so 1.0 counts as the 1 already in the array
+    expected: [1,2,3,4]
+    description: A string is rejected by an array of numbers
+  - arguments:
+      value: [1,2]
+    target_field: [1,2,3,4]
+    should_pass: false
+    expected: [1,2,3,4]
+    description: An array is rejected by an array of numbers
+  - arguments:
+      value: 2
+    target_field: [1.2,2.3,3.5,4.9]
+    should_pass: true
+    expected: [1.2,2.3,3.5,4.9,2]
+    description: An integer is accepted by an array of floating-point numbers
+  - arguments:
+      value: 5
+    target_field: text
+    should_pass: false
+    expected: text
+    description: A target field that is not an array makes the operation fail and is not overwritten

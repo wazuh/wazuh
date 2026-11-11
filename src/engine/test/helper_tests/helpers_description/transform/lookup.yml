@@ -23,7 +23,7 @@ metadata:
 
     Notes:
     - `lookup_merge` merges the value into the target instead of replacing it.
-    - `kvdb_get` does the same lookup against a KVDB.
+    - `kvdb_lookup` does the same lookup against a KVDB.
   group: object
   fails_when:
     - The key reference does not exist or is not a string.

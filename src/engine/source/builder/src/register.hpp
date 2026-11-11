@@ -67,9 +67,7 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
     registry->template add<builders::OpBuilderEntry>(
         "array_contains_any", {schemf::elementValidationToken(), builders::opfilter::opBuilderHelperContainsAny});
     registry->template add<builders::OpBuilderEntry>(
-        "array_excludes_any", {schemf::elementValidationToken(), builders::opfilter::opBuilderHelperNotContains});
-    registry->template add<builders::OpBuilderEntry>(
-        "array_excludes_all", {schemf::elementValidationToken(), builders::opfilter::opBuilderHelperNotContainsAny});
+        "array_contains_none", {schemf::elementValidationToken(), builders::opfilter::opBuilderHelperNotContainsAny});
     registry->template add<builders::OpBuilderEntry>(
         "int_eq", {schemf::JTypeToken::create(json::Json::Type::Number), builders::opfilter::opBuilderHelperIntEqual});
     registry->template add<builders::OpBuilderEntry>(
@@ -245,11 +243,10 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
 
     // Transform helpers: array functions
     registry->template add<builders::OpBuilderEntry>(
-        "array_append_unique_all",
+        "array_append_unique",
         {schemf::elementValidationToken(), builders::optransform::getArrayAppendBuilder(true, false)});
     registry->template add<builders::OpBuilderEntry>(
-        "array_append_all",
-        {schemf::elementValidationToken(), builders::optransform::getArrayAppendBuilder(false, false)});
+        "array_append", {schemf::elementValidationToken(), builders::optransform::getArrayAppendBuilder(false, false)});
     registry->template add<builders::OpBuilderEntry>(
         "array_append_unique_any",
         {schemf::elementValidationToken(), builders::optransform::getArrayAppendBuilder(true, true)});
@@ -276,7 +273,7 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
         "array_to_object_changes",
         {schemf::JTypeToken::create(json::Json::Type::Object), builders::opBuilderHelperArrayExtractKeyObj});
     registry->template add<builders::OpBuilderEntry>(
-        "concat_all", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperStringConcat()});
+        "concat", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperStringConcat()});
     registry->template add<builders::OpBuilderEntry>(
         "concat_any",
         {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperStringConcat(true)});
@@ -342,9 +339,6 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
     registry->template add<builders::OpBuilderEntry>(
         "parse_uri", {schemf::STypeToken::create(schemf::Type::OBJECT), builders::optransform::uriParseBuilder});
     registry->template add<builders::OpBuilderEntry>(
-        "parse_user_agent",
-        {schemf::STypeToken::create(schemf::Type::OBJECT), builders::optransform::userAgentParseBuilder});
-    registry->template add<builders::OpBuilderEntry>(
         "parse_fqdn", {schemf::STypeToken::create(schemf::Type::TEXT), builders::optransform::fqdnParseBuilder});
     registry->template add<builders::OpBuilderEntry>(
         "parse_file", {schemf::STypeToken::create(schemf::Type::OBJECT), builders::optransform::filePathParseBuilder});
@@ -368,16 +362,16 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
 
     // KVDB helpers
     registry->template add<builders::OpBuilderEntry>(
-        "kvdb_get", {schemf::runtimeValidation(), builders::getOpBuilderKVDBGet(deps.kvdbManager)});
+        "kvdb_lookup", {schemf::runtimeValidation(), builders::getOpBuilderKVDBGet(deps.kvdbManager)});
     registry->template add<builders::OpBuilderEntry>(
-        "kvdb_get_merge",
+        "kvdb_lookup_merge",
         {schemf::STypeToken::create(schemf::Type::OBJECT), builders::getOpBuilderKVDBGetMerge(deps.kvdbManager)});
     registry->template add<builders::OpBuilderEntry>(
         "in_kvdb", {schemf::runtimeValidation(), builders::getOpBuilderKVDBMatch(deps.kvdbManager)});
     registry->template add<builders::OpBuilderEntry>(
         "not_in_kvdb", {schemf::runtimeValidation(), builders::getOpBuilderKVDBNotMatch(deps.kvdbManager)});
     registry->template add<builders::OpBuilderEntry>(
-        "kvdb_get_append", {schemf::runtimeValidation(), builders::getOpBuilderKVDBGetArray(deps.kvdbManager)});
+        "kvdb_lookup_append", {schemf::runtimeValidation(), builders::getOpBuilderKVDBGetArray(deps.kvdbManager)});
     registry->template add<builders::OpBuilderEntry>(
         "kvdb_decode_bitmask",
         {schemf::runtimeValidation(), builders::getOpBuilderHelperKVDBDecodeBitmask(deps.kvdbManager)});

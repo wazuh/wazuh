@@ -1,5 +1,5 @@
 # Name of the helper function
-name: kvdb_get_append
+name: kvdb_lookup_append
 
 metadata:
   description: |
@@ -24,7 +24,7 @@ metadata:
     - A number of arguments other than 2.
 
     Notes:
-    - Unlike `array_append_all`, a target that is not an array is replaced instead of failing the operation.
+    - Unlike `array_append`, a target that is not an array is replaced instead of failing the operation.
   group: kvdb
   fails_when:
     - Any key is not present in the KVDB.

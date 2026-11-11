@@ -1,5 +1,5 @@
 # Name of the helper function
-name: kvdb_get
+name: kvdb_lookup
 
 metadata:
   description: |
@@ -23,7 +23,7 @@ metadata:
     Notes:
     - A key that is not in the KVDB makes the operation fail and leaves the event unchanged; the following
       operations of the map block still run.
-    - `kvdb_get_merge` merges the value into the target and `kvdb_get_append` appends one value per key.
+    - `kvdb_lookup_merge` merges the value into the target and `kvdb_lookup_append` appends one value per key.
   group: kvdb
   fails_when:
     - The key is not present in the KVDB.

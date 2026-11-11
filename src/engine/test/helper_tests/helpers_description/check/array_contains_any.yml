@@ -21,7 +21,7 @@ metadata:
     - `array_contains_all` requires every argument to be found; with one argument the two helpers are
       identical.
     - `one_of` is the reverse check: the target value is searched in an argument array.
-    - `array_excludes_all` is not the negation of this helper: both are false for a missing or non-array
+    - `array_contains_none` is not the negation of this helper: both are false for a missing or non-array
       target and for a reference that does not exist.
   group: array
   fails_when:

@@ -1010,7 +1010,7 @@ MapOp opBuilderHelperToBool(const std::vector<OpArg>& opArgs, const std::shared_
     };
 }
 
-// field: concat_all(value1, value2, ...) -> atleastOne is false: a missing reference fails the operation
+// field: concat(value1, value2, ...) -> atleastOne is false: a missing reference fails the operation
 // field: concat_any(value1, value2, ...) -> atleastOne is true: missing references are skipped; fails if none resolves
 MapBuilder opBuilderHelperStringConcat(bool atleastOne)
 {

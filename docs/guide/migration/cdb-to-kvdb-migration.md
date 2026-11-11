@@ -19,7 +19,7 @@ Read the [Engine introduction for related migrations](engine-introduction.md) fi
 |-------------------|-----------------|---------------|
 | `match_key` | `in_kvdb('db_name')` | `check` |
 | `not_match_key` | `not_in_kvdb('db_name')` | `check` |
-| `match_key_value` | `kvdb_get('db_name', $field)` into a temporary field, then a check on that field | `normalize` (`map`, then `check` + `map`) |
+| `match_key_value` | `kvdb_lookup('db_name', $field)` into a temporary field, then a check on that field | `normalize` (`map`, then `check` + `map`) |
 | `address_match_key` (exact IPs) | `in_kvdb('db_name')` | `check` |
 | `address_match_key` (network prefixes) | No KVDB equivalent — use `in_cidr` instead (IPv4 only) | `check` |
 | `not_address_match_key` (exact IPs) | `not_in_kvdb('db_name')` | `check` |
@@ -117,7 +117,7 @@ check:
   - source.ip: in_kvdb('list_one')
 normalize:
   - map:
-      - tags: array_append_all(list1)
+      - tags: array_append(list1)
 ```
 
 > [!NOTE]
@@ -171,14 +171,14 @@ check:
   - user.name: not_in_kvdb('authorized_users')
 normalize:
   - map:
-      - tags: array_append_all(auth)
+      - tags: array_append(auth)
 ```
 
 The decoder only accepts the event when `user.name` is **not** a key in the `authorized_users` KVDB; for authorized users the `check` fails and the Engine tries the next sibling decoder. `not_in_kvdb` also fails when the field is absent or is not a string, so events without a user name are not flagged.
 
 #### Example: key lookup with value check
 
-`match_key_value` checked that a key existed in the CDB **and** its stored value matched the `check_value` pattern. In 5.x, use `kvdb_get` in a `normalize` block to retrieve the value into a temporary field, then test it in the `check` of a following `normalize` block.
+`match_key_value` checked that a key existed in the CDB **and** its stored value matched the `check_value` pattern. In 5.x, use `kvdb_lookup` in a `normalize` block to retrieve the value into a temporary field, then test it in the `check` of a following `normalize` block.
 
 **4.x rule:**
 
@@ -212,14 +212,14 @@ metadata:
   date: <YYYY-MM-DD>
 normalize:
   - map:
-      - _threat_type: kvdb_get('threat_types', $source.ip)
+      - _threat_type: kvdb_lookup('threat_types', $source.ip)
   - check:
       - _threat_type: malware
     map:
-      - tags: array_append_all(malware)
+      - tags: array_append(malware)
 ```
 
-The first `normalize` block maps the KVDB value into `_threat_type`, a temporary field (removed before the event is indexed, unless the policy sets `cleanup_decoder_variables` to `false`); the second block only applies its `map` when that value equals `malware`. A `normalize` block whose `check` fails is skipped without rejecting the event, and `kvdb_get` leaves the field unset when the key is absent, so the decoder accepts every event its parent passes and only tags the matching ones. The check is an exact comparison; a 4.x `check_value` pattern that matched more than one value needs a helper such as `regex_match` or `contains` instead.
+The first `normalize` block maps the KVDB value into `_threat_type`, a temporary field (removed before the event is indexed, unless the policy sets `cleanup_decoder_variables` to `false`); the second block only applies its `map` when that value equals `malware`. A `normalize` block whose `check` fails is skipped without rejecting the event, and `kvdb_lookup` leaves the field unset when the key is absent, so the decoder accepts every event its parent passes and only tags the matching ones. The check is an exact comparison; a 4.x `check_value` pattern that matched more than one value needs a helper such as `regex_match` or `contains` instead.
 
 #### Example: AND across two lists
 
@@ -258,7 +258,7 @@ check:
   - source.ip: in_kvdb('list_two')
 normalize:
   - map:
-      - tags: array_append_all(list2)
+      - tags: array_append(list2)
 ```
 
 The child decoder only runs if its parent (`decoder/ip-blacklist-list-one/0`) already matched, so the AND condition is preserved through the parent–child relationship.
@@ -301,7 +301,7 @@ check:
   - source.ip: in_kvdb('list_one')
 normalize:
   - map:
-      - tags: array_append_all(list1)
+      - tags: array_append(list1)
 ```
 
 ```yaml
@@ -318,7 +318,7 @@ check:
   - source.ip: in_kvdb('list_two')
 normalize:
   - map:
-      - tags: array_append_all(list2)
+      - tags: array_append(list2)
 ```
 
 > [!NOTE]

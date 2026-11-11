@@ -78,7 +78,7 @@ std::string makeEventText(const std::string& field, size_t count, ElementFn make
 }
 
 /******************************************************************************/
-// array_append_all: {"appendTarget":[<objects>],"appendValue":<object>}, array_append_all($appendValue)
+// array_append: {"appendTarget":[<objects>],"appendValue":<object>}, array_append($appendValue)
 /******************************************************************************/
 
 std::string makeArrayAppendText(size_t count)
@@ -233,7 +233,7 @@ class ArrayHelpersMemoryTest : public BaseBuilderTest
 // current size plus F x the event text. The event is parsed before the cap; the operation is built in the parent.
 /******************************************************************************/
 
-// array_append_all copies the target array, appends one object and writes the array back
+// array_append copies the target array, appends one object and writes the array back
 TEST_F(ArrayHelpersMemoryTest, ArrayAppendLargeArrayUnderAddressSpaceCap)
 {
     SKIP_UNDER_SANITIZER();

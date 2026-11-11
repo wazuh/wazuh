@@ -20,8 +20,8 @@ metadata:
     Notes:
     - `array_contains_any` requires a single match; with one argument the two helpers are identical.
     - `one_of` is the reverse check: the target value is searched in an argument array.
-    - `array_excludes_any` is not the negation of this helper: both are false for a missing or non-array
-      target.
+    - `NOT array_contains_all(...)` is the negation; note that this helper is false for a missing or non-array
+      target, so the negation is true in those cases.
   group: array
   fails_when:
     - The target field does not exist.

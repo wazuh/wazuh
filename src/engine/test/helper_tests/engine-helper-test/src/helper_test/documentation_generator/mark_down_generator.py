@@ -46,10 +46,13 @@ class MarkdownGenerator(IExporter):
     def create_kind(self, doc: Documentation):
         if doc.helper_type == "check":
             self.content.append("**Kind:** check helper (used in `check`)\n")
+            self.content.append("**On failure:** the check is false.\n")
         else:
             self.content.append("**Kind:** map helper (used in `map`)\n")
             if doc.helper_type == "transform":
                 self.content.append("**Modifies the target in place:** yes\n")
+            self.content.append(
+                "**On failure:** the target field is not written and the decoder continues with the next operation.\n")
 
     def create_signature(self, doc: Documentation):
         # An optional argument is shown in brackets, like the variadic tail.
@@ -154,7 +157,13 @@ class MarkdownGenerator(IExporter):
         rows = []
         for name, info in arguments.items():
             row = []
-            row.append(f"{name} (optional)" if getattr(info, "optional", False) else name)
+            # An option is a closed list of literals (rendered in "Accepted values"); say so next to the name
+            flags = []
+            if info.restrictions:
+                flags.append("option")
+            if getattr(info, "optional", False):
+                flags.append("optional")
+            row.append(f"{name} ({', '.join(flags)})" if flags else name)
 
             if isinstance(info.arg_type, list):
                 row.append(', '.join(info.arg_type))

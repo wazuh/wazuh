@@ -1,5 +1,5 @@
 # Name of the helper function
-name: kvdb_get_merge
+name: kvdb_lookup_merge
 
 metadata:
   description: |

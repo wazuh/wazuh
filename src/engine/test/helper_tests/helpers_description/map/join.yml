@@ -16,7 +16,7 @@ metadata:
     - `array` is a schema field whose elements are not strings.
 
     Notes:
-    - `concat_all` and `concat_any` concatenate separate arguments and convert numbers and objects.
+    - `concat` and `concat_any` concatenate separate arguments and convert numbers and objects.
     - `split` is the inverse operation.
   group: string
   fails_when:

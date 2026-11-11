@@ -30,7 +30,7 @@ metadata:
     Notes:
     - A mask with no decodable bit (a mask of `0` included) makes the operation fail and leaves the target
       unchanged.
-    - `kvdb_get_append` appends the values of a list of keys instead of the values of the set bits.
+    - `kvdb_lookup_append` appends the values of a list of keys instead of the values of the set bits.
   group: kvdb
   fails_when:
     - The mask reference does not exist, is not a string or is not a hexadecimal number.

@@ -261,14 +261,6 @@ TransformOp uriParseBuilder(const Reference& targetField,
     return detail::specificHLPBuilder(targetField, opArgs, buildCtx, parserGetter(HLPParserType::URI));
 }
 
-// field: parse_user_agent($ref) -- stores the raw string in <field>.original, nothing else is extracted
-TransformOp userAgentParseBuilder(const Reference& targetField,
-                                  const std::vector<OpArg>& opArgs,
-                                  const std::shared_ptr<const IBuildCtx>& buildCtx)
-{
-    return detail::specificHLPBuilder(targetField, opArgs, buildCtx, parserGetter(HLPParserType::USERAGENT));
-}
-
 // +parse_fqdn/[$ref|value]
 TransformOp fqdnParseBuilder(const Reference& targetField,
                              const std::vector<OpArg>& opArgs,

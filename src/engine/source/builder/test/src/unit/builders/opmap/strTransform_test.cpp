@@ -133,7 +133,7 @@ INSTANTIATE_TEST_SUITE_P(
         MapT({makeRef("ref")}, opBuilderHelperStringLO, FAILURE(jTypeRefExpected(json::Json::Type::Null))),
         MapT({makeRef("ref")}, opBuilderHelperStringLO, SUCCESS(jTypeRefExpected(json::Json::Type::String))),
         MapT({makeRef("ref"), makeRef("ref")}, opBuilderHelperStringLO, FAILURE()),
-        /*** Concat (concat_all) ***/
+        /*** Concat (concat) ***/
         MapT({}, opBuilderHelperStringConcat(), FAILURE()),
         MapT({makeValue(R"("value")")}, opBuilderHelperStringConcat(), FAILURE()),
         MapT({makeValue(R"("value")"), makeValue(R"("value")")}, opBuilderHelperStringConcat(), SUCCESS()),
@@ -166,7 +166,7 @@ INSTANTIATE_TEST_SUITE_P(
         MapT({makeRef("ref"), makeValue(R"("value")")},
              opBuilderHelperStringConcat(),
              SUCCESS(jTypeRefExpected(json::Json::Type::String))),
-        /*** Concat Any (concat_any): same build rules as concat_all ***/
+        /*** Concat Any (concat_any): same build rules as concat ***/
         MapT({}, opBuilderHelperStringConcat(true), FAILURE()),
         MapT({makeValue(R"("value")")}, opBuilderHelperStringConcat(true), FAILURE()),
         MapT({makeRef("ref")}, opBuilderHelperStringConcat(true), FAILURE()),
@@ -321,7 +321,7 @@ INSTANTIATE_TEST_SUITE_P(
              opBuilderHelperStringLO,
              {makeRef("ref")},
              SUCCESS(customRefExpected(json::Json(R"("0val1ue2")")))),
-        /*** Concat (concat_all): a missing reference fails the operation ***/
+        /*** Concat (concat): a missing reference fails the operation ***/
         MapT("{}",
              opBuilderHelperStringConcat(),
              {makeValue(R"("v")"), makeValue(R"("alue")")},
