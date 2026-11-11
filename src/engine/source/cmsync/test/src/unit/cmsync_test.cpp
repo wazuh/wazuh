@@ -12,6 +12,8 @@
 #include <store/mockStore.hpp>
 #include <wiconnector/mockswindexerconnector.hpp>
 
+#include "captureLogs.hpp"
+
 namespace
 {
 
@@ -87,22 +89,6 @@ router::prod::Entry makeRouterEntry(const std::string& name,
     entry.status(state);
     entry.hash(hash);
     return entry;
-}
-
-// Engine log lines of a call: INFO/DEBUG go to stdout, WARNING and above to stderr (base::logging CustomSink)
-struct CapturedLogs
-{
-    std::string info;
-    std::string warn;
-};
-
-template<typename Fn>
-CapturedLogs captureLogs(Fn&& fn)
-{
-    testing::internal::CaptureStdout();
-    testing::internal::CaptureStderr();
-    fn();
-    return {testing::internal::GetCapturedStdout(), testing::internal::GetCapturedStderr()};
 }
 
 class CMSyncConstructorTest : public ::testing::Test

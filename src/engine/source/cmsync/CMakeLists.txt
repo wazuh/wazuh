@@ -46,6 +46,7 @@ add_library(cmsync::mocks ALIAS cmsync_mocks)
 
 add_executable(cmsync_utest
     ${UNIT_SRC_DIR}/cmsync_test.cpp
+    ${UNIT_SRC_DIR}/routeStatusReporter_test.cpp
 )
 target_link_libraries(cmsync_utest
     PRIVATE
