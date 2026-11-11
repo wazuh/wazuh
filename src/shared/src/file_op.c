@@ -944,7 +944,7 @@ enum { UNMERGE_ENTRY_EXTRACTED, UNMERGE_ENTRY_SKIPPED, UNMERGE_ENTRY_FAILED, UNM
 /* Opens a merged file and records its size, so that no entry can declare more data than the file holds. */
 static int unmerge_open(unmerge_bundle_t *bundle)
 {
-    if (bundle->fp = wfopen(bundle->path, bundle->mode == OS_BINARY ? "rb" : "r"), !bundle->fp) {
+    if (bundle->fp = wfopen(bundle->path, "rb"), !bundle->fp) {
         merror("Unable to read merged file: '%s' due to [(%d)-(%s)].", bundle->path, errno, strerror(errno));
         return 0;
     }
