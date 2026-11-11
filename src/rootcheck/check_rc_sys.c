@@ -23,7 +23,7 @@ static void rc_build_path(char *buf, size_t len,
 static void rc_emit_hidden_alert(const char *file_name);
 static int rc_collect_suspect(char ***suspects, size_t *count,
                               size_t *capacity, const char *name);
-static void rc_verify_suspects(const char *dir_name, char **suspects,
+static void rc_verify_suspects(DIR *dp, const char *dir_name, char **suspects,
                                size_t suspect_count);
 #endif
 
@@ -102,7 +102,7 @@ static int read_sys_file(const char *file_name, int do_read)
                 if ((lstat(file_name, &statbuf2) == 0) &&
                         (total != statbuf2.st_size) &&
                         (statbuf.st_size == statbuf2.st_size)) {
-                    const char op_msg_fmt[] = "Anomaly detected in file '%*s'. File size doesn't match what we found. Possible kernel level rootkit.";
+                    const char op_msg_fmt[] = "Anomaly detected in file '%.*s'. File size doesn't match what we found. Possible kernel level rootkit.";
                     char op_msg[OS_SIZE_1024 + 1];
 
                     const int size = snprintf(NULL, 0, op_msg_fmt, (int)strlen(file_name), file_name);
@@ -209,7 +209,7 @@ static void rc_build_path(char *buf, size_t len,
 /* Emit the "Hidden from stats" rootkit alert for a given file */
 static void rc_emit_hidden_alert(const char *file_name)
 {
-    const char op_msg_fmt[] = "Anomaly detected in file '%*s'. "
+    const char op_msg_fmt[] = "Anomaly detected in file '%.*s'. "
         "Hidden from stats, but showing up on readdir. "
         "Possible kernel level rootkit.";
     char op_msg[OS_SIZE_1024 + 1];
@@ -263,56 +263,46 @@ static int rc_collect_suspect(char ***suspects, size_t *count,
     return (0);
 }
 
-static void rc_verify_suspects(const char *dir_name, char **suspects,
+static void rc_verify_suspects(DIR *dp, const char *dir_name, char **suspects,
                                size_t suspect_count)
 {
-    DIR *dp = opendir(dir_name);
+    struct dirent *entry = NULL;
     size_t s;
 
-    if (dp != NULL) {
-        struct dirent *entry = NULL;
+    rewinddir(dp);
 
-        while ((entry = readdir(dp)) != NULL) {
-            for (s = 0; s < suspect_count; s++) {
-                if (suspects[s] != NULL &&
-                        strcmp(suspects[s], entry->d_name) == 0) {
-                    char full_path[PATH_MAX + 2];
+    while ((entry = readdir(dp)) != NULL) {
+        for (s = 0; s < suspect_count; s++) {
+            if (suspects[s] != NULL &&
+                    strcmp(suspects[s], entry->d_name) == 0) {
+                char full_path[PATH_MAX + 2];
+                struct stat statbuf;
 
-                    rc_build_path(full_path, PATH_MAX + 1, dir_name, suspects[s]);
+                rc_build_path(full_path, PATH_MAX + 1, dir_name, suspects[s]);
 
+                if (lstat(full_path, &statbuf) < 0) {
                     mtdebug2(ARGV0, "File '%s' still listed in readdir "
                              "after lstat ENOENT. Alerting.", full_path);
                     rc_emit_hidden_alert(full_path);
                     _sys_errors++;
-
-                    os_free(suspects[s]);
-                    suspects[s] = NULL;
-                    break;
+                } else {
+                    mtdebug2(ARGV0, "File '%s' reappeared on second lstat "
+                             "(recreated between scans). Skipping rootkit alert.",
+                             full_path);
                 }
+
+                os_free(suspects[s]);
+                suspects[s] = NULL;
+                break;
             }
         }
+    }
 
-        closedir(dp);
-
-        for (s = 0; s < suspect_count; s++) {
-            if (suspects[s] != NULL) {
-                mtdebug2(ARGV0, "File '%s/%s' no longer in readdir listing. "
-                         "Skipping rootkit alert (deleted between scans).",
-                         dir_name, suspects[s]);
-            }
-        }
-    } else {
-        mtwarn(ARGV0, "Could not reopen '%s' for readdir verification. "
-               "Alerting all %zu suspects.", dir_name, suspect_count);
-        for (s = 0; s < suspect_count; s++) {
-            if (suspects[s] != NULL) {
-                char full_path[PATH_MAX + 2];
-
-                rc_build_path(full_path, PATH_MAX + 1, dir_name, suspects[s]);
-
-                rc_emit_hidden_alert(full_path);
-                _sys_errors++;
-            }
+    for (s = 0; s < suspect_count; s++) {
+        if (suspects[s] != NULL) {
+            mtdebug2(ARGV0, "File '%s/%s' no longer in readdir listing. "
+                     "Skipping rootkit alert (deleted between scans).",
+                     dir_name, suspects[s]);
         }
     }
 
@@ -490,7 +480,7 @@ static int read_sys_dir(const char *dir_name, int do_read)
 
 #ifndef WIN32
     if (suspect_count > 0) {
-        rc_verify_suspects(dir_name, suspects, suspect_count);
+        rc_verify_suspects(dp, dir_name, suspects, suspect_count);
     }
 #endif /* WIN32 */
 

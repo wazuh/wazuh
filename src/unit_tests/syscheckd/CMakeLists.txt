@@ -348,6 +348,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                            -Wl,--wrap,opendir \
                            -Wl,--wrap,wfopen \
                            -Wl,--wrap,readdir \
+                           -Wl,--wrap,rewinddir \
                            -Wl,--wrap,closedir \
                            -Wl,--wrap,check_ignore \
                            -Wl,--wrap,skipFS \

@@ -9,6 +9,7 @@
 
 #include <stdarg.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <setjmp.h>
 #include <cmocka.h>
 #include <errno.h>
@@ -75,6 +76,11 @@ struct dirent *__wrap_readdir(DIR *dirp)
 {
     check_expected(dirp);
     return mock_type(struct dirent *);
+}
+
+void __wrap_rewinddir(DIR *dirp)
+{
+    check_expected(dirp);
 }
 
 int __wrap_closedir(DIR *dirp)
@@ -146,6 +152,11 @@ static void expect_readdir(DIR *dp, struct dirent *entry)
     will_return(__wrap_readdir, entry);
 }
 
+static void expect_rewinddir(DIR *dp)
+{
+    expect_value(__wrap_rewinddir, dirp, dp);
+}
+
 /* Queue a closedir expectation that validates the DIR* handle */
 static void expect_closedir(DIR *dp)
 {
@@ -178,6 +189,21 @@ static void expect_notify_rk(int rk_type)
 {
     expect_value(__wrap_notify_rk, rk_type, rk_type);
     expect_any(__wrap_notify_rk, msg);
+    will_return(__wrap_notify_rk, 0);
+}
+
+/* cmocka check: value contains text */
+static int msg_contains(const LargestIntegralType value,
+                        const LargestIntegralType text)
+{
+    return strstr((const char *)value, (const char *)text) != NULL;
+}
+
+/* Queue a notify_rk expectation whose message must contain the given text */
+static void expect_notify_rk_containing(int rk_type, const char *text)
+{
+    expect_value(__wrap_notify_rk, rk_type, rk_type);
+    expect_check(__wrap_notify_rk, msg, msg_contains, text);
     will_return(__wrap_notify_rk, 0);
 }
 
@@ -234,7 +260,6 @@ static void test_enoent_deleted_file_no_alert(void **state)
     file_stat.st_mode = S_IFREG | 0644;
 
     DIR *fake_dp = (DIR *)0x1234;
-    DIR *fake_dp2 = (DIR *)0x5678;
 
     /* -- read_sys_dir: lstat on "/" -- */
     expect_lstat("/", &dir_stat, 0, 0);
@@ -259,16 +284,13 @@ static void test_enoent_deleted_file_no_alert(void **state)
     /* -- First readdir returns NULL (end of loop) -- */
     expect_readdir(fake_dp, NULL);
 
-    /* -- Second opendir for readdir re-verification -- */
-    expect_opendir("/", fake_dp2);
+    /* -- Second pass rewinds the already open handle -- */
+    expect_rewinddir(fake_dp);
 
     /* -- Second readdir pass: file is GONE (only ".", "..", NULL) -- */
-    expect_readdir(fake_dp2, &dot_entry);
-    expect_readdir(fake_dp2, &dotdot_entry);
-    expect_readdir(fake_dp2, NULL);
-
-    /* -- closedir on verification handle -- */
-    expect_closedir(fake_dp2);
+    expect_readdir(fake_dp, &dot_entry);
+    expect_readdir(fake_dp, &dotdot_entry);
+    expect_readdir(fake_dp, NULL);
 
     /* -- No rootkit alert expected -- */
 
@@ -314,7 +336,6 @@ static void test_enoent_hidden_file_alerts(void **state)
     file_stat.st_mode = S_IFREG | 0644;
 
     DIR *fake_dp = (DIR *)0x1234;
-    DIR *fake_dp2 = (DIR *)0x5678;
 
     /* -- read_sys_dir: lstat on "/" -- */
     expect_lstat("/", &dir_stat, 0, 0);
@@ -339,17 +360,17 @@ static void test_enoent_hidden_file_alerts(void **state)
     /* -- End of first readdir -- */
     expect_readdir(fake_dp, NULL);
 
-    /* -- Second opendir for verification -- */
-    expect_opendir("/", fake_dp2);
+    /* -- Second pass rewinds the already open handle -- */
+    expect_rewinddir(fake_dp);
 
     /* -- Second readdir: file is STILL listed! (rootkit hiding it from lstat) -- */
-    expect_readdir(fake_dp2, &dot_entry);
-    expect_readdir(fake_dp2, &dotdot_entry);
-    expect_readdir(fake_dp2, &hidden_entry);
-    expect_readdir(fake_dp2, NULL);
+    expect_readdir(fake_dp, &dot_entry);
+    expect_readdir(fake_dp, &dotdot_entry);
+    expect_readdir(fake_dp, &hidden_entry);
+    expect_readdir(fake_dp, NULL);
 
-    /* -- closedir on verification handle -- */
-    expect_closedir(fake_dp2);
+    /* -- Second lstat still ENOENT -> genuinely hidden -- */
+    expect_lstat("/hidden.txt", NULL, ENOENT, -1);
 
     /* -- Rootkit alert fires -- */
     expect_notify_rk(ALERT_ROOTKIT_FOUND);
@@ -422,7 +443,7 @@ static void test_eacces_still_alerts(void **state)
     /* -- readdir returns NULL -- */
     expect_readdir(fake_dp, NULL);
 
-    /* No second opendir needed (no ENOENT suspects) */
+    /* No verification pass needed (no ENOENT suspects) */
 
     /* -- skipFS -- */
     expect_skipFS("/", 0);
@@ -487,7 +508,7 @@ static void test_existing_file_no_alert(void **state)
     /* -- readdir returns NULL -- */
     expect_readdir(fake_dp, NULL);
 
-    /* No second opendir (no suspects) */
+    /* No verification pass (no suspects) */
 
     /* -- skipFS -- */
     expect_skipFS("/", 0);
@@ -528,7 +549,6 @@ static void test_multiple_suspects_mixed(void **state)
     file_stat.st_mode = S_IFREG | 0644;
 
     DIR *fake_dp = (DIR *)0x1234;
-    DIR *fake_dp2 = (DIR *)0x5678;
 
     /* -- read_sys_dir: lstat on "/" -- */
     expect_lstat("/", &dir_stat, 0, 0);
@@ -556,17 +576,17 @@ static void test_multiple_suspects_mixed(void **state)
     /* -- End of first readdir -- */
     expect_readdir(fake_dp, NULL);
 
-    /* -- Second opendir for verification -- */
-    expect_opendir("/", fake_dp2);
+    /* -- Second pass rewinds the already open handle -- */
+    expect_rewinddir(fake_dp);
 
     /* -- Second readdir: only hidden.txt still listed (deleted.txt gone) -- */
-    expect_readdir(fake_dp2, &dot_entry);
-    expect_readdir(fake_dp2, &dotdot_entry);
-    expect_readdir(fake_dp2, &hidden_entry);
-    expect_readdir(fake_dp2, NULL);
+    expect_readdir(fake_dp, &dot_entry);
+    expect_readdir(fake_dp, &dotdot_entry);
+    expect_readdir(fake_dp, &hidden_entry);
+    expect_readdir(fake_dp, NULL);
 
-    /* -- closedir on verification handle -- */
-    expect_closedir(fake_dp2);
+    /* -- Second lstat for hidden.txt still ENOENT -- */
+    expect_lstat("/hidden.txt", NULL, ENOENT, -1);
 
     /* -- Only hidden.txt triggers alert -- */
     expect_notify_rk(ALERT_ROOTKIT_FOUND);
@@ -590,11 +610,11 @@ static void test_multiple_suspects_mixed(void **state)
 }
 
 /* ===================================================================
- * Test 6: Verification opendir fails — conservative fallback alerts
- * all suspects.
+ * Test 6: Directory deleted mid-scan. The rewound handle yields nothing,
+ * so the suspect is not alerted.
  * =================================================================== */
 
-static void test_opendir_fail_fallback_alerts_all(void **state)
+static void test_dir_deleted_mid_scan_no_alert(void **state)
 {
     (void)state;
     init_dot_entries();
@@ -613,49 +633,200 @@ static void test_opendir_fail_fallback_alerts_all(void **state)
 
     DIR *fake_dp = (DIR *)0x1234;
 
-    /* -- read_sys_dir: lstat on "/" -- */
     expect_lstat("/", &dir_stat, 0, 0);
-
-    /* -- opendir("/") -- */
     expect_opendir("/", fake_dp);
 
-    /* -- First readdir: ".", "..", "suspect.txt", NULL -- */
     expect_readdir(fake_dp, &dot_entry);
     expect_readdir(fake_dp, &dotdot_entry);
     expect_readdir(fake_dp, &suspect_entry);
 
-    /* -- lstat on "/suspect.txt" (entry type check) -- */
     expect_lstat("/suspect.txt", &file_stat, 0, 0);
-
-    /* -- check_ignore -- */
     expect_check_ignore("/suspect.txt", 0);
-
-    /* -- read_sys_file: lstat -> ENOENT -> RC_ENOENT_SUSPECT -- */
     expect_lstat("/suspect.txt", NULL, ENOENT, -1);
 
-    /* -- End of first readdir -- */
     expect_readdir(fake_dp, NULL);
 
-    /* -- Second opendir FAILS (returns NULL) -- */
-    expect_opendir("/", NULL);
+    /* -- Directory is gone: the rewound read returns no entries -- */
+    expect_rewinddir(fake_dp);
+    expect_readdir(fake_dp, NULL);
 
-    /* -- Fallback: alert fires for suspect (conservative) -- */
-    expect_notify_rk(ALERT_ROOTKIT_FOUND);
-
-    /* -- skipFS -- */
     expect_skipFS("/", 0);
 
-    /* -- nlink re-check -- */
     struct stat dir_stat_recheck = {0};
     dir_stat_recheck.st_mode = S_IFDIR | 0755;
     dir_stat_recheck.st_nlink = 2;
     dir_stat_recheck.st_dev = 1;
     expect_lstat("/", &dir_stat_recheck, 0, 0);
 
-    /* -- closedir on main handle -- */
     expect_closedir(fake_dp);
 
-    /* _sys_errors > 0, no ALERT_OK */
+    /* -- No suspect alert -> notify_rk(ALERT_OK) -- */
+    expect_notify_rk(ALERT_OK);
+
+    check_rc_sys("/");
+}
+
+/* ===================================================================
+ * Test 6b: File deleted and recreated under the same name. It is listed
+ * on the second readdir but the second lstat succeeds -> no alert.
+ * =================================================================== */
+
+static void test_recreated_file_no_alert(void **state)
+{
+    (void)state;
+    init_dot_entries();
+
+    static struct dirent recreated_entry;
+    memset(&recreated_entry, 0, sizeof(recreated_entry));
+    strncpy(recreated_entry.d_name, "recreated.txt", sizeof(recreated_entry.d_name) - 1);
+
+    struct stat dir_stat = {0};
+    dir_stat.st_mode = S_IFDIR | 0755;
+    dir_stat.st_nlink = 3;
+    dir_stat.st_dev = 1;
+
+    struct stat file_stat = {0};
+    file_stat.st_mode = S_IFREG | 0644;
+
+    DIR *fake_dp = (DIR *)0x1234;
+
+    expect_lstat("/", &dir_stat, 0, 0);
+    expect_opendir("/", fake_dp);
+
+    expect_readdir(fake_dp, &dot_entry);
+    expect_readdir(fake_dp, &dotdot_entry);
+    expect_readdir(fake_dp, &recreated_entry);
+
+    expect_lstat("/recreated.txt", &file_stat, 0, 0);
+    expect_check_ignore("/recreated.txt", 0);
+    expect_lstat("/recreated.txt", NULL, ENOENT, -1);
+
+    expect_readdir(fake_dp, NULL);
+
+    expect_rewinddir(fake_dp);
+    expect_readdir(fake_dp, &dot_entry);
+    expect_readdir(fake_dp, &dotdot_entry);
+    expect_readdir(fake_dp, &recreated_entry);
+    expect_readdir(fake_dp, NULL);
+
+    /* -- Second lstat succeeds: the file was recreated -- */
+    expect_lstat("/recreated.txt", &file_stat, 0, 0);
+
+    expect_skipFS("/", 0);
+
+    struct stat dir_stat_recheck = {0};
+    dir_stat_recheck.st_mode = S_IFDIR | 0755;
+    dir_stat_recheck.st_nlink = 2;
+    dir_stat_recheck.st_dev = 1;
+    expect_lstat("/", &dir_stat_recheck, 0, 0);
+
+    expect_closedir(fake_dp);
+
+    expect_notify_rk(ALERT_OK);
+
+    check_rc_sys("/");
+}
+
+/* ===================================================================
+ * Test 6c: Over-long path. Nested directories push the hidden file's
+ * full path past OS_SIZE_1024. The path is trimmed to fit but the fixed
+ * alert wording is preserved.
+ * =================================================================== */
+
+#define LP_DEPTH 5
+#define LP_NAME_LEN 250
+
+static char lp_path[LP_DEPTH + 1][LP_DEPTH * (LP_NAME_LEN + 1) + 2];
+static struct dirent lp_entry[LP_DEPTH];
+static struct dirent lp_hidden;
+static struct stat lp_dir_stat[LP_DEPTH + 1];
+static struct stat lp_file_stat;
+static struct stat lp_dir_recheck;
+static char lp_hidden_path[sizeof(lp_path[0]) + 16];
+
+/* Queue the expectations for read_sys_dir() on lp_path[lvl], recursing into
+ * the single child directory until the leaf holding the hidden file. All
+ * data handed to cmocka is static: it is read after this function returns. */
+static void expect_long_path_level(int lvl)
+{
+    struct stat *dir_stat = &lp_dir_stat[lvl];
+    memset(dir_stat, 0, sizeof(*dir_stat));
+    dir_stat->st_mode = S_IFDIR | 0755;
+    dir_stat->st_nlink = 3;
+    dir_stat->st_size = 4096;
+    dir_stat->st_dev = 1;
+
+    DIR *dp = (DIR *)(uintptr_t)(0x1000 + lvl);
+
+    expect_lstat(lp_path[lvl], dir_stat, 0, 0);
+    expect_opendir(lp_path[lvl], dp);
+
+    expect_readdir(dp, &dot_entry);
+    expect_readdir(dp, &dotdot_entry);
+
+    if (lvl < LP_DEPTH) {
+        expect_readdir(dp, &lp_entry[lvl]);
+
+        expect_lstat(lp_path[lvl + 1], dir_stat, 0, 0);
+        expect_check_ignore(lp_path[lvl + 1], 0);
+        expect_lstat(lp_path[lvl + 1], dir_stat, 0, 0);
+
+        expect_long_path_level(lvl + 1);
+
+        expect_readdir(dp, NULL);
+        expect_skipFS(lp_path[lvl], 0);
+        expect_closedir(dp);
+    } else {
+        memset(&lp_file_stat, 0, sizeof(lp_file_stat));
+        lp_file_stat.st_mode = S_IFREG | 0644;
+
+        snprintf(lp_hidden_path, sizeof(lp_hidden_path), "%s/hidden.txt", lp_path[lvl]);
+
+        expect_readdir(dp, &lp_hidden);
+        expect_lstat(lp_hidden_path, &lp_file_stat, 0, 0);
+        expect_check_ignore(lp_hidden_path, 0);
+        expect_lstat(lp_hidden_path, NULL, ENOENT, -1);
+        expect_readdir(dp, NULL);
+
+        expect_rewinddir(dp);
+        expect_readdir(dp, &dot_entry);
+        expect_readdir(dp, &dotdot_entry);
+        expect_readdir(dp, &lp_hidden);
+        expect_readdir(dp, NULL);
+        expect_lstat(lp_hidden_path, NULL, ENOENT, -1);
+
+        expect_notify_rk_containing(ALERT_ROOTKIT_FOUND, "Hidden from stats");
+
+        expect_skipFS(lp_path[lvl], 0);
+
+        memset(&lp_dir_recheck, 0, sizeof(lp_dir_recheck));
+        lp_dir_recheck.st_mode = S_IFDIR | 0755;
+        lp_dir_recheck.st_nlink = 2;
+        lp_dir_recheck.st_dev = 1;
+        expect_lstat(lp_path[lvl], &lp_dir_recheck, 0, 0);
+
+        expect_closedir(dp);
+    }
+}
+
+static void test_long_path_alert_keeps_message(void **state)
+{
+    (void)state;
+    init_dot_entries();
+
+    memset(&lp_hidden, 0, sizeof(lp_hidden));
+    strncpy(lp_hidden.d_name, "hidden.txt", sizeof(lp_hidden.d_name) - 1);
+
+    snprintf(lp_path[0], sizeof(lp_path[0]), "/");
+
+    for (int i = 0; i < LP_DEPTH; i++) {
+        memset(&lp_entry[i], 0, sizeof(lp_entry[i]));
+        memset(lp_entry[i].d_name, 'a' + i, LP_NAME_LEN);
+        snprintf(lp_path[i + 1], sizeof(lp_path[i + 1]), "%s%s%s",
+                 lp_path[i], (i == 0) ? "" : "/", lp_entry[i].d_name);
+    }
+
+    expect_long_path_level(0);
 
     check_rc_sys("/");
 }
@@ -696,7 +867,6 @@ static void test_subdir_path_building(void **state)
 
     DIR *fake_dp_root = (DIR *)0x1000;
     DIR *fake_dp_etc = (DIR *)0x2000;
-    DIR *fake_dp_etc2 = (DIR *)0x3000;
 
     /* === Level 1: scan "/" === */
 
@@ -745,20 +915,20 @@ static void test_subdir_path_building(void **state)
     /* -- End of readdir("/etc") -- */
     expect_readdir(fake_dp_etc, NULL);
 
-    /* -- Second opendir("/etc") for verification -- */
-    expect_opendir("/etc", fake_dp_etc2);
+    /* -- Verification pass rewinds the already open handle -- */
+    expect_rewinddir(fake_dp_etc);
 
     /* -- Verification readdir: hidden.txt still listed -> alert -- */
-    expect_readdir(fake_dp_etc2, &dot_entry);
-    expect_readdir(fake_dp_etc2, &dotdot_entry);
-    expect_readdir(fake_dp_etc2, &hidden_entry);
-    expect_readdir(fake_dp_etc2, NULL);
+    expect_readdir(fake_dp_etc, &dot_entry);
+    expect_readdir(fake_dp_etc, &dotdot_entry);
+    expect_readdir(fake_dp_etc, &hidden_entry);
+    expect_readdir(fake_dp_etc, NULL);
 
-    /* -- closedir on verification handle -- */
-    expect_closedir(fake_dp_etc2);
+    /* -- Second lstat still ENOENT -- */
+    expect_lstat("/etc/hidden.txt", NULL, ENOENT, -1);
 
     /* -- Alert with full path "/etc/hidden.txt" -- */
-    expect_notify_rk(ALERT_ROOTKIT_FOUND);
+    expect_notify_rk_containing(ALERT_ROOTKIT_FOUND, "'/etc/hidden.txt'");
 
     /* -- skipFS("/etc") -- */
     expect_skipFS("/etc", 0);
@@ -805,7 +975,9 @@ int main(void)
         cmocka_unit_test_setup(test_eacces_still_alerts, setup),
         cmocka_unit_test_setup(test_existing_file_no_alert, setup),
         cmocka_unit_test_setup(test_multiple_suspects_mixed, setup),
-        cmocka_unit_test_setup(test_opendir_fail_fallback_alerts_all, setup),
+        cmocka_unit_test_setup(test_dir_deleted_mid_scan_no_alert, setup),
+        cmocka_unit_test_setup(test_recreated_file_no_alert, setup),
+        cmocka_unit_test_setup(test_long_path_alert_keeps_message, setup),
         cmocka_unit_test_setup(test_subdir_path_building, setup),
     };
 
