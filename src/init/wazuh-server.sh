@@ -162,6 +162,15 @@ wait_for_lock()
     done
 }
 
+# Releases the lock if this run holds it: a run refused before it took the lock must not remove the
+# lock of the run that did.
+unlock()
+{
+    if holds_lock; then
+        rm -rf ${LOCK}
+    fi
+}
+
 lock()
 {
     if ! wait_for_lock; then
@@ -179,15 +188,6 @@ lock()
     # keep reporting every daemon as restarting, or a stopped one as starting.
     rm -f ${DIR}/var/run/.restart
     rm -f ${DIR}/var/run/*.start
-}
-
-# Releases the lock if this run holds it: a run refused before it took the lock must not remove the
-# lock of the run that did.
-unlock()
-{
-    if holds_lock; then
-        rm -rf ${LOCK}
-    fi
 }
 
 # Drops the start and restart markers and releases the lock of a refused run, if it holds the lock. A run

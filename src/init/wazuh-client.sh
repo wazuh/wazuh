@@ -163,21 +163,21 @@ wait_for_lock()
     done
 }
 
-lock()
-{
-    if ! wait_for_lock; then
-        echo "ERROR: Another instance is locking this process."
-        echo "If you are sure that no other instance is running, please remove ${LOCK}"
-        exit 1
-    fi
-}
-
 # Releases the lock if this run holds it: a run refused before it took the lock must not remove the
 # lock of the run that did.
 unlock()
 {
     if holds_lock; then
         rm -rf ${LOCK}
+    fi
+}
+
+lock()
+{
+    if ! wait_for_lock; then
+        echo "ERROR: Another instance is locking this process."
+        echo "If you are sure that no other instance is running, please remove ${LOCK}"
+        exit 1
     fi
 }
 
