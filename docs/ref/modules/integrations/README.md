@@ -30,8 +30,27 @@ reference).
 
 Most standard integrations **ship disabled**, among them `docker`, `aws`, `gcp`, `github`, `azure` and
 `aws-amazon-security-lake`. Until the matching integration is enabled, the
-agent module runs, the events reach the manager and are counted, but they stay **unclassified** and no
-document reaches the integration's indices, with no error anywhere.
+agent module runs and reports success, the events reach the manager and are counted, but they stay
+**unclassified** and no document reaches the integration's indices. With the default settings these events
+are **discarded**:
+
+- the policy indexes unclassified events (into `wazuh-events-v5-unclassified`) only when its
+  `index_unclassified_events` setting is enabled, and it is disabled by default (see
+  [Unclassified events](../engine/README.md#unclassified-events));
+- raw events are indexed only when `index_raw_events` is enabled, also disabled by default.
+
+These drops are not logged. The engine counts every unclassified event of a space's production traffic in the
+[`space.<space>.events.unclassified`](../engine/README.md#spacespaceeventsunclassified) metric and, when the manager
+publishes its metrics to the indexer (see [Unclassified events](../engine/README.md#unclassified-events)), the Wazuh
+dashboard shows it in the **Unclassified events** panel of **Server statistics → Normalization** and
+**Server statistics → Per-Space Metrics**. A growing count means that events of that space reach the engine and no
+enabled integration decodes them; it does not say which source they come from. If an integration's dashboard stays
+empty, check that the integration is enabled and that its decoders match the source. A custom log format with no
+integration can only be kept with `index_unclassified_events`, `index_raw_events` or a decoder of your own.
+
+Without either setting, those events are gone: enabling the integration later does not recover them, and
+modules that track what they already collected (such as `aws-s3`, which records each processed S3 file) do not
+send them again.
 
 So before configuring an agent module:
 
