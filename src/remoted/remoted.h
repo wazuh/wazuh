@@ -57,7 +57,14 @@ typedef struct sockbuffer_t {
     unsigned long data_len;
     bqueue_t * bqueue;
     int associated; // Set once a control message ties the socket to an agent
+    int closing;    // Set by the one closer that claimed this connection
 } sockbuffer_t;
+
+// Message counter that lets a close claim the connection regardless of the fd fence
+#define NB_CLOSE_ANY SIZE_MAX
+
+// nb_recv()/nb_send() result when the socket has no open slot
+#define NB_NOT_OPEN (-3)
 
 typedef struct netbuffer_t {
     int max_fd;
@@ -169,9 +176,24 @@ void nb_open(netbuffer_t * buffer, int sock, const struct sockaddr_storage * pee
  * @param send Send network buffer.
  * @param sock Socket to close.
  * @param was_unassociated Set on success: 1 if the receive slot was open and never associated, 0 otherwise.
- * @return close() result. On failure nothing is released and was_unassociated is not set.
+ * @return close() result. On failure nothing is released, the close claim is given back and was_unassociated
+ *         is not set.
  */
 int nb_close_socket(netbuffer_t * recv, netbuffer_t * send, int sock, int * was_unassociated);
+
+/**
+ * @brief Claim the right to close the connection that currently owns a socket.
+ *
+ * Only the first claim of a live slot succeeds; it sets the slot's message counter fence to the current
+ * global counter so queued messages of this connection cannot act on the next connection reusing the fd.
+ *
+ * @param recv Receive network buffer.
+ * @param sock Socket to close.
+ * @param counter Counter of the message that triggers the close, or NB_CLOSE_ANY when there is none. It must
+ *                be newer than the fence set by the last close of the descriptor.
+ * @return 1 if the caller owns the close, 0 if the slot is not open, is already being closed, or the counter is stale.
+ */
+int nb_claim_close(netbuffer_t * recv, int sock, size_t counter);
 
 /**
  * @brief Mark an open socket buffer slot as associated with an agent.
@@ -184,6 +206,18 @@ int nb_close_socket(netbuffer_t * recv, netbuffer_t * send, int sock, int * was_
  */
 int nb_mark_associated(netbuffer_t * buffer, int sock, size_t counter);
 
+/**
+ * @brief Receive available data from a TCP socket and queue every complete message.
+ *
+ * @param buffer Receive network buffer.
+ * @param sock Socket to read from.
+ *
+ * @return NB_NOT_OPEN if the socket has no open slot.
+ * @return -2 on data corruption at application layer (header).
+ * @return -1 on system call error: recv().
+ * @return 0 if no data was available in the socket.
+ * @return number of bytes received on success.
+ */
 int nb_recv(netbuffer_t * buffer, int sock);
 
 /**
@@ -192,6 +226,7 @@ int nb_recv(netbuffer_t * buffer, int sock);
  * @param buffer buffer where messages are stored.
  * @param socket socket id where send message.
  *
+ * @return NB_NOT_OPEN if the socket has no open slot.
  * @return -1 on system call error: send().
  * @return number of bytes sent on success.
  */

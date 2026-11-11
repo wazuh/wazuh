@@ -1108,6 +1108,11 @@ void test_HandleSecureMessage_invalid_message(void** state)
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
+    // nb_claim_close
+    expect_value(__wrap_nb_claim_close, sock, message.sock);
+    expect_value(__wrap_nb_claim_close, counter, message.counter);
+    will_return(__wrap_nb_claim_close, 1);
+
     expect_value(__wrap_rem_setCounter, fd, 1);
     expect_value(__wrap_rem_setCounter, counter, 0);
 
@@ -1177,6 +1182,11 @@ void test_HandleSecureMessage_different_sock(void** state)
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
+    // nb_claim_close
+    expect_value(__wrap_nb_claim_close, sock, message.sock);
+    expect_value(__wrap_nb_claim_close, counter, message.counter);
+    will_return(__wrap_nb_claim_close, 1);
+
     expect_value(__wrap_rem_setCounter, fd, 1);
     expect_value(__wrap_rem_setCounter, counter, 0);
 
@@ -1245,6 +1255,11 @@ void test_HandleSecureMessage_different_sock_2(void** state)
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
+    // nb_claim_close
+    expect_value(__wrap_nb_claim_close, sock, message.sock);
+    expect_value(__wrap_nb_claim_close, counter, message.counter);
+    will_return(__wrap_nb_claim_close, 1);
+
     expect_value(__wrap_rem_setCounter, fd, 1);
     expect_value(__wrap_rem_setCounter, counter, 0);
 
@@ -1329,6 +1344,11 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
+    // nb_claim_close
+    expect_value(__wrap_nb_claim_close, sock, key->sock);
+    expect_value(__wrap_nb_claim_close, counter, NB_CLOSE_ANY);
+    will_return(__wrap_nb_claim_close, 1);
+
     expect_value(__wrap_rem_setCounter, fd, 4);
     expect_value(__wrap_rem_setCounter, counter, 0);
 
@@ -1424,6 +1444,11 @@ void test_HandleSecureMessage_close_idle_sock_2(void** state)
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
+    // nb_claim_close
+    expect_value(__wrap_nb_claim_close, sock, key->sock);
+    expect_value(__wrap_nb_claim_close, counter, NB_CLOSE_ANY);
+    will_return(__wrap_nb_claim_close, 1);
+
     expect_value(__wrap_rem_setCounter, fd, 4);
     expect_value(__wrap_rem_setCounter, counter, 0);
 
@@ -1507,6 +1532,11 @@ void test_HandleSecureMessage_close_idle_sock_disabled(void** state)
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
+    // nb_claim_close
+    expect_value(__wrap_nb_claim_close, sock, message.sock);
+    expect_value(__wrap_nb_claim_close, counter, message.counter);
+    will_return(__wrap_nb_claim_close, 1);
+
     expect_value(__wrap_rem_setCounter, fd, 1);
     expect_value(__wrap_rem_setCounter, counter, 0);
 
@@ -1581,6 +1611,11 @@ void test_HandleSecureMessage_close_idle_sock_disabled_2(void** state)
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
+    // nb_claim_close
+    expect_value(__wrap_nb_claim_close, sock, message.sock);
+    expect_value(__wrap_nb_claim_close, counter, message.counter);
+    will_return(__wrap_nb_claim_close, 1);
+
     expect_value(__wrap_rem_setCounter, fd, 1);
     expect_value(__wrap_rem_setCounter, counter, 0);
 
@@ -1659,6 +1694,11 @@ void test_HandleSecureMessage_close_idle_sock_recv_fail(void** state)
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
+    // nb_claim_close
+    expect_value(__wrap_nb_claim_close, sock, message.sock);
+    expect_value(__wrap_nb_claim_close, counter, message.counter);
+    will_return(__wrap_nb_claim_close, 1);
+
     expect_value(__wrap_rem_setCounter, fd, 1);
     expect_value(__wrap_rem_setCounter, counter, 0);
 
@@ -1680,6 +1720,11 @@ void test_HandleSecureMessage_close_idle_sock_recv_fail(void** state)
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
+    // nb_claim_close
+    expect_value(__wrap_nb_claim_close, sock, key->sock);
+    expect_value(__wrap_nb_claim_close, counter, NB_CLOSE_ANY);
+    will_return(__wrap_nb_claim_close, 1);
+
     expect_value(__wrap_rem_setCounter, fd, 4);
     expect_value(__wrap_rem_setCounter, counter, 0);
 
@@ -1767,6 +1812,11 @@ void test_HandleSecureMessage_close_idle_sock_decrypt_fail(void** state)
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
+    // nb_claim_close
+    expect_value(__wrap_nb_claim_close, sock, message.sock);
+    expect_value(__wrap_nb_claim_close, counter, message.counter);
+    will_return(__wrap_nb_claim_close, 1);
+
     expect_value(__wrap_rem_setCounter, fd, 1);
     expect_value(__wrap_rem_setCounter, counter, 0);
 
@@ -1788,6 +1838,11 @@ void test_HandleSecureMessage_close_idle_sock_decrypt_fail(void** state)
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
+    // nb_claim_close
+    expect_value(__wrap_nb_claim_close, sock, key->sock);
+    expect_value(__wrap_nb_claim_close, counter, NB_CLOSE_ANY);
+    will_return(__wrap_nb_claim_close, 1);
+
     expect_value(__wrap_rem_setCounter, fd, 4);
     expect_value(__wrap_rem_setCounter, counter, 0);
 
@@ -1891,6 +1946,11 @@ void test_HandleSecureMessage_close_idle_sock_control_msg_succes(void** state)
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
+    // nb_claim_close
+    expect_value(__wrap_nb_claim_close, sock, key->sock);
+    expect_value(__wrap_nb_claim_close, counter, NB_CLOSE_ANY);
+    will_return(__wrap_nb_claim_close, 1);
+
     expect_value(__wrap_rem_setCounter, fd, 4);
     expect_value(__wrap_rem_setCounter, counter, 0);
 
@@ -2182,7 +2242,7 @@ void test_handle_new_tcp_connection_success(void** state)
     expect_value(__wrap_wnotify_add, op, WO_READ);
     will_return(__wrap_wnotify_add, 0);
 
-    handle_new_tcp_connection(notify, (struct sockaddr_storage*)&peer_info);
+    assert_int_equal(handle_new_tcp_connection(notify, (struct sockaddr_storage*)&peer_info), sock_client);
 }
 
 void test_handle_new_tcp_connection_wnotify_fail(void** state)
@@ -2231,6 +2291,11 @@ void test_handle_new_tcp_connection_wnotify_fail(void** state)
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
+    // nb_claim_close
+    expect_value(__wrap_nb_claim_close, sock, sock_client);
+    expect_value(__wrap_nb_claim_close, counter, NB_CLOSE_ANY);
+    will_return(__wrap_nb_claim_close, 1);
+
     expect_value(__wrap_rem_setCounter, fd, sock_client);
     expect_value(__wrap_rem_setCounter, counter, 0);
 
@@ -2301,6 +2366,11 @@ static void expect_new_tcp_connection(struct sockaddr_in* peer_info)
 
 static void expect_close_sock(int recv_unassociated)
 {
+    // nb_claim_close
+    expect_value(__wrap_nb_claim_close, sock, UNASSOC_SOCK);
+    expect_value(__wrap_nb_claim_close, counter, NB_CLOSE_ANY);
+    will_return(__wrap_nb_claim_close, 1);
+
     expect_value(__wrap_rem_setCounter, fd, UNASSOC_SOCK);
     expect_value(__wrap_rem_setCounter, counter, global_counter);
 
@@ -2428,7 +2498,7 @@ void test_close_sock_unassociated(void** state)
     global_counter = 0;
     expect_close_sock(1);
 
-    _close_sock(&keys, UNASSOC_SOCK);
+    _close_sock(&keys, UNASSOC_SOCK, NB_CLOSE_ANY);
 }
 
 void test_close_sock_associated(void** state)
@@ -2436,12 +2506,17 @@ void test_close_sock_associated(void** state)
     global_counter = 0;
     expect_close_sock(0);
 
-    _close_sock(&keys, UNASSOC_SOCK);
+    _close_sock(&keys, UNASSOC_SOCK, NB_CLOSE_ANY);
 }
 
 void test_close_sock_close_fails(void** state)
 {
     global_counter = 0;
+
+    // nb_claim_close
+    expect_value(__wrap_nb_claim_close, sock, UNASSOC_SOCK);
+    expect_value(__wrap_nb_claim_close, counter, NB_CLOSE_ANY);
+    will_return(__wrap_nb_claim_close, 1);
 
     expect_value(__wrap_rem_setCounter, fd, UNASSOC_SOCK);
     expect_value(__wrap_rem_setCounter, counter, 0);
@@ -2456,7 +2531,21 @@ void test_close_sock_close_fails(void** state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [" UNASSOC_SOCK_STR "]");
 
-    _close_sock(&keys, UNASSOC_SOCK);
+    _close_sock(&keys, UNASSOC_SOCK, NB_CLOSE_ANY);
+}
+
+// A rejected claim closes nothing: no fence, no keystore change, no counter decrement.
+void test_close_sock_claim_rejected(void** state)
+{
+    global_counter = 0;
+
+    expect_value(__wrap_nb_claim_close, sock, UNASSOC_SOCK);
+    expect_value(__wrap_nb_claim_close, counter, 7);
+    will_return(__wrap_nb_claim_close, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Stale close ignored for socket [" UNASSOC_SOCK_STR "]");
+
+    assert_int_equal(_close_sock(&keys, UNASSOC_SOCK, 7), 0);
 }
 
 void test_HandleSecureMessage_tcp_associate_first_time(void** state)
@@ -2489,7 +2578,7 @@ void test_tcp_unassociated_seq_accept_close(void** state)
     handle_new_tcp_connection(notify, (struct sockaddr_storage*)&peer_info);
 
     expect_close_sock(1);
-    _close_sock(&keys, UNASSOC_SOCK);
+    _close_sock(&keys, UNASSOC_SOCK, NB_CLOSE_ANY);
 }
 
 void test_tcp_unassociated_seq_accept_associate_close(void** state)
@@ -2503,7 +2592,7 @@ void test_tcp_unassociated_seq_accept_associate_close(void** state)
     run_tcp_control_message(11, 10, OS_ADDSOCKET_KEY_ADDED, 1);
 
     expect_close_sock(0);
-    _close_sock(&keys, UNASSOC_SOCK);
+    _close_sock(&keys, UNASSOC_SOCK, NB_CLOSE_ANY);
 }
 
 void test_tcp_unassociated_seq_accept_associate_twice_close(void** state)
@@ -2518,7 +2607,7 @@ void test_tcp_unassociated_seq_accept_associate_twice_close(void** state)
     run_tcp_control_message(12, 10, OS_ADDSOCKET_KEY_UPDATED, 0);
 
     expect_close_sock(0);
-    _close_sock(&keys, UNASSOC_SOCK);
+    _close_sock(&keys, UNASSOC_SOCK, NB_CLOSE_ANY);
 }
 
 void test_tcp_unassociated_seq_addsocket_error_close(void** state)
@@ -2532,7 +2621,7 @@ void test_tcp_unassociated_seq_addsocket_error_close(void** state)
     run_tcp_control_message(11, 10, OS_ADDSOCKET_ERROR, -1);
 
     expect_close_sock(1);
-    _close_sock(&keys, UNASSOC_SOCK);
+    _close_sock(&keys, UNASSOC_SOCK, NB_CLOSE_ANY);
 }
 
 void test_tcp_unassociated_seq_late_message_after_close(void** state)
@@ -2545,7 +2634,7 @@ void test_tcp_unassociated_seq_late_message_after_close(void** state)
 
     global_counter = 11;
     expect_close_sock(1);
-    _close_sock(&keys, UNASSOC_SOCK);
+    _close_sock(&keys, UNASSOC_SOCK, NB_CLOSE_ANY);
 
     // Queued before the close, so its counter is not above the one _close_sock set.
     run_tcp_control_message(11, 11, OS_ADDSOCKET_KEY_ADDED, -1);
@@ -2610,6 +2699,11 @@ void test_handle_incoming_data_from_tcp_socket_too_big_message(void** state)
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
+    // nb_claim_close
+    expect_value(__wrap_nb_claim_close, sock, sock_client);
+    expect_value(__wrap_nb_claim_close, counter, NB_CLOSE_ANY);
+    will_return(__wrap_nb_claim_close, 1);
+
     expect_value(__wrap_rem_setCounter, fd, sock_client);
     expect_value(__wrap_rem_setCounter, counter, 0);
 
@@ -2642,6 +2736,11 @@ void test_handle_incoming_data_from_tcp_socket_case_0(void** state)
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
+    // nb_claim_close
+    expect_value(__wrap_nb_claim_close, sock, sock_client);
+    expect_value(__wrap_nb_claim_close, counter, NB_CLOSE_ANY);
+    will_return(__wrap_nb_claim_close, 1);
+
     expect_value(__wrap_rem_setCounter, fd, sock_client);
     expect_value(__wrap_rem_setCounter, counter, 0);
 
@@ -2678,6 +2777,11 @@ void test_handle_incoming_data_from_tcp_socket_case_1(void** state)
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
+    // nb_claim_close
+    expect_value(__wrap_nb_claim_close, sock, sock_client);
+    expect_value(__wrap_nb_claim_close, counter, NB_CLOSE_ANY);
+    will_return(__wrap_nb_claim_close, 1);
+
     expect_value(__wrap_rem_setCounter, fd, sock_client);
     expect_value(__wrap_rem_setCounter, counter, 0);
 
@@ -2694,6 +2798,17 @@ void test_handle_incoming_data_from_tcp_socket_success(void** state)
     will_return(__wrap_nb_recv, 100);
 
     expect_value(__wrap_rem_add_recv, bytes, 100);
+
+    handle_incoming_data_from_tcp_socket(sock_client);
+}
+
+// An event for a slot that is not open is dropped without closing the fd.
+void test_handle_incoming_data_from_tcp_socket_not_open(void** state)
+{
+    int sock_client = 12;
+
+    expect_value(__wrap_nb_recv, sock, sock_client);
+    will_return(__wrap_nb_recv, NB_NOT_OPEN);
 
     handle_incoming_data_from_tcp_socket(sock_client);
 }
@@ -2740,6 +2855,11 @@ void test_handle_outgoing_data_to_tcp_socket_case_1_EPIPE(void** state)
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
+    // nb_claim_close
+    expect_value(__wrap_nb_claim_close, sock, sock_client);
+    expect_value(__wrap_nb_claim_close, counter, NB_CLOSE_ANY);
+    will_return(__wrap_nb_claim_close, 1);
+
     expect_value(__wrap_rem_setCounter, fd, sock_client);
     expect_value(__wrap_rem_setCounter, counter, 0);
 
@@ -2756,6 +2876,25 @@ void test_handle_outgoing_data_to_tcp_socket_success(void** state)
     will_return(__wrap_nb_send, 100);
 
     expect_value(__wrap_rem_add_send, bytes, 100);
+
+    handle_outgoing_data_to_tcp_socket(sock_client);
+}
+
+void test_fd_accepted_in_batch(void** state)
+{
+    int accepted_fds[3] = {5, 9, 12};
+
+    assert_int_equal(fd_accepted_in_batch(accepted_fds, 3, 9), 1);
+    assert_int_equal(fd_accepted_in_batch(accepted_fds, 3, 7), 0);
+    assert_int_equal(fd_accepted_in_batch(accepted_fds, 0, 5), 0);
+}
+
+void test_handle_outgoing_data_to_tcp_socket_not_open(void** state)
+{
+    int sock_client = 10;
+
+    expect_value(__wrap_nb_send, sock, sock_client);
+    will_return(__wrap_nb_send, NB_NOT_OPEN);
 
     handle_outgoing_data_to_tcp_socket(sock_client);
 }
@@ -2950,6 +3089,7 @@ int main(void)
         cmocka_unit_test(test_close_sock_unassociated),
         cmocka_unit_test(test_close_sock_associated),
         cmocka_unit_test(test_close_sock_close_fails),
+        cmocka_unit_test(test_close_sock_claim_rejected),
         cmocka_unit_test(test_HandleSecureMessage_tcp_associate_first_time),
         cmocka_unit_test(test_HandleSecureMessage_tcp_associate_already_associated),
         cmocka_unit_test(test_HandleSecureMessage_tcp_associate_addsocket_error),
@@ -2970,9 +3110,13 @@ int main(void)
         cmocka_unit_test(test_handle_incoming_data_from_tcp_socket_case_0),
         cmocka_unit_test(test_handle_incoming_data_from_tcp_socket_case_1),
         cmocka_unit_test(test_handle_incoming_data_from_tcp_socket_success),
+        cmocka_unit_test(test_handle_incoming_data_from_tcp_socket_not_open),
         // Tests handle_outgoing_data_to_tcp_socket
         cmocka_unit_test(test_handle_outgoing_data_to_tcp_socket_case_1_EAGAIN),
         cmocka_unit_test(test_handle_outgoing_data_to_tcp_socket_case_1_EPIPE),
-        cmocka_unit_test(test_handle_outgoing_data_to_tcp_socket_success)};
+        cmocka_unit_test(test_handle_outgoing_data_to_tcp_socket_success),
+        cmocka_unit_test(test_handle_outgoing_data_to_tcp_socket_not_open),
+        // Tests the main-loop same-batch rule
+        cmocka_unit_test(test_fd_accepted_in_batch)};
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

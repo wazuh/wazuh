@@ -47,7 +47,8 @@ ROUTER_PROVIDER_HANDLE router_syscollector_handle = NULL;
 STATIC void handle_outgoing_data_to_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_storage * peer_info);
-STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storage * peer_info);
+STATIC int handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storage * peer_info);
+STATIC int fd_accepted_in_batch(const int * accepted_fds, int n_accepted, int fd);
 
 // Headers for syscollector messages: DBSYNC_MQ + WM_SYS_LOCATION and SYSCOLLECTOR_MQ + WM_SYS_LOCATION
 #define DBSYNC_HEADER "5:"
@@ -78,8 +79,8 @@ void * rem_keyupdate_main(__attribute__((unused)) void * args);
 /* Handle each message received */
 STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * control_msg_queue);
 
-// Close and remove socket from keystore
-int _close_sock(keystore * keys, int sock);
+// Close and remove socket from keystore. counter is the triggering message's counter, or NB_CLOSE_ANY.
+int _close_sock(keystore * keys, int sock, size_t counter);
 
 /* Get current timestamp */
 STATIC void *current_timestamp(void *none);
@@ -351,6 +352,10 @@ void HandleSecure()
             continue;
         }
 
+        // Descriptors accepted in this batch: an event for one of them predates its connection
+        int accepted_fds[MAX_EVENTS];
+        int n_accepted = 0;
+
         for (int i = 0u; i < n_events; i++) {
             // Returns the fd of the socket that recived a message
             wevent_t event;
@@ -363,7 +368,15 @@ void HandleSecure()
             }
             // If a new TCP connection was received and TCP is enabled
             else if ((fd == logr.tcp_sock) && (protocol & REMOTED_NET_PROTOCOL_TCP)) {
-                handle_new_tcp_connection(notify, &peer_info);
+                int sock_client = handle_new_tcp_connection(notify, &peer_info);
+
+                if (sock_client >= 0 && n_accepted < MAX_EVENTS) {
+                    accepted_fds[n_accepted++] = sock_client;
+                }
+            }
+            // A stale event for a descriptor reused by a connection accepted earlier in this batch
+            else if (fd_accepted_in_batch(accepted_fds, n_accepted, fd)) {
+                mdebug2("Stale event ignored for socket [%d]", fd);
             }
             // If a new UDP connection was received and UDP is enabled
             else if ((fd == logr.udp_sock) && (protocol & REMOTED_NET_PROTOCOL_UDP)) {
@@ -383,7 +396,18 @@ void HandleSecure()
     manager_free();
 }
 
-STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storage * peer_info)
+STATIC int fd_accepted_in_batch(const int * accepted_fds, int n_accepted, int fd)
+{
+    for (int i = 0; i < n_accepted; i++) {
+        if (accepted_fds[i] == fd) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+STATIC int handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storage * peer_info)
 {
     int sock_client = accept(logr.tcp_sock, (struct sockaddr *) peer_info, &logr.peer_size);
 
@@ -399,7 +423,7 @@ STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storag
 
         if (wnotify_add(notify, sock_client, WO_READ) < 0) {
             merror("wnotify_add(%d, %d): %s (%d)", notify->fd, sock_client, strerror(errno), errno);
-            _close_sock(&keys, sock_client);
+            _close_sock(&keys, sock_client, NB_CLOSE_ANY);
         }
     } else {
         switch (errno) {
@@ -410,6 +434,8 @@ STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storag
             merror(ACCEPT_ERROR, strerror(errno), errno);
         }
     }
+
+    return sock_client;
 }
 
 STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_storage * peer_info)
@@ -430,9 +456,13 @@ STATIC void handle_incoming_data_from_tcp_socket(int sock_client)
     int recv_b = nb_recv(&netbuffer_recv, sock_client);
 
     switch (recv_b) {
+    case NB_NOT_OPEN:
+        // Stale event for a descriptor whose connection is already closed
+        return;
+
     case -2:
         mwarn("Too big message size from socket [%d].", sock_client);
-        _close_sock(&keys, sock_client);
+        _close_sock(&keys, sock_client, NB_CLOSE_ANY);
         return;
 
     case -1:
@@ -452,7 +482,7 @@ STATIC void handle_incoming_data_from_tcp_socket(int sock_client)
         WFALLTHROUGH;
     case 0:
         mdebug1("handle incoming close socket [%d].", sock_client);
-        _close_sock(&keys, sock_client);
+        _close_sock(&keys, sock_client, NB_CLOSE_ANY);
         return;
 
     default:
@@ -465,6 +495,10 @@ STATIC void handle_outgoing_data_to_tcp_socket(int sock_client)
     int sent_b = nb_send(&netbuffer_send, sock_client);
 
     switch (sent_b) {
+    case NB_NOT_OPEN:
+        // Stale event for a descriptor whose connection is already closed
+        return;
+
     case -1:
         mdebug1("TCP peer [%d]: %s (%d)", sock_client, strerror(errno), errno);
 
@@ -479,7 +513,7 @@ STATIC void handle_outgoing_data_to_tcp_socket(int sock_client)
         case ECONNRESET:
         default:
             mdebug1("handle outgoing close socket [%d].", sock_client);
-            _close_sock(&keys, sock_client);
+            _close_sock(&keys, sock_client, NB_CLOSE_ANY);
         }
         return;
 
@@ -624,7 +658,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
             merror(ENCFORMAT_ERROR, "(unknown)", srcip);
 
             if (message->sock >= 0) {
-                _close_sock(&keys, message->sock);
+                _close_sock(&keys, message->sock, message->counter);
             }
 
             rem_inc_recv_unknown();
@@ -654,7 +688,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
             // Send key request by id
             push_request(buffer + 1, "id");
             if (message->sock >= 0) {
-                _close_sock(&keys, message->sock);
+                _close_sock(&keys, message->sock, message->counter);
             }
 
             rem_inc_recv_unknown();
@@ -676,7 +710,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                     key_unlock();
 
                     if (message->sock >= 0) {
-                        _close_sock(&keys, message->sock);
+                        _close_sock(&keys, message->sock, message->counter);
                     }
 
                     rem_inc_recv_unknown();
@@ -717,7 +751,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
             // Send key request by ip
             push_request(srcip, "ip");
             if (message->sock >= 0) {
-                _close_sock(&keys, message->sock);
+                _close_sock(&keys, message->sock, message->counter);
             }
 
             rem_inc_recv_unknown();
@@ -739,7 +773,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                     key_unlock();
 
                     if (message->sock >= 0) {
-                        _close_sock(&keys, message->sock);
+                        _close_sock(&keys, message->sock, message->counter);
                     }
 
                     rem_inc_recv_unknown();
@@ -758,11 +792,11 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         mwarn("Received message is empty");
         key_unlock();
         if (message->sock >= 0) {
-            _close_sock(&keys, message->sock);
+            _close_sock(&keys, message->sock, message->counter);
         }
 
         if (sock_idle >= 0) {
-            _close_sock(&keys, sock_idle);
+            _close_sock(&keys, sock_idle, NB_CLOSE_ANY);
         }
 
         rem_inc_recv_unknown();
@@ -784,11 +818,11 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
         if (message->sock >= 0) {
             mwarn("Decrypt the message fail, socket %d", message->sock);
-            _close_sock(&keys, message->sock);
+            _close_sock(&keys, message->sock, message->counter);
         }
 
         if (sock_idle >= 0) {
-            _close_sock(&keys, sock_idle);
+            _close_sock(&keys, sock_idle, NB_CLOSE_ANY);
         }
 
         rem_inc_recv_unknown();
@@ -801,11 +835,11 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         key_unlock();
 
         if (message->sock >= 0) {
-            _close_sock(&keys, message->sock);
+            _close_sock(&keys, message->sock, message->counter);
         }
 
         if (sock_idle >= 0) {
-            _close_sock(&keys, sock_idle);
+            _close_sock(&keys, sock_idle, NB_CLOSE_ANY);
         }
 
         rem_inc_recv_unknown();
@@ -879,7 +913,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
             key_unlock();
 
             if (sock_idle >= 0) {
-                _close_sock(&keys, sock_idle);
+                _close_sock(&keys, sock_idle, NB_CLOSE_ANY);
             }
 
             rem_inc_recv_ctrl(key->id);
@@ -955,7 +989,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
     }
 
     if (sock_idle >= 0) {
-        _close_sock(&keys, sock_idle);
+        _close_sock(&keys, sock_idle, NB_CLOSE_ANY);
     }
 
     /* If we can't send the message, try to connect to the
@@ -1068,9 +1102,15 @@ void router_message_forward(char* msg, const char* agent_id, const char* agent_i
 }
 
 // Close and remove socket from keystore
-int _close_sock(keystore * keys, int sock) {
+int _close_sock(keystore * keys, int sock, size_t counter) {
     int retval = 0;
     int was_unassociated = 0;
+
+    // Only the first closer of the connection owning the fd may touch the keystore and the counters
+    if (!nb_claim_close(&netbuffer_recv, sock, counter)) {
+        mdebug2("Stale close ignored for socket [%d]", sock);
+        return 0;
+    }
 
     rem_setCounter(sock, global_counter);
 
