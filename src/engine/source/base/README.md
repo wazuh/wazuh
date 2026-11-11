@@ -63,7 +63,8 @@ Header: [include/base/process.hpp](include/base/process.hpp). Implementation: [s
 
 | Function | Behaviour |
 |---|---|
-| `goDaemon` | fork, `setsid`, fork, `umask(027)`, stdin/stdout/stderr redirected to `/dev/null`. The parents leave with a real `_exit` (no exit handlers). |
+| `goDaemon` | fork, `setsid`, fork, `umask(027)`, stdin/stdout/stderr redirected to `/dev/null`. Returns a `StartupReport` to the grandchild. The **original process does not leave at the first fork**: it closes the write end of a startup channel, blocks reading the verdict, and `_exit`s with it — 0 only if the grandchild reported ready, `EXIT_FAILURE` otherwise, writing the reported cause to its still-connected stderr. The intermediate child leaves with `EXIT_SUCCESS`. Both parents still use a real `_exit` (no exit handlers). Throws after the first fork send the cause through the channel before propagating. |
+| `StartupReport` | The grandchild's handle on that channel. **Single shot**: `reportReady()` / `reportFailure(text)` write, close the descriptor and leave the object disconnected for good; every later call is a no-op, which is what keeps a failure raised hours later (the `try` in `main.cpp` also covers the service loop) from writing into a reused descriptor. **Move-only**, so the descriptor is never double-closed. Default-constructed it is already disconnected, and that is what foreground mode (`-f`) uses: every method a no-op, no mode branch in `main.cpp`. |
 | `createPID` | Writes `<path>/<name>-<pid>.pid` with mode exactly 0640 (`fchmod`) and content `<pid>\n`; retries on `EINTR` and completes partial writes. |
 | `lookupUid` / `lookupGid` | Reentrant lookups. The buffer starts at the `sysconf` hint (1024 when undefined, capped at 64 KiB) and doubles up to 64 KiB. |
 | `dropToGroup` | `setgroups` + `setgid`. Call it before `dropToUser`. |
@@ -71,7 +72,17 @@ Header: [include/base/process.hpp](include/base/process.hpp). Implementation: [s
 | `resolveManagerHome` | Order: `WAZUH_MANAGER_FORCE_HOME` as is, then a non-empty `WAZUH_MANAGER_HOME`, then the dirname of `/proc/self/exe` cut at the first `"/bin"`. When the result of the 2nd or 3rd is not a directory it writes a CRITICAL 1108 line to stderr and exits with status 1. |
 | `setManagerMode` / `getWazuhHome` | Manager mode is process-wide and irreversible. Outside it, `getWazuhHome()` returns the current working directory. |
 
-Injection: `ProcessSysCalls` groups 13 system calls (`fork`, `setsid`, `umask`, `open`, `dup2`, `close`, `fchmod`, `write`, `setgroups`, `setgid`, `setuid`, `seteuid`, `sysconf`); an empty member is the real call. Outside the seam is `_exit` (checked by `GoDaemonFunctionalTest.ParentsSkipExitHandlers`); `umask` is injectable, but a test that leaves it empty gets the real `umask(027)` applied to itself. `UserLookup` and `GroupLookup` are injectable as well.
+Injection: `ProcessSysCalls` groups 18 system calls (`fork`, `setsid`, `umask`, `open`, `dup2`, `close`, `fchmod`, `write`, `setgroups`, `setgid`, `setuid`, `seteuid`, `sysconf`, `pipe2`, `read`, `pthread_sigmask`, `sigtimedwait`, `fcntl`); an empty member is the real call. Outside the seam is `_exit` (checked by `GoDaemonFunctionalTest.ParentsSkipExitHandlers`); `umask` is injectable, but a test that leaves it empty gets the real `umask(027)` applied to itself. `UserLookup` and `GroupLookup` are injectable as well.
+
+**Startup channel.** The pipe is created with `pipe2(O_CLOEXEC)` before the first fork, and both ends are lifted above
+`STDERR_FILENO` with `F_DUPFD_CLOEXEC` when they land on 0/1/2: otherwise the `dup2` of `/dev/null` would silently
+replace the write end and a healthy start would be reported as a failure. Exactly one process owns the write end (the
+grandchild), so end of file is a reliable "died without a verdict", and the reader treats it as a failure — which is
+what covers `exit()`, `std::terminate` and `SIGKILL` without touching them. Every write to the channel, including the
+ones `goDaemon` makes before the object exists, goes through a helper that blocks `SIGPIPE` with `pthread_sigmask` and
+drains it with `sigtimedwait`: `write(2)` on a pipe whose reader is gone does **not** return `EPIPE` while `SIGPIPE`
+keeps its default disposition — it kills the process — and the engine only sets `SIG_IGN` much later. Reads and writes
+retry on `EINTR` and complete short writes; any other `errno` gives up rather than spinning.
 
 ## Testing
 

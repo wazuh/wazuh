@@ -61,18 +61,40 @@ wazuh-manager-analysisd [-f] [-t] [-d [-d]] [-h]
 | `-d` | Debug logging for this run: once for debug, twice or more for trace. It takes priority over `analysisd.debug` (`analysisd.logging_level` in standalone mode). |
 | `-h` | Print the usage and exit `0`. An unknown option does the same. |
 
+Without `-f`, the command that launches the daemon does not return as soon as the engine forks. It waits until the
+engine finishes starting, which happens when its scheduler has started (the last start-up step), and then exits `0`.
+If the engine fails before that point, the command exits `1` and prints the cause to its stderr, for example
+`Error loading configuration: <reason>` or `An error occurred while initializing the modules: <reason>.`. If the
+engine stops without reporting a cause (it is killed, or it exits outside its error handling), the command prints
+`wazuh-engine: the engine failed to start and reported no reason; see the engine log`. The cause is also written to
+`wazuh-manager.log`, as before. With `-f` there is no fork, so none of this applies.
+
 `wazuh-manager-control start` runs `wazuh-manager-analysisd -t` (with `-d` while debug is enabled with
 `wazuh-manager-control enable debug`) as one of its start checks, then launches the daemon **without any option**.
 The debug level of the running engine is therefore set only by `analysisd.debug`, not by
 `wazuh-manager-control enable debug`.
 
-After launching it, `start` waits up to 10 seconds for the PID file
+The launch blocks until the engine reports that it is ready or has failed, as described above, and `start` gives
+the engine 120 seconds in total, from the launch to its last readiness probe:
+
+- If the launch exits non-zero, the engine has already printed the cause to stderr. `start` adds
+  `wazuh-manager-analysisd failed to start (exit status <n>).` and skips the checks below.
+- If the launch is still blocked after 120 seconds, `start` prints
+  `wazuh-manager-analysisd did not finish starting after 120 seconds.` and stops the engine named by its own
+  PID file: `SIGTERM`, then `SIGKILL` if it is still running up to 30 seconds later (`MAX_KILL_TRIES`). It also
+  removes that PID file. If the engine hung before writing it there is nothing safe to signal, so `start`
+  prints `wazuh-manager-analysisd wrote no PID file; if it is still starting, stop it manually.` and leaves
+  the process running.
+
+After a successful launch, `start` waits up to 10 seconds for the PID file
 `/var/wazuh-manager/var/run/wazuh-manager-analysisd-<pid>.pid`, then sends `GET /status` to
-`/var/wazuh-manager/queue/sockets/engine-api-http.sock` once per second, up to 120 times, until the engine answers
-with a status below `400`. On failure it prints `Failed to obtain PID for wazuh-manager-analysisd`,
-`wazuh-manager-analysisd died during the readiness check.` or
-`wazuh-manager-analysisd did not respond correctly after 120 attempts.` (the last one also kills the engine), and
-the start fails with `wazuh-manager-analysisd did not start correctly.`
+`/var/wazuh-manager/queue/sockets/engine-api-http.sock` once per second until the engine answers with a status below
+`400`, for whatever is left of the 120 seconds (at least once). On failure it prints
+`Failed to obtain PID for wazuh-manager-analysisd`, `wazuh-manager-analysisd died during the readiness check.` or
+`wazuh-manager-analysisd did not respond correctly after <n> attempts.` (the last one also kills the engine).
+
+Any of these failures ends the start with `wazuh-manager-analysisd did not start correctly.`. The whole wait stays
+below the systemd unit's `TimeoutStartSec=180`.
 
 ## Environment variables outside the settings
 
@@ -478,7 +500,10 @@ grep "Event queue has remained contended" /var/wazuh-manager/logs/wazuh-manager.
 ### Engine won't start
 
 `wazuh-manager-control start` reports `wazuh-manager-analysisd did not start correctly.` and one of the readiness
-messages listed in [Command-line options](#command-line-options). Look for the reason in the engine's own lines:
+messages listed in [Command-line options](#command-line-options). The engine prints the cause of a start-up failure
+to stderr just before those messages: on the terminal for `wazuh-manager-control start`, or in the journal
+(`journalctl -u wazuh-manager`) when systemd starts the manager. The cause is also recorded in the log, together
+with the engine's other lines:
 
 ```bash
 grep wazuh-manager-analysisd /var/wazuh-manager/logs/wazuh-manager.log | grep -E "ERROR|CRITICAL|WARNING"

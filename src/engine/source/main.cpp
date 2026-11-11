@@ -193,6 +193,8 @@ int main(int argc, char* argv[])
         Log::assignLogFunction(logging::createStandaloneLogFunction());
     }
 
+    const pid_t originalPid = getpid(); // who the caller actually launched; see the catch around goDaemon below
+
     // Raise the soft file descriptor limit; the hard limit belongs to whoever started the manager
     {
         constexpr rlim_t target = 8192;
@@ -218,10 +220,31 @@ int main(int argc, char* argv[])
         }
     }
 
-    // Daemonize the process
+    // Daemonize the process. The report stays in main's scope: every later failure point reports through it, and
+    // with -f it is default-constructed and therefore disconnected, so all of them are no-ops.
+    base::process::StartupReport startupReport;
     if (!opts.runForeground)
     {
-        base::process::goDaemon();
+        try
+        {
+            startupReport = base::process::goDaemon();
+        }
+        catch (const std::exception& e)
+        {
+            // Only the original process reaches this with its stderr still connected; after the first fork the cause
+            // already travelled through the channel, so printing here would duplicate it. Either way the exit must be
+            // _exit: a return would run the exit handlers and static destructors in a forked process, which is what
+            // the double fork promises never happens.
+            // The log sink is already open (initManager ran before this point) and the process is still
+            // single-threaded, so this is the only record an operator will find: for failures after the first fork
+            // the grandchild's stderr is already /dev/null and the cause only travels through the channel.
+            LOG_ERROR("Could not daemonize the engine: {}", e.what());
+            if (getpid() == originalPid)
+            {
+                fprintf(stderr, "Could not daemonize the engine: %s\n", e.what());
+            }
+            _exit(EXIT_FAILURE);
+        }
     }
 
     // Load the configuration. Manager mode: the internal options live in the fixed configuration directory.
@@ -238,6 +261,7 @@ int main(int argc, char* argv[])
     catch (const std::exception& e)
     {
         LOG_ERROR("Error loading configuration: {}", e.what());
+        startupReport.reportFailure(fmt::format("Error loading configuration: {}", e.what()));
         exit(EXIT_FAILURE);
     }
 
@@ -1051,6 +1075,10 @@ int main(int argc, char* argv[])
 
             scheduler->start();
             LOG_INFO("Scheduler started");
+            // Startup is complete: everything that can throw has run. Reporting earlier (at "Engine started") would
+            // leave the scheduler task registration outside the guarantee, and a failure there would have been
+            // reported to the caller as a success.
+            startupReport.reportReady();
 
             while (engineRemoteServer->isRunning())
             {
@@ -1067,6 +1095,7 @@ int main(int argc, char* argv[])
         {
             scheduler->start();
             LOG_INFO("Scheduler started");
+            startupReport.reportReady(); // same contract in API-only mode
             // Event processing disabled, just wait for shutdown signal
             LOG_INFO("Waiting for shutdown signal (event processing is disabled)...");
             while (!g_shutdown_requested)
@@ -1080,12 +1109,16 @@ int main(int argc, char* argv[])
     {
         const auto msg = utils::getExceptionStack(e);
         LOG_ERROR("An error occurred while initializing the modules: {}.", msg);
+        // Before the shutdown: reportFailure closes the channel, so the caller gets the verdict without waiting for a
+        // teardown that runs with live threads and may itself hang.
+        startupReport.reportFailure(fmt::format("An error occurred while initializing the modules: {}.", msg));
         exitHandler.execute();
         exit(EXIT_FAILURE);
     }
     catch (...)
     {
         LOG_ERROR("An unknown error occurred while initializing the modules");
+        startupReport.reportFailure("An unknown error occurred while initializing the modules");
         exitHandler.execute();
         exit(EXIT_FAILURE);
     }
