@@ -244,3 +244,4 @@
 | [#40709](https://github.com/wazuh/wazuh/issues/40709) | Fixed Windows per-user packages, such as Microsoft Store apps and OneDrive, being reported as uninstalled while their user is not logged on. |
 | [#41075](https://github.com/wazuh/wazuh/issues/41075) | Fixed `wazuh-control restart` leaving the agent stopped when `wazuh-agent.service` runs it: while the unit is running, `wazuh-control stop`, `restart` and `reload` now hand the action to `systemctl`. |
 | [#41244](https://github.com/wazuh/wazuh/pull/41244) | Fixed the "Ensure accounts in /etc/passwd use shadowed passwords" SCA check, which always failed in the Amazon Linux 2023, Debian 11 to 13 and Ubuntu 18.04 policies and always passed in the other 18 Linux policies that have it. It now fails only when an `/etc/passwd` entry has a password field other than `x`. |
+| [#40944](https://github.com/wazuh/wazuh/issues/40944) | Fixed the Windows agent crashing shortly after starting on Windows Server 2012 R2. |
