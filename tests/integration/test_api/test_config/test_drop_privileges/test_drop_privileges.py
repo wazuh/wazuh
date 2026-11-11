@@ -7,7 +7,7 @@ copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
 type: integration
 
-brief: These tests will check that the deprecated 'drop_privileges' setting of the API is ignored.
+brief: These tests will check that the 'drop_privileges' setting of the API is ignored.
        The 'wazuh-apid' daemon always runs as the 'wazuh' user unless it is started with '-r', and
        a warning is logged when the setting is present. The Wazuh API is an open source 'RESTful'
        API that allows for interaction with the Wazuh manager from a web browser, command line tool
@@ -72,7 +72,7 @@ pytestmark = pytest.mark.server
 # Variables
 # Used by add_configuration to select the target configuration file
 configuration_type = CONFIGURATION_TYPES[0]
-DROP_PRIVILEGES_DEPRECATED_MSG = r".*WARNING: 'drop_privileges' option was deprecated.*"
+DROP_PRIVILEGES_IGNORED_MSG = r".*WARNING: 'drop_privileges' option is ignored.*"
 
 # Paths
 test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_drop_privileges.yaml')
@@ -92,7 +92,7 @@ def test_drop_privileges(test_configuration, test_metadata, add_configuration, t
     """
     description: Check that 'drop_privileges' does not affect the user of the API process. In this test, the 'PID'
                  of the API process is obtained. After that, it checks that its user is 'wazuh' whatever the
-                 'drop_privileges' setting is, and that the deprecation warning is logged.
+                 'drop_privileges' setting is, and that a warning about the ignored setting is logged.
 
     wazuh_min_version: 4.2.0
 
@@ -106,7 +106,7 @@ def test_drop_privileges(test_configuration, test_metadata, add_configuration, t
             - Search wazuh-apid process and verify that it is present
             - Get current user of the process
             - Check that the user is the expected
-            - Check that the deprecation warning is in the API log
+            - Check that the ignored setting warning is in the API log
         - teardown:
             - Remove configuration and restore backup configuration
             - Truncate the log files
@@ -136,7 +136,7 @@ def test_drop_privileges(test_configuration, test_metadata, add_configuration, t
 
     assertions:
         - Verify that the user of the 'wazuh-apid' daemon is 'wazuh' whether 'drop_privileges' is enabled or not.
-        - Verify that the 'drop_privileges' deprecation warning is logged.
+        - Verify that the warning about the ignored 'drop_privileges' setting is logged.
 
     input_description: Different test cases are contained in an external YAML file (cases_drop_privileges.yaml)
                        which includes API configuration parameters.
@@ -144,7 +144,7 @@ def test_drop_privileges(test_configuration, test_metadata, add_configuration, t
     expected_output:
         - PID of the 'wazuh-apid' process.
         - wazuh
-        - r".*WARNING: 'drop_privileges' option was deprecated.*"
+        - r".*WARNING: 'drop_privileges' option is ignored.*"
     """
     expected_user = test_metadata['expected_user']
 
@@ -160,5 +160,5 @@ def test_drop_privileges(test_configuration, test_metadata, add_configuration, t
     assert username == expected_user, f'Expected user was {expected_user}, but the current one is {username}'
 
     monitor = file_monitor.FileMonitor(WAZUH_API_LOG_FILE_PATH)
-    monitor.start(callback=generate_callback(DROP_PRIVILEGES_DEPRECATED_MSG))
-    assert monitor.callback_result is not None, 'The drop_privileges deprecation warning was not logged'
+    monitor.start(callback=generate_callback(DROP_PRIVILEGES_IGNORED_MSG))
+    assert monitor.callback_result is not None, 'The drop_privileges ignored setting warning was not logged'
