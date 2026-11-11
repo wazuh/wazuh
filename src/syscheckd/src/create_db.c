@@ -1093,7 +1093,7 @@ void fim_process_wildcard_removed(directory_t *configuration) {
     // Since the file doesn't exist, research if it's directory and have files in DB.
     char pattern[PATH_MAX] = {0};
 
-    // Create the sqlite LIKE pattern -> "pathname/%"
+    // Prefix pattern: <path><sep>%
     snprintf(pattern, PATH_MAX, "%s%c%%", configuration->path, PATH_SEP);
     get_data_ctx ctx = {
         .event = (event_data_t *)&evt_data,
@@ -1151,7 +1151,7 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
     // Since the file doesn't exist, research if it's directory and have files in DB.
     char pattern[PATH_MAX] = {0};
 
-    // Create the sqlite LIKE pattern -> "pathname/%"
+    // Prefix pattern: <path><sep>%
     snprintf(pattern, PATH_MAX, "%s%c%%", pathname, PATH_SEP);
     evt_data.type = FIM_DELETE;
     ctx.event = (event_data_t *)&evt_data;

@@ -438,8 +438,21 @@ void DB::searchFile(const SearchData& data, std::function<void(const std::string
         std::string encodedPath = std::get<SEARCH_FIELD_PATH>(data);
         FIMDBCreator<OS_TYPE>::encodeString(encodedPath);
 
-        queryBuilder.rowFilter("WHERE path LIKE ?")
-        .rowFilterBindText(encodedPath);
+        // Callers pass "<path><separator>%": select every path that starts with "<path><separator>".
+        if (encodedPath.size() < 2 || '%' != encodedPath.back())
+        {
+            return;
+        }
+
+        encodedPath.pop_back();
+
+        // Range scan: the upper bound is the prefix with its last byte (the separator) incremented.
+        auto upperBound { encodedPath };
+        ++upperBound.back();
+
+        queryBuilder.rowFilter("WHERE path >= ? AND path < ?")
+        .rowFilterBindText(encodedPath)
+        .rowFilterBindText(upperBound);
     }
     else
     {

@@ -40,16 +40,43 @@ int main (int argc, char **argv) {
         return OS_INVALID;
     }
 
+    if (uname(&uname_buffer) != 0) {
+        write_debug_file(argv[0], "Cannot get system name");
+        cJSON_Delete(input_json);
+        return OS_INVALID;
+    }
+
+    // Build the rule before the key exchange, so an unsupported address leaves no execd timer.
+    char legacy_rule[COMMANDSIZE_4096];
+    char block_key[NI_MAXHOST];
+    bool is_freebsd = !strcmp("FreeBSD", uname_buffer.sysname);
+
+    memset(hosts_deny_rule, '\0', COMMANDSIZE_4096);
+    memset(hosts_deny_path, '\0', COMMANDSIZE_4096);
+    memset(legacy_rule, '\0', COMMANDSIZE_4096);
+    if (!build_hostsdeny_rules(srcip, is_freebsd, hosts_deny_rule, sizeof(hosts_deny_rule),
+                               legacy_rule, sizeof(legacy_rule)) ||
+        !hostsdeny_block_key(srcip, block_key, sizeof(block_key))) {
+        memset(log_msg, '\0', OS_MAXSTR);
+        snprintf(log_msg, OS_MAXSTR -1, "Unsupported source IP for hosts.deny: '%s'", srcip);
+        write_debug_file(argv[0], log_msg);
+        cJSON_Delete(input_json);
+        return OS_INVALID;
+    }
+    strcpy(hosts_deny_path, is_freebsd ? FREEBSD_HOSTS_DENY_PATH : DEFAULT_HOSTS_DENY_PATH);
+
     if (action == ADD_COMMAND) {
         char **keys = NULL;
         int action2 = OS_INVALID;
 
+        // Key the execd timer by the address the rule blocks, so every spelling of it shares one timer.
         os_calloc(2, sizeof(char *), keys);
-        os_strdup(srcip, keys[0]);
+        os_strdup(block_key, keys[0]);
         keys[1] = NULL;
 
         action2 = send_keys_and_check_message(argv, keys);
 
+        os_free(keys[0]);
         os_free(keys);
 
         // If necessary, abort execution
@@ -63,29 +90,6 @@ int main (int argc, char **argv) {
                 return OS_INVALID;
             }
         }
-    }
-
-    if (uname(&uname_buffer) != 0) {
-        write_debug_file(argv[0], "Cannot get system name");
-        cJSON_Delete(input_json);
-        return OS_INVALID;
-    }
-
-    char canonical_ip[NI_MAXHOST];
-    if (!canonicalize_ip(srcip, canonical_ip, sizeof(canonical_ip))) {
-        write_debug_file(argv[0], "Cannot canonicalize source IP");
-        cJSON_Delete(input_json);
-        return OS_INVALID;
-    }
-
-    memset(hosts_deny_rule, '\0', COMMANDSIZE_4096);
-    memset(hosts_deny_path, '\0', COMMANDSIZE_4096);
-    if (!strcmp("FreeBSD", uname_buffer.sysname)) {
-        snprintf(hosts_deny_rule, COMMANDSIZE_4096 -1, "ALL : %s : deny", canonical_ip);
-        strcpy(hosts_deny_path, FREEBSD_HOSTS_DENY_PATH);
-    } else {
-        snprintf(hosts_deny_rule, COMMANDSIZE_4096 -1, "ALL:%s", canonical_ip);
-        strcpy(hosts_deny_path, DEFAULT_HOSTS_DENY_PATH);
     }
 
     memset(lock_path, '\0', COMMANDSIZE_4096);
@@ -189,37 +193,43 @@ int main (int argc, char **argv) {
             return OS_INVALID;
         }
 
-        memset(output_buf, '\0', OS_MAXSTR - 25);
-        while (fgets(output_buf, OS_MAXSTR - 25, host_deny_fp)) {
-            if (!hosts_deny_rule_matches(output_buf, hosts_deny_rule)) {
-                if (fwrite(output_buf, 1, strlen(output_buf), temp_host_deny_fp) != strlen(output_buf)) {
-                    memset(log_msg, '\0', OS_MAXSTR);
-                    snprintf(log_msg, OS_MAXSTR -1, "Unable to write line '%s'", output_buf);
-                    write_debug_file(argv[0], log_msg);
-                    write_fail = true;
-                    break;
-                }
-            } else {
-                entry_removed = true;
-            }
-            memset(output_buf, '\0', OS_MAXSTR - 25);
+        int write_errno = 0;
+
+        if (hosts_deny_remove_rules(host_deny_fp, temp_host_deny_fp, hosts_deny_rule, legacy_rule,
+                                    &entry_removed) != OS_SUCCESS) {
+            write_errno = errno;
+            write_fail = true;
         }
 
         fclose(host_deny_fp);
-        fclose(temp_host_deny_fp);
+        // A failed close means the temporary copy may be incomplete; never move it into place.
+        if (fclose(temp_host_deny_fp) != 0 && !write_fail) {
+            write_errno = errno;
+            write_fail = true;
+        }
 
         // Only replace the original file when an entry was actually removed, to
         // avoid changing its inode and mode on every expiring block.
         if (write_fail) {
-            write_debug_file(argv[0], "Unable to update hosts.deny");
-        } else if (entry_removed && OS_MoveFile(temp_hosts_deny_path, hosts_deny_path) != 0) {
             memset(log_msg, '\0', OS_MAXSTR);
-            snprintf(log_msg, OS_MAXSTR -1, "Unable to write file '%s'", hosts_deny_path);
+            snprintf(log_msg, OS_MAXSTR -1, "Unable to write temporary file '%s', '%s' not updated: %s",
+                     temp_hosts_deny_path, hosts_deny_path, strerror(write_errno));
+            write_debug_file(argv[0], log_msg);
+        } else if (entry_removed && OS_MoveFile(temp_hosts_deny_path, hosts_deny_path) != 0) {
+            write_fail = true;
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR -1, "Unable to replace '%s' with '%s'",
+                     hosts_deny_path, temp_hosts_deny_path);
             write_debug_file(argv[0], log_msg);
         }
 
         unlink(temp_hosts_deny_path);
         unlock(lock_path, argv[0]);
+
+        if (write_fail) {
+            cJSON_Delete(input_json);
+            return OS_INVALID;
+        }
     }
 
     write_debug_file(argv[0], "Ended");

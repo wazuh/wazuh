@@ -619,6 +619,107 @@ bool canonicalize_ip(const char *ip, char *output, size_t output_size) {
     return false;
 }
 
+bool format_hostsdeny_client(const char *ip, char *output, size_t output_size) {
+    static const unsigned char v4mapped_prefix[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff};
+    unsigned char addr4[sizeof(struct in_addr)];
+    unsigned char addr6[sizeof(struct in6_addr)];
+    char text[INET6_ADDRSTRLEN];
+    int written;
+
+    if (!ip || !output || output_size == 0) {
+        return false;
+    }
+
+    if (inet_pton(AF_INET, ip, addr4) == 1) {
+        return inet_ntop(AF_INET, addr4, output, output_size) != NULL;
+    }
+    if (inet_pton(AF_INET6, ip, addr6) != 1) {
+        return false;
+    }
+
+    // libwrap matches IPv4-mapped clients only as plain IPv4. Only the "::ffff:a.b.c.d" spelling
+    // is converted; other mapped spellings are refused.
+    // The IPv4 and "::ffff:" blocks of one host share this rule, so the first timeout removes it.
+    if (memcmp(addr6, v4mapped_prefix, sizeof(v4mapped_prefix)) == 0) {
+        if (strncmp(ip, "::ffff:", 7) != 0 || inet_pton(AF_INET, ip + 7, addr4) != 1) {
+            return false;
+        }
+        return inet_ntop(AF_INET, addr4, output, output_size) != NULL;
+    }
+
+    if (!inet_ntop(AF_INET6, addr6, text, sizeof(text))) {
+        return false;
+    }
+
+    // hosts_access(5): an unbracketed IPv6 address is split at its first ':'.
+    written = snprintf(output, output_size, "[%s]", text);
+    return written > 0 && (size_t)written < output_size;
+}
+
+bool hostsdeny_block_key(const char *srcip, char *key, size_t key_size) {
+    char client[NI_MAXHOST];
+    size_t len;
+
+    if (!key || key_size == 0 || !format_hostsdeny_client(srcip, client, sizeof(client))) {
+        return false;
+    }
+
+    // Same address the rule blocks, without the hosts_access(5) brackets.
+    len = strlen(client);
+    if (len >= 2 && client[0] == '[' && client[len - 1] == ']') {
+        if (len - 2 >= key_size) {
+            return false;
+        }
+        memcpy(key, client + 1, len - 2);
+        key[len - 2] = '\0';
+        return true;
+    }
+
+    if (len >= key_size) {
+        return false;
+    }
+    memcpy(key, client, len + 1);
+    return true;
+}
+
+bool build_hostsdeny_rules(const char *srcip, bool freebsd, char *rule, size_t rule_size,
+                           char *legacy_rule, size_t legacy_size) {
+    char canonical_ip[NI_MAXHOST];
+    char client[NI_MAXHOST];
+    int written;
+
+    if (!rule || rule_size == 0 || !legacy_rule || legacy_size == 0) {
+        return false;
+    }
+    rule[0] = '\0';
+    legacy_rule[0] = '\0';
+
+    if (!canonicalize_ip(srcip, canonical_ip, sizeof(canonical_ip)) ||
+        !format_hostsdeny_client(srcip, client, sizeof(client))) {
+        return false;
+    }
+
+    written = freebsd ? snprintf(rule, rule_size, "ALL : %s : deny", client)
+                      : snprintf(rule, rule_size, "ALL:%s", client);
+    if (written < 0 || (size_t)written >= rule_size) {
+        rule[0] = '\0';
+        return false;
+    }
+
+    // Older versions wrote the canonical IP unbracketed; that line never matched and is only cleaned up.
+    if (strcmp(client, canonical_ip) != 0) {
+        written = freebsd ? snprintf(legacy_rule, legacy_size, "ALL : %s : deny", canonical_ip)
+                          : snprintf(legacy_rule, legacy_size, "ALL:%s", canonical_ip);
+        if (written < 0 || (size_t)written >= legacy_size) {
+            rule[0] = '\0';
+            legacy_rule[0] = '\0';
+            return false;
+        }
+    }
+
+    return true;
+}
+
 bool hosts_deny_rule_matches(const char *line, const char *rule) {
     if (!line || !rule) {
         return false;
@@ -633,6 +734,33 @@ bool hosts_deny_rule_matches(const char *line, const char *rule) {
     }
 
     return strlen(rule) == len && strncmp(line, rule, len) == 0;
+}
+
+int hosts_deny_remove_rules(FILE *in, FILE *out, const char *rule, const char *legacy_rule, bool *removed) {
+    char line[OS_MAXSTR - 25];
+    bool has_legacy = legacy_rule && legacy_rule[0] != '\0';
+
+    if (!in || !out || !rule || !removed) {
+        return OS_INVALID;
+    }
+    *removed = false;
+
+    while (fgets(line, sizeof(line), in)) {
+        if (hosts_deny_rule_matches(line, rule) || (has_legacy && hosts_deny_rule_matches(line, legacy_rule))) {
+            *removed = true;
+            continue;
+        }
+        if (fputs(line, out) == EOF) {
+            return OS_INVALID;
+        }
+    }
+
+    // Buffered write errors (e.g. a full disk) only surface on flush.
+    if (ferror(in) || fflush(out) != 0 || ferror(out)) {
+        return OS_INVALID;
+    }
+
+    return OS_SUCCESS;
 }
 
 int lock(const char *lock_path, const char *lock_pid_path, const char *log_path, const char *proc_name) {
