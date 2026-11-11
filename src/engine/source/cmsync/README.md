@@ -140,6 +140,7 @@ A cycle that fails on the indexer (for example the 3 attempts of the space check
 - `executeWithRetry` throws (`… aborted before attempt N`) when the flag is set.
 - An exception during `getPolicy()` (for example after `WIndexerConnector::requestShutdown()`) is raised before anything is imported; the per-space handler marks the space `FAILED` and the next iteration's flag check ends the loop.
 - The module is registered in the exit handler in `main.cpp`; on SIGINT/SIGTERM, `requestShutdown()` is called and the sync cycle aborts within one batch round-trip.
+- The `RouteStatusReporter` of the `cm-sync-task` is stopped just before it (and so before the orchestrator, whose `getEntries()` returns no routes once shut down): from the return of its `requestShutdown()` on, the task logs neither `No active routes available` nor `Event processing is now active`, also for a report already querying the router.
 
 ### Weak-Pointer Resource Model
 
@@ -158,14 +159,18 @@ cmsync/
 ├── interface/cmsync/
 │   └── icmsync.hpp                  # ICMSync base interface
 ├── include/cmsync/
-│   └── cmsync.hpp                   # CMSync concrete implementation header
+│   ├── cmsync.hpp                   # CMSync concrete implementation header
+│   └── routeStatusReporter.hpp      # RouteStatusReporter (route status logging of the cm-sync-task)
 ├── src/
-│   └── cmsync.cpp                   # Implementation + SyncedNamespace class
+│   ├── cmsync.cpp                   # Implementation + SyncedNamespace class
+│   └── routeStatusReporter.cpp      # RouteStatusReporter implementation
 └── test/
     ├── mocks/cmsync/
     │   └── mockCMSync.hpp           # GMock mock (MockCMSync)
     ├── src/unit/
-    │   └── cmsync_test.cpp          # Unit tests
+    │   ├── captureLogs.hpp          # Test helper: captures the engine log lines of a call
+    │   ├── cmsync_test.cpp          # Unit tests
+    │   └── routeStatusReporter_test.cpp  # RouteStatusReporter unit tests
     └── src/component/
         └── cmsync_test.cpp          # Component tests (currently disabled)
 ```
@@ -234,6 +239,24 @@ public:
 constexpr std::size_t earlyRetryInterval(std::size_t retryInterval, std::size_t syncInterval);
 ```
 
+### `RouteStatusReporter`
+
+Logs whether incoming events have an enabled route. `main.cpp` builds it with a callback over the orchestrator's `getEntries()` and calls `report()` before and after each `synchronize()` of the `cm-sync-task`.
+
+```cpp
+class RouteStatusReporter
+{
+public:
+    RouteStatusReporter(std::function<bool()> hasEnabledRoutes, bool firstStart);
+    void report();          // logs only on a transition; the first report always logs
+    void requestShutdown(); // idempotent, thread-safe; afterwards report() logs nothing
+};
+```
+
+- Transition to "no enabled route": `WARNING [CMSync] No active routes available. Incoming events will be discarded until content synchronization completes`, or `INFO` on the first start of the engine (no content synchronized yet).
+- Transition to "at least one enabled route": `INFO [CMSync] Event processing is now active`.
+- `report()` queries the callback without a lock, then checks the shutdown, updates the last reported state and logs under one mutex, which `requestShutdown()` also takes. Once `requestShutdown()` has returned nothing is logged, including by a `report()` that was already querying the router, and `requestShutdown()` never waits for the router. A callback exception propagates and leaves the reported state unchanged.
+
 ## Implementation Details
 
 ### Constructor
@@ -295,6 +318,7 @@ Component tests (`cmsync_ctest`) are defined but currently commented out in the 
 ## Testing
 
 - **Unit tests** (`test/src/unit/cmsync_test.cpp`) — test the full lifecycle with all four dependencies mocked (strict mocks): constructor initialisation (first-setup vs. restore), state serialisation to/from store, the `synchronize()` flow for each of the four cases, `requestShutdown()` abort behaviour (before loop, mid-loop, before download, hot-swap failure rollback), the early-retry return value and `earlyRetryInterval()`, and the status snapshot.
+- **Unit tests** (`test/src/unit/routeStatusReporter_test.cpp`) — `RouteStatusReporter` against the real log lines (`captureLogs()` of `test/src/unit/captureLogs.hpp`, shared with `cmsync_test.cpp`): the first-start INFO vs restart WARNING, transitions only, silence after `requestShutdown()`, a report parked in the router query while `requestShutdown()` returns (thread coordination through promises, no sleeps), and callback exceptions.
 - **Component tests** (`test/src/component/cmsync_test.cpp`) — exist in the tree but are currently disabled in the build.
 - **Mock** (`test/mocks/cmsync/mockCMSync.hpp`) — provides `MockCMSync` for downstream consumers that mock the `ICMSync` interface (`api/status` tests).
 
@@ -302,5 +326,5 @@ Component tests (`cmsync_ctest`) are defined but currently commented out in the 
 
 | Module | Dependency | Role |
 |---|---|---|
-| `main.cpp` | `cmsync::cmsync` | Creates the `CMSync` instance (only when event processing is enabled) and runs `synchronize()` in the `cm-sync-task` scheduler task (`analysisd.cm_sync_interval`, early retry `analysisd.cm_sync_retry_interval`) |
+| `main.cpp` | `cmsync::cmsync` | Creates the `CMSync` instance (only when event processing is enabled) and runs `synchronize()` in the `cm-sync-task` scheduler task (`analysisd.cm_sync_interval`, early retry `analysisd.cm_sync_retry_interval`); creates the `RouteStatusReporter` that task calls around each `synchronize()`, and stops it before `CMSync` and the orchestrator |
 | `api/status` | `cmsync::icmsync` | Reports `getSpacesStatus()` in `GET /status` |
