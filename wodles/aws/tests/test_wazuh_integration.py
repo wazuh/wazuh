@@ -2,18 +2,23 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import copy
 import gzip
+import io
 import os
 import socket
 import sqlite3
 import sys
 import zipfile
 import zlib
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from json import dumps
 from unittest.mock import MagicMock, patch, call
 
 import pytest
+from botocore import config
+from botocore.awsrequest import AWSResponse
+from freezegun import freeze_time
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
@@ -26,6 +31,14 @@ TEST_METADATA_SCHEMA = "schema_metadata_test.sql"
 TEST_METADATA_DEPRECATED_TABLES_SCHEMA = "schema_metadata_deprecated_tables_test.sql"
 METADATA_TABLE_NAME = 'metadata'
 DB_TABLENAME = "test_table"
+
+
+def get_sts_role_assumption(session: int, expires_in: int) -> dict:
+    """Return an AssumeRole response whose credentials are numbered after the session and expire in the given
+    seconds."""
+    return {'Credentials': {'AccessKeyId': f'AK{session}', 'SecretAccessKey': f'SK{session}',
+                            'SessionToken': f'TOKEN{session}',
+                            'Expiration': datetime.now(timezone.utc) + timedelta(seconds=expires_in)}}
 
 
 @patch('wazuh_integration.WazuhIntegration.get_client')
@@ -49,6 +62,23 @@ def test_wazuh_integration_initializes_properly(mock_version, mock_path, mock_cl
 
     assert integration.default_date == datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0,
                                                                  tzinfo=timezone.utc)
+
+
+@pytest.mark.parametrize('discard_regex, text, expected', [
+    (None, 'None', False),
+    (None, 'any event', False),
+    ('^drop', 'drop this event', True),
+    ('^drop', 'keep this event', False),
+], ids=['no-regex-none-text', 'no-regex-any-text', 'regex-match', 'regex-no-match'])
+def test_wazuh_integration_text_event_should_be_skipped(discard_regex, text, expected):
+    """Test 'text_event_should_be_skipped' only discards plain-text events when a discard regex is configured."""
+    integration = utils.get_mocked_wazuh_integration(discard_regex=discard_regex)
+
+    if discard_regex is None:
+        assert integration.discard_regex is None
+    else:
+        assert integration.discard_regex.pattern == discard_regex
+    assert integration.text_event_should_be_skipped(text) is expected
 
 
 @patch('wazuh_integration.config')
@@ -182,21 +212,16 @@ def test_wazuh_integration_get_client(iam_role_arn, service_name, external_id):
                                                     external_id=external_id)
     service_name = "logs" if service_name == "cloudwatchlogs" else service_name
     conn_kwargs = {'region_name': None}
-    sts_kwargs = {'aws_access_key_id': None, 'aws_secret_access_key': None, 'aws_session_token': utils.TEST_TOKEN,
-                  'region_name': None}
     assume_role_kwargs = {'RoleArn': iam_role_arn, 'RoleSessionName': 'WazuhLogParsing',
                           'DurationSeconds': utils.TEST_IAM_ROLE_DURATION}
     if external_id:
         assume_role_kwargs['ExternalId'] = external_id
 
-    sts_role_assumption = {
-        'Credentials': {'AccessKeyId': None, 'SecretAccessKey': None, 'SessionToken': utils.TEST_TOKEN}}
-
     mock_boto_session = MagicMock()
     mock_sts_session = MagicMock()
     mock_sts_client = MagicMock()
     mock_boto_session.client.return_value = mock_sts_client
-    mock_sts_client.assume_role.return_value = sts_role_assumption
+    mock_sts_client.assume_role.return_value = get_sts_role_assumption(1, utils.TEST_IAM_ROLE_DURATION)
 
     with patch('wazuh_integration.utils.find_wazuh_path', return_value=utils.TEST_WAZUH_PATH), \
             patch('wazuh_integration.utils.get_wazuh_version', return_value=utils.WAZUH_VERSION), \
@@ -204,13 +229,20 @@ def test_wazuh_integration_get_client(iam_role_arn, service_name, external_id):
         instance = wazuh_integration.WazuhIntegration(**kwargs)
 
         if iam_role_arn:
-            mock_session.assert_has_calls([call(**conn_kwargs), call(**sts_kwargs)])
+            assert mock_session.call_args_list[0] == call(**conn_kwargs)
+            sts_session_kwargs = mock_session.call_args_list[1].kwargs
+            assert sts_session_kwargs['region_name'] is None
+            role_credentials = sts_session_kwargs['botocore_session'].get_credentials()
+            assert isinstance(role_credentials, wazuh_integration.RoleCredentials)
+            assert tuple(role_credentials.get_frozen_credentials()) == ('AK1', 'SK1', 'TOKEN1')
             mock_boto_session.client.assert_called_with(service_name='sts', endpoint_url=utils.TEST_SERVICE_ENDPOINT,
                                                         **instance.connection_config)
-            mock_sts_client.assume_role.assert_called_with(**assume_role_kwargs)
+            mock_sts_client.assume_role.assert_called_once_with(**assume_role_kwargs)
             mock_sts_session.client.assert_called_with(service_name=service_name,
                                                        endpoint_url=utils.TEST_SERVICE_ENDPOINT,
                                                        **instance.connection_config)
+            mock_sts_session.client.return_value.meta.events.register.assert_called_once_with(
+                'needs-retry', role_credentials.retry_on_expired_token)
         else:
             mock_session.assert_called_with(**conn_kwargs)
             mock_boto_session.client.assert_called_with(service_name=service_name,
@@ -230,6 +262,168 @@ def test_wazuh_integration_get_client_handles_exceptions_on_botocore_error():
         with pytest.raises(SystemExit) as e:
             wazuh_integration.WazuhIntegration(**utils.get_wazuh_integration_parameters())
         assert e.value.code == utils.INVALID_CREDENTIALS_ERROR_CODE
+
+
+def get_role_client(service_name: str, sts_role_assumptions: list, iam_role_duration: int = None,
+                    status_codes: list = None):
+    """Create a real botocore client with `get_client` and an IAM Role, without reaching AWS.
+
+    Parameters
+    ----------
+    service_name : str
+        Name of the service.
+    sts_role_assumptions : list
+        Responses of the mocked AssumeRole calls.
+    iam_role_duration : int
+        Duration of the role session.
+    status_codes : list
+        HTTP status codes of the responses to the client requests: 200, 400 for an expired token or 403 for an
+        access denied.
+
+    Returns
+    -------
+    tuple
+        The client, the mocked AssumeRole call, and the session token each request was signed with.
+    """
+    with patch('wazuh_integration.utils.find_wazuh_path', return_value=utils.TEST_WAZUH_PATH), \
+            patch('wazuh_integration.utils.get_wazuh_version', return_value=utils.WAZUH_VERSION), \
+            patch('wazuh_integration.WazuhIntegration.get_client'):
+        instance = wazuh_integration.WazuhIntegration(**utils.get_wazuh_integration_parameters())
+    retries = copy.deepcopy(wazuh_integration.WAZUH_DEFAULT_RETRY_CONFIGURATION)
+    instance.connection_config = {'config': config.Config(region_name=utils.TEST_REGION, retries=retries)}
+    mock_boto_session = MagicMock()
+    mock_boto_session.client.return_value.assume_role.side_effect = sts_role_assumptions
+    boto3_session = wazuh_integration.boto3.Session
+    with patch('wazuh_integration.boto3.Session',
+               side_effect=lambda **kwargs: boto3_session(**kwargs) if 'botocore_session' in kwargs
+               else mock_boto_session):
+        client = instance.get_client(access_key=None, secret_key=None, profile=None,
+                                     iam_role_arn=utils.TEST_IAM_ROLE_ARN, service_name=service_name,
+                                     iam_role_duration=iam_role_duration)
+
+    session_tokens = []
+    status_codes = list(status_codes or [])
+
+    def send(request, **kwargs):
+        session_tokens.append(request.headers['X-Amz-Security-Token'].decode())
+        status_code = status_codes.pop(0) if status_codes else 200
+        # SQS uses the JSON or the query protocol depending on the botocore version, S3 uses REST-XML
+        protocol = client.meta.service_model.protocol
+        error_code = {400: 'ExpiredToken', 403: 'AccessDenied'}.get(status_code)
+        error = f'<Error><Code>{error_code}</Code><Message>{error_code}</Message></Error>'
+        if status_code == 200:
+            body, headers = b'{}' if protocol == 'json' else b'<Response/>', {}
+        elif protocol == 'json':
+            body = dumps({'__type': f'com.amazon.coral.service#{error_code}', 'message': error_code}).encode()
+            headers = {'x-amzn-query-error': f'{error_code};Sender'}
+        else:
+            body = (error if protocol == 'rest-xml' else f'<ErrorResponse>{error}</ErrorResponse>').encode()
+            headers = {}
+        return AWSResponse(request.url, status_code, headers, MagicMock(stream=lambda: iter([body])))
+
+    client.meta.events.register('before-send', send)
+    return client, mock_boto_session.client.return_value.assume_role, session_tokens
+
+
+def send_request(client, service_name: str):
+    """Send a request of the subscriber with the given client."""
+    if service_name == 'sqs':
+        client.delete_message(QueueUrl='https://sqs.us-east-1.amazonaws.com/123455678912/queue', ReceiptHandle='h')
+    else:
+        client.get_object(Bucket=utils.TEST_BUCKET, Key='key')
+
+
+@pytest.mark.parametrize('windows_as_arguments', [True, False])
+@pytest.mark.parametrize('iam_role_duration, refresh_window', [(900, 300), (1300, 433), (3600, 900), (None, 900)])
+def test_wazuh_integration_get_client_refreshes_role_session_before_it_expires(iam_role_duration, refresh_window,
+                                                                               windows_as_arguments):
+    """Test `get_client` returns a client which assumes the role again once its session is about to expire, and not
+    before, even if the session is shorter than botocore's default refresh window.
+
+    Parameters
+    ----------
+    iam_role_duration : int
+        Duration of the role session.
+    refresh_window : int
+        Seconds before the end of the session in which it is refreshed.
+    windows_as_arguments : bool
+        Whether botocore takes the refresh windows as arguments (since 1.34.0).
+    """
+    if windows_as_arguments and not wazuh_integration.REFRESH_WINDOWS_AS_ARGUMENTS:
+        pytest.skip('botocore older than 1.34.0')
+    session_duration = iam_role_duration or 3600
+    with freeze_time(datetime.now(timezone.utc)) as frozen_time, \
+            patch('wazuh_integration.REFRESH_WINDOWS_AS_ARGUMENTS', windows_as_arguments):
+        client, mock_assume_role, session_tokens = get_role_client(
+            's3', [get_sts_role_assumption(1, session_duration), get_sts_role_assumption(2, session_duration)],
+            iam_role_duration)
+        send_request(client, 's3')
+        frozen_time.tick(timedelta(seconds=session_duration - refresh_window - 1))
+        send_request(client, 's3')
+        assert mock_assume_role.call_count == 1
+        frozen_time.tick(timedelta(seconds=2))
+        send_request(client, 's3')
+
+    assert mock_assume_role.call_count == 2
+    assert session_tokens == ['TOKEN1', 'TOKEN1', 'TOKEN2']
+
+
+@pytest.mark.parametrize('service_name', ['sqs', 's3'])
+def test_wazuh_integration_get_client_retries_once_when_role_session_expired(service_name):
+    """Test the client returned by `get_client` assumes the role again and retries a request refused for an expired
+    token, even if its local expiration had not been reached, and keeps using the new session afterwards.
+
+    Parameters
+    ----------
+    service_name : str
+        Name of the service.
+    """
+    client, mock_assume_role, session_tokens = get_role_client(
+        service_name, [get_sts_role_assumption(1, 900), get_sts_role_assumption(2, 900)], 900, status_codes=[400])
+    send_request(client, service_name)
+    send_request(client, service_name)
+
+    assert mock_assume_role.call_count == 2
+    assert session_tokens == ['TOKEN1', 'TOKEN2', 'TOKEN2']
+
+
+@pytest.mark.parametrize('service_name', ['sqs', 's3'])
+def test_wazuh_integration_get_client_does_not_retry_other_errors(service_name):
+    """Test the client returned by `get_client` neither assumes the role again nor retries a request refused for a
+    reason other than an expired token.
+
+    Parameters
+    ----------
+    service_name : str
+        Name of the service.
+    """
+    client, mock_assume_role, session_tokens = get_role_client(
+        service_name, [get_sts_role_assumption(1, 900), get_sts_role_assumption(2, 900)], 900, status_codes=[403])
+    with pytest.raises(wazuh_integration.exceptions.ClientError, match='AccessDenied'):
+        send_request(client, service_name)
+
+    assert mock_assume_role.call_count == 1
+    assert session_tokens == ['TOKEN1']
+
+
+@pytest.mark.parametrize('service_name', ['sqs', 's3'])
+def test_wazuh_integration_get_client_does_not_retry_twice_when_role_session_expired(service_name):
+    """Test the client returned by `get_client` raises the error of a request refused for an expired token after
+    retrying it once with a new session.
+
+    Parameters
+    ----------
+    service_name : str
+        Name of the service.
+    """
+    client, mock_assume_role, session_tokens = get_role_client(
+        service_name, [get_sts_role_assumption(session, 900) for session in (1, 2, 3)], 900,
+        status_codes=[400, 400, 400])
+    with pytest.raises(wazuh_integration.exceptions.ClientError, match='ExpiredToken'):
+        send_request(client, service_name)
+
+    assert mock_assume_role.call_count == 2
+    assert session_tokens == ['TOKEN1', 'TOKEN2']
 
 
 @pytest.mark.parametrize('access_key, secret_key, profile', [
@@ -341,95 +535,214 @@ def _mock_context_manager(mock_obj):
     return mock_obj
 
 
-@patch('io.BytesIO')
-def test_wazuh_integration_decompress_file(mock_io):
-    """Test 'decompress_file' method calls the expected function for a determined file type, and
-    that it does not eagerly read/discard the decompressed content itself -- the content is
-    read exactly once, by the caller, inside the 'with' block."""
+TEST_OBJECT_TEXT = '{"event": "data1"}\n{"event": "data2"}\n'
+
+
+def _zip_content(text: str, compress_type: int = zipfile.ZIP_DEFLATED) -> bytes:
+    """Return a zip archive with a single member holding the given text."""
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w') as zip_file:
+        zip_file.writestr('name', text, compress_type=compress_type)
+    return buffer.getvalue()
+
+
+def _corrupt_gzip_content() -> bytes:
+    """Return a gzip stream whose corruption (a wrong CRC) is only detected once it is read."""
+    content = bytearray(gzip.compress(b'content'))
+    content[-8] ^= 0xFF
+    return bytes(content)
+
+
+def _corrupt_zip_content() -> bytes:
+    """Return a zip archive whose corruption (a wrong CRC) is only detected once its member is read."""
+    return _zip_content('content', zipfile.ZIP_STORED).replace(b'content', b'CONTENT')
+
+
+def _mocked_integration_with_object(content: bytes):
+    """Return a WazuhIntegration whose client returns an object with the given content."""
     integration = utils.get_mocked_wazuh_integration()
     integration.client = MagicMock()
+    integration.client.get_object.return_value = {'Body': io.BytesIO(content)}
     # Instance that inherits from WazuhIntegration sets the attribute bucket in its constructor
     integration.bucket = utils.TEST_BUCKET
+    return integration
+
+
+@pytest.mark.parametrize('log_key, content', [
+    ('test.gz', gzip.compress(TEST_OBJECT_TEXT.encode())),
+    ('test.zip', _zip_content(TEST_OBJECT_TEXT)),
+    ('test.tar', TEST_OBJECT_TEXT.encode()),
+])
+def test_wazuh_integration_decompress_file(log_key, content):
+    """Test 'decompress_file' method yields the decompressed text of the object for a determined file type."""
+    integration = _mocked_integration_with_object(content)
+
+    with integration.decompress_file(integration.bucket, log_key) as f:
+        assert f.read() == TEST_OBJECT_TEXT
+
+    integration.client.get_object.assert_called_once_with(Bucket=utils.TEST_BUCKET, Key=log_key)
+
+
+def test_wazuh_integration_decompress_file_reads_the_content_only_when_the_caller_does():
+    """Test 'decompress_file' does not eagerly read/discard the decompressed content itself -- the content is
+    read once, by the caller, inside the 'with' block."""
+    integration = _mocked_integration_with_object(b'')
 
     with patch('gzip.open') as mock_gzip_open:
         gzip_mock = _mock_context_manager(mock_gzip_open.return_value)
+        gzip_mock.seekable.return_value = True
+        gzip_mock.read1.side_effect = [b'content', b'']
         with integration.decompress_file(integration.bucket, 'test.gz') as f:
-            assert f is gzip_mock
             gzip_mock.read.assert_not_called()  # nothing read yet before the caller's own read
-            f.read()
+            gzip_mock.read1.assert_not_called()
+            assert f.read() == 'content'
 
-    integration.client.get_object.assert_called_once()
     mock_gzip_open.assert_called_once()
-    gzip_mock.read.assert_called_once()  # read exactly once -- no discarded pre-read, no re-read
+    assert gzip_mock.read1.call_count == 2  # the content, then the end of the stream -- no re-read
     gzip_mock.seek.assert_not_called()  # no rewind-after-discard needed anymore
 
-    with patch('zipfile.ZipFile') as mock_zip, patch('io.TextIOWrapper') as mock_io_text:
-        zip_mock = _mock_context_manager(mock_zip.return_value)
-        zip_mock.namelist.return_value = ['name']
-        zip_mock.open.return_value = "file contents"
-        text_mock = _mock_context_manager(mock_io_text.return_value)
-        with integration.decompress_file(integration.bucket, 'test.zip') as f:
-            assert f is text_mock
-    zip_mock.namelist.assert_called_once()
-    zip_mock.open.assert_called_with('name')
-    mock_io_text.assert_called_with("file contents")
 
-    with patch('io.TextIOWrapper') as mock_io_text:
-        text_mock = _mock_context_manager(mock_io_text.return_value)
-        with integration.decompress_file(integration.bucket, 'test.tar') as f:
-            assert f is text_mock
-        mock_io_text.assert_called_once()
-
-
-@patch('io.BytesIO')
-def test_wazuh_integration_decompress_file_catches_corruption_raised_by_the_caller(mock_io):
+@pytest.mark.parametrize('log_key, content', [
+    ('test.gz', _corrupt_gzip_content()),
+    ('test.zip', _corrupt_zip_content()),
+])
+def test_wazuh_integration_decompress_file_catches_corruption_raised_by_the_caller(log_key, content):
     """Test decompress_file() catches gzip.BadGzipFile/zipfile.BadZipFile raised by the CALLER's
     own read inside the 'with' block, not only failures from opening the stream. The corruption
     check used to be a discarded pre-read done by decompress_file() itself; it is now the
     caller's real read, and this proves that corruption is still handled gracefully instead of
     crashing the wodle with an uncaught exception three call frames away.
     """
-    integration = utils.get_mocked_wazuh_integration()
-    integration.client = MagicMock()
-    integration.bucket = utils.TEST_BUCKET
+    integration = _mocked_integration_with_object(content)
 
-    with patch('gzip.open') as mock_gzip_open, pytest.raises(SystemExit) as e:
-        gzip_mock = _mock_context_manager(mock_gzip_open.return_value)
-        gzip_mock.read.side_effect = gzip.BadGzipFile('CRC check failed')
-        with integration.decompress_file(integration.bucket, 'test.gz') as f:
+    with pytest.raises(SystemExit) as e:
+        with integration.decompress_file(integration.bucket, log_key) as f:
             f.read()  # mirrors e.g. json.load(f) in a real caller, far from decompress_file()
     assert e.value.code == utils.DECOMPRESS_FILE_ERROR_CODE
 
-    with patch('zipfile.ZipFile') as mock_zip, patch('io.TextIOWrapper') as mock_io_text, \
-            pytest.raises(SystemExit) as e:
-        zip_mock = _mock_context_manager(mock_zip.return_value)
-        zip_mock.namelist.return_value = ['name']
-        zip_mock.open.return_value = "file contents"
-        text_mock = _mock_context_manager(mock_io_text.return_value)
-        text_mock.read.side_effect = zipfile.BadZipFile('Bad magic number for file header')
-        with integration.decompress_file(integration.bucket, 'test.zip') as f:
-            f.read()
-    assert e.value.code == utils.DECOMPRESS_FILE_ERROR_CODE
 
-
-@patch('io.BytesIO')
-def test_wazuh_integration_decompress_file_reraises_corruption_when_skip_on_error(mock_io):
+@pytest.mark.parametrize('log_key, content, error', [
+    ('test.gz', _corrupt_gzip_content(), gzip.BadGzipFile),
+    ('test.zip', _corrupt_zip_content(), zipfile.BadZipFile),
+])
+def test_wazuh_integration_decompress_file_reraises_corruption_when_skip_on_error(log_key, content, error):
     """Test decompress_file() lets a corruption error raised while the caller reads propagate when
     skip_on_error is set, so get_log_file() can still send the error event for the corrupt file."""
-    integration = utils.get_mocked_wazuh_integration()
-    integration.client = MagicMock()
-    integration.bucket = utils.TEST_BUCKET
+    integration = _mocked_integration_with_object(content)
     integration.skip_on_error = True
 
-    with patch('gzip.open') as mock_gzip_open, pytest.raises(gzip.BadGzipFile):
-        gzip_mock = _mock_context_manager(mock_gzip_open.return_value)
-        gzip_mock.read.side_effect = gzip.BadGzipFile('CRC check failed')
-        with integration.decompress_file(integration.bucket, 'test.gz') as f:
+    with pytest.raises(error):
+        with integration.decompress_file(integration.bucket, log_key) as f:
             f.read()
 
-    with patch('zipfile.ZipFile', side_effect=zipfile.BadZipFile), pytest.raises(zipfile.BadZipFile):
-        with integration.decompress_file(integration.bucket, 'test.zip'):
+
+@pytest.mark.parametrize('log_key, content, reason', [
+    ('test.gz', gzip.compress(b'{}' * 1000), 'its decompressed content is larger than 1024 bytes'),
+    ('test.zip', _zip_content('{}' * 1000), 'its decompressed content is larger than 1024 bytes'),
+    ('test.json', b'{}' * 1000, 'its size is larger than 1024 bytes'),
+])
+def test_wazuh_integration_decompress_file_raises_for_objects_larger_than_the_limit(log_key, content, reason):
+    """Test decompress_file() raises ObjectTooLargeError for an object, or a decompressed content, larger than
+    MAX_OBJECT_SIZE, so the caller handles it as a file that cannot be decompressed."""
+    integration = _mocked_integration_with_object(content)
+
+    with patch('wazuh_integration.MAX_OBJECT_SIZE', 1024), \
+            pytest.raises(wazuh_integration.ObjectTooLargeError, match=f'^{reason}$'):
+        with integration.decompress_file(integration.bucket, log_key) as f:
+            f.read()
+
+
+@pytest.mark.parametrize('log_key, content', [
+    ('test.gz', gzip.compress(b'x' * 1024)),
+    ('test.zip', _zip_content('x' * 1024)),
+    ('test.json', b'x' * 1024),
+])
+def test_wazuh_integration_decompress_file_processes_objects_of_the_limit_size(log_key, content):
+    """Test decompress_file() processes an object, and a decompressed content, of exactly MAX_OBJECT_SIZE bytes."""
+    integration = _mocked_integration_with_object(content)
+
+    with patch('wazuh_integration.MAX_OBJECT_SIZE', 1024):
+        with integration.decompress_file(integration.bucket, log_key) as f:
+            assert f.read() == 'x' * 1024
+
+
+def test_wazuh_integration_decompress_file_counts_a_rewound_content_once():
+    """Test a caller that rewinds the decompressed content to read it again (e.g. to try another format) is not
+    stopped by the limit."""
+    integration = _mocked_integration_with_object(gzip.compress(b'x' * 1024))
+
+    with patch('wazuh_integration.MAX_OBJECT_SIZE', 1024):
+        with integration.decompress_file(integration.bucket, 'test.gz') as f:
+            assert f.read() == 'x' * 1024
+            f.seek(0)
+            assert f.readline() == 'x' * 1024
+
+
+def test_wazuh_integration_get_object_content_does_not_download_an_object_larger_than_the_limit():
+    """Test get_object_content() refuses an object whose size is larger than MAX_OBJECT_SIZE without reading it."""
+    integration = utils.get_mocked_wazuh_integration()
+    integration.client = MagicMock()
+    body = MagicMock()
+    integration.client.get_object.return_value = {'Body': body,
+                                                  'ContentLength': wazuh_integration.MAX_OBJECT_SIZE + 1}
+
+    with pytest.raises(wazuh_integration.ObjectTooLargeError):
+        integration.get_object_content(utils.TEST_BUCKET, utils.TEST_LOG_KEY)
+
+    body.read.assert_not_called()
+    body.close.assert_called_once()
+
+
+def test_wazuh_integration_get_object_content_stops_reading_past_the_limit():
+    """Test get_object_content() stops downloading an object as soon as it has read more than MAX_OBJECT_SIZE
+    bytes, even if its size is not known beforehand."""
+    integration = utils.get_mocked_wazuh_integration()
+    integration.client = MagicMock()
+    body = MagicMock()
+    body.read.return_value = b'x' * 4  # endless object
+    integration.client.get_object.return_value = {'Body': body}
+
+    with patch('wazuh_integration.MAX_OBJECT_SIZE', 10), patch('wazuh_integration.OBJECT_READ_CHUNK_SIZE', 4), \
+            pytest.raises(wazuh_integration.ObjectTooLargeError):
+        integration.get_object_content(utils.TEST_BUCKET, utils.TEST_LOG_KEY)
+
+    assert body.read.call_args_list == [call(4)] * 3
+    body.close.assert_called_once()
+
+
+def test_size_limited_reader_never_requests_more_than_one_byte_past_the_limit():
+    """Test SizeLimitedReader does not ask the stream for more than one byte past the limit, so a single read of
+    a decompression bomb does not hold more than that."""
+    stream = MagicMock(wraps=io.BytesIO(b'x' * 100))
+    reader = wazuh_integration.SizeLimitedReader(stream, 10)
+
+    assert reader.read(4) == b'x' * 4
+    with pytest.raises(wazuh_integration.ObjectTooLargeError):
+        reader.read(1000)
+    assert stream.read.call_args_list == [call(4), call(7)]
+
+
+def test_size_limited_reader_stops_a_line_by_line_read_past_the_limit():
+    """Test SizeLimitedReader also stops a caller reading the text line by line (e.g. csv.DictReader)."""
+    with io.TextIOWrapper(wazuh_integration.SizeLimitedReader(io.BytesIO(b'line\n' * 100), 50)) as f, \
+            pytest.raises(wazuh_integration.ObjectTooLargeError):
+        for _ in f:
             pass
+
+
+def test_wazuh_integration_decompress_file_prints_snappy_key_on_a_single_line(capsys):
+    """Test the error for a snappy file prints its key escaped, since each output line is sent to Wazuh as an event
+    and the key of a notified object may contain a new line."""
+    integration = utils.get_mocked_wazuh_integration()
+    integration.client = MagicMock()
+    integration.skip_on_error = False
+
+    with patch('io.BytesIO'), pytest.raises(SystemExit):
+        with integration.decompress_file(utils.TEST_BUCKET, 'a\n{"integration": "aws"}.snappy'):
+            pass
+    assert capsys.readouterr().out.splitlines() == [
+        "ERROR: Couldn't decompress the 'a\\n{\"integration\": \"aws\"}.snappy' file, snappy compression is not "
+        "supported."]
 
 
 @patch('io.BytesIO')

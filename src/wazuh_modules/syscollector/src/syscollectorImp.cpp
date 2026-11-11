@@ -1638,79 +1638,101 @@ nlohmann::json Syscollector::getNetworkData()
         {
             for (const auto& item : itIface.value())
             {
-                // Split the resulting networks data into the specific DB tables
-                // "dbsync_network_iface" table data to update and notify
-                nlohmann::json ifaceTableData {};
-                ifaceTableData["interface_name"]                = item.at("interface_name");
-                ifaceTableData["interface_alias"]               = item.at("interface_alias");
-                ifaceTableData["interface_type"]                = item.at("interface_type");
-                ifaceTableData["interface_state"]               = item.at("interface_state");
-                ifaceTableData["interface_mtu"]                 = item.at("interface_mtu");
-                ifaceTableData["host_mac"]                      = item.at("host_mac");
-                ifaceTableData["host_network_egress_packages"]  = item.at("host_network_egress_packages");
-                ifaceTableData["host_network_ingress_packages"] = item.at("host_network_ingress_packages");
-                ifaceTableData["host_network_egress_errors"]    = item.at("host_network_egress_errors");
-                ifaceTableData["host_network_ingress_errors"]   = item.at("host_network_ingress_errors");
-                ifaceTableData["host_network_egress_bytes"]     = item.at("host_network_egress_bytes");
-                ifaceTableData["host_network_ingress_bytes"]    = item.at("host_network_ingress_bytes");
-                ifaceTableData["host_network_egress_drops"]     = item.at("host_network_egress_drops");
-                ifaceTableData["host_network_ingress_drops"]    = item.at("host_network_ingress_drops");
-
-                auto ifaceChecksumInput = ifaceTableData;
-                eraseVolatileFields(ifaceChecksumInput, NET_IFACE_TABLE);
-                ifaceTableData["checksum"] = getItemChecksum(ifaceChecksumInput);
-                ifaceTableDataList.push_back(std::move(ifaceTableData));
-
-                if (item.find("IPv4") != item.end())
+                // An incomplete interface is skipped so it does not abort the whole network scan.
+                try
                 {
-                    // "dbsync_network_protocol" table data to update and notify
-                    nlohmann::json protoTableData {};
-                    protoTableData["interface_name"]  = item.at("interface_name");
-                    protoTableData["network_gateway"] = item.at("network_gateway");
-                    protoTableData["network_type"]    = IP_TYPE.at(IPV4);
-                    protoTableData["network_dhcp"]    = item.at("IPv4").begin()->at("network_dhcp");
-                    protoTableData["network_metric"]  = item.at("IPv4").begin()->at("network_metric");
-                    protoTableData["checksum"]        = getItemChecksum(protoTableData);
-                    protoTableDataList.push_back(std::move(protoTableData));
+                    std::vector<nlohmann::json> protoRows;
+                    std::vector<nlohmann::json> addressRows;
 
-                    for (auto addressTableData : item.at("IPv4"))
+                    // Split the resulting networks data into the specific DB tables
+                    // "dbsync_network_iface" table data to update and notify
+                    nlohmann::json ifaceTableData {};
+                    ifaceTableData["interface_name"]                = item.at("interface_name");
+                    ifaceTableData["interface_alias"]               = item.at("interface_alias");
+                    ifaceTableData["interface_type"]                = item.at("interface_type");
+                    ifaceTableData["interface_state"]               = item.at("interface_state");
+                    ifaceTableData["interface_mtu"]                 = item.at("interface_mtu");
+                    ifaceTableData["host_mac"]                      = item.at("host_mac");
+                    ifaceTableData["host_network_egress_packages"]  = item.at("host_network_egress_packages");
+                    ifaceTableData["host_network_ingress_packages"] = item.at("host_network_ingress_packages");
+                    ifaceTableData["host_network_egress_errors"]    = item.at("host_network_egress_errors");
+                    ifaceTableData["host_network_ingress_errors"]   = item.at("host_network_ingress_errors");
+                    ifaceTableData["host_network_egress_bytes"]     = item.at("host_network_egress_bytes");
+                    ifaceTableData["host_network_ingress_bytes"]    = item.at("host_network_ingress_bytes");
+                    ifaceTableData["host_network_egress_drops"]     = item.at("host_network_egress_drops");
+                    ifaceTableData["host_network_ingress_drops"]    = item.at("host_network_ingress_drops");
+
+                    auto ifaceChecksumInput = ifaceTableData;
+                    eraseVolatileFields(ifaceChecksumInput, NET_IFACE_TABLE);
+                    ifaceTableData["checksum"] = getItemChecksum(ifaceChecksumInput);
+
+                    if (item.find("IPv4") != item.end())
                     {
-                        // "dbsync_network_address" table data to update and notify
-                        addressTableData["interface_name"]   = item.at("interface_name");
-                        addressTableData["network_type"] = IPV4;
-                        addressTableData["checksum"]         = getItemChecksum(addressTableData);
-                        // Remove unwanted fields for dbsync_network_address table
-                        addressTableData.erase("network_dhcp");
-                        addressTableData.erase("network_metric");
+                        // "dbsync_network_protocol" table data to update and notify
+                        nlohmann::json protoTableData {};
+                        protoTableData["interface_name"]  = item.at("interface_name");
+                        protoTableData["network_gateway"] = item.at("network_gateway");
+                        protoTableData["network_type"]    = IP_TYPE.at(IPV4);
+                        protoTableData["network_dhcp"]    = item.at("IPv4").begin()->at("network_dhcp");
+                        protoTableData["network_metric"]  = item.at("IPv4").begin()->at("network_metric");
+                        protoTableData["checksum"]        = getItemChecksum(protoTableData);
+                        protoRows.push_back(std::move(protoTableData));
 
-                        addressTableDataList.push_back(std::move(addressTableData));
+                        for (auto addressTableData : item.at("IPv4"))
+                        {
+                            // "dbsync_network_address" table data to update and notify
+                            addressTableData["interface_name"]   = item.at("interface_name");
+                            addressTableData["network_type"] = IPV4;
+                            addressTableData["checksum"]         = getItemChecksum(addressTableData);
+                            // Remove unwanted fields for dbsync_network_address table
+                            addressTableData.erase("network_dhcp");
+                            addressTableData.erase("network_metric");
+
+                            addressRows.push_back(std::move(addressTableData));
+                        }
+                    }
+
+                    if (item.find("IPv6") != item.end())
+                    {
+                        // "dbsync_network_protocol" table data to update and notify
+                        nlohmann::json protoTableData {};
+                        protoTableData["interface_name"]  = item.at("interface_name");
+                        protoTableData["network_gateway"] = item.at("network_gateway6");
+                        protoTableData["network_type"]    = IP_TYPE.at(IPV6);
+                        protoTableData["network_dhcp"]    = item.at("IPv6").begin()->at("network_dhcp");
+                        protoTableData["network_metric"]  = item.at("IPv6").begin()->at("network_metric");
+                        protoTableData["checksum"]        = getItemChecksum(protoTableData);
+                        protoRows.push_back(std::move(protoTableData));
+
+                        for (auto addressTableData : item.at("IPv6"))
+                        {
+                            // "dbsync_network_address" table data to update and notify
+                            addressTableData["interface_name"]   = item.at("interface_name");
+                            addressTableData["network_type"] = IPV6;
+                            addressTableData["checksum"]         = getItemChecksum(addressTableData);
+                            // Remove unwanted fields for dbsync_network_address table
+                            addressTableData.erase("network_dhcp");
+                            addressTableData.erase("network_metric");
+
+                            addressRows.push_back(std::move(addressTableData));
+                        }
+                    }
+
+                    ifaceTableDataList.push_back(std::move(ifaceTableData));
+
+                    for (auto& row : protoRows)
+                    {
+                        protoTableDataList.push_back(std::move(row));
+                    }
+
+                    for (auto& row : addressRows)
+                    {
+                        addressTableDataList.push_back(std::move(row));
                     }
                 }
-
-                if (item.find("IPv6") != item.end())
+                catch (const std::exception& e)
                 {
-                    // "dbsync_network_protocol" table data to update and notify
-                    nlohmann::json protoTableData {};
-                    protoTableData["interface_name"]  = item.at("interface_name");
-                    protoTableData["network_gateway"] = item.at("network_gateway");
-                    protoTableData["network_type"]    = IP_TYPE.at(IPV6);
-                    protoTableData["network_dhcp"]    = item.at("IPv6").begin()->at("network_dhcp");
-                    protoTableData["network_metric"]  = item.at("IPv6").begin()->at("network_metric");
-                    protoTableData["checksum"]        = getItemChecksum(protoTableData);
-                    protoTableDataList.push_back(std::move(protoTableData));
-
-                    for (auto addressTableData : item.at("IPv6"))
-                    {
-                        // "dbsync_network_address" table data to update and notify
-                        addressTableData["interface_name"]   = item.at("interface_name");
-                        addressTableData["network_type"] = IPV6;
-                        addressTableData["checksum"]         = getItemChecksum(addressTableData);
-                        // Remove unwanted fields for dbsync_network_address table
-                        addressTableData.erase("network_dhcp");
-                        addressTableData.erase("network_metric");
-
-                        addressTableDataList.push_back(std::move(addressTableData));
-                    }
+                    m_logFunction(LOG_WARNING, "Skipping network interface with incomplete data (" + std::string{e.what()} + "): " + item.dump());
                 }
             }
 

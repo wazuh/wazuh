@@ -20,6 +20,12 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/externals/pcre2/pcre2_wrappers.h"
 
+// Group names of 255 and 256 chars, for the oversized-group case
+#define GROUP_A16  "aaaaaaaaaaaaaaaa"
+#define GROUP_A255 GROUP_A16 GROUP_A16 GROUP_A16 GROUP_A16 GROUP_A16 GROUP_A16 GROUP_A16 GROUP_A16 \
+                   GROUP_A16 GROUP_A16 GROUP_A16 GROUP_A16 GROUP_A16 GROUP_A16 GROUP_A16 "aaaaaaaaaaaaaaa"
+#define GROUP_A256 GROUP_A255 "a"
+
 //Expected log messages to be checked on mocked log functions
 typedef struct _mocked_log {
     char* merror;
@@ -116,6 +122,8 @@ parse_evaluator parse_values_default_cfg [] = {
     { "OSSEC A:'agent5' IP:'src10.1.1.1'", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid IP: src10.1.1.1"},                   {NULL, "Invalid IP: 'src10.1.1.1'", NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
     { "OSSEC A:'agent5' V:''", "192.0.0.1", NULL,                       {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid version"},                           {NULL, "Invalid version for new agent from: 192.0.0.1", NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
     { "OSSEC A:'agent5' V:'vX'", "192.0.0.1", NULL,                     {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid version"},                           {NULL, "Invalid version for new agent from: 192.0.0.1", NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
+    /* An oversized group is reported once the response holding it is formatted */
+    { "OSSEC A:'agent19' G:'" GROUP_A256 ",Group2'", "192.0.0.1", NULL, {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid group name: " GROUP_A255 "... group is too large"}, {NULL, "Invalid group name: " GROUP_A255 "... group is too large", NULL, "Received request for a new agent (agent19) from: 192.0.0.1", NULL} },
 
     {0}
 };
