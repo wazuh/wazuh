@@ -1216,8 +1216,8 @@ InstallLocal()
 
       # Hand back to wazuh what wazuh-apid created while running as root. These paths are
       # writable by the wazuh account, so skip symlinks and hard links.
-      find ${INSTALLDIR}/logs/api ! -type l \( -type d -o -links 1 \) -user root -exec chown -h ${WAZUH_USER}:${WAZUH_GROUP} {} +
-      find ${INSTALLDIR}/api/configuration/security -maxdepth 1 -name security.yaml -type f -links 1 -user root -exec chown -h ${WAZUH_USER}:${WAZUH_GROUP} {} +
+      find ${INSTALLDIR}/logs/api ! -type l \( -type d -o -links 1 \) -user root -execdir chown -h ${WAZUH_USER}:${WAZUH_GROUP} {} +
+      find ${INSTALLDIR}/api/configuration/security -maxdepth 1 -name security.yaml -type f -links 1 -user root -execdir chown -h ${WAZUH_USER}:${WAZUH_GROUP} {} +
     fi
 
     ### Install router library
