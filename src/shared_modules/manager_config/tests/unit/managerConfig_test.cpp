@@ -759,9 +759,8 @@ TEST(Semantics, IndexerSslPathsMustBeDirectlyInTheCertsDirectory)
     options.home = dir;
     const auto errors = manager_config::validateAll(indexerSsl(filebeat), options);
     EXPECT_EQ(pointersOf(errors),
-              (std::vector<std::string> {"/indexer/ssl/certificate_authorities/0",
-                                         "/indexer/ssl/certificate",
-                                         "/indexer/ssl/key"}));
+              (std::vector<std::string> {
+                  "/indexer/ssl/certificate_authorities/0", "/indexer/ssl/certificate", "/indexer/ssl/key"}));
     ASSERT_FALSE(errors.empty());
     EXPECT_NE(errors[0].message.find("/etc/filebeat/certs/root-ca.pem is outside /etc/wazuh-manager/certs"),
               std::string::npos)

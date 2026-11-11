@@ -62,25 +62,15 @@ TEST_F(WazuhDBQueryBuilderTest, WhereOrTest)
 
 TEST_F(WazuhDBQueryBuilderTest, WhereIsNullTest)
 {
-    std::string message = WazuhDBQueryBuilder::builder()
-                              .global()
-                              .selectAll()
-                              .fromTable("agent")
-                              .whereColumn("name")
-                              .isNull()
-                              .build();
+    std::string message =
+        WazuhDBQueryBuilder::builder().global().selectAll().fromTable("agent").whereColumn("name").isNull().build();
     EXPECT_EQ(message, "global sql SELECT * FROM agent WHERE name IS NULL ");
 }
 
 TEST_F(WazuhDBQueryBuilderTest, WhereIsNotNullTest)
 {
-    std::string message = WazuhDBQueryBuilder::builder()
-                              .global()
-                              .selectAll()
-                              .fromTable("agent")
-                              .whereColumn("name")
-                              .isNotNull()
-                              .build();
+    std::string message =
+        WazuhDBQueryBuilder::builder().global().selectAll().fromTable("agent").whereColumn("name").isNotNull().build();
     EXPECT_EQ(message, "global sql SELECT * FROM agent WHERE name IS NOT NULL ");
 }
 
