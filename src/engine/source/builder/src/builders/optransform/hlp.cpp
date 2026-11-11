@@ -36,7 +36,6 @@ enum class HLPParserType
     DATE,
     IP,
     URI,
-    USERAGENT,
     FQDN,
     FILE,
     JSON,
@@ -68,7 +67,6 @@ auto parserGetter(HLPParserType parserType)
         case HLPParserType::DATE: return hlp::parsers::getDateParser;
         case HLPParserType::IP: return hlp::parsers::getIPParser;
         case HLPParserType::URI: return hlp::parsers::getUriParser;
-        case HLPParserType::USERAGENT: return hlp::parsers::getUAParser;
         case HLPParserType::FQDN: return hlp::parsers::getFQDNParser;
         case HLPParserType::FILE: return hlp::parsers::getFilePathParser;
         case HLPParserType::JSON: return hlp::parsers::getJSONParser;

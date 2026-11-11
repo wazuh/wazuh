@@ -17,8 +17,7 @@ metadata:
     - `now_epoch` gives the same instant as an integer number of seconds.
     - `epoch_to_date` writes 6 fractional digits and `parse_date` writes 3.
   group: date
-  fails_when:
-    - "never under normal operation: the helper has no input"
+  fails_when: []
 
 helper_type: map
 

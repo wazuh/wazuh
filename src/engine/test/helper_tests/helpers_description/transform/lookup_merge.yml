@@ -27,7 +27,7 @@ metadata:
 
     Notes:
     - In `deep` mode an object or array in the value whose counterpart in the target has another type fails
-      the operation; the members merged before the conflict stay modified.
+      the operation; the target is left untouched.
     - `merge` merges a whole field (and deletes it afterwards); `kvdb_lookup_merge` merges a KVDB value.
   group: object
   fails_when:

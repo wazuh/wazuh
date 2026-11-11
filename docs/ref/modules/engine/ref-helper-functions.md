@@ -2275,7 +2275,9 @@ Build errors:
 - The target is a schema field whose type is not numeric.
 
 Notes:
-- The `==` operator (`$field == 2`) is the generic `filter` and also treats `2` and `2.0` as equal; this helper is the form to use when the right side is a reference.
+- The `==` operator (`$field == 2`) is the generic `filter`, which compares JSON values: `2` and `2.0` are equal there
+  too, but an unsigned 64-bit integer and the negative integer with the same bit pattern compare equal. This helper
+  is the form to use when the right side is a reference or the integers are large.
 - `one_of` compares the target against several candidates.
 - `number_ne` is not the negation of this helper: both are false for a missing or non-number target.
 
@@ -7254,6 +7256,8 @@ Build errors:
 - The target field is a schema field whose elements are not strings.
 
 Notes:
+- A schema target must be declared as an array of strings: the build checks the element type only, so a
+  scalar string field is accepted and receives the array.
 - `join` is the inverse operation.
 - `parse_csv` and `parse_dsv` handle quoted values and write named fields.
 
@@ -11939,7 +11943,7 @@ Notes:
 
 ## Fails when
 
-- Never; once the asset is built the helper always succeeds.
+This helper does not fail once the asset is built.
 
 ---
 # delete_fields_with_value
@@ -13175,7 +13179,7 @@ Build errors:
 
 Notes:
 - In `deep` mode an object or array in the value whose counterpart in the target has another type fails
-  the operation; the members merged before the conflict stay modified.
+  the operation; the target is left untouched.
 - `merge` merges a whole field (and deletes it afterwards); `kvdb_lookup_merge` merges a KVDB value.
 
 
@@ -13641,7 +13645,7 @@ Notes:
 - The source field is deleted: `a: merge($a)` erases `a` after merging it into itself, and a source nested
   inside the target disappears after the merge.
 - In `deep` mode an object or array in the source whose counterpart in the target has another type fails
-  the operation; the members merged before the conflict stay modified and the source is not deleted.
+  the operation; the target and the source are left untouched.
 - `lookup_merge` merges a value out of an object without deleting anything; `rename` moves a field but
   refuses to overwrite the target.
 
@@ -17137,6 +17141,9 @@ Behavior:
   gives `-5` and `1.5` gives `2`).
 - A string is read as a number first and converted the same way: `"42"` gives `42` and `"4.6"`
   gives `4` with `truncate`.
+- A number outside the 64-bit integer range, as a number or as a string, is not converted: the helper
+  fails instead of rounding or wrapping.
+- A string with more than one sign (`"+-5"`) is not a number.
 
 Build errors:
 - `value` is a literal, or `mode` is given and is neither `truncate` nor `round`.
@@ -17150,6 +17157,7 @@ Notes:
 ## Fails when
 
 - `value` is missing, or is neither a number nor a string holding a number
+- `value` is a number outside the 64-bit integer range, as a number or as a string holding one
 
 ## Examples
 
@@ -17550,6 +17558,96 @@ normalize:
 ```json
 {
   "value": "abc"
+}
+```
+
+*The operation was performed with errors*
+
+### Example 14
+
+An integer above the 64-bit signed range is not converted
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: to_int($value)
+```
+
+#### Input Event
+
+```json
+{
+  "value": 18446744073709551615
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "value": 18446744073709551615
+}
+```
+
+*The operation was performed with errors*
+
+### Example 15
+
+A string holding an integer above the 64-bit range is not converted
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: to_int($value)
+```
+
+#### Input Event
+
+```json
+{
+  "value": "99999999999999999999"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "value": "99999999999999999999"
+}
+```
+
+*The operation was performed with errors*
+
+### Example 16
+
+A string with two signs is not a number
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: to_int($value)
+```
+
+#### Input Event
+
+```json
+{
+  "value": "+-5"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "value": "+-5"
 }
 ```
 
@@ -19049,7 +19147,7 @@ Notes:
 
 ## Fails when
 
-- never under normal operation: the helper has no input
+This helper does not fail once the asset is built.
 
 ---
 # now_epoch
@@ -19090,7 +19188,7 @@ Notes:
 
 ## Fails when
 
-- never under normal operation: the helper has no input
+This helper does not fail once the asset is built.
 
 ---
 # asn
@@ -24047,7 +24145,7 @@ Build errors:
 
 Notes:
 - In `deep` mode an object or array in the KVDB value whose counterpart in the target has another type
-  fails the operation; the members merged before the conflict stay modified.
+  fails the operation; the target is left untouched.
 - `lookup_merge` does the same merge with a value taken from an object.
 
 
@@ -30216,7 +30314,7 @@ Notes:
 
 ## Fails when
 
-- Never; once the asset is built the helper always succeeds.
+This helper does not fail once the asset is built.
 
 ## Examples
 

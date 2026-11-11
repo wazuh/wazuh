@@ -491,7 +491,13 @@ INSTANTIATE_TEST_SUITE_P(
                            customRefExpected("ref", ".")(mocks);
                            return makeEvent(R"({"key1": {"key2": "value", "key3": "value"}, "ref": "key"})");
                        })),
-        /*** A nested type conflict in deep mode fails (members merged before the conflict stay modified) ***/
+        /*** A nested type conflict in deep mode fails and leaves the target untouched ***/
+        TransformT(
+            R"({"ref": "key", "target": {"nested": "x"}})",
+            opBuilderHelperMergeValue,
+            "target",
+            {makeValue(R"({"key": {"other": "v", "nested": {"k2": "v2"}}})"), makeRef("ref"), makeValue(R"("deep")")},
+            FAILURE(customRefExpected("ref", "target"))),
         TransformT(R"({"ref": "key", "target": {"nested": "x"}})",
                    opBuilderHelperMergeValue,
                    "target",

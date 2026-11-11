@@ -306,9 +306,9 @@ class Validator:
             sys.exit(
                 f"Helper {self.parser.get_name()}: It is mandatory to define the 'fails_when' property in metadata")
         fails_when = metadata["fails_when"]
-        if not isinstance(fails_when, list) or len(fails_when) == 0:
+        if not isinstance(fails_when, list):
             sys.exit(
-                f"Helper {self.parser.get_name()}: 'metadata.fails_when' must be a non-empty list of strings")
+                f"Helper {self.parser.get_name()}: 'metadata.fails_when' must be a list of strings (empty when the helper cannot fail once built)")
         for condition in fails_when:
             if not isinstance(condition, str) or not condition.strip():
                 sys.exit(

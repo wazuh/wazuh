@@ -75,8 +75,7 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
                     const Reference& targetField,
                     const std::vector<OpArg>& opArgs,
                     const std::shared_ptr<const IBuildCtx>& buildCtx,
-                    const bool doMerge,
-                    const bool isRecursive)
+                    const bool doMerge)
 {
     // Assert expected number of parameters: (db, key) plus the optional 'deep' mode when merging
     if (doMerge)
@@ -88,19 +87,7 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
         utils::assertSize(opArgs, 2);
     }
 
-    bool recursive = isRecursive;
-    if (opArgs.size() == 3)
-    {
-        utils::assertValue(opArgs, 2);
-        std::string mode;
-        if (std::static_pointer_cast<Value>(opArgs[2])->value().getString(mode) != json::RetGet::Success
-            || mode != "deep")
-        {
-            throw std::runtime_error(
-                fmt::format("Expected the literal 'deep' as third argument but got '{}'", opArgs[2]->str()));
-        }
-        recursive = true;
-    }
+    const bool recursive = utils::parseDeepMode(opArgs, 2);
 
     // Allowed fields check
     const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
@@ -318,7 +305,10 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
                     RETURN_FAILURE(isTestMode, event, failureTrace5)
                 }
 
-                event->merge(recursive ? json::RECURSIVE : json::NOT_RECURSIVE, value, targetJsonPath);
+                // Merge into a copy of the target so that a conflict leaves the event untouched
+                auto merged = event->getJson(targetJsonPath).value();
+                merged.merge(recursive ? json::RECURSIVE : json::NOT_RECURSIVE, value);
+                event->set(targetJsonPath, merged);
             }
             else
             {

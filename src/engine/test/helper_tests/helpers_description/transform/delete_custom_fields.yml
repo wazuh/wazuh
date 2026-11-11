@@ -21,8 +21,7 @@ metadata:
     - Temporary `_` fields are removed too, so run it after the last use of any temporary field.
     - `delete` removes one field and `delete_fields_with_value` removes the members of an object by value.
   group: object
-  fails_when:
-    - Never; once the asset is built the helper always succeeds.
+  fails_when: []
 
 helper_type: transform
 

@@ -539,8 +539,8 @@ Every helper name registered in `register.hpp` follows these rules (the engine R
 3. **A check over several values says how many must be present**: `array_contains_all`, `array_contains_any`,
    `array_contains_none`. A map helper that takes several references is strict by default (`array_append`,
    `array_append_unique`, `concat`: a missing reference fails); its `_any` variant (`array_append_any`,
-   `array_append_unique_any`, `concat_any`) uses the references that resolve and fails only when none does or when
-   a resolved one has an incompatible type.
+   `array_append_unique_any`, `concat_any`) uses the references that resolve; a literal always counts as resolved, so
+   it fails only when nothing resolves or when a resolved reference has an incompatible type.
 4. **Typed comparisons** are `<type>_<op>`, `type ∈ {string, number}`, `op ∈ {eq, ne, gt, gte, lt, lte}`.
    The `!= < <= > >=` operators desugar to the `string_*`/`number_*` forms (`helperParser.hpp`). `number_*` compares
    two integers exactly (signed or unsigned 64-bit) and as doubles when either operand is floating-point; there is no

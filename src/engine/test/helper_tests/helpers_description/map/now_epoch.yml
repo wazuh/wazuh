@@ -17,8 +17,7 @@ metadata:
     - `now` gives the same instant as a date string.
     - `date_to_epoch` converts a date string and returns a double.
   group: date
-  fails_when:
-    - "never under normal operation: the helper has no input"
+  fails_when: []
 
 helper_type: map
 

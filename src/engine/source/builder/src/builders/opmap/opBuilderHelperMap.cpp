@@ -646,33 +646,6 @@ MapOp opBuilderHelperStringLO(const std::vector<OpArg>& opArgs, const std::share
 namespace
 {
 
-/**
- * @brief Parse the optional trailing mode literal 'deep' of a helper.
- *
- * @param opArgs Helper arguments.
- * @param index Position of the optional mode argument.
- * @return true if the argument is present (and is the literal 'deep').
- * @throws std::runtime_error if the argument is present but is not the literal 'deep'.
- */
-bool parseDeepMode(const std::vector<OpArg>& opArgs, size_t index)
-{
-    if (opArgs.size() <= index)
-    {
-        return false;
-    }
-
-    builder::builders::utils::assertValue(opArgs, index);
-    std::string mode;
-    if (std::static_pointer_cast<Value>(opArgs[index])->value().getString(mode) != json::RetGet::Success
-        || mode != "deep")
-    {
-        throw std::runtime_error(
-            fmt::format("Expected the literal 'deep' as parameter {} but got {}", index + 1, opArgs[index]->str()));
-    }
-
-    return true;
-}
-
 enum class TrimSide
 {
     START,
@@ -830,6 +803,8 @@ MapOp opBuilderHelperToInt(const std::vector<OpArg>& opArgs, const std::shared_p
     const std::string failureTrace1 {fmt::format(TRACE_REFERENCE_NOT_FOUND, name, ref->dotPath())};
     const std::string failureTrace2 {
         fmt::format("{} -> Reference '{}' is not a number or a numeric string", name, ref->dotPath())};
+    const std::string failureTrace3 {
+        fmt::format("{} -> Reference '{}' is a number outside the 64-bit integer range", name, ref->dotPath())};
 
     // Cast a floating point value with the selected mode; a value outside the int64 range is rejected
     const auto castDouble = [op](double value) -> std::optional<int64_t>
@@ -850,10 +825,14 @@ MapOp opBuilderHelperToInt(const std::vector<OpArg>& opArgs, const std::shared_p
             return std::nullopt;
         }
 
-        // One leading '+' is accepted (std::from_chars does not take it)
+        // One leading '+' is accepted (std::from_chars does not take it); a second sign is not
         if (str.front() == '+')
         {
             str.remove_prefix(1);
+            if (str.empty() || str.front() == '+' || str.front() == '-')
+            {
+                return std::nullopt;
+            }
         }
 
         // Integer syntax: exact, and out of the int64 range is a failure, not a double
@@ -882,6 +861,7 @@ MapOp opBuilderHelperToInt(const std::vector<OpArg>& opArgs, const std::shared_p
 
     return [failureTrace1,
             failureTrace2,
+            failureTrace3,
             successTrace,
             castDouble,
             parseString,
@@ -913,6 +893,11 @@ MapOp opBuilderHelperToInt(const std::vector<OpArg>& opArgs, const std::shared_p
 
         if (!res.has_value())
         {
+            // A JSON number that reached this point is an integer or a double outside the int64 range
+            if (event->isNumber(refPath))
+            {
+                RETURN_FAILURE(isTestMode, json::Json {}, failureTrace3);
+            }
             RETURN_FAILURE(isTestMode, json::Json {}, failureTrace2);
         }
 
@@ -2456,7 +2441,7 @@ TransformOp opBuilderHelperSanitizeFields(const Reference& targetField,
     builder::builders::utils::assertSize(opArgs, 0, 1);
 
     // Optional 'deep' mode: also rename the keys of nested objects
-    const bool op = parseDeepMode(opArgs, 0);
+    const bool op = utils::parseDeepMode(opArgs, 0);
 
     const auto name = buildCtx->context().opName;
 
@@ -2648,7 +2633,7 @@ TransformOp opBuilderHelperMerge(const Reference& targetField,
     builder::builders::utils::assertSize(opArgs, 1, 2);
     // Parameter type check
     builder::builders::utils::assertRef(opArgs, 0);
-    const bool recursive = parseDeepMode(opArgs, 1);
+    const bool recursive = utils::parseDeepMode(opArgs, 1);
 
     // In deep mode a schema target must be an object (arrays are only merged through temporary fields)
     if (recursive && buildCtx->validator().hasField(targetField.dotPath()))
@@ -2719,15 +2704,20 @@ TransformOp opBuilderHelperMerge(const Reference& targetField,
             }
         }
 
-        // Merge (the source field is deleted afterwards)
+        // Merge into a copy of the target so that a conflict leaves the event untouched; on success the copy
+        // replaces the target and the source field is deleted
+        auto merged = event->getJson(targetField).value();
+        const auto source = event->getJson(fieldReference).value();
         try
         {
-            event->merge(recursive ? json::RECURSIVE : json::NOT_RECURSIVE, fieldReference, targetField);
+            merged.merge(recursive ? json::RECURSIVE : json::NOT_RECURSIVE, source);
         }
         catch (const std::exception& e)
         {
             RETURN_FAILURE(isTestMode, event, failureTrace6 + e.what());
         }
+        event->set(targetField, merged);
+        event->erase(fieldReference);
 
         RETURN_SUCCESS(isTestMode, event, successTrace);
     };
@@ -3663,7 +3653,7 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
 
     // Assert expected number of parameters: (object, key) plus the optional 'deep' mode when merging
     builder::builders::utils::assertSize(opArgs, 2, isMerge ? 3 : 2);
-    const bool recursive = isMerge && parseDeepMode(opArgs, 2);
+    const bool recursive = isMerge && utils::parseDeepMode(opArgs, 2);
     if (opArgs[0]->isValue())
     {
         if (!std::static_pointer_cast<Value>(opArgs[0])->value().isObject())
@@ -3851,14 +3841,21 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
         }
         else
         {
+            // Merge into a copy of the target so that a conflict leaves the event untouched
+            auto merged = event->getJson(targetField);
+            if (!merged.has_value())
+            {
+                RETURN_FAILURE(isTestMode, event, failureTrace7 + "target field not found");
+            }
             try
             {
-                event->merge(recursive ? json::RECURSIVE : json::NOT_RECURSIVE, resolvedValue.value(), targetField);
+                merged.value().merge(recursive ? json::RECURSIVE : json::NOT_RECURSIVE, resolvedValue.value());
             }
             catch (std::runtime_error& e)
             {
                 RETURN_FAILURE(isTestMode, event, failureTrace7 + e.what());
             }
+            event->set(targetField, merged.value());
         }
 
         RETURN_SUCCESS(isTestMode, event, successTrace);

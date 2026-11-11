@@ -226,7 +226,8 @@ its three properties, and a file that still carries the removed `keywords` list.
 - group: The section of the reference that lists the helper. Exactly one of `type`, `comparison`, `string`,
   `array`, `object`, `number`, `date`, `network`, `syslog`, `kvdb`, `parse`, `event`. The helpers of the
   `kvdb` group also get the test KVDB resource printed after their examples.
-- fails_when: A non-empty list of strings, each one a condition under which the helper fails at runtime: a
+- fails_when: A list of strings (empty when the helper cannot fail once the asset is built), each one a condition
+  under which the helper fails at runtime: a
   `check` helper evaluates to false, a `map` or `transform` helper leaves the target field unchanged.
   Build-time rejections belong in the description instead.
 

@@ -993,6 +993,14 @@ INSTANTIATE_TEST_SUITE_P(
                        deepMergeArgs(makeValue(R"("k1")")),
                        FAILURE(customRefExpected("targetField"))),
 
+        // Nested type conflict in deep mode -> operation failure, the target is left untouched
+        TransformDepsT(R"({"targetField":{"a":1,"nested":"x"}})",
+                       getBuilder_KVDBGetMergeExpectHandler("dbname",
+                                                            expectKvdbGetValue("k1", R"({"b":2,"nested":{"y":20}})")),
+                       "targetField",
+                       deepMergeArgs(makeValue(R"("k1")")),
+                       FAILURE(customRefExpected("targetField"))),
+
         // KVDB get throws std::out_of_range -> operation failure
         TransformDepsT(R"({"targetField":{"a":1}})",
                        getBuilder_KVDBGetMergeExpectHandler("dbname", expectKvdbGetOutOfRange("missing")),

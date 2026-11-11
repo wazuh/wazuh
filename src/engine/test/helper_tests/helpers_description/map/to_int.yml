@@ -13,6 +13,9 @@ metadata:
       gives `-5` and `1.5` gives `2`).
     - A string is read as a number first and converted the same way: `"42"` gives `42` and `"4.6"`
       gives `4` with `truncate`.
+    - A number outside the 64-bit integer range, as a number or as a string, is not converted: the helper
+      fails instead of rounding or wrapping.
+    - A string with more than one sign (`"+-5"`) is not a number.
 
     Build errors:
     - `value` is a literal, or `mode` is given and is neither `truncate` nor `round`.
@@ -24,6 +27,7 @@ metadata:
   group: number
   fails_when:
     - "`value` is missing, or is neither a number nor a string holding a number"
+    - "`value` is a number outside the 64-bit integer range, as a number or as a string holding one"
 
 helper_type: map
 
@@ -128,3 +132,15 @@ test:
       value: "abc"
     should_pass: false
     description: Fail on a string that does not hold a number
+  - arguments:
+      value: 18446744073709551615
+    should_pass: false
+    description: An integer above the 64-bit signed range is not converted
+  - arguments:
+      value: "99999999999999999999"
+    should_pass: false
+    description: A string holding an integer above the 64-bit range is not converted
+  - arguments:
+      value: "+-5"
+    should_pass: false
+    description: A string with two signs is not a number

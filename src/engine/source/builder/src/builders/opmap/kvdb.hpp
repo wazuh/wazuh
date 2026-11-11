@@ -21,16 +21,15 @@ using namespace kvdbstore;
  * @param targetField Target field of the helper.
  * @param opArgs Vector of parameters as present in the raw definition.
  * @param buildCtx Build context.
- * @param merge Whether the value should be merged into the target field.
- * @param isRecursive Whether the merge should be recursive.
+ * @param merge Whether the value should be merged into the target field; a trailing 'deep' literal in opArgs
+ * selects a recursive merge.
  * @return TransformOp Built transform operation.
  */
 TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
                     const Reference& targetField,
                     const std::vector<OpArg>& opArgs,
                     const std::shared_ptr<const IBuildCtx>& buildCtx,
-                    bool merge,
-                    bool isRecursive = false);
+                    bool merge);
 
 /**
  * @brief Builds KVDB extract function helper.

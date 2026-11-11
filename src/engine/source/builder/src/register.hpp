@@ -46,38 +46,16 @@ const base::Name STORE_GEO_CONFIG_DOC_NAME {"enrichment/geo/0"};
 const base::Name STORE_IOC_CONFIG_DOC_NAME {"enrichment/ioc/0"};
 
 /*
- * Helper naming convention. Full text: src/engine/source/builder/src/builders/README.md ("Naming Convention");
- * the copy for content authors is docs/ref/modules/engine/README.md ("Helper functions"). Every name registered
- * below follows it:
- *
- *  1. snake_case, ASCII, complete English words. Accepted abbreviations: ip ipv4 ipv6 cidr json xml csv dsv kv
- *     kvdb regex uri fqdn sha1 hex iana asn epoch int bool eq ne gt gte lt lte.
- *  2. A check helper reads as a sentence whose subject is the target: exists, contains, one_of, is_key_of,
- *     in_kvdb, in_cidr, is_string. Negation goes right before the verb (not_exists, is_not_string, not_in_kvdb,
- *     regex_not_match); a negated helper is false on a missing field, so it is not `NOT x(...)`.
- *  3. A check over several values says how many must be present: array_contains_all / _any / _none. A map
- *     helper over several references is strict by default (array_append, concat); its _any variant uses the
- *     references that resolve and fails only when none does.
- *  4. Typed comparisons are <type>_<op> with type in {string, number} and op in {eq, ne, gt, gte, lt, lte}.
- *     number_* compares two integers exactly and as doubles when either operand is floating-point; no int_*.
- *  5. A map helper is named by what it produces: to_<type>, parse_<format> (the parse-stage parser's name),
- *     <x>_to_<y> (hex_to_int, epoch_to_date), decode_<enc>, now / now_epoch, or the domain noun (geoip, sha1).
- *  6. A helper that modifies the event is an imperative verb: delete, rename, merge, replace, split, trim,
- *     lookup, snake_case_keys, discard_event.
- *  7. A mode is a trailing literal on a fixed-arity helper (merge($src, 'deep'), to_int($n, 'round'),
- *     parse_xml($s, 'windows')) and a name suffix on a variadic one (rule 3), never a sibling helper; the one
- *     exception is trim / trim_start / trim_end.
- *  8. A type noun prefixes the verb only when the same verb means something else on another target type
- *     (array_contains_all vs contains, number_gte vs string_gte); a domain noun appears when the helper reads
- *     something that is not the target (kvdb_lookup, in_kvdb, iana_*, syslog_*). Otherwise the verb is bare.
- *  9. Arguments: data input first ($reference), then options (literals).
- *
- * Adding a helper: register it below under its kind, add
- * src/engine/test/helper_tests/helpers_description/<check|map|transform>/<name>.yml with the same name (the
- * engine-helper-test tool validates it and generates its tests), and regenerate
- * docs/ref/modules/engine/ref-helper-functions.md with `engine-helper-test generate-doc` (CI diffs the committed
- * copy). The set of names registered here and the set of YAML files must stay equal. Renaming a helper is a hard
- * break: there are no aliases and no rename hints, so the content that uses it moves in the same release.
+ * Helper names follow the naming convention in src/engine/source/builder/src/builders/README.md ("Naming
+ * Convention"); docs/ref/modules/engine/README.md ("Helper functions") carries the copy for content authors. Read it
+ * before adding a helper, then:
+ *  - register the helper below under its kind (check, map, transform) with the validation token it needs;
+ *  - add src/engine/test/helper_tests/helpers_description/<check|map|transform>/<name>.yml with the same name (the
+ *    engine-helper-test tool validates it and generates its tests; the registry and the YAML set must stay equal);
+ *  - regenerate docs/ref/modules/engine/ref-helper-functions.md with `engine-helper-test generate-doc` (CI diffs
+ *    the committed copy).
+ * Renaming a helper is a hard break: there are no aliases and no rename hints, so the content that uses it moves in
+ * the same release.
  */
 
 /**

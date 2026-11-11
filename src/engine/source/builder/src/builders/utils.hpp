@@ -128,6 +128,33 @@ inline void assertValue(const std::vector<OpArg>& args, Idx... idx)
     }
 }
 
+/**
+ * @brief Parse the optional trailing mode literal of a helper that accepts `'deep'`.
+ *
+ * @param args Arguments vector.
+ * @param index Position of the optional mode argument.
+ * @return true if the argument is present (and is the literal 'deep').
+ * @throws std::runtime_error if the argument is present but is not the literal 'deep'.
+ */
+inline bool parseDeepMode(const std::vector<OpArg>& args, size_t index)
+{
+    if (args.size() <= index)
+    {
+        return false;
+    }
+
+    assertValue(args, index);
+    std::string mode;
+    if (std::static_pointer_cast<Value>(args[index])->value().getString(mode) != json::RetGet::Success
+        || mode != "deep")
+    {
+        throw std::runtime_error(
+            fmt::format("Expected the literal 'deep' as parameter {} but got {}", index + 1, args[index]->str()));
+    }
+
+    return true;
+}
+
 } // namespace builder::builders::utils
 
 #endif // BUILDER_BUILDERS_UTILS_HPP

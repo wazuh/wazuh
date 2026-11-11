@@ -384,9 +384,11 @@ class MarkdownGenerator(IExporter):
         self.content.append(f"## Description\n")
         self.content.append(f"{doc.description}\n")
 
+        self.content.append(f"## Fails when\n")
         if doc.fails_when:
-            self.content.append(f"## Fails when\n")
             self.content.append('\n'.join(f"- {condition}" for condition in doc.fails_when) + "\n")
+        else:
+            self.content.append("This helper does not fail once the asset is built.\n")
 
         if doc.general_restrictions:
             self.content.append(f"## Notes\n")

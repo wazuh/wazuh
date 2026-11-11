@@ -69,7 +69,9 @@ INSTANTIATE_TEST_SUITE_P(
                 SUCCESS()),
         FilterT({makeValue(R"("10.0.0.0/8")"), makeValue(R"("10.0.0.0/255.0.0.0")")},
                 opfilter::opBuilderHelperIPCIDR,
-                SUCCESS())),
+                SUCCESS()),
+        // A dotted mask need not be contiguous
+        FilterT({makeValue(R"("10.0.0.0/255.0.255.0")")}, opfilter::opBuilderHelperIPCIDR, SUCCESS())),
     testNameFormatter<FilterBuilderTest>("InCidr"));
 
 INSTANTIATE_TEST_SUITE_P(
@@ -222,7 +224,23 @@ INSTANTIATE_TEST_SUITE_P(
                 opfilter::opBuilderHelperIPCIDR,
                 "target",
                 {makeValue(R"("192.168.255.0/24")")},
-                FAILURE())),
+                FAILURE()),
+        // A non-contiguous mask matches only when (ip & mask) == network, not the whole address range
+        FilterT(R"({"target": "10.5.0.1"})",
+                opfilter::opBuilderHelperIPCIDR,
+                "target",
+                {makeValue(R"("10.0.0.0/255.0.255.0")")},
+                SUCCESS()),
+        FilterT(R"({"target": "10.5.7.1"})",
+                opfilter::opBuilderHelperIPCIDR,
+                "target",
+                {makeValue(R"("10.0.0.0/255.0.255.0")")},
+                FAILURE()),
+        FilterT(R"({"target": "10.255.0.255"})",
+                opfilter::opBuilderHelperIPCIDR,
+                "target",
+                {makeValue(R"("10.0.0.0/255.0.255.0")")},
+                SUCCESS())),
     testNameFormatter<FilterOperationTest>("InCidr"));
 
 INSTANTIATE_TEST_SUITE_P(

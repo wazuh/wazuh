@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <charconv>
+#include <cmath>
 #include <limits>
 #include <optional>
 #include <type_traits>
@@ -89,12 +90,13 @@ std::optional<NumericValue> getNumericValue(const json::Json& doc, std::string_v
  *
  * @param l Left operand
  * @param r Right operand
- * @return int Negative when l < r, zero when l == r, positive when l > r
+ * @return std::optional<int> Negative when l < r, zero when l == r, positive when l > r; std::nullopt when the
+ * operands are unordered (a NaN operand), which only `number_ne` accepts
  */
-int compareNumericValues(const NumericValue& l, const NumericValue& r)
+std::optional<int> compareNumericValues(const NumericValue& l, const NumericValue& r)
 {
     return std::visit(
-        [](const auto& lv, const auto& rv) -> int
+        [](const auto& lv, const auto& rv) -> std::optional<int>
         {
             using L = std::decay_t<decltype(lv)>;
             using R = std::decay_t<decltype(rv)>;
@@ -102,6 +104,10 @@ int compareNumericValues(const NumericValue& l, const NumericValue& r)
             {
                 const auto ld = static_cast<double>(lv);
                 const auto rd = static_cast<double>(rv);
+                if (std::isnan(ld) || std::isnan(rd))
+                {
+                    return std::nullopt;
+                }
                 return (ld < rd) ? -1 : ((ld > rd) ? 1 : 0);
             }
             else if constexpr (std::is_same_v<L, int64_t> && std::is_same_v<R, uint64_t>)
@@ -180,44 +186,45 @@ FilterOp getNumberCmpFunction(const std::string& targetField,
         rValue = std::static_pointer_cast<Reference>(rightParameter)->jsonPath();
     }
 
-    // Depending on the operator we return the predicate over the three-way comparison result
-    std::function<bool(int cmp)> cmpFunction;
+    // Depending on the operator we return the predicate over the three-way comparison result; unordered operands
+    // (NaN) satisfy only the inequality, as in IEEE 754
+    std::function<bool(std::optional<int> cmp)> cmpFunction;
     switch (op)
     {
         case Operator::EQ:
-            cmpFunction = [](int cmp)
+            cmpFunction = [](std::optional<int> cmp)
             {
-                return cmp == 0;
+                return cmp.has_value() && cmp.value() == 0;
             };
             break;
         case Operator::NE:
-            cmpFunction = [](int cmp)
+            cmpFunction = [](std::optional<int> cmp)
             {
-                return cmp != 0;
+                return !cmp.has_value() || cmp.value() != 0;
             };
             break;
         case Operator::GT:
-            cmpFunction = [](int cmp)
+            cmpFunction = [](std::optional<int> cmp)
             {
-                return cmp > 0;
+                return cmp.has_value() && cmp.value() > 0;
             };
             break;
         case Operator::GE:
-            cmpFunction = [](int cmp)
+            cmpFunction = [](std::optional<int> cmp)
             {
-                return cmp >= 0;
+                return cmp.has_value() && cmp.value() >= 0;
             };
             break;
         case Operator::LT:
-            cmpFunction = [](int cmp)
+            cmpFunction = [](std::optional<int> cmp)
             {
-                return cmp < 0;
+                return cmp.has_value() && cmp.value() < 0;
             };
             break;
         case Operator::LE:
-            cmpFunction = [](int cmp)
+            cmpFunction = [](std::optional<int> cmp)
             {
-                return cmp <= 0;
+                return cmp.has_value() && cmp.value() <= 0;
             };
             break;
         default: break;
@@ -847,7 +854,8 @@ FilterOp opBuilderHelperIPCIDR(const Reference& targetField,
     // Format name for the tracer
     const auto name = buildCtx->context().opName;
 
-    // Every network is a literal 'a.b.c.d/nn' or 'a.b.c.d/m.m.m.m', kept as its lowest and highest address
+    // Every network is a literal 'a.b.c.d/nn' or 'a.b.c.d/m.m.m.m', kept as its network address and mask (a mask need
+    // not be contiguous)
     std::vector<std::pair<uint32_t, uint32_t>> networks;
     networks.reserve(opArgs.size());
     for (size_t i = 0; i < opArgs.size(); ++i)
@@ -885,8 +893,7 @@ FilterOp opBuilderHelperIPCIDR(const Reference& targetField,
                 fmt::format("{} function: '{}' is not a valid IPv4 network: {}", name, cidrStr, e.what()));
         }
 
-        const uint32_t lower = network & mask;
-        networks.emplace_back(lower, lower | (~mask));
+        networks.emplace_back(network & mask, mask);
     }
 
     // Tracing
@@ -925,9 +932,9 @@ FilterOp opBuilderHelperIPCIDR(const Reference& targetField,
                                + fmt::format("'{}' could not be converted to int: {}", resolvedField, e.what()));
         }
 
-        for (const auto& [lower, upper] : networks)
+        for (const auto& [network, mask] : networks)
         {
-            if (lower <= ip && ip <= upper)
+            if ((ip & mask) == network)
             {
                 RETURN_SUCCESS(isTestMode, true, successTrace);
             }

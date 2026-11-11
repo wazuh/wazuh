@@ -284,6 +284,9 @@ jobs:
     - name: Validate helper descriptions
       run: engine-helper-test -e /tmp/actions validate --input-dir ${{env.ENGINE_DIR}}/test/helper_tests/helpers_description/
 
+    - name: Check registered helpers and descriptions agree
+      run: python3 ${{env.ENGINE_DIR}}/test/helper_tests/check_registry.py --registry ${{env.ENGINE_DIR}}/source/builder/src/register.hpp --descriptions ${{env.ENGINE_DIR}}/test/helper_tests/helpers_description/
+
     - name: Generate tests
       run: engine-helper-test -e /tmp/actions generate-tests --input-dir ${{env.ENGINE_DIR}}/test/helper_tests/helpers_description/ -o /tmp/helper_tests/
 

@@ -22,6 +22,8 @@ metadata:
     - The target field is a schema field whose elements are not strings.
 
     Notes:
+    - A schema target must be declared as an array of strings: the build checks the element type only, so a
+      scalar string field is accepted and receives the array.
     - `join` is the inverse operation.
     - `parse_csv` and `parse_dsv` handle quoted values and write named fields.
   group: string

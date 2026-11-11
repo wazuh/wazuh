@@ -23,7 +23,9 @@ metadata:
     - The target is a schema field whose type is not numeric.
 
     Notes:
-    - The `==` operator (`$field == 2`) is the generic `filter` and also treats `2` and `2.0` as equal; this helper is the form to use when the right side is a reference.
+    - The `==` operator (`$field == 2`) is the generic `filter`, which compares JSON values: `2` and `2.0` are equal there
+      too, but an unsigned 64-bit integer and the negative integer with the same bit pattern compare equal. This helper
+      is the form to use when the right side is a reference or the integers are large.
     - `one_of` compares the target against several candidates.
     - `number_ne` is not the negation of this helper: both are false for a missing or non-number target.
   group: comparison

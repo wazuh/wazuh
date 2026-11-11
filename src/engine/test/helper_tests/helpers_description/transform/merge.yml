@@ -27,7 +27,7 @@ metadata:
     - The source field is deleted: `a: merge($a)` erases `a` after merging it into itself, and a source nested
       inside the target disappears after the merge.
     - In `deep` mode an object or array in the source whose counterpart in the target has another type fails
-      the operation; the members merged before the conflict stay modified and the source is not deleted.
+      the operation; the target and the source are left untouched.
     - `lookup_merge` merges a value out of an object without deleting anything; `rename` moves a field but
       refuses to overwrite the target.
   group: object

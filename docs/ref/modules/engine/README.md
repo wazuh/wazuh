@@ -1367,7 +1367,7 @@ target_field: operation
 ```
 
 Where the operation can be:
-- **Literal Value**: A direct check or map operation depending on the stage it is defined. This can be any of the YAML native values (string, number, boolean, etc.).
+- **Literal Value**: A direct check or map operation depending on the stage it is defined. This can be any of the YAML native values (string, number, boolean, etc.). An integer above 2^63-1 written as a YAML value is read as a floating-point number; event fields and helper arguments keep 64-bit integers exact.
 - **Reference**: Denoted by $field_name, it performs a direct check or map operation using the referenced value.
 - **Helper Function**: Denoted by helper_name(args), it performs a check or map operation depending on the called helper.
 
@@ -1433,8 +1433,8 @@ The complete list of helpers, grouped by topic, is in the [helper functions refe
 
 - Names are `snake_case` English words; the only abbreviations are `ip`, `ipv4`, `ipv6`, `cidr`, `json`, `xml`, `csv`, `dsv`, `kv`, `kvdb`, `regex`, `uri`, `fqdn`, `sha1`, `hex`, `iana`, `asn`, `epoch`, `int`, `bool` and the comparison operators `eq`, `ne`, `gt`, `gte`, `lt`, `lte`.
 - A check helper reads as a sentence about the target field: `exists($f)`, `contains($f, 'x')`, `one_of($f, [...])`, `is_key_of($f, $table)`, `in_kvdb($f, 'db')`, `in_cidr($f, '10.0.0.0/8')`, `is_string($f)`. A negated check puts `not` right before the verb: `not_exists`, `is_not_string`, `not_in_kvdb`, `regex_not_match`.
-- Typed comparisons are `string_` or `number_` followed by `eq`, `ne`, `gt`, `gte`, `lt` or `lte`. `number_*` compares two integers exactly and switches to double only when a floating-point number is involved; for a literal value prefer the operators (`$f >= 5`), the helpers are for comparing two fields.
-- A check over several values says how many must be present: `array_contains_all`, `array_contains_any`, `array_contains_none`. A map helper that takes several references fails when one is missing (`array_append`, `array_append_unique`, `concat`); its `_any` variant (`array_append_any`, `array_append_unique_any`, `concat_any`) uses the references that resolve and fails only when none does.
+- Typed comparisons are `string_` or `number_` followed by `eq`, `ne`, `gt`, `gte`, `lt` or `lte`. `number_*` compares two integers exactly and switches to double only when a floating-point number is involved. `==` and `one_of` compare JSON values instead: `2` equals `2.0` there as well, but an unsigned 64-bit integer and the negative integer with the same bit pattern compare equal, so use `number_eq` for exact integers. For a literal value prefer the operators (`$f >= 5`), the helpers are for comparing two fields.
+- A check over several values says how many must be present: `array_contains_all`, `array_contains_any`, `array_contains_none`. A map helper that takes several references fails when one is missing (`array_append`, `array_append_unique`, `concat`); its `_any` variant (`array_append_any`, `array_append_unique_any`, `concat_any`) uses the references that resolve, a literal always counting as resolved, and fails only when nothing resolves.
 - A helper that produces a value is named after what it produces: `to_int`, `parse_json`, `hex_to_int`, `epoch_to_date`, `now`, `geoip`, `asn`, `sha1`, `community_id`, `syslog_facility`, `iana_protocol_number`. A helper that modifies the event is a verb: `delete`, `rename`, `merge`, `replace`, `split`, `trim`, `lookup`, `snake_case_keys`, `discard_event`.
 - An option is a trailing quoted word, not a separate helper: `merge($src, 'deep')`, `lookup_merge($table, $key, 'deep')`, `kvdb_lookup_merge('db', $key, 'deep')`, `to_int($n, 'round')`, `parse_xml($s, 'windows')`, `array_to_object($arr, 'Name', 'Value', 'raw_keys')`.
 

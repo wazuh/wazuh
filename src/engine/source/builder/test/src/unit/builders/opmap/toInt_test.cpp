@@ -156,9 +156,15 @@ INSTANTIATE_TEST_SUITE_P(
             R"({"ref": "-0"})", opBuilderHelperToInt, {makeRef("ref")}, SUCCESS(customRefExpected(json::Json(R"(0)")))),
         // Integer syntax outside the int64 range fails instead of being rounded through a double
         MapT(R"({"ref": "9223372036854775808"})", opBuilderHelperToInt, {makeRef("ref")}, FAILURE(customRefExpected())),
+        // JSON numbers outside the int64 range: an unsigned 64-bit integer and a double beyond 2^63
+        MapT(R"({"ref": 18446744073709551615})", opBuilderHelperToInt, {makeRef("ref")}, FAILURE(customRefExpected())),
+        MapT(R"({"ref": 1e19})", opBuilderHelperToInt, {makeRef("ref")}, FAILURE(customRefExpected())),
         MapT(
             R"({"ref": "-9223372036854775809"})", opBuilderHelperToInt, {makeRef("ref")}, FAILURE(customRefExpected())),
         MapT(R"({"ref": "++42"})", opBuilderHelperToInt, {makeRef("ref")}, FAILURE(customRefExpected())),
+        MapT(R"({"ref": "+-5"})", opBuilderHelperToInt, {makeRef("ref")}, FAILURE(customRefExpected())),
+        MapT(R"({"ref": "+-4.6"})", opBuilderHelperToInt, {makeRef("ref")}, FAILURE(customRefExpected())),
+        MapT(R"({"ref": "+"})", opBuilderHelperToInt, {makeRef("ref")}, FAILURE(customRefExpected())),
         MapT(R"({"ref": "0x10"})", opBuilderHelperToInt, {makeRef("ref")}, FAILURE(customRefExpected())),
         MapT(
             R"({"ref": ".5"})", opBuilderHelperToInt, {makeRef("ref")}, SUCCESS(customRefExpected(json::Json(R"(0)")))),
