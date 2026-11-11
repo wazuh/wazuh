@@ -168,8 +168,7 @@ def indexer():
     yield client
 
 
-@pytest.fixture(scope="session")
-def server(indexer, tmp_path_factory):
+def _run_server(tmp_path_factory, name):
     """The real module pair booted by the testtool's --serve mode.
 
     --no-vd keeps the vulnerability scanner facade down: the server's scanner
@@ -177,7 +176,7 @@ def server(indexer, tmp_path_factory):
     (D22's skip row), so VD-flagged sessions still index deterministically.
     """
     testtool = os.environ.get("INVSYNC_TESTTOOL", str(SRC_DIR / "build" / "bin" / "inventory_sync_server_testtool"))
-    workdir = tmp_path_factory.mktemp("server")
+    workdir = tmp_path_factory.mktemp(name)
 
     config = dict(CONFIG)
     # Override only the host, keeping whatever else config.json declares -- `flush_interval_seconds`
@@ -224,9 +223,25 @@ def server(indexer, tmp_path_factory):
         process.kill()
 
 
+@pytest.fixture(scope="session")
+def server(indexer, tmp_path_factory):
+    yield from _run_server(tmp_path_factory, "server")
+
+
+@pytest.fixture(scope="session")
+def second_server(indexer, tmp_path_factory):
+    """A second, independent instance on the same indexer: what a second manager node is to the indexer."""
+    yield from _run_server(tmp_path_factory, "second_server")
+
+
 @pytest.fixture()
 def client(server):
     return ServerClient(server["socket"])
+
+
+@pytest.fixture()
+def second_client(second_server):
+    return ServerClient(second_server["socket"])
 
 
 @pytest.fixture()

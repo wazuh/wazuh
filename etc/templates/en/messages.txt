@@ -92,7 +92,6 @@ configurationdone="Configuration finished properly"
 tostart="To start Wazuh"
 tostop="To stop Wazuh"
 configat="The configuration can be viewed or modified at"
-addserveragent="In order to connect agent and manager, you need to add each agent to the manager."
 presskey="Press ENTER to continue"
 
 # Update

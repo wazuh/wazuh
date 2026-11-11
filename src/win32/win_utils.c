@@ -369,13 +369,7 @@ int local_start()
         mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }
 
-    if (!(agt->server && agt->server[0].rip)) {
-        merror(AG_INV_IP);
-        mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
-    }
-
-    if (!Validate_Address(agt->server)){
-        merror(AG_INV_MNGIP, agt->server[0].rip);
+    if (!w_agent_validate_manager_address(agt, NULL)) {
         mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }
 
@@ -411,8 +405,9 @@ int local_start()
      *
      * Only a token that was present and (after any transient retries) still failed does this. An
      * install with no token at all returns W_TOKEN_BOOTSTRAP_DONE from the gate, so the normal
-     * enrollment loop still gets its chance -- as do an agent already holding an anchor and one
-     * already enrolled.
+     * enrollment loop still gets its chance -- as does an agent already holding an anchor. An
+     * agent already enrolled only tries to install the anchor, and gets DONE whatever the
+     * outcome: it has no enrollment for this gate to protect.
      *
      * 0/0 for uid/gid: Windows runs the service as one account from start to finish, so
      * neither file the bootstrap writes is handed over to a second user (token_bootstrap.c). */
@@ -447,6 +442,8 @@ int local_start()
     if (!anchor_before && IsFile(AGENT_ANCHOR_CA) == 0) {
         w_agent_resolve_ssl_posture(agt);
     }
+
+    w_agent_warn_unverified_without_anchor(agt);
 
     if (agt->notify_time == 0) {
         agt->notify_time = NOTIFY_TIME;
@@ -873,14 +870,18 @@ char *get_agent_ip_legacy_win32()
                         if(!element) {
                             continue;
                         }
-                        cJSON *gateway = cJSON_GetObjectItem(element, "gateway");
-                        if(gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring, " ")) {
+                        const char * gateway = cJSON_GetStringValue(cJSON_GetObjectItem(element, "gateway"));
+                        const char * gateway6 = cJSON_GetStringValue(cJSON_GetObjectItem(element, "gateway6"));
+                        const int has_gateway = gateway && 0 != strcmp(gateway, " ");
+                        const int has_gateway6 = gateway6 && *gateway6 != '\0' && 0 != strcmp(gateway6, " ");
+
+                        if (has_gateway || has_gateway6) {
 
                             const char * primaryIpType = NULL;
                             const char * secondaryIpType = NULL;
 
-                            if (strchr(gateway->valuestring, ':') != NULL) {
-                                // Assume gateway is IPv6. IPv6 IP will be prioritary
+                            if (has_gateway6 || strchr(gateway, ':') != NULL) {
+                                // Any IPv6 gateway makes the IPv6 IP prioritary
                                 primaryIpType = "IPv6";
                                 secondaryIpType = "IPv4";
                             } else {

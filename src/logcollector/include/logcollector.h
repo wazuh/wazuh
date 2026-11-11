@@ -261,8 +261,9 @@ typedef struct w_msg_queue_t
     w_queue_t* msg_queue;
     pthread_mutex_t mutex;
     pthread_cond_t available;
-    time_t last_warned;              ///< Last time the "queue is full" warning fired for this target
-    unsigned long dropped_since_warning; ///< Lines dropped for this target since last_warned
+    time_t last_warned;              ///< Last time a "queue is full" or "accepting lines again" warning fired for this target
+    unsigned long dropped_since_warning; ///< Lines dropped for this target and not yet reported
+    const char * target_name;        ///< Cached on push so pop can name the target in the recovery warning
 } w_msg_queue_t;
 
 /* Hash table of queues */
@@ -396,6 +397,14 @@ void w_macos_release_log_show(void);
  * @brief This function is called to release macOS log's "stream" resources
  */
 void w_macos_release_log_stream(void);
+
+/**
+ * @brief Reads the macOS `log` output every MACOS_LOG_READ_INTERVAL_MS until its process stops
+ *
+ * @param arg Unused
+ * @return NULL
+ */
+void * w_macos_log_reader(void * arg);
 #endif
 
 #endif /* LOGREADER_H */

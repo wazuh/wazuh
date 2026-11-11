@@ -152,7 +152,7 @@ inline void setOsFull(nlohmann::json& output)
         return;
     }
 
-    const auto getValue = [&output](const std::string & key)
+    const auto getValue = [&output](const std::string & key) -> std::string
     {
         return output.contains(key) && output[key].is_string() ? Utils::trim(output[key].get<std::string>()) : std::string{};
     };

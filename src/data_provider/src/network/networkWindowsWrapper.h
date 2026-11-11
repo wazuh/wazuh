@@ -11,6 +11,7 @@
 #ifndef _NETWORK_WINDOWS_WRAPPER_H
 #define _NETWORK_WINDOWS_WRAPPER_H
 
+#include <vector>
 #include <ifdef.h>
 #include <iptypes.h>
 #include <netioapi.h>
@@ -163,27 +164,10 @@ class NetworkWindowsInterface final : public INetworkInterfaceWrapper
             std::string retVal;
             constexpr auto GATEWAY_SEPARATOR { "," };
 
-            auto gatewayAddress { m_interfaceAddress->FirstGatewayAddress };
-
-            while (gatewayAddress)
+            for (const auto& gatewayAddress : gatewaysByFamily(AF_INET))
             {
-                const auto gatewayFamily { gatewayAddress->Address.lpSockaddr->sa_family };
-                const auto sockAddress   { gatewayAddress->Address.lpSockaddr };
-
-                if (AF_INET == gatewayFamily)
-                {
-                    retVal += Utils::NetworkWindowsHelper::IAddressToString(gatewayFamily,
-                                                                            (reinterpret_cast<sockaddr_in*>(sockAddress))->sin_addr);
-                    retVal += GATEWAY_SEPARATOR;
-                }
-                else if (AF_INET6 == gatewayFamily)
-                {
-                    retVal += Utils::NetworkWindowsHelper::IAddressToString(gatewayFamily,
-                                                                            (reinterpret_cast<sockaddr_in6*>(sockAddress))->sin6_addr);
-                    retVal += GATEWAY_SEPARATOR;
-                }
-
-                gatewayAddress = gatewayAddress->Next;
+                retVal += gatewayAddress;
+                retVal += GATEWAY_SEPARATOR;
             }
 
             if (retVal.empty())
@@ -197,6 +181,13 @@ class NetworkWindowsInterface final : public INetworkInterfaceWrapper
             }
 
             return retVal;
+        }
+
+        std::string gatewayV6() const override
+        {
+            // A single one is reported because the manager discards gateway values that list several addresses
+            const auto gateways { gatewaysByFamily(AF_INET6) };
+            return gateways.empty() ? UNKNOWN_VALUE : gateways.front();
         }
 
         std::string metrics() const override
@@ -330,6 +321,32 @@ class NetworkWindowsInterface final : public INetworkInterfaceWrapper
         }
 
     private:
+
+        std::vector<std::string> gatewaysByFamily(const int family) const
+        {
+            std::vector<std::string> retVal;
+            auto gatewayAddress { m_interfaceAddress->FirstGatewayAddress };
+
+            while (gatewayAddress)
+            {
+                const auto sockAddress { gatewayAddress->Address.lpSockaddr };
+
+                if (AF_INET == family && AF_INET == sockAddress->sa_family)
+                {
+                    retVal.push_back(Utils::NetworkWindowsHelper::IAddressToString(AF_INET,
+                                                                                   (reinterpret_cast<sockaddr_in*>(sockAddress))->sin_addr));
+                }
+                else if (AF_INET6 == family && AF_INET6 == sockAddress->sa_family)
+                {
+                    retVal.push_back(Utils::NetworkWindowsHelper::IAddressToString(AF_INET6,
+                                                                                   (reinterpret_cast<sockaddr_in6*>(sockAddress))->sin6_addr));
+                }
+
+                gatewayAddress = gatewayAddress->Next;
+            }
+
+            return retVal;
+        }
 
         std::string getAdapterEncodedUTF8(const std::wstring& name) const
         {

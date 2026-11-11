@@ -26,11 +26,15 @@ enum class SyncStatus : int
 };
 
 /// @brief Tracks the creation state of a persisted message, particularly for newly created items.
+///
+/// Only NEW on a PENDING message changes behaviour: its DELETE is coalesced away. NEW_DELETED is
+/// only set while a session is in flight and both ends of a session turn it into EXISTING; it is
+/// kept so existing databases keep their values.
 enum class CreateStatus : int
 {
-    EXISTING = 0,     ///< The message existed prior to the current session; it was not newly created.
-    NEW = 1,          ///< The message was newly created during the current session.
-    NEW_DELETED = 2   ///< The message was newly created, but then deleted before it could be synchronized.
+    EXISTING = 0,     ///< The message may already be known to the manager.
+    NEW = 1,          ///< The message was created and has never been part of a session.
+    NEW_DELETED = 2   ///< The message was created and then deleted while its creation was being synchronized.
 };
 
 /// @brief SQLite-backed implementation of IPersistentQueueStorage.
@@ -81,6 +85,8 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         void removeAllSynced() override;
 
         /// @brief Resets the status of all SYNCING messages for a module back to PENDING.
+        /// The manager may have applied the failed session, so the reset messages are no
+        /// longer treated as new and a later DELETE of them is kept.
         void resetAllSyncing() override;
 
         /// @brief Deletes all messages belonging to a specific index.
@@ -93,6 +99,20 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         /// @brief Deletes the database file.
         /// This method closes the database connection and removes the database file from disk.
         void deleteDatabase() override;
+
+        /// @brief Returns the stored checksum mismatch progress of an index.
+        /// @param index The index to look up.
+        /// @return The progress, or std::nullopt if none is stored.
+        std::optional<IntegrityProgress> getIntegrityProgress(const std::string& index) override;
+
+        /// @brief Stores the checksum mismatch progress of an index, replacing any previous one.
+        /// @param index The index the progress belongs to.
+        /// @param progress The progress to store.
+        void setIntegrityProgress(const std::string& index, const IntegrityProgress& progress) override;
+
+        /// @brief Removes the checksum mismatch progress of an index, if any.
+        /// @param index The index whose progress is removed.
+        void clearIntegrityProgress(const std::string& index) override;
 
         /// @brief Returns the WAL auto-checkpoint threshold currently configured on this connection.
         /// @return The configured threshold, in WAL pages.
@@ -125,7 +145,7 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         ///        every item behind it forever.
         unsigned int m_oversizedItemAttempts = 0;
 
-        /// @brief Creates the persistent_queue table if it doesn't already exist.
+        /// @brief Creates the persistent_queue and integrity_progress tables if they don't already exist.
         void createTableIfNotExists();
 
         /// @brief Opens the database file or creates it if it doesn't exist.
@@ -137,4 +157,8 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         /// Must be called inside a BEGIN/COMMIT block.
         /// @param newData The message to insert or coalesce.
         void applyCoalesceLogic(const PersistedData& newData);
+
+        /// @brief Moves every SYNCING or SYNCING_UPDATED message back to PENDING as EXISTING.
+        /// Must be called inside a BEGIN/COMMIT block.
+        void settleInFlightRows();
 };

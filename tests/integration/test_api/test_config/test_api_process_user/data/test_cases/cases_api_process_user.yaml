@@ -1,0 +1,6 @@
+- name: STARTED_BY_WAZUH_MANAGER_CONTROL
+  description: Check that the 'wazuh-manager-apid' daemon started by wazuh-manager-control runs as 'wazuh-manager'.
+  configuration_parameters:
+    PORT: 55000
+  metadata:
+    expected_user: wazuh-manager

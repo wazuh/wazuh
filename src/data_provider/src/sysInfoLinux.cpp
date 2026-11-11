@@ -25,6 +25,7 @@
 #include "networkUnixHelper.h"
 #include "networkHelper.h"
 #include "network/networkLinuxWrapper.h"
+#include "network/networkLinuxAddressResolver.h"
 #include "network/networkFamilyDataAFactory.h"
 #include "ports/portLinuxWrapper.h"
 #include "ports/portImpl.h"
@@ -79,6 +80,20 @@ static bool getSystemInfo(const std::string& fileName, const std::string& separa
     return ret;
 }
 
+// process->cmd (/proc/<pid>/comm) is capped at TASK_COMM_LEN (15 chars); use the
+// untruncated argv[0] basename instead, falling back to comm for kernel threads,
+// which have no cmdline.
+static std::string getProcessName(const proc_t* process, const std::string& commandLine)
+{
+    const std::string baseName {commandLine.empty() ? std::string {} : std::filesystem::path(commandLine).filename().string()};
+    return baseName.empty() ? process->cmd : baseName;
+}
+
+static std::string getProcessCommandLine(const proc_t* process)
+{
+    return process->cmdline && process->cmdline[0] ? process->cmdline[0] : std::string {};
+}
+
 static nlohmann::json getProcessInfo(const proc_t* process)
 {
     nlohmann::json jsProcessInfo{};
@@ -88,14 +103,12 @@ static nlohmann::json getProcessInfo(const proc_t* process)
     jsProcessInfo["parent_pid"] = process->ppid;
     jsProcessInfo["utime"]      = process->utime;
     jsProcessInfo["stime"]      = process->stime;
-    std::string commandLine;
+    const std::string commandLine {getProcessCommandLine(process)};
     std::string commandLineArgs;
     unsigned int commandLineCount = 0;
 
     if (process->cmdline && process->cmdline[0])
     {
-        commandLine = process->cmdline[0];
-
         for (int idx = 1; process->cmdline[idx]; ++idx)
         {
             const auto cmdlineArgSize { sizeof(process->cmdline[idx]) };
@@ -114,12 +127,8 @@ static nlohmann::json getProcessInfo(const proc_t* process)
         }
     }
 
-    // process->cmd (/proc/<pid>/comm) is capped at TASK_COMM_LEN (15 chars); use the
-    // untruncated argv[0] basename instead, falling back to comm for kernel threads,
-    // which have no cmdline.
     // cmdline and comm are arbitrary bytes; the inventory JSON must be valid UTF-8.
-    const std::string baseName {commandLine.empty() ? std::string {} : std::filesystem::path(commandLine).filename().string()};
-    jsProcessInfo["name"]         = Utils::sanitizeUtf8(baseName.empty() ? process->cmd : baseName);
+    jsProcessInfo["name"]         = Utils::sanitizeUtf8(getProcessName(process, commandLine));
     jsProcessInfo["command_line"] = Utils::sanitizeUtf8(commandLine);
     jsProcessInfo["args"]         = Utils::sanitizeUtf8(commandLineArgs);
     jsProcessInfo["args_count"]   = commandLineCount;
@@ -381,13 +390,25 @@ nlohmann::json SysInfo::getNetworks() const
     std::map<std::string, std::vector<ifaddrs*>> networkInterfaces;
     Utils::NetworkUnixHelper::getNetworks(interfacesAddress, networkInterfaces);
 
-    for (const auto& interface : networkInterfaces)
+    IPv4AddressLinks addressLinks;
+    const auto addressFlags { std::make_shared<IPv4AddressFlags>() };
+
+    try
+    {
+        addressLinks = NetworkLinuxAddressResolver::resolveLinks(NetworkLinuxAddressResolver::dumpIPv4Addresses(), interfacesAddress.get(), addressFlags.get());
+    }
+    catch (...)
+    {
+        // Without the dump, IPv4 entries keep being grouped by their label.
+    }
+
+    for (const auto& interface : NetworkLinuxAddressResolver::groupByLink(interfacesAddress.get(), networkInterfaces, addressLinks))
     {
         nlohmann::json ifaddr {};
 
         for (auto addr : interface.second)
         {
-            const auto networkInterfacePtr { FactoryNetworkFamilyCreator<OSPlatformType::LINUX>::create(std::make_shared<NetworkLinuxInterface>(addr)) };
+            const auto networkInterfacePtr { FactoryNetworkFamilyCreator<OSPlatformType::LINUX>::create(std::make_shared<NetworkLinuxInterface>(addr, interface.first, addressFlags)) };
 
             if (networkInterfacePtr)
             {
@@ -395,7 +416,11 @@ nlohmann::json SysInfo::getNetworks() const
             }
         }
 
-        networks["iface"].push_back(ifaddr);
+        // Only the link entry carries the interface data; a group without it cannot be reported.
+        if (ifaddr.contains("interface_name"))
+        {
+            networks["iface"].push_back(ifaddr);
+        }
     }
 
     return networks;
@@ -623,6 +648,17 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
     });
 }
 
+void SysInfo::processNames(std::function<void(const ProcessNames&)> callback)
+{
+    // Only stat (for comm) and cmdline are needed, so skip the environment, memory
+    // and user/group lookups that the full inventory scan pays for.
+    ProcpsWrapper::scanProcesses(PROC_FILLSTAT | PROC_FILLARG, [&callback](const proc_t* process)
+    {
+        const auto commandLine {getProcessCommandLine(process)};
+        callback({getProcessName(process, commandLine), commandLine, process->cmd});
+    });
+}
+
 void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 {
     FactoryPackagesCreator::getPackages(callback);
@@ -673,7 +709,7 @@ nlohmann::json SysInfo::getGroups() const
         }
         else
         {
-            groupItem["group_users"] = Utils::join(collectedUsersGroups.get<std::vector<std::string>>(), secondaryArraySeparator);
+            groupItem["group_users"] = Utils::join(collectedUsersGroups.get<std::vector<std::string>>(), arraySeparator);
         }
 
         result.push_back(std::move(groupItem));
@@ -782,7 +818,7 @@ nlohmann::json SysInfo::getUsers() const
         else
         {
             const auto groupNames = collectedUsersGroups.get<std::vector<std::string>>();
-            userItem["user_groups"] = Utils::join(groupNames, secondaryArraySeparator);
+            userItem["user_groups"] = Utils::join(groupNames, arraySeparator);
             userGroupNames.insert(groupNames.begin(), groupNames.end());
         }
 
@@ -840,7 +876,7 @@ nlohmann::json SysInfo::getUsers() const
                 {
                     userItem["host_ip"] = userItem["host_ip"].get<std::string>() == UNKNOWN_VALUE
                                           ? hostStr
-                                          : (userItem["host_ip"].get<std::string>() + primaryArraySeparator + hostStr);
+                                          : (userItem["host_ip"].get<std::string>() + arraySeparator + hostStr);
                 }
             }
         }

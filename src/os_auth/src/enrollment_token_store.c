@@ -23,7 +23,8 @@
  * Every write is an atomic rewrite (TempFile + rename, the shape of OS_WriteKeys()), because a
  * partially written store is not a degraded store: it fails to parse, and a worker that reloads it
  * would refuse every enrollment. The temporary file is created 0600 by TempFile() and chmod()ed to
- * 0640 before the rename, so the secrets are never world readable, not even for an instant.
+ * 0660 (the mode the cluster syncs it with) before the rename, so the secrets are never world
+ * readable, not even for an instant.
  *
  * A token secret is credential material with the same weight as a key in client.keys. It reaches
  * the outside world exactly once, in the token text etoken_store_create() returns; it is never
@@ -877,7 +878,7 @@ static int etoken_store_save_locked(void) {
         goto error_file;
     }
 
-    if (chmod(file.name, 0640) < 0) {
+    if (chmod(file.name, 0660) < 0) {
         merror("Could not set the mode of '%s': %s", file.name, strerror(errno));
         goto error_file;
     }

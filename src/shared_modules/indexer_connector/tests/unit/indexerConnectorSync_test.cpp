@@ -3038,13 +3038,129 @@ TEST_F(IndexerConnectorSyncTest, BulkResponseValidationVersionConflictAccepted)
             }));
 
     IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
-    connector.bulkIndex("1", "test-index", R"({"field":"value1"})", "5");
-    connector.bulkIndex("2", "test-index", R"({"field":"value2"})", "5");
-    connector.bulkIndex("3", "test-index", R"({"field":"value3"})", "5");
+    connector.bulkIndex("1", "test-index", R"({"field":"value1"})");
+    connector.bulkIndex("2", "test-index", R"({"field":"value2"})");
+    connector.bulkIndex("3", "test-index", R"({"field":"value3"})");
 
-    // Should not throw - version conflicts are acceptable
+    // Should not throw - an index item's version conflict is acceptable
     EXPECT_NO_THROW(connector.flush());
     EXPECT_TRUE(postCalled);
+}
+
+/// A versioned bulkIndex is a scripted `update`. The update API reads the document, runs the script and
+/// writes with the document's seq_no as a condition, so a concurrent write to the same document (the group or
+/// metadata _update_by_query) makes the item answer 409 and drops its data. Without `retry_on_conflict` OpenSearch
+/// does not re-read and retry. The action line has to carry it.
+TEST_F(IndexerConnectorSyncTest, ScriptedUpdateActionCarriesRetryOnConflict)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndex("1", "test-index", R"({"field":"value1"})", "5");
+    connector.flush();
+
+    ASSERT_EQ(receivedData.size(), 1u);
+    const auto& body = receivedData.front();
+    const auto actionLine = nlohmann::json::parse(body.substr(0, body.find('\n')));
+    ASSERT_TRUE(actionLine.contains("update")) << "a versioned bulkIndex is expected to be a scripted update";
+    ASSERT_TRUE(actionLine["update"].contains("retry_on_conflict"))
+        << "the update action has no retry_on_conflict, so a concurrent write loses this document's data: "
+        << actionLine.dump();
+    EXPECT_GT(actionLine["update"]["retry_on_conflict"].get<int>(), 0);
+}
+
+/// For an `index` action with external versioning a 409 means "this version is already stored" and is safe
+/// to accept (BulkResponseValidationVersionConflictAccepted). For a scripted `update` item the same 409 means the
+/// write was REJECTED and this item's data is NOT stored. Once the retries are exhausted it must fail the flush so
+/// the agent is not told `200` and sends the change again.
+TEST_F(IndexerConnectorSyncTest, BulkResponseUpdateItemVersionConflictIsAFailure)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [](auto /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                // The shape OpenSearch returns when a concurrent write moved the document under a scripted update.
+                std::string conflictResponse = R"({
+                    "took": 10,
+                    "errors": true,
+                    "items": [
+                        {"update": {"_id": "1", "status": 200, "result": "updated"}},
+                        {"update": {
+                            "_id": "2",
+                            "status": 409,
+                            "error": {
+                                "type": "version_conflict_engine_exception",
+                                "reason": "[2]: version conflict, required seqNo [7], primary term [1]. current document has seqNo [8] and primary term [1]"
+                            }
+                        }}
+                    ]
+                })";
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(conflictResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(conflictResponse));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndex("1", "test-index", R"({"field":"value1"})", "5");
+    connector.bulkIndex("2", "test-index", R"({"field":"value2"})", "5");
+
+    EXPECT_THROW(connector.flush(), IndexerConnectorException)
+        << "a 409 on a scripted update item means its data was NOT stored, it cannot be counted as success";
+}
+
+/// The 409 rule is decided per item operation, not per response: an `index` 409 next to an `update` 200 in the
+/// same bulk answer is still the accepted "already applied" conflict and must not fail the flush.
+TEST_F(IndexerConnectorSyncTest, BulkResponseIndexVersionConflictNextToAnUpdateIsStillAccepted)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [](auto /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                std::string mixedResponse = R"({
+                    "took": 10,
+                    "errors": true,
+                    "items": [
+                        {"update": {"_id": "1", "status": 200, "result": "updated"}},
+                        {"index": {
+                            "_id": "2",
+                            "status": 409,
+                            "error": {
+                                "type": "version_conflict_engine_exception",
+                                "reason": "[2]: version conflict, current version [5] is higher or equal to the one provided [5]"
+                            }
+                        }}
+                    ]
+                })";
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(mixedResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(mixedResponse));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndex("1", "test-index", R"({"field":"value1"})", "5");
+    connector.bulkIndex("2", "test-index", R"({"field":"value2"})");
+
+    EXPECT_NO_THROW(connector.flush()) << "an index 409 is accepted even when the same response carries update items";
 }
 
 TEST_F(IndexerConnectorSyncTest, BulkResponseValidationRealFailure)
@@ -7291,8 +7407,9 @@ TEST_F(IndexerConnectorSyncTest, FlushFailuresCarryTheirCause)
 /**
  * R-11, idempotency as a contract: replaying a session the indexer already applied -- the exact
  * recovery this module's 500/503-then-re-POST design leans on -- must stage byte-identical
- * operations and be confirmed by the indexer's version conflicts, never duplicated and never
- * reported as a failure.
+ * operations and be confirmed by the indexer, never duplicated and never reported as a failure.
+ * A versioned item is a scripted update: the replay of the same version is rewritten by the
+ * version-guarded script and answered 200 `updated`; the delete of a document that is already gone answers 404.
  */
 TEST_F(IndexerConnectorSyncTest, ReplayingAnAppliedSessionIsANoOpNotADuplicate)
 {
@@ -7310,14 +7427,11 @@ TEST_F(IndexerConnectorSyncTest, ReplayingAnAppliedSessionIsANoOpNotADuplicate)
                     respondBulkSuccess(postParams);
                     return;
                 }
-                // The replay: every document already exists at this version.
-                respondBulkSuccess(
-                    postParams,
-                    R"({"took":1,"errors":true,"items":[)"
-                    R"({"index":{"_id":"cluster_agent1_doc1","status":409,)"
-                    R"("error":{"type":"version_conflict_engine_exception","reason":"already applied"}}},)"
-                    R"({"delete":{"_id":"cluster_agent1_doc2","status":409,)"
-                    R"("error":{"type":"version_conflict_engine_exception","reason":"already applied"}}}]})");
+                // The replay: the update is rewritten at the same version, the document is already deleted.
+                respondBulkSuccess(postParams,
+                                   R"({"took":1,"errors":true,"items":[)"
+                                   R"({"update":{"_id":"cluster_agent1_doc1","status":200,"result":"updated"}},)"
+                                   R"({"delete":{"_id":"cluster_agent1_doc2","status":404,"result":"not_found"}}]})");
             }));
 
     IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));

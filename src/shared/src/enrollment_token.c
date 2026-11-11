@@ -754,7 +754,20 @@ char *w_etoken_describe(const w_etoken_t *token)
         goto error;
     }
 
-    /* The identifier, the secret and their base64url never reach a log or a terminal */
+    /* The id is what --list-enrollment-tokens and --revoke-enrollment-token take. The secret and
+     * the `key` field never reach a log or a terminal */
+    if (token->has_key) {
+        char *id = w_b64url_encode(token->id, W_ETOKEN_ID_BYTES);
+
+        if (id == NULL || buf_append_str(&buf, "id: ") != 0 || buf_append_str(&buf, id) != 0 ||
+            buf_append_str(&buf, "\n") != 0) {
+            free(id);
+            goto error;
+        }
+
+        free(id);
+    }
+
     if (buf_append_str(&buf, token->has_key ? "credential: present\n"
                                             : "credential: absent\n") != 0) {
         goto error;

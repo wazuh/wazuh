@@ -754,7 +754,11 @@ class RuntimeCases:
                         arguments_list, case, fillvalue=None))
                     all_arguments = []
                     input = {}
-                    for (id, value), source in combined:
+                    for item, source in combined:
+                        if item is None:
+                            # An optional argument the test leaves out
+                            continue
+                        id, value = item
                         argument = Argument(value)
                         argument.configure_only_value(source)
                         val = argument.get()

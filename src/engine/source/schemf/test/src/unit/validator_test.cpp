@@ -41,6 +41,7 @@ protected:
         m_schema->addField("event.duration", Field::Parameters {.type = Type::LONG});
         m_schema->addField("host.name", Field::Parameters {.type = Type::TEXT});
         m_schema->addField("@timestamp", Field::Parameters {.type = Type::DATE});
+        m_schema->addField("event.received", Field::Parameters {.type = Type::DATE_NANOS});
         m_schema->addField("event.tags", Field::Parameters {.type = Type::KEYWORD});
         m_schema->addField("rank.feature", Field::Parameters {.type = Type::RANK_FEATURE});
         m_schema->addField("geo.location", Field::Parameters {.type = Type::GEO_POINT});
@@ -160,6 +161,37 @@ TEST_F(ValidatorTest, ValidateSType_NotCompatible)
     // IP field ← INTEGER token: incompatible
     auto token = STypeToken::create(Type::INTEGER);
     auto res = m_validator->validate(DotPath {"source.ip"}, token);
+    EXPECT_ERR(res, "incompatible schema type");
+}
+
+TEST_F(ValidatorTest, ValidateSType_DateTokenIntoDateNanos)
+{
+    // DATE_NANOS field <- DATE token: compatible, the value is checked at runtime (date_nanos starts at the epoch)
+    auto token = STypeToken::create(Type::DATE);
+    auto res = m_validator->validate(DotPath {"event.received"}, token);
+    EXPECT_OK(res);
+    ASSERT_TRUE(base::getResponse(res).needsRuntimeValidation());
+
+    const auto& validator = base::getResponse(res).getValidator();
+    EXPECT_FALSE(base::isError(validator(json::Json {R"("2024-01-01T00:00:00Z")"})));
+    EXPECT_TRUE(base::isError(validator(json::Json {R"("1969-12-31T23:59:59Z")"})));
+    EXPECT_TRUE(base::isError(validator(json::Json {R"(["2024-01-01T00:00:00Z", "1969-12-31T23:59:59Z"])"})));
+}
+
+TEST_F(ValidatorTest, ValidateSType_DateNanosTokenIntoDate)
+{
+    // DATE field <- DATE_NANOS token: compatible, the value is checked at runtime by the date validator
+    auto token = STypeToken::create(Type::DATE_NANOS);
+    auto res = m_validator->validate(DotPath {"@timestamp"}, token);
+    EXPECT_OK(res);
+    EXPECT_TRUE(base::getResponse(res).needsRuntimeValidation());
+}
+
+TEST_F(ValidatorTest, ValidateSType_LongIntoDateNanosStillIncompatible)
+{
+    // DATE_NANOS field <- LONG token: still incompatible
+    auto token = STypeToken::create(Type::LONG);
+    auto res = m_validator->validate(DotPath {"event.received"}, token);
     EXPECT_ERR(res, "incompatible schema type");
 }
 

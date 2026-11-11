@@ -111,9 +111,16 @@ list(APPEND remoted_flags "-Wl,--wrap,time -Wl,--wrap,rem_get_input_bytes_used -
 list(APPEND remoted_names "test_remcom")
 list(APPEND remoted_flags "-Wl,--wrap,rem_create_state_json -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,select -Wl,--wrap,close -Wl,--wrap,accept \
                            -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,getRemoteConfig \
-                           -Wl,--wrap,assign_group_to_agent -Wl,--wrap,getpid \
+                           -Wl,--wrap,assign_group_to_agent -Wl,--wrap,req_sender -Wl,--wrap,getpid \
                            -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop -Wl,--wrap,w_query_agentd \
                            ${DEBUG_OP_WRAPPERS}")
+
+# request.c is included by the test (its dispatcher is static); the request table is real, only the
+# keystore lookup, its lock and the answer written back to the local caller are wrapped.
+list(APPEND remoted_names "test_request")
+list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,key_lock_read -Wl,--wrap,key_unlock \
+                           -Wl,--wrap,w_get_agent_net_protocol_from_keystore \
+                           -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop -Wl,--wrap,w_query_agentd")
 
 list(APPEND remoted_names "test_queue")
 list(APPEND remoted_flags "-Wl,--wrap,rem_inc_recv_discarded -Wl,--wrap,_mdebug2 -Wl,--wrap,_mwarn -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop")
@@ -154,7 +161,7 @@ foreach(counter RANGE ${count})
     # wrap -- even a test that never calls the code path. Harmless where it is not needed.
     target_link_libraries(
         ${remoted_test_name}
-        "-Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop -Wl,--wrap,remoted_module_tls_ca_matches_leaf -Wl,--wrap,remoted_module_tls_leaf_signer_pem"
+        "-Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop -Wl,--wrap,remoted_module_tls_ca_matches_leaf -Wl,--wrap,remoted_module_tls_leaf_signer_pem -Wl,--wrap,remoted_module_validate_tls -Wl,--wrap,remoted_module_init_tls_library"
     )
 
     if(NOT remoted_test_flags STREQUAL " ")

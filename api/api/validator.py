@@ -13,6 +13,8 @@ from wazuh.core import common
 from wazuh.core.exception import WazuhError
 
 _alphanumeric_param = re.compile(r'^[\w,\-.+\s:]+$')
+# IPv4, IPv6 or a CIDR range (an agent registered for a range keeps it as its registerIP).
+_ip_filter = re.compile(r'^[\w,\-.\s:/]+$')
 _symbols_alphanumeric_param = re.compile(r'^[\w,*<>!\-.+\s:/()\[\]\'\"|=~#]+$')
 _base64 = re.compile(r'^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$')
 _group_names = re.compile(r'^(?!^(\.{1,2}|all)$)[A-Za-z0-9.\-_]+$')
@@ -30,7 +32,9 @@ _numbers_or_all = re.compile(r'^(\d+|all)$', re.ASCII)
 _wazuh_key = re.compile(r'^[0-9a-f]+$')
 _wazuh_version = re.compile(r'^(?:wazuh |)v?\d+\.\d+\.\d+$', re.IGNORECASE | re.ASCII)
 _paths = re.compile(r'^[\w\-.\\/:]+$')
-_search_param = re.compile(r'^[^;|&^*>]+$')
+# Control characters (CR/LF, NUL...) are refused: they are inlined into the wazuh-db query. `\Z`, not `$`, so a
+# trailing newline does not pass either.
+_search_param = re.compile(r'^[^;|&^*>\x00-\x1f\x7f]+\Z')
 _sort_param = re.compile(r'^[\w_\-,\s+.]+$')
 _timeframe_type = re.compile(r'^(\d+[dhms]?)$', re.ASCII)
 _wpk_path = re.compile(r'^[\w\-.\\/:\s]*[^\/]\.wpk$')
@@ -39,7 +43,7 @@ security_config_schema = {
     "type": "object",
     "additionalProperties": False,
     "properties": {
-        "auth_token_exp_timeout": {"type": "integer"},
+        "auth_token_exp_timeout": {"type": "integer", "maximum": 2147483647},
         "rbac_mode": {"type": "string", "enum": ["white", "black"]}
     }
 }
@@ -50,7 +54,6 @@ api_config_schema = {
     "properties": {
         "host": {"type": "array", "items": {"type": "string"}},
         "port": {"type": "number"},
-        "drop_privileges": {"type": "boolean"},
         "max_upload_size": {"type": "integer", "minimum": 0},
         "auth_context_max_payload_size": {"type": "integer", "minimum": 1024, "maximum": 1048576},
         "authentication_pool_size": {"type": "integer", "minimum": 1, "maximum": 50},
@@ -324,6 +327,11 @@ def check_component_configuration_pair(component: str, configuration: str, is_ma
 @Draft4Validator.FORMAT_CHECKER.checks("alphanumeric")
 def format_alphanumeric(value):
     return check_exp(value, _alphanumeric_param)
+
+
+@Draft4Validator.FORMAT_CHECKER.checks("ip_filter")
+def format_ip_filter(value):
+    return check_exp(value, _ip_filter)
 
 
 @Draft4Validator.FORMAT_CHECKER.checks("alphanumeric_symbols")

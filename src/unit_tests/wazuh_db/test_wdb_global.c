@@ -8626,6 +8626,152 @@ void test_wdb_global_assign_agent_group_agent_not_exists_success(void **state) {
     __real_cJSON_Delete(j_groups);
     __real_cJSON_Delete(find_group_resp);
 }
+/**
+ * @brief Configure the wrappers for a wdb_global_assign_agent_group_ex() call that creates a missing agent.
+ * @param register_ip Registration IP expected in the new row. NULL expects the 0.0.0.0 placeholder in both
+ *                    addresses; otherwise the last-connection IP is expected to be NULL.
+ */
+static void create_wdb_global_assign_agent_group_creates_agent_call(int agent_id, int group_id, char* group_name,
+                                                                    const char* agent_name, const char* register_ip,
+                                                                    cJSON* find_group_resp) {
+    int priority = 0;
+
+    // wdb_global_find_group
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt, find_group_resp);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // wdb_global_insert_agent_belong: the agent does not exist yet
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, group_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 3);
+    expect_value(__wrap_sqlite3_bind_int, value, priority);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt_silent, OS_INVALID);
+
+    // wdb_global_agent_exists
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+
+    will_return(__wrap_time, 0);
+
+    // wdb_global_insert_agent
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1); // id
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2); // name
+    expect_string(__wrap_sqlite3_bind_text, buffer, agent_name);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 3); // ip: NULL (no buffer checked) when the registration IP is known
+    if (!register_ip) {
+        expect_string(__wrap_sqlite3_bind_text, buffer, "0.0.0.0");
+    }
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 4); // register_ip
+    expect_string(__wrap_sqlite3_bind_text, buffer, register_ip ? register_ip : "0.0.0.0");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 5); // key
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 6); // reenroll_secret
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 7); // date_add
+    expect_value(__wrap_sqlite3_bind_int, value, 0);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 8); // group
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
+
+    // wdb_global_insert_agent_belong: retried once the agent exists
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, group_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 3);
+    expect_value(__wrap_sqlite3_bind_int, value, priority);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
+}
+
+/* An agent the master forwards with its registration IP is created with that IP, not the placeholder: the
+ * client.keys sync that follows only inserts missing agents and would never correct it. */
+void test_wdb_global_assign_agent_group_ex_agent_not_exists_writes_register_ip(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    char group_name[] = "test_group";
+    cJSON *j_groups = __real_cJSON_CreateArray();
+    cJSON_AddItemToArray(j_groups, cJSON_CreateString(group_name));
+    cJSON *find_group_resp = cJSON_Parse("[{\"id\":1}]");
+
+    create_wdb_global_assign_agent_group_creates_agent_call(1, 1, group_name, "agent-01", "10.0.0.5", find_group_resp);
+
+    wdbc_result result = wdb_global_assign_agent_group_ex(data->wdb, 1, j_groups, 0, "agent-01", "10.0.0.5");
+
+    assert_int_equal(result, WDBC_OK);
+    __real_cJSON_Delete(j_groups);
+    __real_cJSON_Delete(find_group_resp);
+}
+
+/* The agent-groups sync payload carries the registration IP the master holds; set-agent-groups passes it on. */
+void test_wdb_global_set_agent_groups_override_creates_agent_with_register_ip(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    int group_id = 1;
+    char group_name[] = "GROUP";
+    char hash[] = "19dcd0dd3a4354caf10d7df393630c70"; //"GROUP" hash
+    char sync_status[] = "synced";
+    cJSON* j_find_group_resp = cJSON_Parse("[{\"id\":1}]");
+    cJSON* j_groups_number = cJSON_Parse("[{\"groups_number\":0}]");
+    cJSON* j_agents_group_info =
+        cJSON_Parse("[{\"id\":1,\"name\":\"agent001\",\"register_ip\":\"any\",\"groups\":[\"GROUP\"]}]");
+
+    /* wdb_global_delete_agent_belong */
+    create_wdb_global_delete_agent_belong_success_call(agent_id);
+
+    /* wdb_global_validate_groups */
+    create_wdb_global_validate_groups_success_call(agent_id, j_groups_number);
+
+    /* wdb_global_assign_agent_group_ex */
+    create_wdb_global_assign_agent_group_creates_agent_call(agent_id, group_id, group_name, "agent001", "any",
+                                                           j_find_group_resp);
+
+    /* wdb_global_calculate_agent_group_csv */
+    create_wdb_global_calculate_agent_group_csv_success_call(agent_id);
+
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, group_name);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+
+    /* wdb_global_set_agent_group_context */
+    create_wdb_global_set_agent_group_context_success_call(agent_id, group_name, hash, sync_status);
+
+    wdbc_result result = wdb_global_set_agent_groups(data->wdb, WDB_GROUP_OVERRIDE, sync_status, j_agents_group_info);
+
+    assert_int_equal(result, WDBC_OK);
+    __real_cJSON_Delete(j_agents_group_info);
+    __real_cJSON_Delete(j_find_group_resp);
+    __real_cJSON_Delete(j_groups_number);
+}
+
 void test_wdb_global_assign_agent_group_agent_not_exists_insert_fail(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
@@ -9107,6 +9253,8 @@ int main()
                                         test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_assign_agent_group_agent_not_exists_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_assign_agent_group_agent_not_exists_insert_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_assign_agent_group_ex_agent_not_exists_writes_register_ip, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_override_creates_agent_with_register_ip, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_assign_agent_group_find_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_assign_agent_group_find_error_worker, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_assign_agent_group_invalid_json, test_setup, test_teardown),

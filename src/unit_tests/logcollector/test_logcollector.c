@@ -38,6 +38,7 @@ bool w_get_hash_context(logreader *lf, EVP_MD_CTX **context, int64_t position);
 ssize_t w_set_to_pos(logreader *lf, long pos, int mode);
 char * w_save_files_status_to_cJSON();
 void w_save_file_status();
+void w_logcollector_shutdown(void);
 void w_load_files_status(cJSON *global_json);
 void w_initialize_file_status();
 int w_update_hash_node(char * path, int64_t pos);
@@ -1048,6 +1049,35 @@ void test_w_save_file_status_OK(void ** state) {
     will_return(__wrap_rename, 0);
 
     w_save_file_status();
+}
+
+/* w_logcollector_shutdown */
+
+void test_w_logcollector_shutdown_releases_macos_and_saves_status(void ** state) {
+    OSHashNode *hash_node = NULL;
+    strcpy(macos_log_vault.timestamp,"any timestamp");
+    macos_log_vault.settings = "my settings";
+    macos_processes = NULL;
+    macos_log_shutdown = 0;
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_value(__wrap_OSHash_Begin, self, files_status);
+    will_return(__wrap_OSHash_Begin, hash_node);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    w_logcollector_shutdown();
+
+    assert_int_equal(macos_log_shutdown, 1);
+    macos_log_shutdown = 0;
 }
 
 void test_w_save_file_status_fclose_error(void ** state) {
@@ -3078,6 +3108,112 @@ void test_w_macos_release_log_execution_log_stream_not_launched_and_show_launche
 
 }
 
+/* w_macos_log_reader */
+
+static int macos_reader_reads;
+static logreader * macos_reader_logff_bak;
+
+static void * read_macos_stub(logreader * lf, __attribute__((unused)) int * rc, __attribute__((unused)) int drop_it) {
+    assert_int_equal(pthread_mutex_trylock(&lf->mutex), EBUSY);
+    if (++macos_reader_reads == 2) {
+        lf->macos_log->state = LOG_NOT_RUNNING;
+    }
+    return NULL;
+}
+
+static int setup_macos_log_reader(void ** state) {
+    static logreader files[3];
+    static w_macos_log_config_t macos_log;
+    static char syslog_format[] = "syslog";
+    static char macos_format[] = "macos";
+
+    memset(files, 0, sizeof(files));
+    memset(&macos_log, 0, sizeof(macos_log));
+    files[0].logformat = syslog_format;
+    files[1].logformat = macos_format;
+    files[1].macos_log = &macos_log;
+    files[1].read = read_macos_stub;
+    macos_log.state = LOG_RUNNING_STREAM;
+    w_mutex_init(&files[1].mutex, NULL);
+
+    macos_reader_logff_bak = logff;
+    logff = files;
+    macos_reader_reads = 0;
+    *state = files;
+    return 0;
+}
+
+static int teardown_macos_log_reader(void ** state) {
+    logreader * files = *state;
+
+    w_mutex_destroy(&files[1].mutex);
+    logff = macos_reader_logff_bak;
+    macos_log_shutdown = 0;
+    return 0;
+}
+
+static void expect_macos_log_reader_loops(int loops) {
+    for (int i = 0; i < loops; i++) {
+        will_return(__wrap_FOREVER, 1);
+        expect_function_call(__wrap_pthread_rwlock_rdlock);
+        expect_function_call(__wrap_pthread_rwlock_unlock);
+    }
+}
+
+void test_w_macos_log_reader_reads_until_process_stops(void ** state) {
+    expect_macos_log_reader_loops(3);
+
+    assert_null(w_macos_log_reader(NULL));
+    assert_int_equal(macos_reader_reads, 2);
+}
+
+static logreader macos_reader_moved[2];
+static logreader * macos_reader_last_read;
+
+static void * read_macos_moving_stub(logreader * lf, __attribute__((unused)) int * rc, __attribute__((unused)) int drop_it) {
+    macos_reader_last_read = lf;
+    if (++macos_reader_reads == 1) {
+        /* The entry is moved to another position, as Remove_Localfile() does */
+        logff = macos_reader_moved;
+    } else {
+        lf->macos_log->state = LOG_NOT_RUNNING;
+    }
+    return NULL;
+}
+
+void test_w_macos_log_reader_follows_moved_entry(void ** state) {
+    logreader * files = *state;
+
+    files[1].read = read_macos_moving_stub;
+    memset(macos_reader_moved, 0, sizeof(macos_reader_moved));
+    macos_reader_moved[0] = files[1];
+    w_mutex_init(&macos_reader_moved[0].mutex, NULL);
+    expect_macos_log_reader_loops(3);
+
+    assert_null(w_macos_log_reader(NULL));
+    assert_int_equal(macos_reader_reads, 2);
+    assert_ptr_equal(macos_reader_last_read, &macos_reader_moved[0]);
+    w_mutex_destroy(&macos_reader_moved[0].mutex);
+}
+
+void test_w_macos_log_reader_process_not_running(void ** state) {
+    logreader * files = *state;
+
+    files[1].macos_log->state = LOG_NOT_RUNNING;
+    expect_macos_log_reader_loops(1);
+
+    assert_null(w_macos_log_reader(NULL));
+    assert_int_equal(macos_reader_reads, 0);
+}
+
+void test_w_macos_log_reader_shutdown(void ** state) {
+    macos_log_shutdown = 1;
+    expect_macos_log_reader_loops(1);
+
+    assert_null(w_macos_log_reader(NULL));
+    assert_int_equal(macos_reader_reads, 0);
+}
+
 void check_ignore_and_restrict_null_config(void ** state) {
     logreader *regex_config = *state;
 
@@ -3209,6 +3345,182 @@ void test_w_logcollector_check_max_files_raise_failed(void ** state) {
     w_logcollector_check_max_files(-1);
 }
 
+/* w_msg_queue_push */
+
+static void init_msg_queue_push(w_msg_queue_t * msg_queue, logtarget * target, socket_forwarder * forwarder, size_t size) {
+    memset(msg_queue, 0, sizeof(*msg_queue));
+    memset(forwarder, 0, sizeof(*forwarder));
+    forwarder->name = "test_target";
+    target->log_socket = forwarder;
+    target->format = NULL;
+    msg_queue->msg_queue = queue_init(size);
+    w_mutex_init(&msg_queue->mutex, NULL);
+    w_cond_init(&msg_queue->available, NULL);
+}
+
+static void free_msg_queue_push(w_msg_queue_t * msg_queue) {
+    w_message_t * message;
+
+    while (message = (w_message_t *) queue_pop(msg_queue->msg_queue), message) {
+        free(message->buffer);
+        free(message);
+    }
+    queue_free(msg_queue->msg_queue);
+    w_mutex_destroy(&msg_queue->mutex);
+    w_cond_destroy(&msg_queue->available);
+}
+
+static void drop_one_line(w_msg_queue_t * msg_queue, logtarget * target) {
+    expect_string(__wrap__mdebug2, formatted_msg, "Discarding log line for target 'test_target'");
+    assert_int_equal(w_msg_queue_push(msg_queue, "b", NULL, 2, target, 0), -1);
+}
+
+static void free_one_message(w_msg_queue_t * msg_queue) {
+    w_message_t * message = (w_message_t *) queue_pop(msg_queue->msg_queue);
+
+    assert_non_null(message);
+    free(message->buffer);
+    free(message);
+}
+
+void test_w_msg_queue_push_recovery_summary_after_burst(void ** state) {
+    w_msg_queue_t msg_queue;
+    logtarget target;
+    socket_forwarder forwarder;
+    int i;
+
+    init_msg_queue_push(&msg_queue, &target, &forwarder, 2);
+
+    assert_int_equal(w_msg_queue_push(&msg_queue, "a", NULL, 2, &target, 0), 0);
+
+    // last_warned == 0 after memset, so the first drop warns immediately
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Target 'test_target' message queue is full (2). 1 log line(s) lost since the last warning.");
+    drop_one_line(&msg_queue, &target);
+    assert_int_not_equal(msg_queue.last_warned, 0);
+
+    for (i = 0; i < 4; i++) {
+        drop_one_line(&msg_queue, &target);
+    }
+    assert_int_equal(msg_queue.dropped_since_warning, 4);
+
+    // Recovery within the interval of the last warning stays silent and keeps counting
+    free_one_message(&msg_queue);
+    assert_int_equal(w_msg_queue_push(&msg_queue, "c", NULL, 2, &target, 0), 0);
+    assert_int_equal(msg_queue.dropped_since_warning, 4);
+
+    // Once the interval elapsed, the next accepted line reports the accumulated count
+    msg_queue.last_warned = time(NULL) - 61;
+    free_one_message(&msg_queue);
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Target 'test_target' message queue accepting lines again. 4 log line(s) lost since the last warning.");
+    assert_int_equal(w_msg_queue_push(&msg_queue, "d", NULL, 2, &target, 0), 0);
+    assert_int_equal(msg_queue.dropped_since_warning, 0);
+    assert_true(time(NULL) - msg_queue.last_warned < 5);
+
+    free_msg_queue_push(&msg_queue);
+}
+
+void test_w_msg_queue_push_second_episode_rate_limited(void ** state) {
+    w_msg_queue_t msg_queue;
+    logtarget target;
+    socket_forwarder forwarder;
+    time_t warned;
+
+    init_msg_queue_push(&msg_queue, &target, &forwarder, 2);
+
+    assert_int_equal(w_msg_queue_push(&msg_queue, "a", NULL, 2, &target, 0), 0);
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Target 'test_target' message queue is full (2). 1 log line(s) lost since the last warning.");
+    drop_one_line(&msg_queue, &target);
+    warned = msg_queue.last_warned;
+
+    // Second episode inside the interval: no warning, last_warned is not refreshed
+    free_one_message(&msg_queue);
+    assert_int_equal(w_msg_queue_push(&msg_queue, "c", NULL, 2, &target, 0), 0);
+    drop_one_line(&msg_queue, &target);
+    drop_one_line(&msg_queue, &target);
+    assert_int_equal(msg_queue.dropped_since_warning, 2);
+    assert_int_equal(msg_queue.last_warned, warned);
+
+    // After the interval the "queue is full" warning fires again with the accumulated count
+    msg_queue.last_warned = time(NULL) - 61;
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Target 'test_target' message queue is full (2). 3 log line(s) lost since the last warning.");
+    drop_one_line(&msg_queue, &target);
+    assert_int_equal(msg_queue.dropped_since_warning, 0);
+    assert_true(time(NULL) - msg_queue.last_warned < 5);
+
+    free_msg_queue_push(&msg_queue);
+}
+
+static void * push_after_delay(void * arg) {
+    w_msg_queue_t * msg_queue = arg;
+    logtarget target;
+    socket_forwarder forwarder;
+
+    memset(&forwarder, 0, sizeof(forwarder));
+    forwarder.name = "test_target";
+    target.log_socket = &forwarder;
+    target.format = NULL;
+
+    sleep(3);
+    w_msg_queue_push(msg_queue, "z", NULL, 2, &target, 0);
+    return NULL;
+}
+
+static void pop_with_pending_drops(time_t age, const char * expected_warning) {
+    w_msg_queue_t msg_queue;
+    logtarget target;
+    socket_forwarder forwarder;
+    pthread_t thread;
+    w_message_t * message;
+
+    init_msg_queue_push(&msg_queue, &target, &forwarder, 4);
+    msg_queue.target_name = "test_target";
+    msg_queue.dropped_since_warning = 7;
+    msg_queue.last_warned = time(NULL) - age;
+
+    expect_string(__wrap__mwarn, formatted_msg, expected_warning);
+    assert_int_equal(pthread_create(&thread, NULL, push_after_delay, &msg_queue), 0);
+
+    // The queue is empty: the consumer reports the pending drops itself, then blocks until a line arrives
+    message = w_msg_queue_pop(&msg_queue);
+    pthread_join(thread, NULL);
+
+    assert_non_null(message);
+    assert_int_equal(msg_queue.dropped_since_warning, 0);
+    free(message->buffer);
+    free(message);
+    free_msg_queue_push(&msg_queue);
+}
+
+void test_w_msg_queue_pop_reports_pending_drops_when_drained(void ** state) {
+    pop_with_pending_drops(61, "Target 'test_target' message queue accepting lines again. 7 log line(s) lost since the last warning.");
+}
+
+void test_w_msg_queue_pop_waits_for_interval_before_reporting(void ** state) {
+    time_t start = time(NULL);
+
+    // 58 s into the interval: the consumer sleeps ~2 s, reports, and only then receives the pushed line
+    pop_with_pending_drops(58, "Target 'test_target' message queue accepting lines again. 7 log line(s) lost since the last warning.");
+    assert_true(time(NULL) - start >= 1);
+}
+
+void test_w_msg_queue_push_no_summary_without_drops(void ** state) {
+    w_msg_queue_t msg_queue;
+    logtarget target;
+    socket_forwarder forwarder;
+
+    init_msg_queue_push(&msg_queue, &target, &forwarder, 4);
+
+    assert_int_equal(w_msg_queue_push(&msg_queue, "a", NULL, 2, &target, 0), 0);
+    assert_int_equal(w_msg_queue_push(&msg_queue, "b", NULL, 2, &target, 0), 0);
+    assert_int_equal(msg_queue.dropped_since_warning, 0);
+
+    free_msg_queue_push(&msg_queue);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Test w_get_hash_context
@@ -3248,6 +3560,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_save_file_status_fwrite_error, setup_log_context, teardown_log_context),
         cmocka_unit_test_setup_teardown(test_w_save_file_status_fclose_error, setup_log_context, teardown_log_context),
         cmocka_unit_test_setup_teardown(test_w_save_file_status_OK, setup_log_context, teardown_log_context),
+        cmocka_unit_test_setup_teardown(test_w_logcollector_shutdown_releases_macos_and_saves_status, setup_local_hashmap, teardown_local_hashmap),
 
         // Test w_load_files_status
         cmocka_unit_test(test_w_load_files_status_empty_array),
@@ -3323,6 +3636,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_macos_release_log_execution_log_stream_and_show_launched_and_running, setup_process, teardown_process),
         cmocka_unit_test_setup_teardown(test_w_macos_release_log_execution_log_stream_launched_and_show_not_launched, setup_process, teardown_process),
         cmocka_unit_test_setup_teardown(test_w_macos_release_log_execution_log_stream_not_launched_and_show_launched, setup_process, teardown_process),
+        cmocka_unit_test_setup_teardown(test_w_macos_log_reader_reads_until_process_stops, setup_macos_log_reader, teardown_macos_log_reader),
+        cmocka_unit_test_setup_teardown(test_w_macos_log_reader_follows_moved_entry, setup_macos_log_reader, teardown_macos_log_reader),
+        cmocka_unit_test_setup_teardown(test_w_macos_log_reader_process_not_running, setup_macos_log_reader, teardown_macos_log_reader),
+        cmocka_unit_test_setup_teardown(test_w_macos_log_reader_shutdown, setup_macos_log_reader, teardown_macos_log_reader),
 
         // Test w_macos_release_log_execution
         cmocka_unit_test_setup_teardown(check_ignore_and_restrict_null_config, setup_regex, teardown_regex),
@@ -3334,7 +3651,14 @@ int main(void) {
         // Test w_logcollector_check_max_files
         cmocka_unit_test(test_w_logcollector_check_max_files_fits),
         cmocka_unit_test(test_w_logcollector_check_max_files_above_limit_in_force_warns),
-        cmocka_unit_test(test_w_logcollector_check_max_files_raise_failed)
+        cmocka_unit_test(test_w_logcollector_check_max_files_raise_failed),
+
+        // Test w_msg_queue_push
+        cmocka_unit_test(test_w_msg_queue_push_recovery_summary_after_burst),
+        cmocka_unit_test(test_w_msg_queue_push_second_episode_rate_limited),
+        cmocka_unit_test(test_w_msg_queue_pop_reports_pending_drops_when_drained),
+        cmocka_unit_test(test_w_msg_queue_pop_waits_for_interval_before_reporting),
+        cmocka_unit_test(test_w_msg_queue_push_no_summary_without_drops)
 
     };
 

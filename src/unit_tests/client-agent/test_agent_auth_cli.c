@@ -570,8 +570,8 @@ static void test_show_token_renders_without_the_credential(void **state) {
     assert_non_null(strstr(out_buf, "pin: " FROZEN_PIN_HEX "\n"));
     /* The token carries a credential, and the output must say so without ever carrying it. */
     assert_non_null(strstr(out_buf, "credential: present\n"));
+    assert_non_null(strstr(out_buf, "id: " FROZEN_ID_B64 "\n"));
     assert_null(strstr(out_buf, FROZEN_KEY_B64));
-    assert_null(strstr(out_buf, FROZEN_ID_B64));
     assert_null(strstr(out_buf, "key"));
 }
 
@@ -908,7 +908,222 @@ static void test_refused_enrollment_reports_the_manager_reason(void **state) {
     fclose(err);
 
     assert_non_null(strstr(err_buf, "  " AGENT_AUTH_MANAGER_SAID "Duplicate name\n"));
+    assert_null(strstr(err_buf, AGENT_AUTH_TOKEN_REFUSED));
     assert_string_equal(out_buf, "");
+    /* A real refusal keeps its wording and is not presented as something that clears by itself. */
+    assert_non_null(strstr(err_buf, "wazuh-agent-auth: the manager refused the enrollment.\n"));
+    assert_null(strstr(err_buf, "Try again"));
+}
+
+/* A load balancer's error page in front of the manager: exit 4 as before, but the operator is told
+ * the status, that it may not be the manager talking, and that it may clear -- not "refused". */
+static void test_unreadable_5xx_says_it_did_not_go_through(void **state) {
+    (void) state;
+    agent_auth_opts_t opts;
+    char out_buf[1024] = {0};
+    char err_buf[2048] = {0};
+    char token[] = TOKEN_PIN_ONLY;
+    FILE *in = fmemopen(token, strlen(token), "r");
+    FILE *out = fmemopen(out_buf, sizeof(out_buf), "w");
+    FILE *err = fmemopen(err_buf, sizeof(err_buf), "w");
+
+    write_file(KEYS_FILE, EXISTING_KEY_LINE);
+    write_file(AGENT_ANCHOR_CA, "OLD-CA");
+    w_agent_auth_opts_init(&opts);
+    opts.force_enroll = true;
+
+    allow_any_logging(LOG_INFO | LOG_ERROR);
+    will_return(__wrap_hc_spki_pinned_certificate, 1);
+    will_return(__wrap_hc_enroll, 502);
+    will_return(__wrap_hc_enroll, "<html><head><title>502 Bad Gateway</title></head></html>");
+    will_return(__wrap_hc_enroll, 1);
+
+    assert_int_equal(w_agent_auth_run(&opts, in, out, err), AGENT_AUTH_ERR_ENROLL);
+
+    fclose(in);
+    fclose(out);
+    fclose(err);
+
+    assert_string_equal(err_buf,
+                        "wazuh-agent-auth: the enrollment did not go through.\n"
+                        "  /enroll answered HTTP 502 with no message the agent could read; it may not "
+                        "have come from the manager itself (for example, a load balancer or proxy).\n"
+                        "  This may clear on its own. Try again in a minute.\n"
+                        "  Nothing was changed.\n");
+    assert_int_equal(FileSize(KEYS_FILE), (int64_t) strlen(EXISTING_KEY_LINE));
+}
+
+/* The manager's own 404 for a route it does not serve: the operator is pointed at the path, not at
+ * a load balancer, and it stays a refusal -- trying again with the same path cannot help. */
+static void test_not_found_404_points_at_the_path(void **state) {
+    (void) state;
+    agent_auth_opts_t opts;
+    char out_buf[1024] = {0};
+    char err_buf[2048] = {0};
+    char token[] = TOKEN_PIN_ONLY;
+    FILE *in = fmemopen(token, strlen(token), "r");
+    FILE *out = fmemopen(out_buf, sizeof(out_buf), "w");
+    FILE *err = fmemopen(err_buf, sizeof(err_buf), "w");
+
+    write_file(KEYS_FILE, EXISTING_KEY_LINE);
+    write_file(AGENT_ANCHOR_CA, "OLD-CA");
+    w_agent_auth_opts_init(&opts);
+    opts.force_enroll = true;
+
+    allow_any_logging(LOG_INFO | LOG_ERROR);
+    will_return(__wrap_hc_spki_pinned_certificate, 1);
+    will_return(__wrap_hc_enroll, 404);
+    will_return(__wrap_hc_enroll, "{\"error\":\"not_found\"}");
+    will_return(__wrap_hc_enroll, 1);
+
+    assert_int_equal(w_agent_auth_run(&opts, in, out, err), AGENT_AUTH_ERR_ENROLL);
+
+    fclose(in);
+    fclose(out);
+    fclose(err);
+
+    assert_string_equal(err_buf,
+                        "wazuh-agent-auth: the manager refused the enrollment.\n"
+                        "  /enroll answered HTTP 404: nothing serves /enroll under the path '/wazuh-manager'. That path must "
+                        "match the prefix the manager serves.\n"
+                        "  Nothing was changed.\n");
+    assert_int_equal(FileSize(KEYS_FILE), (int64_t) strlen(EXISTING_KEY_LINE));
+}
+
+/* token_unknown is both a token still on its way to this node and one that is not there at all
+ * (purged, from an earlier install, another manager's): the reason is shown as before, and the hint
+ * names both instead of promising that waiting will help. */
+static void test_token_unknown_says_the_token_is_not_known_yet(void **state) {
+    (void) state;
+    agent_auth_opts_t opts;
+    char out_buf[1024] = {0};
+    char err_buf[2048] = {0};
+    char token[] = TOKEN_PIN_ONLY;
+    FILE *in = fmemopen(token, strlen(token), "r");
+    FILE *out = fmemopen(out_buf, sizeof(out_buf), "w");
+    FILE *err = fmemopen(err_buf, sizeof(err_buf), "w");
+
+    write_file(KEYS_FILE, EXISTING_KEY_LINE);
+    write_file(AGENT_ANCHOR_CA, "OLD-CA");
+    w_agent_auth_opts_init(&opts);
+    opts.force_enroll = true;
+
+    /* Logged at info level only ("... token_unknown ... Retrying."): no error line on this path. */
+    allow_any_logging(LOG_INFO);
+    will_return(__wrap_hc_spki_pinned_certificate, 1);
+    will_return(__wrap_hc_enroll, 401);
+    will_return(__wrap_hc_enroll,
+                "{\"error\":{\"code\":\"token_unknown\",\"message\":\"Invalid client authentication\"}}");
+    will_return(__wrap_hc_enroll, 1);
+
+    assert_int_equal(w_agent_auth_run(&opts, in, out, err), AGENT_AUTH_ERR_ENROLL);
+
+    fclose(in);
+    fclose(out);
+    fclose(err);
+
+    assert_string_equal(err_buf,
+                        "wazuh-agent-auth: the enrollment did not go through.\n"
+                        "  " AGENT_AUTH_MANAGER_SAID "Invalid client authentication\n"
+                        "  The manager does not know this token. If it was just created, it can\n"
+                        "  take some seconds to reach every cluster node: try again in a minute.\n"
+                        "  If it keeps failing, the token is wrong or no longer exists on the\n"
+                        "  manager; mint a new one.\n"
+                        "  Nothing was changed.\n");
+}
+
+/* stale_token is the manager refusing the request's timestamp: the hint is about the clock, and
+ * says nothing about the token, which may well be fine. */
+static void test_stale_token_points_at_the_clock(void **state) {
+    (void) state;
+    agent_auth_opts_t opts;
+    char out_buf[1024] = {0};
+    char err_buf[2048] = {0};
+    char token[] = TOKEN_PIN_ONLY;
+    FILE *in = fmemopen(token, strlen(token), "r");
+    FILE *out = fmemopen(out_buf, sizeof(out_buf), "w");
+    FILE *err = fmemopen(err_buf, sizeof(err_buf), "w");
+
+    write_file(KEYS_FILE, EXISTING_KEY_LINE);
+    write_file(AGENT_ANCHOR_CA, "OLD-CA");
+    w_agent_auth_opts_init(&opts);
+    opts.force_enroll = true;
+
+    allow_any_logging(LOG_INFO);
+    will_return(__wrap_hc_spki_pinned_certificate, 1);
+    will_return(__wrap_hc_enroll, 401);
+    will_return(__wrap_hc_enroll,
+                "{\"error\":{\"code\":\"stale_token\",\"message\":\"Invalid client authentication\"}}");
+    will_return(__wrap_hc_enroll, 1);
+
+    assert_int_equal(w_agent_auth_run(&opts, in, out, err), AGENT_AUTH_ERR_ENROLL);
+
+    fclose(in);
+    fclose(out);
+    fclose(err);
+
+    assert_string_equal(err_buf,
+                        "wazuh-agent-auth: the enrollment did not go through.\n"
+                        "  " AGENT_AUTH_MANAGER_SAID "Invalid client authentication\n"
+                        "  The manager refused the request's timestamp: this host's clock and\n"
+                        "  the manager's disagree. Correct the clock, then try again.\n"
+                        "  Nothing was changed.\n");
+}
+
+/* For a revoked or expired token the manager only says "Invalid client authentication". The
+ * token-refused line is what tells the operator, and the Windows agent UI, which token and why:
+ * printed for remoted's 401 and authd's 403 alike, and never for a token a worker may still learn. */
+static void test_refused_token_is_named_with_what_to_do(void **state) {
+    (void) state;
+    static const struct {
+        long http_code;
+        const char *body;
+        const char *expected; /* The whole stderr tail, or NULL when no token-refused line may appear. */
+    } cases[] = {
+        {401, "{\"error\":{\"code\":\"token_revoked\",\"message\":\"Invalid client authentication\"}}",
+         "  " AGENT_AUTH_TOKEN_REFUSED "enrollment token ZGVmZ2hpamtsbW5vcHFycw was revoked. Create a new "
+         "enrollment token on the manager.\n  " AGENT_AUTH_MANAGER_SAID "Invalid client authentication\n"},
+        {403, "{\"error\":{\"code\":9024,\"message\":\"Enrollment token uses exhausted\"}}",
+         "  " AGENT_AUTH_TOKEN_REFUSED "enrollment token ZGVmZ2hpamtsbW5vcHFycw has no uses left. Create a new "
+         "enrollment token on the manager.\n  " AGENT_AUTH_MANAGER_SAID "Enrollment token uses exhausted\n"},
+        {401, "{\"error\":{\"code\":\"token_unknown\",\"message\":\"Invalid client authentication\"}}", NULL},
+    };
+    size_t i;
+
+    allow_any_logging(LOG_INFO | LOG_ERROR);
+
+    for (i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+        agent_auth_opts_t opts;
+        char out_buf[1024] = {0};
+        char err_buf[2048] = {0};
+        char token[] = TOKEN_WITH_KEY;
+        FILE *in = fmemopen(token, strlen(token), "r");
+        FILE *out = fmemopen(out_buf, sizeof(out_buf), "w");
+        FILE *err = fmemopen(err_buf, sizeof(err_buf), "w");
+
+        write_file(KEYS_FILE, EXISTING_KEY_LINE);
+        write_file(AGENT_ANCHOR_CA, "OLD-CA");
+        w_agent_auth_opts_init(&opts);
+        opts.force_enroll = true;
+
+        will_return(__wrap_hc_spki_pinned_certificate, 1);
+        will_return(__wrap_hc_enroll, cases[i].http_code);
+        will_return(__wrap_hc_enroll, cases[i].body);
+        will_return(__wrap_hc_enroll, 1);
+
+        assert_int_equal(w_agent_auth_run(&opts, in, out, err), AGENT_AUTH_ERR_ENROLL);
+
+        fclose(in);
+        fclose(out);
+        fclose(err);
+
+        if (cases[i].expected != NULL) {
+            assert_non_null(strstr(err_buf, cases[i].expected));
+        } else {
+            assert_null(strstr(err_buf, AGENT_AUTH_TOKEN_REFUSED));
+        }
+        assert_string_equal(out_buf, "");
+    }
 }
 
 /* The config rewrite is the one step that reports success without the data changing:
@@ -1716,6 +1931,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_operator_token_file_is_never_removed, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_refused_enrollment_leaves_the_old_state, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_refused_enrollment_reports_the_manager_reason, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_refused_token_is_named_with_what_to_do, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_unreadable_5xx_says_it_did_not_go_through, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_token_unknown_says_the_token_is_not_known_yet, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_stale_token_points_at_the_clock, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_not_found_404_points_at_the_path, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_rewrite_refuses_when_the_node_is_absent, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_rewrite_never_follows_a_swapped_staging_file, setup_test,
                                         teardown_test),

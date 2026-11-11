@@ -615,49 +615,89 @@ def test_compare_files_ko(logger_mock, mock_get_cluster_items):
         wazuh_db_query_mock.assert_called_once_with()
 
 
-def test_clean_up_ok():
-    """Check if the cleaning function is working properly."""
+# The clean_up tests run against a real installation tree: what is under test is what the operating system does
+# with a link planted in queue/, which a mock cannot show.
 
-    with patch('wazuh.core.cluster.cluster.safe_join', return_value="some/path"):
-        with patch.object(wazuh.core.cluster.cluster.logger, "debug") as mock_logger:
-            with patch('os.path.exists', return_value=False) as path_exists_mock:
+@pytest.fixture
+def cluster_home(tmp_path):
+    """Installation tree with queue/cluster/, set as common.WAZUH_PATH."""
+    (tmp_path / 'queue' / 'cluster').mkdir(parents=True)
+    with patch.object(common, 'WAZUH_PATH', str(tmp_path)):
+        yield tmp_path
+
+
+def test_clean_up_ok(cluster_home):
+    """Check that clean_up empties the directory, keeps the bookmark and removes links without following them."""
+    node_dir = cluster_home / 'queue' / 'cluster' / 'worker1'
+    rm_path = str(node_dir)
+    outside = cluster_home / 'outside'
+    outside.mkdir()
+    (outside / 'kept').write_text('kept')
+
+    with patch.object(wazuh.core.cluster.cluster.logger, "debug") as mock_logger:
+        cluster.clean_up("worker1")
+        mock_logger.assert_any_call(f"Removing '{rm_path}'.")
+        mock_logger.assert_any_call(f"Nothing to remove in '{rm_path}'.")
+        mock_logger.assert_called_with(f"Removed '{rm_path}'.")
+
+        node_dir.mkdir()
+        bookmark = os.path.basename(common.AR_BOOKMARK_FILEPATH)
+        (node_dir / bookmark).write_text('{}')
+        (node_dir / 'other_file.txt').write_text('x')
+        (node_dir / 'subdir').mkdir()
+        (node_dir / 'subdir' / 'inner').write_text('x')
+        (node_dir / 'link_to_dir').symlink_to(outside)
+        (node_dir / 'link_to_file').symlink_to(outside / 'kept')
+
+        cluster.clean_up("worker1")
+        mock_logger.assert_called_with(f"Removed '{rm_path}'.")
+
+    assert sorted(os.listdir(node_dir)) == [bookmark]
+    assert (outside / 'kept').read_text() == 'kept'
+
+
+@pytest.mark.parametrize('linked', ['cluster', 'worker1'])
+def test_clean_up_link_not_followed(cluster_home, linked):
+    """Check that a link planted in place of queue/cluster or of the node directory is refused, not emptied."""
+    decoy = cluster_home / 'decoy'
+    (decoy / 'subdir').mkdir(parents=True)
+    (decoy / 'victim').write_text('victim')
+    (decoy / 'subdir' / 'inner').write_text('inner')
+
+    cluster_dir = cluster_home / 'queue' / 'cluster'
+    if linked == 'cluster':
+        cluster_dir.rmdir()
+        cluster_dir.symlink_to(decoy)
+        node_name = ''
+    else:
+        (cluster_dir / 'worker1').symlink_to(decoy)
+        node_name = 'worker1'
+
+    with patch.object(wazuh.core.cluster.cluster.logger, "error") as mock_error_logger:
+        cluster.clean_up(node_name)
+        mock_error_logger.assert_called_once()
+        assert "Error cleaning up" in str(mock_error_logger.call_args)
+
+    assert sorted(os.listdir(decoy)) == ['subdir', 'victim']
+    assert (decoy / 'subdir' / 'inner').read_text() == 'inner'
+
+
+def test_clean_up_ko(cluster_home):
+    """Check that an entry that cannot be removed is logged and the others are still removed."""
+    node_dir = cluster_home / 'queue' / 'cluster' / 'worker1'
+    (node_dir / 'other_dir').mkdir(parents=True)
+    (node_dir / 'other_file.txt').write_text('x')
+    error_removing = f"Error removing '{node_dir / 'other_dir'}': 'test error'."
+
+    with patch.object(wazuh.core.cluster.cluster.logger, "error") as mock_error_logger:
+        with patch.object(wazuh.core.cluster.cluster.logger, "debug") as mock_debug_logger:
+            with patch('shutil.rmtree', side_effect=Exception("test error")):
                 cluster.clean_up("worker1")
-                mock_logger.assert_any_call("Removing 'some/path'.")
-                mock_logger.assert_any_call("Nothing to remove in 'some/path'.")
-                mock_logger.assert_called_with("Removed 'some/path'.")
+                mock_debug_logger.assert_any_call(f"Removing '{node_dir}'.")
+                mock_error_logger.assert_any_call(error_removing)
+                mock_debug_logger.assert_called_with(f"Removed '{node_dir}'.")
 
-                path_exists_mock.return_value = True
-                with patch('wazuh.core.cluster.cluster.listdir',
-                           return_value=["ar_bookmark.json", "other_file.txt"]):
-                    with patch('os.path.isdir', return_value=True) as is_dir_mock:
-                        with patch('shutil.rmtree'):
-                            cluster.clean_up("worker1")
-                            mock_logger.assert_any_call("Removing 'some/path'.")
-                            mock_logger.assert_called_with("Removed 'some/path'.")
-
-                        is_dir_mock.return_value = False
-                        with patch('wazuh.core.cluster.cluster.remove'):
-                            cluster.clean_up("worker1")
-                            mock_logger.assert_any_call("Removing 'some/path'.")
-                            mock_logger.assert_called_with("Removed 'some/path'.")
-
-
-def test_clean_up_ko():
-    """Check if the cleaning function raising the exceptions properly."""
-    error_removing = "Error removing 'some/path/other_file.txt': 'test error'."
-
-    with patch('wazuh.core.cluster.cluster.safe_join', return_value="some/path"):
-        with patch.object(wazuh.core.cluster.cluster.logger, "error") as mock_error_logger:
-            with patch.object(wazuh.core.cluster.cluster.logger, "debug") as mock_debug_logger:
-                with patch('os.path.exists', return_value=True):
-                    with patch('wazuh.core.cluster.cluster.listdir',
-                               return_value=["ar_bookmark.json", "other_file.txt"]):
-                        with patch('os.path.isdir', return_value=True):
-                            with patch('shutil.rmtree', side_effect=Exception("test error")):
-                                cluster.clean_up("worker1")
-                                mock_debug_logger.assert_any_call("Removing 'some/path'.")
-                                mock_error_logger.assert_any_call(error_removing)
-                                mock_debug_logger.assert_called_with("Removed 'some/path'.")
+    assert os.listdir(node_dir) == ['other_dir']
 
 
 def test_clean_up_node_name_validation():

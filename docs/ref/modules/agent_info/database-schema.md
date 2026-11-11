@@ -6,6 +6,8 @@ The `agent_info` module uses a local SQLite database to persist agent metadata, 
 
 ## Tables
 
+> **`db_status_field_dm`:** the tables synchronized through DBSync (`agent_metadata` and `agent_groups` here) carry one more column in the live database, `db_status_field_dm INTEGER DEFAULT 1`, added by DBSync at start. It is internal bookkeeping for change detection and is not part of the DDL shown below.
+
 ### `agent_metadata`
 
 This table stores the primary identity and operating system information for the agent. It contains a single row that is periodically updated.
@@ -36,7 +38,7 @@ CREATE TABLE IF NOT EXISTS agent_metadata (
 |           | `host_os_type`      | TEXT      | The type of the operating system (e.g., Linux).       | `host.os.type`          |
 |           | `host_os_platform`  | TEXT      | The OS platform identifier (e.g., ubuntu).            | `host.os.platform`      |
 |           | `host_os_version`   | TEXT      | The version of the operating system (e.g., 22.04).    | `host.os.version`       |
-|           | `cluster_name`      | TEXT      | The name of the manager cluster node the agent is currently connected to. Changes to this value are compared each cycle and used to trigger a group-sync. | -                       |
+|           | `cluster_name`      | TEXT      | The name of the manager cluster the agent is currently connected to (the cluster name, not the node name; for example `wazuh`). Changes to this value are compared each cycle and used to trigger a group-sync. | -                       |
 
 ---
 

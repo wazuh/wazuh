@@ -62,7 +62,7 @@ the master to the workers:
 
 | Path | Files | Mode written on the worker |
 |---|---|---|
-| `/etc/wazuh-manager/` | `client.keys`, `authd.pass`, `enrollment_tokens.json` | `0640` |
+| `/etc/wazuh-manager/` | `client.keys`, `authd.pass`, `enrollment_tokens.json` | `0660` |
 | `/etc/wazuh-manager/shared/` | everything, recursively (group configuration) | `0660` |
 | `var/multigroups/` | `merged.mg`, recursively | `0660` |
 
@@ -81,13 +81,29 @@ cluster through a load balancer is described in [What the cluster replicates, an
 The Wazuh server cluster is managed by the `wazuh-manager-clusterd` daemon, which runs on **every**
 node and implements a master–worker architecture. Every connection is opened by a worker to the
 address in `<cluster><nodes>`; the master answers and pushes data over those connections. The
-cluster traffic is encrypted with `<cluster><key>`.
+cluster traffic is encrypted with per-connection keys derived from `<cluster><key>` (see
+[Transport Protection](../../security/cluster-model.md#transport-protection)).
 
 When a worker connects, the master refuses it if its node name is not made of letters, digits, `_`
 and `-` (error `3060`), is already connected (`3028`) or equals the master's own (`3029`), if its
-`<cluster><name>` differs (`3030`), or if its Wazuh version differs (`3031`). A worker whose key does
-not match cannot decrypt the master's messages (`3025`). A worker that loses the connection retries
-every 10 seconds.
+`<cluster><name>` differs (`3030`), or if its Wazuh version differs (`3031`); the worker logs each of
+these refusals as `Could not connect to master: <error>`. A worker whose key does not match is not told
+why: the master cannot decrypt its messages, logs `3025` (`Could not decrypt message`) in its own
+`cluster.log` and closes the connection. The worker logs `The master closed the connection` (INFO) on
+every attempt and, after 3 such attempts in a row that never completed the handshake (and every 30
+more after that), a WARNING: `The master closed the connection before the handshake completed <n> times
+in a row. Check that the cluster key of this node is the same as the master's …`. The count spans the
+reconnections and starts again from 0 after a handshake that completes, or when clusterd restarts. A
+worker that loses the connection retries every 10 seconds.
+
+On the master, a connection that closes before identifying itself (a port probe or a load-balancer
+health check, for instance) is logged at INFO as `Connection from <ip> closed before the handshake
+completed.` when it closes cleanly. One that resets the connection instead (a TCP RST: HAProxy
+`mode tcp` checks, port scanners, or a peer that closes with data still unread) is logged today as an
+ERROR, `Error during handshake with incoming connection: [Errno 104] Connection reset by peer.`,
+followed by a traceback; it is harmless and changes nothing on the master. When the master itself
+closed the connection (a refusal, a deadline, a message it cannot decrypt), only that reason is
+logged.
 
 Periodic tasks, with their intervals (internal, not configurable):
 
@@ -95,7 +111,7 @@ Periodic tasks, with their intervals (internal, not configurable):
 |---|---|---|---|
 | Keep alive | worker | 60 s | Sends a keep-alive to the master. After 2 failed attempts in a row the worker disconnects. |
 | Keep alive | master | 60 s | Closes the connection of a worker that has sent no keep-alive for 120 s. |
-| Integrity check / Integrity sync | worker | 9 s | Sends the metadata of its synchronized files to the master, which compares it with its own and sends back the files that are missing, different or extra. |
+| Integrity check / Integrity sync | worker | 9 s | Sends the metadata of its synchronized files to the master, which compares it with its own and sends back the missing and different files plus the list of extra ones, which the worker deletes. |
 | Local integrity | master | 8 s | Recalculates the metadata (BLAKE2b hash, modification time) of its synchronized files, so the comparison is not repeated for each worker. |
 | Agent-info sync | worker | 10 s | Sends the agent information held by its local `wazuh-manager-db` (status, keep-alive, agent metadata) to the master's `wazuh-manager-db`. |
 | Local agent-groups | master | 10 s, after a 30 s start delay | Reads the agent-group assignments not yet synchronized from its `wazuh-manager-db` and broadcasts them to every connected worker. |
@@ -161,7 +177,7 @@ command-line options, for running it by hand:
 | `-d` | Enable debug messages; repeat (`-dd`) for more verbosity |
 | `-V` | Print the version and exit |
 | `-r` | Run as root instead of dropping privileges to `wazuh-manager` |
-| `-t` | Read and check the cluster configuration, then exit (`0` when valid, `1` otherwise) |
+| `-t` | Read and check the cluster configuration, then exit (`0` when valid, `1` otherwise). A valid configuration prints nothing; a refused one prints `ERROR: <reason>` on standard error (schema violations read `ERROR: Error 3006 - Error reading cluster configuration: ...`, a bad `nodes` entry `Error 3004`), and also writes it to `logs/cluster.log` only when the file checked is the live configuration (a copy named with `-c` reports refusals on standard error only; a non-fatal warning, such as more than one `<node>`, is written to the live `logs/cluster.log` even for a copy) |
 | `-c <file>` | Configuration file to read the `<cluster>` section from (default `/etc/wazuh-manager/wazuh-manager.conf`) |
 | `-h` | Print the help and exit |
 
@@ -170,7 +186,10 @@ The debug level can also be set with the `wazuh_clusterd.debug` internal option 
 `-d`. When the option is absent or `0`, the `-d` level applies, so `wazuh-manager-control enable debug`
 (which starts every daemon with `-d`) raises the cluster log to debug level 1.
 
-All cluster logs are written to `/var/wazuh-manager/logs/cluster.log`.
+All cluster logs are written to `/var/wazuh-manager/logs/cluster.log`, in the form
+`<date> <level>: [<tag>] [<subtag>] <message>`. The daemon rotates the file itself at midnight into
+`/var/wazuh-manager/logs/cluster/<YYYY>/<Mon>/cluster.log-<DD>.gz` (mode `0640`, directories
+`0750`); it is not rotated by the manager's log rotation task.
 
 ---
 
@@ -184,15 +203,21 @@ it works on any node (a worker forwards node and health queries to the master).
 | `-l`, `--list-nodes` | List the connected nodes: name, type, version and address |
 | `-l -fn <node> [<node> …]` | List only the named nodes |
 | `-a`, `--list-agents` | List the agents: ID, name, IP, status and version |
-| `-a -fs <status> [<status> …]` | List only the agents with the given statuses (`-fs` is accepted only with `-a`) |
+| `-a -fs <status> [<status> …]` | List only the agents with the given statuses: `active`, `disconnected`, `never_connected` or `pending` (`-fs` is accepted only with `-a`) |
 | `-i`, `--health` | Show the last completed synchronizations of each connected worker |
-| `-i more` | Show the detailed health report: keep-alive, integrity check and sync, agent-info and agent-groups timings |
+| `-i more` | Show the detailed health report of every node, the master included (the `Connected nodes (<n>)` count includes it): keep-alive, integrity check and sync, agent-info and agent-groups timings |
 | `-i -fn <node> [<node> …]` | Health of the named nodes only |
 | `-d`, `--debug` | Print debug messages |
 | `-u`, `--usage` | Print usage examples |
 | `-h`, `--help` | Print the help |
 
-`-a`, `-l`, `-i` and `-u` are mutually exclusive; with none of them the help is printed. For example:
+`-a`, `-l`, `-i` and `-u` are mutually exclusive; with none of them the help is printed. A wrong combination of
+arguments (for example `-fs` without `-a`, `-fn` without `-l` or `-i` or with no node name, or a status `-fs` does not know) prints the usage and the reason on standard error and exits
+`2`, before the cluster configuration is read. An error is
+printed as `Error <code>: <message>` (as `agent_groups` prints it), or `Internal error: <message>`,
+and the command exits `1`: a node named with `-fn` that is not connected gives
+`Error 1730: Node does not exist`, with `-l` and `-i` alike and on a worker too, which relays the
+master's answer at once. For example:
 
 ```bash
 /var/wazuh-manager/bin/cluster_control -l

@@ -55,7 +55,7 @@ Parser getJSONParser(const Params& params)
 
         const auto ssInput = std::string(txt);
         rapidjson::StringStream ss(ssInput.c_str());
-        rapidjson::Document doc;
+        json::Document doc;
 
         // Nesting deeper than Json::MAX_DEPTH never becomes a DOM; the stream still reports what was consumed.
         const auto result = json::Json::parseBounded<rapidjson::kParseStopWhenDoneFlag>(doc, ss);

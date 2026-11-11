@@ -12,14 +12,17 @@
 
 #include "jwt/jwtEnrollTokenVerifier.hpp"
 
+#include <cctype>
 #include <chrono>
+#include <cstddef>
 #include <utility>
 
 namespace remoted::enrollment
 {
     namespace
     {
-        constexpr std::string_view kBearerScheme {"Bearer "};
+        // Matched case-insensitively, as RFC 7235 2.1 defines auth schemes (same rule as AuthMiddleware)
+        constexpr std::string_view kBearerScheme {"bearer "};
 
         using jwt_profile::v1::enroll::JwtEnrollTokenVerifier;
 
@@ -27,10 +30,16 @@ namespace remoted::enrollment
         /// scheme parsing as AuthMiddleware; anything about the token itself is the verifier's call).
         std::optional<std::string_view> bearerToken(std::string_view authorizationHeader)
         {
-            if (authorizationHeader.size() <= kBearerScheme.size() ||
-                authorizationHeader.substr(0, kBearerScheme.size()) != kBearerScheme)
+            if (authorizationHeader.size() <= kBearerScheme.size())
             {
                 return std::nullopt;
+            }
+            for (std::size_t i = 0; i < kBearerScheme.size(); ++i)
+            {
+                if (std::tolower(static_cast<unsigned char>(authorizationHeader[i])) != kBearerScheme[i])
+                {
+                    return std::nullopt;
+                }
             }
             return authorizationHeader.substr(kBearerScheme.size());
         }

@@ -23,7 +23,7 @@ The following components should be included in your Wazuh manager backup strateg
 
 - **SSL/TLS certificates**: `/etc/wazuh-manager/certs/`
   - Manager certificates and keys, the agents' CA bundle, the indexer's CA and client pair
-  - The import markers `.indexer-ca.imported` and `.indexer-connector.imported` (keep them with the files)
+  - The import markers `.indexer-ca.imported` and `.indexer-connector.imported` (keep them with the files). They exist only when the manager imported the files from a co-located indexer's export; with credentials staged by hand or from `local.env` they are absent, which is normal
 
 - **Credentials**: `/etc/wazuh-manager/ca/`, `/etc/wazuh-manager/export/`, `/etc/wazuh-manager/local.env`
   - `ca/root-ca.key` is the manager's CA private key: protect the backup accordingly
@@ -60,7 +60,7 @@ The following components should be included in your Wazuh manager backup strateg
   - `store/` - engine content store (schemas, enrichment definitions)
   - `ruleset/` - ruleset content the engine's content manager synchronizes from the indexer
   - `kvdb-ioc/` - IOC key-value store
-  - `mmdb/`, `tzdb/` - GeoIP and timezone databases, reinstalled with the package
+  - `mmdb/`, `tzdb/` - GeoIP and timezone databases, shipped by the package (an upgrade keeps `mmdb/` with the rest of `data/` and replaces only `tzdb/`), so they need no backup of their own
 
 #### Optional Data
 
@@ -77,7 +77,36 @@ Before creating a backup, verify:
 1. Sufficient disk space for backup files
 2. Backup destination is accessible
 3. You have appropriate permissions
-4. Consider stopping the manager for consistent backups (optional)
+4. Consider stopping the manager for consistent backups (optional). On a running manager, commit pending agent registry changes before copying `global.db` (see [below](#committing-pending-agent-registry-changes))
+5. `sqlite3` is installed on the manager host. The manager packages do not depend on it and a default install does not have it, so install it from the distribution first (`apt install sqlite3` or `dnf install sqlite`). Without it every `sqlite3 ... ".backup"` command below fails with `command not found`, the loop carries on and `db/` is left empty. If you cannot install it, copy a database with the Python `sqlite3` module bundled with the manager, which implements the same online backup API:
+
+```bash
+# Replace SRC and DEST with the same paths the `.backup` commands below use
+sudo /var/wazuh-manager/framework/python/bin/python3 -I -c '
+import sqlite3, sys
+src = sqlite3.connect("file:%s?mode=ro" % sys.argv[1], uri=True)
+dst = sqlite3.connect(sys.argv[2]); src.backup(dst); dst.close(); src.close()' SRC DEST
+```
+
+The same interpreter can run the `PRAGMA integrity_check` and `SELECT count(*)` verification queries. After any backup, confirm that `$BACKUP_DIR/db/` holds the copies before relying on it.
+
+#### Committing pending agent registry changes
+
+`wazuh-manager-db` does not commit `global.db` on every write. It answers `ok` to a change (an agent registration, a group created or assigned) from inside an open transaction and commits it later on its own clock: within `wazuh_db.commit_time_min` (10 s) to `wazuh_db.commit_time_max` (60 s) by default, see [wazuh-db configuration](modules/wazuh_db/configuration.md). The SQLite backup API used by `.backup` sees committed data only, so a copy of a running manager's `global.db` can lack up to a minute of changes the API has already reported as done. Such a copy passes `PRAGMA integrity_check` and the agent count, and it can be older than the `client.keys` archived before it: restored, it shows a group with its agents missing, or a key with no registry row.
+
+Ask `wazuh-manager-db` to commit just before copying the database. `global commit` ends the open transaction at once, so the copy then holds every change acknowledged before the command. The procedures below that copy a running manager's database do this step:
+
+```bash
+sudo /var/wazuh-manager/framework/python/bin/python3 -I -c '
+import socket, struct, sys
+s = socket.socket(socket.AF_UNIX); s.connect(sys.argv[1])
+m = b"global commit"; s.sendall(struct.pack("<I", len(m)) + m)
+r = s.recv(struct.unpack("<I", s.recv(4, socket.MSG_WAITALL))[0], socket.MSG_WAITALL).decode()
+sys.exit(0 if r.startswith("ok") else "wazuh-manager-db answered: " + r)' /var/wazuh-manager/queue/sockets/wdb.sock \
+  || echo "WARNING: global.db was not committed - the copy may lack the last minute of changes"
+```
+
+It fails when `wazuh-manager-db` is not running; with the manager stopped nothing is pending, so the copy is complete anyway. If you cannot run it, wait `commit_time_max` seconds after the last change before copying, or use [Option 2](#creating-a-full-manager-backup). The manager's own snapshots under `backup/db/` (`global backup create` and the periodic `wdb.backup.global`) already commit before they are written.
 
 #### Creating a Full Manager Backup
 
@@ -102,10 +131,22 @@ sudo tar -czf $BACKUP_DIR/wazuh-state.tar.gz -C /var/wazuh-manager \
     queue/authd/ \
     data/
 
+# Commit what wazuh-manager-db has acknowledged but not written yet, after
+# client.keys was archived, so global.db is at least as recent as it
+# (see "Committing pending agent registry changes" above)
+sudo /var/wazuh-manager/framework/python/bin/python3 -I -c '
+import socket, struct, sys
+s = socket.socket(socket.AF_UNIX); s.connect(sys.argv[1])
+m = b"global commit"; s.sendall(struct.pack("<I", len(m)) + m)
+r = s.recv(struct.unpack("<I", s.recv(4, socket.MSG_WAITALL))[0], socket.MSG_WAITALL).decode()
+sys.exit(0 if r.startswith("ok") else "wazuh-manager-db answered: " + r)' /var/wazuh-manager/queue/sockets/wdb.sock \
+  || echo "WARNING: global.db was not committed - the copy may lack the last minute of changes"
+
 # Backup the databases. Each source is tested first -- with `sudo test`, since
 # these directories are not readable unprivileged -- because sqlite3 creates a
 # database when handed a path that does not exist.
 sudo mkdir -p $BACKUP_DIR/db
+command -v sqlite3 > /dev/null || echo "sqlite3 is not installed - the databases below will NOT be backed up"
 for DB in queue/db/global.db queue/tasks/tasks.db api/configuration/security/rbac.db; do
     SRC="/var/wazuh-manager/$DB"
     if sudo test -f "$SRC"; then
@@ -122,6 +163,8 @@ sudo chown -R $(whoami):$(whoami) $BACKUP_DIR
 ```
 
 **Note**: `queue/keystore/` and `data/kvdb-ioc/` are key-value stores that the manager may be writing while the archive is created. Use Option 2 when their consistency matters.
+
+**Note**: on a running manager the `wazuh-state.tar.gz` command may exit `1` with `tar: data/…: file changed as we read it` (GNU tar), because the engine and the content updates keep writing under `data/`. The archive is still written and usable: tar exits `2` on a real error. List it to confirm (`tar -tzf $BACKUP_DIR/wazuh-state.tar.gz > /dev/null`, see [Backup Verification](#backup-verification)); a file that changed while it was read may be inconsistent, which is why Option 2 exists.
 
 **Option 2: Backup with manager stopped** (recommended for critical operations)
 
@@ -173,7 +216,7 @@ sudo tar -czf wazuh-manager-config-$(date +%Y%m%d).tar.gz -C / etc/wazuh-manager
 sudo cp /etc/wazuh-manager/client.keys wazuh-client-keys-$(date +%Y%m%d).backup
 ```
 
-**Global database only:**
+**Global database only:** run the commit step from [Committing pending agent registry changes](#committing-pending-agent-registry-changes) first, then:
 
 ```bash
 sudo test -f /var/wazuh-manager/queue/db/global.db \
@@ -244,6 +287,8 @@ GLOBAL_DB="/var/wazuh-manager/queue/db/global.db"
 # Create backup directory
 mkdir -p $BACKUP_DIR/db
 
+command -v sqlite3 > /dev/null || { echo "$(date): Manager backup FAILED - sqlite3 is not installed" >> $LOG_FILE; exit 1; }
+
 # Refuse to run if the global database is not where it is expected: sqlite3 would
 # create the missing source and back up an empty database, which the verification
 # below cannot distinguish from a healthy one.
@@ -257,6 +302,16 @@ tar -czf $BACKUP_DIR/wazuh-etc.tar.gz -C / etc/wazuh-manager/
 tar -czf $BACKUP_DIR/wazuh-state.tar.gz -C /var/wazuh-manager \
     --exclude='api/configuration/security/rbac.db' \
     api/configuration/ queue/keystore/ queue/authd/ data/
+
+# Make wazuh-manager-db commit what it has acknowledged but not written yet: the
+# SQLite backup sees committed data only, and the commit can lag up to a minute.
+/var/wazuh-manager/framework/python/bin/python3 -I -c '
+import socket, struct, sys
+s = socket.socket(socket.AF_UNIX); s.connect(sys.argv[1])
+m = b"global commit"; s.sendall(struct.pack("<I", len(m)) + m)
+r = s.recv(struct.unpack("<I", s.recv(4, socket.MSG_WAITALL))[0], socket.MSG_WAITALL).decode()
+sys.exit(0 if r.startswith("ok") else "wazuh-manager-db answered: " + r)' /var/wazuh-manager/queue/sockets/wdb.sock \
+  2>> $LOG_FILE || echo "$(date): WARNING - global.db was not committed; the copy may lack the last minute of changes" >> $LOG_FILE
 sqlite3 "$GLOBAL_DB" ".backup '$BACKUP_DIR/db/global.db'"
 
 # The task history and the API users are only created once the task manager and
@@ -363,14 +418,14 @@ fi
 
 ```bash
 # Configuration directory, in the modes the installer applies: root-owned, with
-# the files the daemons write at run time (client.keys, enrollment_tokens.json,
+# the files the daemons write at run time (client.keys, enrollment_tokens.json, authd.pass,
 # the shared groups, the engine outputs) owned by the service account. The globs
 # run inside the root shell -- unprivileged they expand to nothing.
 sudo sh -c 'cd /etc/wazuh-manager || exit 1
     chown -R root:wazuh-manager .
     chmod 770 . shared
     chown -R wazuh-manager:wazuh-manager shared/* outputs
-    for F in client.keys enrollment_tokens.json; do
+    for F in client.keys enrollment_tokens.json authd.pass; do
         [ -f "$F" ] && chown wazuh-manager:wazuh-manager "$F"
     done
     chmod 660 client.keys wazuh-manager.conf'
@@ -507,6 +562,14 @@ sudo tar -czf $BACKUP_DIR/wazuh-state.tar.gz -C /var/wazuh-manager \
     queue/keystore/ \
     queue/authd/ \
     data/
+# Commit pending registry changes first, as in the single-node Option 1
+sudo /var/wazuh-manager/framework/python/bin/python3 -I -c '
+import socket, struct, sys
+s = socket.socket(socket.AF_UNIX); s.connect(sys.argv[1])
+m = b"global commit"; s.sendall(struct.pack("<I", len(m)) + m)
+r = s.recv(struct.unpack("<I", s.recv(4, socket.MSG_WAITALL))[0], socket.MSG_WAITALL).decode()
+sys.exit(0 if r.startswith("ok") else "wazuh-manager-db answered: " + r)' /var/wazuh-manager/queue/sockets/wdb.sock \
+  || echo "WARNING: global.db was not committed - the copy may lack the last minute of changes"
 for DB in queue/db/global.db queue/tasks/tasks.db api/configuration/security/rbac.db; do
     SRC="/var/wazuh-manager/$DB"
     if sudo test -f "$SRC"; then
@@ -521,7 +584,7 @@ done
 sudo chmod -R go-rwx $BACKUP_DIR
 ```
 
-The API users, roles and policies live on the master, so `rbac.db` is part of the master backup only.
+The API users, roles and policies are authoritative on the master, so `rbac.db` is part of the master backup only. A worker also has an `api/configuration/security/rbac.db` (its API daemon does not run), but its content is not the source of truth, so do not back it up as one.
 
 #### Worker Node Backup
 
@@ -628,7 +691,7 @@ sudo tail -f /var/wazuh-manager/logs/cluster.log
 The procedures above assume a package or source installation: they need `tar`, `gzip` and `sqlite3` on the manager's host and control the service with `systemctl`. In a container deployment the service is the container, and the image may lack those tools; check what it carries:
 
 ```bash
-docker compose exec wazuh.manager sh -c 'command -v tar sqlite3 gzip'
+docker compose exec wazuh.manager sh -c 'for t in tar sqlite3 gzip; do command -v "$t" > /dev/null || echo "missing $t"; done'
 ```
 
 When it lacks any of them, use the procedure below. The paths inside the container are the same `/var/wazuh-manager` and `/etc/wazuh-manager`, so the set of paths to back up does not change. Drive the copy from the host instead, and stop the manager first so the databases are copied in a consistent state.
@@ -682,7 +745,7 @@ docker compose exec -u root wazuh.manager sh -c '
     chown -R root:wazuh-manager /etc/wazuh-manager
     chmod 770 /etc/wazuh-manager /etc/wazuh-manager/shared
     chown -R wazuh-manager:wazuh-manager /etc/wazuh-manager/shared/* /etc/wazuh-manager/outputs
-    for F in client.keys enrollment_tokens.json; do
+    for F in client.keys enrollment_tokens.json authd.pass; do
         [ -f "/etc/wazuh-manager/$F" ] && chown wazuh-manager:wazuh-manager "/etc/wazuh-manager/$F"
     done
     chmod 660 /etc/wazuh-manager/wazuh-manager.conf
@@ -914,7 +977,7 @@ sudo sh -c 'cd /etc/wazuh-manager || exit 1
     chown -R root:wazuh-manager .
     chmod 770 . shared
     chown -R wazuh-manager:wazuh-manager shared/* outputs
-    for F in client.keys enrollment_tokens.json; do
+    for F in client.keys enrollment_tokens.json authd.pass; do
         [ -f "$F" ] && chown wazuh-manager:wazuh-manager "$F"
     done
     chmod 660 client.keys wazuh-manager.conf
@@ -935,9 +998,9 @@ sudo tail -100 /var/wazuh-manager/logs/wazuh-manager.log
 sudo ls -l /etc/wazuh-manager/client.keys
 
 # Check global database (guarded: sqlite3 would create a missing one)
-sudo sh -c '[ -f /var/wazuh-manager/queue/db/global.db ] \
-  && sqlite3 /var/wazuh-manager/queue/db/global.db "SELECT id, name FROM agent" \
-  || echo "MISSING: /var/wazuh-manager/queue/db/global.db"'
+sudo sh -c 'if [ ! -f /var/wazuh-manager/queue/db/global.db ]; then echo "MISSING: /var/wazuh-manager/queue/db/global.db"; \
+  elif ! command -v sqlite3 > /dev/null; then echo "sqlite3 is not installed (see the pre-backup checklist)"; \
+  else sqlite3 /var/wazuh-manager/queue/db/global.db "SELECT id, name FROM agent"; fi'
 
 # Restart manager
 sudo systemctl restart wazuh-manager
@@ -950,9 +1013,9 @@ sudo tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep remoted
 
 ```bash
 # Check database integrity (guarded: sqlite3 would create a missing one)
-sudo sh -c '[ -f /var/wazuh-manager/queue/db/global.db ] \
-  && sqlite3 /var/wazuh-manager/queue/db/global.db "PRAGMA integrity_check" \
-  || echo "MISSING: /var/wazuh-manager/queue/db/global.db"'
+sudo sh -c 'if [ ! -f /var/wazuh-manager/queue/db/global.db ]; then echo "MISSING: /var/wazuh-manager/queue/db/global.db"; \
+  elif ! command -v sqlite3 > /dev/null; then echo "sqlite3 is not installed (see the pre-backup checklist)"; \
+  else sqlite3 /var/wazuh-manager/queue/db/global.db "PRAGMA integrity_check"; fi'
 
 # If corrupted, restore from backup again. Copy over the live database rather than
 # removing it first, and only once the replacement is known to be there: an unset

@@ -144,7 +144,7 @@ ID    Name                                Version
 Total outdated agents: 1
 ```
 
-The `-l` flag lists all outdated agents with their current version. Agents on v4.14.x or later can be upgraded directly to 5.0 in a single step. Agents below v4.14.0 must go through the path described in [Two-step upgrade path (agents below v4.14.0)](#two-step-upgrade-path-agents-below-v4140).
+The `-l` flag lists all outdated agents with their current version. When no agent is outdated it prints `All agents are updated.` instead. Agents on v4.14.x or later can be upgraded directly to 5.0 in a single step. Agents below v4.14.0 must go through the path described in [Two-step upgrade path (agents below v4.14.0)](#two-step-upgrade-path-agents-below-v4140).
 
 ### 3. Confirm manager has WPK repository access
 
@@ -306,7 +306,7 @@ CA nor an impostor on the network can take the agent off the air or leave it unv
 manager certificate and retry, or, on a 5.x agent, install the anchor with `--certs-only` (below).
 The check runs only where the agent will verify against the anchor: it is skipped with the agent's
 own `<certificate_authorities>` and under `none` or `certificate`. When it is skipped, or when `curl`
-cannot run it (missing, or no TLS 1.3 support, as on macOS), the CA is installed on its own validation. When `openssl` is not found, the script leaves the CA in
+cannot run it (missing, or its TLS stack cannot negotiate TLS 1.3, as on Amazon Linux 2 with its system curl), the CA is installed on its own validation. When `openssl` is not found, the script leaves the CA in
 `var/incoming/root-ca.pem`, installs no anchor, and the upgrade still reports success. If an anchor
 is already present, the delivered copy is discarded instead. The upgraded agent runs with
 `verification_mode` resolved to `none`:

@@ -38,8 +38,8 @@ VirusTotal migration is the IOC enrichment.
 
 The IOC enrichment looks up the observed values in local IOC databases, one per indicator type: connections
 (`ip:port`, built from an IP field and its sibling port field), full URLs, URL domains, and file hashes (MD5, SHA-1
-and SHA-256). Each match appends an entry to `wazuh.threat.enrichments` on the event itself, holding the matched
-indicator as stored in the database and, in `matched.field`, the event field(s) it came from. For a connection
+and SHA-256). Each match appends an entry to `wazuh.threat.enrichments` on the event itself (one per matching indicator
+document, when several feeds share the value), holding the matched indicator as stored in the database and, in `matched.field`, the event field(s) it came from. For a connection
 indicator both field names are written, comma-separated (the `indicator` content shown is illustrative):
 
 ```json

@@ -15,7 +15,10 @@
  */
 
 #include "curlHandle.hpp"
+#include "contentCodingGuard.hpp"
+#include "headerField.hpp"
 #include "moduleLog.hpp"
+#include "responseSinks.hpp"
 #include "tlsCertDiagnostics.hpp"
 
 #include <curl/curl.h>
@@ -25,9 +28,8 @@
 #include <cstring>
 #include <map>
 #include <mutex>
+#include <string_view>
 #include <vector>
-
-#include <strings.h>
 
 namespace
 {
@@ -40,6 +42,9 @@ namespace
 
     static_assert(TLS_MIN_VERSION_1_3 == CURL_SSLVERSION_TLSv1_3,
                   "TLS_MIN_VERSION_1_3 must stay equal to libcurl's CURL_SSLVERSION_TLSv1_3");
+
+    static_assert(HTTP_VERSION_1_1 == CURL_HTTP_VERSION_1_1,
+                  "HTTP_VERSION_1_1 must stay equal to libcurl's CURL_HTTP_VERSION_1_1");
 
     static_assert(TLS_NATIVE_CA_STORE == CURLSSLOPT_NATIVE_CA,
                   "TLS_NATIVE_CA_STORE must stay equal to libcurl's CURLSSLOPT_NATIVE_CA");
@@ -81,7 +86,9 @@ namespace
             {CurlOption::SslOptions, CURLOPT_SSL_OPTIONS},
             {CurlOption::FollowLocation, CURLOPT_FOLLOWLOCATION},
             {CurlOption::NoSignal, CURLOPT_NOSIGNAL},
-            {CurlOption::SuppressConnectHeaders, CURLOPT_SUPPRESS_CONNECT_HEADERS}
+            {CurlOption::SuppressConnectHeaders, CURLOPT_SUPPRESS_CONNECT_HEADERS},
+            {CurlOption::AcceptEncoding, CURLOPT_ACCEPT_ENCODING},
+            {CurlOption::HttpVersion, CURLOPT_HTTP_VERSION}
         };
         return *map;
     }
@@ -121,95 +128,48 @@ namespace
         return index;
     }
 
-    // In-memory response sink with an optional byte cap, the counterpart of FileSink
-    // below; lives on the CurlHandle for the duration of the transfer.
-    struct BodySink
+    /// Whether this libcurl was built with curl's decoder for `coding` (content_encoding.c).
+    bool libcurlDecodes(const std::string& coding)
     {
-        std::string* body {nullptr};
-        uint64_t max {0}; // 0 = unlimited.
-    };
-
-    size_t writeTrampoline(char* data, size_t size, size_t nmemb, void* userData)
-    {
-        auto* sink = static_cast<BodySink*>(userData);
-        const size_t total = size * nmemb;
-
-        // Enforce the cap here rather than after the fact: a consumer that only checks the
-        // finished body has already let a hostile or faulty manager decide how much of this
-        // agent's memory to take, on a schedule the manager controls. A short count aborts the
-        // transfer, exactly as it does for the file sink. (body->size() <= max always, so the
-        // subtraction cannot underflow.)
-        if (sink->max != 0 && total > sink->max - sink->body->size())
+        static const std::map<std::string, int> featureOf
         {
-            return 0;
-        }
-
-        try
-        {
-            sink->body->append(data, total);
-        }
-        catch (...)
-        {
-            return 0; // LCOV_EXCL_LINE: allocation failure aborts the transfer.
-        }
-
-        return total;
-    }
-
-    // File response sink with an optional byte cap; lives on the CurlHandle for
-    // the duration of the transfer.
-    struct FileSink
-    {
-        std::FILE* file {nullptr};
-        uint64_t written {0};
-        uint64_t max {0}; // 0 = unlimited.
-    };
-
-    size_t fileWriteTrampoline(char* data, size_t size, size_t nmemb, void* userData)
-    {
-        auto* sink = static_cast<FileSink*>(userData);
-        const size_t total = size * nmemb;
-
-        // Enforce the cap: a short count aborts the transfer, so a hostile or
-        // faulty manager cannot fill the agent's disk. (written <= max always,
-        // so max - written never underflows.)
-        if (sink->max != 0 && total > sink->max - sink->written)
-        {
-            return 0;
-        }
-
-        // A short fwrite (write error / disk full) also aborts.
-        const size_t wrote = std::fwrite(data, 1, total, sink->file);
-        sink->written += wrote;
-        return wrote;
+            {"zstd", CURL_VERSION_ZSTD}, {"br", CURL_VERSION_BROTLI}, {"gzip", CURL_VERSION_LIBZ}, {"deflate", CURL_VERSION_LIBZ}
+        };
+        const auto feature = featureOf.find(coding);
+        return feature != featureOf.end() && (curl_version_info(CURLVERSION_NOW)->features & feature->second) != 0;
     }
 
     size_t headerTrampoline(char* data, size_t size, size_t nmemb, void* userData)
     {
         const size_t total = size * nmemb;
+        const std::string_view line {data, total};
         auto* capture = static_cast<HeaderCapture*>(userData);
-        constexpr size_t retryAfterPrefixLength = 12; // "Retry-After:"
-        constexpr size_t datePrefixLength = 5;        // "Date:"
 
-        constexpr size_t caGenerationPrefixLength = 20; // "Wazuh-CA-Generation:"
+        // curl has built a line's decoders by the time it hands the line over, but a decoder only
+        // takes its window from the body, which comes after the headers: refusing the reply here
+        // costs nothing. (Chunked trailers come after the body; the guard lets them through.)
+        if (capture->contentCoding != nullptr && !capture->contentCoding->admitHeader(line))
+        {
+            return 0;
+        }
 
-        if (total > retryAfterPrefixLength && strncasecmp(data, "Retry-After:", retryAfterPrefixLength) == 0)
+        // strtol/strtoll stop at the first non-digit, so the line's trailing CRLF needs no trimming.
+        if (const auto retryAfter = headerValue(line, "Retry-After"))
         {
-            *capture->retryAfter = std::strtol(data + retryAfterPrefixLength, nullptr, 10);
+            *capture->retryAfter = std::strtol(retryAfter->data(), nullptr, 10);
         }
-        else if (capture->caGeneration != nullptr && total > caGenerationPrefixLength &&
-                 strncasecmp(data, "Wazuh-CA-Generation:", caGenerationPrefixLength) == 0)
+        else if (const auto caGeneration = headerValue(line, "Wazuh-CA-Generation");
+                 caGeneration && capture->caGeneration != nullptr)
         {
-            // strtoll stops at the first non-digit, so the header's trailing CRLF needs no
-            // trimming. A value that is not a positive integer stays 0 and is refused by the
-            // caller exactly as an absent header is -- there is no reading of a malformed
-            // publication that is safer than declining to adopt.
-            *capture->caGeneration = std::strtoll(data + caGenerationPrefixLength, nullptr, 10);
+            // A value that is not a positive integer stays 0 and is refused by the caller exactly
+            // as an absent header is -- there is no reading of a malformed publication that is
+            // safer than declining to adopt.
+            *capture->caGeneration = std::strtoll(caGeneration->data(), nullptr, 10);
         }
-        else if (total > datePrefixLength && strncasecmp(data, "Date:", datePrefixLength) == 0)
+        else if (const auto date = headerValue(line, "Date"))
         {
             // curl callbacks are C: nothing may throw across them (see
-            // writeTrampoline above) -- std::string construction from
+            // writeToBodySink(), responseSinks.cpp) -- std::string construction from
             // unvalidated header bytes can throw std::bad_alloc under memory
             // pressure, so guard it the same way.
             try
@@ -217,7 +177,7 @@ namespace
                 // curl_getdate() parses RFC 1123/850 and asctime formats and
                 // returns -1 on failure; a null-terminated copy is required
                 // since the header line is not itself nul-terminated by libcurl.
-                const std::string value(data + datePrefixLength, total - datePrefixLength);
+                const std::string value(*date);
                 const time_t parsed = curl_getdate(value.c_str(), nullptr);
 
                 if (parsed != -1)
@@ -410,16 +370,18 @@ namespace
             bool captureResponseBody(std::string* output, uint64_t maxBytes) override
             {
                 m_bodySink = BodySink {output, maxBytes};
-                return curl_easy_setopt(m_handle, CURLOPT_WRITEFUNCTION, writeTrampoline) == CURLE_OK &&
+                return limitDownload(maxBytes) &&
+                       curl_easy_setopt(m_handle, CURLOPT_WRITEFUNCTION, writeToBodySink) == CURLE_OK &&
                        curl_easy_setopt(m_handle, CURLOPT_WRITEDATA, &m_bodySink) == CURLE_OK;
             }
 
             bool captureResponseToFile(std::FILE* file, uint64_t maxBytes) override
             {
-                // Chunked transfer decoding is native curl; the trampoline
-                // receives decoded bytes and enforces maxBytes.
+                // curl undoes the chunked transfer and any Content-Encoding before the
+                // sink, so both caps count the bytes that reach the file.
                 m_fileSink = FileSink {file, 0, maxBytes};
-                return curl_easy_setopt(m_handle, CURLOPT_WRITEFUNCTION, fileWriteTrampoline) == CURLE_OK &&
+                return limitDownload(maxBytes) &&
+                       curl_easy_setopt(m_handle, CURLOPT_WRITEFUNCTION, writeToFileSink) == CURLE_OK &&
                        curl_easy_setopt(m_handle, CURLOPT_WRITEDATA, &m_fileSink) == CURLE_OK;
             }
 
@@ -455,6 +417,7 @@ namespace
                 m_tlsCapture = TlsVerifyCapture {};
                 m_tlsFailureDetail = TlsFailureDetail {};
                 m_caFileLoadFailed = false;
+                m_contentDecodingFailed = false;
 
                 // Installed unconditionally, not just when trustSelfSignedRoot() is called
                 // (verify_mode=system's applyTrustAnchors() never calls it): the diagnostics
@@ -518,6 +481,7 @@ namespace
                     // failure. See HttpResponse::caFileLoadFailed (httpTypes.hpp) for why this
                     // needs its own signal rather than folding into that classification.
                     m_caFileLoadFailed = (code == CURLE_SSL_CACERT_BADFILE);
+                    m_contentDecodingFailed = (code == CURLE_BAD_CONTENT_ENCODING);
 
                     // Narrowed from the generic TlsFail above: a hostname mismatch or a
                     // certificate-date problem is reported at normal level, unlike every other
@@ -617,7 +581,27 @@ namespace
                 return m_caFileLoadFailed;
             }
 
+            bool contentDecodingFailed() override
+            {
+                return m_contentDecodingFailed;
+            }
+
+            bool decodes(const std::string& coding) override
+            {
+                return libcurlDecodes(coding);
+            }
+
         private:
+            /// curl's own cap on the response, alongside the sinks' (which stay as the backstop):
+            /// it turns away a reply whose Content-Length is already over the cap before reading
+            /// any of it, and since 8.20 it counts decoded bytes too, so a small zstd frame that
+            /// expands past the cap stops there. curl_off_t, not long: 32 bits on the Windows agent.
+            bool limitDownload(uint64_t maxBytes)
+            {
+                return maxBytes == 0 || // 0 = unlimited, as for the sinks.
+                       curl_easy_setopt(m_handle, CURLOPT_MAXFILESIZE_LARGE, static_cast<curl_off_t>(maxBytes)) == CURLE_OK;
+            }
+
             /// Installs the combined CURLOPT_SSL_CTX_FUNCTION (sslCtxSetupTrampoline) and its
             /// CURLOPT_SSL_CTX_DATA (this), idempotently -- both trustSelfSignedRoot() and
             /// perform() call this, and setting the same function pointer and userptr twice on
@@ -658,6 +642,8 @@ namespace
             ///< sslCtxSetupTrampoline().
             bool m_caFileLoadFailed {false}; ///< Set in perform() on CURLE_SSL_CACERT_BADFILE;
             ///< reset at the top of every perform() like the other per-attempt state below.
+            bool m_contentDecodingFailed {false}; ///< Set in perform() on CURLE_BAD_CONTENT_ENCODING;
+            ///< reset at the top of every perform() like m_caFileLoadFailed.
             TlsVerifyCapture m_tlsCapture {}; ///< Filled by tlsVerifyCaptureTrampoline() during
             ///< perform(); reset at the top of every perform() (one CurlHandle is never reused
             ///< across requests, but resetting costs nothing and removes the assumption).

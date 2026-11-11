@@ -59,11 +59,13 @@ _PERMANENT_SEED_FLOW_LOG_IDS = frozenset({'fl-0754d951c16f517fa'})
 # under it; comfortably shorter than "the mess just sits there until someone notices manually".
 _ORPHAN_STALENESS_THRESHOLD = timedelta(hours=3)
 
-# Per-run S3 namespace to isolate concurrent AWS IT runs on the shared bucket (issue #38194).
-# Every key a run uploads - and the module's configured path - is placed under "<GITHUB_RUN_ID>/",
-# so two runs executing at the same time never share keys/prefixes. Empty locally (no GITHUB_RUN_ID),
-# which keeps the current bucket layout for local runs.
-_RUN_ID = os.environ.get('GITHUB_RUN_ID', '')
+# Per-job S3 namespace to isolate concurrent AWS IT jobs on the shared bucket (issue #38194).
+# Every key a job uploads - and the module's configured path - is placed under "<namespace>/", so two
+# jobs executing at the same time never share keys/prefixes. CI sets AWS_IT_NAMESPACE per matrix job:
+# the AWS modules of one run share GITHUB_RUN_ID and overlap (`aws` runs every bucket test that
+# `aws_bucket_base` and `aws_loadbalancers` run), so the run id alone made them collide. Falls back to
+# GITHUB_RUN_ID; empty locally, which keeps the current bucket layout for local runs.
+_RUN_ID = os.environ.get('AWS_IT_NAMESPACE') or os.environ.get('GITHUB_RUN_ID', '')
 
 _GUARDDUTY_SHARED_BUCKET_INCOMPATIBLE = {
     'guardduty_discard_regex',
@@ -442,14 +444,14 @@ def test_configuration() -> dict:
 
 @pytest.fixture(scope='session', autouse=True)
 def aws_run_namespace(request):
-    """Isolate this run under '<GITHUB_RUN_ID>/' on the shared bucket (issue #38194).
+    """Isolate this job under '<AWS_IT_NAMESPACE or GITHUB_RUN_ID>/' on the shared bucket (issue #38194).
 
     Mirrors the permanent seeds into the namespace at session start so the module's check_bucket /
-    find_account_ids find the AWSLogs/ structure under '<run>/', and deletes the whole namespace at the
-    end. No-op locally (no GITHUB_RUN_ID). Uses its own S3 resource because it is session-scoped.
+    find_account_ids find the AWSLogs/ structure under '<namespace>/', and deletes the whole namespace at
+    the end. No-op locally (neither variable set). Uses its own S3 resource because it is session-scoped.
     """
     bucket = os.environ.get('AWS_BUCKET_NAME')
-    # Matrix jobs share GITHUB_RUN_ID and the 'test_aws/' target (aws vs aws_inspector, split by -k), so a
+    # Without AWS_IT_NAMESPACE, matrix jobs share GITHUB_RUN_ID and the 'test_aws/' target (split by -k), so a
     # session may run no bucket test at all (e.g. inspector). Skipping those keeps that session from
     # deleting the namespace out from under a sibling job still using it.
     needs_bucket = any('create_test_bucket' in i.fixturenames for i in request.session.items)

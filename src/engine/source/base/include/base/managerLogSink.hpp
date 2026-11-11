@@ -8,6 +8,7 @@
 #include <string>
 #include <string_view>
 
+#include <sys/stat.h>
 #include <sys/types.h>
 
 namespace logging
@@ -59,6 +60,7 @@ struct ManagerLogDeps
     /// GID of a group name, std::nullopt when unknown or on error (default: base::process::lookupGid, 64 KiB cap)
     std::function<std::optional<gid_t>(const std::string&)> groupId;
     std::function<int(const char*, int, mode_t)> open;      ///< ::open
+    std::function<int(int, struct stat*)> fstat;            ///< ::fstat of the descriptors from open
     std::function<int(int, uid_t, gid_t)> fchown;           ///< ::fchown
     std::function<int(int, mode_t)> fchmod;                 ///< ::fchmod
     std::function<ssize_t(int, const char*, size_t)> write; ///< ::write (files and stderr = fd 2)

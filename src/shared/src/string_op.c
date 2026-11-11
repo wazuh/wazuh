@@ -223,6 +223,35 @@ void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
     }
 }
 
+// Remove the members of a JSON object that a dynamic field with object nesting would collide with
+void W_JSON_RemoveField(cJSON *root, const char *key) {
+
+    cJSON *item = root->child;
+
+    // analysisd flattens nested members by joining their names with dots and looks fields up with a
+    // case-insensitive comparison, so a member collides with the key when its name, compared the same way, is
+    // the whole key or a dot-separated prefix of it ("tags.env" and "tags" for "tags.env"). An object may repeat
+    // a name, so every member is checked in a single pass.
+    while (item) {
+        cJSON *next = item->next;
+        size_t length = item->string ? strlen(item->string) : 0;
+
+        if (length && strncasecmp(item->string, key, length) == 0) {
+            if (key[length] == '\0') {
+                cJSON_Delete(cJSON_DetachItemViaPointer(root, item));
+            } else if (key[length] == '.') {
+                if (cJSON_IsObject(item)) {
+                    W_JSON_RemoveField(item, key + length + 1);
+                } else {
+                    cJSON_Delete(cJSON_DetachItemViaPointer(root, item));
+                }
+            }
+        }
+
+        item = next;
+    }
+}
+
 void csv_list_to_json_str_array(char * const csv_list, char **buffer)
 {
     cJSON *array = cJSON_CreateArray();

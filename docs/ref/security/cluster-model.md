@@ -52,11 +52,11 @@ plaintext and is protected by its file permissions alone.
 
 ### Threat addressed
 
-Earlier versions encrypted each payload as a Fernet token under the static
-cluster key and sent a 20-byte header (`!2I12s`: counter, length, command)
-**outside** the token. Nothing in a token tied it to a connection, a position
-or a header, and the decrypt applied no TTL. An attacker with only a capture of
-cluster traffic, and no key, could therefore:
+Each frame carries a 20-byte plaintext header (`!2I12s`: counter, length,
+command) **outside** the Fernet token that encrypts the payload. If the token
+were produced under the static cluster key alone, nothing in it would tie it
+to a connection, a position or a header, and no TTL is applied on decrypt. An
+attacker with only a capture of cluster traffic, and no key, could then:
 
 - **Replay a session**: open a new connection and resend a worker's captured
   `hello` (accepted whenever that worker is not connected at the time), then
@@ -180,15 +180,19 @@ constants of `framework/wazuh/core/cluster/`, not configuration:
 | Connections in total | 1024 | the new connection is closed (`Too many total connections`) |
 | Time to complete the handshake (`hello` accepted) | 30 s | the connection is closed (`handshake not completed within deadline`) |
 | Time to receive a payload whose header has arrived | 30 s | the connection is closed (`incomplete message payload not received within deadline`) |
+| Connections closed by the master before the handshake, in a row (worker side) | 3, then every 30 | WARNING on the worker suggesting a cluster key mismatch (`The master closed the connection before the handshake completed <n> times in a row`); the count spans the reconnections and restarts after a completed handshake or a restart of clusterd |
 | Size of one message, divided or not | 256 MiB | error 3050 |
 | Divided messages being received at once | 10 | error 3051 |
+| Size of one frame of a divided message (senders use 5 MiB) | 10 MiB | error 3063, the connection is closed |
+| Divided message before the peer proved the key (a whole message of it decrypted) | none accepted | error 3063, the connection is closed at the first frame header |
+| Size of any frame before the peer proved the key (the hello is a single small frame) | 10 MiB | error 3063, the connection is closed at the frame header |
 
 ### What this does not provide
 
 - **Forward secrecy.** The nonces travel in clear, so anyone who holds the
   cluster key and a capture can derive the session keys. Ephemeral key
-  agreement and TLS are out of scope (see the closed #4517). Key compromise
-  remains the event described in
+  agreement and TLS are out of scope. Key compromise remains the event
+  described in
   [Cluster Key Compromise](#cluster-key-compromise).
 - **Protection against an on-path attacker who drops or resets connections.**
   The nodes detect the break and reconnect, but cannot prevent it.

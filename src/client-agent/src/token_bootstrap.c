@@ -373,6 +373,10 @@ const char *w_agent_token_enroll_strerror(w_token_enroll_status_t status) {
     }
 }
 
+/* Appended to every marker-write failure: what the operator loses, in the terms they can act on. */
+#define AG_ANCHOR_MARKER_RISK "Without it, losing the trust anchor later would turn TLS verification off " \
+                              "instead of stopping the agent."
+
 /**
  * @brief Records that this install has committed a trust anchor, by creating AGENT_ANCHOR_MARKER
  *        if it is not already there.
@@ -382,7 +386,9 @@ const char *w_agent_token_enroll_strerror(w_token_enroll_status_t status) {
  * one is never rewritten.
  *
  * Best effort: a marker that could not be written costs the deletion guard in
- * w_agent_validate_ssl_ca(), not the bootstrap, so a failure is logged and swallowed. Called
+ * w_agent_validate_ssl_ca(), not the bootstrap, so a failure is swallowed -- but logged as a
+ * warning, because without the marker a later loss of the anchor is indistinguishable from an
+ * install that never had one, and the agent would come up unverified instead of refusing. Called
  * both after a fresh commit and from the latch, so an install that predates #39321 -- or one
  * whose marker write failed once -- picks one up on a later boot.
  */
@@ -411,8 +417,8 @@ STATIC void w_token_bootstrap_mark_anchor_committed(int gid) {
      * runtime user choose the DIRECTORY it lands in by swapping `certs`. */
     if (dirfd = w_token_bootstrap_open_parent_nofollow(AGENT_ANCHOR_MARKER, dir, sizeof(dir),
                                                        &filename), dirfd < 0) {
-        mdebug1("Token bootstrap: could not open '%s' to write the anchor marker: %s (%d).", dir,
-                strerror(errno), errno);
+        mwarn("Token bootstrap: could not open '%s' to write the anchor marker: %s (%d). "
+              AG_ANCHOR_MARKER_RISK, dir, strerror(errno), errno);
         return;
     }
 
@@ -425,8 +431,8 @@ STATIC void w_token_bootstrap_mark_anchor_committed(int gid) {
     if (fd < 0) {
         /* EEXIST is the benign race of two starts at once, not a problem worth a line. */
         if (errno != EEXIST) {
-            mdebug1("Token bootstrap: could not write '%s': %s (%d).", AGENT_ANCHOR_MARKER,
-                    strerror(errno), errno);
+            mwarn("Token bootstrap: could not write '%s': %s (%d). " AG_ANCHOR_MARKER_RISK,
+                  AGENT_ANCHOR_MARKER, strerror(errno), errno);
         }
 
         return;
@@ -434,8 +440,8 @@ STATIC void w_token_bootstrap_mark_anchor_committed(int gid) {
 
 #ifndef WIN32
     if (fchown(fd, 0, gid) != 0) {
-        mdebug1("Token bootstrap: could not set ownership of '%s': %s (%d).", AGENT_ANCHOR_MARKER,
-                strerror(errno), errno);
+        mwarn("Token bootstrap: could not set ownership of '%s': %s (%d). " AG_ANCHOR_MARKER_RISK,
+              AGENT_ANCHOR_MARKER, strerror(errno), errno);
     }
 #else
     /* No second user to hand it to: the installation directory's own ACL already keeps
@@ -1348,21 +1354,64 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
             /* The same reading w_enrollment_process_response() logs from, so the reason
              * wazuh-agent-auth prints is the one in ossec.log, whichever envelope carried it. */
             w_enroll_error_t error;
+            const char *refusal;
+
             w_enrollment_parse_error(&enroll_result, &error);
 
             snprintf(report->manager_message, sizeof(report->manager_message), "%s", error.message);
 
-            report->pending = (enroll_result.http_code == 401 &&
-                               (strcmp(error.auth_class, "token_unknown") == 0 ||
-                                strcmp(error.auth_class, "stale_token") == 0));
+            /* The manager refusing the token itself: the one verdict on which the caller discards
+             * the token, so the same call decides both that and the line telling the operator. Not
+             * keyed on the status: a malformed request, a disabled enrollment or a duplicate agent
+             * is just as final for this attempt, yet may succeed later with the same token. */
+            refusal = w_enrollment_token_refusal(enroll_result.http_code, &error, NULL, 0);
+            report->token_rejected = (refusal != NULL);
+
+            /* The manager's own message cannot name the token, and for an expired or revoked one
+             * it does not even say which of the two. The class or code stays in the log, for the
+             * operator; the person reading this line only needs what happened and what to do. */
+            if (refusal != NULL) {
+                snprintf(report->token_refusal, sizeof(report->token_refusal),
+                         "enrollment token %s %s. Create a new enrollment token on the manager.",
+                         w_enrollment_token_id_or_unknown(enroll_request.enroll_kid), refusal);
+            }
+
+            /* Nothing readable in the body -- a load balancer's or proxy's own error page, or an
+             * empty answer -- leaves wazuh-agent-auth with the failure class alone, since the
+             * status is only logged and the command silences the log's echo. The status is the one
+             * fact left that tells "the manager said no" from "something in front of it failed".
+             * A refused token is not that case even without a message: its class or code came
+             * from the manager, and the refusal line already says what to do. */
+            if (error.message[0] == '\0' && report->detail[0] == '\0' && enroll_result.http_code == 404) {
+                /* Except a 404, which points at the path, not at what sits in front of the manager:
+                 * the manager always serves /enroll, and its router answers a route it does not
+                 * serve with a bare {"error":"not_found"}, which carries no reason. With an
+                 * embedded-CA token /cacerts is skipped, so a wrong prefix is first met here. The
+                 * path is capped so the text always fits the field. */
+                snprintf(report->detail, sizeof(report->detail),
+                         "/enroll answered HTTP 404: nothing serves /enroll under the path '/%.*s'. That path must "
+                         "match the prefix the manager serves.",
+                         100, report->endpoint);
+            } else if (refusal == NULL && error.message[0] == '\0' && report->detail[0] == '\0') {
+                snprintf(report->detail, sizeof(report->detail),
+                         "/enroll answered HTTP %ld with no message the agent could read; it may not "
+                         "have come from the manager itself (for example, a load balancer or proxy).",
+                         enroll_result.http_code);
+            }
+
+            report->clock_skew = (enroll_result.http_code == 401 &&
+                                  strcmp(error.auth_class, "stale_token") == 0);
+            report->pending = report->clock_skew ||
+                              (enroll_result.http_code == 401 &&
+                               strcmp(error.auth_class, "token_unknown") == 0);
         }
     }
 
     /* The kid this request actually signed with is the one on enroll_request: the enrollment
      * token's, derived and set above. built_request.enroll_kid is the RE-ENROLLMENT secret's, which
      * w_enrollment_build_request() leaves NULL whenever there is no secret on disk. Passing it
-     * named "unknown" in the one 403 an operator most needs to act on: the one telling them which
-     * enrollment token to re-mint. */
+     * named "unknown" in the one refusal an operator most needs to act on: the one telling them
+     * which enrollment token to re-mint. */
     w_enroll_status_t enroll_status = w_enrollment_process_response(&enroll_result,
                                                                    enroll_request.enroll_kid);
 
@@ -1372,17 +1421,10 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
          * answer is one that repeating this exact request cannot change -- a malformed request, a
          * bad credential, enrollment disabled, a duplicate agent, or a 403 refusing the connection
          * itself (a client certificate that does not list the peer address stays that way until it
-         * is reissued) -- except for report->pending, set above. */
+         * is reissued) -- except for report->pending and report->token_rejected, set above. */
         if (report != NULL) {
             report->transient = (enroll_status == W_ENROLL_ERR_TRANSPORT ||
                                  enroll_status == W_ENROLL_ERR_SERVER);
-            /* Keyed on the status, deliberately, and NOT on `transient`: every fatal refusal is
-             * permanent, but so is a malformed request, an enrollment the manager has disabled,
-             * and a duplicate agent -- all of which may succeed later with the same token. This
-             * is authd's verdict on a bearer whose signature it already verified: unknown,
-             * revoked, or out of uses. Only the caller acts on it, because only the caller owns
-             * the token. */
-            report->token_rejected = (enroll_status == W_ENROLL_ERR_AUTH_FATAL);
         }
 
         w_enroll_request_destroy(&built_request);
@@ -1508,8 +1550,8 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
     (void)gid;
 #endif
 
-    /* Both latches below discard the token on their way out. It is a one-shot credential, and
-     * once either of these is true it can never be used again -- but it was only ever deleted
+    /* The anchor latch below discards the token on its way out. It is a one-shot credential, and
+     * once an anchor is committed it can never be used again -- but it was only ever deleted
      * on the success path, so a reinstall over an enrolled agent left it sitting at rest
      * indefinitely with nothing left that would consume it. Removing it is not conditional on
      * having used it; it is conditional on it no longer being usable. */
@@ -1550,11 +1592,16 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
          * cheap and idempotent. */
         w_token_bootstrap_chown_keys_file(gid, true);
 
-        unlink(AGENT_ENROLLMENT_TOKEN_FILE);
-        return W_TOKEN_BOOTSTRAP_DONE;
-    }
+        if (IsFile(AGENT_ENROLLMENT_TOKEN_FILE) != 0) {
+            return W_TOKEN_BOOTSTRAP_DONE;
+        }
 
-    if (IsFile(AGENT_ENROLLMENT_TOKEN_FILE) != 0) {
+        /* A token left here (typically by an in-place upgrade of an agent enrolled before 5.0)
+         * installs the anchor only, as --certs-only does: re-enrolling would change the agent id. */
+        minfo("Token bootstrap: this agent is already enrolled; installing the manager's CA "
+              "without re-enrolling.");
+        opts.anchor_only = true;
+    } else if (IsFile(AGENT_ENROLLMENT_TOKEN_FILE) != 0) {
         /* Legacy install, no token provided: not an error. */
         return W_TOKEN_BOOTSTRAP_DONE;
     }
@@ -1562,22 +1609,46 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
     if ((token_text = w_agent_token_read_file(AGENT_ENROLLMENT_TOKEN_FILE)) == NULL) {
         merror("Could not read the enrollment token file '%s'.",
                AGENT_ENROLLMENT_TOKEN_FILE);
+
+        /* Rereading it cannot change the answer, and an enrolled agent has nothing to protect
+         * here: it starts as it did before the token arrived. */
+        if (opts.anchor_only) {
+            unlink(AGENT_ENROLLMENT_TOKEN_FILE);
+            return W_TOKEN_BOOTSTRAP_DONE;
+        }
+
         return W_TOKEN_BOOTSTRAP_PERMANENT;
     }
 
     opts.token_text = token_text;
     opts.uid = uid;
     opts.gid = gid;
-    /* Nothing to roll back to: this path only runs when there is no anchor and no key. */
+    /* Nothing to roll back to: there is no anchor, and only an anchor-only run reaches here with a
+     * key, which it never touches. */
     opts.transactional = false;
 
     if (w_agent_token_enroll(&opts, &report) != W_TOKEN_ENROLL_OK) {
         os_free(token_text);
 
+        /* An enrolled agent has no enrollment here to protect: it keeps its registration and runs
+         * as it did before the token arrived. Only a transient failure keeps the token, so the
+         * next start tries again. */
+        if (opts.anchor_only) {
+            merror("Token bootstrap: the manager's CA could not be installed; the agent keeps its "
+                   "registration and runs without a trust anchor.");
+
+            if (!report.transient) {
+                unlink(AGENT_ENROLLMENT_TOKEN_FILE);
+            }
+
+            return W_TOKEN_BOOTSTRAP_DONE;
+        }
+
         /* The token file is kept, so a retry within this boot -- or a later one -- still has
          * something to enroll with. The one exception is a token the manager has finally refused:
-         * unknown, revoked, or out of uses. Nothing on this path clears it (the anchor is never
-         * installed and client.keys never written, so neither latch above trips next boot), so
+         * expired, revoked, out of uses, or unknown to the master. Nothing on this path clears it
+         * (the anchor is never installed and client.keys never written, so neither latch above
+         * trips next boot), so
          * keeping it would hand the same dead credential to the same refusal on every restart.
          * Disposal is the caller's business, which is why the core only reports the verdict. */
         if (report.token_rejected) {

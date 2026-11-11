@@ -25,12 +25,12 @@
 
 namespace
 {
-    // The manager's own 409 bodies are not consistent about which key carries the mismatch kind
+    // The manager's own error bodies are not consistent about which key carries the error kind
     // (vdScanLane.cpp uses "error", sessionProcessor.cpp's checksum path uses "status") -- checked
     // in that order so both shapes resolve. Never throws: a malformed/unexpected body (a proxy
     // that strips it, a future manager change) must fall back to the caller's default wording, not
     // crash the sync thread.
-    std::optional<std::string> jsonMismatchKind(const std::string& body)
+    std::optional<std::string> jsonErrorKind(const std::string& body)
     {
         try
         {
@@ -75,6 +75,20 @@ namespace
 
         return std::nullopt;
     }
+
+    // The one 503 told apart from the rest (syncEndpoint.cpp, vdScanLane.cpp): the manager's
+    // vulnerability feed is still loading, which every new manager answers for a while.
+    bool isFeedNotReadyBody(std::string_view body)
+    {
+        return jsonErrorKind(std::string(body)) == "vulnerability feed not ready";
+    }
+
+    // Wall-clock time, so stored timestamps stay comparable across restarts.
+    int64_t currentTimeMs()
+    {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(
+                   std::chrono::system_clock::now().time_since_epoch()).count();
+    }
 } // namespace
 
 // Various synchronization functions write a SyncResult into `m_syncState.lastSyncResult`
@@ -111,6 +125,11 @@ static std::string determineSyncFailureReasonBasedOnSyncResult(SyncResult result
             failureReason = "Manager rejected the session as too large (413); it must be split and resent.";
             break;
 
+        case SyncResult::FEED_NOT_READY:
+            failureReason = "The manager's vulnerability feed is not ready yet; packages and OS inventory will be "
+                            "synchronized once it is.";
+            break;
+
         // Reached by synchronizeModule()/synchronizeMetadataOrGroups() themselves, never by the
         // dedicated Mode::CHECK integrity flow (requiresFullSync(), which tracks its own
         // isChecksumMismatch locally and only calls this function for the other results). Do NOT
@@ -125,7 +144,7 @@ static std::string determineSyncFailureReasonBasedOnSyncResult(SyncResult result
         // proxy, or a shape introduced after this code was written).
         case SyncResult::CHECKSUM_ERROR:
             {
-                const auto kind = jsonMismatchKind(failureBody);
+                const auto kind = jsonErrorKind(failureBody);
 
                 if (kind == "version_mismatch")
                 {
@@ -515,6 +534,7 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option, size
     std::string failureReason;
     bool managerNotReady = false;
     bool awaitingPrerequisite = false;
+    bool feedNotReady = false;
     {
         // These fields are also written by applyHttpResult() on the response
         // thread while phase stays WaitingResponse (cleared only by
@@ -525,9 +545,10 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option, size
                                                                     m_syncState.lastSyncFailureBody);
         managerNotReady = m_syncState.lastSyncManagerNotReady;
         awaitingPrerequisite = m_syncState.lastSyncAwaitingPrerequisite;
+        feedNotReady = m_syncState.lastSyncResult == SyncResult::FEED_NOT_READY;
     }
     const bool stopped = shouldStop();
-    const unsigned int consecutiveFailures = trackSyncOutcome(success, stopped);
+    const unsigned int consecutiveFailures = trackSyncOutcome(success, stopped || feedNotReady);
     clearSyncState();
     // Designated on purpose: this struct gains fields from more than one direction, they are all
     // bool, and a positional list binds by position -- a new field landing between two of these
@@ -539,10 +560,11 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option, size
             .consecutiveFailures = consecutiveFailures,
             .awaitingPrerequisite = awaitingPrerequisite,
             .localTransportUnavailable = false,
-            .sentAnything = sentAny};
+            .sentAnything = sentAny,
+            .feedNotReady = feedNotReady};
 }
 
-unsigned int AgentSyncProtocol::trackSyncOutcome(bool success, bool stopped)
+unsigned int AgentSyncProtocol::trackSyncOutcome(bool success, bool expectedFailure)
 {
     if (success)
     {
@@ -550,9 +572,12 @@ unsigned int AgentSyncProtocol::trackSyncOutcome(bool success, bool stopped)
         return 0;
     }
 
-    // A sync aborted because the module is stopping says nothing about the manager, so it must not
-    // count towards the streak: the module is torn down on purpose and will start over on restart.
-    if (stopped)
+    // An expected failure must not count towards the streak. A sync aborted because the module is
+    // stopping says nothing about the manager: the module is torn down on purpose and will start
+    // over on restart. The manager's vulnerability feed still loading is a normal state of a new
+    // manager that lasts several cycles; counting it would push the first different failure after
+    // it (the 409 the first session after the load gets) straight past the tolerance.
+    if (expectedFailure)
     {
         return m_consecutiveSyncFailures.load(std::memory_order_relaxed);
     }
@@ -600,7 +625,25 @@ IntegrityCheckResult AgentSyncProtocol::requiresFullSync(const std::string& inde
     constexpr auto CHECKSUM_RETRY_DELAY = std::chrono::seconds(10);
 #endif
 
-    for (unsigned int attempt = 1; attempt <= CHECKSUM_MISMATCH_MAX_ATTEMPTS; ++attempt)
+    // Mismatches reported before a restart still count toward the budget.
+    unsigned int firstAttempt = 1;
+
+    if (const auto progress = loadMismatchProgress(index))
+    {
+        firstAttempt = progress->mismatches + 1;
+        m_logger(LOG_DEBUG, "Resuming checksum mismatch confirmation for index: " + index + " at attempt " +
+                 std::to_string(firstAttempt) + "/" + std::to_string(CHECKSUM_MISMATCH_MAX_ATTEMPTS));
+
+        const std::chrono::milliseconds elapsed {currentTimeMs() - progress->lastMismatchMs};
+
+        if (elapsed < CHECKSUM_RETRY_DELAY)
+        {
+            std::unique_lock<std::mutex> lock(m_syncState.mtx);
+            m_syncState.cv.waitFor(lock, CHECKSUM_RETRY_DELAY - elapsed, [this] { return shouldStop(); });
+        }
+    }
+
+    for (unsigned int attempt = firstAttempt; attempt <= CHECKSUM_MISMATCH_MAX_ATTEMPTS; ++attempt)
     {
         // Every attempt past the first one is only made after a 409, so stopping now leaves
         // that mismatch unconfirmed.
@@ -632,6 +675,7 @@ IntegrityCheckResult AgentSyncProtocol::requiresFullSync(const std::string& inde
                      " (attempt " + std::to_string(attempt) + "/" +
                      std::to_string(CHECKSUM_MISMATCH_MAX_ATTEMPTS) + ")");
             clearSyncState();
+            clearMismatchProgress(index);
             return {.status = IntegrityCheckStatus::VALID,
                     .failureReason = {},
                     .stopped = false,
@@ -695,6 +739,8 @@ IntegrityCheckResult AgentSyncProtocol::requiresFullSync(const std::string& inde
                      std::to_string(CHECKSUM_MISMATCH_MAX_ATTEMPTS) +
                      "); the indexer may not have caught up with a recent write yet, retrying.");
 
+            storeMismatchProgress(index, attempt);
+
             std::unique_lock<std::mutex> lock(m_syncState.mtx);
             m_syncState.cv.waitFor(lock, CHECKSUM_RETRY_DELAY, [this] { return shouldStop(); });
         }
@@ -703,6 +749,10 @@ IntegrityCheckResult AgentSyncProtocol::requiresFullSync(const std::string& inde
             m_logger(LOG_DEBUG, "Checksum validation failed for index: " + index + " after " +
                      std::to_string(CHECKSUM_MISMATCH_MAX_ATTEMPTS) +
                      " attempts - full sync required");
+
+            // Kept until the index is cleaned, so a recovery cut short is retried after one more
+            // 409, with the TTL counted from this one.
+            storeMismatchProgress(index, CHECKSUM_MISMATCH_MAX_ATTEMPTS - 1);
         }
     }
 
@@ -712,6 +762,83 @@ IntegrityCheckResult AgentSyncProtocol::requiresFullSync(const std::string& inde
             .managerNotReady = false,
             .localTransportUnavailable = false,
             .mismatchUnconfirmed = false};
+}
+
+std::optional<IntegrityProgress> AgentSyncProtocol::loadMismatchProgress(const std::string& index)
+{
+    if (!m_persistentQueue)
+    {
+        return std::nullopt;
+    }
+
+    try
+    {
+        const auto progress = m_persistentQueue->getIntegrityProgress(index);
+
+        if (!progress)
+        {
+            return std::nullopt;
+        }
+
+        // A negative age means the clock moved back, so the age cannot be trusted either.
+        const std::chrono::milliseconds age {currentTimeMs() - progress->lastMismatchMs};
+
+        if (progress->mismatches == 0 || progress->mismatches >= CHECKSUM_MISMATCH_MAX_ATTEMPTS ||
+                age.count() < 0 || age > CHECKSUM_MISMATCH_PROGRESS_TTL)
+        {
+            clearMismatchProgress(index);
+            return std::nullopt;
+        }
+
+        return progress;
+    }
+    catch (const std::exception& ex)
+    {
+        m_logger(LOG_WARNING, "Failed to read the checksum mismatch progress for index: " + index + ": " +
+                 ex.what());
+        return std::nullopt;
+    }
+}
+
+void AgentSyncProtocol::storeMismatchProgress(const std::string& index, unsigned int mismatches)
+{
+    if (!m_persistentQueue)
+    {
+        return;
+    }
+
+    try
+    {
+        m_persistentQueue->setIntegrityProgress(index, {.mismatches = mismatches, .lastMismatchMs = currentTimeMs()});
+    }
+    catch (const std::exception& ex)
+    {
+        m_logger(LOG_WARNING, "Failed to store the checksum mismatch progress for index: " + index + ": " +
+                 ex.what());
+    }
+}
+
+void AgentSyncProtocol::clearIntegrityProgress(const std::string& index)
+{
+    clearMismatchProgress(index);
+}
+
+void AgentSyncProtocol::clearMismatchProgress(const std::string& index)
+{
+    if (!m_persistentQueue)
+    {
+        return;
+    }
+
+    try
+    {
+        m_persistentQueue->clearIntegrityProgress(index);
+    }
+    catch (const std::exception& ex)
+    {
+        m_logger(LOG_WARNING, "Failed to clear the checksum mismatch progress for index: " + index + ": " +
+                 ex.what());
+    }
 }
 
 SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
@@ -881,6 +1008,7 @@ SyncModuleResult AgentSyncProtocol::notifyDataClean(const std::vector<std::strin
             for (const auto& index : indices)
             {
                 m_persistentQueue->clearItemsByIndex(index);
+                clearMismatchProgress(index);
             }
         }
         else
@@ -1424,8 +1552,9 @@ bool AgentSyncProtocol::applyHttpResult(int httpCode, std::string_view body, uin
         return true;
     }
 
-    // The HTTP status code alone fully determines the outcome; the body (already
-    // valid JSON text from the manager) is only ever used here for logging context.
+    // The HTTP status code determines the outcome; the body (already valid JSON text
+    // from the manager) only refines it -- which mismatch a 409 is, whether a 503 is the
+    // vulnerability feed still loading -- and gives logging context.
     // Any 2xx is success, not just 200: the /stateful contract already documents a
     // future 202 (queued-processing endpoint) as a deliberate accepted-but-not-200
     // answer (see syncEndpoint.cpp), and this must not fall into the default
@@ -1456,9 +1585,7 @@ bool AgentSyncProtocol::applyHttpResult(int httpCode, std::string_view body, uin
 
         case 503: // Manager not ready (indexer down, at capacity, shutting down, or a VD
             // feed still downloading): retried on the next cycle either way.
-            m_syncState.lastSyncResult = SyncResult::COMMUNICATION_ERROR;
-            m_syncState.lastSyncManagerNotReady = true;
-            m_logger(LOG_DEBUG, "Manager reported not ready (503): " + std::string(body));
+            applyServiceUnavailable(body);
             break;
 
         case 415: // Compression rejected. The agent's own RetrySender already reports this
@@ -1489,6 +1616,23 @@ bool AgentSyncProtocol::applyHttpResult(int httpCode, std::string_view body, uin
 
     m_syncState.cv.notifyAll();
     return true;
+}
+
+void AgentSyncProtocol::applyServiceUnavailable(std::string_view body)
+{
+    m_syncState.lastSyncManagerNotReady = true;
+
+    // The feed is the one cause the body tells apart: it is expected on every new manager and must
+    // not be reported as a communication failure (#40683).
+    if (isFeedNotReadyBody(body))
+    {
+        m_syncState.lastSyncResult = SyncResult::FEED_NOT_READY;
+        m_logger(LOG_DEBUG, "Manager's vulnerability feed is not ready (503): " + std::string(body));
+        return;
+    }
+
+    m_syncState.lastSyncResult = SyncResult::COMMUNICATION_ERROR;
+    m_logger(LOG_DEBUG, "Manager reported not ready (503): " + std::string(body));
 }
 
 void AgentSyncProtocol::clearSyncState()

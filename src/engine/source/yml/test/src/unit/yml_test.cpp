@@ -22,7 +22,7 @@ TEST_F(YmlTest, ParseScalarTestAllocator)
     YAML::Node stringNode("world");
     YAML::Node invalidNode;
 
-    rapidjson::Document::AllocatorType allocator;
+    json::Document::AllocatorType allocator;
 
     auto quotedStringResult = yml::Converter::parseScalar(quotedStringNode, allocator);
     auto intResult = yml::Converter::parseScalar(intNode, allocator);
@@ -46,13 +46,13 @@ TEST_F(YmlTest, ParseScalarTestAllocator)
 
 TEST_F(YmlTest, ParseScalarTest)
 {
-    rapidjson::Value stringNode("hello");
-    rapidjson::Value intNode(42);
-    rapidjson::Value int64Node(static_cast<int64_t>(std::numeric_limits<int64_t>::max()));
-    rapidjson::Value uint64Node(std::numeric_limits<uint64_t>::max());
-    rapidjson::Value doubleNode(3.14);
-    rapidjson::Value boolNode(true);
-    rapidjson::Value invalidNode;
+    json::Value stringNode("hello");
+    json::Value intNode(42);
+    json::Value int64Node(static_cast<int64_t>(std::numeric_limits<int64_t>::max()));
+    json::Value uint64Node(std::numeric_limits<uint64_t>::max());
+    json::Value doubleNode(3.14);
+    json::Value boolNode(true);
+    json::Value invalidNode;
 
     auto stringResult = yml::Converter::parseScalar(stringNode);
     auto intResult = yml::Converter::parseScalar(intNode);
@@ -85,7 +85,7 @@ TEST_F(YmlTest, JsonToYamlTest)
         "colors": ["red", "green", "blue"]
     })";
 
-    rapidjson::Document document;
+    json::Document document;
     document.Parse(jsonString);
 
     auto resultNode = yml::Converter::jsonToYaml(document);
@@ -130,12 +130,12 @@ TEST_F(YmlTest, YamlToJsonTest)
 
     auto yamlNode = YAML::Load(yamlStr);
 
-    rapidjson::Document document;
+    json::Document document;
     auto& allocator = document.GetAllocator();
 
     const auto& resultValue = yml::Converter::yamlToJson(yamlNode, allocator);
 
-    rapidjson::Document resultValueDocument;
+    json::Document resultValueDocument;
     resultValueDocument.CopyFrom(resultValue, resultValueDocument.GetAllocator());
     auto result = json::Json {std::move(resultValueDocument)};
 
@@ -190,7 +190,7 @@ TEST_F(YmlTest, LoadYMLfromStringTest)
     )";
 
     auto resultValue = yml::Converter::loadYMLfromString(yamlStr);
-    rapidjson::Document resultValueDocument;
+    json::Document resultValueDocument;
     resultValueDocument.CopyFrom(resultValue, resultValueDocument.GetAllocator());
     auto result = json::Json {std::move(resultValueDocument)};
 
@@ -201,7 +201,7 @@ TEST_F(YmlTest, LoadYMLfromStringTest)
 TEST_F(YmlTest, LoadYMLfromFileTest)
 {
     auto resultValue = yml::Converter::loadYMLfromFile(TEST_FILE);
-    rapidjson::Document resultValueDocument;
+    json::Document resultValueDocument;
     resultValueDocument.CopyFrom(resultValue, resultValueDocument.GetAllocator());
     auto result = json::Json {std::move(resultValueDocument)};
 

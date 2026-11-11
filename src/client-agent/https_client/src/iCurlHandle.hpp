@@ -21,6 +21,8 @@
 #include <memory>
 #include <string>
 
+class ContentCodingGuard;
+
 /// Abstract option ids, deliberately curl-agnostic (the http-request
 /// IRequestImplementator idiom). The concrete adapter maps them to CURLOPT_*.
 enum class CurlOption
@@ -48,7 +50,9 @@ enum class CurlOption
     /// in curlHandle.cpp does not distinguish which hop a header block came
     /// from), undermining the clock-skew correction's premise of trusting
     /// only whoever completed the TLS handshake to the manager.
-    SuppressConnectHeaders
+    SuppressConnectHeaders,
+    AcceptEncoding, ///< string, offered codings; libcurl then decodes the reply body
+    HttpVersion     ///< long, always HTTP_VERSION_1_1
 };
 
 /// Value for CurlOption::SslVersion: refuse to negotiate below TLS 1.3.
@@ -57,6 +61,12 @@ enum class CurlOption
 /// stays curl-agnostic like the ids above. curlHandle.cpp static_asserts the two
 /// against each other, so the literal cannot drift from what curl expects.
 inline constexpr long TLS_MIN_VERSION_1_3 {7};
+
+/// Value for CurlOption::HttpVersion: HTTP/1.1 only, whatever protocols curl was built with.
+///
+/// Numerically libcurl's CURL_HTTP_VERSION_1_1, static_asserted in curlHandle.cpp
+/// like the TLS version below.
+inline constexpr long HTTP_VERSION_1_1 {2};
 
 /// Value for CurlOption::SslOptions: trust the platform's own certificate store.
 ///
@@ -75,6 +85,9 @@ struct HeaderCapture
     /// Left at 0 when the header is absent, which is what a manager predating #39321 sends and
     /// is never adopted either way.
     std::int64_t* caGeneration {nullptr};
+    /// When set, every header line goes through it, and a reply it refuses is aborted before any
+    /// of the body arrives (#38514). Left unset when nothing was offered.
+    ContentCodingGuard* contentCoding {nullptr};
 };
 
 /**
@@ -146,6 +159,16 @@ class ICurlHandle
         /// other failure. See HttpResponse::caFileLoadFailed (httpTypes.hpp) for why this
         /// is kept separate from tlsFailureDetail().
         virtual bool caFileLoadFailed() = 0;
+
+        /// Whether the last perform() failed because libcurl couldn't decode the reply's
+        /// Content-Encoding (CURLE_BAD_CONTENT_ENCODING): a corrupt frame, or a coding it wasn't
+        /// built with. False after a success and after any other failure.
+        virtual bool contentDecodingFailed() = 0;
+
+        /// Whether the libcurl behind this handle was built to decode `coding` ("zstd", "br", "gzip"
+        /// or "deflate"). curl sends an Accept-Encoding offer for any coding, then fails every
+        /// reply in one it can't decode.
+        virtual bool decodes(const std::string& coding) = 0;
 };
 
 using CurlHandleFactory = std::function<std::unique_ptr<ICurlHandle>()>;

@@ -216,6 +216,31 @@ TEST(ControlScanVdE2ETest, NotifyResponseCarriesVdFeedOffsetOverRealHttp)
     EXPECT_TRUE(json.at("agent").contains("groups"));
 }
 
+TEST(ControlScanVdE2ETest, NotifyResponseOmitsVdFeedOffsetWhileVdIsDisabled)
+{
+    // #41101: a disabled VD refuses every scan, so advertising its offset would have the agents
+    // request one forever. The agent leaves a missing vd_feed_offset alone.
+    ControlScanVdE2EFixture f;
+    if (!f.start())
+    {
+        GTEST_SKIP() << "openssl not available to generate a test certificate";
+    }
+    f.vdServer->setOffsetHandler([](const httplib::Request&, httplib::Response& res)
+                                 { res.set_content(R"({"offset":0,"enabled":false})", "application/json"); });
+
+    const std::string body =
+        R"({"type":"notify","agent":{"version":"5.0.0"},"host":{"hostname":"h1","ip":"127.0.0.1",)"
+        R"("architecture":"x86_64","os":{"name":"Ubuntu","version":"24.04","platform":"ubuntu","type":"Linux"}}})";
+    const auto raw = remoted::test::sendSignedRequest(f.port, remoted::test::testAgentKey(), "/control", body);
+    const auto [head, respBody] = remoted::test::splitResponse(raw);
+
+    ASSERT_NE(head.find("200"), std::string::npos) << "raw response head: " << head;
+    const auto json = nlohmann::json::parse(respBody);
+    EXPECT_FALSE(json.contains("vd_feed_offset")) << respBody;
+    ASSERT_TRUE(json.contains("agent"));
+    EXPECT_TRUE(json.contains("settings_hash"));
+}
+
 TEST(ControlScanVdE2ETest, ScanVdMatchingOffsetReturns200OverRealHttp)
 {
     ControlScanVdE2EFixture f;

@@ -346,8 +346,9 @@ connection, enroll, and delete this file. No credential crosses the unverified c
 pin mismatch aborts with a named error and no enrollment is attempted.
 
 The file is also deleted, unused, whenever it can no longer be consumed -- on an agent that
-already holds an anchor or an identity, and when the manager reports the token as unknown,
-revoked or out of uses. It is a credential; it is not left at rest once it is spent.
+already holds an anchor or an identity, and when the manager reports the token as expired,
+revoked, out of uses, or unknown to the master. A worker that has not received the token yet is
+retried instead. It is a credential; it is not left at rest once it is spent.
 
 Failures are split into permanent and transient. A
 transient one -- an unreachable manager, a misprovisioned CA, a `5xx` -- is retried in place, on
@@ -616,6 +617,11 @@ agent.https_backoff_cap=60000
 # in seconds (default: 60, range 1-86400)
 agent.https_rejected_retry_interval=60
 
+# Compress request bodies with zstd (default: 1, range 0-1). On a 415 the
+# agent retries once uncompressed and disables compression for that stream;
+# see the remoted timing-tuning page for the manager-side switch.
+agent.https_compression_enabled=1
+
 # Largest WPK accepted by a remote_upgrade download, in bytes
 # (default: 209715200 = 200 MiB)
 agent.https_wpk_max_download_bytes=209715200
@@ -679,8 +685,8 @@ agent.warn_level=90
 # Normal level for buffer usage percentage (default: 70)
 agent.normal_level=70
 
-# Tolerance for buffer fluctuations (default: 10)
-agent.tolerance=10
+# Seconds the buffer must stay full before the agent reports flooding (1-600, 0 uses the default, default: 15)
+agent.tolerance=15
 ```
 
 ### Log Rotation Settings
@@ -689,16 +695,16 @@ agent.tolerance=10
 # Compress rotated logs (0=no, 1=yes, default: 1)
 monitord.compress=1
 
-# Days to keep rotated logs (default: 365)
-monitord.keep_log_days=365
+# Days to keep rotated logs (0-500, default: 31)
+monitord.keep_log_days=31
 
-# Time of day to rotate logs (hh:mm format, default: 00:00)
-monitord.day_wait=0
+# Seconds to wait after midnight before the daily rotation (0-600, default: 10)
+monitord.day_wait=10
 
-# Maximum log file size in MB before rotation (default: 0 = unlimited)
-monitord.size_rotate=0
+# Log file size in MB that triggers a rotation (0-4096, 0 = no size-based rotation, default: 512)
+monitord.size_rotate=512
 
-# Number of daily rotations to keep (default: 12)
+# Maximum number of rotations per day (1-256, default: 12)
 monitord.daily_rotations=12
 
 # Enable automatic log rotation (0=no, 1=yes, default: 1)

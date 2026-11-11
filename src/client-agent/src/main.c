@@ -14,6 +14,7 @@
 #include "agentd.h"
 #include "token_bootstrap.h"
 #include "enrollment_token.h"
+#include "openssl_init.h"
 #include <getopt.h>
 
 #if defined(__GLIBC__)
@@ -123,6 +124,8 @@ int main(int argc, char **argv)
 
     /* Set the name */
     OS_SetName(ARGV0);
+
+    w_openssl_init();
 
 	/* Change working directory */
     if (chdir(home_path) == -1) {
@@ -254,7 +257,6 @@ int main(int argc, char **argv)
     }
 
     mdebug1(WAZUH_HOMEDIR, home_path);
-    os_free(home_path);
     mdebug1(STARTUP_MSG, (int)getpid());
 
     /* Read config */
@@ -262,15 +264,10 @@ int main(int argc, char **argv)
         mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }
 
-    if (!(agt->server && agt->server[0].rip)) {
-        merror(AG_INV_IP);
+    if (!w_agent_validate_manager_address(agt, home_path)) {
         mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }
-
-    if (!Validate_Address(agt->server)){
-        merror(AG_INV_MNGIP, agt->server[0].rip);
-        mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
-    }
+    os_free(home_path);
 
     /* Resolve the server address only when the process won't fork: on macOS 26, getaddrinfo() crashed
      * in the forked agent when this process had already called it. wazuh-control runs -t before starting */

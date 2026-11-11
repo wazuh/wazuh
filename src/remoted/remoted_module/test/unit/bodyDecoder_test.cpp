@@ -22,6 +22,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <string>
 
 using remoted::auth::AuthError;
@@ -108,7 +109,15 @@ TEST(BodyDecoderTest, AGzipBodyIsNeverDecodedEvenThoughItIsAValidGzipStream)
 
 TEST(ParseContentEncoding, AbsentHeaderIsNone)
 {
-    EXPECT_EQ(parseContentEncoding(""), ContentEncoding::None);
+    EXPECT_EQ(parseContentEncoding(std::nullopt), ContentEncoding::None);
+}
+
+TEST(ParseContentEncoding, EmptyHeaderIsUnsupportedNotAbsent)
+{
+    // `Content-Encoding:` with no value is a header that names no encoding this build implements:
+    // answered 415 like any other, never taken for a plain body.
+    EXPECT_EQ(parseContentEncoding(""), ContentEncoding::Unsupported);
+    EXPECT_EQ(parseContentEncoding(std::string_view {}), ContentEncoding::Unsupported);
 }
 
 TEST(ParseContentEncoding, ZstdIsRecognizedCaseInsensitively)

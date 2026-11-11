@@ -39,6 +39,10 @@
 #define GLOBAL_COUNTER_SIZE 10
 #define LOCAL_COUNTER_SIZE 4
 #define COUNTER_FORMAT_SIZE 1 /* For the ':' character */
+/* Whether a message's (global, local) counters are ahead of the ones stored for the agent */
+#define COUNTERS_AHEAD(msg_g, msg_l, entry) \
+    (((msg_g) > (entry)->global) || (((msg_g) == (entry)->global) && ((msg_l) > (entry)->local)))
+
 #define MSG_OVERHEAD (MD5_CHECKSUM_SIZE + RANDOM_DATA_SIZE + GLOBAL_COUNTER_SIZE + LOCAL_COUNTER_SIZE + 2 * COUNTER_FORMAT_SIZE)
 
 /* Prototypes */
@@ -160,7 +164,8 @@ void OS_StartCounter(keystore *keys)
     mdebug2("Stored counter.");
     keys->opened_fp_queue = linked_queue_init();
 
-    /* Get counter values */
+    /* Get counter values. On the manager RemotedConfig() has already read both (on the `-t` path too),
+     * so these reads only run on the agent; keep their ranges and defaults identical to that copy. */
     if (_s_recv_flush == 0) {
         _s_recv_flush = (unsigned int) getDefine_Int_default("remoted",
                         "recv_counter_flush",
@@ -306,6 +311,18 @@ STATIC char *CheckSum(char *msg, size_t length)
     return (msg);
 }
 
+/* Failures before the checksum proves the sender holds the agent's key. On the manager they come from an
+ * unauthenticated peer: remoted logs one throttled line per reason naming only the source address, so the
+ * details here stay at debug level and never name the claimed agent at a higher one. The agent keeps its
+ * levels: there the peer is its own manager. */
+#ifdef CLIENT
+#define preauth_merror(...) merror(__VA_ARGS__)
+#define preauth_mwarn(...) mwarn(__VA_ARGS__)
+#else
+#define preauth_merror(...) mdebug1(__VA_ARGS__)
+#define preauth_mwarn(...) mdebug1(__VA_ARGS__)
+#endif
+
 int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned int buffer_size, size_t *final_size, const char *srcip, char **output)
 {
     if (keys->flags.key_mode != W_ENCRYPTION_KEY && keys->flags.key_mode != W_DUAL_KEY) {
@@ -317,6 +334,9 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
     unsigned int msg_local = 0;
     char *f_msg;
     crypt_method method;
+#ifndef CLIENT
+    bool stale = false;
+#endif
 
     w_mutex_lock(&keys->keyentries[id]->mutex);
 
@@ -343,7 +363,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
     if (*buffer == ':') {
         buffer++;
     } else {
-        merror(ENCFORMAT_ERROR, keys->keyentries[id]->id, srcip);
+        preauth_merror(ENCFORMAT_ERROR, keys->keyentries[id]->id, srcip);
         w_mutex_unlock(&keys->keyentries[id]->mutex);
         return KS_CORRUPT;
     }
@@ -353,7 +373,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         case W_METH_BLOWFISH:
             if (!OS_BF_Str(buffer, cleartext, keys->keyentries[id]->encryption_key,
                         buffer_size, OS_DECRYPT)) {
-                mwarn(ENCKEY_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
+                preauth_mwarn(ENCKEY_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
                 w_mutex_unlock(&keys->keyentries[id]->mutex);
                 return KS_ENCKEY;
             }
@@ -361,7 +381,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         case W_METH_AES:
             if (!OS_AES_Str(buffer, cleartext, keys->keyentries[id]->encryption_key,
                 buffer_size-4, OS_DECRYPT)) {
-                mwarn(ENCKEY_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
+                preauth_mwarn(ENCKEY_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
                 w_mutex_unlock(&keys->keyentries[id]->mutex);
                 return KS_ENCKEY;
             }
@@ -393,19 +413,19 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         }
 #else
         if (*final_size == 0) {
-            mwarn(UNCOMPRESS_ERR " Message received from agent '%s' at '%s'", keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
+            mdebug1(UNCOMPRESS_ERR " Message received from agent '%s' at '%s'", keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
             return KS_CORRUPT;
         }
 
         if (*final_size < MSG_OVERHEAD) {
-            mwarn("Decompressed message too short from agent '%s'", keys->keyentries[id]->id);
+            mdebug1("Decompressed message too short from agent '%s'", keys->keyentries[id]->id);
             return KS_CORRUPT;
         }
 #endif
 
         /* Check checksum */
         if (f_msg = CheckSum(decompress_buffer, *final_size), !f_msg) {
-            merror(ENCSUM_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
+            preauth_merror(ENCSUM_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
             return KS_CORRUPT;
         }
 
@@ -439,6 +459,16 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
 
         /* Return the message if we don't need to verify the counter */
         if (!_s_verify_counter) {
+#ifndef CLIENT
+            /* The manager accepts the message, but an older or repeated one (a replay, or a frame a
+             * concurrent worker overtook) never rolls the stored counters back, and is reported as
+             * stale so that it cannot take over the agent's session. */
+            if (!COUNTERS_AHEAD(msg_global, msg_local, keys->keyentries[id])) {
+                stale = true;
+                *output = f_msg;
+                goto authenticated;
+            }
+#endif
             /* Update current counts */
             keys->keyentries[id]->global = msg_global;
             keys->keyentries[id]->local = msg_local;
@@ -492,7 +522,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         unsigned int msg_time;
 
         if (buffer_size < MSG_OVERHEAD) {
-            mwarn("Message too short from agent '%s'", keys->keyentries[id]->id);
+            preauth_mwarn("Message too short from agent '%s'", keys->keyentries[id]->id);
             return KS_CORRUPT;
         }
 
@@ -503,7 +533,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         cleartext++;
         f_msg = CheckSum(cleartext, buffer_size);
         if (f_msg == NULL) {
-            merror(ENCSUM_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
+            preauth_merror(ENCSUM_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
             return KS_CORRUPT;
         }
 
@@ -518,9 +548,20 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
 
         /* Return the message if we don't need to verify the counter */
         if (!_s_verify_counter) {
+#ifndef CLIENT
+            /* As in the compressed format: a message not ahead of the stored counters is accepted as
+             * stale and leaves them as they are; one ahead advances them. */
+            if (!COUNTERS_AHEAD(msg_time, msg_count, keys->keyentries[id])) {
+                stale = true;
+            } else {
+                keys->keyentries[id]->global = msg_time;
+                keys->keyentries[id]->local = msg_count;
+            }
+#else
             /* Update current counts */
             keys->keyentries[id]->global = msg_time;
             keys->keyentries[id]->local = msg_local;
+#endif
 
             f_msg = strchr(f_msg, ':');
             if (f_msg) {
@@ -575,7 +616,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         w_mutex_unlock(&keys->keyentries[id]->mutex);
         return KS_RIDS;
     }
-    mwarn(ENCKEY_ERROR, keys->keyentries[id]->id, srcip);
+    preauth_mwarn(ENCKEY_ERROR, keys->keyentries[id]->id, srcip);
     return KS_ENCKEY;
 
 authenticated:
@@ -583,9 +624,12 @@ authenticated:
      * entry's mutex still held. Only the manager records the cipher, to answer the agent with it. */
 #ifndef CLIENT
     keys->keyentries[id]->crypto_method = method;
-#endif
+    w_mutex_unlock(&keys->keyentries[id]->mutex);
+    return stale ? KS_STALE : KS_VALID;
+#else
     w_mutex_unlock(&keys->keyentries[id]->mutex);
     return KS_VALID;
+#endif
 }
 
 /* Create an encrypted message

@@ -34,10 +34,14 @@ groups at once, up to 128.
     └── agent.conf
 ```
 
-A group name may contain `a-z`, `A-Z`, `0-9`, `_`, `-` and `.`, up to 128 characters through the API
-and up to 255 with `agent_groups`;
+A group name may contain `a-z`, `A-Z`, `0-9`, `_`, `-` and `.`, up to 128 characters when the API
+creates it and up to 255 when `agent_groups` does (the API still lists, assigns and deletes a longer
+group made with `agent_groups`; the agents' `POST /download` accepts a wider set when it looks a group up,
+adding `:` `;` `=` `+` `!` `@` `(` `)`, but the API and `agent_groups` never create such a name);
 `.`, `..` and `all` are refused, and so is `default`, which always exists
-and cannot be deleted. A new group directory is created `wazuh-manager:wazuh-manager`, mode `0700`,
+and cannot be deleted. Names are case-sensitive: `Web` and `web` are two groups, with their own directories
+and configurations, and looking up a group's agents (`GET /groups/{group_id}/agents`, `GET /agents?group=`,
+`agent_groups -l -g`) matches the name exactly. A new group directory is created `wazuh-manager:wazuh-manager`, mode `0700`,
 with its `agent.conf` at mode `0660`.
 
 ## Managing groups with the Wazuh API
@@ -75,10 +79,15 @@ curl -k -X PUT "https://<MANAGER_IP>:55000/agents/001/group/web-servers" \
 ```
 
 Errors you may meet: `1710` the group does not exist, `1711` it already exists, `1712` `default`
-cannot be deleted, `1713` the name is taken by a file in `/etc/wazuh-manager/shared/` (such as
-`agent-template.conf`), `1722` invalid name, `1734` the agent is not in that
+cannot be deleted, `1713` (*Invalid group ID. Some IDs are restricted for internal purposes*) the name is taken by a file in `/etc/wazuh-manager/shared/` (such as
+`agent-template.conf`), `1734` the agent is not in that
 group, `1737` the agent already has 128 groups, `1745` the agent's only group is `default`, `1751` the
-agent already belongs to the group.
+agent already belongs to the group, `1752` `force_single_group=true` was asked but the caller lacks
+`group:modify_assignments` over one of the agent's current groups (the message does not name them, since
+the caller may not be allowed to read them). An invalid
+group name never reaches these checks through the API: the request schema refuses it with a `400` that
+carries no error code (`title` *Bad Request* and a `detail` naming the parameter). Error `1722` (*Incorrect
+format for group_id*) is what the `agent_groups` tool below reports for the same name.
 
 Removing an agent from its last group other than `default` puts it back in `default`.
 
@@ -97,7 +106,7 @@ unless `-q` is given.
 | `agent_groups -a -i <AGENT_ID> -g <GROUP_NAME> [-q] [-f]` | Add the group to the agent; with `-f`, replace the agent's other groups with it |
 | `agent_groups -s -i <AGENT_ID>` | Show the groups of an agent |
 | `agent_groups -r -i <AGENT_ID> -g <GROUP_NAME> [-q]` | Remove the agent from the group |
-| `agent_groups -r -i <AGENT_ID> [-q]` | Remove the agent from all its groups; an agent left with none is reassigned to `default` (and an agent only in `default` stays there) |
+| `agent_groups -r -i <AGENT_ID> [-q]` | Remove the agent from all its groups (`default` last), so it ends up in `default` alone. An agent whose only group is `default` is refused with `Error 1745` (exit `1`); an agent with no group at all prints `Agent '<AGENT_ID>' does not belong to any group.` and exits `0` |
 | `agent_groups -r -g <GROUP_NAME> [-q]` | Delete the group |
 | `agent_groups -u` | Print the usage text |
 
@@ -116,8 +125,12 @@ unless `-q` is given.
 | `-u` | `--usage` |
 
 Only one of `-l`, `-c`, `-a`, `-s`, `-r` may be given (otherwise it prints
-`Invalid options: Bad argument combination.` and exits `1`); `-h` prints argparse's help. Errors are
-printed as `Error <code>: <message>`.
+`Invalid options: Bad argument combination.` and exits `1`), and `-g` or `-i` without one of them
+prints `Invalid options: Missing action: -l, -c, -a, -s or -r.` and exits `1` rather than listing every
+group; `-h` prints argparse's help. Every
+error, an unknown agent or group included, is printed as `Error <code>: <message>` (for example
+`Error 1701: Agent does not exist`) and exits `1`; an unexpected failure prints `Internal error: <message>`
+and exits `1` too. Answering anything but `y` to a confirmation prints `Cancelled.` and exits `0`.
 
 ## Verifying assignments
 

@@ -9,8 +9,8 @@ log-linear buckets, p50/p90/p99 with ~12.5% bounded error, clamped into the exac
 It is derived from the engine's `fastmetrics` (same metric semantics, same hot-path
 discipline) with deliberate differences: **no singleton** (each daemon instantiates its
 own `Manager` and injects it), histograms, and a rapidjson-based `dumpJson()`. Scalar
-entries carry the same `{name, type, enabled, value}` shape as the engine's `/metrics`
-dump, so tooling treats both alike.
+entries carry the same `{name, type, enabled, value}` shape as the engine's `/metrics/dump`,
+so tooling treats both alike.
 
 ## Who uses it
 
@@ -23,6 +23,11 @@ dump, so tooling treats both alike.
 
 Each module documents its own metric catalog (with the option that tunes each metric)
 in its `metrics.md` — this page is about the library and how to query any module.
+
+The engine (`wazuh-manager-analysisd`) is **not** a consumer: it keeps its own
+`fastmetrics` library and serves it as `POST /metrics/list`, `/metrics/get`,
+`/metrics/dump` and `/metrics/enable` on `queue/sockets/engine-api-http.sock` — see the
+[engine's metrics section](../../engine/README.md#metrics). Wazuh DB serves no metrics.
 
 ## Querying a module's metrics
 
@@ -46,8 +51,10 @@ Properties that matter to an operator:
 - The dump is one deterministic JSON document. The envelope `name` is the module
   (`inventory_sync_server`, `task_manager`, `vulnerability_scanner`, `remoted`), entries are
   sorted by name, and `type` is `counter`, `gauge_int`, `pull` or `histogram`.
-  `description` and `unit` appear only when the module registered them. A histogram's
-  `value` is its observation count, and its `summary` carries count/sum/min/max/p50/p90/p99:
+  `description` and `unit` appear only when the module registered them. A `counter`'s
+  `value` is an exact unsigned integer, a `gauge_int`'s a signed one, a `pull`'s a double
+  (`41.0`). A histogram's `value` is its observation count, and its `summary` carries
+  count/sum/min/max/p50/p90/p99:
 
 ```json
 {

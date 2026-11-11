@@ -528,7 +528,7 @@ nlohmann::json SysInfo::getGroups() const
         }
         else
         {
-            groupItem["group_users"] = Utils::join(collectedUsersGroups.get<std::vector<std::string>>(), secondaryArraySeparator);
+            groupItem["group_users"] = Utils::join(collectedUsersGroups.get<std::vector<std::string>>(), arraySeparator);
         }
 
         result.push_back(std::move(groupItem));
@@ -584,7 +584,7 @@ nlohmann::json SysInfo::getUsers() const
         else
         {
             const auto groupNames = collectedUsersGroups.get<std::vector<std::string>>();
-            userItem["user_groups"] = Utils::join(groupNames, secondaryArraySeparator);
+            userItem["user_groups"] = Utils::join(groupNames, arraySeparator);
             userGroupNames.insert(groupNames.begin(), groupNames.end());
         }
 
@@ -637,7 +637,7 @@ nlohmann::json SysInfo::getUsers() const
                 {
                     userItem["host_ip"] = userItem["host_ip"].get<std::string>() == UNKNOWN_VALUE
                                           ? hostStr
-                                          : (userItem["host_ip"].get<std::string>() + primaryArraySeparator + hostStr);
+                                          : (userItem["host_ip"].get<std::string>() + arraySeparator + hostStr);
                 }
             }
         }

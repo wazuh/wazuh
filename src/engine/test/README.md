@@ -22,11 +22,16 @@ The `setupEnvironment.py` script prepares the sandbox directory the integration 
 
 - copies the `engine-schema`, `wazuh-logpar-overrides` and `allowed-fields` schemas from `ruleset/schemas/`
   into `<env>/store/schema/<name>/0`;
-- creates `<env>/queue/sockets`, `kvdb`, `logs`, `outputs` and `content`;
+- creates `<env>/queue/sockets`, `queue/keystore`, `kvdb`, `logs`, `outputs` and `content`;
 - copies the IANA time zone database from `src/external/tzdata` into `<env>/tzdb/iana`;
 - copies the engine binary `src/build/engine/wazuh-engine` into `<env>/wazuh-engine`;
 - stores test indexer credentials in `<env>/queue/keystore` with `src/build/bin/wazuh-manager-keystore`
   (run with `WAZUH_MANAGER_HOME=<env>`), because the engine's indexer connector refuses to start without them.
+  Run as root, that tool switches to the `wazuh-manager` account, so the script gives `<env>/queue/keystore`
+  to that user first; a sandbox created by root then needs no manual `chown`. This assumes the usual
+  umask: only `<env>/queue/keystore` changes hands, not the directories above it, so under a umask that
+  clears the search bit for others (`027`, say) `wazuh-manager` cannot traverse `<env>` and `<env>/queue`
+  and the tool fails with the same `Permission denied` as before.
 
 It exits with an error when the time zone database (run `make -C src deps TARGET=manager` first), the engine
 binary or the keystore tool (build the manager tree first) is missing. It writes no `config.env`: the

@@ -236,3 +236,26 @@ TEST(ControlTypesTest, IsValidHostInfoRejectsOversizedOsFields)
         EXPECT_FALSE(isValidHostInfo(h));
     }
 }
+
+// -----------------------------------------------------------------------------
+// canonicalVersion: one stored spelling per version, whatever prefix the agent sent.
+// -----------------------------------------------------------------------------
+
+TEST(ControlTypesTest, CanonicalVersionAddsTheLowercaseVPrefix)
+{
+    EXPECT_EQ(canonicalVersion("5.0.0"), "v5.0.0");
+    EXPECT_EQ(canonicalVersion("5.0.0-rc.1"), "v5.0.0-rc.1");
+    EXPECT_EQ(canonicalVersion("5"), "v5");
+}
+
+TEST(ControlTypesTest, CanonicalVersionKeepsOrLowercasesAnExistingPrefix)
+{
+    EXPECT_EQ(canonicalVersion("v5.0.0"), "v5.0.0");
+    EXPECT_EQ(canonicalVersion("V5.0.0"), "v5.0.0");
+}
+
+TEST(ControlTypesTest, CanonicalVersionLeavesNonVersionsUnchanged)
+{
+    EXPECT_EQ(canonicalVersion(""), "");
+    EXPECT_EQ(canonicalVersion("N/A"), "N/A");
+}

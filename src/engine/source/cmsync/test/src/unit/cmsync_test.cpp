@@ -90,6 +90,48 @@ nlohmann::json policyPage(std::string_view space, const std::string& hash)
                                                     {"document", {{"name", "policy/wazuh/0"}, {"enabled", true}}}}}}});
 }
 
+/// Engine log lines of a call: INFO/DEBUG go to stdout, WARNING and above to stderr (base::logging CustomSink).
+struct CapturedLogs
+{
+    std::string info;
+    std::string warn;
+};
+
+template<typename Fn>
+CapturedLogs captureLogs(Fn&& fn)
+{
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+    fn();
+    return {testing::internal::GetCapturedStdout(), testing::internal::GetCapturedStderr()};
+}
+
+/// A cycle whose probe finds no policy for the space in the indexer.
+cmcontent::mocks::FakeTopicRegistry::Script policyMissing()
+{
+    cmcontent::mocks::FakeTopicRegistry::Script missing;
+    missing.outcome.status = content_manager::CycleStatus::Unchanged;
+    missing.driveSink = [](content_manager::IContentSink& sink)
+    {
+        content_manager::SessionInfo info;
+        info.kind = content_manager::SessionKind::NoChange;
+        EXPECT_EQ(sink.beginSession(info), content_manager::SessionDecision::Skip);
+    };
+    return missing;
+}
+
+/// A cycle whose probe finds the space's policy unchanged.
+cmcontent::mocks::FakeTopicRegistry::Script policyUnchanged(const std::string& hash)
+{
+    cmcontent::mocks::FakeTopicRegistry::Script unchanged;
+    unchanged.outcome.status = content_manager::CycleStatus::Unchanged;
+    unchanged.driveSink = [hash](content_manager::IContentSink& sink)
+    {
+        sink.beginSession(sessionOf(content_manager::SessionKind::NoChange, true, hash));
+    };
+    return unchanged;
+}
+
 cm::sync::SpaceStatus statusOf(const std::vector<cm::sync::SpaceStatus>& all, std::string_view space)
 {
     for (const auto& entry : all)
@@ -511,4 +553,71 @@ TEST(CMSyncEarlyRetryInterval, IsTheRetryIntervalCappedAtTheRegularOne)
     EXPECT_EQ(cm::sync::earlyRetryInterval(30, 120), 30U);
     EXPECT_EQ(cm::sync::earlyRetryInterval(300, 120), 120U);
     EXPECT_EQ(cm::sync::earlyRetryInterval(0, 120), 0U) << "0 disables it";
+}
+
+/*
+ * What an operator sees while a space is absent from the indexer, and when a failed space recovers.
+ */
+
+TEST_F(CMSyncTest, AnUnpublishedSpaceIsLoggedOnceAtInfo)
+{
+    topics.script(topicOf(STANDARD), {policyMissing(), policyMissing()});
+    topics.scriptStatus(topicOf(CUSTOM), content_manager::CycleStatus::Unchanged);
+    const auto sync = build();
+
+    logging::setLevel(logging::Level::Info);
+    auto logs = captureLogs([&]() { sync->synchronize(); });
+    // Never deployed: a fresh install whose indexer is still loading its content.
+    EXPECT_NE(logs.info.find("Space 'standard' is not published in wazuh-indexer yet"), std::string::npos);
+    EXPECT_EQ(logs.warn.find("does not exist"), std::string::npos);
+
+    logs = captureLogs([&]() { sync->synchronize(); });
+    EXPECT_EQ(logs.info.find("is not published"), std::string::npos);
+    EXPECT_EQ(logs.warn.find("does not exist"), std::string::npos);
+    logging::setLevel(logging::Level::Warn);
+}
+
+TEST_F(CMSyncTest, ADeployedSpaceGoneFromTheIndexerWarnsOnceAndKeepsItsRoute)
+{
+    serve(STANDARD, "ns_standard", "same-hash");
+    topics.script(topicOf(STANDARD), {policyMissing(), policyMissing(), policyUnchanged("same-hash")});
+    topics.scriptStatus(topicOf(CUSTOM), content_manager::CycleStatus::Unchanged);
+    const auto sync = build();
+
+    logging::setLevel(logging::Level::Info);
+    auto logs = captureLogs([&]() { sync->synchronize(); });
+    EXPECT_NE(logs.warn.find("Space 'standard' does not exist in wazuh-indexer, the deployed content is kept"),
+              std::string::npos);
+    EXPECT_TRUE(statusOf(sync->getSpacesStatus(), STANDARD).available);
+
+    logs = captureLogs([&]() { sync->synchronize(); });
+    EXPECT_EQ(logs.warn.find("does not exist"), std::string::npos);
+
+    logs = captureLogs([&]() { sync->synchronize(); });
+    EXPECT_NE(logs.info.find("Space 'standard' is published in wazuh-indexer, resuming synchronization"),
+              std::string::npos);
+    EXPECT_EQ(statusOf(sync->getSpacesStatus(), STANDARD).status, base::SyncStatus::READY);
+    logging::setLevel(logging::Level::Warn);
+}
+
+TEST_F(CMSyncTest, AFailedSpaceFoundCurrentIsReportedBackInSync)
+{
+    serve(STANDARD, "ns_standard", "same-hash");
+    cmcontent::mocks::FakeTopicRegistry::Script failing;
+    failing.outcome.status = content_manager::CycleStatus::FailedTransport;
+    topics.script(topicOf(STANDARD), {failing, policyUnchanged("same-hash"), policyUnchanged("same-hash")});
+    topics.scriptStatus(topicOf(CUSTOM), content_manager::CycleStatus::Unchanged);
+    const auto sync = build();
+
+    sync->synchronize();
+    ASSERT_EQ(statusOf(sync->getSpacesStatus(), STANDARD).status, base::SyncStatus::FAILED);
+
+    logging::setLevel(logging::Level::Info);
+    auto logs = captureLogs([&]() { sync->synchronize(); });
+    EXPECT_NE(logs.info.find("Space 'standard' is back in sync with wazuh-indexer"), std::string::npos);
+
+    // Only the recovery is reported, not every unchanged cycle.
+    logs = captureLogs([&]() { sync->synchronize(); });
+    EXPECT_EQ(logs.info.find("back in sync"), std::string::npos);
+    logging::setLevel(logging::Level::Warn);
 }

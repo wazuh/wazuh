@@ -9,7 +9,13 @@
  */
 
 #include "remotedModule.hpp"
+#include "http_server/RestinioHttpServer.hpp"
+#include "http_server/httpServerConfig.hpp"
 #include "remotedModuleFacade.hpp"
+
+#include <cstdio>
+
+#include <openssl/ssl.h>
 
 namespace Log
 {
@@ -125,6 +131,47 @@ extern "C"
             // certificate of the bundle"; the caller refuses to deliver on either.
             return -1;
         }
+    }
+
+    int remoted_module_validate_tls(const remoted_module_config_t* configuration, char* error, size_t capacity)
+    {
+        const auto report = [error, capacity](const char* reason)
+        {
+            if (error != nullptr && capacity > 0)
+            {
+                std::snprintf(error, capacity, "%s", reason);
+            }
+        };
+
+        try
+        {
+            remoted_module_config_t config {};
+            if (configuration)
+            {
+                config = *configuration;
+            }
+
+            remoted::http::validateTlsMaterial(remoted::http::buildHttpServerConfig(config));
+            return 0;
+        }
+        catch (const std::exception& e)
+        {
+            report(e.what());
+        }
+        catch (...)
+        {
+            // Nothing may cross back into C.
+            report("non-standard exception");
+        }
+
+        return -1;
+    }
+
+    int remoted_module_init_tls_library(void)
+    {
+        // OPENSSL_INIT_LOAD_CONFIG reads OPENSSL_CONF (or the default file) now, with the caller's privileges; a
+        // later implicit initialisation by the listener's first context is then a no-op.
+        return OPENSSL_init_ssl(OPENSSL_INIT_LOAD_CONFIG, nullptr) == 1 ? 0 : -1;
     }
 
 #ifdef __cplusplus

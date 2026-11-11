@@ -12,11 +12,16 @@
 
 #include <exception>
 #include <memory>
+#include <stdexcept>
+#include <string>
+#include <type_traits>
 
+#include "external/nlohmann/json.hpp"
 #include "external/sqlite/sqlite3.h"
 #include <defer.hpp>
 #include <loggerHelper.h>
 #include <uds_http_server/IUdsHttpServer.hpp>
+#include <uds_http_server/logThrottle.hpp>
 #include <uds_http_server/udsHttpServerFactory.hpp>
 
 #include "endpointGetV1AgentsAll.hpp"
@@ -46,6 +51,21 @@ namespace
 {
     std::unique_ptr<wazuh::uds_http::IUdsHttpServer> g_server;
 
+    void rejectBadRequest(wazuh::uds_http::LogThrottle& throttle,
+                          const std::string& route,
+                          wazuh::uds_http::IHttpResponder& responder)
+    {
+        if (const auto decision = throttle.record())
+        {
+            logWarn("wazuh-manager-db",
+                    "Rejected %llu request(s) to %s with 400 %s: malformed request body.",
+                    static_cast<unsigned long long>(decision.total),
+                    route.c_str(),
+                    decision.period().c_str());
+        }
+        responder.send({400, "Malformed request body", {{"Content-Type", "text/plain"}}});
+    }
+
     // The response is always built by the endpoint and sent inline here: every TEndpoint::call()
     // runs a synchronous SQLite query, so there is never a reason to defer send() to another
     // thread. uds_http_server's handler contract forbids blocking the I/O thread; this socket is
@@ -60,9 +80,12 @@ namespace
         server.addRoute(
             method,
             route,
-            [](std::shared_ptr<const wazuh::uds_http::HttpRequest> request,
-               std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
+            [route](std::shared_ptr<const wazuh::uds_http::HttpRequest> request,
+                    std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
             {
+                // One window per route (one lambda per Endpoint instantiation).
+                static wazuh::uds_http::LogThrottle badRequestThrottle {};
+
                 if (!request)
                 {
                     responder->send({400, "Empty request", {{"Content-Type", "text/plain"}}});
@@ -79,9 +102,8 @@ namespace
                     return;
                 }
 
-                // uds_http_server has no process-wide exception-to-500 fallback (e.g.
-                // EndpointPostV1AgentsSync throws on malformed JSON) -- this is the one place
-                // that has to provide it.
+                // uds_http_server has no process-wide exception-to-500 fallback -- this is the one
+                // place that has to provide it.
                 try
                 {
                     SQLite3Wrapper::Connection connection(db);
@@ -89,6 +111,21 @@ namespace
                 }
                 catch (const std::exception& e)
                 {
+                    // Only where the exception can come from the caller's body: EndpointPostV1AgentsSync
+                    // parses it unguarded and reads its fields with get<T>() (nlohmann exceptions),
+                    // and a missing `id` is std::invalid_argument. A client error, not a daemon
+                    // fault: 400, and a throttled WARNING that never quotes the body or the
+                    // parser's text. Elsewhere a json exception comes from the daemon's own data.
+                    if constexpr (std::is_same_v<Endpoint, EndpointPostV1AgentsSync>)
+                    {
+                        if (dynamic_cast<const nlohmann::json::exception*>(&e) != nullptr ||
+                            dynamic_cast<const std::invalid_argument*>(&e) != nullptr)
+                        {
+                            rejectBadRequest(badRequestThrottle, route, *responder);
+                            return;
+                        }
+                    }
+
                     logError("wazuh-manager-db", "HTTP endpoint handler failed: %s", e.what());
                     responder->send({500, "Internal server error", {{"Content-Type", "text/plain"}}});
                 }

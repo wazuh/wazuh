@@ -615,6 +615,8 @@ class ActiveResponseBuilder:
         self.dispatched = 0
         self.held = 0
         self.discards: Counter = Counter()
+        #: Whether dispatch() had anything to handle (set by it).
+        self.worked = False
         self._bookmark_file = (
             bookmark_file if bookmark_file is not None else ActiveResponseBookmarkFile()
         )
@@ -882,7 +884,9 @@ class ActiveResponseBuilder:
         if self.discards:
             losses = ", ".join(f"{reason}={n}" for reason, n in sorted(self.discards.items()))
             summary += f" Discarded: {losses}."
-        self.logger.info(summary)
+        # A cycle that found nothing to do runs every polling interval: keep it out of the INFO log.
+        self.worked = bool(read or msgs_sent or self.held or self.discards)
+        (self.logger.info if self.worked else self.logger.debug)(summary)
 
         # THE CURSOR CONTRACT, in one place. The bookmark is a high-water mark of what was READ,
         # not of what was delivered, and it moves once per page rather than once per active
@@ -972,13 +976,18 @@ class ActiveResponseFetchTask:
         )
         ActiveResponseHelpers.logger = self.logger
 
-    async def active_response_processing(self) -> None:
+    async def active_response_processing(self) -> bool:
         """Execute one full cycle of AR processing.
 
         Raises
         ------
         WazuhException
             If there is a connection issue with the indexer.
+
+        Returns
+        -------
+        bool
+            Whether the cycle had any active response to handle.
         """
         try:
             builder = ActiveResponseBuilder(
@@ -986,23 +995,27 @@ class ActiveResponseFetchTask:
             )
             await builder.fetch_ars(validate=True)
             await builder.enrich_ar_with_events_info()
-            builder.dispatch()
+            return bool(builder.dispatch().worked)
         except IndexerUnavailableError:
             self.logger.warning("Cannot connect to Wazuh Indexer")
+            return False
 
     async def run(self) -> None:
         """Run the task loop indefinitely."""
         while True:
             before = perf_counter()
-            self.logger.info("Starting")
+            # Every polling interval, mostly with nothing to do: the cycle is logged at INFO only when it
+            # handled something.
+            self.logger.debug("Starting")
+            worked = True
             try:
-                await self.active_response_processing()
+                worked = await self.active_response_processing()
             except Exception as e:
                 self.logger.error(
                     f"Error during active response processing: {e}.",
                 )
             finally:
                 after = perf_counter()
-                self.logger.info(f"Finished in {(after - before):.3f}s.")
+                (self.logger.info if worked else self.logger.debug)(f"Finished in {(after - before):.3f}s.")
 
             await asyncio.sleep(self.polling_interval)

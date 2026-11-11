@@ -110,10 +110,16 @@ from an in-process queue and the agent's main thread runs the timeout check ever
    is no acknowledgment after execution: the task is fire-and-forget.
 5. **Forwarding**: `wazuh-agentd` hands the payload unchanged to `wazuh-execd`. A payload that is not
    JSON or has no top-level `wazuh` key is dropped with an ERROR; when execd's queue is not available (Active
-   Response disabled on the agent) the task is dropped at debug level.
+   Response disabled on the agent) the task is dropped at debug level. On Linux and macOS the payload travels as
+   one datagram, which `wazuh-execd` reads whole only up to 65,535 bytes: a larger one (in practice, a long
+   `extra_arguments`, since the payload also carries the merged event) is dropped with an ERROR naming the task
+   and its size (`its document is N bytes, larger than the 65535 bytes wazuh-execd can receive`). Windows has no
+   such limit.
 6. **Validation**: `wazuh-execd` parses the message, reads `wazuh.active_response.executable`,
    `type` and `stateful_timeout` (see [What wazuh-execd reads](#what-wazuh-execd-reads)), and drops
-   the message when `source.ip` is the manager, loopback or an `<allowlist>` entry.
+   the message when `source.ip` is the manager, loopback or an `<allowlist>` entry, or when `executable`
+   references a parent folder (`../`; logged as `Active response command '<name>' vulnerable to directory
+   traversal attack. Ignoring.`).
 7. **Execution**: execd appends `"command": "enable"`, starts
    `active-response/bin/<executable>` and writes the message, one line, to its stdin.
 8. **Keys**: the executable answers on stdout with one `check_keys` line naming its keys (for
@@ -167,7 +173,8 @@ and adds three things of its own:
 
 `AR_SCHEMA` is the first thing a document meets, and it states the contract above: `event.index`
 matching `EVENT_INDEX_PATTERN` and `event.doc_id` a non-empty string; `wazuh.active_response` with `executable`,
-`extra_arguments`, `location`, `name` and `type`, typed and enumerated as above and with no unknown
+`extra_arguments`, `location`, `name` and `type`, typed and enumerated as above (`extra_arguments` is a
+string or `null`, nothing else: an array such as `[]` fails with `is not of type 'string', 'null'`) and with no unknown
 keys; `stateful_timeout` when `type` is `stateful`; a non-empty `agent_id` when `location` is
 `defined-agent`; and a non-empty `wazuh.agent.id` when `location` is `local`. A document that fails
 it is discarded there, once, with its `_id` in the WARNING. What the schema cannot reach is the
@@ -238,8 +245,12 @@ cycle `only_events_after` is stamped anew and every document older than that ins
 Documents already in the stream that must not be dispatched are removed from the stream itself. A
 `WARNING` that repeats every cycle for the same `_id` means the page is being held, one of the two
 cases above; an `ERROR … Error during active response processing` that repeats every cycle means an
-exception escaped the poller and the cursor is not moving, which is a defect in the poller rather
-than in the data.
+exception escaped the poller and the cursor is not moving. Check the message first: when it carries the
+indexer's `429` (for example a `circuit_breaking_exception` while the indexer's heap is exhausted), the
+indexer is refusing searches, the poller is not at fault, and reading resumes on its own with the next
+cycle the indexer accepts; size the indexer's heap rather than touching the bookmark. Any other
+exception repeating every cycle is a defect in the poller rather than in the data. A stopped or
+unreachable indexer is not this line: it is the `WARNING` `Cannot connect to Wazuh Indexer`.
 
 ### The cluster
 
@@ -268,7 +279,8 @@ All lines are in `logs/cluster.log`, tagged `[Active Response]`. Every path that
 says so at `WARNING` or above; `wazuh_clusterd.debug=2` adds the query, the page size, each `mget`,
 each task and each hold.
 
-Each cycle ends with one `INFO` summary. A healthy cycle is one sentence:
+A cycle that read, sent, held or discarded something ends with one `INFO` summary; an idle cycle
+logs its summary at `DEBUG`. A healthy cycle is one sentence:
 
 ```
 Created 3 task(s) for 2 of 2 active response(s) read.
@@ -301,8 +313,8 @@ reached counts as held, together with the not-visible-yet case.
 
 | Level | Message | Meaning | What to do |
 |---|---|---|---|
-| INFO | `Starting` / `Finished in N.NNNs.` | one polling cycle | nothing |
-| INFO | `Created T task(s) for D of R active response(s) read.` (`Held: H.`, `Discarded: reason=n, ….` only when non-zero) | the cycle summary described above | nothing when it is one sentence; otherwise the WARNING or ERROR for each discard is above it |
+| DEBUG / INFO | `Starting` (always DEBUG) / `Finished in N.NNNs.` (INFO only when the cycle handled something, DEBUG when idle) | one polling cycle | nothing |
+| INFO / DEBUG | `Created T task(s) for D of R active response(s) read.` (`Held: H.`, `Discarded: reason=n, ….` only when non-zero) | the cycle summary described above | nothing when it is one sentence; otherwise the WARNING or ERROR for each discard is above it |
 | WARNING | ``Discarding active response document `<id>` (`<index>`). Reason: <schema error>`` | the document fails `AR_SCHEMA`; terminal | fix the channel, or the client that wrote the document; the document itself is skipped |
 | WARNING | ``Active response `<id>` carries no usable event reference. Discarding it.`` | `event.index` or `event.doc_id` missing, empty or not a string, or `event.index` outside the allow-list; terminal, and reached only when schema validation is skipped | same |
 | WARNING | ``Expected event `<doc_id>` (`<index>`) not found after <grace>s. Discarding active response `<id>`.`` | the referenced event never became visible; terminal | check that the monitored index still holds the event; a wrong `event.index` lands here once the response is older than the grace window |

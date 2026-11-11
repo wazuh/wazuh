@@ -77,7 +77,7 @@ TEST(LogThrottleTest, AnotherWindowEmitsAgain)
 
 TEST(LogThrottleTest, TheWindowSecondsConstantMatchesTheWindow)
 {
-    // The rendered "in the last N s" must never drift from the period actually enforced.
+    // The window an operator is told about must never drift from the period actually enforced.
     EXPECT_EQ(90, LogThrottle::kDefaultWindowSeconds);
     EXPECT_EQ(std::chrono::seconds {90}, std::chrono::duration_cast<std::chrono::seconds>(LogThrottle::kDefaultWindow));
 }
@@ -117,4 +117,41 @@ TEST(LogThrottleTest, ExactlyOneThreadEmitsPerWindowAndNothingIsLost)
     EXPECT_EQ(1, emissions.load()) << "at most one emission per window, whatever the contention";
     // Everything recorded is either reported by that one line or still pending -- never dropped.
     EXPECT_EQ(static_cast<std::uint64_t>(THREADS * PER_THREAD), reported.load() + throttle.pending());
+}
+
+// The emitted line must be able to say what period its count really covers: suppressed
+// occurrences are only reported by the next one, which can arrive long after the window, so a
+// message that printed the window length would misattribute them.
+TEST(LogThrottleTest, EmissionReportsTheRealTimeSinceThePreviousOne)
+{
+    LogThrottle throttle {std::chrono::seconds {1}};
+
+    const auto first = throttle.record();
+    ASSERT_TRUE(first.emit);
+    EXPECT_EQ(first.secondsSinceLastEmit, -1) << "the first emission has no previous one";
+
+    ASSERT_FALSE(throttle.record().emit);
+    std::this_thread::sleep_for(std::chrono::milliseconds {1200});
+
+    const auto second = throttle.record();
+    ASSERT_TRUE(second.emit);
+    EXPECT_EQ(second.total, 2U);
+    EXPECT_GE(second.secondsSinceLastEmit, 1);
+    EXPECT_LT(second.secondsSinceLastEmit, 30);
+
+    EXPECT_EQ(throttle.record().secondsSinceLastEmit, -1) << "a suppressed decision carries no period";
+}
+
+// The wording every throttled line uses for its count: never the window length, which is wrong on
+// the first emission (it covers only itself) and after any quiet stretch longer than the window.
+TEST(LogThrottleTest, PeriodNamesTheRealSpanNotTheWindow)
+{
+    LogThrottle::Decision first {true, 0, 1, -1};
+    EXPECT_EQ(first.period(), "so far");
+
+    LogThrottle::Decision later {true, 4, 5, 312};
+    EXPECT_EQ(later.period(), "in the last 312 s");
+
+    LogThrottle throttle;
+    EXPECT_EQ(throttle.record().period(), "so far") << "the first real emission";
 }

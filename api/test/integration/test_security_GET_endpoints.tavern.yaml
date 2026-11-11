@@ -1670,6 +1670,8 @@ stages:
             description: Reference security policies via its id (i.e. policy:id:1)
           role:id:
             description: Reference security roles via its id (i.e. role:id:1)
+          rule:id:
+            description: Reference security rules via its id (i.e. rule:id:1)
           user:id:
             description: Reference security users via its id (i.e. user:id:1)
 
@@ -1685,6 +1687,19 @@ stages:
         data:
           agent:id:
             description: Reference agents via agent ID (i.e. agent:id:001)
+
+  - name: Every catalog resource can be asked for, rule:id included
+    request:
+      <<: *rbac_resources_request
+      params:
+        resource: "rule:id"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          rule:id:
+            description: Reference security rules via its id (i.e. rule:id:1)
 
 ---
 test_name: GET /security/config

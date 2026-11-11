@@ -28,6 +28,7 @@ class INetworkInterfaceWrapper
         virtual std::string netmaskV6() const = 0;
         virtual std::string broadcastV6() const = 0;
         virtual std::string gateway() const = 0;
+        virtual std::string gatewayV6() const = 0;
         virtual std::string metrics() const = 0;
         virtual std::string metricsV6() const = 0;
         virtual uint32_t dhcp() const = 0;

@@ -765,6 +765,20 @@ stages:
       json:
         title: Bad Request
 
+  - name: Token timeout above the int32 maximum
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/config"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        auth_token_exp_timeout: 2147483648
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
   - name: A field the configuration does not have
     request:
       verify: False

@@ -3,7 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from connexion.exceptions import ProblemException
-from api.constants import RELATIVE_CONFIG_FILE_PATH
+from api.constants import CONFIG_FILE_PATH
 from wazuh.core.exception import DOCU_VERSION, WazuhTooManyRequests
 
 
@@ -12,7 +12,7 @@ class APIException(Exception):
     Wazuh API exception class.
     """
 
-    def __init__(self, code: int, details: str = None):
+    def __init__(self, code: int, details: str = None, config_file: str = None):
         """APIException class constructor.
 
         Parameters
@@ -21,13 +21,15 @@ class APIException(Exception):
             Error code.
         details : str
             Extra details to add to the default exception message to include useful context information.
+        config_file : str
+            Configuration file the error is about. Default: the API configuration file.
         """
         self.code = code
         self.details = details
-        # show relative paths in exceptions
+        self.config_file = config_file if config_file is not None else CONFIG_FILE_PATH
         self.exceptions = {
             2000: 'Some parameters are not expected in the configuration file '
-                  f"(WAZUH_PATH/{RELATIVE_CONFIG_FILE_PATH}). Please check the documentation for further details: "
+                  f"({self.config_file}). Please check the documentation for further details: "
                   f"https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/configuration.html"
                   '#api-configuration-options',
             2003: 'Error loading SSL/TLS certificates',

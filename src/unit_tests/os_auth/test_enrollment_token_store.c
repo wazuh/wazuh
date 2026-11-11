@@ -291,7 +291,7 @@ static void test_malformed_file_keeps_previous_and_warns(void **state) {
 
 /* --- Minting ----------------------------------------------------------------------------------- */
 
-static void test_create_persists_atomically_with_mode_0640(void **state) {
+static void test_create_persists_atomically_with_mode_0660(void **state) {
     (void)state;
 
     expect_any_mdebug1();
@@ -314,10 +314,11 @@ static void test_create_persists_atomically_with_mode_0640(void **state) {
     assert_true(cJSON_IsString(cJSON_GetObjectItem(data, "pin_hex")));
     assert_int_equal(strlen(cJSON_GetObjectItem(data, "pin_hex")->valuestring), W_ETOKEN_PIN_BYTES * 2);
 
-    /* 0640: readable by the manager group, never by the rest of the host. The temporary file is
-     * created 0600 and chmod()ed before the rename, so there is no window at a wider mode either */
+    /* 0660: readable and writable by the manager group, never by the rest of the host. The temporary
+     * file is created 0600 and chmod()ed before the rename, so there is no window at a wider mode
+     * either */
     assert_int_equal(stat(STORE_PATH, &statbuf), 0);
-    assert_int_equal(statbuf.st_mode & 0777, 0640);
+    assert_int_equal(statbuf.st_mode & 0777, 0660);
 
     /* Nothing left behind: a failed or abandoned rewrite would leave its TempFile() next to the
      * store, holding every secret at whatever mode it was created with */
@@ -1367,7 +1368,7 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_load_absent_file_is_empty, setup_store, teardown_store),
         cmocka_unit_test_setup_teardown(test_malformed_file_keeps_previous_and_warns, setup_store, teardown_store),
-        cmocka_unit_test_setup_teardown(test_create_persists_atomically_with_mode_0640, setup_store, teardown_store),
+        cmocka_unit_test_setup_teardown(test_create_persists_atomically_with_mode_0660, setup_store, teardown_store),
         cmocka_unit_test_setup_teardown(test_create_roundtrip_load, setup_store, teardown_store),
         cmocka_unit_test_setup_teardown(test_list_never_includes_secret, setup_store, teardown_store),
         cmocka_unit_test_setup_teardown(test_consume_ok_unlimited, setup_store, teardown_store),

@@ -67,15 +67,20 @@ void w_agent_auth_help(FILE *out, const char *progname) {
     fprintf(out,
         "\n"
         "%s: enroll, re-enroll or move an installed agent with a token.\n"
-        "\n"
-        "  %s --token-file %s                 enroll\n"
+        "\n",
+        progname);
+#ifndef WIN32
+    /* cmd.exe's echo keeps the quotes, so this example only holds outside Windows */
+    fprintf(out, "  echo '<TOKEN>' | %s                       enroll\n", progname);
+#endif
+    fprintf(out,
+        "  %s --token-file %s                 enroll from a file\n"
         "  %s --token-file %s --force-enroll  re-register, new id\n"
         "  %s --token-file %s --certs-only    refresh CA + address\n"
         "  %s --show-token < %s               decode a token\n"
         "\n"
         "  The token is read from --token-file or standard input, never from the\n"
-        "  command line: a command line is readable by other processes and lands in\n"
-        "  shell history. The file is never modified or deleted, whichever it is.\n"
+        "  command line. The file is never modified or deleted, whichever it is.\n"
         "\n"
         "  Actions\n"
         "    --show-token     Decode the token and print what it carries. Nothing\n"
@@ -107,7 +112,7 @@ void w_agent_auth_help(FILE *out, const char *progname) {
         "  Exit codes: 0 done  1 could not run  2 token rejected  3 CA not established\n"
         "              4 enrollment refused  5 not committed  6 config not updated\n"
         "\n",
-        progname, progname, AGENT_AUTH_EXAMPLE_TOKEN, progname, AGENT_AUTH_EXAMPLE_TOKEN,
+        progname, AGENT_AUTH_EXAMPLE_TOKEN, progname, AGENT_AUTH_EXAMPLE_TOKEN,
         progname, AGENT_AUTH_EXAMPLE_TOKEN, progname, AGENT_AUTH_EXAMPLE_TOKEN, WAZUHCONF);
 }
 
@@ -309,9 +314,12 @@ static char *w_agent_auth_read_token_file(const char *path, FILE *err) {
  * command having hung. Say what is wanted instead: a token only ever arrives here from a redirect
  * or a pipe. */
 static void w_agent_auth_explain_no_token(FILE *err) {
-    fprintf(err, "%s: no token given. Pass --token-file <path>, or redirect one in:\n",
+    fprintf(err, "%s: no token given. Pass --token-file <path>, or pipe or redirect one in:\n",
             AGENT_AUTH_NAME);
     fprintf(err, "\n");
+#ifndef WIN32
+    fprintf(err, "      echo '<TOKEN>' | %s\n", AGENT_AUTH_NAME);
+#endif
     fprintf(err, "      %s --token-file %s\n", AGENT_AUTH_NAME, AGENT_AUTH_EXAMPLE_TOKEN);
     fprintf(err, "      %s < %s\n", AGENT_AUTH_NAME, AGENT_AUTH_EXAMPLE_TOKEN);
     fprintf(err, "\n");
@@ -343,7 +351,7 @@ static char *w_agent_auth_read_token_stdin(FILE *in, FILE *err) {
 
     if (*text == '\0') {
         fprintf(err, "%s: the enrollment token is empty. Pass --token-file <path>,\n"
-                "  or redirect one on standard input.\n", AGENT_AUTH_NAME);
+                "  or pipe or redirect one in.\n", AGENT_AUTH_NAME);
         os_free(text);
         return NULL;
     }
@@ -911,7 +919,20 @@ STATIC int w_agent_auth_enroll(const agent_auth_opts_t *opts, FILE *in, FILE *ou
     result = w_agent_auth_exit_code(status);
 
     if (status != W_TOKEN_ENROLL_OK) {
-        fprintf(err, "%s: %s.\n", AGENT_AUTH_NAME, w_agent_token_enroll_strerror(status));
+        /* Exit code 4 is a published contract and stays, but under it sit two different answers: a
+         * refusal, and one that may clear by itself -- no answer, a 429 or a 5xx (often from a load
+         * balancer in front of the manager), a node that does not know the token (on a cluster a
+         * new token takes some seconds to reach every worker), or clocks that disagree. Calling
+         * the second kind "refused" sends the operator to fix a token that may be fine, so the
+         * words carry the difference. A 404 is classed as transient too but is a wrong path, not a busy manager,
+         * hence the explicit status codes rather than report.transient alone. */
+        const bool may_clear = (status == W_TOKEN_ENROLL_ERR_ENROLL) &&
+                               (report.pending ||
+                                (report.transient && (report.http_code == 0 || report.http_code == 429 ||
+                                                      report.http_code >= 500)));
+
+        fprintf(err, "%s: %s.\n", AGENT_AUTH_NAME,
+                may_clear ? "the enrollment did not go through" : w_agent_token_enroll_strerror(status));
 
         /* The class alone is not actionable: "the CA could not be established" is the same
          * sentence for an address that does not resolve and a pin that does not match, and those
@@ -949,8 +970,27 @@ STATIC int w_agent_auth_enroll(const agent_auth_opts_t *opts, FILE *in, FILE *ou
                 fprintf(err, "  former manager, and can reach neither until it is re-enrolled.\n");
             }
         } else {
+            if (report.token_refusal[0] != '\0') {
+                fprintf(err, "  " AGENT_AUTH_TOKEN_REFUSED "%s\n", report.token_refusal);
+            }
+
             if (report.manager_message[0] != '\0') {
                 fprintf(err, "  " AGENT_AUTH_MANAGER_SAID "%s\n", report.manager_message);
+            }
+
+            /* token_unknown cannot tell a token still on its way to this node from one that is not
+             * there at all -- purged, from an earlier install, or another manager's -- so the hint
+             * names both. stale_token is about the clock, not the token. */
+            if (may_clear && report.pending && report.clock_skew) {
+                fprintf(err, "  The manager refused the request's timestamp: this host's clock and\n");
+                fprintf(err, "  the manager's disagree. Correct the clock, then try again.\n");
+            } else if (may_clear && report.pending) {
+                fprintf(err, "  The manager does not know this token. If it was just created, it can\n");
+                fprintf(err, "  take some seconds to reach every cluster node: try again in a minute.\n");
+                fprintf(err, "  If it keeps failing, the token is wrong or no longer exists on the\n");
+                fprintf(err, "  manager; mint a new one.\n");
+            } else if (may_clear) {
+                fprintf(err, "  This may clear on its own. Try again in a minute.\n");
             }
 
             fprintf(err, "  Nothing was changed.\n");

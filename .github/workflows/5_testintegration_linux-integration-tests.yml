@@ -46,7 +46,7 @@ on:
       base_branch:
         description: 'Base branch'
         required: true
-        default: 'main'
+        default: '5.0.0'
       build_run_id:
         description: 'Build run ID to download from (optional; default: latest successful build on base_branch)'
         required: false
@@ -223,11 +223,14 @@ jobs:
           AWS_VPC_ID: ${{ secrets.IT_AWS_VPC_ID }}
           AWS_BUCKET_NAME: ${{ secrets.IT_AWS_BUCKET_NAME }}
           AWS_IT_CLEANUP_MANIFEST: ${{ github.workspace }}/aws_it_uploaded_keys.txt
+          # One S3 namespace per job: the AWS modules of a run share GITHUB_RUN_ID and overlap.
+          AWS_IT_NAMESPACE: ${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.module_name }}-${{ inputs.shard_name }}
         run: |
           cd tests/integration
           set +e
           sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" \
             GITHUB_RUN_ID="${GITHUB_RUN_ID}" \
+            AWS_IT_NAMESPACE="${AWS_IT_NAMESPACE}" \
             AWS_VPC_ID="${AWS_VPC_ID}" \
             AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" \
             AWS_IT_CLEANUP_MANIFEST="${AWS_IT_CLEANUP_MANIFEST}" \

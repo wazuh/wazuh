@@ -141,7 +141,7 @@ systemctl start wazuh-agent
 During enrollment the agent sends its configured group to the manager, which records the assignment in `global.db`. On the following keepalive the manager compiles and pushes the matching group's shared configuration.
 
 > [!WARNING]
-> If an agent declares a group that does not exist on the manager, **enrollment is rejected** and the agent cannot connect (`wazuh-manager-authd` logs `ERROR: Invalid group: <group>`). See [Workaround: agent fails to connect (missing group)](#workaround-agent-fails-to-connect-missing-group) to resolve it.
+> If an agent declares a group that does not exist on the manager, **enrollment is rejected** and the agent cannot connect (`wazuh-manager-authd` logs `WARNING: Invalid group: <group>`; a 5.0 agent enrolling over HTTPS on `1517` sees HTTP `400`, authd code `9014`). See [Workaround: agent fails to connect (missing group)](#workaround-agent-fails-to-connect-missing-group) to resolve it.
 
 To verify, view the group assignments from the Wazuh dashboard under **Agents management -> Summary**.
 
@@ -177,8 +177,13 @@ You have now migrated your agent groups from Wazuh 4.x to Wazuh 5.0.
 If an agent declares a group that does not exist on the manager, **enrollment is rejected** and the agent cannot connect. The manager's `/var/wazuh-manager/logs/wazuh-manager.log` shows:
 
 ```
-wazuh-manager-authd: ERROR: Invalid group: <group>
+wazuh-manager-authd: WARNING: Invalid group: <group>
 ```
+
+It is a client's mistake, so it is a `WARNING`, and it is throttled: the first rejection for a
+missing group is logged at once, the ones in the next 90 seconds only at debug level, and the next
+logged one ends with `(and <n> more like it in the last <s> s)`. With several agents declaring
+missing groups, look for that suffix, or enable debug logging to see every one.
 
 On a 5.0 agent, which enrolls over HTTPS on `1517`, `ossec.log` shows the rejection relayed by `wazuh-manager-remoted` (HTTP `400`, authd code `9014`), and the agent keeps retrying:
 

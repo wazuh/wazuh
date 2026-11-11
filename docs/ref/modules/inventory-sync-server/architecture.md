@@ -224,8 +224,10 @@ Two pieces coordinate the lane with the rest of the system:
   [vulnerability-scanner's architecture.md](../vulnerability-scanner/architecture.md#feed-update-rescan-scanvd--rescandisconnectedagents))
   and a session scan for the SAME agent never race: the scanner can pause new dispatches for an
   agent and wait (up to 30 s) for what is already running to drain before it rescans that agent.
-  There is no fleet-wide coordination — each feed-update rescan fences only the one agent it is
-  about to scan.
+  Only the disconnected-agent sweep can actually wait here, for a session of that agent the
+  pipeline is applying. An on-demand rescan runs on the scan lane, which already holds the agent;
+  that hold is the caller's own and is not waited for, so the scan starts at once. There is no
+  fleet-wide coordination — each feed-update rescan fences only the one agent it is about to scan.
 
 The scanner itself stays behind a **neutral view interface** — flat `string_view`/span structs —
 so the boundary between the two modules carries no FlatBuffers types in either direction. The
@@ -236,7 +238,9 @@ The same lane also runs **on-demand rescans** (`POST /_internal/vd/scan`): one a
 no inventory — the scanner reads the agent's stored packages and writes its findings itself, so the
 answer is the scan's own outcome. Running it here is what puts it under the same per-agent exclusion
 as the agent's sessions. A request for an agent that already has a scan in flight is refused at once
-with `409 scan_in_progress` instead of waiting behind it. Statuses are in the
+with `409 scan_in_progress` instead of waiting behind it. Once admitted, it waits only for a free
+lane worker (and, rarely, for a session of the same agent that started in between); the scanner's
+per-agent fence does not wait for the lane's own hold. Statuses are in the
 [API reference](api-reference.md#on-demand-vulnerability-scans).
 
 ## Agent deletion
@@ -383,7 +387,7 @@ the lane waits for it to finish.
 
 Every per-request failure condition keeps one throttled log line (90 s window; the first
 occurrence always emits, so transitions are visible immediately): handler throws (answered
-`500`), limit rejections (`411`/`413`/`414`/`431`), unknown routes (`404`/`405` — the trace that
+`500`), limit rejections (`413`/`414`/`431`, and `400` for a chunked request), unknown routes (`404`/`405` — the trace that
 catches a route mismatch with remoted), malformed HTTP, budget and connection-cap rejections,
 identity mismatches (`403` on an authenticated channel is operator-relevant), feed-not-ready and
 scan-capacity rejections, accept and session-bring-up failures, response write failures, and
@@ -419,7 +423,7 @@ per process and never reset), so totals read across a retry are cumulative.
 ## Design decisions
 
 The decisions that shape the module, and what each one buys. This is the narrative distillation;
-the complete numbered catalog (D1–D30, plus the functional and non-functional requirements it
+the complete numbered catalog (D1–D31, plus the functional and non-functional requirements it
 answers to) lives in the module's in-tree developer README,
 `src/wazuh_modules/inventory_sync_server/README.md`:
 
@@ -447,8 +451,7 @@ Decision 3 is not a convenience — it is the load-bearing property the whole fa
 on, so it is stated here as a contract: **every operation the pipeline applies must be
 idempotent.** The mechanisms that make it hold today: document ids are deterministic
 (`<cluster>_<agentId>_<documentId>`), upserts carry the agent's document version
-(`external_gte` — a replay is confirmed by `version_conflict_engine_exception`, which the bulk
-validation deliberately accepts as success), deletes address those same ids, and the by-query
+(a scripted update with `external_gte` semantics: a replay of the same version is rewritten by the version-guarded script and answered `200`, while a `409` on an update means a concurrent writer refused it and, once the indexer's own `retry_on_conflict` retries are spent, fails the flush), deletes address those same ids, and the by-query
 paths (cleans, whole-agent deletion, metadata/group updates) are re-runnable by construction.
 That is what makes every recovery in this module safe: a `500`/`503` answered to a whole batch, a
 partially auto-flushed session, a group commit that died halfway — in all cases the agent re-POSTs

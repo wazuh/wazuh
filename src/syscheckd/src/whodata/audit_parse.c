@@ -7,9 +7,25 @@
  * Foundation.
  */
 #ifdef __linux__
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE // fstatat(AT_EMPTY_PATH)
+#endif
 #include "syscheck_audit.h"
 
 #define AUDIT_LOAD_RETRIES 5 // Max retries to reload Audit rules
+
+// Spelled out for the agent packages built with headers older than glibc 2.14, which lack them. O_PATH has this
+// value on these architectures (kernels before 2.6.39 ignore it) and AT_EMPTY_PATH on every Linux one.
+#if !defined(O_PATH) && (defined(__x86_64__) || defined(__i386__) || defined(__aarch64__) || defined(__arm__) || \
+                         defined(__powerpc__))
+#define O_PATH 010000000
+#endif
+#ifndef O_PATH
+#define O_PATH O_RDONLY
+#endif
+#ifndef AT_EMPTY_PATH
+#define AT_EMPTY_PATH 0x1000
+#endif
 
 #ifdef ENABLE_AUDIT
 
@@ -392,17 +408,83 @@ char *gen_audit_path(char *cwd, char *path0, char *path1) {
 }
 
 
+// O_NONBLOCK and O_NOCTTY keep an open that is not O_PATH (old kernels) from blocking on a FIFO or acquiring a terminal.
+#define AUDIT_OPEN_FLAGS (O_PATH | O_NONBLOCK | O_NOCTTY | O_CLOEXEC)
+
+// Returns the path the kernel reports for an open descriptor, already resolved and with no further lookup by name.
+static char *audit_fd_path(int fd) {
+    static const char deleted[] = " (deleted)";
+    char fd_path[OS_SIZE_64];
+    char target[PATH_MAX + 1];
+
+    snprintf(fd_path, sizeof(fd_path), "/proc/self/fd/%d", fd);
+    const ssize_t len = readlinkat(AT_FDCWD, fd_path, target, sizeof(target) - 1);
+    if (len <= 0 || (size_t)len >= sizeof(target) - 1) { // Empty or possibly truncated
+        return NULL;
+    }
+    target[len] = '\0';
+
+    // The kernel appends this to the path of an object that was unlinked.
+    if ((size_t)len >= sizeof(deleted) - 1 && strcmp(target + len - (sizeof(deleted) - 1), deleted) == 0) {
+        return NULL;
+    }
+
+    return strdup(target);
+}
+
+
+// Opens the directory once (O_NOFOLLOW) and reads its path from that descriptor, so the symlink check and the resolution cannot race.
+static char *audit_resolve_directory(const char *path) {
+    const int fd = open(path, AUDIT_OPEN_FLAGS | O_DIRECTORY | O_NOFOLLOW);
+    if (fd < 0) {
+        return NULL;
+    }
+
+    char *resolved = audit_fd_path(fd);
+    close(fd);
+    return resolved;
+}
+
+
+// Type and inode come from the O_NOFOLLOW descriptor; a link other than the audited object is followed by name, which cannot be made race-free.
+static char *audit_resolve_file(const char *path, const char *inode, bool *is_link) {
+    struct stat st;
+    int fd = open(path, AUDIT_OPEN_FLAGS | O_NOFOLLOW);
+
+    *is_link = false;
+    if (fd < 0) {
+        return NULL;
+    }
+
+    if (fstatat(fd, "", &st, AT_EMPTY_PATH) == 0 && S_ISLNK(st.st_mode)) {
+        close(fd);
+        if (inode && st.st_ino == (ino_t)strtoull(inode, NULL, 10)) {
+            *is_link = true;
+            return NULL;
+        }
+
+        fd = open(path, AUDIT_OPEN_FLAGS);
+        if (fd < 0) {
+            return NULL;
+        }
+    }
+
+    char *resolved = audit_fd_path(fd);
+    close(fd);
+    return resolved;
+}
+
+
 // Returns the path FIM stores for the object of a single-item event, and takes ownership of file_path.
 static char *audit_stored_path(char *file_path, const char *inode) {
-    struct stat st;
+    bool is_link;
+    char *resolved = audit_resolve_file(file_path, inode, &is_link);
 
-    // The syscall acted on a symbolic link itself (chown -h), so FIM stores the link.
-    if (inode && w_lstat(file_path, &st) == 0 && S_ISLNK(st.st_mode) &&
-        st.st_ino == (ino_t)strtoull(inode, NULL, 10)) {
+    // The syscall acted on a symbolic link itself, so FIM stores the link.
+    if (is_link) {
         return file_path;
     }
 
-    char *resolved = realpath(file_path, NULL);
     if (resolved == NULL) {
         mdebug1(FIM_CHECK_LINK_REALPATH, file_path); // LCOV_EXCL_LINE
         return file_path;
@@ -415,9 +497,8 @@ static char *audit_stored_path(char *file_path, const char *inode) {
     const directory_t *configuration = fim_configuration_directory(resolved, false, syscheck.directories);
     if (configuration == NULL || !(configuration->options & WHODATA_ACTIVE)) {
         configuration = fim_configuration_directory(file_path, false, syscheck.directories);
-        if (configuration && (configuration->options & WHODATA_ACTIVE) && w_lstat(configuration->path, &st) == 0 &&
-            S_ISDIR(st.st_mode)) {
-            char *root = realpath(configuration->path, NULL);
+        if (configuration && (configuration->options & WHODATA_ACTIVE)) {
+            char *root = audit_resolve_directory(configuration->path);
             const size_t root_len = root ? strlen(root) : 0;
             if (root_len && strncmp(resolved, root, root_len) == 0 && resolved[root_len] == '/') {
                 const size_t size = strlen(configuration->path) + strlen(resolved + root_len) + 1;

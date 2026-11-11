@@ -132,14 +132,16 @@ void Schema::Validator::registerCompatibles()
                                            {Type::COMPLETION, false},
                                            {Type::SEARCH_AS_YOU_TYPE, false},
                                            {Type::SEMANTIC, false}}});
-    m_compatibles.emplace(Type::DATE,
-                          ValidationInfo {{json::Json::Type::String},
-                                          validators::getDateValidator(),
-                                          {{Type::KEYWORD, true}, {Type::TEXT, true}, {Type::WILDCARD, true}}});
-    m_compatibles.emplace(Type::DATE_NANOS,
-                          ValidationInfo {{json::Json::Type::String},
-                                          validators::getStringValidator(),
-                                          {{Type::KEYWORD, true}, {Type::TEXT, true}, {Type::WILDCARD, true}}});
+    m_compatibles.emplace(
+        Type::DATE,
+        ValidationInfo {{json::Json::Type::String},
+                        validators::getDateValidator(),
+                        {{Type::KEYWORD, true}, {Type::TEXT, true}, {Type::WILDCARD, true}, {Type::DATE_NANOS, true}}});
+    m_compatibles.emplace(
+        Type::DATE_NANOS,
+        ValidationInfo {{json::Json::Type::String},
+                        validators::getDateNanosValidator(),
+                        {{Type::KEYWORD, true}, {Type::TEXT, true}, {Type::WILDCARD, true}, {Type::DATE, true}}});
     m_compatibles.emplace(Type::IP,
                           ValidationInfo {{json::Json::Type::String},
                                           validators::getIpValidator(),

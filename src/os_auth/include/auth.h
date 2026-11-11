@@ -46,6 +46,8 @@
 
 #define AUTH_IDLE_CONN_TIMEOUT 30   /* Seconds a connection may stay idle before completing its enrolment request */
 #define AUTH_EPOLL_WAIT_MS     1000 /* epoll_wait tick used to sweep idle connections */
+#define AUTH_CLIENT_REJECT_LOG_WINDOW 90 /* Seconds between two logged client-caused rejections of one reason (as remoted) */
+#define AUTH_CLIENT_REJECT_LOG_REASONS 32 /* Distinct reasons throttled apart; any more share one slot */
 
 #define full(i, j) ((i + 1) % AUTH_POOL == j)
 #define empty(i, j) (i == j)
@@ -133,6 +135,51 @@ w_err_t w_auth_validate_groups(const char *groups, char *response);
 void w_auth_validate_groups_cleanup(void);
 
 /**
+ * @brief Log an enrollment refused because of what the client sent (bad name, group, version, IP,
+ *        password or a malformed request).
+ *
+ * The client's mistake is not a manager error, so it is logged at WARNING (INFO when @p info is
+ * true), and throttled per reason -- the reason being @p format, so one call site is one reason:
+ * one line per AUTH_CLIENT_REJECT_LOG_WINDOW seconds for each, so a frequent reason never hides
+ * another. That line names how many of its kind were suppressed and over what period; each
+ * suppressed rejection is still logged at debug level.
+ *
+ * @param info true to log at INFO instead of WARNING.
+ * @param format printf-style message.
+ */
+void w_auth_log_client_rejection(bool info, const char *format, ...) __attribute__((format(printf, 2, 3)));
+
+/**
+ * @brief The throttle behind w_auth_log_client_rejection(), with the clock passed in (for testing).
+ *
+ * @param reason What identifies the reason (w_auth_log_client_rejection() passes its format).
+ * @param info true to log at INFO instead of WARNING.
+ * @param message The formatted message.
+ * @param now The current time.
+ */
+void w_auth_client_rejection_log(const char *reason, bool info, const char *message, time_t now);
+
+/**
+ * @brief Forget the client-rejection throttle state, so the next rejection is logged (for testing).
+ */
+void w_auth_client_rejection_log_reset(void);
+
+/**
+ * @brief The form an address to register is recorded in, and answered with, by every enrollment path.
+ *
+ * The plain address (IPv6 expanded, "::ffff:" unmapped) when it carries no mask or a full-length one
+ * (/32, /128, /255.255.255.255), else the network with its mask as a prefix length ("10.22.0.0/16"
+ * for "10.22.0.0/255.255.0.0"). The duplicate-IP check matches this form, so a host written with a
+ * full-length mask is the same address as the bare one.
+ *
+ * @param ip Address as received. Not "any": callers handle that sentinel themselves.
+ * @param out Buffer for the registered form.
+ * @param size Size of @p out (IPSIZE + 1 holds every valid value).
+ * @return 0 on success; -1 for an invalid address, a leading '!' or a non-contiguous dotted mask.
+ */
+int w_auth_registered_ip(const char *ip, char *out, size_t size);
+
+/**
  * @brief Parse a raw buffer from agent request into enrollment data.
  * @param buf Raw buffer to be parsed
  * @param response 2048 length buffer where the error response will be copied
@@ -153,7 +200,8 @@ w_err_t w_auth_parse_data(const char* buf,
 /**
  * @brief Validates if new enrollment is possible with provided data.
  * With force configuration disabled, if enrollment data is already registered, validation will fail.
- * With force configuration enabled, duplicated entry will be removed.
+ * With force configuration enabled, duplicated entries will be removed -- but only once every check has
+ * passed: a refused enrollment never removes an agent.
  * @param response 2048 length buffer where the error response will be copied
  * @param ip New enrollment ip direction
  * @param agentname New enrollment agent name
@@ -167,18 +215,27 @@ w_err_t w_auth_validate_data(char *response,
                              const char *hash_key);
 
 /**
- * @brief Validates if the old agent can be replaced and removes it.
- * @param key Key structure of the agent to be removed
+ * @brief Decides whether the old agent can be replaced. Removes nothing: the caller removes it with
+ * w_auth_remove_replaced_agent() once the whole request is known to succeed.
+ * @param key Key structure of the agent to be replaced
  * @param hash_key Hash of the key on the agent
  * @param force_options Force configuration structure to define how the agent replacement must be handled.
  * @param str_result A message related to the result of the agent replacement. Must be freed by the caller.
  * @param warn Set to true when the rejection reflects a live identity conflict (the existing agent is still connected and does not self-heal); false for transient or expected rejections. May be NULL.
+ * @return OS_SUCCESS if the agent may be replaced, OS_INVALID otherwise.
  * */
-w_err_t w_auth_replace_agent(keyentry *key,
-                             const char *key_hash,
-                             authd_force_options_t *force_options,
-                             char** str_result,
-                             bool *warn);
+w_err_t w_auth_check_replace_agent(keyentry *key,
+                                   const char *key_hash,
+                                   authd_force_options_t *force_options,
+                                   char** str_result,
+                                   bool *warn);
+
+/**
+ * @brief Removes an agent that w_auth_check_replace_agent() admitted for replacement: queues its
+ * deletion and drops it from the keystore. Must be called under mutex_keys; `key` is freed.
+ * @param key Key structure of the agent to be removed
+ * */
+void w_auth_remove_replaced_agent(keyentry *key);
 
 /**
  * @brief Adds new agent with provided enrollment data.
@@ -245,6 +302,13 @@ cJSON* local_add_clustered(const char *name,
 #define AUTHD_PASS_BYTES     32
 #define AUTHD_PASS_HEX_CHARS 64
 
+/* The shortest password accepted from a hand-written authd.pass, in bytes after trimming CR/LF (strlen, so a
+ * non-ASCII character counts as more than one). It removes the trivially short passwords; it is a length, not
+ * a strength, so choosing a strong one stays the operator's responsibility (the generated one is
+ * AUTHD_PASS_HEX_CHARS hex chars). remoted's PasswordKeySource (kMinPasswordBytes) applies the same rule to the
+ * same file. */
+#define AUTHD_PASS_MIN_BYTES 16
+
 /**
  * @brief Generates a shared enrollment password: AUTHD_PASS_BYTES bytes straight from the
  *        CSPRNG, hex-encoded to AUTHD_PASS_HEX_CHARS lowercase characters. No digest step:
@@ -264,6 +328,11 @@ char *w_authd_load_password(const char *path, bool *generated);
 /* Read the shared password from @p path (cluster worker): never generates, persists,
  * nor exits. Returns NULL when missing/empty/short/unreadable. */
 char *w_authd_read_password(const char *path);
+
+/* Judge an existing password file at @p path the way w_authd_load_password() would, for `-t`: logs the
+ * same error and returns -1 for a file the start would refuse; 0 when it is valid or absent (a start
+ * generates a missing one). Never generates, persists, nor exits. */
+int w_authd_check_password_file(const char *path);
 
 extern char shost[512];
 extern keystore keys;

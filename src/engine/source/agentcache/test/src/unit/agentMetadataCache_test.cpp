@@ -224,6 +224,16 @@ TEST_F(AgentMetadataCacheTest, GetOrParse_EmptyAgentId_Throws)
     EXPECT_EQ(cache.size(), 0);
 }
 
+TEST_F(AgentMetadataCacheTest, GetOrParse_ManagerAgentId_Accepted)
+{
+    // "000" is the manager itself, and a canonical id
+    auto result = cache.getOrParse("000", R"({"wazuh":{"agent":{"id":"000","name":"manager"}}})");
+
+    ASSERT_NE(result.first, nullptr);
+    EXPECT_EQ(result.second, Op::Inserted);
+    EXPECT_EQ(cache.size(), 1);
+}
+
 TEST_F(AgentMetadataCacheTest, EvictStale_RemovesExpiredEntries)
 {
     FakeClock fakeClock;

@@ -14,6 +14,7 @@ add_library(base STATIC
     ${SRC_DIR}/expression.cpp
     ${SRC_DIR}/eventParser.cpp
     ${SRC_DIR}/json.cpp
+    ${SRC_DIR}/jsonSchema.cpp
     ${SRC_DIR}/logging.cpp
     ${SRC_DIR}/process.cpp
     ${SRC_DIR}/managerLogSink.cpp
@@ -73,6 +74,7 @@ add_executable(base_utest
     ${UNIT_SRC_DIR}/eventParser_test.cpp
     ${UNIT_SRC_DIR}/json_test.cpp
     ${UNIT_SRC_DIR}/json_copy_memory_test.cpp
+    ${UNIT_SRC_DIR}/json_allocation_injection_test.cpp
     ${UNIT_SRC_DIR}/error_test.cpp
     ${UNIT_SRC_DIR}/timer_test.cpp
     ${UNIT_SRC_DIR}/expression_test.cpp
@@ -113,6 +115,27 @@ target_link_libraries(base_logger_utest
     GTest::gtest_main
 )
 gtest_discover_tests(base_logger_utest)
+
+# Which document is the first one Json::str() had to sanitize is process-global state (json.cpp), so the test
+# that tells the first occurrence from the rest also needs a binary of its own
+add_executable(base_json_log_utest
+    ${UNIT_SRC_DIR}/jsonSanitizeLog_test.cpp
+    ${UNIT_SRC_DIR}/logCapture_test.cpp
+)
+target_include_directories(base_json_log_utest
+    PRIVATE
+    ${TEST_SRC_DIR}
+    ${INC_DIR}/base
+)
+target_link_libraries(base_json_log_utest
+    PUBLIC
+    base::test
+
+    PRIVATE
+    base
+    GTest::gtest_main
+)
+gtest_discover_tests(base_json_log_utest)
 
 # Manager log sink and manager home: process-global state (sink, manager mode), so they live in their own binary
 add_executable(base_manager_utest

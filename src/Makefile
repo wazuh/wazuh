@@ -91,7 +91,7 @@ USE_AUDIT=no
 DISABLE_JEMALLOC?=no
 IMAGE_TRUST_CHECKS?=1
 CA_NAME?=Microsoft Identity Verification Root Certificate Authority 2020
-HTTP_REQUEST_BRANCH?=803cab4347fe8b7f5cdbfa69949c22bd1ae35c49
+HTTP_REQUEST_BRANCH?=e3d941278e6bcbfffa4cc642bc0022077ff3e72f
 
 # The `# deps-recipe` blocks hold what reaches the external dependencies build and go into their pool keys
 # (packages/externals/deps.py); an option that changes how the dependencies compile goes inside one. The test,
@@ -120,6 +120,9 @@ CMAKE_OPTS+=-DTSANITIZE=ON
 endif
 ifneq (,$(filter ${EXTERNAL_SANITIZE},YES yes y Y 1))
 CMAKE_OPTS+=-DEXTERNAL_SANITIZE=ON
+endif
+ifneq (,$(filter ${ENGINE_TSAN},YES yes y Y 1))
+CMAKE_OPTS+=-DENGINE_ENABLE_TSAN=ON
 endif
 ifneq (,$(filter ${DISABLE_JEMALLOC},YES yes y Y 1))
 CMAKE_OPTS+=-DDISABLE_JEMALLOC=ON
@@ -513,7 +516,7 @@ EXTERNAL_RES := cJSON openssl zlib sqlite libyaml curl libpcre2 nlohmann flatbuf
 # production (ext_audit/ext_procps are gated IS_LINUX AND IS_AGENT).
 ifneq (${TARGET},winagent)
 ifeq (${uname_S}, Linux)
-	EXTERNAL_RES += audit-userspace procps
+	EXTERNAL_RES += audit-userspace procps brotli
 endif
 endif
 
@@ -705,13 +708,17 @@ CA_BUNDLE := /etc/ssl/certs/ca-certificates.crt
 CACERT_OPT := $(shell test -f $(CA_BUNDLE) && echo "--cacert $(CA_BUNDLE)" || echo "")
 
 shared_modules/http-request.tar.gz:
-	 @echo "[-] Downloading dependency $(notdir $(patsubst %.tar.gz,%,$@)) ..."
-	@test -f $(patsubst %.tar.gz,%,$@)/CMakeLists.txt ||\
-	(mkdir -p $(patsubst %.tar.gz,%,$@) && $(FETCH_CURL) $@ $(CACERT_OPT) -L $(HTTP_REQUEST_URL) && $(GUNZIP) -f $@ &&\
-	$(TAR) $(patsubst %.gz,%,$@) --strip-components=1 -C $(patsubst %.tar.gz,%,$@) && rm $(patsubst %.gz,%,$@)) &&\
-	test -f $(patsubst %.tar.gz,%,$@)/CMakeLists.txt ||\
-	{ rm -f $@ $(patsubst %.gz,%,$@); printf "\033[31m[-] Error installing dependency http-request from %s\033[0m\n" "$(HTTP_REQUEST_URL)" >&2; exit 1; }
-	@printf "\033[32m[+] Dependency %s installed successfully\033[0m\n" "$(notdir $(patsubst %.tar.gz,%,$@))"
+	@dir=$(patsubst %.tar.gz,%,$@); name=$(notdir $(patsubst %.tar.gz,%,$@)); \
+	if test -f $$dir/CMakeLists.txt; then \
+	  printf "\033[32m[+] Dependency %s already present, download skipped\033[0m\n" "$$name"; \
+	else \
+	  echo "[-] Downloading dependency $$name ..."; \
+	  { mkdir -p $$dir && $(FETCH_CURL) $@ $(CACERT_OPT) -L $(HTTP_REQUEST_URL) && $(GUNZIP) -f $@ && \
+	    $(TAR) $(patsubst %.gz,%,$@) --strip-components=1 -C $$dir && rm $(patsubst %.gz,%,$@) && \
+	    test -f $$dir/CMakeLists.txt; } || \
+	  { rm -f $@ $(patsubst %.gz,%,$@); printf "\033[31m[-] Error installing dependency %s from %s\033[0m\n" "$$name" "$(HTTP_REQUEST_URL)" >&2; exit 1; }; \
+	  printf "\033[32m[+] Dependency %s downloaded successfully\033[0m\n" "$$name"; \
+	fi
 
 # Ref list for every ref-based download below. get_git_refs.sh reports THIS repository's branch and
 # tag, which each rule then walks against its own upstream until one resolves -- nothing here is

@@ -108,6 +108,7 @@ void LinuxNetworkImpl<AF_PACKET>::buildNetworkData(nlohmann::json& network)
     network["host_network_egress_drops"]     = stats.txDropped;
     network["host_network_ingress_drops"]    = stats.rxDropped;
 
-    network["interface_mtu"]   = m_interfaceAddress->mtu();
-    network["network_gateway"] = m_interfaceAddress->gateway();
+    network["interface_mtu"]    = m_interfaceAddress->mtu();
+    network["network_gateway"]  = m_interfaceAddress->gateway();
+    network["network_gateway6"] = m_interfaceAddress->gatewayV6();
 }

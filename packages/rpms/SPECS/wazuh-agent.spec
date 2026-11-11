@@ -24,7 +24,7 @@ Requires(postun): /usr/sbin/groupdel /usr/sbin/userdel
 Conflicts:   ossec-hids ossec-hids-agent wazuh-local
 AutoReqProv: no
 
-Requires: coreutils
+Requires: coreutils findutils procps
 BuildRequires: coreutils glibc-devel automake autoconf libtool policycoreutils-python perl
 
 ExclusiveOS: linux
@@ -358,6 +358,9 @@ if [ $1 = 1 ]; then
 
   # Register and configure agent if Wazuh environment variables are defined
   %{_localstatedir}/packages_files/agent_installation_scripts/src/init/register_configure_agent.sh %{_localstatedir} > /dev/null || :
+else
+  # An upgrade keeps its configuration; only WAZUH_ENROLLMENT_TOKEN is applied.
+  %{_localstatedir}/packages_files/agent_installation_scripts/src/init/register_configure_agent.sh %{_localstatedir} upgrade > /dev/null || :
 fi
 
 if [ -r /etc/SuSE-release ] && grep -q "VERSION = 11" /etc/SuSE-release 2>/dev/null; then
@@ -475,8 +478,15 @@ if [ -r ${SCA_TMP_FILE} ]; then
   done
 fi
 
-# Delete the installation files used to configure the agent
-rm -rf %{_localstatedir}/packages_files
+# Delete the installation files used to configure the agent, but register_configure_agent.sh: it is
+# a plain packaged file (see the file list), so every upgrade lays it down for this script to run,
+# and rpm -V expects it there.
+find %{_localstatedir}/packages_files -mindepth 1 -depth \
+    ! -path %{_localstatedir}/packages_files/agent_installation_scripts \
+    ! -path %{_localstatedir}/packages_files/agent_installation_scripts/src \
+    ! -path %{_localstatedir}/packages_files/agent_installation_scripts/src/init \
+    ! -path %{_localstatedir}/packages_files/agent_installation_scripts/src/init/register_configure_agent.sh \
+    -exec rm -rf {} +
 
 # Set the proper selinux context
 if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ "${DIST_VER}" == "5" ]; then
@@ -680,6 +690,9 @@ if [ $1 = 0 ]; then
   # Remove SCA files
   rm -f %{_localstatedir}/ruleset/sca/*
 
+  # Remove the agent key so rpm does not save it as client.keys.rpmsave
+  rm -f %{_localstatedir}/etc/client.keys
+
 fi
 
 %triggerin -- glibc
@@ -747,13 +760,30 @@ fi
 
 if [ -f %{_localstatedir}/tmp/wazuh.restart ]; then
   rm -f %{_localstatedir}/tmp/wazuh.restart
+  # An agent that does not start does not fail the transaction; say so instead of staying silent.
+  RESTART_FAILED=""
+  LOG_SIZE=$(stat -c %%s %{_localstatedir}/logs/ossec.log 2> /dev/null || echo 0)
   if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 ; then
     systemctl daemon-reload > /dev/null 2>&1
-    systemctl restart wazuh-agent.service > /dev/null 2>&1
+    RESTART_OUTPUT=$(systemctl restart wazuh-agent.service 2>&1) || RESTART_FAILED="yes"
   elif command -v service > /dev/null 2>&1; then
-    service wazuh-agent restart > /dev/null 2>&1
+    RESTART_OUTPUT=$(service wazuh-agent restart 2>&1) || RESTART_FAILED="yes"
   else
-    %{_localstatedir}/bin/wazuh-control restart > /dev/null 2>&1
+    RESTART_OUTPUT=$(%{_localstatedir}/bin/wazuh-control restart 2>&1) || RESTART_FAILED="yes"
+  fi
+  if [ -n "${RESTART_FAILED}" ]; then
+    # The reason is in what the daemons logged during the restart (systemctl only says the
+    # unit failed). A refused token is logged as INFO, so it is matched by its text.
+    # Of the restart's own output, drop wazuh-control's progress lines and keep why it stopped.
+    { printf '%%s\n' "${RESTART_OUTPUT}" | grep -vE '^[0-9/]+ [0-9:]+ [^ ]+: (INFO|WARNING):' \
+          | grep -vE ' (not|already) running\.\.\.$|^(Starting|Started|Killing) |^Wazuh v[^ ]* Stopped$|^Completed\.$'
+      # logs/ belongs to the agent's user: read the log only as a regular file, and never wait on it.
+      if [ -f %{_localstatedir}/logs/ossec.log ] && [ ! -L %{_localstatedir}/logs/ossec.log ]; then
+          timeout 5 tail -c +$((LOG_SIZE + 1)) %{_localstatedir}/logs/ossec.log 2> /dev/null \
+              | grep -E '^[0-9/]+ [0-9:]+ [^ ]+: (ERROR|CRITICAL):|Enrollment rejected' | tail -n 10
+      fi
+    } | awk '!seen[$0]++' >&2
+    echo "wazuh-agent: the agent did not start after the upgrade and was stopped; see %{_localstatedir}/logs/ossec.log for the reason. If the manager refused the enrollment, fix the cause on the manager and start the agent again, or enroll it with a new token: '%{_localstatedir}/bin/wazuh-agent-auth --token-file <file>'." >&2
   fi
 fi
 
@@ -815,7 +845,15 @@ rm -fr %{buildroot}
 %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/etc/templates/config/rhel/*
 %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/etc/templates/config/sles/*
 %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/etc/templates/config/suse/*
-%attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/src/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/src
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/src/init
+%attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/src/init/*.init
+# Every script but register_configure_agent.sh, which is listed on its own below.
+%attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/src/init/[!r]*.sh
+%attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/src/init/replace_manager_ip.sh
+# A plain file: rpm does not lay down again a missingok config file that an earlier package's
+# post-install script deleted, so an upgrade would not find it.
+%attr(750, root, root) %{_localstatedir}/packages_files/agent_installation_scripts/src/init/register_configure_agent.sh
 %dir %attr(750, root, wazuh) %{_localstatedir}/queue
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/sockets
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/diff
@@ -891,6 +929,7 @@ rm -fr %{buildroot}
 %attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/rocky/*
 %dir %attr(1770, root, wazuh) %{_localstatedir}/tmp
 %dir %attr(750, root, wazuh) %{_localstatedir}/var
+%dir %attr(750, root, wazuh) %{_localstatedir}/var/audit
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/incoming
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/run
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/selinux

@@ -4,10 +4,9 @@
 
 #include <iostream>
 
-#include <rapidjson/document.h>
-#include <rapidjson/stringbuffer.h>
-#include <rapidjson/writer.h>
 #include <yaml-cpp/yaml.h>
+
+#include <base/json.hpp>
 
 namespace yml
 {
@@ -24,18 +23,18 @@ public:
      *
      * @param filepath Filepath of the YAML file.
      *
-     * @return rapidjson::Document RapidJSON document loaded from the YAML file.
+     * @return json::Document RapidJSON document loaded from the YAML file.
      */
-    static rapidjson::Document loadYMLfromFile(const std::string& filepath);
+    static json::Document loadYMLfromFile(const std::string& filepath);
 
     /**
      * @brief Load a YAML string and return a RapidJSON document.
      *
      * @param yamlStr YAML string.
      *
-     * @return rapidjson::Document RapidJSON document loaded from the YAML string.
+     * @return json::Document RapidJSON document loaded from the YAML string.
      */
-    static rapidjson::Document loadYMLfromString(const std::string& yamlStr);
+    static json::Document loadYMLfromString(const std::string& yamlStr);
 
     /**
      * @brief Convert a YAML node to a RapidJSON value.
@@ -43,9 +42,9 @@ public:
      * @param root YAML node to convert.
      * @param allocator RapidJSON document allocator instance.
      *
-     * @return rapidjson::Value Converted RapidJSON value.
+     * @return json::Value Converted RapidJSON value.
      */
-    static rapidjson::Value yamlToJson(const YAML::Node& root, rapidjson::Document::AllocatorType& allocator);
+    static json::Value yamlToJson(const YAML::Node& root, json::Document::AllocatorType& allocator);
 
     /**
      * @brief Convert a RapidJSON scalar node to a YAML node.
@@ -54,7 +53,7 @@ public:
      *
      * @return YAML::Node Converted YAML node.
      */
-    static YAML::Node parseScalar(const rapidjson::Value& node);
+    static YAML::Node parseScalar(const json::Value& node);
 
     /**
      * @brief Convert a YAML node to a RapidJSON value.
@@ -62,10 +61,10 @@ public:
      * @param node YAML node to convert.
      * @param allocator RapidJSON document allocator instance.
      *
-     * @return rapidjson::Value Converted RapidJSON value.
+     * @return json::Value Converted RapidJSON value.
      * TODO: Delete this, should not use rapidjson
      */
-    static rapidjson::Value parseScalar(const YAML::Node& node, rapidjson::Document::AllocatorType& allocator);
+    static json::Value parseScalar(const YAML::Node& node, json::Document::AllocatorType& allocator);
 
     /**
      * @brief Convert a RapidJSON value to a YAML node.
@@ -75,7 +74,7 @@ public:
      * @return YAML::Node Converted YAML node.
      * TODO: Delete this, should not use rapidjson
      */
-    static YAML::Node jsonToYaml(const rapidjson::Value& value);
+    static YAML::Node jsonToYaml(const json::Value& value);
 };
 
 namespace utils

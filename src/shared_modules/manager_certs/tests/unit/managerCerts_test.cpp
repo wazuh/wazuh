@@ -262,6 +262,30 @@ TEST(ManagerCertsCheck, ValidBundleExitsZeroAndLeavesFileUnchanged)
     EXPECT_EQ(readFile(bundlePath), before);
 }
 
+// A fresh install's bundle: a plain PEM the credential resolver copied from the manager's CA, never
+// stamped. remoted serves it at generation 0; `check` refuses it (D-18), naming the state and the
+// command that publishes it.
+TEST(ManagerCertsCheck, UnpublishedBundleExitsNonZeroNamingHowToPublish)
+{
+    auto caKey = makeTestKey();
+    auto leafKey = makeTestKey();
+    auto ca = makeCertificate("ca-fresh", -kDay, 400 * kDay, caKey.get(), caKey.get(), nullptr, true, 1);
+    auto leaf = makeCertificate("leaf-fresh", -kDay, 90 * kDay, leafKey.get(), caKey.get(), ca.get(), false, 2);
+
+    std::vector<ca_bundle::X509Ptr> certificates;
+    certificates.push_back(std::move(ca));
+    const ca_bundle::ParsedBundle bundle = ca_bundle::parseBundle(ca_bundle::serializeCertificates(certificates));
+    ASSERT_TRUE(bundle.wellFormed);
+    ASSERT_FALSE(bundle.block.has_value());
+    const auto serializedBytes = ca_bundle::serializeCertificates(bundle.certificates).size();
+
+    std::ostringstream err;
+    EXPECT_EQ(runCheck(bundle, leaf.get(), serializedBytes, err), 1);
+    EXPECT_NE(err.str().find("no publication block (unpublished)"), std::string::npos) << err.str();
+    EXPECT_NE(err.str().find("generation 0"), std::string::npos) << err.str();
+    EXPECT_NE(err.str().find("wazuh-manager-certs stamp"), std::string::npos) << err.str();
+}
+
 TEST(ManagerCertsCheck, SevenCertificatesExitsNonZeroNamingTheCount)
 {
     std::vector<ca_bundle::X509Ptr> certificates;

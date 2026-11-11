@@ -646,6 +646,25 @@ static void bridge_dispatch_active_response(const char *task_id, const char *pay
 
     bool sent = false;
 
+#ifndef WIN32
+    /* execq is a datagram socket and execd reads it with OS_RecvUnix(q, OS_MAXSTR, ...), which
+     * takes at most OS_MAXSTR - 1 bytes and silently discards the rest of a longer datagram. A
+     * larger document still "sends" fine and then reaches execd cut short, where it fails to parse
+     * as "(1315): Invalid JSON message" with nothing naming the cause. Refused here instead, where
+     * the task and its real size are known. Windows hands execd the string through an in-process
+     * queue with no such limit. */
+    const size_t msg_len = strlen(msg_str);
+
+    if (msg_len > (size_t)AR_EXECQ_MAX_MSG_LEN) {
+        merror("https_client: active_response task %s dropped: its document is %zu bytes, larger than "
+               "the %d bytes wazuh-execd can receive. Shorten the response's extra_arguments.",
+               task_id, msg_len, AR_EXECQ_MAX_MSG_LEN);
+        os_free(msg_str);
+        w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
+        return;
+    }
+#endif
+
     if (agt->execdq >= 0) {
 #ifndef WIN32
         if (OS_SendUnix(agt->execdq, msg_str, 0) < 0) {
@@ -1235,7 +1254,12 @@ static bool bridge_shared_unmerge(const char *bundle)
     os_strdup(BRIDGE_SHAREDCFG_FILE_TMP_NAME, keep[1]);
     os_strdup(BRIDGE_SHAREDCFG_APPLYING_NAME, keep[2]);
 
-    bool ok = UnmergeFiles(bundle, SHAREDCFG_DIR, OS_TEXT, &keep) != 0;
+    /* Binary mode: the bundle on disk holds the exact bytes the manager merged
+     * (downloaded as-is and checked against its hash), and every entry size
+     * counts raw bytes. A Windows text-mode stream would undercount ftell() by
+     * one per buffered LF, fold CRLF into LF and stop at Ctrl-Z, so entries
+     * would be rejected or cut short. */
+    bool ok = UnmergeFiles(bundle, SHAREDCFG_DIR, OS_BINARY, &keep) != 0;
 
     if (ok && cldir_ex_ignore(SHAREDCFG_DIR, (const char **)keep)) {
         mwarn("Could not clean up the shared configuration directory.");

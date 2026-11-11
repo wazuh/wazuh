@@ -133,6 +133,86 @@ def sanitize_rbac_policy(policy):
         policy['effect'] = policy['effect'].lower()
 
 
+POLICY_EFFECTS = ('allow', 'deny')
+RULE_LOGICAL_OPERATORS = ('AND', 'OR', 'NOT')
+RULE_FUNCTIONS = ('MATCH', 'MATCH$', 'FIND', 'FIND$')
+
+
+def is_valid_rbac_policy(policy: dict) -> bool:
+    """Check a sanitized policy body against the RBAC catalog of the API specification.
+
+    The structure (keys, value types, `type:field:value` syntax) is checked by the ORM. This adds what
+    it cannot know: the effect is one the decorators evaluate (anything but `allow` is read as a deny,
+    so a typo silently denies), every action exists, every resource type exists, and neither list is
+    empty, as a policy with no action or no resource grants or denies nothing.
+
+    Parameters
+    ----------
+    policy : dict
+        Policy body, already passed through `sanitize_rbac_policy`.
+
+    Returns
+    -------
+    bool
+        True if the policy can be stored.
+    """
+    if not isinstance(policy, dict):
+        return False
+    actions, resources, effect = policy.get('actions'), policy.get('resources'), policy.get('effect')
+    if effect not in POLICY_EFFECTS or not isinstance(actions, list) or not isinstance(resources, list) \
+            or not actions or not resources:
+        return False
+
+    catalog = load_spec()['x-rbac-catalog']
+    if not all(isinstance(action, str) and action in catalog['actions'] for action in actions):
+        return False
+    for resource in resources:
+        if not isinstance(resource, str):
+            return False
+        for nested_resource in resource.split('&'):
+            parts = nested_resource.split(':')
+            if len(parts) != 3 or ':'.join(parts[:2]) not in catalog['resources']:
+                return False
+
+    return True
+
+
+def is_valid_security_rule(rule) -> bool:
+    """Check that a security rule body only uses the operators the authorization context evaluates.
+
+    A rule is a non-empty object whose keys are logical operators (AND, OR, NOT), holding one rule or a
+    non-empty list of rules, or functions (MATCH, MATCH$, FIND, FIND$), holding a non-empty object.
+    Any other key is never evaluated, an empty rule or operator never matches, and an empty function
+    object matches every authorization context.
+
+    Parameters
+    ----------
+    rule : dict
+        Rule body, or a nested part of it.
+
+    Returns
+    -------
+    bool
+        True if the rule can be stored.
+    """
+    if not isinstance(rule, dict) or not rule:
+        return False
+    for key, value in rule.items():
+        if key in RULE_LOGICAL_OPERATORS:
+            if isinstance(value, list):
+                if not value or not all(is_valid_security_rule(item) for item in value):
+                    return False
+            elif not is_valid_security_rule(value):
+                return False
+        elif key in RULE_FUNCTIONS:
+            if not isinstance(value, dict) or not value:
+                return False
+        else:
+            return False
+
+    return True
+
+
 def rbac_db_factory_reset():
     """Reset the RBAC database to default values.
 

@@ -78,7 +78,7 @@ api/
 │   ├── src/handlers.cpp
 │   └── test/src/unit/handlers_test.cpp
 │
-├── event/                                      # Event ingestion handler (pushEvent) + NDJson parser
+├── event/                                      # Event ingestion handler (pushEvent) + NDJson parser (stamps each event with its reception time)
 │   ├── include/api/event/
 │   │   ├── handlers.hpp
 │   │   └── ndJsonParser.hpp
@@ -140,7 +140,7 @@ The `adapter` module (header-only) provides template helpers for the proto↔HTT
 
 | Utility | Purpose |
 |---------|---------|
-| `parseRequest<Req, Res>(req)` | Deserialize JSON body → protobuf `Req`. Returns `ResOrErrorResp<Req>` (a 400 `Failed to parse protobuff json request: …` on failure) |
+| `parseRequest<Req, Res>(req)` | Deserialize JSON body → protobuf `Req`. Returns `ResOrErrorResp<Req>` (a 400 `Failed to parse protobuff json request: …` on failure, the parser message cut to `MAX_PARSE_ERROR_LENGTH` = 256 characters by `truncateForMessage`) |
 | `userResponse<Res>(res)` | Serialize protobuf `Res` → 200 JSON response |
 | `userErrorResponse<Res>(msg)` | 400 error with protobuf error envelope |
 | `internalErrorResponse<Res>(msg)` | 500 error with protobuf error envelope |
@@ -193,6 +193,7 @@ adapter::RouteHandler activateDumper(const std::shared_ptr<::dumper::IDumper>& d
 
         // 3. Execute domain logic via the interface
         dumper->activate();
+        LOG_INFO_L(lambdaName.c_str(), "Event dumper activated: every incoming event is now written to its log");
 
         // 4. Build and return the protobuf response
         ResponseType eResponse;
@@ -342,7 +343,7 @@ Provides 5 CLI entry points that exercise the API via `api-communication`:
 
 | CLI Command | Module | Domain |
 |------------|--------|--------|
-| `engine-router` | `engine_router` | Route CRUD, table, `ingest` (sends a `QueuePost_Request`, which `get_endpoint` does not map — the command fails; the engine has no such route) |
+| `engine-router` | `engine_router` | Route CRUD and table (`add`, `delete`, `get`, `list`, `reload`, `update`); `router.proto` still declares `QueuePost_Request`, which no route serves and `get_endpoint` does not map |
 | `engine-test` | `engine_test` | Tester sessions, integration test runs |
 | `engine-event-dumper` | `engine_event_dumper` | Event Dumper activate/deactivate/status |
 | `engine-public` | `engine_public` | Content validation, IOC, logtest cleanup, status |
@@ -500,6 +501,8 @@ Route → proto mapping, from the `registerHandlers()` functions. The operator c
 | `/events/enriched` | POST | NDJSON (parsed by `api::event::protocol::parseNDJson`, `event/include/api/event/ndJsonParser.hpp`) | `api::event::handlers::pushEvent(orchestrator, dumper, agentMetadataCache)` |
 
 This route is the exception to the conventions above: it is not protobuf-based (errors are `{"error": "...", "code": 400|500}`), it has no `registerHandlers()` (`main.cpp` adds it directly with `addRoute`), and it lives on the second `httpsrv::Server` ("Event services", socket setting `analysisd.server_enriched_events_socket`, default `engine-ingest-http.sock`), created only when `analysisd.server_enable_event_processing` is true. Its contract is `docs/ref/modules/engine/spec-events.yaml`.
+
+`parseNDJson` stamps every event it hands to the hook with its reception time: it takes the stamp (`receivedAtNs`, nanoseconds since the epoch) once per event, in batch order, on the HTTP thread and before the event is queued (`postEvent`). The default stamp source is `base::utils::time::receptionClock()`, a process-wide strictly increasing clock, so events of a batch keep their order and no two events share a stamp. The parser does not write `@timestamp` or `wazuh.event.id`: the router worker formats the stamp as an ISO 8601 UTC string with nine decimals into `@timestamp` and generates the event id (a decoder may overwrite `@timestamp` later). See [Reception timestamp](../router/README.md#reception-timestamp).
 
 ---
 

@@ -290,7 +290,7 @@ def _check_entry(entry, patches_dir, repo_root, overlays_dir=OVERLAYS_DIR):
 # CMake target names that differ from the inventory name (prefixes `ext_` / suffix `_external` already removed).
 CMAKE_NAMES = {"abseilcpp": "abseil-cpp", "pcre2": "libpcre2", "audit": "audit-userspace", "yamlcpp": "yaml-cpp",
                "maxminddb": "libmaxminddb", "cjson": "cJSON", "expected_lite": "expected-lite", "minizip": "zlib",
-               "openssl_ssl": "openssl", "openssl_crypto": "openssl"}
+               "openssl_ssl": "openssl", "openssl_crypto": "openssl", "brotlidec": "brotli", "brotlicommon": "brotli"}
 
 
 def _cmake_name(target):

@@ -17,6 +17,8 @@
 
 // Database constants, based on the keystore path.
 constexpr auto DATABASE_PATH {"queue/keystore"};
+// The RocksDB wrapper's own defaults for everything but the lock wait.
+constexpr auto DATABASE_READ_CACHE_SIZE {16 * 1024 * 1024};
 
 // Keystore constants.
 // KS_VERSION is the current version of the keystore. Used to identify the version of the keystore in the database.
@@ -43,13 +45,30 @@ static void upgrade(Utils::RocksDBWrapper& keystoreDB, const std::string& column
     }
 }
 
-void Keystore::put(const std::string& columnFamily, const std::string& key, const std::string& value)
+// One handle per operation, never a long-lived one: a handle holds RocksDB's LOCK file for as long
+// as it lives, and the keystore is shared by modulesd, the engine and the CLI (see the README).
+static Utils::RocksDBWrapper openKeystore(const std::chrono::milliseconds lockWait)
+{
+    try
+    {
+        return Utils::RocksDBWrapper(DATABASE_PATH, false, true, false, DATABASE_READ_CACHE_SIZE, lockWait);
+    }
+    catch (const Utils::RocksDBLockTimeout& e)
+    {
+        throw KeystoreLockTimeout(e.what());
+    }
+}
+
+void Keystore::put(const std::string& columnFamily,
+                   const std::string& key,
+                   const std::string& value,
+                   const std::chrono::milliseconds lockWait)
 {
     std::vector<char> encryptedValue;
 
     EVPHelper().encryptAES256(value, encryptedValue);
 
-    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
+    auto keystoreDB = openKeystore(lockWait);
 
     if (!keystoreDB.columnExists(columnFamily))
     {
@@ -70,11 +89,14 @@ void Keystore::put(const std::string& columnFamily, const std::string& key, cons
  * @param key The key to be inserted or updated.
  * @param value The corresponding value to be returned.
  */
-void Keystore::get(const std::string& columnFamily, const std::string& key, std::string& value)
+void Keystore::get(const std::string& columnFamily,
+                   const std::string& key,
+                   std::string& value,
+                   const std::chrono::milliseconds lockWait)
 {
     std::string encryptedValue;
 
-    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
+    auto keystoreDB = openKeystore(lockWait);
 
     // A read never creates a family: it would let any reader add families that are never removed.
     if (!keystoreDB.columnExists(columnFamily))

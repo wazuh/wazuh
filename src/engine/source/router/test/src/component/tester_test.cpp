@@ -1,9 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include <gtest/gtest.h>
 
+#include <atomic>
 #include <chrono>
+#include <functional>
 #include <future>
 #include <mutex>
+#include <set>
+#include <thread>
+
+#include <fmt/format.h>
+#include <fmt/ranges.h>
 
 #include <base/utils/singletonLocator.hpp>
 #include <base/utils/singletonLocatorStrategies.hpp>
@@ -34,6 +41,12 @@ router::test::EntryPost makeTestEntry(const std::string& name, const std::string
 class OrchestratorTesterTest : public ::testing::Test
 {
 protected:
+    // The tester workers call waitPop() from start() on, and gMock forbids setting an expectation on a mock
+    // while another thread calls it. So the only waitPop() expectation is the one set before start(), and a
+    // test changes what it pops through this hook instead. Declared first so it outlives the workers.
+    std::mutex m_testerPopMutex;
+    std::function<bool(router::test::EventTest&)> m_testerPop;
+
     std::shared_ptr<builder::mocks::MockBuilder> m_mockbuilder;
     std::shared_ptr<builder::mocks::MockPolicy> m_mockPolicy;
     std::shared_ptr<fastmetrics::MockCounter> m_mockCounter;
@@ -47,6 +60,12 @@ protected:
     std::shared_ptr<router::Orchestrator> m_orchestrator;
 
 public:
+    void setTesterPop(std::function<bool(router::test::EventTest&)> pop)
+    {
+        std::lock_guard<std::mutex> lock(m_testerPopMutex);
+        m_testerPop = std::move(pop);
+    }
+
     void SetUp() override
     {
         logging::testInit();
@@ -130,7 +149,13 @@ public:
 
         m_orchestrator = std::make_shared<router::Orchestrator>(config);
 
-        EXPECT_CALL(*m_mockQueueTester, waitPop(testing::_, testing::_)).WillRepeatedly(testing::Return(false));
+        EXPECT_CALL(*m_mockQueueTester, waitPop(testing::_, testing::_))
+            .WillRepeatedly(testing::Invoke(
+                [this](router::test::EventTest& out, auto)
+                {
+                    std::lock_guard<std::mutex> lock(m_testerPopMutex);
+                    return m_testerPop ? m_testerPop(out) : false;
+                }));
         EXPECT_CALL(*m_mockQueueRouter, waitPop(testing::_, testing::_)).WillRepeatedly(testing::Return(false));
         m_orchestrator->start();
     }
@@ -352,18 +377,23 @@ TEST_F(OrchestratorTesterTest, IngestTest)
                 return true;
             }));
 
-    EXPECT_CALL(*m_mockQueueTester, waitPop(testing::_, testing::_))
-        .WillRepeatedly(testing::Invoke(
-            [&](router::test::EventTest& out, auto)
+    // The hook uses this test's locals: drop it before they go, whichever way the test ends.
+    struct ResetTesterPop
+    {
+        OrchestratorTesterTest* fixture;
+        ~ResetTesterPop() { fixture->setTesterPop(nullptr); }
+    } resetTesterPop {this};
+    setTesterPop(
+        [&](router::test::EventTest& out)
+        {
+            std::lock_guard<std::mutex> lock(capturedTupleMutex);
+            if (capturedTuple != nullptr)
             {
-                std::lock_guard<std::mutex> lock(capturedTupleMutex);
-                if (capturedTuple != nullptr)
-                {
-                    out = std::move(capturedTuple);
-                    return true;
-                }
-                return false;
-            }));
+                out = std::move(capturedTuple);
+                return true;
+            }
+            return false;
+        });
 
     ON_CALL(*m_mockController, subscribe(testing::_, testing::_)).WillByDefault(testing::Return(bk::Subscription(1)));
 
@@ -398,6 +428,153 @@ TEST_F(OrchestratorTesterTest, IngestTest)
     EXPECT_TRUE(ev->isString("/@timestamp"));
     EXPECT_TRUE(ev->exists("/wazuh/event/id"));
     EXPECT_TRUE(ev->isString("/wazuh/event/id"));
+
+    m_orchestrator->stop();
+}
+
+/**************************************************************************
+ * replaceTestEntry / extractTestEntry under concurrency
+ *************************************************************************/
+namespace
+{
+void expectBuildPolicyRepeatedly(std::shared_ptr<builder::mocks::MockBuilder> mockbuilder,
+                                 std::shared_ptr<builder::mocks::MockPolicy> mockPolicy)
+{
+    EXPECT_CALL(*mockbuilder, buildPolicy(testing::_, testing::_)).WillRepeatedly(testing::Return(mockPolicy));
+    auto names = std::unordered_set<base::Name> {"asset/test/0"};
+    EXPECT_CALL(*mockPolicy, assets()).WillRepeatedly(testing::ReturnRefOfCopy(names));
+    auto expression = base::Expression {};
+    EXPECT_CALL(*mockPolicy, expression()).WillRepeatedly(::testing::ReturnRefOfCopy(expression));
+    EXPECT_CALL(*mockPolicy, hash()).WillRepeatedly(::testing::ReturnRefOfCopy(std::string {"hash"}));
+}
+} // namespace
+
+TEST_F(OrchestratorTesterTest, ReplaceTestEntryConcurrentLastWinsEveryNamespaceHandedOutOnce)
+{
+    constexpr std::size_t kThreads = 8;
+    constexpr std::size_t kRounds = 5;
+
+    EXPECT_CALL(*m_mockStore, upsertDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
+    EXPECT_CALL(*m_mockController, stop()).Times(testing::AnyNumber());
+    expectBuildPolicyRepeatedly(m_mockbuilder, m_mockPolicy);
+
+    ASSERT_FALSE(m_orchestrator->postTestEntry(makeTestEntry("space", "ns_base", 0)).has_value());
+
+    std::set<std::string> expectedNamespaces {"ns_base"};
+    std::vector<std::string> handedOut;
+    std::mutex handedOutMutex;
+    std::vector<std::string> errors;
+
+    for (std::size_t round = 0; round < kRounds; ++round)
+    {
+        std::promise<void> go;
+        std::shared_future<void> start = go.get_future().share();
+        std::vector<std::thread> threads;
+
+        for (std::size_t i = 0; i < kThreads; ++i)
+        {
+            const auto tmp = fmt::format("tmp_{}_{}", round, i);
+            const auto ns = fmt::format("ns_{}_{}", round, i);
+            expectedNamespaces.insert(ns);
+            threads.emplace_back(
+                [&, tmp, ns]()
+                {
+                    auto err = m_orchestrator->postTestEntry(makeTestEntry(tmp, ns, 0));
+                    start.wait();
+                    if (err)
+                    {
+                        std::lock_guard lock {handedOutMutex};
+                        errors.push_back(fmt::format("post {}: {}", tmp, err->message));
+                        return;
+                    }
+                    auto result = m_orchestrator->replaceTestEntry(tmp, "space");
+                    std::lock_guard lock {handedOutMutex};
+                    if (base::isError(result))
+                    {
+                        errors.push_back(fmt::format("replace {}: {}", tmp, base::getError(result).message));
+                        return;
+                    }
+                    const auto& replaced = base::getResponse(result);
+                    if (!replaced)
+                    {
+                        errors.push_back(fmt::format("replace {}: nothing replaced", tmp));
+                        return;
+                    }
+                    handedOut.push_back(replaced->namespaceId().toStr());
+                });
+        }
+        go.set_value();
+        for (auto& t : threads)
+        {
+            t.join();
+        }
+    }
+
+    EXPECT_TRUE(errors.empty()) << fmt::format("{}", fmt::join(errors, "\n"));
+
+    // Exactly one session survives and it is the final one.
+    const auto entries = m_orchestrator->getTestEntries();
+    ASSERT_EQ(entries.size(), 1u);
+    EXPECT_EQ(entries.front().name(), "space");
+
+    // Every replaced namespace was handed out exactly once; the survivor's namespace was never handed out.
+    std::set<std::string> handedOutSet {handedOut.begin(), handedOut.end()};
+    EXPECT_EQ(handedOutSet.size(), handedOut.size()) << "a namespace was handed out twice";
+    handedOutSet.insert(entries.front().namespaceId().toStr());
+    EXPECT_EQ(handedOutSet, expectedNamespaces);
+    EXPECT_EQ(handedOut.size(), expectedNamespaces.size() - 1);
+
+    m_orchestrator->stop();
+}
+
+TEST_F(OrchestratorTesterTest, ExtractTestEntryConcurrentOnlyOneWins)
+{
+    constexpr std::size_t kThreads = 8;
+
+    EXPECT_CALL(*m_mockStore, upsertDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
+    EXPECT_CALL(*m_mockController, stop()).Times(testing::AnyNumber());
+    expectBuildPolicyRepeatedly(m_mockbuilder, m_mockPolicy);
+
+    ASSERT_FALSE(m_orchestrator->postTestEntry(makeTestEntry("space", "ns_base", 0)).has_value());
+
+    std::promise<void> go;
+    std::shared_future<void> start = go.get_future().share();
+    std::atomic<std::size_t> extracted {0};
+    std::atomic<std::size_t> absent {0};
+    std::atomic<std::size_t> failed {0};
+    std::vector<std::thread> threads;
+
+    for (std::size_t i = 0; i < kThreads; ++i)
+    {
+        threads.emplace_back(
+            [&]()
+            {
+                start.wait();
+                auto result = m_orchestrator->extractTestEntry("space");
+                if (base::isError(result))
+                {
+                    ++failed;
+                }
+                else if (base::getResponse(result))
+                {
+                    ++extracted;
+                }
+                else
+                {
+                    ++absent;
+                }
+            });
+    }
+    go.set_value();
+    for (auto& t : threads)
+    {
+        t.join();
+    }
+
+    EXPECT_EQ(failed.load(), 0u);
+    EXPECT_EQ(extracted.load(), 1u);
+    EXPECT_EQ(absent.load(), kThreads - 1);
+    EXPECT_TRUE(m_orchestrator->getTestEntries().empty());
 
     m_orchestrator->stop();
 }

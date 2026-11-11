@@ -464,10 +464,10 @@ namespace wazuh::uds_http
                                    if (const auto decision = self->m_state->abandonedThrottle.record())
                                    {
                                        LOGFN_WARN(self->m_state->log,
-                                                  "%llu request(s) in the last %d s were dropped by their handler "
+                                                  "%llu request(s) %s were dropped by their handler "
                                                   "without a response and were answered 503. This is a handler bug.",
                                                   static_cast<unsigned long long>(decision.total),
-                                                  LogThrottle::kDefaultWindowSeconds);
+                                                  decision.period().c_str());
                                    }
                                    self->deliver(errorResponse(503, "Handler produced no response"));
                                });
@@ -534,11 +534,11 @@ namespace wazuh::uds_http
                         // The route in hand, not the server-wide value: with per-route overrides
                         // those differ, and naming the wrong one sends an operator to the wrong knob.
                         LOGFN_WARN(m_state->log,
-                                   "%llu request(s) in the last %d s were not answered within their response "
+                                   "%llu request(s) %s were not answered within their response "
                                    "backstop and were closed with 504 (last: %s, %zu s). Their handler is stuck or "
                                    "lost the responder.",
                                    static_cast<unsigned long long>(decision.total),
-                                   LogThrottle::kDefaultWindowSeconds,
+                                   decision.period().c_str(),
                                    m_route ? m_route->path.c_str() : "unknown route",
                                    m_route && m_route->options.responseTimeoutSec != 0
                                        ? m_route->options.responseTimeoutSec
@@ -555,10 +555,10 @@ namespace wazuh::uds_http
                 if (const auto decision = m_state->phaseTimeoutThrottle.record())
                 {
                     LOGFN_WARN(m_state->log,
-                               "Closed %llu connection(s) in the last %d s that timed out before a response was "
+                               "Closed %llu connection(s) %s that timed out before a response was "
                                "due (last phase: %s).",
                                static_cast<unsigned long long>(decision.total),
-                               LogThrottle::kDefaultWindowSeconds,
+                               decision.period().c_str(),
                                phaseName(m_phase));
                 }
                 m_finished = true;
@@ -626,10 +626,10 @@ namespace wazuh::uds_http
                         if (const auto decision = m_state->limitRejectThrottle.record())
                         {
                             LOGFN_WARN(m_state->log,
-                                       "Rejected %llu request(s) in the last %d s for exceeding a configured limit "
+                                       "Rejected %llu request(s) %s for exceeding a configured limit "
                                        "(last: %d on '%.128s').",
                                        static_cast<unsigned long long>(decision.total),
-                                       LogThrottle::kDefaultWindowSeconds,
+                                       decision.period().c_str(),
                                        m_parser.rejectStatus(),
                                        requestPath().c_str());
                         }
@@ -639,9 +639,9 @@ namespace wazuh::uds_http
                         if (const auto decision = m_state->malformedThrottle.record())
                         {
                             LOGFN_DEBUG1(m_state->log,
-                                         "Rejected %llu malformed HTTP request(s) in the last %d s with 400.",
+                                         "Rejected %llu malformed HTTP request(s) %s with 400.",
                                          static_cast<unsigned long long>(decision.total),
-                                         LogThrottle::kDefaultWindowSeconds);
+                                         decision.period().c_str());
                         }
                         deliver(errorResponse(400, "Malformed HTTP request"));
                         return;
@@ -693,12 +693,12 @@ namespace wazuh::uds_http
                 if (const auto decision = m_state->classSessionCapThrottle.record())
                 {
                     LOGFN_WARN(m_state->log,
-                               "Rejected %llu request(s) with 503 in the last %d s: the %s-class session "
+                               "Rejected %llu request(s) with 503 %s: the %s-class session "
                                "limit (%zu) is reached. The class caps confine each class to its own "
                                "headroom; a persistent hit on a control class means a client is leaking "
                                "connections or polling too hard.",
                                static_cast<unsigned long long>(decision.total),
-                               LogThrottle::kDefaultWindowSeconds,
+                               decision.period().c_str(),
                                className(cls),
                                cap);
                 }
@@ -733,10 +733,10 @@ namespace wazuh::uds_http
                     if (const auto decision = m_state->classBodyCapThrottle.record())
                     {
                         LOGFN_WARN(m_state->log,
-                                   "Rejected %llu request(s) with 413 in the last %d s: the declared body "
+                                   "Rejected %llu request(s) with 413 %s: the declared body "
                                    "exceeds the %s-class cap (last: %zu > %zu byte(s) on '%s').",
                                    static_cast<unsigned long long>(decision.total),
-                                   LogThrottle::kDefaultWindowSeconds,
+                                   decision.period().c_str(),
                                    className(cls),
                                    declared,
                                    bodyCap,
@@ -782,10 +782,10 @@ namespace wazuh::uds_http
                         {
                             const auto& hint = m_state->config.budgetOptionHint;
                             LOGFN_WARN(m_state->log,
-                                       "Rejected %llu request(s) with 503 in the last %d s: the in-flight payload "
+                                       "Rejected %llu request(s) with 503 %s: the in-flight payload "
                                        "budget is exhausted (%zu request(s) resident, %zu byte(s) free).%s%s%s",
                                        static_cast<unsigned long long>(decision.total),
-                                       LogThrottle::kDefaultWindowSeconds,
+                                       decision.period().c_str(),
                                        m_state->budget->inFlightCount(),
                                        m_state->budget->availableBytes(),
                                        hint.empty() ? "" : " Consider raising '",
@@ -844,9 +844,9 @@ namespace wazuh::uds_http
                 if (const auto decision = m_state->noRouteThrottle.record())
                 {
                     LOGFN_WARN(m_state->log,
-                               "Answered %llu request(s) in the last %d s with %d: no route for %s '%.128s'.",
+                               "Answered %llu request(s) %s with %d: no route for %s '%.128s'.",
                                static_cast<unsigned long long>(decision.total),
-                               LogThrottle::kDefaultWindowSeconds,
+                               decision.period().c_str(),
                                m_pathMatchedOtherMethod ? 405 : 404,
                                methodToString(m_parser.request().method),
                                requestPath().c_str());
@@ -949,10 +949,10 @@ namespace wazuh::uds_http
                 if (const auto decision = m_state->handlerThrewThrottle.record())
                 {
                     LOGFN_ERROR(m_state->log,
-                                "%llu request(s) failed while being dispatched in the last %d s and were answered "
+                                "%llu request(s) failed while being dispatched %s and were answered "
                                 "500 (last: %s).",
                                 static_cast<unsigned long long>(decision.total),
-                                LogThrottle::kDefaultWindowSeconds,
+                                decision.period().c_str(),
                                 reason);
                 }
                 if (responder)
@@ -1002,11 +1002,11 @@ namespace wazuh::uds_http
                                             if (const auto decision = self->m_state->peerGoneThrottle.record())
                                             {
                                                 LOGFN_DEBUG1(self->m_state->log,
-                                                             "Closed %llu connection(s) in the last %d s whose "
+                                                             "Closed %llu connection(s) %s whose "
                                                              "peer went away while the response was still "
                                                              "pending.",
                                                              static_cast<unsigned long long>(decision.total),
-                                                             LogThrottle::kDefaultWindowSeconds);
+                                                             decision.period().c_str());
                                             }
                                             self->m_finished = true;
                                             self->m_timer.cancel();
@@ -1050,10 +1050,10 @@ namespace wazuh::uds_http
                                                   if (const auto decision = self->m_state->writeErrorThrottle.record())
                                                   {
                                                       LOGFN_DEBUG1(self->m_state->log,
-                                                                   "Failed to write %llu response(s) in the "
-                                                                   "last %d s (last: %s).",
+                                                                   "Failed to write %llu response(s) "
+                                                                   "%s (last: %s).",
                                                                    static_cast<unsigned long long>(decision.total),
-                                                                   LogThrottle::kDefaultWindowSeconds,
+                                                                   decision.period().c_str(),
                                                                    ec.message().c_str());
                                                   }
                                               }
@@ -1243,9 +1243,9 @@ namespace wazuh::uds_http
                                       if (const auto decision = state->writeErrorThrottle.record())
                                       {
                                           LOGFN_DEBUG1(state->log,
-                                                       "Failed to write %llu response(s) in the last %d s (last: %s).",
+                                                       "Failed to write %llu response(s) %s (last: %s).",
                                                        static_cast<unsigned long long>(decision.total),
-                                                       LogThrottle::kDefaultWindowSeconds,
+                                                       decision.period().c_str(),
                                                        ec.message().c_str());
                                       }
                                   }
@@ -1436,11 +1436,11 @@ namespace wazuh::uds_http
             if (const auto decision = state->acceptErrorThrottle.record())
             {
                 LOGFN_WARN(state->log,
-                           "Failed to accept %llu %s connection(s) in the last %d s: %s. The "
+                           "Failed to accept %llu %s connection(s) %s: %s. The "
                            "listener is still accepting; peers will retry.",
                            static_cast<unsigned long long>(decision.total),
                            state->config.serverName.c_str(),
-                           LogThrottle::kDefaultWindowSeconds,
+                           decision.period().c_str(),
                            reason);
             }
         }
@@ -1481,10 +1481,10 @@ namespace wazuh::uds_http
                 {
                     const auto& hint = state->config.connectionCapOptionHint;
                     LOGFN_WARN(state->log,
-                               "Refused %llu connection(s) with 503 in the last %d s: the %zu-connection limit is "
+                               "Refused %llu connection(s) with 503 %s: the %zu-connection limit is "
                                "reached. Each deferred response holds one connection%s%s%s",
                                static_cast<unsigned long long>(decision.total),
-                               LogThrottle::kDefaultWindowSeconds,
+                               decision.period().c_str(),
                                state->config.maxConnections,
                                hint.empty() ? "." : "; consider raising '",
                                hint.c_str(),
@@ -1536,11 +1536,11 @@ namespace wazuh::uds_http
                                    if (const auto decision = state->sessionBringupThrottle.record())
                                    {
                                        LOGFN_ERROR(state->log,
-                                                   "Could not bring up %llu accepted %s connection(s) in "
-                                                   "the last %d s.",
+                                                   "Could not bring up %llu accepted %s connection(s) "
+                                                   "%s.",
                                                    static_cast<unsigned long long>(decision.total),
                                                    state->config.serverName.c_str(),
-                                                   LogThrottle::kDefaultWindowSeconds);
+                                                   decision.period().c_str());
                                    }
                                    try
                                    {
@@ -1573,11 +1573,11 @@ namespace wazuh::uds_http
             if (const auto decision = state->sessionBringupThrottle.record())
             {
                 LOGFN_ERROR(state->log,
-                            "Could not bring up %llu accepted %s connection(s) in the last %d s "
+                            "Could not bring up %llu accepted %s connection(s) %s "
                             "(last: %s).",
                             static_cast<unsigned long long>(decision.total),
                             state->config.serverName.c_str(),
-                            LogThrottle::kDefaultWindowSeconds,
+                            decision.period().c_str(),
                             reason);
             }
         }
@@ -2087,11 +2087,11 @@ namespace wazuh::uds_http
                             if (const auto decision = impl->ioThreadResumeThrottle.record())
                             {
                                 LOGFN_ERROR(impl->state->log,
-                                            "The %s server's I/O threads caught %llu exception(s) in the "
-                                            "last %d s and resumed (last: %s).",
+                                            "The %s server's I/O threads caught %llu exception(s) "
+                                            "%s and resumed (last: %s).",
                                             impl->state->config.serverName.c_str(),
                                             static_cast<unsigned long long>(decision.total),
-                                            LogThrottle::kDefaultWindowSeconds,
+                                            decision.period().c_str(),
                                             e.what());
                             }
                         }
@@ -2100,11 +2100,11 @@ namespace wazuh::uds_http
                             if (const auto decision = impl->ioThreadResumeThrottle.record())
                             {
                                 LOGFN_ERROR(impl->state->log,
-                                            "The %s server's I/O threads caught %llu exception(s) in the "
-                                            "last %d s and resumed (last: non-standard exception).",
+                                            "The %s server's I/O threads caught %llu exception(s) "
+                                            "%s and resumed (last: non-standard exception).",
                                             impl->state->config.serverName.c_str(),
                                             static_cast<unsigned long long>(decision.total),
-                                            LogThrottle::kDefaultWindowSeconds);
+                                            decision.period().c_str());
                             }
                         }
                         // LCOV_EXCL_STOP

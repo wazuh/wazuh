@@ -45,6 +45,18 @@ HANDLE __wrap_utf8_CreateFile(const char* utf8_path,
     }
 }
 
+BOOL __wrap_utf8_DeleteFile(const char* utf8_path) {
+    check_expected(utf8_path);
+
+    return mock_type(BOOL);
+}
+
+BOOL __wrap_utf8_RemoveDirectory(const char* utf8_path) {
+    check_expected(utf8_path);
+
+    return mock_type(BOOL);
+}
+
 DWORD __wrap_utf8_GetFileAttributes(const char* utf8_path) {
     check_expected(utf8_path);
 

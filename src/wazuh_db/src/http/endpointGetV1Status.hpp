@@ -16,6 +16,7 @@
 #include <loggerHelper.h>
 #include <string>
 #include <uds_http_server/IUdsHttpServer.hpp>
+#include <uds_http_server/logThrottle.hpp>
 
 /**
  * @brief TEndpointGetV1Status class.
@@ -41,7 +42,8 @@
 template<typename DBConnection = SQLite3Wrapper::Connection, typename DBStatement = SQLite3Wrapper::Statement>
 class TEndpointGetV1Status final
 {
-    static constexpr auto LOGTAG = "wazuh-db-http";
+    // The daemon's own tag, like every other line wazuh-manager-db writes.
+    static constexpr auto LOGTAG = "wazuh-manager-db";
 
     struct GlobalDatabase final
     {
@@ -106,7 +108,18 @@ public:
             // Not an error of the caller's making, and not an internal fault either: the daemon is
             // answering correctly that it cannot serve. 503 is what tells a caller to route
             // elsewhere, which is the whole point of asking.
-            logWarn(LOGTAG, "Status: the global database is missing expected tables");
+            //
+            // Throttled: a load balancer polls this route, so a lasting outage would otherwise
+            // write one line per probe.
+            static wazuh::uds_http::LogThrottle unavailableThrottle;
+            if (const auto decision = unavailableThrottle.record())
+            {
+                logWarn(LOGTAG,
+                        "Status answered unavailable %llu time(s) %s: the global database is "
+                        "missing expected tables.",
+                        static_cast<unsigned long long>(decision.total),
+                        decision.period().c_str());
+            }
             resObj.status = "unavailable";
             return wazuh::uds_http::HttpResponse::json(503, serializeToJSON(resObj));
         }

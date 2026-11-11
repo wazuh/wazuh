@@ -120,7 +120,7 @@ rm -f <scratch>/pinned.env
 Wait until the token reaches the worker before the agent enrolls (the master syncs
 `/etc/wazuh-manager/enrollment_tokens.json` to the workers within seconds). The worker hands the
 enrollment to the master (`Dispatching enrollment request to master node` in the
-worker's log) and the agent keeps reporting to the worker: the master lists it as
+worker's log, at debug level) and the agent keeps reporting to the worker: the master lists it as
 `active`, and its events in the indexer carry the worker's node name in
 `wazuh.cluster.node`. Until the master syncs the new key back to the worker, the
 first connection is refused (401 on a 5.x agent, `(1408): Invalid ID` in the

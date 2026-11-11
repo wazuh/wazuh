@@ -100,7 +100,7 @@ namespace invsync::endpoints::delete_agent
      * of 4, so at most four deletions are ever in flight.
      */
 
-    /// @brief The verb. POST because the caller's C-side HTTP helper (uhttp_*) only speaks POST.
+    /// @brief The verb. POST because the caller (the task manager's per-worker libcurl UdsHttpClient) only speaks POST.
     constexpr wazuh::uds_http::Method method()
     {
         return wazuh::uds_http::Method::Post;

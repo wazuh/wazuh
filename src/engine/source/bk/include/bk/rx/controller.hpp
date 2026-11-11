@@ -24,6 +24,11 @@ using namespace rxu;
 namespace bk::rx
 {
 
+namespace detail
+{
+class Tracer;
+} // namespace detail
+
 /**
  * @brief Reactive (RxCpp) backend controller implementation.
  *
@@ -35,10 +40,8 @@ class Controller final : public IController
 private:
     using RxEvent = std::shared_ptr<base::result::Result<base::Event>>;
     using Observable = rxcpp::observable<RxEvent>;
-    class TracerImpl; ///< Implementation of the trace
-
-    std::unordered_map<std::string, std::shared_ptr<TracerImpl>> m_traces; ///< Traces
-    std::unordered_set<std::string> m_traceables;                          ///< Traceables
+    std::unordered_map<std::string, std::shared_ptr<detail::Tracer>> m_traces; ///< Traces
+    std::unordered_set<std::string> m_traceables;                              ///< Traceables
 
     rxcpp::subjects::subject<RxEvent> m_policySubject;
     rxcpp::subscriber<RxEvent> m_policyInput;

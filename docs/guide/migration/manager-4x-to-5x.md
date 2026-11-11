@@ -22,6 +22,8 @@ indexer.
 | TLS material | Not carried automatically. 5.0 needs a CA and an agent-listener certificate issued from it, minted by the manager at install or given to it, and every agent ends up verifying the manager against that CA. | [Step 2](#certificates-and-credentials), [Step 7](#7-upgrade-the-agents-to-50) |
 | Alerts, inventory, vulnerability and SCA history in the indexer | Not read by 5.0. The 4.x indices stay in the indexer for consultation; inventory, FIM, SCA and vulnerability state is rebuilt by each agent once it runs 5.0. | Section [Historical data](#historical-data) |
 | Agent labels | Removed in 5.0 on both sides. Not migrated. | |
+| Agent `000`, the manager monitoring its own host | Removed. Nothing collects the server host's logs, file integrity, SCA or inventory until an agent is installed on it. | [Monitoring the server host](../../ref/getting-started/installation.md#monitoring-the-server-host) |
+| Frequency and correlation rules (`frequency`, `timeframe`, `if_matched_sid`), such as 5712 and 5763 for SSH brute force | Removed. Each finding keeps the severity of the single event it matched, so repeated failures never escalate: a brute force produces many `low` findings. | [Repeated events](rules-4x-to-5x.md#alerting-on-repeated-events) |
 | Custom rules, decoders and CDB lists | Not migrated. Decoders and CDB lists are rewritten as engine decoders and KVDBs; rules are rewritten as Sigma-based detection rules, which the indexer evaluates (the engine has no rules). | [Rules](rules-4x-to-5x.md), [decoders](xml-decoders-migration.md), [CDB lists](cdb-to-kvdb-migration.md) |
 | Modules removed in 5.0 (email, agentless, VirusTotal, syslog output, ...) | Replaced. | The per-feature guides in this section |
 
@@ -81,6 +83,8 @@ cp etc/client.keys etc/authd.pass queue/db/global.db api/configuration/security/
 cp etc/ossec.conf etc/local_internal_options.conf api/configuration/api.yaml /root/wazuh-4x-backup/
 (cd /var/ossec/etc && tar -czf /root/wazuh-4x-backup/groups.tar.gz --exclude='shared/default' --exclude='*/merged.mg' shared/*/)
 tar -czf /root/wazuh-4x-backup/ruleset.tar.gz -C /var/ossec/etc rules decoders lists
+# Only if 4.x agents must keep their rootkit and audit checks until they are upgraded (see below)
+mkdir -p /root/wazuh-4x-backup/rootcheck && cp /var/ossec/etc/shared/default/*.txt /root/wazuh-4x-backup/rootcheck/
 ```
 
 | 4.x file | Content | 5.0 destination |
@@ -102,6 +106,24 @@ The `default` group is excluded on purpose: the 5.0 package ships its own `defau
 `shared/*/` would otherwise overwrite it with the 4.x files. If you customized
 `shared/default/agent.conf`, copy that single file and merge it into the 5.0 one by hand.
 
+**4.x agents lose their rootcheck signatures.** The 4.x `default` folder also carries
+`rootkit_files.txt`, `rootkit_trojans.txt` and the CIS and system audit files (`cis_*_rcl.txt`,
+`system_audit_*.txt`, `win_*_rcl.txt`), which every 4.x agent reads from its own `etc/shared/` through
+its default `<rootkit_files>` and `<rootkit_trojans>` settings. The 5.0 `default` folder has only
+`agent.conf`: these checks were removed from 5.0 on purpose, and a 5.0 agent no longer has the options
+that read them (see [the agent's configuration migration](upgrade-4x-to-5x.md#configuration-migration-ossecconf)). Once the 5.0 manager sends its first
+`merged.mg`, the files disappear from the 4.x agents. Rootcheck keeps running without signatures, and
+the only trace is a warning in each agent's `ossec.log`:
+
+```text
+rootcheck: WARNING: No rootcheck_files file: 'etc/shared/rootkit_files.txt'
+rootcheck: WARNING: No rootcheck_trojans file: 'etc/shared/rootkit_trojans.txt'
+```
+
+To keep these checks on the 4.x agents until they are upgraded, save the files with the optional
+last line of the backup above and copy them into the 5.0 `default` folder in
+[step 3](#groups).
+
 `global.db` is under `queue/db/`, not `var/db/`. Copying a path that does not exist produces a
 valid, empty database and no error.
 
@@ -114,18 +136,28 @@ Uninstall 4.x, then install 5.0 following [Installation](../../ref/getting-start
 The order is enforced. The DEB `preinst` and the RPM `%pre` refuse to install, fresh install or
 upgrade, while a 4.x manager is still on the host (an `/etc/ossec-init.conf` of type `server` or
 `local`, or a `/var/ossec` whose `bin/wazuh-control info -t` answers `server`), and `install.sh`
-refuses when the `wazuh-manager` installation it finds is older than 5.x. Nothing is changed:
+refuses when the `wazuh-manager` installation it finds is older than 5.x. Nothing is changed. An
+upgrade of the old `wazuh-manager` package and `install.sh` print the same refusal:
 
 ```console
+==============================================================
 ERROR: Upgrade from Wazuh manager versions prior to 5.x is not supported.
 
 Detected installed version: 4.14.0
 
 A clean installation of Wazuh manager 5.x is required.
 Refer to the 5.x migration guide for more information.
+==============================================================
 ```
 
-A 4.x **agent** on the same host does not block the installation.
+A package fresh install beside a 4.x manager prints the same block with `ERROR: A Wazuh manager older
+than 5.0 is installed on this host: Wazuh manager 5.x can neither upgrade it nor be installed beside it.`
+as its error line.
+
+A 4.x **agent** on the same host does not trip these checks, but its package does block the manager
+package: the 4.x `wazuh-agent` DEB and RPM declare `Conflicts: wazuh-manager`, so `dpkg` and `rpm` refuse to
+install the 5.0 `wazuh-manager` package while it is installed. Upgrade the agent to 5.x first (the 5.x agent
+package no longer conflicts with the manager), or remove it, then install the manager.
 
 ### Certificates and credentials
 
@@ -141,10 +173,13 @@ indexer kept from the 4.x deployment, write it to `local.env` after installing t
 start (the package leaves the manager stopped):
 
 ```bash
-sudo install -m 0600 -o root -g root /dev/null /etc/wazuh-manager/local.env
+sudo sh -c 'umask 077; [ -e /etc/wazuh-manager/local.env ] || : > /etc/wazuh-manager/local.env'
 printf "WAZUH_INDEXER_MANAGER_PASSWORD='%s'\n" '<the wazuh-manager password on the indexer>' \
-    | sudo tee /etc/wazuh-manager/local.env > /dev/null
+    | sudo tee -a /etc/wazuh-manager/local.env > /dev/null
 ```
+
+The first command creates `local.env` (`root:root`, `0600`) only when it does not exist yet, and `tee -a`
+appends, so values already staged there are kept.
 
 The value must pass the policy for supplied passwords: 12 to 64 characters, only from
 `A-Z a-z 0-9 . , _ + : @ % ^ = ~ -`, with at least one lowercase letter, one uppercase letter, one digit and one
@@ -198,12 +233,15 @@ openssl req -new -nodes -newkey rsa:2048 -keyout indexer-connector-key.pem -out 
 printf 'basicConstraints=CA:FALSE\nkeyUsage=digitalSignature,keyEncipherment\nextendedKeyUsage=clientAuth\n' > connector.ext
 openssl x509 -req -in connector.csr -CA root-ca.pem -CAkey root-ca.key -CAcreateserial -days 3650 -sha256 \
     -extfile connector.ext -out indexer-connector.pem
-sudo install -m 0640 -o root -g root root-ca.pem /etc/wazuh-manager/certs/indexer-ca.pem
-sudo install -m 0640 -o root -g root indexer-connector.pem indexer-connector-key.pem /etc/wazuh-manager/certs/
+sudo install -m 0640 -o root -g wazuh-manager root-ca.pem /etc/wazuh-manager/certs/indexer-ca.pem
+sudo install -m 0640 -o root -g wazuh-manager indexer-connector.pem indexer-connector-key.pem /etc/wazuh-manager/certs/
 ```
 
-The files can be root-owned at this point: the installer sets everything in `certs/` to `root:wazuh-manager`
-`0640`. Staged without an import marker, they are validated at every start and never replaced.
+Stage them after installing the package, before the first start: the `wazuh-manager` group exists only from then,
+and nothing re-owns a file staged later, so every file in `certs/` must already be `root:wazuh-manager` `0640`. A
+file with any other group or mode refuses the start (`UNSAFE /etc/wazuh-manager/certs/indexer-ca.pem: group is
+root, not wazuh-manager`, `Unsafe credentials. Exiting`). Staged without an import marker, they are validated at
+every start and never replaced.
 
 Two requirements come from the fleet rather than from whoever signs:
 
@@ -224,15 +262,18 @@ error `2003` in `logs/api.log` and does not start. A client of the API trusts th
 case).
 
 When the install issued no listener pair, the manager refuses to start, before any daemon runs, with the
-configuration validator's verdict:
+credential check's verdict:
 
 ```console
-(1244): Invalid configuration at '/remote/https/certificate': file not found: /etc/wazuh-manager/certs/remoted.pem (issued by the credential resolver at installation, or provisioned externally, e.g. with wazuh-certs-tool).
+MISSING /etc/wazuh-manager/certs/remoted.pem: run --install to issue it, or stage the pair
+Unresolved credentials. Exiting
 ```
 
-Place the pair and start it again; nothing has to be reinstalled. A pair that exists but is unreadable by the
-service user passes that check and stops `wazuh-manager-remoted` instead, with
-`Cannot start the HTTPS agent listener: ...`.
+Place the pair, or run `sudo /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --install` with the CA and
+its key in `ca/`, and start it again; nothing has to be reinstalled. A pair with another owner, group or mode is
+refused the same way, as unsafe, for example `UNSAFE /etc/wazuh-manager/certs/remoted-key.pem: mode is 0600, not
+0640` followed by `Unsafe credentials. Exiting`. Both refusals are also written to
+`/var/wazuh-manager/logs/wazuh-manager.log`; with `wazuh-manager-control -j start` they are errors `21` and `22`.
 
 ### Install it out of the fleet's reach
 
@@ -354,7 +395,7 @@ SQL
 chown wazuh-manager:wazuh-manager /var/wazuh-manager/queue/db/global.db
 ```
 
-Row `0` is the manager itself and is skipped. Agents are inserted as `disconnected`; the first
+Row `0` is the manager itself and is skipped; 5.0 has no agent `000`. Agents are inserted as `disconnected`; the first
 keepalive marks them `active` and refreshes version and OS. The 4.x `labels` and `info` tables
 have no counterpart in 5.0 (agent labels were removed). Columns dropped in 5.0 (`os_codename`,
 `os_build`, `os_uname`, `config_sum`, `merged_sum`, `manager_host`, `node_name`,
@@ -364,22 +405,39 @@ have no counterpart in 5.0 (agent labels were removed). Columns dropped in 5.0 (
 
 ```bash
 tar -xzf /root/wazuh-4x-backup/groups.tar.gz -C /etc/wazuh-manager
+# Only if you saved the 4.x rootcheck files in step 1
+install -m 0660 -o wazuh-manager -g wazuh-manager /root/wazuh-4x-backup/rootcheck/*.txt /etc/wazuh-manager/shared/default/
 chown -R wazuh-manager:wazuh-manager /etc/wazuh-manager/shared/
 ```
 
+The rootcheck files are only for 4.x agents; a 5.0 agent receives them in its `etc/shared/` but never
+reads them. Remove them from `default` once every agent in it runs 5.0.
+
 Group membership came with `global.db`: an agent assigned to a group from the dashboard, the API
 or `agent_groups` in 4.x is in the same group on 5.0, even though its `ossec.conf` never mentioned
-it. Review every `agent.conf` against the 5.0 agent configuration reference before starting: a
-deprecated option makes the group's configuration fail to compile. Do the extraction with the
-manager stopped: `wazuh-manager-modulesd` drops a group whose directory it cannot open, and between
-the extraction and the `chown` these carry the 4.x owner, which is exactly that. The group comes
-back on the next synchronization, after a `delete-group` has already gone out to its agents.
+it. Review every `agent.conf` against the 5.0 agent configuration reference before starting.
+A removed option such as `scan_on_start` or `check_files`, or a top-level `<labels>` block (the
+4.x agent labels), only produces a warning, and `verify-agent-conf` still returns OK. A `<labels>`
+wrapper inside a `<localfile>` is different: like invalid content in the group's `<client>`
+section, it is rejected (`(1230): Invalid element in the configuration`) and the configuration
+does not compile; see [`label`](../../ref/modules/logcollector/configuration.md#label). A
+`<label>` key starting with `_` inside a `<localfile>` does not fail the check either:
+`verify-agent-conf` never returns on it, so a check that seems stuck points to such a key.
+Do the extraction with the manager stopped: `wazuh-manager-modulesd` drops a group whose
+directory it cannot open, and between the extraction and the `chown` these carry the 4.x owner,
+which is exactly that. The group comes back on the next synchronization, after a `delete-group`
+has already gone out to its agents.
 
 ### Enrollment password
 
 ```bash
-install -m 640 -o wazuh-manager -g wazuh-manager /root/wazuh-4x-backup/authd.pass /etc/wazuh-manager/authd.pass
+install -m 660 -o wazuh-manager -g wazuh-manager /root/wazuh-4x-backup/authd.pass /etc/wazuh-manager/authd.pass
 ```
+
+A 4.x password shorter than **16 bytes** cannot be carried: the 5.0 `wazuh-manager-authd` refuses to start
+with it (see [`use_password`](../../ref/modules/authd/configuration.md#use_password)), and
+`wazuh-migrate-identity.py import --with-password` refuses it first. Set a longer password on the 4.x
+manager and on every agent or deployment script that still enrolls with it before you export.
 
 **This step is conditional.** Carry the password only if 4.x agents will still have to enroll
 against the 5.0 manager during the migration window — a rebuilt host, an agent whose `client.keys`
@@ -521,11 +579,11 @@ the installer deliberately does not do:
 sudo systemctl enable wazuh-manager
 sudo systemctl restart wazuh-manager
 sudo /var/wazuh-manager/bin/wazuh-manager-control status
-grep -E "keystore|authd" /var/wazuh-manager/logs/wazuh-manager.log | tail
+grep -E "client-keys|authd" /var/wazuh-manager/logs/wazuh-manager.log | tail
 ```
 
-Expected: every daemon running, `wazuh-manager-remoted:keystore: INFO: Loaded N agent key(s)
-from '/etc/wazuh-manager/client.keys'.` with your agent count, and authd `Accepting connections on port 1515.
+Expected: every daemon running, `wazuh-manager-remoted:client-keys: INFO: Loaded N agent key(s)
+from '/etc/wazuh-manager/client.keys'.` with your agent count (a later reload of the file prints `Reloaded N agent key(s)` instead), and authd `Accepting connections on port 1515.
 Shared-password enrollment is required.`
 Then confirm the registry through the API, with the `wazuh` password published in
 `/etc/wazuh-manager/export/credentials.env`, or the 4.x one if you carried `rbac.db`:
@@ -559,7 +617,9 @@ A 4.x agent on the legacy channel keeps:
 - remote upgrade through the manager.
 
 It does not get active response, inventory or FIM state synchronization, or vulnerability
-detection: 5.0's `wazuh-states-*` indices stay empty for it until it runs 5.0. See
+detection: 5.0's `wazuh-states-*` indices stay empty for it until it runs 5.0. Nor does it keep the
+rootcheck signature and audit files, unless you copied them into the 5.0 `default` group (see
+[step 1](#1-back-up-the-4x-manager)). See
 [Agent-manager protocol](agent-manager-protocol.md#what-the-legacy-channel-still-carries).
 The API endpoints that served that data in 4.x (`/syscollector/{agent_id}/*`, `PUT /active-response`)
 no longer exist in 5.0.
@@ -588,18 +648,20 @@ migrated fleet:
     wazuh-manager-remoted: INFO: legacy_task_delivery: agent '003': delivered the manager CA as 'root-ca.pem' for task '...'; the agent can verify this manager after the upgrade
     wazuh-manager-remoted: INFO: legacy_task_delivery: successfully delivered remote_upgrade task '...' to agent '003' (wpk: '...')
     ```
-  - **Package upgrade on the host.** Nothing is delivered. Place the manager's
-    `/etc/wazuh-manager/certs/root-ca.pem` at `/var/ossec/etc/certs/root-ca.pem` on Linux and
-    macOS, or `<installdir>\certs\root-ca.pem` on Windows, before upgrading:
-
-    ```bash
-    sudo install -m 640 -o root -g wazuh root-ca.pem /var/ossec/etc/certs/root-ca.pem
-    ```
-
-    The ownership is part of the instruction, not decoration: an anchor the `wazuh` user cannot read
-    fails closed exactly as a missing one does, and a listing looks right until the group is checked.
-    An agent already upgraded without one takes it from a token afterwards, keeping its identity:
-    `wazuh-agent-auth --token-file <file> --certs-only`.
+  - **Package upgrade on the host.** Nothing is delivered. On a Linux `.deb` or `.rpm` upgrade,
+    set `WAZUH_ENROLLMENT_TOKEN` (it also rewrites the manager address in `ossec.conf`, see
+    [Package upgrade on the host](upgrade-4x-to-5x.md#package-upgrade-on-the-host); the Windows and
+    macOS packages ignore it on an upgrade), or place the manager's
+    `/etc/wazuh-manager/certs/root-ca.pem` at
+    `/var/ossec/etc/certs/root-ca.pem` (`/Library/Ossec/etc/certs/root-ca.pem` on macOS,
+    `<installdir>\certs\root-ca.pem` on Windows) before upgrading. Neither the 4.x nor the 5.0
+    agent package creates `etc/certs`, and `etc/` is writable by the `wazuh` group, so follow the
+    commands in [Package upgrade on the host](upgrade-4x-to-5x.md#package-upgrade-on-the-host)
+    rather than a plain `install`: they create the directory safely and give the anchor the
+    ownership the agent needs. An anchor the `wazuh` user cannot read fails closed exactly as a
+    missing one does, and a listing looks right until the owner is checked. An agent already
+    upgraded without one takes it from a token afterwards, keeping its identity: stop the agent
+    and run `wazuh-agent-auth --token-file <file> --certs-only` (see below).
 
   An upgraded agent that holds the anchor and states no `<verification_mode>` of its own comes up
   verifying with `full` against it. One upgraded without an anchor connects and verifies nothing:
@@ -648,19 +710,55 @@ and a token minted on the manager:
 sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address mgr.example.com --ttl 1d
 ```
 
+`wazuh-agent-auth` refuses to run while `wazuh-agentd` is running (`stop the agent first`), so
+stop the agent before either command below and start it afterwards: `systemctl stop wazuh-agent`
+and `systemctl start wazuh-agent` on Linux (`service wazuh-agent stop`/`start` on hosts without
+systemd), `/Library/Ossec/bin/wazuh-control stop` and `start` on macOS, `Stop-Service WazuhSvc`
+and `Start-Service WazuhSvc` on Windows.
+
 - **The agent cannot verify the manager**, because no anchor reached it. `--certs-only` installs the
   CA and the address from the token and leaves the identity alone, which is what you want for an
   agent that is otherwise healthy:
 
   ```bash
+  # Linux. On macOS use /Library/Ossec/bin/wazuh-control stop|start, /Library/Ossec/bin/wazuh-agent-auth
+  # and a token file under /var/root (root's home there).
+  sudo systemctl stop wazuh-agent
   sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token --certs-only
+  sudo systemctl start wazuh-agent
+  ```
+
+  ```powershell
+  # Windows, from an elevated PowerShell; adjust $dir if the agent is installed elsewhere.
+  # The token sits in the installation directory, readable only by SYSTEM and Administrators,
+  # and is removed afterwards.
+  $dir = 'C:\Program Files (x86)\ossec-agent'
+  Stop-Service WazuhSvc
+  & "$dir\wazuh-agent-auth.exe" --token-file "$dir\token" --certs-only
+  Remove-Item "$dir\token"
+  Start-Service WazuhSvc
   ```
 
 - **The identity is gone** from the manager. `--force-enroll`
   registers the agent again; it comes back with a **new id**, which is the cost of that path:
 
   ```bash
+  # Linux. On macOS use /Library/Ossec/bin/wazuh-control stop|start, /Library/Ossec/bin/wazuh-agent-auth
+  # and a token file under /var/root (root's home there).
+  sudo systemctl stop wazuh-agent
   sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token --force-enroll
+  sudo systemctl start wazuh-agent
+  ```
+
+  ```powershell
+  # Windows, from an elevated PowerShell; adjust $dir if the agent is installed elsewhere.
+  # The token sits in the installation directory, readable only by SYSTEM and Administrators,
+  # and is removed afterwards.
+  $dir = 'C:\Program Files (x86)\ossec-agent'
+  Stop-Service WazuhSvc
+  & "$dir\wazuh-agent-auth.exe" --token-file "$dir\token" --force-enroll
+  Remove-Item "$dir\token"
+  Start-Service WazuhSvc
   ```
 
 `--dry-run` reports what either would change without contacting anything. See

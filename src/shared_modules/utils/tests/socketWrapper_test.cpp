@@ -15,6 +15,8 @@
 #include "socketWrapper.hpp"
 #include <algorithm>
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
 #include <gmock/gmock.h>
 
 void SocketWrapperTest::SetUp() {};
@@ -485,6 +487,44 @@ TEST_F(SocketWrapperTest, ReadDeliversPacketAndShrinksTheBuffer)
     EXPECT_EQ(socketWrapper.recvBufferSize(), static_cast<size_t>(BUFFER_MAX_SIZE));
 }
 
+TEST_F(SocketWrapperTest, ReadDeliversEmptyPacketWithoutWaitingForABody)
+{
+    constexpr int SOCK {123};
+    Socket<OSWrapper, SizeHeaderProtocol> socketWrapper {SOCK};
+    int calls {0};
+
+    // A zero length prefix used to leave the socket waiting on a recv() of zero bytes that never completes.
+    EXPECT_CALL(socketWrapper, recv(SOCK, _, 0, _)).Times(0);
+    EXPECT_CALL(socketWrapper, recv(SOCK, _, PACKET_FIELD_SIZE, _))
+        .WillOnce(Invoke(recvBytes(lengthPrefix(0))))
+        .WillOnce(Invoke(recvWouldBlock));
+    EXPECT_CALL(socketWrapper, shutdown(SOCK, _)).WillOnce(Return(0));
+    EXPECT_CALL(socketWrapper, close(SOCK)).WillOnce(Return(0));
+
+    EXPECT_NO_THROW(socketWrapper.read(
+        [&](const int sock, const char*, uint32_t dataSize, const char*, uint32_t headerSize)
+        {
+            ++calls;
+            EXPECT_EQ(sock, SOCK);
+            EXPECT_EQ(dataSize, 0u);
+            EXPECT_EQ(headerSize, 0u);
+        }));
+    EXPECT_EQ(calls, 1);
+}
+
+TEST_F(SocketWrapperTest, ReadRejectsEmptyPacketForAnInnerHeaderProtocol)
+{
+    constexpr int SOCK {123};
+    Socket<OSWrapper, AppendHeaderProtocol> socketWrapper {SOCK};
+
+    // An empty packet cannot carry the inner header-size field: it is rejected, never left pending.
+    EXPECT_CALL(socketWrapper, recv(SOCK, _, _, _)).WillOnce(Invoke(recvBytes(lengthPrefix(0))));
+    EXPECT_CALL(socketWrapper, shutdown(SOCK, _)).WillOnce(Return(0));
+    EXPECT_CALL(socketWrapper, close(SOCK)).WillOnce(Return(0));
+
+    EXPECT_THROW(socketWrapper.read(UNEXPECTED_CALLBACK), std::runtime_error);
+}
+
 TEST_F(SocketWrapperTest, ReadRejectsInnerHeaderLargerThanThePacket)
 {
     constexpr int SOCK {123};
@@ -548,4 +588,114 @@ TEST_F(SocketWrapperTest, ReadDeliversInnerHeaderAndBody)
             EXPECT_EQ(std::string(data, dataSize), body);
         }));
     EXPECT_TRUE(called);
+}
+
+namespace
+{
+    std::filesystem::path gSocketPath;
+    std::filesystem::path gOtherPath;
+} // namespace
+
+class ChangePathAfterBindPrimitives : public OSPrimitives
+{
+protected:
+    int bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
+    {
+        const auto ret {OSPrimitives::bind(sockfd, addr, addrlen)};
+        std::filesystem::remove(gSocketPath);
+        std::filesystem::create_symlink(gOtherPath, gSocketPath);
+        return ret;
+    }
+};
+
+TEST_F(SocketWrapperTest, ListenUnixSetsModeOnlyOnCreatedSocket)
+{
+    namespace fs = std::filesystem;
+    const auto dir {fs::temp_directory_path() / ("socketWrapperTest_" + std::to_string(::getpid()))};
+    fs::remove_all(dir);
+    fs::create_directories(dir);
+    gSocketPath = dir / "test.sock";
+    gOtherPath = dir / "other";
+    std::ofstream {gOtherPath};
+    fs::permissions(gOtherPath, fs::perms::owner_read | fs::perms::owner_write);
+
+    {
+        Socket<ChangePathAfterBindPrimitives> socketWrapper;
+        auto unixAddressBuilder {UnixAddress::builder()};
+        EXPECT_NO_THROW(socketWrapper.listen(unixAddressBuilder.address(gSocketPath.string()).data()));
+    }
+
+    EXPECT_EQ(fs::status(gOtherPath).permissions(), fs::perms::owner_read | fs::perms::owner_write);
+    EXPECT_TRUE(fs::is_socket(fs::symlink_status(gSocketPath)));
+    EXPECT_EQ(fs::status(gSocketPath).permissions() & fs::perms::all, static_cast<fs::perms>(0660));
+    EXPECT_EQ(std::distance(fs::directory_iterator(dir), fs::directory_iterator {}), 2);
+
+    fs::remove_all(dir);
+}
+
+class FailingBindPrimitives : public OSPrimitives
+{
+protected:
+    int bind(int, const struct sockaddr*, socklen_t)
+    {
+        errno = EACCES;
+        return -1;
+    }
+};
+
+TEST_F(SocketWrapperTest, ListenUnixBindFailureLeavesNoEntries)
+{
+    namespace fs = std::filesystem;
+    const auto dir {fs::temp_directory_path() / ("socketWrapperFailTest_" + std::to_string(::getpid()))};
+    fs::remove_all(dir);
+    fs::create_directories(dir);
+
+    Socket<FailingBindPrimitives> socketWrapper;
+    auto unixAddressBuilder {UnixAddress::builder()};
+    EXPECT_THROW(socketWrapper.listen(unixAddressBuilder.address((dir / "test.sock").string()).data()),
+                 std::runtime_error);
+    EXPECT_EQ(socketWrapper.fileDescriptor(), INVALID_SOCKET);
+    EXPECT_TRUE(fs::is_empty(dir));
+
+    fs::remove_all(dir);
+}
+
+class MoveBindDirectoryPrimitives : public OSPrimitives
+{
+protected:
+    int bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
+    {
+        for (const auto& entry : std::filesystem::directory_iterator(gSocketPath.parent_path()))
+        {
+            if (entry.path().filename().string().rfind(".w", 0) == 0)
+            {
+                std::filesystem::rename(entry.path(), gSocketPath.parent_path() / "moved");
+                std::filesystem::create_directory_symlink(gOtherPath, entry.path());
+                break;
+            }
+        }
+        return OSPrimitives::bind(sockfd, addr, addrlen);
+    }
+};
+
+TEST_F(SocketWrapperTest, ListenUnixCreatesSocketInPinnedDirectory)
+{
+    namespace fs = std::filesystem;
+    const auto dir {fs::temp_directory_path() / ("socketWrapperMoveTest_" + std::to_string(::getpid()))};
+    fs::remove_all(dir);
+    fs::create_directories(dir / "other");
+    gSocketPath = dir / "test.sock";
+    gOtherPath = dir / "other";
+
+    {
+        Socket<MoveBindDirectoryPrimitives> socketWrapper;
+        auto unixAddressBuilder {UnixAddress::builder()};
+        EXPECT_NO_THROW(socketWrapper.listen(unixAddressBuilder.address(gSocketPath.string()).data()));
+    }
+
+    EXPECT_TRUE(fs::is_directory(fs::symlink_status(dir / "moved")));
+    EXPECT_TRUE(fs::is_empty(gOtherPath));
+    EXPECT_TRUE(fs::is_socket(fs::symlink_status(gSocketPath)));
+
+    fs::remove_all(dir);
 }

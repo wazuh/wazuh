@@ -8,11 +8,16 @@
 #include <google/protobuf/message.h>
 #include <httpsrv/server.hpp>
 
+#include <base/utils/stringUtils.hpp>
+
 #include <eMessages/eMessage.h>
 #include <eMessages/engine.pb.h>
 
 namespace api::adapter
 {
+/// Longest protobuf parser message a 400 answer repeats (the message can quote a request value in full).
+inline constexpr std::size_t MAX_PARSE_ERROR_LENGTH = 256;
+
 using RouteHandler = std::function<void(const httplib::Request&, httplib::Response&)>;
 namespace eEngine = ::com::wazuh::api::engine;
 
@@ -181,8 +186,10 @@ ResOrErrorResp<Req> parseRequest(const httplib::Request& req)
         auto result = eMessage::eMessageFromJson<Req>(req.body);
         if (std::holds_alternative<base::Error>(result))
         {
-            std::string message =
-                fmt::format("Failed to parse protobuff json request: {}", std::get<base::Error>(result).message);
+            // The parser's message can repeat a whole request value: bound it.
+            std::string message = fmt::format(
+                "Failed to parse protobuff json request: {}",
+                base::utils::string::truncateForMessage(std::get<base::Error>(result).message, MAX_PARSE_ERROR_LENGTH));
             return Error {userErrorResponse<Res>(message)};
         }
 

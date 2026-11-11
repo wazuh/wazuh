@@ -18,10 +18,10 @@
  *
  *  - w_agent_token_bootstrap() is the first-boot path, run once per install from AgentdStart()
  *    on POSIX (agentd.c) and from local_start() on Windows (win_utils.c). It is latched: an
- *    anchor already on disk, a non-empty client.keys, or no token file each independently make
- *    it a no-op. On POSIX it runs before AgentdStart()'s privilege drop, so the files it writes
- *    are owned while still root and handed to the runtime user before the process stops being
- *    able to.
+ *    anchor already on disk or no token file each independently make it a no-op, and a
+ *    non-empty client.keys limits it to installing the anchor. On POSIX it runs before
+ *    AgentdStart()'s privilege drop, so the files it writes are owned while still root and
+ *    handed to the runtime user before the process stops being able to.
  *
  *  - w_agent_token_enroll() is the same sequence with no latches and no opinion about where the
  *    token came from or what happens to it afterwards. It is what lets an operator enroll,
@@ -118,14 +118,19 @@ typedef struct {
      *  needs to decide between retrying and giving up (see w_token_bootstrap_result_t); an
      *  operator driving a single attempt from a terminal has no use for it. */
     bool transient;
-    /** The manager finally refused the token itself: unknown, revoked, or out of uses. Its
-     *  signature verified, so this is authd's verdict on the credential rather than on the
-     *  request, and re-presenting it cannot change the answer. Acted on only by the caller,
-     *  which is the only party that owns the token and can dispose of it. */
+    /** The manager finally refused the token itself: expired, revoked, out of uses, or unknown to
+     *  the master (w_enrollment_token_refusal()). Its signature verified, so this is a verdict on
+     *  the credential rather than on the request, and re-presenting it cannot change the answer.
+     *  Acted on only by the caller, which is the only party that owns the token and can dispose
+     *  of it. */
     bool token_rejected;
     /** A 401 `token_unknown` or `stale_token` from /enroll: the node does not accept the token
      *  yet (its copy of the token store has not caught up, or the clocks disagree). */
     bool pending;
+    /** The pending 401 was `stale_token`: the manager refused the request's timestamp, so the clocks
+     *  disagree and the token itself may be fine. Lets wazuh-agent-auth point at the clock rather
+     *  than at the token. Meaningful only when pending is set. */
+    bool clock_skew;
     /** The named reason the failing step logged, verbatim. The command runs with the log's stderr
      *  echo off (main-agent-auth.c's nowDaemon()), so without this an operator is shown the
      *  failure class and not the cause -- "the CA could not be established" reads identically for
@@ -141,6 +146,9 @@ typedef struct {
      *  a refusal is the manager's to give, and repeating it is the difference between "refused"
      *  and "refused because this name is taken by an agent too new to replace". */
     char manager_message[256];
+    /** Which token the manager refused, what happened to it and what to do. Empty unless the
+     *  refusal was about the token itself (w_enrollment_token_refusal()). */
+    char token_refusal[256];
 } w_token_enroll_report_t;
 
 /**
@@ -203,8 +211,9 @@ w_token_read_status_t w_agent_token_read_stream(FILE *in, char **text);
 /**
  * @brief Outcome of w_agent_token_bootstrap(): whether the caller should give up or retry.
  *
- * W_TOKEN_BOOTSTRAP_DONE covers both a no-op (nothing to do: an anchor or client.keys already
- * exists, or no token file is present -- a legacy install) and a full success. Only the caller
+ * W_TOKEN_BOOTSTRAP_DONE covers a no-op (nothing to do: an anchor already exists, or no token
+ * file is present -- a legacy install), a full success, and any outcome of an anchor-only run
+ * for an agent that is already enrolled. Only the caller
  * can tell those apart if it needs to (checking AGENT_ANCHOR_CA/KEYS_FILE itself), because the
  * distinction has never mattered to what happens next: startup carries on either way.
  *
@@ -242,10 +251,13 @@ typedef enum {
  *
  * W_TOKEN_BOOTSTRAP_DONE in every case where the token path is simply not applicable: AGENT_ANCHOR_CA
  * already exists (a previous run already committed one -- the bootstrap never re-fetches once
- * an anchor is on disk), client.keys is already non-empty (already enrolled), or
- * AGENT_ENROLLMENT_TOKEN_FILE does not exist (a legacy install with no token). The first two
- * also discard the token on their way out: it is a one-shot credential, and once either is true
- * it can never be used again.
+ * an anchor is on disk, and discards the token on its way out), or AGENT_ENROLLMENT_TOKEN_FILE
+ * does not exist (a legacy install with no token).
+ *
+ * An agent already enrolled (non-empty client.keys) with no anchor, such as one upgraded in place
+ * from 4.x, uses the token to install the anchor only, as wazuh-agent-auth --certs-only does. Its
+ * registration is left alone, and a failure is logged and returns DONE: the agent starts as it
+ * did before, without an anchor. Only a transient failure keeps the token for the next start.
  *
  * Each latch independently blocks a re-run, so this is not the way to re-enroll or to move an
  * agent -- w_agent_token_enroll() is, and wazuh-agent-auth is what drives it.

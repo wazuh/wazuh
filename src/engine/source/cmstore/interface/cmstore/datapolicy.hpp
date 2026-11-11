@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/json.hpp>
+#include <base/utils/stringUtils.hpp>
 
 #include <cmstore/detail.hpp>
 
@@ -104,7 +105,7 @@ private:
         {
             throw std::runtime_error(fmt::format(
                 "'origin_space' contains invalid characters: '{}'. Only alphanumeric and underscores are allowed.",
-                value));
+                base::utils::string::truncateForMessage(value)));
         }
     }
 

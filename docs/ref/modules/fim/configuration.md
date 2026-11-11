@@ -25,6 +25,19 @@ For module overview and architecture, see [File Integrity Monitoring Overview](R
 
 ---
 
+## sregex patterns
+
+With `type="sregex"`, `nodiff` and `ignore` take an `sregex` pattern (`OSMatch` internally), and so does the `restrict` attribute of `directories`. It is not a regular expression:
+
+- `|` separates alternatives. The pattern matches when any alternative matches.
+- `^` at the start of an alternative anchors it to the start, and `$` at its end anchors it to the end. Without them, the alternative matches anywhere.
+- `!` as the first character of the whole pattern negates it: the pattern matches when no alternative matches.
+- Every other character is literal, including `.`, `*` and `\`. There are no escapes, character classes or wildcards: `\.pem$` matches only paths that end in `\.pem`, so write `.pem$`.
+- Matching is case-insensitive.
+- Patterns are matched against the full path of the file or directory, for example `/etc/ssl/private/server.key`.
+
+---
+
 ## Configuration Options
 
 ### diff
@@ -68,11 +81,11 @@ Limits the maximum individual file size eligible for diff reporting. Files excee
 List of files (one per line) for which diff content must never be computed or sent in alerts. This prevents sensitive data — such as private keys, credentials, or database config files — from leaking through alerts.
 
 - **Allowed values:** Any file path
-- **Attribute: `type`** — `sregex` to use a regex pattern to match multiple files
+- **Attribute: `type`** — `sregex` to match multiple files with an [`sregex` pattern](#sregex-patterns)
 
 ```xml
 <nodiff>/etc/ssl/private.key</nodiff>
-<nodiff type="sregex">\.key$|\.pem$|password</nodiff>
+<nodiff type="sregex">.key$|.pem$|password</nodiff>
 ```
 
 #### diff > registry_nodiff (Windows only)
@@ -133,7 +146,7 @@ Defines which directories to monitor. This is the primary configuration element 
 | `check_mtime` | `yes` | `yes`, `no` | Check the file modification time. |
 | `check_inode` | `yes` | `yes`, `no` | Check the file inode. Available on UNIX. On Windows, inode is always `0`. |
 | `check_device` | `yes` | `yes`, `no` | Check the file device identifier. Available on UNIX only. |
-| `restrict` | N/A | `sregex` | Limit monitoring to files whose names match the given regex. |
+| `restrict` | N/A | `sregex` | Limit monitoring to files whose full path matches the given [`sregex` pattern](#sregex-patterns). |
 | `tags` | N/A | Comma-separated strings | Attach custom tags to all alerts from this directory. |
 | `recursion_level` | `256` | Integer `0`–`320` | Maximum recursion depth. `0` means only the top-level directory is monitored. |
 | `follow_symbolic_link` | `no` | `yes`, `no` | UNIX only. When enabled, symbolic links are followed and the linked content is monitored. When disabled, the link itself is monitored. |
@@ -175,7 +188,7 @@ Disables or enables the entire syscheck module.
 
 ### file_limit
 
-Sets a hard cap on the number of files FIM can monitor. Once the database reaches this limit, newly discovered files are ignored until the count drops below it.
+Sets a hard cap on the number of files FIM can monitor. Once the database reaches this limit, newly discovered files are not added to the database until the count drops below it (events for them may still be generated).
 
 ```xml
 <file_limit>
@@ -187,7 +200,7 @@ Sets a hard cap on the number of files FIM can monitor. Once the database reache
 | Sub-element | Default | Allowed values | Description |
 |---|---|---|---|
 | `enabled` | `yes` | `yes`, `no` | Enable or disable the file limit |
-| `entries` | `100000` | Integer `1`–`2147483647` | Maximum number of files to monitor |
+| `entries` | `100000` | Integer `1`–`2147483647` | Maximum number of files to monitor. Values outside this range are accepted silently (not rejected at validation) |
 
 ---
 
@@ -196,7 +209,7 @@ Sets a hard cap on the number of files FIM can monitor. Once the database reache
 Sets how often syscheck runs a full scheduled scan, in seconds.
 
 - **Default value:** `43200` (12 hours)
-- **Allowed values:** Any positive integer (seconds)
+- **Allowed values:** Any positive integer (seconds). A value of `0` or an absurdly large one is accepted silently, not rejected
 
 ```xml
 <frequency>43200</frequency>
@@ -210,7 +223,7 @@ Files or directories to exclude from monitoring and scanning. Paths that match i
 
 - **Default value:** Varies by OS
 - **Allowed values:** Any file or directory path
-- **Attribute: `type`** — `sregex` to use a regex pattern
+- **Attribute: `type`** — `sregex` to match paths with an [`sregex` pattern](#sregex-patterns)
 
 ```xml
 <ignore>/etc/mtab</ignore>
@@ -651,7 +664,7 @@ For environments that require full audit trails on critical configuration files:
   <!-- Protect private key from diff leaking -->
   <diff>
     <nodiff>/etc/ssl/private.key</nodiff>
-    <nodiff type="sregex">\.pem$|\.key$</nodiff>
+    <nodiff type="sregex">.pem$|.key$</nodiff>
     <disk_quota>
       <enabled>yes</enabled>
       <limit>2GB</limit>
@@ -750,7 +763,7 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 3. Modify the content of `test.txt`.
 4. Wait for the next scheduled scan.
 
-**Expected result:** An alert with rule ID `550` (integrity checksum changed) is generated. The alert includes the modified file path, the changed attributes (hash, size, mtime), and the agent name.
+**Expected result:** A modified event is generated. The event includes the modified file path, the changed attributes (hash, size, mtime), and the agent name.
 
 ### UC-02: Detect new file creation
 
@@ -770,7 +783,7 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 2. Create a new file `newfile.txt` inside `/tmp/fim-test`.
 3. Wait for the next scheduled scan.
 
-**Expected result:** An alert with rule ID `554` (file added to the system) is generated with the new file's path and attributes.
+**Expected result:** An added event is generated with the new file's path and attributes.
 
 ### UC-03: Detect file deletion
 
@@ -781,7 +794,7 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 2. Delete the file.
 3. Wait for the next scheduled scan.
 
-**Expected result:** An alert with rule ID `553` (file deleted) is generated.
+**Expected result:** A deleted event is generated.
 
 ### UC-04: Real-time monitoring - immediate change detection
 
@@ -815,7 +828,7 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 1. Create `/tmp/fim-whodata` and wait for FIM to begin monitoring.
 2. As a specific user (e.g., `www-data`), modify a file inside the directory.
 
-**Expected result:** The generated alert includes `audit.effective_user.name`, `audit.process.name`, and `audit.process.id` fields identifying the user and process that made the change.
+**Expected result:** The generated alert includes `data.file.audit.effective_name`, `data.file.audit.process_name`, and `data.file.audit.process_id` fields (all who-data fields live under `data.file.audit.*`) identifying the user and process that made the change.
 
 ### UC-06: nodiff - sensitive file content not leaked
 
@@ -874,7 +887,7 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 2. Create an 11th file.
 3. Wait for the next scheduled scan.
 
-**Expected result:** No alert is generated for the 11th file. A warning log entry indicates the database limit has been reached.
+**Expected result:** Events are still generated for all the files found, including the 11th, even though the database holds only 10 entries. A warning log entry indicates the database limit has been reached.
 
 ### UC-09: Windows registry change detection
 
@@ -967,7 +980,7 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 
 **Use `tags` to enrich alerts.** Adding descriptive tags to directory and registry entries (e.g., `tags="critical-config,pci-dss"`) makes downstream alert triage and SIEM correlation significantly faster.
 
-**Test `ignore` rules with regex carefully.** The `sregex` type uses POSIX extended regex. Always validate patterns against real file paths before deploying to production to avoid accidentally suppressing genuine alerts.
+**Test `sregex` patterns carefully.** `sregex` is not a regular expression (see [sregex patterns](#sregex-patterns)). A pattern written as a regex, such as `\.tmp$`, only matches paths that end in a literal `\.tmp`: an `ignore` or `nodiff` rule with it misses the files it was written for, and a `restrict` with it drops them. Always validate patterns against real file paths before deploying to production to avoid accidentally suppressing genuine alerts.
 
 ---
 

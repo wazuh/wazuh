@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#include <atomic>
 #include <chrono>
 #include <fcntl.h>
 #include <filesystem>
@@ -106,6 +107,26 @@ void setFileMtime(const std::filesystem::path& path, std::time_t epochSeconds, l
     ::utimensat(AT_FDCWD, path.c_str(), times, 0);
 }
 
+// Compression tasks the channel worker thread hands to the mock scheduler, read back by the test thread
+class TaskSink
+{
+public:
+    void push(scheduler::TaskConfig&& task)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_tasks.push_back(std::move(task));
+    }
+
+    std::vector<scheduler::TaskConfig> tasks()
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_tasks;
+    }
+
+private:
+    std::mutex m_mutex;
+    std::vector<scheduler::TaskConfig> m_tasks;
+};
 } // namespace
 
 class ChannelHandlerComponentTest : public ::testing::Test
@@ -1325,11 +1346,11 @@ TEST_F(ChannelHandlerComponentTest, CompressionCancelledWhenShouldRunIsFalse)
 
     auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
 
-    std::vector<scheduler::TaskConfig> capturedTasks;
+    TaskSink capturedTasksSink;
     EXPECT_CALL(*mockScheduler, scheduleTask(_, _))
         .Times(AtLeast(1))
-        .WillRepeatedly([&capturedTasks](std::string_view, scheduler::TaskConfig&& taskCfg)
-                        { capturedTasks.push_back(std::move(taskCfg)); });
+        .WillRepeatedly([&capturedTasksSink](std::string_view, scheduler::TaskConfig&& taskCfg)
+                        { capturedTasksSink.push(std::move(taskCfg)); });
 
     auto handler = createHandlerWithScheduler("cancel-test", config, mockScheduler, shouldRun);
     auto writer = handler->createWriter();
@@ -1342,6 +1363,7 @@ TEST_F(ChannelHandlerComponentTest, CompressionCancelledWhenShouldRunIsFalse)
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
+    auto capturedTasks = capturedTasksSink.tasks();
     ASSERT_GE(capturedTasks.size(), 1u) << "Expected at least one compression task to be scheduled";
 
     shouldRun->store(false, std::memory_order_relaxed);
@@ -1771,12 +1793,12 @@ TEST_F(ChannelHandlerComponentTest, RetentionWithCompressionMultiplePendingRotat
         setFileMtime(filePath, futureTime + i * 10);
     }
 
-    std::vector<scheduler::TaskConfig> pendingTasks;
+    TaskSink pendingTasksSink;
     auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
     EXPECT_CALL(*mockScheduler, scheduleTask(_, _))
         .Times(AtLeast(2))
-        .WillRepeatedly([&pendingTasks](std::string_view, scheduler::TaskConfig&& cfg)
-                        { pendingTasks.push_back(std::move(cfg)); });
+        .WillRepeatedly([&pendingTasksSink](std::string_view, scheduler::TaskConfig&& cfg)
+                        { pendingTasksSink.push(std::move(cfg)); });
 
     auto handler = createHandlerWithScheduler("retention-pending", config, mockScheduler);
     auto writer = handler->createWriter();
@@ -1787,6 +1809,7 @@ TEST_F(ChannelHandlerComponentTest, RetentionWithCompressionMultiplePendingRotat
     (*writer)(std::string(config.maxSize + 1, 'B'));
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
 
+    auto pendingTasks = pendingTasksSink.tasks();
     ASSERT_GE(pendingTasks.size(), 2u) << "Expected at least 2 compression tasks to be scheduled";
 
     const auto activeFilePath = handler->getCurrentFilePath();
@@ -1969,11 +1992,11 @@ TEST_F(ChannelHandlerComponentTest, RetentionSkipsInFlightFiles)
     config.compressionLevel = 1;
     config.pattern = "${name}-${YYYY}-${MM}-${DD}-${counter}";
 
-    std::vector<scheduler::TaskConfig> pendingTasks;
+    TaskSink pendingTasksSink;
     auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
     EXPECT_CALL(*mockScheduler, scheduleTask(_, _))
-        .WillRepeatedly([&pendingTasks](std::string_view, scheduler::TaskConfig&& cfg)
-                        { pendingTasks.push_back(std::move(cfg)); });
+        .WillRepeatedly([&pendingTasksSink](std::string_view, scheduler::TaskConfig&& cfg)
+                        { pendingTasksSink.push(std::move(cfg)); });
 
     auto handler = createHandlerWithScheduler("inflight-skip", config, mockScheduler);
     auto writer = handler->createWriter();
@@ -1984,6 +2007,7 @@ TEST_F(ChannelHandlerComponentTest, RetentionSkipsInFlightFiles)
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
 
+    auto pendingTasks = pendingTasksSink.tasks();
     ASSERT_GE(pendingTasks.size(), 3u) << "Expected at least 3 compression tasks";
 
     pendingTasks.back().taskFunction();
@@ -2042,17 +2066,16 @@ TEST_F(ChannelHandlerComponentTest, CompressionFailureStillUnregistersInFlight)
         setFileMtime(filePath, baseTime + i * 10);
     }
 
-    std::vector<scheduler::TaskConfig> collectedTasks;
+    TaskSink collectedTasksSink;
     auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
-    bool collectFirst = true;
+    std::atomic<bool> collectFirst {true};
     EXPECT_CALL(*mockScheduler, scheduleTask(_, _))
         .WillRepeatedly(
-            [&collectedTasks, &collectFirst](std::string_view, scheduler::TaskConfig&& cfg)
+            [&collectedTasksSink, &collectFirst](std::string_view, scheduler::TaskConfig&& cfg)
             {
-                if (collectFirst)
+                if (collectFirst.exchange(false))
                 {
-                    collectFirst = false;
-                    collectedTasks.push_back(std::move(cfg));
+                    collectedTasksSink.push(std::move(cfg));
                 }
                 else
                 {
@@ -2066,6 +2089,7 @@ TEST_F(ChannelHandlerComponentTest, CompressionFailureStillUnregistersInFlight)
     (*writer)(std::string(config.maxSize + 1, 'X'));
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
 
+    auto collectedTasks = collectedTasksSink.tasks();
     ASSERT_EQ(collectedTasks.size(), 1u);
 
     std::filesystem::path rotatedFile;
@@ -2975,12 +2999,12 @@ TEST_F(ChannelHandlerComponentTest, CompressionCancelledWithRetentionActive)
         setFileMtime(filePath, baseTime + i * 10);
     }
 
-    std::vector<scheduler::TaskConfig> capturedTasks;
+    TaskSink capturedTasksSink;
     auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
     EXPECT_CALL(*mockScheduler, scheduleTask(_, _))
         .Times(AtLeast(1))
-        .WillRepeatedly([&capturedTasks](std::string_view, scheduler::TaskConfig&& cfg)
-                        { capturedTasks.push_back(std::move(cfg)); });
+        .WillRepeatedly([&capturedTasksSink](std::string_view, scheduler::TaskConfig&& cfg)
+                        { capturedTasksSink.push(std::move(cfg)); });
 
     auto handler = createHandlerWithScheduler("cancel-ret", config, mockScheduler, shouldRun);
     auto writer = handler->createWriter();
@@ -2995,6 +3019,7 @@ TEST_F(ChannelHandlerComponentTest, CompressionCancelledWithRetentionActive)
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
+    auto capturedTasks = capturedTasksSink.tasks();
     ASSERT_GE(capturedTasks.size(), 1u) << "At least one compression task should be captured";
 
     // Cancel compression
@@ -3385,12 +3410,12 @@ TEST_F(ChannelHandlerComponentTest, CompressionAndRetentionFullMatrixWithCompres
     config.pattern = "${name}-${counter}";
 
     // Capture tasks to verify in-flight behavior, then run them
-    std::vector<scheduler::TaskConfig> capturedTasks;
+    TaskSink capturedTasksSink;
     auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
     EXPECT_CALL(*mockScheduler, scheduleTask(_, _))
         .Times(AtLeast(1))
-        .WillRepeatedly([&capturedTasks](std::string_view, scheduler::TaskConfig&& cfg)
-                        { capturedTasks.push_back(std::move(cfg)); });
+        .WillRepeatedly([&capturedTasksSink](std::string_view, scheduler::TaskConfig&& cfg)
+                        { capturedTasksSink.push(std::move(cfg)); });
 
     auto handler = createHandlerWithScheduler("full-matrix-comp", config, mockScheduler);
     auto writer = handler->createWriter();
@@ -3407,6 +3432,7 @@ TEST_F(ChannelHandlerComponentTest, CompressionAndRetentionFullMatrixWithCompres
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
 
+    auto capturedTasks = capturedTasksSink.tasks();
     ASSERT_GE(capturedTasks.size(), 4u) << "Expected at least 4 compression tasks";
 
     // Before running tasks: in-flight .log files should still exist

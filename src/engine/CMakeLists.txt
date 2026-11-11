@@ -269,6 +269,18 @@ endif()
 message("PATH: ${CMAKE_SOURCE_DIR}")
 register_external_library(fmt::fmt               "${CMAKE_SOURCE_DIR}/external/fmt/include" "${CMAKE_SOURCE_DIR}/external/fmt/build/libfmt.a")
 register_external_library(spdlog::spdlog         "${CMAKE_SOURCE_DIR}/external/spdlog/include" "${CMAKE_SOURCE_DIR}/external/spdlog/build/libspdlog.a")
+
+# spdlog ships its own bundled fmt (10.2.1) while the engine links external/fmt (8.1.1), and both use
+# the same include guards (FMT_CORE_H_, FMT_FORMAT_H_...): whichever is included first silently voids
+# the other. Since `namespace spdlog` is not versioned and the engine uses spdlog header-only, the same
+# spdlog class then gets defined over fmt::v8 in some translation units and over fmt::v10 in others,
+# with identical mangled names -- an ODR violation that UBSAN reports as a vptr error.
+# SPDLOG_FMT_EXTERNAL makes spdlog's headers include <fmt/core.h>, so every engine TU uses external/fmt.
+# It goes on the imported target (spdlog_spdlog), never on the spdlog::spdlog ALIAS:
+# target_compile_definitions() on an ALIAS is a CMake error.
+# NOTE: with this macro, <spdlog/fmt/std.h> would resolve to <fmt/std.h>, which does not exist in
+# fmt 8.1.1. No engine TU includes it today; one that did would fail to compile with a confusing error.
+target_compile_definitions(spdlog_spdlog INTERFACE SPDLOG_FMT_EXTERNAL)
 register_external_library(yaml-cpp::yaml-cpp     "${CMAKE_SOURCE_DIR}/external/yaml-cpp/include" "${CMAKE_SOURCE_DIR}/external/yaml-cpp/build/libyaml-cpp.a")
 register_external_library(RapidJSON::RapidJSON   "${CMAKE_SOURCE_DIR}/external/rapidjson/include" "")
 register_external_library(RxCpp::RxCpp           "${CMAKE_SOURCE_DIR}/external/RxCpp/Rx/v2/src/" "")
@@ -279,15 +291,38 @@ register_external_library(OpenSSL::SSL           "${CMAKE_SOURCE_DIR}/external/o
 register_external_library(OpenSSL::Crypto        "${CMAKE_SOURCE_DIR}/external/openssl/include" "${CMAKE_SOURCE_DIR}/external/openssl/libcrypto.a")
 register_external_library(ZLIB::ZLIB             "${CMAKE_SOURCE_DIR}/external/zlib" "${CMAKE_SOURCE_DIR}/external/zlib/libz.a")
 register_external_library(Minizip::Minizip       "${CMAKE_SOURCE_DIR}/external/zlib/contrib" "${CMAKE_SOURCE_DIR}/external/zlib/contrib/minizip/libminizip.a")
+register_external_library(zstd::libzstd_static   "${CMAKE_SOURCE_DIR}/external/zstd/lib" "${CMAKE_SOURCE_DIR}/external/zstd/build/cmake-build/lib/libzstd.a")
+register_external_library(brotli::brotlidec      "${CMAKE_SOURCE_DIR}/external/brotli/install/include" "${CMAKE_SOURCE_DIR}/external/brotli/install/lib/libbrotlidec.a")
+register_external_library(brotli::brotlicommon   "${CMAKE_SOURCE_DIR}/external/brotli/install/include" "${CMAKE_SOURCE_DIR}/external/brotli/install/lib/libbrotlicommon.a")
 register_external_library(CURL::libcurl          "${CMAKE_SOURCE_DIR}/external/curl/include" "${CMAKE_SOURCE_DIR}/external/curl/lib/.libs/libcurl.a")
-set_target_properties(CURL_libcurl PROPERTIES INTERFACE_LINK_LIBRARIES "ZLIB_ZLIB;OpenSSL_SSL;OpenSSL_Crypto")
+set_target_properties(CURL_libcurl PROPERTIES INTERFACE_LINK_LIBRARIES "ZLIB_ZLIB;OpenSSL_SSL;OpenSSL_Crypto;zstd_libzstd_static;brotli_brotlidec;brotli_brotlicommon")
 register_external_library(maxminddb::maxminddb   "${CMAKE_SOURCE_DIR}/external/libmaxminddb/include" "${CMAKE_SOURCE_DIR}/external/libmaxminddb/build/libmaxminddb.a")
 target_include_directories(maxminddb_maxminddb INTERFACE "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/external/libmaxminddb/build/generated>")
 register_external_library(benchmark::benchmark   "${CMAKE_SOURCE_DIR}/external/benchmark/include" "${CMAKE_SOURCE_DIR}/external/benchmark/build/src/libbenchmark.a")
 register_external_library(benchmark::benchmark_main "${CMAKE_SOURCE_DIR}/external/benchmark/src" "${CMAKE_SOURCE_DIR}/external/benchmark/build/src/libbenchmark_main.a")
 set_target_properties(benchmark_benchmark_main PROPERTIES INTERFACE_LINK_LIBRARIES "benchmark_benchmark")
 register_external_library(pugixml::pugixml       "${CMAKE_SOURCE_DIR}/external/pugixml/src" "${CMAKE_SOURCE_DIR}/external/pugixml/build/libpugixml.a")
-register_external_library(protobuf::libprotobuf  "${CMAKE_SOURCE_DIR}/external/protobuf/src" "${CMAKE_SOURCE_DIR}/external/protobuf/build/libprotobuf.a")
+# Under ThreadSanitizer the engine links a protobuf built with the sanitizer: the Map code it inlines and the
+# precompiled, uninstrumented library disagree on the table layout and crash. Built here, not in
+# external/CMakeLists.txt, whose text is an input of the dependency pool keys (packages/externals/deps.py).
+set(PROTOBUF_LIB_DIR "${CMAKE_SOURCE_DIR}/external/protobuf/build")
+if(ENGINE_ENABLE_TSAN)
+  set(PROTOBUF_LIB_DIR "${CMAKE_SOURCE_DIR}/external/protobuf/build-tsan")
+  include(ExternalProject)
+  ExternalProject_Add(
+    protobuf_tsan_external
+    SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/protobuf
+    BINARY_DIR ${PROTOBUF_LIB_DIR}
+    CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -Dprotobuf_BUILD_TESTS=OFF
+               -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+               "-DCMAKE_CXX_FLAGS=-fsanitize=thread -fno-omit-frame-pointer"
+    INSTALL_COMMAND ""
+    BUILD_BYPRODUCTS ${PROTOBUF_LIB_DIR}/libprotobuf.a)
+endif()
+register_external_library(protobuf::libprotobuf  "${CMAKE_SOURCE_DIR}/external/protobuf/src" "${PROTOBUF_LIB_DIR}/libprotobuf.a")
+if(TARGET protobuf_tsan_external)
+  add_dependencies(protobuf_libprotobuf protobuf_tsan_external)
+endif()
 set(PROTOBUF_DIR "${CMAKE_SOURCE_DIR}/external/protobuf")
 register_external_library(date::date             "${CMAKE_SOURCE_DIR}/external/date/include" "")
 register_external_library(date::date-tz          "${CMAKE_SOURCE_DIR}/external/date/include" "${CMAKE_SOURCE_DIR}/external/date/build/libdate-tz.a")
@@ -378,7 +413,7 @@ wazuh_link_jemalloc(wazuh-engine PLAIN)
 message(STATUS "engine CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
 message(STATUS "engine CMAKE_EXE_LINKER_FLAGS: ${CMAKE_EXE_LINKER_FLAGS}")
 message(STATUS "engine CMAKE_SHARED_LINKER_FLAGS: ${CMAKE_SHARED_LINKER_FLAGS}")
-message(STATUS "engine CMAKE_MODULE_LINKER_FLAGS: ${CMAKE_MODULE_LINKER_FLAGS}") 
+message(STATUS "engine CMAKE_MODULE_LINKER_FLAGS: ${CMAKE_MODULE_LINKER_FLAGS}")
 
 # Create a custom test target
 function(get_all_targets _result _dir)

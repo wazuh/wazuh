@@ -29,7 +29,7 @@ SCA includes **automatic recovery capabilities** to detect and resolve synchroni
 | :-------: | ------------------- | --------------------------------------------------------------------------- | ------- |
 |           | `enabled`           | Enables or disables the SCA module                                          | yes     |
 |           | `scan_on_start`     | Runs an assessment as soon as the agent starts                              | yes     |
-|           | `interval`          | Time between scans (uses scheduling tags)                                   | —       |
+|           | `interval`          | Time between scans (uses scheduling tags)                                   | 12h (as shipped) |
 |           | `policies`          | Section containing policy file configurations                                | auto-loaded |
 |           | `policy`            | Individual policy file path (can use `enabled="no"` attribute)              | —       |
 

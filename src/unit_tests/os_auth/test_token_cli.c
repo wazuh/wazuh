@@ -211,6 +211,7 @@ static void test_create_sends_the_request_and_prints_only_the_token(void **state
     assert_non_null(strstr(s.err_buf, "expires: 2027-01-15T08:00:00Z (1800000000)\n"));
     assert_non_null(strstr(s.err_buf, "pin: " FROZEN_PIN_HEX "\n"));
     assert_non_null(strstr(s.err_buf, "credential: yes\n"));
+    assert_null(strstr(s.err_buf, "WARNING"));
     streams_free(&s);
 
     // Flags travel as JSON booleans; port and prefix only when given; no pin_hex with an embedded CA.
@@ -225,6 +226,9 @@ static void test_create_sends_the_request_and_prints_only_the_token(void **state
     assert_string_equal(s.out_buf, "T2\n");
     assert_null(strstr(s.err_buf, "pin:"));
     assert_non_null(strstr(s.err_buf, "credential: no\n"));
+    // An IP address as the token address: the mint's warning is repeated on stderr, never on stdout
+    assert_non_null(strstr(s.err_buf, "WARNING: the token address '127.0.0.1' is an IP address: the token stops "
+                                      "working if the manager's address changes."));
     streams_free(&s);
 }
 
@@ -504,9 +508,9 @@ static void assert_frozen_description(const char *text) {
     assert_non_null(strstr(text, "adr: siem.example.local\n"));
     assert_non_null(strstr(text, "pin: " FROZEN_PIN_HEX "\n"));
     assert_non_null(strstr(text, "credential: present\n"));
-    // Neither the credential nor either of its halves ever reaches the output.
+    // The id is shown so the token can be revoked; the secret never reaches the output.
+    assert_non_null(strstr(text, "id: " TOKEN_ID "\n"));
     assert_null(strstr(text, FROZEN_SECRET_B64));
-    assert_null(strstr(text, TOKEN_ID));
     assert_null(strstr(text, "key"));
 }
 

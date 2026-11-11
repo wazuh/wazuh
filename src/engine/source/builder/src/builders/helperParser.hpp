@@ -166,7 +166,7 @@ inline parsec::Parser<builders::OpArg> getHelperJsonArgParser()
         // Try to parse as json value
         const auto ssInput = std::string(sv.substr(pos));
         rapidjson::StringStream ss(ssInput.c_str());
-        rapidjson::Document doc;
+        json::Document doc;
         // Bounded parse: a literal nested deeper than json::Json::MAX_DEPTH never becomes a DOM
         const auto result = json::Json::parseBounded<rapidjson::kParseStopWhenDoneFlag>(doc, ss);
 

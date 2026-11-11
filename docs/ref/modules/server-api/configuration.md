@@ -23,11 +23,16 @@ For module overview and architecture, see [Server API Module](README.md).
 **XML Section:** None. **Internal Options:** None.
 
 Both YAML files are merged over built-in defaults (`api/api/configuration.py`) and validated against a
-JSON schema (`api/api/validator.py`) when `wazuh-manager-apid` starts: an unknown option or a value of
-the wrong type stops it with error `2000`. Every string value is lowercased except `https.key`,
+JSON schema (`api/api/validator.py`) when `wazuh-manager-apid` starts or runs `-t`: an unknown option or a value of
+the wrong type stops it with error `2000`. The `-t` check also validates the configured API log size
+and, when HTTPS is enabled, that the cipher list selects a usable cipher. Every string value is lowercased except `https.key`,
 `https.cert`, `https.ca` and `https.ssl_ciphers`, and the strings `yes`/`no` are read as booleans. A change to `api.yaml`
-takes effect when `wazuh-manager-apid` restarts (for example with
-`/var/wazuh-manager/bin/wazuh-manager-control restart`).
+takes effect when `wazuh-manager-apid` restarts: under systemd with
+`/var/wazuh-manager/bin/wazuh-manager-control check && systemctl restart wazuh-manager`, or with
+`PUT /cluster/restart`, which runs the same check first; without systemd with
+`/var/wazuh-manager/bin/wazuh-manager-control restart`. A shell `wazuh-manager-control restart` on a systemd
+host relaunches the daemons outside the unit
+([`wazuh-manager-control`](../../architecture.md#wazuh-manager-control)).
 
 Validate a file without starting the API:
 
@@ -36,7 +41,8 @@ Validate a file without starting the API:
 ```
 
 It prints nothing and exits `0` when the file is valid, and prints `Configuration not valid. ERROR: ...`
-and exits `1` otherwise. Without `-c`, `-t` validates only the built-in defaults.
+and exits `1` otherwise, including when the file named with `-c` does not exist. Without `-c`, `-t`
+validates only the built-in defaults.
 
 ### `wazuh-manager-apid` options
 
@@ -46,9 +52,9 @@ runs and debugging:
 | Option | Effect |
 |--------|--------|
 | `-f` | Run in the foreground, logging to the console as well as to the log files |
-| `-r` | Run as root: do not drop privileges to `wazuh-manager` (otherwise governed by [`drop_privileges`](#drop_privileges)) |
-| `-c <file>` | Use this API configuration file (merged over the built-in defaults) instead of `api.yaml` |
-| `-t` | Validate the configuration file given with `-c` and exit |
+| `-r` | Run as root: do not drop privileges to `wazuh-manager`. `api.yaml` has no option for it |
+| `-c <file>` | Use this API configuration file (merged over the built-in defaults) instead of `api.yaml`; when starting, a file that does not exist is error `2004` |
+| `-t` | Validate the configuration file given with `-c` (without `-c`, only the built-in defaults, never `api.yaml`) and exit: `0` when it is valid, otherwise `Configuration not valid. ERROR: <reason>` (no error code; a missing `-c` file included) and exit `1` |
 | `-V` | Print the version and exit |
 | `-d` | Accepted, but has no effect: the log level is [`logs.level`](#logs) |
 
@@ -67,14 +73,11 @@ Addresses the API listens on.
 ### port
 
 - **Default value:** `55000`
-- **Allowed values:** Number
-
-### drop_privileges
-
-Run the API as the `wazuh-manager` user after it has read its configuration and certificates.
-
-- **Default value:** `true`
-- **Allowed values:** `true`, `false`. Ignored when `wazuh-manager-apid` is started with `-r`.
+- **Allowed values:** Number. `-t` does not range-check it: `0`, `-1` or `70000` pass the check (the schema type is `number`) and fail only at bind
+- **Note:** Use a port of `1024` or higher. The API binds its sockets after it has switched to the `wazuh-manager`
+  user, so a privileged port (below `1024`, such as `443`) fails at start with `EACCES` and the API does not start.
+  To serve the API on such a port, keep it on its own port and put a reverse proxy or a port redirect (for example
+  an `iptables` `REDIRECT` rule) in front of it.
 
 ### max_upload_size
 
@@ -114,6 +117,9 @@ Number of worker processes dedicated to authentication requests.
 - **Note:** At most `authentication_pool_size - 1` password checks (at least one) run at once, so with
   two or more workers one is always left for validating tokens. Once eight times that many logins are
   running or waiting, a further login is refused with `429` and error `6006` before its password is checked
+- **Note:** A login admitted to the queue still counts against `intervals.request_timeout`: under load, one
+  that waits longer than that for its password check answers `500` with error `3021` (a timeout, not a wrong
+  password). Retry it, or raise this pool size if it happens routinely
 
 ### intervals
 
@@ -129,7 +135,9 @@ Maximum time in seconds for API request processing.
 ### https
 
 TLS settings of the listener. File names are resolved under `/etc/wazuh-manager/certs/` and may
-contain only letters, digits, `_`, `-` and `.`.
+contain only letters, digits, `_`, `-` and `.`. The defaults below are the file names; the resolved
+configuration, as `GET /cluster/api/config` returns it, shows the absolute paths
+(`/etc/wazuh-manager/certs/apid-key.pem`).
 
 | Option | Default | Description |
 |--------|---------|-------------|
@@ -148,8 +156,13 @@ checks and the SAN discovery are in [Server pairs](../../getting-started/credent
 [Subject alternative names](../../getting-started/credentials.md#subject-alternative-names).
 
 `wazuh-manager-apid` generates no certificate. When `enabled` is `true` and the configured pair is
-missing, not readable by `wazuh-manager`, or the key does not match the certificate, it logs error
+missing, not readable by `wazuh-manager`, or the key does not match the certificate — or `use_ca` is
+`true` and `ca` is missing, or `ssl_ciphers` selects no cipher even uppercased — it logs error
 `2003` naming the files in `logs/api.log` and does not start.
+
+A connection the HTTP server cannot read a request from (a TLS probe such as `openssl s_client` that sends
+no valid request, a scanner) is logged by the HTTP server as `WARNING: Invalid HTTP request received.`,
+with no peer address; the access log has no line for it, since no request was read.
 
 A client that verifies the API trusts the manager's CA, published for clients on the same host in
 `/etc/wazuh-manager/export/ca.pem` (the same CA as in `ca/root-ca.pem` and `certs/root-ca.pem`), and checks any of
@@ -164,7 +177,7 @@ configured pair before every start and refuses a path outside that directory
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `level` | `info` | `debug2`, `debug`, `info`, `warning`, `error` or `critical`. `debug2` also writes each request's headers, with credential values (`Authorization`, `Proxy-Authorization`, `Cookie`, API keys) masked |
+| `level` | `info` | (`-t` does not check the value against this list; any string passes) `debug2`, `debug`, `info`, `warning`, `error` or `critical`. It applies to the framework's messages too (the `wazuh` logger: the restart fallback, upgrade exclusions, indexer warnings), which the API writes to the same files. `debug2` also writes each request's headers, with credential values (`Authorization`, `Proxy-Authorization`, `Cookie`, API keys) masked |
 | `format` | `plain` | `plain` (`logs/api.log`), `json` (`logs/api.json`), or both: `plain,json` / `json,plain` |
 | `max_size.enabled` | `false` | Rotate by size instead of at midnight |
 | `max_size.size` | `1M` | `<number>K` or `<number>M`, at least `1M` (error `2011` otherwise) |
@@ -183,12 +196,14 @@ Cross-origin resource sharing, applied with Starlette's `CORSMiddleware`.
 
 ### access
 
+`-t` checks only that these four values are integers: a negative value is not rejected.
+
 | Option | Default | Description |
 |--------|---------|-------------|
-| `max_login_attempts` | `50` | Failed logins from one client before it is blocked (`403`, error `6000`) |
+| `max_login_attempts` | `50` | Failed logins for one user from one client before that user is blocked from it (`403`, error `6000`). Ten times this many failures across all users block the client for every user |
 | `block_time` | `300` | Length, in seconds, of the window the failed logins are counted in, starting at the first one: a block lasts until that window ends |
 | `max_request_per_minute` | `300` | Authenticated requests per minute per client address (`429`, error `6001`); `0` disables it |
-| `max_unauthenticated_request_per_minute` | `10` | Unauthenticated or failed-authentication requests per minute per client address (`429`, error `6005`); `0` disables it |
+| `max_unauthenticated_request_per_minute` | `10` | Unauthenticated or failed-authentication requests per minute per client address (`429`, error `6005`); `0` disables it. A request whose path or method matches no API operation is never authenticated, so it is charged here even when it carries a valid token |
 
 The client address is always the TCP peer of the connection. The API ignores `X-Forwarded-For` and
 `X-Forwarded-Proto` from any peer, loopback included, so behind a reverse proxy every client shares
@@ -196,6 +211,13 @@ the proxy's address for the lockout, the limits and `api.log`. The login lockout
 unauthenticated limit group an IPv6 client by its `/64` network (and an IPv4-mapped address by the
 IPv4 address it carries); the authenticated limit counts the exact address. Each limit counts in a
 fixed 60-second window that starts with the first request it counts.
+
+Refusals are recorded in `api.log` at `WARNING` level at most once a minute, the next line adding
+`<n> more request(s) refused since the previous warning`: `Maximum number of requests per minute
+reached` (error `6001`, also when the request is refused before its token is checked because the caller's
+quota is already spent) once per client address and user, `Maximum number of unauthenticated requests per
+minute reached` (`6005`) and `IP blocked due to exceeded number of logins attempts` once per client (grouped as the
+lockout groups it), whatever user name the requests claim.
 
 See [Request rate limiting](#request-rate-limiting) and
 [Rate Limiting & Brute-Force Protection](authentication.md#rate-limiting--brute-force-protection).
@@ -229,7 +251,9 @@ Stored in `api/configuration/security/security.yaml`, and read and changed throu
 JWT token expiration time in seconds.
 
 - **Default value:** `900` (15 minutes)
-- **Allowed values:** Integer; at least `30` through `PUT /security/config`
+- **Allowed values:** Integer from `30` to `2147483647` through `PUT /security/config` (out of range: `400`).
+  `security.yaml` accepts any integer up to `2147483647` (a larger one: the API does not start); the
+  `30` floor applies only to the endpoint
 - **Note:** Shorter timeouts increase security but require more frequent re-authentication
 
 ### rbac_mode
@@ -253,7 +277,6 @@ The values the API uses when `api.yaml` sets nothing:
 ```yaml
 host: ["0.0.0.0", "::"]
 port: 55000
-drop_privileges: true
 max_upload_size: 10485760  # 10 MB
 auth_context_max_payload_size: 65536  # 64 KB
 authentication_pool_size: 2
@@ -320,7 +343,6 @@ https:
 Relaxed settings for development and testing:
 
 ```yaml
-drop_privileges: false
 max_upload_size: 52428800  # 50 MB
 auth_context_max_payload_size: 262144  # Room for large AD/LDAP group lists
 authentication_pool_size: 4
@@ -393,9 +415,11 @@ failed-authentication requests draw from a separate, much smaller allowance cont
 authenticated caller shares the same address with. Setting `max_unauthenticated_request_per_minute`
 to `0` disables only this sub-limit. Unlike `max_request_per_minute`, this value does not scale
 with deployment size in the table above — it bounds abuse/probing traffic rather than legitimate
-demand, so it stays at `10` regardless of deployment size. A request to a path or method the API
-does not expose is always billed to this smaller allowance, regardless of any credential it
-carries, since it never reaches the authentication step in the first place. An authenticated
+demand, so it stays at `10` regardless of deployment size. A request to a path the API does not
+expose (`404`) is always billed to this smaller allowance, regardless of any credential it
+carries, since it never reaches the authentication step in the first place. A method the API does
+not expose on an existing path (`405`) is refused before any rate limit is charged, so it is billed
+to neither allowance. An authenticated
 caller already over its `max_request_per_minute` ceiling is rejected before authentication runs,
 not after, so exceeding the ceiling does not itself cost the authentication step.
 
@@ -488,7 +512,7 @@ curl -k -H "Authorization: Bearer $TOKEN" "https://localhost:55000/security/conf
 curl -k -H "Authorization: Bearer $TOKEN" "https://localhost:55000/security/users"
 ```
 
-A `403` with error `6000` on a login means the client IP is blocked; it is lifted `block_time`
+A `403` with error `6000` on a login means the user is blocked from the client IP; it is lifted `block_time`
 seconds after the first failed attempt that was counted, and a successful login does not lift it.
 
 ### High Load

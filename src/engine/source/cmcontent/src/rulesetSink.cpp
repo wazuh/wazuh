@@ -101,6 +101,7 @@ RulesetDeployment RulesetSpaceSink::deployment() const noexcept
 {
     RulesetDeployment deployment;
     deployment.enabled = m_policyEnabled;
+    deployment.policyMissing = m_policyMissing;
 
     try
     {
@@ -182,8 +183,10 @@ content_manager::SessionDecision RulesetSpaceSink::beginSession(const content_ma
     if (info.kind == SessionKind::NoChange && info.remoteToken.empty())
     {
         LOG_DEBUG("[{}] Space '{}' has no policy in the indexer", LOG_MODULE_NAME, m_space);
+        m_policyMissing = true;
         return SessionDecision::Skip;
     }
+    m_policyMissing = false;
 
     // A policy is usable only if it is enabled AND carries integrations. Either field missing or
     // ill-typed is a malformed document: the cycle aborts and the deployed ruleset stays in force,

@@ -19,6 +19,7 @@
 #include <cstdlib>
 #include <exception>
 #include <filesystem>
+#include <fstream>
 #include <gtest/gtest.h>
 #include <memory>
 #include <mutex>
@@ -595,4 +596,100 @@ TEST_F(RemotedModuleTest, CacertsWarnsWhenTheChainDoesNotValidate)
         << "the module never warned that the served certificate chains but is not a server certificate";
 
     remoted_module_stop();
+}
+
+// remoted_module_validate_tls(): what remoted's `-t` loads of the HTTPS listener's TLS material,
+// through the same helpers the start uses. Nothing is bound and no log line is written: the reason
+// comes back in the caller's buffer.
+TEST(RemotedModuleValidateTls, AcceptsAValidPairWithoutVerification)
+{
+    TempTlsFiles tls;
+    auto cfg = makeConfig(tls);
+
+    char error[512] = {0};
+    EXPECT_EQ(remoted_module_validate_tls(&cfg, error, sizeof(error)), 0) << error;
+}
+
+TEST(RemotedModuleValidateTls, AcceptsACertificateAsTheClientCa)
+{
+    TempTlsFiles tls;
+    auto cfg = makeConfig(tls);
+    cfg.verification_mode = REMOTED_MODULE_HTTPS_VERIFY_CERTIFICATE;
+    std::snprintf(cfg.ca_path, sizeof(cfg.ca_path), "%s", tls.certificatePath().c_str());
+
+    char error[512] = {0};
+    EXPECT_EQ(remoted_module_validate_tls(&cfg, error, sizeof(error)), 0) << error;
+}
+
+TEST(RemotedModuleValidateTls, RefusesAPrivateKeyAsTheClientCa)
+{
+    TempTlsFiles tls;
+    auto cfg = makeConfig(tls);
+    cfg.verification_mode = REMOTED_MODULE_HTTPS_VERIFY_FULL;
+    std::snprintf(cfg.ca_path, sizeof(cfg.ca_path), "%s", tls.privateKeyPath().c_str());
+
+    char error[512] = {0};
+    EXPECT_EQ(remoted_module_validate_tls(&cfg, error, sizeof(error)), -1);
+    EXPECT_NE(std::string {error}.find(tls.privateKeyPath()), std::string::npos) << error;
+}
+
+TEST(RemotedModuleValidateTls, IgnoresTheClientCaWhenVerificationIsOff)
+{
+    // The start loads the CA only in the certificate and full modes, so the test run must not
+    // refuse a file the start would never open.
+    TempTlsFiles tls;
+    auto cfg = makeConfig(tls);
+    cfg.verification_mode = REMOTED_MODULE_HTTPS_VERIFY_NONE;
+    std::snprintf(cfg.ca_path, sizeof(cfg.ca_path), "%s", tls.privateKeyPath().c_str());
+
+    char error[512] = {0};
+    EXPECT_EQ(remoted_module_validate_tls(&cfg, error, sizeof(error)), 0) << error;
+}
+
+TEST(RemotedModuleValidateTls, RefusesATextFileAsTheCertificate)
+{
+    TempTlsFiles tls;
+    const auto text = makeTempPath("rmt-utest-text");
+    {
+        std::ofstream out {text};
+        out << "not a certificate\n";
+    }
+    auto cfg = makeConfig(tls);
+    std::snprintf(cfg.certificate_path, sizeof(cfg.certificate_path), "%s", text.c_str());
+
+    char error[512] = {0};
+    EXPECT_EQ(remoted_module_validate_tls(&cfg, error, sizeof(error)), -1);
+    // The file, not only the OpenSSL call that refused it
+    EXPECT_NE(std::string {error}.find(text), std::string::npos) << error;
+
+    std::remove(text.c_str());
+}
+
+TEST(RemotedModuleValidateTls, RefusesATextFileAsThePrivateKeyNamingIt)
+{
+    TempTlsFiles tls;
+    const auto text = makeTempPath("rmt-utest-text-key");
+    {
+        std::ofstream out {text};
+        out << "not a private key\n";
+    }
+    auto cfg = makeConfig(tls);
+    std::snprintf(cfg.private_key_path, sizeof(cfg.private_key_path), "%s", text.c_str());
+
+    char error[512] = {0};
+    EXPECT_EQ(remoted_module_validate_tls(&cfg, error, sizeof(error)), -1);
+    EXPECT_NE(std::string {error}.find(text), std::string::npos) << error;
+
+    std::remove(text.c_str());
+}
+
+TEST(RemotedModuleValidateTls, RefusesAMissingKeyNamingIt)
+{
+    TempTlsFiles tls;
+    auto cfg = makeConfig(tls);
+    std::snprintf(cfg.private_key_path, sizeof(cfg.private_key_path), "%s", "/nonexistent/remoted-key.pem");
+
+    char error[512] = {0};
+    EXPECT_EQ(remoted_module_validate_tls(&cfg, error, sizeof(error)), -1);
+    EXPECT_NE(std::string {error}.find("/nonexistent/remoted-key.pem"), std::string::npos) << error;
 }

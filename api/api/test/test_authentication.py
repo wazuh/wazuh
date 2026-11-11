@@ -1045,6 +1045,23 @@ async def test_decode_token_run_as_without_authorization_context(mock_dapi, mock
 
 
 @pytest.mark.asyncio
+@patch('api.authentication.jwt.decode', side_effect=RecursionError)
+@patch('api.authentication.generate_keypair', return_value=('-----BEGIN PRIVATE KEY-----',
+                                                            '-----BEGIN PUBLIC KEY-----'))
+@patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.__init__', return_value=None)
+async def test_decode_token_deeply_nested_header(mock_dapi, mock_generate_keypair, mock_decode):
+    """A token header nested too deep for the JSON decoder is an invalid token (401), not a 500.
+
+    PyJWT does not wrap the decoder's RecursionError; mapping it to Unauthorized also charges the request
+    to the unauthenticated rate limit.
+    """
+    with pytest.raises(Unauthorized):
+        await decode_token('test_token')
+
+    mock_dapi.assert_not_called()
+
+
+@pytest.mark.asyncio
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.distribute_function', side_effect=None)
 @patch('api.authentication.raise_if_exc', side_effect=None)
 @patch('api.authentication.generate_keypair', return_value=('-----BEGIN PRIVATE KEY-----',

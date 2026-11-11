@@ -11,6 +11,8 @@
 #ifndef ROOTCHECK_H
 #define ROOTCHECK_H
 
+#include <sys/types.h>
+
 #include "list_op.h"
 #include "rootcheck-config.h"
 #include <cJSON.h>
@@ -89,14 +91,11 @@ OSList *os_get_process_list(void);
 /* Check if a process is running */
 int is_process(char *value, OSList *p_list);
 
-/*  Delete the process list */
-int del_plist(OSList *p_list);
-
 /* Used to report messages */
 int notify_rk(int rk_type, const char *msg);
 
-/* Start the rootcheck externally */
-int rootcheck_init(int test_config);
+/* Start the rootcheck externally, reading its configuration from cfg */
+int rootcheck_init(int test_config, const char *cfg);
 
 /* Connect Rootcheck queue */
 void rootcheck_connect();
@@ -119,6 +118,23 @@ void check_rc_pids(void);
 
 /* Verify if "pid" is in the proc directory */
 int check_rc_readproc(int pid);
+
+/* Results of probing one PID: first pass (*0) and re-check (*1) */
+typedef struct rc_pid_probes_t {
+    int kill0;
+    int gsid0;
+    int gpid0;
+    int ps0;            /* -1 when ps is not available */
+    int kill1;
+    int gsid1;
+    int gpid1;
+    int proc_stat;
+    int proc_read;
+    int proc_opendir;
+} rc_pid_probes_t;
+
+/* Alert on a PID whose probes disagree. Returns 1 if an alert was sent */
+int check_rc_pid_report(pid_t pid, const rc_pid_probes_t *probes, int (*is_thread)(int pid));
 
 void check_rc_ports(void);
 void check_open_ports(void);

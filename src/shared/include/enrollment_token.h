@@ -105,9 +105,9 @@ void w_etoken_free(w_etoken_t *token);
 /**
  * @brief Render a token for a human, without any credential material.
  *
- * The identifier, the secret and the `key` field never reach the output: only the version,
- * the endpoint, the anchor (pin in hexadecimal, or the subject, issuer, validity window and
- * SHA-256 of the embedded CA) and whether a credential is present.
+ * The secret and the `key` field never reach the output: only the version, the endpoint, the
+ * anchor (pin in hexadecimal, or the subject, issuer, validity window and SHA-256 of the
+ * embedded CA), the token id when it carries a credential, and whether a credential is present.
  *
  * @param token Token to describe.
  * @return Newly allocated multi-line text the caller must free(), or NULL on error.

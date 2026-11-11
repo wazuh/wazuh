@@ -187,3 +187,44 @@ TEST(AgentInFlightRegistryTest, HoldsAreIndependentPerAgent)
     EXPECT_FALSE(registry.isPaused("001"));
     EXPECT_TRUE(registry.isPaused("002"));
 }
+
+/// The on-demand rescan fences its agent from inside the scan, on the lane worker that holds it.
+/// That hold is the caller's own, so the drain must not wait for it -- it used to wait the whole
+/// quiesce bound on every on-demand scan.
+TEST(AgentInFlightRegistryTest, WaitUntilIdleCanIgnoreTheCallersOwnScanHold)
+{
+    AgentInFlightRegistry registry;
+    ASSERT_TRUE(registry.tryAcquire("001", Lane::Scan, false));
+    registry.pause("001");
+
+    const auto start = std::chrono::steady_clock::now();
+    EXPECT_TRUE(registry.waitUntilIdle("001", std::chrono::seconds {30}, /*ignoreCallersScanHold=*/true));
+    EXPECT_LT(std::chrono::steady_clock::now() - start, std::chrono::seconds {1});
+
+    EXPECT_FALSE(registry.isFree("001")) << "ignoring the hold for the drain does not release it";
+    registry.release("001", Lane::Scan);
+    registry.resume("001");
+    EXPECT_TRUE(registry.isFree("001"));
+}
+
+/// Only the CALLER's scan hold is exempt: another thread's scan of the agent is real in-flight work.
+TEST(AgentInFlightRegistryTest, AnotherThreadsScanHoldIsStillWaitedFor)
+{
+    AgentInFlightRegistry registry;
+    std::thread holder {[&registry] { ASSERT_TRUE(registry.tryAcquire("001", Lane::Scan, false)); }};
+    holder.join();
+
+    EXPECT_FALSE(registry.waitUntilIdle("001", std::chrono::milliseconds {20}, /*ignoreCallersScanHold=*/true));
+
+    registry.release("001", Lane::Scan);
+    EXPECT_TRUE(registry.waitUntilIdle("001", std::chrono::milliseconds {0}, /*ignoreCallersScanHold=*/true));
+}
+
+/// A pipeline session is never the caller's scan, whichever thread holds it.
+TEST(AgentInFlightRegistryTest, APipelineHoldIsStillWaitedForEvenOnTheCallersThread)
+{
+    AgentInFlightRegistry registry;
+    ASSERT_TRUE(registry.tryAcquire("001", Lane::Pipeline, true));
+
+    EXPECT_FALSE(registry.waitUntilIdle("001", std::chrono::milliseconds {20}, /*ignoreCallersScanHold=*/true));
+}

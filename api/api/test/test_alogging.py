@@ -225,6 +225,14 @@ def test_custom_logging_omits_oversized_body():
     ('AccessToken', True),
     ('ACCESS_TOKEN', True),
     ('set-cookie', True),
+    # Names a client uses for a secret outside the password/key/token family.
+    ('passphrase', True),
+    ('key_passphrase', True),
+    ('bearer', True),
+    ('session_id', True),
+    ('sessionId', True),
+    ('api_secret_value', True),
+    ('secretValue', True),
     # Names that merely contain a sensitive word. Masking these would make the log unreadable
     # without protecting anything, and they are what a plain substring test would get wrong.
     ('keyword', False),
@@ -233,6 +241,8 @@ def test_custom_logging_omits_oversized_body():
     ('keys', False),
     ('passwords', False),
     ('secretary', False),
+    ('secretary_name', False),
+    ('session', False),
     ('username', False),
     ('id', False),
 ])
@@ -397,3 +407,88 @@ def test_redact_headers_walks_repeated_and_mixed_case_names():
 
     assert alogging.redact_headers(headers) == {'authorization': 'Bearer ****, Bearer ****',
                                                 'content-type': 'application/json'}
+
+
+def test_set_logging_routes_framework_logger_to_api_log(tmp_path):
+    """The framework's `wazuh` logger writes to api.log in apid, at the API's level: without it, the
+    restart/reload fallback warning and the other framework records reach no file."""
+    import logging
+    import logging.config
+
+    names = ('wazuh', 'wazuh-api', 'start-stop-api', 'uvicorn', 'uvicorn.error', 'uvicorn.access')
+    saved = {name: (logging.getLogger(name).handlers[:], logging.getLogger(name).level,
+                    logging.getLogger(name).propagate) for name in names}
+    log_path = str(tmp_path / 'api')
+    with patch.dict(alogging.api_conf['logs'], {'format': ['plain'], 'max_size': {'enabled': False}}):
+        config = alogging.set_logging(log_filepath=log_path, log_level='INFO')
+
+    assert config['loggers']['wazuh'] == config['loggers']['wazuh-api']
+
+    try:
+        logging.config.dictConfig(config)
+        logging.getLogger('wazuh').warning('Control socket unavailable. Using the helper')
+        logging.getLogger('wazuh').debug('below the level')
+        for handler in logging.getLogger('wazuh').handlers:
+            handler.flush()
+        with open(f'{log_path}.log') as log_file:
+            content = log_file.read()
+    finally:
+        for name, (handlers, level, propagate) in saved.items():
+            logger = logging.getLogger(name)
+            for handler in logger.handlers:
+                if handler not in handlers:
+                    handler.close()
+            logger.handlers, logger.level, logger.propagate = handlers, level, propagate
+
+    assert 'WARNING: Control socket unavailable. Using the helper' in content
+    assert 'below the level' not in content
+
+
+@pytest.mark.parametrize('separator', ['\n', '\r', '\r\n', '\x0b', '\x0c', '\x85', '\u2028', '\u2029'])
+def test_set_logging_plain_file_keeps_one_record_per_line(tmp_path, separator):
+    """No logged value can start a forged entry in the plain api.log, whatever the call site.
+
+    A record whose message carries a line break must be one physical line that `str.splitlines` (the
+    reader behind the API log endpoints) does not split either; a traceback keeps its own lines.
+    """
+    import logging
+    import logging.config
+
+    names = ('wazuh', 'wazuh-api', 'start-stop-api', 'uvicorn', 'uvicorn.error', 'uvicorn.access')
+    saved = {name: (logging.getLogger(name).handlers[:], logging.getLogger(name).level,
+                    logging.getLogger(name).propagate) for name in names}
+    log_path = str(tmp_path / 'api')
+    forged = f'/x{separator}2026/11/06 12:00:01 ERROR: FORGED-LINE'
+    with patch.dict(alogging.api_conf['logs'], {'format': ['plain', 'json'], 'max_size': {'enabled': False}}):
+        config = alogging.set_logging(log_filepath=log_path, log_level='INFO')
+
+    try:
+        logging.config.dictConfig(config)
+        logger = logging.getLogger('wazuh-api')
+        logger.warning('Rejected a request to %s: limit exceeded', forged)
+        try:
+            raise ValueError('boom')
+        except ValueError:
+            logger.error('Failed', exc_info=True)
+        for handler in logger.handlers:
+            handler.flush()
+        with open(f'{log_path}.log') as log_file:
+            plain = log_file.read()
+        with open(f'{log_path}.json') as log_file:
+            json_records = [json.loads(line) for line in log_file.read().splitlines()]
+    finally:
+        for name, (handlers, level, propagate) in saved.items():
+            logger = logging.getLogger(name)
+            for handler in logger.handlers:
+                if handler not in handlers:
+                    handler.close()
+            logger.handlers, logger.level, logger.propagate = handlers, level, propagate
+
+    lines = plain.splitlines()
+    assert 'WARNING: Rejected a request to /x' in lines[0]
+    assert 'FORGED-LINE: limit exceeded' in lines[0]
+    assert not any(line.startswith('2026/11/06 12:00:01') for line in lines)
+    assert 'ERROR: Failed' in lines[1]
+    assert 'Traceback (most recent call last):' in lines[2]
+    # The JSON log is unchanged: the escaping is a property of the plain format, applied on a copy
+    assert json_records[0]['data']['payload'] == f'Rejected a request to {forged}: limit exceeded'

@@ -122,7 +122,7 @@ def _case_socket_mint(sock, test_metadata, created_agents):
     Everything the answer reports is checked against the token itself: the pin is the same anchor in
     both spellings (64 hex characters and 43 base64url ones), the endpoint is the address that was
     asked for, and the key is the 32 bytes of identifier plus secret. The store must then exist,
-    hold the new id, and belong to the daemon user with mode 0640 -- the secrets in it have the same
+    hold the new id, and belong to the daemon user with mode 0660 -- the secrets in it have the same
     weight as the keys in client.keys.
     """
     data = _mint_over_socket(sock)
@@ -211,8 +211,8 @@ def _case_cli_show_token(sock, test_metadata, created_agents):
     """'--show-token' describes a token without its credential, and refuses one it cannot parse.
 
     This is the command an operator runs on a token someone sent them, so it must be safe to run
-    where the output can be read: it says which manager the token points at and which CA it pins,
-    and never repeats the key or either of its halves. Anything that is not a token is a plain
+    where the output can be read: it says which manager the token points at, which CA it pins and
+    its id, and never repeats the key or its secret. Anything that is not a token is a plain
     failure, not an empty description.
     """
     token_text, _ = _mint_over_cli()
@@ -229,7 +229,7 @@ def _case_cli_show_token(sock, test_metadata, created_agents):
     assert 'credential: present' in result.stdout, f'The credential is not reported: {result.stdout!r}'
     assert 'key:' not in result.stdout, '--show-token prints the key field'
     assert token['key'] not in result.stdout, '--show-token prints the key'
-    assert token_id not in result.stdout, '--show-token prints the identifier half of the key'
+    assert f'id: {token_id}' in result.stdout, f'No id line: {result.stdout!r}'
     assert secret not in result.stdout, '--show-token prints the secret half of the key'
 
     garbage = utils.run_authd_cli(['--show-token'], stdin='garbage\n')
@@ -461,7 +461,7 @@ def test_enrollment_token_master(test_configuration, test_metadata, clean_enroll
     assertions:
         - A minted token decodes to version 1, the requested endpoint, one anchor and a 32 byte key
         - The pin authd reports in hexadecimal is the same anchor the token carries in base64url
-        - The store exists after the first mint, holds the new id, and is 0640 wazuh-manager:wazuh-manager
+        - The store exists after the first mint, holds the new id, and is 0660 wazuh-manager:wazuh-manager
         - The CLI prints the token alone on stdout and its metadata on stderr
         - Neither the listing nor '--show-token' ever echoes a secret or the key
         - An 'add' with a token counts one use in the store, and a revoked token is refused with 9022

@@ -159,7 +159,7 @@ and the loop continues. A `shutdown` answer is only counted (`control_shutdown_o
 | Real agent keepalive interval | **10 s** by default | `NOTIFY_TIME` in `src/shared/include/defs.h`, overridable with `<client><notify_time>` in the agent's `ossec.conf` |
 | Sender default | **10 s**, `defaults.control.keepalive_interval` in the scenario JSON | Matches the agent so a fleet of N produces the real N/10 requests per second. The first notify of each agent is sent immediately, then one per interval |
 | Manager write throttle | **60 s** | `kKeepaliveThrottleSec` (`src/remoted/remoted_module/src/control/controlConfig.hpp`): how often a `notify` actually writes to wazuh-db |
-| Manager groups refresh | **60 s** | `kGroupsRefreshIntervalSec`, same file |
+| Manager groups refresh | **1 s** | `kGroupsRefreshIntervalSec`, same file: below the keepalive interval, so every notify also reads the agent's groups from wazuh-db |
 
 The throttle matters for interpreting results, not for behavior: it does not slow the response, but
 it means a keepalive interval below 60 s produces cheap notifies most of the time and an expensive
