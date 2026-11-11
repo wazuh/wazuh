@@ -6,8 +6,8 @@
     expected_user: wazuh
 
 - name: DROP_PRIVILEGES_DISABLED
-  description: Check that the user who has started the 'wazuh-apid' daemon is 'root'
+  description: Check that the user who has started the 'wazuh-apid' daemon is still 'wazuh'
   configuration_parameters:
     DROP_PRIVILEGES: no
   metadata:
-    expected_user: root
+    expected_user: wazuh

@@ -925,7 +925,6 @@ stages:
                   max_login_attempts: !anyint
                   block_time: !anyint
                   max_request_per_minute: !anyint
-                drop_privileges: !anybool
                 experimental_features: !anybool
                 authentication_pool_size: !anyint
                 upload_configuration:
