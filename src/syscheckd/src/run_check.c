@@ -850,7 +850,7 @@ STATIC void fim_link_delete_range(directory_t *configuration) {
         .config = configuration,
         .path = configuration->path
     };
-    // Create the sqlite LIKE pattern.
+    // Prefix pattern: <path><sep>%
     snprintf(pattern, PATH_MAX, "%s%c%%", configuration->symbolic_links, PATH_SEP);
     callback_context_t callback_data;
     callback_data.callback = fim_db_remove_validated_path;
