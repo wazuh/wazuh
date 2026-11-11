@@ -19,6 +19,8 @@ class MockAgentSyncProtocol : public IAgentSyncProtocol
 
         MOCK_METHOD(IntegrityCheckResult, requiresFullSync, (const std::string& index, const std::string& checksum), (override));
 
+        MOCK_METHOD(void, clearIntegrityProgress, (const std::string& index), (override));
+
         MOCK_METHOD(SyncModuleResult, synchronizeMetadataOrGroups, (Mode mode, const std::vector<std::string>& indices, uint64_t globalVersion), (override));
 
         MOCK_METHOD(SyncModuleResult, notifyDataClean, (const std::vector<std::string>& indices, Option option, bool trackConsecutiveFailures), (override));

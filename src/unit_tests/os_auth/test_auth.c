@@ -25,6 +25,7 @@
 #include "../wrappers/externals/openssl/rand_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
+#include "../wrappers/externals/pcre2/pcre2_wrappers.h"
 
 /* The fake (non-NULL) FILE* handed back by the wfopen mock. */
 #define FAKE_FP ((FILE *)1)
@@ -138,12 +139,12 @@ static void test_w_generate_random_pass_csprng_failure(void **state) {
 static void test_w_authd_load_password_from_file(void **state) {
     bool generated = true;
 
-    expect_pass_file_read("MyS3cret\n");
+    expect_pass_file_read("MyS3cretEnrollPass\n");
 
     char *result = w_authd_load_password(AUTHD_PASS, &generated);
 
     assert_non_null(result);
-    assert_string_equal(result, "MyS3cret");
+    assert_string_equal(result, "MyS3cretEnrollPass");
     assert_false(generated);
     os_free(result);
 }
@@ -152,12 +153,12 @@ static void test_w_authd_load_password_from_file(void **state) {
 static void test_w_authd_load_password_strips_crlf(void **state) {
     bool generated = true;
 
-    expect_pass_file_read("MyS3cret\r\n");
+    expect_pass_file_read("MyS3cretEnrollPass\r\n");
 
     char *result = w_authd_load_password(AUTHD_PASS, &generated);
 
     assert_non_null(result);
-    assert_string_equal(result, "MyS3cret");
+    assert_string_equal(result, "MyS3cretEnrollPass");
     assert_false(generated);
     os_free(result);
 }
@@ -249,15 +250,42 @@ static void test_w_authd_load_password_persist_failure_is_fatal(void **state) {
     expect_assert_failure(w_authd_load_password(AUTHD_PASS, &generated));
 }
 
+#define TOO_SHORT_MSG "Authentication password in '" AUTHD_PASS "' is too short: it must be at least 16 " \
+                      "bytes. Write a longer one, or delete the file to have a random one generated."
+
 /* An existing file whose first line is too short must fail closed (never return NULL,
  * which would silently disable password enrollment). */
 static void test_w_authd_load_password_short_line_is_fatal(void **state) {
     bool generated = false;
 
-    expect_pass_file_read("x\n");   /* first line too short (strlen 2, not > 2) */
-    expect_string(__wrap__merror_exit, formatted_msg, "Invalid password provided in '" AUTHD_PASS "'.");
+    expect_pass_file_read("x\n");
+    expect_string(__wrap__merror_exit, formatted_msg, TOO_SHORT_MSG);
 
     expect_assert_failure(w_authd_load_password(AUTHD_PASS, &generated));
+}
+
+/* One character under the minimum is refused, with the message naming the minimum. */
+static void test_w_authd_load_password_below_minimum_is_fatal(void **state) {
+    bool generated = false;
+
+    expect_pass_file_read("0123456789abcde\n");   /* 15 chars */
+    expect_string(__wrap__merror_exit, formatted_msg, TOO_SHORT_MSG);
+
+    expect_assert_failure(w_authd_load_password(AUTHD_PASS, &generated));
+}
+
+/* Exactly the minimum is accepted; the trailing CR/LF does not count towards it. */
+static void test_w_authd_load_password_minimum_is_accepted(void **state) {
+    bool generated = true;
+
+    expect_pass_file_read("0123456789abcdef\r\n");   /* 16 chars */
+
+    char *result = w_authd_load_password(AUTHD_PASS, &generated);
+
+    assert_non_null(result);
+    assert_string_equal(result, "0123456789abcdef");
+    assert_false(generated);
+    os_free(result);
 }
 
 /* An all-whitespace line passes the length check but must still fail closed: it would
@@ -281,15 +309,53 @@ static void test_w_authd_load_password_unreadable_is_fatal(void **state) {
     expect_assert_failure(w_authd_load_password(AUTHD_PASS, &generated));
 }
 
+/* w_authd_check_password_file (the -t check of the master's start) */
+
+static void test_w_authd_check_password_file_valid(void **state) {
+    expect_pass_file_read("0123456789abcdef\n");
+
+    assert_int_equal(w_authd_check_password_file(AUTHD_PASS), 0);
+}
+
+/* Absent: the start generates it, so -t has nothing to refuse. */
+static void test_w_authd_check_password_file_absent(void **state) {
+    expect_pass_file_open_fail();
+    errno = ENOENT;   /* the wfopen() wrapper leaves errno alone */
+
+    assert_int_equal(w_authd_check_password_file(AUTHD_PASS), 0);
+}
+
+static void test_w_authd_check_password_file_unreadable(void **state) {
+    expect_pass_file_open_fail();
+    errno = EACCES;
+    expect_string(__wrap__merror, formatted_msg, "Invalid password provided in '" AUTHD_PASS "'.");
+
+    assert_int_equal(w_authd_check_password_file(AUTHD_PASS), -1);
+}
+
+static void test_w_authd_check_password_file_too_short(void **state) {
+    expect_pass_file_read("0123456789abcde\n");   /* 15 chars */
+    expect_string(__wrap__merror, formatted_msg, TOO_SHORT_MSG);
+
+    assert_int_equal(w_authd_check_password_file(AUTHD_PASS), -1);
+}
+
+static void test_w_authd_check_password_file_blank(void **state) {
+    expect_pass_file_read("      \n");
+    expect_string(__wrap__merror, formatted_msg, "Invalid password provided in '" AUTHD_PASS "'.");
+
+    assert_int_equal(w_authd_check_password_file(AUTHD_PASS), -1);
+}
+
 /* w_authd_read_password (read-only loader used by cluster workers) */
 
 static void test_w_authd_read_password_from_file(void **state) {
-    expect_pass_file_read("SyncedPass\n");
+    expect_pass_file_read("SyncedEnrollPassword\n");
 
     char *result = w_authd_read_password(AUTHD_PASS);
 
     assert_non_null(result);
-    assert_string_equal(result, "SyncedPass");
+    assert_string_equal(result, "SyncedEnrollPassword");
     os_free(result);
 }
 
@@ -302,8 +368,9 @@ static void test_w_authd_read_password_missing_returns_null(void **state) {
 
 /* An existing file whose first line is too short yields NULL (the caller rejects, never bypasses). */
 static void test_w_authd_read_password_short_returns_null(void **state) {
-    expect_pass_file_read("x\n");
-    expect_string(__wrap__mwarn, formatted_msg, "Authentication password in '" AUTHD_PASS "' is invalid or empty; ignoring.");
+    expect_pass_file_read("0123456789abcde\n");   /* 15 chars */
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Authentication password in '" AUTHD_PASS "' is shorter than 16 bytes; ignoring.");
 
     assert_null(w_authd_read_password(AUTHD_PASS));
 }
@@ -318,12 +385,12 @@ static void test_w_authd_read_password_spaces_only_returns_null(void **state) {
 
 /* CRLF-authored file: the worker reader must trim \r too, matching the master. */
 static void test_w_authd_read_password_strips_crlf(void **state) {
-    expect_pass_file_read("SyncedPass\r\n");
+    expect_pass_file_read("SyncedEnrollPassword\r\n");
 
     char *result = w_authd_read_password(AUTHD_PASS);
 
     assert_non_null(result);
-    assert_string_equal(result, "SyncedPass");
+    assert_string_equal(result, "SyncedEnrollPassword");
     os_free(result);
 }
 
@@ -340,6 +407,93 @@ static void test_w_authd_read_password_too_long_returns_null(void **state) {
     assert_null(w_authd_read_password(AUTHD_PASS));
 }
 
+/* The insertion queue is what the writer turns into the global.db row: the address must be queued
+ * as it was registered, a network keeping its mask, as client.keys does. */
+extern struct keynode *queue_insert;
+extern struct keynode * volatile *insert_tail;
+
+static void free_queued_inserts(void) {
+    struct keynode *cur = queue_insert;
+
+    while (cur) {
+        struct keynode *next = cur->next;
+        os_free(cur->id);
+        os_free(cur->name);
+        os_free(cur->ip);
+        os_free(cur->group);
+        os_free(cur->raw_key);
+        os_free(cur->reenroll_secret);
+        os_free(cur);
+        cur = next;
+    }
+    queue_insert = NULL;
+    insert_tail = &queue_insert;
+}
+
+/* Queues an entry registered with `registered`, built the way OS_AddKey() builds it (the mask kept
+ * apart from the address text), through add_insert() or add_rotate(). */
+static void queue_registered(const char *registered, int rotate) {
+    keyentry entry;
+    char *slash;
+
+    memset(&entry, 0, sizeof(entry));
+
+    os_calloc(1, sizeof(os_ip), entry.ip);
+    /* Parse with the real PCRE2: this binary wraps it with mocks by default. */
+    w_test_pcre2_wrappers(false);
+    assert_int_not_equal(OS_IsValidIP(registered, entry.ip), 0);
+    w_test_pcre2_wrappers(true);
+    if ((slash = strchr(entry.ip->ip, '/')) != NULL) {
+        *slash = '\0';
+    }
+    entry.id = (char *)"001";
+    entry.name = (char *)"agent1";
+    entry.raw_key = (char *)"key";
+
+    free_queued_inserts();
+    if (rotate) {
+        add_rotate(&entry, NULL, "secret", 0);
+    } else {
+        add_insert(&entry, NULL, NULL, 0);
+    }
+    w_free_os_ip(entry.ip);
+
+    assert_non_null(queue_insert);
+}
+
+static void test_add_insert_keeps_the_mask_of_an_ipv4_network(void **state) {
+    queue_registered("10.9.0.0/24", 0);
+    assert_string_equal(queue_insert->ip, "10.9.0.0/24");
+    free_queued_inserts();
+}
+
+static void test_add_rotate_keeps_the_mask_of_an_ipv4_network(void **state) {
+    queue_registered("10.9.0.0/24", 1);
+    assert_string_equal(queue_insert->ip, "10.9.0.0/24");
+    assert_true(queue_insert->rotate);
+    free_queued_inserts();
+}
+
+static void test_add_insert_queues_a_host_address_unchanged(void **state) {
+    queue_registered("192.168.1.10", 0);
+    assert_string_equal(queue_insert->ip, "192.168.1.10");
+    free_queued_inserts();
+}
+
+static void test_add_insert_queues_any_unchanged(void **state) {
+    queue_registered("any", 0);
+    assert_string_equal(queue_insert->ip, "any");
+    free_queued_inserts();
+}
+
+static void test_add_insert_keeps_the_mask_of_an_ipv6_network(void **state) {
+    queue_registered("fd00:1::/64", 0);
+    const size_t len = strlen(queue_insert->ip);
+    assert_true(len > 3);
+    assert_string_equal(queue_insert->ip + len - 3, "/64");
+    free_queued_inserts();
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_w_generate_random_pass_success),
@@ -353,14 +507,26 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_authd_load_password_csprng_failure_is_fatal, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_authd_load_password_persist_failure_is_fatal, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_authd_load_password_short_line_is_fatal, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_w_authd_load_password_below_minimum_is_fatal, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_w_authd_load_password_minimum_is_accepted, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_authd_load_password_spaces_only_is_fatal, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_authd_load_password_unreadable_is_fatal, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_w_authd_check_password_file_valid, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_w_authd_check_password_file_absent, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_w_authd_check_password_file_unreadable, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_w_authd_check_password_file_too_short, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_w_authd_check_password_file_blank, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_authd_read_password_from_file, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_authd_read_password_strips_crlf, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_authd_read_password_too_long_returns_null, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_authd_read_password_missing_returns_null, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_authd_read_password_short_returns_null, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_authd_read_password_spaces_only_returns_null, test_setup, test_teardown),
+        cmocka_unit_test(test_add_insert_keeps_the_mask_of_an_ipv4_network),
+        cmocka_unit_test(test_add_rotate_keeps_the_mask_of_an_ipv4_network),
+        cmocka_unit_test(test_add_insert_queues_a_host_address_unchanged),
+        cmocka_unit_test(test_add_insert_queues_any_unchanged),
+        cmocka_unit_test(test_add_insert_keeps_the_mask_of_an_ipv6_network),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

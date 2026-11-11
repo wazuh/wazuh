@@ -180,8 +180,10 @@ empty. Omit `status` to see every row of that type.
 
 The two return different shapes. The list is deliberately narrow — one row is `task_id`,
 `agent_id`, `status`, `create_time` and `last_error`, enough to see *what* failed and why without
-paging whole payloads. `/get` returns the full row: add `attempts`, `defer_count`, `owner`,
-`claim_time`, `next_attempt_at`, `end_time`, the `payload`, and — for a scheduled run — the
+paging whole payloads. `/get` returns the full row: add `attempts`, `defer_count`, `owner` and
+`claim_time` (present only while the row is `claimed`: both are cleared when it is requeued or
+reaches a terminal state, so a finished task does not show when it started),
+`next_attempt_at`, `end_time`, the `payload`, and — for a scheduled run — the
 `schedule_id` and `scheduled_run_at` it belongs to. Asking for an id that does not exist answers
 `404` rather than an empty row.
 
@@ -234,6 +236,9 @@ definition for wazuh_modules.<option>: '<value>'.`
 | `wazuh_modules.manager_task_claim_grace` | 30 s | 1–3600 | Slack before a claimed row is considered reclaimable |
 | `wazuh_modules.manager_task_wdb_timeout` | 10 s | 1–600 | Deadline on each agent-removal request the retention sweep sends to `wazuh-manager-authd`. The recurring handlers' wazuh-db queries use a fixed 10 s socket deadline instead |
 
+A `manager_task_backoff_base` or `manager_task_defer_base` above `manager_task_backoff_cap` is
+lowered to the cap when the module starts.
+
 `manager_task_max_attempts` and `manager_task_max_defer` are **defaults**. The registry carries
 per-type overrides, and `agent_delete_indexer` sets both to unbounded. Those overrides are not
 operator knobs: a deployment that gave agent deletion a finite budget would silently reintroduce
@@ -243,11 +248,11 @@ the orphaned documents this feature exists to prevent.
 
 | Option | Default | Range | Meaning |
 | --- | --- | --- | --- |
-| `wazuh_modules.manager_task_delete_timeout` | 600 s | 1–7200 | Deadline on one deletion call, and the type's watchdog budget. Must exceed the scan timeout; otherwise the module refuses to start (`Task manager failed to start: manager_task_delete_timeout (<n>s) must exceed manager_task_vd_scan_timeout (<m>s): …`). This pair is checked at module start, not by `wazuh-manager-modulesd -t` |
+| `wazuh_modules.manager_task_delete_timeout` | 600 s | 1–7200 | Deadline on one deletion call, and the type's watchdog budget. Must exceed the scan timeout; otherwise `wazuh-manager-modulesd -t` refuses the configuration before start |
 | `wazuh_modules.manager_task_vd_scan_timeout` | 300 s | 1–3600 | Deadline on one scan call, and the type's watchdog budget |
 | `wazuh_modules.manager_task_max_pending_deletes` | 20000 | 0–1000000 | Admission bound on pending deletions. `0` removes the bound |
 | `wazuh_modules.manager_task_max_pending_scans` | 64 | 0–1000000 | Admission bound on pending on-demand scans. `0` removes the bound |
-| `wazuh_modules.manager_task_create_timeout` | 2 s | 1–60 | Deadline on the vulnerability scanner's own call to create a row; read by the scanner when it starts, not by this module, so an out-of-range value passes `wazuh-manager-modulesd -t` and stops modulesd at the scanner's start instead |
+| `wazuh_modules.manager_task_create_timeout` | 2 s | 1–60 | Deadline on the vulnerability scanner's own call to create a row; read by the scanner's configuration reader, not by this module; an out-of-range value fails `wazuh-manager-modulesd -t` all the same |
 
 The delete timeout must exceed the scan timeout because a scan holding an agent parks that agent's
 deletion behind it in the consumer's per-agent queue; with both deadlines equal, the deletion would

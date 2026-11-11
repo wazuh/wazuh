@@ -80,9 +80,28 @@ fragments: a manager configuration also needs its `cluster` and `indexer` sectio
 ## Line formats
 
 Every line carries the local time as `YYYY/MM/DD HH:MM:SS`, the tag of the daemon that wrote it, and
-the level. Manager tags are the manager daemon names (`wazuh-manager-db`, `wazuh-manager-remoted`,
-…); a module inside modulesd logs as `wazuh-manager-modulesd:<module>`. Agent tags are the agent's
-daemon names (`wazuh-agentd`, `wazuh-modulesd:<module>`, …).
+the level. A manager tag has the shape `<daemon>[:<component>[:<sub>]][(<library>)]`: it starts with the
+manager daemon name (`wazuh-manager-db`, `wazuh-manager-remoted`, …), a module inside modulesd adds
+`:<module>`, a component can add its own `:<part>` levels, and a shared library (the indexer connector, its
+health monitor, the HTTP server) appends its name in parentheses to the tag of whoever called it. Examples:
+
+| Tag | Written by |
+|---|---|
+| `wazuh-manager-modulesd:control` | a modulesd module |
+| `wazuh-manager-remoted:client-keys` | a component of remoted's agent-facing module |
+| `wazuh-manager-remoted:endpoints(ratelimit)` | the rate limiter of remoted's agent-facing endpoints |
+| `wazuh-manager-modulesd:vulnerability-scanner:server` | a part of a modulesd module |
+| `wazuh-manager-modulesd:inventory-sync-server:async(indexer-connector)` | the indexer connector, called by a part of a module |
+| `wazuh-manager-analysisd(monitoring)` | the indexer connector's node health monitor, inside the engine; it appears only when the monitor has something to log, so a healthy default-level log may not contain it |
+
+Two manager programs that are not
+daemons write to the same file under their own name: `wazuh-manager-control` (a refused start, restart, reload or
+check, and the credential resolver's lines it relays) and `bin/verify-agent-conf` (`verify-agent-conf`, when it
+checks a shared `agent.conf`; the SCA block's lines are reported as `verify-agent-conf:sca`, and some lines of
+the AWS and Google Cloud blocks as `verify-agent-conf:aws-s3`, `verify-agent-conf:gcp-pubsub` and
+`verify-agent-conf:gcp-bucket` — their value errors, such as `Invalid content for tag '<tag>' at module
+'<module>'.`, keep the plain `verify-agent-conf` tag). Agent tags are the agent's daemon names (`wazuh-agentd`,
+`wazuh-modulesd:<module>`, …).
 
 ### Plain
 
@@ -95,7 +114,11 @@ daemon names (`wazuh-agentd`, `wazuh-modulesd:<module>`, …).
 Levels are `DEBUG`, `INFO`, `WARNING`, `ERROR` and `CRITICAL`; the engine
 (`wazuh-manager-analysisd`) writes its critical messages as `ERROR`. A daemon running in debug mode (`-d`,
 for example after `wazuh-manager-control enable debug` and a restart) adds
-`[<pid>] <file>:<line> at <function>():` after the tag.
+`[<pid>] <file>:<line> at <function>():` to the tag, before the level:
+
+```text
+2026/07/06 12:34:58 wazuh-manager-modulesd[23059] main.c:179 at main(): DEBUG: Created new thread for the 'control' module.
+```
 
 ### JSON
 
@@ -112,8 +135,9 @@ and `routine`.
 ## Rotation
 
 On the manager, `wazuh-manager.log` and `wazuh-manager.json` are rotated daily, and when they exceed a
-size threshold, into `logs/wazuh/<YYYY>/<Mon>/wazuh-<DD>.log` and `.json` (with a `-<NNN>` counter
-for further rotations of the same day). The schedule and its internal options are described in
+size threshold, into `logs/wazuh/<YYYY>/<Mon>/wazuh-<DD>.log.gz` and `.json.gz` (with a `-<NNN>` counter
+for further rotations of the same day). The rotated files are gzip-compressed by default; with the internal
+option `wazuh_modules.manager_task_log_compress=0` they stay plain `.log` and `.json`. The schedule and its internal options are described in
 [Recurring manager tasks](../task_manager/schedules.md).
 
 ---

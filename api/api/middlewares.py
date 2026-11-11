@@ -2,7 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import binascii
 import ipaddress
 import json
 import hashlib
@@ -14,7 +13,7 @@ import asyncio
 
 from typing import Optional
 
-from starlette.requests import Request
+from starlette.requests import ClientDisconnect, Request
 from starlette.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.middleware.cors import CORSMiddleware
@@ -61,7 +60,7 @@ AUTH_CONTEXT_NOT_LOGGED = '<authorization context not logged; see hash_auth_cont
 
 # API secure headers
 server = Server().set("Wazuh")
-csp = ContentSecurityPolicy().set('none')
+csp = ContentSecurityPolicy().default_src("'none'").frame_ancestors("'none'")
 xfo = XFrameOptions().deny()
 secure_headers = Secure(server=server, csp=csp, xfo=xfo)
 
@@ -76,9 +75,107 @@ general_request_lock = asyncio.Lock()
 
 # Rolling-window length used by the general_request_stats buckets below
 RATE_LIMIT_WINDOW_SECONDS = 60
+# Error code of the authenticated request limit, and the scope `extensions` key recording which limit refused a request
+AUTHENTICATED_RATE_LIMIT_CODE = 6001
+RATE_LIMIT_CODE_KEY = 'wazuh_rate_limit_code'
 
 # Prefix length an IPv6 client is grouped by in the pre-authentication limiters
 CLIENT_IPV6_PREFIX = 64
+
+# Longest user name the login lockout keys on, the API's own limit for a user name
+LOGIN_USERNAME_MAX_LENGTH = 64
+
+# How many times `max_login_attempts` a client may fail across all user names before it is blocked
+# for all of them
+LOGIN_CLIENT_ATTEMPTS_FACTOR = 10
+
+# A client over its rate limit gets a 429 per request, and a blocked one a 403 per login; the WARNING naming it is
+# written at most once per this many seconds for each key (see `warn_rate_limited` and `check_blocked_ip`), with the
+# count of the refusals in between.
+RATE_LIMIT_WARNING_INTERVAL_SECONDS = 60
+# Most keys that interval is tracked for at once.
+RATE_LIMIT_WARNING_MAX_KEYS = 10000
+rate_limit_warnings: dict = {}
+
+
+def warn_throttled(key: tuple, message: str):
+    """Log `message` as a WARNING at most once per interval for `key`.
+
+    The calls that are not logged are counted and reported on the next warning for the same key.
+
+    Parameters
+    ----------
+    key : tuple
+        What the warning is throttled by.
+    message : str
+        Warning to log.
+    """
+    now = time.time()
+    entry = rate_limit_warnings.get(key)
+    if entry is not None and now - entry['since'] < RATE_LIMIT_WARNING_INTERVAL_SECONDS:
+        entry['suppressed'] += 1
+        return
+
+    suppressed = entry['suppressed'] if entry is not None else 0
+    if entry is None and len(rate_limit_warnings) >= RATE_LIMIT_WARNING_MAX_KEYS:
+        for expired in [k for k, v in rate_limit_warnings.items()
+                        if now - v['since'] >= RATE_LIMIT_WARNING_INTERVAL_SECONDS]:
+            del rate_limit_warnings[expired]
+        if len(rate_limit_warnings) >= RATE_LIMIT_WARNING_MAX_KEYS:
+            rate_limit_warnings.clear()
+    rate_limit_warnings[key] = {'since': now, 'suppressed': 0}
+
+    if suppressed:
+        message += f' {suppressed} more request(s) refused since the previous warning.'
+    logger.warning(message)
+
+
+def rate_limited(request: Request, code: int) -> MaxRequestsException:
+    """Build the 429 for `request` and record which limit refused it, for `access_log`.
+
+    The record goes into the scope's `extensions`, the dict `WazuhAccessLoggerMiddleware` creates before dispatching,
+    which every copy of the scope shares.
+
+    Parameters
+    ----------
+    request : Request
+        Request refused.
+    code : int
+        Wazuh error code of the limit hit (6001 authenticated, 6005 unauthenticated).
+
+    Returns
+    -------
+    MaxRequestsException
+        Exception to raise.
+    """
+    extensions = request.scope.get('extensions')
+    if isinstance(extensions, dict):
+        extensions[RATE_LIMIT_CODE_KEY] = code
+    return MaxRequestsException(code=code)
+
+
+def warn_rate_limited(host: str, user: str, authenticated: bool = True):
+    """Log that a client was refused for exceeding the request rate, at most once per interval.
+
+    An authenticated caller is tracked per client and user. An unauthenticated one is tracked per client only (see
+    `get_client_key`): the user it claims is whatever it sent, so keying on it would let a caller rotating names get a
+    WARNING per request.
+
+    Parameters
+    ----------
+    host : str
+        Client address.
+    user : str
+        User the request was made as, or claimed.
+    authenticated : bool
+        Whether the API authenticated the caller.
+    """
+    if authenticated:
+        warn_throttled(('rate', host, user),
+                       f'Maximum number of requests per minute reached. IP: {host}. User: {user}.')
+    else:
+        warn_throttled(('rate', get_client_key(host)),
+                       f'Maximum number of unauthenticated requests per minute reached. IP: {host}.')
 
 
 def get_client_key(host: str) -> str:
@@ -253,7 +350,7 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
     if body_read and (log_body or path == RUN_AS_LOGIN_ENDPOINT):
         try:
             body = await request.json()
-        except RecursionError:
+        except (ClientDisconnect, ValueError, RecursionError):
             body = {}
 
     # Neither the query nor the body is masked here. `custom_logging` redacts both, recursively
@@ -266,7 +363,12 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
         try:
             auth_type, user_passw = AbstractSecurityHandler.get_auth_header_value(request)
             if auth_type == 'basic':
-                user, _ = base64.b64decode(user_passw).decode("latin1").split(":", 1)
+                # A credential with no colon -- including a value that decodes to nothing, as
+                # non-alphabet characters are discarded -- names no user. connexion refuses it with a
+                # 401; it must not be turned into a 500 here, after the response was produced.
+                user, separator, _ = base64.b64decode(user_passw).decode("latin1").partition(":")
+                if not separator:
+                    user = UNKNOWN_USER_STRING
             elif auth_type == 'bearer':
                 s = jwt.decode(user_passw, generate_keypair()[1],
                             algorithms=[JWT_ALGORITHM],
@@ -275,10 +377,11 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
                 user = s['sub']
                 if HASH_AUTH_CONTEXT_KEY in s:
                     hash_auth_context = s[HASH_AUTH_CONTEXT_KEY]
-        # `WazuhInternalError` covers a keypair that could not be read (6003). This runs after the
-        # response has already been produced, so a transient failure here must degrade the logged
-        # username, never turn a served response into a 500.
-        except (KeyError, IndexError, binascii.Error, jwt.exceptions.PyJWTError, OAuthProblem,
+        # `WazuhInternalError` covers a keypair that could not be read (6003), and `RecursionError` a
+        # token header nested too deep for the JSON decoder, which PyJWT does not wrap in a PyJWTError.
+        # This runs after the response has already been produced, so a transient failure here must
+        # degrade the logged username, never turn a served response into a 500.
+        except (KeyError, IndexError, ValueError, RecursionError, jwt.exceptions.PyJWTError, OAuthProblem,
                 WazuhInternalError):
             user = UNKNOWN_USER_STRING
 
@@ -313,19 +416,62 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
 
     custom_logging(user, host, method, path, query, body, time_diff, response.status_code,
                    hash_auth_context=hash_auth_context, headers=headers)
-    if response.status_code == 403 and \
-        path in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} and \
-            method in {'GET', 'POST'}:
-        logger.warning(f'IP blocked due to exceeded number of logins attempts: {host}')
+    # A blocked client (6000) is logged where the block is enforced, `check_blocked_ip`: a 403 here can
+    # equally be an RBAC or run_as refusal.
     if response.status_code == 429:
-        logger.warning(f'Maximum number of requests per minute reached. IP: {host}. User: {user}.')
+        # A request refused by the authenticated limit before authentication ran (its bucket was already
+        # exhausted) has no identity in the context, but it is an authenticated caller's: go by the limit hit.
+        extensions = request.scope.get('extensions') if hasattr(request, 'scope') else None
+        rate_limit_code = extensions.get(RATE_LIMIT_CODE_KEY) if isinstance(extensions, dict) else None
+        authenticated = log_body if rate_limit_code is None else rate_limit_code == AUTHENTICATED_RATE_LIMIT_CODE
+        warn_rate_limited(host, user, authenticated=authenticated)
+
+
+def get_login_attempt_key(request: Request) -> tuple:
+    """Return the key the login lockout counts `request` under: its client key and the user it names.
+
+    Every client on the manager host, the dashboard included, logs in from the same address, so
+    keying on the address alone let failures for any user lock out all of them. The user is the one
+    in the Basic credentials, as sent, since no attempt has been authenticated yet; it is truncated so
+    that a caller varying it cannot grow an entry, and a request without readable Basic credentials
+    is counted under an empty name.
+
+    Parameters
+    ----------
+    request : Request
+        HTTP request.
+
+    Returns
+    -------
+    tuple
+        Client key (see `get_client_key`) and user name.
+    """
+    user = ''
+    try:
+        auth_type, credentials = AbstractSecurityHandler.get_auth_header_value(request)
+        if auth_type == 'basic':
+            user = base64.b64decode(credentials).decode('latin1').split(':', 1)[0]
+    except (KeyError, IndexError, ValueError, OAuthProblem):
+        pass
+    return get_client_key(request.client.host), user[:LOGIN_USERNAME_MAX_LENGTH]
+
+
+def _login_attempt_limits(request: Request, max_login_attempts: int) -> dict:
+    """Map each lockout key `request` is counted under to its limit: the client and user (see
+    `get_login_attempt_key`), and the client across all users (user `None`)."""
+    client, user = get_login_attempt_key(request)
+    return {(client, user): max_login_attempts,
+            (client, None): max_login_attempts * LOGIN_CLIENT_ATTEMPTS_FACTOR}
 
 
 async def check_blocked_ip(request: Request):
-    """Blocks/unblocks the IPs that are requesting an API token, counting the attempt.
+    """Blocks/unblocks the clients that are requesting an API token, counting the attempt.
 
-    Attempts are counted per client key (see `get_client_key`), so an IPv6 client is limited by
-    its /64 rather than by each address it can rotate through.
+    Attempts are counted per client key and user (see `get_login_attempt_key`), so an IPv6 client
+    is limited by its /64 rather than by each address it can rotate through, and failures for one
+    user do not block another one logging in from the same address. They are also counted per
+    client key across all users, under a limit `LOGIN_CLIENT_ATTEMPTS_FACTOR` times higher, which
+    bounds what a client trying many user names can guess and keep in memory.
 
     The attempt is counted in the same locked section that checks the block, before the
     request is dispatched to authentication, so concurrent requests observe each other's
@@ -335,25 +481,25 @@ async def check_blocked_ip(request: Request):
     ----------
     request : Request
         HTTP request.
-    block_time : int
-        Block time used to decide if the IP is going to be unlocked.
-
     """
     global ip_block, ip_stats
     access_conf = configuration.api_conf['access']
     block_time = access_conf['block_time']
-    max_login_attempts = access_conf['max_login_attempts']
-    host = get_client_key(request.client.host)
+    limits = _login_attempt_limits(request, access_conf['max_login_attempts'])
 
     async with ip_lock:
-        try:
-            if get_utc_now().timestamp() - block_time >= ip_stats[host]['timestamp']:
-                del ip_stats[host]
-                ip_block.remove(host)
-        except (KeyError, ValueError):
-            pass
+        now = get_utc_now().timestamp()
+        for key in limits:
+            if key in ip_stats and now - block_time >= ip_stats[key]['timestamp']:
+                del ip_stats[key]
+                ip_block.discard(key)
 
-        if host in ip_block:
+        if any(key in ip_block for key in limits):
+            host = request.client.host if request.client else ''
+            # Once per interval per client: the user is the one claimed, so it cannot key the throttle.
+            warn_throttled(('blocked', get_login_attempt_key(request)[0]),
+                           f'IP blocked due to exceeded number of logins attempts: {host}. '
+                           f'User: {get_login_attempt_key(request)[1]!r}.')
             raise BlockedIPException(
                 status=403,
                 title="Permission Denied",
@@ -361,14 +507,15 @@ async def check_blocked_ip(request: Request):
                        "to a high number of login attempts"
             )
 
-        # The timestamp is only set when the entry is created so `block_time` counts from the first attempt.
-        if host not in ip_stats:
-            ip_stats[host] = {'attempts': 1, 'timestamp': get_utc_now().timestamp()}
-        else:
-            ip_stats[host]['attempts'] += 1
+        for key, limit in limits.items():
+            # The timestamp is only set when the entry is created so `block_time` counts from the first attempt.
+            if key not in ip_stats:
+                ip_stats[key] = {'attempts': 1, 'timestamp': now}
+            else:
+                ip_stats[key]['attempts'] += 1
 
-        if ip_stats[host]['attempts'] >= max_login_attempts:
-            ip_block.add(host)
+            if ip_stats[key]['attempts'] >= limit:
+                ip_block.add(key)
 
 
 async def settle_login_attempt(request: Request):
@@ -384,21 +531,21 @@ async def settle_login_attempt(request: Request):
         HTTP request.
     """
     global ip_block, ip_stats
-    max_login_attempts = configuration.api_conf['access']['max_login_attempts']
-    host = get_client_key(request.client.host)
+    limits = _login_attempt_limits(request, configuration.api_conf['access']['max_login_attempts'])
 
     async with ip_lock:
-        if host not in ip_stats:
-            return
+        for key, limit in limits.items():
+            if key not in ip_stats:
+                continue
 
-        attempts = ip_stats[host]['attempts'] - 1
-        # An entry with no outstanding attempts is dropped so the next window starts at the next attempt.
-        if attempts > 0:
-            ip_stats[host]['attempts'] = attempts
-        else:
-            del ip_stats[host]
-        if attempts < max_login_attempts:
-            ip_block.discard(host)
+            attempts = ip_stats[key]['attempts'] - 1
+            # An entry with no outstanding attempts is dropped so the next window starts at the next attempt.
+            if attempts > 0:
+                ip_stats[key]['attempts'] = attempts
+            else:
+                del ip_stats[key]
+            if attempts < limit:
+                ip_block.discard(key)
 
 
 async def charge_unauthenticated_request(request: Request, max_requests: int, error_code: int) -> int:
@@ -596,7 +743,7 @@ class CheckRateLimitsMiddleware(BaseHTTPMiddleware):
         charge the unauthenticated bucket only for a request that just failed authentication."""
         max_requests = configuration.api_conf['access']['max_request_per_minute']
         if await is_authenticated_bucket_exhausted(request, max_requests):
-            raise MaxRequestsException(code=6001)
+            raise rate_limited(request, AUTHENTICATED_RATE_LIMIT_CODE)
 
         try:
             return await call_next(request)
@@ -604,7 +751,7 @@ class CheckRateLimitsMiddleware(BaseHTTPMiddleware):
             max_unauthenticated = configuration.api_conf['access']['max_unauthenticated_request_per_minute']
             error_code = await charge_unauthenticated_request(request, max_unauthenticated, 6005)
             if error_code:
-                raise MaxRequestsException(code=error_code)
+                raise rate_limited(request, error_code)
             raise
 
 
@@ -625,10 +772,10 @@ class CheckAuthenticatedRateLimitMiddleware(BaseHTTPMiddleware):
             error_code = await charge_unauthenticated_request(request, max_unauthenticated, 6005)
         else:
             max_requests = configuration.api_conf['access']['max_request_per_minute']
-            error_code = await charge_authenticated_request(request, max_requests, 6001)
+            error_code = await charge_authenticated_request(request, max_requests, AUTHENTICATED_RATE_LIMIT_CODE)
 
         if error_code:
-            raise MaxRequestsException(code=error_code)
+            raise rate_limited(request, error_code)
         else:
             return await call_next(request)
 
@@ -737,7 +884,14 @@ class WazuhAccessLoggerMiddleware(BaseHTTPMiddleware):
         content_length = get_declared_content_length(request)
         if content_length is not None and 0 < content_length <= max_cached_body:
             # Related to https://github.com/wazuh/wazuh/issues/24060.
-            await request.body()
+            try:
+                await request.body()
+            except ClientDisconnect:
+                # Keep the request flowing through authentication and rate limiting even when the
+                # peer disappears before sending its declared body. BaseHTTPMiddleware replays this
+                # cached empty body downstream, so neither the endpoint nor access_log reads the
+                # disconnected receive channel again.
+                request._body = b''
 
         response = await call_next(request)
 
@@ -818,9 +972,11 @@ class CheckExpectHeaderMiddleware(BaseHTTPMiddleware):
                 content_length = int(request.headers["Content-Length"])
                 max_upload_size = configuration.api_conf["max_upload_size"]
                 if max_upload_size and content_length > max_upload_size:
+                    # The path is percent-decoded and comes from a client that may not be authenticated
+                    # (an unmatched route skips SecurityMiddleware): escape it, as the access log does.
                     logger.warning(
                         "Rejected a request to %s: Maximum content size limit (%s) exceeded (%s bytes declared)",
-                        request.scope.get('path', ''), max_upload_size, content_length)
+                        escape_control_chars(request.scope.get('path', '')), max_upload_size, content_length)
                     raise PayloadTooLargeException(
                         title="Request Entity Too Large",
                         detail=f"Maximum content size limit ({max_upload_size}) exceeded "

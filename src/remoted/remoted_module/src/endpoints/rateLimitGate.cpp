@@ -107,15 +107,32 @@ namespace remoted::endpoints::ratelimit
 
         responder.send(std::move(response));
 
+        // The count is attributed to the period it really covers: refusals suppressed after a
+        // report are only reported by the next refusal, which may come long after the window, so
+        // the line names the actual time since the previous report rather than the window length.
         if (const auto decision = m_throttle->record())
         {
-            LOGFN_WARN(logFn(),
-                       "%s refused %llu request(s) in the last %d s with 429: the endpoint is being asked "
-                       "faster than its configured rate, which is a ceiling for this whole node and not "
-                       "a per-agent one. Raise the matching 'remote.https' rate if this load is legitimate.",
-                       m_route.c_str(),
-                       static_cast<unsigned long long>(decision.total),
-                       remoted::common::LogThrottle::kDefaultWindowSeconds);
+            if (decision.secondsSinceLastEmit < 0)
+            {
+                LOGFN_WARN(logFn(),
+                           "%s refused a request with 429 (further refusals are summarised at most once "
+                           "every %d s): the endpoint is being asked faster than its configured rate, which "
+                           "is a ceiling for this whole node and not a per-agent one. Raise the matching "
+                           "'remote.https' rate if this load is legitimate.",
+                           m_route.c_str(),
+                           remoted::common::LogThrottle::kDefaultWindowSeconds);
+            }
+            else
+            {
+                LOGFN_WARN(logFn(),
+                           "%s refused %llu request(s) with 429 since the previous report %lld s ago: the "
+                           "endpoint is being asked faster than its configured rate, which is a ceiling for "
+                           "this whole node and not a per-agent one. Raise the matching 'remote.https' rate "
+                           "if this load is legitimate.",
+                           m_route.c_str(),
+                           static_cast<unsigned long long>(decision.total),
+                           static_cast<long long>(decision.secondsSinceLastEmit));
+            }
         }
         return false;
     }

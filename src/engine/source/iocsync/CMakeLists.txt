@@ -39,6 +39,7 @@ set(UNIT_SRC_DIR   ${TEST_SRC_DIR}/unit)
 # Unit tests
 add_executable(iocsync_utest
     ${UNIT_SRC_DIR}/iocsync_status_test.cpp
+    ${UNIT_SRC_DIR}/errorSummary_test.cpp
 )
 target_link_libraries(iocsync_utest
     PRIVATE

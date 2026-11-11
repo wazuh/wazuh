@@ -25,7 +25,8 @@
 
 /* Audit defs */
 #define WDATA_DEFAULT_INTERVAL_SCAN 300
-#define AUDIT_SOCKET                "queue/sockets/audit"
+// Root-owned directory; only root creates this socket and connects to it.
+#define AUDIT_SOCKET                "var/audit/socket"
 #define MAX_CONN_RETRIES            5          // Max retries to reconnect to Audit socket
 #define AUDIT_CONF_FILE             "tmp/af_wazuh.conf"
 #define AUDIT_HEALTHCHECK_DIR       "tmp"
@@ -910,6 +911,11 @@ void fim_sync_register_teardown_hook(void);
  * @brief Initializes eBPF and does the healthcheck to check availability.
  */
 void check_ebpf_availability();
+
+/**
+ * @brief Sends the whodata directories to the eBPF programs so they drop events for other paths.
+ */
+void fim_ebpf_update_dirs();
 #endif /* ENABLE_AUDIT */
 #endif
 #endif /* SYSCHECK_H */

@@ -9,6 +9,7 @@
  */
 #ifndef _SYSCOLLECTOR_HPP
 #define _SYSCOLLECTOR_HPP
+#include <atomic>
 #include <chrono>
 #include <thread>
 #include <condition_variable>

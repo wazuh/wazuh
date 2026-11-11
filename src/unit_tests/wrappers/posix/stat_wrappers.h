@@ -25,6 +25,8 @@ int __wrap_lstat(const char *filename, struct stat *buf);
 
 int __wrap_fstat (int __fd, struct stat *__buf);
 
+int __wrap_fstatat(int __fd, const char *__file, struct stat *__buf, int __flag);
+
 #ifdef WIN32
 int __wrap_mkdir(const char *__path);
 #elif defined(__MACH__)

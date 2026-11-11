@@ -7,6 +7,9 @@
   metadata:
     port: '1514'
     rids_closing_time: '0s'
+    # The schema requires at least 1 second (duration_nonzero): the strict loader rejects '0s' with 1244
+    # before remoted starts.
+    fatal_1244: ".*ERROR: \\(1244\\): Invalid configuration at '/remote/legacy/rids_closing_time': .*pattern.*"
 
 
 - name: Command config wazuh manager for rids closing time

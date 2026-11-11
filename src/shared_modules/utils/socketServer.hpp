@@ -144,7 +144,7 @@ public:
         ::close(m_stopFD[1]);
 
         std::error_code ec;
-        std::filesystem::remove_all(m_socketPath, ec);
+        std::filesystem::remove(m_socketPath, ec);
         if (ec)
         {
             std::cerr << "Failed to remove socket file: " << ec.message() << std::endl;

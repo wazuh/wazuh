@@ -23,7 +23,7 @@ For module overview and architecture, see [Logcollector Module](README.md).
 The Logcollector module uses two main XML sections:
 
 - **`<localfile>`** - Configures file-based log collection
-- **`<socket>`** - Configures socket-based log reception
+- **`<socket>`** - Defines a Unix socket that `<localfile>` entries can forward their events to
 
 ---
 
@@ -57,8 +57,8 @@ Defines the format of the log source to determine how logs are read and parsed.
   - `eventlog` - Windows Event Log (all Windows versions)
   - `macos` - macOS Unified Logging System
   - `journald` - Linux systemd journal
-  - `command` - Output from a command
-  - `full_command` - Full output from a command including empty lines
+  - `command` - Output from a command, one event per output line. An empty line still produces an event that carries only the `wazuh: output: '<alias>': ` header
+  - `full_command` - Output from a command as a single event, read in one block of up to the maximum event size. It does not keep empty lines: carriage returns are removed and line breaks are collapsed in pairs, so a single blank line is dropped and a run of several leaves some behind. A last line with no trailing newline is dropped
   - `audit` - Linux audit logs
   - `nmapg` - NMAP grepable output
   - `mysql_log` - MySQL logs
@@ -114,11 +114,11 @@ Collect only events generated after the agent starts.
 
 ### target
 
-Specifies a target socket or file for routing logs.
+Sends the events of this `<localfile>` to one or more outputs instead of the manager.
 
-- **Default value:** None (logs sent to standard analysis queue)
-- **Allowed values:** Socket name or file path
-- **Note:** Used for custom log routing and processing pipelines
+- **Default value:** `agent` (events are sent to the manager)
+- **Allowed values:** Comma-separated list of `agent` and the `name` of `<socket>` sections defined in the same configuration
+- **Note:** A file path is not accepted. A name that matches no `<socket>` makes `wazuh-logcollector` exit right after it starts (`CRITICAL: Socket '<name>' for '<location>' is not defined.`), so no log is collected. In a centralized `agent.conf` (with `logcollector.remote_commands=0`, the default), an undefined name is logged and removed from the list instead, and a `<localfile>` left with no target is ignored. On Windows there is no socket output: every target delivers to the manager, so `agent` together with a socket name sends each event twice
 
 ### out_format
 
@@ -136,14 +136,20 @@ Ignore binary files when using wildcard patterns.
 - **Allowed values:** `yes`, `no`
 - **Note:** When enabled, skips files that appear to be binary when expanding wildcards
 
-### labels
+### label
 
-Adds custom labels to collected log events.
+Adds a custom field to each event read from a `json` log.
 
 - **Default value:** None (optional)
-- **Allowed values:** Contains one or more `<label>` elements
-- **Format:** `<label key="key_name">value</label>`
-- **Note:** Labels are injected into JSON logs and added as metadata to other log formats
+- **Allowed values:** A string. A value that is a JSON array, starting with `[` and with nothing after the closing `]` (no surrounding whitespace), is added as an array instead
+- **Attributes:** `key` (required) - name of the field to add. A `<label>` with no `key`, or an empty one, is a configuration error. Do not use a key starting with `_`: it is reserved (see **Errors**)
+- **Format:** `<label key="key_name">value</label>`, directly under `<localfile>`. Repeat the element to add more fields
+- **Note:**
+  - **Errors:** There is no `<labels>` wrapper. One is rejected with `(1230): Invalid element in the configuration: 'labels'.`: in `ossec.conf` the agent does not start; in a group's `agent.conf` the agent rejects the whole downloaded configuration and keeps the one it had, so none of that update applies, including unrelated sections, and an agent still waiting for its first configuration from the manager keeps its modules on hold. Run `verify-agent-conf` on the manager before distributing a group's `agent.conf` to catch it. A key starting with `_` is not reported: the parser loops on it, logging the reserved-label warning without end. In `ossec.conf`, logcollector never finishes reading its configuration. In a group's `agent.conf`, `wazuh-agentd` also hangs on every agent in the group, at startup and when checking a downloaded configuration, so the agent cannot download a corrected `agent.conf` until the file is removed on each host. `verify-agent-conf` and uploading the group configuration through the API hang the same way instead of reporting an error, so check those keys by hand before distributing
+  - **Formats:** Labels are only added to `json` events. Other formats keep them in the configuration (the agent's reported localfile configuration lists them, always as strings) but add nothing to the events, and only `journald` and `macos` log a warning
+  - **Merging:** A label never overwrites a field that is already in the event, whether the event carried it or an earlier label added it. Field names are compared without regard to case: `Host` is dropped when the event has `host`, and `App.env` goes into an existing `app` object. A key with a dot (`app.env`) is added as a nested object inside `app`, and dropped when `app` already exists and is not an object. Empty parts in a dotted key are not validated: `app.` or `.env` load without error and add a field with an empty name, so avoid them
+  - **Repeated and overlapping keys:** A repeated key keeps its last value, at the position of its first occurrence, and labels are added in that order. Keys are only treated as repeated when they match exactly, including case: `Env` followed by `env` are kept as two labels, and since the event compares field names without regard to case, the first one (`Env`) is added and the second is dropped. Do not combine a key with dotted keys under it (`app` and `app.env`): whichever is added first wins and the other is dropped
+- **Example:** `<label key="environment">production</label>`
 
 ### age
 
@@ -158,8 +164,8 @@ Specifies the maximum age for log files to read (for wildcard patterns).
 Excludes files matching a pattern when using wildcards.
 
 - **Default value:** None (optional)
-- **Allowed values:** Regex pattern
-- **Note:** Files matching this pattern are excluded from monitoring
+- **Allowed values:** Wildcard pattern (`*`, `?`, `[...]`) matched against the full path of each file, for example `/var/log/app/*.old`. `strftime` tokens such as `%Y` are expanded once, when the configuration is loaded
+- **Note:** This is not a regular expression: `\.old$` matches no file. Applies only to a `location` with wildcards. On Windows, only `*` is a wildcard, and only in the file name; the path must use `\` as separator, a pattern written with `/` excludes nothing
 
 ### alias
 
@@ -212,41 +218,39 @@ Time to wait before reconnecting to a log source after failure.
 
 ## `<socket>` Section
 
-The `<socket>` section configures socket-based log reception. The agent listens on the specified socket for incoming log messages.
+The `<socket>` section defines an output: a Unix socket, created and listened on by another program, that `wazuh-logcollector` connects to and writes events into. It receives nothing by itself; a `<localfile>` sends its events there by naming the socket in its [`target`](#target). Not accepted from a centralized `agent.conf` unless `logcollector.remote_commands=1`. Linux and macOS only: on Windows the events of a localfile that targets a socket still go to the manager.
 
 ### name
 
-Path to the Unix socket or name of the Windows named pipe.
+Identifier of the socket, referenced by `<target>` in `<localfile>`.
 
 - **Default value:** None (required)
-- **Allowed values:**
-  - **Linux/Unix:** Socket path (e.g., `/var/run/custom.sock`)
-  - **Windows:** Named pipe name (e.g., `custom-pipe`)
-- **Note:** The agent must have permissions to create and read from the socket
+- **Allowed values:** Any string except `agent`, which is reserved for the manager output
+- **Note:** A `<socket>` without `name` is a configuration error
 
 ### location
 
-Alias for the socket name (alternative to `name`).
+Path of the Unix socket to connect to.
 
-- **Default value:** None (mutually exclusive with `name`)
-- **Allowed values:** Same as `name`
-- **Note:** Either `name` or `location` must be specified
+- **Default value:** None (required)
+- **Allowed values:** Socket path (e.g., `/var/run/custom.sock`)
+- **Note:** Required together with `name`, not an alternative to it. The socket must already exist, created by the program that reads from it; while it cannot be reached, events for it are lost and the agent retries the connection every `logcollector.sock_fail_time` seconds
 
 ### mode
 
-Socket connection mode.
+Socket type.
 
-- **Default value:** `tcp`
-- **Allowed values:** `tcp`, `udp`
-- **Note:** Determines the protocol used for socket communication
+- **Default value:** `udp`
+- **Allowed values:** `udp` (datagram socket), `tcp` (stream socket)
+- **Note:** Must match the socket the other program created
 
 ### prefix
 
-Prefix to add to messages received from the socket.
+Text written in front of every event sent to the socket.
 
 - **Default value:** None (optional)
 - **Allowed values:** Any string
-- **Note:** Useful for identifying the source of socket messages
+- **Note:** Written as is, with no separator between it and the event. A backslash escapes the next character and is removed
 
 ---
 
@@ -264,6 +268,16 @@ File check interval for detecting log file changes.
 - **Allowed values:** Integer from `1` to `120`
 - **Format:** `logcollector.loop_timeout=2`
 - **Note:** Controls how frequently Logcollector checks monitored files for changes
+
+### logcollector.ip_update_interval
+
+How often Logcollector refreshes the cached host IP address it exposes to its output-format
+placeholders (`src/shared/src/log_builder.c`).
+
+- **Default value:** `60` (seconds)
+- **Allowed values:** Integer from `0` to `3600`; `0` never refreshes the address after start
+- **Format:** `logcollector.ip_update_interval=60`
+- **Note:** Agent only; the manager reads no `logcollector.*` key
 
 ### logcollector.open_attempts
 
@@ -440,10 +454,8 @@ Collect JSON-formatted application logs:
 <localfile>
   <location>/var/log/app.json</location>
   <log_format>json</log_format>
-  <labels>
-    <label key="app">myapp</label>
-    <label key="environment">production</label>
-  </labels>
+  <label key="app">myapp</label>
+  <label key="environment">production</label>
 </localfile>
 ```
 
@@ -466,14 +478,14 @@ Monitor all log files matching a wildcard pattern:
 
 ```xml
 <localfile>
-  <location>/var/log/app*.log</location>
+  <location>/var/log/app/*</location>
   <log_format>syslog</log_format>
-  <exclude>\.old$</exclude>
+  <exclude>/var/log/app/*.old</exclude>
   <age>7d</age>
 </localfile>
 ```
 
-This configuration monitors all files starting with `app` and ending with `.log`, excluding files with `.old` extension and files older than 7 days.
+This configuration monitors the files in `/var/log/app`, excluding the ones that end in `.old` and files older than 7 days. `exclude` is a wildcard pattern for the full path, like `location`, not a regular expression.
 
 ### Windows Event Channel
 
@@ -600,17 +612,26 @@ Monitor all Docker containers:
 </localfile>
 ```
 
-### Socket-Based Log Collection
+### Forwarding Events to a Socket
 
-Create a Unix socket for receiving syslog messages:
+Forward the events of a log file to a Unix socket that another program listens on, instead of the manager:
 
 ```xml
 <socket>
-  <name>/var/run/custom.sock</name>
+  <name>custom</name>
+  <location>/var/run/custom.sock</location>
   <mode>tcp</mode>
   <prefix>custom-app</prefix>
 </socket>
+
+<localfile>
+  <location>/var/log/app.log</location>
+  <log_format>syslog</log_format>
+  <target>custom</target>
+</localfile>
 ```
+
+Use `<target>agent,custom</target>` to send the events to the manager as well.
 
 ### Multi-Line Log Collection
 

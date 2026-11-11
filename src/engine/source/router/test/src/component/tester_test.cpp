@@ -3,6 +3,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <functional>
 #include <future>
 #include <mutex>
 #include <set>
@@ -40,6 +41,12 @@ router::test::EntryPost makeTestEntry(const std::string& name, const std::string
 class OrchestratorTesterTest : public ::testing::Test
 {
 protected:
+    // The tester workers call waitPop() from start() on, and gMock forbids setting an expectation on a mock
+    // while another thread calls it. So the only waitPop() expectation is the one set before start(), and a
+    // test changes what it pops through this hook instead. Declared first so it outlives the workers.
+    std::mutex m_testerPopMutex;
+    std::function<bool(router::test::EventTest&)> m_testerPop;
+
     std::shared_ptr<builder::mocks::MockBuilder> m_mockbuilder;
     std::shared_ptr<builder::mocks::MockPolicy> m_mockPolicy;
     std::shared_ptr<fastmetrics::MockCounter> m_mockCounter;
@@ -53,6 +60,12 @@ protected:
     std::shared_ptr<router::Orchestrator> m_orchestrator;
 
 public:
+    void setTesterPop(std::function<bool(router::test::EventTest&)> pop)
+    {
+        std::lock_guard<std::mutex> lock(m_testerPopMutex);
+        m_testerPop = std::move(pop);
+    }
+
     void SetUp() override
     {
         logging::testInit();
@@ -136,7 +149,13 @@ public:
 
         m_orchestrator = std::make_shared<router::Orchestrator>(config);
 
-        EXPECT_CALL(*m_mockQueueTester, waitPop(testing::_, testing::_)).WillRepeatedly(testing::Return(false));
+        EXPECT_CALL(*m_mockQueueTester, waitPop(testing::_, testing::_))
+            .WillRepeatedly(testing::Invoke(
+                [this](router::test::EventTest& out, auto)
+                {
+                    std::lock_guard<std::mutex> lock(m_testerPopMutex);
+                    return m_testerPop ? m_testerPop(out) : false;
+                }));
         EXPECT_CALL(*m_mockQueueRouter, waitPop(testing::_, testing::_)).WillRepeatedly(testing::Return(false));
         m_orchestrator->start();
     }
@@ -358,18 +377,23 @@ TEST_F(OrchestratorTesterTest, IngestTest)
                 return true;
             }));
 
-    EXPECT_CALL(*m_mockQueueTester, waitPop(testing::_, testing::_))
-        .WillRepeatedly(testing::Invoke(
-            [&](router::test::EventTest& out, auto)
+    // The hook uses this test's locals: drop it before they go, whichever way the test ends.
+    struct ResetTesterPop
+    {
+        OrchestratorTesterTest* fixture;
+        ~ResetTesterPop() { fixture->setTesterPop(nullptr); }
+    } resetTesterPop {this};
+    setTesterPop(
+        [&](router::test::EventTest& out)
+        {
+            std::lock_guard<std::mutex> lock(capturedTupleMutex);
+            if (capturedTuple != nullptr)
             {
-                std::lock_guard<std::mutex> lock(capturedTupleMutex);
-                if (capturedTuple != nullptr)
-                {
-                    out = std::move(capturedTuple);
-                    return true;
-                }
-                return false;
-            }));
+                out = std::move(capturedTuple);
+                return true;
+            }
+            return false;
+        });
 
     ON_CALL(*m_mockController, subscribe(testing::_, testing::_)).WillByDefault(testing::Return(bk::Subscription(1)));
 

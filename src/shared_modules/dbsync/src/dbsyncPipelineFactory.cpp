@@ -58,7 +58,7 @@ namespace DbSync
 
                 try
                 {
-                    DBSyncImplementation::instance().closeTransaction(m_handle, m_txnContext);
+                    DBSyncImplementation::instance().closeTransaction(m_handle, m_txnContext, !m_keepRowsOnClose);
                 }
                 catch (...)
                 {
@@ -98,6 +98,10 @@ namespace DbSync
                 }
 
                 DBSyncImplementation::instance().getDeleted(m_handle, m_txnContext, callback);
+            }
+            void keepRowsOnClose() override
+            {
+                m_keepRowsOnClose = true;
             }
 
         private:
@@ -139,6 +143,7 @@ namespace DbSync
             const unsigned int m_maxQueueSize;
             const ResultCallback m_callback;
             const std::shared_ptr<DispatchCallbackNode> m_spDispatchNode;
+            bool m_keepRowsOnClose {false};
     };
     //----------------------------------------------------------------------------------------
     PipelineFactory& PipelineFactory::instance() noexcept
@@ -175,7 +180,7 @@ namespace DbSync
 
         return it->second;
     }
-    void PipelineFactory::destroy(const PipelineCtxHandle handle)
+    void PipelineFactory::destroy(const PipelineCtxHandle handle, const bool keepRows)
     {
         std::lock_guard<std::mutex> lock {m_contextsMutex};
         const auto& it {m_contexts.find(handle)};
@@ -183,6 +188,11 @@ namespace DbSync
         if (it == m_contexts.end())
         {
             throw dbsync_error {INVALID_HANDLE};
+        }
+
+        if (keepRows)
+        {
+            it->second->keepRowsOnClose();
         }
 
         m_contexts.erase(it);

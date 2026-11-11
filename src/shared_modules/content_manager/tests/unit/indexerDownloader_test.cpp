@@ -35,6 +35,9 @@ namespace
     constexpr uint64_t FIRST_CVE_OFFSET {1001};
     constexpr size_t PAGE_SIZE {100};
     constexpr auto RETRY_INTERVAL {std::chrono::milliseconds {10}};
+    /// A failed page fails its attempt at once: these tests cover the resume of the next attempt, and the page
+    /// request retry has its own suite (indexerPageWalk_test.cpp).
+    const IndexerPageWalk::RetryPolicy PAGE_RETRY {0};
 
     /// What the consumer saw: every delivered id, the pages, the completion signal. A delivered id is
     /// durable once a later "flushed" answer or the completion covers it; what a crash would lose is
@@ -178,7 +181,7 @@ protected:
 
     void run(size_t numSlices, size_t pageSize = PAGE_SIZE)
     {
-        IndexerDownloader downloader(config(numSlices, pageSize), factory(), RETRY_INTERVAL);
+        IndexerDownloader downloader(config(numSlices, pageSize), factory(), RETRY_INTERVAL, PAGE_RETRY);
         downloader.handleRequest(m_context);
     }
 

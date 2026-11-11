@@ -65,6 +65,7 @@ namespace
                          const std::string& data, uint64_t version, bool isDataContext), (override));
             MOCK_METHOD(SyncModuleResult, synchronizeModule, (Mode mode, Option option), (override));
             MOCK_METHOD(IntegrityCheckResult, requiresFullSync, (const std::string& index, const std::string& checksum), (override));
+            MOCK_METHOD(void, clearIntegrityProgress, (const std::string& index), (override));
             MOCK_METHOD(SyncModuleResult, synchronizeMetadataOrGroups,
                         (Mode mode, const std::vector<std::string>& indices, uint64_t globalVersion), (override));
             MOCK_METHOD(SyncModuleResult, notifyDataClean, (const std::vector<std::string>& indices, Option option, bool trackConsecutiveFailures), (override));
@@ -862,6 +863,52 @@ TEST_F(SyscollectorIdentityTest, DeferredVDRecoveryDoesNotAttachContext)
 
     EXPECT_TRUE(Syscollector::instance().resyncTableToManager(
                     PACKAGES_TABLE, SYSCOLLECTOR_SYNC_INDEX_PACKAGES, /* syncNow */ false, "retry note"));
+}
+
+// A VD index is checked on the plain protocol but cleaned on the VD one, so the mismatches the
+// check stored have to be removed where they are.
+TEST_F(SyscollectorIdentityTest, VDRecoveryClearsTheMismatchesStoredByThePlainProtocol)
+{
+    initModule(true, true, /* os */ true);
+    ASSERT_TRUE(Syscollector::instance().updateMetadataValue("vd_first_sync_completed", 1));
+    INJECT_MOCK_PROTOCOLS();
+
+    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _)).WillRepeatedly(Return(okResult()));
+    EXPECT_CALL(*plainProtocol, clearIntegrityProgress(std::string(SYSCOLLECTOR_SYNC_INDEX_PACKAGES))).Times(1);
+    EXPECT_CALL(*vdProtocol, clearIntegrityProgress(_)).Times(0);
+
+    EXPECT_TRUE(Syscollector::instance().resyncTableToManager(
+                    PACKAGES_TABLE, SYSCOLLECTOR_SYNC_INDEX_PACKAGES, /* syncNow */ false, "retry note"));
+}
+
+// A plain index is checked and cleaned on the same protocol, whose clean removes them itself.
+TEST_F(SyscollectorIdentityTest, PlainRecoveryLeavesTheStoredMismatchesToItsClean)
+{
+    initModule(true, true, /* os */ true);
+    ASSERT_TRUE(Syscollector::instance().updateMetadataValue("vd_first_sync_completed", 1));
+    INJECT_MOCK_PROTOCOLS();
+
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).WillRepeatedly(Return(okResult()));
+    EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
+    EXPECT_CALL(*plainProtocol, clearIntegrityProgress(_)).Times(0);
+    EXPECT_CALL(*vdProtocol, clearIntegrityProgress(_)).Times(0);
+
+    EXPECT_TRUE(Syscollector::instance().resyncTableToManager(
+                    USERS_TABLE, SYSCOLLECTOR_SYNC_INDEX_USERS, /* syncNow */ true, "retry note"));
+}
+
+// A clean that did not happen leaves the index as it was, so its mismatches still count.
+TEST_F(SyscollectorIdentityTest, FailedVDCleanKeepsTheStoredMismatches)
+{
+    initModule(true, true, /* os */ true);
+    ASSERT_TRUE(Syscollector::instance().updateMetadataValue("vd_first_sync_completed", 1));
+    INJECT_MOCK_PROTOCOLS();
+
+    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _)).WillRepeatedly(Return(SyncModuleResult {}));
+    EXPECT_CALL(*plainProtocol, clearIntegrityProgress(_)).Times(0);
+
+    EXPECT_FALSE(Syscollector::instance().resyncTableToManager(
+                     PACKAGES_TABLE, SYSCOLLECTOR_SYNC_INDEX_PACKAGES, /* syncNow */ false, "retry note"));
 }
 
 // The sync thread polls this to resync right after a re-enrollment instead of waiting out a sync

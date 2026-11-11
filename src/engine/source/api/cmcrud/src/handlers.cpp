@@ -361,8 +361,11 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
         }
 
         // Generate unique temp namespace and session names to avoid conflicts with concurrent validations.
-        const auto tmpPrefix = loadInTester ? "logtest_{}" : "tmp_policy_validate_{}";
-        const std::string tmpName = fmt::format(tmpPrefix, base::utils::generators::randomHexString(6));
+        // A namespace loaded in the tester carries the tester prefix: only such a namespace is deleted when the
+        // session is later replaced or removed.
+        const std::string tmpPrefix =
+            loadInTester ? std::string {::router::test::TESTER_NAMESPACE_PREFIX} : std::string {"tmp_policy_validate_"};
+        const std::string tmpName = tmpPrefix + base::utils::generators::randomHexString(6);
         const cm::store::NamespaceId tmpNsId {tmpName};
         const std::string& tmpSessionName = tmpName;
 
@@ -423,6 +426,20 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
             return std::nullopt;
         };
 
+        // The session's current namespace goes with it only when the tester created it; any other one (a
+        // synchronized space, one a route uses) is live content, so the request is refused instead.
+        auto foreignNamespaceError = [&](const cm::store::NamespaceId& nsId) -> base::OptError
+        {
+            if (::router::test::isTesterOwnedNamespace(nsId))
+            {
+                return std::nullopt;
+            }
+            return base::Error {
+                fmt::format("Refusing to replace space '{}': its namespace '{}' was not created by the tester",
+                            finalSessionName,
+                            nsId.toStr())};
+        };
+
         auto strictDeleteNamespace = [&](const std::string& name) -> base::OptError
         {
             try
@@ -456,7 +473,7 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
             {
                 const int lifetime = 0;
                 ::router::test::EntryPost entryPost(tmpSessionName, tmpNsId, lifetime);
-                entryPost.description("wazuh-indexer auto created session");
+                entryPost.description("Created by /content/validate/policy");
 
                 auto err = testerLocked->postTestEntry(entryPost);
                 if (base::isError(err))
@@ -486,6 +503,18 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
 
             if (shouldPromote)
             {
+                // A session on a namespace the tester did not create is live content: refuse to replace it.
+                auto entry = testerLocked->getTestEntry(finalSessionName);
+                if (!base::isError(entry))
+                {
+                    if (auto ferr = foreignNamespaceError(base::getResponse(entry).namespaceId()))
+                    {
+                        // guard will clean temp session + namespace.
+                        res = adapter::userErrorResponse<ResponseType>(ferr->message);
+                        return;
+                    }
+                }
+
                 // Promote the temp session → finalSessionName, replacing the old one atomically.
                 auto replaced = testerLocked->replaceTestEntry(tmpSessionName, finalSessionName);
                 if (base::isError(replaced))
@@ -536,6 +565,16 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
                 // If requested, delete the old persistent test session and its namespace.
                 if (shouldDeleteOldTest)
                 {
+                    auto entry = testerLocked->getTestEntry(finalSessionName);
+                    if (!base::isError(entry))
+                    {
+                        if (auto ferr = foreignNamespaceError(base::getResponse(entry).namespaceId()))
+                        {
+                            res = adapter::userErrorResponse<ResponseType>(ferr->message);
+                            return;
+                        }
+                    }
+
                     auto extracted = testerLocked->extractTestEntry(finalSessionName);
                     if (base::isError(extracted))
                     {

@@ -100,7 +100,7 @@ that omits the credential):
 | `ver` | format version, always `1`; anything else is refused |
 | `adr` | where to connect: `host[:port][/prefix]`. The default port `1517` and the default prefix `wazuh-manager` are **dropped** on encoding, so a default deployment's token carries only a hostname |
 | `pin` **or** `ca` | the trust anchor — exactly one, never both and never neither |
-| `key` | the credential: 32 bytes, base64url. Absent on a `--no-credential` token |
+| `key` | the credential: 32 bytes, base64url — the 16-byte token id followed by the 16-byte secret. Absent on a `--no-credential` token |
 
 That is the whole document. There is no signature on the token itself. Distribute it through a
 trusted channel: replacing the descriptor can replace both the destination and its trust anchor,
@@ -421,7 +421,13 @@ verifies the bearer against it (`9026` no such agent or no secret on record, `90
 outside the window), and rotates the entry under the lock. Only one rotation per agent may be in
 flight; a second concurrent one is answered `9030`, which means *retry*, not *bad credential*.
 The generation must still match, the id must still exist in the keystore, groups and IP must be
-valid, and the requested name/IP must not belong to another agent. Both fresh credentials must be
+valid, and the requested name/IP must not belong to another agent.
+
+Only the id is kept from the old entry, and groups when the request names none. The rotated entry
+takes the request's **name**, which may differ from the registered one, and its **address**: what
+`ip` resolves to on `POST /enroll`, so a request without `ip` registers `any` again (or the
+connection's source address under `use_source_ip`), replacing an address or network the agent was
+registered with. Both fresh credentials must be
 generated and journalled before the in-place rotation can proceed.
 
 ## Step 9: The credential is written down before it is handed out

@@ -88,7 +88,6 @@ configurationdone="Configuración finalizada correctamente"
 tostart="Para iniciar Wazuh"
 tostop="Para detener Wazuh"
 configat="La configuración puede ser consultada y/o modificada en"
-addserveragent="Para conectar el agente con el servidor, debe agregar cada uno de los agentes en el servidor."
 presskey="Presione ENTER para continuar"
 
 # Update

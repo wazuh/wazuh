@@ -23,6 +23,7 @@ namespace
 {
 
 constexpr std::string_view IOC_ENRICHMENT_TARGET_PATH {"/wazuh/threat/enrichments"};
+constexpr std::string_view INDICATOR_CONFIDENCE_PATH {"/indicator/confidence"}; ///< Relative to one enrichment entry
 
 constexpr auto FMT_IOC_MATCH_TRACE = "IOC({}) -> Success: IOC match found for field '{}' with key '{}'";
 constexpr auto FMT_IOC_NOT_FOUND_TRACE = "IOC({}) -> Failure: IOC key '{}' not found for field '{}'";
@@ -93,6 +94,35 @@ std::optional<std::string> readFieldAsString(base::Event event, const IocSourceP
     }
 
     return std::nullopt;
+}
+
+/**
+ * @brief Build one enrichment entry (WCS `wazuh.threat.enrichments`) for one indicator document.
+ *
+ * WCS maps `indicator.confidence` as a keyword while the CTI documents carry it as a number, so a numeric
+ * confidence is written as its string form.
+ */
+json::Json makeEnrichmentEntry(const json::Json& indicator, const std::string& matchedField)
+{
+    json::Json entry;
+    entry.setObject();
+    entry.set("/indicator", indicator);
+
+    if (entry.isNumber(INDICATOR_CONFIDENCE_PATH))
+    {
+        if (const auto asInt = entry.getIntAsInt64(INDICATOR_CONFIDENCE_PATH); asInt.has_value())
+        {
+            entry.setString(std::to_string(*asInt), INDICATOR_CONFIDENCE_PATH);
+        }
+        else if (const auto asNumber = entry.getNumberAsDouble(INDICATOR_CONFIDENCE_PATH); asNumber.has_value())
+        {
+            entry.setString(fmt::format("{}", *asNumber), INDICATOR_CONFIDENCE_PATH);
+        }
+    }
+
+    entry.setObject("/matched");
+    entry.setString(matchedField, "/matched/field");
+    return entry;
 }
 
 std::optional<std::string> buildLookupKey(base::Event event, const IocMappingConfig& config)
@@ -270,18 +300,30 @@ base::Expression getEachIocEnrichTerm(const std::shared_ptr<ioc::kvdb::IKVDBMana
             return base::result::makeFailure<decltype(event)>(event, traceMsg);
         }
 
-        // Build enrichment match
-        auto enrichmentMatch = [&iocValue, &config]()
+        // One enrichment entry per indicator document: several CTI documents can share a key, and the KVDB
+        // then holds them as an array (WCS maps `indicator` as a single object).
+        std::size_t appended = 0;
+        if (iocValue->isArray())
         {
-            json::Json result;
-            result.setObject();
-            result.set("/indicator", *iocValue);
-            result.setObject("/matched");
-            result.setString(config.sourceFields, "/matched/field");
-            return result;
-        }();
+            for (const auto& indicator : iocValue->getArray().value_or(std::vector<json::Json> {}))
+            {
+                event->appendJson(makeEnrichmentEntry(indicator, config.sourceFields), IOC_ENRICHMENT_TARGET_PATH);
+                ++appended;
+            }
+        }
+        else
+        {
+            event->appendJson(makeEnrichmentEntry(*iocValue, config.sourceFields), IOC_ENRICHMENT_TARGET_PATH);
+            ++appended;
+        }
 
-        event->appendJson(enrichmentMatch, IOC_ENRICHMENT_TARGET_PATH);
+        if (appended == 0)
+        {
+            const auto traceMsg =
+                isTestMode ? fmt::format(FMT_IOC_NOT_FOUND_TRACE, config.iocType, lookupKey, config.sourceFields)
+                           : std::string {};
+            return base::result::makeFailure<decltype(event)>(event, traceMsg);
+        }
         *matchFound = true;
 
         const auto traceMsg = isTestMode

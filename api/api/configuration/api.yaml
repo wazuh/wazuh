@@ -43,9 +43,6 @@
 #  max_request_per_minute: 300
 #  max_unauthenticated_request_per_minute: 10
 
-# Drop privileges (Run as wazuh-manager user)
-# drop_privileges: yes
-
 # Maximum body size that the API can accept, in bytes (0 -> limitless)
 # max_upload_size: 10485760
 

@@ -26,9 +26,11 @@ static int verify_agent_conf(const char * path);
 static void helpmsg()
 {
     printf("\n%s %s: Verify agent.conf syntax for errors.\n", __wazuh_name, ARGV0);
-    printf("Usage:  %s [-f <agent.conf file>]\n\n", ARGV0);
+    printf("Usage:  %s [-f <agent.conf file>] [-d] [-V]\n\n", ARGV0);
     printf("Available options:\n");
     printf("\t-h          This help message.\n");
+    printf("\t-d          Debug mode.\n");
+    printf("\t-V          Print version.\n");
     printf("\t-f          Full file name and path to config file to be tested.\n");
     printf("\t            If this option is not specified, this program will scan \n");
     printf("\t            all folders inside the 'shared' folder.\n");

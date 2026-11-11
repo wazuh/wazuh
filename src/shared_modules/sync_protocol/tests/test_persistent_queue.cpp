@@ -39,6 +39,9 @@ class MockPersistentQueueStorage : public IPersistentQueueStorage
         MOCK_METHOD(void, removeByIndex, (const std::string& index), (override));
         MOCK_METHOD(void, removeAllDataContext, (), (override));
         MOCK_METHOD(void, deleteDatabase, (), (override));
+        MOCK_METHOD(std::optional<IntegrityProgress>, getIntegrityProgress, (const std::string& index), (override));
+        MOCK_METHOD(void, setIntegrityProgress, (const std::string& index, const IntegrityProgress& progress), (override));
+        MOCK_METHOD(void, clearIntegrityProgress, (const std::string& index), (override));
 };
 
 TEST(PersistentQueueTest, ConstructorCallsLoadAllForEachModule)
@@ -500,6 +503,30 @@ TEST(PersistentQueueTest, ResetSyncingItemsCallsStorageResetAllSyncing)
     PersistentQueue queue(":memory:", testLogger, mockStorage);
 
     EXPECT_NO_THROW(queue.resetSyncingItems());
+}
+
+TEST(PersistentQueueTest, IntegrityProgressCallsAreForwardedToStorage)
+{
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+    const IntegrityProgress stored {.mismatches = 2, .lastMismatchMs = 1000};
+    IntegrityProgress received;
+
+    EXPECT_CALL(*mockStorage, getIntegrityProgress("idx")).WillOnce(Return(stored));
+    EXPECT_CALL(*mockStorage, setIntegrityProgress("idx", _)).WillOnce(SaveArg<1>(&received));
+    EXPECT_CALL(*mockStorage, clearIntegrityProgress("idx")).Times(1);
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    PersistentQueue queue(":memory:", testLogger, mockStorage);
+
+    const auto progress = queue.getIntegrityProgress("idx");
+    ASSERT_TRUE(progress.has_value());
+    EXPECT_EQ(progress->mismatches, 2u);
+
+    queue.setIntegrityProgress("idx", stored);
+    EXPECT_EQ(received.mismatches, 2u);
+    EXPECT_EQ(received.lastMismatchMs, 1000);
+
+    queue.clearIntegrityProgress("idx");
 }
 
 TEST(PersistentQueueTest, ResetSyncingItemsThrowsOnStorageError)

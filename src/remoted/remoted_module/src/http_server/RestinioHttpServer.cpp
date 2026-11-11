@@ -13,6 +13,7 @@
 #include "caPublicationRecord.hpp"
 #include "caRecordEvents.hpp"
 #include "common/logThrottle.hpp"
+#include "connectionIdSource.hpp"
 #include "guardedTlsSocket.hpp"
 #include "handshakeLedger.hpp"
 #include "httpServerConfig.hpp"
@@ -42,9 +43,11 @@
 #include <limits>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <unordered_set>
 #include <utility>
 #include <variant>
@@ -191,10 +194,10 @@ namespace
             {
                 const auto message = builder();
                 LOGFN_DEBUG1(restinioLogFn(),
-                             "%s (%llu occurrence(s) in the last %d s)",
+                             "%s (%llu occurrence(s) %s)",
                              message.c_str(),
                              static_cast<unsigned long long>(decision.total),
-                             remoted::common::LogThrottle::kDefaultWindowSeconds);
+                             decision.period().c_str());
             }
         }
 
@@ -219,10 +222,10 @@ namespace
         if (const auto refused = throttle.record())
         {
             LOGFN_WARN(logFn(),
-                       "Refused %llu connection(s) in the last %d s: too many TLS handshakes in progress from one "
+                       "Refused %llu connection(s) %s: too many TLS handshakes in progress from one "
                        "address (last one: %s). See 'remoted.max_handshakes_per_source'.",
                        static_cast<unsigned long long>(refused.total),
-                       remoted::common::LogThrottle::kDefaultWindowSeconds,
+                       refused.period().c_str(),
                        peer.c_str());
         }
     }
@@ -233,10 +236,10 @@ namespace
         if (const auto expired = throttle.record())
         {
             LOGFN_WARN(logFn(),
-                       "Closed %llu connection(s) in the last %d s that did not complete the TLS handshake in time "
+                       "Closed %llu connection(s) %s that did not complete the TLS handshake in time "
                        "(last one: %s). See 'remoted.http_read_timeout'.",
                        static_cast<unsigned long long>(expired.total),
-                       remoted::common::LogThrottle::kDefaultWindowSeconds,
+                       expired.period().c_str(),
                        peer.empty() ? "unknown" : peer.c_str());
         }
     }
@@ -267,8 +270,9 @@ namespace
      * connection_t::init() in restinio/impl/connection.hpp). The verdict is therefore recorded
      * before any byte of a request can be read from that connection.
      *
-     * Keys are RESTinio connection ids: a monotonically increasing std::uint64_t, so an id is
-     * never reused and a stale entry can never refuse a different connection.
+     * Keys are RESTinio connection ids, distinct for every connection of a server run because the
+     * connection factory below takes them from an atomic source (RESTinio's own could give two
+     * connections the same one): a stale entry can never refuse a different connection.
      */
     class RejectedConnections
     {
@@ -396,11 +400,11 @@ namespace
             if (const auto rejected = rejectThrottle().record())
             {
                 LOGFN_WARN(logFn(),
-                           "verification_mode=full rejected %llu connection(s) in the last %d s: the client "
+                           "verification_mode=full rejected %llu connection(s) %s: the client "
                            "certificate does not list the address the peer connected from (last one: %s). "
                            "Behind a TLS-terminating proxy the peer is the proxy, not the agent.",
                            static_cast<unsigned long long>(rejected.total),
-                           remoted::common::LogThrottle::kDefaultWindowSeconds,
+                           rejected.period().c_str(),
                            peerIp.c_str());
             }
         }
@@ -435,7 +439,67 @@ namespace
         // is Full, and RESTinio skips the notification entirely when none is set.
         using connection_state_listener_t = FullModeListener;
     };
+} // namespace
 
+namespace restinio::impl
+{
+    /**
+     * @brief RESTinio's connection factory for ServerTraits, with ids that are distinct per server run.
+     *
+     * RESTinio's own factory (restinio/impl/connection.hpp) numbers connections with a plain
+     * post-increment, called on the acceptor's executor -- the io_context, not a strand. With more than
+     * one I/O thread two connections created at the same moment can get the same id, and everything
+     * keyed by it (the handshake ledger, the connection level, the verification_mode=full verdicts)
+     * goes wrong: the ledger leaked a handshake slot of the address for good. This is RESTinio
+     * 0.7.10's factory with the ids taken from an atomic source instead, so the accepts stay concurrent.
+     *
+     * It must be declared before anything instantiates http_server_t<ServerTraits> (start() asserts it
+     * is the one in use). Re-check it, with guardedTlsSocket.hpp's customization points, when RESTinio
+     * is upgraded: a change to the primary template's constructor or create_new_connection() breaks
+     * the build here.
+     */
+    template<>
+    class connection_factory_t<ServerTraits>
+    {
+    public:
+        using logger_t = ServerTraits::logger_t;
+        using stream_socket_t = ServerTraits::stream_socket_t;
+        using lifetime_monitor_t = connection_count_limit_types<ServerTraits>::lifetime_monitor_t;
+
+        /// Checked by start(): the build fails if RESTinio's primary template is used instead.
+        static constexpr bool uniqueConnectionIds = true;
+
+        connection_factory_t(connection_settings_handle_t<ServerTraits> connectionSettings,
+                             std::unique_ptr<socket_options_setter_t> socketOptionsSetter)
+            : m_connectionSettings {std::move(connectionSettings)}
+            , m_socketOptionsSetter {std::move(socketOptionsSetter)}
+        {
+        }
+
+        auto
+        create_new_connection(stream_socket_t socket, endpoint_t remoteEndpoint, lifetime_monitor_t lifetimeMonitor)
+        {
+            {
+                socket_options_t options {socket.lowest_layer()};
+                (*m_socketOptionsSetter)(options);
+            }
+
+            return std::make_shared<connection_t<ServerTraits>>(m_ids.next(),
+                                                                std::move(socket),
+                                                                m_connectionSettings,
+                                                                std::move(remoteEndpoint),
+                                                                std::move(lifetimeMonitor));
+        }
+
+    private:
+        remoted::http::ConnectionIdSource m_ids;
+        connection_settings_handle_t<ServerTraits> m_connectionSettings;
+        std::unique_ptr<socket_options_setter_t> m_socketOptionsSetter;
+    };
+} // namespace restinio::impl
+
+namespace
+{
     using ServerHandle = restinio::running_server_handle_t<ServerTraits>;
 
     // Map the neutral verb to a RESTinio method matcher.
@@ -473,6 +537,18 @@ namespace
             case 503: return "Service Unavailable";
             default: return "Status";
         }
+    }
+
+    // The single 404 every unrouted target gets: no route matched, or the target is a variant
+    // spelling (percent-encoded) of one that would have.
+    template<typename Request>
+    restinio::request_handling_status_t notFound(const Request& request)
+    {
+        return request->create_response(restinio::status_not_found())
+            .append_header(restinio::http_field::content_type, "application/json")
+            .set_body(R"({"error":"not_found"})")
+            .connection_close()
+            .done();
     }
 
     // TODO: Do we need to perform this transformation here? Or will the data already be in client.keys?
@@ -742,7 +818,10 @@ namespace
         return remoted::http::X509Ptr {certificate};
     }
 
-    TlsSetup createTlsContext(const remoted::http::HttpServerConfig& config)
+    // The listener's context up to its certificate and private key: everything both the start
+    // (createTlsContext()) and the configuration test (validateTlsMaterial()) load, through one code
+    // path so that `-t` refuses exactly the files the start would.
+    asio::ssl::context makeServerTlsContext(const remoted::http::HttpServerConfig& config)
     {
         checkTlsFileReadable(config.certificatePath, "certificate");
         checkTlsFileReadable(config.privateKeyPath, "private key");
@@ -763,8 +842,56 @@ namespace
             throw std::runtime_error("Unable to configure the requested TLS 1.3 ciphersuite list");
         }
 
-        context.use_certificate_chain_file(config.certificatePath);
-        context.use_private_key_file(config.privateKeyPath, asio::ssl::context::pem);
+        // The schema admits only names OpenSSL 3.5 and later knows; this also refuses one the library in use
+        // does not support, at -t as at the start, instead of a listener that never negotiates it.
+        if (!config.groups.empty() && SSL_CTX_set1_groups_list(context.native_handle(), config.groups.c_str()) != 1)
+        {
+            throw std::runtime_error("Unable to configure the requested TLS key exchange groups '" + config.groups +
+                                     "'");
+        }
+
+        // Each failure names its file, as loadClientCaFile() does: asio's own message names only the
+        // OpenSSL call ("use_certificate_chain_file: no start line").
+        try
+        {
+            context.use_certificate_chain_file(config.certificatePath);
+        }
+        catch (const std::system_error& e)
+        {
+            throw std::runtime_error("The configured TLS certificate '" + config.certificatePath +
+                                     "' cannot be loaded (" + e.what() + ")");
+        }
+        try
+        {
+            context.use_private_key_file(config.privateKeyPath, asio::ssl::context::pem);
+        }
+        catch (const std::system_error& e)
+        {
+            throw std::runtime_error("The configured TLS private key '" + config.privateKeyPath +
+                                     "' cannot be loaded (" + e.what() + ")");
+        }
+
+        return context;
+    }
+
+    // The CA that verifies agent client certificates, loaded only in the modes that use it. A file
+    // holding no certificate (a private key, a text file) is refused here with its path named.
+    void loadClientCaFile(asio::ssl::context& context, const remoted::http::HttpServerConfig& config)
+    {
+        try
+        {
+            context.load_verify_file(config.caPath);
+        }
+        catch (const std::system_error& e)
+        {
+            throw std::runtime_error("The configured TLS CA '" + config.caPath +
+                                     "' holds no certificate the listener can load (" + e.what() + ")");
+        }
+    }
+
+    TlsSetup createTlsContext(const remoted::http::HttpServerConfig& config)
+    {
+        auto context = makeServerTlsContext(config);
 
         // Start-time evaluation of the leaf just loaded, against the CA file as it is on disk right
         // now: expiry (the historical warning) and whether that CA signs it (GET /cacerts must not
@@ -891,7 +1018,7 @@ namespace
         // proxy that is the proxy, never the agent, whichever of the two modes is configured.
         if (config.verificationMode != remoted::http::ClientVerificationMode::None)
         {
-            context.load_verify_file(config.caPath);
+            loadClientCaFile(context, config);
             context.set_verify_mode(asio::ssl::verify_peer | asio::ssl::verify_fail_if_no_peer_cert);
 
             // Mandatory once client certificates are requested. OpenSSL refuses to resume a
@@ -1017,10 +1144,10 @@ namespace
         if (const auto aborted = throttle.record())
         {
             LOGFN_WARN(logFn(),
-                       "Aborted %llu streamed response(s) in the last %d s. No terminating chunk is sent, so the "
+                       "Aborted %llu streamed response(s) %s. No terminating chunk is sent, so the "
                        "peer sees a truncated body and retries. Last reason: %s",
                        static_cast<unsigned long long>(aborted.total),
-                       remoted::common::LogThrottle::kDefaultWindowSeconds,
+                       aborted.period().c_str(),
                        reason);
         }
     }
@@ -1038,6 +1165,11 @@ namespace
      * write callback always fires -- with an error if the connection died before the write could
      * run (see response_coordinator's cleanup and write_response_parts_impl) -- so the chain
      * always terminates and the source's descriptor is always released.
+     *
+     * The one exception is a server stop: a flush queued on the connection after its io_context
+     * stopped is never called, and the connection owns that callback while the builder here owns
+     * the connection -- a cycle nothing breaks. StreamRegistry::abortAll() breaks it by dropping
+     * the builder once no thread can run the pump any more.
      */
     class StreamPump final : public std::enable_shared_from_this<StreamPump>
     {
@@ -1059,6 +1191,15 @@ namespace
             schedule();
         }
 
+        /// Release the connection and the source of a transfer the server stopped under. Only
+        /// called once the io_context threads and the worker pool are drained, so nothing else can
+        /// be touching this pump.
+        void abort()
+        {
+            m_builder.reset();
+            m_source.reset();
+        }
+
     private:
         void schedule()
         {
@@ -1067,6 +1208,11 @@ namespace
 
         void pumpOnce()
         {
+            if (!m_builder || !m_source)
+            {
+                return; // aborted by a server stop
+            }
+
             std::string chunk;
 
             try
@@ -1079,7 +1225,7 @@ namespace
                     // End of stream: done() emits the terminating zero-length chunk, which is what
                     // tells the peer the body is COMPLETE. Reaching it is the only way a transfer
                     // is allowed to look successful.
-                    m_builder.done();
+                    m_builder->done();
                     return;
                 }
 
@@ -1101,7 +1247,7 @@ namespace
 
             try
             {
-                m_builder.append_chunk(std::move(chunk))
+                m_builder->append_chunk(std::move(chunk))
                     .flush(
                         [self = shared_from_this()](const asio::error_code& ec)
                         {
@@ -1127,7 +1273,7 @@ namespace
             }
         }
 
-        ChunkedBuilder m_builder;
+        std::optional<ChunkedBuilder> m_builder;
         std::shared_ptr<remoted::http::IByteSource> m_source;
         std::size_t m_chunkSize;
         asio::thread_pool* m_pool;
@@ -1173,6 +1319,46 @@ namespace
     };
 
     /**
+     * @brief The streamed transfers a listener has started, so its stop can end the ones a stopped
+     * io_context will never finish (see StreamPump). Weak references only: a transfer that ends
+     * normally frees its pump as before.
+     */
+    class StreamRegistry final
+    {
+    public:
+        void add(const std::shared_ptr<StreamPump>& pump)
+        {
+            std::lock_guard<std::mutex> lock {m_mutex};
+            m_pumps.erase(std::remove_if(m_pumps.begin(),
+                                         m_pumps.end(),
+                                         [](const std::weak_ptr<StreamPump>& entry) { return entry.expired(); }),
+                          m_pumps.end());
+            m_pumps.push_back(pump);
+        }
+
+        /// Call only after the io_context threads and the worker pool are drained.
+        void abortAll()
+        {
+            std::vector<std::weak_ptr<StreamPump>> pumps;
+            {
+                std::lock_guard<std::mutex> lock {m_mutex};
+                pumps.swap(m_pumps);
+            }
+            for (const auto& entry : pumps)
+            {
+                if (auto pump = entry.lock())
+                {
+                    pump->abort();
+                }
+            }
+        }
+
+    private:
+        std::mutex m_mutex;
+        std::vector<std::weak_ptr<StreamPump>> m_pumps;
+    };
+
+    /**
      * @brief Responder for a route registered ResponseMode::Streamable.
      *
      * Unlike RestinioResponder, this one holds the request handle and creates the response builder
@@ -1186,10 +1372,12 @@ namespace
     public:
         RestinioStreamableResponder(restinio::request_handle_t request,
                                     std::shared_ptr<StreamPoolGate> poolGate,
-                                    std::size_t defaultChunkSize)
+                                    std::size_t defaultChunkSize,
+                                    std::shared_ptr<StreamRegistry> streams)
             : m_request {std::move(request)}
             , m_poolGate {std::move(poolGate)}
             , m_defaultChunkSize {defaultChunkSize}
+            , m_streams {std::move(streams)}
         {
         }
 
@@ -1268,13 +1456,16 @@ namespace
             // (remoted.http_stream_chunk_size); an endpoint may still pin its own.
             const auto chunkSize = response.chunkSize != 0 ? response.chunkSize : m_defaultChunkSize;
 
-            std::make_shared<StreamPump>(std::move(builder), std::move(response.source), chunkSize, *pool)->start();
+            auto pump = std::make_shared<StreamPump>(std::move(builder), std::move(response.source), chunkSize, *pool);
+            m_streams->add(pump);
+            pump->start();
         }
 
     private:
         restinio::request_handle_t m_request;
         std::shared_ptr<StreamPoolGate> m_poolGate;
         std::size_t m_defaultChunkSize;
+        std::shared_ptr<StreamRegistry> m_streams;
         std::atomic_flag m_answered = ATOMIC_FLAG_INIT;
     };
 
@@ -1300,6 +1491,21 @@ namespace
 
 namespace remoted::http
 {
+    void validateTlsMaterial(const HttpServerConfig& config)
+    {
+        auto context = makeServerTlsContext(config);
+
+        if (SSL_CTX_check_private_key(context.native_handle()) != 1)
+        {
+            throw std::runtime_error("The configured TLS private key does not match the certificate");
+        }
+
+        if (config.verificationMode != ClientVerificationMode::None)
+        {
+            loadClientCaFile(context, config);
+        }
+    }
+
     bool certificateMatchesPeerIp(X509* certificate, const std::string& peerIp)
     {
         // X509_check_ip_asc() parses the textual address itself and compares it against the
@@ -1336,6 +1542,10 @@ namespace remoted::http
         /// listener RESTinio holds outlives a stop(), so handing it a pointer that start() replaces
         /// would leave the old listener updating a ledger nobody reads. start() reset()s it instead.
         std::shared_ptr<HandshakeLedger> m_handshakeLedger {std::make_shared<HandshakeLedger>()};
+
+        /// Streamed transfers in flight, ended by stopAccepting() once nothing can run them (see
+        /// StreamPump). Allocated once and never replaced, like the ledger above.
+        std::shared_ptr<StreamRegistry> m_streams {std::make_shared<StreamRegistry>()};
 
         /// The ceiling the ledger's open connections are counted against (config.maxParallelConnections),
         /// captured at start() so diagnostics() can report the level AND its limit together.
@@ -1380,6 +1590,7 @@ namespace remoted::http
                 const auto countAgainstBudget = route.countAgainstBudget;
                 const auto responseMode = route.mode;
                 const auto streamChunkSize = m_config.streamChunkSize;
+                auto streams = m_streams;
 
                 // The pattern actually handed to the router is the route's logical path served
                 // under the global prefix. The "/" route (the health probe) is registered as the
@@ -1393,9 +1604,17 @@ namespace remoted::http
                                               : route.path == "/" ? prefix
                                                                   : prefix + route.path;
 
+                // Exact matching, as documented (case and percent-encoding variants used to
+                // route): path2regex compares case-sensitively here, and the handler below refuses
+                // any target whose path is percent-encoded, which RESTinio's express router would
+                // otherwise decode ("%63" == 'c') before matching. Route paths and the global
+                // prefix never contain '%' (normalizeGlobalPrefix() rejects it), so no encoded
+                // spelling can be the exact target of a route. The only tolerance kept is
+                // path2regex's single trailing '/', which the health probe relies on (S9).
                 requestRouter->add_handler(
                     toRestinioMethod(method),
                     routePath,
+                    restinio::path2regex::options_t {}.sensitive(true),
                     [pool,
                      streamGate,
                      budget,
@@ -1405,6 +1624,7 @@ namespace remoted::http
                      countAgainstBudget,
                      responseMode,
                      streamChunkSize,
+                     streams,
                      rejectedConnections](auto request, auto) -> restinio::request_handling_status_t
                     {
                         // Transport-level exception barrier, covering every registered route at
@@ -1416,6 +1636,11 @@ namespace remoted::http
                         std::shared_ptr<remoted::http::IHttpResponder> responder;
                         try
                         {
+                            if (request->header().path().find('%') != restinio::string_view_t::npos)
+                            {
+                                return notFound(request);
+                            }
+
                             // ClientVerificationMode::Full: the connection's client certificate did
                             // not list the address it came from, so nothing on it may be served.
                             // Checked here rather than per route so it also covers the
@@ -1450,11 +1675,11 @@ namespace remoted::http
                                     {
                                         LOGFN_WARN(logFn(),
                                                    "In-flight request memory budget exhausted: shed %llu request(s) "
-                                                   "with 503 in the last %d s (%zu request(s) currently resident, "
+                                                   "with 503 %s (%zu request(s) currently resident, "
                                                    "%zu byte(s) still available). Consider increasing the value of "
                                                    "'max_inflight_bytes'.",
                                                    static_cast<unsigned long long>(shed.total),
-                                                   remoted::common::LogThrottle::kDefaultWindowSeconds,
+                                                   shed.period().c_str(),
                                                    budget->inFlightCount(),
                                                    budget->availableBytes());
                                     }
@@ -1481,8 +1706,8 @@ namespace remoted::http
                                 // and creates the builder when it answers, which means RESTinio's
                                 // body buffer survives into the worker queue. Bounded by design:
                                 // only routes whose requests are tiny should ever stream.
-                                responder =
-                                    std::make_shared<RestinioStreamableResponder>(request, streamGate, streamChunkSize);
+                                responder = std::make_shared<RestinioStreamableResponder>(
+                                    request, streamGate, streamChunkSize, streams);
                             }
                             else
                             {
@@ -1550,15 +1775,7 @@ namespace remoted::http
                     });
             }
 
-            requestRouter->non_matched_request_handler(
-                [](auto request)
-                {
-                    return request->create_response(restinio::status_not_found())
-                        .append_header(restinio::http_field::content_type, "application/json")
-                        .set_body(R"({"error":"not_found"})")
-                        .connection_close()
-                        .done();
-                });
+            requestRouter->non_matched_request_handler([](auto request) { return notFound(request); });
 
             return requestRouter;
         }
@@ -1896,6 +2113,10 @@ namespace remoted::http
                                           .max_field_count(config.maxHeaderCount)
                                           .max_body_size(config.maxBodySize));
 
+        // RESTinio's own factory would hand two connections created at the same moment the same id.
+        static_assert(restinio::impl::connection_factory_t<ServerTraits>::uniqueConnectionIds,
+                      "the server must use the connection factory with unique ids defined after ServerTraits");
+
         try
         {
             // run_async returns once the listener is up, or throws on bind/TLS failure.
@@ -2046,6 +2267,11 @@ namespace remoted::http
             {
                 workerPool->join();
             }
+
+            // With the io_context threads stopped and the pool joined, nothing can run a pump any
+            // more: release the transfers whose last flush the stopped io_context will never call
+            // back, so they do not keep their connection and byte source alive forever.
+            m_impl->m_streams->abortAll();
 
             // LAST, with the monitor stopped and the worker pool joined, so no tick and no
             // GET /cacerts handler can still be delivering: from here on nobody would ever drain

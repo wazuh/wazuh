@@ -217,6 +217,8 @@ namespace remoted::http
         result.caCertificatePath = config.ca_certificate_path[0] != '\0' ? std::string {config.ca_certificate_path}
                                                                          : DEFAULT_CA_CERTIFICATE_PATH;
         result.ciphers = config.ciphers[0] != '\0' ? std::string {config.ciphers} : DEFAULT_CIPHERS;
+        // No module default: an unset value leaves the groups to OpenSSL (its defaults, or its configuration file).
+        result.groups = std::string {config.groups};
         result.verificationMode = resolveVerificationMode(config.verification_mode);
         result.dualStackMode = resolveDualStackMode(config.dual_stack);
 

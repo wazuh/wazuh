@@ -1271,6 +1271,26 @@ wdbc_result
 wdb_global_assign_agent_group(wdb_t* wdb, int id, cJSON* j_groups, int priority, const char* create_agent_name);
 
 /**
+ * @brief Writes groups to an agent, as wdb_global_assign_agent_group(), creating a missing agent with its
+ *        registration IP.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id ID of the agent to add new groups.
+ * @param [in] j_groups JSON array with all the groups of the agent.
+ * @param [in] priority Initial priority to insert the groups.
+ * @param [in] create_agent_name If not null and the agent doesn't exist, it will be created with the given name.
+ * @param [in] create_register_ip Registration IP of an agent created here. NULL writes the 0.0.0.0 placeholder
+ *                                as both its registration and last-connection IP.
+ * @return wdbc_result representing the status of the command.
+ */
+wdbc_result wdb_global_assign_agent_group_ex(wdb_t* wdb,
+                                             int id,
+                                             cJSON* j_groups,
+                                             int priority,
+                                             const char* create_agent_name,
+                                             const char* create_register_ip);
+
+/**
  * @brief Deletes groups of an agent.
  *
  * @param [in] wdb The Global struct database.

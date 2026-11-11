@@ -606,6 +606,10 @@ class Lookup:
             return self.indexer[name][0], f"{self.indexer_path}:{self.indexer[name][1]}"
         return None
 
+    def from_indexer(self, source: str) -> bool:
+        """Whether a `source` returned by `get` is the indexer's export."""
+        return source.startswith(f"{self.indexer_path}:")
+
 
 def conf_spec(paths: Paths) -> Spec:
     """<CONF> is root:<service group>, group-writable by design (authd, remoted and the API write there), never
@@ -887,15 +891,38 @@ def keystore_set(paths: Paths, key: str, value: str) -> bool:
                      stdin=(value + "\n").encode()).returncode == 0
 
 
+def keystore_get(paths: Paths, key: str) -> Optional[str]:
+    """The stored value, or None when the keystore holds none. Read into memory only, never printed."""
+    result = run_wazuh(paths, [paths.keystore_bin, "-f", "indexer", "-k", key, "-g"], want_stdout=True)
+    if result.returncode != 0 or not result.stdout:
+        return None
+    value = result.stdout.decode("utf-8", "replace")
+    return value[:-1] if value.endswith("\n") else value
+
+
 def step_indexer_password(paths: Paths, lookup: Lookup, report: Report) -> None:
+    """Store the indexer password when the keystore has none. A stored one is kept, except when the value the
+    lookup resolves comes from the co-located indexer's export and differs: the indexer published a new password
+    (it was reinstalled, or rotated it), and the stored one no longer authenticates. A value from the environment
+    or local.env is an operator's seed and never replaces a stored password."""
     if not os.access(paths.keystore_bin, os.X_OK):
         report.problem(MISSING, INDEXER_VAR, f"cannot reach the keystore ({paths.keystore_bin} is missing)")
         return
-    if keystore_has(paths, "password"):
+    stored = keystore_get(paths, "password")
+    if stored is not None:
         if not keystore_has(paths, "username") and not keystore_set(paths, "username", INDEXER_USERNAME):
             report.problem(MISSING, INDEXER_VAR, "the keystore did not accept the indexer username")
             return
-        report.progress("the indexer password is in the keystore")
+        found = lookup.get(INDEXER_VAR)
+        if found is None or not lookup.from_indexer(found[1]) or found[0] == stored \
+                or password_problem(found[0]) is not None:
+            report.progress("the indexer password is in the keystore")
+            return
+        if not keystore_set(paths, "password", found[0]):
+            report.problem(INVALID, INDEXER_VAR, f"the keystore did not accept the new password from {found[1]}; "
+                                                 "the stored one differs and no longer matches the indexer's")
+            return
+        report.progress(f"replaced the indexer password in the keystore with the one from {found[1]}")
         return
     state, value, source = supplied_password(lookup, INDEXER_VAR, report)
     if state == "invalid":
@@ -1186,6 +1213,24 @@ def node_name(lookup: Lookup, report: Report) -> Optional[str]:
         return host
     report.problem(INVALID, NODE_NAME_VAR, f"unset, and the host name {host!r} is not a valid DNS name; set it")
     return None
+
+
+def validate_node_name(lookup: Lookup, report: Report) -> None:
+    """Every mode's test of a supplied WAZUH_MANAGER_NODE_NAME, whether or not anything is about to be minted or
+    issued, as for the passwords and the SAN lists: a valid DNS name that fits a certificate's common name. The
+    tighter limit of the CA's common name applies only when a CA is minted. The texts are those of the issuing
+    steps, so a run that reaches them prints each problem once. An unset variable is not judged here: the host
+    name stands in for it only when something is issued."""
+    found = lookup.get(NODE_NAME_VAR)
+    if found is None:
+        return
+    name, source = found
+    if not valid_dns_name(name):
+        report.problem(INVALID, NODE_NAME_VAR, f"not a valid DNS name (set in {source})")
+    elif len(name) > COMMON_NAME_MAX:
+        report.problem(INVALID, NODE_NAME_VAR,
+                       f"too long for a certificate's common name ({COMMON_NAME_MAX} characters at most; "
+                       f"set in {source})")
 
 
 def read_optional(parent: Dir, name: str, spec: Spec, report: Report) -> Tuple[bool, Optional[bytes]]:
@@ -1705,11 +1750,15 @@ def diagnose_dashboard_pair(paths: Paths, export: Dir, ca_state: Optional[CaStat
     return DashboardDiagnosis("reissue" if pair.owner == "ours" else "issue", pair, reason)
 
 
-def _no_key_warning(ca_dir_path: str, export: Dir, diagnosis: DashboardDiagnosis) -> str:
+def _report_no_key(report: Report, ca_dir_path: str, export: Dir, diagnosis: DashboardDiagnosis) -> None:
+    """An absent pair under a CA without its key is the layout of every distributed install (the key stays where the
+    PKI was generated) and nothing uses the pair yet: a progress line, not a warning. A pair of ours that needs
+    reissuing and cannot be is a defect: a warning."""
     if diagnosis.reason is None:
-        return (f"dashboard client pair not generated: {ca_dir_path} has no key; provision it externally in "
-                f"{export.path}")
-    return f"{export.child(DASHBOARD_CERT)}: {diagnosis.reason}; not reissued: {ca_dir_path} has no key"
+        report.progress(f"dashboard client pair not generated: {ca_dir_path} has no key ({DASHBOARD_NOT_USED}); "
+                        f"to provide one, issue it from that CA into {export.path}")
+        return
+    report.warning(f"{export.child(DASHBOARD_CERT)}: {diagnosis.reason}; not reissued: {ca_dir_path} has no key")
 
 
 def step_dashboard_pair(paths: Paths, conf: Dir, ca_dir: Dir, certs: Optional[Dir], state: CaState, names: TlsNames,
@@ -1736,7 +1785,7 @@ def step_dashboard_pair(paths: Paths, conf: Dir, ca_dir: Dir, certs: Optional[Di
                 report.progress(f"{cert_path}: provided by the operator; kept as it is")
                 return
             if diagnosis.action == "no-key":
-                report.warning(_no_key_warning(ca_dir.path, export, diagnosis))
+                _report_no_key(report, ca_dir.path, export, diagnosis)
                 return
             pair = diagnosis.pair
             new = issue_dashboard_pair(state)
@@ -1772,7 +1821,7 @@ def check_dashboard_pair(paths: Paths, conf: Dir, report: Report, names: TlsName
         elif diagnosis.action == "reissue":
             report.progress(f"{cert_path}: {diagnosis.reason}; the next start reissues it")
         elif diagnosis.action == "no-key" and state is not None and state.kind != "absent":
-            report.warning(_no_key_warning(conf.child(CA_DIR), export, diagnosis))
+            _report_no_key(report, conf.child(CA_DIR), export, diagnosis)
     finally:
         for opened in (export, ca_dir, certs):
             if opened is not None:
@@ -2328,6 +2377,7 @@ def step_server_pairs(paths: Paths, certs: Dir, ca: CaState, lookup: Lookup, rep
                 _missing_pair(certs, pair, report)
         elif ca.kind != "signing":
             if pair.on:
+                # The DEB postinst and the RPM %post match "no CA key" to name the missing key in their next steps.
                 report.problem(MISSING, certs.child(pair.cert), f"no CA key to issue it; stage the pair or the CA in "
                                                                f"{os.path.join(paths.conf, CA_DIR)}")
         elif pair.kind not in to_issue:
@@ -2392,14 +2442,29 @@ class ImportUnit:
     files: Tuple[str, ...]
     sources: Tuple[str, ...]
     marker: Optional[str]                 # None: a unit under configured names, never imported, only staged
-    missing: str
+    missing: str                          # the advice when the indexer's export/ does not exist
+    published: Optional[str] = None       # the advice when it exists without these files; {export} is its path
+
+    def missing_reason(self, paths: "Paths", source) -> str:
+        """The MISSING reason, by the state of the export: with no export/ there is no indexer on this host to
+        import from; an export/ without the files is an indexer that did not publish them, which installing it
+        again does not change."""
+        if isinstance(source, Dir) and self.sources and self.published:
+            return self.published.format(export=paths.indexer_export)
+        return self.missing
 
 
 CA_UNIT = ImportUnit("the indexer CA", (INDEXER_CA,), (SOURCE_CA,), INDEXER_CA_MARKER,
-                     "install wazuh-indexer on this host first, or stage the indexer's export/ca.pem there")
+                     "install wazuh-indexer on this host first, or stage the indexer's export/ca.pem there",
+                     f"the Wazuh indexer on this host published no {SOURCE_CA} in {{export}}: stage the indexer's "
+                     f"CA certificate as certs/{INDEXER_CA}")
 PAIR_UNIT = ImportUnit("the indexer client pair", (CONNECTOR_KEY, CONNECTOR), (SOURCE_CLIENT_KEY, SOURCE_CLIENT),
                        CONNECTOR_MARKER, "install wazuh-indexer on this host first, or stage a pair issued by the "
-                                         "indexer's CA for this node")
+                                         "indexer's CA for this node",
+                       f"the Wazuh indexer on this host published no manager client pair in {{export}} (its CA key "
+                       f"is not on this host, as after the installation assistant): stage this node's pair, issued "
+                       f"by the indexer's CA (wazuh-install-files.tar with the installation assistant), as "
+                       f"certs/{CONNECTOR} and certs/{CONNECTOR_KEY}")
 
 
 def indexer_ca_problem(data: bytes, now: Optional[datetime.datetime] = None,
@@ -2661,7 +2726,7 @@ def _select_unit(paths: Paths, certs: Dir, source, unit: ImportUnit, validate, r
         return Selection(incoming, "incoming", incoming,
                          (state == "imported", f"{blamed}: {verb} from {paths.indexer_export}"))
     if incoming is None:
-        report.problem(MISSING, blamed, unit.missing)
+        report.problem(MISSING, blamed, unit.missing_reason(paths, source))
         return Selection(None, "missing")
     return Selection(None, None)
 
@@ -2814,7 +2879,8 @@ def step_indexer_trust(paths: Paths, certs: Dir, report: Report, names: IndexerN
             # No usable CA: the pair cannot be judged, only found missing.
             if pair_unit is not None and import_state(certs, pair_unit) == "absent" \
                     and read_source(source, pair_unit, report) is None:
-                report.problem(MISSING, certs.child(pair_unit.files[-1]), pair_unit.missing)
+                report.problem(MISSING, certs.child(pair_unit.files[-1]),
+                                   pair_unit.missing_reason(paths, source))
             return
         pair = None
         if pair_unit is not None:
@@ -3065,6 +3131,7 @@ def preflight(paths: Paths, report: Report, environ: Mapping[str, str]) -> Optio
     lookup = build_lookup(paths, conf, report, environ)
     validate_supplied(lookup, report)
     validate_san_lists(lookup, report)
+    validate_node_name(lookup, report)
     return conf, lookup
 
 
@@ -3417,16 +3484,17 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="wazuh-manager-resolve-credentials",
         description="Set up and check the manager's passwords and trust material. Runs as root.")
-    modes = parser.add_mutually_exclusive_group()
+    # A mode is required: --prestart writes and must never run while modulesd holds the keystore, which only
+    # wazuh-manager-control checks before calling it, so a bare call must not pick it.
+    modes = parser.add_mutually_exclusive_group(required=True)
     for mode, text in (("install", "fresh installation (package postinst/%%post, install.sh); always exits 0"),
                        ("upgrade", "upgrade of an installed manager; always exits 0"),
-                       ("prestart", "before every start (default): check, then complete what is missing"),
+                       ("prestart", "before every start (manager stopped): check, then complete what is missing"),
                        ("check", "read-only checks of every file; exits 1 on any problem"),
                        ("clear", "remove the material this manager created (manager stopped)")):
         modes.add_argument(f"--{mode}", dest="mode", action="store_const", const=mode, help=text)
     parser.add_argument("-q", dest="quiet", action="store_true", help="print problems only")
     parser.add_argument("-H", dest="home", metavar="HOME", help=f"installation home (default {DEFAULT_HOME})")
-    parser.set_defaults(mode="prestart")
     return parser
 
 

@@ -285,37 +285,93 @@ probe_build_target() {
     fi
 }
 
+# Run-wide, set by the first probe_curl: 1 once curl accepted --tlsv1.3, 0 once it rejected the option.
+PROBE_TLS13_ENFORCED=""
+
+# curl with --tlsv1.3. A curl that rejects the option itself (exit 2 or 4: the macOS system curl,
+# or Amazon Linux 2's on OpenSSL 1.0.2) is detected once and runs without it from then on, with -v:
+# the handshake line, kept out of upgrade.log, gives the version PROBE_TLS_VERSION that the missing
+# option no longer enforces. See probe_tls_version_ok.
+probe_curl() {
+    PROBE_TLS_VERSION=""
+    if [ "${PROBE_TLS13_ENFORCED}" != "0" ]; then
+        curl --tlsv1.3 "$@"
+        PROBE_CURL_RC=$?
+        if [ ${PROBE_CURL_RC} -ne 2 ] && [ ${PROBE_CURL_RC} -ne 4 ]; then
+            PROBE_TLS13_ENFORCED=1
+            return ${PROBE_CURL_RC}
+        fi
+        PROBE_TLS13_ENFORCED=0
+    fi
+    PROBE_CURL_ERR="$(curl -v "$@" 2>&1 > /dev/null)"
+    PROBE_CURL_RC=$?
+    PROBE_TLS_VERSION="$(printf '%s\n' "${PROBE_CURL_ERR}" | sed -n 's/^\* SSL connection using \([A-Za-z0-9.]*\).*/\1/p' | head -1)"
+    return ${PROBE_CURL_RC}
+}
+
+# After a transfer curl made without --tlsv1.3: 0 unless its handshake line shows $1 (host:port)
+# answered over a lower TLS version, which the upgraded agent refuses. A version curl does not
+# report passes, and says so.
+probe_tls_version_ok() {
+    case "${PROBE_TLS13_ENFORCED}:${PROBE_TLS_VERSION}" in
+        1:*|0:TLSv1.3)
+            return 0
+            ;;
+        0:TLSv1|0:TLSv1.[0-2]|0:SSLv*)
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - ${1} answered over ${PROBE_TLS_VERSION}; the upgraded agent requires TLS 1.3." >> ./logs/upgrade.log
+            return 1
+            ;;
+        *)
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - ${1} answered, but this host's curl does not report the TLS version, so TLS 1.3 could not be confirmed (the upgraded agent requires it)." >> ./logs/upgrade.log
+            return 0
+            ;;
+    esac
+}
+
 probe_server() {
     PROBE_TIMEOUT=5
     probe_build_target "${1}" "${2}" "${3}"
 
     if command -v curl > /dev/null 2>&1; then
-        curl --tlsv1.3 -k -s -f -m ${PROBE_TIMEOUT} -o /dev/null "https://${PROBE_HOST}:${2}${PROBE_PATH}"
+        probe_curl -k -s -f -m ${PROBE_TIMEOUT} -o /dev/null "https://${PROBE_HOST}:${2}${PROBE_PATH}"
         RC=$?
-        [ ${RC} -eq 0 ] && return 0
-        # Only exit 2/4 (this curl can't do TLS 1.3, #38607) falls through to TCP; the rest is real.
-        [ ${RC} -ne 2 ] && [ ${RC} -ne 4 ] && return ${RC}
-        echo "$(date +"%Y/%m/%d %H:%M:%S") - curl lacks TLS 1.3 support, falling back to a TCP connectivity check (manager endpoint not verified)." >> ./logs/upgrade.log
+        [ "${PROBE_TLS13_ENFORCED}" = "1" ] && return ${RC}
+        # Without --tlsv1.3 a 22 is an HTTP error after a working handshake (a wrong prefix) and a
+        # 0 is a version check away from passing; any other failure leaves the TCP check to decide.
+        if [ ${RC} -eq 0 ]; then
+            probe_tls_version_ok "${PROBE_HOST}:${2}"
+            return $?
+        fi
+        [ ${RC} -eq 22 ] && return 22
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - HTTPS check without --tlsv1.3 failed (curl exit ${RC}), falling back to a TCP connectivity check (manager endpoint not verified)." >> ./logs/upgrade.log
     elif command -v wget > /dev/null 2>&1; then
         wget -q --no-check-certificate --timeout=${PROBE_TIMEOUT} --tries=1 -O /dev/null "https://${PROBE_HOST}:${2}${PROBE_PATH}"
         return $?
     else
         echo "$(date +"%Y/%m/%d %H:%M:%S") - Neither curl nor wget found, falling back to a TCP connectivity check." >> ./logs/upgrade.log
     fi
-    ( exec 3<>"/dev/tcp/${1}/${2}" ) > /dev/null 2>&1 &
+    # No fixed fd: the macOS resolver keeps a guarded fd on the lowest free one, and dup'ing onto it
+    # kills bash (EXC_GUARD).
+    ( : <>"/dev/tcp/${1}/${2}" ) > /dev/null 2>&1 &
     PROBE_PID=$!
-    WAITED=0
-    while kill -0 ${PROBE_PID} 2>/dev/null && [ ${WAITED} -lt ${PROBE_TIMEOUT} ]; do
-        sleep 1
-        WAITED=$((WAITED + 1))
-    done
-    if kill -0 ${PROBE_PID} 2>/dev/null; then
-        kill -9 ${PROBE_PID} 2>/dev/null
-        wait ${PROBE_PID} 2>/dev/null
-        return 1
-    fi
-    wait ${PROBE_PID}
-    return $?
+    # bash reports a job killed by a signal ("Killed: 9") on stderr, which is upgrade.log, whenever
+    # it reaps it: inside the loop as much as in the wait. Silence the whole block, not the wait.
+    {
+        WAITED=0
+        while kill -0 ${PROBE_PID} 2>/dev/null && [ ${WAITED} -lt ${PROBE_TIMEOUT} ]; do
+            sleep 1
+            WAITED=$((WAITED + 1))
+        done
+        if kill -0 ${PROBE_PID} 2>/dev/null; then
+            kill -9 ${PROBE_PID}
+            wait ${PROBE_PID}
+            PROBE_RC=1
+        else
+            wait ${PROBE_PID}
+            PROBE_RC=$?
+        fi
+    } 2>/dev/null
+    return ${PROBE_RC}
 }
 
 # Same target as probe_server(), but without -k: succeeds only if the system's own
@@ -324,23 +380,27 @@ probe_server() {
 # depends on TLS trust -- but it is exactly what AGENT_VERIFY_SYSTEM needs to work
 # post-upgrade. No TCP fallback here: a client that cannot do the real handshake
 # cannot tell us whether the cert is trusted, so treat that as "unverified" rather
-# than assume trust -- this deliberately stays fail-closed even for the curl-too-old
-# case below, since there is no way to positively confirm trust without the
-# handshake; only the log message distinguishes the two causes for the operator.
+# than assume trust -- this deliberately stays fail-closed even for a host whose TLS
+# stack cannot do TLS 1.3 (see probe_curl), since there is no way to positively confirm
+# trust without the handshake; only the log message distinguishes the two causes for
+# the operator.
 probe_server_verified() {
     PROBE_TIMEOUT=5
     probe_build_target "${1}" "${2}" "${3}"
 
     if command -v curl > /dev/null 2>&1; then
-        curl --tlsv1.3 -s -f -m ${PROBE_TIMEOUT} -o /dev/null "https://${PROBE_HOST}:${2}${PROBE_PATH}"
+        probe_curl -s -f -m ${PROBE_TIMEOUT} -o /dev/null "https://${PROBE_HOST}:${2}${PROBE_PATH}"
         RC=$?
-        # Mirrors probe_server()'s own curl-too-old handling (#38607): exit 2/4 means
-        # curl itself doesn't recognize --tlsv1.3, not that the handshake was
-        # attempted and failed -- worth a distinct log line so an operator doesn't
-        # mistake "this curl build is too old" for "the manager's certificate is
-        # untrusted".
-        if [ ${RC} -eq 2 ] || [ ${RC} -eq 4 ]; then
-            echo "$(date +"%Y/%m/%d %H:%M:%S") - curl lacks TLS 1.3 support, so the manager's certificate could not be verified (not the same as an untrusted certificate)." >> ./logs/upgrade.log
+        [ "${PROBE_TLS13_ENFORCED}" = "1" ] && return ${RC}
+        if [ ${RC} -eq 0 ]; then
+            probe_tls_version_ok "${PROBE_HOST}:${2}"
+            return $?
+        fi
+        # Any failure without --tlsv1.3 that is not a verdict on the certificate or the HTTP status
+        # (22, 51, 60, 83) means no handshake was possible, not that the certificate was rejected --
+        # worth a distinct log line so an operator doesn't mistake one for the other.
+        if [ ${RC} -ne 22 ] && [ ${RC} -ne 51 ] && [ ${RC} -ne 60 ] && [ ${RC} -ne 83 ]; then
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - HTTPS check without --tlsv1.3 failed (curl exit ${RC}), so the manager's certificate could not be verified (not the same as an untrusted certificate)." >> ./logs/upgrade.log
         fi
         return ${RC}
     elif command -v wget > /dev/null 2>&1; then
@@ -351,6 +411,19 @@ probe_server_verified() {
     fi
 }
 
+# Whether the trust store the agent will use under 'system' verifies the manager's certificate. On
+# macOS an explicit 'system' cannot be checked: the agent reads the store through its own TLS
+# library, which can disagree with the system curl, so it counts as unverified (fail closed).
+# With the mode unset the agent resolves from the anchor and never reads that store, so the curl
+# verdict stays.
+probe_system_store() {
+    if [ "${OS}" = "Darwin" ] && [ "${SSL_VERIFICATION_MODE_EXPLICIT}" = "1" ]; then
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - The installer cannot check the trust store the agent uses under 'system' on macOS (its curl reads a different store than the agent's TLS library), so the manager's certificate is treated as unverified." >> ./logs/upgrade.log
+        return 1
+    fi
+    probe_server_verified "$@"
+}
+
 # Whether the manager's certificate verifies against the given CA file alone, at the
 # address, port and prefix the upgraded agent will dial: 0 yes, 1 no, 2 could not tell
 # (no curl, no TLS 1.3 support, or no answer).
@@ -359,15 +432,20 @@ probe_server_with_ca() {
     probe_build_target "${1}" "${2}" "${3}"
 
     command -v curl > /dev/null 2>&1 || return 2
-    curl --tlsv1.3 --cacert "${4}" -s -f -m ${PROBE_TIMEOUT} -o /dev/null "https://${PROBE_HOST}:${2}${PROBE_PATH}"
-    case $? in
-        # 22 is an HTTP error status, which only comes after a verified handshake.
-        0|22) return 0 ;;
+    probe_curl --cacert "${4}" -s -f -m ${PROBE_TIMEOUT} -o /dev/null "https://${PROBE_HOST}:${2}${PROBE_PATH}"
+    RC=$?
+    case ${RC} in
+        # 22 is an HTTP error status, which only comes after a verified handshake. A verified
+        # certificate answering below TLS 1.3 is not the manager.
+        0|22)
+            probe_tls_version_ok "${PROBE_HOST}:${2}" && return 0
+            return 1
+            ;;
         51|60|83) return 1 ;;
         # Some TLS backends report a failed verification as a generic handshake error: it was the
         # CA only if the same handshake succeeds without verification.
         35)
-            curl --tlsv1.3 -k -s -f -m ${PROBE_TIMEOUT} -o /dev/null "https://${PROBE_HOST}:${2}${PROBE_PATH}"
+            probe_curl -k -s -f -m ${PROBE_TIMEOUT} -o /dev/null "https://${PROBE_HOST}:${2}${PROBE_PATH}"
             case $? in
                 0|22) return 1 ;;
                 *) return 2 ;;
@@ -923,23 +1001,31 @@ case "${SSL_VERIFICATION_MODE}" in
         # certificate, since it deliberately skips verification (-k) so the plain
         # reachability check never depends on TLS trust. Find out for real before
         # assuming the freshly-upgraded agent will still be able to connect.
+        # On macOS an explicit 'system' is never checked (see probe_system_store), so the explicit
+        # arms below say the store was not checked and do not advise importing into it.
+        EXPLICIT_SYSTEM_STORE="the system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}"
+        [ "${OS}" = "Darwin" ] && EXPLICIT_SYSTEM_STORE="the system trust store was not checked"
         if [ "${WAZUH_UPGRADE_TEST_SKIP_MANAGER_CHECK}" = "1" ]; then
             echo "$(date +"%Y/%m/%d %H:%M:%S") - System CA trust check skipped (test mode)." >> ./logs/upgrade.log
-        elif probe_server_verified "${SERVER_ADDRESS}" "${SERVER_PORT}" "${SERVER_ENDPOINT}"; then
+        elif probe_system_store "${SERVER_ADDRESS}" "${SERVER_PORT}" "${SERVER_ENDPOINT}"; then
             echo "$(date +"%Y/%m/%d %H:%M:%S") - The system trust store already verifies the manager's certificate; proceeding under verify_mode=system." >> ./logs/upgrade.log
         elif [ "${SSL_VERIFICATION_MODE_EXPLICIT}" = "1" ] && [ "${ANCHOR_AVAILABLE}" = "1" ]; then
             # Under 'system' the agent falls back to the anchor when the OS trust store fails.
-            echo "$(date +"%Y/%m/%d %H:%M:%S") - <ssl><verification_mode> is explicitly 'system' and the system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}, but a trust anchor is present at ${DEFAULT_CA_FILE} -- the upgraded agent falls back to it when the OS trust store fails, so proceeding." >> ./logs/upgrade.log
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - <ssl><verification_mode> is explicitly 'system' and ${EXPLICIT_SYSTEM_STORE}, but a trust anchor is present at ${DEFAULT_CA_FILE} -- the upgraded agent falls back to it when the OS trust store fails, so proceeding." >> ./logs/upgrade.log
         elif [ "${SSL_VERIFICATION_MODE_EXPLICIT}" = "1" ]; then
             # Explicit 'system' with no anchor to fall back to. A <certificate_authorities> pin is
             # rejected alongside 'system', so the fix is the operator's.
-            EXPLICIT_SYSTEM_ADVICE="Import the manager's CA into the OS trust store, place it at ${DEFAULT_CA_FILE} and retry, or switch to <verification_mode>certificate</verification_mode> with a <certificate_authorities> path"
+            if [ "${OS}" = "Darwin" ]; then
+                EXPLICIT_SYSTEM_ADVICE="Place the manager's CA at ${DEFAULT_CA_FILE} and retry, or switch to <verification_mode>certificate</verification_mode> with a <certificate_authorities> path"
+            else
+                EXPLICIT_SYSTEM_ADVICE="Import the manager's CA into the OS trust store, place it at ${DEFAULT_CA_FILE} and retry, or switch to <verification_mode>certificate</verification_mode> with a <certificate_authorities> path"
+            fi
             if [ -n "${CA_TOOL_HINT}" ]; then
                 EXPLICIT_SYSTEM_ADVICE="${EXPLICIT_SYSTEM_ADVICE}. ${CA_HINT_REF} Interrupting upgrade."
             else
                 EXPLICIT_SYSTEM_ADVICE="${EXPLICIT_SYSTEM_ADVICE}, interrupting upgrade."
             fi
-            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is explicitly 'system' but the system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}, and no trust anchor is present at ${DEFAULT_CA_FILE} to fall back to. ${EXPLICIT_SYSTEM_ADVICE}" >> ./logs/upgrade.log
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is explicitly 'system' but ${EXPLICIT_SYSTEM_STORE}, and no trust anchor is present at ${DEFAULT_CA_FILE} to fall back to. ${EXPLICIT_SYSTEM_ADVICE}" >> ./logs/upgrade.log
             abort_upgrade "2"
         elif [ "${ANCHOR_AVAILABLE}" = "1" ]; then
             # <verification_mode> was left unset (not explicit), so the new binary
@@ -1197,12 +1283,10 @@ if [ -f "./bin/wazuh-control" ]; then
     elif [ "${PACKAGE_MANAGER_HANDLES_RESTART}" = "1" ] && ./bin/wazuh-control status 2>/dev/null | grep -q "wazuh-agentd is running"; then
         # deb's postinst / rpm's %post already stopped the pre-upgrade agent (preinst/%pre)
         # and restarted it after install -- via systemctl when the host runs systemd -- when
-        # it finds the wazuh.restart marker those scripts drop. Calling wazuh-control restart
-        # again here bypasses systemd and kills the daemon set it's still supervising as
-        # wazuh-agent.service; systemd then marks the unit "deactivated" with nothing left to
-        # bring it back up, and this script's own wait-for-connection loop below times out
-        # against a dead agent. If wazuh-agentd is already up, trust that restart instead of
-        # racing it.
+        # it finds the wazuh.restart marker those scripts drop. A second restart here would
+        # only bring the agent down again right after it came up, and this script's own
+        # wait-for-connection loop below would race it. If wazuh-agentd is already up, trust
+        # that restart instead.
         #
         # Gated on PACKAGE_MANAGER_HANDLES_RESTART (deb/rpm only): without it, a leftover
         # pre-upgrade wazuh-agentd process from an install method that does NOT restart on

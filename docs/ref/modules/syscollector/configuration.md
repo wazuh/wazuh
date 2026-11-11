@@ -434,7 +434,7 @@ Get-Content "C:\Program Files (x86)\ossec-agent\ossec.log" -Wait | Select-String
 
 ### Check Synchronization Status
 
-Monitor synchronization events in manager logs:
+Monitor synchronization events in the agent log:
 
 ```bash
 tail -f /var/ossec/logs/ossec.log | grep -E "syscollector|dbsync"

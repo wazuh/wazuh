@@ -878,20 +878,52 @@ TEST_F(MonitoringLogTest, A429ProbeIsLoggedWithTheStatusAndBreakerType)
     EXPECT_EQ(countLines(Log::LOGLEVEL_WARNING, "PERMANENT"), 0);
 }
 
-TEST_F(MonitoringLogTest, APermanentBreakerWarnsOncePerTransition)
+TEST_F(MonitoringLogTest, APermanentBreakerWarnsOncePerSustainedEpisode)
 {
     const std::string server {"http://localhost:9203"};
-    scriptProbes({PERMANENT_BREAKER, PERMANENT_BREAKER, PERMANENT_BREAKER, GREEN, PERMANENT_BREAKER});
+    // Episode one reaches the threshold and keeps going; episode two starts after a green probe and
+    // repeats its last answer forever.
+    scriptProbes(
+        {PERMANENT_BREAKER, PERMANENT_BREAKER, PERMANENT_BREAKER, PERMANENT_BREAKER, GREEN, PERMANENT_BREAKER});
 
     const auto monitoring = std::make_shared<TestMonitoring>(std::vector<std::string> {server},
                                                              MONITORING_HEALTH_CHECK_INTERVAL_ZERO,
                                                              SecureCommunication {},
                                                              &m_mockHttpRequest);
-    waitForProbes(8);
+    waitForProbes(12);
 
-    // Three trips in a row are one transition; the trip after a green probe is a second one.
-    EXPECT_EQ(countLines(Log::LOGLEVEL_WARNING, "reports a PERMANENT circuit breaker"), 2);
+    EXPECT_EQ(countLines(Log::LOGLEVEL_WARNING, "has reported a PERMANENT circuit breaker on 3 consecutive"), 2);
+    EXPECT_EQ(countLines(Log::LOGLEVEL_INFO, "is throttling requests"), 2);
     EXPECT_TRUE(monitoring->isAvailable(server));
+}
+
+/// A parent breaker is labelled PERMANENT whenever fielddata outweighs the transient children, so one
+/// trip between two of OpenSearch's forced GCs (at most one per 5 s) must not become heap advice. Seen
+/// on a rolling restart: one 429 on a 1.8 GB heap that a GC brought down to 0.7 GB moments later.
+TEST_F(MonitoringLogTest, APermanentBreakerThatDoesNotPersistOnlyLogsTheThrottlingLine)
+{
+    const std::string server {"http://localhost:9206"};
+    scriptProbes({PERMANENT_BREAKER,
+                  PERMANENT_BREAKER,
+                  GREEN,
+                  PERMANENT_BREAKER,
+                  PERMANENT_BREAKER,
+                  BREAKER,
+                  PERMANENT_BREAKER,
+                  UNAVAILABLE,
+                  PERMANENT_BREAKER,
+                  PERMANENT_BREAKER,
+                  GREEN});
+
+    const auto monitoring = std::make_shared<TestMonitoring>(std::vector<std::string> {server},
+                                                             MONITORING_HEALTH_CHECK_INTERVAL_ZERO,
+                                                             SecureCommunication {},
+                                                             &m_mockHttpRequest);
+    waitForProbes(14);
+
+    // A green probe, a TRANSIENT trip and a down probe each end the streak before it reaches three.
+    EXPECT_EQ(countLines(Log::LOGLEVEL_WARNING, "PERMANENT"), 0);
+    EXPECT_GE(countLines(Log::LOGLEVEL_INFO, "is throttling requests"), 3);
 }
 
 TEST_F(MonitoringLogTest, ThrottledToAvailableIsEdgeTriggered)

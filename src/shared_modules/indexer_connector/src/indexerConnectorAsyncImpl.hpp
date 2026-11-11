@@ -20,7 +20,9 @@
 #include "reflectiveJson.hpp"
 #include "secureCommunication.hpp"
 #include "simdjson.h"
+#include <algorithm>
 #include <chrono>
+#include <cstddef>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -44,6 +46,61 @@ inline void appendEscapedId(std::string& bulkData, std::string_view id)
     {
         bulkData.append(id);
     }
+}
+
+/// Longest part of an event or of an indexer-supplied error string quoted in one log line.
+constexpr std::size_t LOGGED_TEXT_MAX {512};
+
+/**
+ * @brief Render event or indexer text safe to quote in a single log line.
+ *
+ * Trailing newlines (the NDJSON entry terminator) are dropped, every other control byte is escaped
+ * (`\n`, `\r`, `\t`, else `\xNN`) so the text cannot break the line or start a forged one, and only
+ * the first @p maxBytes bytes are kept (cut on a UTF-8 boundary), followed by the original size.
+ */
+inline std::string printableForLog(std::string_view text, std::size_t maxBytes = LOGGED_TEXT_MAX)
+{
+    static constexpr char HEX[] = "0123456789abcdef";
+
+    while (!text.empty() && (text.back() == '\n' || text.back() == '\r'))
+    {
+        text.remove_suffix(1);
+    }
+
+    auto kept = std::min(text.size(), maxBytes);
+    while (kept > 0 && kept < text.size() && (static_cast<unsigned char>(text[kept]) & 0xC0) == 0x80)
+    {
+        --kept;
+    }
+
+    std::string out;
+    out.reserve(kept + 32);
+    for (std::size_t i = 0; i < kept; ++i)
+    {
+        const auto byte = static_cast<unsigned char>(text[i]);
+        switch (byte)
+        {
+            case '\n': out += "\\n"; break;
+            case '\r': out += "\\r"; break;
+            case '\t': out += "\\t"; break;
+            default:
+                if (byte < 0x20 || byte == 0x7f)
+                {
+                    out += "\\x";
+                    out += HEX[byte >> 4];
+                    out += HEX[byte & 0x0f];
+                }
+                else
+                {
+                    out += static_cast<char>(byte);
+                }
+        }
+    }
+    if (kept < text.size())
+    {
+        out += "... (" + std::to_string(text.size()) + " bytes)";
+    }
+    return out;
 }
 
 constexpr auto HTTP_VERSION_CONFLICT {409};
@@ -364,6 +421,7 @@ public:
                 // Process items with optimized iteration
                 size_t itemIndex = 0;
                 size_t clusterBlockedCount = 0;
+                size_t throttledCount = 0;
                 for (const auto& item : itemsArray)
                 {
                     // Try to find the operation element (could be "index", "create", "delete")
@@ -394,6 +452,18 @@ public:
                     simdjson::dom::element errorElement;
                     if (operationElement["error"].get(errorElement) != simdjson::SUCCESS)
                     {
+                        ++itemIndex;
+                        continue;
+                    }
+
+                    // Per-item 429 (circuit_breaking_exception, es_rejected_execution_exception): the
+                    // indexer is shedding load. Tally instead of logging per document; the batch backs
+                    // off and counts the items as dropped below. They are not re-queued.
+                    if (int64_t itemStatus = 0;
+                        operationElement["status"].get_int64().get(itemStatus) == simdjson::SUCCESS &&
+                        itemStatus == HTTP_TOO_MANY_REQUESTS)
+                    {
+                        ++throttledCount;
                         ++itemIndex;
                         continue;
                     }
@@ -448,35 +518,35 @@ public:
 
                     const std::string_view payload = payloadView.substr(startPos, endPos - startPos);
 
+                    // Everything quoted here is event content or indexer text that can echo it:
+                    // one escaped, bounded line, never the raw multi-line NDJSON entry.
+                    const auto loggedType = printableForLog(errorType);
+                    const auto loggedReason = printableForLog(errorReason);
+                    const auto loggedPayload = printableForLog(payload);
+
                     // Build error message with caused_by info if available
                     if (!causedByReason.empty() && !causedByType.empty())
                     {
+                        const auto loggedCausedByType = printableForLog(causedByType);
+                        const auto loggedCausedByReason = printableForLog(causedByReason);
                         LOGFN_WARN(m_logFn,
-                                   "Error %s document (type %.*s - reason: '%.*s' - caused by: %.*s - '%.*s') - "
-                                   "Associated event: %.*s",
+                                   "Error %s document (type %s - reason: '%s' - caused by: %s - '%s') - "
+                                   "Associated event: %s",
                                    isDelete ? "deleting" : "indexing",
-                                   static_cast<int>(errorType.size()),
-                                   errorType.data(),
-                                   static_cast<int>(errorReason.size()),
-                                   errorReason.data(),
-                                   static_cast<int>(causedByType.size()),
-                                   causedByType.data(),
-                                   static_cast<int>(causedByReason.size()),
-                                   causedByReason.data(),
-                                   static_cast<int>(payload.size()),
-                                   payload.data());
+                                   loggedType.c_str(),
+                                   loggedReason.c_str(),
+                                   loggedCausedByType.c_str(),
+                                   loggedCausedByReason.c_str(),
+                                   loggedPayload.c_str());
                     }
                     else
                     {
                         LOGFN_WARN(m_logFn,
-                                   "Error %s document (type %.*s - reason: '%.*s') - Associated event: %.*s",
+                                   "Error %s document (type %s - reason: '%s') - Associated event: %s",
                                    isDelete ? "deleting" : "indexing",
-                                   static_cast<int>(errorType.size()),
-                                   errorType.data(),
-                                   static_cast<int>(errorReason.size()),
-                                   errorReason.data(),
-                                   static_cast<int>(payload.size()),
-                                   payload.data());
+                                   loggedType.c_str(),
+                                   loggedReason.c_str(),
+                                   loggedPayload.c_str());
                     }
 
                     ++itemIndex;
@@ -493,11 +563,24 @@ public:
                                "future sends.",
                                clusterBlockedCount,
                                totalBlocked);
+                }
+
+                if (throttledCount > 0)
+                {
+                    m_queue->recordDiscarded(throttledCount);
+                    LOGFN_WARN(m_logFn,
+                               "Indexer rejected %zu document(s) in this batch with HTTP 429 (load shedding); they "
+                               "were not indexed and are counted as dropped. Backing off future sends.",
+                               throttledCount);
+                }
+
+                if (clusterBlockedCount > 0 || throttledCount > 0)
+                {
                     m_queue->requestBackoff(data.m_sequence);
                 }
                 else
                 {
-                    // Errors present but none were cluster_block_exception.
+                    // Errors present but none asked the connector to slow down.
                     m_queue->reportHealthyResponse(data.m_sequence);
                 }
             },

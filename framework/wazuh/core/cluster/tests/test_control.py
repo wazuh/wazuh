@@ -113,6 +113,13 @@ async def test_get_agents():
             with pytest.raises(KeyError):
                 await control.get_agents(lc=local_client)
 
+    # Several statuses must reach the DAPI request as a list (OR), never as one comma-joined string (AND).
+    with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=async_local_client) as execute:
+        with patch('json.loads', return_value={'items': []}):
+            await control.get_agents(lc=local_client, filter_status=['active', 'never_connected'])
+        sent = json.loads(execute.call_args.kwargs['data'])
+        assert sent['f_kwargs']['filters']['status'] == ['active', 'never_connected']
+
     with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=[WazuhClusterError(3020), 'error']):
         with pytest.raises(WazuhClusterError):
             await control.get_agents(lc=local_client)

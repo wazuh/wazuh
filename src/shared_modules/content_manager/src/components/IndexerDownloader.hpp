@@ -12,6 +12,7 @@
 #define _INDEXER_DOWNLOADER_HPP
 
 #include "componentsHelper.hpp"
+#include "indexerPageWalk.hpp"
 #include "indexerSearchClient.hpp"
 #include "initialLoadState.hpp"
 #include "sharedDefs.hpp"
@@ -78,12 +79,16 @@ private:
         Unknown
     };
 
+    /// Minimum spacing of the download progress lines
+    static constexpr std::chrono::seconds PROGRESS_LOG_INTERVAL {60};
+
     /// Consecutive failures tolerated below WARNING before escalating (indexer settling after restart).
     static constexpr std::size_t INDEXER_WARN_AFTER_ATTEMPTS {3};
 
     nlohmann::json m_config;
     IndexerSearchClientFactory m_clientFactory; ///< Builds the indexer client of every connection this component opens.
     std::chrono::milliseconds m_retryInterval;  ///< Wait between initial-load attempts (30 s in production).
+    IndexerPageWalk::RetryPolicy m_pageRetry;   ///< Retry of one failed page request.
 
     size_t retryIntervalSeconds() const
     {
@@ -981,6 +986,8 @@ private:
         std::optional<nlohmann::json> searchAfter = std::nullopt;
         size_t totalProcessed = 0;
         bool stopRequested = false;
+        const auto t0 = std::chrono::steady_clock::now();
+        auto lastProgressLog = t0;
 
         while (true)
         {
@@ -991,8 +998,20 @@ private:
                 break;
             }
 
-            const auto hitsObj = syncConnector.search(pit, pageSize, query, sort, searchAfter, sourceFilter);
-            const auto& hitArray = hitsObj.at("hits");
+            // A failed page request is retried from the same position instead of failing the run.
+            const auto hitsObj = IndexerPageWalk::searchWithRetry(
+                "Download",
+                [&]() { return syncConnector.search(pit, pageSize, query, sort, searchAfter, sourceFilter); },
+                [&context](const std::chrono::milliseconds delay)
+                { return context.spUpdaterBaseContext->spStopCondition->waitFor(delay); },
+                m_pageRetry);
+            if (!hitsObj.has_value())
+            {
+                logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Stop requested during PIT fetch — aborting.");
+                stopRequested = true;
+                break;
+            }
+            const auto& hitArray = hitsObj->at("hits");
 
             if (!hitArray.is_array() || hitArray.empty())
             {
@@ -1007,6 +1026,15 @@ private:
 
             const bool flushed = processPage(context, hitArray, currentCursor);
             totalProcessed += hitArray.size();
+            if (const auto now = std::chrono::steady_clock::now(); now - lastProgressLog >= PROGRESS_LOG_INTERVAL)
+            {
+                lastProgressLog = now;
+                logInfo(WM_CONTENTUPDATER,
+                        "IndexerDownloader: Download in progress — %zu documents so far, cursor '%s', %lds elapsed",
+                        totalProcessed,
+                        currentCursor.c_str(),
+                        static_cast<long>(std::chrono::duration_cast<std::chrono::seconds>(now - t0).count()));
+            }
 
             if (flushed)
             {
@@ -1033,6 +1061,11 @@ private:
      * (hash-modulo on _id). Each slice paginates independently with search_after.
      * The callback is serialized via m_callbackMutex.
      *
+     * A failed page request is retried from the slice's own search_after position
+     * (IndexerPageWalk::RetryPolicy), so a transient indexer failure (429, 502-504, a timeout)
+     * no longer discards the other slices' progress. Only a slice that exhausts its retries fails
+     * the load; the other slices then stop at their next page.
+     *
      * Cursor is only persisted after all slices complete naturally (crash or graceful stop
      * mid-download = full restart on the next cycle, since a partial per-slice offset is
      * not a safe resume point — see the `interrupted` handling below).
@@ -1041,7 +1074,8 @@ private:
      * @param query      Elasticsearch query object.
      * @param startCursor Starting cursor value.
      * @param numSlices  Number of parallel slices.
-     * @param escalateLogs  If false, transient failures are logged at DEBUG instead of ERROR/WARNING.
+     * @param escalateLogs  If false, a failed point-in-time deletion is logged at DEBUG instead of INFO.
+     *                      Page retries and slice failures are always warnings.
      * @return Total number of documents processed across all slices.
      */
     size_t fetchWithSlicedPit(UpdaterContext& context,
@@ -1120,6 +1154,7 @@ private:
         std::vector<std::string> errors;
         std::mutex errorsMutex;
         std::atomic<bool> interrupted {false};
+        std::atomic<bool> sliceFailed {false}; ///< A slice exhausted its retries: the others stop early.
 
         logDebug1(WM_CONTENTUPDATER,
                   "IndexerDownloader: Starting sliced PIT download with %zu slices, pageSize=%zu",
@@ -1135,36 +1170,24 @@ private:
                 auto& sliceConnector = *spSliceClient;
 
                 const nlohmann::json sliceParam = {{"id", sliceId}, {"max", numSlices}};
-                std::optional<nlohmann::json> searchAfter = std::nullopt;
+                const auto label = "Slice " + std::to_string(sliceId) + " (" + std::to_string(sliceId + 1) + "/" +
+                                   std::to_string(numSlices) + ")";
                 size_t sliceProcessed = 0;
-                std::string sliceCursor = startCursor;
-                bool abandoned = false;
                 auto t0 = std::chrono::steady_clock::now();
+                auto lastProgressLog = t0;
 
-                while (true)
-                {
-                    if (context.spUpdaterBaseContext->spStopCondition->check())
+                // A failed page request is retried from this slice's own position; the other slices
+                // keep going. Only a slice that exhausts its retries fails the load, and then the
+                // others are abandoned at their next page instead of finishing work that is discarded.
+                const auto walk = IndexerPageWalk::walkPages(
+                    label,
+                    pageSize,
+                    startCursor,
+                    [&](const std::optional<nlohmann::json>& searchAfter)
                     {
-                        logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Stop requested — slice %zu aborting.", sliceId);
-                        interrupted.store(true);
-                        break;
-                    }
-
-                    const auto hitsObj =
-                        sliceConnector.search(pit, pageSize, query, sort, searchAfter, sourceFilter, sliceParam);
-                    const auto& hitArray = hitsObj.at("hits");
-
-                    if (!hitArray.is_array() || hitArray.empty())
-                    {
-                        break;
-                    }
-
-                    const auto& lastHit = hitArray.back();
-                    if (lastHit.contains("_source") && lastHit.at("_source").contains("offset"))
-                    {
-                        sliceCursor = std::to_string(lastHit.at("_source").at("offset").get<uint64_t>());
-                    }
-
+                        return sliceConnector.search(pit, pageSize, query, sort, searchAfter, sourceFilter, sliceParam);
+                    },
+                    [&](const nlohmann::json& hits, const std::string& cursor, const size_t)
                     {
                         // Delivery and bookkeeping in one critical section: otherwise another slice could
                         // deliver an unflushed page and advance its frontier between this page's
@@ -1172,23 +1195,24 @@ private:
                         std::lock_guard<std::mutex> lock(cursorMutex);
                         if (attemptFailed)
                         {
-                            abandoned = true;
-                            break;
+                            // Not delivered; sliceFailed ends the walk before the next page.
+                            return;
                         }
                         bool flushed = false;
                         try
                         {
-                            flushed = processPage(context, hitArray, sliceCursor);
+                            flushed = processPage(context, hits, cursor);
                         }
                         catch (...)
                         {
                             attemptFailed = true;
+                            sliceFailed.store(true);
                             throw;
                         }
-                        sliceProcessed += hitArray.size();
-                        if (!sliceCursor.empty())
+                        sliceProcessed += hits.size();
+                        if (!cursor.empty())
                         {
-                            sliceFrontier[sliceId] = std::stoull(sliceCursor);
+                            sliceFrontier[sliceId] = std::stoull(cursor);
                         }
                         if (flushed)
                         {
@@ -1215,19 +1239,41 @@ private:
                                           safe);
                             }
                         }
-                    }
 
-                    if (hitArray.size() < pageSize)
-                    {
-                        break;
-                    }
+                        if (const auto now = std::chrono::steady_clock::now();
+                            now - lastProgressLog >= PROGRESS_LOG_INTERVAL)
+                        {
+                            lastProgressLog = now;
+                            logInfo(
+                                WM_CONTENTUPDATER,
+                                "IndexerDownloader: Slice %zu (%zu/%zu) in progress — %zu documents so far, cursor "
+                                "'%s', %lds elapsed",
+                                sliceId,
+                                sliceId + 1,
+                                numSlices,
+                                sliceProcessed,
+                                cursor.c_str(),
+                                static_cast<long>(std::chrono::duration_cast<std::chrono::seconds>(now - t0).count()));
+                        }
+                    },
+                    [&]() { return context.spUpdaterBaseContext->spStopCondition->check() || sliceFailed.load(); },
+                    [&](const std::chrono::milliseconds delay)
+                    { return context.spUpdaterBaseContext->spStopCondition->waitFor(delay) || sliceFailed.load(); },
+                    m_pageRetry);
 
-                    searchAfter = lastHit.at("sort");
+                const std::string& sliceCursor = walk.cursor;
+                const bool stopped = context.spUpdaterBaseContext->spStopCondition->check();
+                // Interrupted without a stop request: another slice failed.
+                const bool abandoned = walk.interrupted && !stopped;
+                if (walk.interrupted && stopped)
+                {
+                    logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Stop requested — slice %zu aborting.", sliceId);
+                    interrupted.store(true);
                 }
 
                 totalProcessed += sliceProcessed;
 
-                if (!abandoned && !context.spUpdaterBaseContext->spStopCondition->check())
+                if (!walk.interrupted && !context.spUpdaterBaseContext->spStopCondition->check())
                 {
                     std::lock_guard<std::mutex> lock(cursorMutex);
                     sliceFinished[sliceId] = true;
@@ -1261,15 +1307,17 @@ private:
                 auto elapsed =
                     std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0)
                         .count();
-                const bool stopped = context.spUpdaterBaseContext->spStopCondition->check();
+                const char* outcome = "complete";
+                if (walk.interrupted)
+                {
+                    outcome = abandoned ? "abandoned after another slice failed" : "interrupted";
+                }
                 logInfo(WM_CONTENTUPDATER,
                         "IndexerDownloader: Slice %zu (%zu/%zu) %s — %zu docs in %ldms",
                         sliceId,
                         sliceId + 1,
                         numSlices,
-                        abandoned ? "abandoned after another slice failed"
-                        : stopped ? "interrupted"
-                                  : "complete",
+                        outcome,
                         sliceProcessed,
                         elapsed);
             }
@@ -1279,16 +1327,15 @@ private:
                     std::lock_guard<std::mutex> lock(cursorMutex);
                     attemptFailed = true;
                 }
+                sliceFailed.store(true);
                 std::lock_guard<std::mutex> lock(errorsMutex);
                 errors.push_back("Slice " + std::to_string(sliceId) + ": " + e.what());
-                if (escalateLogs)
-                {
-                    logWarn(WM_CONTENTUPDATER, "IndexerDownloader: Slice %zu failed: %s", sliceId, e.what());
-                }
-                else
-                {
-                    logDebug2(WM_CONTENTUPDATER, "IndexerDownloader: Slice %zu failed: %s", sliceId, e.what());
-                }
+                // Always a warning: the page retries above have already absorbed the transient
+                // failures, so a slice that still fails is worth the operator's attention.
+                logWarn(WM_CONTENTUPDATER,
+                        "IndexerDownloader: Slice %zu failed: %s — the initial load will be retried",
+                        sliceId,
+                        e.what());
             }
         };
 
@@ -1499,13 +1546,16 @@ public:
      * @param config Full updater config JSON (must contain an "indexer" sub-object).
      * @param clientFactory Builds the indexer client for every connection (one per slice worker).
      * @param retryInterval Wait between initial-load attempts; tests shorten it.
+     * @param pageRetry Retry of one failed page request; tests shorten or disable it.
      */
     explicit IndexerDownloader(const nlohmann::json& config,
                                IndexerSearchClientFactory clientFactory,
-                               std::chrono::milliseconds retryInterval = std::chrono::seconds {30})
+                               std::chrono::milliseconds retryInterval = std::chrono::seconds {30},
+                               IndexerPageWalk::RetryPolicy pageRetry = {})
         : m_config(config)
         , m_clientFactory(std::move(clientFactory))
         , m_retryInterval(retryInterval)
+        , m_pageRetry(pageRetry)
     {
         if (!m_clientFactory)
         {

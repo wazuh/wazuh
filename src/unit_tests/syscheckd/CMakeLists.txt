@@ -427,6 +427,49 @@ if(NOT ${TARGET} STREQUAL "winagent")
   target_link_libraries(test_check_rc_if SYSCHECK_O ${TEST_DEPS} "${CHECK_RC_IF_FLAGS}")
   add_test(NAME test_check_rc_if COMMAND test_check_rc_if)
 
+  set(CHECK_RC_PORTS_FLAGS "-Wl,--wrap,socket \
+                             -Wl,--wrap,bind \
+                             -Wl,--wrap,close \
+                             -Wl,--wrap,system \
+                             -Wl,--wrap,is_program_available \
+                             -Wl,--wrap,notify_rk \
+                             -Wl,--wrap,_mdebug1 \
+                             -Wl,--wrap,_mtdebug1 \
+                             -Wl,--wrap,_mtwarn \
+                             -Wl,--wrap,_mterror")
+
+  # ss is only considered on Linux
+  if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+    add_executable(test_check_rc_ports test_check_rc_ports.c)
+    target_include_directories(test_check_rc_ports PRIVATE ${SRC_FOLDER}/rootcheck/include)
+    target_link_libraries(test_check_rc_ports SYSCHECK_O ${TEST_DEPS} "${CHECK_RC_PORTS_FLAGS}")
+    add_test(NAME test_check_rc_ports COMMAND test_check_rc_ports)
+  endif()
+
+  set(CHECK_RC_PIDS_FLAGS "-Wl,--wrap,kill \
+                           -Wl,--wrap,getsid \
+                           -Wl,--wrap,getpgid \
+                           -Wl,--wrap,getpid \
+                           -Wl,--wrap,syscall \
+                           -Wl,--wrap,wopendir \
+                           -Wl,--wrap,readdir \
+                           -Wl,--wrap,closedir \
+                           -Wl,--wrap,w_stat \
+                           -Wl,--wrap,waccess \
+                           -Wl,--wrap,wfopen \
+                           -Wl,--wrap,popen \
+                           -Wl,--wrap,pclose \
+                           -Wl,--wrap,system \
+                           -Wl,--wrap,notify_rk")
+
+  # The scan under test is Linux-only
+  if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+    add_executable(test_check_rc_pids test_check_rc_pids.c)
+    target_include_directories(test_check_rc_pids PRIVATE ${SRC_FOLDER}/rootcheck/include)
+    target_link_libraries(test_check_rc_pids SYSCHECK_O ${TEST_DEPS} "${CHECK_RC_PIDS_FLAGS}")
+    add_test(NAME test_check_rc_pids COMMAND test_check_rc_pids)
+  endif()
+
   set(COMMON_FLAGS "-Wl,--wrap,wopendir \
                     -Wl,--wrap,closedir \
                     -Wl,--wrap,w_stat \

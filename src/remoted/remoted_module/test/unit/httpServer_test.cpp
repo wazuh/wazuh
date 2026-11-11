@@ -260,6 +260,8 @@ TEST(HttpServerConfigTest, DefaultsWhenEmpty)
     EXPECT_EQ(config.caPath, "/etc/wazuh-manager/certs/root-ca.pem");
     EXPECT_EQ(config.caCertificatePath, "/etc/wazuh-manager/certs/root-ca.pem");
     EXPECT_EQ(config.ciphers, "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256");
+    // No module default: the TLS library's groups, or what OPENSSL_CONF sets, apply.
+    EXPECT_EQ(config.groups, "");
     EXPECT_EQ(config.verificationMode, ClientVerificationMode::None);
     // Unset, not Disabled: buildHttpServerConfig() intentionally leaves this distinct
     // from an explicit "no" so RestinioHttpServer::start()'s "dual_stack only applies to
@@ -358,6 +360,7 @@ TEST(HttpServerConfigTest, StructValuesWin)
     std::snprintf(raw.global_prefix, sizeof(raw.global_prefix), "/wazuh-manager/");
     std::snprintf(raw.ca_path, sizeof(raw.ca_path), "/custom/ca.pem");
     std::snprintf(raw.ciphers, sizeof(raw.ciphers), "HIGH:!ADH");
+    std::snprintf(raw.groups, sizeof(raw.groups), "X25519:P-256");
 
     const auto config = buildHttpServerConfig(raw);
 
@@ -384,6 +387,7 @@ TEST(HttpServerConfigTest, StructValuesWin)
     EXPECT_EQ(config.globalPrefix, "/wazuh-manager/");
     EXPECT_EQ(config.caPath, "/custom/ca.pem");
     EXPECT_EQ(config.ciphers, "HIGH:!ADH");
+    EXPECT_EQ(config.groups, "X25519:P-256");
     EXPECT_EQ(config.verificationMode, ClientVerificationMode::Certificate);
 }
 
@@ -528,6 +532,51 @@ TEST(HttpServerTest, StartWithValidTls13CiphersuitesDoesNotThrowFromCipherSetup)
     }
 
     EXPECT_NO_THROW(server->stop());
+}
+
+// The groups are set on the context that both the start and the configuration test build, after the
+// certificate and key are known to be readable, so these cases need real key material.
+TEST(HttpServerTest, ValidateTlsMaterialRefusesGroupsTheLibraryRejects)
+{
+    auto certOpt = remoted::test::generateTestCertificate("rmt_groups_bad");
+    if (!certOpt)
+    {
+        GTEST_SKIP() << "openssl not available to generate a test certificate";
+    }
+    remoted::test::ScratchFileCleanup cleanup {{certOpt->certPath, certOpt->keyPath}};
+
+    HttpServerConfig config;
+    config.certificatePath = certOpt->certPath;
+    config.privateKeyPath = certOpt->keyPath;
+    config.groups = "X25519:NOT-A-GROUP";
+
+    try
+    {
+        remoted::http::validateTlsMaterial(config);
+        FAIL() << "Expected validateTlsMaterial() to refuse an unknown key exchange group";
+    }
+    catch (const std::exception& e)
+    {
+        EXPECT_NE(std::string {e.what()}.find("key exchange groups 'X25519:NOT-A-GROUP'"), std::string::npos)
+            << e.what();
+    }
+}
+
+TEST(HttpServerTest, ValidateTlsMaterialAcceptsSupportedGroups)
+{
+    auto certOpt = remoted::test::generateTestCertificate("rmt_groups_ok");
+    if (!certOpt)
+    {
+        GTEST_SKIP() << "openssl not available to generate a test certificate";
+    }
+    remoted::test::ScratchFileCleanup cleanup {{certOpt->certPath, certOpt->keyPath}};
+
+    HttpServerConfig config;
+    config.certificatePath = certOpt->certPath;
+    config.privateKeyPath = certOpt->keyPath;
+    config.groups = "X25519:P-256:P-384:P-521";
+
+    EXPECT_NO_THROW(remoted::http::validateTlsMaterial(config));
 }
 
 TEST(HttpServerTest, StopWithoutStartIsSafe)
@@ -2654,6 +2703,117 @@ TEST(HandshakeGuardTest, FailedHandshakesDoNotUnderflowTheConnectionLevel)
     server->stop();
 }
 
+// Connections created at the same moment on several I/O threads, all from one address -- what a
+// fleet behind one load-balancer address sends. Each of them must leave the handshake counters
+// exactly as it found them: once the storm is over nothing may still be counted as handshaking, the
+// handshaking level may never exceed the open one, and the address must get its whole per-source share
+// back. A connection id shared by two live connections broke all three, one handshake slot at a time,
+// until the address was refused for good.
+TEST(HandshakeGuardTest, ConnectionStormLeavesNoHandshakeCounted)
+{
+    constexpr std::size_t kCap = 64;
+    constexpr std::size_t kClientThreads = 16;
+    constexpr std::size_t kRounds = 1000;
+
+    TempCert cert;
+    auto server = makeHttpServer();
+    addHealthRoute(*server);
+
+    auto config = handshakeGuardConfig(cert, static_cast<std::uint16_t>(30500 + (::getpid() % 2000)));
+    config.ioThreads = 4;
+    config.concurrentAccepts = 16;
+    config.maxParallelConnections = 1024;
+    config.maxHandshakesPerSource = kCap; // above the 2 * kClientThreads the storm holds at once
+    config.readTimeoutSec = 10;
+    ASSERT_NO_THROW(server->start(config));
+
+    // The storm: each round holds two connections at once, then closes both, so the server's
+    // handshake fails on EOF. A sampler watches the two levels meanwhile.
+    std::atomic<bool> storming {true};
+    std::atomic<std::uint64_t> samples {0};
+    std::atomic<std::uint64_t> violations {0};
+    std::thread sampler(
+        [&]
+        {
+            while (storming)
+            {
+                const auto d = server->diagnostics();
+                ++samples;
+                if (d.connectionsHandshaking > d.connectionsOpen)
+                {
+                    ++violations;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds {1});
+            }
+        });
+
+    std::vector<std::thread> clients;
+    for (std::size_t t = 0; t < kClientThreads; ++t)
+    {
+        clients.emplace_back(
+            [port = config.port]
+            {
+                for (std::size_t r = 0; r < kRounds; ++r)
+                {
+                    StalledConnection first {port};
+                    StalledConnection second {port};
+                    first.close();
+                    second.close();
+                }
+            });
+    }
+    for (auto& client : clients)
+    {
+        client.join();
+    }
+    storming = false;
+    sampler.join();
+
+    const bool drained = eventually(
+        [&]
+        {
+            const auto d = server->diagnostics();
+            return d.connectionsOpen == 0U && d.connectionsHandshaking == 0U;
+        },
+        std::chrono::seconds {10});
+    const auto afterStorm = server->diagnostics();
+
+    // The address's share: kCap handshakes from 127.0.0.1 must be let in at once. Every unit the storm
+    // left behind refuses one of them.
+    std::vector<std::unique_ptr<StalledConnection>> held;
+    for (std::size_t i = 0; i < kCap; ++i)
+    {
+        held.push_back(std::make_unique<StalledConnection>(config.port));
+    }
+    const auto settled = [&]
+    {
+        const auto d = server->diagnostics();
+        const auto admitted =
+            d.connectionsHandshaking - std::min(d.connectionsHandshaking, afterStorm.connectionsHandshaking);
+        const auto refused = d.handshakeRejectedPerSourceTotal - afterStorm.handshakeRejectedPerSourceTotal;
+        return admitted + refused >= kCap;
+    };
+    const bool sharesSettled = eventually(settled);
+    const auto refusedAfterStorm =
+        server->diagnostics().handshakeRejectedPerSourceTotal - afterStorm.handshakeRejectedPerSourceTotal;
+    for (auto& connection : held)
+    {
+        connection->close();
+    }
+
+    EXPECT_TRUE(drained) << "after " << kClientThreads * kRounds * 2 << " connections, handshaking "
+                         << afterStorm.connectionsHandshaking << " and open " << afterStorm.connectionsOpen
+                         << " instead of 0 and 0";
+    EXPECT_EQ(violations.load(), 0U) << "connections.handshaking exceeded connections.open in " << violations.load()
+                                     << " of " << samples.load() << " samples";
+    EXPECT_TRUE(sharesSettled) << "did not observe all " << kCap
+                               << " held connections admitted or refused before the wait expired";
+    EXPECT_EQ(refusedAfterStorm, 0U) << refusedAfterStorm << " of " << kCap
+                                     << " handshakes from the address were refused after the storm";
+
+    server->stop();
+}
+
 // ---------------------------------------------------------------------------
 // Async responder contract (independent of the transport library)
 // ---------------------------------------------------------------------------
@@ -3302,31 +3462,33 @@ TEST_F(GlobalPrefixTransportTest, HealthAnswersBothSpellingsUnderPrefix)
     EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/wazuh-manager?probe=1")), 200);
 }
 
-TEST_F(GlobalPrefixTransportTest, CaseVariantMatches)
+TEST_F(GlobalPrefixTransportTest, CaseVariantIs404)
 {
     startServer("/wazuh-manager/");
 
-    // Pinned RESTinio behavior (spike S3): express matching is case-insensitive. Same surface
-    // as today -- on authenticated routes the MAC covers the real bytes either way.
-    EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/WAZUH-MANAGER/")), 200);
+    // The router matches the target exactly as sent (spike S3): a case variant of the prefix
+    // or of the route is a different target.
+    const auto upper = remoted::test::sendGetRequest(m_port, "/WAZUH-MANAGER/");
+    EXPECT_EQ(statusOf(upper), 404);
+    EXPECT_NE(upper.find(R"({"error":"not_found"})"), std::string::npos) << upper;
+    EXPECT_EQ(statusOf(post("/wazuh-manager/ECHO")), 404);
 }
 
-TEST_F(GlobalPrefixTransportTest, PercentEncodedSpellingsRouteButTheTargetStaysRaw)
+TEST_F(GlobalPrefixTransportTest, PercentEncodedSpellingsAre404)
 {
     startServer("/wazuh-manager/");
 
-    // Pinned RESTinio behavior: the express router percent-DECODES ordinary bytes before
-    // matching ("%2D" == '-', so this spelling routes), while an encoded slash ("%2F") never
-    // becomes a path separator (spike S5, and the second assertion below). Predates the prefix
-    // -- it applies to every route equally -- and is harmless under the verbatim-MAC contract:
-    // the handler-observed target stays the RAW encoded bytes, so the MAC covers exactly what
-    // was sent either way.
+    // RESTinio's express router would percent-DECODE ordinary bytes before matching ("%2D" ==
+    // '-'); the server refuses any percent-encoded path, so only the exact spelling routes and
+    // the handlers, the auth gateway and the rate-limit gates only ever see that spelling.
     const auto encoded = post("/wazuh%2Dmanager/echo");
-    EXPECT_EQ(statusOf(encoded), 200);
-    EXPECT_NE(encoded.find("/wazuh%2Dmanager/echo"), std::string::npos)
-        << "the transport must never hand the decoded spelling to handlers/auth: " << encoded;
-
+    EXPECT_EQ(statusOf(encoded), 404);
+    EXPECT_NE(encoded.find(R"({"error":"not_found"})"), std::string::npos) << encoded;
+    EXPECT_EQ(statusOf(post("/wazuh-manager/%65cho")), 404);
     EXPECT_EQ(statusOf(post("/wazuh-manager%2Fecho")), 404);
+
+    // The exact spelling still routes, a '%' in the query included.
+    EXPECT_EQ(statusOf(post("/wazuh-manager/echo?q=%41")), 200);
 }
 
 TEST_F(GlobalPrefixTransportTest, IdentityPrefixBehavesAsToday)

@@ -88,6 +88,12 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)>callback) con
     callback(PROCESSES_EXPECTED);
 }
 
+#ifdef __linux__
+void SysInfo::processNames(std::function<void(const ProcessNames&)> /*callback*/)
+{
+}
+#endif
+
 class CallbackMock
 {
     public:

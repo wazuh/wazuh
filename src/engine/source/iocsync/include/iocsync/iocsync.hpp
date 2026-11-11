@@ -81,17 +81,26 @@ private:
      */
     bool downloadAndPopulateDB(std::string_view iocType, const std::string& dbName);
 
+    /// Outcome of synchronizing one IOC type.
+    enum class TypeSyncResult
+    {
+        UPDATED,   ///< A new version was downloaded and swapped in
+        UNCHANGED, ///< The local version already matches the remote hash
+        SKIPPED,   ///< Nothing to sync now (no remote hash for the type, or the consumer turned not ready)
+        FAILED     ///< The sync errored (download, target creation or hot-swap failure)
+    };
+
     /**
      * @brief Synchronize a single IOC type
      *
      * @param dbState State of the IOC database to synchronize
      * @param remoteTypeHashes Map of remote type hashes
      * @param kvdbiocPtr KVDB IOC manager shared pointer
-     * @return true if state was changed (sync was successful), false otherwise
+     * @return TypeSyncResult UPDATED when the state changed, UNCHANGED, SKIPPED or FAILED otherwise
      */
-    bool syncIOCType(SyncedIOCDatabase& dbState,
-                     const std::unordered_map<std::string, std::string>& remoteTypeHashes,
-                     const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbiocPtr);
+    TypeSyncResult syncIOCType(SyncedIOCDatabase& dbState,
+                               const std::unordered_map<std::string, std::string>& remoteTypeHashes,
+                               const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbiocPtr);
 
     void addIOCTypeToSync(std::string_view iocType);      ///< Add an IOC type to the sync list
     void removeIOCTypeFromSync(std::string_view iocType); ///< Remove an IOC type from the sync list

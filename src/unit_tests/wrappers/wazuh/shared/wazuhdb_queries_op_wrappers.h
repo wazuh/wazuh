@@ -47,6 +47,8 @@ char* __wrap_wdb_get_agent_group(int id, int* wdb_sock);
 
 cJSON* __wrap_wdb_get_distinct_agent_groups(__attribute__((unused)) int* sock);
 
+time_t __wrap_get_agent_date_added(int agent_id);
+
 int __wrap_wdb_insert_agent(int id,
                             const char* name,
                             __attribute__((unused)) const char* ip,

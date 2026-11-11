@@ -257,6 +257,49 @@ static void test_syscheck_top_level_restart_audit_is_info(void **state) {
     assert_int_equal(read_syscheck(), 0);
 }
 
+/* An element <syscheck> does not know is rejected, as the other agent modules
+ * reject theirs, so wazuh-syscheckd -t fails instead of the agent starting with
+ * a setting that silently does nothing. */
+static void test_syscheck_unknown_element_is_error(void **state) {
+    if (write_conf("<syscheck><not_a_syscheck_option>1</not_a_syscheck_option></syscheck>") != 0) {
+        fail();
+    }
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1230): Invalid element in the configuration: 'not_a_syscheck_option'.");
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(1230): Invalid element in the configuration: 'test_config-elements.conf'.");
+
+    assert_int_equal(read_syscheck(), OS_INVALID);
+}
+
+/* Every top-level <syscheck> option 4.14.9 accepted and 5.0 dropped is still
+ * recognized, so a configuration kept by an upgrade loads as before. */
+static void test_syscheck_removed_4x_options_still_load(void **state) {
+    if (write_conf("<syscheck>"
+                   "<alert_new_files>yes</alert_new_files>"
+                   "<auto_ignore frequency=\"10\" timeframe=\"3600\">no</auto_ignore>"
+                   "<database>disk</database>"
+                   "<prefilter_cmd>/usr/sbin/prelink -y</prefilter_cmd>"
+                   "<allow_remote_prefilter_cmd>no</allow_remote_prefilter_cmd>"
+                   "<remove_old_diff>yes</remove_old_diff>"
+                   "<scan_on_start>yes</scan_on_start>"
+                   "</syscheck>") != 0) {
+        fail();
+    }
+
+    expect_string(__wrap__mwarn, formatted_msg, "The <alert_new_files> option is deprecated and no longer has any effect.");
+    expect_string(__wrap__mwarn, formatted_msg, "The <auto_ignore> option is deprecated and no longer has any effect.");
+    expect_string(__wrap__mwarn, formatted_msg, "The <database> option is deprecated and no longer has any effect.");
+    expect_string(__wrap__mwarn, formatted_msg, "The <prefilter_cmd> option is deprecated and no longer has any effect.");
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "The <allow_remote_prefilter_cmd> option is deprecated and no longer has any effect.");
+    expect_string(__wrap__mwarn, formatted_msg, "The <remove_old_diff> option is deprecated and no longer has any effect.");
+    expect_string(__wrap__minfo, formatted_msg, "The <scan_on_start> option is deprecated and no longer has any effect.");
+
+    assert_int_equal(read_syscheck(), 0);
+}
+
 static void test_syscollector_deprecated_default_is_info(void **state) {
     if (write_conf("<wodle name=\"syscollector\">"
                    "<synchronization><max_eps>10</max_eps></synchronization>"
@@ -297,6 +340,58 @@ static void test_sca_deprecated_schedule_is_warning(void **state) {
 #endif
 
 #ifndef TEST_AGENT_TARGET
+
+/* A group's agent.conf as the manager validates it: the root is <agent_config>,
+ * never the configuration root write_conf() adds. */
+static int write_agent_conf(const char *body) {
+    FILE *fp = fopen(TEST_CONF_PATH, "w");
+
+    if (!fp) {
+        return -1;
+    }
+
+    fputs(body, fp);
+    fclose(fp);
+
+    return 0;
+}
+
+/* On the manager an unknown <agent_config> attribute fails the read, so
+ * verify-agent-conf (and PUT /groups/{group_id}/configuration behind it) refuses
+ * the file instead of storing a block the agents would apply to every host. */
+static void test_agent_config_unknown_attribute_is_fatal(void **state) {
+    if (write_agent_conf("<agent_config bogus=\"1\"><localfile><log_format>syslog</log_format>"
+                         "<location>/var/log/test.log</location></localfile></agent_config>") != 0) {
+        fail();
+    }
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1233): Invalid attribute 'bogus' in the configuration: 'test_config-elements.conf'.");
+
+    assert_int_equal(ReadConfig(CAGENT_CONFIG | CLOCALFILE, TEST_CONF_PATH, NULL, NULL), OS_INVALID);
+}
+
+/* The rejection is per attribute: a known one in front of the unknown one does not hide it. */
+static void test_agent_config_unknown_attribute_after_known_is_fatal(void **state) {
+    if (write_agent_conf("<agent_config name=\"web\" nmae=\"db\"></agent_config>") != 0) {
+        fail();
+    }
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1233): Invalid attribute 'nmae' in the configuration: 'test_config-elements.conf'.");
+
+    assert_int_equal(ReadConfig(CAGENT_CONFIG | CLOCALFILE, TEST_CONF_PATH, NULL, NULL), OS_INVALID);
+}
+
+/* The four documented attributes stay accepted. */
+static void test_agent_config_known_attributes_are_valid(void **state) {
+    if (write_agent_conf("<agent_config name=\"web\" os=\"Linux\" profile=\"p1\" overwrite=\"yes\">"
+                         "</agent_config>") != 0) {
+        fail();
+    }
+
+    assert_int_equal(ReadConfig(CAGENT_CONFIG | CLOCALFILE, TEST_CONF_PATH, NULL, NULL), 0);
+}
 
 /* Read_Global_JSON(): the `global` section of the effective document (manager only). */
 static void test_Read_Global_JSON_accepts_int_and_duration(void **state) {
@@ -348,11 +443,16 @@ int main(void) {
         cmocka_unit_test_teardown(test_syscheck_deprecated_defaults_are_info, teardown_conf_file),
         cmocka_unit_test_teardown(test_syscheck_deprecated_user_options_are_warning, teardown_conf_file),
         cmocka_unit_test_teardown(test_syscheck_top_level_restart_audit_is_info, teardown_conf_file),
+        cmocka_unit_test_teardown(test_syscheck_unknown_element_is_error, teardown_conf_file),
+        cmocka_unit_test_teardown(test_syscheck_removed_4x_options_still_load, teardown_conf_file),
         cmocka_unit_test_teardown(test_syscollector_deprecated_default_is_info, teardown_conf_file),
         cmocka_unit_test_teardown(test_sca_deprecated_default_is_info, teardown_conf_file),
         cmocka_unit_test_teardown(test_sca_deprecated_schedule_is_warning, teardown_conf_file),
 #endif
 #ifndef TEST_AGENT_TARGET
+        cmocka_unit_test_teardown(test_agent_config_unknown_attribute_is_fatal, teardown_conf_file),
+        cmocka_unit_test_teardown(test_agent_config_unknown_attribute_after_known_is_fatal, teardown_conf_file),
+        cmocka_unit_test_teardown(test_agent_config_known_attributes_are_valid, teardown_conf_file),
         cmocka_unit_test(test_Read_Global_JSON_accepts_int_and_duration),
         cmocka_unit_test(test_Read_Global_JSON_absent_keeps_defaults),
         cmocka_unit_test(test_Read_Global_JSON_rejects_zero_disconnection_time),

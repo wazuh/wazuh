@@ -38,6 +38,23 @@ const char *wm_config_path = WAZUHCONF;
 #endif
 volatile sig_atomic_t wm_shutdown_requested = 0;
 
+char *wm_resolve_config_path(const char *path, const char *cwd) {
+    char *resolved = NULL;
+
+    if (path[0] == '/' || cwd == NULL || cwd[0] == '\0') {
+        os_strdup(path, resolved);
+        return resolved;
+    }
+
+    const size_t cwd_len = strlen(cwd);
+    const char *separator = cwd[cwd_len - 1] == '/' ? "" : "/";
+    const size_t size = cwd_len + strlen(separator) + strlen(path) + 1;
+
+    os_malloc(size, resolved);
+    snprintf(resolved, size, "%s%s%s", cwd, separator, path);
+    return resolved;
+}
+
 void wm_sleep_interruptible(int seconds) {
     for (int i = 0; i < seconds && !wm_shutdown_requested; i++) {
         sleep(1);
@@ -155,6 +172,9 @@ int wm_config() {
     }
 
     static const char *manager_sections[] = { "vulnerability-detection", "indexer", "task-manager" };
+    // Set when a reader answers with a positive value: it read its section, but another one it also needs
+    // was refused and it fell back to its defaults. The daemon still starts; `-t` fails on it (main.c).
+    bool degraded = false;
 
     for (size_t i = 0; i < sizeof(manager_sections) / sizeof(manager_sections[0]); i++) {
         cJSON *section = w_mconf_section(manager_sections[i]);
@@ -176,6 +196,10 @@ int wm_config() {
 
         if (rc < 0) {
             return OS_INVALID;
+        }
+
+        if (rc > 0) {
+            degraded = true;
         }
     }
 
@@ -204,6 +228,12 @@ int wm_config() {
     wmodule * control_module;
     control_module = wm_control_read();
     wm_add(control_module);
+#endif
+
+#ifndef CLIENT
+    if (degraded) {
+        return 1;
+    }
 #endif
 
     return 0;

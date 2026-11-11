@@ -71,7 +71,9 @@ def prop_schema(allowed, key):
 def typed_scalar(text, allowed, root):
     if "boolean" in allowed["types"] and text.lower() in ("yes", "no"):
         return text.lower() == "yes"
-    if ("integer" in allowed["types"] or "number" in allowed["types"]) and INT_RE.match(text):
+    # Like the library's strtoll(): digits beyond a 64-bit integer stay text, for the pattern to judge.
+    if ("integer" in allowed["types"] or "number" in allowed["types"]) and INT_RE.match(text) \
+            and -2**63 <= int(text) < 2**63:
         return int(text)
     if allowed["enum"]:
         matches = [value for value in allowed["enum"] if isinstance(value, str) and value.lower() == text.lower()]

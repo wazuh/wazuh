@@ -689,8 +689,8 @@ adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& teste
                 {
                     if (policyAssets.find(asset) == policyAssets.end())
                     {
-                        res =
-                            adapter::userErrorResponse<ResponseType>(fmt::format("Asset {} not found in store", asset));
+                        const auto message = fmt::format("Asset {} not found in store", truncateForMessage(asset));
+                        res = adapter::userErrorResponse<ResponseType>(message);
                         return;
                     }
                     requestAssets.insert(asset);
@@ -790,28 +790,42 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
 
         auto [tester, protoReq] = adapter::getRes(result);
 
+        // The indexer stores the queue as a signed byte: a value above 127 would never be indexed. The ingest socket
+        // accepts the same range (base::eventParsers::parseLegacyEvent).
         const uint32_t q = protoReq.queue();
         if (q == 0)
         {
-            res = adapter::userErrorResponse<ResponseType>("queue is required and must be non-zero (1..255)");
+            res =
+                adapter::userErrorResponse<ResponseType>(fmt::format("queue is required and must be non-zero ({}..{})",
+                                                                     base::eventParsers::MIN_QUEUE_ID,
+                                                                     base::eventParsers::MAX_QUEUE_ID));
             return;
         }
 
-        if (q > std::numeric_limits<uint8_t>::max())
+        if (q > static_cast<uint32_t>(base::eventParsers::MAX_QUEUE_ID))
         {
-            res = adapter::userErrorResponse<ResponseType>(fmt::format("Invalid queue: {} (must be 1..255)", q));
+            res = adapter::userErrorResponse<ResponseType>(fmt::format("Invalid queue: {} (must be {}..{})",
+                                                                       q,
+                                                                       base::eventParsers::MIN_QUEUE_ID,
+                                                                       base::eventParsers::MAX_QUEUE_ID));
             return;
         }
 
         const auto queue = static_cast<uint8_t>(q);
 
-        // Checks params
+        // Checks params: an absent or empty trace level means NONE (callers such as the indexer's logtest only
+        // forward the field when their user sets it).
         using OTraceLavel = ::router::test::Options::TraceLevel;
-        OTraceLavel traceLevel = ::router::test::Options::stringToTraceLevel(protoReq.trace_level());
+        OTraceLavel traceLevel = OTraceLavel::NONE;
+        if (!protoReq.trace_level().empty())
+        {
+            traceLevel = ::router::test::Options::stringToTraceLevel(protoReq.trace_level());
+        }
         if (traceLevel == OTraceLavel::UNKNOWN)
         {
+            const auto shownLevel = truncateForMessage(protoReq.trace_level());
             res = adapter::userErrorResponse<ResponseType>(
-                fmt::format("Invalid trace level: {}. Only support: NONE, ASSET_ONLY, ALL", protoReq.trace_level()));
+                fmt::format("Invalid trace level: {}. Only support: NONE, ASSET_ONLY, ALL", shownLevel));
             return;
         }
 
@@ -996,6 +1010,27 @@ adapter::RouteHandler logtestDelete(const std::shared_ptr<::router::ITesterAPI>&
             }
         };
 
+        // Only a namespace the tester created may go with the session: a session can point at any namespace
+        // (a synchronized space, one a route uses), and deleting that would remove live content.
+        auto refuseForeign = [&](const cm::store::NamespaceId& nsId)
+        {
+            res = adapter::userErrorResponse<ResponseType>(
+                fmt::format("Refusing to delete space '{}': its namespace '{}' was not created by the tester",
+                            sessionName,
+                            nsId.toStr()));
+        };
+
+        // Refused before anything is removed, so the session survives the refusal.
+        if (auto current = tester->getTestEntry(sessionName); !base::isError(current))
+        {
+            const auto nsId = base::getResponse(current).namespaceId();
+            if (!::router::test::isTesterOwnedNamespace(nsId))
+            {
+                refuseForeign(nsId);
+                return;
+            }
+        }
+
         // Remove the session first: whoever extracts it owns the namespace cleanup.
         auto extracted = tester->extractTestEntry(sessionName);
         if (base::isError(extracted))
@@ -1015,6 +1050,13 @@ adapter::RouteHandler logtestDelete(const std::shared_ptr<::router::ITesterAPI>&
         }
 
         const auto nsId = entry->namespaceId();
+
+        // Replaced by a foreign one since the check above: the namespace is still never deleted.
+        if (!::router::test::isTesterOwnedNamespace(nsId))
+        {
+            refuseForeign(nsId);
+            return;
+        }
 
         if (storeLocked->existsNamespace(nsId))
         {

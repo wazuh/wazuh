@@ -24,6 +24,7 @@
 #include "os_regex.h"
 #include "logcollector.h"
 #include "startup_gate_op.h"
+#include "openssl_init.h"
 
 /* Prototypes */
 static void help_logcollector(char * home_path) __attribute__((noreturn));
@@ -55,6 +56,8 @@ int main(int argc, char **argv)
 
     /* Set the name */
     OS_SetName(ARGV0);
+
+    w_openssl_init();
 
     // Define current working directory
     char * home_path = w_homedir(argv[0]);
@@ -179,6 +182,9 @@ int main(int argc, char **argv)
         nowDaemon();
         goDaemon();
     }
+
+    /* After goDaemon(): threads don't survive its fork */
+    StartSIGShutdownThread();
 
     /* Create PID file */
     if (CreatePID(ARGV0, getpid()) < 0) {

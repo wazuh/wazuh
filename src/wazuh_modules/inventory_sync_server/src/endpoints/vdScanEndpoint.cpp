@@ -31,8 +31,10 @@ namespace
 
     wazuh::uds_http::HttpResponse errorResponse(int status, const std::string& reason)
     {
-        return wazuh::uds_http::HttpResponse::json(
-            status, std::string {R"({"error":")"} + reason + R"(","code":)" + std::to_string(status) + "}");
+        // Built as JSON, not concatenated, so a reason holding quotes still yields a valid body. Ordered to
+        // keep the documented {"error":...,"code":...} shape.
+        return wazuh::uds_http::HttpResponse::json(status,
+                                                   nlohmann::ordered_json {{"error", reason}, {"code", status}}.dump());
     }
 
     /// The in-flight interlock's answer. `retryable` is redundant against a 409 -- the dispatcher

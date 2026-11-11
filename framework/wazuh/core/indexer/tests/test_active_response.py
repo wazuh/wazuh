@@ -8,7 +8,7 @@ import re
 
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
-from unittest.mock import mock_open, AsyncMock, MagicMock, patch
+from unittest.mock import call, mock_open, AsyncMock, MagicMock, patch
 
 from wazuh.core.exception import WazuhError, WazuhInternalError
 
@@ -1270,6 +1270,32 @@ class TestActiveResponseFetchTask:
             mock_sleep.assert_awaited_once_with(1)
 
         @pytest.mark.asyncio
+        @pytest.mark.parametrize("worked", [True, False])
+        @patch(
+            "wazuh.core.indexer.active_response.asyncio.sleep", new_callable=AsyncMock
+        )
+        async def test_cycle_lines_are_info_only_when_the_cycle_worked(self, mock_sleep, worked):
+            """`Starting` is always DEBUG; `Finished` is INFO only for a cycle that handled something."""
+            import asyncio
+
+            server = MagicMock()
+            server.cluster_items = {"intervals": {"common": {"active_response_polling": 1}}}
+            task = ActiveResponseFetchTask(server)
+            task.logger = MagicMock()
+            task.active_response_processing = AsyncMock(return_value=worked)
+            mock_sleep.side_effect = asyncio.CancelledError()
+
+            with pytest.raises(asyncio.CancelledError):
+                await task.run()
+
+            task.logger.debug.assert_any_call("Starting")
+            finished = [str(c.args[0]) for c in (task.logger.info if worked else task.logger.debug).call_args_list
+                        if str(c.args[0]).startswith("Finished in ")]
+            assert len(finished) == 1
+            if not worked:
+                task.logger.info.assert_not_called()
+
+        @pytest.mark.asyncio
         @patch(
             "wazuh.core.indexer.active_response.asyncio.sleep", new_callable=AsyncMock
         )
@@ -1663,6 +1689,14 @@ def _summary(logger):
 
 class TestCycleSummary:
     """One INFO line per cycle, and read == dispatched + held + sum(discarded) on every page."""
+
+    @pytest.mark.asyncio
+    async def test_idle_cycle_logs_its_summary_at_debug(self):
+        """A cycle with nothing to read runs every polling interval, so it stays out of the INFO log."""
+        _, _, logger = await _run_cycle([])
+
+        assert not any(str(c.args[0]).startswith("Created ") for c in logger.info.call_args_list)
+        assert call("Created 0 task(s) for 0 of 0 active response(s) read.") in logger.debug.call_args_list
 
     @pytest.mark.asyncio
     async def test_summary_is_silent_when_nothing_was_lost(self):

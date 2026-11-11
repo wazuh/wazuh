@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include <api/event/handlers.hpp>
 #include <api/event/identityWarningGate.hpp>
+
+#include <chrono>
+#include <cstdint>
+#include <mutex>
+#include <optional>
+
 #include <api/event/ndJsonParser.hpp>
 #include <base/json.hpp>
 #include <base/logging.hpp>
@@ -9,6 +15,45 @@
 
 namespace api::event::handlers
 {
+namespace
+{
+/// Minimum time between two WARNING lines about rejected batches.
+constexpr auto REJECTED_BATCH_LOG_WINDOW = std::chrono::seconds(60);
+
+/**
+ * @brief Logs the first rejected batch, then at most one per window with the count suppressed since the previous
+ * line (the same policy as the router's malformed-event WARNING). Shared by the server's I/O threads.
+ */
+class RejectedBatchLog
+{
+public:
+    /// @return The number of rejections suppressed since the previous logged one when this one must be logged,
+    /// std::nullopt when it must be suppressed.
+    std::optional<std::uint64_t> record()
+    {
+        const auto now = std::chrono::steady_clock::now();
+        std::lock_guard lock {m_mutex};
+        if (m_hasLogged && now - m_lastLog < REJECTED_BATCH_LOG_WINDOW)
+        {
+            ++m_suppressed;
+            return std::nullopt;
+        }
+
+        const auto suppressed = m_suppressed;
+        m_suppressed = 0;
+        m_lastLog = now;
+        m_hasLogged = true;
+        return suppressed;
+    }
+
+private:
+    std::mutex m_mutex;
+    std::chrono::steady_clock::time_point m_lastLog {};
+    bool m_hasLogged {false};
+    std::uint64_t m_suppressed {0};
+};
+} // namespace
+
 adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orchestrator,
                                 const std::shared_ptr<::dumper::IDumper>& dumper,
                                 std::shared_ptr<agentcache::AgentMetadataCache> agentMetadataCache)
@@ -19,13 +64,11 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
     // Cache metric pointers (one-time map lookup)
     auto bytesReceivedCounter = fastmetrics::manager().getOrCreateCounter(fastmetrics::names::SERVER_BYTES_RECEIVED);
     auto eventsReceivedCounter = fastmetrics::manager().getOrCreateCounter(fastmetrics::names::SERVER_EVENTS_RECEIVED);
+    auto rejectedBatchLog = std::make_shared<RejectedBatchLog>();
 
     auto identityRejectedCounter =
         fastmetrics::manager().getOrCreateCounter(fastmetrics::names::AGENT_CACHE_REJECTED_IDENTITY);
     auto identityWarningGate = std::make_shared<IdentityWarningGate>();
-    // Malformed batches (invalid H-line JSON, broken framing) are throttled the same way: one producer
-    // sending them continuously must not flood the log.
-    auto parseWarningGate = std::make_shared<IdentityWarningGate>();
 
     return [lambdaName = std::move(lambdaName),
             weakOrchestrator = std::move(weakOrchestrator),
@@ -35,7 +78,7 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
             eventsReceivedCounter,
             identityRejectedCounter,
             identityWarningGate,
-            parseWarningGate](const auto& req, auto& res)
+            rejectedBatchLog](const auto& req, auto& res)
     {
         auto orchestratorRef = weakOrchestrator.lock();
         if (!orchestratorRef)
@@ -108,12 +151,24 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
         }
         catch (const std::exception& e)
         {
-            if (parseWarningGate->allow(std::chrono::steady_clock::now()))
+            if (const auto suppressed = rejectedBatchLog->record(); suppressed)
             {
                 json::Json context;
                 context.setString(std::string_view(agentId).substr(0, 64), "/agent_id");
-                LOG_WARNING_L(
-                    lambdaName.c_str(), "[API::Event] Failed to parse request {}: '{}'", context.str(), e.what());
+                if (*suppressed == 0)
+                {
+                    LOG_WARNING_L(
+                        lambdaName.c_str(), "[API::Event] Failed to parse request {}: '{}'", context.str(), e.what());
+                }
+                else
+                {
+                    LOG_WARNING_L(lambdaName.c_str(),
+                                  "[API::Event] Failed to parse request {}: '{}' ({} more requests rejected since the "
+                                  "previous report)",
+                                  context.str(),
+                                  e.what(),
+                                  *suppressed);
+                }
             }
             badRequest(e.what());
             return;

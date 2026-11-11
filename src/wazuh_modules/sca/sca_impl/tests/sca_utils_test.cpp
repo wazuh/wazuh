@@ -115,6 +115,44 @@ TEST(PatternMatchesTest, SimpleMatch)
     EXPECT_FALSE(*patternMatch);
 }
 
+TEST(PatternMatchesTest, PlainTermsAreCaseSensitiveByDefault)
+{
+    auto patternMatch = PatternMatches("PermitRootLogin no", "r:^PermitRootLogin && permitrootlogin no");
+    ASSERT_TRUE(patternMatch.has_value());
+    EXPECT_FALSE(patternMatch.value());
+
+    patternMatch = PatternMatches("PermitRootLogin no", "r:^PermitRootLogin && PermitRootLogin no");
+    ASSERT_TRUE(patternMatch.has_value());
+    EXPECT_TRUE(patternMatch.value());
+}
+
+TEST(PatternMatchesTest, PlainTermsIgnoreCaseWhenRequested)
+{
+    auto patternMatch = PatternMatches("sshd", "SSHD && !r:worker", RegexEngineType::PCRE2, true);
+    ASSERT_TRUE(patternMatch.has_value());
+    EXPECT_TRUE(patternMatch.value());
+
+    patternMatch = PatternMatches("sshd", "!SSHD", RegexEngineType::PCRE2, true);
+    ASSERT_TRUE(patternMatch.has_value());
+    EXPECT_FALSE(patternMatch.value());
+
+    // Bytes with the high bit set are compared as they are
+    patternMatch = PatternMatches("caf\xC3\xA9", "CAF\xC3\xA9", RegexEngineType::PCRE2, true);
+    ASSERT_TRUE(patternMatch.has_value());
+    EXPECT_TRUE(patternMatch.value());
+
+    patternMatch = PatternMatches("caf\xC3\xA9", "CAF\xC3\xA8", RegexEngineType::PCRE2, true);
+    ASSERT_TRUE(patternMatch.has_value());
+    EXPECT_FALSE(patternMatch.value());
+}
+
+TEST(PatternMatchesTest, CaseSensitiveRegexIsKeptWhenValuesIgnoreCase)
+{
+    const auto patternMatch = PatternMatches("nginx", "r:(?-i)^NGINX$", RegexEngineType::PCRE2, true);
+    ASSERT_TRUE(patternMatch.has_value());
+    EXPECT_FALSE(patternMatch.value());
+}
+
 TEST(PatternMatchesTest, RegexMatch)
 {
     auto patternMatch = PatternMatches("123", "r:\\d+");

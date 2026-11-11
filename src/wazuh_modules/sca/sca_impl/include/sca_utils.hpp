@@ -60,10 +60,12 @@ namespace sca
     /// @param content The content to check against the pattern.
     /// @param pattern The pattern to match.
     /// @param engine The regex engine to use for matching.
+    /// @param caseInsensitiveValues Compare plain (non r:/n:) terms ignoring case, as process rules do.
     /// @return An optional boolean indicating if the content matches the pattern.
     std::optional<bool> PatternMatches(const std::string& content,
                                        const std::string& pattern,
-                                       RegexEngineType engine = RegexEngineType::PCRE2);
+                                       RegexEngineType engine = RegexEngineType::PCRE2,
+                                       bool caseInsensitiveValues = false);
 
     /// @brief Checks if the given pattern is a regex pattern.
     /// @param pattern The pattern to check.

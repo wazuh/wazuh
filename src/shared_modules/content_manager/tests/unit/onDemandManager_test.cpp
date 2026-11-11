@@ -101,6 +101,30 @@ TEST_F(OnDemandManagerTest, AnUnknownTopicIs404WithoutSpendingAQueueSlot)
     EXPECT_NE(std::string::npos, responder->response().body.find("unknown_topic"));
 }
 
+TEST(OnDemandManagerLoggableTopicTest, ARegisteredStyleTopicIsQuotedUnchanged)
+{
+    EXPECT_EQ("vulnerability_feed_manager", OnDemandManager::loggableTopic("vulnerability_feed_manager"));
+    EXPECT_EQ("", OnDemandManager::loggableTopic(""));
+}
+
+TEST(OnDemandManagerLoggableTopicTest, ControlBytesAreEscapedSoNoLineCanBeForged)
+{
+    const auto logged = OnDemandManager::loggableTopic("x\n2026/01/01 00:00:00 FORGED\r\t\x7f\\");
+    EXPECT_EQ(std::string::npos, logged.find('\n'));
+    EXPECT_EQ(std::string::npos, logged.find('\r'));
+    EXPECT_EQ(R"(x\x0a2026/01/01 00:00:00 FORGED\x0d\x09\x7f\\)", logged);
+}
+
+TEST(OnDemandManagerLoggableTopicTest, ALongTopicIsCapped)
+{
+    const std::string topic(4096, 'a');
+    const auto logged = OnDemandManager::loggableTopic(topic);
+    EXPECT_EQ(std::string(OnDemandManager::LOGGED_TOPIC_MAX, 'a') + "...", logged);
+
+    const std::string exact(OnDemandManager::LOGGED_TOPIC_MAX, 'b');
+    EXPECT_EQ(exact, OnDemandManager::loggableTopic(exact)) << "no ellipsis when nothing was cut";
+}
+
 TEST_F(OnDemandManagerTest, TheOffsetTravelsToTheCallback)
 {
     std::mutex mutex;

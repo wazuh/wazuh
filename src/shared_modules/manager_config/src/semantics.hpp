@@ -12,6 +12,7 @@
 #include <rapidjson/document.h>
 
 #include <optional>
+#include <vector>
 
 #include "manager_config/manager_config.hpp"
 
@@ -29,9 +30,11 @@ namespace manager_config::detail
      *  - remote.legacy.port (when enabled), remote.https.port, auth.port (when authd enabled) and
      *    cluster.port are pairwise distinct;
      *  - when options.checkFiles: every non-empty certificate/key/CA path exists (relative to options.home).
-     * All failures are fatal and reported with the JSON pointer of the offending option.
+     * All failures are fatal and reported with the JSON pointer of the offending option; every broken rule
+     * is returned, in the order above (empty when the document passes). The rules only read values of the
+     * type the schema expects, so they also run on a document the schema rejected.
      */
-    std::optional<Error>
+    std::vector<Error>
     checkSemantics(const rapidjson::Document& effective, const rapidjson::Document& raw, const LoadOptions& options);
 
 } // namespace manager_config::detail

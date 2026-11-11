@@ -231,6 +231,26 @@ TEST(UpgradeParser, RequestTimeMustFallInTheSameWindowTheCreateRouteEnforces)
     EXPECT_TRUE(parseUpgradeRequest(edge, NOW).ok());
 }
 
+TEST(UpgradeParser, ARequestTimeBeyondTheTimestampRangeIsRefusedNotCast)
+{
+    // Casting these to int64 would be undefined; each is judged against the window instead.
+    auto huge = minimalUpgradeBody();
+    huge["request_time"] = 1e300;
+    auto result {parseUpgradeRequest(huge, NOW)};
+    EXPECT_FALSE(result.ok());
+    EXPECT_EQ(result.failure.message, "Parameter \"request_time\" is in the future");
+
+    huge["request_time"] = 18446744073709551615ULL;
+    result = parseUpgradeRequest(huge, NOW);
+    EXPECT_FALSE(result.ok());
+    EXPECT_EQ(result.failure.message, "Parameter \"request_time\" is in the future");
+
+    huge["request_time"] = -1e300;
+    result = parseUpgradeRequest(huge, NOW);
+    EXPECT_FALSE(result.ok());
+    EXPECT_EQ(result.failure.message, "Parameter \"request_time\" is too old (>1 year)");
+}
+
 TEST(UpgradeParser, ANonObjectBodyIsARequiredParameterFailure)
 {
     EXPECT_EQ(parseUpgradeRequest(nlohmann::json::array(), NOW).failure.error, UpgradeError::ParsingRequiredParameter);

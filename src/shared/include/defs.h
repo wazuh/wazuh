@@ -200,6 +200,10 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Exec queue */
 #define EXECQUEUE "queue/sockets/execq"
 
+/* Longest message wazuh-execd takes whole from EXECQUEUE: it reads one datagram with
+ * OS_RecvUnix(q, OS_MAXSTR, ...), which keeps at most OS_MAXSTR - 1 bytes and drops the rest. */
+#define AR_EXECQ_MAX_MSG_LEN (OS_MAXSTR - 1)
+
 /* Agent groups location */
 #define GROUPS_DIR "queue/agent-groups"
 

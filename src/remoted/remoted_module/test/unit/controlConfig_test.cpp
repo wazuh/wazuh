@@ -52,6 +52,8 @@ TEST(ControlConfigTest, DefaultsWhenZeroed)
     // Numeric defaults come straight from the constants.
     EXPECT_EQ(cfg.wdbRequestConnections, kWdbRequestConnections);
     EXPECT_EQ(cfg.wdbRoundtripDeadlineMs, kWdbRoundtripDeadlineMs);
+    // Pinned: must outlast wazuh-db's global commit stalls on a slow disk.
+    EXPECT_EQ(kWdbRoundtripDeadlineMs, 5000U);
     EXPECT_EQ(cfg.wdbMaxQueueSize, kWdbMaxQueueSize);
     EXPECT_EQ(cfg.tmConcurrency, kTmConcurrency);
     EXPECT_EQ(cfg.tmDeadlineMs, kTmDeadlineMs);

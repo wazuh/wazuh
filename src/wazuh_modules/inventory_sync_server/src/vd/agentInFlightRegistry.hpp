@@ -17,6 +17,7 @@
 #include <mutex>
 #include <set>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <vector>
 
@@ -71,7 +72,7 @@ namespace invsync::vd
             const auto it = m_inFlight.find(agentId);
             if (it == m_inFlight.end())
             {
-                m_inFlight.emplace(agentId, Holder {lane, 1});
+                m_inFlight.emplace(agentId, Holder {lane, 1, std::this_thread::get_id()});
                 return true;
             }
             if (it->second.lane != lane || !reentrant)
@@ -153,11 +154,32 @@ namespace invsync::vd
         /// Deliberately ignores the paused flag: the caller that pauses an agent then waits for
         /// its in-flight work to drain would otherwise wait on its own pause forever.
         /// @return true when the agent became idle.
+        ///
+        /// @param ignoreCallersScanHold When true, a SCAN-lane hold taken by the CALLING thread does
+        ///        not count as in flight. The on-demand rescan runs synchronously on the scan-lane
+        ///        worker that acquired the agent, and the vulnerability scanner fences that same
+        ///        agent from inside the scan: counting its own hold would make every on-demand scan
+        ///        wait out the full quiesce bound for itself. Any other hold -- a pipeline session,
+        ///        or a scan another thread is running -- is still waited for.
         template<typename TRep, typename TPeriod>
-        bool waitUntilIdle(const std::string& agentId, const std::chrono::duration<TRep, TPeriod>& timeout)
+        bool waitUntilIdle(const std::string& agentId,
+                           const std::chrono::duration<TRep, TPeriod>& timeout,
+                           bool ignoreCallersScanHold = false)
         {
+            const auto caller = std::this_thread::get_id();
             std::unique_lock<std::mutex> lock(m_mutex);
-            return m_freeCv.wait_for(lock, timeout, [this, &agentId] { return m_inFlight.count(agentId) == 0; });
+            return m_freeCv.wait_for(lock,
+                                     timeout,
+                                     [this, &agentId, caller, ignoreCallersScanHold]
+                                     {
+                                         const auto it = m_inFlight.find(agentId);
+                                         if (it == m_inFlight.end())
+                                         {
+                                             return true;
+                                         }
+                                         return ignoreCallersScanHold && it->second.lane == Lane::Scan &&
+                                                it->second.owner == caller;
+                                     });
         }
 
         /**
@@ -192,6 +214,9 @@ namespace invsync::vd
         {
             Lane lane;
             std::size_t count;
+            /// The thread of the FIRST acquisition. Only meaningful for the scan lane, which is
+            /// non-reentrant, so its one hold is acquired and released by the same worker.
+            std::thread::id owner;
         };
 
         mutable std::mutex m_mutex;

@@ -50,7 +50,7 @@ skel() {  # skel <mode> <owner:group> <dir>...
 }
 skel 770 wazuh-manager:wazuh-manager logs queue
 skel 750 wazuh-manager:wazuh-manager logs/api logs/cluster logs/wazuh queue/authd queue/db queue/keystore
-skel 770 wazuh-manager:wazuh-manager queue/cluster queue/indexer queue/rids queue/sockets queue/tasks queue/vd
+skel 770 wazuh-manager:wazuh-manager queue/cluster queue/rids queue/sockets queue/tasks queue/vd
 skel 750 root:wazuh-manager var
 skel 770 root:wazuh-manager var/db var/download var/run var/upgrade
 skel 770 wazuh-manager:wazuh-manager var/multigroups

@@ -661,10 +661,10 @@ namespace remoted::endpoints::download
                     {
                         LOGFN_WARN(logFn(),
                                    "Cannot authorize /download: the agent's groups could not be read from "
-                                   "wazuh-manager-db in time (%llu request(s) in the last %d s). Agents are being "
+                                   "wazuh-manager-db in time (%llu request(s) %s). Agents are being "
                                    "told to retry; check that wazuh-manager-db is running.",
                                    throttle.total,
-                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                                   throttle.period().c_str());
                     }
                     responder->send(unavailableResponse());
                     return;
@@ -679,11 +679,11 @@ namespace remoted::endpoints::download
                     {
                         LOGFN_WARN(logFn(),
                                    "Cannot authorize /download for agent '%s': the local wazuh-manager-db has no "
-                                   "row for it (%llu such request(s) in the last %d s). Agents are being told to "
+                                   "row for it (%llu such request(s) %s). Agents are being told to "
                                    "retry until their row reaches this node's database.",
                                    agentId.c_str(),
                                    throttle.total,
-                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                                   throttle.period().c_str());
                     }
                     responder->send(unavailableResponse());
                     return;

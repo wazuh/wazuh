@@ -120,6 +120,25 @@ TEST_F(ApiTest, RejectsATimestampOutsideItsWindow)
     EXPECT_EQ(m_api->createAgentTask(ancient).body["message"], "Timestamp is too old (>1 year)");
 }
 
+TEST_F(ApiTest, ACreateTimeThatIsNotAnInt64IntegerIsATypeErrorNotAWindowOne)
+{
+    const auto now {static_cast<Timestamp>(std::time(nullptr))};
+    for (const auto& value : {nlohmann::json(18446744073709551615ULL),
+                              nlohmann::json(static_cast<double>(now) + 0.5),
+                              nlohmann::json(1e300),
+                              nlohmann::json(std::to_string(now)),
+                              nlohmann::json(nullptr)})
+    {
+        auto body = agentTaskBody();
+        body["create_time"] = value;
+
+        const auto response {m_api->createAgentTask(body)};
+        EXPECT_EQ(response.status, 400) << value.dump();
+        EXPECT_EQ(response.body["error"], "parsing_error") << value.dump();
+        EXPECT_EQ(response.body["message"], "create_time must be an integer within range") << value.dump();
+    }
+}
+
 TEST_F(ApiTest, RejectsAnOversizedPayload)
 {
     auto body = agentTaskBody();
@@ -363,6 +382,54 @@ TEST_F(ApiTest, ListingIsNarrowAndPagesOnTaskId)
     // regression here should read as a failed test rather than as a crashed one.
     ASSERT_EQ(next.body["tasks"].size(), 2U);
     EXPECT_EQ(next.body["tasks"][0]["task_id"], "task-2");
+}
+
+TEST_F(ApiTest, ListingRefusesALimitThatIsNotAnIntInsteadOfWrappingIt)
+{
+    for (int i = 0; i < 3; ++i)
+    {
+        m_api->createManagerTask(managerTaskBody("task-" + std::to_string(i), "00" + std::to_string(i), "plain_type"));
+    }
+
+    // 2^32 + 1 used to narrow to 1; 2^31 to INT_MIN (the default page); 1.5 and "5" to the default.
+    for (const auto& value : {nlohmann::json(4294967297ULL),
+                              nlohmann::json(2147483648LL),
+                              nlohmann::json(-2147483649LL),
+                              nlohmann::json(1.5),
+                              nlohmann::json("5"),
+                              nlohmann::json(nullptr)})
+    {
+        const auto response {m_api->listManagerTasks(nlohmann::json {{"task_type", "plain_type"}, {"limit", value}})};
+        EXPECT_EQ(response.status, 400) << value.dump();
+        EXPECT_EQ(response.body["error"], "parsing_error") << value.dump();
+        EXPECT_EQ(response.body["message"], "limit must be an integer within range") << value.dump();
+    }
+
+    // The documented in-range rules are unchanged: <= 0 is the default page.
+    EXPECT_EQ(m_api->listManagerTasks(nlohmann::json {{"task_type", "plain_type"}, {"limit", 0}}).body["tasks"].size(),
+              3U);
+    EXPECT_EQ(m_api->listManagerTasks(nlohmann::json {{"task_type", "plain_type"}, {"limit", -1}}).body["tasks"].size(),
+              3U);
+}
+
+TEST_F(ApiTest, ManagerTaskNumericFieldsAreRefusedRatherThanNarrowed)
+{
+    for (const auto* key : {"create_time", "next_attempt_at", "scheduled_run_at"})
+    {
+        auto body = managerTaskBody(std::string {"t-"} + key, "007", "plain_type");
+        body[key] = 18446744073709551615ULL;
+
+        const auto response {m_api->createManagerTask(body)};
+        EXPECT_EQ(response.status, 400) << key;
+        EXPECT_EQ(response.body["message"], std::string {key} + " must be an integer within range") << key;
+    }
+
+    auto body = managerTaskBody("t-max", "007", "synthetic_type");
+    body["max_pending"] = 4294967297ULL;
+    const auto response {m_api->createManagerTask(body)};
+    EXPECT_EQ(response.status, 400);
+    EXPECT_EQ(response.body["message"], "max_pending must be an integer within range");
+    EXPECT_TRUE(m_notifiedManager.empty()) << "nothing refused may be created";
 }
 
 TEST_F(ApiTest, ListingRejectsAnUnknownStatus)

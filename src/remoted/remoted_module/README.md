@@ -121,6 +121,8 @@ src/http_server/
 │                            #   per-source handshake cap (RESTinio-free, unit-tested without a socket)
 ├── handshakeMetrics.hpp     # names of the handshake-guard pulls (remoted.server.connections.handshaking,
 │                            #   remoted.server.handshake.*)
+├── connectionIdSource.hpp   # atomic ids for the listener's connections (RESTinio-free); handed to RESTinio
+│                            #   by the connection_factory_t specialization in RestinioHttpServer.cpp
 ├── guardedTlsSocket.hpp     # PRIVATE to the .cpp: RESTinio's TLS socket + a deadline on the handshake
 │                            #   (traits customization point; see "TLS handshake guard" below)
 └── RestinioHttpServer.hpp/.cpp # RESTinio + OpenSSL implementation (PImpl hides RESTinio in the .cpp)
@@ -141,8 +143,8 @@ src/http_server/
        is shut down in both directions, which fails the handshake whatever step it is in (a pending
        read gets EOF, a later one fails at once); RESTinio's own failure path then closes the
        connection and frees the slot. Two RESTinio specializations carry the policy in
-       (`socket_type_dependent_settings_t::handshake_guard()`, `socket_supplier_t`). **Re-check the
-       three customization points when RESTinio is upgraded.**
+       (`socket_type_dependent_settings_t::handshake_guard()`, `socket_supplier_t`). **Re-check these
+       three customization points, and the connection factory below, when RESTinio is upgraded.**
     2. **A per-source cap on handshakes in progress** (`remoted.max_handshakes_per_source`, default
        32, 0 disables): one more connection from an address that already has that many mid-handshake
        is closed at once. The deadline alone only turns "hold forever" into "reconnect every few
@@ -155,10 +157,25 @@ src/http_server/
   `accepted` notice (sent only after a successful handshake) against its `closed` notice (sent after
   a failed one too): it underflowed on every port scan, plain-HTTP probe or rejected client
   certificate, and never saw a stalled socket. A connection is now counted from the start of its
-  handshake — when it already holds its slot — to its close, keyed by connection id so a repeated or
-  unmatched notice is a no-op. Both guards are WARN-logged (throttled, with the count and the last
-  peer) and counted: `remoted.server.connections.handshaking`,
+  handshake — when it already holds its slot — to its close notice, keyed by connection id so a
+  repeated or unmatched notice is a no-op. The handshake itself is NOT released through the id:
+  `beginHandshake()` returns a `HandshakeLedger::Share`, owned by the connection's `HandshakeState`,
+  which gives that handshake's unit back exactly once (its handler releases it, its destructor is the
+  backstop). Keyed by id, two handshakes under one repeated id counted twice and released once, and
+  the extra unit kept one slot of the address until remoted restarted. Both guards are WARN-logged
+  (throttled, with the count and the last peer) and counted: `remoted.server.connections.handshaking`,
   `remoted.server.handshake.{timeouts,rejected_per_source}.total`.
+
+  **Connection ids are unique per server run (`connectionIdSource.hpp`).** The ledger, the connection
+  level and the `verification_mode=full` verdicts are all keyed by RESTinio's connection id. RESTinio
+  0.7.x numbers connections with a plain post-increment in `connection_factory_t::create_new_connection()`,
+  which runs on the acceptor's executor — the `io_context` itself, not a strand — so with more than one
+  I/O thread two connections created at the same moment could get the same id. Each such pair leaked
+  one handshake slot of its address for good, until a fleet behind one load-balancer address was
+  refused. `RestinioHttpServer.cpp` specializes `restinio::impl::connection_factory_t<ServerTraits>`:
+  RESTinio 0.7.10's factory with the ids taken from an atomic counter, and `start()` `static_assert`s
+  that it is the one in use. Serializing the accepts (one at a time, connection created inline) would
+  also keep the ids unique, but gives up the accept-burst headroom of `http_concurrent_accepts`.
 
 - **Certificate status (`tlsCertificateStatus.hpp`, `IHttpServer::certificateStatus()`):** when
   `start()` builds the TLS context it evaluates the leaf it just loaded — days to `notAfter`
@@ -192,7 +209,12 @@ src/http_server/
   unprefixed paths answer `404`, and the health route `"/"` is registered as the bare prefix so
   `GET /<prefix>` and `GET /<prefix>/` both answer. `request.target` is **never rewritten** — the
   router matches the raw (prefixed) target, so agents send the full prefixed path and proxies must
-  forward it untouched (the bearer token does not bind it: a mismatch is a `404`). Canonicalization lives in one place
+  forward it untouched (the bearer token does not bind it: a mismatch is a `404`). Matching is
+  exact: routes are registered case-sensitive (`path2regex::options_t::sensitive(true)`), and a
+  path containing any percent-encoding answers `404` before the route runs (RESTinio's express
+  router would otherwise decode `%63` to `c`), so the auth gateway, the rate-limit gates and the
+  handlers only ever see the exact spelling; the one tolerance kept is a single trailing `/`.
+  Canonicalization lives in one place
   (`normalizeGlobalPrefix()`, called by `RestinioHttpServer::start()`; invalid values throw like
   a missing certificate). Public HTTPS listener only — the local admin socket is not prefixed.
 - **Two-phase shutdown:** `stopAccepting()` closes the acceptor and drains the handler worker pool
@@ -348,7 +370,9 @@ src/http_server/
     2. `<remote><https>` settings, wired from the parsed config in `secure.c`'s
        `w_remoted_build_module_config()`: `port`, `bind_address`, `global_prefix`,
        `http_max_body_size`, `ca_path`, `ca_certificate_path` (the CA published on `/cacerts`),
-       `ciphers`, `verification_mode`, `dual_stack`, and the two rate limits `enroll_rate_limit` /
+       `ciphers`, `groups` (TLS key exchange groups; empty leaves OpenSSL's, or what `OPENSSL_CONF` sets,
+       loaded before the privilege drop by `remoted_module_init_tls_library()`), `verification_mode`,
+       `dual_stack`, and the two rate limits `enroll_rate_limit` /
        `cacerts_rate_limit` with their `rate_limit_set` flag (see `rateLimitGate` below).
        `certificate_path`/`private_key_path` are file paths (not PEM content) opened by the
        module itself, after `remoted` has already dropped root privileges (`Privsep_SetUser()`)
@@ -824,8 +848,10 @@ sequenceDiagram
      today that means its value *is* the group selector. Never empty (`"default"` when the CSV is)
    - Queries task-manager for pending tasks (`status='pending'`); if found, marks as `delivered` (local only, no cluster broadcast)
    - Reads this node's current Vulnerability Detection feed offset via `VdClient` (cached, see
-     `common/vdClient.hpp` below) and includes it as `vd_feed_offset` — always present; the last
-     known-good value while VD is unreachable, and 0 only if no value was ever obtained
+     `common/vdClient.hpp` below) and includes it as `vd_feed_offset` — the last known-good value
+     while VD is unreachable, and 0 only if no value was ever obtained; **omitted** while VD's
+     `/offset` answer says `"enabled": false` (#41101: a disabled VD refuses every scan, and the
+     agent requests one only off an advertised offset)
    - Reads the CA bundle's published generation through `Config::caGenerationProvider` (issue
      #39319, RF-3) and includes it as `ca_generation` — the SAME generation `GET /cacerts`'s
      `Wazuh-CA-Generation` header would answer right now, at the cost of at most one file read per
@@ -837,7 +863,7 @@ sequenceDiagram
      `buildControlConfig()` leaves it at on a build with no HTTPS listener wired in) — absent means
      *this manager does not know*, which is not the same as the confirmed-empty `null`, and an agent
      must not conflate the two
-   - **Response** (`agent`/`settings_hash`/`tasks`/`vd_feed_offset` always present -- `tasks` is
+   - **Response** (`agent`/`settings_hash`/`tasks` always present, `vd_feed_offset` unless VD is disabled -- `tasks` is
      `[]` when there is no work, never an absent key; `ca_generation` is the one field whose value can
      be `null`, per the state above; the key is sent whenever the handler has a CA provider, which the
      facade always installs). `nlohmann::json` serialises object keys alphabetically, so on
@@ -1064,7 +1090,13 @@ The HTTP endpoint registration. Parses the JSON body (validates it's an object w
 extracts the agent ID from the authenticated request, and dispatches to the appropriate
 `ControlHandler` method. Returns:
 - `400` — invalid_body, invalid_json, invalid_agent_id, unknown_message_type; `invalid_host_info`
-  (from `notify`); `invalid_version` (malformed `startup` version)
+  (from `notify`: a host field over its bound, or — flagged by the parser in
+  `NotifyData::hostMalformed` — `host`/`host.os` not an object or a host field not a string; absent
+  and `null` mean "not reported"); `invalid_version` (malformed `startup` version)
+
+Every version written to wazuh-db goes through `canonicalVersion()` (`controlTypes.hpp`), so
+`5.0.0`, `v5.0.0` and `V5.0.0` are all stored as `v5.0.0` — the framework compares stored versions
+as strings, and two spellings of one version split its listings.
 - `409` — `invalid_version` (a `startup` version higher than policy allows)
 - `503` — `{"error":"dependency_unavailable","dependency":"wazuh-db"}` (group membership unreadable)
 - `200` — success + JSON response body
@@ -1083,9 +1115,9 @@ from C-ABI struct fields in `remoted_module_config_t`; the tunable ones are fed 
 | `managerVersion` | `__wazuh_version` | — (manager's own version, for comparison) |
 | `allowHigherVersions` | from XML | `<remote><agents><allow_higher_versions>` |
 | `isWorkerNode` | from cluster config | — |
-| `groupsRefreshIntervalSec` | 60 s | `remoted.control_groups_refresh_interval` (1–3600) |
+| `groupsRefreshIntervalSec` | 1 s | `remoted.control_groups_refresh_interval` (1–3600) |
 | `wdbRequestConnections` | 4 | `remoted.control_wdb_request_connections` (1–64) |
-| `wdbRoundtripDeadlineMs` | 2000 ms | `remoted.control_wdb_roundtrip_deadline` (100–30000) |
+| `wdbRoundtripDeadlineMs` | 5000 ms | `remoted.control_wdb_roundtrip_deadline` (100–30000) |
 | `wdbRequestDeadlineMs` | 5000 ms | `remoted.control_wdb_request_deadline` (100–30000) — end to end from enqueue |
 | `wdbMaxQueueSize` | 10000 | `remoted.control_wdb_max_queue_size` (100–1000000) |
 | `tmConcurrency` | 4 | `remoted.control_tm_concurrency` (1–64) |
@@ -1284,8 +1316,8 @@ since it's the same client instance — this is the rest of its contract. `getOf
 
 `ScanVdMetrics` (`scanvd/scanVdMetrics.hpp`) caches the `remoted.scanvd.*` counter family —
 admission decisions only, since that is all this handler does: `requests.total`,
-`version_mismatch`, `queue_full` (VD's lane at capacity), `invalid_agent`, `accepted` (VD queued
-it), `indexer_unavailable` (VD reports no healthy indexer host — its own cause, kept off the
+`version_mismatch`, `queue_full` (VD answered `scan_queue_full`: the Task Manager's admission bound
+for `vd_scan` tasks is reached), `invalid_agent`, `accepted` (VD recorded it), `indexer_unavailable` (VD reports no healthy indexer host — its own cause, kept off the
 relay window below), `vd_error` (any other relayed 503: unreachable, not ready, stopping).
 Resolved from the facade's shared `wazuh_metrics` registry via `makeScanVdMetrics()` and
 incremented inline at each outcome — same shape (and same null-object contract) as
@@ -1520,9 +1552,9 @@ Turns the authd password file into the `wazuh-enroll+jwt` HS256 key (shared HKDF
 `Keystore`'s watcher exactly (inotify + a poll fallback + content-hash change detection, so a rewrite
 landing mid-read can never be adopted torn) — the two files have the same operational shape, an
 operator-managed secret a running process must notice without a bounce. Parsing must byte-match
-authd's own `read_password_line()`: first line only, trailing `\r`/`\n` stripped, length `<= 2` or
-all-whitespace rejected, a 4096-byte cap — otherwise the manager's two enrollment paths could disagree
-about which password is valid. Derivation runs once per file change and is cached — never per
+authd's own `read_password_line()`: first line only, trailing `\r`/`\n` stripped, all-whitespace or
+shorter than 16 bytes (`AUTHD_PASS_MIN_BYTES`) rejected, a 4096-byte cap — otherwise the manager's two
+enrollment paths could disagree about which password is valid. Derivation runs once per file change and is cached — never per
 request.
 
 #### `TokenKeySource` (`auth/tokenKeySource.hpp/.cpp`)
@@ -2310,7 +2342,8 @@ sets, HS256, time rules, identity — is verified by the shared `JwtRequestToken
 `shared_modules/utils/jwt/` (header-only over jwt-cpp's base64url, rapidjson SAX for a strict
 pre-parse and OpenSSL's `EVP_Q_mac`; the same library the agent signs with and the fake managers
 of the agent's tests verify with). `AuthMiddleware::authenticate(protocolVersion, authorization,
-peerAddress, now)` is a single call: `protocol-version` first, `Bearer` scheme, `peekKid()` to
+peerAddress, now)` is a single call: `protocol-version` first, `Bearer` scheme (matched
+case-insensitively, RFC 7235 §2.1), `peekKid()` to
 resolve the CANDIDATE key from the keystore (and the registered-address verdict in the same pass),
 then the verifier, then `AuthError`. Nothing from the token is trusted before its signature except
 the bounded `kid` used for the lookup, and the algorithm is fixed to HS256 — never read from the
@@ -2366,6 +2399,13 @@ and acts on the class (issue #39064): `client-agent/https_client/src/authFailure
 only `unknown_agent` latches the agent into its credential-dead state or makes enrollment drop the
 stored re-enrollment secret (`client-agent/src/enrollment.c`), and every other class keeps the
 credential and retries.
+
+`unknown_agent` is not always final on a cluster: a worker's keystore is its own `client.keys`, which
+the cluster's integrity sync brings from the master about 10 seconds after an enrollment (sometimes a
+few more), so a worker answers `unknown_agent` to an agent enrolled moments before until the file
+arrives. The agent recovers on its own (by retrying, or by enrolling again where it took the answer for
+the loss of its identity); the answer stays the honest one for that node's view, and nothing on the
+manager side waits for the sync.
 
 Because `unknown_agent` is answered before any signature check, it is an **accepted existence
 oracle**: an unauthenticated peer can tell an enrolled id from a free one, both on the authenticated
@@ -2864,11 +2904,16 @@ the certificate this process reserialised and never the file's `##` lines),
 `inFlightBudget_test.cpp` (reserve/release accounting, exhaustion, RAII move-once, disabled mode,
 concurrency), `handshakeLedger_test.cpp` (a connection counted from handshake to close, a close
 while handshaking leaving both levels at zero, repeated or unknown notices as no-ops, the per-source
-cap refusing only the excess and freeing a share when a handshake finishes, 0 disabling it, reset()
-keeping the totals, concurrency) with `httpServer_test.cpp`'s `HandshakeGuardTest` over a real
+cap refusing only the excess, freeing one share on a partial release while the others still count,
+0 disabling it, reset()
+keeping the totals and a pre-reset share releasing nothing, two handshakes on one id counting twice and
+every order of their ends leaving nothing counted, a dropped share releasing, a share released once
+wherever it is moved, concurrency) with `httpServer_test.cpp`'s `HandshakeGuardTest` over a real
 listener (every slot held by a stalled handshake, then an honest request served once the deadline
 closes them; the per-source cap closing the excess at once; failed handshakes not underflowing
-`connectionsOpen`), `deferredWorkLimiter_test.cpp` (count-based limiter: acquire-to-capacity, RAII/move
+`connectionsOpen`; a 32 000-connection storm on 4 I/O threads leaving nothing handshaking, never
+`handshaking > open`, and the address's whole per-source share free), `connectionIdSource_test.cpp`
+(ids from 1, distinct across 8 threads), `deferredWorkLimiter_test.cpp` (count-based limiter: acquire-to-capacity, RAII/move
 release, disabled mode, concurrency), `agentRequestLimiter_test.cpp` (the per-agent cap: one agent
 at its cap never touches another, an idle agent's entry is erased, release-once across moves, a slot
 co-owning its limiter, concurrency, the byte share across an agent's requests, and the
@@ -3113,7 +3158,7 @@ their assertions are *recorded observations*: a dependency bump may change those
 | File | What it records | What actually guards the feature |
 |---|---|---|
 | `jwtCppSpike_test.cpp` | vendored jwt-cpp 0.7.2 on duplicate JSON members, base64url padding and alphabet, `NumericDate` types, leeway, NUL-containing keys — i.e. which checks the library does **not** do, so the profile verifier owns them | `jwtVerify_test.cpp`, `jwtProfileTypes_test.cpp` |
-| `routerSemanticsSpike_test.cpp` | RESTinio `express_router` matching: `"/p/"` does not match `"/p"` while bare `"/q"` matches `"/q/"`, case-insensitivity, `%2F` left undecoded, handlers seeing the raw target | `globalPrefixE2E_test.cpp`, `httpServer_test.cpp`'s `GlobalPrefixTransportTest` |
+| `routerSemanticsSpike_test.cpp` | RESTinio `express_router` matching: `"/p/"` does not match `"/p"` while bare `"/q"` matches `"/q/"`, case-sensitive matching and every percent-encoded path a `404` (exact matching), handlers seeing the raw target | `globalPrefixE2E_test.cpp`, `httpServer_test.cpp`'s `GlobalPrefixTransportTest` |
 
 Both carry comments marking a hypothesis as confirmed or refuted by the run that produced them.
 Separately, `DISABLED_`-prefixed cases (`jwtCppSpike_test.cpp`'s traits benchmark,
@@ -3127,10 +3172,8 @@ ctest --test-dir src/build -R '^remoted_module_utest$' -V
 
 ### Manual / end-to-end (`tools/send_stateless.py`)
 
-> **Port trap:** `send_stateless.py`, `send_agent_json.py` and `send_enroll.py` default to
-> `https://127.0.0.1:1517`, the product's own port; `send_control.py`, `send_scan_vd.py` and
-> `send_download.py` default to `https://127.0.0.1:9443` (a development listener). Against a
-> default installation the latter three need `--url https://127.0.0.1:1517`.
+> **Port:** every sender defaults to `https://127.0.0.1:1517`, the product's own port; pass `--url`
+> for another listener.
 
 Mints the `wazuh-agent+jwt` bearer and sends `POST /stateless` requests exactly as `AuthMiddleware`
 expects (shared `tools/wire_jwt.py`, pure standard library; agent key read straight from
@@ -3210,7 +3253,7 @@ python3 tools/send_scan_vd.py --url https://127.0.0.1:1517 --auto-offset        
 python3 tools/send_scan_vd.py --url https://127.0.0.1:1517 --feed-offset 1                # 409 if the manager's offset differs from 1,
                                                               # prints the manager's real current_version
 python3 tools/send_scan_vd.py --url https://127.0.0.1:1517 --all                          # every /scan/vd success/failure scenario
-# options (both): --url (default https://127.0.0.1:9443), --agent-id, --client-keys, --all,
+# options (both): --url (default https://127.0.0.1:1517), --agent-id, --client-keys, --all,
 #          --global-prefix
 #   send_control.py: --type {startup,notify,shutdown} (required unless --all), --version,
 #          --with-host, --tamper
@@ -3240,7 +3283,7 @@ python3 tools/send_download.py --url https://127.0.0.1:1517 --all               
                                                         #   unknown group -> 403, another agent's
                                                         #   selector -> 403
 python3 tools/send_download.py --url https://127.0.0.1:1517 --simulate 8 --repeat 20 --watch-rss   # concurrency + memory check
-# options: --url (default https://127.0.0.1:9443), --manager-home, --resource-id, --selectors,
+# options: --url (default https://127.0.0.1:1517), --manager-home, --resource-id, --selectors,
 #          --unknown-group, --other-group, --agent-id, --global-prefix
 ```
 

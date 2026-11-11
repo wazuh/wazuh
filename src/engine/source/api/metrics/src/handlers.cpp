@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include <api/metrics/handlers.hpp>
 
+#include <api/adapter/helpers.hpp>
+
 #include <unordered_map>
 
 #include <base/utils/timeUtils.hpp>
@@ -63,7 +65,8 @@ adapter::RouteHandler enableMetric(const std::shared_ptr<fastmetrics::IManager>&
         auto metric = manager->get(metricName);
         if (!metric)
         {
-            res = adapter::userErrorResponse<ResponseType>(fmt::format("Metric '{}' not found", metricName));
+            res = adapter::userErrorResponse<ResponseType>(
+                fmt::format("Metric '{}' not found", adapter::helpers::truncateForMessage(metricName)));
             return;
         }
 
@@ -118,7 +121,8 @@ adapter::RouteHandler getMetric(const std::shared_ptr<fastmetrics::IManager>& me
         auto metric = manager->get(metricName);
         if (!metric)
         {
-            res = adapter::userErrorResponse<ResponseType>(fmt::format("Metric '{}' not found", metricName));
+            res = adapter::userErrorResponse<ResponseType>(
+                fmt::format("Metric '{}' not found", adapter::helpers::truncateForMessage(metricName)));
             return;
         }
 
@@ -179,8 +183,8 @@ adapter::RouteHandler listMetrics(const std::shared_ptr<fastmetrics::IManager>& 
         {
             if (!spacePrefix.empty())
             {
-                res = adapter::userErrorResponse<ResponseType>(
-                    fmt::format("No metrics found for space '{}'", protoReq.space()));
+                res = adapter::userErrorResponse<ResponseType>(fmt::format(
+                    "No metrics found for space '{}'", adapter::helpers::truncateForMessage(protoReq.space())));
             }
             else
             {

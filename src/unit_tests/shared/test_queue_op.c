@@ -397,6 +397,24 @@ void test_try_queue_pop_ex_with_elements(void** state)
     ptr = try_queue_pop_ex(queue);
     assert_ptr_equal(ptr, NULL);
 }
+/* A zero size divides by zero in queue_full(); a size whose byte count overflows size_t would
+ * allocate a short buffer that queue_push() writes past. Both must be refused before allocating. */
+void test_queue_init_zero_size(void **state) {
+    (void) state;
+    static char msg[OS_SIZE_256];
+    snprintf(msg, sizeof(msg), "Invalid queue size 0: it must be between 1 and %zu.", SIZE_MAX / sizeof(void *));
+    expect_string(__wrap__merror_exit, formatted_msg, msg);
+    expect_assert_failure(queue_init(0));
+}
+
+void test_queue_init_size_overflow(void **state) {
+    (void) state;
+    static char msg[OS_SIZE_256];
+    size_t size = SIZE_MAX / sizeof(void *) + 1;
+    snprintf(msg, sizeof(msg), "Invalid queue size %zu: it must be between 1 and %zu.", size, SIZE_MAX / sizeof(void *));
+    expect_string(__wrap__merror_exit, formatted_msg, msg);
+    expect_assert_failure(queue_init(size));
+}
 /************************************************/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -413,6 +431,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_queue_pop_ex_timedwait_no_timeout, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_try_queue_pop_ex_empty, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_try_queue_pop_ex_with_elements, setup_queue, teardown_queue),
+        cmocka_unit_test(test_queue_init_zero_size),
+        cmocka_unit_test(test_queue_init_size_overflow),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

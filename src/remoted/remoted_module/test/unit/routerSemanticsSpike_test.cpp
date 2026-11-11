@@ -17,7 +17,8 @@
 // prefix feature (plan E1) only concatenates `prefix + path` at registration time, so whatever
 // this suite pins is exactly what the feature inherits. Cases marked [hypothesis] started as
 // path2regex-default guesses (sensitive=false, strict=false, no percent-decoding before match)
-// and were corrected to the observed result if the run disagreed.
+// and were corrected to the observed result if the run disagreed. The server has since made
+// matching exact (case-sensitive, no percent-encoded spellings): S3 and S10 pin that contract.
 
 #include "http_server/IHttpServer.hpp"
 #include "http_server/httpServerFactory.hpp"
@@ -216,11 +217,14 @@ TEST_F(RouterSemanticsSpike, S9_BarePatternMatchesBothSpellings)
     EXPECT_EQ(statusOf(sendRaw(m_port, "GET", "/q?x=1")), 200);
 }
 
-TEST_F(RouterSemanticsSpike, S3_CaseInsensitiveMatch)
+TEST_F(RouterSemanticsSpike, S3_CaseVariantDoesNotMatch)
 {
-    // [hypothesis: sensitive=false] "/P/" should match "/p/".
+    // Routes are registered case-sensitive (path2regex sensitive=true): the documented contract
+    // is that the router matches the target exactly as sent, so "/P/" is not "/p/".
     const auto raw = sendRaw(m_port, "GET", "/P/");
-    EXPECT_EQ(statusOf(raw), 200) << "observed: " << raw.substr(0, raw.find("\r\n"));
+    EXPECT_EQ(statusOf(raw), 404) << "observed: " << raw.substr(0, raw.find("\r\n"));
+    EXPECT_EQ(statusOf(sendRaw(m_port, "POST", "/p/STATELESS")), 404);
+    EXPECT_EQ(statusOf(sendRaw(m_port, "GET", "/Q")), 404);
 }
 
 TEST_F(RouterSemanticsSpike, S4_EmptySegmentDoesNotMatch)
@@ -235,14 +239,15 @@ TEST_F(RouterSemanticsSpike, S5_PercentEncodedSlashDoesNotMatch)
     EXPECT_EQ(statusOf(raw), 404) << "observed: " << raw.substr(0, raw.find("\r\n"));
 }
 
-TEST_F(RouterSemanticsSpike, S10_PercentDecodedOrdinaryByteMatches)
+TEST_F(RouterSemanticsSpike, S10_PercentEncodedOrdinaryByteDoesNotMatch)
 {
-    // OBSERVED 2026-08-22 (discovered by GlobalPrefixTransportTest, not part of the original
-    // matrix): the router percent-DECODES ordinary bytes before matching ("%6C" == 'l'), unlike
-    // the encoded slash of S5. The raw (encoded) target is what handlers/auth observe.
+    // RESTinio's express router percent-DECODES ordinary bytes before matching ("%6C" == 'l');
+    // the server refuses any percent-encoded path itself, so only the exact spelling routes.
     const auto raw = sendRaw(m_port, "POST", "/p/state%6Cess");
-    EXPECT_EQ(statusOf(raw), 200) << "observed: " << raw.substr(0, raw.find("\r\n"));
-    EXPECT_NE(raw.find("/p/state%6Cess"), std::string::npos) << raw;
+    EXPECT_EQ(statusOf(raw), 404) << "observed: " << raw.substr(0, raw.find("\r\n"));
+    EXPECT_EQ(statusOf(sendRaw(m_port, "GET", "/%71")), 404);
+    // A '%' in the query is not part of the path and does not affect routing.
+    EXPECT_EQ(statusOf(sendRaw(m_port, "POST", "/p/stateless?x=%41")), 200);
 }
 
 TEST_F(RouterSemanticsSpike, S6_UnprefixedPathIs404)

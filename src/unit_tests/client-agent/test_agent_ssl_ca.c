@@ -884,6 +884,70 @@ static void test_full_with_unreadable_ca_still_refuses_with_an_anchor(void **sta
     free_config(&cfg);
 }
 
+/* --- w_agent_warn_unverified_without_anchor(): an inferred 'none' says why --- */
+
+#define AG_SSL_NONE_NO_ANCHOR_TEXT                                                                     \
+    "(4129): TLS verification is disabled: <ssl><verification_mode> is not set and there is no "      \
+    "readable trust anchor at '" AGENT_ANCHOR_CA "', so the manager's certificate is not checked. "   \
+    "Run 'wazuh-agent-auth --certs-only' with an enrollment token to install the anchor, or set "     \
+    "<verification_mode>none</verification_mode> if this is intended."
+
+/* No anchor, no marker and nothing staged: the agent connects unverified, and now names the file. */
+static void test_warn_inferred_none_without_anchor_names_it(void **state)
+{
+    (void)state;
+    agent cfg = make_config(AGENT_VERIFY_NONE, NULL);
+
+    expect_anchor(0);
+    expect_delivered_ca(0);
+    expect_string(__wrap__mwarn, formatted_msg, AG_SSL_NONE_NO_ANCHOR_TEXT);
+
+    w_agent_warn_unverified_without_anchor(&cfg);
+}
+
+/* An operator who wrote 'none' chose it: nothing is probed and nothing is said. */
+static void test_warn_explicit_none_is_silent(void **state)
+{
+    (void)state;
+    agent cfg = make_config(AGENT_VERIFY_NONE, NULL);
+    cfg.ssl.verification_mode_explicit = true;
+
+    w_agent_warn_unverified_without_anchor(&cfg);
+}
+
+/* A verifying mode is not this warning's business, whatever is on disk. */
+static void test_warn_verifying_mode_is_silent(void **state)
+{
+    (void)state;
+    agent cfg = make_config(AGENT_VERIFY_FULL, NULL);
+
+    w_agent_warn_unverified_without_anchor(&cfg);
+}
+
+/* An anchor on disk with an inferred 'none' cannot come out of the resolver, but if it did there
+ * would be no missing file to name. */
+static void test_warn_inferred_none_with_anchor_is_silent(void **state)
+{
+    (void)state;
+    agent cfg = make_config(AGENT_VERIFY_NONE, NULL);
+
+    expect_anchor(1);
+
+    w_agent_warn_unverified_without_anchor(&cfg);
+}
+
+/* (4126) already named the anchor and a better fix for a CA an upgrade left staged. */
+static void test_warn_inferred_none_with_a_pending_delivered_ca_is_silent(void **state)
+{
+    (void)state;
+    agent cfg = make_config(AGENT_VERIFY_NONE, NULL);
+
+    expect_anchor(0);
+    expect_delivered_ca(1);
+
+    w_agent_warn_unverified_without_anchor(&cfg);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -939,6 +1003,11 @@ int main(void)
         cmocka_unit_test(test_system_with_anchor_starts_without_an_os_bundle),
         cmocka_unit_test(test_none_with_anchor_starts_without_verifying),
         cmocka_unit_test(test_full_with_unreadable_ca_still_refuses_with_an_anchor),
+        cmocka_unit_test(test_warn_inferred_none_without_anchor_names_it),
+        cmocka_unit_test(test_warn_explicit_none_is_silent),
+        cmocka_unit_test(test_warn_verifying_mode_is_silent),
+        cmocka_unit_test(test_warn_inferred_none_with_anchor_is_silent),
+        cmocka_unit_test(test_warn_inferred_none_with_a_pending_delivered_ca_is_silent),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

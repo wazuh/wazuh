@@ -94,8 +94,7 @@ The agent info module collects:
 
 - **System information:** OS name, version, architecture, hostname
 - **Network configuration:** IP addresses, MAC addresses, network interfaces
-- **Agent configuration:** Group memberships, labels, configuration hash
-- **Resource usage:** CPU, memory, disk space (depending on configuration)
+- **Agent configuration:** Group memberships and the manager cluster name
 
 ### Collection Flow
 

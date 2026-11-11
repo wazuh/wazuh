@@ -204,12 +204,17 @@ elseif(APPLE)
   if(NOT corefoundation_lib)
     message(FATAL_ERROR "CoreFoundation library not found! Aborting...")
   endif()
+  find_library(systemconfiguration_lib SystemConfiguration)
+  if(NOT systemconfiguration_lib)
+    message(FATAL_ERROR "SystemConfiguration library not found! Aborting...")
+  endif()
   target_link_libraries(
     sysinfo
     PRIVATE cjson
             plist
             ${iokit_lib}
             ${corefoundation_lib}
+            ${systemconfiguration_lib}
             groups
             users
             services

@@ -780,3 +780,56 @@ TEST(VdScanLaneTest, AnOnDemandScanWaitsForTheFeedLikeASession)
     EXPECT_EQ(503, response.status);
     EXPECT_TRUE(fixture.events->syncOps().empty()) << "nothing may reach the scanner while the feed is loading";
 }
+
+/**
+ * The on-demand rescan fences its own agent from inside the scan (the vulnerability scanner's
+ * per-agent fence), on the lane worker that holds that agent. The fence's drain must not wait for
+ * that hold: it used to, so every on-demand scan waited the full default quiesce bound (30 s) for
+ * itself. With the PRODUCTION bound, the fence must now be granted at once.
+ */
+TEST(VdScanLaneTest, AnOnDemandScanFencesItsOwnAgentWithoutWaitingForItsOwnLaneHold)
+{
+    LaneUnderTest fixture;
+    auto coordinator = std::make_shared<invsync::vd::ServerScanCoordinator>(fixture.registry);
+
+    std::atomic<bool> fenced {false};
+    std::atomic<long long> fenceMs {-1};
+    fixture.events->m_scanAgentHook = [&](const std::string& agentId)
+    {
+        const auto start = std::chrono::steady_clock::now();
+        fenced.store(coordinator->pauseAgent(agentId, "on-demand scan"));
+        fenceMs.store(
+            std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count());
+        coordinator->resumeAgent(agentId);
+    };
+
+    auto responder = std::make_shared<FutureResponder>();
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeScanRequest(responder)));
+
+    EXPECT_EQ(200, responder->get().status);
+    EXPECT_TRUE(fenced.load()) << "the agent is quiesced: the only hold is the scan's own";
+    EXPECT_GE(fenceMs.load(), 0);
+    EXPECT_LT(fenceMs.load(), 1000) << "the fence waited for the caller's own lane hold";
+    EXPECT_TRUE(waitFor([&] { return fixture.registry->isFree("001"); }));
+}
+
+/// The other half: a session of the agent applied by ANOTHER thread is real in-flight work, and the
+/// fence still waits for it (refused here at a zero bound, granted once it is released).
+TEST(VdScanLaneTest, TheFenceStillWaitsForAnotherThreadsScanOfTheAgent)
+{
+    LaneUnderTest fixture;
+    fixture.events->closeScanGate();
+    invsync::vd::ServerScanCoordinator coordinator {fixture.registry, std::chrono::seconds {0}};
+
+    auto scan = std::make_shared<FutureResponder>();
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeScanRequest(scan)));
+    ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
+
+    EXPECT_FALSE(coordinator.pauseAgent("001", "test")) << "the lane worker's hold is not this thread's";
+
+    fixture.events->openScanGate();
+    EXPECT_EQ(200, scan->get().status);
+    EXPECT_TRUE(waitFor([&] { return fixture.registry->isFree("001"); }));
+    EXPECT_TRUE(coordinator.pauseAgent("001", "test"));
+    coordinator.resumeAgent("001");
+}

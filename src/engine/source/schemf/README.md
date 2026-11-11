@@ -185,6 +185,7 @@ The validator (`src/validator.cpp`) maintains, per schema type, the accepted JSO
 - `INTEGER` field accepts: `LONG` (with runtime validation), `SHORT` (no extra validation), `BYTE` (no extra validation)
 - `KEYWORD` field accepts: `TEXT`, `DATE`, `IP`, `BINARY`, etc. (all string-family types, no extra validation)
 - `DATE`, `IP`, `BINARY` fields accept `KEYWORD`, `TEXT`, `WILDCARD` with runtime validation
+- `DATE` and `DATE_NANOS` are mutually compatible — a value of one written into a field of the other is validated at runtime (ISO 8601 UTC, up to nine fraction digits; a `DATE_NANOS` field also requires the range it can store, `1970-01-01T00:00:00Z` to `2262-04-11T23:47:16.854775807Z`)
 - `OBJECT`, `NESTED`, `FLAT_OBJECT` have no compatible schema types; they accept JSON objects
 - Some types cannot be written at all (`getIncompatibleValidator`): `KNN_VECTOR`, `SPARSE_VECTOR`, `RANK_FEATURE`, `RANK_FEATURES`, `PERCOLATOR`, `STAR_TREE`, `DERIVED` and the six range types
 
@@ -218,6 +219,7 @@ Per-type validators in `valueValidators.hpp`:
 | `getUnsignedLongValidator` | `json.isUint64()` |
 | `getStringValidator` | `json.isString()` |
 | `getDateValidator` | String in the exact form `YYYY-MM-DD` or `YYYY-MM-DDTHH:MM:SS[.fraction]<zone>` (two-digit fields, 1-9 fraction digits, zone `Z`, `Zulu` or a numeric offset `+HH:MM`/`-HH:MM` with hours up to 14 and minutes below 60, and nothing after it; a date without time takes no zone) that is a real calendar date and time (month 1-12, valid day of month, hour < 24, minute < 60, second < 60) |
+| `getDateNanosValidator` | `getDateValidator` plus the range a `date_nanos` mapping can store (nanoseconds since the epoch in an int64, the zone's offset applied): `1970-01-01T00:00:00Z` to `2262-04-11T23:47:16.854775807Z` |
 | `getIpValidator` | String that `inet_pton` accepts as IPv4 or IPv6 (whole string; no embedded NUL), or an IPv6 address with no dots followed by `%` and a non-empty zone (the zone is not otherwise checked, as in the index mapping; no zone on IPv4 or on an IPv4-embedded address). The `ip` parser used in decoders still rejects a zone id |
 | `getBinaryValidator` | String that is entirely Base64 (padding allowed, nothing after it) |
 | `getObjectValidator` | `json.isObject()` |

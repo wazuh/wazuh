@@ -10,7 +10,7 @@ from connexion import ProblemException
 
 from api import util
 from wazuh.core.exception import WazuhError, WazuhPermissionError, WazuhResourceNotFound, \
-    WazuhInternalError
+    WazuhInternalError, WazuhUnsupportedMediaType
 
 
 class TestClass:
@@ -191,6 +191,7 @@ def test_to_relative_path(mock_real_path):
     (WazuhError, 1000, ['remediation', 'code'], 400, ProblemException),
     (WazuhPermissionError, 4000, ['remediation', 'code'], 403, ProblemException),
     (WazuhResourceNotFound, 1710, ['remediation', 'code'], 404, ProblemException),
+    (WazuhUnsupportedMediaType, 6002, ['code'], 415, ProblemException),
     (WazuhInternalError, 1000, ['remediation', 'code'], 500, ProblemException)
 ])
 def test_create_problem(exception_type, code, extra_fields, returned_code, returned_exception):

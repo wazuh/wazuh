@@ -28,17 +28,18 @@ static const char *XML_SYNC = "synchronization";
 static unsigned int policies_count = 0;
 
 
+/* wm_config_logtag(): verify-agent-conf runs this reader too, and logs it under its own name. */
 #undef minfo
 #undef mwarn
 #undef merror
 #undef mdebug1
 #undef mdebug2
 
-#define minfo(msg, ...) _mtinfo(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
-#define mwarn(msg, ...) _mtwarn(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
-#define merror(msg, ...) _mterror(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
-#define mdebug1(msg, ...) _mtdebug1(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
-#define mdebug2(msg, ...) _mtdebug2(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define minfo(msg, ...) _mtinfo(wm_config_logtag(WM_SCA_LOGTAG), __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mwarn(msg, ...) _mtwarn(wm_config_logtag(WM_SCA_LOGTAG), __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define merror(msg, ...) _mterror(wm_config_logtag(WM_SCA_LOGTAG), __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mdebug1(msg, ...) _mtdebug1(wm_config_logtag(WM_SCA_LOGTAG), __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mdebug2(msg, ...) _mtdebug2(wm_config_logtag(WM_SCA_LOGTAG), __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 
 static char * const old_policies_filenames[] = {
     "acsc_office2016_rcl.yml",

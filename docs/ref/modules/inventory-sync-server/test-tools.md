@@ -7,6 +7,8 @@ integration QA suite itself.
 
 ## `send_sync.py` — UDS smoke sender
 
+> **Not shipped:** `send_sync.py` and `send_delete_agent.py` exist only in the source tree under `src/wazuh_modules/inventory_sync_server/tools/`; the DEB/RPM manager packages do not install them. Copy them to the manager host from a checkout to use them.
+
 `src/wazuh_modules/inventory_sync_server/tools/send_sync.py` is a standard-library-only Python
 script (it runs on the manager's embedded interpreter without installing anything) that speaks the same bytes remoted puts on the wire: HTTP/1.1 over an
 `AF_UNIX` stream, `Content-Length` delimited, `Connection: close`. Useful to probe a live module
@@ -40,6 +42,11 @@ Options: `--socket`, `--path` (default `/stateful`), `--method`, `--size`, `--re
 `--content-type`, `--timeout`, `--agent-id` (the `X-Wazuh-Agent-Id` header remoted would set;
 empty string omits it), `--health`, `--bad-route`, `--quiet`. The exit code is `0` only when every
 response was a 2xx, so it can anchor a shell check.
+
+The server answers an over-budget request from its headers and closes the connection without
+reading the body, so the tool's write of the rest of the body fails; it then reads the `413` already
+waiting on the socket and prints it. Only when no answer arrived does it report the write error
+(`failed: [Errno 32] Broken pipe`).
 
 Sending a VALID session requires a FlatBuffers `FullSession` body, which this script deliberately
 does not build — that is the integration driver's job below.
@@ -82,7 +89,9 @@ sudo ./send_delete_agent.py --agent-id 900 --verify --witness 901
 ```
 
 Options: `--socket`, `--agent-id` (default `900`), `--timeout` (default 60 s — the deletion does
-indexer I/O), `--verify`, `--witness`, `--indexer` (default `https://127.0.0.1:9200`), `--cert` /
+indexer I/O), `--verify`, `--witness`, `--indexer` (default `https://127.0.0.1:9200`: pass `--indexer https://<indexer>:9200`
+with the host from `/var/wazuh-manager/bin/wazuh-manager-conf get indexer.hosts` unless the indexer runs on this host, so
+the indexer's admin client certificate is never presented to a local service that is not it), `--cert` /
 `--key` (default the indexer's `admin.pem` / `admin-key.pem` under `/etc/wazuh-indexer/certs/`),
 `--client-keys` (default `/etc/wazuh-manager/client.keys`), `--force`. It exits `0` on a `200` (with `--verify`, only when no document is left), `1` otherwise, and
 `2` when it refuses to run or cannot read the indexer.
@@ -188,8 +197,10 @@ Set it explicitly only to deliberately exercise the mismatch path.
 
 The `--config` file is the same JSON the QA suite uses (`qa/config.json`): a
 `clusterName` (which the driver stamps into every session's `Start.cluster_name`, since the server
-answers `403` on a cluster mismatch) and the `<indexer>` block with the hosts the module and the
-scanner should reach.
+answers `403` on a cluster mismatch; `cluster01` when absent), the `<indexer>` block with the hosts
+the module and the scanner should reach, and the indexer `username`/`password`, which the driver
+seeds into the keystore under `queue/keystore` in its working directory because the indexer
+connector refuses to start without them.
 
 ## The integration QA (`qa/`)
 
@@ -199,7 +210,8 @@ its real socket: it regenerates the Python FlatBuffers bindings from the shared 
 STATE in a real OpenSearch (documents, `_id` shape, the `wazuh.*` overlay) rather than protocol
 acks. It covers the validation matrix and identity rejections, ingestion and per-document skips,
 cleans and the composed full resync, checksum verification (including `search_after` pagination),
-metadata/group reconciliation with the `global_version` guard, agent deletion, and the VD
+metadata/group reconciliation with the `global_version` guard, the agent groups/host that `/stats`
+and `/config` copy from their reports, agent deletion, the on-demand scan route and the VD
 legitimate-skip lane. `qa/README.md` documents how to run it locally; CI runs it in the
 `5_testintegration_inventory-sync-server.yml` workflow.
 

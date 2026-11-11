@@ -11,6 +11,9 @@ module, configured in the agent's `ossec.conf`, and is not available on Windows 
   (`docker.from_env()`).
 - The `docker` Python package installed for the host's `python3` (`pip3 install docker`). Without it
   the listener exits with `'docker' module needs to be installed.`
+- The `docker` integration **enabled** in the manager's standard ruleset. It ships disabled, and
+  until it is enabled the events arrive but are never classified or indexed — see
+  [Enable the integration's ruleset first](README.md#enable-the-integrations-ruleset-first).
 
 ## How it works
 

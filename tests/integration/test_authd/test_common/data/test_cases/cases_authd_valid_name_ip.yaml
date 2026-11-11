@@ -212,14 +212,14 @@
     expected_fail: false
 
 - name: Ip with mask /32
-  description: 'Ip with mask /32: register'
+  description: 'Ip with mask /32: registered as the bare address'
   configuration_parameters:
   metadata:
     input: "OSSEC A:'user1' IP:'10.10.10.1/32'\n"
     output:
       status: success
       name: user1
-      ip: 10.10.10.1/32
+      ip: 10.10.10.1
     insert_hostname_in_query: false
     expected_fail: false
 

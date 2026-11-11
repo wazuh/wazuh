@@ -18,6 +18,7 @@ the API integration tests run against a Docker cluster.
 | `api/api/test/` | API layer unit tests |
 | `api/api/controllers/test/` | Controller tests |
 | `api/test/integration/` | API integration tests (tavern, Docker environment); see `api/test/integration/README.md` |
+| `api/test/integration/mapping/tests/` | Unit tests of the endpoint coverage guard and the CI test selection (`cd api/test/integration/mapping && python3 -m pytest`; see `api/test/integration/mapping/README.md`) |
 
 ---
 
@@ -38,9 +39,9 @@ python -m pytest api/api -vv --ignore=test
 ```
 
 `wazuh.core.manager_conf` runs the manager configuration CLI, taken from `src/build/bin/wazuh-manager-conf`
-in a repository checkout. CI builds that target before running the framework suite; without it, the
-CLI-parity test in `framework/wazuh/core/tests/test_manager_conf.py` is skipped, so a local run passes
-without checking it.
+in a repository checkout. Both lanes build that target (`cmake --build src/build --target wazuh-manager-conf`)
+before running their suite; without it, the CLI-parity test in
+`framework/wazuh/core/tests/test_manager_conf.py` is skipped, so a local run passes without checking it.
 
 ### Running specific test modules
 

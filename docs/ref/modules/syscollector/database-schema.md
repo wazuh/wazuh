@@ -4,6 +4,8 @@ This document describes the database schema additions specific to Syscollector (
 
 ---
 
+> **`db_status_field_dm`:** every table synchronized through DBSync also has the column `db_status_field_dm INTEGER DEFAULT 1` in the live database. DBSync adds it at start for change detection; it is internal and not part of the DDL shown here.
+
 ## Overview
 
 Syscollector uses a SQLite database with multiple tables to store different types of system inventory data. Each table is designed to track specific system components and their changes over time. The schema is defined in `src/wazuh_modules/syscollector/src/syscollectorTablesDef.hpp`.
@@ -309,6 +311,7 @@ CREATE TABLE dbsync_users (
 
 **Key Fields:**
 - `user_name`: Primary key
+- `user_groups`: Comma-separated list of the groups the user belongs to
 - Extensive password policy and authentication tracking
 - Login session information
 

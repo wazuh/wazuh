@@ -16,7 +16,7 @@ than nothing, but it is configured in a way that **hides** everything this lab l
 | There | Here | Why it matters |
 |---|---|---|
 | `balance source` | `roundrobin` | Source hashing pins each agent to one node. The cross-node `/download` 403 never appears |
-| `mode tcp` only | passthrough **and** termination | Only termination balances per request; TCP balances per connection |
+| `mode tcp` only | passthrough **and** termination | Termination balances per request; TCP balances per connection, which with 5.x agents (one connection per request) is per request too — both front ends are kept to show that |
 | `1517` not published | published | — |
 | Keys pre-seeded, enrollment off | real enrollment with `authd.pass` | Without enrolling there is no propagation to measure |
 | One certificate shared by three nodes | one leaf per node | `cluster.json` does not replicate `/etc/wazuh-manager/certs/` |
@@ -88,9 +88,9 @@ setup always reinstalls from the current PKI so that cannot happen halfway.
 | 21518 | HAProxy | TLS termination + re-encryption (L7), balances **requests** |
 | 21519 | HAProxy | Termination with a leaf from a **different CA**, to model a public edge |
 | 31517 / 31518 | NGINX | Passthrough / termination |
-| 21514 / 21515 | HAProxy | Legacy: `1514` to every node, `1515` to the master only |
+| 21514 / 21515 | HAProxy | Legacy: `1514` and `1515` to every node (a worker forwards enrollment to the master) |
 | 41517 / 41518 / 41519 | master / worker1 / worker2 | Direct, bypassing the balancer |
-| 31514 / 31515 | NGINX | Legacy: `1514` / `1515` |
+| 31514 / 31515 | NGINX | Legacy: `1514` and `1515` to every node |
 | 45000 | master | Server API (`55000`), used to mint tokens |
 | 28404 | HAProxy | Statistics, `/stats` |
 | 49200 | Indexer | OpenSearch, client certificate required |
@@ -154,7 +154,7 @@ the reason (`MISSING|INVALID|UNSAFE <path>: …`) is in the manager log it tails
 
 ```bash
 docker exec lab-probe python3 /probe/route_matrix.py \
-  --agent-id <id> --key <key> --password labpassword
+  --agent-id <id> --key <key> --password labenrollpassword
 ```
 
 All ten routes through all four front ends. `/control` is one route: `startup`, `notify` and
@@ -169,7 +169,7 @@ docker exec lab-probe python3 /probe/measure_propagation.py \
   --node master=https://wazuh-master:1517 \
   --node worker1=https://wazuh-worker1:1517 \
   --node worker2=https://wazuh-worker2:1517 \
-  --password labpassword --json-out /results/propagation.json
+  --password labenrollpassword --json-out /results/propagation.json
 ```
 
 Enrolls, then asks every node every 250 ms until it accepts the key. `POST /stateless` is the
@@ -180,13 +180,13 @@ errors never reached the manager, so they are counted separately as inconclusive
 
 ```bash
 docker exec lab-probe python3 /probe/cross_node_download.py \
-  --password labpassword --control-on worker1 \
+  --password labenrollpassword --control-on worker1 \
   --node master=https://wazuh-master:1517 \
   --node worker1=https://wazuh-worker1:1517 \
   --node worker2=https://wazuh-worker2:1517
 
-docker exec lab-probe python3 /probe/revocation_by_push.py --password labpassword
-docker exec lab-probe python3 /probe/download_status.py --password labpassword --node https://wazuh-worker2:1517
+docker exec lab-probe python3 /probe/revocation_by_push.py --password labenrollpassword
+docker exec lab-probe python3 /probe/download_status.py --password labenrollpassword --node https://wazuh-worker2:1517
 ```
 
 `cross_node_download.py` enrolls a fresh agent (or takes `--agent-id/--key`), downloads its
@@ -215,14 +215,14 @@ new groups) can do that. The cache simply expiring must never pass the check, so
 `download_status.py` is one timed download against one node, for the checks that need a node
 in a given state (`run_issue_checks.sh` section 9 freezes a worker's `wazuh-manager-db` with it).
 
-`download_convergence.py --password labpassword` still measures the per-round 403 rate through the
+`download_convergence.py --password labenrollpassword` still measures the per-round 403 rate through the
 balancer; with #39147 every round is expected to read `0/N`.
 
 ### Enrollment credential modes
 
 ```bash
 docker exec wazuh-master cat /etc/wazuh-manager/enrollment_tokens.json > probe/store.json
-docker exec lab-probe python3 /probe/enroll_modes.py --password labpassword
+docker exec lab-probe python3 /probe/enroll_modes.py --password labenrollpassword
 ```
 
 No credential, shared password, enrollment token, an unknown token id, and re-enrollment.
@@ -232,7 +232,7 @@ No credential, shared password, enrollment token, an unknown token id, and re-en
 ```bash
 docker stop wazuh-worker2      # or wazuh-master
 docker exec lab-probe python3 /probe/availability.py \
-  --agent-id <id> --key <key> --password labpassword --label "worker2 down"
+  --agent-id <id> --key <key> --password labenrollpassword --label "worker2 down"
 ```
 
 Reports four capabilities separately — liveness, reporting, control and enrollment — because

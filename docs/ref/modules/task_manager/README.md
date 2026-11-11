@@ -44,6 +44,10 @@ Key properties:
 Each carries a free-form JSON `payload` defined by the producer and interpreted by the agent.
 `task_type` is not checked against this list: the store accepts any non-empty type.
 
+Only a v5.x agent fetches these itself, over remoted's `POST /control`. A pre-v5.0.0 agent is served
+by remoted's legacy poller, which pushes **only `remote_upgrade`**: the other three types are never
+delivered to such an agent and expire after `task_ttl`.
+
 Manager tasks are described in [Manager tasks](manager-tasks.md); the three recurring ones in [Recurring manager tasks](schedules.md).
 
 ---
@@ -169,9 +173,9 @@ For every option and default, see the [Task Manager Configuration Reference](con
 
 `<task-manager>` has these five options plus `<wpk_repository>`. Everything else is an internal
 option in the `wazuh_modules` namespace, resolved **before modulesd daemonizes**, so an out-of-range
-value fails `wazuh-manager-modulesd -t` rather than aborting a module thread later. (The one
-exception, `manager_task_create_timeout`, is read by the vulnerability scanner at its own start; see
-[Per-type bounds](manager-tasks.md#per-type-bounds).)
+value fails `wazuh-manager-modulesd -t` rather than aborting a module thread later. (One of them,
+`manager_task_create_timeout`, is read by the vulnerability scanner's configuration reader instead,
+with the same effect; see [Per-type bounds](manager-tasks.md#per-type-bounds).)
 
 ---
 

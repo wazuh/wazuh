@@ -75,6 +75,9 @@ Instead of defining raw server endpoints inside XML blocks, destinations are now
 8. (Optional) Click **Send test message** to verify network connectivity.
 9. Click **Create** to save the channel.
 
+> [!NOTE]
+> The Notifications plugin on the Wazuh Indexer refuses webhook URLs whose host is on a private network by default. **Send test message** and later deliveries then fail with `Host of url is denied, based on plugin setting [notification.core.http.host_deny_list]`. If your receiver has a private address, allow it in the indexer's Notifications plugin settings (the host deny list, in the indexer's configuration) and restart the indexer node; this is an indexer-side setting, not a manager option.
+
 ![Notification Channel](../../images/remote-syslog-output/create-notification-channel.png)
 
 

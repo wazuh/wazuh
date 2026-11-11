@@ -15,6 +15,7 @@
 #include <vector>
 #include "gtest/gtest.h"
 #include "packages/appxWindowsWrapper.h"
+#include "sysInfoWin_test.h"
 
 /*
  * In-memory registry replacement for AppxWindowsWrapper tests.
@@ -153,7 +154,9 @@ std::map<std::string, std::string> FakeExeVersionReader::versions;
 constexpr auto TEST_USER_SID { "S-1-5-21-1111111111-2222222222-3333333333-1001" };
 constexpr auto TEST_STORE_REGISTRY { "SOFTWARE\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\CurrentVersion\\AppModel\\Repository\\Packages" };
 constexpr auto TEST_CLASSES_REGISTRY { "SOFTWARE\\Classes" };
+constexpr auto TEST_FAMILIES_REGISTRY { "SOFTWARE\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\CurrentVersion\\AppModel\\Repository\\Families" };
 constexpr auto TEST_CACHE_REGISTRY { "SOFTWARE\\Classes\\Local Settings\\MrtCache" };
+constexpr auto TEST_CLASSES_ROOT { "S-1-5-21-1111111111-2222222222-3333333333-1001\\SOFTWARE\\Classes" };
 
 using TestAppxWrapper = TAppxWindowsWrapper<FakeRegistry, FakeExeVersionReader>;
 
@@ -206,7 +209,7 @@ TEST_F(SysInfoWinAppxTest, MultiApplicationPackageUsesDisplayName)
 {
     loadPythonStorePackage(PYTHON_PACKAGE, true);
 
-    TestAppxWrapper wrapper(HKEY_USERS, TEST_USER_SID, PYTHON_PACKAGE, {});
+    TestAppxWrapper wrapper(HKEY_USERS, TEST_CLASSES_ROOT, PYTHON_PACKAGE, {});
 
     EXPECT_EQ("Python 3.13", wrapper.name());
     EXPECT_EQ("3.13.3824.0", wrapper.version());
@@ -220,7 +223,7 @@ TEST_F(SysInfoWinAppxTest, FallbackToFirstApplicationNameWithoutDisplayName)
 {
     loadPythonStorePackage(PYTHON_PACKAGE, false);
 
-    TestAppxWrapper wrapper(HKEY_USERS, TEST_USER_SID, PYTHON_PACKAGE, {});
+    TestAppxWrapper wrapper(HKEY_USERS, TEST_CLASSES_ROOT, PYTHON_PACKAGE, {});
 
     // Legacy behavior: without DisplayName the first sub-application found is reported.
     EXPECT_EQ("pip (Python 3.13)", wrapper.name());
@@ -235,10 +238,27 @@ TEST_F(SysInfoWinAppxTest, SingleApplicationPackageKeepsItsName)
     FakeRegistry::data[root].strings["DisplayName"] = "Microsoft Edge";
     FakeRegistry::data[root + "\\Msedge\\Capabilities"].strings["ApplicationName"] = "Microsoft Edge";
 
-    TestAppxWrapper wrapper(HKEY_USERS, TEST_USER_SID, edgePackage, {});
+    TestAppxWrapper wrapper(HKEY_USERS, TEST_CLASSES_ROOT, edgePackage, {});
 
     EXPECT_EQ("Microsoft Edge", wrapper.name());
     EXPECT_EQ("120.0.2210.91", wrapper.version());
+}
+
+TEST_F(SysInfoWinAppxTest, InstallTimeIsReportedInUTC)
+{
+    constexpr auto edgePackage { "Microsoft.MicrosoftEdge.Stable_120.0.2210.91_x64__8wekyb3d8bbwe" };
+    const auto root { packagePath(edgePackage) };
+
+    FakeRegistry::data[root].strings["DisplayName"] = "Microsoft Edge";
+    FakeRegistry::data[root + "\\Msedge\\Capabilities"].strings["ApplicationName"] = "Microsoft Edge";
+    // FILETIME of 2026-10-23T18:02:28Z
+    FakeRegistry::data[std::string{ TEST_USER_SID } + "\\" + TEST_FAMILIES_REGISTRY + "\\Microsoft.MicrosoftEdge.Stable_8wekyb3d8bbwe\\" + edgePackage]
+    .qwords["InstallTime"] = 134372521480000000ULL;
+
+    const ScopedTimezone timezone { "JST-9" };
+    TestAppxWrapper wrapper(HKEY_USERS, TEST_CLASSES_ROOT, edgePackage, {});
+
+    EXPECT_EQ("2026-10-23T18:02:28.000Z", wrapper.install_time());
 }
 
 TEST_F(SysInfoWinAppxTest, LocalizedDisplayNameResolvedFromCacheRegistry)
@@ -253,7 +273,7 @@ TEST_F(SysInfoWinAppxTest, LocalizedDisplayNameResolvedFromCacheRegistry)
     FakeRegistry::data[root + "\\App\\Capabilities"].strings["ApplicationName"] = resourceKey;
     FakeRegistry::data[std::string{ TEST_USER_SID } + "\\" + TEST_CACHE_REGISTRY + "\\" + cacheFolder].strings[resourceKey] = "Calculator";
 
-    TestAppxWrapper wrapper(HKEY_USERS, TEST_USER_SID, calculatorPackage, { cacheFolder });
+    TestAppxWrapper wrapper(HKEY_USERS, TEST_CLASSES_ROOT, calculatorPackage, { cacheFolder });
 
     EXPECT_EQ("Calculator", wrapper.name());
 }
@@ -267,7 +287,7 @@ TEST_F(SysInfoWinAppxTest, UnresolvedLocalizedDisplayNameFallsBackToCapabilities
     FakeRegistry::data[root].strings["DisplayName"] = "@{Microsoft.Windows.Photos?ms-resource://AppName}";
     FakeRegistry::data[root + "\\App\\Capabilities"].strings["ApplicationName"] = "Microsoft Photos";
 
-    TestAppxWrapper wrapper(HKEY_USERS, TEST_USER_SID, photosPackage, {});
+    TestAppxWrapper wrapper(HKEY_USERS, TEST_CLASSES_ROOT, photosPackage, {});
 
     EXPECT_EQ("Microsoft Photos", wrapper.name());
 }
@@ -282,7 +302,7 @@ TEST_F(SysInfoWinAppxTest, RawMsResourceDisplayNameFallsBackToCapabilities)
     FakeRegistry::data[root].strings["DisplayName"] = "ms-resource:AppStoreName";
     FakeRegistry::data[root + "\\App\\Capabilities"].strings["ApplicationName"] = "Calculadora";
 
-    TestAppxWrapper wrapper(HKEY_USERS, TEST_USER_SID, calculatorPackage, {});
+    TestAppxWrapper wrapper(HKEY_USERS, TEST_CLASSES_ROOT, calculatorPackage, {});
 
     EXPECT_EQ("Calculadora", wrapper.name());
 }
@@ -298,7 +318,7 @@ TEST_F(SysInfoWinAppxTest, CacheRegistryErrorFallsBackToCapabilities)
 
     // The cache folder matches the package but its MrtCache key is unreadable: the
     // resulting registry error must not prevent the ApplicationName fallback.
-    TestAppxWrapper wrapper(HKEY_USERS, TEST_USER_SID, notesPackage, { "Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe" });
+    TestAppxWrapper wrapper(HKEY_USERS, TEST_CLASSES_ROOT, notesPackage, { "Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe" });
 
     EXPECT_EQ("Sticky Notes", wrapper.name());
 }
@@ -311,7 +331,7 @@ TEST_F(SysInfoWinAppxTest, PythonVersionEnrichedFromInterpreterExecutable)
     // where the MSIX revision of the same package is 3.13.3824.0.
     FakeExeVersionReader::versions[std::string{ "C:\\Program Files\\WindowsApps\\" } + PYTHON_PACKAGE + "\\python.exe"] = "3.13.14";
 
-    TestAppxWrapper wrapper(HKEY_USERS, TEST_USER_SID, PYTHON_PACKAGE, {});
+    TestAppxWrapper wrapper(HKEY_USERS, TEST_CLASSES_ROOT, PYTHON_PACKAGE, {});
 
     EXPECT_EQ("Python 3.13", wrapper.name());
     EXPECT_EQ("3.13.14", wrapper.version());
@@ -322,7 +342,7 @@ TEST_F(SysInfoWinAppxTest, PythonWithoutReadableExecutableKeepsMsixVersion)
     loadPythonStorePackage(PYTHON_PACKAGE, true);
 
     // python.exe missing or without VERSIONINFO: keep the MSIX package revision.
-    TestAppxWrapper wrapper(HKEY_USERS, TEST_USER_SID, PYTHON_PACKAGE, {});
+    TestAppxWrapper wrapper(HKEY_USERS, TEST_CLASSES_ROOT, PYTHON_PACKAGE, {});
 
     EXPECT_EQ("3.13.3824.0", wrapper.version());
 }
@@ -335,7 +355,7 @@ TEST_F(SysInfoWinAppxTest, PythonOnNetworkPathNeverOpensExecutable)
     FakeRegistry::data[packagePath(PYTHON_PACKAGE)].strings["PackageRootFolder"] = networkRoot;
     FakeExeVersionReader::versions[networkRoot + "\\python.exe"] = "9.9.9";
 
-    TestAppxWrapper wrapper(HKEY_USERS, TEST_USER_SID, PYTHON_PACKAGE, {});
+    TestAppxWrapper wrapper(HKEY_USERS, TEST_CLASSES_ROOT, PYTHON_PACKAGE, {});
 
     EXPECT_EQ("3.13.3824.0", wrapper.version());
 }
@@ -353,7 +373,7 @@ TEST_F(SysInfoWinAppxTest, NonPythonPackageNeverUsesExecutableVersion)
     // version: bundled executables often publish bogus VERSIONINFO values.
     FakeExeVersionReader::versions[std::string{ "C:\\Program Files\\WindowsApps\\" } + edgePackage + "\\python.exe"] = "9.9.9";
 
-    TestAppxWrapper wrapper(HKEY_USERS, TEST_USER_SID, edgePackage, {});
+    TestAppxWrapper wrapper(HKEY_USERS, TEST_CLASSES_ROOT, edgePackage, {});
 
     EXPECT_EQ("120.0.2210.91", wrapper.version());
 }
@@ -367,7 +387,7 @@ TEST_F(SysInfoWinAppxTest, PackageOutsideStoreDatabaseIsDiscarded)
     FakeRegistry::data[root].strings["DisplayName"] = "Stray App";
     FakeRegistry::data[root + "\\App\\Capabilities"].strings["ApplicationName"] = "Stray App";
 
-    TestAppxWrapper wrapper(HKEY_USERS, TEST_USER_SID, strayPackage, {});
+    TestAppxWrapper wrapper(HKEY_USERS, TEST_CLASSES_ROOT, strayPackage, {});
 
     EXPECT_TRUE(wrapper.name().empty());
     EXPECT_TRUE(wrapper.version().empty());
@@ -382,8 +402,33 @@ TEST_F(SysInfoWinAppxTest, MalformedPackageNameIsDiscarded)
     FakeRegistry::data[root].strings["DisplayName"] = "Whatever";
     FakeRegistry::data[root + "\\App\\Capabilities"].strings["ApplicationName"] = "Whatever";
 
-    TestAppxWrapper wrapper(HKEY_USERS, TEST_USER_SID, malformedPackage, {});
+    TestAppxWrapper wrapper(HKEY_USERS, TEST_CLASSES_ROOT, malformedPackage, {});
 
     EXPECT_TRUE(wrapper.name().empty());
     EXPECT_TRUE(wrapper.version().empty());
+}
+
+TEST_F(SysInfoWinAppxTest, PackageFromMountedClassesHive)
+{
+    /*
+     * The classes hive of a profile with no session is mounted on its own, so the keys are
+     * relative to the hive root instead of <sid>\SOFTWARE\Classes.
+     */
+    constexpr auto calculatorPackage { "Microsoft.WindowsCalculator_11.2401.0.0_x64__8wekyb3d8bbwe" };
+    constexpr auto resourceKey { "@{Microsoft.WindowsCalculator?ms-resource://AppName}" };
+    constexpr auto cacheFolder { "Microsoft.WindowsCalculator_8wekyb3d8bbwe" };
+    const std::string root { std::string{ APPLICATION_STORE_REGISTRY } + "\\" + calculatorPackage };
+
+    FakeRegistry::data[root].strings["PackageRootFolder"] = std::string{ "C:\\Program Files\\WindowsApps\\" } + calculatorPackage;
+    FakeRegistry::data[root].strings["DisplayName"] = resourceKey;
+    FakeRegistry::data[root + "\\App\\Capabilities\\FileAssociations"].strings[".calc"] = "AppX.calculator";
+    FakeRegistry::data["AppX.calculator\\Application"].strings["ApplicationCompany"] = "Microsoft Corporation";
+    FakeRegistry::data[std::string{ CACHE_NAME_REGISTRY } + "\\" + cacheFolder].strings[resourceKey] = "Calculator";
+
+    TestAppxWrapper wrapper(nullptr, "", calculatorPackage, { cacheFolder });
+
+    EXPECT_EQ("Calculator", wrapper.name());
+    EXPECT_EQ("11.2401.0.0", wrapper.version());
+    EXPECT_EQ("Microsoft Corporation", wrapper.vendor());
+    EXPECT_EQ(std::string{ "C:\\Program Files\\WindowsApps\\" } + calculatorPackage, wrapper.location());
 }

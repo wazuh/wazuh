@@ -13,7 +13,6 @@ from api import configuration, api_exception
 custom_api_configuration = {
     "host": ["0.0.0.0", "::"],
     "port": 55000,
-    "drop_privileges": True,
     "max_upload_size": 10485760,
     "auth_context_max_payload_size": 65536,
     "authentication_pool_size": 2,
@@ -103,7 +102,7 @@ def test_read_configuration(mock_open, mock_exists, read_config):
     {'invalid_key': 'value'},
     {'host': 1234},
     {'port': 'invalid_type'},
-    {'drop_privileges': 'invalid_type'},
+    {'drop_privileges': True},  # removed in 5.0: only -r keeps root
     {'max_upload_size': 'invalid_type'},
     {'auth_context_max_payload_size': 'invalid_type'},
     {'auth_context_max_payload_size': 0},
@@ -147,6 +146,18 @@ def test_read_wrong_configuration(mock_exists, config):
             m.return_value = config
             with pytest.raises(api_exception.APIError, match=r'\b2000\b'):
                 configuration.read_yaml_config()
+
+
+def test_read_wrong_configuration_names_the_file(tmp_path):
+    """Error 2000 names the file that was read, not a placeholder."""
+    config_file = tmp_path / 'my-api.yaml'
+    config_file.write_text('invalid_option: 1\n')
+
+    with pytest.raises(api_exception.APIError, match=r'\b2000\b') as exc_info:
+        configuration.read_yaml_config(config_file=str(config_file))
+
+    assert f'({config_file})' in str(exc_info.value)
+    assert 'WAZUH_PATH' not in str(exc_info.value)
 
 
 @pytest.mark.parametrize('config, expected_msg', [

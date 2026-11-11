@@ -11,8 +11,7 @@ relayed back to the agent IS the session result — no acks, no retransmission, 
 - **One request = one session** (`FullSession`): delta data, cleans, integrity checksums, and
   metadata/group reconciliation, all answered synchronously with the contract's status codes
   (`200` ok/noop, `400`, `403` identity mismatch, `409` checksum mismatch (or `version_mismatch`
-  for a VDFirst/VDSync session whose `feed_offset` is stale), `413` over budget, `500` failed with
-  nothing indexed, `503` + optional `Retry-After`).
+  for a VDFirst/VDSync session whose `feed_offset` is stale), `413` over budget, `500` failed and the session must be sent again (the indexer rejected items of the batch, or a vulnerability scan failed), `503` + optional `Retry-After`).
 - **Per-agent ordering by construction**: sessions are applied by workers sharded on the agent id
   (one indexer connector per worker, group-commit bulk flushes), so two requests of the same agent
   can never be reordered.
@@ -151,7 +150,7 @@ agent's documents). The situations an operator will recognize:
 Two in-repo companions to these pages (plain paths — they live outside this book):
 
 - `src/wazuh_modules/inventory_sync_server/README.md` — the developer's map of the module: the
-  functional/non-functional requirements catalog, the full set of design decisions (D1–D30), the
+  functional/non-functional requirements catalog, the full set of design decisions (D1–D31), the
   annotated schema, the developer FAQ, and where to touch what.
 - `tools/manager_benchmark/` — the load harness: the same wire as a real fleet over UDS or
   through remoted, the `contract_*` scenarios that pin this module's `400`/`413`/`503` contracts,

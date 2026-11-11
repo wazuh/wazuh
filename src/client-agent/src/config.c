@@ -390,6 +390,35 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
     return true;
 }
 
+/* An agent whose anchor is missing or unreadable, with no <verification_mode> of its own and no
+ * marker saying it ever held one, resolves to 'none' exactly like a stock install that was never
+ * given trust material, and it starts and connects without checking the manager. The transport's
+ * own "TLS verification is DISABLED" warning says that much but not why, so the operator cannot
+ * tell this apart from a choice somebody made. Named here, with the file and the fix.
+ *
+ * Not part of w_agent_validate_ssl_ca(): that runs before the enrollment-token bootstrap, so it
+ * would fire on the first boot of every token install, just before the bootstrap writes the anchor
+ * and the posture is resolved again. */
+void w_agent_warn_unverified_without_anchor(const agent *cfg)
+{
+    if (cfg->ssl.verification_mode != AGENT_VERIFY_NONE || cfg->ssl.verification_mode_explicit) {
+        return;
+    }
+
+    if (w_is_file(AGENT_ANCHOR_CA) != 0) {
+        return;
+    }
+
+#ifndef WIN32
+    /* (4126) already named the anchor, and a better fix, at startup. */
+    if (IsFile(AGENT_DELIVERED_CA) == 0 && IsLink(AGENT_DELIVERED_CA) != 0) {
+        return;
+    }
+#endif
+
+    mwarn(AG_SSL_NONE_NO_ANCHOR, AGENT_ANCHOR_CA);
+}
+
 // Helper for translating the verification_mode enum to a string for JSON output.
 static const char *w_agent_verify_mode_str(int verification_mode)
 {

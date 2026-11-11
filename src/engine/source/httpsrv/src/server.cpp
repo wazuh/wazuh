@@ -50,8 +50,30 @@ Server::Server(const std::string& id, size_t payloadMaxBytes, bool enableDetaile
     // Apply payload limit
     applyPayloadLimit();
 
+    // One request per connection: every answer carries `Connection: close` and the connection is closed after it.
+    // httplib reads each request through a fresh stream, so the bytes of a pipelined second request already read
+    // with the first one were discarded: that request got no answer and the connection hung for the keep-alive
+    // timeout. Closing tells the client to send it again on a new connection.
+    m_srv->set_keep_alive_max_count(1);
+
+    // A request with neither Content-Length nor Transfer-Encoding has an empty body (RFC 9112, section 6.3).
+    // httplib instead reads such a POST/PUT body until the peer closes the connection, so a client that sends
+    // no body and waits for the answer got a bare 400 after the read timeout, before any handler ran. Declare
+    // the empty body explicitly so the request reaches its handler, which answers with its own reason.
+    m_srv->set_pre_routing_handler(
+        [](const httplib::Request& req, httplib::Response&) -> httplib::Server::HandlerResponse
+        {
+            if (!req.has_header("Content-Length") && !req.has_header("Transfer-Encoding"))
+            {
+                // The request object is owned (non-const) by httplib's connection loop; only this hook is const.
+                auto& mutableReq = const_cast<httplib::Request&>(req);
+                mutableReq.set_header("Content-Length", "0");
+            }
+            return httplib::Server::HandlerResponse::Unhandled;
+        });
+
     m_srv->set_error_handler(
-        [this](const httplib::Request&, httplib::Response& res) -> httplib::Server::HandlerResponse
+        [this](const httplib::Request& req, httplib::Response& res) -> httplib::Server::HandlerResponse
         {
             if (res.status == httplib::StatusCode::PayloadTooLarge_413)
             {
@@ -71,6 +93,33 @@ Server::Server(const std::string& id, size_t payloadMaxBytes, bool enableDetaile
                         fmt::format("Payload too large. Max allowed: {} bytes ({} KiB).", maxBytes, maxBytes / 1024),
                         "text/plain");
                 }
+                return httplib::Server::HandlerResponse::Handled;
+            }
+            if (res.status == httplib::StatusCode::NotFound_404 && res.body.empty())
+            {
+                // httplib answers 404 for any unmatched method + path. When the path exists under another method,
+                // say so (405 with an Allow header) instead of claiming the route does not exist.
+                const auto allow = allowedOtherMethods(req.path, req.method);
+                if (!allow.has_value())
+                {
+                    res.set_content("Not found: no such route.", "text/plain");
+                    return httplib::Server::HandlerResponse::Handled;
+                }
+                if (!allow->empty())
+                {
+                    res.status = httplib::StatusCode::MethodNotAllowed_405;
+                    res.set_header("Allow", *allow);
+                    res.set_content(fmt::format("Method not allowed. Allowed: {}.", *allow), "text/plain");
+                    return httplib::Server::HandlerResponse::Handled;
+                }
+                // The route's own handler answered 404: leave its answer as it is.
+                return httplib::Server::HandlerResponse::Unhandled;
+            }
+            if (res.status == httplib::StatusCode::BadRequest_400 && res.body.empty())
+            {
+                // Rejected by httplib before any handler (unreadable request or body): say so instead of
+                // answering an empty 400.
+                res.set_content("Bad request: the request could not be read.", "text/plain");
                 return httplib::Server::HandlerResponse::Handled;
             }
             return httplib::Server::HandlerResponse::Unhandled;
@@ -143,7 +192,44 @@ void Server::addRoute(Method method,
         throw std::runtime_error(fmt::format("[Server] {} failed to add route: {}", m_id, e.what()));
     }
 
+    {
+        std::lock_guard<std::mutex> lock {m_routesMutex};
+        m_routeMethods[route].insert(methodToStr(method));
+    }
+
     LOG_DEBUG("[Server] {} added route: {} {}", m_id, methodToStr(method), route);
+}
+
+std::optional<std::string> Server::allowedOtherMethods(const std::string& path, const std::string& method) const
+{
+    std::lock_guard<std::mutex> lock {m_routesMutex};
+    auto it = m_routeMethods.find(path);
+    if (it == m_routeMethods.end())
+    {
+        return std::nullopt;
+    }
+    if (it->second.count(method) != 0)
+    {
+        return std::string {};
+    }
+
+    // httplib answers HEAD with the GET handler, so a path served by GET also allows HEAD.
+    auto methods = it->second;
+    if (methods.count("GET") != 0)
+    {
+        methods.insert("HEAD");
+    }
+
+    std::string allow;
+    for (const auto& registered : methods)
+    {
+        if (!allow.empty())
+        {
+            allow += ", ";
+        }
+        allow += registered;
+    }
+    return allow;
 }
 
 void Server::applyPayloadLimit()

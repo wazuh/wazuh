@@ -27,6 +27,7 @@ namespace DbSync
         // LCOV_EXCL_STOP
         virtual void syncRow(const nlohmann::json& syncJson) = 0;
         virtual void getDeleted(const ResultCallback callback) = 0;
+        virtual void keepRowsOnClose() = 0;
     };
 
     class PipelineFactory final
@@ -40,7 +41,7 @@ namespace DbSync
                                      const unsigned int     maxQueueSize,
                                      const ResultCallback   callback);
             const std::shared_ptr<IPipeline>& pipeline(const PipelineCtxHandle handle);
-            void destroy(const PipelineCtxHandle handle);
+            void destroy(const PipelineCtxHandle handle, const bool keepRows = false);
         private:
             PipelineFactory(const PipelineFactory&) = delete;
             PipelineFactory& operator=(const PipelineFactory&) = delete;

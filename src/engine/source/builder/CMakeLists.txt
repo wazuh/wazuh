@@ -127,6 +127,8 @@ add_executable(builder_utest
 	${UNIT_SRC_DIR}/policy/factory_test.cpp
 	${UNIT_SRC_DIR}/policy/assetBuilder_test.cpp
 	${UNIT_SRC_DIR}/builders/helperParser_test.cpp
+	# Schema type compatibility through the production build path (real Schema + registry)
+	${UNIT_SRC_DIR}/builders/dateNanosCompat_test.cpp
 	# # Filter Builders
 	${UNIT_SRC_DIR}/builders/opfilter/filter_test.cpp
 	${UNIT_SRC_DIR}/builders/opfilter/exists_test.cpp
@@ -198,6 +200,7 @@ target_link_libraries(builder_utest
 	PRIVATE
 	builder
 	builder::mocks
+	schemf
 	schemf::mocks
 	cmstore::mocks
 	store::mocks

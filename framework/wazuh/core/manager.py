@@ -49,7 +49,7 @@ def get_wazuh_log_fields(log: str, log_format: LoggingFormat = LoggingFormat.pla
     """
     if log_format == LoggingFormat.plain:
         regex_category = re.compile(
-            r"^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(\S+)(?:\[.*)?:\s(DEBUG|INFO|CRITICAL|ERROR|WARNING):(.*)$")
+            r"^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(\S+)(?:\[.*)?:\s(DEBUG|INFO|CRITICAL|ERROR|WARNING):\s?(.*)$")
 
         match = re.search(regex_category, log)
         if not match:
@@ -79,7 +79,8 @@ def get_wazuh_log_fields(log: str, log_format: LoggingFormat = LoggingFormat.pla
     if "rootcheck" in tag:  # Unify rootcheck category
         tag = "wazuh-rootcheck"
 
-    return get_utc_strptime(date, '%Y/%m/%d %H:%M:%S'), tag, level.lower(), description
+    # Every writer of the manager log (the C logger and the engine) stamps the host's local time.
+    return get_utc_strptime(date, '%Y/%m/%d %H:%M:%S', date_is_at_utc=False), tag, level.lower(), description
 
 
 def get_wazuh_active_logging_format() -> LoggingFormat:

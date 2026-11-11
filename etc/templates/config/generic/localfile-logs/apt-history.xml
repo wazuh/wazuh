@@ -1,0 +1,5 @@
+  <localfile>
+    <log_format>multi-line-regex</log_format>
+    <location>/var/log/apt/history.log</location>
+    <multiline_regex match="end" replace="wspace" timeout="120">^End-Date:</multiline_regex>
+  </localfile>

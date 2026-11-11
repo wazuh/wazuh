@@ -14,6 +14,7 @@ Start with the manager procedure; it orders the other guides as you need them.
 | [Agent upgrade 4.x to 5.x](upgrade-4x-to-5x.md) | Upgrading an agent in place: version path, `ossec.conf` changes, startup warnings, TLS requirements |
 | [Remote agent upgrade](remote-agent-upgrade.md) | TCP connectivity and version path requirements for remote agent upgrades to 5.x |
 | [Agent groups migration](agent-groups-migration.md) | Transferring group configurations when agents are re-enrolled under 5.0 instead of carrying their keys |
+| [Engine introduction](engine-introduction.md) | Background for the rules, decoders and KVDB guides: how the Engine replaces the 4.x analysis pipeline |
 | [Rules 4.x to 5.x](rules-4x-to-5x.md) | Translating custom XML rules into engine decoders and Sigma-based detection rules |
 | [XML decoders to YAML decoders](xml-decoders-migration.md) | How to migrate decoders from XML to YAML |
 | [CDB to KVDB migration](cdb-to-kvdb-migration.md) | Migrating CDB files to KVDB files |

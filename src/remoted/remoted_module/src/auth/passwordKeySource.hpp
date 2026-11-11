@@ -38,12 +38,11 @@ namespace remoted::auth
      * file -- generation stays authd's exclusive job.
      *
      * Parsing byte-matches authd's own read_password_line() (os_auth/src/auth.c): first line
-     * only, up to 4096 bytes, trailing '\r'/'\n' stripped, rejected if the remaining length is
-     * <= 2 or entirely whitespace. This must stay exact: the manager's two enrollment paths
-     * (this one and legacy port 1515) have to agree on which passwords are valid, or an operator
-     * could set a password that authd accepts but remoted silently treats as absent (or vice
-     * versa) -- either way, a fail-closed contract that's supposed to be consistent stops being
-     * one.
+     * only, up to 4096 bytes, trailing '\r'/'\n' stripped, rejected if the remainder is entirely
+     * whitespace or shorter than 16 bytes (authd's AUTHD_PASS_MIN_BYTES). This must stay exact: the manager's two
+     * enrollment paths (this one and legacy port 1515) have to agree on which passwords are valid, or an operator could
+     * set a password that authd accepts but remoted silently treats as absent (or vice versa) -- either way, a
+     * fail-closed contract that's supposed to be consistent stops being one.
      *
      * The signing key is not the password itself: currentKey() returns the 32-byte HS256 key
      * derived via HKDF-SHA256 (salt 32 x 0x00, info = "WAZUH-ENROLL-JWT-KEY" + 0x01) by the

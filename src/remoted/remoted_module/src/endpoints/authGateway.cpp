@@ -10,6 +10,8 @@
 
 #include "authGateway.hpp"
 
+#include "auth/credentialRejection.hpp"
+#include "common/logThrottle.hpp"
 #include "http_server/headerUtils.hpp"
 #include "loggerHelper.h"
 
@@ -40,6 +42,39 @@ namespace
     {
         static const LogFn instance {AUTH_GATEWAY_LOGTAG};
         return instance;
+    }
+
+    // One throttle for every bearer route: the line is a signal that someone keeps failing, not a
+    // per-route or per-source record. Separate from POST /enroll's, so neither line hides the other.
+    remoted::common::LogThrottle& credentialRejectionThrottle()
+    {
+        static remoted::common::LogThrottle instance;
+        return instance;
+    }
+
+    // Names a source, as POST /enroll's line does, so an operator can see a peer that keeps failing.
+    // Throttled: a failed bearer spends no per-agent slot or bucket (none can be charged before the
+    // signature is checked without letting a peer lock the real agent out), so an unthrottled line would
+    // let any peer grow the log at will. The count covers every rejection since the previous line; the
+    // address and error code are those of the rejection that triggered this line. Logging only: what the
+    // peer receives is unchanged.
+    void logCredentialRejection(remoted::auth::AuthError err, const std::string& remoteIp)
+    {
+        if (!remoted::auth::isCredentialRejection(err))
+        {
+            return;
+        }
+        if (const auto throttle = credentialRejectionThrottle().record())
+        {
+            const auto pe = remoted::auth::publicErrorFor(err);
+            LOGFN_WARN(logFn(),
+                       "Rejected %llu agent request(s) with an invalid or missing bearer credential %s "
+                       "(latest from %s: %s).",
+                       static_cast<unsigned long long>(throttle.total),
+                       throttle.period().c_str(),
+                       remoteIp.empty() ? "local" : remoteIp.c_str(),
+                       pe.code != nullptr ? pe.code : pe.message);
+        }
     }
 
     // Client-visible 500 body, matching the {error,code} shape of the auth errors.
@@ -131,8 +166,8 @@ namespace remoted::endpoints
                     const std::string authorization = headerValue(request->headers, "authorization");
                     // Parsed once here, acted on only AFTER authentication succeeds (see below): an
                     // unauthenticated peer never reaches a decoder.
-                    const auto contentEncoding =
-                        remoted::decoding::parseContentEncoding(headerValue(request->headers, "content-encoding"));
+                    const auto contentEncoding = remoted::decoding::parseContentEncoding(
+                        remoted::http::findHeader(request->headers, "content-encoding"));
 
                     // Authentication is header-only: protocol-version, the bearer token, the key
                     // lookup + address rule, and the token's signature/claims/time policy. The body
@@ -142,9 +177,10 @@ namespace remoted::endpoints
                                                              authorization,
                                                              request->remoteIp,
                                                              static_cast<std::int64_t>(std::time(nullptr)));
-                    if (std::holds_alternative<remoted::auth::AuthError>(verified))
+                    if (const auto* authErr = std::get_if<remoted::auth::AuthError>(&verified))
                     {
-                        responder->send(errorResponseFor(std::get<remoted::auth::AuthError>(verified)));
+                        logCredentialRejection(*authErr, request->remoteIp);
+                        responder->send(errorResponseFor(*authErr));
                         return;
                     }
 

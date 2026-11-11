@@ -157,6 +157,43 @@ TEST_F(SyncProtocolIntegrationTest, PersistentQueue_FetchOnlyDataValues)
     ASSERT_EQ(allItems.size(), 2);
 }
 
+TEST_F(SyncProtocolIntegrationTest, PersistentQueue_RestartMidSessionKeepsDeleteOfInFlightCreate)
+{
+    // The process stops with a CREATE in flight, which the manager may have applied.
+    {
+        PersistentQueue queue(testDbPath, logger);
+        queue.submit("proc_1", "wazuh-states-inventory-processes", R"({"pid":1})", Operation::CREATE, 0, false);
+        ASSERT_EQ(queue.fetchAndMarkForSync().size(), 1);
+    }
+
+    // The next start resets the in-flight row; its DELETE must still be sent.
+    PersistentQueue queue(testDbPath, logger);
+    queue.submit("proc_1", "wazuh-states-inventory-processes", R"({"pid":1})", Operation::DELETE_, 0, false);
+
+    auto items = queue.fetchAndMarkForSync();
+    ASSERT_EQ(items.size(), 1);
+    EXPECT_EQ(items[0].id, "proc_1");
+    EXPECT_EQ(items[0].operation, Operation::DELETE_);
+}
+
+TEST_F(SyncProtocolIntegrationTest, PersistentQueue_RestartMidSessionKeepsDeleteQueuedDuringSession)
+{
+    // The DELETE arrives while the CREATE is in flight, then the process stops.
+    {
+        PersistentQueue queue(testDbPath, logger);
+        queue.submit("proc_1", "wazuh-states-inventory-processes", R"({"pid":1})", Operation::CREATE, 0, false);
+        ASSERT_EQ(queue.fetchAndMarkForSync().size(), 1);
+        queue.submit("proc_1", "wazuh-states-inventory-processes", R"({"pid":1})", Operation::DELETE_, 0, false);
+    }
+
+    PersistentQueue queue(testDbPath, logger);
+
+    auto items = queue.fetchAndMarkForSync();
+    ASSERT_EQ(items.size(), 1);
+    EXPECT_EQ(items[0].id, "proc_1");
+    EXPECT_EQ(items[0].operation, Operation::DELETE_);
+}
+
 TEST_F(SyncProtocolIntegrationTest, PersistentQueue_ClearAllDataContext)
 {
     /**
