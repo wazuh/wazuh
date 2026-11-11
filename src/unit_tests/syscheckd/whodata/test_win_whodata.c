@@ -4530,18 +4530,33 @@ void test_whodata_event_parse_filter_path(void **state) {
 }
 
 void test_whodata_path_filter_recycle_bin_folder(void **state) {
-    char *path = "c:\\$recycle.bin";
+    char *folder = "c:\\$recycle.bin";
+    char *folder_separator = "c:\\$recycle.bin\\";
+    char *folder_stream = "c:\\$recycle.bin:stream";
 
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6289): File 'c:\\$recycle.bin' is in the recycle bin. It will be discarded.");
+    assert_int_equal(whodata_path_filter(&folder), 1);
 
-    assert_int_equal(whodata_path_filter(&path), 1);
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6289): File 'c:\\$recycle.bin\\' is in the recycle bin. It will be discarded.");
+    assert_int_equal(whodata_path_filter(&folder_separator), 1);
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6289): File 'c:\\$recycle.bin:stream' is in the recycle bin. It will be discarded.");
+    assert_int_equal(whodata_path_filter(&folder_stream), 1);
 }
 
 void test_whodata_path_filter_recycle_bin_prefix_folder(void **state) {
-    char *path = "c:\\$recycle.bin2\\test.file";
+    char *folder = "c:\\$recycle.bin2";
+    char *file = "c:\\$recycle.bin2\\test.file";
+    char *dotted_folder = "c:\\$recycle.bin.old";
+    char *dotted_file = "c:\\$recycle.bin.old\\test.file";
 
-    assert_int_equal(whodata_path_filter(&path), 0);
+    assert_int_equal(whodata_path_filter(&folder), 0);
+    assert_int_equal(whodata_path_filter(&file), 0);
+    assert_int_equal(whodata_path_filter(&dotted_folder), 0);
+    assert_int_equal(whodata_path_filter(&dotted_file), 0);
 }
 
 void test_whodata_event_parse_wrong_types(void **state) {
