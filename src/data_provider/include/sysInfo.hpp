@@ -26,9 +26,7 @@
 
 #include "sysInfoInterface.h"
 
-constexpr auto primaryArraySeparator { "," };
-
-constexpr auto secondaryArraySeparator { ":" };
+constexpr auto arraySeparator { "," };
 
 class EXPORTED SysInfo: public ISysInfo
 {
@@ -45,6 +43,9 @@ class EXPORTED SysInfo: public ISysInfo
         nlohmann::json ports();
         void packages(std::function<void(nlohmann::json&)>);
         void processes(std::function<void(nlohmann::json&)>);
+#ifdef __linux__
+        void processNames(std::function<void(const ProcessNames&)> callback) override;
+#endif
         nlohmann::json hotfixes();
         nlohmann::json groups();
         nlohmann::json users();

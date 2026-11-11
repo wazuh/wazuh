@@ -85,6 +85,12 @@ void PersistentQueueStorage::createTableIfNotExists()
             "is_data_context INTEGER NOT NULL DEFAULT 0);";
 
         m_connection.execute(query);
+
+        m_connection.execute(
+            "CREATE TABLE IF NOT EXISTS integrity_progress ("
+            "idx TEXT PRIMARY KEY NOT NULL,"
+            "mismatches INTEGER NOT NULL,"
+            "last_mismatch_ms INTEGER NOT NULL);");
     }
     // LCOV_EXCL_START
     catch (const std::exception& ex)
@@ -469,6 +475,18 @@ std::vector<PersistedData> PersistentQueueStorage::fetchPending(bool onlyDataVal
     return result;
 }
 
+void PersistentQueueStorage::settleInFlightRows()
+{
+    const std::string query = "UPDATE persistent_queue SET sync_status = ?, create_status = ?, operation_syncing = ? WHERE sync_status IN (?, ?);";
+    SQLite3Wrapper::Statement stmt(m_connection, query);
+    stmt.bind(1, static_cast<int>(SyncStatus::PENDING));
+    stmt.bind(2, static_cast<int>(CreateStatus::EXISTING));
+    stmt.bind(3, static_cast<int>(Operation::NO_OP));
+    stmt.bind(4, static_cast<int>(SyncStatus::SYNCING));
+    stmt.bind(5, static_cast<int>(SyncStatus::SYNCING_UPDATED));
+    stmt.step();
+}
+
 void PersistentQueueStorage::removeAllSynced()
 {
     m_connection.execute("BEGIN IMMEDIATE TRANSACTION;");
@@ -483,14 +501,7 @@ void PersistentQueueStorage::removeAllSynced()
         stmt.bind(4, static_cast<int>(Operation::DELETE_));
         stmt.step();
 
-        const std::string queryUpdate = "UPDATE persistent_queue SET sync_status = ?, create_status = ?, operation_syncing = ? WHERE (sync_status = ? OR sync_status = ?);";
-        SQLite3Wrapper::Statement stmtUpdate(m_connection, queryUpdate);
-        stmtUpdate.bind(1, static_cast<int>(SyncStatus::PENDING));
-        stmtUpdate.bind(2, static_cast<int>(CreateStatus::EXISTING));
-        stmtUpdate.bind(3, static_cast<int>(Operation::NO_OP));
-        stmtUpdate.bind(4, static_cast<int>(SyncStatus::SYNCING));
-        stmtUpdate.bind(5, static_cast<int>(SyncStatus::SYNCING_UPDATED));
-        stmtUpdate.step();
+        settleInFlightRows();
 
         m_connection.execute("COMMIT;");
     }
@@ -511,19 +522,9 @@ void PersistentQueueStorage::resetAllSyncing()
 
     try
     {
-        const std::string queryUpdate = "UPDATE persistent_queue SET sync_status = ?, operation_syncing = ? WHERE sync_status IN (?, ?);";
-        SQLite3Wrapper::Statement stmtUpdate(m_connection, queryUpdate);
-        stmtUpdate.bind(1, static_cast<int>(SyncStatus::PENDING));
-        stmtUpdate.bind(2, static_cast<int>(Operation::NO_OP));
-        stmtUpdate.bind(3, static_cast<int>(SyncStatus::SYNCING));
-        stmtUpdate.bind(4, static_cast<int>(SyncStatus::SYNCING_UPDATED));
-        stmtUpdate.step();
-
-        const std::string queryDelete = "DELETE FROM persistent_queue WHERE operation = ? AND create_status = ?;";
-        SQLite3Wrapper::Statement stmtDelete(m_connection, queryDelete);
-        stmtDelete.bind(1, static_cast<int>(Operation::DELETE_));
-        stmtDelete.bind(2, static_cast<int>(CreateStatus::NEW_DELETED));
-        stmtDelete.step();
+        // A failed session may still have been applied by the manager, so its rows are
+        // settled as if it succeeded: a later DELETE must be sent, not coalesced away.
+        settleInFlightRows();
 
         m_connection.execute("COMMIT;");
     }
@@ -618,6 +619,38 @@ void PersistentQueueStorage::deleteDatabase()
         m_logger(LOG_ERROR, std::string("PersistentQueueStorage: Error deleting database: ") + ex.what());
         throw;
     }
+}
+
+std::optional<IntegrityProgress> PersistentQueueStorage::getIntegrityProgress(const std::string& index)
+{
+    SQLite3Wrapper::Statement stmt(m_connection,
+                                   "SELECT mismatches, last_mismatch_ms FROM integrity_progress WHERE idx = ?;");
+    stmt.bind(1, index);
+
+    if (stmt.step() != SQLITE_ROW)
+    {
+        return std::nullopt;
+    }
+
+    return IntegrityProgress {.mismatches = static_cast<unsigned int>(stmt.value<int32_t>(0)),
+                              .lastMismatchMs = stmt.value<int64_t>(1)};
+}
+
+void PersistentQueueStorage::setIntegrityProgress(const std::string& index, const IntegrityProgress& progress)
+{
+    SQLite3Wrapper::Statement stmt(m_connection,
+                                   "INSERT OR REPLACE INTO integrity_progress (idx, mismatches, last_mismatch_ms) VALUES (?, ?, ?);");
+    stmt.bind(1, index);
+    stmt.bind(2, static_cast<int32_t>(progress.mismatches));
+    stmt.bind(3, progress.lastMismatchMs);
+    stmt.step();
+}
+
+void PersistentQueueStorage::clearIntegrityProgress(const std::string& index)
+{
+    SQLite3Wrapper::Statement stmt(m_connection, "DELETE FROM integrity_progress WHERE idx = ?;");
+    stmt.bind(1, index);
+    stmt.step();
 }
 
 int32_t PersistentQueueStorage::getWalAutocheckpoint() const

@@ -76,7 +76,7 @@ printf '%s' '<your_username>' | sudo /var/wazuh-manager/bin/wazuh-manager-keysto
 printf '%s' '<your_password>' | sudo /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password
 ```
 
-A value already in the keystore is kept on every later start, whatever `local.env` or the environment says. Each daemon reads the credentials once, so restart the manager after changing them (step 5).
+A value already in the keystore is kept on every later start, whatever `local.env` or the environment says; only a different password published by an indexer on the same host (`/etc/wazuh-indexer/export/credentials.env`) replaces it. Each daemon reads the credentials once, so restart the manager after changing them (step 5).
 
 ### 4. Configure the `<indexer>` block
 

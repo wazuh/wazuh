@@ -493,7 +493,7 @@ nlohmann::json SysInfo::getGroups() const
             {
                 if (!usersConcatenated.empty())
                 {
-                    usersConcatenated += secondaryArraySeparator;
+                    usersConcatenated += arraySeparator;
                 }
 
                 usersConcatenated += user.get<std::string>();
@@ -560,7 +560,7 @@ nlohmann::json SysInfo::getUsers() const
             {
                 if (!accumGroups.empty())
                 {
-                    accumGroups += secondaryArraySeparator;
+                    accumGroups += arraySeparator;
                 }
 
                 const auto groupName = group.get<std::string>();
@@ -620,7 +620,7 @@ nlohmann::json SysInfo::getUsers() const
                 {
                     userItem["host_ip"] = userItem["host_ip"].get<std::string>() == UNKNOWN_VALUE
                                           ? hostStr
-                                          : (userItem["host_ip"].get<std::string>() + primaryArraySeparator + hostStr);
+                                          : (userItem["host_ip"].get<std::string>() + arraySeparator + hostStr);
                 }
             }
         }

@@ -110,6 +110,10 @@ RestoreUpgradePreserve()
     if [ -d "${UPGRADE_PRESERVE_DIR}/etc" ]; then
         PRESERVE_ETC_DIR=$(InstalledEtcDir)
         mkdir -p "${PRESERVE_ETC_DIR}" || return 1
+        # The schema copy is product, not configuration: the one this run installed stays.
+        if [ "X${INSTYPE}" = "Xmanager" ] && [ -f "${PRESERVE_ETC_DIR}/wazuh-manager.schema.json" ]; then
+            rm -f "${UPGRADE_PRESERVE_DIR}/etc/wazuh-manager.schema.json" || return 1
+        fi
         ${UPGRADE_PRESERVE_RESTORE_CP} "${UPGRADE_PRESERVE_DIR}/etc/." "${PRESERVE_ETC_DIR}/" || return 1
     fi
 
@@ -312,7 +316,13 @@ Install()
     #
     # It must never abort the installer, for the same reason the maintainer scripts tolerate it: an
     # unresolvable credential is reported by the service at start, where the answer is the one that
-    # matters.
+    # matters. But the installer must not report success over it either: --install and --upgrade
+    # exit 0 whatever they report, so, as the DEB postinst does, the outcome is read from standard
+    # error, where every problem is one `MISSING|INVALID|UNSAFE <subject>: <reason>` line (relayed
+    # as is, after the progress lines), and from a non-zero exit (usage, non-root, lock, internal
+    # error). The summary at the end of the installer reads CREDENTIALS_INCOMPLETE.
+    CREDENTIALS_INCOMPLETE="no"
+    CREDENTIALS_NEEDS_INSTALL="no"
     if [ "X${INSTYPE}" = "Xmanager" ] && \
        [ "X$(normalizeYesNoOrDefault "${USER_RESOLVE_CREDENTIALS}" "yes")" != "Xno" ] && \
        [ -x "${INSTALLDIR}/bin/wazuh-manager-resolve-credentials" ]; then
@@ -321,7 +331,21 @@ Install()
         else
             CREDENTIALS_MODE="--install"
         fi
-        "${INSTALLDIR}/bin/wazuh-manager-resolve-credentials" ${CREDENTIALS_MODE} -H "${INSTALLDIR}" || true
+        CREDENTIALS_STATUS=0
+        { CREDENTIALS_ERR=$("${INSTALLDIR}/bin/wazuh-manager-resolve-credentials" ${CREDENTIALS_MODE} -H "${INSTALLDIR}" 2>&1 1>&3) || CREDENTIALS_STATUS=$?; } 3>&1
+        if [ -n "${CREDENTIALS_ERR}" ]; then
+            printf '%s\n' "${CREDENTIALS_ERR}" >&2
+        fi
+        if [ "${CREDENTIALS_STATUS}" -ne 0 ] || printf '%s\n' "${CREDENTIALS_ERR}" | grep -q -E '^(MISSING|INVALID|UNSAFE) '; then
+            CREDENTIALS_INCOMPLETE="yes"
+        fi
+        # Only --install issues the CA, the bundle and the server pairs, and an unsafe or invalid
+        # entry may have stopped the run before it did; anything else it reports missing (the
+        # indexer password, CA and client pair) the start completes once it is supplied.
+        if [ "${CREDENTIALS_STATUS}" -ne 0 ] || printf '%s\n' "${CREDENTIALS_ERR}" \
+            | grep -q -E "^(INVALID|UNSAFE) |^MISSING $(InstalledEtcDir)/(ca/|certs/(root-ca|remoted|apid)\.pem)"; then
+            CREDENTIALS_NEEDS_INSTALL="yes"
+        fi
     fi
 
     # Generate/init service units and enable boot-time startup.
@@ -1240,14 +1264,39 @@ main()
         control_script="wazuh-manager-control"
     fi
     echo ""
-    echo " - ${configurationdone}."
+    if [ "X${CREDENTIALS_INCOMPLETE}" = "Xyes" ]; then
+        echo " - WARNING: Credential resolution is incomplete: the manager does not start until every"
+        echo "   MISSING, INVALID or UNSAFE entry reported above is resolved."
+        if [ "X${CREDENTIALS_NEEDS_INSTALL}" = "Xyes" ]; then
+            echo "   Fix them, then run: $INSTALLDIR/bin/wazuh-manager-resolve-credentials --install -H $INSTALLDIR"
+        else
+            echo "   Supply them as each entry above says, then start the manager."
+        fi
+    else
+        echo " - ${configurationdone}."
+    fi
     echo ""
-    echo " - ${tostart}:"
-    echo "      $INSTALLDIR/bin/${control_script} start"
-    echo ""
-    echo " - ${tostop}:"
-    echo "      $INSTALLDIR/bin/${control_script} stop"
-    echo ""
+    # A manager whose unit runInit() just registered is started through systemd, as the
+    # documentation and the packages tell operators to: the control script would put the
+    # daemons outside the unit's cgroup and sandbox. runInit() never enables the manager, so the
+    # hint enables it too. Any other case (no systemd, a refused registration, the agent) keeps
+    # the control script.
+    if [ "X$INSTYPE" = "Xmanager" ] && [ "X${notmodified}" != "Xyes" ] && \
+       [ "X${SERVICE_SYSTEMD_UNIT}" = "Xwazuh-manager" ]; then
+        echo " - ${tostart}:"
+        echo "      systemctl daemon-reload && systemctl enable --now wazuh-manager"
+        echo ""
+        echo " - ${tostop}:"
+        echo "      systemctl stop wazuh-manager"
+        echo ""
+    else
+        echo " - ${tostart}:"
+        echo "      $INSTALLDIR/bin/${control_script} start"
+        echo ""
+        echo " - ${tostop}:"
+        echo "      $INSTALLDIR/bin/${control_script} stop"
+        echo ""
+    fi
     echo " - ${configat} $(InstalledEtcDir)/${WAZUH_CONF}"
     echo ""
     if [ "X${INSTALLER_BRIEF_FLOW}" != "Xyes" ]; then
@@ -1283,8 +1332,12 @@ main()
 
 
     if [ "X$INSTYPE" = "Xmanager" ]; then
+        # 5.x agents enroll with a token minted here; nobody adds them to the manager. Printed
+        # directly rather than as a ${message} for the same reason as the agent's notice below.
         echo ""
-        echo " - ${addserveragent}"
+        echo " - To enroll agents, create an enrollment token (as root, with the manager running):"
+        echo ""
+        echo "      ${INSTALLDIR}/bin/wazuh-manager-authd --create-enrollment-token --address <WAZUH_MANAGER_ADDRESS>"
         echo ""
         echo "   ${moreinfo}"
         echo "   https://documentation.wazuh.com/"

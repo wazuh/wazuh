@@ -30,6 +30,7 @@
 
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -254,6 +255,48 @@ TEST_F(WdbHttpEndpointsTest, ParamGroupsMissingAgentIdReturns400WithoutQuerying)
     EXPECT_EQ(response.status, 400);
     EXPECT_EQ(response.body, "Missing header: X-Wazuh-Agent-Id");
     EXPECT_TRUE(MockStatement::s_lastQuery.empty()) << "should not have prepared any statement";
+}
+
+// A header that is not an agent id is the caller's mistake: 400, never a 500 from a throwing
+// parse, and never a truncated parse onto another agent ("1abc" must not read as agent 1).
+TEST_F(WdbHttpEndpointsTest, ParamGroupsInvalidAgentIdReturns400WithoutQuerying)
+{
+    const std::vector<std::string> invalidIds {
+        "", "abc", "1abc", "1 ", " 1", "-1", "+1", "1.0", "0x1", "2147483648", "99999999999999999999999"};
+
+    for (const auto& id : invalidIds)
+    {
+        MockStatement::resetTestState();
+        MockConnection db;
+        wazuh::uds_http::HttpRequest req;
+        req.headers["x-wazuh-agent-id"] = id;
+
+        const auto response = TestEndpointGetV1AgentsParamGroups::call(db, req);
+
+        EXPECT_EQ(response.status, 400) << "id='" << id << "'";
+        EXPECT_EQ(response.body, "Invalid header: X-Wazuh-Agent-Id must be a numeric agent id") << "id='" << id << "'";
+        EXPECT_TRUE(MockStatement::s_lastQuery.empty()) << "id='" << id << "' should not have prepared any statement";
+    }
+}
+
+// The zero-padded spelling agents use ("001") and the upper bound of the range are accepted.
+TEST_F(WdbHttpEndpointsTest, ParamGroupsAcceptsPaddedAndMaximumAgentIds)
+{
+    const std::vector<std::pair<std::string, std::int64_t>> validIds {{"001", 1}, {"0", 0}, {"2147483647", 2147483647}};
+
+    for (const auto& [id, expected] : validIds)
+    {
+        MockStatement::resetTestState();
+        MockConnection db;
+        wazuh::uds_http::HttpRequest req;
+        req.headers["x-wazuh-agent-id"] = id;
+
+        const auto response = TestEndpointGetV1AgentsParamGroups::call(db, req);
+
+        EXPECT_EQ(response.status, 200) << "id='" << id << "'";
+        ASSERT_EQ(MockStatement::s_boundInts.size(), 1u) << "id='" << id << "'";
+        EXPECT_EQ(MockStatement::s_boundInts[0], expected) << "id='" << id << "'";
+    }
 }
 
 // Malformed-request case for the other side of the surface: POST bodies.

@@ -12,12 +12,16 @@
 #include <rapidjson/document.h>
 #include <rapidjson/pointer.h>
 
+#include <algorithm>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <functional>
 #include <sstream>
 #include <string>
+#include <vector>
+
+#include <unistd.h>
 
 #include "manager_config/manager_config.hpp"
 #include "manager_config/manager_config_c.h"
@@ -230,6 +234,34 @@ TEST(Load, MissingFileIsAnError)
     EXPECT_NE(error->message.find("not found"), std::string::npos);
 }
 
+TEST(Load, UnreadablePathReportsTheSystemErrorNotNotFound)
+{
+    // A directory stands in for every access error that is not ENOENT (a permission error cannot be produced
+    // reliably when the suite runs as root).
+    auto error = manager_config::validateFile(VECTORS, noFiles());
+    ASSERT_TRUE(error.has_value());
+    EXPECT_EQ(error->message.find("not found"), std::string::npos) << error->what();
+    EXPECT_NE(error->message.find("cannot be read: " + VECTORS.string() + ": "), std::string::npos) << error->what();
+}
+
+TEST(Load, UnopenableFileNamesTheReason)
+{
+    // A regular file the caller may not open: the message carries open()'s reason, as for every other access error.
+    if (::geteuid() == 0)
+    {
+        GTEST_SKIP() << "root opens a file whatever its mode";
+    }
+    const auto file =
+        std::filesystem::temp_directory_path() / ("manager_config_unopenable_" + std::to_string(::getpid()));
+    std::ofstream(file) << "<wazuh_config/>";
+    std::filesystem::permissions(file, std::filesystem::perms::none);
+    auto error = manager_config::validateFile(file, noFiles());
+    std::filesystem::remove(file);
+    ASSERT_TRUE(error.has_value());
+    EXPECT_NE(error->message.find("cannot be read: " + file.string() + ": Permission denied"), std::string::npos)
+        << error->what();
+}
+
 // ---------------------------------------------------------------------------------------------------
 // Schema and XML-level rejections, driven by the shared vectors
 // ---------------------------------------------------------------------------------------------------
@@ -263,6 +295,24 @@ TEST(Schema, YesNoIsBooleanAndTrueFalseIsRejected)
     EXPECT_NE(error.message.find("booleans are yes/no"), std::string::npos) << error.what();
 }
 
+TEST(Schema, UnknownTopLevelOptionNamesTheSchemaRoot)
+{
+    // The rule broken is the root's additionalProperties, whose schema pointer is empty: never "[schema ]".
+    const auto error = parseKo(wrap("<github><enabled>yes</enabled></github>"));
+    EXPECT_EQ(error.pointer, "/github");
+    EXPECT_NE(error.message.find("[schema /]"), std::string::npos) << error.what();
+    EXPECT_EQ(error.message.find("[schema ]"), std::string::npos) << error.what();
+}
+
+TEST(Schema, BooleanHintOnlyForBooleanOptions)
+{
+    // An integer option given text is a type error too, but not a boolean one.
+    const auto error = parseKo(wrap("<remote><https><port>abc</port></https></remote>"));
+    EXPECT_EQ(error.pointer, "/remote/https/port");
+    EXPECT_NE(error.message.find("does not satisfy 'type'"), std::string::npos) << error.what();
+    EXPECT_EQ(error.message.find("yes/no"), std::string::npos) << error.what();
+}
+
 TEST(Schema, CiphersAcceptOnlyTheSuitesTheDaemonsAccept)
 {
     // remoted and authd accept exactly these five TLS 1.3 suites; a well-formed name outside them must fail
@@ -278,6 +328,184 @@ TEST(Schema, CiphersAcceptOnlyTheSuitesTheDaemonsAccept)
             parseKo(wrap(std::string("<remote><https><ciphers>") + ciphers + "</ciphers></https></remote>"));
         EXPECT_EQ(remote.pointer, "/remote/https/ciphers") << ciphers;
     }
+}
+
+TEST(Schema, IpOptionsAcceptOnlyWhatRemotedAccepts)
+{
+    // The addresses remoted's reader takes for remote.legacy.local_ip and remote.https.bind_addr: one IPv4 or
+    // IPv6 address, no CIDR prefix, netmask, host name or 'any'. Anything else used to pass validate and stop
+    // remoted at its configuration test.
+    for (const char* address : {"0.0.0.0",
+                                "127.0.0.1",
+                                "255.255.255.255",
+                                "::",
+                                "::1",
+                                "fe80::1",
+                                "2001:db8::",
+                                "1:2:3:4:5:6:7:8",
+                                "1:2:3:4:5:6::8",
+                                "::ffff:10.0.0.1",
+                                "::FFFF:10.0.0.1"})
+    {
+        parseOk(wrap(std::string("<remote><https><bind_addr>") + address + "</bind_addr></https><legacy><local_ip>" +
+                     address + "</local_ip></legacy></remote>"));
+    }
+    for (const char* address : {"not-an-ip",
+                                "999.1.1.1",
+                                "256.0.0.1",
+                                "01.2.3.4",
+                                "1.2.3",
+                                "1.2.3.4.5",
+                                "10.0.0.0/8",
+                                "10.0.0.1/255.0.0.0",
+                                "::1/128",
+                                "1::2::3",
+                                ":::",
+                                "12345::",
+                                "1:2:3:4:5:6:7:8:9",
+                                "any",
+                                "localhost",
+                                "!10.0.0.1"})
+    {
+        const auto https =
+            parseKo(wrap(std::string("<remote><https><bind_addr>") + address + "</bind_addr></https></remote>"));
+        EXPECT_EQ(https.pointer, "/remote/https/bind_addr") << address;
+        EXPECT_NE(https.message.find("pattern"), std::string::npos) << https.what();
+        const auto legacy =
+            parseKo(wrap(std::string("<remote><legacy><local_ip>") + address + "</local_ip></legacy></remote>"));
+        EXPECT_EQ(legacy.pointer, "/remote/legacy/local_ip") << address;
+    }
+    // clusterd binds through Python's asyncio, which also resolves a host name: cluster.bind_addr takes one
+    // (Schema.ClusterBindAddrIsAHostAndIndexerHostsNameOne).
+    parseOk("<wazuh_config><cluster><key>0123456789abcdef0123456789abcdef</key><bind_addr>localhost</bind_addr>"
+            "</cluster>" +
+            std::string(INDEXER_SECTION) + "</wazuh_config>");
+}
+
+TEST(Schema, ClusterBindAddrIsAHostAndIndexerHostsNameOne)
+{
+    const auto cluster = [](const std::string& address)
+    {
+        return "<wazuh_config><cluster><key>0123456789abcdef0123456789abcdef</key><bind_addr>" + address +
+               "</bind_addr></cluster>" + std::string(INDEXER_SECTION) + "</wazuh_config>";
+    };
+    for (const char* address :
+         {"0.0.0.0", "127.0.0.1", "::", "fe80::1", "localhost", "wazuh_master", "node-1.example.com", "a.b."})
+    {
+        parseOk(cluster(address));
+    }
+    for (const char* address : {"not a host!", "-leading-dash", "host:1516", "a..b", "10.0.0.0/8"})
+    {
+        const auto error = parseKo(cluster(address));
+        EXPECT_EQ(error.pointer, "/cluster/bind_addr") << address;
+        EXPECT_NE(error.message.find("pattern"), std::string::npos) << error.what();
+    }
+
+    const auto indexer = [](const std::string& host)
+    {
+        return "<wazuh_config>" + std::string(CLUSTER_SECTION) + "<indexer><hosts><host>" + host +
+               "</host></hosts></indexer></wazuh_config>";
+    };
+    for (const char* host : {"https://127.0.0.1:9200",
+                             "http://localhost",
+                             "https://indexer-1.example.com:9200/",
+                             "https://[::1]:9200",
+                             "https://[fd00::5]/prefix"})
+    {
+        parseOk(indexer(host));
+    }
+    for (const char* host : {"https://", "http://:9200", "https://not a host", "https://host:", "localhost:9200"})
+    {
+        const auto error = parseKo(indexer(host));
+        EXPECT_EQ(error.pointer, "/indexer/hosts/0") << host;
+    }
+}
+
+TEST(Schema, DurationsAndSizesStopWhereTheReadersWould)
+{
+    // w_parse_time() and w_parse_size() overflow, and their consumers keep an int, past these spellings; a zero
+    // with a unit is still zero, which every reader below refuses.
+    parseOk(wrap("<global><agents_disconnection_time>999w</agents_disconnection_time></global>"
+                 "<remote><legacy><rids_closing_time>999999999</rids_closing_time></legacy>"
+                 "<https><max_body_size>1G</max_body_size></https></remote>"
+                 "<wdb><backup database=\"global\"><interval>9999d</interval></backup></wdb>"));
+    const struct
+    {
+        const char* body;
+        const char* pointer;
+    } rejected[] = {
+        {"<global><agents_disconnection_time>15250284452472w</agents_disconnection_time></global>",
+         "/global/agents_disconnection_time"},
+        {"<global><agents_disconnection_time>1000w</agents_disconnection_time></global>",
+         "/global/agents_disconnection_time"},
+        {"<global><agents_disconnection_time>1000000000</agents_disconnection_time></global>",
+         "/global/agents_disconnection_time"},
+        {"<remote><legacy><rids_closing_time>0m</rids_closing_time></legacy></remote>",
+         "/remote/legacy/rids_closing_time"},
+        {"<remote><legacy><rids_closing_time>0</rids_closing_time></legacy></remote>",
+         "/remote/legacy/rids_closing_time"},
+        {"<remote><https><max_body_size>0K</max_body_size></https></remote>", "/remote/https/max_body_size"},
+        {"<remote><https><max_body_size>1000000G</max_body_size></https></remote>", "/remote/https/max_body_size"},
+        {"<remote><https><max_body_size>2G</max_body_size></https></remote>", "/remote/https/max_body_size"},
+        {"<wdb><backup database=\"global\"><interval>99999999999999999999</interval></backup></wdb>",
+         "/wdb/backup/global/interval"},
+        {"<vulnerability-detection><feed-update-interval>99999999m</feed-update-interval></vulnerability-detection>",
+         "/vulnerability-detection/feed-update-interval"},
+        {"<auth><force><after_registration_time>100000d</after_registration_time></force></auth>",
+         "/auth/force/after_registration_time"},
+    };
+    for (const auto& item : rejected)
+    {
+        EXPECT_EQ(parseKo(wrap(item.body)).pointer, item.pointer) << item.body;
+    }
+}
+
+TEST(Schema, HttpsMaxBodySizeIsCappedAtOneGibibyte)
+{
+    // The read phase buffers up to one body per connection, so the cap bounds that peak; 1G in every spelling.
+    for (const char* size : {"1G", "1g", "1024M", "1048576K", "1073741824", "1073741824B", "0001G", "1"})
+    {
+        parseOk(wrap(std::string("<remote><https><max_body_size>") + size + "</max_body_size></https></remote>"));
+    }
+    for (const char* size : {"2G", "1025M", "1048577K", "1073741825", "1073741825B", "10737418240", "0G"})
+    {
+        const auto error =
+            parseKo(wrap(std::string("<remote><https><max_body_size>") + size + "</max_body_size></https></remote>"));
+        EXPECT_EQ(error.pointer, "/remote/https/max_body_size") << size;
+    }
+}
+
+TEST(Schema, HttpsStringsAreCappedAtRemotedBufferSizes)
+{
+    // remote-config.h caps these at 255 and 511 characters (one less than remoted_module's C buffers).
+    const std::string prefix = "/" + std::string(254, 'a');
+    parseOk(wrap("<remote><https><global_prefix>" + prefix + "</global_prefix></https></remote>"));
+    const auto longPrefix =
+        parseKo(wrap("<remote><https><global_prefix>" + prefix + "a</global_prefix></https></remote>"));
+    EXPECT_EQ(longPrefix.pointer, "/remote/https/global_prefix");
+    EXPECT_NE(longPrefix.message.find("maxLength"), std::string::npos) << longPrefix.what();
+
+    const std::string path = "/" + std::string(510, 'p');
+    for (const char* option : {"ca", "ca_certificate"})
+    {
+        parseOk(wrap(std::string("<remote><https><") + option + ">" + path + "</" + option + "></https></remote>"));
+        const auto error = parseKo(
+            wrap(std::string("<remote><https><") + option + ">" + path + "p</" + option + "></https></remote>"));
+        EXPECT_EQ(error.pointer, std::string("/remote/https/") + option);
+        EXPECT_NE(error.message.find("maxLength"), std::string::npos) << error.what();
+    }
+    const auto key =
+        parseKo(wrap("<remote><https><certificate>/c.pem</certificate><key>" + path + "p</key></https></remote>"));
+    EXPECT_EQ(key.pointer, "/remote/https/key");
+
+    std::string ciphers = "TLS_AES_128_GCM_SHA256";
+    while (ciphers.size() <= 255)
+    {
+        ciphers += ":TLS_AES_128_GCM_SHA256";
+    }
+    const auto longCiphers = parseKo(wrap("<remote><https><ciphers>" + ciphers + "</ciphers></https></remote>"));
+    EXPECT_EQ(longCiphers.pointer, "/remote/https/ciphers");
+    EXPECT_NE(longCiphers.message.find("maxLength"), std::string::npos) << longCiphers.what();
 }
 
 TEST(Schema, FeedUpdateIntervalRejectsZeroInAnyUnit)
@@ -511,6 +739,144 @@ TEST(Semantics, CaCertificateFileValidation)
 }
 
 // ---------------------------------------------------------------------------------------------------
+// validateAll: every problem in one run (wazuh-manager-conf validate)
+// ---------------------------------------------------------------------------------------------------
+
+namespace
+{
+    std::vector<std::string> pointers(const std::vector<manager_config::Error>& errors)
+    {
+        std::vector<std::string> result;
+        for (const auto& error : errors)
+        {
+            result.push_back(error.pointer);
+        }
+        return result;
+    }
+
+    std::string render(const std::vector<manager_config::Error>& errors)
+    {
+        std::string text;
+        for (const auto& error : errors)
+        {
+            text += error.what() + "\n";
+        }
+        return text;
+    }
+} // namespace
+
+TEST(ValidateAll, ReportsEveryProblemInTheOrderOfTheFile)
+{
+    // A 4.x leftover in miniature: a duplicate, a wrong type, an unknown option inside a section, an unknown
+    // section and a section missing its mandatory option. One run reports all five, in the order of the file,
+    // the missing option after the problems of the object it is missing from.
+    const std::string xml = "<wazuh_config>"
+                            "<auth><port>1515</port><port>1516</port><use_password>true</use_password></auth>"
+                            "<global><jsonout_output>yes</jsonout_output></global>"
+                            "<alerts><log_alert_level>3</log_alert_level></alerts>"
+                            "<cluster><node_type>master</node_type></cluster>" +
+                            std::string {INDEXER_SECTION} + "</wazuh_config>";
+    const auto errors = manager_config::validateAll(xml, noFiles());
+    const std::vector<std::string> expected {
+        "/auth/port", "/auth/use_password", "/global/jsonout_output", "/alerts", "/cluster"};
+    ASSERT_EQ(pointers(errors), expected) << render(errors);
+    EXPECT_NE(errors[0].message.find("duplicate element <port>"), std::string::npos) << errors[0].what();
+    EXPECT_NE(errors[1].message.find("booleans are yes/no"), std::string::npos) << errors[1].what();
+    EXPECT_NE(errors[2].message.find("unknown option"), std::string::npos) << errors[2].what();
+    EXPECT_NE(errors[2].message.find("[schema /properties/global]"), std::string::npos) << errors[2].what();
+    EXPECT_NE(errors[3].message.find("[schema /]"), std::string::npos) << errors[3].what();
+    EXPECT_NE(errors[4].message.find("'required'): key"), std::string::npos) << errors[4].what();
+    // The fail-fast loader the daemons use stops at the first of them.
+    EXPECT_EQ(parseKo(xml).pointer, "/auth/port");
+}
+
+TEST(ValidateAll, SchemaErrorsAreWordedAsTheFailFastLoaderWordsThem)
+{
+    for (const std::string body : {"<auth><use_password>true</use_password></auth>",
+                                   "<remote><https><port>70000</port></https></remote>",
+                                   "<github><enabled>yes</enabled></github>",
+                                   "<remote><https><bind_addr>any</bind_addr></https></remote>"})
+    {
+        const auto errors = manager_config::validateAll(wrap(body), noFiles());
+        ASSERT_EQ(errors.size(), 1u) << body << "\n" << render(errors);
+        const auto single = parseKo(wrap(body));
+        EXPECT_EQ(errors[0].pointer, single.pointer) << body;
+        EXPECT_EQ(errors[0].message, single.message) << body;
+    }
+}
+
+TEST(ValidateAll, SemanticsRunAlongsideSchemaErrors)
+{
+    const auto errors = manager_config::validateAll(wrap("<remote><https><port>1516</port><foo>1</foo></https></remote>"
+                                                         "<auth><ssl_manager_cert>x.pem</ssl_manager_cert></auth>"),
+                                                    noFiles());
+    const std::vector<std::string> expected {"/remote/https/foo", "/auth/ssl_manager_key", "/cluster/port"};
+    EXPECT_EQ(pointers(errors), expected) << render(errors);
+}
+
+TEST(ValidateAll, StructuralProblemsDoNotHideTheRest)
+{
+    const auto errors = manager_config::validateAll(
+        wrap("<auth>stray<port>1515</port></auth>"
+             "<indexer><hosts><url>https://a:9200</url><host>https://b:9200</host></hosts></indexer>"
+             "<remote><https><port>0</port></https></remote>"),
+        noFiles());
+    // wrap() appends a second <indexer>: reported as a duplicate, after the problems of the first one.
+    const std::vector<std::string> expected {"/auth", "/indexer/hosts", "/indexer", "/remote/https/port"};
+    EXPECT_EQ(pointers(errors), expected) << render(errors);
+}
+
+TEST(ValidateAll, AnUnknownElementIsReportedOnceWhateverItHolds)
+{
+    // 4.x blocks repeat (<localfile>) and repeat their children (<ignore>): the operator removes the block, so
+    // it is reported once, not once per repeat or per problem inside it. A known option still reports its own
+    // duplicate.
+    const auto errors = manager_config::validateAll(
+        wrap("<syscheck><ignore>/a</ignore><ignore>/b</ignore>stray<x><y>1</y><y>2</y></x></syscheck>"
+             "<localfile><location>a</location></localfile><localfile><location>b</location></localfile>"
+             "<auth><port>1515</port><port>1516</port><port>1517</port><bogus>1</bogus><bogus>2</bogus></auth>"),
+        noFiles());
+    const std::vector<std::string> expected {"/auth/port", "/auth/port", "/syscheck", "/localfile", "/auth/bogus"};
+    EXPECT_EQ(pointers(errors), expected) << render(errors);
+}
+
+TEST(ValidateAll, MalformedXmlIsTheOnlyError)
+{
+    const auto errors = manager_config::validateAll(wrap("<global>a & b</global>"), noFiles());
+    ASSERT_EQ(errors.size(), 1u) << render(errors);
+    EXPECT_EQ(errors[0].message.rfind("invalid XML: ", 0), 0u) << errors[0].what();
+}
+
+TEST(ValidateAll, AgreesWithTheLoaderOnEveryVector)
+{
+    for (const auto& entry : std::filesystem::directory_iterator(VECTORS / "valid"))
+    {
+        if (entry.path().extension() == ".conf")
+        {
+            EXPECT_TRUE(manager_config::validateAll(slurp(entry.path()), noFiles()).empty()) << entry.path();
+        }
+    }
+    for (const auto& entry : std::filesystem::directory_iterator(VECTORS / "invalid"))
+    {
+        const auto name = entry.path().stem().string();
+        const auto expected = json(slurp(VECTORS / "expected" / (name + ".json")));
+        const auto errors = manager_config::validateAll(slurp(entry.path()), noFiles());
+        // The first problem of the file is the one the fail-fast loader stops at, worded the same way (a vector
+        // may break more than one rule: duplicate-element also omits the mandatory sections).
+        ASSERT_FALSE(errors.empty()) << name;
+        EXPECT_EQ(errors[0].pointer, std::string {expected["pointer"].GetString()}) << name;
+        EXPECT_EQ(errors[0].what(), parseKo(slurp(entry.path())).what()) << name;
+    }
+}
+
+TEST(ValidateAll, FileErrorsAreTheOnlyError)
+{
+    const auto errors = manager_config::validateFileAll(VECTORS / "does-not-exist.conf", noFiles());
+    ASSERT_EQ(errors.size(), 1u);
+    EXPECT_NE(errors[0].message.find("not found"), std::string::npos) << errors[0].what();
+}
+
+// ---------------------------------------------------------------------------------------------------
 // C API
 // ---------------------------------------------------------------------------------------------------
 
@@ -597,6 +963,6 @@ TEST(Schema, EmbeddedSchemaIsValidJsonWithSixtyNineLeaves)
     };
     walk(schema);
     // Bump this deliberately, never to make the test pass: it is the guard that a schema option was
-    // added or removed on purpose. Last changed by the two remote.https rate limits (67 -> 69).
-    EXPECT_EQ(leaves, 69u);
+    // added or removed on purpose. Last changed by remote.https.groups (69 -> 70).
+    EXPECT_EQ(leaves, 70u);
 }

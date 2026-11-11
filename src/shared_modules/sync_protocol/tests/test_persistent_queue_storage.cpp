@@ -27,6 +27,8 @@ struct QueueScenario
     bool resetSyncing;
     size_t expectedRows;
     Operation expectedOp;
+    std::vector<PersistedData> eventsAfter {};
+    std::string expectedId {};
 };
 
 inline void PrintTo(const QueueScenario& q, std::ostream* os)
@@ -91,13 +93,24 @@ TEST_P(PersistentQueueFullParamTest, HandlesSubmitFetchRemoveResetCorrectly)
         storage->resetAllSyncing();
     }
 
-    // 6. Verify final status
+    // 6. Events after the session ended
+    for (auto& ev : param.eventsAfter)
+    {
+        storage->submitOrCoalesce(ev);
+    }
+
+    // 7. Verify final status
     auto rows = storage->fetchAndMarkForSync();
     EXPECT_EQ(rows.size(), param.expectedRows);
 
     if (!rows.empty())
     {
         EXPECT_EQ(rows[0].operation, param.expectedOp);
+
+        if (!param.expectedId.empty())
+        {
+            EXPECT_EQ(rows[0].id, param.expectedId);
+        }
     }
 }
 
@@ -174,7 +187,7 @@ QueueScenario
     true, false,
     1, Operation::DELETE_
 },
-// 8. CREATE + Sync + DELETE during  sync + sync fail -> row deleted
+// 8. CREATE + Sync + DELETE during  sync + sync fail -> DELETE (the manager may have applied the CREATE)
 QueueScenario
 {
     "Case 8",
@@ -182,7 +195,7 @@ QueueScenario
     true,
     { PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0} },
     false, true,
-    0, Operation::DELETE_
+    1, Operation::DELETE_
 },
 // 9. CREATE + Sync + MODIFY during  sync + fail -> MODIFY
 QueueScenario
@@ -287,6 +300,62 @@ QueueScenario
     },
     false, true,
     1, Operation::CREATE
+},
+// 18. CREATE + Sync + sync fail, then DELETE -> DELETE
+QueueScenario
+{
+    "Case 18",
+    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
+    true, {}, false, true,
+    1, Operation::DELETE_,
+    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0} }
+},
+// 19. CREATE + Sync + MODIFY during sync + sync fail, then DELETE -> DELETE
+QueueScenario
+{
+    "Case 19",
+    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
+    true,
+    { PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY, 0} },
+    false, true,
+    1, Operation::DELETE_,
+    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0} }
+},
+// 20. CREATE + Sync + DELETE + CREATE during sync + sync fail, then DELETE -> DELETE
+QueueScenario
+{
+    "Case 20",
+    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
+    true,
+    {
+        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0},
+        PersistedData{0, "id1", "idx2", "{}", Operation::CREATE, 0}
+    },
+    false, true,
+    1, Operation::DELETE_,
+    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0} }
+},
+// 21. CREATE + Sync + CREATE of another id during sync + sync fail, then DELETE of that id
+//     -> only the first CREATE remains: the second one never left the agent
+QueueScenario
+{
+    "Case 21",
+    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
+    true,
+    { PersistedData{0, "id2", "idx", "{}", Operation::CREATE, 0} },
+    false, true,
+    1, Operation::CREATE,
+    { PersistedData{0, "id2", "idx", "{}", Operation::DELETE_, 0} },
+    "id1"
+},
+// 22. CREATE + Sync + sync success, then DELETE -> DELETE
+QueueScenario
+{
+    "Case 22",
+    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
+    true, {}, true, false,
+    1, Operation::DELETE_,
+    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0} }
 }
     )
 );
@@ -321,6 +390,52 @@ TEST_F(PersistentQueueStorageTest, ConstructorHonorsWalAutocheckpointOverride)
 {
     auto overriddenStorage = std::make_unique<PersistentQueueStorage>(":memory:", testLogger, nullptr, 4000);
     EXPECT_EQ(overriddenStorage->getWalAutocheckpoint(), 4000);
+}
+
+TEST_F(PersistentQueueStorageTest, IntegrityProgressIsStoredReplacedAndCleared)
+{
+    EXPECT_FALSE(storage->getIntegrityProgress("idx").has_value());
+
+    storage->setIntegrityProgress("idx", {.mismatches = 1, .lastMismatchMs = 1000});
+    auto progress = storage->getIntegrityProgress("idx");
+    ASSERT_TRUE(progress.has_value());
+    EXPECT_EQ(progress->mismatches, 1u);
+    EXPECT_EQ(progress->lastMismatchMs, 1000);
+
+    storage->setIntegrityProgress("idx", {.mismatches = 2, .lastMismatchMs = 1786000000000});
+    progress = storage->getIntegrityProgress("idx");
+    ASSERT_TRUE(progress.has_value());
+    EXPECT_EQ(progress->mismatches, 2u);
+    EXPECT_EQ(progress->lastMismatchMs, 1786000000000);
+
+    storage->clearIntegrityProgress("idx");
+    EXPECT_FALSE(storage->getIntegrityProgress("idx").has_value());
+}
+
+TEST_F(PersistentQueueStorageTest, IntegrityProgressIsKeptPerIndex)
+{
+    storage->setIntegrityProgress("idx1", {.mismatches = 1, .lastMismatchMs = 1000});
+    storage->setIntegrityProgress("idx2", {.mismatches = 3, .lastMismatchMs = 2000});
+
+    storage->clearIntegrityProgress("idx1");
+
+    EXPECT_FALSE(storage->getIntegrityProgress("idx1").has_value());
+    const auto progress = storage->getIntegrityProgress("idx2");
+    ASSERT_TRUE(progress.has_value());
+    EXPECT_EQ(progress->mismatches, 3u);
+}
+
+TEST_F(PersistentQueueStorageTest, IntegrityProgressDoesNotTouchTheQueue)
+{
+    storage->submitOrCoalesce(PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0});
+    storage->setIntegrityProgress("idx", {.mismatches = 1, .lastMismatchMs = 1000});
+
+    storage->removeByIndex("idx");
+    EXPECT_TRUE(storage->getIntegrityProgress("idx").has_value());
+
+    storage->clearIntegrityProgress("idx");
+    storage->submitOrCoalesce(PersistedData{0, "id2", "idx", "{}", Operation::CREATE, 0});
+    EXPECT_EQ(storage->fetchPending().size(), 1u);
 }
 
 TEST_F(PersistentQueueStorageTest, RemoveByIndexDeletesOnlySpecifiedIndex)
@@ -677,4 +792,71 @@ TEST_F(PersistentQueueStorageBusyLockTest, ResetAllSyncingWaitsOutTransientLockI
     EXPECT_NO_THROW(secondInstanceStorage.resetAllSyncing());
 
     lockReleaser.join();
+}
+
+/// @brief The integrity progress must survive a restart, including on a database created before it existed.
+class PersistentQueueStorageIntegrityProgressFileTest : public ::testing::Test
+{
+    protected:
+        std::string dbPath;
+        LoggerFunc testLogger = [](modules_log_level_t /*level*/, const std::string& /*msg*/) {};
+
+        void SetUp() override
+        {
+            dbPath = (std::filesystem::temp_directory_path() / "wazuh_persistent_queue_integrity_progress_test.db").string();
+            removeDatabase();
+        }
+
+        void TearDown() override
+        {
+            removeDatabase();
+        }
+
+        void removeDatabase()
+        {
+            std::filesystem::remove(dbPath);
+            std::filesystem::remove(dbPath + "-wal");
+            std::filesystem::remove(dbPath + "-shm");
+        }
+};
+
+TEST_F(PersistentQueueStorageIntegrityProgressFileTest, IntegrityProgressSurvivesReopen)
+{
+    {
+        PersistentQueueStorage storage(dbPath, testLogger);
+        storage.setIntegrityProgress("idx", {.mismatches = 2, .lastMismatchMs = 1000});
+    }
+
+    PersistentQueueStorage storage(dbPath, testLogger);
+    const auto progress = storage.getIntegrityProgress("idx");
+    ASSERT_TRUE(progress.has_value());
+    EXPECT_EQ(progress->mismatches, 2u);
+    EXPECT_EQ(progress->lastMismatchMs, 1000);
+}
+
+TEST_F(PersistentQueueStorageIntegrityProgressFileTest, IntegrityProgressWorksOnADatabaseWithoutItsTable)
+{
+    // A queue database written before the integrity_progress table existed.
+    {
+        SQLite3Wrapper::Connection connection(dbPath);
+        connection.execute(
+            "CREATE TABLE persistent_queue ("
+            "id TEXT PRIMARY KEY NOT NULL,"
+            "idx TEXT NOT NULL,"
+            "data TEXT NOT NULL,"
+            "operation INTEGER NOT NULL,"
+            "version INTEGER NOT NULL DEFAULT 0,"
+            "sync_status INTEGER NOT NULL DEFAULT 0,"
+            "create_status INTEGER NOT NULL DEFAULT 0,"
+            "operation_syncing INTEGER NOT NULL DEFAULT 3,"
+            "is_data_context INTEGER NOT NULL DEFAULT 0);");
+        connection.execute("INSERT INTO persistent_queue (id, idx, data, operation) VALUES ('id1', 'idx', '{}', 0);");
+    }
+
+    PersistentQueueStorage storage(dbPath, testLogger);
+
+    EXPECT_FALSE(storage.getIntegrityProgress("idx").has_value());
+    storage.setIntegrityProgress("idx", {.mismatches = 1, .lastMismatchMs = 1000});
+    EXPECT_TRUE(storage.getIntegrityProgress("idx").has_value());
+    EXPECT_EQ(storage.fetchPending().size(), 1u);
 }

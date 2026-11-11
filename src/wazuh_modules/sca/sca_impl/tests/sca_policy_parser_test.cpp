@@ -6,6 +6,7 @@
 
 #include <json.hpp>
 #include <string>
+#include <vector>
 
 using namespace testing;
 
@@ -232,6 +233,211 @@ TEST_F(PolicyParserTest, InvalidConditionInChecksHandledGracefully)
     EXPECT_EQ(j["policies"].size(), 1);
     // The check with invalid condition should be skipped, so checks array should be empty
     EXPECT_EQ(j["checks"].size(), 0);
+}
+
+namespace
+{
+    // Collects the ERROR lines the parser logs, to check what an operator would see.
+    std::vector<std::string>& ErrorLogs()
+    {
+        static std::vector<std::string> logs;
+        return logs;
+    }
+
+    void CaptureErrorLogs()
+    {
+        ErrorLogs().clear();
+        LoggingHelper::setLogCallback([](const modules_log_level_t level, const char* log)
+        {
+            if (level == LOG_ERROR)
+            {
+                ErrorLogs().emplace_back(log);
+            }
+        });
+    }
+
+    nlohmann::json PolicyWithChecks(const std::string& checksJson)
+    {
+        return nlohmann::json::parse(R"({"policy": {"id": "policy_id"}, "checks": )" + checksJson + "}");
+    }
+} // namespace
+
+TEST_F(PolicyParserTest, CheckWithoutConditionIsSkippedAndNamed)
+{
+    CaptureErrorLogs();
+
+    auto mockYamlToJson = [](const std::string&) -> nlohmann::json
+    {
+        return PolicyWithChecks(R"([
+            {"id": 3000, "title": "Valid", "condition": "all", "rules": ["f: /test exists"]},
+            {"id": 3001, "title": "No condition", "rules": ["f: /test exists"]},
+            {"id": 3002, "title": "Valid too", "condition": "any", "rules": ["f: /test exists"]}
+        ])");
+    };
+
+    PolicyParser parser("/var/ossec/etc/custom_policy.yml", 30, false, mockYamlToJson);
+    nlohmann::json j;
+    const auto policyOpt = parser.ParsePolicy(j);
+
+    // The policy is kept with the valid checks only
+    ASSERT_TRUE(policyOpt);
+    ASSERT_EQ(j["checks"].size(), 2);
+    EXPECT_EQ(j["checks"][0]["id"], "3000");
+    EXPECT_EQ(j["checks"][1]["id"], "3002");
+
+    ASSERT_EQ(ErrorLogs().size(), 1);
+    EXPECT_EQ(ErrorLogs()[0],
+              "Failed to parse check '3001' of policy file '/var/ossec/etc/custom_policy.yml'. Skipping it. "
+              "Error: Missing or invalid condition");
+}
+
+TEST_F(PolicyParserTest, CheckWithNonStringConditionIsSkipped)
+{
+    CaptureErrorLogs();
+
+    auto mockYamlToJson = [](const std::string&) -> nlohmann::json
+    {
+        return PolicyWithChecks(R"([
+            {"id": "check1", "title": "List condition", "condition": ["all"], "rules": ["f: /test exists"]}
+        ])");
+    };
+
+    PolicyParser parser("policy.yml", 30, false, mockYamlToJson);
+    nlohmann::json j;
+    const auto policyOpt = parser.ParsePolicy(j);
+
+    ASSERT_TRUE(policyOpt);
+    EXPECT_EQ(j["checks"].size(), 0);
+    ASSERT_EQ(ErrorLogs().size(), 1);
+    EXPECT_NE(ErrorLogs()[0].find("check 'check1' of policy file 'policy.yml'"), std::string::npos);
+}
+
+TEST_F(PolicyParserTest, CheckWithoutIdIsSkipped)
+{
+    CaptureErrorLogs();
+
+    auto mockYamlToJson = [](const std::string&) -> nlohmann::json
+    {
+        return PolicyWithChecks(R"([
+            {"title": "No id", "condition": "all", "rules": ["f: /test exists"]},
+            {"id": {"nested": 1}, "title": "Object id", "condition": "all", "rules": ["f: /test exists"]},
+            {"id": "check3", "title": "Valid", "condition": "all", "rules": ["f: /test exists"]}
+        ])");
+    };
+
+    PolicyParser parser("policy.yml", 30, false, mockYamlToJson);
+    nlohmann::json j;
+    const auto policyOpt = parser.ParsePolicy(j);
+
+    ASSERT_TRUE(policyOpt);
+    ASSERT_EQ(j["checks"].size(), 1);
+    EXPECT_EQ(j["checks"][0]["id"], "check3");
+
+    ASSERT_EQ(ErrorLogs().size(), 2);
+
+    for (const auto& log : ErrorLogs())
+    {
+        EXPECT_EQ(log,
+                  "Failed to parse check without a valid id of policy file 'policy.yml'. Skipping it. "
+                  "Error: Missing or invalid id");
+    }
+}
+
+TEST_F(PolicyParserTest, RequirementsRulesWithoutConditionRejectPolicy)
+{
+    CaptureErrorLogs();
+
+    auto mockYamlToJson = [](const std::string&) -> nlohmann::json
+    {
+        return nlohmann::json::parse(R"({
+            "policy": {"id": "policy_id"},
+            "requirements": {"title": "title", "rules": ["f: /etc/passwd exists"]},
+            "checks": [{"id": "check1", "title": "Title", "condition": "all", "rules": ["f: /test exists"]}]
+        })");
+    };
+
+    PolicyParser parser("policy.yml", 30, false, mockYamlToJson);
+    nlohmann::json j;
+    const auto policyOpt = parser.ParsePolicy(j);
+
+    EXPECT_FALSE(policyOpt);
+    // A rejected policy is not scanned, so nothing of it is stored either.
+    EXPECT_TRUE(j["policies"].empty());
+    EXPECT_TRUE(j["checks"].empty());
+    ASSERT_EQ(ErrorLogs().size(), 1);
+    EXPECT_EQ(ErrorLogs()[0],
+              "Failed to parse the requirements of policy file 'policy.yml'. Error: Missing or invalid condition");
+}
+
+TEST_F(PolicyParserTest, InvalidRequirementsConditionRejectsPolicyAndStoresNothing)
+{
+    auto mockYamlToJson = [](const std::string&) -> nlohmann::json
+    {
+        return nlohmann::json::parse(R"({
+            "policy": {"id": "policy_id"},
+            "requirements": {"title": "title", "condition": "foo", "rules": ["f: /etc/passwd exists"]},
+            "checks": [{"id": "check1", "title": "Title", "condition": "all", "rules": ["f: /test exists"]}]
+        })");
+    };
+
+    PolicyParser parser("policy.yml", 30, false, mockYamlToJson);
+    nlohmann::json j;
+    const auto policyOpt = parser.ParsePolicy(j);
+
+    EXPECT_FALSE(policyOpt);
+    EXPECT_TRUE(j["policies"].empty());
+    EXPECT_TRUE(j["checks"].empty());
+}
+
+TEST_F(PolicyParserTest, NumericCheckIdMustBeAnInteger)
+{
+    CaptureErrorLogs();
+
+    auto mockYamlToJson = [](const std::string&) -> nlohmann::json
+    {
+        return PolicyWithChecks(R"([
+            {"id": 3001, "title": "Integer", "condition": "all", "rules": ["f: /test exists"]},
+            {"id": 3001.5, "title": "Fractional", "condition": "all", "rules": ["f: /test exists"]},
+            {"id": 4294967296, "title": "Beyond 32 bits", "condition": "all", "rules": ["f: /test exists"]},
+            {"id": -7, "title": "Negative", "condition": "all", "rules": ["f: /test exists"]}
+        ])");
+    };
+
+    PolicyParser parser("policy.yml", 30, false, mockYamlToJson);
+    nlohmann::json j;
+    const auto policyOpt = parser.ParsePolicy(j);
+
+    ASSERT_TRUE(policyOpt);
+    ASSERT_EQ(j["checks"].size(), 3);
+    EXPECT_EQ(j["checks"][0]["id"], "3001");
+    EXPECT_EQ(j["checks"][1]["id"], "4294967296");
+    EXPECT_EQ(j["checks"][2]["id"], "-7");
+
+    ASSERT_EQ(ErrorLogs().size(), 1);
+    EXPECT_EQ(ErrorLogs()[0],
+              "Failed to parse check without a valid id of policy file 'policy.yml'. Skipping it. "
+              "Error: Missing or invalid id");
+}
+
+TEST_F(PolicyParserTest, RequirementsWithoutRulesNeedNoCondition)
+{
+    auto mockYamlToJson = [](const std::string&) -> nlohmann::json
+    {
+        return nlohmann::json::parse(R"({
+            "policy": {"id": "policy_id"},
+            "requirements": {"title": "title"},
+            "checks": [{"id": "check1", "title": "Title", "condition": "all", "rules": ["f: /test exists"]}]
+        })");
+    };
+
+    PolicyParser parser("policy.yml", 30, false, mockYamlToJson);
+    nlohmann::json j;
+    const auto policyOpt = parser.ParsePolicy(j);
+
+    ASSERT_TRUE(policyOpt);
+    EXPECT_EQ(j["checks"].size(), 1);
+    ASSERT_EQ(j["policies"].size(), 1);
+    EXPECT_EQ(j["policies"][0]["id"], "policy_id");
 }
 
 TEST_F(PolicyParserTest, InvalidRuleIsHandledGracefully)

@@ -40,7 +40,8 @@ else()
                                     -Wl,--wrap=fim_db_teardown -Wl,--wrap=getpid \
                                     -Wl,--wrap=access -Wl,--wrap=CreateFile -Wl,--wrap=opendir -Wl,--wrap=stat \
                                     -Wl,--wrap=utf8_CreateFile -Wl,--wrap=utf8_stat64 -Wl,--wrap=QueryDosDeviceA \
-                                    -Wl,--wrap=convert_windows_string -Wl,--wrap=wstr_split ${DEBUG_OP_WRAPPERS}")
+                                    -Wl,--wrap=convert_windows_string -Wl,--wrap=wstr_split -Wl,--wrap=utf8_DeleteFile \
+                                    -Wl,--wrap=utf8_RemoveDirectory ${DEBUG_OP_WRAPPERS}")
 endif()
 
 if(${TARGET} STREQUAL "winagent")
@@ -139,7 +140,7 @@ endif()
 
 list(APPEND shared_tests_names "test_queue_op")
 set(QUEUE_OP_BASE_FLAGS "-Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock,--wrap=pthread_cond_wait \
-                         -Wl,--wrap=pthread_cond_signal,--wrap=pthread_cond_timedwait")
+                         -Wl,--wrap=pthread_cond_signal,--wrap=pthread_cond_timedwait -Wl,--wrap,_merror_exit")
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "${QUEUE_OP_BASE_FLAGS} -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
@@ -422,6 +423,11 @@ else()
 list(APPEND shared_tests_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")
 endif()
 
+if(NOT ${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_names "test_sig_op")
+list(APPEND shared_tests_flags "-Wl,--wrap,_exit -Wl,--wrap,CreateThread -Wl,--wrap,_minfo -Wl,--wrap,_merror")
+endif()
+
 list(APPEND shared_tests_names "test_url")
 list(APPEND shared_tests_flags "-Wl,--wrap,curl_slist_free_all -Wl,--wrap,curl_easy_cleanup \
                                 -Wl,--wrap,curl_easy_init -Wl,--wrap,curl_easy_setopt -Wl,--wrap,wfopen \
@@ -507,6 +513,12 @@ foreach(counter RANGE ${count})
     # for agent/winagent, matching how the real agent/winagent build compiles
     # this file. Left undefined for manager, exercising the no-op fallback.
     if("${test_name}" STREQUAL "test_startup_gate_op" AND NOT ${TARGET} STREQUAL "manager")
+        target_compile_definitions(${test_name} PRIVATE CLIENT)
+    endif()
+
+    # Same for test_agent_op: the agent library resolves WAZUHCONF and WAZUHCONFIG
+    # with CLIENT, so the test must expect the agent's paths too.
+    if("${test_name}" STREQUAL "test_agent_op" AND NOT ${TARGET} STREQUAL "manager")
         target_compile_definitions(${test_name} PRIVATE CLIENT)
     endif()
 

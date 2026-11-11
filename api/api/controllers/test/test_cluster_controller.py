@@ -2,10 +2,12 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import json
 import sys
 from unittest.mock import ANY, AsyncMock, MagicMock, call, patch
 
 import pytest
+from connexion.exceptions import ProblemException
 from connexion.lifecycle import ConnexionResponse
 
 from api.controllers.test.utils import CustomAffectedItems
@@ -262,6 +264,19 @@ async def test_get_configuration_node(mock_exc, mock_dapi, mock_remove, mock_dfu
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("mock_request", ["cluster_controller"], indirect=True)
+@patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
+async def test_get_configuration_node_field_requires_section(mock_dapi, mock_request):
+    """'field' without 'section' is refused with a 400 instead of being silently ignored."""
+    with pytest.raises(ProblemException) as exc_info:
+        await get_configuration_node(node_id='001', field='name')
+
+    assert exc_info.value.status == 400
+    assert exc_info.value.ext['code'] == 1103
+    mock_dapi.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mock_request", ["cluster_controller"], indirect=True)
 @patch('api.controllers.cluster_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.cluster_controller.remove_nones_to_dict')
 @patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
@@ -449,7 +464,7 @@ async def test_put_restart(mock_dapi, mock_remove, mock_dfunc, mock_request):
     patch('api.controllers.cluster_controller.raise_if_exc', return_value=system_nodes_mock.return_value), \
     patch('wazuh.manager.manager_restart'):
         result = await put_restart(nodes_list='worker-node')
-        f_kwargs = {'node_list': 'worker-node'}
+        f_kwargs = {'node_list': ['worker-node']}
         mock_dapi.assert_called_once_with(f=manager.restart,
                                           f_kwargs=mock_remove.return_value,
                                           request_type='distributed_master',
@@ -466,6 +481,113 @@ async def test_put_restart(mock_dapi, mock_remove, mock_dfunc, mock_request):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("mock_request", ["cluster_controller"], indirect=True)
+@pytest.mark.parametrize('endpoint, operation, verb', [
+    (put_restart, 'restart', 'restart'),
+    (put_reload, 'reload', 'reload'),
+])
+@patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
+async def test_put_restart_reload_messages(mock_dapi, endpoint, operation, verb, mock_request):
+    """With no worker selected, the answer still speaks of the operation, not of returning node information."""
+    from wazuh.core.results import AffectedItemsWazuhResult
+
+    workers_result = AffectedItemsWazuhResult(all_msg='All selected nodes information was returned',
+                                              some_msg='Some nodes information was not returned',
+                                              none_msg='No information was returned')
+    master_result = AffectedItemsWazuhResult(affected_items=['master-node'])
+
+    with patch('api.controllers.cluster_controller.get_system_nodes', new=AsyncMock(return_value=['master-node'])), \
+            patch('api.controllers.cluster_controller.DistributedAPI.distribute_function',
+                  new=AsyncMock(side_effect=[workers_result, master_result])), \
+            patch(f'wazuh.manager.manager_{operation}'):
+        response = await endpoint(nodes_list='*')
+
+    body = json.loads(response.body)
+    assert body['message'] == f'{verb.capitalize()} request sent to all specified nodes'
+    assert body['data']['affected_items'] == ['master-node']
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mock_request", ["cluster_controller"], indirect=True)
+@pytest.mark.parametrize('endpoint, operation', [(put_restart, 'restart'), (put_reload, 'reload')])
+@patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
+async def test_put_restart_reload_master_failure(mock_dapi, endpoint, operation, mock_request):
+    """A refusal on the master is reported as a failed item, not dropped."""
+    from wazuh.core.exception import WazuhError
+    from wazuh.core.results import AffectedItemsWazuhResult
+
+    workers_result = AffectedItemsWazuhResult(none_msg='none')
+    master_result = AffectedItemsWazuhResult(none_msg='none')
+    master_result.add_failed_item(id_='master-node',
+                                  error=WazuhError(1904, extra_message={'action': operation, 'detail': 'exit code 1'}))
+
+    with patch('api.controllers.cluster_controller.get_system_nodes', new=AsyncMock(return_value=['master-node'])), \
+            patch('api.controllers.cluster_controller.DistributedAPI.distribute_function',
+                  new=AsyncMock(side_effect=[workers_result, master_result])):
+        response = await endpoint(nodes_list='*')
+
+    body = json.loads(response.body)
+    assert body['data']['affected_items'] == []
+    assert body['data']['failed_items'][0]['error']['code'] == 1904
+    assert body['data']['failed_items'][0]['id'] == ['master-node']
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mock_request", ["cluster_controller"], indirect=True)
+@pytest.mark.parametrize('endpoint, operation', [(put_restart, 'restart'), (put_reload, 'reload')])
+@pytest.mark.parametrize('nodes_list, worker_list', [
+    (['master-node', 'nonode'], ['nonode']),
+    (['master-node', 'worker-node', 'nonode'], ['worker-node', 'nonode']),
+    (['worker-node', 'master-node', 'worker-node'], ['worker-node']),
+])
+@patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
+async def test_put_restart_reload_master_not_sent_to_workers(mock_dapi, nodes_list, worker_list, endpoint,
+                                                             operation, mock_request):
+    """The master is handled locally only: it never reaches the workers' request, where it would be a 1730."""
+    from wazuh.core.exception import WazuhResourceNotFound
+    from wazuh.core.results import AffectedItemsWazuhResult
+
+    workers_result = AffectedItemsWazuhResult(none_msg='none')
+    if 'nonode' in worker_list:
+        workers_result.add_failed_item(id_='nonode', error=WazuhResourceNotFound(1730))
+    master_result = AffectedItemsWazuhResult(affected_items=['master-node'])
+
+    with patch('api.controllers.cluster_controller.get_system_nodes',
+               new=AsyncMock(return_value=['master-node', 'worker-node'])), \
+            patch('api.controllers.cluster_controller.DistributedAPI.distribute_function',
+                  new=AsyncMock(side_effect=[workers_result, master_result])):
+        response = await endpoint(nodes_list=nodes_list)
+
+    assert mock_dapi.call_args_list[0].kwargs['f_kwargs'] == {'node_list': worker_list}
+    assert mock_dapi.call_args_list[0].kwargs['nodes'] == ['worker-node']
+    body = json.loads(response.body)
+    assert body['data']['affected_items'] == ['master-node']
+    failed_ids = [node for item in body['data']['failed_items'] for node in item['id']]
+    assert 'master-node' not in failed_ids
+    assert body['data']['total_failed_items'] == len(failed_ids)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mock_request", ["cluster_controller"], indirect=True)
+@pytest.mark.parametrize('endpoint', [put_restart, put_reload])
+@patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
+async def test_put_restart_reload_only_master(mock_dapi, endpoint, mock_request):
+    """A list naming only the master, even repeated, sends no request to the workers."""
+    from wazuh.core.results import AffectedItemsWazuhResult
+
+    master_result = AffectedItemsWazuhResult(affected_items=['master-node'])
+    with patch('api.controllers.cluster_controller.get_system_nodes',
+               new=AsyncMock(return_value=['master-node', 'worker-node'])), \
+            patch('api.controllers.cluster_controller.DistributedAPI.distribute_function',
+                  new=AsyncMock(return_value=master_result)):
+        response = await endpoint(nodes_list=['master-node', 'master-node'])
+
+    mock_dapi.assert_called_once()
+    assert mock_dapi.call_args.kwargs['request_type'] == 'local_master'
+    assert json.loads(response.body)['data']['affected_items'] == ['master-node']
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mock_request", ["cluster_controller"], indirect=True)
 @patch('api.controllers.cluster_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.cluster_controller.remove_nones_to_dict')
 @patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
@@ -477,7 +599,7 @@ async def test_put_reload(mock_dapi, mock_remove, mock_dfunc, mock_request):
     patch('api.controllers.cluster_controller.raise_if_exc', return_value=system_nodes_mock.return_value), \
     patch('wazuh.manager.manager_reload'):
         result = await put_reload(nodes_list='worker-node')
-        f_kwargs = {'node_list': 'worker-node'}
+        f_kwargs = {'node_list': ['worker-node']}
         mock_dapi.assert_called_once_with(f=manager.reload,
                                           f_kwargs=mock_remove.return_value,
                                           request_type='distributed_master',

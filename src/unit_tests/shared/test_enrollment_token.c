@@ -480,9 +480,9 @@ void test_describe_never_prints_the_key(void **state)
     assert_non_null(strstr(text, "adr: siem.example.local"));
     assert_non_null(strstr(text, PIN_HEX));
     assert_non_null(strstr(text, "credential: present"));
+    assert_non_null(strstr(text, "id: " ID_B64URL "\n"));
 
     assert_null(strstr(text, SEC_B64URL));
-    assert_null(strstr(text, ID_B64URL));
     assert_null(strstr(text, KEY_B64URL));
     assert_null(strstr(text, "key"));
 
@@ -506,6 +506,7 @@ void test_describe_never_prints_the_key(void **state)
     assert_non_null(strstr(text, "ca not after: "));
     assert_non_null(strstr(text, "ca sha256: "));
     assert_non_null(strstr(text, "credential: absent"));
+    assert_null(strstr(text, "id: "));
     assert_null(strstr(text, "-----BEGIN CERTIFICATE-----"));
     assert_null(strstr(text, "key"));
 

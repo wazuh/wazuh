@@ -59,11 +59,10 @@ override_dh_install:
 	USER_AUTO_START="n" \
 	./install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
 
-	# Copying init.d script
-	mkdir -p ${TARGET_DIR}/etc/init.d/
+	# The init.d script is not shipped under /etc, where debhelper would make it a conffile that
+	# postinst deletes on systemd hosts and dpkg then prompts about on the next upgrade. postinst
+	# installs it from the copy of src/init made below, on hosts without systemd.
 	sed -i "s:WAZUH_HOME_TMP:${INSTALLATION_DIR}:g" src/init/templates/wazuh-debian.init
-
-	cp src/init/templates/wazuh-debian.init ${TARGET_DIR}/etc/init.d/wazuh-agent
 
 	# Copying systemd file
 	mkdir -p ${TARGET_DIR}/usr/lib/systemd/system/
@@ -150,11 +149,6 @@ override_dh_install:
 
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/etc/templates/config/ubuntu
 	cp -r etc/templates/config/ubuntu ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/etc/templates/config/
-
-	# Copying systemd file
-	mkdir -p ${TARGET_DIR}/etc/systemd/system/
-	sed -i "s:WAZUH_HOME_TMP:${INSTALLATION_DIR}:g" src/init/templates/wazuh-agent.service
-	cp src/init/templates/wazuh-agent.service ${TARGET_DIR}/etc/systemd/system/
 
 override_dh_auto_clean:
 	$(MAKE) -C src clean

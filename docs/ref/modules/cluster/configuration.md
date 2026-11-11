@@ -33,7 +33,10 @@ For module overview and architecture, see [Cluster Module](README.md).
 Specifies the name of the cluster this node belongs to.
 
 - **Default value:** `wazuh`
-- **Allowed values:** Any non-empty string
+- **Allowed values:** Any non-empty string; use only letters, digits, `_` and `-`. The worker's
+  handshake sends its node name, cluster name, role and version separated by spaces, so a cluster
+  name with a space breaks the handshake and no worker ever joins. No check refuses such a name:
+  `wazuh-manager-control check` and the start both accept it.
 - **Note:** All nodes in the same cluster must use the same name: the master refuses a worker whose
   cluster name differs (error `3030`, `Worker does not belong to the same cluster`). The name is also
   an input of the `settings_hash` the manager reports to agents.
@@ -44,7 +47,8 @@ Specifies the name of the current node of the cluster.
 
 - **Default value:** `node01`
 - **Allowed values:** Any non-empty string; a **worker** name must also consist only of letters,
-  digits, `_` and `-`, or the master refuses it (error `3060`, `Invalid node name format`)
+  digits, `_` and `-`, or the master refuses it (error `3060`, `Invalid node name format`). No check
+  refuses such a name beforehand: the worker starts and never joins
 - **Note:** Each node must have a unique name. The master refuses a worker whose name is already
   connected (error `3028`, `Worker node ID already exists`) or equals its own (error `3029`,
   `Connected worker with same name as the master`).
@@ -65,8 +69,10 @@ Defines the key used to encrypt the communication between the nodes. This key mu
 - **Default value:** None (required). The installer writes a random 32-character hexadecimal key
   into the generated configuration.
 - **Allowed values:** Letters and digits (`^[A-Za-z0-9]{32}$`)
-- **Note:** This key must be the same for all cluster nodes. A worker with a different key cannot
-  decrypt the master's messages (error `3025`, `Could not decrypt message`). Because every
+- **Note:** This key must be the same for all cluster nodes. The master cannot decrypt the messages of
+  a worker with a different key: the master logs error `3025` (`Could not decrypt message`) and closes
+  the connection, and the worker logs only that the master closed it, with a WARNING after 3 such
+  attempts in a row (see [How it works](README.md#how-it-works)). Because every
   installation generates its own random key, copy the master's `<key>` into each worker's
   configuration.
 
@@ -105,8 +111,9 @@ Specifies the address the **master** listens on for worker connections. Workers 
 so they ignore it.
 
 - **Default value:** `127.0.0.1`
-- **Allowed values:** A non-empty string (the schema does not check the address format; an address
-  the master cannot bind stops `wazuh-manager-clusterd` with `Could not start master`)
+- **Allowed values:** A host name (letters, digits, `-` and `_` in dot-separated labels) or an IP
+  address; anything else is refused by the configuration check. A valid name or address the master
+  cannot bind still stops `wazuh-manager-clusterd` with `Could not start master`
 - **Note:** With the default, the master accepts only local connections. Set it to an address the
   workers can reach (or `0.0.0.0`) on the master of a multi-node cluster.
 
@@ -150,12 +157,16 @@ Standard master node configuration:
   <node_type>master</node_type>
   <key>9d273b53510fef702b54a92e9cffc82e</key>
   <port>1516</port>
-  <bind_addr>0.0.0.0</bind_addr>
+  <bind_addr>MASTER_NODE_IP</bind_addr>
   <nodes>
     <node>MASTER_NODE_IP</node>
   </nodes>
 </cluster>
 ```
+
+`MASTER_NODE_IP` is the master's address on the management network. Only the master listens on the cluster port,
+on `bind_addr`: avoid `0.0.0.0` on a host whose other interfaces face agents or users (see the
+[cluster security model](../../security/cluster-model.md#deployment-assumptions)).
 
 ### Worker Node
 

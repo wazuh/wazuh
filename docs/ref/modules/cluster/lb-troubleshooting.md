@@ -36,7 +36,8 @@ A newly enrolled agent is known to the master immediately and to the workers a f
 Requests routed to a worker in between are rejected. The measured windows, per replicated file, are
 in [§7.1 of the architecture page](lb.md#71-replicated-state-brief-401s-after-enrollment).
 
-The agent recovers unattended. A real agent enrolling through a balancer typically meets **three
+The agent recovers unattended, by retrying or, when it takes the `unknown_agent` answer for the loss
+of its identity, by enrolling again once more; neither needs action. A real agent enrolling through a balancer typically meets **three
 different errors in the same burst** — a `503`, a `401`, and possibly a TLS error under passthrough
 — all from the same cause.
 
@@ -99,10 +100,11 @@ address to the manager, the address check fails. The metric is
 
 ## 3. `404` on every request
 
-**One node has a different `global_prefix`.** What that looks like depends on the balancing model:
-under termination, a third of *requests* fail across the whole fleet; under passthrough, a third of
-*agents* land there and fail **every** request for the life of the connection. The second is the
-report you are more likely to receive.
+**One node has a different `global_prefix`.** Without stickiness on the balancer, a third of
+*requests* fail across the whole fleet (on a three-node cluster), under passthrough as under
+termination: a 5.x agent opens a new connection per request, so every agent reaches that node now
+and then. With source-address stickiness, a third of *agents* land there and fail **every** request
+instead.
 
 This is the hardest failure to spot, because the node produces **no counter and no per-request log
 line**: the request is discarded by the router before any route runs. A node rejecting 100% of agent
@@ -185,8 +187,10 @@ Check on the manager:
 
 ```bash
 curl -s --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock \
-  http://localhost/metrics | grep body_too_large
+  http://localhost/metrics | jq '.metrics[] | select(.name | contains("body_too_large")) | {name, value}'
 ```
+
+The dump is a single line of JSON, so `grep` would print all of it; `jq` picks the metric out.
 
 > Do not look for it in `remoted.http.stateless.responses.413`. That bucket stays at zero, because
 > the authentication middleware answers before the route runs. The counter above is the one that
@@ -271,7 +275,7 @@ that node's pipeline is degraded.
 
 ```bash
 curl -s --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock \
-  http://localhost/metrics | grep -E 'forwarder|budget.rejected'
+  http://localhost/metrics | jq '.metrics[] | select(.name | test("forwarder|budget\\.rejected")) | {name, value}'
 ```
 
 ### Early in a deployment
@@ -418,14 +422,18 @@ A node logging `Cannot serve /control startup: wazuh-manager-db is not answering
 ### Verify the daemons really started
 
 The startup sequence reports success per daemon, but a daemon that dies immediately afterwards is
-not caught. Check the process list rather than the startup output:
+not caught. Ask for the status rather than reading the startup output; it checks every daemon's pid
+file against the live processes and exits `1` when one is down:
 
 ```bash
-ps -eo args | grep -oE 'wazuh-manager-[a-z]+' | sort -u
+/var/wazuh-manager/bin/wazuh-manager-control status
 ```
 
-Expect `analysisd`, `clusterd`, `db`, `modulesd` and `remoted` on every node, `authd` unless
-`auth.disabled` is set, and `apid` on the master only.
+Expect `wazuh-manager-analysisd`, `wazuh-manager-clusterd`, `wazuh-manager-db`,
+`wazuh-manager-modulesd` and `wazuh-manager-remoted` running on every node, `wazuh-manager-authd`
+unless `auth.disabled` is set, and `wazuh-manager-apid` on the master only. In a process list the
+two Python daemons appear as `python3 …/wazuh_manager_clusterd.py` and
+`python3 …/wazuh_manager_apid.py`, not under their `wazuh-manager-` names.
 
 ### Take it out of rotation manually
 
@@ -441,6 +449,7 @@ from the balancer yourself and restart it.
 | `401` right after enrolling | replication window | **yes**, clears within ~25 s |
 | `401` persistent | clock drift | no |
 | `401 token_unknown` | token not replicated yet | **yes**, clears within ~15 s |
+| `401 token_expired` / `token_revoked` | the token itself is dead | no, final: the agent deletes its token file; create a new token |
 | `403` on configuration download | a group change that node has not applied yet | **briefly**, within a round or two (10 s each) |
 | `404` on everything | `global_prefix` mismatch, or path rewriting | no |
 | `413` | batch over the 5 MiB auth cap | **yes**, the agent splits it |

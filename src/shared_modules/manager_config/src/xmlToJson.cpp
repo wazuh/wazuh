@@ -439,26 +439,34 @@ namespace manager_config::detail
             return nullptr;
         }
 
-        std::optional<Error> elementToValue(const pugi::xml_node& element,
-                                            const rapidjson::Value* schema,
-                                            rapidjson::Value& out,
-                                            rapidjson::Document::AllocatorType& allocator,
-                                            const std::string& pointer,
-                                            int depth);
+        bool elementToValue(const pugi::xml_node& element,
+                            const rapidjson::Value* schema,
+                            rapidjson::Value& out,
+                            rapidjson::Document::AllocatorType& allocator,
+                            const std::string& pointer,
+                            int depth,
+                            std::vector<Error>& problems);
 
         /// The element children of `parent` become the properties of `out` (sections at the root, options
         /// inside a section). A name repeated where the schema expects an array appends plain values.
-        std::optional<Error> childrenToObject(const pugi::xml_node& parent,
-                                              const Allowed& allowed,
-                                              rapidjson::Value& out,
-                                              rapidjson::Document::AllocatorType& allocator,
-                                              const std::string& pointer,
-                                              int depth)
+        /// Element-level problems are appended to `problems` in document order and the offending element is
+        /// left out, so the conversion goes on and the schema still judges the rest of the document. Duplicates
+        /// and stray text are reported only where the schema defines the members: an element it does not know
+        /// is rejected as a whole (once, by `additionalProperties`), so what is inside it, or a repeat of it,
+        /// would only bury that verdict.
+        void childrenToObject(const pugi::xml_node& parent,
+                              const Allowed& allowed,
+                              rapidjson::Value& out,
+                              rapidjson::Document::AllocatorType& allocator,
+                              const std::string& pointer,
+                              int depth,
+                              std::vector<Error>& problems)
         {
             out.SetObject();
-            if (hasTextContent(parent))
+            const bool known = allowed.properties != nullptr;
+            if (known && hasTextContent(parent))
             {
-                return Error {pointer, "unexpected text content"};
+                problems.push_back({pointer, "unexpected text content"});
             }
             for (const auto& child : parent.children())
             {
@@ -481,29 +489,37 @@ namespace manager_config::detail
                         existing.PushBack(item, allocator);
                         continue;
                     }
-                    return Error {childPointer, "duplicate element <" + std::string {name} + ">"};
+                    if (known && childSchema != nullptr)
+                    {
+                        problems.push_back({childPointer, "duplicate element <" + std::string {name} + ">"});
+                    }
+                    continue;
                 }
                 rapidjson::Value value;
-                if (auto error = elementToValue(child, childSchema, value, allocator, childPointer, depth + 1))
+                if (!elementToValue(child, childSchema, value, allocator, childPointer, depth + 1, problems))
                 {
-                    return error;
+                    continue;
                 }
                 rapidjson::Value key(name, static_cast<rapidjson::SizeType>(std::strlen(name)), allocator);
                 out.AddMember(key, value, allocator);
             }
-            return std::nullopt;
         }
 
-        std::optional<Error> elementToValue(const pugi::xml_node& element,
-                                            const rapidjson::Value* schema,
-                                            rapidjson::Value& out,
-                                            rapidjson::Document::AllocatorType& allocator,
-                                            const std::string& pointer,
-                                            int depth)
+        /// Converts one element into `out`. Returns false when the element cannot be represented at all (nested
+        /// too deep): the problem is recorded and the caller leaves the element out of the document.
+        bool elementToValue(const pugi::xml_node& element,
+                            const rapidjson::Value* schema,
+                            rapidjson::Value& out,
+                            rapidjson::Document::AllocatorType& allocator,
+                            const std::string& pointer,
+                            int depth,
+                            std::vector<Error>& problems)
         {
             if (depth > MAX_XML_DEPTH)
             {
-                return Error {pointer, "document nested deeper than " + std::to_string(MAX_XML_DEPTH) + " levels"};
+                problems.push_back(
+                    {pointer, "document nested deeper than " + std::to_string(MAX_XML_DEPTH) + " levels"});
+                return false;
             }
             const Allowed allowed = allowedAt(schema);
 
@@ -520,11 +536,7 @@ namespace manager_config::detail
                     rapidjson::Value inner;
                     if (hasElementChildren(element))
                     {
-                        if (auto error =
-                                childrenToObject(element, innerAllowed, inner, allocator, innerPointer, depth + 1))
-                        {
-                            return error;
-                        }
+                        childrenToObject(element, innerAllowed, inner, allocator, innerPointer, depth + 1, problems);
                     }
                     else
                     {
@@ -533,7 +545,7 @@ namespace manager_config::detail
                     out.SetObject();
                     rapidjson::Value keyValue(key, static_cast<rapidjson::SizeType>(std::strlen(key)), allocator);
                     out.AddMember(keyValue, inner, allocator);
-                    return std::nullopt;
+                    return true;
                 }
                 // <disconnected_time enabled="yes">1h</disconnected_time>: attributes become properties and the
                 // text becomes the `value` property (R5); unknown attributes are rejected by the schema.
@@ -550,10 +562,7 @@ namespace manager_config::detail
                 if (hasElementChildren(element))
                 {
                     rapidjson::Value children;
-                    if (auto error = childrenToObject(element, allowed, children, allocator, pointer, depth))
-                    {
-                        return error;
-                    }
+                    childrenToObject(element, allowed, children, allocator, pointer, depth, problems);
                     for (auto member = children.MemberBegin(); member != children.MemberEnd(); ++member)
                     {
                         rapidjson::Value key(member->name, allocator);
@@ -567,7 +576,7 @@ namespace manager_config::detail
                     typedScalar(text, allowedAt(propertySchema(allowed, "value")), value, allocator);
                     out.AddMember("value", value, allocator);
                 }
-                return std::nullopt;
+                return true;
             }
 
             if (hasElementChildren(element))
@@ -579,7 +588,7 @@ namespace manager_config::detail
                     out.SetArray();
                     if (hasTextContent(element))
                     {
-                        return Error {pointer, "unexpected text content"};
+                        problems.push_back({pointer, "unexpected text content"});
                     }
                     std::size_t index = 0;
                     for (const auto& child : element.children())
@@ -590,22 +599,26 @@ namespace manager_config::detail
                         }
                         if (expected != nullptr && std::strcmp(child.name(), expected) != 0)
                         {
-                            return Error {pointer,
-                                          "unexpected <" + std::string {child.name()} + "> inside <" + element.name() +
-                                              "> (expected <" + expected + ">)"};
+                            problems.push_back({pointer,
+                                                "unexpected <" + std::string {child.name()} + "> inside <" +
+                                                    element.name() + "> (expected <" + expected + ">)"});
+                            continue;
                         }
                         if (hasElementChildren(child))
                         {
-                            return Error {pointer + "/" + std::to_string(index), "list items must be plain values"};
+                            problems.push_back(
+                                {pointer + "/" + std::to_string(index), "list items must be plain values"});
+                            continue;
                         }
                         rapidjson::Value item;
                         typedScalar(leafText(child), allowedAt(allowed.items), item, allocator);
                         out.PushBack(item, allocator);
                         ++index;
                     }
-                    return std::nullopt;
+                    return true;
                 }
-                return childrenToObject(element, allowed, out, allocator, pointer, depth);
+                childrenToObject(element, allowed, out, allocator, pointer, depth, problems);
+                return true;
             }
 
             const std::string text = leafText(element);
@@ -636,20 +649,20 @@ namespace manager_config::detail
                         start = comma + 1;
                     }
                 }
-                return std::nullopt;
+                return true;
             }
             if (allowed.object && isWhitespace(text.c_str()))
             {
                 out.SetObject(); // <indexer></indexer>: an empty section, `required` decides (schema)
-                return std::nullopt;
+                return true;
             }
             typedScalar(text, allowed, out, allocator);
-            return std::nullopt;
+            return true;
         }
 
     } // namespace
 
-    std::optional<Error> xmlToJson(std::string_view xmlText, rapidjson::Document& out)
+    std::optional<Error> xmlToJson(std::string_view xmlText, rapidjson::Document& out, std::vector<Error>& problems)
     {
         out.SetObject();
         if (xmlText.size() > MAX_XML_BYTES)
@@ -695,7 +708,8 @@ namespace manager_config::detail
         {
             return xmlError("the <wazuh_config> root element takes no attributes");
         }
-        return childrenToObject(root, allowedAt(&schemaDocument()), out, out.GetAllocator(), "", 1);
+        childrenToObject(root, allowedAt(&schemaDocument()), out, out.GetAllocator(), "", 1, problems);
+        return std::nullopt;
     }
 
 } // namespace manager_config::detail

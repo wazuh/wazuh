@@ -58,10 +58,8 @@ int main(int argc, char **argv)
 
 #else
 
-int rootcheck_init(int test_config)
+int rootcheck_init(int test_config, const char *cfg)
 {
-    const char *cfg = WAZUHCONF;
-
 #endif /* OSSECHIDS */
 
     int c;

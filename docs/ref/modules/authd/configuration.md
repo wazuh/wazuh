@@ -91,7 +91,7 @@ Require agents to provide a shared enrollment password.
 - **Allowed values:** `yes`, `no`
 - **Note:** The `-P` [command-line flag](README.md#command-line-options) forces this to `yes`; no flag turns it off.
 
-When enabled, the password is read from `/etc/wazuh-manager/authd.pass` (its first line). If the file does not exist, the master's `wazuh-manager-authd` generates a random password on start (32 bytes straight from the CSPRNG, written as 64 lowercase hexadecimal characters), stores it in that file with mode `0640`, and reuses it on later starts. It does so only while [`remote_enrollment`](#remote_enrollment) is `yes`: with it off no enrollment path needs the password. A password written by hand is not held to that format: a first line of 3 to 4095 characters, not all whitespace, is accepted (trailing CR/LF removed). If the file exists but is empty, too long or otherwise invalid, the master's `wazuh-manager-authd` does not start. In a cluster, the password belongs to the master and is distributed to the workers automatically; a worker rejects enrollment until it receives the file.
+When enabled, the password is read from `/etc/wazuh-manager/authd.pass` (its first line). If the file does not exist, the master's `wazuh-manager-authd` generates a random password on start (32 bytes straight from the CSPRNG, written as 64 lowercase hexadecimal characters), stores it in that file with mode `0660`, and reuses it on later starts. It does so only while [`remote_enrollment`](#remote_enrollment) is `yes`: with it off no enrollment path needs the password. A password written by hand is not held to that format: a first line of 16 to 4095 bytes (a non-ASCII character counts as more than one), not all whitespace, is accepted (trailing CR/LF removed). The minimum keeps the password out of reach of online guessing, which the manager does not throttle per source; `wazuh-manager-remoted` applies the same rule to the same file for `POST /enroll`. If the file exists but is empty, shorter than 16 bytes, too long or otherwise invalid, the master's `wazuh-manager-authd` does not start, and the error names the cause: `wazuh-manager-authd -t` checks the file, so `wazuh-manager-control start`, `restart` and `check` refuse with that error (code `20` in `-j` output) before any daemon runs. This applies to a manager upgraded from a 5.0 pre-release too, which keeps its `authd.pass`. In a cluster, the password belongs to the master and is distributed to the workers automatically; a worker rejects enrollment until it receives the file.
 
 **Agent-side setup:** a 5.0 agent registers with an [enrollment token](README.md#enrollment-tokens), which carries its own credential, and `use_password` has no bearing on a token enrollment. It still sends a password over `POST /enroll` when the file named by [`<enrollment><authorization_pass_path>`](../client/configuration.md#authorization_pass_path) (default `etc/authd.pass`) exists and it holds no re-enrollment secret, but nothing writes the endpoint's default `etc/authd.pass` any more: `WAZUH_REGISTRATION_PASSWORD` was removed, a fresh 5.0 install never creates the file, and the 5.0 package upgrade deletes one left by a 4.x install. A path an operator names explicitly in `<enrollment><authorization_pass_path>` is theirs and is left alone.
 
@@ -142,7 +142,10 @@ Colon-separated list of TLS 1.3 cipher suites accepted by the enrollment TLS ses
 
 ### ssl_agent_ca
 
-Path to the CA certificate used to verify agent client certificates during mutual TLS.
+Path to the CA certificate used to verify agent client certificates during the TLS handshake of the
+**port-1515 listener only** (legacy 4.x enrollment). When set, a 4.x agent without a certificate
+this CA signed cannot complete the handshake. `POST /enroll` never reads it: the HTTPS listener's
+client-certificate policy is remoted's own (`remote.https`).
 
 - **Default value:** empty (agent certificate verification disabled)
 - **Allowed values:** Path to a PEM-encoded CA certificate, absolute or relative to the Wazuh install
@@ -151,9 +154,10 @@ Path to the CA certificate used to verify agent client certificates during mutua
 
 ### ssl_verify_host
 
-Verify that the agent certificate names the address the agent connects from: a matching subject
-alternative name is looked for first, then the subject CN. Requires `ssl_agent_ca` to be set;
-without it the option has no effect. A certificate that does not match closes the connection.
+Verify that the agent certificate presented on port 1515 names the address the agent connects
+from: a matching subject alternative name is looked for first, then the subject CN. Requires
+`ssl_agent_ca` to be set; without it the option has no effect, and like `ssl_agent_ca` it plays no
+part in `POST /enroll`. A certificate that does not match closes the connection.
 
 - **Default value:** `no`
 - **Allowed values:** `yes`, `no`
@@ -211,7 +215,7 @@ Minimum time an agent must have been disconnected before it can be forcibly re-e
 - **Default value:** `1h` with `enabled="yes"`
 - **Allowed values:** Time value with optional suffix — `s`, `m`, `h`, `d`; attribute `enabled`: `yes`/`no`
 
-```xml
+```xml,fragment
 <!-- Enable the check, require 2h disconnection -->
 <disconnected_time enabled="yes">2h</disconnected_time>
 
@@ -235,7 +239,7 @@ Accept enrollment from agents running a newer Wazuh version than the manager.
 
 **Note:** This option controls the **enrollment gate**: port 1515 and remoted's `POST /enroll` both read it. There is an independent option with the same name under `<remote><agents>` that controls the **connection gate** (remoted's agent connections). Both must be set to `yes` for a higher-version agent to both enroll and connect. Setting them differently — for example allowing enrollment but not connection — will result in agents that obtain keys but cannot communicate, which is difficult to diagnose.
 
-```xml
+```xml,fragment
 <agents>
   <allow_higher_versions>no</allow_higher_versions>
 </agents>
@@ -260,7 +264,8 @@ Every option below is read once at start with a compiled-in default. Three thing
 - **The shipped file is empty.** It carries only comments, so tuning one of these means adding the
   `name=value` line yourself.
 - **An out-of-range or non-numeric value is fatal**, not clamped: the daemon refuses to start and
-  names the option it rejected.
+  names the option it rejected. `wazuh-manager-authd -t` reads every option below too, so
+  `wazuh-manager-control check` refuses such a value before anything stops.
   Put comments on separate lines beginning with `#`; an inline comment becomes part of the value.
 - **The file is per node and is never synchronized.** Nothing in a cluster propagates it.
 
@@ -291,7 +296,8 @@ wazuh_modules.manager_task_max_pending_deletes=20000
 ### authd.debug
 
 The daemon's debug level when it is started without `-d`: `1` is debug, `2` is verbose debug. It is
-not read when `-d` is given on the command line.
+not read when `-d` is given on the command line. Without `-d`, `wazuh-manager-authd -t` reads and
+range-checks it as the start does, but does not raise its own verbosity with it.
 
 - **Default value:** `0`
 - **Allowed values:** `0` to `2`
@@ -412,7 +418,7 @@ Standard enrollment with password protection:
 
 ### Secure Configuration with TLS
 
-Mutual TLS with client certificate verification:
+Mutual TLS with client certificate verification on the port-1515 listener:
 
 ```xml
 <auth>

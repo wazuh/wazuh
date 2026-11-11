@@ -739,7 +739,7 @@ void test_configure_and_connect_audit_socket_keeps_socket_when_restart_disabled(
 
     ignore_function_calls(__wrap_usleep);
 
-    expect_string(__wrap__merror, formatted_msg, "(6636): Cannot connect to socket 'queue/sockets/audit'.");
+    expect_string(__wrap__merror, formatted_msg, "(6636): Cannot connect to socket 'var/audit/socket'.");
 
     ret = configure_and_connect_audit_socket();
 
@@ -768,7 +768,7 @@ void test_configure_and_connect_audit_socket_probes_fallback(void **state) {
 
     // The fallback does
     expect_string(__wrap__mdebug1, formatted_msg,
-                  "Could not establish the who-data socket 'queue/sockets/audit' with the current "
+                  "Could not establish the who-data socket 'var/audit/socket' with the current "
                   "audisp plugin configuration. Trying an alternative one.");
     expect_candidate_written(0);
     expect_wait_for_audit_socket(1);
@@ -776,7 +776,7 @@ void test_configure_and_connect_audit_socket_probes_fallback(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg,
                   "(6054): The audisp plugin configuration expected for the installed audit version "
-                  "did not create the socket 'queue/sockets/audit'. Who-data started with an "
+                  "did not create the socket 'var/audit/socket'. Who-data started with an "
                   "alternative plugin configuration.");
 
     ret = configure_and_connect_audit_socket();
@@ -801,13 +801,13 @@ void test_configure_and_connect_audit_socket_all_candidates_fail(void **state) {
     expect_wait_for_audit_socket(0);
 
     expect_string(__wrap__mdebug1, formatted_msg,
-                  "Could not establish the who-data socket 'queue/sockets/audit' with the current "
+                  "Could not establish the who-data socket 'var/audit/socket' with the current "
                   "audisp plugin configuration. Trying an alternative one.");
     expect_candidate_written(0);
     expect_wait_for_audit_socket(0);
 
     expect_string(__wrap__merror, formatted_msg,
-                  "(6636): Cannot connect to socket 'queue/sockets/audit'.");
+                  "(6636): Cannot connect to socket 'var/audit/socket'.");
 
     ret = configure_and_connect_audit_socket();
 
@@ -840,7 +840,7 @@ void test_configure_and_connect_audit_socket_keeps_probing_after_write_error(voi
 
     expect_string(__wrap__minfo, formatted_msg,
                   "(6054): The audisp plugin configuration expected for the installed audit version "
-                  "did not create the socket 'queue/sockets/audit'. Who-data started with an "
+                  "did not create the socket 'var/audit/socket'. Who-data started with an "
                   "alternative plugin configuration.");
 
     ret = configure_and_connect_audit_socket();

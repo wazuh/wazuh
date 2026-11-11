@@ -151,11 +151,18 @@ exit 0
 # The configuration directory is fixed, outside the installation directory.
 CONF_DIR="%{_sysconfdir}/wazuh-manager"
 
+# print_unsupported_manager_upgrade VERSION [host]: the refusal of a manager older than 5.0, as the
+# package being upgraded or, with "host", anywhere on this host (a fresh install is refused beside it).
 print_unsupported_manager_upgrade() {
   DETECTED_VERSION="${1:-unknown}"
+  if [ "${2:-}" = "host" ]; then
+    UNSUPPORTED_REASON="A Wazuh manager older than 5.0 is installed on this host: Wazuh manager 5.x can neither upgrade it nor be installed beside it."
+  else
+    UNSUPPORTED_REASON="Upgrade from Wazuh manager versions prior to 5.x is not supported."
+  fi
   cat <<EOF >&2
 ==============================================================
-ERROR: Upgrade from Wazuh manager versions prior to 5.x is not supported.
+ERROR: ${UNSUPPORTED_REASON}
 
 Detected installed version: ${DETECTED_VERSION#v}
 
@@ -234,7 +241,13 @@ if ! is_pre5 "${OLD_VERSION}" && [ -f /var/ossec/VERSION.json ] && [ -x /var/oss
   OLD_VERSION=$(json_version /var/ossec/VERSION.json 2>/dev/null) || OLD_VERSION=""
 fi
 if is_pre5 "${OLD_VERSION}"; then
-  print_unsupported_manager_upgrade "${OLD_VERSION}"
+  # An upgrade with no 5.x tree yet is an upgrade of the 4.x package itself: it gets the header
+  # every 5.x central component prints.
+  if [ "$1" -eq 2 ] && [ ! -e %{_localstatedir}/bin/wazuh-manager-control ]; then
+    print_unsupported_manager_upgrade "${OLD_VERSION}"
+  else
+    print_unsupported_manager_upgrade "${OLD_VERSION}" host
+  fi
   exit 1
 fi
 
@@ -272,19 +285,22 @@ fi
 
 # Stop the services to upgrade the package
 if [ "$1" -eq 2 ]; then
-  UPGRADE_PRESERVE_DIR="%{_localstatedir}/tmp/manager_upgrade_preserve"
+  # In packages_files/, as on DEB: root's, below the root-owned installation directory, and never
+  # emptied by a start, which empties tmp/ -- a backup kept there for recovery after a failed
+  # %%posttrans restore would be gone with the first start that followed.
+  UPGRADE_PRESERVE_DIR="%{_localstatedir}/packages_files/manager_upgrade_preserve"
   # Refused, and the directory taken, while the manager is still running: a failed upgrade keeps
   # this directory on purpose, so once one has failed every later attempt finds it, and refusing
   # after the stop below would take the manager down and leave it down, since the wazuh.restart
-  # marker is only honoured by a %%posttrans that never runs after a failed %%pre. tmp/ is writable
-  # by wazuh-manager: a plain mkdir fails on anything already at that path, a link included, and
-  # once it has succeeded nothing can be planted there before the snapshot copies into it.
-  if [ -e "${UPGRADE_PRESERVE_DIR}" ]; then
+  # marker is only honoured by a %%posttrans that never runs after a failed %%pre. A plain mkdir
+  # fails on anything already at that path, a link included, so the snapshot always copies into a
+  # directory this run made.
+  if [ -e "${UPGRADE_PRESERVE_DIR}" ] || [ -L "${UPGRADE_PRESERVE_DIR}" ]; then
     echo "ERROR: Existing manager upgrade preserve backup found at ${UPGRADE_PRESERVE_DIR}." >&2
     echo "ERROR: Recover or move this directory before retrying the upgrade." >&2
     exit 1
   fi
-  if ! mkdir -m 0700 "${UPGRADE_PRESERVE_DIR}"; then
+  if ! { mkdir -p -m 0750 "%{_localstatedir}/packages_files" && mkdir -m 0700 "${UPGRADE_PRESERVE_DIR}"; }; then
     echo "ERROR: Could not create the manager upgrade preserve backup at ${UPGRADE_PRESERVE_DIR}." >&2
     exit 1
   fi
@@ -340,6 +356,7 @@ if [ "$1" -eq 2 ]; then
     # running, if the stop above did. The marker goes too, since %%posttrans will not run after
     # this %%pre fails.
     rm -rf "${UPGRADE_PRESERVE_DIR}"
+    rmdir "%{_localstatedir}/packages_files" 2> /dev/null || true
     if [ -f %{_localstatedir}/tmp/wazuh.restart ]; then
       rm -f %{_localstatedir}/tmp/wazuh.restart
       case "${RESTART_WITH}" in
@@ -377,7 +394,7 @@ fix_global_db() {
   for DB_FILE in global.db*; do
     if [ -f "${DB_FILE}" ] && [ ! -L "${DB_FILE}" ]; then
       chown -h wazuh-manager:wazuh-manager "${DB_FILE}"
-      as_service_user chmod 660 "${DB_FILE}" || true
+      as_service_user chmod 640 "${DB_FILE}" || true
     fi
   done
 }
@@ -503,6 +520,8 @@ rm -f ${CONF_DIR}/shared/merged.mg  >/dev/null 2>&1
 CRED_STATUS=0
 CRED_ERR=""
 CRED_INCOMPLETE="no"
+CRED_NEEDS_INSTALL="no"
+CRED_NEEDS_CA_KEY="no"
 if [ -x %{_localstatedir}/bin/wazuh-manager-resolve-credentials ]; then
   if [ "$1" -eq 1 ]; then
     CRED_MODE="--install"
@@ -516,33 +535,69 @@ if [ -x %{_localstatedir}/bin/wazuh-manager-resolve-credentials ]; then
   if [ "${CRED_STATUS}" -ne 0 ] || printf '%%s\n' "${CRED_ERR}" | grep -q -E '^(MISSING|INVALID|UNSAFE) '; then
     CRED_INCOMPLETE="yes"
   fi
+  # Only --install mints the CA and issues the bundle and the server pairs, and an unsafe or invalid
+  # entry may have stopped the run before it did. Everything else it reports missing (the indexer
+  # password, the indexer's CA and client pair, rbac.db) the start completes.
+  if [ "${CRED_STATUS}" -ne 0 ] || printf '%%s\n' "${CRED_ERR}" \
+      | grep -q -E "^(INVALID|UNSAFE) |^MISSING ${CONF_DIR}/(ca/|certs/(root-ca|remoted|apid)\.pem)"; then
+    CRED_NEEDS_INSTALL="yes"
+  fi
+  # A CA staged without its key: --install keeps it and cannot issue the server pairs, so repeating
+  # it changes nothing; the node's pairs are staged instead (it never needs the key).
+  if printf '%%s\n' "${CRED_ERR}" | grep -q -E "^MISSING ${CONF_DIR}/certs/(remoted|apid)\.pem: no CA key"; then
+    CRED_NEEDS_CA_KEY="yes"
+  fi
 fi
 
-# Delete the installation files used to configure the manager
-rm -rf %{_localstatedir}/packages_files
+# Delete the installation files used to configure the manager. On an upgrade packages_files/ also
+# holds the preserve backup %%pre took, which %%posttrans restores and removes after this scriptlet:
+# it stays, and so does the directory until then.
+for PKG_ENTRY in %{_localstatedir}/packages_files/* %{_localstatedir}/packages_files/.[!.]* %{_localstatedir}/packages_files/..?*; do
+  [ -e "${PKG_ENTRY}" ] || [ -L "${PKG_ENTRY}" ] || continue
+  [ "${PKG_ENTRY##*/}" = "manager_upgrade_preserve" ] && continue
+  rm -rf "${PKG_ENTRY}"
+done
+rmdir %{_localstatedir}/packages_files 2> /dev/null || true
 
 # Next steps, last thing a fresh install prints (the indexer and the dashboard end the same way): the
 # package neither starts nor enables the service, and nothing else says where the Server API passwords
-# went. Only on a fresh install ($1 = 1): an upgrade or a reinstall finds the passwords already set.
-# install.sh prints its own start hint, so this lives in the package only.
+# went. On a fresh install ($1 = 1, a reinstall after an erase included: %%postun renamed every file in
+# the configuration directory to *.save, so the CA, the pairs and the passwords are new). An upgrade
+# restarts a running manager by itself and finds the passwords already set, so it prints only what is
+# incomplete. install.sh prints its own start hint, so this lives in the package only.
 #
-# The password hint is printed only when the resolver published the file: a worker publishes nothing
-# (the Server API runs on the master), and a run stopped by an unsafe or invalid entry writes nothing
-# at all. When the resolver reported a problem, the manager refuses to start until it is fixed, and
-# only --install issues what the install could not, so that is the command to repeat.
+# The password hint is printed only when the resolver published the file: a run stopped by an unsafe
+# or invalid entry writes nothing at all, and a configuration kept from an earlier install may make
+# this node a worker, which publishes nothing (the Server API runs on the master). When the resolver
+# reported a problem, the manager refuses to start until it is fixed. Only --install issues the CA and
+# the server pairs, so it is the command to repeat when one of those is missing or the run stopped
+# early -- except when the CA was staged without its key: then the node's pairs are staged, never the
+# key; what else is missing (the indexer's password and files) the start resolves, once supplied.
+print_credential_steps() {
+  if [ "${CRED_INCOMPLETE}" = "yes" ]; then
+    echo "Credential resolution is incomplete: the manager does not start until every MISSING, INVALID or UNSAFE entry reported above is resolved."
+    if [ "${CRED_NEEDS_CA_KEY}" = "yes" ]; then
+      echo "The CA in ${CONF_DIR}/ca was staged without its key, so no server certificate was issued here. Place this node's certificate pairs it reports missing in ${CONF_DIR}/certs (for example from wazuh-certificates.tar), then start the manager: no new --install is needed."
+      echo "This node does not need the root CA private key: do not copy it here."
+    elif [ "${CRED_NEEDS_INSTALL}" = "yes" ]; then
+      echo "Fix them, then run: %{_localstatedir}/bin/wazuh-manager-resolve-credentials --install -H %{_localstatedir}"
+    else
+      echo "Supply them as each entry above says, then start the manager: the start completes them, no new --install is needed."
+    fi
+  fi
+}
 if [ "$1" -eq 1 ]; then
   if [ -f "${CONF_DIR}/export/credentials.env" ]; then
     echo "Server API passwords saved in ${CONF_DIR}/export/credentials.env (readable by root only)."
   fi
-  if [ "${CRED_INCOMPLETE}" = "yes" ]; then
-    echo "Credential resolution is incomplete: the manager does not start until every MISSING, INVALID or UNSAFE entry reported above is resolved."
-    echo "Fix them, then run: %{_localstatedir}/bin/wazuh-manager-resolve-credentials --install -H %{_localstatedir}"
-  fi
+  print_credential_steps
   if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then
     echo "Start the manager and enable it at boot: systemctl enable --now wazuh-manager"
   else
     echo "Start the manager: service wazuh-manager start"
   fi
+else
+  print_credential_steps
 fi
 
 %preun
@@ -561,6 +616,41 @@ if [ $1 = 0 ]; then
   fi
   %{_localstatedir}/bin/wazuh-manager-control stop > /dev/null 2>&1
 
+  # The package never enables the service, but the operator does (systemctl enable, or chkconfig
+  # on a host without systemd), and an erase must not leave that behind for a later fresh install
+  # to come up enabled at boot. Here, while the unit file is still installed: systemctl disable
+  # refuses a unit it cannot find. It edits links only, so it also works in a chroot or an image
+  # build where systemd is not running (--no-reload, as rpm's own %%systemd_preun does).
+  if command -v systemctl > /dev/null 2>&1; then
+    systemctl --no-reload disable wazuh-manager.service > /dev/null 2>&1 || true
+  fi
+  if [ -f %{_initrddir}/wazuh-manager ] && command -v chkconfig > /dev/null 2>&1; then
+    chkconfig --del wazuh-manager > /dev/null 2>&1 || true
+  fi
+
+  # Keep the configuration aside for %%postun, which renames it to *.save as the DEB postrm does.
+  # RPM deletes every file the package lists between %%preun and %%postun: wazuh-manager.conf
+  # (%%ghost), client.keys, the internal options, shared/default/agent.conf and api.yaml (whose
+  # *.rpmsave %%postun deletes with api/) are gone by the time %%postun runs. The staging
+  # directory sits in the installation directory, which the service account cannot write, so
+  # nothing can be planted in it; whatever is there from an interrupted erase goes first. A link
+  # among the files to save is not ours: skipped, and -P keeps one swapped in meanwhile a link.
+  CONF_DIR="%{_sysconfdir}/wazuh-manager"
+  CONF_SAVE_DIR="%{_localstatedir}/.uninstall-conffiles"
+  rm -rf "${CONF_SAVE_DIR}"
+  if mkdir -m 0700 "${CONF_SAVE_DIR}" 2> /dev/null && mkdir -p "${CONF_SAVE_DIR}/conf/shared/default"; then
+    for CONF_FILE in client.keys wazuh-manager-internal-options.conf wazuh-manager.conf shared/default/agent.conf; do
+      if [ -f "${CONF_DIR}/${CONF_FILE}" ] && [ ! -L "${CONF_DIR}/${CONF_FILE}" ]; then
+        cp -pP "${CONF_DIR}/${CONF_FILE}" "${CONF_SAVE_DIR}/conf/${CONF_FILE}" || true
+      fi
+    done
+    if [ -f %{_localstatedir}/api/configuration/api.yaml ] && [ ! -L %{_localstatedir}/api/configuration/api.yaml ]; then
+      cp -pP %{_localstatedir}/api/configuration/api.yaml "${CONF_SAVE_DIR}/api.yaml" || true
+    fi
+  else
+    echo "WARNING: could not create ${CONF_SAVE_DIR}; the configuration files will not be kept as .save." >&2
+  fi
+
 fi
 
 %postun
@@ -572,8 +662,9 @@ CONF_DIR="%{_sysconfdir}/wazuh-manager"
 # the two find commands it replaces made. MODE "drop" deletes the *.save left by an earlier erase;
 # MODE "rename" then renames every other regular file in DIR and below to *.save. Two passes, never
 # one: a single loop would rename client.keys onto client.keys.save and then reach that name and
-# delete it. *rpmsave files and anything whose name contains "shared" keep their names. Links are
-# neither followed nor renamed.
+# delete it. *rpmsave files and any file whose own name (not its path: the agent groups under shared/
+# are renamed too, as the DEB postrm does) contains "shared" keep their names. Links are neither
+# followed nor renamed.
 save_conf() {
   for SAVE_ENTRY in "$2"/* "$2"/.[!.]* "$2"/..?*; do
     if [ -L "${SAVE_ENTRY}" ]; then
@@ -602,8 +693,22 @@ if [ $1 = 0 ];then
     groupdel wazuh-manager >/dev/null 2>&1
   fi
 
-  # Backup agents centralized configuration (shared/)
-  if [ -d ${CONF_DIR}/shared ] && [ ! -L ${CONF_DIR} ]; then
+  # Put back what %%preun kept aside, under its own name: the drop pass below would delete a *.save
+  # written here, and the rename pass adds the suffix. ${CONF_DIR} was writable by the service
+  # account: --remove-destination replaces a link planted at a destination instead of writing
+  # through it, and cp refuses to copy a directory onto a link. RPM has removed shared/default
+  # (and shared/ when no agent group was left), so the copy recreates them.
+  CONF_SAVE_DIR="%{_localstatedir}/.uninstall-conffiles"
+  if [ -d "${CONF_SAVE_DIR}" ] && [ ! -L "${CONF_SAVE_DIR}" ]; then
+    if [ -d ${CONF_DIR} ] && [ ! -L ${CONF_DIR} ]; then
+      cp -Rpf --remove-destination "${CONF_SAVE_DIR}/conf/." ${CONF_DIR} \
+        || echo "WARNING: some configuration files could not be kept in ${CONF_DIR}." >&2
+    fi
+  fi
+
+  # Rename the kept configuration to *.save. Not gated on shared/ (the removal of the package's
+  # own files takes it when no agent group is left): every erase keeps the same set.
+  if [ -d ${CONF_DIR} ] && [ ! -L ${CONF_DIR} ]; then
     save_conf drop ${CONF_DIR}
     save_conf rename ${CONF_DIR}
   fi
@@ -612,12 +717,18 @@ if [ $1 = 0 ];then
   rm -rf %{_localstatedir}/queue/
   rm -rf %{_localstatedir}/framework/
   rm -rf %{_localstatedir}/api/
-  rm -rf %{_localstatedir}/stats/
   rm -rf %{_localstatedir}/var/
   rm -rf %{_localstatedir}/bin/
   rm -rf %{_localstatedir}/logs/
   rm -rf %{_localstatedir}/tmp
   rm -rf %{_localstatedir}/data
+
+  # api.yaml is kept like the DEB keeps it: back in the api/ just removed, renamed to *.save.
+  if [ -f "${CONF_SAVE_DIR}/api.yaml" ] && [ ! -L "${CONF_SAVE_DIR}/api.yaml" ]; then
+    mkdir -p %{_localstatedir}/api/configuration
+    mv -f "${CONF_SAVE_DIR}/api.yaml" %{_localstatedir}/api/configuration/api.yaml.save
+  fi
+  rm -rf "${CONF_SAVE_DIR}"
 
   # What is kept (the saved configuration, backups) is an archive of a removed installation: it
   # goes to root, private to root. Part of it belonged to the removed account, whose numeric IDs
@@ -638,7 +749,9 @@ fi
 # The configuration directory is fixed, outside the installation directory.
 CONF_DIR="%{_sysconfdir}/wazuh-manager"
 
-UPGRADE_PRESERVE_DIR="%{_localstatedir}/tmp/manager_upgrade_preserve"
+# Where %%pre took it. A failed restore leaves it there for recovery, outside tmp/, which every start
+# empties; the next upgrade refuses to run until it is removed.
+UPGRADE_PRESERVE_DIR="%{_localstatedir}/packages_files/manager_upgrade_preserve"
 
 if [ -d "${UPGRADE_PRESERVE_DIR}" ]; then
   # The configuration directory and data/ are writable by wazuh-manager: --remove-destination
@@ -646,9 +759,13 @@ if [ -d "${UPGRADE_PRESERVE_DIR}" ]; then
   # A subshell on its own, not the left side of an || list: the shell ignores set -e inside a
   # command whose failure is tested, and a failed copy would otherwise go unnoticed and the
   # snapshot be deleted below.
+  # The schema copy is product, not configuration: the one this package installed stays.
   (
     set -e
     if [ -d "${UPGRADE_PRESERVE_DIR}/etc" ]; then
+      if [ -f "${CONF_DIR}/wazuh-manager.schema.json" ]; then
+        rm -f "${UPGRADE_PRESERVE_DIR}/etc/wazuh-manager.schema.json"
+      fi
       mkdir -p "${CONF_DIR}"
       cp -a --remove-destination "${UPGRADE_PRESERVE_DIR}/etc/." "${CONF_DIR}/"
     fi
@@ -667,6 +784,7 @@ if [ -d "${UPGRADE_PRESERVE_DIR}" ]; then
     exit 1
   fi
   rm -rf "${UPGRADE_PRESERVE_DIR}"
+  rmdir "%{_localstatedir}/packages_files" 2> /dev/null || true
 fi
 
 # The engine (wazuh-manager-analysisd) now drops privileges to wazuh-manager:
@@ -837,7 +955,6 @@ rm -fr %{buildroot}
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/tasks
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/sockets
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/vd
-%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/indexer
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/authd
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/keystore
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/data
@@ -856,8 +973,8 @@ rm -fr %{buildroot}
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/schema/wazuh-logpar-overrides
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/data/tzdb
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/data/tzdb/iana
-%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/data/mmdb/GeoLite2-ASN.mmdb
-%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/data/mmdb/GeoLite2-City.mmdb
+%attr(640, wazuh-manager, wazuh-manager) %{_localstatedir}/data/mmdb/GeoLite2-ASN.mmdb
+%attr(640, wazuh-manager, wazuh-manager) %{_localstatedir}/data/mmdb/GeoLite2-City.mmdb
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/enrichment/geo/0
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/enrichment/ioc/0
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/geo/mmdb/0
@@ -867,6 +984,7 @@ rm -fr %{buildroot}
 %attr(640, wazuh-manager, wazuh-manager) %{_localstatedir}/data/tzdb/iana/*
 %dir %attr(1770, root, wazuh-manager) %{_localstatedir}/tmp
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/var
+%dir %attr(750, root, wazuh-manager) %{_localstatedir}/var/audit
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/var/db
 %attr(660, root, wazuh-manager) %{_localstatedir}/var/db/mitre.db
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/var/download

@@ -20,7 +20,7 @@ import (
 //
 // The recorded latency is admission only — a 200 means "queued", and the scan
 // runs afterward, one agent at a time inside the VD module. Whether it actually
-// ran is visible in modulesd's log (`reason=feed_update`), never here.
+// ran is visible in modulesd's log (`reason=on_demand`), never here.
 func (a *agent) runScanVD(ctx context.Context, lane string, step scenario.Step) {
 	// Resolved first, and outside the rate limiter: in agent mode this blocks
 	// until the keepalive loop has learned an offset, and a token taken before

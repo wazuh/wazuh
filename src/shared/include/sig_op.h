@@ -15,7 +15,8 @@
 
 #include <stdbool.h>
 
-/* True once HandleSIG() has taken a termination signal. The daemon is then inside exit(), and its
+/* True once HandleSIG() has taken a termination signal. The daemon is then inside exit() (or, after
+ * StartSIGShutdownThread(), on its shutdown thread), and its
  * other threads keep running until the process is gone; a peer daemon stopped in the same pass
  * (wazuh-server.sh signals every daemon before waiting for any) is expected to vanish under them
  * in that window, so a failure to reach it is part of the shutdown, not a fault to report. Only
@@ -25,7 +26,7 @@
 bool w_shutdown_requested(void);
 void w_shutdown_requested_set(bool value);
 
-void HandleSIG(int sig) __attribute__((noreturn));
+void HandleSIG(int sig);
 void HandleSIGPIPE(int sig);
 void HandleExit();
 
@@ -34,5 +35,12 @@ void StartSIG(const char *process_name) __attribute__((nonnull));
 
 /* Start signal manipulation -- function as an argument */
 void StartSIG2(const char *process_name, void (*func)(int)) __attribute__((nonnull));
+
+/* Make HandleSIG() only signal a thread that ends the process outside signal context.
+ * Call it after StartSIG() and after goDaemon(): threads don't survive its fork. */
+void StartSIGShutdownThread();
+
+/* Callback run by the shutdown thread before the process ends. The atexit handlers are skipped on that path, so it must cover their work. */
+void SetSIGShutdownFunc(void (*func)(void));
 
 #endif /* SIG_H */

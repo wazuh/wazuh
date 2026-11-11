@@ -56,6 +56,8 @@ class AbstractServerHandler(c_common.Handler):
         self.server = server
         self.loop = loop
         self.last_keepalive = utils.get_utc_now().timestamp()
+        # What the peer is once its hello identifies it; until then a subclass may log it under a neutral tag.
+        self.peer_tag = tag
         self.tag = tag
         context_tag.set(self.tag)
         self.name = None
@@ -91,11 +93,13 @@ class AbstractServerHandler(c_common.Handler):
         count = self.server.connection_counts.get(self.ip, 0)
         if count >= MAX_CONNECTIONS_PER_IP:
             self.logger.warning(f"Too many connections from {self.ip} ({count}), rejecting.")
+            self.close_reason_logged = True
             transport.close()
             return
         if self.server.total_connections >= MAX_TOTAL_CONNECTIONS:
             self.logger.warning(f"Too many total connections ({self.server.total_connections}), "
                                 f"rejecting connection from {self.ip}.")
+            self.close_reason_logged = True
             transport.close()
             return
         self.server.connection_counts[self.ip] = count + 1
@@ -123,6 +127,7 @@ class AbstractServerHandler(c_common.Handler):
         self._handshake_deadline = None
         if self.name is None:
             self.logger.warning("Closing connection: handshake not completed within deadline.")
+            self.close_reason_logged = True
             if self.transport is not None:
                 self.transport.close()
 
@@ -194,7 +199,7 @@ class AbstractServerHandler(c_common.Handler):
             self.name = node_name
             self._cancel_handshake_deadline()
             self.server.clients[self.name] = self
-            self.tag = f'{self.tag} {self.name}'
+            self.tag = f'{self.peer_tag} {self.name}'
             context_tag.set(self.tag)
             self.handler_tasks.append(self.loop.create_task(self.broadcast_reader()))
             return b'ok', f'Client {self.name} added'.encode()
@@ -251,8 +256,11 @@ class AbstractServerHandler(c_common.Handler):
         elif exc is not None:
             self.logger.error(f"Error during handshake with incoming connection: {exc}. \n"
                               f"{''.join(traceback.format_tb(exc.__traceback__))}", exc_info=False)
-        else:
-            self.logger.error("Error during handshake with incoming connection.", exc_info=False)
+        elif not self.close_reason_logged:
+            # The peer closed the connection before identifying itself and nothing on this side refused it (a port
+            # probe or a load-balancer health check, for instance): there is no error to report. When this side
+            # refused it, the reason was already logged.
+            self.logger.info(f"Connection from {self.ip} closed before the handshake completed.")
 
     def add_request(self, broadcast_id, f, *args, **kwargs):
         """Add a request to the queue to execute a function in this server handler.

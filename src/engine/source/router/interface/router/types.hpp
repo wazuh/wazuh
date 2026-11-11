@@ -6,6 +6,7 @@
 #include <list>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <unordered_set>
 
@@ -148,6 +149,26 @@ public:
  *************************************************************************/
 namespace test
 {
+
+/**
+ * @brief Prefix of the namespaces the tester creates for its own sessions.
+ *
+ * `/content/validate/policy` with `load_in_tester` imports the policy into a namespace named
+ * `<prefix><random hex>` and keeps it as the session's namespace. Only a namespace with this prefix may be
+ * deleted when a tester session is removed or replaced: any other one (a synchronized space, or a namespace
+ * a route uses) was created by someone else and is left untouched.
+ */
+inline constexpr std::string_view TESTER_NAMESPACE_PREFIX = "logtest_";
+
+/**
+ * @brief Whether a namespace was created by the tester (carries TESTER_NAMESPACE_PREFIX).
+ */
+inline bool isTesterOwnedNamespace(const cm::store::NamespaceId& namespaceId)
+{
+    const std::string_view name {namespaceId.toStr()};
+    return name.size() > TESTER_NAMESPACE_PREFIX.size()
+           && name.substr(0, TESTER_NAMESPACE_PREFIX.size()) == TESTER_NAMESPACE_PREFIX;
+}
 
 /**
  * @brief Request for adding a new entry in production

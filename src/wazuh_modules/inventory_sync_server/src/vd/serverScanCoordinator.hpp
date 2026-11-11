@@ -49,7 +49,12 @@ namespace invsync::vd
             // Fenced means QUIESCED: whatever was already being applied must finish first. The
             // bound keeps a scan-length wait from stalling the whole fleet pass; on timeout the
             // fence comes off and the caller skips this agent.
-            if (!m_registry->waitUntilIdle(agentId, m_pauseQuiesceTimeout))
+            //
+            // The caller's OWN scan-lane hold is not "in flight": an on-demand rescan reaches this
+            // fence from the very lane worker that holds the agent, and that hold already keeps
+            // every pipeline session of the agent out. Counting it made every on-demand scan wait
+            // the whole bound for itself. Another thread's hold is still waited for.
+            if (!m_registry->waitUntilIdle(agentId, m_pauseQuiesceTimeout, /*ignoreCallersScanHold=*/true))
             {
                 m_registry->resume(agentId);
                 return false;

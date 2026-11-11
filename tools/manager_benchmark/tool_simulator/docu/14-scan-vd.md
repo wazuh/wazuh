@@ -101,11 +101,11 @@ other refusal, `task_create_failed` included) — and the scans themselves are i
 tagged `wazuh-manager-modulesd:vulnerability-scanner`:
 
 ```text
-Vulnerability scan start: agent='005' (5.0.0) type=full reason=feed_update
-Vulnerability scan completed: agent='005' type=full reason=feed_update
+Vulnerability scan start: agent='005' (5.0.0) type=full reason=on_demand
+Vulnerability scan completed: agent='005' type=full reason=on_demand
 ```
 
-`reason=feed_update` is what distinguishes a `/scan/vd`-triggered scan from the `option=VDFirst` one
+`reason=on_demand` is what distinguishes a `/scan/vd`-triggered scan from the `option=VDFirst` one
 a session triggers. The task rows themselves (pending, running, completed, dead-lettered) are the
 Task Manager's; see the operator page on
 [manager tasks](../../../../docs/ref/modules/task_manager/manager-tasks.md).

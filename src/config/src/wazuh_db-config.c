@@ -67,7 +67,7 @@ int Read_WazuhDB_JSON(const struct cJSON *wdb) {
     }
 
     if (item = cJSON_GetObjectItem(global, "max_files"), item != NULL) {
-        if (!cJSON_IsNumber(item) || item->valuedouble <= 0) {
+        if (!cJSON_IsNumber(item) || item->valuedouble <= 0 || item->valuedouble > INT_MAX) {
             w_mconf_json_invalid("max_files", item);
             return OS_INVALID;
         }

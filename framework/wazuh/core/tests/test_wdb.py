@@ -249,6 +249,54 @@ def test_execute(send_mock, socket_send_mock, connect_mock):
         mywdb.execute("agent 001 sql select test from test offset 1 count")
 
 
+@pytest.mark.parametrize('query, expected_count_query', [
+    # The query's own GROUP BY is removed from the count query
+    ("global sql select id from agent where (id > 0) group by id limit 10",
+     "global sql select count(*) from agent where (id > 0)  "),
+    # Literals that end in `group by <token>` keep every quote, so no value text turns into SQL
+    ("global sql select id from agent where (name = 'x group by a' or name = ' or (select 1) or ''group by a') "
+     "limit 10",
+     "global sql select count(*) from agent where (name = 'x group by a' or name = ' or (select 1) or ''group by a') "),
+    # The real clause is still removed when a literal holds the same text
+    ("global sql select id from agent where (name = 'group by id') group by id limit 10",
+     "global sql select count(*) from agent where (name = 'group by id')  "),
+])
+@patch("socket.socket.connect")
+def test_execute_count_query_keeps_literals(connect_mock, query, expected_count_query):
+    """The count query built by `execute` must strip only the GROUP BY clause outside string literals."""
+    sent = []
+
+    def send(msg, raw=False):
+        sent.append(msg)
+        return [{'count(*)': 0}]
+
+    mywdb = WazuhDBConnection()
+    with patch.object(mywdb, '_send', side_effect=send):
+        mywdb.execute(query)
+
+    assert sent[0] == expected_count_query
+    assert sent[0].count("'") % 2 == 0
+
+
+def test_strip_group_by_runs_on_sqlite():
+    """Two values ending in the same `group by <token>` must not flip the quoting of the count query."""
+    import sqlite3
+
+    from wazuh.core.wdb import _strip_group_by
+
+    db = sqlite3.connect(':memory:')
+    db.execute("create table agent (id integer, name text, internal_key text)")
+    db.executemany("insert into agent values (?, ?, ?)", [(1, 'a', 'secret1'), (2, 'b', 'secret2')])
+    injected = ("select count(*) from agent where (id = 1) and (name = 'x group by a' or name = "
+                "' or (select count(*) from agent where id = 2 and length(internal_key) > 3) > 0 "
+                "or ''group by a') group by id")
+    count_query = _strip_group_by(injected)
+
+    # With the strip running over the literals, the subquery became SQL and this count was 1
+    assert count_query.endswith("group by a') ")
+    assert db.execute(count_query).fetchone()[0] == 0
+
+
 @patch("socket.socket.connect")
 @patch("socket.socket.send")
 def test_execute_pagination(socket_send_mock, connect_mock):

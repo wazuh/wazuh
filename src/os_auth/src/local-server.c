@@ -141,6 +141,51 @@ static const struct {
 // Dispatch local request. STATIC: the unit tests drive the token verbs and `add` through it.
 STATIC char* local_dispatch(const char *input);
 
+// local_add(), and whether to issue a re-enrollment secret: false for an enrollment a worker forwarded
+// from port 1515, whose protocol cannot deliver one (see the `legacy` argument in local_dispatch()).
+STATIC cJSON* local_add_ex(const char *id,
+                           const char *name,
+                           const char *ip,
+                           const char *groups,
+                           const char *key,
+                           const char *key_hash,
+                           authd_force_options_t *force_options,
+                           const char *source,
+                           bool issue_secret);
+
+/* Log a request the dispatcher refused, at the level of whose fault it is. ERROR only for this daemon
+ * failing (internal error, key generation, the master unreachable, a store or journal write); WARNING for
+ * a capacity limit the operator acts on; debug level for the re-enrollment verdicts, which anyone who can
+ * reach remoted's /enroll fires at will; INFO for every other refusal, which is the caller's (a bad
+ * request, a duplicate, an exhausted or revoked token, a write sent to a worker). */
+static void local_log_refusal(auth_local_err ierror) {
+    const int code = ERRORS[ierror].code;
+    const char *message = ERRORS[ierror].message;
+
+    switch (ierror) {
+    case EINTERNAL:
+    case EKEY:
+    case ENOMASTERCOMM:
+    case ETOKENSTOREFAILED:
+    case EIDENTITYUNRECORDED:
+        merror("Local request failed with error %d: %s.", code, message);
+        break;
+    case EAGLIM:
+    case EDELETEBACKLOG:
+        mwarn("Local request refused with error %d: %s.", code, message);
+        break;
+    case EREENROLLUNKNOWN:
+    case EREENROLLINVALID:
+    case EREENROLLSTALE:
+    case EREENROLLINPROGRESS:
+        mdebug1("Local request refused with error %d: %s.", code, message);
+        break;
+    default:
+        minfo("Local request refused with error %d: %s.", code, message);
+        break;
+    }
+}
+
 // Per-connection thread body: recv, dispatch, send, close. See run_local_server()'s comment on
 // why this now runs on its own detached thread instead of inline on the accept loop.
 static void* handle_local_client(void *arg);
@@ -279,6 +324,8 @@ static cJSON* local_token_revoke(cJSON *arguments, int *ierror);
 static cJSON* local_token_purge(cJSON *arguments, int *ierror);
 // Whether `text` has the shape of a token id: exactly ETOKEN_ID_CHARS canonical base64url chars.
 static int is_token_id(const char *text);
+// Optional boolean argument. 0 = absent, 1 = present (*out set), -1 = wrong type.
+static int get_optional_bool_arg(cJSON *arguments, const char *key, int *out);
 
 // Services one already-accepted connection: set the recv timeout, read one request, dispatch, send
 // the reply, close. Shared by the threaded path and run_local_server()'s at-the-cap inline
@@ -541,12 +588,24 @@ char* local_dispatch(const char *input) {
                     ierror = EINVGROUP;
                     goto fail;
                 }
+                // A list naming no group ("", ",") is no list: the agent goes to `default`, which is
+                // what remoted tells it. Passed on, it registered the agent with no group at all
+                // (and wiped the groups of an agent re-enrolling).
+                if (groups[strspn(groups, ",")] == '\0') {
+                    os_free(groups);
+                }
             }
+
+            // `legacy`: a worker forwarding a port-1515 enrollment. That protocol has no field for the
+            // re-enrollment secret, so the worker drops it: issuing one here would only store a secret
+            // nobody holds. A direct port-1515 enrollment stores none either.
+            int legacy = 0;
 
             if (get_optional_string_arg(arguments, "key_hash", &key_hash) < 0 ||
                 get_optional_string_arg(arguments, "key", &key) < 0 ||
                 get_optional_string_arg(arguments, "token_id", &token_id) < 0 ||
-                get_optional_string_arg(arguments, "source", &source) < 0) {
+                get_optional_string_arg(arguments, "source", &source) < 0 ||
+                get_optional_bool_arg(arguments, "legacy", &legacy) < 0) {
                 ierror = EJSON;
                 goto fail;
             }
@@ -637,7 +696,17 @@ char* local_dispatch(const char *input) {
                     goto fail;
                 }
                 // Self-enrollment shape. force is ignored for workers, as on port 1515: the master
-                // assigns the ID, generates the key, and decides force-replace itself.
+                // assigns the ID, generates the key, and decides force-replace itself. The address
+                // travels in its registered form, which is also what this node answers with.
+                char registered_ip[IPSIZE + 1] = {0};
+                if (strcmp(ip, "any")) {
+                    if (w_auth_registered_ip(ip, registered_ip, sizeof(registered_ip)) != 0) {
+                        mwarn("Not valid IP '%s'", ip);
+                        ierror = ENOIP;
+                        goto fail;
+                    }
+                    ip = registered_ip;
+                }
                 response = local_add_clustered(name, ip, groups, key_hash, token_id, reenroll_kid, reenroll_bearer, source);
             } else if (reenroll_kid) {
                 // force is irrelevant here: nothing is replaced, the agent's own entry is rotated in place,
@@ -664,7 +733,8 @@ char* local_dispatch(const char *input) {
                         goto fail;
                     }
                 }
-                response = local_add(id, name, ip, groups, key, key_hash, force ? &force_options : &config.force_options, source);
+                response = local_add_ex(id, name, ip, groups, key, key_hash, force ? &force_options : &config.force_options,
+                                        source, !legacy);
                 if (token_id) {
                     cJSON *err = response ? cJSON_GetObjectItem(response, "error") : NULL;
                     // Every path closes the reservation: committed when the agent was created, given
@@ -811,7 +881,9 @@ char* local_dispatch(const char *input) {
     return output;
 
 fail:
-    merror("ERROR %d: %s.", ERRORS[ierror].code, ERRORS[ierror].message);
+    // No "ERROR" in the text: the logger already prints the level, and "ERROR: ERROR 9022: ..." read
+    // as a stutter. The level follows whose fault the refusal is, not the fact that it is one.
+    local_log_refusal(ierror);
     response = local_create_error_response(ERRORS[ierror].code, ERRORS[ierror].message);
     output = cJSON_PrintUnformatted(response);
     cJSON_Delete(response);
@@ -828,10 +900,25 @@ cJSON* local_add(const char *id,
                  const char *key_hash,
                  authd_force_options_t *force_options,
                  const char *source) {
+    return local_add_ex(id, name, ip, groups, key, key_hash, force_options, source, true);
+}
+
+STATIC cJSON* local_add_ex(const char *id,
+                           const char *name,
+                           const char *ip,
+                           const char *groups,
+                           const char *key,
+                           const char *key_hash,
+                           authd_force_options_t *force_options,
+                           const char *source,
+                           bool issue_secret) {
     int index;
     cJSON *response = NULL;
     int ierror;
-    char* str_result = NULL;
+    char *ip_result = NULL;
+    char *name_result = NULL;
+    keyentry *ip_holder = NULL;
+    keyentry *name_holder = NULL;
     char _ip[IPSIZE + 1] = {0};
     char reenroll_secret[AGENT_REENROLL_SECRET_HEX_CHARS + 1] = {0};
     char canonical_id[12] = {0}; /* INT32_MAX has 10 digits */
@@ -885,9 +972,10 @@ cJSON* local_add(const char *id,
     }
 
     /* Phase 0 of the identity journal, and it has to be HERE, before anything is mutated: a
-     * duplicate name or IP resolved by <force> deletes the previous agent inside the checks below
-     * (w_auth_replace_agent() -> add_remove() + OS_DeleteKey()), so a refusal discovered after that
-     * point would answer 9031 with that agent already destroyed and queued for the indexer purge.
+     * duplicate name or IP resolved by <force> deletes the previous agent once the checks below have
+     * admitted the request (w_auth_remove_replaced_agent() -> add_remove() + OS_DeleteKey()), so a
+     * refusal discovered after that point would answer 9031 with that agent already destroyed and
+     * queued for the indexer purge.
      * The deletion path already reasons this way one line into the same function -- see
      * purge_backlog_full() -- and this is its twin for credentials. */
     if (identity_journal_full()) {
@@ -922,50 +1010,42 @@ cJSON* local_add(const char *id,
         goto fail;
     }
 
+    /* Every refusal below is decided BEFORE anything is removed. A replacement is a deletion, so
+     * judging the IP holder and removing it before the name check ran let a request carrying one
+     * agent's IP and another agent's name delete the first and then be refused for the second: an
+     * agent gone, and nothing added in its place. The duplicate IP and name checks only judge their
+     * holders; both are removed together once the request is admitted, right before the new agent is
+     * added. The pointers stay valid in between: mutex_keys is held throughout, and OS_DeleteKey()
+     * moves entry pointers, never the entries they point to. */
+
     // Check for duplicate ID
-    //
-    // w_auth_replace_agent() os_strdup()s a fresh message into str_result on every call, so the
-    // duplicate IP and name checks below free what the previous one left -- an add matching on both
-    // would otherwise leak, since only one os_free() runs at the end. The ID check does not
-    // participate: it refuses instead of replacing, so it never writes str_result.
     if (id && (index = OS_IsAllowedID(&keys, id), index >= 0)) {
         /* NOT replaced, even when force would allow it: replacing by the SAME id queues a purge for
          * an id that gets a new owner in this very operation. The agent has to be deleted first,
          * and its purge has to finish, before the id can be reused.
          *
-         * Nothing is freed here, unlike the IP and name checks below: this branch no longer calls
-         * w_auth_replace_agent(), so it leaves nothing in str_result for them to free. */
+         * This branch does not call w_auth_check_replace_agent(): it refuses, it never replaces. */
         mwarn("Duplicate ID '%s', rejecting the insertion: delete the agent and let its deletion "
               "finish before reusing the ID.", id);
         ierror = EDUPID;
         goto fail;
     }
 
-    /* Check for duplicate IP */
+    /* Check for duplicate IP, on the form the address is registered in: the IP tree is keyed by the
+     * bare address, so a host written "/32", "/128" or "/255.255.255.255" has to be looked up (and
+     * stored, and answered) without its mask, or it would land next to the agent already there. */
     if (strcmp(ip, "any")) {
-        os_ip *aux_ip;
-        os_calloc(1, sizeof(os_ip), aux_ip);
-
-        if (!OS_IsValidIP(ip, aux_ip)) {
+        if (w_auth_registered_ip(ip, _ip, sizeof(_ip)) != 0) {
             mwarn("Not valid IP '%s'", ip);
-            w_free_os_ip(aux_ip);
             ierror = ENOIP;
             goto fail;
         }
 
-        strncpy(_ip, aux_ip->ip, IPSIZE);
-        w_free_os_ip(aux_ip);
-
         if (index = OS_IsAllowedIP(&keys, _ip), index >= 0) {
-            os_free(str_result); // see the note on str_result above
-            if (OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result, &warn)) {
-                minfo("Duplicate IP '%s'. %s", _ip, str_result);
-            } else {
-                if (warn) {
-                    mwarn("Duplicate IP '%s', rejecting enrollment. %s", _ip, str_result);
-                } else {
-                    minfo("Duplicate IP '%s', rejecting enrollment. %s", _ip, str_result);
-                }
+            ip_holder = keys.keyentries[index];
+            if (OS_SUCCESS != w_auth_check_replace_agent(ip_holder, key_hash, force_options, &ip_result, &warn)) {
+                // Throttled, like the port-1515 refusal: a retrying agent repeats it at its own rate.
+                w_auth_log_client_rejection(!warn, "Duplicate IP '%s', rejecting enrollment. %s", _ip, ip_result);
                 ierror = EDUPIP;
                 goto fail;
             }
@@ -974,17 +1054,11 @@ cJSON* local_add(const char *id,
         strncpy(_ip, ip, IPSIZE);
     }
 
-    /* Check for duplicate names */
-    if (index = OS_IsAllowedName(&keys, name), index >= 0) {
-        os_free(str_result); // see the note on str_result above
-        if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result, &warn)) {
-            minfo("Duplicate name. %s", str_result);
-        } else {
-            if (warn) {
-                mwarn("Duplicate name '%s', rejecting enrollment. %s", name, str_result);
-            } else {
-                minfo("Duplicate name '%s', rejecting enrollment. %s", name, str_result);
-            }
+    /* Check for duplicate names. The IP holder may be this same agent; it has been judged already. */
+    if ((index = OS_IsAllowedName(&keys, name), index >= 0) && keys.keyentries[index] != ip_holder) {
+        name_holder = keys.keyentries[index];
+        if (OS_SUCCESS != w_auth_check_replace_agent(name_holder, key_hash, force_options, &name_result, &warn)) {
+            w_auth_log_client_rejection(!warn, "Duplicate name '%s', rejecting enrollment. %s", name, name_result);
             ierror = EDUPNAME;
             goto fail;
         }
@@ -994,9 +1068,20 @@ cJSON* local_add(const char *id,
      * nothing to undo: it never goes to client.keys -- the writer persists it in global.db and this one
      * answer hands it to the agent -- and an agent without one could never re-enroll, so the enrollment
      * is refused the same way a failed key generation is (no weaker generator to fall back to). */
-    if (OS_NewReenrollSecret(reenroll_secret, sizeof(reenroll_secret)) != 0) {
+    if (issue_secret && OS_NewReenrollSecret(reenroll_secret, sizeof(reenroll_secret)) != 0) {
         ierror = EKEY;
         goto fail;
+    }
+
+    /* Admitted: only now are the replaced agents removed. Removing them first also keeps the agent
+     * limit below from counting the entries this request replaces. */
+    if (ip_holder) {
+        minfo("Duplicate IP '%s'. %s", _ip, ip_result);
+        w_auth_remove_replaced_agent(ip_holder);
+    }
+    if (name_holder) {
+        minfo("Duplicate name. %s", name_result);
+        w_auth_remove_replaced_agent(name_holder);
     }
 
     index = OS_AddNewAgent(&keys, id, name, _ip, key, config.max_agents);
@@ -1018,8 +1103,10 @@ cJSON* local_add(const char *id,
     char assigned_id[16] = {0};
     strncpy(assigned_id, keys.keyentries[index]->id, sizeof(assigned_id) - 1);
 
-    if (!identity_journal_append(assigned_id, name, _ip, keys.keyentries[index]->raw_key,
-                                 reenroll_secret, false, &journal_seq)) {
+    /* Without a secret there is nothing the agent could not get back by enrolling again, which is how
+     * the port-1515 path has always worked: no journal entry, as there. */
+    if (issue_secret && !identity_journal_append(assigned_id, name, _ip, keys.keyentries[index]->raw_key,
+                                                 reenroll_secret, false, &journal_seq)) {
         // Its own copy of the id: OS_DeleteKey() frees the entry this would otherwise point into.
         OS_DeleteKey(&keys, assigned_id, 1);
         ierror = EIDENTITYUNRECORDED;
@@ -1027,11 +1114,12 @@ cJSON* local_add(const char *id,
     }
 
     /* Add pending key to write */
-    add_insert(keys.keyentries[index], groups, reenroll_secret, journal_seq);
+    add_insert(keys.keyentries[index], groups, issue_secret ? reenroll_secret : NULL, journal_seq);
     write_pending = 1;
     w_cond_signal(&cond_pending);
 
-    response = local_create_agent_response(keys.keyentries[index]->id, name, _ip, keys.keyentries[index]->raw_key, reenroll_secret);
+    response = local_create_agent_response(keys.keyentries[index]->id, name, _ip, keys.keyentries[index]->raw_key,
+                                           issue_secret ? reenroll_secret : NULL);
     w_mutex_unlock(&mutex_keys);
     OPENSSL_cleanse(reenroll_secret, sizeof(reenroll_secret));
 
@@ -1040,14 +1128,16 @@ cJSON* local_add(const char *id,
     } else {
         minfo("Agent key generated for agent '%s' (requested locally)", name);
     }
-    os_free(str_result);
+    os_free(ip_result);
+    os_free(name_result);
     return response;
 
 fail:
     w_mutex_unlock(&mutex_keys);
     OPENSSL_cleanse(reenroll_secret, sizeof(reenroll_secret));
     response = local_create_error_response(ERRORS[ierror].code, ERRORS[ierror].message);
-    os_free(str_result);
+    os_free(ip_result);
+    os_free(name_result);
     return response;
 }
 
@@ -1135,18 +1225,12 @@ static cJSON* local_reenroll(const char *kid, const char *bearer, const char *na
      * may keep its own. No force rules: nothing is replaced, and the secret already proved this caller IS
      * the agent. */
     if (strcmp(ip, "any")) {
-        os_ip *aux_ip;
-        os_calloc(1, sizeof(os_ip), aux_ip);
-
-        if (!OS_IsValidIP(ip, aux_ip)) {
+        // The registered form, as local_add() checks it: a full-length mask is the bare address.
+        if (w_auth_registered_ip(ip, _ip, sizeof(_ip)) != 0) {
             mwarn("Not valid IP '%s'", ip);
-            w_free_os_ip(aux_ip);
             ierror = ENOIP;
             goto fail;
         }
-
-        strncpy(_ip, aux_ip->ip, IPSIZE);
-        w_free_os_ip(aux_ip);
 
         if (other = OS_IsAllowedIP(&keys, _ip), other >= 0 && other != index) {
             mdebug1("Re-enrollment of agent '%s' refused: IP '%s' belongs to agent '%s'.", kid, _ip, keys.keyentries[other]->id);
@@ -1239,7 +1323,9 @@ cJSON* local_add_clustered(const char *name, const char *ip, const char *groups,
     cJSON *response = NULL;
 
     mdebug2("add_clustered(%s)", name);
-    minfo("Dispatching enrollment request to master node");
+    // Debug: anyone who can reach the worker's enrollment endpoints fires it at will, and what matters is
+    // logged anyway: the master logs the agent it adds, and this node the master's refusal, below.
+    mdebug1("Dispatching enrollment request to master node");
 
     result = w_request_agent_add_clustered(err_response, name, ip, groups, key_hash,
                                             &new_id, &new_key, &new_secret, NULL, NULL, token_id, reenroll_kid, reenroll_bearer,
@@ -1270,7 +1356,7 @@ cJSON* local_add_clustered(const char *name, const char *ip, const char *groups,
         response = local_create_error_response(master_error_code, message);
     } else {
         // Transport failure, or an unparseable response: either way, no clean answer.
-        merror("ERROR %d: %s.", ERRORS[ENOMASTERCOMM].code, ERRORS[ENOMASTERCOMM].message);
+        merror("Error %d: %s.", ERRORS[ENOMASTERCOMM].code, ERRORS[ENOMASTERCOMM].message);
         response = local_create_error_response(ERRORS[ENOMASTERCOMM].code, ERRORS[ENOMASTERCOMM].message);
     }
 

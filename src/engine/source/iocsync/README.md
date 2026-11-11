@@ -57,7 +57,7 @@ The module runs as the `ioc-sync-task` scheduler task (created in `main.cpp` onl
 2. **Pre-flight consumer check**: `isConsumerReadyForSync(IOC_ENRICHMENT_CONSUMER_ID)` (with retry) — the `cti:catalog:consumer:iocs` document in `.wazuh-cti-consumers` must have `status` `"ready"` and a non-zero `local_offset`; otherwise the cycle is skipped
 3. **Check remote index**: Verify the IOC data index (`wazuh-threatintel-enrichments`) exists in the Wazuh Indexer. A missing index (404) returns `false` and skips the cycle without retrying; any other error is retried and then fails the cycle
 4. **Fetch remote hashes**: Get the per-type hash map (`__ioc_type_hashes__`) from the indexer; `std::nullopt` (consumer not ready) skips the cycle
-5. **For each IOC type** (marked `UPDATING` in the status snapshot while it runs, `READY` after):
+5. **For each IOC type** (marked `UPDATING` in the status snapshot while it runs; afterwards `READY` when it was updated or already current, `FAILED` when its sync errored — even if the previous version stays available — and, when it was skipped, `FAILED` only if it holds no version yet):
    - Compare remote hash against locally stored hash
    - No remote hash for the type → skip with a warning
    - If identical and DB exists → skip
@@ -119,6 +119,13 @@ Remote checks (`isConsumerReadyForSync`, `existIocDataInRemote`, `getRemoteHashe
 
 If the download-and-populate step fails or the consumer turns out not ready, the temporary database is removed. If ensuring the target database or the hot-swap itself fails, the temporary database is also cleaned up. The target database remains untouched, and the local hash is not updated, so the next cycle retries.
 
+### Error Text in Log Lines
+
+An indexer connector error ends with the whole response body; a circuit-breaker `429` is more than a kilobyte,
+its root cause repeated. Every `WARNING` that carries a caught error passes it through `summarizeError()`
+(`src/errorSummary.hpp`): the text before the body (which holds the HTTP status), then the body's `error.type`
+and `error.reason` (the reason cut to 160 characters), the whole line's error part bounded to 400 characters.
+
 ### Persistence
 
 Sync state is stored in the engine's internal store under `iocsync/status/0` as a JSON array of `SyncedIOCDatabase` entries (an object with a `/databases` array is also accepted on load). Each entry tracks the IOC type, its last known data hash and the Unix time of its last successful update. On first setup (no document), every type from `getSupportedIocTypes()` is added and the document is written.
@@ -133,12 +140,14 @@ iocsync/
 ├── include/iocsync/
 │   └── iocsync.hpp               # IocSync — concrete implementation
 ├── src/
-│   └── iocsync.cpp               # Full implementation + SyncedIOCDatabase class
+│   ├── iocsync.cpp               # Full implementation + SyncedIOCDatabase class
+│   └── errorSummary.hpp          # summarizeError(): bounded indexer error text for log lines
 └── test/
     ├── mocks/iocsync/
     │   └── mockIocSync.hpp       # GMock of IIocSync
     └── src/unit/
-        └── iocsync_status_test.cpp
+        ├── iocsync_status_test.cpp
+        └── errorSummary_test.cpp
 ```
 
 ## Public Interface
@@ -190,7 +199,7 @@ class IIocSync {
 
 **`synchronize()`**: Acquires the KVDB manager, checks consumer readiness and remote availability, fetches hashes, iterates all configured IOC types calling `syncIOCType()` for each, and persists state if anything changed.
 
-**`syncIOCType()`**: Per-type logic — compares hashes, downloads to temp DB via `downloadAndPopulateDB()`, ensures target exists, performs `hotSwap()`, updates local hash. Returns `true` if the database was updated.
+**`syncIOCType()`**: Per-type logic — compares hashes, downloads to temp DB via `downloadAndPopulateDB()`, ensures target exists, performs `hotSwap()`, updates local hash. Returns a `TypeSyncResult`: `UPDATED` (database replaced), `UNCHANGED` (hash matches), `SKIPPED` (no remote hash for the type, or the consumer turned not ready) or `FAILED` (download, target creation or hot-swap error). `synchronize()` maps it to the type's `status`, so an error is never reported as `ready`.
 
 **`downloadAndPopulateDB()`**: Streams IOC documents from the indexer in batches of `m_iocSyncBatchSize` via `streamIocsByType()`, passing `IOC_ENRICHMENT_CONSUMER_ID` for consumer validation. Returns `bool` (false if consumer not ready). Each document's key is normalized to lowercase. Values are stored via `ioc::kvdb::details::updateValueInDB()` which appends to arrays if the key already exists. On consumer-not-ready or download failure, rolls back the temp database.
 
@@ -213,7 +222,7 @@ Tracks per-type sync state with JSON serialization:
 
 ## Testing
 
-`iocsync_status_test.cpp` (`iocsync_utest`) covers the status snapshot and failure reporting with mocked store, indexer connector and KVDB manager: initial status, failed cycles marking unsynced types `FAILED`, an index-check error retried then failing the cycle, a missing IOC index not retried, and restoring `last_successful_update` from the store.
+`iocsync_status_test.cpp` (`iocsync_utest`) covers the status snapshot and failure reporting with mocked store, indexer connector and KVDB manager: initial status, failed cycles marking unsynced types `FAILED`, a failed per-type download reported `FAILED` while the old version stays available, a successful per-type sync reported `READY`, a type with no remote hash and no version reported `FAILED`, an index-check error retried then failing the cycle, a missing IOC index not retried, and restoring `last_successful_update` from the store. `errorSummary_test.cpp` (same executable) covers `summarizeError()`: a 429 circuit-breaker body reduced to status, type and a short reason; a message without a body unchanged; an unparseable body dropped; a plain-string `error` kept; a long message bounded.
 
 ## Consumers
 

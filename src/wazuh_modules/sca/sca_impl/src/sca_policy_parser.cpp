@@ -4,6 +4,7 @@
 #include <sca_policy_check.hpp>
 #include <sca_utils.hpp>
 
+#include <cstdint>
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -115,8 +116,6 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
                 policyId = policyNode["id"].get<std::string>();
             }
 
-            policiesAndChecks["policies"].push_back(policyNode);
-
             LoggingHelper::getInstance().log(LOG_DEBUG, "Policy parsed.");
         }
         catch (const std::exception& e)
@@ -140,6 +139,13 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
             {
                 requirements.condition = requirementsNode["condition"].get<std::string>();
                 ValidateConditionString(requirements.condition);
+            }
+            else if (requirementsNode.contains("rules") && requirementsNode["rules"].is_array() &&
+                     !requirementsNode["rules"].empty())
+            {
+                // Requirements rules cannot be evaluated without a condition, so the policy is rejected here
+                // instead of failing when the scan reaches it.
+                throw std::invalid_argument("Missing or invalid condition");
             }
 
             nlohmann::json requirementsOutput;
@@ -191,7 +197,9 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
         }
         catch (const std::exception& e)
         {
-            LoggingHelper::getInstance().log(LOG_ERROR, std::string("Failed to parse requirements. Error: ") + e.what());
+            LoggingHelper::getInstance().log(LOG_ERROR,
+                                             "Failed to parse the requirements of policy file '" + m_filename.string() +
+                                             "'. Error: " + e.what());
             return nullptr;
         }
     }
@@ -200,31 +208,46 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
     {
         for (const auto& checkNode : m_jsonDocument["checks"])
         {
+            std::string checkLabel = "without a valid id";
+
             try
             {
                 Check check;
+                std::string checkId;
 
-                if (checkNode.contains("id"))
+                // The scan reports every result under the check id and evaluates the check with its condition, so a
+                // check missing either one is skipped here rather than reaching the scan. A numeric id must be an
+                // integer: a fractional one would be truncated onto another check's id.
+                const auto idNode = checkNode.find("id");
+
+                if (idNode != checkNode.end() && idNode->is_string())
                 {
-                    if (checkNode["id"].is_string())
-                    {
-                        check.id = checkNode["id"].get<std::string>();
-                    }
-                    else if (checkNode["id"].is_number())
-                    {
-                        check.id = std::to_string(checkNode["id"].get<int>());
-                    }
-                    else
-                    {
-                        // Log what type we actually got to help debug
-                        LoggingHelper::getInstance().log(LOG_WARNING, "Check ID is not a string or number, unexpected type found");
-                    }
+                    checkId = idNode->get<std::string>();
                 }
+                else if (idNode != checkNode.end() && idNode->is_number_unsigned())
+                {
+                    checkId = std::to_string(idNode->get<std::uint64_t>());
+                }
+                else if (idNode != checkNode.end() && idNode->is_number_integer())
+                {
+                    checkId = std::to_string(idNode->get<std::int64_t>());
+                }
+                else
+                {
+                    throw std::invalid_argument("Missing or invalid id");
+                }
+
+                check.id = checkId;
+                checkLabel = "'" + checkId + "'";
 
                 if (checkNode.contains("condition") && checkNode["condition"].is_string())
                 {
                     check.condition = checkNode["condition"].get<std::string>();
                     ValidateConditionString(check.condition);
+                }
+                else
+                {
+                    throw std::invalid_argument("Missing or invalid condition");
                 }
 
                 // Create a copy of the check node for output with valid rules only
@@ -232,10 +255,7 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
                 checkWithValidRules["rules"] = nlohmann::json::array();
 
                 // Ensure the output JSON always has a string ID
-                if (check.id.has_value())
-                {
-                    checkWithValidRules["id"] = check.id.value();
-                }
+                checkWithValidRules["id"] = checkId;
 
                 if (checkNode.contains("rules") && checkNode["rules"].is_array())
                 {
@@ -258,9 +278,9 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
                     }
                 }
 
-                LoggingHelper::getInstance().log(LOG_DEBUG, "Check " + check.id.value_or("Invalid id") + " parsed.");
+                LoggingHelper::getInstance().log(LOG_DEBUG, "Check " + checkId + " parsed.");
 
-                ValidateComplianceKeys(checkWithValidRules, check.id.value_or("unknown"));
+                ValidateComplianceKeys(checkWithValidRules, checkId);
 
                 checks.push_back(std::move(check));
                 checkWithValidRules["policy_id"] = policyId;
@@ -268,7 +288,9 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
             }
             catch (const std::exception& e)
             {
-                LoggingHelper::getInstance().log(LOG_ERROR, std::string("Failed to parse a check. Skipping it. Error: ") + e.what());
+                LoggingHelper::getInstance().log(LOG_ERROR,
+                                                 "Failed to parse check " + checkLabel + " of policy file '" +
+                                                 m_filename.string() + "'. Skipping it. Error: " + e.what());
                 continue;
             }
         }
@@ -278,6 +300,9 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
         LoggingHelper::getInstance().log(LOG_ERROR, "Policy file does not contain checks");
         return nullptr;
     }
+
+    // Recorded only for a policy that is returned: a rejected one is not scanned, so it must not be stored either.
+    policiesAndChecks["policies"].push_back(m_jsonDocument["policy"]);
 
     return std::make_unique<SCAPolicy>(policyId, std::move(requirements), std::move(checks));
 }

@@ -84,6 +84,10 @@ The parameter is a non-empty base channel name. The effective channel is `{origi
 `originSpace` comes from the policy definition. The effective channel may only contain letters, digits, `_` and `-`,
 and at most 255 characters; otherwise the asset fails to build.
 
+A policy that routes events creates the channel when it is built. A tester session (`POST /content/validate/policy`)
+only checks the name: the channel is created by the first event run against the session, so a policy that is only
+validated (`load_in_tester: false`) creates no channel.
+
 ### Files
 
 With the default settings, the events of a channel are written to:

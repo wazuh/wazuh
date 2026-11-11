@@ -342,8 +342,8 @@ def _create_problem(exc: Exception, code: int = None):
         raise ProblemException(status=404, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
     elif isinstance(exc, exception.WazuhTooManyRequests):
         raise ProblemException(status=429, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
-    elif isinstance(exc, exception.WazuhNotAcceptable):
-        raise ProblemException(status=406, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
+    elif isinstance(exc, exception.WazuhUnsupportedMediaType):
+        raise ProblemException(status=415, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
     elif isinstance(exc, exception.WazuhError):
         raise ProblemException(status=400 if not code else code,
                                type=exc.type, title=exc.title, detail=exc.message, ext=ext)

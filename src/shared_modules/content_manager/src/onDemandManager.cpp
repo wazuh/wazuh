@@ -13,6 +13,7 @@
 #include "contentOnDemand.hpp"
 #include "sharedDefs.hpp"
 
+#include <algorithm>
 #include <utility>
 
 namespace content_manager
@@ -112,10 +113,10 @@ void OnDemandManager::dispatch(const std::string& topic,
         if (const auto decision = m_laneFullThrottle.record())
         {
             logWarn(WM_CONTENTUPDATER,
-                    "Rejected %llu on-demand update(s) with 503 in the last %d s: the on-demand lane is full "
+                    "Rejected %llu on-demand update(s) with 503 %s: the on-demand lane is full "
                     "(%zu slot(s)) (last topic: '%s').",
                     static_cast<unsigned long long>(decision.total),
-                    wazuh::uds_http::LogThrottle::kDefaultWindowSeconds,
+                    decision.period().c_str(),
                     QUEUE_SLOTS,
                     topic.c_str());
         }
@@ -127,17 +128,49 @@ void OnDemandManager::dispatch(const std::string& topic,
     m_wake.notify_one();
 }
 
+std::string OnDemandManager::loggableTopic(const std::string& topic)
+{
+    static constexpr char HEX[] = "0123456789abcdef";
+    const auto kept = std::min(topic.size(), LOGGED_TOPIC_MAX);
+    std::string out;
+    out.reserve(kept + 3);
+    for (std::size_t i = 0; i < kept; ++i)
+    {
+        const auto byte = static_cast<unsigned char>(topic[i]);
+        if (byte < 0x20 || byte == 0x7f)
+        {
+            out += "\\x";
+            out += HEX[byte >> 4];
+            out += HEX[byte & 0x0f];
+        }
+        else if (byte == '\\')
+        {
+            out += "\\\\";
+        }
+        else
+        {
+            out += static_cast<char>(byte);
+        }
+    }
+    if (topic.size() > kept)
+    {
+        out += "...";
+    }
+    return out;
+}
+
 void OnDemandManager::logUnknownTopic(const std::string& topic)
 {
     // Shared by both lookups -- the inline one and the worker's re-check after the topic was
     // removed while the job waited. Same condition from the caller's side, same window.
     if (const auto decision = m_unknownTopicThrottle.record())
     {
+        // An unknown topic is the caller's raw input: never quote it verbatim.
         logWarn(WM_CONTENTUPDATER,
-                "Rejected %llu on-demand request(s) with 404 in the last %d s: unknown topic (last: '%s').",
+                "Rejected %llu on-demand request(s) with 404 %s: unknown topic (last: '%s').",
                 static_cast<unsigned long long>(decision.total),
-                wazuh::uds_http::LogThrottle::kDefaultWindowSeconds,
-                topic.c_str());
+                decision.period().c_str(),
+                loggableTopic(topic).c_str());
     }
 }
 
@@ -236,10 +269,10 @@ void OnDemandManager::run()
                 if (const auto decision = m_inProgressThrottle.record())
                 {
                     logInfo(WM_CONTENTUPDATER,
-                            "Answered %llu on-demand request(s) with 409 in the last %d s: an update for that topic "
+                            "Answered %llu on-demand request(s) with 409 %s: an update for that topic "
                             "was already running (last: '%s').",
                             static_cast<unsigned long long>(decision.total),
-                            wazuh::uds_http::LogThrottle::kDefaultWindowSeconds,
+                            decision.period().c_str(),
                             job.topic.c_str());
                 }
                 job.responder->send(

@@ -1086,6 +1086,10 @@ int wdb_global_get_agent_max_group_priority(wdb_t *wdb, int id) {
 }
 
 wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, int priority, const char* create_agent_name) {
+    return wdb_global_assign_agent_group_ex(wdb, id, j_groups, priority, create_agent_name, NULL);
+}
+
+wdbc_result wdb_global_assign_agent_group_ex(wdb_t *wdb, int id, cJSON* j_groups, int priority, const char* create_agent_name, const char* create_register_ip) {
     cJSON* j_group_name = NULL;
     wdbc_result result = WDBC_OK;
     cJSON_ArrayForEach (j_group_name, j_groups) {
@@ -1103,9 +1107,14 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
                     if (OS_INVALID == insert_result) {
                         // Check if agent exists
                         if (!wdb_global_agent_exists(wdb, id)) {
-                            // Create agent in never_connected state
-                            const char *ip = "0.0.0.0";
-                            if (OS_INVALID == wdb_global_insert_agent(wdb, id, (char*)create_agent_name, (char*)ip, (char*)ip, NULL, NULL, NULL, time(NULL))) {
+                            // Create agent in never_connected state. The master sends the agent's registration
+                            // IP with its groups; the client.keys sync that follows only inserts missing agents,
+                            // so a placeholder written here would never be corrected. Without it (an older
+                            // payload), both addresses keep the 0.0.0.0 placeholder.
+                            const char *placeholder_ip = "0.0.0.0";
+                            const char *ip = create_register_ip ? NULL : placeholder_ip;
+                            const char *register_ip = create_register_ip ? create_register_ip : placeholder_ip;
+                            if (OS_INVALID == wdb_global_insert_agent(wdb, id, (char*)create_agent_name, (char*)ip, (char*)register_ip, NULL, NULL, NULL, time(NULL))) {
                                 mdebug1("Unable to create agent '%d' in never_connected state", id);
                                 result = WDBC_ERROR;
                             } else {
@@ -1341,9 +1350,15 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
                 }
                 if (valid_groups = wdb_global_validate_groups(wdb, j_groups, agent_id), OS_SUCCESS == valid_groups) {
                     char* agent_name = NULL;
+                    char* register_ip = NULL;
 
                     // For override mode, require agent name
                     if (mode == WDB_GROUP_OVERRIDE) {
+                        cJSON* j_register_ip = cJSON_GetObjectItem(j_group_info, "register_ip");
+                        if (cJSON_IsString(j_register_ip) && j_register_ip->valuestring[0] != '\0') {
+                            register_ip = j_register_ip->valuestring;
+                        }
+
                         cJSON* j_agent_name = cJSON_GetObjectItem(j_group_info, "name");
                         if (j_agent_name && cJSON_IsString(j_agent_name)) {
                             agent_name = j_agent_name->valuestring;
@@ -1358,7 +1373,7 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
                         }
                     }
 
-                    if (WDBC_ERROR == wdb_global_assign_agent_group(wdb, agent_id, j_groups, group_priority, agent_name)) {
+                    if (WDBC_ERROR == wdb_global_assign_agent_group_ex(wdb, agent_id, j_groups, group_priority, agent_name, register_ip)) {
                         ret = WDBC_ERROR;
                         if (wconfig.is_worker_node) {
                             mdebug1("There was an error assigning the groups to agent '%03d'. The agent-groups synchronization will retry it.", agent_id);

@@ -23,4 +23,7 @@ class ISCAPolicy
 
         /// @brief Stops the policy check
         virtual void Stop() = 0;
+
+        /// @brief Returns the policy id
+        virtual const std::string& GetId() const = 0;
 };

@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import collections
+import copy
 import logging
 import json
 import re
@@ -28,10 +29,13 @@ MAX_LOGGED_BODY_SIZE = 8 * 1024
 # `client_secret`, `x-api-key` and `accessToken` are all covered without the false positives
 # (`keyword`, `monkey`, `tokenizer`) a plain substring test would bring.
 SENSITIVE_FIELD_NAMES = frozenset({
-    'authorization', 'cookie', 'credential', 'credentials', 'key', 'passwd', 'password',
-    'pwd', 'secret', 'token',
+    'authorization', 'bearer', 'cookie', 'credential', 'credentials', 'key', 'passphrase', 'passwd',
+    'password', 'pwd', 'secret', 'session_id', 'token',
 })
 SENSITIVE_FIELD_SUFFIXES = tuple(f'_{name}' for name in SENSITIVE_FIELD_NAMES)
+# Words that mark a secret anywhere in a compound name, not only at its tail: `api_secret_value`,
+# `secret_value`.
+SENSITIVE_FIELD_WORDS = frozenset({'secret'})
 
 # Value written in place of a sensitive one.
 REDACTED_VALUE = '****'
@@ -61,7 +65,8 @@ def is_sensitive_field(name: str) -> bool:
     # either half.
     for candidate in (name.lower().replace('-', '_'),
                       _WORD_BOUNDARY.sub('_', name).lower().replace('-', '_')):
-        if candidate in SENSITIVE_FIELD_NAMES or candidate.endswith(SENSITIVE_FIELD_SUFFIXES):
+        if candidate in SENSITIVE_FIELD_NAMES or candidate.endswith(SENSITIVE_FIELD_SUFFIXES) \
+                or not SENSITIVE_FIELD_WORDS.isdisjoint(candidate.split('_')):
             return True
     return False
 
@@ -158,6 +163,26 @@ def redact_headers(headers) -> dict:
 def escape_control_chars(value: str) -> str:
     """Replace each control character with its Python escape sequence (`\\n`, `\\x1b`...)."""
     return control_chars_pattern.sub(lambda m: repr(m.group())[1:-1], value)
+
+
+# What the plain formatter escapes: the control characters above plus the other characters
+# `str.splitlines` breaks on (NEL, LINE SEPARATOR, PARAGRAPH SEPARATOR), so no reader splits a record.
+plain_line_breaks_pattern = re.compile(r'[\x00-\x1f\x7f\x85\u2028\u2029]')
+
+
+class PlainLogFormatter(logging.Formatter):
+    """Formatter of the plain-text API log that keeps every record on one physical line.
+
+    Any call site may log request data (a path, a header, a stored agent field), so the message is
+    escaped here, once for every record, instead of at each call site: a line break in it would let a
+    client write a whole forged entry, timestamp and level included. The traceback of a record logged
+    with `exc_info` is appended by `format()` after this step and keeps its own line breaks.
+    """
+
+    def formatMessage(self, record: logging.LogRecord) -> str:
+        record = copy.copy(record)
+        record.message = plain_line_breaks_pattern.sub(lambda m: repr(m.group())[1:-1], record.message)
+        return super().formatMessage(record)
 
 
 class APILoggerSize:
@@ -286,10 +311,9 @@ def set_logging(log_filepath, log_level='INFO', foreground_mode=False) -> dict:
                 "fmt": '%(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s',
             },
             "log": {
-                "()": "uvicorn.logging.DefaultFormatter",
+                "()": "api.alogging.PlainLogFormatter",
                 "fmt": "%(asctime)s %(levelname)s: %(message)s",
                 "datefmt": "%Y/%m/%d %H:%M:%S",
-                "use_colors": None,
             },
             "json" : {
                 '()': 'api.alogging.WazuhJsonFormatter',
@@ -323,7 +347,11 @@ def set_logging(log_filepath, log_level='INFO', foreground_mode=False) -> dict:
         },
         "loggers": {
             "wazuh-api": {"handlers": hdls, "level": log_level, "propagate": False},
-            "start-stop-api": {"handlers": hdls, "level": 'INFO', "propagate": False}
+            "start-stop-api": {"handlers": hdls, "level": 'INFO', "propagate": False},
+            # The framework logs under `wazuh` (the restart/reload fallback to the service-control helper, the
+            # agent upgrade exclusions...). In clusterd that logger writes cluster.log; here it writes api.log, or
+            # those records would only reach Python's last-resort handler, i.e. the daemon's /dev/null stderr.
+            "wazuh": {"handlers": hdls, "level": log_level, "propagate": False}
         }
     }
 

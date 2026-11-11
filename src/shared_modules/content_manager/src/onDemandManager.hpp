@@ -85,6 +85,18 @@ public:
      */
     void dispatch(const std::string& topic, int offset, std::shared_ptr<wazuh::uds_http::IHttpResponder> responder);
 
+    /// Longest part of a caller-supplied topic that a log line quotes.
+    static constexpr std::size_t LOGGED_TOPIC_MAX {64};
+
+    /**
+     * @brief Render a caller-supplied topic safe to quote in a log line.
+     *
+     * An unknown topic is whatever the caller sent: control bytes and backslashes are escaped
+     * (`\xNN`, `\\`) so a newline cannot start a forged line, and only the first
+     * LOGGED_TOPIC_MAX bytes are kept (followed by `...`) so the line stays bounded.
+     */
+    static std::string loggableTopic(const std::string& topic);
+
 private:
     struct Job
     {

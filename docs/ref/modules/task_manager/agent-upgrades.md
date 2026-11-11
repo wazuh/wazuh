@@ -49,7 +49,9 @@ queue/sockets/task-http.sock ──► parse, hand the batch to a worker ──�
 **Only the first stage is per agent, and that is the point.** Agents that resolve to the same package
 share one repository-index fetch and one download, and every surviving agent's task row is written in
 a single database transaction. A 500-agent request against one platform costs one index fetch, one
-download and one transaction — not 500 of each.
+download and one transaction — not 500 of each. The per-agent stage is one wazuh-db lookup each,
+with a 10 s socket deadline; after five consecutive lookups that did not complete, the rest of the
+batch is answered with error 6 without being queried.
 
 **The response is a per-agent envelope**, so one agent failing its version check does not affect the
 rest of the request. The Server API keeps that shape: an agent refused with any per-agent verdict
@@ -98,7 +100,8 @@ The repository URL defaults to `packages.wazuh.com/<major>.x/wpk/`, derived from
 [`<wpk_repository>`](configuration.md#xml-options) or, per request, with `wpk_repo`.
 
 **Downloads are staged, verified, then renamed into place**, so a partially written file is never
-visible at the path agents fetch from.
+visible at the path agents fetch from. The partial file is `var/upgrade/.staging/<sha1>.part`; the
+directory is created on the first download, and a failed attempt removes its file.
 
 **Peer verification is never disabled.** The SHA-1 a WPK is checked against comes from the
 repository's own index over the same connection, so an unverified channel would let a man in the

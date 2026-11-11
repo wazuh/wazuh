@@ -15,6 +15,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <stdexcept>
 #include <thread>
 
 #include "commonDefs.h"
@@ -27,6 +28,14 @@
 
 // Number of queued elements from which a queue is reported as growing.
 constexpr size_t QUEUE_SIZE_WARNING {100000};
+
+// Thrown by a handler that postponed its element on purpose: the element stays in the queue and is retried like after
+// a handler error, without being reported as one.
+class PostponedElementException final : public std::runtime_error
+{
+public:
+    using std::runtime_error::runtime_error;
+};
 
 template<typename T,
          typename U,
@@ -346,7 +355,11 @@ private:
                     if (!data.second.empty())
                     {
                         m_functor(data.first);
-                        m_queue->pop(data.second);
+                        // The handler can clear its own prefix, e.g. a re-scan that drops the agent's pending events.
+                        if (m_queue->size(data.second) != 0)
+                        {
+                            m_queue->pop(data.second);
+                        }
                     }
                 }
                 else
@@ -356,6 +369,13 @@ private:
                         std::is_same_v<Utils::TSafeQueue<T, U, RocksDBQueue<T, U>>, TSafeQueueType> ||
                             std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>,
                         "This method is not supported for this queue type");
+                }
+            }
+            catch (const PostponedElementException&)
+            {
+                if (m_running)
+                {
+                    std::this_thread::sleep_for(std::chrono::seconds(m_retryDelay));
                 }
             }
             catch (const std::exception& ex)

@@ -90,7 +90,6 @@ configurationdone="Konfguration erfolgreich durchgeführt "
 tostart="Um Wazuh zu starten"
 tostop="Um Wazuh zu stoppen"
 configat="Die Konfiguration kann angesehen oder verändert werden unter: "
-addserveragent="Agenten müssen hinzugefügt werden bevor sie zugreifen können. "
 presskey="Drücken Sie eine Taste"
 
 # Update

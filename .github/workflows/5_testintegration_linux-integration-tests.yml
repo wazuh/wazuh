@@ -46,9 +46,9 @@ on:
       base_branch:
         description: 'Base branch'
         required: true
-        default: 'main'
+        default: '5.0.0'
       build_run_id:
-        description: 'Run ID of the build workflow to download artifacts from (optional)'
+        description: 'Build run ID to download from (optional; default: latest successful build on base_branch)'
         required: false
         default: ''
       module_name:
@@ -94,7 +94,6 @@ jobs:
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
-      BUILD_WORKFLOW: 5_builderpackage_agent-linux.yml
       PACKAGES_PATH: /tmp/packages
       AGENT_PACKAGE_REGEXP: wazuh-agent.*amd64.*\.deb
     runs-on: ubuntu-24.04
@@ -112,6 +111,7 @@ jobs:
         uses: ./.github/actions/download_package
         with:
           build_run_id: ${{ inputs.build_run_id }}
+          base_branch: ${{ inputs.base_branch }}
           producer_workflow: 5_builderpackage_agent-linux
           name_regexp: ${{ env.AGENT_PACKAGE_REGEXP }}
           path: ${{ env.PACKAGES_PATH }}

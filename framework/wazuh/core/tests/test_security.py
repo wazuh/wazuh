@@ -153,3 +153,57 @@ def test_rbac_db_factory_reset(remove_mock, db_integrity_mock, revoke_mock, db_s
     assert remove_mock.call_args[0][0].endswith("rbac.db")
     db_integrity_mock.assert_called_once()
     revoke_mock.assert_called_once()
+
+
+@pytest.mark.parametrize('policy, expected', [
+    ({'actions': ['agent:read'], 'resources': ['agent:id:*'], 'effect': 'allow'}, True),
+    ({'actions': ['agent:read', 'group:read'], 'resources': ['agent:id:001', 'group:id:default'],
+      'effect': 'deny'}, True),
+    ({'actions': ['agent:create'], 'resources': ['*:*:*'], 'effect': 'allow'}, True),
+    ({'actions': ['agent:read'], 'resources': ['agent:group:web&node:id:master'], 'effect': 'allow'}, True),
+    # Effects the decorators do not evaluate as such
+    ({'actions': ['agent:read'], 'resources': ['agent:id:*'], 'effect': 'maybe'}, False),
+    ({'actions': ['agent:read'], 'resources': ['agent:id:*'], 'effect': ''}, False),
+    # Actions and resource types missing from the catalog
+    ({'actions': ['agent:bogus'], 'resources': ['agent:id:*'], 'effect': 'allow'}, False),
+    ({'actions': ['agent:read'], 'resources': ['bogus:id:*'], 'effect': 'allow'}, False),
+    ({'actions': ['agent:read'], 'resources': ['agent:bogusfield:*'], 'effect': 'allow'}, False),
+    ({'actions': ['agent:read'], 'resources': ['agent:id:001&bogus:id:*'], 'effect': 'allow'}, False),
+    ({'actions': ['agent:read'], 'resources': ['agent:id'], 'effect': 'allow'}, False),
+    # Empty lists grant or deny nothing
+    ({'actions': [], 'resources': ['agent:id:*'], 'effect': 'allow'}, False),
+    ({'actions': ['agent:read'], 'resources': [], 'effect': 'allow'}, False),
+    ({'resources': ['agent:id:*'], 'effect': 'allow'}, False),
+    (None, False),
+])
+def test_is_valid_rbac_policy(policy, expected):
+    """Check that a policy is valid only with a known effect and catalog actions and resource types."""
+    from wazuh.core.security import is_valid_rbac_policy
+
+    assert is_valid_rbac_policy(policy) is expected
+
+
+@pytest.mark.parametrize('rule, expected', [
+    ({'FIND': {'user_name': 'admin'}}, True),
+    ({'MATCH$': {'definition': 'normal_rule'}}, True),
+    ({'OR': [{'MATCH': {'user': 'a'}}, {'FIND$': {'user': 'b'}}]}, True),
+    ({'NOT': {'MATCH': {'user': 'a'}}}, True),
+    ({'AND': [{'MATCH': {'user': 'a'}}, {'NOT': [{'FIND': {'group': 'b'}}]}]}, True),
+    # Keys the authorization context never evaluates
+    ({'bogus': 1}, False),
+    ({'MATCH': {'user': 'a'}, 'bogus': 1}, False),
+    ({'OR': [{'MATCH': {'user': 'a'}}, {'bogus': 1}]}, False),
+    # Empty rules and operators never match; an empty function matches every context
+    ({}, False),
+    ({'OR': []}, False),
+    ({'AND': {}}, False),
+    ({'MATCH': {}}, False),
+    ({'FIND': 'admin'}, False),
+    ([{'MATCH': {'user': 'a'}}], False),
+    (None, False),
+])
+def test_is_valid_security_rule(rule, expected):
+    """Check that a security rule is valid only with the operators the authorization context evaluates."""
+    from wazuh.core.security import is_valid_security_rule
+
+    assert is_valid_security_rule(rule) is expected

@@ -86,6 +86,18 @@ list(APPEND client-agent_flags "-Wl,--wrap,getAgentConfig \
                                 -Wl,--wrap,getAntiTamperingConfig -Wl,--wrap,w_agentd_state_get")
 endif()
 
+# Both targets: the (4128) hint has a Windows wording. client.keys is a real file in the working
+# directory, since the Windows wrappers only offer FileSizeWin().
+list(APPEND client-agent_names "test_manager_address")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND client-agent_flags "-Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck \
+                                -Wl,--wrap=is_fim_shutdown -Wl,--wrap=fim_db_teardown \
+                                -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize \
+                                ${DEBUG_OP_WRAPPERS}")
+else()
+list(APPEND client-agent_flags "${DEBUG_OP_WRAPPERS}")
+endif()
+
 if(${TARGET} STREQUAL "agent")
 list(APPEND client-agent_names "test_agentd")
 list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request \
@@ -102,6 +114,15 @@ list(APPEND client-agent_flags "-Wl,--wrap,OS_SHA256_File ${DEBUG_OP_WRAPPERS}")
 list(APPEND client-agent_names "test_reload_agent")
 list(APPEND client-agent_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP \
                                 -Wl,--wrap,sleep -Wl,--wrap,close ${DEBUG_OP_WRAPPERS}")
+
+# POSIX-only: the Windows branch queries agent-info in-process, with no socket or receive timeout.
+# The socket boundary is wrapped locally in the test, because it has to set errno on a failed
+# connect, send or receive, which the shared os_net wrappers do not. usleep is wrapped so the connect
+# retries take no time.
+list(APPEND client-agent_names "test_vd_offset_client")
+list(APPEND client-agent_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SetRecvTimeout \
+                                -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP \
+                                -Wl,--wrap,w_get_monotonic_time -Wl,--wrap,usleep ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND client-agent_names "test_ca_publication")
 # Real temporary files, so no filesystem wrappers -- but the install path logs, and the
@@ -318,7 +339,7 @@ endif()
 # KEYS_FILE, AUTHD_PASS and SHAREDCFG_DIR/SHAREDCFG_FILE expand to the manager's absolute
 # /etc/wazuh-manager paths instead of the agent's relative etc/ ones, so the test would expect (or
 # create) one path while the code under test uses another.
-foreach(client_test test_https_client_bridge test_startup_gate test_enrollment test_token_bootstrap test_shred_file)
+foreach(client_test test_https_client_bridge test_startup_gate test_enrollment test_token_bootstrap test_shred_file test_manager_address)
     if(TARGET ${client_test})
         target_compile_definitions(${client_test} PRIVATE CLIENT)
     endif()

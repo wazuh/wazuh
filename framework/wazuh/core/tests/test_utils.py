@@ -6,6 +6,8 @@
 import datetime
 import os
 import re
+import sqlite3
+from collections import OrderedDict
 from collections.abc import KeysView
 from io import StringIO
 from shutil import copyfile
@@ -305,6 +307,30 @@ def test_process_array(array, q, filters, limit, search_text, sort_by, select, d
                                  select=select, sort_by=sort_by, q=q, distinct=distinct)
 
     assert result == {'items': expected_items, 'totalItems': expected_total_items}
+
+
+@pytest.mark.parametrize('array, expected_indexes', [
+    ([], []),
+    (['framework', 'API', 'API'], [0, 1]),
+    # Dictionaries are equal regardless of the order of their keys
+    ([{'a': 1, 'b': 2}, {'b': 2, 'a': 1}, {'a': 1}], [0, 2]),
+    # Nested values; list order matters
+    ([{'x': [1, {'y': 2}]}, {'x': [1, {'y': 2}]}, {'x': [{'y': 2}, 1]}], [0, 2]),
+    # A list and a tuple are not equal
+    ([[1, 2], (1, 2), [1, 2], (1, 2)], [0, 1]),
+    # Numbers that compare equal are repeated items
+    ([1, 1.0, True, '1', 0, False, None], [0, 3, 4, 6]),
+    ([{'id': 1}, {'id': 1.0}, {'id': '1'}], [0, 2]),
+    # Unhashable values that cannot be turned into a key are compared by equality
+    ([{'a': {1, 2}}, {'a': {2, 1}}, {'a': {3}}], [0, 2]),
+    ([OrderedDict(a=1, b=2), OrderedDict(b=2, a=1), {'a': 1, 'b': 2}], [0, 1]),
+])
+def test_get_distinct_items(array, expected_indexes):
+    """Test that get_distinct_items keeps the first occurrence of each item, in order, comparing items by equality."""
+    result = utils.get_distinct_items(array)
+
+    assert len(result) == len(expected_indexes)
+    assert all(item is array[index] for item, index in zip(result, expected_indexes))
 
 
 @patch('wazuh.core.utils.len', return_value=1)
@@ -987,10 +1013,14 @@ def test_failed_test_get_timeframe_in_seconds(time):
         utils.get_timeframe_in_seconds(time)
 
 
-@pytest.mark.parametrize('query_filter, expected_query_filter, expected_wef', [
-    ({'operator': 'LIKE', 'value': 'user\'s'}, {'operator': 'LIKE', 'value': 'user_s'}, set()),
+@pytest.mark.parametrize('query_filter, expected_query_filter', [
+    ({'operator': 'LIKE', 'value': 'user\'s'}, {'operator': 'LIKE', 'value': 'user\'s'}),
     ({'operator': '=', 'value': 'user\'s', 'field': 'description'},
-     {'operator': 'LIKE', 'value': 'user_s', 'field': 'description'}, {'description'}),
+     {'operator': '=', 'value': 'user\'s', 'field': 'description'}),
+    ({'operator': '!=', 'value': 'say "hi"', 'field': 'description'},
+     {'operator': '!=', 'value': 'say "hi"', 'field': 'description'}),
+    ({'operator': '=', 'value': '{"a": 1}', 'field': 'description'},
+     {'operator': '=', 'value': '{"a":1}', 'field': 'description'}),
 ])
 @patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('glob.glob', return_value=True)
@@ -998,8 +1028,8 @@ def test_failed_test_get_timeframe_in_seconds(time):
 @patch('socket.socket.connect')
 @patch('wazuh.core.utils.common.MAXIMUM_DATABASE_LIMIT', new=10)
 def test_WazuhDBQuery_protected_clean_filter(mock_socket_conn, mock_conn_db, mock_glob, mock_exists,
-                                             query_filter, expected_query_filter, expected_wef):
-    """Test WazuhDBQuery._clean_filter function."""
+                                             query_filter, expected_query_filter):
+    """Test WazuhDBQuery._clean_filter function: a quote never changes the operator nor the value."""
     query = utils.WazuhDBQuery(offset=0, limit=500, table='agent', sort=None,
                                search=None, select=None, filters=None,
                                fields={'1': None, '2': None},
@@ -1008,8 +1038,7 @@ def test_WazuhDBQuery_protected_clean_filter(mock_socket_conn, mock_conn_db, moc
                                count=5, get_data=None)
 
     query._clean_filter(query_filter)
-    assert query_filter == expected_query_filter, 'query_filter should have been updated, but it was not'
-    assert query.wildcard_equal_fields == expected_wef
+    assert query_filter == expected_query_filter
 
 
 @pytest.mark.parametrize('limit, error, expected_exception', [
@@ -1131,9 +1160,42 @@ def test_WazuhDBQuery_protected_add_search_to_query_skips_extra_fields(mock_sock
                                count=5, get_data=None, extra_fields={'secret'})
 
     query._add_search_to_query()
-    assert '(one LIKE :search AND one IS NOT NULL)' in query.query
-    assert '(two LIKE :search AND two IS NOT NULL)' in query.query
+    assert "(one LIKE :search ESCAPE '\\' AND one IS NOT NULL)" in query.query
+    assert "(two LIKE :search ESCAPE '\\' AND two IS NOT NULL)" in query.query
     assert 'secret_col' not in query.query
+
+
+@pytest.mark.parametrize('value, expected', [
+    ('plain', '%plain%'),
+    ('50%', '%50\\%%'),
+    ('a_b', '%a\\_b%'),
+    ('c:\\temp', '%c:\\\\temp%'),
+    ("it's", "%it's%"),
+])
+@patch('wazuh.core.utils.path.exists', return_value=True)
+@patch('glob.glob', return_value=True)
+@patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_protected_add_search_to_query_matches_literally(mock_socket_conn, mock_conn_db, mock_glob,
+                                                                      mock_exists, value, expected):
+    """search escapes the LIKE wildcards and declares the escape character, so '%' and '_' match themselves."""
+    query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
+                               search={"negation": False, "value": value}, select=None,
+                               filters=None, fields={'1': 'one'},
+                               default_sort_field=None, query=None,
+                               backend=utils.WazuhDBBackend(agent_id=1),
+                               count=5, get_data=None)
+
+    query._add_search_to_query()
+    assert query.request['search'] == expected
+    assert "one LIKE :search ESCAPE '\\'" in query.query
+
+    conn = sqlite3.connect(':memory:')
+    conn.execute('CREATE TABLE agent (one TEXT)')
+    conn.executemany('INSERT INTO agent VALUES (?)', [(value,), ('x' * len(value),), ('5005',), ('aXb',)])
+    clause = query.query[query.query.index(' (('):]
+    rows = conn.execute(f"SELECT one FROM agent WHERE 1 AND {clause}", query.request).fetchall()
+    assert [row[0] for row in rows] == [value]
 
 
 @pytest.mark.parametrize('selector_fields, error, expected_exception', [
@@ -1471,6 +1533,14 @@ def test_WazuhDBQuery_protected_add_filters_to_query(mock_process, mock_socket_c
         ],
         'SELECT {0} FROM agent WHERE ((status = :status$0 COLLATE NOCASE) OR ((id != :id$0 COLLATE NOCASE) ' \
         'AND ((group = :group$0 COLLATE NOCASE) OR (group = :group$1 COLLATE NOCASE))))',
+    ),
+    # A quote in the value keeps the operator: '!=' is still a negation and '=' still an exact match.
+    (
+        [
+            {'value': "o'brien", 'operator': '!=', 'field': 'status$0', 'separator': 'AND', 'level': 0},
+            {'value': 'say "hi"', 'operator': '=', 'field': 'id$0', 'separator': '', 'level': 0},
+        ],
+        'SELECT {0} FROM agent WHERE (status != :status$0 COLLATE NOCASE) AND (id = :id$0 COLLATE NOCASE)',
     ),
 ])
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
@@ -2385,6 +2455,64 @@ def test_filter_array_by_query_malformed_clause_is_reported_whatever_the_array_h
         utils.filter_array_by_query(q, array)
 
 
+@pytest.mark.parametrize('q', [
+    'name=default*anything',
+    'name=default$',
+    'name=default#x',
+    'name=default&x',
+    'name=default|x',
+    'name=a;name=default*',
+])
+def test_filter_array_by_query_value_with_unsupported_character_is_invalid(q):
+    """A value is never truncated at the first character the grammar does not accept: the clause is
+    reported invalid instead of filtering by the prefix before that character."""
+    with pytest.raises(exception.WazuhError, match='.* 1407 .*'):
+        utils.filter_array_by_query(q, [{'name': 'default'}, {'name': 'a'}])
+
+
+@pytest.mark.parametrize('value, expected', [
+    ('plain', 'plain'),
+    ('50%', '50\\%'),
+    ('a_b', 'a\\_b'),
+    ('c:\\temp', 'c:\\\\temp'),
+    ('\\%_', '\\\\\\%\\_'),
+])
+def test_escape_like(value, expected):
+    """escape_like escapes the escape character itself and both LIKE wildcards."""
+    assert utils.escape_like(value) == expected
+
+
+@pytest.mark.parametrize('value, stored, matches', [
+    ('a%b', ['a%b', 'axxb'], ['a%b']),
+    ('a_b', ['a_b', 'axb'], ['a_b']),
+    ('a\\b', ['a\\b', 'ab'], ['a\\b']),
+    ('A_B', ['a_b'], ['a_b']),
+])
+def test_escape_like_matches_literally_in_sqlite(value, stored, matches):
+    """The escaped pattern, with the ESCAPE clause the queries render, matches the value literally."""
+    conn = sqlite3.connect(':memory:')
+    conn.execute('CREATE TABLE t (v TEXT)')
+    conn.executemany('INSERT INTO t VALUES (?)', [(v,) for v in stored])
+    rows = conn.execute("SELECT v FROM t WHERE v LIKE ? ESCAPE '\\' COLLATE NOCASE",
+                        (f'%{utils.escape_like(value)}%',)).fetchall()
+    assert [row[0] for row in rows] == matches
+
+
+@patch('wazuh.core.utils.path.exists', return_value=True)
+@patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
+def test_WazuhDBQuery_protected_process_filter_like_escapes_wildcards(mock_conn_db, mock_exists):
+    """'~' renders a LIKE with an ESCAPE clause and an escaped value, so '%' and '_' are literal."""
+    query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None, search=None, select=None,
+                               fields={'name': 'name'}, default_sort_field=None, query=None,
+                               backend=utils.WazuhDBBackend(agent_id=0), count=5, get_data=None)
+    query.query = ''
+
+    query._process_filter('name', 'name$0', {'value': '50%_off', 'operator': 'LIKE', 'field': 'name$0'})
+
+    assert query.query == "name LIKE :name$0 ESCAPE '\\' COLLATE NOCASE"
+    assert query.request['name$0'] == '%50\\%\\_off%'
+
+
 def test_filter_array_by_query_parses_each_clause_once():
     """Each clause is matched once, however many elements the array holds."""
     real_compile = re.compile
@@ -2398,7 +2526,7 @@ def test_filter_array_by_query_parses_each_clause_once():
         result = utils.filter_array_by_query('name=a;id=1,name=b', [{'name': 'c', 'id': '1'} for _ in range(50)])
 
     assert result == []
-    assert sum(regex.match.call_count for regex in compiled) == 3
+    assert sum(regex.fullmatch.call_count for regex in compiled) == 3
 
 
 def test_to_relative_path():

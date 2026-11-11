@@ -2,6 +2,8 @@
 
 The FIM module uses multiple database schemas to store and manage file integrity monitoring data. The architecture includes both local FIMDB databases for state comparison and sync protocol databases for reliable message persistence.
 
+> **`db_status_field_dm`:** every table synchronized through DBSync also has the column `db_status_field_dm INTEGER DEFAULT 1` in the live database. DBSync adds it at start for change detection; it is internal and not part of the DDL shown here.
+
 ## Wazuh Common Schema (WCS)
 
 The schemas according to the Wazuh Common Schema (WCS) are available in `src/external/indexer-plugins` and are downloaded during the agent build process as part of external dependencies (`make deps`):
@@ -242,11 +244,13 @@ enum class SyncStatus : int {
 
 ```c
 enum class CreateStatus : int {
-    EXISTING = 0,     // Message existed prior to current session
-    NEW = 1,          // Message newly created during current session
-    NEW_DELETED = 2   // Message created then deleted before sync
+    EXISTING = 0,     // Message may already be known to the manager
+    NEW = 1,          // Message created and never part of a session
+    NEW_DELETED = 2   // Message created, then deleted while its creation was being synchronized
 };
 ```
+
+A `DELETE` of a `NEW` message that is still pending removes both, since the manager never saw the creation. Once a message has been part of a session it is `EXISTING`, whether the session succeeded or failed, because a failed session may still have been applied by the manager; its later `DELETE` is always sent.
 
 ---
 

@@ -12,8 +12,8 @@ from wazuh.core.decorators import dapi_allower
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.security import invalid_users_tokens, invalid_roles_tokens, invalid_run_as_tokens, revoke_tokens, \
-    invalid_run_as_context_tokens, load_spec, sanitize_rbac_policy, update_security_conf, REQUIRED_FIELDS, \
-    SORT_FIELDS, SORT_FIELDS_GET_USERS
+    invalid_run_as_context_tokens, is_valid_rbac_policy, is_valid_security_rule, load_spec, sanitize_rbac_policy, \
+    update_security_conf, REQUIRED_FIELDS, SORT_FIELDS, SORT_FIELDS_GET_USERS
 from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources, require_every_role_update, require_role_update
 from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager
@@ -740,6 +740,9 @@ def add_policy(name: str = None, policy: dict = None) -> AffectedItemsWazuhResul
     result = AffectedItemsWazuhResult(none_msg='Policy was not created',
                                       all_msg='Policy was successfully created')
     sanitize_rbac_policy(policy)
+    if not is_valid_rbac_policy(policy):
+        result.add_failed_item(id_=name, error=WazuhError(4006))
+        return result
     with PoliciesManager() as pm:
         status = pm.add_policy(name=name, policy=policy)
         if status == SecurityError.ALREADY_EXIST:
@@ -780,7 +783,11 @@ def update_policy(policy_id: str = None, name: str = None, policy: dict = None) 
         raise WazuhError(4001)
     result = AffectedItemsWazuhResult(none_msg='Policy was not updated',
                                       all_msg='Policy was successfully updated')
-    policy is not None and sanitize_rbac_policy(policy)
+    if policy is not None:
+        sanitize_rbac_policy(policy)
+        if not is_valid_rbac_policy(policy):
+            result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4006))
+            return result
     with PoliciesManager() as pm:
         status = pm.update_policy(policy_id=policy_id[0], name=name, policy=policy)
         if status == SecurityError.ALREADY_EXIST:
@@ -880,6 +887,9 @@ def add_rule(name: str = None, rule: dict = None) -> AffectedItemsWazuhResult:
     """
     result = AffectedItemsWazuhResult(none_msg='Security rule was not created',
                                       all_msg='Security rule was successfully created')
+    if not is_valid_security_rule(rule):
+        result.add_failed_item(id_=name, error=WazuhError(4003))
+        return result
     with RulesManager() as rum:
         status = rum.add_rule(name=name, rule=rule)
         if status == SecurityError.ALREADY_EXIST:
@@ -960,6 +970,9 @@ def update_rule(rule_id: str = None, name: str = None, rule: dict = None) -> Aff
         raise WazuhError(4001)
     result = AffectedItemsWazuhResult(none_msg='Security rule was not updated',
                                       all_msg='Security rule was successfully updated')
+    if rule is not None and not is_valid_security_rule(rule):
+        result.add_failed_item(id_=int(rule_id[0]), error=WazuhError(4003))
+        return result
     with RulesManager() as rum:
         # A new body changes which authorization contexts every linked role maps to, so it asks for what
         # `set_role_rule` asks to link a rule to a role: 'security:update' over each of those roles.

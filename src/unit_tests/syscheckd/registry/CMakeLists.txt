@@ -35,7 +35,8 @@ target_link_libraries(test_registry "${DEBUG_OP_WRAPPERS} \
                                      -Wl,--wrap,fim_recovery_persist_table_and_resync \
                                      -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed \
                                      -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
-                                     -Wl,--wrap=fim_db_teardown -Wl,--wrap,utf8_LookupAccountSid")
+                                     -Wl,--wrap=fim_db_teardown -Wl,--wrap,utf8_LookupAccountSid \
+                                     -Wl,--wrap=expand_wildcard_registers")
 
 if(${TARGET} STREQUAL "winagent")
     target_link_libraries(test_registry fimdb)

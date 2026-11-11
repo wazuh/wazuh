@@ -125,7 +125,7 @@ Capacity, in messages, of the input queue between the legacy listener and the me
 workers ([`remoted.worker_pool`](#remotedworker_pool)).
 
 - **Default value:** `131072`
-- **Allowed values:** Positive integer
+- **Allowed values:** Integer from `1` to `134217728`
 - **Note:** Values greater than `262144` are accepted with the warning `Queue size is very high. The
   application may run out of memory.` A message arriving at a full queue is discarded (see
   [Queue Byte Limits](#queue-byte-limits) for how discards are reported)
@@ -139,7 +139,10 @@ Accept connections from agents running a Wazuh version higher than the manager.
 - **Note:** "Higher" means a higher major or minor version: an agent one patch release ahead (5.0.1
   against a 5.0.0 manager) is always accepted, on the HTTPS and the legacy paths alike. Enable when
   upgrading agents to a new minor or major before the manager
-- **Note:** Applies to an agent's `POST /control` `startup` and to 4.x keep-alives. It does **not**
+- **Note:** Applies to an agent's `POST /control` `startup` and to a 4.x agent's startup message
+  (`#!-agent startup`), which carries its version. A 4.x keep-alive is **not** checked: an agent
+  already connected keeps sending them whatever its version, and is checked again only on its next
+  startup. It does **not**
   govern enrollment: `POST /enroll` follows authd's own
   [`<auth><agents><allow_higher_versions>`](../authd/configuration.md#agents--allow_higher_versions),
   so the two must be raised together for a newer agent to both enroll and connect
@@ -169,7 +172,7 @@ Idle time after which remoted closes an agent's open RIDS (message-counter) file
 `queue/rids/`. It is also the period of the thread that looks for such files.
 
 - **Default value:** `5m` (300 seconds)
-- **Allowed values:** Time value with optional suffix: `s` (seconds), `m` (minutes), `h` (hours), `d` (days), `w` (weeks). Bare number defaults to seconds. `0` passes the schema but is replaced by the default with a warning.
+- **Allowed values:** Time value with optional suffix: `s` (seconds), `m` (minutes), `h` (hours), `d` (days), `w` (weeks). Bare number defaults to seconds. At least 1 second: `0`, in any unit, is refused by the configuration check.
 - **Example:** `300`, `5m`, `300s` are all equivalent
 
 ### legacy.connection_overtake_time
@@ -179,11 +182,36 @@ connection from the same agent may take it over.
 
 - **Default value:** `60`
 - **Allowed values:** Integer from `0` to `3600` (seconds)
-- **Note:** While the current session has been active more recently than this, a message arriving on
-  a second connection with the same agent key is dropped and that connection closed; once the conflict
-  outlasts the window remoted logs `Agent key already in use: agent ID '<id>' (source IP: <ip>)`
-  (two hosts sharing one key). `0` disables overtaking altogether: the second connection is always
-  refused and the warning is logged at once.
+- **Note:** Only a message that decrypts with the agent's key counts as "from the same agent". A
+  message that merely claims the agent's ID and fails to decrypt is rejected like any other bad frame
+  (its connection closed, the throttled `Decrypt the message fail` line logged) and never touches the
+  agent's session: the current connection stays open, and no takeover or conflict is recorded,
+  however long that session has been idle.
+- **Note:** While the current session has been active more recently than this, an authenticated
+  message arriving on a second connection with the same agent key is dropped and that connection
+  closed; once the conflict outlasts the window remoted logs
+  `Agent key already in use: agent ID '<id>' (source IP: <ip>)` (two hosts sharing one key). `0`
+  disables overtaking altogether: the second connection is always refused and the warning is logged
+  at once. The warning is throttled like the other rejections: at most one line every 90 seconds,
+  ending in `(and <n> more like it in the last <s> s)`; the repeats in between go to debug level.
+- **Note:** Only a message whose counters are **ahead** of the last ones remoted accepted from that
+  agent may take a session over, whatever [`remoted.verify_msg_id`](#remotedverify_msg_id) says. A
+  captured message replayed on a new connection decrypts, but its counters are equal to or older than
+  the stored ones, so it is refused and its connection closed, however long the current session has
+  been idle; the agent's session, its idle time and its stored counters are left untouched. The stored
+  counters are the ones in memory, and they survive a `client.keys` reload (an enrollment, a removal)
+  for every agent whose key and address did not change: the reload keeps the higher of them and of
+  the agent's `queue/rids/<id>` file, which is written only now and then (see
+  [`remoted.recv_counter_flush`](#remotedrecv_counter_flush)). A restart of remoted has only that file
+  to start from, so after a restart a message captured since the file's last write counts as newer
+  again. Remoted
+  logs `Frame for agent ID '<id>' from '<ip>' is not newer than the last one accepted from that agent:
+  it cannot take over the agent's current connection.`, throttled like the warning above. A real agent
+  that reconnects is never affected: its counters only grow, and they are kept across its restarts in
+  its own `queue/rids/sender_counter`. An agent whose counter was reset while it kept its key (its
+  `sender_counter` deleted, or the same key imported again) cannot take over a stale session until that
+  session is closed; re-enroll it, or delete its `queue/rids/<id>` on the manager and restart the
+  manager, to start its counters again (a `client.keys` reload alone keeps the counters in memory)
 
 ---
 
@@ -205,7 +233,7 @@ HTTPS listening port.
 Address the HTTPS listener binds to.
 
 - **Default value:** `0.0.0.0` (all IPv4 interfaces)
-- **Allowed values:** Valid IPv4 or IPv6 address
+- **Allowed values:** Valid IPv4 or IPv6 address, at most 255 characters
 - **Note:** `0.0.0.0` is IPv4-only. `::` listens on IPv6 only by default -- it does **not** also
   accept IPv4 connections unless `dual_stack` is explicitly set to `yes` -- see
   [HTTPS Agent API: Bind address](https-events-api.md#bind-address-ipv4-ipv6-and-dual-stack)
@@ -228,8 +256,9 @@ similar spelling: nothing on disk is looked up under it.
   segments, no percent-encoding; at most 255 characters. Any other value is rejected as a
   configuration error (`wazuh-manager-remoted -t` reports it).
 - **Note:** the prefix is a routing matter only. The manager routes on the request target exactly
-  as sent — prefix included — so agents must send the full prefixed path, and any proxy in between
-  must forward the path untouched. The bearer token does not bind the target, so a prefix mismatch
+  as sent — prefix included, case-sensitive, with no percent-decoding (any `%`-encoded path answers
+  `404`; only a single trailing `/` is tolerated) — so agents must send the full prefixed path, and
+  any proxy in between must forward the path untouched. The bearer token does not bind the target, so a prefix mismatch
   between agent and manager (or a proxy-side rewrite) surfaces as `404`, never as `401`. The prefix
   counts toward `remoted.http_max_url_size`. Only the public HTTPS listener is prefixed; the
   local admin socket is not. See
@@ -251,6 +280,7 @@ Whether an IPv6 `bind_addr` (e.g. `::`) also accepts IPv4 clients on the same so
 Path to the TLS certificate chain (PEM) presented by the server.
 
 - **Default value:** `/etc/wazuh-manager/certs/remoted.pem` (any other value must also be an absolute path directly in `/etc/wazuh-manager/certs`; see the credential note below)
+- **Allowed values:** a path of at most 511 characters
 - **Note:** the manager issues this file at installation and never reissues it. To use your own PKI, overwrite it — a leaf of the CA in
   `ca_certificate`, issued by the installation assistant's `wazuh-certs-tool` — as
   `root:wazuh-manager 640` before the first start. Missing: `wazuh-manager-control start`
@@ -258,10 +288,12 @@ Path to the TLS certificate chain (PEM) presented by the server.
   Present but unreadable by the service user: `wazuh-manager-remoted` exits with
   `Cannot start the HTTPS agent listener: …`. The same message names the CA certificate
   (`remote.https.ca`) when `verification_mode` is `certificate` or `full` and that file is missing or unreadable.
-- **Note:** at startup, and again every 24 hours while it runs, the manager warns if this
-  certificate has expired (`The TLS certificate '<path>' has expired; …`) or expires within 30 days
-  (`The TLS certificate '<path>' expires in <n> day(s); …`), so a silent outage for verifying agents
-  can be prevented before it happens.
+- **Note:** at startup, and again every 24 hours while it runs, the manager logs an ERROR if this
+  certificate has expired (`The TLS certificate '<path>' has expired; agents that verify the manager
+  certificate will reject the connection until it is renewed.`) and a WARNING while fewer than 30
+  days remain (`The TLS certificate '<path>' expires in <n> day(s); renew it to avoid an outage for
+  agents that verify the manager certificate.`), so a silent outage for verifying agents can be
+  prevented before it happens.
 - **Note:** before every start the credential resolver checks the configured pair, which must be directly in
   `/etc/wazuh-manager/certs` under any name; see
   [Configured file names](../../getting-started/credentials.md#configured-file-names).
@@ -271,6 +303,7 @@ Path to the TLS certificate chain (PEM) presented by the server.
 Path to the TLS private key (PEM) matching `certificate`.
 
 - **Default value:** `/etc/wazuh-manager/certs/remoted-key.pem`
+- **Allowed values:** a path of at most 511 characters
 - **Note:** provisioned together with `certificate`, same ownership and the same fail-closed
   behaviour when missing (`(1244) … '/remote/https/key': file not found`) or unreadable by the
   service user.
@@ -284,6 +317,7 @@ Path to a CA bundle (PEM) used to verify client (agent) certificates.
 
 - **Default value:** empty (not set). Empty means "no client-verification CA configured": no
   `verification_mode` is inferred from it, and verification stays off.
+- **Allowed values:** a path of at most 511 characters
 - **Note:** Only read when `verification_mode` is `certificate` or `full`. If one of those modes is
   set explicitly with no `ca`, the module falls back to `/etc/wazuh-manager/certs/root-ca.pem`. Setting `ca` without `verification_mode` turns verification on — see the special
   case below.
@@ -308,6 +342,7 @@ A file it cannot parse to the end is refused whole rather than served up to its 
   writes the option explicitly). Like the listener certificate, the file is issued by the credential
   resolver at installation (`root:wazuh-manager 640`), or provisioned by the operator together with
   the listener certificate it signs.
+- **Allowed values:** a non-empty path of at most 511 characters
 - **Note:** this is **not** the client-verification CA (`ca`): `ca` verifies agent certificates,
   `ca_certificate` is what agents use to verify the manager. An empty value is rejected at startup
   (`(1244): Invalid configuration at '/remote/https/ca_certificate': does not satisfy 'minLength'`).
@@ -365,20 +400,46 @@ protocol version.
   such as `HIGH:!ADH`) is rejected by the configuration validator, instead of the listener failing
   to start at runtime.
 
+### https.groups
+
+Key exchange groups the HTTPS listener offers in the TLS 1.3 handshake, in order of preference
+(`SSL_CTX_set1_groups_list()` naming scheme). Use it to exclude, for example, the finite-field
+(`ffdhe*`) or the hybrid post-quantum (`*MLKEM*`) groups.
+
+- **Default value:** not set: the listener uses the groups of its TLS library (OpenSSL 3.6), or the
+  ones its configuration file sets. That file is the one `OPENSSL_CONF` names in the service
+  environment (a systemd drop-in with `Environment=OPENSSL_CONF=…`), read by root when remoted
+  starts, before it drops to the `wazuh-manager` account; a `Groups` line under `system_default`
+  applies to this listener as it does to the API. An explicit `https.groups` overrides it.
+- **Allowed values:** colon-separated names, each one of `X25519`, `X448`, `P-256`, `P-384`,
+  `P-521`, `secp256r1`, `secp384r1`, `secp521r1`, `ffdhe2048`, `ffdhe3072`, `ffdhe4096`,
+  `ffdhe6144`, `ffdhe8192`, `brainpoolP256r1tls13`, `brainpoolP384r1tls13`, `brainpoolP512r1tls13`,
+  `X25519MLKEM768`, `SecP256r1MLKEM768`, `SecP384r1MLKEM1024`, `MLKEM512`, `MLKEM768` and
+  `MLKEM1024`, spelled as shown; at most 255 characters. OpenSSL's list syntax (`DEFAULT`, `?`,
+  `-`, `/`) is not accepted. Any other name is rejected by the configuration validator, and a name
+  the library cannot use makes `wazuh-manager-remoted -t` and the start fail with `Unable to
+  configure the requested TLS key exchange groups '<value>'`.
+- **Example:** `<groups>X25519:P-256:P-384:P-521</groups>`
+
 ### https.max_body_size
 
 Maximum accepted HTTP request body size, enforced by the transport.
 
 - **Default value:** `10M` (10 MiB)
-- **Allowed values:** Positive byte count with an optional single-letter suffix (`B`, `K`, `M`, `G`, case-insensitive). `K`/`M`/`G` are binary multiples; a bare number is bytes. Suffixes such as `MB` are rejected.
+- **Allowed values:** Positive byte count with an optional single-letter suffix (`B`, `K`, `M`, `G`, case-insensitive), at most `1G` (1073741824 bytes; `1024M`, `1048576K`). `K`/`M`/`G` are binary multiples; a bare number is bytes. Suffixes such as `MB` are rejected.
 - **Effect:** Raising the limit admits larger wire bodies and increases potential memory use per connection;
   lowering it rejects larger requests at the transport. The authentication and shared-memory limits still apply.
+  While requests are read, the peak is roughly [`remoted.max_parallel_connections`](#remotedmax_parallel_connections)
+  (256 by default) times this value.
 - **Note:** Keep it **above** [`remoted.auth_max_body_size`](#remotedauth_max_body_size) (5 MiB by
   default). Breaching *this* cap is not a `413`: the parser fails on `Content-Length` and the
   connection is closed with no response at all, which an agent cannot tell apart from a network
   failure — so it never splits its batch and retries the same bytes indefinitely. The auth limit is
   what produces the `413` the agent acts on. Setting the two equal makes the closed connection the
-  only outcome, because the `Content-Length` check always fires first.
+  only outcome, because the `Content-Length` check always fires first. A value at or below it is
+  accepted, but both the configuration check (`wazuh-manager-remoted -t`, run by every start) and
+  remoted's start log a `WARNING`: `'remote.https.max_body_size' (<n> bytes) is not above
+  'remoted.auth_max_body_size' (<m> bytes): …`
 
 ### Rate limits of the unauthenticated routes
 
@@ -489,7 +550,12 @@ Three things to know before editing that file:
 - **It ships empty.** The installed template carries only comments, so every option below is
   serving its compiled-in default. Tuning one means adding the `name=value` line yourself.
 - **An out-of-range or non-numeric value is fatal**, not clamped: the daemon refuses to start and
-  logs which option it rejected. Keep the documented range in view when editing.
+  logs which option it rejected (`(2302)`). Every `remoted.*` option below is read by
+  `wazuh-manager-remoted -t` too, so `wazuh-manager-control check` refuses such a value before anything
+  stops (`remoted.debug` is skipped when `-d` is given, by `-t` and by the start alike).
+  `wazuh.thread_stack_size` is the exception: no `-t` reads it — see
+  [the manager internal options](../../configuration/manager/README.md).
+  Keep the documented range in view when editing.
   Put comments on separate lines beginning with `#`; an inline comment becomes part of the value.
 - **The file is per node and is never synchronized.** Nothing in a cluster propagates it, so a
   value set on one manager makes an agent's behavior depend on which node it lands on.
@@ -702,6 +768,19 @@ time are closed. Authenticated connections are never subject to it.
   message arrives. If the workers fall more than this many seconds behind the input queue (for example
   while a large 4.x fleet reconnects after a restart), legitimate agents are closed too and have to
   reconnect. If those closures show up without an attack, raise this value
+- **Note:** A message rejected before it decrypts — a TCP length prefix above the maximum message
+  size, an unterminated `!<id>!` header, an ID not registered for the source address, a source
+  address that is no agent's, an empty message, or one that does not decrypt (TCP or UDP) — is
+  logged by remoted as a `WARNING` naming the source address, not an agent: the ID it carries is only
+  a claim until it decrypts. Each of those reasons is throttled on its own: the first is logged at
+  once, the others in the next 90 seconds at debug level, and the next logged one ends with
+  `(and <n> more like it in the last <s> s)`. A message that reaches the decryption step and fails
+  there also gets that step's own detail (`(1403)`, `(1404)`, `(1406)`, or a decompression error),
+  which names the ID the message claims and is therefore logged at debug level only. A message whose
+  checksum matches has proved the agent's key, so a malformed counter field after it is still an
+  `ERROR` `(1403)` naming that agent
+- **Note:** Over TCP, each of those rejections also closes the connection at once (`TCP peer
+  disconnected [<socket>]` at debug level): a peer that sent one never waits for this timeout
 
 ### remoted.unauthenticated_max
 
@@ -820,6 +899,16 @@ to detect replayed messages.
 - **Note:** `1` requires `remoted.worker_pool` set to `1`; with more workers remoted refuses to
   start, because message order cannot be guaranteed. It checks only messages on the legacy (4.x)
   listener; HTTPS agents are authenticated per request with their bearer token.
+- **Note:** With `0` an older or repeated message is still accepted on the connection the agent is
+  using (with several workers, messages of one connection may be handled out of order), but it never
+  moves the stored counters back and never takes over the agent's session from another connection
+  (see [`legacy.connection_overtake_time`](#legacyconnection_overtake_time)). It is not discarded, so
+  a replayed message delivered on its own (over UDP, or on a new connection while the agent has no
+  session) is still processed: set `1` where that matters.
+- **Note:** Either way, the counters compared against are the ones remoted holds in memory. A
+  `client.keys` reload keeps them for every agent whose key and address did not change (a new key
+  starts from its `queue/rids/<id>` file); only a restart of remoted falls back to that file, which
+  may lag behind (see [`remoted.recv_counter_flush`](#remotedrecv_counter_flush)).
 
 ### remoted.batch_events_per_agent_capacity
 
@@ -831,11 +920,17 @@ discarded until its share drains.
 
 ### remoted.recv_counter_flush
 
-Messages received from a legacy agent between two writes of its message counter to its RIDS file
-(`queue/rids/<id>`).
+Messages remoted accepts from legacy agents between two writes of a message counter to an agent's
+RIDS file (`queue/rids/<id>`).
 
 - **Default value:** `128`
 - **Allowed values:** Integer from `10` to `999999` (message count)
+- **Note:** The count is shared by **all** legacy agents, not kept per agent: every this-many
+  accepted messages, the counter of the agent whose message completes the count is written. With
+  many agents, one agent's file can therefore lag well behind its last message. Remoted works from
+  its in-memory counters, which a `client.keys` reload keeps, and reads the files back when it
+  starts (and, with [`remoted.verify_msg_id`](#remotedverify_msg_id) `1`, when a file is replaced),
+  so the lag matters only after a restart.
 
 ### remoted.comp_average_printout
 
@@ -1367,8 +1462,18 @@ database.
 Seconds between refreshes of the cached shared-group listing used to answer `/control`, and the
 freshness bound of `/download`'s authorization.
 
-- **Default value:** `60`
+- **Default value:** `1`
 - **Allowed values:** Integer from `1` to `3600`
+- **Note:** At the default, which is below the agents' 10 s notify period, every `notify` reads
+  the agent's groups from `wazuh-manager-db`: one read per notify, about one per agent every 10 s
+  across the cluster. That is what keeps the nodes behind a per-request load balancer in step.
+  Each node keeps its own copy of an agent's groups, and a node still holding the membership from
+  before a group change answers `/control` with the previous configuration's `config_hash` and
+  serves it on `/download`, so the agent reloads back into its previous groups and forward again
+  until every node has refreshed. Raise this value to trade that wazuh-db load for staleness only
+  when each agent always reaches the same node (a single node, or a balancer with source
+  affinity). On a cluster worker a membership change also waits for the agent-groups
+  synchronization from the master, up to 10 s, whatever this value.
 - **Note:** For a change of group **membership** this is the backstop, not the usual latency.
   When a membership change is written to the node's `wazuh-manager-db`, remoted is told which
   agents changed (`POST /_internal/agents/groups` on its [admin socket](README.md#local-admin-socket)):
@@ -1383,9 +1488,7 @@ freshness bound of `/download`'s authorization.
   cached membership without querying the database, so inside this window an agent restarted after
   losing a group can still be handed that group's selector, and download it.
 - **Note:** Group **content** travels on a different path: the merged-groups watcher picks up a
-  changed `merged.mg` on inotify plus a poll, so content propagates in seconds. When a membership
-  change is not announced, the two differ by this interval: roughly 60 s against 10 s at the
-  defaults, about two orders of magnitude at the maximum of `3600`.
+  changed `merged.mg` on inotify plus a poll, so content propagates in seconds.
 - **Note:** Editing `var/multigroups/<hash>/merged.mg` by hand is not a way to reproduce this:
   `remoted.shared_reload` (default `10`) regenerates the file and reverts the edit.
 - **Note:** It is also how long an agent's `/control` keeps answering while wazuh-db is down: a
@@ -1427,9 +1530,15 @@ Size of the wazuh-db connection pool the control plane uses.
 
 Milliseconds a single wazuh-db round-trip may take before the control handler gives up.
 
-- **Default value:** `2000`
+- **Default value:** `5000`
 - **Allowed values:** Integer from `100` to `30000`
-- **Note:** Exceeding it surfaces to the agent as a `503` on `/control`, and counts as
+- **Note:** The default leaves room for wazuh-db's periodic global database commit, which can
+  hold queries for several seconds on a slow disk under heavy write load, such as the initial
+  vulnerability feed load. It bounds only the round trip: the end-to-end bound, queue wait
+  included, is [`remoted.control_wdb_request_deadline`](#remotedcontrol_wdb_request_deadline),
+  whichever of the two runs out first. That deadline with `remoted.control_tm_deadline` bounds the
+  manager's side of `/control` (7 s with the defaults), below the agent's
+  `agent.https_request_timeout` (10 s). Exceeding it surfaces to the agent as a `503` on `/control`, and counts as
   `remoted.control.wdb_error` in
   [`GET /metrics`](metrics.md#control-plane--remotedcontrol). The healthy-round-trip
   distribution that sizes this deadline is `remoted.control.wdb.latency` (timeouts are
@@ -1694,11 +1803,13 @@ HTTPS channel, whose equivalent is [`remoted.max_inflight_bytes`](#remotedmax_in
   total over the limit is dropped until space is freed. The count limit
   ([`legacy.queue_size`](#legacyqueue_size)) drops the same way.
 - Input-queue drops count in `metrics.messages.received_breakdown.discarded` and are logged as
-  `Input queue discarded <n> event(s) in the last 90 seconds.`, at most once every 90 seconds.
+  `Input queue discarded <n> event(s) in the last <s> s.`, at most once every 90 seconds; `<s>` is
+  the real time since the previous line, and the first line says `so far` instead.
 - Events-queue drops (its byte limit, [`remoted.batch_events_capacity`](#remotedbatch_events_capacity)
   or [`remoted.batch_events_per_agent_capacity`](#remotedbatch_events_per_agent_capacity)) count in
   `metrics.messages.received_breakdown.events_failed` and are logged as
-  `Events queue discarded <n> event(s) in the last 90 seconds.`, at most once every 90 seconds.
+  `Events queue discarded <n> event(s) in the last <s> s.`, at most once every 90 seconds, with the
+  same wording rules.
 
 ### Guidelines
 

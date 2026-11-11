@@ -14,6 +14,7 @@
 #define WINDOWS_HELPER_TEST_H
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
+#include <string>
 
 class WindowsHelperTest : public ::testing::Test
 {
@@ -24,6 +25,8 @@ class WindowsHelperTest : public ::testing::Test
 
         void SetUp() override;
         void TearDown() override;
+
+        std::string m_timezone;
 };
 
 #endif //WINDOWS_HELPER_TEST_H

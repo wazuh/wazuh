@@ -200,7 +200,7 @@ def test_DistributedAPI_distribute_function_exception():
             self.affected_items = []
             self.failed_items = {Exception("test_get_error_info"): "abc"}
 
-    dapi_kwargs = {'f': manager.restart, 'logger': logger}
+    dapi_kwargs = {'f': manager.get_basic_info, 'logger': logger}
     raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1017)
 
     logger_ = logging.getLogger("wazuh")
@@ -696,6 +696,38 @@ def test_DistributedAPI_check_wazuh_status_exception(status_value):
             assert e._extra_message['node_name'] == 'random_node'
             extra_message = ', '.join([f'{key}->{statuses[key]}' for key in dapi.basic_services if key in statuses])
             assert e._extra_message['not_ready_daemons'] == extra_message
+
+
+@pytest.mark.parametrize('api_request', [manager.restart, manager.reload, manager.get_status,
+                                         cluster.get_status_json, cluster.get_health_nodes])
+@patch('wazuh.core.cluster.dapi.dapi.node_info', {'node': 'random_node'})
+def test_DistributedAPI_check_wazuh_status_recovery_funcs_allowed(api_request):
+    """Status, health and restart requests run while a basic service is down, so a node can be recovered."""
+    statuses = {process: 'stopped' for process in get_manager_status()}
+    with patch('wazuh.core.manager.get_manager_status', return_value=statuses):
+        assert DistributedAPI(f=api_request, logger=logger).check_wazuh_status() is None
+
+
+@patch('wazuh.core.cluster.dapi.dapi.node_info', {'node': 'random_node'})
+def test_DistributedAPI_check_wazuh_status_other_funcs_refused():
+    """Every function outside the recovery set is still refused with 1017 while a basic service is down."""
+    statuses = {process: 'stopped' for process in get_manager_status()}
+    with patch('wazuh.core.manager.get_manager_status', return_value=statuses):
+        with pytest.raises(WazuhInternalError, match='.* 1017 .*'):
+            DistributedAPI(f=manager.get_basic_info, logger=logger).check_wazuh_status()
+
+
+def test_DistributedAPI_service_recovery_funcs_exist():
+    """Every (module, name) pair in the recovery set names a real function, so a rename cannot silently
+    drop login, logout or restart back behind the 1017 guard."""
+    import importlib
+    from wazuh.core.cluster.dapi.dapi import SERVICE_RECOVERY_FUNCS
+
+    for module_name, func_name in SERVICE_RECOVERY_FUNCS:
+        with patch('wazuh.common.wazuh_uid'), patch('wazuh.common.wazuh_gid'):
+            module = importlib.import_module(module_name)
+        func = getattr(module, func_name)
+        assert (func.__module__, func.__name__) == (module_name, func_name)
 
 
 class TestDistributedAPIRunLocal:

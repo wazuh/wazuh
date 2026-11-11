@@ -59,6 +59,7 @@ suffix and `_endpoints.tavern.yaml` (`test_agent_GET_endpoints` → `agent`,
 python3 select_tests.py --files framework/wazuh/mitre.py src/remoted/main.c
 python3 select_tests.py --base origin/main     # what CI does on a pull request
 python3 select_tests.py --test-list agent_GET_endpoints,cluster_endpoints
+python3 select_tests.py --all                  # every test file (a workflow_dispatch run with no test list)
 python3 select_tests.py --check                # validate rules, groups and workflow paths
 ```
 

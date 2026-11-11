@@ -838,6 +838,7 @@ TEST_F(PolicyValidateHandlerTest, PromoteReplacesPreviousSessionAndDeletesItsNam
 {
     EXPECT_CALL(*m_crud, importNamespace(Truly(isTempNs), _, _, true)).WillOnce(Return(policyOf(true, true)));
     EXPECT_CALL(*m_tester, postTestEntry(_)).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*m_tester, getTestEntry("s")).WillOnce(Return(entryOn("s", "logtest_old")));
     EXPECT_CALL(*m_tester, replaceTestEntry(_, "s"))
         .WillOnce(Return(std::optional<::router::test::Entry> {entryOn("s", "logtest_old")}));
     EXPECT_CALL(*m_crud, deleteNamespace(Truly(isNs("logtest_old")))).Times(1);
@@ -850,6 +851,7 @@ TEST_F(PolicyValidateHandlerTest, PromoteWithoutPreviousSessionDeletesNothing)
 {
     EXPECT_CALL(*m_crud, importNamespace(Truly(isTempNs), _, _, true)).WillOnce(Return(policyOf(true, true)));
     EXPECT_CALL(*m_tester, postTestEntry(_)).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*m_tester, getTestEntry("s")).WillOnce(Return(base::Error {"not found"}));
     EXPECT_CALL(*m_tester, replaceTestEntry(_, "s")).WillOnce(Return(std::optional<::router::test::Entry> {}));
     EXPECT_CALL(*m_crud, deleteNamespace(_)).Times(0);
     EXPECT_CALL(*m_tester, deleteTestEntry(_)).Times(0);
@@ -861,6 +863,7 @@ TEST_F(PolicyValidateHandlerTest, PromoteFailureCleansTempResources)
 {
     EXPECT_CALL(*m_crud, importNamespace(Truly(isTempNs), _, _, true)).WillOnce(Return(policyOf(true, true)));
     EXPECT_CALL(*m_tester, postTestEntry(_)).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*m_tester, getTestEntry("s")).WillOnce(Return(base::Error {"not found"}));
     EXPECT_CALL(*m_tester, replaceTestEntry(_, "s")).WillOnce(Return(base::Error {"swap failed"}));
     EXPECT_CALL(*m_tester, deleteTestEntry(::testing::StartsWith("logtest_"))).WillOnce(Return(base::noError()));
     EXPECT_CALL(*m_crud, deleteNamespace(Truly(isTempNs))).Times(1);
@@ -872,6 +875,7 @@ TEST_F(PolicyValidateHandlerTest, PromoteSucceedsWhenPreviousNamespaceCannotBeDe
 {
     EXPECT_CALL(*m_crud, importNamespace(Truly(isTempNs), _, _, true)).WillOnce(Return(policyOf(true, true)));
     EXPECT_CALL(*m_tester, postTestEntry(_)).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*m_tester, getTestEntry("s")).WillOnce(Return(entryOn("s", "logtest_old")));
     EXPECT_CALL(*m_tester, replaceTestEntry(_, "s"))
         .WillOnce(Return(std::optional<::router::test::Entry> {entryOn("s", "logtest_old")}));
     EXPECT_CALL(*m_crud, deleteNamespace(Truly(isNs("logtest_old"))))
@@ -887,6 +891,7 @@ TEST_F(PolicyValidateHandlerTest, DisabledPolicyExtractsPreviousSessionAndDelete
     EXPECT_CALL(*m_tester, postTestEntry(_)).WillOnce(Return(base::noError()));
     EXPECT_CALL(*m_tester, deleteTestEntry(::testing::StartsWith("logtest_"))).WillOnce(Return(base::noError()));
     EXPECT_CALL(*m_crud, deleteNamespace(Truly(isTempNs))).Times(1);
+    EXPECT_CALL(*m_tester, getTestEntry("s")).WillOnce(Return(entryOn("s", "logtest_old")));
     EXPECT_CALL(*m_tester, extractTestEntry("s"))
         .WillOnce(Return(std::optional<::router::test::Entry> {entryOn("s", "logtest_old")}));
     EXPECT_CALL(*m_crud, deleteNamespace(Truly(isNs("logtest_old")))).Times(1);
@@ -901,6 +906,7 @@ TEST_F(PolicyValidateHandlerTest, DisabledPolicyNamespaceDeleteFailureIsAnError)
     EXPECT_CALL(*m_tester, postTestEntry(_)).WillOnce(Return(base::noError()));
     EXPECT_CALL(*m_tester, deleteTestEntry(::testing::StartsWith("logtest_"))).WillOnce(Return(base::noError()));
     EXPECT_CALL(*m_crud, deleteNamespace(Truly(isTempNs))).Times(1);
+    EXPECT_CALL(*m_tester, getTestEntry("s")).WillOnce(Return(entryOn("s", "logtest_old")));
     EXPECT_CALL(*m_tester, extractTestEntry("s"))
         .WillOnce(Return(std::optional<::router::test::Entry> {entryOn("s", "logtest_old")}));
     EXPECT_CALL(*m_crud, deleteNamespace(Truly(isNs("logtest_old")))).WillOnce(Throw(std::runtime_error {"boom"}));
@@ -915,6 +921,7 @@ TEST_F(PolicyValidateHandlerTest, DisabledPolicyWithoutPreviousSessionIsOk)
     EXPECT_CALL(*m_tester, postTestEntry(_)).WillOnce(Return(base::noError()));
     EXPECT_CALL(*m_tester, deleteTestEntry(::testing::StartsWith("logtest_"))).WillOnce(Return(base::noError()));
     EXPECT_CALL(*m_crud, deleteNamespace(Truly(isTempNs))).Times(1);
+    EXPECT_CALL(*m_tester, getTestEntry("s")).WillOnce(Return(base::Error {"not found"}));
     EXPECT_CALL(*m_tester, extractTestEntry("s")).WillOnce(Return(std::optional<::router::test::Entry> {}));
 
     expectOk(run(policyValidateRequest(true, false, true, "s")));
@@ -926,8 +933,136 @@ TEST_F(PolicyValidateHandlerTest, DisabledPolicyExtractFailureIsAnError)
     EXPECT_CALL(*m_tester, postTestEntry(_)).WillOnce(Return(base::noError()));
     EXPECT_CALL(*m_tester, deleteTestEntry(::testing::StartsWith("logtest_"))).WillOnce(Return(base::noError()));
     EXPECT_CALL(*m_crud, deleteNamespace(Truly(isTempNs))).Times(1);
+    EXPECT_CALL(*m_tester, getTestEntry("s")).WillOnce(Return(base::Error {"not found"}));
     EXPECT_CALL(*m_tester, extractTestEntry("s")).WillOnce(Return(base::Error {"worker gone"}));
 
     expectError(run(policyValidateRequest(true, false, true, "s")),
                 "Cleanup: failed deleting session 's': worker gone");
+}
+
+/***********************************************************************
+ * policyValidate: the session's previous namespace
+ **********************************************************************/
+namespace
+{
+constexpr const char* kIntegrationUuid = "550e8400-e29b-41d4-a716-446655440001";
+
+httplib::Request makePolicyValidateRequest()
+{
+    httplib::Request request;
+    request.body = R"({"load_in_tester": true, "space": "standard", "full_policy": {"title": "p"}})";
+    request.set_header("Content-Type", "application/json");
+    return request;
+}
+
+cm::store::dataType::Policy makeValidatedPolicy(bool withIntegration)
+{
+    std::vector<std::string> integrations;
+    if (withIntegration)
+    {
+        integrations.emplace_back(kIntegrationUuid);
+    }
+    return cm::store::dataType::Policy(
+        "p", true, "", std::move(integrations), {}, {}, {}, "standard", "", false, false, true);
+}
+
+::router::test::Entry makeTestEntry(const std::string& name, const std::string& nsId)
+{
+    ::router::test::EntryPost post(name, cm::store::NamespaceId {nsId}, 0);
+    return ::router::test::Entry {post};
+}
+
+auto namespaceNamed(const std::string& name)
+{
+    return ::testing::Truly([name](const cm::store::NamespaceId& nsId) { return nsId.toStr() == name; });
+}
+
+auto testerNamespace()
+{
+    return ::testing::Truly([](const cm::store::NamespaceId& nsId)
+                            { return ::router::test::isTesterOwnedNamespace(nsId); });
+}
+} // namespace
+
+TEST(PolicyValidateTesterNamespace, PromoteRefusesToReplaceAForeignNamespace)
+{
+    auto crud = std::make_shared<cm::crud::MockCrudService>();
+    auto testerApi = std::make_shared<::tester::mocks::MockTesterAPI>();
+
+    EXPECT_CALL(*crud, importNamespace(testerNamespace(), ::testing::_, ::testing::_, ::testing::_))
+        .WillOnce(::testing::Return(makeValidatedPolicy(true)));
+    EXPECT_CALL(*testerApi, postTestEntry(::testing::_)).WillOnce(::testing::Return(base::noError()));
+    EXPECT_CALL(*testerApi, getTestEntry("standard"))
+        .WillOnce(::testing::Return(makeTestEntry("standard", "cmsync_standard_abcdef")));
+    EXPECT_CALL(*testerApi, deleteTestEntry("standard")).Times(0);
+    EXPECT_CALL(*testerApi, replaceTestEntry(::testing::_, ::testing::_)).Times(0);
+    // The temporary session and namespace are cleaned up; the synchronized namespace is never touched
+    EXPECT_CALL(*testerApi, deleteTestEntry(::testing::StartsWith("logtest_")))
+        .WillOnce(::testing::Return(base::noError()));
+    EXPECT_CALL(*crud, deleteNamespace(testerNamespace())).Times(1);
+    EXPECT_CALL(*crud, deleteNamespace(namespaceNamed("cmsync_standard_abcdef"))).Times(0);
+
+    httplib::Response res;
+    policyValidate(crud, testerApi)(makePolicyValidateRequest(), res);
+
+    const auto expected = userErrorResponse<eEngine::GenericStatus_Response>(
+        "Refusing to replace space 'standard': its namespace 'cmsync_standard_abcdef' was not created by the tester");
+    EXPECT_EQ(res.status, expected.status);
+    EXPECT_EQ(res.body, expected.body);
+}
+
+TEST(PolicyValidateTesterNamespace, DeleteOldRefusesToDeleteAForeignNamespace)
+{
+    auto crud = std::make_shared<cm::crud::MockCrudService>();
+    auto testerApi = std::make_shared<::tester::mocks::MockTesterAPI>();
+
+    // No integrations: nothing is loaded and the old session would be wiped
+    EXPECT_CALL(*crud, importNamespace(testerNamespace(), ::testing::_, ::testing::_, ::testing::_))
+        .WillOnce(::testing::Return(makeValidatedPolicy(false)));
+    EXPECT_CALL(*testerApi, postTestEntry(::testing::_)).Times(0);
+    EXPECT_CALL(*crud, deleteNamespace(testerNamespace())).Times(1);
+    EXPECT_CALL(*testerApi, getTestEntry("standard"))
+        .WillOnce(::testing::Return(makeTestEntry("standard", "cmsync_standard_abcdef")));
+    EXPECT_CALL(*testerApi, deleteTestEntry(::testing::_)).Times(0);
+    EXPECT_CALL(*testerApi, extractTestEntry(::testing::_)).Times(0);
+    EXPECT_CALL(*crud, deleteNamespace(namespaceNamed("cmsync_standard_abcdef"))).Times(0);
+
+    httplib::Response res;
+    policyValidate(crud, testerApi)(makePolicyValidateRequest(), res);
+
+    const auto expected = userErrorResponse<eEngine::GenericStatus_Response>(
+        "Refusing to replace space 'standard': its namespace 'cmsync_standard_abcdef' was not created by the tester");
+    EXPECT_EQ(res.status, expected.status);
+    EXPECT_EQ(res.body, expected.body);
+}
+
+TEST(PolicyValidateTesterNamespace, PromoteReplacesATesterNamespace)
+{
+    auto crud = std::make_shared<cm::crud::MockCrudService>();
+    auto testerApi = std::make_shared<::tester::mocks::MockTesterAPI>();
+
+    EXPECT_CALL(*crud, importNamespace(testerNamespace(), ::testing::_, ::testing::_, ::testing::_))
+        .WillOnce(::testing::Return(makeValidatedPolicy(true)));
+    // The session says which route made it, whoever the caller is
+    const auto describedByRoute = [](const ::router::test::EntryPost& post)
+    {
+        return post.description().has_value() && post.description().value() == "Created by /content/validate/policy";
+    };
+    EXPECT_CALL(*testerApi, postTestEntry(::testing::Truly(describedByRoute)))
+        .WillOnce(::testing::Return(base::noError()));
+    EXPECT_CALL(*testerApi, getTestEntry("standard"))
+        .WillOnce(::testing::Return(makeTestEntry("standard", "logtest_aaaaaa")));
+    EXPECT_CALL(*testerApi, replaceTestEntry(::testing::StartsWith("logtest_"), "standard"))
+        .WillOnce(
+            ::testing::Return(std::optional<::router::test::Entry> {makeTestEntry("standard", "logtest_aaaaaa")}));
+    EXPECT_CALL(*crud, deleteNamespace(namespaceNamed("logtest_aaaaaa"))).Times(1);
+
+    httplib::Response res;
+    policyValidate(crud, testerApi)(makePolicyValidateRequest(), res);
+
+    eEngine::GenericStatus_Response protoRes;
+    protoRes.set_status(eEngine::ReturnStatus::OK);
+    const auto expected = userResponse<eEngine::GenericStatus_Response>(protoRes);
+    EXPECT_EQ(res.status, expected.status);
+    EXPECT_EQ(res.body, expected.body);
 }

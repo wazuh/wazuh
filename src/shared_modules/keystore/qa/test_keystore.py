@@ -209,3 +209,13 @@ def test_keystore_get_rejects_a_value_argument():
     with Popen(command, stdout=PIPE, stderr=PIPE, shell=True) as process:
         process.communicate()
         assert process.returncode != 0
+
+
+@pytest.mark.parametrize("args", [["-z"], ["-f", "indexer", "-k", "password", "-z", "-v", "something"]])
+def test_keystore_unknown_option_is_named(args):
+    """ An unknown option is reported by name, before anything is read or written. """
+    command = " ".join([KEYSTORE_BINARY] + args)
+    with Popen(command, stdout=PIPE, stderr=PIPE, shell=True) as process:
+        _, stderr = process.communicate()
+        assert process.returncode != 0
+        assert "Unknown option: -z" in stderr.decode()

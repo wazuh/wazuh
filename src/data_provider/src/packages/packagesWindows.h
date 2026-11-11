@@ -17,12 +17,6 @@
 #include "ipackageInterface.h"
 #include "ipackageWrapper.h"
 
-class FactoryWindowsPackage
-{
-    public:
-        static std::shared_ptr<IPackage>create(const HKEY key, const std::string& userId, const std::string& nameApp, const std::set<std::string>& cacheRegistry);
-};
-
 class WindowsPackageImpl final : public IPackage
 {
     private:

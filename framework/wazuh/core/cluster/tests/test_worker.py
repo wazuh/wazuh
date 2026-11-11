@@ -3,8 +3,10 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
+import errno
 import json
 import logging
+import os
 import sys
 from functools import partial
 from collections import defaultdict
@@ -1308,7 +1310,7 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
             safe_join_mock.assert_called_once_with('/zip/path', 'filename1')
             wazuh_uid_mock.assert_called_with()
             wazuh_gid_mock.assert_called_with()
-            mkdir_with_mode_mock.assert_any_call("queue/testing")
+            mkdir_with_mode_mock.assert_any_call("queue/testing", 0o770)
             assert safe_move_mock.call_count == 2
             open_mock.assert_called_once()
             path_exists_mock.assert_called_once()
@@ -1418,7 +1420,7 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
             for mock in all_mocks:
                 mock.reset_mock()
 
-    # Test the exception
+    # A directory that is already gone is skipped, not counted
     with patch("os.path.commonpath", return_value="queue/testing_mock/"):
         result_logs = worker_handler.update_master_files_in_worker(
             {"extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path",
@@ -1427,8 +1429,17 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
     assert result_logs['error'] == defaultdict(list)
     assert result_logs['debug2'] == {'filename3': ["Remove file: 'filename3'",
                                                    "File filename3 doesn't exist."],
-                                     '': ["Error removing directory '': [Errno 2] No such file or directory: "
-                                          "'queue/testing_mock/'"]}
+                                     '': ["Directory  doesn't exist."]}
+    assert result_logs['generic_errors'] == []
+
+    # A real failure is counted and logged at error level with the path and the reason
+    with patch("os.listdir", side_effect=PermissionError(errno.EACCES, "Permission denied")):
+        with patch("os.path.commonpath", return_value="queue/testing_mock/"):
+            result_logs = worker_handler.update_master_files_in_worker(
+                {"extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path",
+                cluster_items=cluster_items)
+
+    assert result_logs['error'] == {'extra': ["Error removing directory '': [Errno 13] Permission denied"]}
     assert result_logs['generic_errors'] == ["Found errors: 0 overwriting, 0 creating and 1 removing"]
 
     local_path_mock.assert_has_calls([call("filename3"),
@@ -1472,16 +1483,16 @@ def test_worker_handler_update_master_files_in_worker_security_checks():
         {'shared': {}, 'missing': {},
          'extra': {'etc/shared/agent.conf': {'cluster_item_key': 'nonexistent/'}}},
         '/tmp', sec_cluster_items)
-    assert any("3061" in e and "nonexistent/" in e
-               for e in result['debug2']['etc/shared/agent.conf'])
+    assert any("3061" in e and "etc/shared/agent.conf" in e and "nonexistent/" in e
+               for e in result['error']['extra'])
 
     # Extra: path outside declared cluster_item_key directory
     result = worker_handler.update_master_files_in_worker(
         {'shared': {}, 'missing': {},
          'extra': {'active-response/bin/evil.sh': {'cluster_item_key': 'etc/shared/'}}},
         '/tmp', sec_cluster_items)
-    assert any("3062" in e and "outside allowed directory" in e
-               for e in result['debug2']['active-response/bin/evil.sh'])
+    assert any("3062" in e and "active-response/bin/evil.sh" in e and "outside allowed directory" in e
+               for e in result['error']['extra'])
 
 
 @pytest.mark.parametrize('ko_files, error_key', [
@@ -1492,15 +1503,15 @@ def test_worker_handler_update_master_files_in_worker_security_checks():
       'extra': {}},
      ('error', 'missing')),
     ({'shared': {}, 'missing': {}, 'extra': {'etc/wazuh-manager.conf': {'cluster_item_key': 'etc/'}}},
-     ('debug2', 'etc/wazuh-manager.conf')),
+     ('error', 'extra')),
     ({'shared': {}, 'missing': {}, 'extra': {'etc/shared/default/ar.conf': {'cluster_item_key': 'etc/shared/'}}},
-     ('debug2', 'etc/shared/default/ar.conf')),
+     ('error', 'extra')),
     ({'shared': {}, 'missing': {'etc/x.swp': {'merged': False, 'cluster_item_key': 'etc/'}}, 'extra': {}},
      ('error', 'missing')),
     ({'shared': {'etc/x.tmp': {'merged': False, 'cluster_item_key': 'etc/'}}, 'missing': {}, 'extra': {}},
      ('error', 'shared')),
     ({'shared': {}, 'missing': {}, 'extra': {'etc/x.tmp': {'cluster_item_key': 'etc/'}}},
-     ('debug2', 'etc/x.tmp')),
+     ('error', 'extra')),
 ])
 @patch("wazuh.core.cluster.worker.safe_move")
 @patch("wazuh.core.cluster.worker.utils.mkdir_with_mode")
@@ -1583,6 +1594,55 @@ def test_worker_handler_update_master_files_in_worker_dir_cleanup(os_remove_mock
     assert (missing_file / 'ar.conf').read_text() == 'local'
     assert not empty.exists()
     assert result['generic_errors'] == []
+
+
+def test_worker_handler_update_master_files_in_worker_dir_already_removed(tmp_path):
+    """Verify that group files and directories removed before the sync, as the worker's remoted does with stale
+    multigroups, are not reported as removal errors."""
+    worker_handler = get_worker_handler(MagicMock())
+    sec_cluster_items = {
+        'files': {
+            'var/multigroups/': {'permissions': '0o660', 'remove_subdirs_if_empty': True},
+            'excluded_files': [],
+        }
+    }
+    item = {'cluster_item_key': 'var/multigroups/'}
+    (tmp_path / 'var' / 'multigroups').mkdir(parents=True)
+    extra = {f'var/multigroups/{h:08x}/merged.mg': item for h in range(10)}
+
+    with patch('wazuh.core.common.WAZUH_PATH', str(tmp_path)):
+        result = worker_handler.update_master_files_in_worker({'shared': {}, 'missing': {}, 'extra': extra},
+                                                              '/tmp', sec_cluster_items)
+
+    assert result['error'] == {}
+    assert result['generic_errors'] == []
+    for name in extra:
+        assert f"Directory {os.path.dirname(name)} doesn't exist." in result['debug2'][os.path.dirname(name)]
+
+
+def test_worker_handler_update_master_files_in_worker_dir_refilled(tmp_path):
+    """Verify that a directory that holds a file again when it is removed is kept and not reported as an error."""
+    worker_handler = get_worker_handler(MagicMock())
+    sec_cluster_items = {
+        'files': {
+            'var/multigroups/': {'permissions': '0o660', 'remove_subdirs_if_empty': True},
+            'excluded_files': [],
+        }
+    }
+    group_dir = tmp_path / 'var' / 'multigroups' / 'abcd1234'
+    group_dir.mkdir(parents=True)
+    (group_dir / 'merged.mg').write_text('old')
+
+    with patch('wazuh.core.common.WAZUH_PATH', str(tmp_path)), \
+            patch('os.rmdir', side_effect=OSError(errno.ENOTEMPTY, 'Directory not empty')):
+        result = worker_handler.update_master_files_in_worker(
+            {'shared': {}, 'missing': {}, 'extra': {'var/multigroups/abcd1234/merged.mg': {
+                'cluster_item_key': 'var/multigroups/'}}},
+            '/tmp', sec_cluster_items)
+
+    assert result['error'] == {}
+    assert result['generic_errors'] == []
+    assert result['debug2']['var/multigroups/abcd1234'] == ["Directory var/multigroups/abcd1234 is not empty."]
 
 
 

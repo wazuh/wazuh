@@ -10,11 +10,13 @@
 #include <base/eventParser.hpp>
 #include <base/logging.hpp>
 #include <memory>
+#include <string>
 
 #include <api/adapter/baseHandler_test.hpp>
 #include <api/event/handlers.hpp>
 #include <api/event/ndJsonParser.hpp>
 #include <base/json.hpp>
+#include <base/logging.hpp>
 #include <dumper/mockDumper.hpp>
 #include <fastmetrics/registry.hpp>
 #include <router/mockRouter.hpp>
@@ -326,9 +328,9 @@ TEST_F(EventIdentityTest, AcceptsCanonicalCarrierAndPreservesIdentity)
                 [id](::router::IngestEvent&& event)
                 {
                     std::string_view actual;
-                    ASSERT_EQ(event.first->getString(actual, "/wazuh/agent/id"), json::RetGet::Success);
+                    ASSERT_EQ(event.header->getString(actual, "/wazuh/agent/id"), json::RetGet::Success);
                     EXPECT_EQ(actual, id);
-                    auto merged = base::eventParsers::parseLegacyEvent(event.second, *event.first);
+                    auto merged = base::eventParsers::parseLegacyEvent(event.rawEvent, *event.header);
                     ASSERT_EQ(merged->getString(actual, "/wazuh/agent/id"), json::RetGet::Success);
                     EXPECT_EQ(actual, id);
                 });
@@ -514,4 +516,36 @@ TEST(EventHandlerErrorBodyTest, BadRequestBodyEscapesQuotes)
     ASSERT_EQ(body.getString(error, "/error"), json::RetGet::Success);
     EXPECT_NE(error.find("bad \"quoted\" value"), std::string::npos);
     EXPECT_EQ(body.getInt("/code"), 400);
+}
+
+// A flood of rejected batches logs one WARNING per window, not one per batch; every request is still answered 400
+TEST(EventHandlerErrorLogTest, RejectedBatchWarningIsThrottled)
+{
+    logging::testInit();
+    auto orchestrator = std::make_shared<testing::NiceMock<MockRouterAPI>>();
+    auto dumper = std::make_shared<testing::NiceMock<dumper::mocks::MockDumper>>();
+    auto handler = pushEvent(orchestrator, dumper, makeAgentMetadataCache());
+
+    httplib::Request req;
+    req.headers.emplace("X-Wazuh-Agent-Id", "001");
+    req.body = "event"; // invalid: missing newline after header
+
+    testing::internal::CaptureStderr();
+    for (int i = 0; i < 5; ++i)
+    {
+        httplib::Response res;
+        handler(req, res);
+        EXPECT_EQ(res.status, httplib::StatusCode::BadRequest_400);
+    }
+    const auto logs = testing::internal::GetCapturedStderr();
+
+    const std::string marker {"Failed to parse request"};
+    std::size_t lines = 0;
+    auto pos = logs.find(marker);
+    while (pos != std::string::npos)
+    {
+        ++lines;
+        pos = logs.find(marker, pos + 1);
+    }
+    EXPECT_EQ(lines, 1u) << logs;
 }

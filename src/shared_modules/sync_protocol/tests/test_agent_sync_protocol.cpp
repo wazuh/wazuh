@@ -14,9 +14,11 @@
 #include "agent_sync_protocol.hpp"
 #include "agent_sync_protocol_types.hpp"
 #include "ipersistent_queue.hpp"
+#include "persistent_queue.hpp"
 #include "agent_sync_protocol_c_interface.h"
 #include "metadata_provider.h"
 
+#include <filesystem>
 #include <future>
 #include <atomic>
 #include <tuple>
@@ -48,7 +50,9 @@ class MockPersistentQueue : public IPersistentQueue
         MOCK_METHOD(void, clearItemsByIndex, (const std::string& index), (override));
         MOCK_METHOD(void, clearAllDataContext, (), (override));
         MOCK_METHOD(void, deleteDatabase, (), (override));
-
+        MOCK_METHOD(std::optional<IntegrityProgress>, getIntegrityProgress, (const std::string& index), (override));
+        MOCK_METHOD(void, setIntegrityProgress, (const std::string& index, const IntegrityProgress& progress), (override));
+        MOCK_METHOD(void, clearIntegrityProgress, (const std::string& index), (override));
 };
 
 class AgentSyncProtocolTest : public ::testing::Test
@@ -731,6 +735,51 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleStoppedDoesNotCountTowardsStreak)
     EXPECT_FALSE(stoppedResult.success);
     EXPECT_TRUE(stoppedResult.stopped);
     EXPECT_EQ(stoppedResult.consecutiveFailures, 1u);
+}
+
+// A new manager answers every VD session this way for as long as its feed loads, several sync
+// cycles (#40683). The first session after the load is then answered 409, because the agent still
+// carries the feed offset it had before. If the not-ready answers counted, that 409 would already be
+// past SYNC_MANAGER_NOT_READY_TOLERANCE and reported as "failed N times in a row" at WARNING. They
+// leave the streak where it was, as a stop does.
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleFeedNotReadyDoesNotCountTowardsStreak)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module_vd", ":memory:", testLogger, mockQueue,
+                                                   mockSyncTransport, /*isFeedBased=*/true);
+
+    std::vector<PersistedData> testData =
+    {
+        {0, "memory_id_1", "memory_index_1", "memory_data_1", Operation::CREATE, 1}
+    };
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
+    .WillRepeatedly(Return(testData));
+
+    const auto syncAnsweredWith = [this](int httpCode, const std::string & body)
+    {
+        SyncModuleResult result;
+        std::thread syncThread([this, &result]()
+        {
+            result = protocol->synchronizeModule(Mode::DELTA);
+        });
+        std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+        feedHttpResult(httpCode, body);
+        syncThread.join();
+        return result;
+    };
+
+    for (unsigned int answer = 1; answer <= SYNC_MANAGER_NOT_READY_TOLERANCE + 1; ++answer)
+    {
+        const auto notReady = syncAnsweredWith(503, R"({"error":"vulnerability feed not ready","code":503})");
+        EXPECT_TRUE(notReady.feedNotReady);
+        EXPECT_EQ(notReady.consecutiveFailures, 0u) << "not-ready answer " << answer;
+    }
+
+    const auto mismatch = syncAnsweredWith(409, R"({"current_version":1176036,"error":"version_mismatch"})");
+    EXPECT_FALSE(mismatch.success);
+    EXPECT_FALSE(mismatch.feedNotReady);
+    EXPECT_EQ(mismatch.consecutiveFailures, 1u);
 }
 
 // The first successful sync clears the streak, so a later manager-not-ready failure starts again at 1
@@ -2327,6 +2376,253 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncReportsUnconfirmedMismatchWhenStop
     EXPECT_FALSE(result.managerNotReady);
 }
 
+// requiresFullSync() on a real queue, so the mismatch progress outlives the protocol instance.
+class AgentSyncProtocolIntegrityProgressTest : public AgentSyncProtocolTest
+{
+    protected:
+        void SetUp() override
+        {
+            AgentSyncProtocolTest::SetUp();
+            dbPath = (std::filesystem::temp_directory_path() /
+                      ("asp_integrity_progress_" +
+                       std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + ".db"))
+                     .string();
+            restart();
+        }
+
+        void TearDown() override
+        {
+            protocol.reset();
+            queue.reset();
+
+            std::filesystem::remove(dbPath);
+            std::filesystem::remove(dbPath + "-wal");
+            std::filesystem::remove(dbPath + "-shm");
+
+            AgentSyncProtocolTest::TearDown();
+        }
+
+        /// Replaces the queue and the protocol with new ones on the same database.
+        void restart()
+        {
+            protocol.reset();
+            queue.reset();
+            queue = std::make_shared<PersistentQueue>(dbPath, logger);
+            protocol = std::make_unique<AgentSyncProtocol>("test_module", dbPath, logger, queue, mockSyncTransport);
+        }
+
+        /// Answers every session sent from @p sentBefore on with @p httpCode until @p done is set.
+        /// Stops the protocol and fails the test if that takes more than 10 s.
+        void answerEverySessionUntil(int httpCode, const std::atomic<bool>& done, int sentBefore)
+        {
+            const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+            int answered = sentBefore;
+
+            while (!done)
+            {
+                if (std::chrono::steady_clock::now() > deadline)
+                {
+                    ADD_FAILURE() << "The protocol did not return within 10 s";
+                    protocol->stop();
+                    return;
+                }
+
+                if (mockSyncTransport->sendCount() > answered)
+                {
+                    ++answered;
+                    feedHttpResult(httpCode);
+                    continue;
+                }
+
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+        }
+
+        /// Runs requiresFullSync() answering every session it sends with @p httpCode.
+        /// @return The result and the number of sessions sent.
+        std::pair<IntegrityCheckResult, int> checkAnsweringEverySession(int httpCode)
+        {
+            const int sentBefore = mockSyncTransport->sendCount();
+            std::atomic<bool> done {false};
+            IntegrityCheckResult result;
+
+            std::thread checkThread([this, &done, &result]()
+            {
+                result = protocol->requiresFullSync(INDEX, "checksum");
+                done = true;
+            });
+
+            answerEverySessionUntil(httpCode, done, sentBefore);
+            checkThread.join();
+            return {result, mockSyncTransport->sendCount() - sentBefore};
+        }
+
+        static int64_t nowMs()
+        {
+            return std::chrono::duration_cast<std::chrono::milliseconds>(
+                       std::chrono::system_clock::now().time_since_epoch()).count();
+        }
+
+        static constexpr auto INDEX = "test_index";
+        std::string dbPath;
+        std::shared_ptr<PersistentQueue> queue;
+        LoggerFunc logger = [](modules_log_level_t, const std::string&) {};
+};
+
+TEST_F(AgentSyncProtocolIntegrityProgressTest, ResumesMismatchConfirmationAfterRestart)
+{
+    // The first instance gets one 409 and stops while confirming it.
+    IntegrityCheckResult first;
+    std::thread checkThread([this, &first]()
+    {
+        first = protocol->requiresFullSync(INDEX, "checksum");
+    });
+
+    ASSERT_TRUE(mockSyncTransport->waitForSession());
+    feedHttpResult(409);
+    protocol->stop();
+    checkThread.join();
+
+    EXPECT_EQ(first.status, IntegrityCheckStatus::NOT_CHECKED);
+    EXPECT_TRUE(first.mismatchUnconfirmed);
+    const auto stored = queue->getIntegrityProgress(INDEX);
+    ASSERT_TRUE(stored.has_value());
+    EXPECT_EQ(stored->mismatches, 1u);
+
+    // After the restart, the 409 already reported counts: four more confirm the mismatch.
+    restart();
+    const auto [result, sessions] = checkAnsweringEverySession(409);
+
+    EXPECT_EQ(result.status, IntegrityCheckStatus::MISMATCH);
+    EXPECT_EQ(sessions, 4);
+
+    // The mismatches stay stored until the index is cleaned.
+    const auto kept = queue->getIntegrityProgress(INDEX);
+    ASSERT_TRUE(kept.has_value());
+    EXPECT_EQ(kept->mismatches, 4u);
+}
+
+TEST_F(AgentSyncProtocolIntegrityProgressTest, RetriesAnInterruptedRecoveryAfterOneMismatch)
+{
+    const auto confirmed = checkAnsweringEverySession(409);
+    ASSERT_EQ(confirmed.first.status, IntegrityCheckStatus::MISMATCH);
+    ASSERT_EQ(confirmed.second, 5);
+
+    // The process stops before the recovery cleans the index: one 409 confirms it again.
+    restart();
+    const auto [result, sessions] = checkAnsweringEverySession(409);
+
+    EXPECT_EQ(result.status, IntegrityCheckStatus::MISMATCH);
+    EXPECT_EQ(sessions, 1);
+}
+
+TEST_F(AgentSyncProtocolIntegrityProgressTest, ConfirmedMismatchRenewsTheStoredTimestamp)
+{
+    const auto halfHourAgo = nowMs() - 30 * 60 * 1000;
+    queue->setIntegrityProgress(INDEX, {.mismatches = 4, .lastMismatchMs = halfHourAgo});
+
+    const auto [result, sessions] = checkAnsweringEverySession(409);
+
+    EXPECT_EQ(result.status, IntegrityCheckStatus::MISMATCH);
+    EXPECT_EQ(sessions, 1);
+
+    // The TTL counts from the 409 that confirmed it, not from the one before.
+    const auto kept = queue->getIntegrityProgress(INDEX);
+    ASSERT_TRUE(kept.has_value());
+    EXPECT_EQ(kept->mismatches, 4u);
+    EXPECT_GT(kept->lastMismatchMs, halfHourAgo + 60 * 1000);
+}
+
+TEST_F(AgentSyncProtocolIntegrityProgressTest, ClearsMismatchProgressWhenTheIndexIsCleaned)
+{
+    queue->setIntegrityProgress(INDEX, {.mismatches = 4, .lastMismatchMs = nowMs() - 60000});
+    queue->setIntegrityProgress("other_index", {.mismatches = 2, .lastMismatchMs = nowMs() - 60000});
+
+    const int sentBefore = mockSyncTransport->sendCount();
+    std::atomic<bool> done {false};
+    SyncModuleResult result;
+
+    std::thread cleanThread([this, &done, &result]()
+    {
+        result = protocol->notifyDataClean({INDEX});
+        done = true;
+    });
+
+    answerEverySessionUntil(200, done, sentBefore);
+    cleanThread.join();
+
+    EXPECT_TRUE(result.success);
+    EXPECT_FALSE(queue->getIntegrityProgress(INDEX).has_value());
+    EXPECT_TRUE(queue->getIntegrityProgress("other_index").has_value());
+}
+
+TEST_F(AgentSyncProtocolIntegrityProgressTest, ClearIntegrityProgressRemovesOnlyThatIndex)
+{
+    queue->setIntegrityProgress(INDEX, {.mismatches = 4, .lastMismatchMs = nowMs() - 60000});
+    queue->setIntegrityProgress("other_index", {.mismatches = 2, .lastMismatchMs = nowMs() - 60000});
+
+    protocol->clearIntegrityProgress(INDEX);
+
+    EXPECT_FALSE(queue->getIntegrityProgress(INDEX).has_value());
+    EXPECT_TRUE(queue->getIntegrityProgress("other_index").has_value());
+}
+
+TEST_F(AgentSyncProtocolIntegrityProgressTest, DiscardsAnOutOfRangeMismatchCount)
+{
+    queue->setIntegrityProgress(INDEX, {.mismatches = 5, .lastMismatchMs = nowMs() - 60000});
+
+    const auto [result, sessions] = checkAnsweringEverySession(409);
+
+    EXPECT_EQ(result.status, IntegrityCheckStatus::MISMATCH);
+    EXPECT_EQ(sessions, 5);
+}
+
+TEST_F(AgentSyncProtocolIntegrityProgressTest, ClearsMismatchProgressWhenTheChecksumMatches)
+{
+    queue->setIntegrityProgress(INDEX, {.mismatches = 3, .lastMismatchMs = nowMs() - 60000});
+
+    const auto [result, sessions] = checkAnsweringEverySession(200);
+
+    EXPECT_EQ(result.status, IntegrityCheckStatus::VALID);
+    EXPECT_EQ(sessions, 1);
+    EXPECT_FALSE(queue->getIntegrityProgress(INDEX).has_value());
+}
+
+TEST_F(AgentSyncProtocolIntegrityProgressTest, KeepsMismatchProgressWhenTheCheckCannotRun)
+{
+    // A 503 says nothing about the checksum, so the mismatches already reported still count.
+    queue->setIntegrityProgress(INDEX, {.mismatches = 2, .lastMismatchMs = nowMs() - 60000});
+
+    const auto [result, sessions] = checkAnsweringEverySession(503);
+
+    EXPECT_EQ(result.status, IntegrityCheckStatus::NOT_CHECKED);
+    EXPECT_TRUE(result.mismatchUnconfirmed);
+    EXPECT_EQ(sessions, 1);
+    const auto stored = queue->getIntegrityProgress(INDEX);
+    ASSERT_TRUE(stored.has_value());
+    EXPECT_EQ(stored->mismatches, 2u);
+}
+
+TEST_F(AgentSyncProtocolIntegrityProgressTest, StartsOverWhenTheMismatchProgressExpired)
+{
+    queue->setIntegrityProgress(INDEX, {.mismatches = 4, .lastMismatchMs = nowMs() - 2 * 3600 * 1000});
+
+    const auto [result, sessions] = checkAnsweringEverySession(409);
+
+    EXPECT_EQ(result.status, IntegrityCheckStatus::MISMATCH);
+    EXPECT_EQ(sessions, 5);
+}
+
+TEST_F(AgentSyncProtocolIntegrityProgressTest, StartsOverWhenTheMismatchProgressIsInTheFuture)
+{
+    queue->setIntegrityProgress(INDEX, {.mismatches = 4, .lastMismatchMs = nowMs() + 3600 * 1000});
+
+    const auto [result, sessions] = checkAnsweringEverySession(409);
+
+    EXPECT_EQ(result.status, IntegrityCheckStatus::MISMATCH);
+    EXPECT_EQ(sessions, 5);
+}
+
 // Tests for synchronizeMetadataOrGroups
 TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithMetadataDeltaMode)
 {
@@ -3391,6 +3687,86 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithUnrecognizedBodyFallsBackTo
 
     // Not valid JSON at all -- must not throw past the parser.
     bool response = feedHttpResult(409, "not json");
+
+    EXPECT_TRUE(response);
+
+    syncThread.join();
+}
+
+// The manager answers a vulnerability-detection session with this 503 while its feed is still
+// loading, more than half an hour on a new manager (#40683). It is an expected state, not a
+// communication failure: it gets its own reason and flag, on top of the managerNotReady every 503
+// sets.
+TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithFeedNotReadyReportsItsOwnReason)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&)
+    {
+    };
+    protocol = std::make_unique<AgentSyncProtocol>("test_module_vd", ":memory:", testLogger, mockQueue,
+                                                   mockSyncTransport, /*isFeedBased=*/true);
+
+    std::thread syncThread(
+        [this]()
+    {
+        std::vector<PersistedData> testData =
+        {
+            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+        };
+
+        EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) ).WillOnce(Return(testData));
+        EXPECT_CALL(*mockQueue, resetSyncingItems()).Times(1);
+
+        SyncModuleResult syncResult = protocol->synchronizeModule(Mode::DELTA);
+        EXPECT_FALSE(syncResult.success);
+        EXPECT_TRUE(syncResult.feedNotReady);
+        EXPECT_TRUE(syncResult.managerNotReady);
+        EXPECT_EQ(syncResult.failureReason,
+                  "The manager's vulnerability feed is not ready yet; packages and OS inventory will be "
+                  "synchronized once it is.");
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    bool response = feedHttpResult(503, R"({"error":"vulnerability feed not ready","code":503})");
+
+    EXPECT_TRUE(response);
+
+    syncThread.join();
+}
+
+// Every other 503 (indexer unreachable, no capacity, shutting down) carries the manager's generic
+// body and keeps being reported as the manager not being ready.
+TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithServiceUnavailableKeepsManagerNotReady)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&)
+    {
+    };
+    protocol = std::make_unique<AgentSyncProtocol>("test_module_vd", ":memory:", testLogger, mockQueue,
+                                                   mockSyncTransport, /*isFeedBased=*/true);
+
+    std::thread syncThread(
+        [this]()
+    {
+        std::vector<PersistedData> testData =
+        {
+            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+        };
+
+        EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) ).WillOnce(Return(testData));
+        EXPECT_CALL(*mockQueue, resetSyncingItems()).Times(1);
+
+        SyncModuleResult syncResult = protocol->synchronizeModule(Mode::DELTA);
+        EXPECT_FALSE(syncResult.success);
+        EXPECT_FALSE(syncResult.feedNotReady);
+        EXPECT_TRUE(syncResult.managerNotReady);
+        EXPECT_EQ(syncResult.failureReason, "Failed to communicate with the manager.");
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    bool response = feedHttpResult(503, R"({"error":"Service unavailable","code":503})");
 
     EXPECT_TRUE(response);
 

@@ -32,7 +32,6 @@ static void multiline_mark_group(EVP_MD_CTX * group_context, EVP_MD_CTX * contex
 
 /* Read multiline logs */
 void *read_multiline(logreader *lf, int *rc, int drop_it) {
-    int __ms = 0;
     int __ms_reported = 0;
     int linesgot = 0;
     size_t buffer_size = 0;
@@ -42,6 +41,9 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
     int size = 0;
     int64_t offset = 0;
     int64_t rbytes = 0;
+    int64_t group_length = 0;
+    bool group_truncated = false;
+    bool group_has_text = false;
 
     *rc = 0;
 
@@ -60,10 +62,12 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
         EVP_MD_CTX_copy(group_context, context);
     }
 
-    for (offset = w_ftell(lf->fp); can_read() && (!maximum_lines || lines < maximum_lines) && offset >= 0 && fgets(str, OS_MAX_LOG_SIZE, lf->fp); offset += rbytes) {
+    /* Past the line limit, only the open group is read to its end, so a group is never split across reads */
+    for (offset = w_ftell(lf->fp); can_read() && (!maximum_lines || lines < maximum_lines || linesgot > 0) && offset >= 0 && fgets(str, OS_MAX_LOG_SIZE, lf->fp); offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
         lines++;
         linesgot++;
+        bool line_dropped = false;
 
         /* Flow control */
         if (rbytes <= 0) {
@@ -80,13 +84,9 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
 
             if ((int64_t)strlen(str) != rbytes - 1)
             {
-                mdebug2("Line in '%s' contains some zero-bytes (valid=" FTELL_TT " / total=" FTELL_TT "). Dropping line.", lf->file, FTELL_INT64 strlen(str), FTELL_INT64 rbytes - 1);
-                /* Keep the rewind point at the start of a group still being collected */
-                if (buffer[0] == '\0') {
-                    current_position = offset + rbytes;
-                    multiline_mark_group(group_context, context, &group_pending);
-                }
-                continue;
+                mdebug2("Line in '%s' contains some zero-bytes (valid=" FTELL_TT " / total=" FTELL_TT "). Excluding its text from the event.", lf->file, FTELL_INT64 strlen(str), FTELL_INT64 rbytes - 1);
+                /* The line still belongs to its group: it adds no text, but it can complete the group */
+                line_dropped = true;
             }
         }
 
@@ -99,7 +99,43 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
                 OS_SHA1_Stream_Bytes(context, str, (size_t) rbytes);
             }
             group_pending = true;
-            __ms = 1;
+
+            /* Discard the rest of the line now, so it is not read as the next line of the group */
+            char rest[OS_SIZE_1024];
+            int64_t rest_offset = offset + rbytes;
+            int64_t rest_bytes;
+
+            while (fgets(rest, sizeof(rest), lf->fp) != NULL) {
+                rest_bytes = w_ftell(lf->fp) - rest_offset;
+
+                /* Flow control */
+                if (rest_bytes <= 0) {
+                    break;
+                }
+
+                if (is_valid_context_file) {
+                    OS_SHA1_Stream_Bytes(context, rest, (size_t) rest_bytes);
+                }
+
+                rest_offset += rest_bytes;
+
+                if (rest[rest_bytes - 1] == '\n') {
+                    break;
+                }
+            }
+
+            if (feof(lf->fp)) {
+                /* The line is not complete yet: read the group again next time */
+                mdebug2("Message not complete from '%s'. Trying again: '%.*s'...", lf->file, sample_log_length, str);
+                if (current_position >= 0) {
+                    w_fseek(lf->fp, current_position, SEEK_SET);
+                }
+                rewound = true;
+                break;
+            }
+
+            rbytes = rest_offset - offset;
+            group_truncated = true;
         } else if (feof(lf->fp)) {
             /* Message not complete. Return. */
             mdebug2("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length, str, rbytes > sample_log_length ? "..." : "");
@@ -118,17 +154,22 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
         }
 #endif
 
+        group_length += rbytes;
+
         /* Add to buffer */
-        buffer_size = strlen(buffer);
-        if (buffer[0] != '\0' && buffer_size < sizeof(buffer) - 1) {
-            buffer[buffer_size] = ' ';
-            buffer_size++;
-        }
+        if (!line_dropped) {
+            group_has_text = true;
+            buffer_size = strlen(buffer);
+            if (buffer[0] != '\0' && buffer_size < sizeof(buffer) - 1) {
+                buffer[buffer_size] = ' ';
+                buffer_size++;
+            }
 
-        size = snprintf(buffer + buffer_size, sizeof(buffer) - buffer_size, "%s", str);
+            size = snprintf(buffer + buffer_size, sizeof(buffer) - buffer_size, "%s", str);
 
-        if ((size_t)size >= sizeof(buffer) - buffer_size) {
-            __ms = 1;
+            if ((size_t)size >= sizeof(buffer) - buffer_size) {
+                group_truncated = true;
+            }
         }
 
         if (linesgot < lf->linecount) {
@@ -136,44 +177,28 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
         }
         linesgot = 0;
 
-        /* Check ignore and restrict log regex, if configured. */
-        if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, buffer)) {
+        /* A group whose lines were all dropped has nothing to send. Check ignore and restrict log regex, if configured. */
+        if (group_has_text && drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, buffer)) {
             /* Send message to queue */
             mdebug2("Reading message: '%.*s'%s", sample_log_length, buffer, strlen(buffer) > (size_t)sample_log_length ? "..." : "");
             w_msg_hash_queues_push(buffer, lf->file, strlen(buffer) + 1, lf->log_target, LOCALFILE_MQ);
         }
 
-        buffer[0] = '\0';
-
-
-        /* Incorrect message size */
-        if (__ms) {
+        /* Reported only once the group is complete, as it may be read again while it is not */
+        if (group_truncated) {
             if (!__ms_reported) {
-                merror("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, sample_log_length, str);
+                merror("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 group_length, sample_log_length, buffer);
                 __ms_reported = 1;
             } else {
-                mdebug2("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, sample_log_length, str);
+                mdebug2("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 group_length, sample_log_length, buffer);
             }
-
-            for (offset += rbytes; fgets(str, sizeof(str), lf->fp) != NULL; offset += rbytes) {
-                rbytes = w_ftell(lf->fp) - offset;
-
-                /* Flow control */
-                if (rbytes <= 0) {
-                    break;
-                }
-
-                if (is_valid_context_file) {
-                    OS_SHA1_Stream_Bytes(context, str, (size_t) rbytes);
-                }
-
-                /* Get the last occurrence of \n */
-                if (str[rbytes - 1] == '\n') {
-                    break;
-                }
-            }
-            __ms = 0;
         }
+
+        buffer[0] = '\0';
+        group_length = 0;
+        group_truncated = false;
+        group_has_text = false;
+
 
         current_position = w_ftell(lf->fp);
         multiline_mark_group(group_context, context, &group_pending);
@@ -181,17 +206,12 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
 
     /* Lines of a group that is not complete yet were hashed beyond the stored offset */
     if (group_pending) {
-        if (maximum_lines && lines >= maximum_lines && !rewound) {
-            /* Stopped by the line limit: the stored offset covers the lines already read */
-            current_position = w_ftell(lf->fp);
-        } else {
-            /* Stopped at the end of the file: the group is read again, from its first line, next time */
-            if (!rewound && current_position >= 0) {
-                w_fseek(lf->fp, current_position, SEEK_SET);
-            }
-            if (group_context != NULL) {
-                EVP_MD_CTX_copy(context, group_context);
-            }
+        /* The group is read again, from its first line, next time */
+        if (!rewound && current_position >= 0) {
+            w_fseek(lf->fp, current_position, SEEK_SET);
+        }
+        if (group_context != NULL) {
+            EVP_MD_CTX_copy(context, group_context);
         }
     }
     EVP_MD_CTX_free(group_context);

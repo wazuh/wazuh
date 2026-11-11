@@ -14,8 +14,10 @@ callback contract, the internal configuration object) are in the developer READM
 
 ## How an update runs
 
-The topic is updated once when the Vulnerability Scanner registers it, then every
-`feed-update-interval` (default `60m`), and on demand (see [On-demand updates](#on-demand-updates)).
+The topic is updated once when the Vulnerability Scanner registers it, then `feed-update-interval`
+(default `60m`) after the previous scheduled update **finished** — the interval is counted from the
+end of one run, not from its start, so a run that takes 10 minutes moves every later run by 10
+minutes — and on demand (see [On-demand updates](#on-demand-updates)).
 Two updates of the same topic never overlap: a scheduled run that finds one in progress is skipped.
 
 Each update:
@@ -36,7 +38,13 @@ Each update:
      than the cursor.
 3. **Downloads with a point-in-time (PIT) snapshot**, sorted by `offset` and `_id`, `pageSize`
    documents per request. An initial load splits the index into `numSlices` parallel slices when
-   `numSlices` is greater than 1; incremental updates are always sequential.
+   `numSlices` is greater than 1; incremental updates are always sequential. A page request that
+   fails (for example the indexer answering HTTP 429 under memory pressure) is repeated from the same
+   position, up to 5 times over about 2 minutes (5, 10, 20, 40 and 60 seconds apart). Only the slice
+   that failed waits: the pages already downloaded, and the other slices, are kept. A page that still
+   fails after that fails the download. A failed initial load (in a sliced load, once the other slices
+   have stopped at their next page) starts again **from the beginning** after 30 seconds; a failed
+   incremental update ends the run, and the next run resumes from the stored cursor.
 4. **Asks the Vulnerability Scanner to validate the result.** If the scanner reports the local feed
    as not usable, the stored cursor is invalidated and a full reload is retried after 30 seconds.
 5. **Stores the new cursor**, so the next update resumes from it.
@@ -91,11 +99,25 @@ The Content Manager logs to `/var/wazuh-manager/logs/wazuh-manager.log` under th
 | Message | Meaning |
 |---|---|
 | `IndexerDownloader: Consumer '<id>' in index '<index>' is ready. Starting feed download.` | The readiness gate passed |
+| `IndexerDownloader: Consumer '<id>' not found in '<index>'. Waiting 60s before retrying.` | The CTI consumer has not registered its status document yet (normal on a fresh indexer) |
 | `IndexerDownloader: Consumer '<id>' is still running in '<index>'. Waiting 60s before retrying.` | The CTI consumer is still indexing the feed |
 | `IndexerDownloader: Global-map documents not yet indexed in '<index>' (<n>/3 found). Waiting 30s before retrying.` | An initial load is waiting for the global maps |
+| `IndexerDownloader: Global-map documents present in '<index>'. Starting initial load.` | The global maps are indexed; the initial load proceeds |
 | `IndexerDownloader: Starting initial full load (slices=<n>)` | A full download started |
+| `IndexerDownloader: Retrying initial full load (attempt <n>) ...` | A previous full download failed (see the `Initial load failed` or `Slice <i> failed` line before it) or found the index empty, and the full download starts again from the beginning |
+| `IndexerDownloader: <who> page request failed (<error>) — retrying from the same position in <ms>ms (retry <k>/5).` | A page request failed and is repeated from the same position; nothing already downloaded is lost. `<who>` is `Slice <i> (<i+1>/<n>)` for a sliced load, `Download` for a sequential one. A warning: it means the indexer is rejecting or failing requests (HTTP 429 is the indexer's circuit breaker) |
+| `IndexerDownloader: Slice <i> (<i+1>/<n>) in progress — <n> documents so far, cursor '<c>', <s>s elapsed` | A sliced full download is advancing (one line per slice at most once a minute) |
+| `IndexerDownloader: Slice <i> (<i+1>/<n>) complete — <n> docs in <ms>ms` | One slice of a full download finished (`interrupted` instead of `complete` when the module is stopping; `abandoned after another slice failed` when another slice exhausted its retries) |
+| `IndexerDownloader: Download in progress — <n> documents so far, cursor '<c>', <s>s elapsed` | A sequential download (full load with `numSlices` = 1, or an incremental update) is advancing (at most once a minute) |
 | `IndexerDownloader: Starting incremental update from offset <n>` | An incremental download started |
 | `IndexerDownloader: Initial load download phase complete — <n> documents, cursor: '<n>'` | A full download finished |
 | `IndexerDownloader: Incremental update download phase complete — <n> documents, new cursor: '<n>'` | An incremental download finished |
-| `IndexerDownloader: Initial load failed (<error>) — retrying in 30s.` | The indexer failed during a full download (a warning from the third attempt on; earlier attempts log at debug level) |
+| `IndexerDownloader: Slice <i> failed: <error> — the initial load will be retried` | One slice of a sliced full download still failed after its page retries (a warning); the whole download fails with it and starts again from the beginning |
+| `IndexerDownloader: Initial load failed (<error>) — retrying in 30s.` | A full download failed, with its reason (an info line for the first two attempts, a warning from the third on) |
+| `IndexerDownloader: Indexer index not ready (0 documents) — retrying in 30s.` | A full download found the feed index empty (a warning from the third attempt on; earlier attempts log at debug level) |
+| `IndexerDownloader: Stop requested <when> — aborting.` (or `— slice <i> aborting.`, or `… while waiting for …`) | The module is stopping; the wait or download in progress is abandoned |
 | `Action for 'vulnerability_feed_manager' failed: <error>.` | The update ended with an error; the next scheduled run retries it |
+| `Rejected <n> on-demand request(s) with 404 <period>: unknown topic (last: '<topic>').` | `POST /ondemand` named a topic that is not registered (throttled: one line per burst) |
+| `Rejected <n> on-demand update(s) with 503 <period>: the on-demand lane is full (4 slot(s)) (last topic: '<topic>').` | More than 4 on-demand requests were waiting; the extra ones were refused |
+| `Answered <n> on-demand request(s) with 409 <period>: an update for that topic was already running (last: '<topic>').` | The on-demand request coincided with a run in progress; nothing was lost |
+| `On-demand lane stopped; <n> queued update(s) were answered 503.` | The module stopped with on-demand requests still queued |

@@ -44,13 +44,15 @@ Time between two backups.
   (seconds, minutes, hours, days, weeks). Minimum 1 second: `0` (in any unit, such as `0s` or `0d`)
   is rejected by `wazuh-manager-conf validate` and by the pre-start check of `wazuh-manager-control`
   with `(1244): Invalid configuration at '/wdb/backup/global/interval': ...`, so no daemon starts.
+  Maximum 999999999 seconds: at most 9 digits in seconds, 7 in minutes, 5 in hours, 4 in days or 3
+  in weeks (leading zeros aside); a longer number is rejected the same way.
 
 #### max_files
 
 Number of backup files kept. After each backup, the oldest files are deleted until this many remain.
 
 - **Default value:** `3`
-- **Allowed values:** integer ≥ 1 (no upper bound)
+- **Allowed values:** integer from 1 to 2147483647
 - **Note:** Every file whose name starts with `global.db-backup` counts, including `-pre_restore`
   backups.
 
@@ -66,9 +68,12 @@ To see the effective values:
 
 **Configuration file:** `/etc/wazuh-manager/wazuh-manager-internal-options.conf`
 
-The file ships with comments only; these keys take their defaults until set. Each value must be a plain
-non-negative integer inside its range: anything else makes `wazuh-manager-db` exit at start with
-`(2302): Invalid definition for wazuh_db.<key>: '<value>'.` Restart the manager after a change.
+The file ships with comments only; these keys take their defaults until set. Each value must be a decimal
+integer inside its range, digits only after an optional leading `-` (so `-0` reads as `0`; any other negative
+value is below every range here). Spaces between `=` and the value are skipped; a tab there, a trailing space,
+a `+` sign, a fraction, a unit or an inline comment is not. Anything else makes `wazuh-manager-db` exit with
+`(2302): Invalid definition for wazuh_db.<key>: '<value>'.`, at start and in `wazuh-manager-db -t` alike, so
+`wazuh-manager-control check` refuses it too. Restart the manager after a change.
 
 ```ini
 # Debug level (0-2, default: 0)
@@ -176,7 +181,7 @@ These examples show only the `<wdb>` section; a real `wazuh-manager.conf` also c
 
 | File | Path |
 |---|---|
-| Global database | `/var/wazuh-manager/queue/db/global.db` (`wazuh-manager`, mode `0640`) |
+| Global database | `/var/wazuh-manager/queue/db/global.db` (`wazuh-manager`, mode `0640`; the `queue/db/` directory is `wazuh-manager`, mode `0750`) |
 | MITRE database | `/var/wazuh-manager/var/db/mitre.db` (`root:wazuh-manager`, mode `0660`) |
 | Backups | `/var/wazuh-manager/backup/db/` (`wazuh-manager`, mode `0750`) |
 

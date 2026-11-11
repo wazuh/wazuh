@@ -101,6 +101,35 @@ int wm_config();
 #ifndef CLIENT
 extern const char *wm_config_path;   // Manager configuration file (etc/wazuh-manager.conf); modulesd -c overrides it.
 #endif
+
+/**
+ * @brief Resolve a configuration path given on the command line against the caller's directory.
+ *
+ * The daemon changes into its home before it reads the configuration, so a relative path has to be
+ * made absolute from the directory it was started in.
+ *
+ * @param path Path as given (absolute or relative).
+ * @param cwd Directory the process was started in; NULL or empty leaves @p path as given.
+ * @return Newly allocated path: @p path itself when absolute, else "<cwd>/<path>".
+ */
+char *wm_resolve_config_path(const char *path, const char *cwd);
+
+/**
+ * @brief Log tag for a module configuration reader.
+ *
+ * The readers live in the configuration library, which fixes a module's tag at build time to
+ * modulesd's name ("<modulesd>:<module>"), but on the manager they also run in other programs --
+ * verify-agent-conf checking a shared agent.conf. There the "<modulesd>" prefix is replaced by the
+ * running program's name (OS_SetName()), so the line is attributed to the program that wrote it. In
+ * modulesd, and on agents, @p tag is returned unchanged.
+ *
+ * The answer may point to a static buffer, rewritten only with the same bytes within one process
+ * (the program name is set once, at start-up): use it for one log call.
+ *
+ * @param tag Build-time tag, e.g. WM_SCA_LOGTAG.
+ * @return The tag to log under.
+ */
+const char *wm_config_logtag(const char *tag);
 cJSON *getModulesConfig(void);
 cJSON *getModulesInternalOptions(void);
 int modulesSync(char* args, size_t length);

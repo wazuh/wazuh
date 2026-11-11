@@ -47,6 +47,9 @@ All Syscollector events share a common structure:
 | `memory_total` | `host.memory.total` |
 | `memory_free` | `host.memory.free` |
 | `memory_used` | `host.memory.used` |
+| *(derived, not stored)* | `host.memory.usage` |
+
+Memory values are in bytes. `host.memory.usage` is computed by Syscollector as `memory_used / memory_total`, a fraction between `0` and `1` (not a percentage), and is `null` when the total is unknown.
 
 ```json
 {
@@ -65,9 +68,10 @@ All Syscollector events share a common structure:
                 "speed": 2904
             },
             "memory": {
-                "free": 2257872,
-                "total": 4972208,
-                "used": 54
+                "free": 2311041024,
+                "total": 5091541000,
+                "usage": 0.5461,
+                "used": 2780499976
             },
             "serial_number": "Intel Corporation"
         }
@@ -552,7 +556,9 @@ On Linux, `user.last_login` is the newest of the `lastlog` record, the `lastlog2
             "is_hidden": false,
             "name": "daemon",
             "users": [
-                "daemon:pollinate:vboxadd"
+                "daemon",
+                "pollinate",
+                "vboxadd"
             ],
             "uuid": null
         }
@@ -774,12 +780,17 @@ On Linux, `user.last_login` is the newest of the `lastlog` record, the `lastlog2
 
 ## Event Processing
 
-Syscollector events are processed by the Inventory Harvester and stored directly in Wazuh Indexer without going through traditional rule processing, since they represent inventory state rather than security events.
+Syscollector events reach the manager through remoted's authenticated HTTPS listener, which forwards
+them to the [Inventory Sync Server](../inventory-sync-server/README.md). It writes them directly to the
+`wazuh-states-inventory-*` indices of the Wazuh Indexer without going through the engine's rule
+processing, since they represent inventory state rather than security events. Syscollector's VD sessions
+(packages, OS and hotfixes) also drive the vulnerability scan.
 
 ## Integration
 
 Access syscollector inventory data through:
 
-- **Wazuh API**: REST endpoints for querying current inventory state
 - **Wazuh Dashboard**: Built-in inventory visualization
-- **Direct Database**: Query Wazuh Indexer for raw event data
+- **Wazuh Indexer**: Query the `wazuh-states-inventory-*` indices directly
+
+The manager's REST API has no inventory endpoints in this version.

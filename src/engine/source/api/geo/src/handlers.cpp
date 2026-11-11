@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include <api/geo/handlers.hpp>
 
+#include <api/adapter/helpers.hpp>
+#include <base/utils/ipUtils.hpp>
+
 #include <eMessages/geo.pb.h>
 #include <google/protobuf/util/json_util.h>
 
@@ -30,6 +33,14 @@ adapter::RouteHandler getDb(const std::shared_ptr<::geo::IManager>& geoManager)
         if (ip.empty())
         {
             res = adapter::userErrorResponse<ResponseType>("IP cannot be empty");
+            return;
+        }
+
+        // A value that is not an IP address would only miss in both databases: refuse it instead of answering empty
+        if (!::utils::ip::checkStrIsIPv4(ip) && !::utils::ip::checkStrIsIPv6(ip))
+        {
+            const auto shownIp = adapter::helpers::truncateForMessage(ip);
+            res = adapter::userErrorResponse<ResponseType>(fmt::format("Invalid IP address: {}", shownIp));
             return;
         }
 

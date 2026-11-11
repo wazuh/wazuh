@@ -15,6 +15,7 @@
 #include <chrono>
 #include <cstdint>
 #include <limits>
+#include <string>
 
 namespace remoted::common
 {
@@ -44,8 +45,8 @@ namespace remoted::common
         /// One window per condition. 90 s matches remoted's existing C throttles.
         static constexpr std::chrono::nanoseconds kDefaultWindow {std::chrono::seconds {90}};
 
-        /// The same window in whole seconds, for rendering "in the last N s" in the log message.
-        /// Kept next to the window itself so the text can never drift from the actual period.
+        /// The same window in whole seconds, for telling the operator how often a line is
+        /// summarised. Never for the period a count covers: that is Decision::period().
         static constexpr int kDefaultWindowSeconds {
             static_cast<int>(std::chrono::duration_cast<std::chrono::seconds>(kDefaultWindow).count())};
 
@@ -63,11 +64,32 @@ namespace remoted::common
             bool emit {false};            ///< True for exactly one caller per window.
             std::uint64_t suppressed {0}; ///< Occurrences NOT logged since the last emission.
             std::uint64_t total {0};      ///< suppressed + 1: how many occurrences this line stands for.
+            /// Whole seconds since the previous emission, i.e. the real period `total` covers
+            /// (which can be far longer than the window: suppressed occurrences are only reported
+            /// by the next one). -1 for the first emission ever, which covers only itself.
+            std::int64_t secondsSinceLastEmit {-1};
 
             /// @brief Lets a Decision be used directly in an `if`.
             explicit operator bool() const noexcept
             {
                 return emit;
+            }
+
+            /**
+             * @brief The period `total` really covers, worded for a log line ("%llu error(s) %s").
+             *
+             * "so far" for the first emission (it covers everything since the process started,
+             * which is usually just itself), otherwise "in the last N s" with N the real time since
+             * the previous emission -- never the window length, which would misattribute the
+             * occurrences a quiet stretch carried over.
+             */
+            std::string period() const
+            {
+                if (secondsSinceLastEmit < 0)
+                {
+                    return "so far";
+                }
+                return "in the last " + std::to_string(secondsSinceLastEmit) + " s";
             }
         };
 
@@ -103,7 +125,9 @@ namespace remoted::common
             // fetch_add and this exchange is folded into THIS line; one recorded after it is
             // carried into the next window -- so no occurrence is ever lost or counted twice.
             const auto total = m_pending.exchange(0, std::memory_order_relaxed);
-            return {true, total > 0 ? total - 1 : 0, total};
+            const std::int64_t sinceLast =
+                previous == kNever ? -1 : static_cast<std::int64_t>((now - previous) / 1'000'000'000);
+            return {true, total > 0 ? total - 1 : 0, total, sinceLast};
         }
 
         /// @brief Occurrences counted but not yet reported.

@@ -42,7 +42,7 @@ This README covers the library's interface and internals.
         "indexer": {
             "hosts": ["https://127.0.0.1:9200"],
             "ssl": {
-                "certificate_authorities": ["/etc/wazuh-manager/certs/root-ca.pem"],
+                "certificate_authorities": ["/etc/wazuh-manager/certs/indexer-ca.pem"],
                 "certificate": "/etc/wazuh-manager/certs/indexer-connector.pem",
                 "key": "/etc/wazuh-manager/certs/indexer-connector-key.pem"
             },
