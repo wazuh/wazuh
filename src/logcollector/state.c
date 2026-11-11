@@ -114,15 +114,26 @@ STATIC void w_logcollector_state_dump() {
     lc_state_str[len] = '\n';
     lc_state_str[len + 1] = '\0';
 
+    // Report an open failure once per cause instead of on every interval.
+    static bool open_failing = false;
+    static int open_errno = 0;
     FILE * lc_state_file = NULL;
 
-    if (lc_state_file = wfopen(LOGCOLLECTOR_STATE, "w"), lc_state_file != NULL) {
+    if (lc_state_file = w_fopen_nofollow(LOGCOLLECTOR_STATE_DIR, LOGCOLLECTOR_STATE_NAME, "w"), lc_state_file != NULL) {
+        open_failing = false;
         if (fwrite(lc_state_str, sizeof(char), len + 1, lc_state_file) < 1) {
             merror(FWRITE_ERROR, LOGCOLLECTOR_STATE, errno, strerror(errno));
         }
         fclose(lc_state_file);
     } else {
-        merror(FOPEN_ERROR, LOGCOLLECTOR_STATE, errno, strerror(errno));
+        const int error = errno;
+        if (!open_failing || error != open_errno) {
+            merror(FOPEN_ERROR, LOGCOLLECTOR_STATE, error, strerror(error));
+        } else {
+            mdebug2(FOPEN_ERROR, LOGCOLLECTOR_STATE, error, strerror(error));
+        }
+        open_failing = true;
+        open_errno = error;
     }
 
     os_free(lc_state_str);

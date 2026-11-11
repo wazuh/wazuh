@@ -19,6 +19,7 @@
 
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
@@ -878,9 +879,7 @@ void test_w_logcollector_state_dump_fail_open(void ** state) {
     will_return(__wrap_cJSON_Print, strdup("Test 123"));
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_wfopen, path, LOGCOLLECTOR_STATE);
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, NULL);
+    expect_w_fopen_nofollow(LOGCOLLECTOR_STATE_DIR, LOGCOLLECTOR_STATE_NAME, "w", NULL);
 
     const char * error_msg = "(1103): Could not open file "
                              "'" LOGCOLLECTOR_STATE "' due to";
@@ -898,9 +897,7 @@ void test_w_logcollector_state_dump_fail_write(void ** state) {
     will_return(__wrap_cJSON_Print, strdup("Test 123"));
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_wfopen, path, LOGCOLLECTOR_STATE);
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, (FILE *) 100);
+    expect_w_fopen_nofollow(LOGCOLLECTOR_STATE_DIR, LOGCOLLECTOR_STATE_NAME, "w", (FILE *) 100);
     will_return(__wrap_fwrite, 0);
 
     const char * error_msg = "(1110): Could not write file "
@@ -922,14 +919,62 @@ void test_w_logcollector_state_dump_ok(void ** state) {
     will_return(__wrap_cJSON_Print, strdup("Test 123"));
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_wfopen, path, LOGCOLLECTOR_STATE);
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, (FILE *) 100);
+    expect_w_fopen_nofollow(LOGCOLLECTOR_STATE_DIR, LOGCOLLECTOR_STATE_NAME, "w", (FILE *) 100);
     will_return(__wrap_fwrite, 1);
 
     expect_value(__wrap_fclose, _File, (FILE *) 100);
     will_return(__wrap_fclose, 0);
 
+    w_logcollector_state_dump();
+}
+
+static void queue_state_dump(FILE * open_result, int open_errno) {
+    expect_function_call(__wrap_pthread_mutex_lock);
+    will_return(__wrap_cJSON_Duplicate, (cJSON *) 3);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    will_return(__wrap_cJSON_Print, strdup("Test 123"));
+    expect_function_call(__wrap_cJSON_Delete);
+
+    expect_w_fopen_nofollow(LOGCOLLECTOR_STATE_DIR, LOGCOLLECTOR_STATE_NAME, "w", open_result);
+
+    if (open_result) {
+        will_return(__wrap_fwrite, 1);
+        expect_value(__wrap_fclose, _File, open_result);
+        will_return(__wrap_fclose, 0);
+    }
+
+    errno = open_errno;
+}
+
+void test_w_logcollector_state_dump_open_error_logged_once(void ** state) {
+
+    const char * error_msg = "(1103): Could not open file "
+                             "'" LOGCOLLECTOR_STATE "' due to";
+
+    // First failure: error.
+    queue_state_dump(NULL, ELOOP);
+    expect_memory(__wrap__merror, formatted_msg, error_msg, strlen(error_msg));
+    w_logcollector_state_dump();
+
+    // Same cause again: debug only.
+    queue_state_dump(NULL, ELOOP);
+    expect_memory(__wrap__mdebug2, formatted_msg, error_msg, strlen(error_msg));
+    w_logcollector_state_dump();
+
+    // Different cause: error again.
+    queue_state_dump(NULL, EMLINK);
+    expect_memory(__wrap__merror, formatted_msg, error_msg, strlen(error_msg));
+    w_logcollector_state_dump();
+
+    // A successful dump resets it, so the next failure is an error again.
+    queue_state_dump((FILE *) 100, 0);
+    w_logcollector_state_dump();
+
+    queue_state_dump(NULL, EMLINK);
+    expect_memory(__wrap__merror, formatted_msg, error_msg, strlen(error_msg));
+    w_logcollector_state_dump();
+
+    queue_state_dump((FILE *) 100, 0);
     w_logcollector_state_dump();
 }
 
@@ -1064,9 +1109,7 @@ void test_w_logcollector_state_main_ok(void ** state) {
     will_return(__wrap_cJSON_Print, strdup("Test 123"));
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_wfopen, path, LOGCOLLECTOR_STATE);
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, (FILE *) 100);
+    expect_w_fopen_nofollow(LOGCOLLECTOR_STATE_DIR, LOGCOLLECTOR_STATE_NAME, "w", (FILE *) 100);
     will_return(__wrap_fwrite, 1);
 
     expect_value(__wrap_fclose, _File, (FILE *) 100);
@@ -1212,6 +1255,7 @@ int main(void) {
         cmocka_unit_test(test_w_logcollector_state_dump_fail_open),
         cmocka_unit_test(test_w_logcollector_state_dump_fail_write),
         cmocka_unit_test(test_w_logcollector_state_dump_ok),
+        cmocka_unit_test(test_w_logcollector_state_dump_open_error_logged_once),
 
         // Tests w_logcollector_state_main
         cmocka_unit_test(test_w_logcollector_state_main_bad_interval),
