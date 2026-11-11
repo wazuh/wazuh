@@ -55,7 +55,10 @@ A policy resource is `<type>:<field>:<value>`, with `*` as a wildcard value (`ag
 
 `POST /security/policies` and `PUT /security/policies/{policy_id}` refuse with error `4006` a policy whose
 `effect` is not `allow` or `deny` (case-insensitive), or with an action or a resource type (`<type>:<field>`)
-missing from the catalog above; an empty `actions` or `resources` list is `400`.
+missing from the catalog above; an empty `actions` or `resources` list is `400`. They also refuse with
+`4006` a resource the API could not evaluate when a user of a linked role makes a request: each resource is
+`*:*:*`, one `<type>:<field>:<value>`, or two joined by `&` (never three or more), written in ASCII letters,
+digits and `_` `.`, plus `*` `/` `-` in the value.
 
 `POST /security/rules` and `PUT /security/rules/{rule_id}` refuse with error `4003` a rule that is not a
 non-empty object of operators: `AND`, `OR` and `NOT` hold one rule or a non-empty list of rules, `MATCH`,
@@ -138,6 +141,19 @@ join the cluster: keep it out of custom roles and policies.
 
 Enabling `allow_run_as`, and resetting another user's password, also need `security:update` over the
 roles that user can reach: see [Default Users](../server-api/authentication.md#default-users).
+
+Changing what a role grants needs a permission over that role, whichever endpoint does it:
+
+| Operation | Also needs, over every role the policy or rule is linked to | Otherwise |
+|-----------|--------------------------------------------------------------|-----------|
+| `PUT /security/policies/{policy_id}` with a new `policy` body | `security:update` | `403`, error 4000, naming the missing `role:id` resources; nothing is changed |
+| `PUT /security/rules/{rule_id}` with a new `rule` body | `security:update` | `403`, error 4000, naming the missing `role:id` resources; nothing is changed |
+| `DELETE /security/policies` | `security:delete` | that policy fails with error 4000 and is kept; the others in the request are still deleted |
+
+These are the permissions `POST /security/roles/{role_id}/policies` (or `/rules`) and
+`DELETE /security/roles/{role_id}/policies` ask for to link or unlink the same policy or rule. Without them,
+`security:update` over a policy linked to one's own role would be enough to grant oneself anything, `administrator`
+included. Renaming a policy or rule, and deleting one linked to no role, need nothing over roles.
 
 ### MITRE
 

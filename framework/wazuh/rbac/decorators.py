@@ -620,11 +620,37 @@ def require_role_update(role_ids) -> None:
     WazuhPermissionError(4000)
         If the caller lacks 'security:update' over at least one of the roles, listing the missing ones.
     """
+    require_role_action('security:update', role_ids)
+
+
+def require_role_action(action: str, role_ids) -> None:
+    """Refuse the request unless the caller holds `action` over every one of the given roles.
+
+    The general form of `require_role_update`, for an operation that changes what a role grants without
+    naming the role: it asks for what the matching role-scoped endpoint asks for. Deleting a policy, for
+    instance, unlinks it from every role it is on, which `remove_role_policy` guards with
+    'security:delete' over the role.
+
+    Resolved with the same matcher `expose_resources` uses, so the RBAC mode and denies are respected.
+    All or nothing: unlike a decorated list, the result is never narrowed to the allowed roles.
+
+    Parameters
+    ----------
+    action : str
+        RBAC action required over each role, e.g. 'security:update'.
+    role_ids : iterable of int
+        IDs of the roles the operation changes.
+
+    Raises
+    ------
+    WazuhPermissionError(4000)
+        If the caller lacks `action` over at least one of the roles, listing the missing ones.
+    """
     required = {str(role_id) for role_id in role_ids}
     if not required:
         return
 
-    permissions = {'security:update': [f'role:id:{role_id}' for role_id in sorted(required)]}
+    permissions = {action: [f'role:id:{role_id}' for role_id in sorted(required)]}
     allowed = _match_permissions(req_permissions=permissions, rbac_mode=rbac.get()['rbac_mode'])['role:id']
     denied = required - allowed
 

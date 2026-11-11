@@ -9,13 +9,14 @@ from functools import lru_cache
 from api.authentication import get_security_conf
 from wazuh.core import common
 from wazuh.core.decorators import dapi_allower
-from wazuh.core.exception import WazuhError, WazuhResourceNotFound
+from wazuh.core.exception import WazuhError, WazuhPermissionError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.security import invalid_users_tokens, invalid_roles_tokens, invalid_run_as_tokens, revoke_tokens, \
     invalid_run_as_context_tokens, is_valid_rbac_policy, is_valid_security_rule, load_spec, sanitize_rbac_policy, \
     update_security_conf, REQUIRED_FIELDS, SORT_FIELDS, SORT_FIELDS_GET_USERS
 from wazuh.core.utils import process_array
-from wazuh.rbac.decorators import expose_resources, require_every_role_update, require_role_update
+from wazuh.rbac.decorators import expose_resources, require_every_role_update, require_role_action, \
+    require_role_update
 from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager
 from wazuh.rbac.orm import SecurityError, MAX_ID_RESERVED
 from wazuh.rbac.orm import UserRolesManager, RolesRulesManager, RulesManager
@@ -695,7 +696,7 @@ def remove_policies(policy_ids: list = None) -> AffectedItemsWazuhResult:
     Returns
     -------
     AffectedItemsWazuhResult
-        Result of operation.
+        Result of operation. A policy linked to a role the caller lacks 'security:delete' over fails with 4000.
     """
     result = AffectedItemsWazuhResult(none_msg='No policy was deleted',
                                       some_msg='Some policies were not deleted',
@@ -703,6 +704,15 @@ def remove_policies(policy_ids: list = None) -> AffectedItemsWazuhResult:
     with PoliciesManager() as pm:
         for p_id in policy_ids:
             policy = pm.get_policy_id(int(p_id))
+            # Deleting a policy unlinks it from every role it is on, and removing a deny widens what those
+            # roles grant. So it asks for what `remove_role_policy` asks to unlink it: 'security:delete'
+            # over each of those roles. Reserved policies are refused below (4008) whatever the caller holds.
+            if int(p_id) > MAX_ID_RESERVED and isinstance(policy, dict):
+                try:
+                    require_role_action('security:delete', policy['roles'])
+                except WazuhPermissionError as e:
+                    result.add_failed_item(id_=int(p_id), error=e)
+                    continue
             policy_delete = pm.delete_policy(int(p_id))
             if policy_delete == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=int(p_id), error=WazuhError(4008))
@@ -773,6 +783,8 @@ def update_policy(policy_id: str = None, name: str = None, policy: dict = None) 
     ------
     WazuhError(4001)
         If no name nor policy are provided.
+    WazuhPermissionError(4000)
+        If a new policy body is given and the caller lacks 'security:update' over any role the policy is linked to.
 
     Returns
     -------
@@ -789,6 +801,12 @@ def update_policy(policy_id: str = None, name: str = None, policy: dict = None) 
             result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4006))
             return result
     with PoliciesManager() as pm:
+        # A new body changes what every linked role grants, so it asks for what `set_role_policy` asks to
+        # link a policy to a role: 'security:update' over each of those roles. Otherwise update over a
+        # policy linked to one's own role is enough to grant oneself anything, administrator included.
+        current = pm.get_policy_id(int(policy_id[0]))
+        if policy is not None and isinstance(current, dict):
+            require_role_update(current['roles'])
         status = pm.update_policy(policy_id=policy_id[0], name=name, policy=policy)
         if status == SecurityError.ALREADY_EXIST:
             result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4013))
