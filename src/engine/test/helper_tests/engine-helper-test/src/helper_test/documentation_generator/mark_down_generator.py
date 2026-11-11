@@ -277,7 +277,7 @@ class MarkdownGenerator(IExporter):
                             args_values.append(self._format_call_arg(arg))
 
             target_field_name = self._target_field_name(doc)
-            if getattr(example, "target_field", None):
+            if getattr(example, "target_field", None) is not None:
                 event_data[target_field_name] = example.target_field
 
             call_str = f"{doc.name}({', '.join(args_values)})" if args_values else f"{doc.name}()"

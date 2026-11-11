@@ -104,10 +104,13 @@ INSTANTIATE_TEST_SUITE_P(
         MapT({makeRef("ExtendedProperties"), makeValue(R"("Name")"), makeValue(R"(".")")},
              opBuilderHelperArrayObjToMapkv,
              SUCCESS(builderArrayRefNotInSchema("ExtendedProperties"))),
-        // A path starting with '/' is a literal member name (it is not a JSON pointer any more)
-        MapT({makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"("/Value")")},
+        // A JSON pointer (leading '/') is rejected: paths are dot paths
+        MapT({makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"("Value")")},
              opBuilderHelperArrayObjToMapkv,
-             SUCCESS(builderArrayRefNotInSchema("ExtendedProperties"))),
+             FAILURE(builderArrayRefNotInSchema("ExtendedProperties"))),
+        MapT({makeRef("ExtendedProperties"), makeValue(R"("Name")"), makeValue(R"("/Value")")},
+             opBuilderHelperArrayObjToMapkv,
+             FAILURE(builderArrayRefNotInSchema("ExtendedProperties"))),
         /*** Arity ***/
         MapT({}, opBuilderHelperArrayObjToMapkv, FAILURE()),
         MapT({makeRef("ExtendedProperties")}, opBuilderHelperArrayObjToMapkv, FAILURE()),
@@ -355,27 +358,6 @@ INSTANTIATE_TEST_SUITE_P(
             SUCCESS(opArrayRefNotInSchemaSuccess("ExtendedProperties", json::Json(R"({
                     "alpha": {"Name": "Alpha", "Value": 1}
                 })")))),
-        // A path starting with '/' is a literal member name, not a JSON pointer
-        MapT(
-            R"({
-                    "ExtendedProperties": [
-                        {"/Name": "Alpha", "/Value": 1}
-                    ]
-                })",
-            opBuilderHelperArrayObjToMapkv,
-            {makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"("/Value")")},
-            SUCCESS(opArrayRefNotInSchemaSuccess("ExtendedProperties", json::Json(R"({
-                    "alpha": 1
-                })")))),
-        MapT(
-            R"({
-                    "ExtendedProperties": [
-                        {"Name": "Alpha", "Value": 1}
-                    ]
-                })",
-            opBuilderHelperArrayObjToMapkv,
-            {makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"("/Value")")},
-            FAILURE(opArrayRefNotInSchemaFailure("ExtendedProperties"))),
         // Elements that are not objects are skipped
         MapT(
             R"({

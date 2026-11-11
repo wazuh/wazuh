@@ -850,10 +850,21 @@ MapOp opBuilderHelperToInt(const std::vector<OpArg>& opArgs, const std::shared_p
             return std::nullopt;
         }
 
-        int64_t asInt {};
-        const auto [intEnd, intErr] = std::from_chars(str.data(), str.data() + str.size(), asInt);
-        if (intErr == std::errc() && intEnd == str.data() + str.size())
+        // One leading '+' is accepted (std::from_chars does not take it)
+        if (str.front() == '+')
         {
+            str.remove_prefix(1);
+        }
+
+        // Integer syntax: exact, and out of the int64 range is a failure, not a double
+        if (str.find_first_of(".eE") == std::string_view::npos)
+        {
+            int64_t asInt {};
+            const auto [intEnd, intErr] = std::from_chars(str.data(), str.data() + str.size(), asInt);
+            if (intErr != std::errc() || intEnd != str.data() + str.size())
+            {
+                return std::nullopt;
+            }
             return asInt;
         }
 
@@ -1604,6 +1615,10 @@ MapOp opBuilderHelperArrayObjToMapkv(const std::vector<OpArg>& opArgs, const std
     {
         throw std::runtime_error("Key path cannot be an empty string");
     }
+    if (keyName.front() == '/')
+    {
+        throw std::runtime_error("Key path must be a dot path: a JSON pointer starting with '/' is not accepted");
+    }
     const auto keyPointer = json::Json::formatJsonPath(keyName);
 
     builder::builders::utils::assertValue(opArgs, 2);
@@ -1622,6 +1637,10 @@ MapOp opBuilderHelperArrayObjToMapkv(const std::vector<OpArg>& opArgs, const std
     if (fieldValue.empty())
     {
         throw std::runtime_error("Value path cannot be an empty string");
+    }
+    if (fieldValue.front() == '/')
+    {
+        throw std::runtime_error("Value path must be a dot path: a JSON pointer starting with '/' is not accepted");
     }
     const auto valuePointer = json::Json::formatJsonPath(fieldValue);
 
@@ -1805,6 +1824,10 @@ MapOp opBuilderHelperArrayExtractKeyObj(const std::vector<OpArg>& opArgs,
     {
         throw std::runtime_error("Key path cannot be an empty string");
     }
+    if (keyName.front() == '/')
+    {
+        throw std::runtime_error("Key path must be a dot path: a JSON pointer starting with '/' is not accepted");
+    }
     const auto keyPointer = json::Json::formatJsonPath(keyName);
 
     builder::builders::utils::assertValue(opArgs, 2);
@@ -1823,6 +1846,10 @@ MapOp opBuilderHelperArrayExtractKeyObj(const std::vector<OpArg>& opArgs,
     {
         throw std::runtime_error("New value path cannot be an empty string");
     }
+    if (newValuePath.front() == '/')
+    {
+        throw std::runtime_error("New value path must be a dot path: a JSON pointer starting with '/' is not accepted");
+    }
     const auto newValuePointer = json::Json::formatJsonPath(newValuePath);
 
     builder::builders::utils::assertValue(opArgs, 3);
@@ -1840,6 +1867,10 @@ MapOp opBuilderHelperArrayExtractKeyObj(const std::vector<OpArg>& opArgs,
     if (oldValuePath.empty())
     {
         throw std::runtime_error("Old value path cannot be an empty string");
+    }
+    if (oldValuePath.front() == '/')
+    {
+        throw std::runtime_error("Old value path must be a dot path: a JSON pointer starting with '/' is not accepted");
     }
     const auto oldValuePointer = json::Json::formatJsonPath(oldValuePath);
 
@@ -2618,6 +2649,19 @@ TransformOp opBuilderHelperMerge(const Reference& targetField,
     // Parameter type check
     builder::builders::utils::assertRef(opArgs, 0);
     const bool recursive = parseDeepMode(opArgs, 1);
+
+    // In deep mode a schema target must be an object (arrays are only merged through temporary fields)
+    if (recursive && buildCtx->validator().hasField(targetField.dotPath()))
+    {
+        const auto type = buildCtx->validator().getType(targetField.dotPath());
+        if (type != schemf::Type::OBJECT)
+        {
+            throw std::runtime_error(
+                fmt::format("Expected 'object' target field for a deep merge but got '{}' of type '{}'",
+                            targetField.dotPath(),
+                            schemf::typeToStr(type)));
+        }
+    }
 
     const auto name = buildCtx->context().opName;
     const auto& refField = *std::static_pointer_cast<Reference>(opArgs[0]);
@@ -3515,7 +3559,7 @@ MapOp opBuilderHelperDateToEpochTime(const std::vector<OpArg>& opArgs, const std
     };
 }
 
-// field:  get_date
+// field: now()
 MapOp opBuilderHelperGetDate(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     // Check parameters
@@ -3608,8 +3652,7 @@ MapOp opBuilderHelperHashSHA1(const std::vector<OpArg>& opArgs, const std::share
 TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
                                            const std::vector<OpArg>& opArgs,
                                            const std::shared_ptr<const IBuildCtx>& buildCtx,
-                                           bool isMerge,
-                                           bool isRecursive)
+                                           bool isMerge)
 {
     // Check Allowed field
     const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
@@ -3620,7 +3663,7 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
 
     // Assert expected number of parameters: (object, key) plus the optional 'deep' mode when merging
     builder::builders::utils::assertSize(opArgs, 2, isMerge ? 3 : 2);
-    const bool recursive = isRecursive || (isMerge && parseDeepMode(opArgs, 2));
+    const bool recursive = isMerge && parseDeepMode(opArgs, 2);
     if (opArgs[0]->isValue())
     {
         if (!std::static_pointer_cast<Value>(opArgs[0])->value().isObject())

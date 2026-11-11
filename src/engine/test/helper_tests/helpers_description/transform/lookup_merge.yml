@@ -21,6 +21,7 @@ metadata:
     Build errors:
     - `object` is a literal that is not an object, or a reference to a schema field that is not an object.
     - `key` is a literal that is not a string.
+    - `key` is an empty literal, or a reference to a schema field that is not a string.
     - A third argument other than the literal `deep`, or more than 3 arguments.
     - The target field is a schema field that is not an object.
 

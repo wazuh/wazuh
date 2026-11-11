@@ -34,3 +34,4 @@ is_variadic: false
 target_field:
   type: object
   generate: object
+  path: "."

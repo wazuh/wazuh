@@ -139,6 +139,31 @@ INSTANTIATE_TEST_SUITE_P(
              opBuilderHelperToInt,
              {makeRef("ref")},
              SUCCESS(customRefExpected(json::Json(R"(9223372036854775807)")))),
+        MapT(R"({"ref": "+9223372036854775807"})",
+             opBuilderHelperToInt,
+             {makeRef("ref")},
+             SUCCESS(customRefExpected(json::Json(R"(9223372036854775807)")))),
+        MapT(R"({"ref": "-9223372036854775808"})",
+             opBuilderHelperToInt,
+             {makeRef("ref")},
+             SUCCESS(customRefExpected(json::Json(R"(-9223372036854775808)")))),
+        // Integer syntax above 2^53 keeps its precision (it never goes through a double)
+        MapT(R"({"ref": "+9007199254740993"})",
+             opBuilderHelperToInt,
+             {makeRef("ref")},
+             SUCCESS(customRefExpected(json::Json(R"(9007199254740993)")))),
+        MapT(
+            R"({"ref": "-0"})", opBuilderHelperToInt, {makeRef("ref")}, SUCCESS(customRefExpected(json::Json(R"(0)")))),
+        // Integer syntax outside the int64 range fails instead of being rounded through a double
+        MapT(R"({"ref": "9223372036854775808"})", opBuilderHelperToInt, {makeRef("ref")}, FAILURE(customRefExpected())),
+        MapT(
+            R"({"ref": "-9223372036854775809"})", opBuilderHelperToInt, {makeRef("ref")}, FAILURE(customRefExpected())),
+        MapT(R"({"ref": "++42"})", opBuilderHelperToInt, {makeRef("ref")}, FAILURE(customRefExpected())),
+        MapT(R"({"ref": "0x10"})", opBuilderHelperToInt, {makeRef("ref")}, FAILURE(customRefExpected())),
+        MapT(
+            R"({"ref": ".5"})", opBuilderHelperToInt, {makeRef("ref")}, SUCCESS(customRefExpected(json::Json(R"(0)")))),
+        MapT(
+            R"({"ref": "5."})", opBuilderHelperToInt, {makeRef("ref")}, SUCCESS(customRefExpected(json::Json(R"(5)")))),
         MapT(R"({"ref": "42"})",
              opBuilderHelperToInt,
              {makeRef("ref"), makeValue(R"("round")")},

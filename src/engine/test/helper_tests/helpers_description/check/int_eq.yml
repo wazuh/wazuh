@@ -21,8 +21,8 @@ metadata:
 
     Notes:
     - `number_eq` converts both operands to double and treats `2` and `2.0` as equal.
-    - The comparison operators (`!=`, `>`, `>=`, `<`, `<=`) always map to the `number_*` helpers, never to
-      the `int_*` ones.
+    - The comparison operators (`!=`, `>`, `>=`, `<`, `<=`) map to the `number_*` helpers for a numeric literal
+      and to the `string_*` helpers for a string literal, never to the `int_*` ones.
     - `int_ne` is not the negation of this helper: both are false for a missing or non-integer target.
   group: comparison
   fails_when:

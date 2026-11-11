@@ -79,6 +79,7 @@ INSTANTIATE_TEST_SUITE_P(
                    opBuilderHelperGetValue,
                    SUCCESS(literalArgsExpected())),
         TransformT({makeRef("obj"), makeValue("1")}, opBuilderHelperGetValue, FAILURE()),
+        TransformT({makeRef("obj"), makeValue(R"("")")}, opBuilderHelperGetValue, FAILURE()),
         TransformT({makeRef("obj"), makeValue("true")}, opBuilderHelperGetValue, FAILURE()),
         TransformT({makeRef("obj"), makeValue("null")}, opBuilderHelperGetValue, FAILURE()),
         TransformT({makeRef("obj"), makeValue(R"(["key"])")}, opBuilderHelperGetValue, FAILURE()),
@@ -490,7 +491,7 @@ INSTANTIATE_TEST_SUITE_P(
                            customRefExpected("ref", ".")(mocks);
                            return makeEvent(R"({"key1": {"key2": "value", "key3": "value"}, "ref": "key"})");
                        })),
-        /*** A nested type conflict in deep mode fails and leaves the target untouched ***/
+        /*** A nested type conflict in deep mode fails (members merged before the conflict stay modified) ***/
         TransformT(R"({"ref": "key", "target": {"nested": "x"}})",
                    opBuilderHelperMergeValue,
                    "target",

@@ -277,8 +277,9 @@ TransformOp opBuilderHelperRenameField(const Reference& targetField,
                                        const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
- * @brief Merge two arrays or objects.
- * Accepts one reference parameter. Fail cases:
+ * @brief Merge two arrays or objects: `merge($source[, 'deep'])`.
+ * Accepts the source reference and the optional literal 'deep' (recursive merge); the source field is deleted after
+ * a successful merge. Fail cases:
  * - If target or source not exists
  * - If source and target, are not the same type
  * - If source or target are not arrays or objects
@@ -288,7 +289,8 @@ TransformOp opBuilderHelperRenameField(const Reference& targetField,
  * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return base::Expression The lifter with the `merge` transformation.
  *
- * @throw std::runtime_error if the parameters size is not 1 or is not a reference.
+ * @throw std::runtime_error if the first parameter is not a reference, the second is not the literal 'deep', or a
+ * schema target is not an object in deep mode.
  */
 TransformOp opBuilderHelperMerge(const Reference& targetField,
                                  const std::vector<OpArg>& opArgs,
@@ -535,8 +537,9 @@ MapOp opBuilderHelperHashSHA1(const std::vector<OpArg>& opArgs, const std::share
 //*************************************************
 
 /**
- * @brief Create 'lookup' helper function that maps or merge target field value with the content of the some key in
- * the definition object, where the key is specified with a reference to another field.
+ * @brief Create the 'lookup' / 'lookup_merge' helpers: map or merge into the target field the value stored under a
+ * key of an object (a literal, a definition or a reference). The key is a literal string or a reference to a string
+ * field and is matched literally; 'lookup_merge' takes the optional trailing literal 'deep'.
  *
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
@@ -547,8 +550,7 @@ MapOp opBuilderHelperHashSHA1(const std::vector<OpArg>& opArgs, const std::share
 TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
                                            const std::vector<OpArg>& opArgs,
                                            const std::shared_ptr<const IBuildCtx>& buildCtx,
-                                           bool isMerge = false,
-                                           bool isRecurive = false);
+                                           bool isMerge = false);
 
 /**
  * @brief Get the 'lookup' function helper builder

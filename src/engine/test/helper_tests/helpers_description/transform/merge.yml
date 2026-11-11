@@ -14,8 +14,8 @@ metadata:
     - Arrays, both modes: a de-duplicated union; the target keeps its order, the source elements that are not
       already present are appended in source order, and an element repeated in the source is added once.
     - After a successful merge the source field is erased from the event.
-    - When the target field is a schema field, every leaf of an object source must be a field allowed under
-      it.
+    - When the target field is a schema field, every top-level member of an object source must be a field
+      allowed under it (checked at runtime).
 
     Build errors:
     - `source` is not a reference (a literal or definition object is rejected).

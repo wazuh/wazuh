@@ -769,9 +769,9 @@ FilterOp opBuilderHelperBinaryAnd(const Reference& targetField,
         {
             maskOpt = parseHex(maskStr);
         }
-        else if (const auto maskInt = maskValue.getIntAsInt64(); maskInt.has_value() && maskInt.value() >= 0)
+        else if (const auto maskInt = maskValue.getUint64(); maskInt.has_value())
         {
-            maskOpt = static_cast<uint64_t>(maskInt.value());
+            maskOpt = maskInt.value();
         }
     }
 
@@ -821,9 +821,9 @@ FilterOp opBuilderHelperBinaryAnd(const Reference& targetField,
         {
             value = parseHex(str);
         }
-        else if (const auto number = event->getIntAsInt64(targetPath); number.has_value() && number.value() >= 0)
+        else if (const auto number = event->getUint64(targetPath); number.has_value())
         {
-            value = static_cast<uint64_t>(number.value());
+            value = number.value();
         }
 
         if (!value.has_value())

@@ -119,13 +119,25 @@ INSTANTIATE_TEST_SUITE_P(
               makeValue(R"("changes.old")")},
              opBuilderHelperArrayExtractKeyObj,
              SUCCESS(builderArrayRefNotInSchema("ModifiedProperties"))),
-        // A path starting with '/' is a literal member name (it is not a JSON pointer any more)
+        // A JSON pointer (leading '/') is rejected: paths are dot paths
         MapT({makeRef("ModifiedProperties"),
               makeValue(R"("/Name")"),
+              makeValue(R"("NewValue")"),
+              makeValue(R"("OldValue")")},
+             opBuilderHelperArrayExtractKeyObj,
+             FAILURE(builderArrayRefNotInSchema("ModifiedProperties"))),
+        MapT({makeRef("ModifiedProperties"),
+              makeValue(R"("Name")"),
               makeValue(R"("/NewValue")"),
+              makeValue(R"("OldValue")")},
+             opBuilderHelperArrayExtractKeyObj,
+             FAILURE(builderArrayRefNotInSchema("ModifiedProperties"))),
+        MapT({makeRef("ModifiedProperties"),
+              makeValue(R"("Name")"),
+              makeValue(R"("NewValue")"),
               makeValue(R"("/OldValue")")},
              opBuilderHelperArrayExtractKeyObj,
-             SUCCESS(builderArrayRefNotInSchema("ModifiedProperties"))),
+             FAILURE(builderArrayRefNotInSchema("ModifiedProperties"))),
         /*** Arity ***/
         MapT({}, opBuilderHelperArrayExtractKeyObj, FAILURE()),
         MapT({makeRef("ModifiedProperties")}, opBuilderHelperArrayExtractKeyObj, FAILURE()),
@@ -333,33 +345,6 @@ INSTANTIATE_TEST_SUITE_P(
             SUCCESS(opArrayRefNotInSchemaSuccess("ModifiedProperties", json::Json(R"({
                     "role": {"changes": {"new": "admin", "old": "user"}}
                 })")))),
-        // A path starting with '/' is a literal member name, not a JSON pointer
-        MapT(
-            R"({
-                    "ModifiedProperties": [
-                        {"/Name": "Role", "/NewValue": "admin", "/OldValue": "user"}
-                    ]
-                })",
-            opBuilderHelperArrayExtractKeyObj,
-            {makeRef("ModifiedProperties"),
-             makeValue(R"("/Name")"),
-             makeValue(R"("/NewValue")"),
-             makeValue(R"("/OldValue")")},
-            SUCCESS(opArrayRefNotInSchemaSuccess("ModifiedProperties", json::Json(R"({
-                    "role": {"/NewValue": "admin", "/OldValue": "user"}
-                })")))),
-        MapT(
-            R"({
-                    "ModifiedProperties": [
-                        {"Name": "Role", "NewValue": "admin", "OldValue": "user"}
-                    ]
-                })",
-            opBuilderHelperArrayExtractKeyObj,
-            {makeRef("ModifiedProperties"),
-             makeValue(R"("/Name")"),
-             makeValue(R"("/NewValue")"),
-             makeValue(R"("/OldValue")")},
-            FAILURE(opArrayRefNotInSchemaFailure("ModifiedProperties"))),
         // An element without the new value is skipped
         MapT(
             R"({

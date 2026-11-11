@@ -22,7 +22,8 @@ metadata:
     Build errors:
     - Fewer than 3 or more than 4 arguments.
     - `source_array` is not a reference, or it is a schema field whose elements are not objects.
-    - `key_path` or `value_path` is not a string literal.
+    - `key_path` or `value_path` is not a string literal, is empty, or starts with `/` (JSON pointers are not
+      accepted).
     - `mode` is given and is not the literal `raw_keys`.
 
     Notes:

@@ -1444,7 +1444,7 @@ When using a check helper, the syntax is:
 target_field: check_helper(args)
 ```
 
-The helper always tests a condition on *target_field*. If the condition passes, the operation succeeds; otherwise, it fails. A negated helper (`not_exists`, `is_not_string`, `not_in_kvdb`, `regex_not_match`, ...) is also false when *target_field* is missing or has the wrong type: it is not the same as `NOT helper(...)`.
+The helper always tests a condition on *target_field*. If the condition passes, the operation succeeds; otherwise, it fails. A negated helper (`is_not_string`, `not_in_kvdb`, `regex_not_match`, `string_ne`, ...) is also false when *target_field* is missing or has the wrong type: it is not the same as `NOT helper(...)`. The one exception is `not_exists`, the exact complement of `exists`, which is true when the field is missing.
 
 #### Map helpers
 When using a map helper, the syntax is:

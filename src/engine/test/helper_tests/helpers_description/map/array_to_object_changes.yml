@@ -20,13 +20,15 @@ metadata:
     - An old value that is an empty string or made of spaces only is dropped.
     - Unless `mode` is `raw_keys`, each key is normalized as `array_to_object` does (lowercase, with
       `_` for separators and other punctuation dropped). A key whose normalized form is empty is
-      skipped, and the last element with a given key wins.
+      skipped. A later element with the same key overwrites the members it provides: one without an
+      old value leaves the previous old value in place.
     - On success the whole target value is replaced by the new object.
 
     Build errors:
     - Fewer than 4 or more than 5 arguments.
     - `source_array` is not a reference, or it is a schema field whose elements are not objects.
-    - `key_path`, `new_value_path` or `old_value_path` is not a string literal.
+    - `key_path`, `new_value_path` or `old_value_path` is not a string literal, is empty, or starts with `/`
+      (JSON pointers are not accepted).
     - `mode` is given and is not the literal `raw_keys`.
 
     Notes:

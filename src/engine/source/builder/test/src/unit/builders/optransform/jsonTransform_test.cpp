@@ -584,7 +584,7 @@ INSTANTIATE_TEST_SUITE_P(
                    "target",
                    {makeRef("ref"), makeValue(R"("deep")")},
                    FAILURE()),
-        /*** A nested type conflict in deep mode fails and leaves the event untouched ***/
+        /*** A nested type conflict in deep mode fails (members merged before the conflict stay modified) ***/
         TransformT(R"({"target": {"a": "x"}, "ref": {"a": {"b": "c"}}})",
                    opBuilderHelperMerge,
                    "target",

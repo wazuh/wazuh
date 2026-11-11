@@ -380,7 +380,9 @@ check:
 #### Input Event
 
 ```json
-{}
+{
+  "target_field": false
+}
 ```
 
 *The check was performed with errors*
@@ -509,7 +511,9 @@ check:
 #### Input Event
 
 ```json
-{}
+{
+  "target_field": false
+}
 ```
 
 *The check was successful*
@@ -903,7 +907,9 @@ check:
 #### Input Event
 
 ```json
-{}
+{
+  "target_field": 0
+}
 ```
 
 *The check was successful*
@@ -1123,7 +1129,9 @@ check:
 #### Input Event
 
 ```json
-{}
+{
+  "target_field": 0
+}
 ```
 
 *The check was performed with errors*
@@ -1478,7 +1486,9 @@ check:
 #### Input Event
 
 ```json
-{}
+{
+  "target_field": 0
+}
 ```
 
 *The check was performed with errors*
@@ -1497,7 +1507,9 @@ check:
 #### Input Event
 
 ```json
-{}
+{
+  "target_field": false
+}
 ```
 
 *The check was performed with errors*
@@ -2010,7 +2022,9 @@ check:
 #### Input Event
 
 ```json
-{}
+{
+  "target_field": ""
+}
 ```
 
 *The check was successful*
@@ -2094,7 +2108,9 @@ check:
 #### Input Event
 
 ```json
-{}
+{
+  "target_field": 0
+}
 ```
 
 *The check was performed with errors*
@@ -2180,7 +2196,9 @@ check:
 #### Input Event
 
 ```json
-{}
+{
+  "target_field": []
+}
 ```
 
 *The check was successful*
@@ -2232,8 +2250,8 @@ Build errors:
 
 Notes:
 - `number_eq` converts both operands to double and treats `2` and `2.0` as equal.
-- The comparison operators (`!=`, `>`, `>=`, `<`, `<=`) always map to the `number_*` helpers, never to
-  the `int_*` ones.
+- The comparison operators (`!=`, `>`, `>=`, `<`, `<=`) map to the `number_*` helpers for a numeric literal
+  and to the `string_*` helpers for a string literal, never to the `int_*` ones.
 - `int_ne` is not the negation of this helper: both are false for a missing or non-integer target.
 
 
@@ -7889,12 +7907,15 @@ target field.
 Behavior:
 - `input` is a reference to a string field; `separator` is a literal string of one or more characters,
   matched literally and case-sensitively.
-- The parts are stored in order and unchanged (the spaces around them are kept).
+- The parts are stored in order and unchanged (the spaces around them are kept). One separator at the
+  start of the input is skipped, an empty part between two separators is kept, and one empty part at the
+  end is dropped: `",,a"` gives `["", "a"]`, `"a,b,,"` gives `["a", "b", ""]` and an empty input gives
+  an empty array.
 - The target field is set to the new array: any previous value, an existing array included, is replaced.
 
 Build errors:
 - `input` is not a reference, or references a schema field that is not a string.
-- `separator` is not a literal string.
+- `separator` is not a literal string, or is empty.
 - A number of arguments other than 2.
 - The target field is a schema field whose elements are not strings.
 
@@ -7961,7 +7982,8 @@ normalize:
 
 ```json
 {
-  "input": "val 1 | val 2 | val 3"
+  "input": "val 1 | val 2 | val 3",
+  "target_field": ""
 }
 ```
 
@@ -8035,7 +8057,8 @@ normalize:
 
 ```json
 {
-  "input": "a, b, c"
+  "input": "a, b, c",
+  "target_field": ""
 }
 ```
 
@@ -8281,9 +8304,11 @@ Behavior:
 
 Build errors:
 - `chars` is not a literal string.
+- `chars` is an empty string.
 - More than 1 argument.
 
 Notes:
+- The characters are matched byte by byte: a multi-byte UTF-8 character is not one unit of the set.
 - `chars` is a set, not a sequence: `xy` removes any run of `x` and `y` characters.
 - `trim_start` and `trim_end` trim one end only; `replace` removes characters anywhere in the string.
 
@@ -8509,9 +8534,11 @@ Behavior:
 
 Build errors:
 - `chars` is not a literal string.
+- `chars` is an empty string.
 - More than 1 argument.
 
 Notes:
+- The characters are matched byte by byte: a multi-byte UTF-8 character is not one unit of the set.
 - `chars` is a set, not a sequence: `xy` removes any run of `x` and `y` characters.
 - `trim` trims both ends and `trim_start` the start only.
 
@@ -8677,9 +8704,11 @@ Behavior:
 
 Build errors:
 - `chars` is not a literal string.
+- `chars` is an empty string.
 - More than 1 argument.
 
 Notes:
+- The characters are matched byte by byte: a multi-byte UTF-8 character is not one unit of the set.
 - `chars` is a set, not a sequence: `xy` removes any run of `x` and `y` characters.
 - `trim` trims both ends and `trim_end` the end only.
 
@@ -11720,7 +11749,8 @@ Behavior:
 Build errors:
 - Fewer than 3 or more than 4 arguments.
 - `source_array` is not a reference, or it is a schema field whose elements are not objects.
-- `key_path` or `value_path` is not a string literal.
+- `key_path` or `value_path` is not a string literal, is empty, or starts with `/` (JSON pointers are not
+  accepted).
 - `mode` is given and is not the literal `raw_keys`.
 
 Notes:
@@ -12123,13 +12153,15 @@ Behavior:
 - An old value that is an empty string or made of spaces only is dropped.
 - Unless `mode` is `raw_keys`, each key is normalized as `array_to_object` does (lowercase, with
   `_` for separators and other punctuation dropped). A key whose normalized form is empty is
-  skipped, and the last element with a given key wins.
+  skipped. A later element with the same key overwrites the members it provides: one without an
+  old value leaves the previous old value in place.
 - On success the whole target value is replaced by the new object.
 
 Build errors:
 - Fewer than 4 or more than 5 arguments.
 - `source_array` is not a reference, or it is a schema field whose elements are not objects.
-- `key_path`, `new_value_path` or `old_value_path` is not a string literal.
+- `key_path`, `new_value_path` or `old_value_path` is not a string literal, is empty, or starts with `/`
+  (JSON pointers are not accepted).
 - `mode` is given and is not the literal `raw_keys`.
 
 Notes:
@@ -12813,14 +12845,14 @@ normalize:
 ## Signature
 
 ```
-target_field: delete_custom_fields()
+.: delete_custom_fields()
 ```
 
 ## Target field
 
-| Type | Possible values |
-| ---- | --------------- |
-| object | Any object |
+| Path | Type | Possible values |
+| ---- | ---- | --------------- |
+| . | object | Any object |
 
 
 ## Description
@@ -13778,6 +13810,7 @@ Behavior:
 Build errors:
 - `object` is a literal that is not an object, or a reference to a schema field that is not an object.
 - `key` is a literal that is not a string.
+- `key` is an empty literal, or a reference to a schema field that is not a string.
 - A number of arguments other than 2.
 - The target field is not a schema field and does not start with `_`.
 
@@ -14065,6 +14098,7 @@ Behavior:
 Build errors:
 - `object` is a literal that is not an object, or a reference to a schema field that is not an object.
 - `key` is a literal that is not a string.
+- `key` is an empty literal, or a reference to a schema field that is not a string.
 - A third argument other than the literal `deep`, or more than 3 arguments.
 - The target field is a schema field that is not an object.
 
@@ -14521,8 +14555,8 @@ Behavior:
 - Arrays, both modes: a de-duplicated union; the target keeps its order, the source elements that are not
   already present are appended in source order, and an element repeated in the source is added once.
 - After a successful merge the source field is erased from the event.
-- When the target field is a schema field, every leaf of an object source must be a field allowed under
-  it.
+- When the target field is a schema field, every top-level member of an object source must be a field
+  allowed under it (checked at runtime).
 
 Build errors:
 - `source` is not a reference (a literal or definition object is rejected).
@@ -16723,12 +16757,14 @@ Behavior:
 - The target is read as an unsigned 64-bit integer, either from a hexadecimal string, with or without the
   `0x` prefix and in any letter case, or from a JSON integer.
 - `mask` is a literal of the same kinds: a hexadecimal string or a JSON integer.
+- A string is always read as hexadecimal: `"16"` is 0x16 (decimal 22); write a JSON integer (`16`) for a
+  decimal value. Integers from 0 to 2^64-1 are accepted; a negative integer is not.
 - True when `(target AND mask)` is not 0: a single common bit is enough, all the mask bits are not
   required.
 
 Build errors:
 - `mask` is a reference.
-- `mask` is 0, longer than 64 bits, or neither a hexadecimal string nor an integer.
+- `mask` is 0, negative, longer than 64 bits, or neither a hexadecimal string nor an integer.
 
 Notes:
 - For an equality test on the whole value, convert it with `hex_to_int` and use a numeric comparison.
@@ -16737,7 +16773,7 @@ Notes:
 ## Fails when
 
 - The target field does not exist.
-- The target field is neither a string nor an integer.
+- The target field is neither a string nor a non-negative integer.
 - The target string is not hexadecimal or does not fit in 64 bits.
 - No bit of `mask` is set in the target value.
 
@@ -17989,7 +18025,7 @@ target_field: to_int(value, [mode])
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| value | number | reference | Integers between `-2^63` and `2^63-1` |
+| value | number | reference | Any number, or a string holding a decimal number |
 | mode (optional) | string | value | truncate, round |
 
 
@@ -23481,7 +23517,9 @@ check:
 #### Input Event
 
 ```json
-{}
+{
+  "target_field": 0
+}
 ```
 
 *The check was performed with errors*
@@ -23636,7 +23674,8 @@ normalize:
 
 ```json
 {
-  "mask": "1"
+  "mask": "1",
+  "target_field": []
 }
 ```
 
@@ -23667,7 +23706,8 @@ normalize:
 
 ```json
 {
-  "mask": "1"
+  "mask": "1",
+  "target_field": []
 }
 ```
 
@@ -23698,7 +23738,8 @@ normalize:
 
 ```json
 {
-  "mask": "1"
+  "mask": "1",
+  "target_field": []
 }
 ```
 
@@ -23731,7 +23772,8 @@ normalize:
 
 ```json
 {
-  "mask": "11"
+  "mask": "11",
+  "target_field": []
 }
 ```
 
@@ -23765,7 +23807,8 @@ normalize:
 
 ```json
 {
-  "mask": "1100"
+  "mask": "1100",
+  "target_field": []
 }
 ```
 
@@ -24032,7 +24075,8 @@ normalize:
 
 ```json
 {
-  "key": "0x1"
+  "key": "0x1",
+  "target_field": ""
 }
 ```
 
@@ -24125,7 +24169,8 @@ normalize:
 
 ```json
 {
-  "key": "0x0"
+  "key": "0x0",
+  "target_field": ""
 }
 ```
 
@@ -24155,7 +24200,9 @@ normalize:
 #### Input Event
 
 ```json
-{}
+{
+  "target_field": ""
+}
 ```
 
 #### Outcome Event
@@ -24184,7 +24231,8 @@ normalize:
 
 ```json
 {
-  "key": "access_mask"
+  "key": "access_mask",
+  "target_field": {}
 }
 ```
 
@@ -24234,7 +24282,9 @@ normalize:
 #### Input Event
 
 ```json
-{}
+{
+  "target_field": []
+}
 ```
 
 #### Outcome Event
@@ -24412,7 +24462,8 @@ normalize:
     "0x0",
     "0x1",
     "0x6"
-  ]
+  ],
+  "target_field": []
 }
 ```
 
@@ -24455,7 +24506,8 @@ normalize:
     "0x2",
     "0x99",
     "0x6"
-  ]
+  ],
+  "target_field": []
 }
 ```
 
@@ -24527,7 +24579,8 @@ normalize:
   "keys": [
     "0x0",
     "0x1"
-  ]
+  ],
+  "target_field": []
 }
 ```
 
@@ -24563,7 +24616,9 @@ normalize:
 #### Input Event
 
 ```json
-{}
+{
+  "target_field": []
+}
 ```
 
 #### Outcome Event
@@ -24669,7 +24724,8 @@ normalize:
 {
   "keys": [
     "bitmask_test_values"
-  ]
+  ],
+  "target_field": []
 }
 ```
 
@@ -25524,7 +25580,9 @@ check:
 #### Input Event
 
 ```json
-{}
+{
+  "target_field": 0
+}
 ```
 
 *The check was performed with errors*
@@ -31082,13 +31140,17 @@ normalize:
 #### Input Event
 
 ```json
-{}
+{
+  "wazuh.space.event_discarded": false
+}
 ```
 
 #### Outcome Event
 
 ```json
-{}
+{
+  "wazuh.space.event_discarded": false
+}
 ```
 
 *The operation was successful*
@@ -31244,7 +31306,9 @@ check:
 #### Input Event
 
 ```json
-{}
+{
+  "wazuh.integration.category": ""
+}
 ```
 
 *The check was performed with errors*

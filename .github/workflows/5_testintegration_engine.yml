@@ -16,6 +16,8 @@ on:
       - 'src/engine/test/engine-test-utils/**'
       - 'src/engine/test/helper_tests/**'
       - 'src/engine/test/integration_tests/**'
+      # The committed copy of the generated reference is diffed by the helper_tests job
+      - 'docs/ref/modules/engine/ref-helper-functions.md'
       - 'src/engine/tools/api-communication/**'
       - 'src/engine/tools/engine-suite/**'
       # Copied into the test store by setupEnvironment.py:11-18

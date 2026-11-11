@@ -15,9 +15,11 @@ metadata:
 
     Build errors:
     - `chars` is not a literal string.
+    - `chars` is an empty string.
     - More than 1 argument.
 
     Notes:
+    - The characters are matched byte by byte: a multi-byte UTF-8 character is not one unit of the set.
     - `chars` is a set, not a sequence: `xy` removes any run of `x` and `y` characters.
     - `trim` trims both ends and `trim_start` the start only.
   group: string

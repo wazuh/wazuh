@@ -32,6 +32,7 @@ is_variadic: false
 arguments:
   value:
     type: number # a string holding a number is accepted too; one declared type keeps the generator happy
+    accepted_values: Any number, or a string holding a decimal number
     generate: integer
     source: reference
   mode:

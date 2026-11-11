@@ -534,11 +534,12 @@ Every helper name registered in `register.hpp` follows these rules (the engine R
 2. **Check helpers read as a sentence whose subject is the target**: `exists`, `contains`, `one_of`, `is_key_of`,
    `in_kvdb`, `in_cidr`, `is_string`. `is_<x>` is a predicate on the target's class or relation. Negation puts `not`
    right before the verb: `not_exists`, `is_not_string`, `not_in_kvdb`, `regex_not_match`. Every negated helper is
-   false on a missing or wrong-type field (it is not `NOT x(...)`), and its description says so.
+   false on a missing field (it is not `NOT x(...)`), and its description says so; `not_exists` is the one exact
+   complement.
 3. **Quantifiers are explicit suffixes on variadic helpers**: `_all` (every argument) and `_any` (at least one):
    `array_contains_all/any`, `array_excludes_any/all`, `array_append_all/any`, `array_append_unique_all/any`,
-   `concat_all/any`. `_any` on an appending/concatenating helper means "use the arguments that resolve; fail only
-   if none does".
+   `concat_all/any`. `_any` on an appending/concatenating helper means "use the arguments that resolve; fail if none does
+   or if a resolved one has an incompatible type".
 4. **Typed comparisons** are `<type>_<op>`, `type ∈ {string, number, int}`, `op ∈ {eq, ne, gt, gte, lt, lte}`.
    The `!= < <= > >=` operators desugar to the `string_*`/`number_*` forms (`helperParser.hpp`).
 5. **Map helpers are named by what they produce**: `to_<type>`, `parse_<format>` (same names as the parse-stage
