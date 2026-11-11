@@ -1356,6 +1356,59 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaBypassesBytePrefilterBudgetF
     runAndAck(Option::VDSYNC);
 }
 
+// A VD sync takes the whole queue in its first block, so nothing is left behind even when the
+// lowest block limit ends the cycle right after that block.
+TEST_F(AgentSyncProtocolTest, AVDSyncAtABlockLimitOfOneDoesNotReportTheBlockLimit)
+{
+    const MaxBlocksPerSyncGuard guard {1U};
+
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    std::vector<PersistedData> testData =
+    {
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+    };
+
+    // One fetch per option: the limit of one ends each cycle before it looks at the queue again.
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(0))
+    .Times(2)
+    .WillRepeatedly(Return(testData));
+    EXPECT_CALL(*mockQueue, clearSyncedItems())
+    .Times(2);
+    EXPECT_CALL(*mockQueue, resetSyncingItems())
+    .Times(0);
+
+    const Option vdOptions[] = {Option::VDFIRST, Option::VDSYNC};
+
+    for (const Option option : vdOptions)
+    {
+        SyncModuleResult result;
+        const int sendCountBefore = mockSyncTransport->sendCount();
+        std::thread syncThread([this, option, &result]()
+        {
+            result = protocol->synchronizeModule(Mode::DELTA, option);
+        });
+
+        auto waitDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+
+        while (mockSyncTransport->sendCount() <= sendCountBefore &&
+                std::chrono::steady_clock::now() < waitDeadline)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+
+        EXPECT_GT(mockSyncTransport->sendCount(), sendCountBefore);
+
+        feedHttpResult(200);
+
+        syncThread.join();
+        EXPECT_TRUE(result.success);
+        EXPECT_FALSE(result.reachedBlockLimit);
+    }
+}
+
 // A call that collides with an in-flight synchronization runs no session, and says so: it is
 // reported as a success (the sync already running drains the same queue), but a caller that
 // records something about the session -- syscollector's VD first-sync marker -- must be able to

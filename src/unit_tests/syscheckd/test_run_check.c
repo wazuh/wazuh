@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include "../wrappers/common.h"
+#include "../wrappers/posix/pthread_wrappers.h"
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/linux/inotify_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
@@ -95,7 +96,18 @@ static void call_real_fim_run_integrity(void) {
 #endif
 }
 
+/* Unlocks of the watched mutex (mutex_unlock_watched_ptr) counted when each asp_sync_module call
+ * ran, in call order, for the cases that check a send happens after a release. */
+#define MAX_RECORDED_SYNCS 4
+static unsigned int unlocks_at_sync[MAX_RECORDED_SYNCS];
+static size_t recorded_syncs = 0;
+
 void __wrap_asp_sync_module_hook(void) {
+    if (recorded_syncs < MAX_RECORDED_SYNCS) {
+        unlocks_at_sync[recorded_syncs] = mutex_unlock_call_count;
+    }
+    recorded_syncs++;
+
     if (stop_fim_integrity_on_sync) {
         fim_sync_module_running = 0;
     }
@@ -350,6 +362,10 @@ static int teardown_max_fps(void **state) {
 // API would have that bool reinterpreted as a SyncModuleResult_t* and dereferenced.
 static int teardown_asp_sync_module_full_result(void **state) {
     __wrap_asp_sync_module_use_full_result(false);
+    // Same reason: a case that fails before its own reset would leave the next integrity pass
+    // marking a table as recovered, and the watched mutex would narrow every later unlock count.
+    __wrap_fim_recovery_run_integrity_checks_recover_first_table(false);
+    mutex_unlock_watched_ptr = NULL;
     return 0;
 }
 
@@ -1451,8 +1467,21 @@ void test_fim_run_integrity_sends_recovered_tables_after_unlock(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "FIM synchronization finished, waiting for 1 seconds before next run.");
 
+    // fim_scan_mutex is the last of the pass's mutexes to be released, so a send that runs after
+    // its unlock runs after all of them.
+    mutex_unlock_watched_ptr = &syscheck.fim_scan_mutex;
+    mutex_unlock_call_count = 0;
+    recorded_syncs = 0;
+
     call_real_fim_run_integrity();
 
+    // The regular sync runs before the pass takes the mutexes, and the recovery send after it
+    // releases them.
+    assert_int_equal(recorded_syncs, 2);
+    assert_int_equal(unlocks_at_sync[0], 0);
+    assert_int_equal(unlocks_at_sync[1], 1);
+
+    mutex_unlock_watched_ptr = NULL;
     __wrap_fim_recovery_run_integrity_checks_recover_first_table(false);
     stop_fim_integrity_on_sleep = false;
     syscheck.sync_handle = original_handle;

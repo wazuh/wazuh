@@ -1384,6 +1384,47 @@ static void test_fim_recovery_sync_recovered_tables_failed_sync(void **state) {
     __wrap_asp_sync_module_use_full_result(false);
 }
 
+// A stop between two blocks ends the cycle with success set (blocks were already sent) and below
+// the block limit: it is reported as interrupted, not completed.
+static void test_fim_recovery_sync_recovered_tables_stop_between_blocks(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME};
+    bool recovered[1] = {true};
+    SyncModuleResult_t result = {0};
+    result.success = true;
+    result.sent_anything = true;
+    result.stopped = true;
+
+    expect_recovery_sync(handle, &result);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Recovery of index '" FIM_FILES_SYNC_INDEX "' interrupted: module is stopping. The queued entries "
+                  "will be sent by a later synchronization.");
+
+    fim_recovery_sync_recovered_tables(handle, tables, 1, recovered);
+    __wrap_asp_sync_module_use_full_result(false);
+}
+
+// A stop during a session fails it: reported as interrupted, not as a failed send.
+static void test_fim_recovery_sync_recovered_tables_stop_during_session(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME};
+    bool recovered[1] = {true};
+    SyncModuleResult_t result = {0};
+    result.success = false;
+    result.stopped = true;
+    snprintf(result.failure_reason, sizeof(result.failure_reason), "Synchronization interrupted.");
+
+    expect_recovery_sync(handle, &result);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Recovery of index '" FIM_FILES_SYNC_INDEX "' interrupted: module is stopping. The queued entries "
+                  "will be sent by a later synchronization.");
+
+    fim_recovery_sync_recovered_tables(handle, tables, 1, recovered);
+    __wrap_asp_sync_module_use_full_result(false);
+}
+
 // One cycle covers every recovered table, and only the recovered ones are reported.
 static void test_fim_recovery_sync_recovered_tables_one_sync_for_every_table(void **state) {
     (void) state;
@@ -1456,6 +1497,8 @@ int main(void) {
         cmocka_unit_test(test_fim_recovery_sync_recovered_tables_completed),
         cmocka_unit_test(test_fim_recovery_sync_recovered_tables_block_limit_reports_queued_entries),
         cmocka_unit_test(test_fim_recovery_sync_recovered_tables_failed_sync),
+        cmocka_unit_test(test_fim_recovery_sync_recovered_tables_stop_between_blocks),
+        cmocka_unit_test(test_fim_recovery_sync_recovered_tables_stop_during_session),
         cmocka_unit_test(test_fim_recovery_sync_recovered_tables_one_sync_for_every_table),
         cmocka_unit_test(test_fim_recovery_sync_recovered_tables_shutdown_sends_nothing),
         cmocka_unit_test(test_buildFileStatefulEvent_success),

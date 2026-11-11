@@ -549,7 +549,9 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
             .localTransportUnavailable = false,
             .sentAnything = sentAny,
             .feedNotReady = feedNotReady,
-            .reachedBlockLimit = success && blocksSent >= m_maxBlocksPerSync};
+            // A VD sync fetches the whole queue in its first block, so reaching the limit
+            // leaves nothing behind.
+            .reachedBlockLimit = !uncapped && success && blocksSent >= m_maxBlocksPerSync};
 }
 
 unsigned int AgentSyncProtocol::trackSyncOutcome(bool success, bool expectedFailure)

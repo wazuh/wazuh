@@ -635,7 +635,13 @@ void fim_recovery_sync_recovered_tables(AgentSyncProtocolHandle* handle, char** 
 
         const char* index = fim_recovery_sync_index(table_names[i]);
 
-        if (!result.success) {
+        if (result.stopped) {
+            // A stop either fails the session in progress or ends the cycle between two blocks. The
+            // latter reports success, because blocks were already sent, while rows are still
+            // queued, so neither "completed" message would be true. The rows stay on disk.
+            minfo("Recovery of index '%s' interrupted: module is stopping. The queued entries will be sent by "
+                  "a later synchronization.", index);
+        } else if (!result.success) {
             // The rows are queued, so the ordinary cycle delivers them; nothing about this table
             // has to be redone.
             minfo("Recovery of index '%s' did not finish sending%s%.*s%s; the queued rows will be delivered by the "

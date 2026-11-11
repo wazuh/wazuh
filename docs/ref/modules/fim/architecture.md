@@ -685,7 +685,8 @@ Run Delta Sync ──► asp_sync_module(MODE_DELTA)
          │
          └─►  Failure? ──► Skip Recovery, Wait for Next Cycle
          │
-         └─►  Success? ──► Continue to Recovery Check
+         └─►  Success? ──► Lock fim_scan_mutex, fim_realtime_mutex
+                           (and fim_registry_scan_mutex on Windows)
                                     │
                                     ▼
                           For Each Table (file_entry, registry_key, registry_data):
@@ -712,9 +713,16 @@ Run Delta Sync ──► asp_sync_module(MODE_DELTA)
                                                                      │
                                                                      ▼
                                                          Persist All Entries (MODE_DELTA)
-                                                                     │
-                                                                     ▼
-                                                         Delta Sync with Manager
+
+After every table is checked:
+         │
+         ▼
+Unlock the mutexes
+         │
+         ▼
+Any table recovered? ──► One Delta Sync for all of them ──► asp_sync_module(MODE_DELTA)
+                         (regular agent.sync_max_blocks_per_cycle limit; whatever is
+                          left is sent by the next cycles and the log says so)
 ```
 
 ---

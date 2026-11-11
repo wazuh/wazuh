@@ -16,7 +16,7 @@ namespace
 {
     SyncModuleResult_t toCSyncModuleResult(const SyncModuleResult& cppResult)
     {
-        SyncModuleResult_t cResult;
+        SyncModuleResult_t cResult {};
 
         cResult.success = cppResult.success;
 
