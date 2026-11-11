@@ -153,6 +153,7 @@
 | [#35330](https://github.com/wazuh/wazuh/issues/35330) | Increased default limits for agent event throughput and inventory message sizes. |
 | [#35880](https://github.com/wazuh/wazuh/issues/35880) | Reduced `wazuh-agent` Debian package dependencies, removed `adduser`, `lsb-release`, and `debconf`. |
 | [#35471](https://github.com/wazuh/wazuh/issues/35471) | Standardized agent-start and buffer-status events to a WCS-aligned JSON format. |
+| [#41275](https://github.com/wazuh/wazuh/issues/41275) | Changed the command wodle to send output longer than 64 KB in several events instead of truncating it. |
 | [#39274](https://github.com/wazuh/wazuh/issues/39274) | Extended the Windows agent's default FIM registry ignore list to exclude the OS telemetry under `HKLM\System\CurrentControlSet\Services`. |
 | [#39064](https://github.com/wazuh/wazuh/issues/39064) | The 5.0 package upgrade deletes `etc/authd.pass` from the endpoint. **Operators who rotate it should know it disappears at upgrade.** |
 | [#39064](https://github.com/wazuh/wazuh/issues/39064) | A fresh 5.0 install no longer creates `etc/authd.pass`. |
