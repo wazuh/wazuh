@@ -13,9 +13,36 @@
 # already exists is additionally given the container subtree through _mapping and
 # the new search fields through _settings. Both are additive.
 #
+# An index whose `container` is already an object with "enabled": false is reported
+# and skipped instead: `enabled` cannot be changed on a live mapping, and OpenSearch
+# answers that PUT with
+#   mapper_exception: the [enabled] parameter can't be updated for the object
+#   mapping [container]
+# Such an index still INGESTS container data -- a disabled object is not parsed, so
+# dynamic:strict never reaches inside it -- but nothing under container.* is
+# searchable, which in a dashboard looks exactly like the data never arriving. Only
+# recreating the index picks up the real fields; see
+# 29-recreate-container-state-indices.sh, which is destructive.
+#
 # Usage:
 #   28-apply-container-templates.sh --url https://127.0.0.1:9200 --user admin --password <pw> [--dry-run]
 #   28-apply-container-templates.sh ... --templates /path/to/templates/states
+#
+# --templates defaults to this repository's src/external/indexer-plugins, which only
+# exists on a build host. Running this on a test VM means copying the patched
+# templates there and pointing --templates at them.
+#
+# RE-RUN AFTER EVERY wazuh-indexer START, not only after a reboot. The setup plugin
+# re-PUTs its own bundled templates at startup and Index.createTemplate() passes
+# .create(false), so it overwrites these unconditionally. Indices already created
+# keep their mappings -- cluster state holds them, they are not re-derived from the
+# template -- so what a missed re-run costs is the NEXT index to be created.
+#
+# Verifying the agent half is separate: the same templates are compiled into
+# libschema_validator.so at build time, so an agent package built from a tree whose
+# src/external/indexer-plugins is unpatched silently rejects container rows. Check a
+# built package with
+#   strings /var/ossec/lib/libschema_validator.so | grep -c oci_mounts   # expect 12
 
 set -euo pipefail
 
@@ -32,7 +59,7 @@ while [ $# -gt 0 ]; do
         --password) PASSWORD="$2"; shift 2 ;;
         --templates) TEMPLATE_DIR="$2"; shift 2 ;;
         --dry-run) DRY_RUN=1; shift ;;
-        -h|--help) sed -n '2,20p' "${BASH_SOURCE[0]}"; exit 0 ;;
+        -h|--help) sed -n '2,45p' "${BASH_SOURCE[0]}"; exit 0 ;;
         *) echo "unknown argument: $1" >&2; exit 2 ;;
     esac
 done
@@ -77,6 +104,18 @@ for name in $TEMPLATES; do
             echo "    index ${index} does not exist yet; the template covers it when it is created"
             continue
         fi
+    fi
+
+    # An index created from a template that declared `container` as a disabled
+    # object carries {"type":"object","enabled":false}. OpenSearch refuses to
+    # change `enabled` on a live mapping, so there is nothing to add here: the
+    # subtree already ingests (a disabled object is not parsed, so dynamic:strict
+    # does not reach inside it), it is simply not searchable. Only recreating the
+    # index picks up the real fields from the template PUT above.
+    if [ "$DRY_RUN" -eq 0 ] && "${CURL[@]}" "${URL}/${index}/_mapping" 2>/dev/null \
+        | python3 -c "import json,sys; d=json.load(sys.stdin); m=list(d.values())[0]['mappings'].get('properties',{}); sys.exit(0 if m.get('container',{}).get('enabled') is False else 1)"; then
+        echo "    ${index}: container is {enabled:false}; delete the index to pick up the new fields"
+        continue
     fi
 
     # Additive mapping update for the already-created index.
