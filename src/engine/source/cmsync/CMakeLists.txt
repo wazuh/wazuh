@@ -13,6 +13,7 @@ add_library(cmsync::icmsync ALIAS cmsync_icmsync)
 # Implementation
 add_library(cmsync_cmsync STATIC
     ${SRC_DIR}/cmsync.cpp
+    ${SRC_DIR}/routeStatusReporter.cpp
 )
 target_include_directories(cmsync_cmsync
     PUBLIC
