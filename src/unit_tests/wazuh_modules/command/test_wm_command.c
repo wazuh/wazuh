@@ -29,6 +29,7 @@
 #include "../../wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
 #include "../../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wmodules_wrappers.h"
+#include "../../wrappers/wazuh/shared/validate_op_wrappers.h"
 
 #define TEST_MAX_DATES 5
 
@@ -41,7 +42,7 @@ extern int test_mode;
 typedef enum wm_command_payload_case {
     WM_PAYLOAD_CASE_NORMAL = 0,
     WM_PAYLOAD_CASE_EMPTY,
-    WM_PAYLOAD_CASE_TRUNCATED,
+    WM_PAYLOAD_CASE_SPLIT,
     WM_PAYLOAD_CASE_METADATA_ONLY,
 } wm_command_payload_case;
 
@@ -51,10 +52,20 @@ typedef struct wm_command_payload_expectation {
     const char *tag;
     int exit_code;
     const char *raw_output;
-    const char *expected_output;   // For NORMAL/EMPTY/METADATA_ONLY expects exact; for TRUNCATED expects prefix match.
+    const char *expected_output;   // For NORMAL/EMPTY expects exact.
 } wm_command_payload_expectation;
 
 static wm_command_payload_expectation g_payload_expectation;
+
+// Parts received in a SPLIT run.
+static struct {
+    char trace_id[33];
+    size_t events;
+    size_t skipped;
+    size_t captured;
+    char *text;
+    size_t text_len;
+} g_parts;
 
 static size_t wm_command_max_json_payload_len(void) {
     const char *extag = WM_COMMAND_CONTEXT.name;
@@ -150,18 +161,47 @@ static int check_wm_sendmsg_message_is_valid_command_json(const LargestIntegralT
     const char *io_text = wm_command_json_get_string(process_io, "text");
     assert_non_null(io_text);
 
+    const cJSON *sequence = cJSON_GetObjectItemCaseSensitive((cJSON *)event_obj, "sequence");
+    const cJSON *captured = cJSON_GetObjectItemCaseSensitive((cJSON *)process_io, "total_bytes_captured");
+    const cJSON *skipped = cJSON_GetObjectItemCaseSensitive((cJSON *)process_io, "total_bytes_skipped");
+    const cJSON *trace = wm_command_json_get_object(root, "trace");
+
     switch (g_payload_expectation.payload_case) {
     case WM_PAYLOAD_CASE_NORMAL:
     case WM_PAYLOAD_CASE_EMPTY:
-    case WM_PAYLOAD_CASE_METADATA_ONLY:
         assert_string_equal(io_text, g_payload_expectation.expected_output ? g_payload_expectation.expected_output : "");
+        assert_null(sequence);
+        assert_null(captured);
+        assert_null(skipped);
+        assert_null(trace);
         break;
-    case WM_PAYLOAD_CASE_TRUNCATED:
-        assert_non_null(g_payload_expectation.raw_output);
-        assert_true(strlen(io_text) < strlen(g_payload_expectation.raw_output));
-        if (g_payload_expectation.expected_output) {
-            assert_true(strncmp(io_text, g_payload_expectation.expected_output, strlen(g_payload_expectation.expected_output)) == 0);
+    case WM_PAYLOAD_CASE_METADATA_ONLY:
+        assert_string_equal(io_text, "");
+        assert_null(sequence);
+        assert_null(trace);
+        break;
+    case WM_PAYLOAD_CASE_SPLIT:
+        assert_true(w_utf8_valid(message));
+        assert_true(cJSON_IsNumber(sequence));
+        assert_int_equal(sequence->valueint, ++g_parts.events);
+        // Every part of the run has the same 32 hex digit trace.id.
+        assert_non_null(trace);
+        const char *trace_id = wm_command_json_get_string(trace, "id");
+        assert_non_null(trace_id);
+        assert_int_equal(strlen(trace_id), 32);
+        assert_int_equal(strspn(trace_id, "0123456789abcdef"), 32);
+        if (g_parts.events == 1) {
+            strcpy(g_parts.trace_id, trace_id);
         }
+        assert_string_equal(trace_id, g_parts.trace_id);
+        assert_true(cJSON_IsNumber(captured));
+        g_parts.captured = captured->valueint;
+        if (skipped) {
+            g_parts.skipped += skipped->valueint;
+        }
+        os_realloc(g_parts.text, g_parts.text_len + strlen(io_text) + 1, g_parts.text);
+        memcpy(g_parts.text + g_parts.text_len, io_text, strlen(io_text) + 1);
+        g_parts.text_len += strlen(io_text);
         break;
     }
 
@@ -193,6 +233,8 @@ static int setup_test_payload(void **state) {
 
 static int teardown_test_payload(void **state) {
     wm_command_t *command = (wm_command_t *)*state;
+    os_free(g_parts.text);
+    memset(&g_parts, 0, sizeof(g_parts));
     if (command) {
         sched_scan_free(&(command->scan_config));
         free(command->tag);
@@ -593,17 +635,9 @@ static void test_command_payload_empty_output(void **state) {
     WM_COMMAND_CONTEXT.start(command);
 }
 
-static void test_command_payload_long_output_truncates(void **state) {
-    wm_command_t *command = (wm_command_t *)*state;
-    const size_t max_len = wm_command_max_json_payload_len();
-    assert_true(max_len > 0);
-
-    // Make output far larger than OS_MAXSTR so truncation path is hit.
-    const size_t output_len = max_len * 2;
-    char *output = calloc(output_len + 1, 1);
-    assert_non_null(output);
-    memset(output, 'B', output_len);
-    output[output_len] = '\0';
+// Runs the module once on output and collects every event it sends.
+static void wm_command_run_split(wm_command_t *command, const char *output, int split_output, int warnings) {
+    will_return(__wrap_getDefine_Int_default, split_output);
 
     expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
     expect_value(__wrap_StartMQ, type, WRITE);
@@ -612,7 +646,7 @@ static void test_command_payload_long_output_truncates(void **state) {
     expect_any(__wrap_wm_exec, command);
     expect_any(__wrap_wm_exec, secs);
     expect_any(__wrap_wm_exec, add_path);
-    will_return(__wrap_wm_exec, output);
+    will_return(__wrap_wm_exec, (char *)output);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
@@ -620,26 +654,124 @@ static void test_command_payload_long_output_truncates(void **state) {
     will_return(__wrap_get_binary_path, strdup("/bin/echo"));
     will_return(__wrap_get_binary_path, 0);
 
-    // Truncation path emits one warning.
-    expect_any(__wrap__mtwarn, tag);
-    expect_any(__wrap__mtwarn, formatted_msg);
+    if (warnings) {
+        expect_any_count(__wrap__mtwarn, tag, warnings);
+        expect_any_count(__wrap__mtwarn, formatted_msg, warnings);
+    }
 
     expect_any_count(__wrap__mtinfo, tag, 2);
     expect_any_count(__wrap__mtinfo, formatted_msg, 2);
-    expect_any(__wrap__mtdebug1, tag);
-    expect_any(__wrap__mtdebug1, formatted_msg);
+    // "output sent in N events" and "finished".
+    expect_any_count(__wrap__mtdebug1, tag, 2);
+    expect_any_count(__wrap__mtdebug1, formatted_msg, 2);
 
     wm_command_prepare_single_iteration();
-    wm_command_expect_sendmsg_json();
 
-    g_payload_expectation.payload_case = WM_PAYLOAD_CASE_TRUNCATED;
+    expect_any_always(__wrap_wm_sendmsg_with_reconnect, usec);
+    expect_any_always(__wrap_wm_sendmsg_with_reconnect, queue);
+    // cmocka has no expect_check_count(); -1 accepts any number of calls.
+    _expect_check("__wrap_wm_sendmsg_with_reconnect", "message", __FILE__, __LINE__, check_wm_sendmsg_message_is_valid_command_json, 0, NULL, -1);
+    expect_string_count(__wrap_wm_sendmsg_with_reconnect, locmsg, WM_COMMAND_CONTEXT.name, -1);
+    expect_value_count(__wrap_wm_sendmsg_with_reconnect, loc, LOCALFILE_MQ, -1);
+    expect_string_count(__wrap_wm_sendmsg_with_reconnect, tag, WM_COMMAND_LOGTAG, -1);
+    will_return_always(__wrap_wm_sendmsg_with_reconnect, 0);
+
+    g_payload_expectation.payload_case = WM_PAYLOAD_CASE_SPLIT;
     g_payload_expectation.command_line = command->command;
     g_payload_expectation.tag = command->tag;
     g_payload_expectation.exit_code = 0;
     g_payload_expectation.raw_output = output;
-    g_payload_expectation.expected_output = "BBBB";
 
     WM_COMMAND_CONTEXT.start(command);
+}
+
+static void test_command_payload_long_output_split(void **state) {
+    wm_command_t *command = (wm_command_t *)*state;
+    const size_t lines = (wm_command_max_json_payload_len() * 2) / 40;
+    char *output = calloc(lines * 40 + 1, 1);
+    assert_non_null(output);
+
+    for (size_t i = 0; i < lines; i++) {
+        snprintf(output + i * 40, 41, "%5zu root     /usr/bin/proc \"%8zu\"\n", i % 100000, i % 100000000);
+    }
+
+    wm_command_run_split(command, output, 1, 0);
+
+    // Every line arrives, in order, and no event cuts a line.
+    assert_true(g_parts.events >= 2);
+    assert_int_equal(g_parts.skipped, 0);
+    assert_int_equal(g_parts.captured, strlen(output));
+    assert_string_equal(g_parts.text, output);
+    free(output);
+}
+
+static void test_command_payload_long_line_truncated(void **state) {
+    wm_command_t *command = (wm_command_t *)*state;
+    const size_t long_len = wm_command_max_json_payload_len() * 2;
+    const char *first = "first line\n";
+    const char *last = "last line\n";
+    const size_t len = strlen(first) + long_len + 1 + strlen(last);
+    char *output = calloc(len + 1, 1);
+    assert_non_null(output);
+
+    strcpy(output, first);
+    memset(output + strlen(first), 'B', long_len);
+    output[strlen(first) + long_len] = '\n';
+    strcpy(output + strlen(first) + long_len + 1, last);
+
+    wm_command_run_split(command, output, 1, 1);
+
+    // Only the long line is cut, and its event says how much of it was dropped.
+    assert_int_equal(g_parts.events, 3);
+    assert_true(g_parts.skipped > 0);
+    assert_int_equal(g_parts.captured, len);
+    assert_int_equal(g_parts.text_len + g_parts.skipped, len);
+    assert_true(strncmp(g_parts.text, first, strlen(first)) == 0);
+    assert_string_equal(g_parts.text + g_parts.text_len - strlen(last), last);
+    free(output);
+}
+
+static void test_command_payload_invalid_utf8_split(void **state) {
+    wm_command_t *command = (wm_command_t *)*state;
+    // Fits the limit as raw bytes, but not once each invalid byte becomes U+FFFD (3 bytes).
+    const char *line = "caf\xe9 a\xf1o dise\xf1o\n";
+    const size_t lines = (wm_command_max_json_payload_len() - 1024) / (strlen(line) + 1);
+    char *output = calloc(lines * strlen(line) + 1, 1);
+    assert_non_null(output);
+
+    for (size_t i = 0; i < lines; i++) {
+        memcpy(output + i * strlen(line), line, strlen(line));
+    }
+
+    wm_command_run_split(command, output, 1, 0);
+
+    char *filtered = w_utf8_filter(output, true);
+    assert_true(g_parts.events >= 2);
+    assert_int_equal(g_parts.skipped, 0);
+    assert_string_equal(g_parts.text, filtered);
+    free(filtered);
+    free(output);
+}
+
+static void test_command_payload_long_output_truncated(void **state) {
+    wm_command_t *command = (wm_command_t *)*state;
+    const size_t lines = (wm_command_max_json_payload_len() * 2) / 40;
+    char *output = calloc(lines * 40 + 1, 1);
+    assert_non_null(output);
+
+    for (size_t i = 0; i < lines; i++) {
+        snprintf(output + i * 40, 41, "%5zu root     /usr/bin/proc \"%8zu\"\n", i % 100000, i % 100000000);
+    }
+
+    // split_output=0: one event filled up to the limit on a line boundary, and the rest reported as skipped.
+    wm_command_run_split(command, output, 0, 1);
+
+    assert_int_equal(g_parts.events, 1);
+    assert_int_equal(g_parts.captured, strlen(output));
+    assert_int_equal(g_parts.text_len + g_parts.skipped, strlen(output));
+    assert_true(g_parts.text_len > wm_command_max_json_payload_len() / 2);
+    assert_int_equal(g_parts.text[g_parts.text_len - 1], '\n');
+    assert_true(strncmp(g_parts.text, output, g_parts.text_len) == 0);
     free(output);
 }
 
@@ -713,15 +845,16 @@ static void test_command_payload_metadata_only_fallback(void **state) {
     will_return(__wrap_get_binary_path, strdup("/bin/echo"));
     will_return(__wrap_get_binary_path, 0);
 
-    // First warning: truncation attempt; second warning: still too large, metadata-only fallback.
-    expect_any_count(__wrap__mtwarn, tag, 2);
-    expect_any_count(__wrap__mtwarn, formatted_msg, 2);
+    // No room for any output: one event without it, and one warning.
+    expect_any(__wrap__mtwarn, tag);
+    expect_any(__wrap__mtwarn, formatted_msg);
 
     expect_any_count(__wrap__mtinfo, tag, 2);
     expect_any_count(__wrap__mtinfo, formatted_msg, 2);
     expect_any(__wrap__mtdebug1, tag);
     expect_any(__wrap__mtdebug1, formatted_msg);
 
+    will_return(__wrap_getDefine_Int_default, 1);
     wm_command_prepare_single_iteration();
     wm_command_expect_sendmsg_json();
 
@@ -733,6 +866,58 @@ static void test_command_payload_metadata_only_fallback(void **state) {
     g_payload_expectation.expected_output = "";
 
     WM_COMMAND_CONTEXT.start(command);
+}
+
+static void test_next_part_fits(void **state) {
+    const char *text = "one\ntwo\n";
+    size_t part_len, skipped;
+
+    assert_int_equal(wm_command_next_part(text, strlen(text), 0, 100, &part_len, &skipped), strlen(text));
+    assert_int_equal(part_len, strlen(text));
+    assert_int_equal(skipped, 0);
+}
+
+static void test_next_part_ends_at_line_break(void **state) {
+    const char *text = "aaaa\nbbbb\n";
+    size_t part_len, skipped;
+
+    // "aaaa\n" escapes to 6 bytes, and the next line does not fit with it.
+    assert_int_equal(wm_command_next_part(text, strlen(text), 0, 7, &part_len, &skipped), 5);
+    assert_int_equal(part_len, 5);
+    assert_int_equal(skipped, 0);
+    assert_int_equal(wm_command_next_part(text, strlen(text), 5, 7, &part_len, &skipped), strlen(text));
+    assert_int_equal(part_len, 5);
+}
+
+static void test_next_part_counts_escapes(void **state) {
+    const char *text = "x\"\ny\n";
+    size_t part_len, skipped;
+
+    // 'x' (1) + '"' (2) + '\n' (2) fill the 5 bytes.
+    assert_int_equal(wm_command_next_part(text, strlen(text), 0, 5, &part_len, &skipped), 3);
+    assert_int_equal(part_len, 3);
+    assert_int_equal(skipped, 0);
+}
+
+static void test_next_part_cuts_long_line_on_utf8_boundary(void **state) {
+    const char *text = "\xc3\xa9\xc3\xa9\xc3\xa9\nok\n";
+    size_t part_len, skipped;
+
+    // 5 bytes fit, but the 5th one starts a 2-byte character.
+    assert_int_equal(wm_command_next_part(text, strlen(text), 0, 5, &part_len, &skipped), 7);
+    assert_int_equal(part_len, 4);
+    assert_int_equal(skipped, 3);
+    assert_int_equal(wm_command_next_part(text, strlen(text), 7, 5, &part_len, &skipped), strlen(text));
+    assert_int_equal(part_len, 3);
+}
+
+static void test_next_part_no_room(void **state) {
+    const char *text = "one\ntwo\n";
+    size_t part_len, skipped;
+
+    assert_int_equal(wm_command_next_part(text, strlen(text), 0, 0, &part_len, &skipped), strlen(text));
+    assert_int_equal(part_len, 0);
+    assert_int_equal(skipped, strlen(text));
 }
 
 void test_fake_tag(void **state) {
@@ -1159,8 +1344,18 @@ int main(void) {
     const struct CMUnitTest tests_payload_json[] = {
         cmocka_unit_test_setup_teardown(test_command_payload_normal_output, setup_test_payload, teardown_test_payload),
         cmocka_unit_test_setup_teardown(test_command_payload_empty_output, setup_test_payload, teardown_test_payload),
-        cmocka_unit_test_setup_teardown(test_command_payload_long_output_truncates, setup_test_payload, teardown_test_payload),
+        cmocka_unit_test_setup_teardown(test_command_payload_long_output_split, setup_test_payload, teardown_test_payload),
+        cmocka_unit_test_setup_teardown(test_command_payload_long_line_truncated, setup_test_payload, teardown_test_payload),
+        cmocka_unit_test_setup_teardown(test_command_payload_invalid_utf8_split, setup_test_payload, teardown_test_payload),
+        cmocka_unit_test_setup_teardown(test_command_payload_long_output_truncated, setup_test_payload, teardown_test_payload),
         cmocka_unit_test_setup_teardown(test_command_payload_metadata_only_fallback, setup_test_payload, teardown_test_payload)
+    };
+    const struct CMUnitTest tests_next_part[] = {
+        cmocka_unit_test(test_next_part_fits),
+        cmocka_unit_test(test_next_part_ends_at_line_break),
+        cmocka_unit_test(test_next_part_counts_escapes),
+        cmocka_unit_test(test_next_part_cuts_long_line_on_utf8_boundary),
+        cmocka_unit_test(test_next_part_no_room)
     };
     const struct CMUnitTest tests_full_command[] = {
         cmocka_unit_test_setup_teardown(test_full_command_windows_no_args, setup_test_full_command, teardown_test_full_command),
@@ -1176,6 +1371,7 @@ int main(void) {
     result += cmocka_run_group_tests(tests_without_startup, NULL, NULL);
     result += cmocka_run_group_tests(tests_validate_command_checksums, NULL, NULL);
     result += cmocka_run_group_tests(tests_payload_json, NULL, NULL);
+    result += cmocka_run_group_tests(tests_next_part, NULL, NULL);
     result += cmocka_run_group_tests(tests_full_command, NULL, NULL);
     return result;
 }

@@ -145,7 +145,20 @@ When `ignore_output` is `no`, the command module sends a JSON event with command
 | `process.exit_code` | Command exit code. Timeout and execution failures use `-1`. |
 | `process.io.text` | Captured command output. |
 
-If the output is too large for a single queue message, the module attempts to truncate `process.io.text`. If the event still does not fit, it sends a metadata-only event with an empty output field.
+### Long output
+
+If the event does not fit in a single queue message (64 KB), the module sends the output in several events. This is the default (`wazuh_command.split_output=1`); with `wazuh_command.split_output=0` it sends only the first part, and `process.io.total_bytes_skipped` reports the rest of the output as dropped. Each event has the same `event.start`, `tags` and `process` fields, and a `process.io.text` that ends on a line boundary, so the parts put together in order give back the whole output. These events add:
+
+| Field | Description |
+|-------|-------------|
+| `trace.id` | Identifier of the run, the same in all of its parts. |
+| `event.sequence` | Number of the part, starting at `1`. |
+| `process.io.total_bytes_captured` | Size of the whole output of the run, in bytes. It is the same in every part. |
+| `process.io.total_bytes_skipped` | Bytes dropped from this part. Present only when a single line does not fit in a message on its own: that line is cut, and the rest of it is dropped. |
+
+The parts of a run share `trace.id`. The run is complete when the `process.io.text` sizes plus the `process.io.total_bytes_skipped` values of its parts add up to `process.io.total_bytes_captured`. An output that fits in one message is sent as a single event without these fields.
+
+Invalid UTF-8 bytes in the output are replaced with U+FFFD before the event is built.
 
 ## Troubleshooting
 
@@ -163,4 +176,5 @@ Common messages:
 | `Cannot check binary: '<binary>'. Cannot stat binary file.` | The executable could not be resolved for checksum verification. |
 | `SHA1 checksum verification failed for command '<command>'.` | The executable hash did not match the configured `verify_sha1` value. |
 | `Timeout overtaken.` | The command exceeded the configured `timeout`. |
-| `Command output is too long to fit in a single message.` | The output was truncated or dropped to keep the event within queue limits. |
+| `Command '<tag>': <N> bytes of output did not fit in the event and were dropped.` | A line of the output did not fit in a message on its own and was cut, or `wazuh_command.split_output` is `0` and the output was truncated. The event says how many bytes were dropped in `process.io.total_bytes_skipped`. |
+| `Command '<tag>': the command details fill the whole message. Sending the event without output.` | The command line and its metadata leave no room for any output in a message. The event is sent with an empty `process.io.text`. |

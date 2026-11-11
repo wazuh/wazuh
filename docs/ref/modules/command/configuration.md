@@ -147,9 +147,12 @@ Additional command wodle settings can be configured in `internal_options.conf` o
 ```ini
 # Allow remote commands from centralized configuration (0=no, 1=yes, default: 0)
 wazuh_command.remote_commands=0
+
+# Output longer than a single message (64 KB): send it in several events (1) or truncate it (0) (default: 1)
+wazuh_command.split_output=1
 ```
 
-**Note:** The command module has minimal internal options. Most configuration is done via XML. Command output size and timeout are not configurable via internal options - they are controlled by system limits and the `<timeout>` XML option.
+**Note:** Most configuration is done via XML. The command timeout is set with the `<timeout>` XML option.
 
 ---
 
