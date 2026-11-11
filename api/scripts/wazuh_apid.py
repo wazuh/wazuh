@@ -365,7 +365,7 @@ if __name__ == '__main__':
     if 'drop_privileges' in api_conf:
         del api_conf['drop_privileges']
         logger.warning(
-            "'drop_privileges' option was deprecated on v4.14.12 and is ignored. "
+            "'drop_privileges' option is ignored. "
             "The API always runs as the wazuh user unless it is started with '-r'")
 
     if 'path' in api_conf['logs']:
