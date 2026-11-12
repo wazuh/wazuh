@@ -295,6 +295,23 @@ TEST(QueryResponseTest, PitCreate2xxWithPitIdIsOk)
     EXPECT_EQ(response.body.at("pit_id"), "pit-1");
 }
 
+// A PIT created without some shard is never accepted: Retry, and the body keeps its pit_id (that PIT exists).
+TEST(QueryResponseTest, PitCreate2xxWithFailedShardsIsRetried)
+{
+    const auto response = classifyPitCreate(
+        http(200, R"({"pit_id":"pit-1","_shards":{"total":2,"successful":1,"skipped":0,"failed":1}})"), MAX_BYTES);
+    EXPECT_EQ(response.verdict, QueryVerdict::Retry);
+    EXPECT_EQ(response.httpStatus, 200);
+    EXPECT_EQ(response.reason, "200 partial PIT: 1 shards failed");
+    EXPECT_EQ(response.body.at("pit_id"), "pit-1");
+
+    // No `_shards`, or a `failed` that is 0 or not a number: as before.
+    for (const char* body : {R"({"pit_id":"pit-1"})", R"({"pit_id":"pit-1","_shards":{"failed":"1"}})"})
+    {
+        EXPECT_EQ(classifyPitCreate(http(200, body), MAX_BYTES).verdict, QueryVerdict::Ok) << body;
+    }
+}
+
 TEST(QueryResponseTest, PitCreate2xxWithoutAUsablePitIdIsItemPermanent)
 {
     for (const char* body :

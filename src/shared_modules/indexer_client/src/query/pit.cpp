@@ -156,6 +156,9 @@ namespace indexer_client::detail::query
         {
             bool held {false};     ///< An acquired slot no attempt has settled yet.
             bool accepted {false}; ///< The classifier took the last 2xx (non-empty pit_id).
+            /// The pit_id of the last 2xx the classifier refused although it names a PIT (a partial one): the observer
+            /// hands it to the registry to be deleted, and clears it.
+            std::string refusedId;
         };
 
         /// One search request on the PIT (next() page or search()): POST /_search?allow_partial_search_results=false
@@ -284,7 +287,10 @@ namespace indexer_client::detail::query
             return Outcome<Pit>::failure(Cause::Shutdown, "the runtime is shut down");
         }
 
-        std::vector<std::string> params {"keep_alive=" + keepAliveText(pitOptions.keepAlive)};
+        // allow_partial_pit_creation defaults to true: without it a PIT missing a shard is created, and its pages miss
+        // that shard's documents without any shard failure to show it.
+        std::vector<std::string> params {"keep_alive=" + keepAliveText(pitOptions.keepAlive),
+                                         "allow_partial_pit_creation=false"};
         if (pitOptions.expandWildcardsAll || options.expandWildcardsAll)
         {
             params.emplace_back("expand_wildcards=all");
@@ -329,7 +335,12 @@ namespace indexer_client::detail::query
             switch (event.kind)
             {
                 case AttemptEvent::Kind::Answered:
-                    if (!slots->accepted)
+                    if (!slots->refusedId.empty())
+                    {
+                        // A PIT the creation refused (partial): it exists, so its slot stays taken until its DELETE.
+                        owner->discard({std::exchange(slots->refusedId, {}), keepAlive, now()});
+                    }
+                    else if (!slots->accepted)
                     {
                         owner->releaseSlot();
                     }
@@ -353,6 +364,15 @@ namespace indexer_client::detail::query
         {
             auto response = classifyPitCreate(result, cap);
             slots->accepted = response.verdict == QueryVerdict::Ok;
+            slots->refusedId.clear();
+            if (!slots->accepted && response.body.is_object())
+            {
+                const auto id = response.body.find("pit_id");
+                if (id != response.body.end() && id->is_string())
+                {
+                    slots->refusedId = id->get<std::string>();
+                }
+            }
             return response;
         };
 

@@ -1439,12 +1439,17 @@ request is made.
 (`InvalidArgument` with the field first: the indices as in [Index validation](#index-validation), `keepAlive > 0`, the `QueryOptions`
 checks); then
 
-`POST /<i1,i2>/_search/point_in_time?keep_alive=<ms>ms[&expand_wildcards=all]`, no body.
+`POST /<i1,i2>/_search/point_in_time?keep_alive=<ms>ms&allow_partial_pit_creation=false[&expand_wildcards=all]`, no body.
 
-`PitOptions.keepAlive` (default 300000 ms) is sent in milliseconds. `expand_wildcards=all` is added when `PitOptions.expandWildcardsAll`
+`PitOptions.keepAlive` (default 300000 ms) is sent in milliseconds. `allow_partial_pit_creation=false` is always sent: OpenSearch
+defaults it to `true` and would create a PIT missing an unavailable shard, whose pages then miss that shard's documents with no shard
+failure to show it (the pages' `allow_partial_search_results=false` only covers the shards the PIT holds). `expand_wildcards=all` is added when `PitOptions.expandWildcardsAll`
 or `QueryOptions.expandWildcardsAll` is set. `PitOptions.wholeResponseCap` (default false) is not sent: it sets the
 [response cap](#response-cap) of the PIT's pages. A 2xx needs a non-empty string `pit_id`, otherwise `Failed(ItemPermanent)`; a 404
-`index_not_found_exception` is `NotFound` (I85); the rest follows the [retry table](#retry-i82).
+`index_not_found_exception` is `NotFound` (I85); the rest follows the [retry table](#retry-i82). A 2xx whose `_shards.failed` is
+above 0 (a partial PIT the indexer created anyway) is never accepted: it is a **retry** under the same budget (reason
+`<status> partial PIT: <n> shards failed`), because an unavailable shard (a relocation, a restarting node) is usually transient, and
+the PIT it names exists, so the registry deletes it like a released one (below).
 
 ### Slots and the cap
 
@@ -1454,7 +1459,8 @@ Before **every attempt** of a creation the engine takes one slot from the regist
 
 | How the attempt ended | The slot |
 |---|---|
-| 2xx with a `pit_id` | Becomes the PIT's (open) |
+| 2xx with a `pit_id`, accepted | Becomes the PIT's (open) |
+| 2xx with a `pit_id`, refused (partial) | Becomes an open PIT (`created` + 1) whose DELETE is queued at once (`PitRegistry::discard`); freed when the delete is confirmed or expires |
 | Any other HTTP answer | Released |
 | Transport failure with `mayHaveSent`, or abandoned (deadline, close, shutdown) | **Reserved** until `now + keepAlive`: the PIT may exist on the indexer (an orphan until its `keep_alive` frees it), so it keeps counting against the cap |
 | Transport failure without `mayHaveSent` | Released |

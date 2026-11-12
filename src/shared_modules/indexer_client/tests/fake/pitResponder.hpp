@@ -126,6 +126,14 @@ namespace indexer_client::testing
             }
         }
 
+        /// The next `count` creations answer 200 with a PIT that misses a shard (`_shards.failed` 1 of 2), as
+        /// OpenSearch does with allow_partial_pit_creation=true: the PIT is created and alive all the same.
+        void partialCreates(std::size_t count)
+        {
+            std::lock_guard lock(m_mutex);
+            m_partialCreates = count;
+        }
+
         /// The next answered search carries a new pit_id for its PIT (the old ids keep working).
         void renewIdOnNextSearch()
         {
@@ -318,11 +326,19 @@ namespace indexer_client::testing
             entry.expiresAt = now + keepAlive;
             m_byId[entry.current] = m_pits.size();
             m_pits.push_back(entry);
+            const bool partial = m_partialCreates > 0;
+            if (partial)
+            {
+                --m_partialCreates;
+            }
             reply.status = 200;
-            reply.body = nlohmann::json {{"pit_id", entry.current},
-                                         {"_shards", {{"total", 1}, {"successful", 1}, {"skipped", 0}, {"failed", 0}}},
-                                         {"creation_time", 1}}
-                             .dump();
+            reply.body =
+                nlohmann::json {
+                    {"pit_id", entry.current},
+                    {"_shards",
+                     {{"total", partial ? 2 : 1}, {"successful", 1}, {"skipped", 0}, {"failed", partial ? 1 : 0}}},
+                    {"creation_time", 1}}
+                    .dump();
         }
 
         void search(const nlohmann::json& body, Rule& reply, std::chrono::steady_clock::time_point now)
@@ -430,6 +446,7 @@ namespace indexer_client::testing
 
         const std::int64_t m_documents;
         mutable std::mutex m_mutex;
+        std::size_t m_partialCreates {0}; ///< partialCreates(): creations still to answer partial.
         Intercept m_intercept;
         std::vector<PitEntry> m_pits;
         std::map<std::string, std::size_t> m_byId;

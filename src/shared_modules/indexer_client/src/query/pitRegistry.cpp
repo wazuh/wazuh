@@ -169,6 +169,17 @@ namespace indexer_client::detail::query
                 arm(Duration::zero());
             }
 
+            void discard(Pending pit) override
+            {
+                {
+                    std::lock_guard<std::mutex> lock(m_mutex);
+                    takeAcquiredLocked();
+                    ++m_open;
+                    g_created.fetch_add(1);
+                }
+                release(std::move(pit));
+            }
+
             void drain(TimePoint drainEnd) override
             {
                 std::vector<std::weak_ptr<PitState>> live;

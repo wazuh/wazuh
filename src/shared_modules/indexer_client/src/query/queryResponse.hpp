@@ -72,7 +72,8 @@ namespace indexer_client::detail::query
     constexpr const char* SEARCH_CONTEXT_MISSING = "search_context_missing_exception";
 
     /// PIT creation (pit.hpp CREATE, stage E4b). 2xx: capped and parsed as a search, then a non-empty string `pit_id`
-    /// (else Fail ItemPermanent). 404: as classifySearch (index_not_found_exception ⇒ NotFound, I85).
+    /// (else Fail ItemPermanent); with _shards.failed > 0 ⇒ Retry "partial PIT", `body` kept (its `pit_id` names a PIT
+    /// that exists and must be deleted). 404: as classifySearch (index_not_found_exception ⇒ NotFound, I85).
     QueryResponse classifyPitCreate(const HttpResult& result, std::uint64_t maxResponseBytes);
 
     /// A search on a PIT (pit.hpp SEARCH and EXPIRY, D52). 404 whose error.type or any error.root_cause[].type is

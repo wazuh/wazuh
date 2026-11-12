@@ -520,8 +520,57 @@ TEST_F(PitTest, FirstPageCarriesTotal)
     EXPECT_EQ(pitSearches(*node).size(), 3u) << "next() after last sent a request";
 }
 
-// I93: the request shapes. Creation: POST /a,b/_search/point_in_time?keep_alive=<ms>ms[&expand_wildcards=all], no
-// body. Search: POST /_search?allow_partial_search_results=false with pit {id, keep_alive}; an empty sort becomes
+// A PIT missing a shard is never handed out: the indexer still created it (allow_partial_pit_creation ignored), so the
+// creation retries, and the partial PIT, which exists, is deleted and its slot freed. Mutant: _shards.failed ignored
+// (the partial PIT is accepted), or the refused PIT's slot released without a DELETE (an orphan until keep_alive).
+TEST_F(PitTest, PitCreatePartialShardsRejectedAndDeleted)
+{
+    auto pits = std::make_shared<PitResponder>(4);
+    pits->partialCreates(1);
+    const auto node = pitFake(pits);
+    ASSERT_NO_FATAL_FAILURE(start({node->baseUrl()}));
+    auto owner = client();
+    const auto before = q::pitStats();
+    {
+        auto created = owner->query()->pit({"idx"}, keepAlive(60s), fastOptions(), in(5s));
+        ASSERT_TRUE(created.ok()) << ic::toString(created.cause) << ": " << created.reason;
+        EXPECT_EQ(pits->created(), 2u) << "the partial creation was not retried";
+        auto cursor = created.value.cursor(cursorQuery(10));
+        ASSERT_TRUE(cursor.next(in(5s)).ok());
+        for (const auto& search : pitSearches(*node))
+        {
+            EXPECT_EQ(parsed(search).at("pit").at("id"), "pit-2") << "the partial PIT was used";
+        }
+        ASSERT_TRUE(component::eventually([&] { return pits->deleted() == 1; }, scaled(5000ms)))
+            << "the partial PIT was not deleted";
+        const auto deletes = pitDeletes(*node);
+        ASSERT_EQ(deletes.size(), 1u);
+        EXPECT_EQ(parsed(deletes[0]), (nlohmann::json {{"pit_id", "pit-1"}}));
+        EXPECT_TRUE(component::eventually([] { return q::pitStats().open == 1; }, scaled(5000ms)))
+            << "the partial PIT's slot was not freed";
+    }
+    ASSERT_TRUE(component::eventually([&] { return pits->deleted() == 2 && q::pitStats().open == 0; }, scaled(5000ms)));
+    const auto d = pitDelta(before, q::pitStats());
+    EXPECT_EQ(d.created, 2u);
+    EXPECT_EQ(d.deletesConfirmed, 2u);
+    EXPECT_EQ(d.reserved, 0u);
+
+    // Always partial: the budget ends the creation (RetryExhausted) and every partial PIT is still deleted.
+    pits->partialCreates(100);
+    auto options = fastOptions();
+    options.retry.maxAttempts = 3;
+    auto refused = owner->query()->pit({"idx"}, keepAlive(60s), options, in(5s));
+    ASSERT_FALSE(refused.ok());
+    EXPECT_EQ(refused.cause, ic::Cause::RetryExhausted) << refused.reason;
+    EXPECT_NE(refused.reason.find("partial PIT"), std::string::npos) << refused.reason;
+    EXPECT_TRUE(component::eventually([&] { return pits->deleted() == 5 && q::pitStats().open == 0; }, scaled(5000ms)))
+        << pits->deleted() << " deleted, " << q::pitStats().open << " open";
+    EXPECT_EQ(pits->alive(), 0u);
+}
+
+// I93: the request shapes. Creation: POST
+// /a,b/_search/point_in_time?keep_alive=<ms>ms&allow_partial_pit_creation=false[&expand_wildcards=all], no body.
+// Search: POST /_search?allow_partial_search_results=false with pit {id, keep_alive}; an empty sort becomes
 // [{"_shard_doc":"asc"}] and a consumer sort is kept as given; Pit::search overwrites body.pit and keeps the rest; a
 // new pit_id in a response is the one the next request uses.
 TEST_F(PitTest, PitRequestShapes)
@@ -541,10 +590,10 @@ TEST_F(PitTest, PitRequestShapes)
     const auto creates = pitCreates(*node);
     ASSERT_EQ(creates.size(), 2u);
     EXPECT_EQ(creates[0].path, "/a,b/_search/point_in_time");
-    EXPECT_EQ(queryString(creates[0]), "keep_alive=60000ms&expand_wildcards=all");
+    EXPECT_EQ(queryString(creates[0]), "keep_alive=60000ms&allow_partial_pit_creation=false&expand_wildcards=all");
     EXPECT_EQ(creates[0].bodySize, 0u);
     EXPECT_EQ(creates[1].path, "/a/_search/point_in_time");
-    EXPECT_EQ(queryString(creates[1]), "keep_alive=300000ms");
+    EXPECT_EQ(queryString(creates[1]), "keep_alive=300000ms&allow_partial_pit_creation=false");
 
     auto pit = created.value;
     ic::CursorQuery shaped;
