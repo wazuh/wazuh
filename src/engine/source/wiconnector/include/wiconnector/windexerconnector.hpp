@@ -9,9 +9,12 @@
 #include <mutex>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include <indexer_client/client.hpp>
+#include <indexer_client/metrics.hpp>
 #include <wiconnector/iwindexerconnector.hpp>
 
 namespace wiconnector
@@ -50,7 +53,8 @@ struct Config
  * reader; an index() after it discards the event and counts it in getDroppedEvents(). No index() may run concurrently
  * with shutdown() (I196b): the router and tester workers are joined before the indexer stops.
  *
- * The three queue metrics read one cached snapshot of Client::metrics(), refreshed at most once per second (I197).
+ * The three queue metrics and the per-bucket ones (getBucketMetric()) read one cached snapshot of Client::metrics(),
+ * refreshed at most once per second (I197).
  */
 class WIndexerConnector : public IWIndexerConnector
 {
@@ -106,6 +110,19 @@ public:
     double getQueueUsagePercent() override;
 
     /**
+     * @brief The names of the per-bucket metrics getBucketMetric() serves, with their kind: the library's catalog for
+     *        the `events` and `raw` buckets of the engine's Client, `indexer_client.bucket.analysisd.<bucket>.<field>`
+     *        (the names of a snapshot with no values: fixed, every member of every closed set included).
+     */
+    static std::vector<std::pair<std::string, indexer_client::MetricKind>> bucketMetricNames();
+
+    /**
+     * @brief The value of @p name, one of bucketMetricNames(), in the same cached snapshot the three getters read;
+     *        0 for any other name or before the first snapshot. After shutdown() the last snapshot taken.
+     */
+    double getBucketMetric(const std::string& name);
+
+    /**
      * @brief Releases the writers and the Client. Must not run concurrently with index() (I196b).
      *
      * The engine calls it after the Client's requestClose() (EngineIndexerRuntime::beginStop()), so a remote
@@ -125,6 +142,10 @@ private:
     /// The cached totals, refreshed when older than METRICS_TTL and the Client is still held.
     Totals totals();
 
+    /// Takes a new snapshot into m_totals and m_bucketValues when the cache is older than METRICS_TTL and the Client
+    /// is still held. Under m_metricsMutex.
+    void refreshLocked();
+
     std::shared_ptr<indexer_client::IWriter> m_events; ///< Fixed until shutdown(); read without a lock.
     std::shared_ptr<indexer_client::IWriter> m_raw;    ///< Fixed until shutdown(); read without a lock.
     std::atomic<bool> m_closed {false};                ///< Set by shutdown() before it releases the writers.
@@ -138,6 +159,7 @@ private:
 
     std::mutex m_metricsMutex; ///< Guards the cache and serializes its refresh (one snapshot per TTL).
     Totals m_totals;
+    std::unordered_map<std::string, double> m_bucketValues; ///< The bucketMetricNames() values of the snapshot.
     std::chrono::steady_clock::time_point m_totalsAt {};
     bool m_hasTotals {false};
 };

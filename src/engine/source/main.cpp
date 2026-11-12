@@ -68,6 +68,7 @@
 #include <streamlog/logger.hpp>
 #include <wiconnector/engineConfigSource.hpp>
 #include <wiconnector/engineIndexerRuntime.hpp>
+#include <wiconnector/indexerMetrics.hpp>
 #include <wiconnector/windexerconnector.hpp>
 
 #include "base/utils/getExceptionStack.hpp"
@@ -653,30 +654,10 @@ int main(int argc, char* argv[])
                         indexerConnector->shutdown();
                     });
 
-                // Register pull metric for indexer queue (output/egress)
-                std::weak_ptr<wiconnector::WIndexerConnector> wIndexer = indexerConnector;
-                FASTMETRICS_PULL(uint64_t,
-                                 fastmetrics::names::INDEXER_QUEUE_SIZE,
-                                 [wIndexer]()
-                                 {
-                                     auto connector = wIndexer.lock();
-                                     return connector ? connector->getQueueSize() : 0;
-                                 });
-
-                FASTMETRICS_PULL(uint64_t,
-                                 fastmetrics::names::INDEXER_EVENTS_DROPPED,
-                                 [wIndexer]()
-                                 {
-                                     auto connector = wIndexer.lock();
-                                     return connector ? connector->getDroppedEvents() : 0;
-                                 });
-
-                auto indexerQueueUsageGetter = [wIndexer]()
-                {
-                    auto connector = wIndexer.lock();
-                    return connector ? connector->getQueueUsagePercent() : 0.0;
-                };
-                FASTMETRICS_PULL(double, fastmetrics::names::INDEXER_QUEUE_USAGE_PERCENT, indexerQueueUsageGetter);
+                // The indexer metrics (output/egress): the three queue metrics, every metric of the `events` and `raw`
+                // buckets and the runtime's (its nodes, queries and points in time), all as pull metrics.
+                wiconnector::registerIndexerMetrics(
+                    fastmetrics::manager(), indexerConnector, indexerRuntime->runtime());
 
                 LOG_INFO("Indexer Connector initialized");
             }

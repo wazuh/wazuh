@@ -2553,6 +2553,27 @@ The three indexer metrics keep their names. They are read from one snapshot of t
 
 ---
 
+#### Indexer client metrics
+
+Next to the three indexer metrics above, the engine publishes the indexer client library's own metrics for its two write buckets and for its runtime, with the same names the manager's modules use for theirs (see [Indexer Client Metrics](../indexer_client/metrics.md)). They are pull metrics, registered when the indexer connector starts.
+
+| Prefix | Scope | Count |
+|---|---|---|
+| `indexer_client.bucket.analysisd.events.` | The `events` bucket (processed events) | 51 |
+| `indexer_client.bucket.analysisd.raw.` | The `raw` bucket (`wazuh-events-raw-v5`) | 51 |
+| `indexer_client.runtime.` | The engine's indexer runtime | 7 |
+| `indexer_client.node.<i>.` | One host of the `<indexer>` section, `<i>` counting from 0 | 31 per host |
+| `indexer_client.query.` | Every query of the engine (remote configuration, content downloads) | 8 |
+| `indexer_client.pit.` | Every point in time of the engine (content downloads) | 10 |
+
+Each bucket has `accepted`, `ok` and `late_results`; per-cause counters `rejected.<cause>`, `dropped.<cause>`, `failed.<cause>` and `retries.<cause>` (for example `retries.server_5xx`, `failed.ambiguous`, `dropped.queue_full`); the gauges `retained_bytes`, `charge_bytes` and `quota_bytes`; `bulk_requests` and `bulk_bytes`; and a cumulative latency histogram of the `_bulk` responses (`latency.le_1` ... `latency.le_32768`, `latency.le_inf`, `latency.sum_micros`, `latency.count`, in milliseconds). The meaning of every field and cause is the library's catalog, listed in [Indexer Client Metrics § Names](../indexer_client/metrics.md#names).
+
+The bucket metrics are read from the same snapshot as `indexer.queue.size`, `indexer.queue.usage.percent` and `indexer.events.dropped` (at most one per second), so they add up: `indexer.events.dropped` is the sum of every `dropped.*`, `failed.*` and `rejected.*` of the two buckets, plus the events offered after the writes closed. Once the engine has shut its writes down they keep the last snapshot taken. The runtime, node, query and point-in-time metrics come from the runtime's own snapshot, also refreshed at most once per second; the node family has one set per configured host. Counters are integers; gauges such as a node's `window` can be fractions.
+
+**Used for:** telling why events are not indexed (which cause, which bucket), how often writes are retried and how long the indexer takes to answer them, and whether the indexer hosts are available or throttling the engine.
+
+---
+
 #### Router metrics
 
 ##### `router.queue.size`

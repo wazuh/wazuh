@@ -7,8 +7,9 @@ read the remote configuration needs, and the owner of the Engine's `indexer_clie
 
 - **Indexing events** — posting processed / raw-event JSON documents to data-stream indices.
 - **Remote engine configuration** — pulling runtime engine settings from `.wazuh-settings`.
-- **Queue introspection** — the queued bytes, their share of the capacity and the events not indexed (exported by
-  `main.cpp` as the three indexer metrics).
+- **Metrics** — the queued bytes, their share of the capacity and the events not indexed (the three `indexer.*`
+  metrics), every metric of the two buckets and the runtime's, published through fastmetrics by
+  `registerIndexerMetrics()`.
 
 **One connection.** Writes and reads go through the Engine's `indexer_client` `Client` `analysisd` (since E10b; the
 v1 connector is no longer used here). The writes use its two buckets, `events` and `raw`; the reads
@@ -29,6 +30,7 @@ content manager makes through that same Client. An indexer outage is reported on
           │  • index(): IWriter::post    │
           │    (no lock, fixed writers)  │
           │  • metrics: 1 snapshot / s   │
+          │    (3 getters + per bucket)  │
           └─────────┬────────────────────┘
                     │  buckets `events` (weight 2) and `raw` (weight 1); IQuery for the reads
                     ▼
@@ -86,14 +88,33 @@ holds fewer small events than a v1 queue of the same size.
 
 ### Metrics
 
-The three getters read one cached `Client::metrics()` snapshot, refreshed at most once per second (one scrape of the
-three fastmetrics takes one snapshot):
+The three getters and `getBucketMetric()` read one cached `Client::metrics()` snapshot, refreshed at most once per
+second (one scrape of every indexer metric takes one snapshot):
 
 | Getter | Value |
 |---|---|
 | `getQueueSize()` | Σ `retainedBytes` of `events` and `raw` |
 | `getQueueUsagePercent()` | max(the fullest bucket, the shared budget) × 100, capped at 100 (I218): max over `events` and `raw` of `charge` / `quotaBytes`, and Σ `charge` / `queueCapacityBytes`. 100 = a bucket or the global budget is full, i.e. new events are dropped (`QueueFull` or `GlobalFull`): the second term only matters when 2 × quota > global (a quota of `0` or above half the global quota). A bucket with quota 0 is skipped; 0.0 with no capacity or once shut down |
 | `getDroppedEvents()` | Σ `dropped` + `failed` + `rejected` (every cause) of both buckets, plus the events discarded after `shutdown()`; after it the bucket part is the last snapshot taken before it (up to `METRICS_TTL`, 1 s, older than the close; zeros if nothing read the metrics before), so what the runtime's stop drops later (`Dropped(Shutdown)`) is not in it |
+
+`getBucketMetric(name)` serves the library's catalog for the two buckets from that snapshot:
+`indexer_client.bucket.analysisd.{events,raw}.<field>`, 51 names per bucket (`accepted`, `ok`, `late_results`,
+`rejected.*`, `dropped.*`, `failed.*`, `retries.*` by cause, `retained_bytes`, `charge_bytes`, `quota_bytes`,
+`bulk_requests`, `bulk_bytes` and the cumulative `latency.*` histogram). `bucketMetricNames()` lists them, with their
+kind, from a snapshot with no values, so the set is known before any metrics() call. The client-wide
+`indexer_client.client.analysisd.*` metrics are not served (the engine registers no callbacks). After `shutdown()` the
+values are those of the last snapshot, as the bucket part of `getDroppedEvents()`; any other name reads 0.
+
+`registerIndexerMetrics(manager, connector, runtime)` (`indexerMetrics.hpp`) registers them all as fastmetrics pull
+metrics, once, from `main.cpp`: the three `indexer.*` names over the getters, every `bucketMetricNames()` name over
+`getBucketMetric()` (as integers), and, given the `RuntimeRef` (`EngineIndexerRuntime::runtime()`), the runtime's
+`indexer_client.{runtime,query,pit}.*` and `indexer_client.node.<i>.*` metrics through an
+`indexer_client::MetricsSlot` holding only the runtime and refreshed at most once per `METRICS_TTL` (counters as
+integers, gauges as doubles; the node family is sized by the snapshot taken at registration, which is fixed for the life
+of the runtime). The getters hold the connector weakly: once it is gone the bucket metrics read 0. These are the names
+the manager's modulesd consumers publish for their own buckets and runtime; the engine's runtime is its own process's.
+The operator catalog is in
+[engine metrics § Indexer client metrics](../../../../docs/ref/modules/engine/README.md#indexer-client-metrics).
 
 The snapshot lags the `index()` calls: the library stages the `post()` of each producer thread and admits it in
 batches (64 ops, ~1 ms, or the close), so `retainedBytes`, `charge` and the queue-full drops move up to 64 ops per
@@ -107,7 +128,9 @@ the single 64 MiB queue of the v1; with `indexer_queue_max_bytes` = 0 (quota = g
 
 `EngineIndexerRuntime` (`engineIndexerRuntime.hpp`) owns the process's `indexer_client` runtime and the one Client
 (`analysisd`). `start(process, source, options, warnings)` validates the configuration, builds the buckets, starts the
-runtime and creates the Client; `start(process, source)` (E10a) creates it without buckets and remains for tests. Every
+runtime and creates the Client; `start(process, source)` (E10a) creates it without buckets and remains for tests.
+`runtime()` returns the `RuntimeRef` of a successful start (empty before), for the runtime's metrics; after
+`finishStop()` the reference is no longer valid and its snapshot keeps only the process-wide query and PIT counters. Every
 call must come from the thread that started it (the runtime's owner: the Engine's main thread). The stop is in two
 phases that `main.cpp` places around the scheduler's stop:
 
@@ -178,18 +201,21 @@ wiconnector/
 ├── include/wiconnector/
 │   ├── windexerconnector.hpp         # WIndexerConnector + Config
 │   ├── engineConfigSource.hpp        # EngineConfigSource, keystoreCredentials
-│   └── engineIndexerRuntime.hpp      # EngineIndexerRuntime, EngineWriteOptions, engineBucketSpecs
+│   ├── engineIndexerRuntime.hpp      # EngineIndexerRuntime, EngineWriteOptions, engineBucketSpecs
+│   └── indexerMetrics.hpp            # registerIndexerMetrics
 ├── src/
 │   ├── windexerconnector.cpp
 │   ├── engineConfigSource.cpp
-│   └── engineIndexerRuntime.cpp
+│   ├── engineIndexerRuntime.cpp
+│   └── indexerMetrics.cpp
 └── test/
     ├── mocks/wiconnector/
     │   └── mockswindexerconnector.hpp     # MockWIndexerConnector
     └── src/unit/
         ├── wic_test.cpp
         ├── engineConfigSource_test.cpp
-        └── engineIndexerRuntime_test.cpp
+        ├── engineIndexerRuntime_test.cpp
+        └── indexerMetrics_test.cpp
 ```
 
 ## Public Interface
@@ -217,7 +243,15 @@ public:
                       std::chrono::milliseconds requestTimeout,         // remote configuration reads
                       std::uint64_t queueCapacityBytes);                // EngineIndexerRuntime::queueCapacityBytes()
     void shutdown(); // releases the writers and the Client; never concurrent with index()
+
+    static std::vector<std::pair<std::string, indexer_client::MetricKind>> bucketMetricNames(); // both buckets
+    double getBucketMetric(const std::string& name); // same cached snapshot as the three getters
 };
+
+// The three indexer.* metrics, the buckets' catalog and, with a runtime, the runtime/node/query/PIT metrics.
+void registerIndexerMetrics(fastmetrics::IManager& manager,
+                            const std::weak_ptr<WIndexerConnector>& connector,
+                            const std::optional<indexer_client::RuntimeRef>& runtime);
 }
 ```
 
@@ -240,9 +274,9 @@ public:
 | Target | Type | Alias | Links |
 |---|---|---|---|
 | `wIndexerConnector_iwIndexerConnector` | INTERFACE | `wIndexerConnector::iwIndexerConnector` | `base` |
-| `wIndexerConnector_wIndexerConnector` | STATIC | `wIndexerConnector::wIndexerConnector` | `base`, `wIndexerConnector::iwIndexerConnector`, `indexer_client` (public); `keystore_core` (**private**, `Keystore::get`, D101) |
+| `wIndexerConnector_wIndexerConnector` | STATIC | `wIndexerConnector::wIndexerConnector` | `base`, `wIndexerConnector::iwIndexerConnector`, `indexer_client`, `fastmetrics::ifastmetrics` (public); `keystore_core` (**private**, `Keystore::get`, D101) |
 | `wIndexerConnector_mocks` | INTERFACE | `wIndexerConnector::mocks` | `GTest::gmock`, `wIndexerConnector::iwIndexerConnector` (test builds only) |
-| `wIndexerConnector_utest` | Executable | — | `GTest::gtest_main`, `GTest::gmock`, `wIndexerConnector::wIndexerConnector`, `wIndexerConnector::mocks`; discovered tests hold the `rocks_db_lock` resource lock (test builds only) |
+| `wIndexerConnector_utest` | Executable | — | `GTest::gtest_main`, `GTest::gmock`, `wIndexerConnector::wIndexerConnector`, `wIndexerConnector::mocks`, `fastmetrics::fastmetrics`; discovered tests hold the `rocks_db_lock` resource lock (test builds only) |
 
 ## Testing
 
@@ -252,6 +286,10 @@ public:
   counted), concurrent indexing, and `getEngineRemoteConfig()` against the library's `MockClient`/`MockQuery`.
 - **`engineIndexerRuntime_test.cpp`** — `engineBucketSpecs` (`EngineBucketSpecsTest.*`) and the runtime against the
   library's in-process fake indexer: start with and without buckets, the capacity, the failed start, the stop phases.
+- **`indexerMetrics_test.cpp`** — `bucketMetricNames()` (51 names per bucket, nothing client-wide) and
+  `registerIndexerMetrics()` on a local `fastmetrics::Manager`: the three `indexer.*` names and every bucket metric from
+  one `metrics()` call, the last snapshot after `shutdown()` and 0 without a connector, and, on a runtime started
+  against the library's fake indexer, the runtime, node, query and PIT families (one node set per host).
 - **Mock** (`test/mocks/wiconnector/mockswindexerconnector.hpp`) — `MockWIndexerConnector`.
 
 ## Consumers
@@ -261,4 +299,4 @@ public:
 | `builder` | `wIndexerConnector::iwIndexerConnector` | Pushes indexed events via the `indexerOutput` stage |
 | `rawevtindexer` | `wIndexerConnector::iwIndexerConnector` | Indexes raw events |
 | `confremote` | `wIndexerConnector::iwIndexerConnector` | Reads the remote engine configuration |
-| `main.cpp` | `wIndexerConnector::wIndexerConnector` | Starts `EngineIndexerRuntime` with the buckets (when event processing is enabled), builds the connector and injects it, registers the two stop phases and the three fastmetrics |
+| `main.cpp` | `wIndexerConnector::wIndexerConnector` | Starts `EngineIndexerRuntime` with the buckets (when event processing is enabled), builds the connector and injects it, registers the two stop phases and the indexer metrics (`registerIndexerMetrics()`) |

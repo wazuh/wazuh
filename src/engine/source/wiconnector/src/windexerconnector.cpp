@@ -4,6 +4,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include <json.hpp>
@@ -21,6 +22,14 @@ namespace
 
 constexpr std::size_t SINGLE_RESULT_SIZE {1};                     ///< Size for single result queries
 constexpr std::string_view REMOTE_CONF_INDEX {".wazuh-settings"}; ///< remote conf index name
+
+/// `indexer_client.bucket.analysisd.`: the catalog prefix of the engine's buckets (metrics.hpp CATALOG).
+const std::string& bucketMetricPrefix()
+{
+    static const std::string prefix =
+        "indexer_client.bucket." + indexer_client::sanitizeMetricName(ENGINE_INDEXER_CONSUMER) + ".";
+    return prefix;
+}
 
 size_t getTotalHits(const nlohmann::json& hits)
 {
@@ -265,10 +274,47 @@ void WIndexerConnector::index(std::string index, std::string data)
 WIndexerConnector::Totals WIndexerConnector::totals()
 {
     std::lock_guard metricsLock(m_metricsMutex);
+    refreshLocked();
+    return m_totals;
+}
+
+std::vector<std::pair<std::string, indexer_client::MetricKind>> WIndexerConnector::bucketMetricNames()
+{
+    indexer_client::ClientMetrics shape;
+    shape.consumer = ENGINE_INDEXER_CONSUMER;
+    for (const auto* bucket : {ENGINE_EVENTS_BUCKET, ENGINE_RAW_BUCKET})
+    {
+        shape.buckets.emplace_back();
+        shape.buckets.back().consumer = ENGINE_INDEXER_CONSUMER;
+        shape.buckets.back().bucket = bucket;
+    }
+    const auto& prefix = bucketMetricPrefix();
+    std::vector<std::pair<std::string, indexer_client::MetricKind>> names;
+    indexer_client::forEachMetric(shape,
+                                  [&names, &prefix](std::string_view name, indexer_client::MetricKind kind, double)
+                                  {
+                                      if (name.substr(0, prefix.size()) == prefix)
+                                      {
+                                          names.emplace_back(std::string(name), kind);
+                                      }
+                                  });
+    return names;
+}
+
+double WIndexerConnector::getBucketMetric(const std::string& name)
+{
+    std::lock_guard metricsLock(m_metricsMutex);
+    refreshLocked();
+    const auto it = m_bucketValues.find(name);
+    return it == m_bucketValues.end() ? 0.0 : it->second;
+}
+
+void WIndexerConnector::refreshLocked()
+{
     const auto now = std::chrono::steady_clock::now();
     if (m_hasTotals && now - m_totalsAt < METRICS_TTL)
     {
-        return m_totals;
+        return;
     }
 
     std::shared_ptr<indexer_client::IClient> client;
@@ -278,12 +324,13 @@ WIndexerConnector::Totals WIndexerConnector::totals()
     }
     if (!client)
     {
-        return m_totals; // The last snapshot taken (zeros if none).
+        return; // The last snapshot taken (zeros if none).
     }
 
+    const auto metrics = client->metrics();
     Totals totals;
     std::uint64_t charge {0};
-    for (const auto& bucket : client->metrics().buckets)
+    for (const auto& bucket : metrics.buckets)
     {
         totals.retainedBytes += bucket.retainedBytes;
         charge += bucket.charge;
@@ -315,9 +362,21 @@ WIndexerConnector::Totals WIndexerConnector::totals()
         totals.usagePercent = std::max(totals.usagePercent, percent);
     }
     m_totals = totals;
+
+    // The per-bucket catalog of the same snapshot. The names are fixed, so a value is overwritten in place; the
+    // client-wide `indexer_client.client.analysisd.*` metrics are left out (the engine registers no callbacks).
+    const auto& prefix = bucketMetricPrefix();
+    indexer_client::forEachMetric(metrics,
+                                  [this, &prefix](std::string_view name, indexer_client::MetricKind, double value)
+                                  {
+                                      if (name.substr(0, prefix.size()) == prefix)
+                                      {
+                                          m_bucketValues[std::string(name)] = value;
+                                      }
+                                  });
+
     m_totalsAt = now;
     m_hasTotals = true;
-    return m_totals;
 }
 
 uint64_t WIndexerConnector::getQueueSize()

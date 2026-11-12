@@ -563,7 +563,9 @@ curl -s --unix-socket /var/wazuh-manager/queue/sockets/engine-api-http.sock \
 
 `router.queue.size`, `router.queue.usage.percent`, `router.queue.bytes.usage.percent` and `router.events.dropped`
 show the input queue; `indexer.queue.usage.percent` and `indexer.events.dropped` the writes to the indexer (the
-`events` and `raw` buckets of the indexer client, see [Indexer metrics](README.md#indexer-metrics)). When the input
+`events` and `raw` buckets of the indexer client, see [Indexer metrics](README.md#indexer-metrics); the
+`indexer_client.bucket.analysisd.*` metrics break them down by bucket and cause, see
+[Indexer client metrics](README.md#indexer-client-metrics)). When the input
 queue has stayed contended for 10 minutes, the engine logs a warning with the events dropped meanwhile, and repeats
 it at most every 10 minutes while the contention lasts:
 

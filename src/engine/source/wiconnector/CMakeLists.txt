@@ -15,6 +15,7 @@ add_library(wIndexerConnector_wIndexerConnector STATIC
     ${SRC_DIR}/windexerconnector.cpp
     ${SRC_DIR}/engineConfigSource.cpp
     ${SRC_DIR}/engineIndexerRuntime.cpp
+    ${SRC_DIR}/indexerMetrics.cpp
 )
 target_include_directories(wIndexerConnector_wIndexerConnector
     PUBLIC
@@ -27,6 +28,8 @@ target_link_libraries(wIndexerConnector_wIndexerConnector
     base
     wIndexerConnector::iwIndexerConnector
     indexer_client
+    # registerIndexerMetrics() takes the fastmetrics IManager.
+    fastmetrics::ifastmetrics
     PRIVATE
     # Keystore::get (D101): keystore_core is keystore without its Log::GLOBAL_LOG_FUNCTION, which the engine defines
     # (base) and assigns, so the keystore logs reach the engine's sink.
@@ -51,6 +54,7 @@ add_executable(wIndexerConnector_utest
     ${UNIT_SRC_DIR}/wic_test.cpp
     ${UNIT_SRC_DIR}/engineConfigSource_test.cpp
     ${UNIT_SRC_DIR}/engineIndexerRuntime_test.cpp
+    ${UNIT_SRC_DIR}/indexerMetrics_test.cpp
 )
 target_link_libraries(wIndexerConnector_utest
     PRIVATE
@@ -58,6 +62,7 @@ target_link_libraries(wIndexerConnector_utest
     GTest::gmock
     wIndexerConnector::wIndexerConnector
     wIndexerConnector::mocks
+    fastmetrics::fastmetrics
 )
 # The client library's mocks and its in-process fake indexer (header-only, written on cpp-httplib, whose include
 # directory the engine already adds).
