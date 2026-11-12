@@ -11,6 +11,7 @@
 #include <atomic>
 #include <cstdio>
 #include <future>
+#include <mutex>
 #include "syscollectorImp_test.h"
 #include "syscollector.hpp"
 
@@ -2400,14 +2401,30 @@ static void runPortsDuplicatedScan(const bool portsAll, const std::vector<std::s
         EXPECT_CALL(wrapper, callbackMock(expected)).Times(1);
     }
 
+    std::promise<void> portsScanned;
+    std::once_flag portsScannedOnce;
+    std::function<void(const modules_log_level_t, const std::string&)> logCallback
+    {
+        [&portsScanned, &portsScannedOnce](const modules_log_level_t /*level*/, const std::string & log)
+        {
+            if (log == "Ending ports scan")
+            {
+                std::call_once(portsScannedOnce, [&portsScanned]()
+                {
+                    portsScanned.set_value();
+                });
+            }
+        }
+    };
+
     std::thread t
     {
-        [&spInfoWrapper, &callbackData, portsAll]()
+        [&spInfoWrapper, &callbackData, &logCallback, portsAll]()
         {
             Syscollector::instance().init(spInfoWrapper,
                                           callbackData,
                                           reportFunction,
-                                          logFunction,
+                                          logCallback,
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
@@ -2415,13 +2432,15 @@ static void runPortsDuplicatedScan(const bool portsAll, const std::vector<std::s
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds{2});
+    const auto scanResult {portsScanned.get_future().wait_for(std::chrono::seconds{30})};
     Syscollector::instance().destroy();
 
     if (t.joinable())
     {
         t.join();
     }
+
+    ASSERT_EQ(std::future_status::ready, scanResult);
 }
 
 TEST_F(SyscollectorImpTest, PortsDuplicated)
