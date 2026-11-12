@@ -981,8 +981,10 @@ the share of the transport when both buckets compete. A bulk leaves when its pay
 on the number of events in a bulk.
 
 When the engine stops it does not wait for the indexer: within about 3 s it closes the writes and discards every event
-still queued or waiting for a retry, as the earlier connector did. Those events are neither counted in
-`indexer.events.dropped` nor reported in the log.
+still queued or waiting for a retry, as the earlier connector did. Those events are not counted in
+`indexer.events.dropped` (see [its definition](#indexereventsdropped)), but the log reports them: the indexer
+client's last summary at stop includes the engine's buckets, with the discarded events under the `shutdown` cause
+and in the `dropped` total.
 
 In test mode (`POST /router/test`, the tester) the `wazuh-indexer` output validates its index name as usual but does
 not index the event; the trace reports it as skipped.
