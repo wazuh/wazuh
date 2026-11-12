@@ -21,7 +21,9 @@
 #include "stopToken.hpp"
 #include "sysSeams.hpp"
 
+#include <chrono>
 #include <cstdint>
+#include <vector>
 
 /**
  * @brief Whole-request retry loop (D9).
@@ -51,16 +53,20 @@ class RetrySender final
         /// agent): a 415 reports here and disables compression for all six
         /// send paths for the rest of this run; send() retries once,
         /// uncompressed, on the same 415.
-        /// authGate (optional): a 401 whose body names the class `unknown_agent`
-        /// reports here, pausing all traffic and surfacing re-enrollment once
-        /// (#37828). Since #39064 the other seven classes -- and a 401 carrying no
-        /// readable class -- are logged and returned unescalated instead: only a
-        /// manager that says the identity is gone may cost us the identity.
+        /// authGate (optional): a 401 naming `unknown_agent` reports here once
+        /// unknownAgentRetryDelays is exhausted, pausing all traffic and
+        /// surfacing re-enrollment once (#37828). Since #39064 the other seven
+        /// classes -- and a 401 carrying no readable class -- are logged and
+        /// returned unescalated instead: only a manager that says the identity
+        /// is gone may cost us the identity.
         /// serverEndpoint (#38492/#38491, optional): the configured reverse-proxy
         /// path segment, already normalized (no leading/trailing '/'). When
         /// non-empty, attemptOnce() folds it into HttpRequestSpec::target
         /// (via prefixedTarget()) -- a routing matter only; the bearer token
         /// does not bind the target.
+        /// unknownAgentRetryDelays: the waits between retries of the held credential on an
+        /// `unknown_agent` 401, before it reaches authGate. Empty (the default): no retry, the
+        /// first surviving `unknown_agent` 401 escalates.
         RetrySender(IHttpPerformer& performer,
                     const ISigner& signer,
                     IClock& clock,
@@ -68,17 +74,26 @@ class RetrySender final
                     bool compressionEnabled,
                     CompressionGate* compressionGate = nullptr,
                     AuthGate* authGate = nullptr,
-                    std::string serverEndpoint = {});
+                    std::string serverEndpoint = {},
+                    std::vector<std::chrono::milliseconds> unknownAgentRetryDelays = {});
 
         /// spec.headers carry the non-auth headers; the auth pair is appended per
         /// attempt. AuthFail/Permanent/VersionRejected/Interrupted return
-        /// immediately; the backoff resets on success.
+        /// immediately; the backoff resets on success. A single-attempt send (maxAttempts == 1,
+        /// the best-effort drain) never waits, so it skips the unknownAgentRetryDelays too.
         Result send(const HttpRequestSpec& spec, Waiter& waiter, uint32_t maxAttempts);
 
     private:
         Result attemptOnce(const HttpRequestSpec& base);
         std::chrono::milliseconds delayFor(const Result& result);
         static bool isRetryable(OutcomeClass outcome);
+        static bool isUnknownAgent(const Result& result);
+
+        /// Retries the held credential on m_unknownAgentRetryDelays, waiting on the calling
+        /// stream's own waiter so a shutdown interrupts it and no other stream is held up.
+        /// Returns the first result that is no longer an `unknown_agent` 401, or the last one when
+        /// the schedule runs out.
+        Result retryUnknownAgent(const HttpRequestSpec& base, Waiter& waiter, Result result);
 
         /// Measures skew from the failed attempt's response against this
         /// clock's current wallSeconds() and, if it exceeds a noise floor,
@@ -96,6 +111,7 @@ class RetrySender final
         CompressionGate* m_compressionGate;
         AuthGate* m_authGate;
         std::string m_serverEndpoint;
+        std::vector<std::chrono::milliseconds> m_unknownAgentRetryDelays;
         const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
 };
 

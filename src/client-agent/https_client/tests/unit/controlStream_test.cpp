@@ -119,7 +119,10 @@ namespace
                 std::strncpy(config.version, "5.1.0", sizeof(config.version) - 1);
                 std::strncpy(config.config_checksum, "abc", sizeof(config.config_checksum) - 1);
                 config.verify_mode = HC_VERIFY_NONE;
-                return ModuleConfig::fromC(config);
+                auto typed = ModuleConfig::fromC(config);
+                // Disable the unknown_agent retries so the latch is hit directly.
+                typed.unknownAgentRetryDelays.clear();
+                return typed;
             }
 
             ConfigKeyProvider m_keyProvider {"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"};

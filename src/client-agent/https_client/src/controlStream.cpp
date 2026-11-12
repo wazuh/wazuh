@@ -161,7 +161,8 @@ ControlStream::ControlStream(const ModuleConfig& config, IHttpPerformer& perform
     : m_config(config)
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
     , m_sender(performer, signer, clock, m_backoff, config.httpsCompressionEnabled, &compressionGate, &authGate,
-               config.serverEndpoint)
+               config.serverEndpoint,
+               config.unknownAgentRetryDelays)
     , m_clock(clock)
     , m_sink(sink)
     , m_fetcher(config, performer, signer, clock, random, spoolFactory, authGate, compressionGate)

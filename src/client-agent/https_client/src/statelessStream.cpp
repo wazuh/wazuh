@@ -124,7 +124,8 @@ StatelessStream::StatelessStream(const ModuleConfig& config,
                config.httpsCompressionEnabled,
                &compressionGate,
                &authGate,
-               config.serverEndpoint)
+               config.serverEndpoint,
+               config.unknownAgentRetryDelays)
     , m_sink(sink)
     , m_collectHost(std::move(collectHost))
     , m_headerLine(buildHeaderLine(signer.agentId(), m_collectHost, m_headerTrim))

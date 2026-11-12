@@ -27,7 +27,8 @@ RetrySender::RetrySender(IHttpPerformer& performer,
                          bool compressionEnabled,
                          CompressionGate* compressionGate,
                          AuthGate* authGate,
-                         std::string serverEndpoint)
+                         std::string serverEndpoint,
+                         std::vector<std::chrono::milliseconds> unknownAgentRetryDelays)
     : m_performer(performer)
     , m_signer(signer)
     , m_clock(clock)
@@ -36,6 +37,7 @@ RetrySender::RetrySender(IHttpPerformer& performer,
     , m_compressionGate(compressionGate)
     , m_authGate(authGate)
     , m_serverEndpoint(std::move(serverEndpoint))
+    , m_unknownAgentRetryDelays(std::move(unknownAgentRetryDelays))
 {
 }
 
@@ -108,16 +110,23 @@ RetrySender::Result RetrySender::send(const HttpRequestSpec& spec, Waiter& waite
         }
     }
 
+    // A single-attempt send is the drain on the stop path: it must never wait, and the waiter it
+    // gets is never stopped, so honoring the schedule would hold process exit.
+    if (maxAttempts > 1 && isUnknownAgent(result) && !m_unknownAgentRetryDelays.empty())
+    {
+        result = retryUnknownAgent(base, waiter, std::move(result));
+    }
+
     if (result.outcome == OutcomeClass::Ok)
     {
         m_backoff.reset();
     }
     else if (result.outcome == OutcomeClass::AuthFail)
     {
-        // A 401 that survived the one-shot fresh-timestamp retry above. Which of the three answers
-        // it deserves is the manager's to name, not ours to guess (#39064): only `unknown_agent`
-        // means the identity itself is gone, and only that pauses traffic and asks for
-        // re-enrollment. Every other class -- including Unclassified, the fail-safe reading -- is
+        // A 401 that survived the one-shot fresh-timestamp retry and, for `unknown_agent`, the
+        // scheduled retries. The manager names which of the three answers it deserves (#39064): only
+        // `unknown_agent` means the identity itself is gone, and only that pauses traffic and asks
+        // for re-enrollment. Every other class -- including Unclassified, the fail-safe reading -- is
         // returned to the caller unescalated; the streams already keep the batch and retry on the
         // next tick (statelessStream.cpp), so nothing storms and no second pause mechanism exists.
         const auto authClass = parseAuthFailClass(result.response.body);
@@ -138,6 +147,68 @@ RetrySender::Result RetrySender::send(const HttpRequestSpec& spec, Waiter& waite
         }
     }
 
+    return result;
+}
+
+bool RetrySender::isUnknownAgent(const Result& result)
+{
+    return result.outcome == OutcomeClass::AuthFail &&
+           parseAuthFailClass(result.response.body) == AuthFailClass::UnknownAgent;
+}
+
+RetrySender::Result RetrySender::retryUnknownAgent(const HttpRequestSpec& base, Waiter& waiter, Result result)
+{
+    // Another stream already ran its own schedule out and latched: nothing left to wait for.
+    const auto latched = [this]()
+    {
+        return m_authGate != nullptr && m_authGate->paused();
+    };
+
+    if (latched())
+    {
+        return result;
+    }
+
+    LOGFN_WARN(m_logFn,
+               "https_client: the manager does not know this agent yet (401, unknown_agent); "
+               "retrying the current credential with backoff before re-enrolling.");
+
+    for (const auto delay : m_unknownAgentRetryDelays)
+    {
+        if (!waiter.waitFor(delay))
+        {
+            result.outcome = OutcomeClass::Interrupted; // Shutdown during the delay.
+            return result;
+        }
+
+        if (latched())
+        {
+            return result;
+        }
+
+        result = attemptOnce(base);
+
+        // The gate may have been disabled since the first attempt; same one-shot rule as send().
+        if (result.outcome == OutcomeClass::CompressionRejected && m_compressionGate != nullptr)
+        {
+            m_compressionGate->reportRejected();
+            result = attemptOnce(base);
+        }
+
+        if (!isUnknownAgent(result))
+        {
+            if (result.outcome == OutcomeClass::Ok)
+            {
+                LOGFN_INFO(m_logFn, "https_client: the manager accepted the current credential again; "
+                           "no re-enrollment needed.");
+            }
+
+            return result;
+        }
+    }
+
+    LOGFN_INFO(m_logFn, "https_client: the manager still answers unknown_agent after retrying the current "
+               "credential; re-enrolling.");
     return result;
 }
 

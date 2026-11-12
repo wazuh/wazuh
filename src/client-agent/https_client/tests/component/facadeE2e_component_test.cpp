@@ -791,8 +791,9 @@ TEST_F(FacadeE2eTest, KeyRotationFiresReenrollAndHcSetAgentIdentityRecovers)
     ASSERT_TRUE(hc_start(handle));
     ASSERT_TRUE(waitFor(recorder.startups, 1, 3000)); // First registration (old key).
 
-    // After the rotation the old key 401s -> exactly one re-enroll callback.
-    ASSERT_TRUE(waitFor(recorder.reenrollCount, 1, 6000));
+    // After the rotation the old key 401s -> exactly one re-enroll callback, once the agent has
+    // retried the held credential for the whole unknown_agent bound (~30 s).
+    ASSERT_TRUE(waitFor(recorder.reenrollCount, 1, 45000));
     // The swapped key re-registers: a second accepted startup.
     ASSERT_TRUE(waitFor(recorder.startups, 2, 6000));
     hc_destroy(handle);
