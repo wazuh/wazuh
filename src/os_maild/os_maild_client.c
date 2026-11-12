@@ -142,9 +142,8 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg
     }
 
     /* Subject */
-    subject_host = strchr(al_data->location, '>');
+    subject_host = strstr(al_data->location, "->");
     if (subject_host) {
-        subject_host--;
         *subject_host = '\0';
     }
 

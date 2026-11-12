@@ -32,6 +32,9 @@ list(APPEND os_maild_names "test_smtp_body")
 list(APPEND os_maild_flags "-Wl,--wrap,OS_ConnectTCP -Wl,--wrap,OS_SetRecvTimeout -Wl,--wrap,OS_SendTCP \
                             -Wl,--wrap,OS_RecvTCP ${DEBUG_OP_WRAPPERS}")
 
+list(APPEND os_maild_names "test_os_maild_client")
+list(APPEND os_maild_flags "-Wl,--wrap,Read_FileMon -Wl,--wrap,FreeAlertData ${DEBUG_OP_WRAPPERS}")
+
 list(LENGTH os_maild_names count)
 math(EXPR count "${count} - 1")
 foreach(counter RANGE ${count})
