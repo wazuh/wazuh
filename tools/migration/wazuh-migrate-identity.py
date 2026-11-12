@@ -821,9 +821,12 @@ def command_check(args):
     for agent_id in sorted(set(expected) - set(installed)):
         if agent_id in capped:
             name = expected[agent_id]["name"]
-            hint = "" if name in installed_names else "; re-enroll it, see " + REENROLL_GUIDE
-            log("          agent %03d (%s) is not installed, as a 5.0.1 or later manager refuses ids"
-                " above %d%s" % (agent_id, name, AGENT_INSERT_ID_MAX, hint))
+            if name in installed_names:
+                log("          agent %03d (%s) re-enrolled under a new id, as a 5.0.1 or later manager"
+                    " refuses ids above %d" % (agent_id, name, AGENT_INSERT_ID_MAX))
+                continue
+            problems.append("agent %03d (%s) is missing: a 5.0.1 or later manager refuses ids above %d;"
+                            " re-enroll it, see %s" % (agent_id, name, AGENT_INSERT_ID_MAX, REENROLL_GUIDE))
             continue
         problems.append("agent %03d (%s) is missing." % (agent_id, expected[agent_id]["name"]))
     for agent_id in sorted(set(expected) & set(installed)):

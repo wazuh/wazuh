@@ -608,8 +608,10 @@ class MigrationToolTest(unittest.TestCase):
             self.assertEqual(1, self.do_import())
         self.assertEqual([0], writes_at_warning, "the warning comes before any write")
 
-    def test_check_accepts_an_agent_above_the_insert_cap_as_absent(self):
+    def test_check_reports_an_agent_above_the_insert_cap_until_it_re_enrolls(self):
         self.import_with_capped_agent(["linux-servers"])
+        self.assertEqual(1, self.check(), "the agent is neither inserted nor re-enrolled")
+        FakeManager.agents[9] = {"name": "capped-host", "ip": None, "key": "x", "groups": ["linux-servers"]}
         self.assertEqual(0, self.check())
 
     def test_check_accepts_a_re_enrolled_agent_above_the_insert_cap(self):

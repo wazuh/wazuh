@@ -609,9 +609,9 @@ migration tool: the manager refuses to insert it. If you used the migration tool
 in Step 3, two of the fields above differ: `dateAdd` is the moment the tool inserted the agent
 (`POST /agents/insert` accepts no registration date), and version and OS stay empty until the
 agent's first keepalive. Its `check` command compares the manager against the bundle and names any
-agent missing, renamed, outside its groups, or present without having been in the bundle. It does
-not count an agent with an id above `9999999` as missing, nor its re-enrollment under the same name
-if it is in the groups the bundle lists for it.
+agent missing, renamed, outside its groups, or present without having been in the bundle. An agent
+with an id above `9999999` counts as missing until it re-enrolls under the same name; from then on
+`check` only verifies that it is in the groups the bundle lists for it.
 
 ## 6. Reconnect the 4.x agents
 

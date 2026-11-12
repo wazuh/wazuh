@@ -101,8 +101,8 @@ or keep the 4.x passwords and give `check` the 4.x one explicitly.
 **What it does not carry.** Agents with an id above `9999999`: a 5.0.1 or later manager refuses to
 insert them (`400`), so you [re-enroll
 them](../../docs/guide/migration/manager-4x-to-5x.md#if-you-re-enroll-instead) and they get a new
-id. `check` does not count them as missing, nor their re-enrollment under the same name when it is
-in the groups the bundle lists for them. The registration date: `POST /agents/insert` does not
+id. `check` counts them as missing until they re-enroll under the same name, and then only checks
+that they are in the groups the bundle lists for them. The registration date: `POST /agents/insert` does not
 accept one, so a migrated agent's `dateAdd` is the moment it was inserted. The agent's recorded
 version and operating system are not carried either, but those the manager refreshes from the
 agent's first keepalive. Agent labels and the 4.x `info` table were removed in 5.0. Rules, decoders
