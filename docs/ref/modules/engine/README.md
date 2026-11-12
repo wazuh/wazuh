@@ -1304,7 +1304,7 @@ at most one `parse|<field>`; any other order, or a second parse, makes the asset
 
 **`outputs`** — An array of output operations that deliver the event to external destinations. Each element in the array can be:
 - A **direct output operation** (e.g. `wazuh-indexer:`, `file:`), executed unconditionally.
-- A **`first_of`** block: an ordered list of branches, each with an optional `check` condition and a `then` list of output operations. The first branch whose `check` passes executes its `then` and the remaining branches are skipped.
+- A **`first_of`** block: an ordered list of branches, each with a required `check` condition and a `then` list of output operations. A branch must have exactly these two keys, `check` first and `then` second; a missing, extra or reordered key fails the build of the output. The first branch whose `check` passes executes its `then` and the remaining branches are skipped.
 
 Cannot modify the event.
 

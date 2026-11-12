@@ -322,6 +322,29 @@ monitored entry left at the default, and nothing warns about it.
 
 ---
 
+### registry_ignore_value (Windows only)
+
+Registry values to exclude from processing. Where `registry_ignore` skips whole keys, this skips
+individual values: the key and its other values are still monitored, and no event is generated for
+an ignored value.
+
+- **Attribute: `arch`** — `32bit` (default), `64bit`, `both`
+- **Attribute: `type`** — `sregex` to use a regex pattern
+
+```xml
+<registry_ignore_value>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\W32Time\Config\LastKnownGoodTime</registry_ignore_value>
+<registry_ignore_value type="sregex">\\LastWrite</registry_ignore_value>
+```
+
+Each value is matched as `<key path>\<value name>`. Plain entries are a **case-insensitive prefix**
+of that string, so an entry that ends in the key path alone ignores every value of that key (and of
+its subkeys) while still reporting changes to the keys themselves. `type="sregex"` uses the same
+`OSMatch` syntax as `registry_ignore` and also applies to every monitored registry entry. The `arch`
+rule of `registry_ignore` applies too: the ignore entry must have the `arch` of the
+`<windows_registry>` entry it filters.
+
+---
+
 ### registry_limit (Windows only)
 
 Sets a hard cap on the number of registry entries FIM can monitor.
@@ -480,7 +503,7 @@ Configures who-data monitoring options. When a directory is monitored with `whod
 How often (in seconds) the Windows agent checks that Local Audit Policies and SACLs for who-data monitored directories are still correctly configured.
 
 - **Default value:** `300`
-- **Allowed values:** Integer `1`–`9999`
+- **Allowed values:** A non-negative integer (digits only). The agent checks only that the value is numeric; no upper bound is enforced. `0` means the default (`300`)
 
 ```xml
 <windows_audit_interval>300</windows_audit_interval>
