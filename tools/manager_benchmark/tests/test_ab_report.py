@@ -49,9 +49,11 @@ def clean_env(**extra):
 def run(side, scenario, metrics, kind="drain", verdict=("docs_per_s_drain",), warmup=False, index="1",
         dropped=0, fraction=0.5):
     """One collected run. A drain run is comparable by default: it records indexer.events.dropped = 0
-    and indexes `fraction` of the events remoted accepted (I226)."""
+    and indexes `fraction` of the events remoted accepted (I226). Every run of a side measured the
+    same binaries: one provenance sha256 per side."""
     doc = {"side": side, "scenario": scenario, "index": index, "kind": kind, "warmup": warmup,
-           "verdict_metrics": list(verdict), "metrics": dict(metrics)}
+           "verdict_metrics": list(verdict), "metrics": dict(metrics),
+           "provenance_sha256": side * 32}
     if kind == "drain":
         doc["engine_events_dropped"] = dropped
         if fraction is not None:
@@ -258,6 +260,39 @@ def test_one_set_per_side_is_fine_even_when_the_sides_differ():
     for r in runs:
         r["provenance_sha256"] = "aa" if r["side"] == "v1" else "bb"
     assert ab.compare(runs)["scenarios"]["drain-engine"]["verdict"] == "PASS"
+
+
+def test_a_side_without_provenance_is_incomplete():
+    # every run of v2 lacks the sha256 (no provenance.txt): one "set" of unknown binaries is not a set
+    runs = sides(1.02)
+    for r in runs:
+        if r["side"] == "v2":
+            r["provenance_sha256"] = None
+    result = ab.compare(runs)
+    entry = result["scenarios"]["drain-engine"]
+    assert entry["verdict"] == "INCOMPLETE" and result["overall"] == "INCOMPLETE"
+    assert any("side v2 has no provenance sha256" in n for n in entry["notes"])
+    assert not any("side v1" in n for n in entry["notes"])
+
+
+def test_a_run_missing_a_verdict_metric_is_incomplete_not_a_smaller_median():
+    # v2's third run has no docs_per_s_drain: the other three would still pass, but over 3 runs, not 4
+    runs = sides(1.02)
+    v2 = [r for r in runs if r["side"] == "v2"]
+    v2[2]["index"] = "3"
+    del v2[2]["metrics"]["docs_per_s_drain"]
+    result = ab.compare(runs)
+    entry = result["scenarios"]["drain-engine"]
+    assert entry["verdict"] == "INCOMPLETE" and result["overall"] == "INCOMPLETE"
+    assert any("docs_per_s_drain missing from v2 run 3" in n for n in entry["notes"])
+    assert len(entry["metrics"]["docs_per_s_drain"]["v2_values"]) == 3
+
+
+def test_a_fixed_rate_run_missing_a_metric_keeps_no_verdict():
+    runs = ([run("v1", "fixed-fim", {"latency_p99_ms": 100.0}, kind="fixed", verdict=()) for _ in range(2)]
+            + [run("v2", "fixed-fim", {"latency_p99_ms": 300.0}, kind="fixed", verdict=()),
+               run("v2", "fixed-fim", {}, kind="fixed", verdict=())])
+    assert ab.compare(runs)["scenarios"]["fixed-fim"]["verdict"] == "NO_VERDICT"
 
 
 def test_provenance_hash_ignores_date_and_side_but_not_binaries(tmp_path):
@@ -1000,7 +1035,9 @@ def drain_stubs(tmp_path, work, dropped="0"):
                '  *_stats*) echo \'{"_all":{"total":{"indexing":{"index_total":1}}}}\' ;;\n'
                '  *) if [[ -e "$AB_SENT_MARK" ]]; then echo \'{"count":49300}\'; else echo \'{"count":0}\'; fi ;;\n'
                'esac\n')
-    (tmp_path / "home").mkdir()
+    (tmp_path / "home" / "bin").mkdir(parents=True)
+    # a binary to hash: provenance.txt needs a sha256 line, or the side's runs are INCOMPLETE
+    (tmp_path / "home" / "bin" / "wazuh-manager-analysisd").write_text("stub analysisd\n")
     return {"PATH": f"{bindir}:{os.environ['PATH']}", "AB_SENT_MARK": str(tmp_path / "sent.mark"),
             "AB_DROPPED": dropped, "WAZUH_MANAGER_HOME": str(tmp_path / "home"), "AB_TEST_QUIET_FLOOR_S": "1",
             "AB_CLEANUP_LOG": str(tmp_path / "cleanup.log")}
