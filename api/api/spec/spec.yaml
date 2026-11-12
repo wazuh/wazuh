@@ -8128,7 +8128,7 @@ paths:
                       - enabled: "yes"
                         delay_after_enrollment: 20
                         port: 1515
-                        ssl_cipher: HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH
+                        ssl_cipher: HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:!kRSA:@STRENGTH
                         auto_method: "no"
                 error: 0
         '400':
@@ -11115,7 +11115,7 @@ paths:
                         use_source_ip: "no"
                         purge: "yes"
                         use_password: "no"
-                        ciphers: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
+                        ciphers: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:!kRSA:@STRENGTH"
                         ssl_verify_host: "no"
                         ssl_manager_cert: "etc/sslmanager.cert"
                         ssl_manager_key: "etc/sslmanager.key"
