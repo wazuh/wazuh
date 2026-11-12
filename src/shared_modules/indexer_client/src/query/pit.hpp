@@ -30,7 +30,8 @@
 // ends QueueFull "too many open PITs (N)", N = open + reserved + acquired, no request, refusedFull + 1). The
 // observer settles each attempt's slot:
 // Answered 2xx with an id ⇒ the slot becomes the PIT's (open); a refused 2xx naming a PIT (partial) ⇒ discard(): open,
-// its DELETE queued at once; any other Answered ⇒ released; Failed with
+// its DELETE queued at once; any other refused 2xx (over the response cap, unparsable, no pit_id: a PIT may exist that
+// cannot be addressed) ⇒ reserve(now + keepAlive); any other Answered ⇒ released; Failed with
 // mayHaveSent or Abandoned ⇒ reserve(now + keepAlive) (the PIT may exist: an orphan until its keep_alive);
 // Failed without mayHaveSent ⇒ released. Late results change nothing (the reservation stays until it lapses).
 // A wait for a usable node is no attempt: the slot stays held through it (up to the call's deadline), while a

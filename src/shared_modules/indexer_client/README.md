@@ -1461,7 +1461,8 @@ Before **every attempt** of a creation the engine takes one slot from the regist
 |---|---|
 | 2xx with a `pit_id`, accepted | Becomes the PIT's (open) |
 | 2xx with a `pit_id`, refused (partial) | Becomes an open PIT (`created` + 1) whose DELETE is queued at once (`PitRegistry::discard`); freed when the delete is confirmed or expires |
-| Any other HTTP answer | Released |
+| Any other 2xx (over the [response cap](#response-cap), unparsable, without a usable `pit_id`) | **Reserved** until `now + keepAlive`, like an unknown outcome: the indexer created a PIT the library cannot address (an orphan until its `keep_alive`), so it keeps counting against the cap. With a tiny `max_response_bytes` every creation ends here, and the cap still bounds the orphans |
+| Any other HTTP answer (404, a 4xx or 5xx) | Released |
 | Transport failure with `mayHaveSent`, or abandoned (deadline, close, shutdown) | **Reserved** until `now + keepAlive`: the PIT may exist on the indexer (an orphan until its `keep_alive` frees it), so it keeps counting against the cap |
 | Transport failure without `mayHaveSent` | Released |
 
