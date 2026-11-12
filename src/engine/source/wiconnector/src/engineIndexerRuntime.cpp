@@ -83,6 +83,7 @@ struct Started final
 {
     std::shared_ptr<indexer_client::IClient> client;
     std::uint64_t queueCapacityBytes {0};
+    indexer_client::RuntimeRef runtime;
 };
 
 /// Both start() overloads: without @p options the Client has no buckets (E10a).
@@ -154,6 +155,7 @@ indexer_client::Outcome<indexer_client::RuntimeConfig> startRuntime(indexer_clie
 
     out.client = std::move(client.value);
     out.queueCapacityBytes = std::min(quotas, config.value.globalQuotaBytes);
+    out.runtime = started.value;
     return config;
 }
 
@@ -283,6 +285,7 @@ EngineIndexerRuntime::start(indexer_client::ProcessId process, const indexer_cli
     {
         m_client = std::move(started.client);
         m_queueCapacityBytes = started.queueCapacityBytes;
+        m_runtime = started.runtime;
         m_started = true;
     }
     return config;
@@ -305,6 +308,7 @@ EngineIndexerRuntime::start(indexer_client::ProcessId process,
     {
         m_client = std::move(started.client);
         m_queueCapacityBytes = started.queueCapacityBytes;
+        m_runtime = started.runtime;
         m_started = true;
     }
     return config;
@@ -318,6 +322,11 @@ std::uint64_t EngineIndexerRuntime::queueCapacityBytes() const
 std::shared_ptr<indexer_client::IClient> EngineIndexerRuntime::client() const
 {
     return m_client;
+}
+
+std::optional<indexer_client::RuntimeRef> EngineIndexerRuntime::runtime() const
+{
+    return m_runtime;
 }
 
 void EngineIndexerRuntime::beginStop()

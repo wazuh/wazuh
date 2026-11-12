@@ -2553,19 +2553,24 @@ The three indexer metrics keep their names. They are read from one snapshot of t
 
 ---
 
-##### `indexer.events.requeued`
+#### Indexer client metrics
 
-Number of items the indexer rejected with a per-item `429` (load shedding) or a `cluster_block_exception` (writes blocked) inside a successful `_bulk` response, and that the connector put back in its queue to resend, since the indexer connector started. It is a pull metric (type `pull` in the dump) and reads `0` while no connector exists. It counts requeue attempts, not unique documents: an item rejected on three consecutive sends counts three. Items still waiting when the manager stops are lost with the rest of the queue, and are not counted in `indexer.events.dropped`.
+Next to the three indexer metrics above, the engine publishes the indexer client library's own metrics for its two write buckets and for its runtime, with the same names the manager's modules use for theirs (see [Indexer Client Metrics](../indexer_client/metrics.md)). They are pull metrics, registered when the indexer connector starts.
 
-**Used for:** detecting an indexer that refuses writes or sheds load. A value that keeps growing across reads means the rejections have not stopped; then watch `indexer.queue.usage.percent` and `indexer.events.dropped`.
+| Prefix | Scope | Count |
+|---|---|---|
+| `indexer_client.bucket.analysisd.events.` | The `events` bucket (processed events) | 51 |
+| `indexer_client.bucket.analysisd.raw.` | The `raw` bucket (`wazuh-events-raw-v5`) | 51 |
+| `indexer_client.runtime.` | The engine's indexer runtime | 7 |
+| `indexer_client.node.<i>.` | One host of the `<indexer>` section, `<i>` counting from 0 | 31 per host |
+| `indexer_client.query.` | Every query of the engine (remote configuration, content downloads) | 8 |
+| `indexer_client.pit.` | Every point in time of the engine (content downloads) | 10 |
 
----
+Each bucket has `accepted`, `ok` and `late_results`; per-cause counters `rejected.<cause>`, `dropped.<cause>`, `failed.<cause>` and `retries.<cause>` (for example `retries.server_5xx`, `failed.ambiguous`, `dropped.queue_full`); the gauges `retained_bytes`, `charge_bytes` and `quota_bytes`; `bulk_requests` and `bulk_bytes`; and a cumulative latency histogram of the `_bulk` responses (`latency.le_1` ... `latency.le_32768`, `latency.le_inf`, `latency.sum_micros`, `latency.count`, in milliseconds). The meaning of every field and cause is the library's catalog, listed in [Indexer Client Metrics § Names](../indexer_client/metrics.md#names).
 
-##### `indexer.events.deduplicated`
+The bucket metrics are read from the same snapshot as `indexer.queue.size`, `indexer.queue.usage.percent` and `indexer.events.dropped` (at most one per second), so they add up: `indexer.events.dropped` is the sum of every `dropped.*`, `failed.*` and `rejected.*` of the two buckets, plus the events offered after the writes closed. Once the engine has shut its writes down they keep the last snapshot taken. The runtime, node, query and point-in-time metrics come from the runtime's own snapshot, also refreshed at most once per second; the node family has one set per configured host. Counters are integers; gauges such as a node's `window` can be fractions.
 
-Number of `_bulk` items the indexer had already applied when the connector resent them, since the indexer connector started. Every event is indexed with a `create` action carrying its own `_id`, and a resend after a timeout or a dropped connection repeats that `_id`; the indexer answers the already-applied item with `409` (`version_conflict_engine_exception`) and the connector counts it as applied. It is a pull metric (type `pull` in the dump): the engine reads the connector's own count on every read, and it reads `0` while no connector exists. It is not a loss and is never added to `indexer.events.dropped`.
-
-**Used for:** detecting a slow or unstable indexer that forces resends.
+**Used for:** telling why events are not indexed (which cause, which bucket), how often writes are retried and how long the indexer takes to answer them, and whether the indexer hosts are available or throttling the engine.
 
 ---
 

@@ -5,6 +5,7 @@
 #include <chrono>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -93,6 +94,10 @@ public:
     /// The Client (null before start() succeeded and after finishStop()).
     std::shared_ptr<indexer_client::IClient> client() const;
 
+    /// The runtime, for its metrics snapshot (empty before start() succeeded). After finishStop() the reference is
+    /// invalid: its snapshot keeps the process-wide query and PIT counters and reads 0 for the rest.
+    std::optional<indexer_client::RuntimeRef> runtime() const;
+
     /// Phase 1: beginShutdown(now + STOP_BUDGET) and requestClose() on the Client.
     void beginStop();
 
@@ -101,6 +106,7 @@ public:
 
 private:
     std::shared_ptr<indexer_client::IClient> m_client;
+    std::optional<indexer_client::RuntimeRef> m_runtime;
     std::uint64_t m_queueCapacityBytes {0};
     bool m_started {false};
     bool m_stopBegun {false};

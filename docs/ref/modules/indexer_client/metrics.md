@@ -1,11 +1,12 @@
 # Indexer Client Metrics
 
-The Indexer Client does not have an endpoint of its own. The library publishes its counters as typed snapshots, and the two modulesd modules that use it register them, by pull, in their own metrics registry. They are read through each module's `GET /metrics` over its local socket:
+The Indexer Client does not have an endpoint of its own. The library publishes its counters as typed snapshots, and each process that uses it registers them, by pull, in its own metrics registry: the two modulesd modules read through each module's `GET /metrics` over its local socket, and the engine through its metrics API.
 
-| Module | Socket | What it publishes |
+| Module | Read through | What it publishes |
 |---|---|---|
-| [Inventory Sync Server](../inventory-sync-server/metrics.md#indexer-client-buckets--indexer_clientbucketinventory_sync_serverbucket) | `queue/sockets/inventory-sync-http.sock` | Its two buckets, and the runtime, node, query and PIT metrics **once per process** |
-| [Vulnerability Scanner](../vulnerability-scanner/metrics.md#indexer-client-bucket--indexer_clientbucketvulnerability_scannervd_states) | `queue/sockets/vd-http.sock` | Its `vd-states` bucket only |
+| [Inventory Sync Server](../inventory-sync-server/metrics.md#indexer-client-buckets--indexer_clientbucketinventory_sync_serverbucket) | `GET /metrics` on `queue/sockets/inventory-sync-http.sock` | Its two buckets, and modulesd's runtime, node, query and PIT metrics **once per process** |
+| [Vulnerability Scanner](../vulnerability-scanner/metrics.md#indexer-client-bucket--indexer_clientbucketvulnerability_scannervd_states) | `GET /metrics` on `queue/sockets/vd-http.sock` | Its `vd-states` bucket only |
+| [Engine](../engine/README.md#indexer-client-metrics) (`wazuh-manager-analysisd`, or the engine inside wazuh-indexer) | The engine API's `/metrics/*` (fastmetrics) | Its `events` and `raw` buckets, and the engine's own runtime, node, query and PIT metrics |
 
 ```bash
 curl -s --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync-http.sock http://localhost/metrics
@@ -17,15 +18,15 @@ Lowercase, dotted, no labels. `<consumer>` and `<bucket>` are sanitized: lowerca
 
 | Prefix | Published by | Scope | Count |
 |---|---|---|---|
-| `indexer_client.bucket.<consumer>.<bucket>.` | Inventory Sync Server (`inventory_sync_server.inventory`, `inventory_sync_server.agent_state`), Vulnerability Scanner (`vulnerability_scanner.vd_states`) | One bucket | 51 per bucket |
-| `indexer_client.runtime.` | Inventory Sync Server | The process | 7 |
-| `indexer_client.query.` | Inventory Sync Server | Every query of the process, any consumer; never reset | 8 |
-| `indexer_client.pit.` | Inventory Sync Server | Every point in time of the process; never reset | 10 |
-| `indexer_client.node.<i>.` | Inventory Sync Server | One indexer host | 31 per host |
+| `indexer_client.bucket.<consumer>.<bucket>.` | Inventory Sync Server (`inventory_sync_server.inventory`, `inventory_sync_server.agent_state`), Vulnerability Scanner (`vulnerability_scanner.vd_states`), engine (`analysisd.events`, `analysisd.raw`) | One bucket | 51 per bucket |
+| `indexer_client.runtime.` | Inventory Sync Server (modulesd), engine | The process | 7 |
+| `indexer_client.query.` | Inventory Sync Server (modulesd), engine | Every query of the process, any consumer; never reset | 8 |
+| `indexer_client.pit.` | Inventory Sync Server (modulesd), engine | Every point in time of the process; never reset | 10 |
+| `indexer_client.node.<i>.` | Inventory Sync Server (modulesd), engine | One indexer host | 31 per host |
 
-`indexer_client.client.<consumer>.` (`callbacks_skipped`, `callback_overruns`, `callback_max_duration_ms`) exists in the library and is **not** published by either module.
+The engine and modulesd are separate processes, each with its own runtime, so the same runtime name read from each describes a different process. `indexer_client.client.<consumer>.` (`callbacks_skipped`, `callback_overruns`, `callback_max_duration_ms`) exists in the library and is **not** published by any of them.
 
-The bucket metrics read 0 while the module has no live `Client` (it failed to start, or it has stopped), and return to 0 if the `Client` is rebuilt. The runtime, node, query and PIT metrics come from the runtime's snapshot, so they are there, with real values, whether or not a `Client` is alive.
+The bucket metrics read 0 while the module has no live `Client` (it failed to start, or it has stopped), and return to 0 if the `Client` is rebuilt. The engine's keep the last snapshot taken once it has shut its writes down. The runtime, node, query and PIT metrics come from the runtime's snapshot, so they are there, with real values, whether or not a `Client` is alive.
 
 The names, kinds and meaning of every metric are the library's catalog (`src/shared_modules/indexer_client/README.md`, section "Metrics"); they are not copied here. The families:
 
