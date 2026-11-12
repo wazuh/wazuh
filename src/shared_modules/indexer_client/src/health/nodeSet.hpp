@@ -98,7 +98,8 @@ namespace indexer_client::detail
             std::string host;
             State state {State::Down};
             LogState logged {LogState::Unknown};
-            bool permanent {false}; ///< Throttled with durability PERMANENT.
+            /// Consecutive probe rounds, ending with the last one, whose own answer was a PERMANENT circuit breaker.
+            std::uint32_t permanentStreak {0};
             std::string reason;
             std::uint64_t transitions {0};
             /// Cause of the node's last probe result or passive Down (the D39 «every node Down by Tls» episode).
@@ -111,7 +112,10 @@ namespace indexer_client::detail
         struct Pending;
 
         /// Under the mutex: moves node `index` to `to`, counting the transition and queueing its logs.
-        void transition(std::size_t index, State to, std::string reason, bool permanent, Pending& pending);
+        void transition(std::size_t index, State to, std::string reason, Pending& pending);
+        /// Under the mutex, once per probe round and node: extends or ends node `index`'s PERMANENT breaker streak and
+        /// queues the WARN on the round that reaches the threshold.
+        void countPermanentBreaker(std::size_t index, bool permanent, Pending& pending);
         /// Under the mutex: raises node `index`'s notBefore to `now + result.retryAfter` for a 429 that carries one.
         void park(std::size_t index, const HttpResult& result, TimePoint now);
         /// Under the mutex: enters or leaves the «every node Down by Tls» episode.

@@ -63,7 +63,8 @@ namespace
     // Substrings of the exact log lines (nodeSet.cpp).
     constexpr const char* AVAILABLE {"is available."};
     constexpr const char* THROTTLED {"is throttled (HTTP 429)."};
-    constexpr const char* PERMANENT {"is throttled with durability PERMANENT"};
+    constexpr const char* PERMANENT {"has reported a PERMANENT circuit breaker on 3 consecutive health checks: heap "
+                                     "usage stays above the breaker limit; check the indexer heap sizing."};
     constexpr const char* DOWN {"is no longer available. Reason: "};
     constexpr const char* RED {"Indexer cluster health is red: every node is marked down."};
     constexpr const char* NOT_RED {"Indexer cluster is no longer red."};
@@ -377,8 +378,8 @@ TEST_F(HealthTest, Probe429IsThrottledNeverDown)
     EXPECT_EQ(m_logs->count(LEVEL_WARN, PERMANENT), 0u) << m_logs->dump();
 }
 
-// I52-d: durability PERMANENT warns once when it begins, also from a transient Throttled (no state change); a
-// TRANSIENT 429 never warns.
+// Through the real prober: a sustained PERMANENT breaker warns once, also from a transient Throttled (no state change);
+// a TRANSIENT 429 never warns and ends the streak, so a new PERMANENT episode warns again.
 TEST_F(HealthTest, Probe429PermanentWarnsOncePerTransition)
 {
     auto fake = startFake({throttledRule(Durability::Transient)});
@@ -406,6 +407,68 @@ TEST_F(HealthTest, Probe429PermanentWarnsOncePerTransition)
     EXPECT_EQ(m_logs->count(LEVEL_WARN, PERMANENT), 2u) << "a new PERMANENT episode warns again\n" << m_logs->dump();
     EXPECT_EQ(m_logs->count(LEVEL_INFO, THROTTLED), 1u) << "the state never changed\n" << m_logs->dump();
     EXPECT_EQ(nodes()->transitions(0), 1u);
+}
+
+// One PERMANENT trip can be garbage the next forced GC frees: the WARN needs the node's own probe to answer a PERMANENT
+// breaker on 3 consecutive rounds, fires once per streak, and any other probe answer (TRANSIENT, green, an error) ends
+// the streak. A passive 429 of a bulk or a query never counts. Rounds are applied by hand, so they are counted exactly.
+TEST_F(HealthTest, PermanentBreakerWarnsOnlyAfterThreeConsecutiveProbes)
+{
+    const std::string host {"http://node-a:9200"};
+    NodeSet set({host});
+    const auto permanent = []
+    {
+        return resultOf(
+            TransportCause::None, 0, 429, indexer_client::testing::throttledBody(Durability::Permanent, false));
+    };
+    const auto transient = []
+    {
+        return resultOf(
+            TransportCause::None, 0, 429, indexer_client::testing::throttledBody(Durability::Transient, false));
+    };
+    const auto warnings = [this, &host]
+    {
+        return m_logs->count(LEVEL_WARN, {PERMANENT, quoted(host)});
+    };
+
+    ASSERT_TRUE(set.applyRound({permanent()}));
+    ASSERT_TRUE(set.applyRound({permanent()}));
+    EXPECT_EQ(set.view().nodes.at(0).state, State::Throttled);
+    EXPECT_EQ(warnings(), 0u) << "two PERMANENT probes are not enough\n" << m_logs->dump();
+    ASSERT_TRUE(set.applyRound({permanent()}));
+    EXPECT_EQ(warnings(), 1u) << "the third consecutive PERMANENT probe warns\n" << m_logs->dump();
+    for (int round = 0; round < 5; ++round)
+    {
+        ASSERT_TRUE(set.applyRound({permanent()}));
+    }
+    EXPECT_EQ(warnings(), 1u) << "once per streak\n" << m_logs->dump();
+
+    // A TRANSIENT trip ends the streak: the next episode needs 3 probes again.
+    ASSERT_TRUE(set.applyRound({transient()}));
+    ASSERT_TRUE(set.applyRound({permanent()}));
+    ASSERT_TRUE(set.applyRound({permanent()}));
+    EXPECT_EQ(warnings(), 1u) << m_logs->dump();
+    ASSERT_TRUE(set.applyRound({permanent()}));
+    EXPECT_EQ(warnings(), 2u) << m_logs->dump();
+
+    // Green and a transport error end it too.
+    ASSERT_TRUE(set.applyRound({greenResult()}));
+    ASSERT_TRUE(set.applyRound({permanent()}));
+    ASSERT_TRUE(set.applyRound({permanent()}));
+    ASSERT_TRUE(set.applyRound({resultOf(TransportCause::Connect, 7)}));
+    ASSERT_TRUE(set.applyRound({permanent()}));
+    ASSERT_TRUE(set.applyRound({permanent()}));
+    EXPECT_EQ(warnings(), 2u) << m_logs->dump();
+
+    // Passive 429s never count, before or after a green round: the node turns Throttled, but nothing warns.
+    ASSERT_TRUE(set.applyRound({greenResult()}));
+    for (int report = 0; report < 5; ++report)
+    {
+        set.report(0, permanent());
+    }
+    EXPECT_EQ(set.view().nodes.at(0).state, State::Throttled);
+    EXPECT_EQ(warnings(), 2u) << "a passive 429 counted\n" << m_logs->dump();
+    EXPECT_EQ(m_logs->count(LEVEL_WARN, "PERMANENT"), 2u) << m_logs->dump();
 }
 
 // CA-13: closed port, 503, invalid JSON, no `status`, a non-string `status` and `unknown` are all Down.
