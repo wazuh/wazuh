@@ -166,6 +166,12 @@ def test_format_agent_id_rejects_non_string(value):
     assert format_agent_id(value) is False
 
 
+@pytest.mark.parametrize("value, expected", [("1" * 5000, False), ("0" * 5000 + "1", True)])
+def test_format_agent_id_bounds_long_digit_strings(value, expected):
+    """format_agent_id() answers a digit string past Python's int conversion limit instead of raising."""
+    assert format_agent_id(value) is expected
+
+
 @pytest.mark.parametrize(
     "value, format",
     [

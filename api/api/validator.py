@@ -372,7 +372,12 @@ _AGENT_INSERT_ID_MAX = 9999999
 
 @Draft4Validator.FORMAT_CHECKER.checks("agent_id")
 def format_agent_id(value):
-    return isinstance(value, str) and check_exp(value, _numbers) and 0 < int(value) <= _AGENT_INSERT_ID_MAX
+    if not isinstance(value, str) or not check_exp(value, _numbers):
+        return False
+    digits = value.lstrip("0")
+    # Leading zeros are allowed, as authd accepts them; the length bound keeps int() under Python's
+    # integer string conversion limit.
+    return 0 < len(digits) <= len(str(_AGENT_INSERT_ID_MAX)) and int(digits) <= _AGENT_INSERT_ID_MAX
 
 
 @Draft4Validator.FORMAT_CHECKER.checks("path")
