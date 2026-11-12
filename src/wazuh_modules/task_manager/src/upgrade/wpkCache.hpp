@@ -116,7 +116,7 @@ namespace task_manager::upgrade
          */
         UpgradeError verifyLocal(const std::string& fileName, std::string& sha1);
 
-        /// @brief Absolute path a bare WPK file name resolves to.
+        /// @brief Path a bare WPK file name resolves to, or empty if the name is invalid.
         std::string pathFor(const std::string& fileName) const;
 
         /// @brief Downloads actually performed. For metrics and for the qa suite's dedup assertion.

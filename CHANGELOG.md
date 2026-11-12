@@ -22,6 +22,8 @@
 
 | Issue | Comment |
 |-------|---------|
+| — | Required role-update permissions when a delegated run_as token resets its authenticating account's password. |
+| — | Rejected unsafe WPK filenames before repository access or upgrade-cache filesystem operations. |
 
 ### Agent
 

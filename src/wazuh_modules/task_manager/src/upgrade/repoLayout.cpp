@@ -11,6 +11,7 @@
 #include "repoLayout.hpp"
 
 #include "version.hpp"
+#include "wpkFileName.hpp"
 
 #include <cctype>
 
@@ -200,6 +201,12 @@ namespace task_manager::upgrade
                 *repositoryUrl + agent.platform + "/" + agent.majorVersion + "/" + agent.architecture + "/";
             result.layout.fileName = "wazuh_agent_" + version + "_" + agent.platform + "_" + agent.majorVersion + "_" +
                                      agent.architecture + ".wpk";
+        }
+
+        if (!isValidWpkFileName(result.layout.fileName))
+        {
+            result.error = UpgradeError::SystemNotSupported;
+            return result;
         }
 
         result.layout.versionsUrl = result.layout.pathUrl + "versions";

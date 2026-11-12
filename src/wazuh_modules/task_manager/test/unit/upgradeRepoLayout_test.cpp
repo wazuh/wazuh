@@ -117,6 +117,55 @@ TEST(UpgradeRepoLayout, BuildsEveryPublishedRepositoryShape)
     }
 }
 
+TEST(UpgradeRepoLayout, RejectsArchitecturePathsAndEmbeddedNuls)
+{
+    const std::vector<std::string> architectures {
+        "marker/../../outside", "../outside", "/outside", "marker\\..\\outside", std::string {"amd64\0suffix", 12}};
+
+    for (const auto& architecture : architectures)
+    {
+        SCOPED_TRACE(architecture);
+        for (const auto* platform : {"darwin", "ubuntu", "centos"})
+        {
+            SCOPED_TRACE(platform);
+            for (const auto* version : {"v5.0.0", "v4.8.0", "v3.3.0"})
+            {
+                SCOPED_TRACE(version);
+                auto agent {agentOn(platform, "x86_64", "rpm", "22", "04")};
+                agent.architecture = architecture;
+                EXPECT_EQ(resolveRepoLayout(agent, requestFor(version)).error, UpgradeError::SystemNotSupported);
+            }
+        }
+    }
+}
+
+TEST(UpgradeRepoLayout, RejectsPathsInOtherFileNameComponents)
+{
+    for (const auto member :
+         {&AgentInfo::platform, &AgentInfo::majorVersion, &AgentInfo::minorVersion, &AgentInfo::packageType})
+    {
+        auto agent {agentOn("ubuntu", "x86_64", "deb", "16", "04")};
+        agent.*member = "marker/../../outside";
+        const auto* version {member == &AgentInfo::packageType ? "v5.0.0" : "v3.3.0"};
+        EXPECT_EQ(resolveRepoLayout(agent, requestFor(version)).error, UpgradeError::SystemNotSupported);
+    }
+
+    auto request {requestFor("v5.0.0/../../outside")};
+    EXPECT_EQ(resolveRepoLayout(agentOn("windows", "x86_64", "msi"), request).error, UpgradeError::SystemNotSupported);
+
+    request = requestFor("v5.0.0");
+    request.requestedPackageType = "deb/../../outside";
+    request.forceUpgrade = true;
+    EXPECT_EQ(resolveRepoLayout(agentOn("ubuntu", "x86_64", "rpm"), request).error, UpgradeError::SystemNotSupported);
+}
+
+TEST(UpgradeRepoLayout, PreservesUnknownBareArchitectures)
+{
+    const auto result {resolveRepoLayout(agentOn("ubuntu", "future-arch.1", "deb"), requestFor("v5.0.0-rc1"))};
+    EXPECT_EQ(result.error, UpgradeError::Success);
+    EXPECT_EQ(result.layout.fileName, "wazuh_agent_v5.0.0-rc1_linux_future-arch.1.deb.wpk");
+}
+
 // ---- repository resolution -----------------------------------------------------------------------
 
 TEST(UpgradeRepoLayout, PicksTheDefaultRepositoryByTargetMajor)
