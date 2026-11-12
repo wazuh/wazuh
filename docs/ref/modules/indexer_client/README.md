@@ -84,6 +84,7 @@ Every line of the library carries the tag `wazuh-manager-modulesd:indexer-client
 | INFO | `Indexer client runtime started.` | The runtime is up |
 | INFO | `Indexer node '<host>' is available.` | A node became available (also the first line per node) |
 | INFO | `Indexer node '<host>' is throttled (HTTP 429).` | A node answered `429` |
+| WARN | `Indexer node '<host>' has reported a PERMANENT circuit breaker on 3 consecutive health checks: heap usage stays above the breaker limit; check the indexer heap sizing.` | Three probe rounds in a row got a `429` with a PERMANENT parent breaker; once per streak |
 | WARN | `Indexer node '<host>' is no longer available. Reason: <reason>` | A node went down; logged again only if its reason changes |
 | ERROR | `Indexer cluster health is red: every node is marked down.` | A probe round reported `red` |
 | WARN | `Every indexer node rejects the TLS handshake with the configured CA (curl <code>): if the indexer CA was rotated, update <indexer><ssl> and restart the manager.` | Every node is down with a TLS error |
