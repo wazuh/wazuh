@@ -991,7 +991,11 @@ InstallCommon()
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles
   ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/wodles
 
-  ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/etc
+  if [ ${INSTYPE} = 'agent' ]; then
+      ${INSTALL} -d -m 1770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc
+  else
+      ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/etc
+  fi
 
     if [ -f /etc/localtime ]
     then
@@ -1020,11 +1024,7 @@ InstallCommon()
     fi
 
     if [ ! -f ${INSTALLDIR}/etc/client.keys ]; then
-        if [ ${INSTYPE} = 'agent' ]; then
-            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/etc/client.keys
-        else
-            ${INSTALL} -m 0640 -o wazuh -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/etc/client.keys
-        fi
+        ${INSTALL} -m 0640 -o wazuh -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/etc/client.keys
     fi
 
     if [ ! -f ${INSTALLDIR}/etc/ossec.conf ]; then
