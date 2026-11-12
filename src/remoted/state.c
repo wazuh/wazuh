@@ -24,7 +24,7 @@
 
 remoted_state_t remoted_state = {0};
 static pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t agents_state_mutex = PTHREAD_MUTEX_INITIALIZER;
+STATIC pthread_mutex_t agents_state_mutex = PTHREAD_MUTEX_INITIALIZER;
 STATIC int rem_write_state();
 static char *refresh_time;
 
