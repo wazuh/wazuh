@@ -3,7 +3,9 @@
 #define _BASE_GENERATORS_HPP
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
+#include <cstdint>
 #include <random>
 #include <string>
 #include <string_view>
@@ -16,6 +18,28 @@
 namespace base::utils::generators
 {
 constexpr size_t UUID_V4_LENGTH = 36;
+
+/**
+ * @brief Length, in characters, of an identifier returned by generateDocId().
+ */
+constexpr size_t DOC_ID_LENGTH = 27;
+
+/**
+ * @brief Size, in bytes, of the per-thread random prefix of a document identifier.
+ */
+constexpr size_t DOC_ID_PREFIX_SIZE = 12;
+
+/**
+ * @brief Fills a buffer with cryptographically secure random bytes (OpenSSL RAND_bytes).
+ *
+ * Thread-safe and fork-safe (OpenSSL reseeds its DRBG after fork). It never falls back to a weaker source.
+ *
+ * @param out Destination buffer (may be nullptr only when n is 0).
+ * @param n Number of bytes to write.
+ * @throws std::runtime_error if n exceeds INT_MAX (the source is not called) or if the source reports a failure
+ *         (the message carries the OpenSSL error). On failure the content of the buffer is unspecified.
+ */
+void fillRandom(uint8_t* out, size_t n);
 
 /**
  * @brief Generates a random UUID version 4 (thread-safe).
@@ -53,6 +77,56 @@ inline std::string generateUUIDv4()
 
     return uuid;
 }
+
+/**
+ * @brief Generates a document identifier for an indexer write (thread-safe, lock-free after the first call of each
+ * thread).
+ *
+ * The 20 identifier bytes are the 8-byte big-endian value of a per-thread strictly increasing nanosecond clock
+ * (max(systemEpochNanos(), last + 1)) followed by a 12-byte random prefix drawn once per thread with fillRandom().
+ * They are encoded as unpadded base64url, so the result is always DOC_ID_LENGTH characters of [A-Za-z0-9_-].
+ * The first id of each thread goes through a one-time initialisation (`std::call_once`, random prefix). The prefix is
+ * drawn again in a child process after fork().
+ *
+ * @throws std::runtime_error if the random source fails while drawing the prefix of the calling thread (the
+ *         next call on that thread retries) or if the fork handler cannot be registered.
+ */
+std::string generateDocId();
+
+namespace detail
+{
+/**
+ * @brief Signature of the random source behind fillRandom() (the one of RAND_bytes).
+ */
+using RandBytesFn = int (*)(unsigned char*, int);
+
+/**
+ * @brief Test seam: replaces the random source used by fillRandom() and returns the previous one.
+ *
+ * Passing nullptr restores the default source (&RAND_bytes). Only tests call it.
+ */
+RandBytesFn exchangeRandBytesForTesting(RandBytesFn fn) noexcept;
+
+/**
+ * @brief Pure document identifier generator over an injected prefix and clock (the core of generateDocId()).
+ *
+ * The clock state starts at 0, as in a thread that has not generated yet.
+ */
+class DocIdGenerator
+{
+public:
+    explicit DocIdGenerator(const std::array<uint8_t, DOC_ID_PREFIX_SIZE>& prefix) noexcept;
+
+    /**
+     * @brief Returns the identifier for the clock reading nowNs (nanoseconds since the epoch).
+     */
+    std::string next(int64_t nowNs);
+
+private:
+    std::array<uint8_t, DOC_ID_PREFIX_SIZE> m_prefix;
+    int64_t m_last;
+};
+} // namespace detail
 
 /**
  * @brief Maximum accepted length, in bytes, of a resource identifier.
