@@ -21,12 +21,16 @@
 //
 // CREATE (pit(indices, PitOptions, QueryOptions, deadline)). Reentrancy, then validation without a request
 // (InvalidArgument with the field: indices as the queries, keepAlive > 0, the QueryOptions checks), then
-// POST /<i1,i2>/_search/point_in_time?keep_alive=<ms>ms[&expand_wildcards=all], no body. A 2xx needs a non-empty
-// string `pit_id` (else ItemPermanent); a 404 index_not_found_exception ⇒ NotFound (I85).
+// POST /<i1,i2>/_search/point_in_time?keep_alive=<ms>ms&allow_partial_pit_creation=false[&expand_wildcards=all], no
+// body. A 2xx needs a non-empty string `pit_id` (else ItemPermanent); a 404 index_not_found_exception ⇒ NotFound (I85).
+// A partial PIT is never accepted: the flag makes the indexer refuse one (its default is to create it), and a 2xx that
+// still reports _shards.failed > 0 is retried within the budget (an unavailable shard is usually transient) whose
+// PIT, since it exists, goes to PitRegistry::discard() to be deleted.
 // Slots (I89, I91): before every attempt preAttempt() takes one slot with PitRegistry::acquire() (none ⇒ the call
 // ends QueueFull "too many open PITs (N)", N = open + reserved + acquired, no request, refusedFull + 1). The
 // observer settles each attempt's slot:
-// Answered 2xx with an id ⇒ the slot becomes the PIT's (open); any other Answered ⇒ released; Failed with
+// Answered 2xx with an id ⇒ the slot becomes the PIT's (open); a refused 2xx naming a PIT (partial) ⇒ discard(): open,
+// its DELETE queued at once; any other Answered ⇒ released; Failed with
 // mayHaveSent or Abandoned ⇒ reserve(now + keepAlive) (the PIT may exist: an orphan until its keep_alive);
 // Failed without mayHaveSent ⇒ released. Late results change nothing (the reservation stays until it lapses).
 // A wait for a usable node is no attempt: the slot stays held through it (up to the call's deadline), while a
@@ -151,6 +155,9 @@ namespace indexer_client::detail::query
         virtual void opened(const std::weak_ptr<PitState>& pit) = 0;
         /// The last handle of an open PIT went: delete it (I90). Never blocks; idempotent per id.
         virtual void release(Pending pit) = 0;
+        /// An acquired slot whose creation answered with a PIT the library refused (a partial one): it becomes an open
+        /// PIT (created + 1, it does exist) and is released at once, so it is deleted like any other. Never blocks.
+        virtual void discard(Pending pit) = 0;
         /// Shutdown: sends and waits for the pending deletes until `drainEnd`, then cancels the rest.
         virtual void drain(TimePoint drainEnd) = 0;
 

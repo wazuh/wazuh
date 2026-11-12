@@ -423,6 +423,24 @@ namespace indexer_client::detail::query
         {
             return fail(result, Cause::ItemPermanent, boundedReason(result.status, "response without pit_id", {}));
         }
+        // allow_partial_pit_creation=false makes the indexer refuse a PIT missing a shard; a 2xx that still reports a
+        // failed shard is never accepted: the pages' allow_partial_search_results=false only covers the shards the PIT
+        // holds, so its pages would come out clean and short. Retry: an unavailable shard (a relocation, a restarting
+        // node) is usually transient. The body keeps `pit_id`: that PIT exists and the caller deletes it.
+        const auto shards = response.body.find("_shards");
+        if (shards != response.body.end() && shards->is_object())
+        {
+            const auto failed = shards->find("failed");
+            if (failed != shards->end() && failed->is_number() && failed->get<double>() > 0)
+            {
+                QueryResponse partial;
+                partial.verdict = QueryVerdict::Retry;
+                partial.httpStatus = static_cast<int>(result.status);
+                partial.reason = boundedReason(result.status, "partial PIT", failed->dump() + " shards failed");
+                partial.body = std::move(response.body);
+                return partial;
+            }
+        }
         return response;
     }
 

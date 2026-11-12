@@ -103,7 +103,8 @@ TEST(ContentIndexerClientAdapter, OpenSearchClose)
     ASSERT_EQ(creates.size(), 1U);
     EXPECT_EQ(creates.front().method, "POST");
     EXPECT_EQ(creates.front().path, "/a,b/_search/point_in_time");
-    EXPECT_EQ(creates.front().target, "/a,b/_search/point_in_time?keep_alive=300000ms&expand_wildcards=all");
+    EXPECT_EQ(creates.front().target,
+              "/a,b/_search/point_in_time?keep_alive=300000ms&allow_partial_pit_creation=false&expand_wildcards=all");
 
     const std::string wirePitId = env.pits->currentId(1);
     EXPECT_NE(pit.id, wirePitId) << "ContentPit.id is an opaque key, not the PIT id";
@@ -941,7 +942,8 @@ TEST(ContentIndexerClientAdapter, KeepAliveUnits)
         ++opened;
         const auto creates = env.createRequests();
         ASSERT_EQ(creates.size(), opened);
-        EXPECT_EQ(creates.back().target, "/idx/_search/point_in_time?keep_alive=" + millis + "ms")
+        EXPECT_EQ(creates.back().target,
+                  "/idx/_search/point_in_time?keep_alive=" + millis + "ms&allow_partial_pit_creation=false")
             << "keepAlive " << keepAlive;
         EXPECT_EQ(pit.keepAlive, keepAlive);
         adapter->closePit(pit);
