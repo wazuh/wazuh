@@ -153,13 +153,26 @@ These are the options of the runtime that `wazuh-manager-modulesd` owns and ever
 The ones an operator reaches for:
 
 - `request_timeout_ms` - the per-request timeout of every bucket. The Inventory Sync Server's [post-deletion sweep](../inventory-sync-server/architecture.md#the-post-deletion-sweep) window is derived from it (`request_timeout_ms + 5 s`).
-- `global_quota_bytes` - the memory ceiling every bucket's quota is carved from.
+- `global_quota_bytes` - the ceiling every bucket's quota is carved from. It bounds the **queued writes** only, not the process: the answers to reads are not charged to it (see [Memory used by reads](#memory-used-by-reads)).
 - `probe_interval_ms`, `probe_timeout_ms` - the host health probe.
 - `max_response_bytes` - the largest response body the client reads. A query answer is held to an eighth of it (8 MiB by default), because parsing builds a structure several times the body's size; the content pages of the content manager (the vulnerability feed, the Engine's ruleset and IoCs) use the whole value, since single CTI documents exceed 8 MiB, and a page over it is requested again with fewer documents. Raising it raises the memory a feed download may take. A `_bulk` answer over it may have been applied: a bucket with `onAmbiguous5xx = Retry` (the three above) splits the batch and resends the halves; one with `Fail` (the engine's `events` and `raw`) fails every operation `ambiguous` without resending it.
 - `ambiguous_retry_window_ms` - the longest an `agent-state` bucket stays pinned to one indexer node after an ambiguous `5xx` (see [Effects to know](../inventory-sync-server/architecture.md#effects-to-know)).
 - `drain_ms` - the shutdown budget used when no deadline was fixed first. On a normal stop modulesd fixes one (see [Start and stop](README.md#start-and-stop)); `drain_ms` applies to a `Client` destroyed, or a runtime stopped, without it.
 - `network_threads`, `cpu_threads` - the runtime's threads, shared by every consumer.
 - `log_summary_interval_ms` - how often each active bucket logs its summary line.
+
+### Memory used by reads
+
+`global_quota_bytes` counts the operations the buckets hold until the indexer confirms them. The answers to reads (searches, counts, point-in-time pages) are not charged to it, and the runtime does not limit how many reads run at once. Each answer is bounded on its own:
+
+| Read | Largest body read | In memory while it is parsed |
+|---|---|---|
+| An ordinary query (the consumers' searches and counts) | `max_response_bytes` / 8: 8 MiB by default | the body and its parsed form; the library bounds the parsed form at 8 times the body, so up to about 64 MiB per answer |
+| A content page (the vulnerability feed, the Engine's ruleset and IoCs) | `max_response_bytes`: 64 MiB by default | the body and its parsed form, estimated at about 6 times the body on CTI content, so roughly 400 MiB per page |
+
+The Vulnerability Scanner downloads a full feed with 2 point-in-time slices in parallel by default, so two content pages can be in memory at the same time, next to the scanner's own queries and the writes held under `global_quota_bytes`. In modulesd, with the default values, a full feed download while scans read and the buckets are full can therefore reach about 1 GiB. That figure is an estimate built from the bounds above: the 8 times factor is the bound the library assumes, the 6 times factor and the total have not been measured. The Engine runs its own runtime, with its own `global_quota_bytes` and its own content pages, in its own process; this matters most for the engine embedded in the Wazuh Indexer, which shares the host with it.
+
+`indexer_client.query.response_bytes_in_flight` gives the body bytes of the answers being processed and `indexer_client.query.peak_response_bytes_in_flight` its highest value since start (see [Metrics](metrics.md)); they count the bodies, not their parsed form. Lowering `max_response_bytes` lowers both bounds, at the cost of smaller content pages (a page over the limit is requested again with fewer documents; one CTI document over it cannot be downloaded).
 
 ### The consumers' options
 
