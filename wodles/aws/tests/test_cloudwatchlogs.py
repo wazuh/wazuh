@@ -64,7 +64,7 @@ def test_aws_cloudwatchlogs_initializes_properly(mock_aws_service, mock_sts_clie
 @pytest.mark.parametrize('remove_log_streams', [True, False])
 @pytest.mark.parametrize('only_logs_after', [utils.TEST_ONLY_LOGS_AFTER, None])
 @pytest.mark.parametrize('reparse', [True, False])
-@patch('wazuh_integration.WazuhAWSDatabase.init_db')
+@patch('cloudwatchlogs.AWSCloudWatchLogs.init_db')
 @patch('wazuh_integration.WazuhAWSDatabase.close_db')
 @patch('cloudwatchlogs.AWSCloudWatchLogs.purge_db')
 @patch('cloudwatchlogs.AWSCloudWatchLogs.update_values')
@@ -281,6 +281,7 @@ def test_aws_cloudwatchlogs_get_alerts_within_range_handles_exceptions_on_client
 def test_aws_cloudwatchlogs_get_data_from_db(mock_sts_client, custom_database):
     """Test 'get_data_from_db' method retrieves the expected information from the DB.
     """
+    mock_sts_client.return_value.get_caller_identity.return_value = {'Account': utils.TEST_ACCOUNT_ID}
     utils.database_execute_script(custom_database, TEST_CLOUDWATCH_SCHEMA)
 
     instance = utils.get_mocked_service(class_=cloudwatchlogs.AWSCloudWatchLogs, region=utils.TEST_REGION)
@@ -359,6 +360,7 @@ def test_aws_cloudwatchlogs_save_data_db(mock_debug, mock_sts_client, custom_dat
     """Test 'save_data_db' method inserts token, start_time and end_time values into the DB and updates them if
     already exist.
     """
+    mock_sts_client.return_value.get_caller_identity.return_value = {'Account': utils.TEST_ACCOUNT_ID}
     utils.database_execute_script(custom_database, TEST_CLOUDWATCH_SCHEMA)
 
     instance = utils.get_mocked_service(class_=cloudwatchlogs.AWSCloudWatchLogs, region=utils.TEST_REGION)
@@ -371,6 +373,7 @@ def test_aws_cloudwatchlogs_save_data_db(mock_debug, mock_sts_client, custom_dat
 
     assert utils.database_execute_query(instance.db_connector,
                                         instance.sql_cloudwatch_select.format(table_name=instance.db_table_name), {
+                                            'aws_account_id': instance.account_id,
                                             'aws_region': instance.region,
                                             'aws_log_group': TEST_LOG_GROUP,
                                             'aws_log_stream': TEST_LOG_STREAM})[2] == TEST_END_TIME
@@ -380,6 +383,7 @@ def test_aws_cloudwatchlogs_save_data_db(mock_debug, mock_sts_client, custom_dat
 
     assert utils.database_execute_query(instance.db_connector,
                                         instance.sql_cloudwatch_select.format(table_name=instance.db_table_name), {
+                                            'aws_account_id': instance.account_id,
                                             'aws_region': instance.region,
                                             'aws_log_group': TEST_LOG_GROUP,
                                             'aws_log_stream': TEST_LOG_STREAM})[2] == TEST_END_TIME + 1
@@ -436,8 +440,8 @@ def test_aws_cloudwatchlogs_get_log_streams(mock_debug, mock_sts_client,
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-@patch('cloudwatchlogs.aws_tools.debug')
-def test_aws_cloudwatchlogs_get_log_streams_handles_exceptions(mock_debug, mock_sts_client):
+@patch('cloudwatchlogs.aws_tools.error')
+def test_aws_cloudwatchlogs_get_log_streams_handles_exceptions(mock_error, mock_sts_client):
     """Test 'get_log_streams' method handles exceptions raised when trying to fetch the log streams
     from the specified log group.
     This could be due to a botocore Error or another type of Exception.
@@ -447,11 +451,11 @@ def test_aws_cloudwatchlogs_get_log_streams_handles_exceptions(mock_debug, mock_
     instance.client = MagicMock()
     mock_describe_log_streams = instance.client.describe_log_streams
 
-    mock_describe_log_streams.side_effect = Exception
-    instance.get_log_streams(TEST_LOG_GROUP)
-    mock_debug.assert_any_call(
-        '++++ The specified "{}" log group does not exist or insufficient privileges to access it.'.format(
-            TEST_LOG_GROUP), 0)
+    mock_describe_log_streams.side_effect = Exception('Failed listing')
+    with pytest.raises(SystemExit) as e:
+        instance.get_log_streams(TEST_LOG_GROUP)
+    assert e.value.code == utils.THROTTLING_ERROR_CODE
+    mock_error.assert_called_once_with(f'Unable to list all log streams in "{TEST_LOG_GROUP}": Failed listing')
 
     mock_describe_log_streams.side_effect = botocore.exceptions.ClientError(
         {'Error': {'Code': utils.THROTTLING_ERROR_CODE}}, "name")
@@ -464,6 +468,7 @@ def test_aws_cloudwatchlogs_get_log_streams_handles_exceptions(mock_debug, mock_
 @patch('cloudwatchlogs.AWSCloudWatchLogs.get_log_streams', return_value=[])
 def test_aws_cloudwatchlogs_purge_db(mock_get_log_streams, mock_sts_client, custom_database):
     """Test 'purge_db' method removes the records for log streams when they no longer exist on AWS CloudWatch Logs."""
+    mock_sts_client.return_value.get_caller_identity.return_value = {'Account': utils.TEST_ACCOUNT_ID}
     utils.database_execute_script(custom_database, TEST_CLOUDWATCH_SCHEMA)
 
     instance = utils.get_mocked_service(class_=cloudwatchlogs.AWSCloudWatchLogs, region=utils.TEST_REGION)
