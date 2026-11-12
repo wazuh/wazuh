@@ -5548,6 +5548,54 @@ FILE * w_fopen_vetted_follow(const char * path, const char * mode) {
 }
 
 
+/**
+ * @brief Opens a gzip file for w_compress_gzfile() and w_uncompress_gzfile()
+ *
+ * On Windows, gzopen() leaves a descriptor that child processes inherit and that blocks renaming or
+ * deleting the file, so the file is opened on a non-inheritable handle instead.
+ *
+ * @param path File to open
+ * @param mode "w" to create or truncate it, "rb" to read it
+ *
+ * @return zlib file, or NULL on error with errno set
+ */
+static gzFile w_gzopen_private(const char *path, const char *mode) {
+#ifdef WIN32
+    const bool write = strchr(mode, 'w') != NULL;
+    HANDLE hFile;
+    gzFile gzfp;
+    int fd;
+
+    // wCreateFile() sets errno itself only when it rejects a network path
+    errno = 0;
+    hFile = wCreateFile(path, write ? GENERIC_WRITE : GENERIC_READ,
+                        FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+                        write ? CREATE_ALWAYS : OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+
+    if (hFile == INVALID_HANDLE_VALUE) {
+        if (errno == 0) {
+            errno = w_win32_to_errno(GetLastError());
+        }
+        return NULL;
+    }
+
+    if (fd = _open_osfhandle((intptr_t)hFile, _O_BINARY | (write ? _O_WRONLY : _O_RDONLY)), fd < 0) {
+        CloseHandle(hFile);
+        return NULL;
+    }
+
+    // From here on the descriptor owns the handle
+    if (gzfp = gzdopen(fd, mode), gzfp == NULL) {
+        _close(fd);
+        return NULL;
+    }
+
+    return gzfp;
+#else
+    return gzopen(path, mode);
+#endif
+}
+
 int w_compress_gzfile(const char *filesrc, const char *filedst) {
     FILE *fd;
     gzFile gz_fd;
@@ -5611,7 +5659,7 @@ int w_compress_gzfile(const char *filesrc, const char *filedst) {
 #endif
 
     /* Open compressed file */
-    gz_fd = gzopen(filedst, "w");
+    gz_fd = w_gzopen_private(filedst, "w");
     if (!gz_fd) {
         fclose(fd);
         merror("in w_compress_gzfile(): gzopen error %s (%d):'%s'",
@@ -5676,7 +5724,7 @@ int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst) {
     }
 
     /* Open compressed file */
-    gz_fd = gzopen(gzfilesrc, "rb");
+    gz_fd = w_gzopen_private(gzfilesrc, "rb");
     if (!gz_fd) {
         merror("in w_uncompress_gzfile(): gzopen error %s (%d):'%s'",
                 gzfilesrc,
