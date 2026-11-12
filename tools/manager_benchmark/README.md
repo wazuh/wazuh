@@ -444,7 +444,9 @@ It applies **only** to documents/s and time to drain of `drain-engine` and sessi
 
 `INCOMPARABLE` names its reason in the report's notes, and a `Comparability:` line gives both sides'
 fractions and drop counts. And every run records the sha256 of its provenance snapshot: a side whose runs come from more than
-one set of binaries (another HEAD, another snapshot) is `INCOMPLETE`. A side whose repetitions differ by
+one set of binaries (another HEAD, another snapshot), or that has a run without that sha256, is `INCOMPLETE`. So is a
+scenario with a verdict where a measured run lacks one of the verdict metrics: the median is never taken over fewer runs
+than were measured. A side whose repetitions differ by
 more than 10 % of their median gets a note to repeat with `N >= 5`. The exit status of
 `./ab_indexer.sh --report` is 0 for a pass, 1 for a fail and 2 for incomplete or incomparable data.
 

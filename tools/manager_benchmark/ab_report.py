@@ -63,7 +63,10 @@ The guards that keep the ratio honest (I226):
     reads it from the engine API at the end of the run) and it must be 0 on both sides; a drop or
     an unknown value makes the scenario INCOMPARABLE, with the reason in its notes.
   * Every run records the sha256 of its provenance snapshot (the binaries of provenance.txt). A side
-    whose measured runs come from more than one set (another HEAD, another snapshot) is INCOMPLETE.
+    whose measured runs come from more than one set (another HEAD, another snapshot), or with a run
+    that has no sha256 at all, is INCOMPLETE.
+  * Every measured run of a scenario with a verdict must carry every verdict metric: a run that lacks
+    one makes the scenario INCOMPLETE instead of leaving the median to the runs that have it.
 Exit status: 0 PASS, 1 FAIL, 2 INCOMPLETE or INCOMPARABLE.
 """
 from __future__ import annotations
@@ -411,12 +414,28 @@ def compare(runs: list[dict[str, Any]]) -> dict[str, Any]:
             entry["verdict"] = "INCOMPLETE"
             entry["notes"].append("a side has no measured run")
         for side, side_runs in (("v1", v1_runs), ("v2", v2_runs)):
-            sets = {r.get("provenance_sha256") for r in side_runs}
+            unknown = [r.get("index") for r in side_runs if not r.get("provenance_sha256")]
+            if unknown:
+                entry["verdict"] = "INCOMPLETE"
+                entry["notes"].append(
+                    f"side {side} has no provenance sha256 for run(s) " + ", ".join(str(i) for i in unknown)
+                    + " (no provenance.txt or no sha256 line in it): the binaries it measured are unknown")
+            sets = {r.get("provenance_sha256") for r in side_runs} - {None, ""}
             if len(sets) > 1:
                 entry["verdict"] = "INCOMPLETE"
                 entry["notes"].append(
                     f"side {side} mixes {len(sets)} sets of binaries (provenance sha256): "
                     "the runs of different builds or snapshots cannot share a median")
+        if entry["kind"] != "fixed":
+            for metric in verdict_metrics:
+                short = [f"{side} run {r.get('index')}"
+                         for side, side_runs in (("v1", v1_runs), ("v2", v2_runs))
+                         for r in side_runs if metric not in r["metrics"]]
+                if short:
+                    entry["verdict"] = "INCOMPLETE"
+                    entry["notes"].append(
+                        f"verdict metric {metric} missing from " + ", ".join(short)
+                        + ": a median over fewer runs than were measured is not a verdict")
         names = {m for r in v1_runs + v2_runs for m in r["metrics"]}
         incomparable = drain_guards(entry, v1_runs, v2_runs, verdict_metrics)
         for metric in [m for m in METRIC_ORDER if m in names] + sorted(names - set(METRIC_ORDER)):
