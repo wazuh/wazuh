@@ -11,6 +11,12 @@ All notable changes to this project will be documented in this file.
 - Hardened how `wazuh-logcollector` writes its state file. ([#41300](https://github.com/wazuh/wazuh/pull/41300))
 - Fixed FIM on Windows skipping the files under any drive-root folder whose name starts with `$Recycle.Bin`, not only the recycle bin itself. ([#41216](https://github.com/wazuh/wazuh/pull/41216))
 
+### Manager
+
+#### Fixed
+
+- Fixed `wazuh-maild` and `wazuh-monitord` ending an email notification early when its text or subject contained a line with a single dot. ([#41176](https://github.com/wazuh/wazuh/pull/41176))
+
 ## [v4.14.11]
 
 ### Manager
