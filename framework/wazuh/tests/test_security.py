@@ -72,7 +72,8 @@ def reload_default_rbac_resources():
 def db_setup():
     with patch('wazuh.core.common.wazuh_uid'), patch('wazuh.core.common.wazuh_gid'):
         with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
-            with patch('shutil.chown'), patch('os.chmod'):
+            with patch('shutil.chown'), patch('os.chmod'), \
+                    patch('wazuh.core.cluster.cluster.get_node', return_value={'node': 'node01', 'type': 'master'}):
                     import wazuh.rbac.orm as orm
                     # Clear mappers
                     sqlalchemy_orm.clear_mappers()
@@ -415,6 +416,31 @@ def test_update_user_allowed(db_setup, rbac_context, user_id, context, current_u
     result = security.update_user(user_id=[user_id], password='Password1234', current_user=current_user).to_dict()
 
     assert result['affected_items'][0]['id'] == int(user_id)
+
+
+@pytest.mark.parametrize('run_as', [False, True])
+@pytest.mark.parametrize('grant_roles', [False, True])
+def test_update_user_self_run_as_requires_every_role(db_setup, rbac_context, run_as, grant_roles):
+    """A delegated token's subject does not own the account's reachable roles."""
+    security, _, _ = db_setup
+    permissions = {'user:id:100': 'allow'}
+    if grant_roles:
+        permissions['role:id:*'] = 'allow'
+    rbac_context({'rbac_mode': 'white', 'security:update': permissions})
+
+    if run_as and not grant_roles:
+        with pytest.raises(WazuhPermissionError) as exc:
+            security.update_user(user_id=['100'], password='Password1234', current_user='administrator',
+                                 run_as=run_as)
+        assert exc.value.code == 4000
+        assert exc.value.ids == _existing_role_ids(security)
+    else:
+        result = security.update_user(user_id=['100'], password='Password1234', current_user='administrator',
+                                      run_as=run_as).to_dict()
+        assert result['affected_items'][0]['id'] == 100
+
+    with security.AuthenticationManager() as auth:
+        assert auth.check_user('administrator', 'Password1234') is (not run_as or grant_roles)
 
 
 def test_update_user_black_mode_honours_a_deny(db_setup, rbac_context):
