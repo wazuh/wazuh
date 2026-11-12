@@ -66,7 +66,7 @@ Steps 1, 3 and 5 are what
 automates. It reads the same data out of the 4.x files, and recreates it on the 5.0 manager through
 the manager's own API rather than by writing its files, so the manager validates every agent and
 group and writes `client.keys` and the registry itself. It warns, before writing anything, about the
-agents with an id above `9999999`, which the manager refuses to insert (see
+agents with an id above `9999999` and skips them, since a 5.0.1 or later manager refuses to insert them (see
 [If you re-enroll instead](#if-you-re-enroll-instead)). One difference from the manual procedure
 follows from that: the tool needs the 5.0 manager **running**, where the steps below need it
 stopped. Installing it out of the fleet's reach, as [Step 2](#2-install-the-50-manager) describes,
@@ -349,7 +349,7 @@ registry.
 **On a first migration this is harmless.** Every agent is still 4.x at that point, and a 4.x agent
 whose key the manager does not recognise does not re-register: it logs `(1216): Unable to connect`
 and retries until the registry is restored. Its identity is never at risk, except for an agent with an
-id above `9999999` that the migration tool could not insert (see
+id above `9999999`, which the migration tool skips (see
 [If you re-enroll instead](#if-you-re-enroll-instead)).
 
 It stops being harmless the second time. This procedure is also what a restore comes down to, and a
@@ -704,8 +704,8 @@ curl -sk "https://localhost:55000/groups" -H "Authorization: Bearer $TOKEN"
 
 Every agent appears with its 4.x id, name, version, groups and registration date, as
 `disconnected` until it reconnects. The exception is an agent with an id above `9999999` when you
-used the migration tool: the manager refuses to insert it. If you used the migration tool instead of
-the SQL in Step 3, three of those differ: `dateAdd` is the moment the tool inserted the agent
+used the migration tool: the tool skips it, since a 5.0.1 or later manager refuses to insert it. If
+you used the migration tool instead of the SQL in Step 3, three of those differ: `dateAdd` is the moment the tool inserted the agent
 (`POST /agents/insert` accepts no registration date), version and OS stay empty until the agent's first keepalive, and the status until
 then is `never_connected`. After an `import --with-rbac` the API answers to the 4.x passwords as soon as
 the import ends, so `check` is refused with the published one: run the two `rbac_control` commands of
@@ -724,7 +724,7 @@ retry, authenticates with its existing key and is marked `active`. Otherwise edi
 `<client><server><address>` in each agent's `ossec.conf` and restart it. Do not remove
 `client.keys` on the agents.
 
-The exception is an agent with an id above `9999999` that the migration tool could not insert: its
+The exception is an agent with an id above `9999999`, which the migration tool skips: its
 key is unknown to the manager, so it keeps logging `(1216)` and retrying until you re-enroll it (see
 [If you re-enroll instead](#if-you-re-enroll-instead)).
 
