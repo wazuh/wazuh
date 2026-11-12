@@ -189,7 +189,7 @@ Syscollector::instance().deleteDatabase();
 
 ## Coordination Commands
 
-The coordination commands allow external control of Syscollector operations for coordination with the manager or other modules.
+The coordination commands allow external control of Syscollector operations for coordination with the manager or other modules. `pause()` blocks until the module is idle; `flush()` is **asynchronous**: it only starts the synchronization in a background worker, and the caller polls `is_flush_completed` for the outcome.
 
 ### Pause and Resume Operations
 
@@ -252,7 +252,7 @@ Syscollector::instance().resume();
 
 #### `flush()`
 
-Forces an immediate synchronization of all pending inventory differences with the manager.
+Requests an immediate synchronization of the pending inventory differences with the manager. It does **not** wait for it: the synchronization runs in a background worker (`Utils::AsyncFlushController`).
 
 **Signature:**
 ```cpp
@@ -260,30 +260,43 @@ int Syscollector::flush();
 ```
 
 **Returns:**
-- `0` if flush completed successfully or if sync protocol is not initialized
-- Non-zero value if flush failed
+- `0` if the flush request was accepted: a background flush was started, or one was already running and is kept
+- `-1` if the async flush controller does not exist
+
+A return of `0` does not mean the data reached the manager. Poll `is_flush_completed` for that.
 
 **Description:**
 
-Triggers an immediate synchronization session to send all pending inventory changes to the manager, bypassing the normal synchronization interval. This is useful when immediate delivery of inventory state is required, such as before agent shutdown or after critical inventory changes.
+Starts the blocking flush work, `executeFlushSync()`, on a worker thread and returns at once. This bypasses the normal synchronization interval, which is useful when inventory state must be delivered promptly, for example during agent-info's coordination after an agent ID change. A caller that needs the data delivered (for example, before shutdown) must wait until `is_flush_completed` reports `completed`.
 
-**Behavior:**
-- Checks if sync protocol is initialized
-- If not initialized, returns `0` (not an error, just nothing to flush)
-- If initialized, waits for any synchronization or recovery already in progress (such as a resend of every table after an agent ID change) and keeps new ones from starting until it is done
-- Calls `synchronizeModule()` with `Mode::DELTA`
-- Returns result of synchronization operation
+**Behavior of the background work (`executeFlushSync()`):**
+- If neither the inventory nor the vulnerability-detection sync protocol is initialized, it ends successfully (nothing to flush)
+- Otherwise, it waits for any synchronization or recovery already in progress (such as a resend of every table after an agent ID change) and keeps new ones from starting until it is done
+- If the module stops while it waits, it ends with an error
+- Calls `synchronizeModule()` with `Mode::DELTA` on the inventory sync protocol, which sends at most `agent.sync_max_blocks_per_cycle` blocks and leaves anything else queued for the next cycle
+- Synchronizes the vulnerability-detection tables in `Mode::DELTA` (`synchronizeVDTables()`), with `Option::VDFIRST`/`Option::VDSYNC`, which carry the whole queue, or with `Option::SYNC` when VD scanning is disabled
+- Ends successfully only if both synchronizations succeed, with an error otherwise
 
 **Usage Example:**
 ```cpp
-// Flush pending inventory changes immediately
-int result = Syscollector::instance().flush();
-if (result == 0) {
-    // Flush successful or nothing to flush
-} else {
-    // Flush failed
+// Request a flush (asynchronous - returns before the data is sent)
+if (Syscollector::instance().flush() != 0) {
+    // Request rejected: no flush controller
 }
+// Then poll the "is_flush_completed" command until its status is "completed"
 ```
+
+#### `is_flush_completed` command
+
+Reports the state of the last flush requested with `flush()`. It is a coordination command, sent as a JSON query (`{"command": "is_flush_completed"}`) and answered without blocking.
+
+**Response:**
+- `error`: always `0` (`MQ_SUCCESS`)
+- `data.module`: `"syscollector"`
+- `data.status`: `"in_progress"` while the background flush runs, `"completed"` otherwise
+- `data.result` (only with `"completed"`): `"success"` or `"error"`, the outcome of the last flush
+
+If no flush has run yet, the status is `"completed"` with result `"success"`, meaning there is nothing left to wait for.
 
 ---
 

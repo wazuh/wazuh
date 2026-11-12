@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Agent Sync Protocol exposes APIs through both C++ and C interfaces, allowing modules written in different languages to integrate seamlessly. The protocol manages the complete synchronization lifecycle, from persisting differences to handling manager responses. On the wire, a whole session (data and all) crosses as one `FullSession` FlatBuffer message and the manager answers with one `EndAck` — see [Protocol Lifecycle](lifecycle.md) for the message-level detail.
+The Agent Sync Protocol exposes APIs through both C++ and C interfaces, allowing modules written in different languages to integrate seamlessly. The protocol manages the complete synchronization lifecycle, from persisting differences to handling manager responses. On the wire, a whole session (data and all) crosses as one `FullSession` FlatBuffer message and there is one terminal answer: the HTTP status of the `/stateful` request, routed back to the session as an `HCRESULT:<session>:<code>:<body>` string (there is no `EndAck` message) — see [Protocol Lifecycle](lifecycle.md) for the message-level detail.
 
 ## C++ Interface
 
@@ -628,7 +628,7 @@ public:
 };
 ```
 
-`SyncSocketTransport` is the real implementation: it streams one whole `FullSession` message over the agent's local `queue-sync` `AF_UNIX` STREAM socket, which `agentd`'s HTTPS-client intake binds. `sendSession()` reports whether the **agent** took the session, not whether the **manager** accepted it — the manager's verdict arrives asynchronously over the HTTPS response and is routed back through `parseResponseBuffer()`/`applyHttpResultCode()`.
+`SyncSocketTransport` is the real implementation: it streams one whole `FullSession` message over the agent's local `queue-sync` `AF_UNIX` STREAM socket, which `agentd`'s HTTPS-client intake binds. `sendSession()` reports whether the **agent** took the session, not whether the **manager** accepted it — the manager's verdict arrives asynchronously over the HTTPS response and is routed back through `parseResponseBuffer()`, which hands the status code to the private `applyHttpResult(int httpCode, std::string_view body, uint64_t expectedSession)`.
 
 `MQ_Functions`/`mq_start_fn`/`mq_send_binary_fn` are still declared in `agent_sync_protocol_c_interface_types.h` for ABI reasons but are not used by any current code path — the message-queue-based transport they described predates `SyncSocketTransport`/`FullSession`.
 

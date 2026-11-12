@@ -143,7 +143,7 @@ The `agent_info` module acts as a coordinator, sending JSON-based commands to ot
 | `set_version`          | `{"version": <number>}`   | Instructs the module to set its internal synchronization version to the provided value.                   |
 | `resume`               | (none)                    | Requests the module to resume its normal operations after coordination is complete.                       |
 | `is_pause_completed`   | (none)                    | **(FIM only)** Polls the FIM module to check if its asynchronous pause operation has finished.            |
-| `is_flush_completed`   | (none)                    | **(FIM only)** Polls the FIM module to check if its asynchronous flush operation has finished.            |
+| `is_flush_completed`   | (none)                    | Polls the module (FIM, SCA or Syscollector) to check if its asynchronous flush operation has finished.    |
 
 ### Example JSON Command
 

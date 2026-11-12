@@ -69,7 +69,13 @@ bool YourModule::validateSchemaAndLog(const std::string& data,
 
     if (!validator)
     {
-        return true; // No validator for this index
+        // No schema for this index: discard instead of sending it unvalidated
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_WARNING, "No schema validator found for index: " + index + ". Discarding message.");
+        }
+
+        return false;
     }
 
     auto validationResult = validator->validate(data);
@@ -97,6 +103,8 @@ bool YourModule::validateSchemaAndLog(const std::string& data,
     return false;
 }
 ```
+
+Only the "validation disabled" branch (the factory failed to initialize at startup) lets a message through unchecked. An initialized factory with no schema for `index` discards the message, as Syscollector, SCA and the C interface (`schema_validator_validate()`) do: sending it unvalidated could put a document the indexer rejects into the sync queue.
 
 ### Step 4: Validate Before Sending Data
 
@@ -341,7 +349,15 @@ bool Syscollector::validateSchemaAndLog(const std::string& data,
 
     if (!validator)
     {
-        return true;
+        // No validator for this index: be restrictive and discard the message
+        // instead of queuing it unvalidated, since we cannot guarantee it matches
+        // the schema the indexer expects.
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_WARNING, "No schema validator found for index: " + index + ". Discarding message.");
+        }
+
+        return false;
     }
 
     auto validationResult = validator->validate(data);
@@ -405,7 +421,10 @@ bool SCAEventHandler::ValidateAndHandleStatefulMessage(
 
     if (!validator)
     {
-        return true;
+        // No validator for this index: be restrictive and discard the message.
+        LoggingHelper::getInstance().log(LOG_WARNING,
+                                         "No schema validator found for index: " + std::string(SCA_SYNC_INDEX) + ". Discarding message.");
+        return false;
     }
 
     std::string statefulData = statefulEvent.dump();
@@ -711,8 +730,10 @@ if (!factory.isInitialized())
 auto validator = factory.getValidator(index);
 if (!validator)
 {
-    m_logFunction(LOG_WARNING, "No validator found for index: " + index);
-    // Continue without validation
+    // The factory is initialized but has no schema for this exact index name:
+    // discard the message, as the shipped modules do, and fix the index name
+    m_logFunction(LOG_WARNING, "No schema validator found for index: " + index + ". Discarding message.");
+    return false;
 }
 ```
 
