@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Fixed the configuration upload validation to also apply the `upload_configuration.remote_commands` setting to the `prefilter_cmd` option of the `syscheck` section. ([#40792](https://github.com/wazuh/wazuh/pull/40792))
+- Fixed `wazuh-maild` and `wazuh-monitord` ending an email notification early when its text or subject contained a line with a single dot. ([#41204](https://github.com/wazuh/wazuh/pull/41204))
 - Fixed the validation of the configuration uploaded through `PUT /manager/configuration` and `PUT /cluster/{node_id}/configuration` so that it handles comments, escaped markup and namespaces the way the daemons do. ([#40726](https://github.com/wazuh/wazuh/pull/40726))
 
 ### Agent
