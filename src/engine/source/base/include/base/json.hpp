@@ -160,6 +160,23 @@ public:
     {
     }
 
+    /**
+     * @brief Adopt an already built pointer (e.g. the result of json::Pointer::Append), without parsing anything.
+     * @param pointer Pointer whose tokens live on json::baseAllocator(). Must be valid.
+     */
+    explicit PointerPath(json::Pointer&& pointer) noexcept { m_pointer.Swap(pointer); }
+
+    /**
+     * @brief Canonical JSON pointer string of this path (e.g. "/a/b~1c"), for messages only.
+     * @note Allocates; never call it on the per-event path.
+     */
+    std::string str() const
+    {
+        rapidjson::StringBuffer buffer;
+        m_pointer.Stringify(buffer);
+        return {buffer.GetString(), buffer.GetSize()};
+    }
+
     // Copies allocate the tokens and may throw std::bad_alloc; the assignment copies first and swaps, so a failure
     // leaves both objects as they were (rapidjson's own assignment frees the old tokens before allocating the new
     // ones). Moves swap: json::Pointer has no move constructor, and a defaulted move would copy and could throw.
@@ -187,6 +204,22 @@ public:
 };
 
 inline const PointerPath ROOT_PP {""}; ///< Constant PointerPath representing the root of the JSON document.
+
+} // namespace json
+
+/// Error messages interpolate the path: it prints as its canonical pointer string.
+template<>
+struct fmt::formatter<json::PointerPath> : formatter<std::string>
+{
+    template<typename FormatContext>
+    auto format(const json::PointerPath& path, FormatContext& ctx) const -> decltype(ctx.out())
+    {
+        return formatter<std::string>::format(path.str(), ctx);
+    }
+};
+
+namespace json
+{
 
 /**
  * @brief Return type for get methods that output via reference parameter.
@@ -393,7 +426,7 @@ private:
      * @param source The RapidJSON value to merge.
      * @param path JSON pointer path to the target node.
      */
-    void merge(const bool isRecursive, const json::Value& source, std::string_view path);
+    void merge(const bool isRecursive, const json::Value& source, const PointerPath& path);
 
 public:
     /**
@@ -685,7 +718,7 @@ public:
      *
      * @throws std::runtime_error If the pointer path is invalid.
      */
-    bool exists(std::string_view pointerPath) const;
+    bool exists(const PointerPath& pointerPath) const;
 
     /**
      * @brief Test decoded member names at one object without copying or traversing member values.
@@ -707,7 +740,7 @@ public:
      *
      * @throws std::runtime_error If the pointer path is invalid.
      */
-    bool equals(std::string_view pointerPath, const Json& value) const;
+    bool equals(const PointerPath& pointerPath, const Json& value) const;
 
     /**
      * @brief Check if a field's string value equals the given string.
@@ -720,7 +753,7 @@ public:
      *
      * @throws std::runtime_error If the pointer path is invalid.
      */
-    bool equalsString(std::string_view pointerPath, std::string_view str) const;
+    bool equalsString(const PointerPath& pointerPath, std::string_view str) const;
 
     /**
      * @brief Check if basePointerPath field's value is equal to referencePointerPath
@@ -734,7 +767,7 @@ public:
      *
      * @throws std::runtime_error If any pointer path is invalid.
      */
-    bool equals(std::string_view basePointerPath, std::string_view referencePointerPath) const;
+    bool equals(const PointerPath& basePointerPath, const PointerPath& referencePointerPath) const;
 
     /**
      * @brief Set the value of the field with the given pointer path.
@@ -745,7 +778,7 @@ public:
      *
      * @throws std::runtime_error If the pointer path is invalid.
      */
-    void set(std::string_view pointerPath, const Json& value);
+    void set(const PointerPath& pointerPath, const Json& value);
 
     /**
      * @brief Set the value of the base field with the value of the reference field.
@@ -757,7 +790,7 @@ public:
      *
      * @throws std::runtime_error If any pointer path is invalid.
      */
-    void set(std::string_view basePointerPath, std::string_view referencePointerPath);
+    void set(const PointerPath& basePointerPath, const PointerPath& referencePointerPath);
 
     /************************************************************************************/
     // Getters
@@ -821,7 +854,7 @@ public:
      * @return std::optional<int> The int value, or std::nullopt if not found or not an int.
      * @throws std::runtime_error If the pointer path is invalid.
      */
-    std::optional<int> getInt(std::string_view path = "") const;
+    std::optional<int> getInt(const PointerPath& path = ROOT_PP) const;
 
     /**
      * @brief Get the value of the int64 field at the given path.
@@ -830,7 +863,7 @@ public:
      * @return std::optional<int64_t> The int64 value, or std::nullopt if not found or not an int64.
      * @throws std::runtime_error If the pointer path is invalid.
      */
-    std::optional<int64_t> getInt64(std::string_view path = "") const;
+    std::optional<int64_t> getInt64(const PointerPath& path = ROOT_PP) const;
 
     /**
      * @brief Get the value of the uint64 field at the given path.
@@ -839,7 +872,7 @@ public:
      * @return std::optional<uint64_t> The uint64 value, or std::nullopt if not found or not a uint64.
      * @throws std::runtime_error If the pointer path is invalid.
      */
-    std::optional<uint64_t> getUint64(std::string_view path = "") const;
+    std::optional<uint64_t> getUint64(const PointerPath& path = ROOT_PP) const;
 
     /**
      * @brief Get the value of the int or int64 field as int64.
@@ -848,7 +881,7 @@ public:
      * @return std::optional<int64_t> The value of the field or nothing if the path not found.
      * @throws std::runtime_error If the path is invalid.
      */
-    std::optional<int64_t> getIntAsInt64(std::string_view path = "") const;
+    std::optional<int64_t> getIntAsInt64(const PointerPath& path = ROOT_PP) const;
 
     /**
      * @brief Get the value of the float field at the given path.
@@ -857,7 +890,7 @@ public:
      * @return std::optional<float_t> The float value, or std::nullopt if not found or not a float.
      * @throws std::runtime_error If the pointer path is invalid.
      */
-    std::optional<float_t> getFloat(std::string_view path = "") const;
+    std::optional<float_t> getFloat(const PointerPath& path = ROOT_PP) const;
 
     /**
      * @brief Get the value of the double field at the given path.
@@ -866,7 +899,7 @@ public:
      * @return std::optional<double_t> The double value, or std::nullopt if not found or not a double.
      * @throws std::runtime_error If the pointer path is invalid.
      */
-    std::optional<double_t> getDouble(std::string_view path = "") const;
+    std::optional<double_t> getDouble(const PointerPath& path = ROOT_PP) const;
 
     /**
      * @brief Get the value of a number field (double or int) as a double.
@@ -876,7 +909,7 @@ public:
      * @throws std::runtime_error If the pointer path is invalid.
      * @todo Develop tests for this method.
      */
-    std::optional<double> getNumberAsDouble(std::string_view path = "") const;
+    std::optional<double> getNumberAsDouble(const PointerPath& path = ROOT_PP) const;
 
     /**
      * @brief Get the value of the bool field at the given path.
@@ -885,7 +918,7 @@ public:
      * @return std::optional<bool> The boolean value, or std::nullopt if not found or not a bool.
      * @throws std::runtime_error If the pointer path is invalid.
      */
-    std::optional<bool> getBool(std::string_view path = "") const;
+    std::optional<bool> getBool(const PointerPath& path = ROOT_PP) const;
 
     /**
      * @brief Get the value of the array field at the given path.
@@ -898,7 +931,7 @@ public:
      * @return std::optional<std::vector<Json>> The array elements, or std::nullopt if not found or not an array.
      * @throws std::runtime_error If the pointer path is invalid.
      */
-    std::optional<std::vector<Json>> getArray(std::string_view path = "") const;
+    std::optional<std::vector<Json>> getArray(const PointerPath& path = ROOT_PP) const;
 
     /**
      * @brief get the value of the object field.
@@ -913,7 +946,7 @@ public:
      *
      * @throws std::runtime_error If any pointer path is invalid.
      */
-    std::optional<std::vector<std::tuple<std::string, Json>>> getObject(std::string_view path = "") const;
+    std::optional<std::vector<std::tuple<std::string, Json>>> getObject(const PointerPath& path = ROOT_PP) const;
 
     /**
      * @brief Extract all top-level members of this JSON object by swapping (zero-copy).
@@ -949,7 +982,7 @@ public:
      *
      * @throws std::runtime_error If the pointer path is invalid.
      */
-    std::optional<std::vector<std::string>> getFields(std::string_view path) const;
+    std::optional<std::vector<std::string>> getFields(const PointerPath& path) const;
 
     /**
      * @brief Get Json prettyfied string.
@@ -972,7 +1005,7 @@ public:
      * @return std::string The Json string or nothing if the path not found.
      * @throws std::runtime_error If the path is invalid.
      */
-    std::optional<std::string> str(std::string_view path) const;
+    std::optional<std::string> str(const PointerPath& path) const;
 
     /**
      * @brief Get a copy of the Json object or nothing if the path not found.
@@ -985,7 +1018,7 @@ public:
      * @return std::optional<Json> The Json object if it exists, std::nullopt otherwise.
      * @throw std::runtime_error If path is invalid.
      */
-    std::optional<Json> getJson(std::string_view path = "") const;
+    std::optional<Json> getJson(const PointerPath& path = ROOT_PP) const;
 
     /**
      * @brief Stream insertion operator for Json.
@@ -1008,7 +1041,7 @@ public:
      *
      * @throws std::runtime_error If the Json is not an array or object.
      */
-    size_t size(std::string_view path = "") const;
+    size_t size(const PointerPath& path = ROOT_PP) const;
 
     /**
      * @brief Check if the Json described by the path is Null.
@@ -1022,7 +1055,7 @@ public:
      *
      * @throws std::runtime_error If path is invalid or cannot be found.
      */
-    bool isNull(std::string_view path = "") const;
+    bool isNull(const PointerPath& path = ROOT_PP) const;
 
     /**
      * @brief Check if the Json described by the path is Bool.
@@ -1036,7 +1069,7 @@ public:
      *
      * @throws std::runtime_error If path is invalid or cannot be found.
      */
-    bool isBool(std::string_view path = "") const;
+    bool isBool(const PointerPath& path = ROOT_PP) const;
 
     /**
      * @brief Check if the Json described by the path is Number.
@@ -1050,7 +1083,7 @@ public:
      *
      * @throws std::runtime_error If path is invalid or cannot be found.
      */
-    bool isNumber(std::string_view path = "") const;
+    bool isNumber(const PointerPath& path = ROOT_PP) const;
 
     /**
      * @brief Check if the Json described by the path is integer.
@@ -1064,7 +1097,7 @@ public:
      *
      * @throws std::runtime_error If path is invalid or cannot be found.
      */
-    bool isInt(std::string_view path = "") const;
+    bool isInt(const PointerPath& path = ROOT_PP) const;
 
     /**
      * @brief Check if the Json described by the path is uint64.
@@ -1077,7 +1110,7 @@ public:
      *
      * @throws std::runtime_error If path is invalid or cannot be found.
      */
-    bool isUint64(std::string_view path = "") const;
+    bool isUint64(const PointerPath& path = ROOT_PP) const;
 
     /**
      * @brief Check if the Json described by the path is int64.
@@ -1091,7 +1124,7 @@ public:
      *
      * @throws std::runtime_error If path is invalid or cannot be found.
      */
-    bool isInt64(std::string_view path = "") const;
+    bool isInt64(const PointerPath& path = ROOT_PP) const;
 
     /**
      * @brief Check if the Json described by the path is float.
@@ -1105,7 +1138,7 @@ public:
      *
      * @throws std::runtime_error If path is invalid or cannot be found.
      */
-    bool isFloat(std::string_view path = "") const;
+    bool isFloat(const PointerPath& path = ROOT_PP) const;
 
     /**
      * @brief Check if the Json described by the path is double.
@@ -1119,7 +1152,7 @@ public:
      *
      * @throws std::runtime_error If path is invalid or cannot be found.
      */
-    bool isDouble(std::string_view path = "") const;
+    bool isDouble(const PointerPath& path = ROOT_PP) const;
 
     /**
      * @brief Check if the Json described by the path is String.
@@ -1133,7 +1166,7 @@ public:
      *
      * @throws std::runtime_error If path is invalid or cannot be found.
      */
-    bool isString(std::string_view path = "") const;
+    bool isString(const PointerPath& path = ROOT_PP) const;
 
     /**
      * @brief Check if the Json described by the path is Array.
@@ -1147,7 +1180,7 @@ public:
      *
      * @throws std::runtime_error If path is invalid or cannot be found.
      */
-    bool isArray(std::string_view path = "") const;
+    bool isArray(const PointerPath& path = ROOT_PP) const;
 
     /**
      * @brief Check if the Json described by the path is Object.
@@ -1161,7 +1194,7 @@ public:
      *
      * @throws std::runtime_error If path is invalid or cannot be found.
      */
-    bool isObject(std::string_view path = "") const;
+    bool isObject(const PointerPath& path = ROOT_PP) const;
 
     /**
      * @brief Check if the Json described by the path is empty.
@@ -1176,14 +1209,14 @@ public:
      * @return true
      * @return false
      */
-    bool isEmpty(std::string_view path = "") const;
+    bool isEmpty(const PointerPath& path = ROOT_PP) const;
 
     /**
      * @brief Get the type name of the Json.
      *
      * @return std::string The type name of the Json.
      */
-    std::string typeName(std::string_view path = "") const;
+    std::string typeName(const PointerPath& path = ROOT_PP) const;
 
     /**
      * @brief Get Type of the Json.
@@ -1195,7 +1228,7 @@ public:
      * - path is invalid or cannot be found.
      * - internal json type is not supported.
      */
-    Type type(std::string_view path = "") const;
+    Type type(const PointerPath& path = ROOT_PP) const;
 
     /**
      * @brief Validate the Json agains the schema.
@@ -1235,7 +1268,7 @@ public:
      *
      * @throws std::runtime_error If path is invalid.
      */
-    void setNull(std::string_view path = "");
+    void setNull(const PointerPath& path = ROOT_PP);
 
     /**
      * @brief Set the Boolean object at the path.
@@ -1246,7 +1279,7 @@ public:
      *
      * @throws std::runtime_error If path is invalid.
      */
-    void setBool(bool value, std::string_view path = "");
+    void setBool(bool value, const PointerPath& path = ROOT_PP);
 
     /**
      * @brief Set the Integer object at the path.
@@ -1257,7 +1290,7 @@ public:
      *
      * @throws std::runtime_error If path is invalid.
      */
-    void setInt(int value, std::string_view path = "");
+    void setInt(int value, const PointerPath& path = ROOT_PP);
 
     /**
      * @brief Set the Integer object at the path.
@@ -1268,7 +1301,7 @@ public:
      *
      * @throws std::runtime_error If path is invalid.
      */
-    void setInt64(int64_t value, std::string_view path = "");
+    void setInt64(int64_t value, const PointerPath& path = ROOT_PP);
 
     /**
      * @brief Set the Unsigned Integer object at the path.
@@ -1279,7 +1312,7 @@ public:
      *
      * @throws std::runtime_error If path is invalid.
      */
-    void setUint64(uint64_t value, std::string_view path = "");
+    void setUint64(uint64_t value, const PointerPath& path = ROOT_PP);
 
     /**
      * @brief Set the Double object at the path.
@@ -1290,7 +1323,7 @@ public:
      *
      * @throws std::runtime_error If path is invalid.
      */
-    void setDouble(double_t value, std::string_view path = "");
+    void setDouble(double_t value, const PointerPath& path = ROOT_PP);
 
     /**
      * @brief Set the Double object at the path.
@@ -1301,7 +1334,7 @@ public:
      *
      * @throws std::runtime_error If path is invalid.
      */
-    void setFloat(float_t value, std::string_view path = "");
+    void setFloat(float_t value, const PointerPath& path = ROOT_PP);
 
     /**
      * @brief Set the String object at the path.
@@ -1312,7 +1345,7 @@ public:
      *
      * @throws std::runtime_error If path is invalid.
      */
-    void setString(std::string_view value, std::string_view path = "");
+    void setString(std::string_view value, const PointerPath& path = ROOT_PP);
 
     /**
      * @brief Set the String object at the path, reading every token of the path as an object member name.
@@ -1345,7 +1378,7 @@ public:
      *
      * @throws std::runtime_error If path is invalid.
      */
-    void setArray(std::string_view path = "");
+    void setArray(const PointerPath& path = ROOT_PP);
 
     /**
      * @brief Set the Object object at the path.
@@ -1355,7 +1388,7 @@ public:
      *
      * @throws std::runtime_error If path is invalid.
      */
-    void setObject(std::string_view path = "");
+    void setObject(const PointerPath& path = ROOT_PP);
 
     /**
      * @brief Append string to the Array object at the path.
@@ -1367,7 +1400,7 @@ public:
      *
      * @throws std::runtime_error If path is invalid.
      */
-    void appendString(std::string_view value, std::string_view path = "");
+    void appendString(std::string_view value, const PointerPath& path = ROOT_PP);
 
     /**
      * @brief Append Json to the Array object at the path.
@@ -1377,7 +1410,7 @@ public:
      *
      * @throws std::runtime_error If path is invalid.
      */
-    void appendJson(const Json& value, std::string_view path = "");
+    void appendJson(const Json& value, const PointerPath& path = ROOT_PP);
 
     /**
      * @brief Erase Json object at the path.
@@ -1387,7 +1420,7 @@ public:
      *
      * @throws std::runtime_error If path is invalid.
      */
-    bool erase(std::string_view path = "");
+    bool erase(const PointerPath& path = ROOT_PP);
 
     /**
      * @brief Merge the Json Value at the path with the given Json Value.
@@ -1403,7 +1436,7 @@ public:
      * - If either Json Values are not Object or Array.
      * - If Json Values are not the same type.
      */
-    void merge(const bool isRecursive, const Json& other, std::string_view path = "");
+    void merge(const bool isRecursive, const Json& other, const PointerPath& path = ROOT_PP);
 
     /**
      * @brief Merge the Json Value at the path with the given Json Value at reference
@@ -1420,7 +1453,7 @@ public:
      * - If either Json Values are not Object or Array.
      * - If Json Values are not the same type.
      */
-    void merge(const bool isRecursive, std::string_view other, std::string_view path = "");
+    void merge(const bool isRecursive, const PointerPath& other, const PointerPath& path = ROOT_PP);
 
     /**
      * @brief Erases all the members of the JSON object that satisfy the given condition in the given Key (No the full

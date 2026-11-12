@@ -204,9 +204,12 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
 
     // Precompute values to capture explicitly
     const auto isTestMode = buildCtx->isTestMode();
-    const auto targetJsonPath = targetField.jsonPath();
+    const json::PointerPath targetJsonPath {targetField.jsonPath()};
     const auto targetDotPath = targetField.dotPath();
     const auto allowedFieldsPtr = buildCtx->allowedFieldsPtr();
+    const std::optional<json::PointerPath> keyPP =
+        key->isReference() ? std::make_optional<json::PointerPath>(std::static_pointer_cast<Reference>(key)->jsonPath())
+                           : std::nullopt;
 
     // Literal DB key
     std::string literalKey;
@@ -215,7 +218,7 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
         && std::static_pointer_cast<const Value>(key)->sharedValue()->getString(literalKey) == json::RetGet::Success;
 
     // Return Op
-    return [key,
+    return [keyPP,
             literalKey,
             literalKeyValid,
             assetType,
@@ -239,15 +242,16 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
     {
         // Get DB key
         std::string resolvedKey;
-        if (key->isReference())
+        if (keyPP.has_value())
         {
-            const auto& keyRef = *std::static_pointer_cast<Reference>(key);
-            if (!event->exists(keyRef.jsonPath()))
+            // One lookup: getString() tells a missing key reference apart from a non-string one
+            const auto res = event->getString(resolvedKey, *keyPP);
+            if (res == json::RetGet::NotFound)
             {
                 RETURN_FAILURE(isTestMode, event, failureTrace2)
             }
 
-            if (event->getString(resolvedKey, keyRef.jsonPath()) != json::RetGet::Success)
+            if (res != json::RetGet::Success)
             {
                 RETURN_FAILURE(isTestMode, event, failureTrace3)
             }
@@ -408,18 +412,14 @@ FilterOp existanceCheck(std::shared_ptr<IKVDBManager> kvdbManager,
 
     return [=,
             isTestMode = buildCtx->isTestMode(),
-            targetField = targetField.jsonPath(),
+            targetField = json::PointerPath(targetField.jsonPath()),
             kvdbHandler = std::move(kvdbHandler)](base::ConstEvent event) -> FilterResult
     {
-        if (!event->exists(targetField))
-        {
-            RETURN_FAILURE(isTestMode, false, failureTrace1)
-        }
-
+        // One lookup: getString() tells a missing field apart from a non-string one
         std::string key;
-        if (event->getString(key, targetField) != json::RetGet::Success)
+        if (const auto res = event->getString(key, targetField); res != json::RetGet::Success)
         {
-            RETURN_FAILURE(isTestMode, false, failureTrace2)
+            RETURN_FAILURE(isTestMode, false, res == json::RetGet::NotFound ? failureTrace1 : failureTrace2)
         }
 
         const bool found = kvdbHandler->contains(key);
@@ -618,27 +618,27 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
         }
 
         // Return Op
+        const std::optional<json::PointerPath> keyArrayPP =
+            keyArray->isReference()
+                ? std::make_optional<json::PointerPath>(std::static_pointer_cast<Reference>(keyArray)->jsonPath())
+                : std::nullopt;
+
         return [=,
                 isTestMode = buildCtx->isTestMode(),
-                targetField = targetField.jsonPath(),
+                targetField = json::PointerPath(targetField.jsonPath()),
                 kvdbHandler = std::move(kvdbHandler)](base::Event event) -> TransformResult
         {
             // Resolve array of keys: literal keys are precomputed; references are extracted
             // per event as strings (no json::Json copies).
             std::vector<std::string> refKeys;
             const std::vector<std::string>* keys = &literalKeys;
-            if (keyArray->isReference())
+            if (keyArrayPP.has_value())
             {
-                const auto& keyArrayRef = *std::static_pointer_cast<Reference>(keyArray);
-                if (!event->exists(keyArrayRef.jsonPath()))
-                {
-                    RETURN_FAILURE(isTestMode, event, failureTrace1)
-                }
-
-                const auto value = event->getArray(keyArrayRef.jsonPath());
+                // One lookup: getArray() is empty for a missing reference and for a non-array alike
+                const auto value = event->getArray(*keyArrayPP);
                 if (!value)
                 {
-                    RETURN_FAILURE(isTestMode, event, failureTrace2)
+                    RETURN_FAILURE(isTestMode, event, event->exists(*keyArrayPP) ? failureTrace2 : failureTrace1)
                 }
 
                 refKeys.reserve(value.value().size());
@@ -908,18 +908,15 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
         fmt::format("{} -> Reference '{}' values is out of range 0-0xFFFFFFFFFFFFFFFF", name, maskRef.dotPath());
 
     // Function that retrieves the mask from the event
-    auto getMaskFn = [maskRef = maskRef.jsonPath(), failureTrace1, failureTrace2, failureTrace3, failureTrace4](
-                         const base::Event& event) -> base::RespOrError<uint64_t>
+    auto getMaskFn =
+        [maskRef = json::PointerPath(maskRef.jsonPath()), failureTrace1, failureTrace2, failureTrace3, failureTrace4](
+            const base::Event& event) -> base::RespOrError<uint64_t>
     {
-        if (!event->exists(maskRef))
-        {
-            return base::Error {failureTrace1};
-        }
-
+        // One lookup: getString() tells a missing reference apart from a non-string one
         std::string maskStr;
-        if (event->getString(maskStr, maskRef) != json::RetGet::Success)
+        if (const auto res = event->getString(maskStr, maskRef); res != json::RetGet::Success)
         {
-            return base::Error {failureTrace2};
+            return base::Error {res == json::RetGet::NotFound ? failureTrace1 : failureTrace2};
         }
 
         try
@@ -938,7 +935,7 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
     };
 
     // Return Op
-    return [=, isTestMode = buildCtx->isTestMode(), targetField = targetField.jsonPath()](
+    return [=, isTestMode = buildCtx->isTestMode(), targetField = json::PointerPath(targetField.jsonPath())](
                base::Event event) -> TransformResult
     {
         // Get mask in hex

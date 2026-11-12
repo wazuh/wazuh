@@ -40,6 +40,10 @@ constexpr auto TRACE_TARGET_TYPE_NOT_STRING = "[{}] -> Failure: Target field '{}
 constexpr auto TRACE_REFERENCE_NOT_FOUND = "[{}] -> Failure: Parameter '{}' reference not found";
 constexpr auto TRACE_REFERENCE_TYPE_IS_NOT = "[{}] -> Failure: Parameter '{}' type is not ";
 
+// Parsed once per process: written on every syslog facility/severity extraction
+const json::PointerPath PP_SYSLOG_CODE {"/code"};
+const json::PointerPath PP_SYSLOG_NAME {"/name"};
+
 constexpr std::array<std::string_view, 24> SYSLOG_FACILITY_NAMES = {
     "kernel", "user",   "mail",     "daemon", "auth",   "syslog",   "lpr",      "news",
     "uucp",   "cron",   "authpriv", "ftp",    "ntp",    "logaudit", "logalert", "solaris-cron",
@@ -317,9 +321,9 @@ MapOp opBuilderHelperIntTransformation(NumberOperator op,
             }
 
             getOperandFn.emplace_back(
-                [ref, failureTrace2](base::ConstEvent event) -> int64_t
+                [ref, refPP = json::PointerPath(ref->jsonPath()), failureTrace2](base::ConstEvent event) -> int64_t
                 {
-                    auto resolvedRValue {event->getIntAsInt64(ref->jsonPath())};
+                    auto resolvedRValue {event->getIntAsInt64(refPP)};
                     if (!resolvedRValue.has_value())
                     {
                         throw std::runtime_error(failureTrace2 + ref->dotPath());
@@ -509,14 +513,14 @@ MapOp opBuilderHelperFloatTransformation(NumberOperator op,
             }
 
             getOperandFn.emplace_back(
-                [ref, failureTrace2](base::ConstEvent event) -> double
+                [ref, refPP = json::PointerPath(ref->jsonPath()), failureTrace2](base::ConstEvent event) -> double
                 {
-                    if (const auto opNum = event->getIntAsInt64(ref->jsonPath()); opNum.has_value())
+                    if (const auto opNum = event->getIntAsInt64(refPP); opNum.has_value())
                     {
                         return static_cast<double>(opNum.value());
                     }
 
-                    if (const auto opNum = event->getDouble(ref->jsonPath()); opNum.has_value())
+                    if (const auto opNum = event->getDouble(refPP); opNum.has_value())
                     {
                         return opNum.value();
                     }
@@ -697,7 +701,7 @@ TransformOp opBuilderHelperStringTrim(const Reference& targetField,
     // Return Op
     return [=,
             isTestMode = buildCtx->isTestMode(),
-            targetField = targetField.jsonPath(),
+            targetField = json::PointerPath(targetField.jsonPath()),
             targetFieldPP = json::PointerPath(targetField.jsonPath())](base::Event event) -> TransformResult
     {
         // Get field value
@@ -793,10 +797,14 @@ MapOp opBuilderHelperToInt(const std::vector<OpArg>& opArgs, const std::shared_p
     const std::string failureTrace1 {fmt::format(TRACE_REFERENCE_NOT_FOUND, name, ref->dotPath())};
     const std::string failureTrace2 {fmt::format("{} -> Reference '{}' is not a number", name, ref->dotPath())};
 
-    return [failureTrace1, failureTrace2, successTrace, op, ref, isTestMode = buildCtx->isTestMode()](
-               base::ConstEvent event) -> MapResult
+    return [failureTrace1,
+            failureTrace2,
+            successTrace,
+            op,
+            refPP = json::PointerPath(ref->jsonPath()),
+            isTestMode = buildCtx->isTestMode()](base::ConstEvent event) -> MapResult
     {
-        auto object = event->getJson(ref->jsonPath());
+        auto object = event->getJson(refPP);
         if (!object.has_value())
         {
             RETURN_FAILURE(isTestMode, json::Json {}, failureTrace1);
@@ -857,15 +865,17 @@ MapOp opBuilderHelperToBool(const std::vector<OpArg>& opArgs, const std::shared_
     const std::string failureTrace1 {fmt::format(TRACE_REFERENCE_NOT_FOUND, name, ref->dotPath())};
     const std::string failureTrace2 {fmt::format("{} -> Reference '{}' is not a number", name, ref->dotPath())};
 
-    return [failureTrace1, failureTrace2, successTrace, ref, isTestMode = buildCtx->isTestMode()](
-               base::ConstEvent event) -> MapResult
+    return [failureTrace1,
+            failureTrace2,
+            successTrace,
+            path = json::PointerPath(ref->jsonPath()),
+            isTestMode = buildCtx->isTestMode()](base::ConstEvent event) -> MapResult
     {
-        const auto path = ref->jsonPath();
         const auto numOpt = event->getNumberAsDouble(path);
 
         if (!numOpt.has_value())
         {
-            if (!event->getJson(path).has_value())
+            if (!event->exists(path))
             {
                 RETURN_FAILURE(isTestMode, json::Json {}, failureTrace1);
             }
@@ -927,18 +937,29 @@ MapBuilder opBuilderHelperStringConcat(bool atleastOne)
         const std::string failureTrace1 {fmt::format("{} -> Failure: ", name)};
         const std::string failureTrace2 {fmt::format("{} -> Failure: ", name)};
 
+        // Reference pointers, parsed once here instead of on every event (same index as opArgs)
+        std::vector<std::optional<json::PointerPath>> refPaths;
+        refPaths.reserve(opArgs.size());
+        for (const auto& arg : opArgs)
+        {
+            refPaths.emplace_back(arg->isReference() ? std::make_optional<json::PointerPath>(
+                                                           std::static_pointer_cast<Reference>(arg)->jsonPath())
+                                                     : std::nullopt);
+        }
+
         // Return Op
         return [=, isTestMode = buildCtx->isTestMode()](base::ConstEvent event) -> MapResult
         {
             std::string result {};
 
-            for (const auto& arg : opArgs)
+            for (size_t argIdx = 0; argIdx < opArgs.size(); ++argIdx)
             {
+                const auto& arg = opArgs[argIdx];
                 if (arg->isReference())
                 {
                     // Check path exists
                     std::string resolvedField {};
-                    const auto& ref = std::static_pointer_cast<Reference>(arg)->jsonPath();
+                    const auto& ref = *refPaths[argIdx];
 
                     auto isExist = event->exists(ref);
 
@@ -1047,8 +1068,8 @@ MapOp opBuilderHelperStringFromArray(const std::vector<OpArg>& opArgs, const std
     const std::string failureTrace3 {fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, "array", traceName, arrayRef.dotPath())};
 
     // Return Op
-    return
-        [=, isTestMode = buildCtx->isTestMode(), arrayName = arrayRef.jsonPath()](base::ConstEvent event) -> MapResult
+    return [=, isTestMode = buildCtx->isTestMode(), arrayName = json::PointerPath(arrayRef.jsonPath())](
+               base::ConstEvent event) -> MapResult
     {
         // Check if reference exists
         if (!event->exists(arrayName))
@@ -1178,7 +1199,7 @@ MapOp opBuilderHelperStringFromHexa(const std::vector<OpArg>& opArgs, const std:
     // Return Op
     return [=,
             isTestMode = buildCtx->isTestMode(),
-            sourceField = hexRef.jsonPath(),
+            sourceField = json::PointerPath(hexRef.jsonPath()),
             sourceFieldPP = json::PointerPath(hexRef.jsonPath())](base::ConstEvent event) -> MapResult
     {
         std::string_view strHex;
@@ -1276,7 +1297,7 @@ MapOp opBuilderHelperHexToNumber(const std::vector<OpArg>& opArgs, const std::sh
     // Return Op
     return [=,
             isTestMode = buildCtx->isTestMode(),
-            sourceField = hexRef.jsonPath(),
+            sourceField = json::PointerPath(hexRef.jsonPath()),
             sourceFieldPP = json::PointerPath(hexRef.jsonPath())](base::ConstEvent event) -> MapResult
     {
         std::string refStrHEX;
@@ -1379,7 +1400,7 @@ MapOp opBuilderHelperIanaProtocolNumberToName(const std::vector<OpArg>& opArgs,
     const std::string failureNotIntegerOrRange {
         fmt::format("{} -> Protocol number must be an integer in [0,255]", name)};
 
-    const auto sourcePath = ref.jsonPath();
+    const json::PointerPath sourcePath(ref.jsonPath());
 
     return [sourcePath,
             name,
@@ -1567,14 +1588,15 @@ MapOp opBuilderHelperArrayObjToMapkv(const std::vector<OpArg>& opArgs, const std
 
     return [normalizeStr,
             keyNamePP = json::PointerPath(keyName),
-            fieldValue,
+            fieldIsRoot = (fieldValue == "/"),
+            fieldValuePP = json::PointerPath(fieldValue),
             skipSerializer,
             traceName,
             successTrace,
             failureArrNotFound,
             failureTrace,
             isTestMode = buildCtx->isTestMode(),
-            arrayPath = arrayRef.jsonPath()](base::ConstEvent event) -> MapResult
+            arrayPath = json::PointerPath(arrayRef.jsonPath())](base::ConstEvent event) -> MapResult
     {
         const auto arrayOpt = event->getArray(arrayPath);
         if (!arrayOpt.has_value())
@@ -1602,7 +1624,7 @@ MapOp opBuilderHelperArrayObjToMapkv(const std::vector<OpArg>& opArgs, const std
                     continue;
                 }
 
-                const auto valueOpt = fieldValue == "/" ? element.getJson() : element.getJson(fieldValue);
+                const auto valueOpt = fieldIsRoot ? element.getJson() : element.getJson(fieldValuePP);
                 if (!valueOpt.has_value())
                 {
                     continue;
@@ -1614,7 +1636,8 @@ MapOp opBuilderHelperArrayObjToMapkv(const std::vector<OpArg>& opArgs, const std
                     continue;
                 }
 
-                const std::string basePath = json::Json::formatJsonPath(normalizedKey, /*skipDot=*/true);
+                // Dynamic: the key comes from the event
+                const json::PointerPath basePath {json::Json::formatJsonPath(normalizedKey, /*skipDot=*/true)};
 
                 result.set(basePath, valueOpt.value());
                 ++inserts;
@@ -1781,13 +1804,15 @@ MapOp opBuilderHelperArrayExtractKeyObj(const std::vector<OpArg>& opArgs,
             keyNamePP = json::PointerPath(keyName),
             newValuePath,
             oldValuePath,
+            newValuePP = json::PointerPath(newValuePath),
+            oldValuePP = json::PointerPath(oldValuePath),
             skipSerializer,
             traceName,
             successTrace,
             failureArrNotFound,
             failureTrace,
             isTestMode = buildCtx->isTestMode(),
-            arrayPath = arrayRef.jsonPath()](base::ConstEvent event) -> MapResult
+            arrayPath = json::PointerPath(arrayRef.jsonPath())](base::ConstEvent event) -> MapResult
     {
         const auto arrayOpt = event->getArray(arrayPath);
         if (!arrayOpt.has_value())
@@ -1815,13 +1840,13 @@ MapOp opBuilderHelperArrayExtractKeyObj(const std::vector<OpArg>& opArgs,
                     continue;
                 }
 
-                const auto newValueOpt = newValuePath == "/" ? element.getJson() : element.getJson(newValuePath);
+                const auto newValueOpt = newValuePath == "/" ? element.getJson() : element.getJson(newValuePP);
                 if (!newValueOpt.has_value())
                 {
                     continue;
                 }
 
-                const auto oldValueOpt = oldValuePath == "/" ? element.getJson() : element.getJson(oldValuePath);
+                const auto oldValueOpt = oldValuePath == "/" ? element.getJson() : element.getJson(oldValuePP);
 
                 const std::string normalizedKey = skipSerializer ? keyStr : normalizeStr(std::string_view {keyStr});
                 if (normalizedKey.empty())
@@ -1829,17 +1854,18 @@ MapOp opBuilderHelperArrayExtractKeyObj(const std::vector<OpArg>& opArgs,
                     continue;
                 }
 
+                // Dynamic: the key comes from the event
                 const std::string basePath = json::Json::formatJsonPath(normalizedKey, /*skipDot=*/true);
 
                 const auto setValue = [&](std::string_view relPath, const json::Json& value)
                 {
                     if (relPath == "/")
                     {
-                        result.set(basePath, value);
+                        result.set(json::PointerPath(basePath), value);
                     }
                     else
                     {
-                        result.set(fmt::format("{}{}", basePath, relPath), value);
+                        result.set(json::PointerPath(fmt::format("{}{}", basePath, relPath)), value);
                     }
                 };
 
@@ -1934,7 +1960,7 @@ TransformOp opBuilderHelperStringReplace(const Reference& targetField,
     // Return Op
     return [=,
             isTestMode = buildCtx->isTestMode(),
-            targetField = targetField.jsonPath(),
+            targetField = json::PointerPath(targetField.jsonPath()),
             targetFieldPP = json::PointerPath(targetField.jsonPath())](base::Event event) -> TransformResult
     {
         if (!event->exists(targetField))
@@ -1985,9 +2011,9 @@ MapOp opBuilderHelperNumberToString(const std::vector<OpArg>& opArgs, const std:
 
     // Function that implements the helper
     return [successTrace,
-            failureTrace2,
-            failureTrace3,
-            reference = reference->jsonPath(),
+            notFoundTrace = failureTrace2 + reference->jsonPath(),
+            notNumberTrace = failureTrace3 + reference->jsonPath(),
+            reference = json::PointerPath(reference->jsonPath()),
             isTestMode = buildCtx->isTestMode()](base::ConstEvent event) -> MapResult
     {
         std::string valueConverted;
@@ -2005,9 +2031,7 @@ MapOp opBuilderHelperNumberToString(const std::vector<OpArg>& opArgs, const std:
         }
         else
         {
-            RETURN_FAILURE(isTestMode,
-                           json::Json(),
-                           (!event->exists(reference)) ? (failureTrace2 + reference) : (failureTrace3 + reference));
+            RETURN_FAILURE(isTestMode, json::Json(), (!event->exists(reference)) ? notFoundTrace : notNumberTrace);
         }
 
         json::Json result;
@@ -2110,7 +2134,7 @@ MapOp opBuilderHelperRegexExtract(const std::vector<OpArg>& opArgs, const std::s
     // Return Op
     return [=,
             isTestMode = buildCtx->isTestMode(),
-            refField = refField.jsonPath(),
+            refField = json::PointerPath(refField.jsonPath()),
             refFieldPP = json::PointerPath(refField.jsonPath())](base::ConstEvent event) -> MapResult
     {
         if (!event->exists(refField))
@@ -2262,10 +2286,10 @@ TransformOp opBuilderHelperMergeRecursively(const Reference& targetField,
     // Return Op
     return [=,
             isTestMode = buildCtx->isTestMode(),
-            targetField = targetField.jsonPath(),
+            targetField = json::PointerPath(targetField.jsonPath()),
             targetFieldDotPath = targetField.dotPath(),
             allowedFields = buildCtx->allowedFieldsPtr(),
-            fieldReference = refField.jsonPath()](base::Event event) -> TransformResult
+            fieldReference = json::PointerPath(refField.jsonPath())](base::Event event) -> TransformResult
     {
         // Check target and reference field exists
         if (!event->exists(targetField))
@@ -2408,7 +2432,7 @@ TransformOp opBuilderHelperDiscardEvents(const Reference& targetField,
         fmt::format("{} -> Success (index_discarded_events={})", name, indexDiscardedEvents);
 
     return [isTestMode = buildCtx->isTestMode(),
-            targetField = targetField.jsonPath(),
+            targetField = json::PointerPath(targetField.jsonPath()),
             indexDiscardedEvents,
             successTrace,
             name](base::Event event) -> TransformResult
@@ -2495,8 +2519,8 @@ TransformOp opBuilderHelperAppendSplitString(const Reference& targetField,
     // Return Op
     return [=,
             isTestMode = buildCtx->isTestMode(),
-            targetField = targetField.jsonPath(),
-            fieldReference = ref.jsonPath(),
+            targetField = json::PointerPath(targetField.jsonPath()),
+            fieldReference = json::PointerPath(ref.jsonPath()),
             fieldReferencePP = json::PointerPath(ref.jsonPath()),
             separator = separator[0]](base::Event event) -> TransformResult
     {
@@ -2553,10 +2577,10 @@ TransformOp opBuilderHelperMerge(const Reference& targetField,
     // Return Op
     return [=,
             isTestMode = buildCtx->isTestMode(),
-            targetField = targetField.jsonPath(),
+            targetField = json::PointerPath(targetField.jsonPath()),
             targetFieldDotPath = targetField.dotPath(),
             allowedFields = buildCtx->allowedFieldsPtr(),
-            fieldReference = refField.jsonPath()](base::Event event) -> TransformResult
+            fieldReference = json::PointerPath(refField.jsonPath())](base::Event event) -> TransformResult
     {
         // Check target and reference field exists
         if (!event->exists(targetField))
@@ -2630,7 +2654,7 @@ TransformOp opBuilderHelperDeleteField(const Reference& targetField,
         fmt::format("[{}] -> Failure: Target field '{}' could not be erased", name, targetField.dotPath())};
 
     // Return Op
-    return [=, isTestMode = buildCtx->isTestMode(), targetField = targetField.jsonPath()](
+    return [=, isTestMode = buildCtx->isTestMode(), targetField = json::PointerPath(targetField.jsonPath())](
                base::Event event) -> TransformResult
     {
         bool result {false};
@@ -2674,24 +2698,21 @@ TransformOp opBuilderHelperDeleteFieldsWithValue(const Reference& targetField,
     const auto failureTrace2 = fmt::format("[{}] -> Failure: ", name);
 
     const auto isTestMode = buildCtx->isTestMode();
-    const auto tgtPath = targetField.jsonPath();
+    const json::PointerPath tgtPath {targetField.jsonPath()};
 
     // Literal comparison value: share the Value's compact document
     const std::shared_ptr<const json::Json> capturedVal =
         argIsValue ? std::static_pointer_cast<Value>(opArgs[0])->sharedValue() : nullptr;
 
-    const std::optional<std::string> refPath =
-        (!argIsValue) ? std::optional<std::string>(std::static_pointer_cast<Reference>(opArgs[0])->jsonPath())
-                      : std::nullopt;
+    const std::optional<json::PointerPath> refPath =
+        (!argIsValue)
+            ? std::make_optional<json::PointerPath>(std::static_pointer_cast<Reference>(opArgs[0])->jsonPath())
+            : std::nullopt;
 
     return [isTestMode, tgtPath, successTrace, failureTrace1, failureTrace2, capturedVal, refPath](
                base::Event event) -> TransformResult
     {
-        if (!event->isObject(tgtPath))
-        {
-            RETURN_FAILURE(isTestMode, event, failureTrace1);
-        }
-
+        // One lookup: getFields() is empty for a missing field and for a non-object alike
         auto fieldsOpt = event->getFields(tgtPath);
         if (!fieldsOpt)
         {
@@ -2719,12 +2740,11 @@ TransformOp opBuilderHelperDeleteFieldsWithValue(const Reference& targetField,
 
         const auto& fields = *fieldsOpt;
 
-        std::string childPath;
-
         for (const auto& k : fields)
         {
-            childPath.assign(tgtPath);
-            childPath.append(json::Json::formatJsonPath(k, true));
+            // The child pointer appends the key as one raw token: nothing is parsed
+            const json::PointerPath childPath {tgtPath.getPointer().Append(
+                k.data(), static_cast<rapidjson::SizeType>(k.size()), &json::baseAllocator())};
 
             try
             {
@@ -2794,8 +2814,8 @@ TransformOp opBuilderHelperRenameField(const Reference& targetField,
 
     return [=,
             isTestMode = buildCtx->isTestMode(),
-            targetField = targetField.jsonPath(),
-            sourceField = srcField.jsonPath()](base::Event event) -> TransformResult
+            targetField = json::PointerPath(targetField.jsonPath()),
+            sourceField = json::PointerPath(srcField.jsonPath())](base::Event event) -> TransformResult
     {
         if (event->exists(targetField))
         {
@@ -2864,7 +2884,7 @@ MapOp opBuilderHelperIPVersionFromIPStr(const std::vector<OpArg>& opArgs,
     // Return Op
     return [=,
             isTestMode = buildCtx->isTestMode(),
-            ipStrPath = ipRef.jsonPath(),
+            ipStrPath = json::PointerPath(ipRef.jsonPath()),
             ipStrPathPP = json::PointerPath(ipRef.jsonPath())](base::ConstEvent event) -> MapResult
     {
         std::string strIP;
@@ -2947,8 +2967,11 @@ MapOp opBuilderHelperNetworkCommunityId(const std::vector<OpArg>& opArgs,
     const std::string dportRefPath = dportRef.jsonPath();
     const json::PointerPath saddrRefPathPP(saddrRefPath);
     const json::PointerPath daddrRefPathPP(daddrRefPath);
+    const json::PointerPath sportRefPathPP(sportRefPath);
+    const json::PointerPath dportRefPathPP(dportRefPath);
 
     std::string protoRefPath;
+    std::optional<json::PointerPath> protoRefPathPP;
     std::optional<uint8_t> protoLiteral {};
 
     if (opArgs[4]->isReference())
@@ -2959,6 +2982,7 @@ MapOp opBuilderHelperNetworkCommunityId(const std::vector<OpArg>& opArgs,
             ensureNumericRef(ref);
         }
         protoRefPath = ref.jsonPath();
+        protoRefPathPP.emplace(protoRefPath);
     }
     else
     {
@@ -3022,7 +3046,7 @@ MapOp opBuilderHelperNetworkCommunityId(const std::vector<OpArg>& opArgs,
         }
         else
         {
-            const auto opt64 = event->getIntAsInt64(protoRefPath);
+            const auto opt64 = event->getIntAsInt64(*protoRefPathPP);
             if (!opt64)
             {
                 RETURN_FAILURE(isTestMode, json::Json {}, missingTrace(protoRefPath));
@@ -3040,22 +3064,22 @@ MapOp opBuilderHelperNetworkCommunityId(const std::vector<OpArg>& opArgs,
         int64_t sport = 0;
         int64_t dport = 0;
 
-        if (const auto sportOpt = event->getIntAsInt64(sportRefPath))
+        if (const auto sportOpt = event->getIntAsInt64(sportRefPathPP))
         {
             sport = sportOpt.value();
         }
         // If the field exists but has an invalid value (cannot be parsed as int) we return an error.
-        else if (event->exists(sportRef.jsonPath()))
+        else if (event->exists(sportRefPathPP))
         {
             RETURN_FAILURE(isTestMode, json::Json {}, numberTrace(sportRefPath));
         }
 
-        if (const auto dportOpt = event->getIntAsInt64(dportRefPath))
+        if (const auto dportOpt = event->getIntAsInt64(dportRefPathPP))
         {
             dport = dportOpt.value();
         }
         // If the field exists but has an invalid value (cannot be parsed as int) we return an error.
-        else if (event->exists(dportRef.jsonPath()))
+        else if (event->exists(dportRefPathPP))
         {
             RETURN_FAILURE(isTestMode, json::Json {}, numberTrace(dportRefPath));
         }
@@ -3105,7 +3129,7 @@ MapOp opBuilderHelperSyslogExtractFacility(const std::vector<OpArg>& opArgs,
     return [successTrace,
             failureNotFound,
             failureOutOfRange,
-            priorityPath = priorityRef.jsonPath(),
+            priorityPath = json::PointerPath(priorityRef.jsonPath()),
             isTestMode = buildCtx->isTestMode()](base::ConstEvent event) -> MapResult
     {
         const auto syslogObj = event->getIntAsInt64(priorityPath);
@@ -3127,8 +3151,8 @@ MapOp opBuilderHelperSyslogExtractFacility(const std::vector<OpArg>& opArgs,
                 : fmt::format("unknown({})", facilityCode);
 
         json::Json result;
-        result.setInt64(facilityCode, "/code");
-        result.setString(facilityName, "/name");
+        result.setInt64(facilityCode, PP_SYSLOG_CODE);
+        result.setString(facilityName, PP_SYSLOG_NAME);
         RETURN_SUCCESS(isTestMode, result, successTrace);
     };
 }
@@ -3164,7 +3188,7 @@ MapOp opBuilderHelperSyslogExtractSeverity(const std::vector<OpArg>& opArgs,
     return [successTrace,
             failureNotFound,
             failureOutOfRange,
-            priorityPath = priorityRef.jsonPath(),
+            priorityPath = json::PointerPath(priorityRef.jsonPath()),
             isTestMode = buildCtx->isTestMode()](base::ConstEvent event) -> MapResult
     {
         const auto syslogObj = event->getIntAsInt64(priorityPath);
@@ -3185,8 +3209,8 @@ MapOp opBuilderHelperSyslogExtractSeverity(const std::vector<OpArg>& opArgs,
                 : fmt::format("unknown({})", severityCode);
 
         json::Json result;
-        result.setInt64(severityCode, "/code");
-        result.setString(severityName, "/name");
+        result.setInt64(severityCode, PP_SYSLOG_CODE);
+        result.setString(severityName, PP_SYSLOG_NAME);
         RETURN_SUCCESS(isTestMode, result, successTrace);
     };
 }
@@ -3256,7 +3280,8 @@ MapOp opBuilderHelperDateFromEpochTime(const std::vector<OpArg>& opArgs,
     const auto failureTrace4 = fmt::format("{} -> Epoch number is too large", name);
 
     // Return Op
-    return [=, isTestMode = buildCtx->isTestMode(), refPath = epochRef.jsonPath()](base::ConstEvent event) -> MapResult
+    return [=, isTestMode = buildCtx->isTestMode(), refPath = json::PointerPath(epochRef.jsonPath())](
+               base::ConstEvent event) -> MapResult
     {
         // Check if reference exists
         if (!event->exists(refPath))
@@ -3490,7 +3515,7 @@ MapOp opBuilderHelperHashSHA1(const std::vector<OpArg>& opArgs, const std::share
     // Return Op
     return [=,
             isTestMode = buildCtx->isTestMode(),
-            refPath = ref.jsonPath(),
+            refPath = json::PointerPath(ref.jsonPath()),
             refPathPP = json::PointerPath(ref.jsonPath())](base::ConstEvent event) -> MapResult
     {
         std::string str;
@@ -3613,11 +3638,13 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
     // Return Op
     return [=,
             isTestMode = buildCtx->isTestMode(),
-            targetField = targetField.jsonPath(),
+            targetField = json::PointerPath(targetField.jsonPath()),
             targetFieldDotPath = targetField.dotPath(),
             allowedFields = buildCtx->allowedFieldsPtr(),
             parameter = opArgs[0],
-            key = keyRef.jsonPath(),
+            objectRefPP = opArgs[0]->isReference() ? std::make_optional<json::PointerPath>(
+                                                         std::static_pointer_cast<Reference>(opArgs[0])->jsonPath())
+                                                   : std::nullopt,
             keyPP = json::PointerPath(keyRef.jsonPath())](base::Event event) -> TransformResult
     {
         std::string resolvedKey;
@@ -3626,23 +3653,21 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
             RETURN_FAILURE(isTestMode, event, ret == json::RetGet::NotFound ? failureTrace1 : failureTrace2);
         }
 
-        auto pointerPath = json::Json::formatJsonPath(resolvedKey);
+        // Dynamic: the key comes from the event
+        const auto pointerPath = json::Json::formatJsonPath(resolvedKey);
 
         // Get object: the shared literal, or a per-event snapshot of the reference.
         const json::Json* resolvedObject = valueObject.get();
         std::optional<json::Json> refObject;
 
-        if (parameter->isReference())
+        if (objectRefPP.has_value())
         {
-            // Parameter is a reference
-            const auto& ref = *std::static_pointer_cast<Reference>(parameter);
-
-            // Get reference object
-            if (!event->exists(ref.jsonPath()))
+            // One lookup: getJson() is empty only when the reference object is missing
+            refObject = event->getJson(*objectRefPP);
+            if (!refObject.has_value())
             {
                 RETURN_FAILURE(isTestMode, event, failureTrace3);
             }
-            refObject = event->getJson(ref.jsonPath());
             if (!refObject.value().isObject())
             {
                 RETURN_FAILURE(isTestMode, event, failureTrace4);
@@ -3655,7 +3680,7 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
 
         try
         {
-            resolvedValue = resolvedObject->getJson(pointerPath);
+            resolvedValue = resolvedObject->getJson(json::PointerPath(pointerPath));
         }
         catch (const std::exception& e)
         {

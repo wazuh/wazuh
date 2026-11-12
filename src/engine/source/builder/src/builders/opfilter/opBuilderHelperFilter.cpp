@@ -66,7 +66,7 @@ FilterOp getIntCmpFunction(const std::string& targetField,
                            const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     // Depending on rValue type we store the reference or the integer value
-    std::variant<std::string, int64_t> rValue {};
+    std::variant<json::PointerPath, int64_t> rValue {std::in_place_type<int64_t>};
 
     if (rightParameter->isValue())
     {
@@ -92,7 +92,7 @@ FilterOp getIntCmpFunction(const std::string& targetField,
                             ref->dotPath(),
                             schemf::typeToStr(buildCtx->validator().getType(ref->dotPath()))));
         }
-        rValue = std::static_pointer_cast<Reference>(rightParameter)->jsonPath();
+        rValue.emplace<json::PointerPath>(std::static_pointer_cast<Reference>(rightParameter)->jsonPath());
     }
 
     // Depending on the operator we return the correct function
@@ -147,22 +147,23 @@ FilterOp getIntCmpFunction(const std::string& targetField,
     const std::string failureTrace3 {fmt::format("[{}] -> Failure: Comparison is false", name)};
 
     // Function that implements the helper
-    return [=, isTestMode = buildCtx->isTestMode()](base::ConstEvent event) -> FilterResult
+    return [=, isTestMode = buildCtx->isTestMode(), targetFieldPP = json::PointerPath(targetField)](
+               base::ConstEvent event) -> FilterResult
     {
         // We assert that references exists, checking if the optional from Json getter is
         // empty ot not. Then if is a reference we get the value from the event, otherwise
         // we get the value from the parameter
 
-        auto lValue = event->getIntAsInt64(targetField);
+        auto lValue = event->getIntAsInt64(targetFieldPP);
         if (!lValue.has_value())
         {
             RETURN_FAILURE(isTestMode, false, failureTrace1);
         }
 
         int64_t resolvedValue {0};
-        if (std::holds_alternative<std::string>(rValue))
+        if (std::holds_alternative<json::PointerPath>(rValue))
         {
-            auto resolvedRValue = event->getIntAsInt64(std::get<std::string>(rValue));
+            auto resolvedRValue = event->getIntAsInt64(std::get<json::PointerPath>(rValue));
             if (!resolvedRValue.has_value())
             {
                 RETURN_FAILURE(isTestMode, false, failureTrace2);
@@ -203,7 +204,7 @@ FilterOp getNumberCmpFunction(const std::string& targetField,
                               const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     // Depending on rValue type we store the reference or the integer value
-    std::variant<std::string, double> rValue {};
+    std::variant<json::PointerPath, double> rValue {std::in_place_type<double>};
 
     if (rightParameter->isValue())
     {
@@ -229,7 +230,7 @@ FilterOp getNumberCmpFunction(const std::string& targetField,
                             ref->dotPath(),
                             json::Json::typeToStr(buildCtx->validator().getJsonType(ref->dotPath()))));
         }
-        rValue = std::static_pointer_cast<Reference>(rightParameter)->jsonPath();
+        rValue.emplace<json::PointerPath>(std::static_pointer_cast<Reference>(rightParameter)->jsonPath());
     }
 
     // Depending on the operator we return the correct function
@@ -284,22 +285,23 @@ FilterOp getNumberCmpFunction(const std::string& targetField,
     const std::string failureTrace3 {fmt::format("[{}] -> Failure: Comparison is false", name)};
 
     // Function that implements the helper
-    return [=, isTestMode = buildCtx->isTestMode()](base::ConstEvent event) -> FilterResult
+    return [=, isTestMode = buildCtx->isTestMode(), targetFieldPP = json::PointerPath(targetField)](
+               base::ConstEvent event) -> FilterResult
     {
         // We assert that references exists, checking if the optional from Json getter is
         // empty ot not. Then if is a reference we get the value from the event, otherwise
         // we get the value from the parameter
 
-        auto lValue = event->getNumberAsDouble(targetField);
+        auto lValue = event->getNumberAsDouble(targetFieldPP);
         if (!lValue.has_value())
         {
             RETURN_FAILURE(isTestMode, false, failureTrace1);
         }
 
         double resolvedValue {0.0};
-        if (std::holds_alternative<std::string>(rValue))
+        if (std::holds_alternative<json::PointerPath>(rValue))
         {
-            auto resolvedRValue = event->getNumberAsDouble(std::get<std::string>(rValue));
+            auto resolvedRValue = event->getNumberAsDouble(std::get<json::PointerPath>(rValue));
             if (!resolvedRValue.has_value())
             {
                 RETURN_FAILURE(isTestMode, false, failureTrace2);
@@ -1126,8 +1128,8 @@ FilterOp opBuilderHelperArrayPresence(const Reference& targetField,
     // Pre-resolve parameters at build time
     struct CmpParam
     {
-        std::string refPath;                     ///< Set when the parameter is a reference.
-        std::shared_ptr<const json::Json> value; ///< Set when the parameter is a literal value.
+        std::optional<json::PointerPath> refPath; ///< Set when the parameter is a reference (built once here).
+        std::shared_ptr<const json::Json> value;  ///< Set when the parameter is a literal value.
     };
     std::vector<CmpParam> cmpParams;
     cmpParams.reserve(opArgs.size());
@@ -1135,11 +1137,12 @@ FilterOp opBuilderHelperArrayPresence(const Reference& targetField,
     {
         if (parameter->isReference())
         {
-            cmpParams.push_back({std::static_pointer_cast<Reference>(parameter)->jsonPath(), nullptr});
+            cmpParams.push_back(
+                {json::PointerPath(std::static_pointer_cast<Reference>(parameter)->jsonPath()), nullptr});
         }
         else
         {
-            cmpParams.push_back({{}, std::static_pointer_cast<Value>(parameter)->sharedValue()});
+            cmpParams.push_back({std::nullopt, std::static_pointer_cast<Value>(parameter)->sharedValue()});
         }
     }
 
@@ -1147,17 +1150,13 @@ FilterOp opBuilderHelperArrayPresence(const Reference& targetField,
     return [=,
             cmpParams = std::move(cmpParams),
             isTestMode = buildCtx->isTestMode(),
-            targetField = targetField.jsonPath()](base::ConstEvent event) -> FilterResult
+            targetField = json::PointerPath(targetField.jsonPath())](base::ConstEvent event) -> FilterResult
     {
-        if (!event->exists(targetField))
-        {
-            RETURN_FAILURE(isTestMode, false, failureTrace1);
-        }
-
+        // One lookup: getArray() is empty for a missing field and for a non-array alike
         const auto resolvedArray {event->getArray(targetField)};
         if (!resolvedArray.has_value())
         {
-            RETURN_FAILURE(isTestMode, false, failureTrace2);
+            RETURN_FAILURE(isTestMode, false, event->exists(targetField) ? failureTrace2 : failureTrace1);
         }
 
         std::size_t matchCount {0};
@@ -1168,7 +1167,7 @@ FilterOp opBuilderHelperArrayPresence(const Reference& targetField,
             std::optional<json::Json> refValue;
             if (cmp == nullptr)
             {
-                refValue = event->getJson(param.refPath);
+                refValue = event->getJson(*param.refPath);
                 if (!refValue.has_value())
                 {
                     continue;
@@ -1261,7 +1260,7 @@ FilterOp typeMatcher(const Reference& targetField,
         fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField.dotPath());
 
     // Return Op
-    return [=, isTestMode = buildCtx->isTestMode(), targetField = targetField.jsonPath()](
+    return [=, isTestMode = buildCtx->isTestMode(), targetField = json::PointerPath(targetField.jsonPath())](
                base::ConstEvent event) -> FilterResult
     {
         FilterResult result;
@@ -1410,28 +1409,26 @@ FilterOp opBuilderHelperMatchValue(const Reference& targetField,
     const std::string failureTrace4 {fmt::format("[{}] -> Failure: Reference is not an array", name)};
     const std::string failureTrace5 {fmt::format("[{}] -> Failure", name)};
 
-    // Return op
-    return [=, isTestMode = buildCtx->isTestMode(), targetField = targetField.jsonPath(), parameter = opArgs[0]](
-               base::ConstEvent event) -> FilterResult
+    // Reference parameter: its pointer is built once here
+    std::optional<json::PointerPath> refPath;
+    if (opArgs[0]->isReference())
     {
-        if (!event->exists(targetField))
+        refPath.emplace(std::static_pointer_cast<Reference>(opArgs[0])->jsonPath());
+    }
+
+    // Return op
+    return [=,
+            isTestMode = buildCtx->isTestMode(),
+            targetField = json::PointerPath(targetField.jsonPath()),
+            parameter = opArgs[0]](base::ConstEvent event) -> FilterResult
+    {
+        // One lookup: getJson() is empty only when the field is missing
+        auto resolvedField {event->getJson(targetField)};
+        if (!resolvedField.has_value())
         {
             RETURN_FAILURE(isTestMode, false, failureTrace1);
         }
-
-        // Get value
-        json::Json cmpValue {};
-        {
-            auto resolvedField {event->getJson(targetField)};
-            if (resolvedField.has_value())
-            {
-                cmpValue = std::move(resolvedField.value());
-            }
-            else
-            {
-                RETURN_FAILURE(isTestMode, false, failureTrace2);
-            }
-        }
+        const json::Json cmpValue {std::move(resolvedField.value())};
 
         bool isSuccess {false};
         // TODO Should be a function in json::Json for search in array
@@ -1443,22 +1440,16 @@ FilterOp opBuilderHelperMatchValue(const Reference& targetField,
         };
 
         // Get array
-        if (parameter->isReference())
+        if (refPath.has_value())
         {
-            // TODO Should be 1 trace, if exist and is array, in all helers, no shearch for existance twice
-            // Parameter is a reference
-            auto refPath = std::static_pointer_cast<Reference>(parameter)->jsonPath();
-            if (!event->exists(refPath))
+            // One lookup: getArray() is empty for a missing reference and for a non-array alike
+            const auto refArray = event->getArray(*refPath);
+            if (!refArray.has_value())
             {
-                RETURN_FAILURE(isTestMode, false, failureTrace3);
+                RETURN_FAILURE(isTestMode, false, event->exists(*refPath) ? failureTrace4 : failureTrace3);
             }
 
-            if (!event->isArray(refPath))
-            {
-                RETURN_FAILURE(isTestMode, false, failureTrace4);
-            }
-
-            isSuccess = searchCmpValue(event->getArray(refPath).value());
+            isSuccess = searchCmpValue(refArray.value());
         }
         else
         {
@@ -1529,12 +1520,18 @@ FilterOp opBuilderHelperMatchKey(const Reference& targetField,
     const std::shared_ptr<const json::Json> defObject =
         opArgs[0]->isValue() ? std::static_pointer_cast<Value>(opArgs[0])->sharedValue() : nullptr;
 
+    // Reference parameter: its pointer and its path string (the prefix of the per-event key path) are built once
+    std::optional<json::PointerPath> refPP;
+    std::string refPathStr;
+    if (opArgs[0]->isReference())
+    {
+        refPathStr = std::static_pointer_cast<Reference>(opArgs[0])->jsonPath();
+        refPP.emplace(refPathStr);
+    }
+
     // Return op
-    return [=,
-            isTestMode = buildCtx->isTestMode(),
-            targetField = targetField.jsonPath(),
-            targetFieldPP = json::PointerPath(targetField.jsonPath()),
-            parameter = opArgs[0]](base::ConstEvent event) -> FilterResult
+    return [=, isTestMode = buildCtx->isTestMode(), targetFieldPP = json::PointerPath(targetField.jsonPath())](
+               base::ConstEvent event) -> FilterResult
     {
         std::string_view targetStr;
         if (auto ret = event->getString(targetStr, targetFieldPP); ret != json::RetGet::Success)
@@ -1545,25 +1542,21 @@ FilterOp opBuilderHelperMatchKey(const Reference& targetField,
         auto pointerPath = json::Json::formatJsonPath(targetStr);
         bool exists {false};
 
-        if (parameter->isReference())
+        if (refPP.has_value())
         {
-            auto refPath = std::static_pointer_cast<Reference>(parameter)->jsonPath();
-            if (!event->exists(refPath))
+            // One lookup: isObject() is false for a missing reference too
+            if (!event->isObject(*refPP))
             {
-                RETURN_FAILURE(isTestMode, false, failureTrace3);
+                RETURN_FAILURE(isTestMode, false, event->exists(*refPP) ? failureTrace5 : failureTrace3);
             }
 
-            if (!event->isObject(refPath))
-            {
-                RETURN_FAILURE(isTestMode, false, failureTrace5);
-            }
-
-            exists = event->exists(refPath + pointerPath);
+            // The key comes from the event: this path is dynamic and is parsed per event
+            exists = event->exists(json::PointerPath(refPathStr + pointerPath));
         }
         else
         {
             // Parameter is a definition
-            exists = defObject->exists(pointerPath);
+            exists = defObject->exists(json::PointerPath(pointerPath)); // dynamic: the key comes from the event
         }
 
         // Check if object contains the key
@@ -1630,6 +1623,9 @@ FilterOp opBuilderHelperEndsWith(const Reference& targetField,
             successTrace,
             isTestMode = buildCtx->isTestMode(),
             targetField = json::PointerPath(targetField.jsonPath()),
+            refPath = opArgs[0]->isReference() ? std::make_optional<json::PointerPath>(
+                                                     std::static_pointer_cast<Reference>(opArgs[0])->jsonPath())
+                                               : std::nullopt,
             parameter = opArgs[0]](base::ConstEvent event) -> FilterResult
     {
         std::string_view targetString;
@@ -1638,11 +1634,10 @@ FilterOp opBuilderHelperEndsWith(const Reference& targetField,
             RETURN_FAILURE(isTestMode, false, failureTrace1);
         }
 
-        if (parameter->isReference())
+        if (refPath.has_value())
         {
-            auto refPath = std::static_pointer_cast<Reference>(parameter)->jsonPath();
             std::string_view stringReference;
-            if (event->getString(stringReference, refPath) != json::RetGet::Success)
+            if (event->getString(stringReference, *refPath) != json::RetGet::Success)
             {
                 RETURN_FAILURE(isTestMode, false, failureTrace1);
             }
@@ -1807,7 +1802,10 @@ FilterOp opBuilderHelperKeysExistInList(const Reference& targetField,
             failureTrace4,
             successTrace,
             isTestMode = buildCtx->isTestMode(),
-            targetField = targetField.jsonPath(),
+            targetField = json::PointerPath(targetField.jsonPath()),
+            refPath = opArgs[0]->isReference() ? std::make_optional<json::PointerPath>(
+                                                     std::static_pointer_cast<Reference>(opArgs[0])->jsonPath())
+                                               : std::nullopt,
             parameter = opArgs[0],
             expectedKeys](base::ConstEvent event) -> FilterResult
     {
@@ -1818,10 +1816,9 @@ FilterOp opBuilderHelperKeysExistInList(const Reference& targetField,
         }
 
         std::unordered_set<std::string> localKeys = expectedKeys;
-        if (parameter->isReference())
+        if (refPath.has_value())
         {
-            auto refPath = std::static_pointer_cast<Reference>(parameter)->jsonPath();
-            const auto list = event->getArray(refPath);
+            const auto list = event->getArray(*refPath);
             if (!list.has_value())
             {
                 RETURN_FAILURE(isTestMode, false, failureTrace2);
@@ -1894,7 +1891,7 @@ FilterOp opBuilderHelperArrayLength(const Reference& targetField,
         fmt::format("[{}] -> Failure: Array length does not match expected length {}", name, expectedLength)};
 
     // Return Op
-    return [=, isTestMode = buildCtx->isTestMode(), targetField = targetField.jsonPath()](
+    return [=, isTestMode = buildCtx->isTestMode(), targetField = json::PointerPath(targetField.jsonPath())](
                base::ConstEvent event) -> FilterResult
     {
         if (!event->exists(targetField))

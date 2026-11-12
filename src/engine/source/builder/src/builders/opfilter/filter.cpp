@@ -23,16 +23,22 @@ FilterOp filterValue(const Reference& targetField, const Value& value, const std
         std::string_view sv;
         value.getString(sv);
         auto strValue = std::string(sv);
-        return
-            [targetField = targetField.jsonPath(), targetNotFound, valueMissmatch, successTrace, isTestMode, strValue](
-                base::ConstEvent event) -> FilterResult
+        return [targetField = json::PointerPath(targetField.jsonPath()),
+                targetNotFound,
+                valueMissmatch,
+                successTrace,
+                isTestMode,
+                strValue](base::ConstEvent event) -> FilterResult
         {
-            if (!event->exists(targetField))
+            // One lookup: it tells a missing field apart from a different (or non-string) value
+            std::string_view got;
+            const auto res = event->getString(got, targetField);
+            if (res == json::RetGet::NotFound)
             {
                 RETURN_FAILURE(isTestMode, false, targetNotFound);
             }
 
-            if (!event->equalsString(targetField, strValue))
+            if (res != json::RetGet::Success || got != strValue)
             {
                 RETURN_FAILURE(isTestMode, false, valueMissmatch);
             }
@@ -42,17 +48,17 @@ FilterOp filterValue(const Reference& targetField, const Value& value, const std
     }
 
     auto jValue = value.sharedValue();
-    return [targetField = targetField.jsonPath(), targetNotFound, valueMissmatch, successTrace, isTestMode, jValue](
-               base::ConstEvent event) -> FilterResult
+    return [targetField = json::PointerPath(targetField.jsonPath()),
+            targetNotFound,
+            valueMissmatch,
+            successTrace,
+            isTestMode,
+            jValue](base::ConstEvent event) -> FilterResult
     {
-        if (!event->exists(targetField))
-        {
-            RETURN_FAILURE(isTestMode, false, targetNotFound);
-        }
-
+        // equals() is false for a missing field too: only the test-mode trace needs to tell them apart
         if (!event->equals(targetField, *jValue))
         {
-            RETURN_FAILURE(isTestMode, false, valueMissmatch);
+            RETURN_FAILURE(isTestMode, false, event->exists(targetField) ? valueMissmatch : targetNotFound);
         }
 
         RETURN_SUCCESS(isTestMode, true, successTrace);
@@ -72,27 +78,22 @@ FilterOp filterReference(const Reference& targetField,
                                       reference.dotPath(),
                                       targetField.dotPath());
     const auto successTrace = fmt::format("{} -> Success", buildCtx->context().opName);
-    return [targetField = targetField.jsonPath(),
+    return [targetField = json::PointerPath(targetField.jsonPath()),
             successTrace,
             isTestMode = buildCtx->isTestMode(),
             referenceNotFound,
             targetNotFound,
             valueMissmatch,
-            referencePath = reference.jsonPath()](base::ConstEvent event) -> FilterResult
+            referencePath = json::PointerPath(reference.jsonPath())](base::ConstEvent event) -> FilterResult
     {
-        if (!event->exists(targetField))
-        {
-            RETURN_FAILURE(isTestMode, false, targetNotFound);
-        }
-
-        if (!event->exists(referencePath))
-        {
-            RETURN_FAILURE(isTestMode, false, referenceNotFound);
-        }
-
+        // equals() is false when either field is missing: only the test-mode trace needs to know which
         if (!event->equals(targetField, referencePath))
         {
-            RETURN_FAILURE(isTestMode, false, valueMissmatch);
+            RETURN_FAILURE(isTestMode,
+                           false,
+                           !event->exists(targetField)     ? targetNotFound
+                           : !event->exists(referencePath) ? referenceNotFound
+                                                           : valueMissmatch);
         }
 
         RETURN_SUCCESS(isTestMode, true, successTrace);

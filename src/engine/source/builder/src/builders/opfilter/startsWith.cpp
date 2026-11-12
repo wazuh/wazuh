@@ -29,7 +29,7 @@ startsWithValue(const Reference& targetField, const Value& value, const std::sha
     // Copy into an owned string to capture in the per-event operation.
     std::string valueStr(sv);
 
-    return [targetField = targetField.jsonPath(),
+    return [targetField = json::PointerPath(targetField.jsonPath()),
             valueStr = std::move(valueStr),
             isTestMode = buildCtx->isTestMode(),
             targetNotFound,
@@ -87,8 +87,8 @@ FilterOp startsWithReference(const Reference& targetField,
     const auto successTrace = fmt::format("{} -> Success", buildCtx->context().opName);
     const auto failure = fmt::format("{} -> Failure", buildCtx->context().opName);
 
-    return [targetField = targetField.jsonPath(),
-            reference = reference.jsonPath(),
+    return [targetField = json::PointerPath(targetField.jsonPath()),
+            reference = json::PointerPath(reference.jsonPath()),
             isTestMode = buildCtx->isTestMode(),
             referenceNotFound,
             referenceNotString,

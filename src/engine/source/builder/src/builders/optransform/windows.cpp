@@ -156,7 +156,7 @@ TransformBuilder getWindowsSidListDescHelperBuilder(const std::shared_ptr<kvdbMa
 
         // Return Op
         return [=,
-                targetField = targetField.jsonPath(),
+                targetField = json::PointerPath(targetField.jsonPath()),
                 sidListRef = json::PointerPath(sidListRef.jsonPath()),
                 isTestMode = buildCtx->isTestMode()](base::Event event) -> TransformResult
         {

@@ -459,9 +459,9 @@ Json& Json::operator=(Json&& other) noexcept
     return *this;
 }
 
-bool Json::exists(std::string_view ptrPath) const
+bool Json::exists(const PointerPath& ptrPath) const
 {
-    const auto fieldPtr = json::makePointer(ptrPath);
+    const auto& fieldPtr = ptrPath.getPointer();
     if (fieldPtr.IsValid())
     {
         return fieldPtr.Get(m_document) != nullptr;
@@ -470,9 +470,9 @@ bool Json::exists(std::string_view ptrPath) const
     throw std::runtime_error(fmt::format("..", __func__, ptrPath));
 }
 
-bool Json::equals(std::string_view ptrPath, const Json& value) const
+bool Json::equals(const PointerPath& ptrPath, const Json& value) const
 {
-    const auto fieldPtr = json::makePointer(ptrPath);
+    const auto& fieldPtr = ptrPath.getPointer();
     if (fieldPtr.IsValid())
     {
         const auto got {fieldPtr.Get(m_document)};
@@ -482,9 +482,9 @@ bool Json::equals(std::string_view ptrPath, const Json& value) const
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, ptrPath));
 }
 
-bool Json::equalsString(std::string_view ptrPath, std::string_view str) const
+bool Json::equalsString(const PointerPath& ptrPath, std::string_view str) const
 {
-    const auto fieldPtr = json::makePointer(ptrPath);
+    const auto& fieldPtr = ptrPath.getPointer();
     if (fieldPtr.IsValid())
     {
         const auto got {fieldPtr.Get(m_document)};
@@ -498,10 +498,10 @@ bool Json::equalsString(std::string_view ptrPath, std::string_view str) const
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, ptrPath));
 }
 
-bool Json::equals(std::string_view basePtrPath, std::string_view referencePtrPath) const
+bool Json::equals(const PointerPath& basePtrPath, const PointerPath& referencePtrPath) const
 {
-    const auto fieldPtr = json::makePointer(basePtrPath);
-    const auto referencePtr = json::makePointer(referencePtrPath);
+    const auto& fieldPtr = basePtrPath.getPointer();
+    const auto& referencePtr = referencePtrPath.getPointer();
 
     if (!fieldPtr.IsValid())
     {
@@ -519,9 +519,9 @@ bool Json::equals(std::string_view basePtrPath, std::string_view referencePtrPat
 }
 
 // TODO Invert parameters to be consistent with other methods.
-void Json::set(std::string_view ptrPath, const Json& value)
+void Json::set(const PointerPath& ptrPath, const Json& value)
 {
-    const auto fieldPtr = json::makePointer(ptrPath);
+    const auto& fieldPtr = ptrPath.getPointer();
     if (fieldPtr.IsValid())
     {
         // The copy is complete before the target node is touched: an allocation failure leaves the document as it was
@@ -534,10 +534,10 @@ void Json::set(std::string_view ptrPath, const Json& value)
     }
 }
 
-void Json::set(std::string_view basePtrPath, std::string_view referencePtrPath)
+void Json::set(const PointerPath& basePtrPath, const PointerPath& referencePtrPath)
 {
-    const auto fieldPtr = json::makePointer(basePtrPath);
-    const auto referencePtr = json::makePointer(referencePtrPath);
+    const auto& fieldPtr = basePtrPath.getPointer();
+    const auto& referencePtr = referencePtrPath.getPointer();
 
     if (!fieldPtr.IsValid())
     {
@@ -619,10 +619,10 @@ RetGet Json::getUniqueString(std::string_view& out, const PointerPath& path) con
     return RetGet::Success;
 }
 
-std::optional<int> Json::getInt(std::string_view path) const
+std::optional<int> Json::getInt(const PointerPath& path) const
 {
     std::optional<int> retval {std::nullopt};
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -637,9 +637,9 @@ std::optional<int> Json::getInt(std::string_view path) const
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-std::optional<int64_t> Json::getInt64(std::string_view path) const
+std::optional<int64_t> Json::getInt64(const PointerPath& path) const
 {
-    auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -659,9 +659,9 @@ std::optional<int64_t> Json::getInt64(std::string_view path) const
     }
 }
 
-std::optional<uint64_t> Json::getUint64(std::string_view path) const
+std::optional<uint64_t> Json::getUint64(const PointerPath& path) const
 {
-    auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -681,9 +681,9 @@ std::optional<uint64_t> Json::getUint64(std::string_view path) const
     }
 }
 
-std::optional<int64_t> Json::getIntAsInt64(std::string_view path) const
+std::optional<int64_t> Json::getIntAsInt64(const PointerPath& path) const
 {
-    auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -707,9 +707,9 @@ std::optional<int64_t> Json::getIntAsInt64(std::string_view path) const
     }
 }
 
-std::optional<float_t> Json::getFloat(std::string_view path) const
+std::optional<float_t> Json::getFloat(const PointerPath& path) const
 {
-    auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -729,10 +729,10 @@ std::optional<float_t> Json::getFloat(std::string_view path) const
     }
 }
 
-std::optional<double_t> Json::getDouble(std::string_view path) const
+std::optional<double_t> Json::getDouble(const PointerPath& path) const
 {
     std::optional<double> retval {std::nullopt};
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -747,10 +747,10 @@ std::optional<double_t> Json::getDouble(std::string_view path) const
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-std::optional<double> Json::getNumberAsDouble(std::string_view path) const
+std::optional<double> Json::getNumberAsDouble(const PointerPath& path) const
 {
     std::optional<double> retval {std::nullopt};
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -780,10 +780,10 @@ std::optional<double> Json::getNumberAsDouble(std::string_view path) const
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-std::optional<bool> Json::getBool(std::string_view path) const
+std::optional<bool> Json::getBool(const PointerPath& path) const
 {
     std::optional<bool> retval {std::nullopt};
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -798,10 +798,10 @@ std::optional<bool> Json::getBool(std::string_view path) const
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-std::optional<std::vector<Json>> Json::getArray(std::string_view path) const
+std::optional<std::vector<Json>> Json::getArray(const PointerPath& path) const
 {
     std::optional<std::vector<Json>> retval {std::nullopt};
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -822,10 +822,10 @@ std::optional<std::vector<Json>> Json::getArray(std::string_view path) const
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-std::optional<std::vector<std::tuple<std::string, Json>>> Json::getObject(std::string_view path) const
+std::optional<std::vector<std::tuple<std::string, Json>>> Json::getObject(const PointerPath& path) const
 {
     std::optional<std::vector<std::tuple<std::string, Json>>> retval {std::nullopt};
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -907,9 +907,9 @@ std::optional<std::vector<std::string>> Json::getFields() const
     return retval;
 }
 
-std::optional<std::vector<std::string>> Json::getFields(std::string_view path) const
+std::optional<std::vector<std::string>> Json::getFields(const PointerPath& path) const
 {
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
     if (!pp.IsValid())
     {
         throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
@@ -1296,10 +1296,10 @@ std::string Json::str() const
     return serialize<PlainWriter>(m_document);
 }
 
-std::optional<std::string> Json::str(std::string_view path) const
+std::optional<std::string> Json::str(const PointerPath& path) const
 {
     std::optional<std::string> retval {std::nullopt};
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -1320,9 +1320,9 @@ std::ostream& operator<<(std::ostream& os, const Json& json)
     return os;
 }
 
-size_t Json::size(std::string_view path) const
+size_t Json::size(const PointerPath& path) const
 {
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -1351,9 +1351,9 @@ size_t Json::size(std::string_view path) const
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-bool Json::isNull(std::string_view path) const
+bool Json::isNull(const PointerPath& path) const
 {
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -1369,9 +1369,9 @@ bool Json::isNull(std::string_view path) const
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-bool Json::isBool(std::string_view path) const
+bool Json::isBool(const PointerPath& path) const
 {
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -1387,9 +1387,9 @@ bool Json::isBool(std::string_view path) const
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-bool Json::isNumber(std::string_view path) const
+bool Json::isNumber(const PointerPath& path) const
 {
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -1405,9 +1405,9 @@ bool Json::isNumber(std::string_view path) const
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-bool Json::isInt(std::string_view path) const
+bool Json::isInt(const PointerPath& path) const
 {
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -1423,9 +1423,9 @@ bool Json::isInt(std::string_view path) const
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-bool Json::isUint64(std::string_view path) const
+bool Json::isUint64(const PointerPath& path) const
 {
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -1441,9 +1441,9 @@ bool Json::isUint64(std::string_view path) const
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-bool Json::isInt64(std::string_view path) const
+bool Json::isInt64(const PointerPath& path) const
 {
-    auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -1459,9 +1459,9 @@ bool Json::isInt64(std::string_view path) const
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-bool Json::isFloat(std::string_view path) const
+bool Json::isFloat(const PointerPath& path) const
 {
-    auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -1477,9 +1477,9 @@ bool Json::isFloat(std::string_view path) const
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-bool Json::isDouble(std::string_view path) const
+bool Json::isDouble(const PointerPath& path) const
 {
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -1495,9 +1495,9 @@ bool Json::isDouble(std::string_view path) const
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-bool Json::isString(std::string_view path) const
+bool Json::isString(const PointerPath& path) const
 {
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -1513,9 +1513,9 @@ bool Json::isString(std::string_view path) const
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-bool Json::isArray(std::string_view path) const
+bool Json::isArray(const PointerPath& path) const
 {
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -1531,9 +1531,9 @@ bool Json::isArray(std::string_view path) const
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-bool Json::isObject(std::string_view path) const
+bool Json::isObject(const PointerPath& path) const
 {
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -1549,9 +1549,9 @@ bool Json::isObject(std::string_view path) const
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-bool Json::isEmpty(std::string_view path) const
+bool Json::isEmpty(const PointerPath& path) const
 {
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -1590,9 +1590,9 @@ bool Json::isEmpty(std::string_view path) const
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-std::string Json::typeName(std::string_view path) const
+std::string Json::typeName(const PointerPath& path) const
 {
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -1618,9 +1618,9 @@ std::string Json::typeName(std::string_view path) const
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-Json::Type Json::type(std::string_view path) const
+Json::Type Json::type(const PointerPath& path) const
 {
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -1636,9 +1636,9 @@ Json::Type Json::type(std::string_view path) const
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-void Json::setNull(std::string_view path)
+void Json::setNull(const PointerPath& path)
 {
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -1650,9 +1650,9 @@ void Json::setNull(std::string_view path)
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-void Json::setBool(bool value, std::string_view path)
+void Json::setBool(bool value, const PointerPath& path)
 {
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -1664,9 +1664,9 @@ void Json::setBool(bool value, std::string_view path)
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-void Json::setInt(int value, std::string_view path)
+void Json::setInt(int value, const PointerPath& path)
 {
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -1678,9 +1678,9 @@ void Json::setInt(int value, std::string_view path)
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-void Json::setInt64(int64_t value, std::string_view path)
+void Json::setInt64(int64_t value, const PointerPath& path)
 {
-    auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -1693,9 +1693,9 @@ void Json::setInt64(int64_t value, std::string_view path)
     }
 }
 
-void Json::setUint64(uint64_t value, std::string_view path)
+void Json::setUint64(uint64_t value, const PointerPath& path)
 {
-    auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -1708,9 +1708,9 @@ void Json::setUint64(uint64_t value, std::string_view path)
     }
 }
 
-void Json::setFloat(float_t value, std::string_view path)
+void Json::setFloat(float_t value, const PointerPath& path)
 {
-    auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -1723,9 +1723,9 @@ void Json::setFloat(float_t value, std::string_view path)
     }
 }
 
-void Json::setDouble(double_t value, std::string_view path)
+void Json::setDouble(double_t value, const PointerPath& path)
 {
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -1768,9 +1768,9 @@ void Json::setNullAsMembers(std::string_view path)
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-void Json::setString(std::string_view value, std::string_view path)
+void Json::setString(std::string_view value, const PointerPath& path)
 {
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -1783,9 +1783,9 @@ void Json::setString(std::string_view value, std::string_view path)
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-void Json::setArray(std::string_view path)
+void Json::setArray(const PointerPath& path)
 {
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -1797,9 +1797,9 @@ void Json::setArray(std::string_view path)
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-void Json::setObject(std::string_view path)
+void Json::setObject(const PointerPath& path)
 {
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -1811,9 +1811,9 @@ void Json::setObject(std::string_view path)
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-void Json::appendString(std::string_view value, std::string_view path)
+void Json::appendString(std::string_view value, const PointerPath& path)
 {
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -1854,9 +1854,9 @@ void Json::appendString(std::string_view value, std::string_view path)
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-void Json::appendJson(const Json& value, std::string_view path)
+void Json::appendJson(const Json& value, const PointerPath& path)
 {
-    auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -1889,16 +1889,16 @@ void Json::appendJson(const Json& value, std::string_view path)
     }
 }
 
-bool Json::erase(std::string_view path)
+bool Json::erase(const PointerPath& path)
 {
-    if (path.empty())
+    if (path.getPointer().GetTokenCount() == 0)
     {
         m_document.SetNull();
         return true;
     }
     else
     {
-        const auto pp = json::makePointer(path);
+        const auto& pp = path.getPointer();
 
         if (pp.IsValid())
         {
@@ -1909,9 +1909,9 @@ bool Json::erase(std::string_view path)
     }
 }
 
-void Json::merge(const bool isRecursive, const json::Value& source, std::string_view path)
+void Json::merge(const bool isRecursive, const json::Value& source, const PointerPath& path)
 {
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {
@@ -1929,18 +1929,11 @@ void Json::merge(const bool isRecursive, const json::Value& source, std::string_
                             json::Value cpyValue {srcIt->value, m_document.GetAllocator()};
                             if (isRecursive && (srcIt->value.IsObject() || srcIt->value.IsArray()))
                             {
-                                const std::string_view rawName {srcIt->name.GetString(), srcIt->name.GetStringLength()};
-                                std::string newPath {path};
-                                if (rawName.find_first_of("~/") == std::string_view::npos)
-                                {
-                                    newPath += '/';
-                                    newPath.append(rawName);
-                                }
-                                else
-                                {
-                                    newPath += formatJsonPath(rawName, true);
-                                }
-                                merge(isRecursive, cpyValue, newPath);
+                                // The child pointer appends the member name as one raw token: no path string is
+                                // built and nothing is parsed, so names with '~' or '/' need no escaping
+                                const PointerPath childPath {pp.Append(
+                                    srcIt->name.GetString(), srcIt->name.GetStringLength(), &json::baseAllocator())};
+                                merge(isRecursive, cpyValue, childPath);
                             }
                             else
                             {
@@ -1995,14 +1988,14 @@ void Json::merge(const bool isRecursive, const json::Value& source, std::string_
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-void Json::merge(const bool isRecursive, const Json& other, std::string_view path)
+void Json::merge(const bool isRecursive, const Json& other, const PointerPath& path)
 {
     merge(isRecursive, other.m_document, path);
 }
 
-void Json::merge(const bool isRecursive, std::string_view source, std::string_view path)
+void Json::merge(const bool isRecursive, const PointerPath& source, const PointerPath& path)
 {
-    const auto pp = json::makePointer(source);
+    const auto& pp = source.getPointer();
 
     if (pp.IsValid())
     {
@@ -2020,10 +2013,10 @@ void Json::merge(const bool isRecursive, std::string_view source, std::string_vi
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-std::optional<Json> Json::getJson(std::string_view path) const
+std::optional<Json> Json::getJson(const PointerPath& path) const
 {
     std::optional<Json> retval {std::nullopt};
-    const auto pp = json::makePointer(path);
+    const auto& pp = path.getPointer();
 
     if (pp.IsValid())
     {

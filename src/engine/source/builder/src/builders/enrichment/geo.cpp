@@ -83,103 +83,118 @@ std::vector<MappingConfig> loadMappingConfigs(const json::Json& config)
     return mappingConfigs;
 }
 
-/**
- * @brief Maps GeoIP data to ECS format.
- *
- * @param ip source IP address
- * @param locator Geo locator
- * @param ecsPath ECS path to map the data
- * @param event Event JSON object to populate
- * @return true if city data was mapped, false otherwise
- */
-bool mapGeoToECS(const std::string& ip,
-                 const std::shared_ptr<geo::ILocator>& locator,
-                 const std::string& ecsPath,
-                 json::Json& event)
+/// How a GeoIP value is read from the database and written to the event.
+enum class GeoKind
 {
-    bool mapCity = false;
+    String,
+    Double,
+    Uint32
+};
 
-    // Helper lambda to map string fields
-    auto mapStringField = [&](const std::string& geoPath, const std::string& ecsField)
+/// One GeoIP field: where it is read in the database and its path under the mapping's ECS object.
+struct GeoFieldSpec
+{
+    const char* geoPath;
+    GeoKind kind;
+    const char* ecsField;
+};
+
+/// City fields, written under the mapping's geo ECS path.
+constexpr GeoFieldSpec CITY_FIELDS[] {
+    {"city.names.en", GeoKind::String, "/city_name"},
+    {"continent.code", GeoKind::String, "/continent_code"},
+    {"continent.names.en", GeoKind::String, "/continent_name"},
+    {"country.iso_code", GeoKind::String, "/country_iso_code"},
+    {"country.names.en", GeoKind::String, "/country_name"},
+    {"location.latitude", GeoKind::Double, "/location/lat"},
+    {"location.longitude", GeoKind::Double, "/location/lon"},
+    {"postal.code", GeoKind::String, "/postal_code"},
+    {"location.time_zone", GeoKind::String, "/timezone"},
+    {"subdivisions.0.iso_code", GeoKind::String, "/region_iso_code"},
+    {"subdivisions.0.names.en", GeoKind::String, "/region_name"},
+};
+
+/// AS fields, written under the mapping's AS ECS path.
+constexpr GeoFieldSpec AS_FIELDS[] {
+    {"autonomous_system_number", GeoKind::Uint32, "/number"},
+    {"autonomous_system_organization", GeoKind::String, "/organization/name"},
+};
+
+/// A GeoIP field with its target pointer in the event, built once per mapping.
+struct GeoField
+{
+    DotPath geoPath;
+    GeoKind kind;
+    json::PointerPath target;
+};
+
+/**
+ * @brief Builds the target pointers of a set of GeoIP fields under an ECS path (at build time, not per event).
+ */
+template<std::size_t N>
+std::vector<GeoField> buildGeoFields(const std::string& ecsPath, const GeoFieldSpec (&specs)[N])
+{
+    std::vector<GeoField> fields;
+    fields.reserve(N);
+    for (const auto& spec : specs)
     {
-        auto result = locator->getString(ip, geoPath);
-        if (!result.isError())
-        {
-            event.setString(result.value(), ecsPath + ecsField);
-            mapCity = true;
-        }
-    };
-
-    // Helper lambda to map double fields
-    auto mapDoubleField = [&](const std::string& geoPath, const std::string& ecsField)
-    {
-        auto result = locator->getDouble(ip, geoPath);
-        if (!result.isError())
-        {
-            event.setDouble(result.value(), ecsPath + ecsField);
-            mapCity = true;
-        }
-    };
-
-    // Map all geo fields using the helper lambdas
-    mapStringField("city.names.en", "/city_name");
-    mapStringField("continent.code", "/continent_code");
-    mapStringField("continent.names.en", "/continent_name");
-    mapStringField("country.iso_code", "/country_iso_code");
-    mapStringField("country.names.en", "/country_name");
-    mapDoubleField("location.latitude", "/location/lat");
-    mapDoubleField("location.longitude", "/location/lon");
-    mapStringField("postal.code", "/postal_code");
-    mapStringField("location.time_zone", "/timezone");
-    mapStringField("subdivisions.0.iso_code", "/region_iso_code");
-    mapStringField("subdivisions.0.names.en", "/region_name");
-
-    return mapCity;
+        fields.push_back({DotPath(std::string(spec.geoPath)), spec.kind, json::PointerPath(ecsPath + spec.ecsField)});
+    }
+    return fields;
 }
 
 /**
- * @brief Maps AS data to ECS format.
+ * @brief Maps the GeoIP data of an IP to the event, one field at a time.
  *
  * @param ip source IP address
- * @param ecsPath ECS path to map the data
+ * @param locator Geo locator
+ * @param fields fields to map, with their pre-built target pointers
  * @param event Event JSON object to populate
- * @return true if AS data was mapped,
- * @return false otherwise
+ * @return true if at least one field was mapped, false otherwise
  */
-bool mapAStoECS(const std::string& ip,
-                const std::shared_ptr<geo::ILocator>& locator,
-                const std::string& ecsPath,
-                json::Json& event)
+bool mapGeoFields(const std::string& ip,
+                  const std::shared_ptr<geo::ILocator>& locator,
+                  const std::vector<GeoField>& fields,
+                  json::Json& event)
 {
-    bool mapAS = false;
-
-    // Helper lambda for AS number field
-    auto mapUint32Field = [&](const std::string& geoPath, const std::string& ecsField)
+    bool mapped = false;
+    for (const auto& field : fields)
     {
-        auto result = locator->getUint32(ip, geoPath);
-        if (!result.isError())
+        switch (field.kind)
         {
-            event.setInt64(result.value(), ecsPath + ecsField);
-            mapAS = true;
+            case GeoKind::String:
+            {
+                auto result = locator->getString(ip, field.geoPath);
+                if (!result.isError())
+                {
+                    event.setString(result.value(), field.target);
+                    mapped = true;
+                }
+                break;
+            }
+            case GeoKind::Double:
+            {
+                auto result = locator->getDouble(ip, field.geoPath);
+                if (!result.isError())
+                {
+                    event.setDouble(result.value(), field.target);
+                    mapped = true;
+                }
+                break;
+            }
+            case GeoKind::Uint32:
+            {
+                auto result = locator->getUint32(ip, field.geoPath);
+                if (!result.isError())
+                {
+                    event.setInt64(result.value(), field.target);
+                    mapped = true;
+                }
+                break;
+            }
         }
-    };
-
-    // Helper lambda for AS string field
-    auto mapStringField = [&](const std::string& geoPath, const std::string& ecsField)
-    {
-        auto result = locator->getString(ip, geoPath);
-        if (!result.isError())
-        {
-            event.setString(result.value(), ecsPath + ecsField);
-            mapAS = true;
-        }
-    };
-
-    // Map AS fields
-    mapUint32Field("autonomous_system_number", "/number");
-    mapStringField("autonomous_system_organization", "/organization/name");
-
-    return mapAS;
+    }
+    return mapped;
 }
 
 /**
@@ -232,7 +247,15 @@ base::Expression getEachEnrichTerm(const std::shared_ptr<geo::ILocator>& cityLoc
         return std::nullopt;
     };
 
-    auto opFn = [cityLocator, asLocator, mappingConfig, isTestMode, getIpFn, enrichmentApplied](
+    // Target pointers of every mapped field, built once here instead of concatenating and parsing per event
+    const auto geoFields = mappingConfig.geoEcsPath.has_value()
+                               ? buildGeoFields(mappingConfig.geoEcsPath.value(), CITY_FIELDS)
+                               : std::vector<GeoField> {};
+    const auto asFields = mappingConfig.asEcsPath.has_value()
+                              ? buildGeoFields(mappingConfig.asEcsPath.value(), AS_FIELDS)
+                              : std::vector<GeoField> {};
+
+    auto opFn = [cityLocator, asLocator, mappingConfig, isTestMode, getIpFn, enrichmentApplied, geoFields, asFields](
                     base::Event event) -> base::result::Result<base::Event>
     {
         // Get source IP, can be an string o a array of strings, in that case we take the first one.
@@ -250,11 +273,9 @@ base::Expression getEachEnrichTerm(const std::shared_ptr<geo::ILocator>& cityLoc
         const bool asConfigured = mappingConfig.asEcsPath.has_value();
         const bool geoConfigured = mappingConfig.geoEcsPath.has_value();
 
-        const bool asSuccess =
-            asConfigured ? mapAStoECS(ip, asLocator, mappingConfig.asEcsPath.value(), *event) : false;
+        const bool asSuccess = asConfigured ? mapGeoFields(ip, asLocator, asFields, *event) : false;
 
-        const bool geoSuccess =
-            geoConfigured ? mapGeoToECS(ip, cityLocator, mappingConfig.geoEcsPath.value(), *event) : false;
+        const bool geoSuccess = geoConfigured ? mapGeoFields(ip, cityLocator, geoFields, *event) : false;
 
         if (asSuccess || geoSuccess)
         {

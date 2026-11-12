@@ -159,7 +159,8 @@ TransformBuilder getArrayAppendBuilder(bool unique, bool atleastOne)
                      refNotFound,
                      unique,
                      atleastOne,
-                     referencePath = std::static_pointer_cast<const Reference>(opArgs[i])->jsonPath()](
+                     referencePath =
+                         json::PointerPath(std::static_pointer_cast<const Reference>(opArgs[i])->jsonPath())](
                         std::vector<json::Json>& targetArray,
                         json::Json::Type& valueType,
                         const base::Event& event) -> base::OptError
@@ -224,7 +225,7 @@ TransformBuilder getArrayAppendBuilder(bool unique, bool atleastOne)
         // TransformOp
         return [successTrace,
                 isTestMode = buildCtx->isTestMode(),
-                targetField = targetField.jsonPath(),
+                targetField = json::PointerPath(targetField.jsonPath()),
                 valueValidator,
                 failureTrace,
                 failureNotArray,

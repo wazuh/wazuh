@@ -22,8 +22,12 @@ namespace builder::builders::enrichment
 namespace
 {
 
-constexpr std::string_view IOC_ENRICHMENT_TARGET_PATH {"/wazuh/threat/enrichments"};
-constexpr std::string_view INDICATOR_CONFIDENCE_PATH {"/indicator/confidence"}; ///< Relative to one enrichment entry
+// Parsed once per process: used on every IOC match
+const json::PointerPath IOC_ENRICHMENT_TARGET_PATH {"/wazuh/threat/enrichments"};
+const json::PointerPath INDICATOR_CONFIDENCE_PATH {"/indicator/confidence"}; ///< Relative to one enrichment entry
+const json::PointerPath INDICATOR_PATH {"/indicator"};                       ///< Relative to one enrichment entry
+const json::PointerPath MATCHED_PATH {"/matched"};                           ///< Relative to one enrichment entry
+const json::PointerPath MATCHED_FIELD_PATH {"/matched/field"};               ///< Relative to one enrichment entry
 
 constexpr auto FMT_IOC_MATCH_TRACE = "IOC({}) -> Success: IOC match found for field '{}' with key '{}'";
 constexpr auto FMT_IOC_NOT_FOUND_TRACE = "IOC({}) -> Failure: IOC key '{}' not found for field '{}'";
@@ -31,8 +35,8 @@ constexpr auto FMT_IOC_SOURCE_MISSING_TRACE = "IOC({}) -> Failure: Source field(
 
 struct IocSourcePath
 {
-    std::string path;              // String form (for exists/getIntAsInt64/getDouble that take string_view)
-    json::PointerPath pp;          // Pre-built pointer (for getString)
+    std::string path;              // String form (messages only)
+    json::PointerPath pp;          // Pre-built pointer, used for every per-event lookup
     json::PointerPath ppFirstElem; // Pre-built pointer to first array element path + "/0"
 
     explicit IocSourcePath(std::string pathStr)
@@ -49,7 +53,7 @@ struct IocMappingConfig
     std::string dbName;
     std::string sourceFields;
     std::vector<IocSourcePath> sourcePaths;
-    std::optional<std::string> commonParentPath;
+    std::optional<json::PointerPath> commonParentPath; // pre-built: checked on every event
 };
 
 std::string getTopLevelParentPath(std::string_view jsonPointerPath)
@@ -80,14 +84,14 @@ std::optional<std::string> readFieldAsString(base::Event event, const IocSourceP
     }
 
     // If not a string, try to read as int64 and convert
-    auto intValue = event->getIntAsInt64(source.path);
+    auto intValue = event->getIntAsInt64(source.pp);
     if (intValue.has_value())
     {
         return std::to_string(*intValue);
     }
 
     // Try to read as double and convert
-    auto doubleValue = event->getDouble(source.path);
+    auto doubleValue = event->getDouble(source.pp);
     if (doubleValue.has_value())
     {
         return std::to_string(*doubleValue);
@@ -106,7 +110,7 @@ json::Json makeEnrichmentEntry(const json::Json& indicator, const std::string& m
 {
     json::Json entry;
     entry.setObject();
-    entry.set("/indicator", indicator);
+    entry.set(INDICATOR_PATH, indicator);
 
     if (entry.isNumber(INDICATOR_CONFIDENCE_PATH))
     {
@@ -120,8 +124,8 @@ json::Json makeEnrichmentEntry(const json::Json& indicator, const std::string& m
         }
     }
 
-    entry.setObject("/matched");
-    entry.setString(matchedField, "/matched/field");
+    entry.setObject(MATCHED_PATH);
+    entry.setString(matchedField, MATCHED_FIELD_PATH);
     return entry;
 }
 

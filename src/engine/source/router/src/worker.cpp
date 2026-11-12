@@ -17,6 +17,13 @@ namespace router
 
 namespace
 {
+// Parsed once per process: these fields are set on every event
+const json::PointerPath PP_TIMESTAMP {"/@timestamp"};
+const json::PointerPath PP_EVENT_ORIGINAL {"/event/original"};
+const json::PointerPath PP_EVENT_ID {"/wazuh/event/id"};
+const json::PointerPath PP_CLUSTER_NAME {"/wazuh/cluster/name"};
+const json::PointerPath PP_CLUSTER_NODE {"/wazuh/cluster/node"};
+
 /// Minimum time between two log lines about malformed events, per worker.
 constexpr auto MALFORMED_EVENT_LOG_WINDOW = std::chrono::seconds(60);
 
@@ -24,9 +31,9 @@ std::string
 makeRawIndexPayload(const IngestEvent& queuedEvent, const std::string& timestamp, const std::string& eventId)
 {
     json::Json rawDoc(*queuedEvent.header);
-    rawDoc.setString(timestamp, "/@timestamp");
-    rawDoc.setString(queuedEvent.rawEvent, "/event/original");
-    rawDoc.setString(eventId, "/wazuh/event/id");
+    rawDoc.setString(timestamp, PP_TIMESTAMP);
+    rawDoc.setString(queuedEvent.rawEvent, PP_EVENT_ORIGINAL);
+    rawDoc.setString(eventId, PP_EVENT_ID);
     return rawDoc.str();
 }
 } // namespace
@@ -122,12 +129,12 @@ void RouterWorker::start()
                         }
                         continue;
                     }
-                    event->setString(timestamp, "/@timestamp");
-                    event->setString(eventId, "/wazuh/event/id");
+                    event->setString(timestamp, PP_TIMESTAMP);
+                    event->setString(eventId, PP_EVENT_ID);
                     if (enrichClusterInfo)
                     {
-                        event->setString(clusterName, "/wazuh/cluster/name");
-                        event->setString(nodeName, "/wazuh/cluster/node");
+                        event->setString(clusterName, PP_CLUSTER_NAME);
+                        event->setString(nodeName, PP_CLUSTER_NODE);
                     }
                     m_router->ingest(std::move(event));
 
@@ -189,8 +196,8 @@ void TesterWorker::start()
                         const auto timestamp =
                             base::utils::time::epochNanosToISO8601(base::utils::time::receptionClock().next());
                         const auto eventId = base::utils::generators::generateUUIDv4();
-                        event->setString(timestamp, "/@timestamp");
-                        event->setString(eventId, "/wazuh/event/id");
+                        event->setString(timestamp, PP_TIMESTAMP);
+                        event->setString(eventId, PP_EVENT_ID);
 
                         output = m_tester->ingestTest(std::move(event), opt);
                     }

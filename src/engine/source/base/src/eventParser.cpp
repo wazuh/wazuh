@@ -11,6 +11,14 @@
 
 #include <base/logging.hpp>
 
+namespace
+{
+// Parsed once per process: these fields are set on every event
+const json::PointerPath EVENT_QUEUE_ID_PP {base::eventParsers::EVENT_QUEUE_ID};
+const json::PointerPath EVENT_LOCATION_ID_PP {base::eventParsers::EVENT_LOCATION_ID};
+const json::PointerPath EVENT_MESSAGE_ID_PP {base::eventParsers::EVENT_MESSAGE_ID};
+} // namespace
+
 namespace base::eventParsers
 {
 
@@ -47,7 +55,7 @@ Event parseLegacyEvent(std::string_view rawEvent, const json::Json& agentMetadat
                                              MIN_QUEUE_ID,
                                              MAX_QUEUE_ID));
     }
-    parseEvent->setInt(queue, EVENT_QUEUE_ID);
+    parseEvent->setInt(queue, EVENT_QUEUE_ID_PP);
 
     // Extract location, start searching at index 2 (first character of location).
     std::size_t n = rawEvent.size();
@@ -98,11 +106,11 @@ Event parseLegacyEvent(std::string_view rawEvent, const json::Json& agentMetadat
         throw std::runtime_error(fmt::format("Agent metadata merge failed: {}", ex.what()));
     }
 
-    parseEvent->setString(rawLocation, EVENT_LOCATION_ID);
+    parseEvent->setString(rawLocation, EVENT_LOCATION_ID_PP);
 
     // Set the original event message.
     auto msgView = rawEvent.substr(separatorPos + 1);
-    parseEvent->setString(msgView, EVENT_MESSAGE_ID);
+    parseEvent->setString(msgView, EVENT_MESSAGE_ID_PP);
 
     return parseEvent;
 }
@@ -112,7 +120,7 @@ Event parsePublicEvent(uint8_t queue, std::string& location, std::string_view me
     auto parseEvent = std::make_shared<json::Json>();
 
     // Queue comes already parsed.
-    parseEvent->setInt(static_cast<int>(queue), EVENT_QUEUE_ID);
+    parseEvent->setInt(static_cast<int>(queue), EVENT_QUEUE_ID_PP);
 
     if (location.empty())
     {
@@ -128,10 +136,10 @@ Event parsePublicEvent(uint8_t queue, std::string& location, std::string_view me
         throw std::runtime_error(fmt::format("merge failed: {}", ex.what()));
     }
 
-    parseEvent->setString(location, EVENT_LOCATION_ID);
+    parseEvent->setString(location, EVENT_LOCATION_ID_PP);
 
     // Raw message/payload.
-    parseEvent->setString(message, EVENT_MESSAGE_ID);
+    parseEvent->setString(message, EVENT_MESSAGE_ID_PP);
 
     return parseEvent;
 }
