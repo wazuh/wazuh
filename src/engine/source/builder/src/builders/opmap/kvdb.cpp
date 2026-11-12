@@ -305,10 +305,7 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
                     RETURN_FAILURE(isTestMode, event, failureTrace5)
                 }
 
-                // Merge into a copy of the target so that a conflict leaves the event untouched
-                auto merged = event->getJson(targetJsonPath).value();
-                merged.merge(recursive ? json::RECURSIVE : json::NOT_RECURSIVE, value);
-                event->set(targetJsonPath, merged);
+                utils::mergeIntoField(event, targetJsonPath, value, recursive);
             }
             else
             {

@@ -313,6 +313,15 @@ class Validator:
             if not isinstance(condition, str) or not condition.strip():
                 sys.exit(
                     f"Helper {self.parser.get_name()}: every entry of 'metadata.fails_when' must be a non-empty string, got '{condition}'")
+        deletes_arguments = metadata.get("deletes_arguments", [])
+        if not isinstance(deletes_arguments, list) or any(not isinstance(a, str) for a in deletes_arguments):
+            sys.exit(
+                f"Helper {self.parser.get_name()}: 'metadata.deletes_arguments' must be a list of argument names")
+        declared = self.parser.get_arguments() or {}
+        for argument in deletes_arguments:
+            if argument not in declared:
+                sys.exit(
+                    f"Helper {self.parser.get_name()}: 'metadata.deletes_arguments' names '{argument}', which is not a declared argument")
 
     def verify_restrictions(self) -> None:
         """

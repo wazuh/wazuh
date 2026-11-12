@@ -11,10 +11,11 @@ metadata:
     - A missing reference contributes nothing; the other arguments are concatenated as `concat`
       does: strings as is, literal numbers and objects as compact JSON, referenced integers in
       decimal, referenced doubles with 6 fixed decimals and referenced objects as compact JSON.
-    - At least one argument must resolve: a literal always does.
+    - At least one reference must resolve; a literal never counts.
 
     Build errors:
     - Fewer than 2 arguments.
+    - No argument is a reference (use `concat` to join literals).
     - A literal that is a boolean, an array or `null`.
     - A referenced schema field whose type is not string, number or object.
 
@@ -24,7 +25,7 @@ metadata:
     - `array_append_any` is the array counterpart: it skips missing references too.
   group: string
   fails_when:
-    - "every argument is a reference and all of them are missing"
+    - "every reference is missing, whatever literals the call has"
     - "a referenced field that exists is a boolean, an array, `null` or an integer above 2^63-1"
 
 helper_type: map
@@ -49,12 +50,18 @@ output:
 
 test:
   - arguments:
-      value: "hello"
-      value_1: " "
-      value_2: "yes"
+      value:
+        source: reference
+        value: "hello"
+      value_1:
+        source: value
+        value: " "
+      value_2:
+        source: value
+        value: "yes"
     should_pass: true
     expected: hello yes
-    description: Concatenate several strings in argument order
+    description: Concatenate a reference and literals in argument order
   - arguments:
       value:
         source: reference
@@ -72,9 +79,8 @@ test:
       value_1:
         source: value
         value: "hello"
-    should_pass: true
-    expected: hello
-    description: Skip a missing reference and keep the literal
+    should_pass: false
+    description: Fail when every reference is missing although a literal is present
   - arguments:
       value:
         source: reference

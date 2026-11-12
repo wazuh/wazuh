@@ -310,19 +310,21 @@ class MarkdownGenerator(IExporter):
                 result_msg = "The check was successful" if example.should_pass else "The check was performed with errors"
                 self.content.append(f"*{result_msg}*\n")
             else:
-                # An `expected` of "" is the test runner's "not asserted" marker (it checks only a
-                # truthy expected), not a value the helper writes: a failing example keeps the
-                # input event, and a passing one has no asserted outcome to show.
-                unasserted = isinstance(example.expected, str) and example.expected == ""
+                # An absent `expected` means the runner does not assert the outcome: a passing example then
+                # has no outcome to show, and a failing one keeps the input event. On success the fields the
+                # helper deletes (`metadata.deletes_arguments`) disappear from the outcome.
                 final_event = dict(event_data)
-                if example.expected is not None and not unasserted:
+                if example.expected is not None:
                     if example.should_pass or doc.helper_type == "transform":
                         final_event[target_field_name] = example.expected
+                if example.should_pass:
+                    for argument in doc.deletes_arguments:
+                        final_event.pop(argument, None)
 
                 if all(v is None for v in final_event.values()):
                     final_event = {}
 
-                if not (unasserted and example.should_pass):
+                if example.expected is not None or not example.should_pass:
                     self.content.append("#### Outcome Event\n")
                     self.content.append("```json\n" + json.dumps(final_event, indent=2) + "\n```\n")
 

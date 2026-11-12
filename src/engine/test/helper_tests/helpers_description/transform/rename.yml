@@ -19,6 +19,8 @@ metadata:
     - The moved value is not validated against the schema type of the target field.
     - To overwrite an existing target, map the value and then `delete` the source.
   group: object
+  deletes_arguments:
+    - source
   fails_when:
     - The target field already exists.
     - The source field does not exist.

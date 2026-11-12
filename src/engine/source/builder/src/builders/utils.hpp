@@ -129,6 +129,33 @@ inline void assertValue(const std::vector<OpArg>& args, Idx... idx)
 }
 
 /**
+ * @brief Merge @p source into the field @p targetPath of @p event.
+ *
+ * A shallow merge throws only before touching the event (a type mismatch is detected first), so it runs in place.
+ * A deep merge can hit a nested type conflict half-way, so it runs on a copy of the target that replaces the
+ * field only on success.
+ *
+ * @param event Event to modify.
+ * @param targetPath JSON pointer path of the target field, which must exist.
+ * @param source Value merged into the target.
+ * @param recursive Deep merge when true.
+ * @throws std::runtime_error On a type conflict; the event is left untouched.
+ */
+inline void
+mergeIntoField(const base::Event& event, std::string_view targetPath, const json::Json& source, bool recursive)
+{
+    if (!recursive)
+    {
+        event->merge(json::NOT_RECURSIVE, source, targetPath);
+        return;
+    }
+
+    auto merged = event->getJson(targetPath).value();
+    merged.merge(json::RECURSIVE, source);
+    event->set(targetPath, merged);
+}
+
+/**
  * @brief Parse the optional trailing mode literal of a helper that accepts `'deep'`.
  *
  * @param args Arguments vector.

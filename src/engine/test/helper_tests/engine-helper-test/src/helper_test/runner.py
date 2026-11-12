@@ -183,7 +183,7 @@ class Evaluator:
         self.field_mapping = ""
         self.should_pass = False
         self.skipped = False
-        self.expected = ""
+        self.expected = None
         self.input = []
 
     def set_id(self, id: int):
@@ -274,7 +274,7 @@ class Evaluator:
         """
         Validate a map helper test case that expects a specific field mapping.
         """
-        if self.expected:
+        if self.expected is not None:
             if self.should_pass:
                 if output[field_mapping] == self.expected:
                     self.create_success_test()
@@ -292,7 +292,7 @@ class Evaluator:
         """
         Validate a transform helper test case that expects a specific field mapping.
         """
-        if self.expected:
+        if self.expected is not None:
             if output[field_mapping] == self.expected:
                 self.create_success_test()
             else:

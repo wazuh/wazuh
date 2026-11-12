@@ -213,7 +213,7 @@ Once the minimum necessary for the helper descriptor has been defined, optional 
 - general_restrictions: This property is useful when there is some type of restriction between the values that the helper arguments can take.
 - target_field: This property is useful for the check and transform type helpers. Allows you to set the specific type and subtype of the value that the target_field will have
 - skipped: Allows you to ignore the results of a particular test suite (see [Skipped property](#skipped-property)).
-- test: This property, in contrast to automatic tests that are generated based on the description of the arguments, allows you to generate a test with specific types and sources as long as it respects the information of each argument.
+- test: This property, in contrast to automatic tests that are generated based on the description of the arguments, allows you to generate a test with specific types and sources as long as it respects the information of each argument. An `expected` value is asserted by the runner whenever it is present, falsy values included (`""`, `0`, `false`, `[]`); leave it out when the outcome is not asserted.
 
 ## Metadata property
 
@@ -230,6 +230,9 @@ its three properties, and a file that still carries the removed `keywords` list.
   under which the helper fails at runtime: a
   `check` helper evaluates to false, a `map` or `transform` helper leaves the target field unchanged.
   Build-time rejections belong in the description instead.
+- deletes_arguments (optional): the names of the arguments whose referenced field the helper removes from the
+  event on success (`merge` and `rename` delete their `source`). The generated examples drop those fields from
+  the outcome event.
 
 ```yaml
 metadata:

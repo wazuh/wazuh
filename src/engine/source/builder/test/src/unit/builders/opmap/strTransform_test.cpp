@@ -170,7 +170,8 @@ INSTANTIATE_TEST_SUITE_P(
         MapT({}, opBuilderHelperStringConcat(true), FAILURE()),
         MapT({makeValue(R"("value")")}, opBuilderHelperStringConcat(true), FAILURE()),
         MapT({makeRef("ref")}, opBuilderHelperStringConcat(true), FAILURE()),
-        MapT({makeValue(R"("value")"), makeValue(R"("value")")}, opBuilderHelperStringConcat(true), SUCCESS()),
+        // concat_any needs at least one reference
+        MapT({makeValue(R"("value")"), makeValue(R"("value")")}, opBuilderHelperStringConcat(true), FAILURE()),
         MapT({makeValue(R"("value")"), makeValue(R"(true)")}, opBuilderHelperStringConcat(true), FAILURE()),
         MapT({makeValue(R"("value")"), makeValue(R"(null)")}, opBuilderHelperStringConcat(true), FAILURE()),
         MapT({makeRef("ref"), makeValue(R"("value")")},
@@ -388,15 +389,11 @@ INSTANTIATE_TEST_SUITE_P(
              opBuilderHelperStringConcat(true),
              {makeRef("ref"), makeRef("other"), makeValue(R"("alue")")},
              SUCCESS(anyRefsExpected(json::Json(R"("value")")))),
-        // A literal always resolves
+        // A literal never counts as resolved: with every reference missing the helper fails
         MapT("{}",
              opBuilderHelperStringConcat(true),
              {makeRef("ref"), makeValue(R"("alue")")},
-             SUCCESS(customRefExpected(json::Json(R"("alue")")))),
-        MapT("{}",
-             opBuilderHelperStringConcat(true),
-             {makeValue(R"("v")"), makeValue(R"("alue")")},
-             SUCCESS(json::Json(R"("value")"))),
+             FAILURE(customRefExpected())),
         // No argument resolves -> failure
         MapT("{}",
              opBuilderHelperStringConcat(true),

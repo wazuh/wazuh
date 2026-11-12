@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#include <limits>
+
 #include "builders/baseBuilders_test.hpp"
 
 #include "builders/opfilter/opBuilderHelperFilter.hpp"
@@ -646,3 +648,44 @@ INSTANTIATE_TEST_SUITE_P(
                 SUCCESS())),
     testNameFormatter<FilterOperationTest>("NumberCmp"));
 } // namespace filteroperatestest
+
+namespace
+{
+// No JSON text carries a NaN, so these events are built by hand
+class NumberCmpNanTest : public BaseBuilderTest
+{
+};
+
+TEST_F(NumberCmpNanTest, NanTargetIsUnordered)
+{
+    auto event = std::make_shared<json::Json>();
+    event->setDouble(std::numeric_limits<double>::quiet_NaN(), "/target");
+    expectBuildSuccess();
+    const Reference target {std::string {"target"}};
+    const std::vector<OpArg> args {makeValue("1")};
+
+    EXPECT_FALSE(opfilter::opBuilderHelperNumberEqual(target, args, mocks->ctx)(event));
+    EXPECT_TRUE(opfilter::opBuilderHelperNumberNotEqual(target, args, mocks->ctx)(event));
+    EXPECT_FALSE(opfilter::opBuilderHelperNumberGreaterThan(target, args, mocks->ctx)(event));
+    EXPECT_FALSE(opfilter::opBuilderHelperNumberGreaterThanEqual(target, args, mocks->ctx)(event));
+    EXPECT_FALSE(opfilter::opBuilderHelperNumberLessThan(target, args, mocks->ctx)(event));
+    EXPECT_FALSE(opfilter::opBuilderHelperNumberLessThanEqual(target, args, mocks->ctx)(event));
+}
+
+TEST_F(NumberCmpNanTest, NanReferenceIsUnordered)
+{
+    auto event = std::make_shared<json::Json>();
+    event->setInt64(1, "/target");
+    event->setDouble(std::numeric_limits<double>::quiet_NaN(), "/ref");
+    expectBuildSuccess();
+    EXPECT_CALL(*mocks->ctx, validator()).Times(testing::AtLeast(1));
+    EXPECT_CALL(*mocks->validator, hasField(DotPath("ref"))).WillRepeatedly(testing::Return(false));
+    const Reference target {std::string {"target"}};
+    const std::vector<OpArg> args {makeRef("ref")};
+
+    EXPECT_FALSE(opfilter::opBuilderHelperNumberEqual(target, args, mocks->ctx)(event));
+    EXPECT_TRUE(opfilter::opBuilderHelperNumberNotEqual(target, args, mocks->ctx)(event));
+    EXPECT_FALSE(opfilter::opBuilderHelperNumberGreaterThanEqual(target, args, mocks->ctx)(event));
+    EXPECT_FALSE(opfilter::opBuilderHelperNumberLessThanEqual(target, args, mocks->ctx)(event));
+}
+} // namespace

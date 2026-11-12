@@ -4603,10 +4603,11 @@ Behavior:
 - A missing reference contributes nothing; the other arguments are concatenated as `concat`
   does: strings as is, literal numbers and objects as compact JSON, referenced integers in
   decimal, referenced doubles with 6 fixed decimals and referenced objects as compact JSON.
-- At least one argument must resolve: a literal always does.
+- At least one reference must resolve; a literal never counts.
 
 Build errors:
 - Fewer than 2 arguments.
+- No argument is a reference (use `concat` to join literals).
 - A literal that is a boolean, an array or `null`.
 - A referenced schema field whose type is not string, number or object.
 
@@ -4618,33 +4619,36 @@ Notes:
 
 ## Fails when
 
-- every argument is a reference and all of them are missing
+- every reference is missing, whatever literals the call has
 - a referenced field that exists is a boolean, an array, `null` or an integer above 2^63-1
 
 ## Examples
 
 ### Example 1
 
-Concatenate several strings in argument order
+Concatenate a reference and literals in argument order
 
 #### Asset
 
 ```yaml
 normalize:
   - map:
-      - target_field: concat_any('hello', ' ', 'yes')
+      - target_field: concat_any($value, ' ', 'yes')
 ```
 
 #### Input Event
 
 ```json
-{}
+{
+  "value": "hello"
+}
 ```
 
 #### Outcome Event
 
 ```json
 {
+  "value": "hello",
   "target_field": "hello yes"
 }
 ```
@@ -4686,7 +4690,7 @@ normalize:
 
 ### Example 3
 
-Skip a missing reference and keep the literal
+Fail when every reference is missing although a literal is present
 
 #### Asset
 
@@ -4707,13 +4711,10 @@ normalize:
 #### Outcome Event
 
 ```json
-{
-  "value": null,
-  "target_field": "hello"
-}
+{}
 ```
 
-*The operation was successful*
+*The operation was performed with errors*
 
 ### Example 4
 
@@ -5105,6 +5106,15 @@ normalize:
 ```json
 {
   "hex": ""
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "hex": "",
+  "target_field": ""
 }
 ```
 
@@ -5943,6 +5953,15 @@ normalize:
 ```json
 {
   "array": []
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "array": [],
+  "target_field": ""
 }
 ```
 
@@ -7771,6 +7790,14 @@ normalize:
 }
 ```
 
+#### Outcome Event
+
+```json
+{
+  "target_field": ""
+}
+```
+
 *The operation was successful*
 
 ### Example 5
@@ -8003,6 +8030,14 @@ normalize:
 }
 ```
 
+#### Outcome Event
+
+```json
+{
+  "target_field": ""
+}
+```
+
 *The operation was successful*
 
 
@@ -8172,6 +8207,14 @@ normalize:
 ```json
 {
   "target_field": "xyx"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": ""
 }
 ```
 
@@ -11812,14 +11855,6 @@ normalize:
 }
 ```
 
-#### Outcome Event
-
-```json
-{
-  "target_field": "-- Hi wazuh! --"
-}
-```
-
 *The operation was successful*
 
 ### Example 2
@@ -11844,16 +11879,6 @@ normalize:
 }
 ```
 
-#### Outcome Event
-
-```json
-{
-  "target_field": {
-    "key": "value"
-  }
-}
-```
-
 *The operation was successful*
 
 ### Example 3
@@ -11869,19 +11894,6 @@ normalize:
 ```
 
 #### Input Event
-
-```json
-{
-  "target_field": [
-    1,
-    2,
-    3,
-    4
-  ]
-}
-```
-
-#### Outcome Event
 
 ```json
 {
@@ -13691,13 +13703,6 @@ normalize:
 
 ```json
 {
-  "source": {
-    "key": "name",
-    "key2": {
-      "age": 27,
-      "address": "new york"
-    }
-  },
   "target_field": {
     "key": "name",
     "key2": {
@@ -13744,11 +13749,6 @@ normalize:
 
 ```json
 {
-  "source": {
-    "a": {
-      "d": "e"
-    }
-  },
   "target_field": {
     "a": {
       "d": "e"
@@ -13792,12 +13792,6 @@ normalize:
 
 ```json
 {
-  "source": [
-    0,
-    1,
-    2,
-    4
-  ],
   "target_field": [
     1,
     3,
@@ -13841,11 +13835,6 @@ normalize:
 
 ```json
 {
-  "source": [
-    1,
-    1,
-    2
-  ],
   "target_field": [
     1,
     2
@@ -13928,11 +13917,6 @@ normalize:
 
 ```json
 {
-  "source": {
-    "a": {
-      "d": "e"
-    }
-  },
   "target_field": {
     "a": {
       "b": "c",
@@ -13974,9 +13958,6 @@ normalize:
 
 ```json
 {
-  "source": {
-    "key": "new"
-  },
   "target_field": {
     "key": "new",
     "other": 1
@@ -14019,12 +14000,6 @@ normalize:
 
 ```json
 {
-  "source": [
-    0,
-    1,
-    2,
-    4
-  ],
   "target_field": [
     1,
     3,
@@ -30331,14 +30306,6 @@ normalize:
 ```
 
 #### Input Event
-
-```json
-{
-  "wazuh.space.event_discarded": false
-}
-```
-
-#### Outcome Event
 
 ```json
 {

@@ -996,13 +996,21 @@ MapOp opBuilderHelperToBool(const std::vector<OpArg>& opArgs, const std::shared_
 }
 
 // field: concat(value1, value2, ...) -> atleastOne is false: a missing reference fails the operation
-// field: concat_any(value1, value2, ...) -> atleastOne is true: missing references are skipped; fails if none resolves
+// field: concat_any(value1, value2, ...) -> atleastOne is true: missing references are skipped; fails if no reference
+// resolves (a literal never counts, and a call without any reference is a build error)
 MapBuilder opBuilderHelperStringConcat(bool atleastOne)
 {
     return [atleastOne](const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx) -> MapOp
     {
         // Assert expected number of parameters
         builder::builders::utils::assertSize(opArgs, 2, builder::builders::utils::MAX_OP_ARGS);
+
+        // concat_any needs a reference that can resolve: a call made of literals only is a build error
+        if (atleastOne
+            && std::none_of(opArgs.begin(), opArgs.end(), [](const OpArg& arg) { return arg->isReference(); }))
+        {
+            throw std::runtime_error("Expected at least one reference argument; use 'concat' to join literals only");
+        }
 
         for (const auto& arg : opArgs)
         {
@@ -1111,13 +1119,12 @@ MapBuilder opBuilderHelperStringConcat(bool atleastOne)
                         value = std::static_pointer_cast<Value>(arg)->value().str();
                     }
                     result.append(value);
-                    anyResolved = true;
                 }
             }
 
             if (atleastOne && !anyResolved)
             {
-                RETURN_FAILURE(isTestMode, json::Json {}, failureTrace1 + "No argument could be resolved");
+                RETURN_FAILURE(isTestMode, json::Json {}, failureTrace1 + "No reference could be resolved");
             }
 
             json::Json resultJson;
@@ -2704,19 +2711,17 @@ TransformOp opBuilderHelperMerge(const Reference& targetField,
             }
         }
 
-        // Merge into a copy of the target so that a conflict leaves the event untouched; on success the copy
-        // replaces the target and the source field is deleted
-        auto merged = event->getJson(targetField).value();
+        // The source is copied first: it may sit inside the target, which the merge grows. A conflict leaves the
+        // event untouched; on success the source field is deleted
         const auto source = event->getJson(fieldReference).value();
         try
         {
-            merged.merge(recursive ? json::RECURSIVE : json::NOT_RECURSIVE, source);
+            utils::mergeIntoField(event, targetField, source, recursive);
         }
         catch (const std::exception& e)
         {
             RETURN_FAILURE(isTestMode, event, failureTrace6 + e.what());
         }
-        event->set(targetField, merged);
         event->erase(fieldReference);
 
         RETURN_SUCCESS(isTestMode, event, successTrace);
@@ -3841,21 +3846,18 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
         }
         else
         {
-            // Merge into a copy of the target so that a conflict leaves the event untouched
-            auto merged = event->getJson(targetField);
-            if (!merged.has_value())
+            if (!event->exists(targetField))
             {
                 RETURN_FAILURE(isTestMode, event, failureTrace7 + "target field not found");
             }
             try
             {
-                merged.value().merge(recursive ? json::RECURSIVE : json::NOT_RECURSIVE, resolvedValue.value());
+                utils::mergeIntoField(event, targetField, resolvedValue.value(), recursive);
             }
             catch (std::runtime_error& e)
             {
                 RETURN_FAILURE(isTestMode, event, failureTrace7 + e.what());
             }
-            event->set(targetField, merged.value());
         }
 
         RETURN_SUCCESS(isTestMode, event, successTrace);

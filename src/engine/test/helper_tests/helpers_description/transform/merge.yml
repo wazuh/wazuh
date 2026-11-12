@@ -31,6 +31,8 @@ metadata:
     - `lookup_merge` merges a value out of an object without deleting anything; `rename` moves a field but
       refuses to overwrite the target.
   group: object
+  deletes_arguments:
+    - source
   fails_when:
     - The source or the target field does not exist.
     - The source and the target field have different types, or are not both objects or both arrays.
