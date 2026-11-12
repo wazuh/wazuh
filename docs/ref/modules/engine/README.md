@@ -902,24 +902,14 @@ The routing logic uses a `first_of` block that evaluates two conditions in order
 If neither condition matches — the event is unclassified but the policy has unclassified-events indexing
 disabled — no output is selected and the event is **not indexed**.
 
-Since every event of a log source whose integration is disabled ends up unclassified, the engine reports
-these drops: when the policy of a space has `index_unclassified_events` disabled, the engine logs a WARNING
-at most once every 5 minutes per space (shared by all router workers), with the number of unclassified
-events dropped since the previous warning and up to 10 of their sources (`wazuh.protocol.location`). The first
-drop is reported immediately. Policies built in test mode (tester sessions, `/logtest`, policy validation)
-never warn. The [`space.<space>.events.unclassified`](#spacespaceeventsunclassified) metric counts every
-unclassified event, indexed or not.
-
-The warning says the events were not indexed *as processed events*: raw indexing (`index_raw_events`) runs
-before the policy and the policy does not know whether it is enabled, so the warning fires either way, and with
-raw indexing enabled a raw copy of each event is still kept. Its advice to enable an integration applies only
-when one exists for the source; a custom log format may have none.
-
-Each listed source is cut to 128 bytes (on a UTF-8 character boundary) and its control characters are shown as
-`\xNN`, since the location is reported by the agent. Drops counted after a warning are reported with the next
-one, which needs another unclassified event once the interval has elapsed: if the source stops sending, or the
-route is deleted, the last count is only visible in the
-[`space.<space>.events.unclassified`](#spacespaceeventsunclassified) metric.
+The engine does not log these drops. Every unclassified event of production traffic, indexed or not, is counted
+in the [`space.<space>.events.unclassified`](#spacespaceeventsunclassified) metric (policies built in test mode do not
+move it). When the manager has indexer hosts configured, the master node collects the engine metrics of its own node
+and of its connected workers at startup and then every `metrics_frequency` (600 seconds by default and at least;
+`0` disables the collection) and indexes them into `wazuh-metrics-normalization` (a node that cannot be reached in a
+cycle is skipped until the next one); the Wazuh dashboard shows this one in the **Unclassified events** panel of
+**Server statistics → Normalization** and **Server statistics → Per-Space Metrics**. Without that publication the
+counter is still available from the engine's metrics, but the dashboard is not updated.
 
 ```mermaid
 flowchart TD
