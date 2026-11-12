@@ -122,68 +122,93 @@ char * __wrap_getenv(const char *name) {
     return mock_type(char *);
 }
 
+// CreatePID opens the PID file without following symlinks and sets its mode on the descriptor, so
+// these run against the real file system (OS_PIDFILE is the relative "var/run", so the tests chdir
+// into a private temp dir to keep every file operation out of the shared working directory).
+static char createpid_cwd[PATH_MAX + 1];
+static char createpid_dir[64];
+
+static int setup_createpid(void **state) {
+    (void) state;
+    char path[96];
+    // Build the layout by absolute path and chdir last, so a failure before the chdir leaves the
+    // working directory and test_mode untouched for the tests that follow.
+    assert_non_null(getcwd(createpid_cwd, sizeof(createpid_cwd)));
+    snprintf(createpid_dir, sizeof(createpid_dir), "/tmp/wazuh_createpid_XXXXXX");
+    assert_non_null(mkdtemp(createpid_dir));
+    snprintf(path, sizeof(path), "%s/var", createpid_dir);
+    assert_int_equal(mkdir(path, 0750), 0);
+    snprintf(path, sizeof(path), "%s/var/run", createpid_dir);
+    assert_int_equal(mkdir(path, 0770), 0);
+    assert_int_equal(chdir(createpid_dir), 0);
+    test_mode = 0;
+    return 0;
+}
+
+static int teardown_createpid(void **state) {
+    (void) state;
+    // Clean up with test_mode still 0 so the wrapped remove() reaches the real file system, then
+    // restore the global state last. Nothing here asserts, so test_mode is always put back.
+    remove("var/run/test-2345.pid");
+    remove("var/run/other");
+    remove("var/run");
+    remove("var");
+    if (chdir(createpid_cwd) == 0) {
+        remove(createpid_dir);
+    }
+    errno = 0;
+    test_mode = 1;
+    return 0;
+}
+
 void test_CreatePID_success(void **state)
 {
     (void) state;
-    int ret;
-    char* content = NULL;
+    struct stat statbuf;
+    char line[32] = {0};
+    FILE * fp;
 
-    *state = content;
+    // Pre-create the file with a different mode so the mode assertion pins fchmod(): in append mode the
+    // open would otherwise leave an existing file's permissions untouched.
+    int fd = open("var/run/test-2345.pid", O_WRONLY | O_CREAT | O_TRUNC, 0600);
+    assert_int_not_equal(fd, -1);
+    close(fd);
 
-    expect_string(__wrap_fopen, path, "var/run/test-2345.pid");
-    expect_string(__wrap_fopen, mode, "a");
-    will_return(__wrap_fopen, 1);
+    assert_int_equal(CreatePID("test", 2345), 0);
 
-    expect_value(__wrap_fprintf, __stream, 1);
-    expect_string(__wrap_fprintf, formatted_msg, "2345\n");
-    will_return(__wrap_fprintf, 0);
+    assert_int_equal(stat("var/run/test-2345.pid", &statbuf), 0);
+    assert_int_equal(statbuf.st_mode & 0777, 0640);
 
-    expect_string(__wrap_chmod, path, "var/run/test-2345.pid");
-    will_return(__wrap_chmod, 0);
-
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 0);
-
-    ret = CreatePID("test", 2345);
-    assert_int_equal(0, ret);
+    fp = fopen("var/run/test-2345.pid", "r");
+    assert_non_null(fp);
+    assert_non_null(fgets(line, sizeof(line), fp));
+    fclose(fp);
+    assert_string_equal(line, "2345\n");
 }
 
-void test_CreatePID_failure_chmod(void **state)
+void test_CreatePID_does_not_follow_symlink(void **state)
 {
     (void) state;
-    int ret;
+    struct stat statbuf;
+    int fd = open("var/run/other", O_WRONLY | O_CREAT | O_TRUNC, 0600);
+    assert_int_not_equal(fd, -1);
+    close(fd);
+    assert_int_equal(symlink("other", "var/run/test-2345.pid"), 0);
 
-    expect_string(__wrap_fopen, path, "var/run/test-2345.pid");
-    expect_string(__wrap_fopen, mode, "a");
-    will_return(__wrap_fopen, 1);
+    assert_int_equal(CreatePID("test", 2345), -1);
 
-    expect_value(__wrap_fprintf, __stream, 1);
-    expect_string(__wrap_fprintf, formatted_msg, "2345\n");
-    will_return(__wrap_fprintf, 0);
-
-    expect_string(__wrap_chmod, path, "var/run/test-2345.pid");
-    will_return(__wrap_chmod, 1);
-
-    expect_string(__wrap__merror, formatted_msg, "(1127): Could not chmod object 'var/run/test-2345.pid' due to [(0)-(Success)].");
-
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 0);
-
-    ret = CreatePID("test", 2345);
-    assert_int_equal(-1, ret);
+    // the pointed-to file keeps its mode and stays empty
+    assert_int_equal(stat("var/run/other", &statbuf), 0);
+    assert_int_equal(statbuf.st_mode & 0777, 0600);
+    assert_int_equal(statbuf.st_size, 0);
 }
 
-void test_CreatePID_failure_fopen(void **state)
+void test_CreatePID_failure_open(void **state)
 {
     (void) state;
-    int ret;
+    remove("var/run");
 
-    expect_string(__wrap_fopen, path, "var/run/test-2345.pid");
-    expect_string(__wrap_fopen, mode, "a");
-    will_return(__wrap_fopen, NULL);
-
-    ret = CreatePID("test", 2345);
-    assert_int_equal(-1, ret);
+    assert_int_equal(CreatePID("test", 2345), -1);
 }
 
 void test_DeletePID_success(void **state)
@@ -2773,6 +2798,32 @@ void test_w_fopen_vetted_follow_missing_file(void **state) {
     assert_vetted_rejected(path, ENOENT);
 }
 
+void test_is_ascii_utf8_text_file(void **state) {
+    char path[PATH_MAX + 1];
+
+    nofollow_create_file("regular", "content");
+    nofollow_path(path, "regular");
+
+    assert_int_equal(is_ascii_utf8(path, 10, 1400), 0);
+}
+
+void test_is_ascii_utf8_fifo_rejected_without_blocking(void **state) {
+    char path[PATH_MAX + 1];
+    char msg[PATH_MAX + 64];
+
+    nofollow_path(path, "fifo");
+    assert_int_equal(mkfifo(path, 0640), 0);
+    if (geteuid() == 0) {
+        assert_int_equal(chown(path, 1000, (gid_t) -1), 0);
+    }
+    assert_int_equal(__real_chmod(nofollow_dir, 0777), 0);
+
+    snprintf(msg, sizeof(msg), "(1963): Unable to open file '%s'.", path);
+    expect_string(__wrap__mdebug1, formatted_msg, msg);
+
+    assert_int_equal(is_ascii_utf8(path, 10, 1400), 1);
+}
+
 void test_w_fopen_vetted_follow_fifo_rejected_without_blocking(void **state) {
     char path[PATH_MAX + 1];
 
@@ -3282,15 +3333,127 @@ void test_w_vet_opened_file_hard_link_writable_dir_rejected(void **state) {
     assert_int_equal(w_vet_opened_file(&fd_stat, &dir_stat, NULL), -1);
 }
 
+/* Tests checkBinaryFile */
+
+// The file is read from disk; only ftell is mocked, so the returns it needs are queued from the layout of the reads.
+
+static char binary_dir[PATH_MAX + 1];
+static char binary_file[PATH_MAX + 1];
+static char binary_long_line[OS_MAXSTR + 10];
+
+static int setup_check_binary(void **state) {
+    test_mode = 0;
+    snprintf(binary_dir, sizeof(binary_dir), "/tmp/wazuh_binary_XXXXXX");
+    assert_non_null(mkdtemp(binary_dir));
+    snprintf(binary_file, sizeof(binary_file), "%s/shared_file", binary_dir);
+    return 0;
+}
+
+static int teardown_check_binary(void **state) {
+    remove(binary_file);
+    remove(binary_dir);
+    test_mode = 1;
+    return 0;
+}
+
+// Writes data to the file and queues the offsets ftell returns: the start and the end of each of the first reads.
+static void check_binary_prepare(const char *data, size_t len, size_t reads) {
+    size_t pos = 0;
+    int fd = open(binary_file, O_WRONLY | O_CREAT | O_TRUNC, 0640);
+
+    assert_int_not_equal(fd, -1);
+    assert_int_equal(write(fd, data, len), (ssize_t)len);
+    close(fd);
+
+    will_return(__wrap_ftell, 0);
+
+    for (size_t i = 0; i < reads; i++) {
+        size_t n = 0;
+
+        // fgets stops after a \n or after OS_MAXSTR bytes
+        while (pos + n < len && n < OS_MAXSTR) {
+            if (data[pos + n++] == '\n') {
+                break;
+            }
+        }
+
+        pos += n;
+        will_return(__wrap_ftell, pos);
+    }
+}
+
+static void check_binary_zero_bytes(const char *data, size_t len, size_t reads, const char *expected_msg) {
+    check_binary_prepare(data, len, reads);
+    expect_string(__wrap__mdebug2, formatted_msg, expected_msg);
+    assert_int_equal(checkBinaryFile(binary_file), 1);
+}
+
+void test_checkBinaryFile_only_zeros_without_lf(void **state) {
+    static char zeros[4096];
+
+    check_binary_zero_bytes(zeros, sizeof(zeros), 1, "Line contains some zero-bytes (valid=0/ total=4096).");
+}
+
+void test_checkBinaryFile_zero_in_middle_without_lf(void **state) {
+    check_binary_zero_bytes("AAAA\0BBBB", 9, 1, "Line contains some zero-bytes (valid=4/ total=9).");
+}
+
+void test_checkBinaryFile_zero_in_middle_with_lf(void **state) {
+    check_binary_zero_bytes("AAAA\0BBBB\n", 10, 1, "Line contains some zero-bytes (valid=4/ total=9).");
+}
+
+void test_checkBinaryFile_zero_at_end_without_lf(void **state) {
+    check_binary_zero_bytes("AAAA\0", 5, 1, "Line contains some zero-bytes (valid=4/ total=5).");
+}
+
+void test_checkBinaryFile_zero_in_last_line(void **state) {
+    check_binary_zero_bytes("line one\nline two\nAAAA\0BBBB", 27, 3, "Line contains some zero-bytes (valid=4/ total=9).");
+}
+
+void test_checkBinaryFile_text_with_final_lf(void **state) {
+    check_binary_prepare("line one\nline two\n", 18, 2);
+    assert_int_equal(checkBinaryFile(binary_file), 0);
+}
+
+void test_checkBinaryFile_text_without_final_lf(void **state) {
+    check_binary_prepare("line one\nline two", 17, 2);
+    assert_int_equal(checkBinaryFile(binary_file), 0);
+}
+
+void test_checkBinaryFile_empty_file(void **state) {
+    check_binary_prepare("", 0, 0);
+    assert_int_equal(checkBinaryFile(binary_file), 0);
+}
+
+void test_checkBinaryFile_long_line_without_zeros(void **state) {
+    memset(binary_long_line, 'A', sizeof(binary_long_line));
+    check_binary_prepare(binary_long_line, sizeof(binary_long_line), 2);
+    assert_int_equal(checkBinaryFile(binary_file), 0);
+}
+
+void test_checkBinaryFile_long_line_zero_in_first_read(void **state) {
+    memset(binary_long_line, 'A', sizeof(binary_long_line));
+    binary_long_line[100] = '\0';
+    check_binary_zero_bytes(binary_long_line, sizeof(binary_long_line), 1,
+                            "Line contains some zero-bytes (valid=100/ total=65536).");
+}
+
+void test_checkBinaryFile_long_line_zero_in_second_read(void **state) {
+    memset(binary_long_line, 'A', sizeof(binary_long_line));
+    binary_long_line[OS_MAXSTR + 2] = '\0';
+    check_binary_zero_bytes(binary_long_line, sizeof(binary_long_line), 2,
+                            "Line contains some zero-bytes (valid=2/ total=10).");
+}
+
 #endif /* TEST_WINAGENT */
 
 int main(void) {
     const struct CMUnitTest tests[] = {
 #ifndef TEST_WINAGENT
 #ifndef W_VETTED_TEST_NO_O_NOFOLLOW
-        cmocka_unit_test(test_CreatePID_success),
-        cmocka_unit_test(test_CreatePID_failure_chmod),
-        cmocka_unit_test(test_CreatePID_failure_fopen),
+        cmocka_unit_test_setup_teardown(test_CreatePID_success, setup_createpid, teardown_createpid),
+        cmocka_unit_test_setup_teardown(test_CreatePID_does_not_follow_symlink, setup_createpid, teardown_createpid),
+        cmocka_unit_test_setup_teardown(test_CreatePID_failure_open, setup_createpid, teardown_createpid),
         cmocka_unit_test(test_DeletePID_success),
         cmocka_unit_test(test_DeletePID_failure),
         cmocka_unit_test(test_w_is_compressed_gz_file_uncompressed),
@@ -3375,6 +3538,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_directory_rejected, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_missing_file, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_fifo_rejected_without_blocking, setup_nofollow, teardown_vetted),
+        cmocka_unit_test_setup_teardown(test_is_ascii_utf8_text_file, setup_nofollow, teardown_vetted),
+        cmocka_unit_test_setup_teardown(test_is_ascii_utf8_fifo_rejected_without_blocking, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_fifo_in_root_only_dir_accepted, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_owner_fifo_in_own_dir_rejected, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_fifo_component_rejected_without_blocking, setup_nofollow, teardown_vetted),
@@ -3406,6 +3571,18 @@ int main(void) {
         cmocka_unit_test(test_w_vet_opened_file_hard_link_trusted_dir_accepted),
         cmocka_unit_test(test_w_vet_opened_file_hard_link_foreign_dir_rejected),
         cmocka_unit_test(test_w_vet_opened_file_hard_link_writable_dir_rejected),
+        // checkBinaryFile
+        cmocka_unit_test_setup_teardown(test_checkBinaryFile_only_zeros_without_lf, setup_check_binary, teardown_check_binary),
+        cmocka_unit_test_setup_teardown(test_checkBinaryFile_zero_in_middle_without_lf, setup_check_binary, teardown_check_binary),
+        cmocka_unit_test_setup_teardown(test_checkBinaryFile_zero_in_middle_with_lf, setup_check_binary, teardown_check_binary),
+        cmocka_unit_test_setup_teardown(test_checkBinaryFile_zero_at_end_without_lf, setup_check_binary, teardown_check_binary),
+        cmocka_unit_test_setup_teardown(test_checkBinaryFile_zero_in_last_line, setup_check_binary, teardown_check_binary),
+        cmocka_unit_test_setup_teardown(test_checkBinaryFile_text_with_final_lf, setup_check_binary, teardown_check_binary),
+        cmocka_unit_test_setup_teardown(test_checkBinaryFile_text_without_final_lf, setup_check_binary, teardown_check_binary),
+        cmocka_unit_test_setup_teardown(test_checkBinaryFile_empty_file, setup_check_binary, teardown_check_binary),
+        cmocka_unit_test_setup_teardown(test_checkBinaryFile_long_line_without_zeros, setup_check_binary, teardown_check_binary),
+        cmocka_unit_test_setup_teardown(test_checkBinaryFile_long_line_zero_in_first_read, setup_check_binary, teardown_check_binary),
+        cmocka_unit_test_setup_teardown(test_checkBinaryFile_long_line_zero_in_second_read, setup_check_binary, teardown_check_binary),
 #else
         cmocka_unit_test(test_get_UTC_modification_time_success),
         cmocka_unit_test(test_get_UTC_modification_time_fail_get_handle),
