@@ -115,6 +115,7 @@ char *gen_diff_str(const diff_data *diff);
 char *fim_diff_generate(const diff_data *diff, bool is_file);
 char *fim_diff_create_tmp_folder(const char *diff_dir);
 unsigned int fim_diff_lock_slot(const char *encoded_path);
+void fim_diff_remove_tmp_folder(const char *folder);
 extern atomic_int_t fim_diff_tmp_counter;
 
 static void expect_tmp_mkdir(const char *path, int ret) {
@@ -143,6 +144,14 @@ static void expect_path_unlock() {
 
 static void expect_quota_update() {
     expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+}
+
+// Removal of the scratch folder, under the lock of the folders pending removal
+static void expect_tmp_folder_removal() {
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
+    will_return(__wrap_rmdir_ex, 0);
     expect_function_call(__wrap_pthread_mutex_unlock);
 }
 
@@ -1396,8 +1405,7 @@ void test_fim_registry_value_diff_wrong_registry_tmp(void **state) {
 
     expect_fim_diff_registry_tmp("queue/diff/tmp/2345-1", "queue/diff/tmp/2345-1/[x64] " KEY_NAME_HASHED VALUE_NAME_HASHED, NULL, value_data);
 
-    expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp/2345-1");
-    will_return(__wrap_rmdir_ex, 0);
+    expect_tmp_folder_removal();
 
     char *diff_str = fim_registry_value_diff(key_name, value_name, value_data, data_type, configuration);
 
@@ -1418,8 +1426,7 @@ void test_fim_registry_value_diff_wrong_too_big_file(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6349): File 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\valuename' is too big for configured maximum size to perform diff operation.");
 
-    expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp/2345-1");
-    will_return(__wrap_rmdir_ex, 0);
+    expect_tmp_folder_removal();
 
     char *diff_str = fim_registry_value_diff(key_name, value_name, value_data, data_type, configuration);
 
@@ -1443,8 +1450,7 @@ void test_fim_registry_value_diff_wrong_quota_reached(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6350): The estimation of the file size 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\valuename' exceeds the disk_quota. Operation discarded.");
 
-    expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp/2345-1");
-    will_return(__wrap_rmdir_ex, 0);
+    expect_tmp_folder_removal();
 
     char *diff_str = fim_registry_value_diff(key_name, value_name, value_data, data_type, configuration);
 
@@ -1472,8 +1478,7 @@ void test_fim_registry_value_diff_uncompress_fail(void **state) {
 
     expect_save_compress_file("queue/diff/tmp/2345-1/tmp-entry.gz", "queue/diff/registry/[x64] " KEY_NAME_HASHED "/" VALUE_NAME_HASHED "/last-entry.gz", 0);
 
-    expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp/2345-1");
-    will_return(__wrap_rmdir_ex, 0);
+    expect_tmp_folder_removal();
 
     char *diff_str = fim_registry_value_diff(key_name, value_name, value_data, data_type, configuration);
 
@@ -1503,8 +1508,7 @@ void test_fim_registry_value_diff_create_compress_fail(void **state) {
 
     expect_string(__wrap__mwarn, formatted_msg, "(6914): Cannot create a snapshot of file 'queue/diff/tmp/2345-1/[x64] " KEY_NAME_HASHED VALUE_NAME_HASHED "'");
 
-    expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp/2345-1");
-    will_return(__wrap_rmdir_ex, 0);
+    expect_tmp_folder_removal();
 
     char *diff_str = fim_registry_value_diff(key_name, value_name, value_data, data_type, configuration);
 
@@ -1536,8 +1540,7 @@ void test_fim_registry_value_diff_compare_fail(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6351): The files are identical, don't compute differences");
 
-    expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp/2345-1");
-    will_return(__wrap_rmdir_ex, 0);
+    expect_tmp_folder_removal();
 
     char *diff_str = fim_registry_value_diff(key_name, value_name, value_data, data_type, configuration);
 
@@ -1569,8 +1572,7 @@ void test_fim_registry_value_diff_nodiff(void **state) {
 
     expect_fim_diff_compare("queue/diff/tmp/2345-1/tmp-entry", "queue/diff/tmp/2345-1/[x64] " KEY_NAME_HASHED VALUE_NAME_HASHED, md5sum_old, md5sum_new, 0);
 
-    expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp/2345-1");
-    will_return(__wrap_rmdir_ex, 0);
+    expect_tmp_folder_removal();
 
     char *diff_str = fim_registry_value_diff(key_name, value_name, value_data, data_type, configuration);
 
@@ -1612,8 +1614,7 @@ void test_fim_registry_value_diff_generate_fail(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "(6714): Command fc output an error");
 
-    expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp/2345-1");
-    will_return(__wrap_rmdir_ex, 0);
+    expect_tmp_folder_removal();
 
     char *diff_str = fim_registry_value_diff(key_name, value_name, value_data, data_type, configuration);
 
@@ -1652,8 +1653,7 @@ void test_fim_registry_value_diff_generate_diff_str(void **state) {
 
     expect_save_compress_file("queue/diff/tmp/2345-1/tmp-entry.gz", "queue/diff/registry/[x64] " KEY_NAME_HASHED "/" VALUE_NAME_HASHED "/last-entry.gz", 0);
 
-    expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp/2345-1");
-    will_return(__wrap_rmdir_ex, 0);
+    expect_tmp_folder_removal();
 
     char *diff_str = fim_registry_value_diff(key_name, value_name, value_data, data_type, configuration);
 
@@ -1684,8 +1684,7 @@ void test_fim_registry_value_diff_utf16_REG_SZ(void **state) {
 
     expect_save_compress_file("queue/diff/tmp/2345-1/tmp-entry.gz", "queue/diff/registry/[x64] " KEY_NAME_HASHED "/" VALUE_NAME_HASHED "/last-entry.gz", 0);
 
-    expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp/2345-1");
-    will_return(__wrap_rmdir_ex, 0);
+    expect_tmp_folder_removal();
 
     char *diff_str = fim_registry_value_diff(key_name, value_name, value_data_utf16, data_type, configuration);
 
@@ -1721,8 +1720,7 @@ void test_fim_registry_value_diff_utf16_REG_MULTI_SZ(void **state) {
 
     expect_save_compress_file("queue/diff/tmp/2345-1/tmp-entry.gz", "queue/diff/registry/[x64] " KEY_NAME_HASHED "/" VALUE_NAME_HASHED "/last-entry.gz", 0);
 
-    expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp/2345-1");
-    will_return(__wrap_rmdir_ex, 0);
+    expect_tmp_folder_removal();
 
     char *diff_str = fim_registry_value_diff(key_name, value_name, value_data_utf16_multi, data_type, configuration);
 
@@ -1757,8 +1755,7 @@ void test_fim_file_diff_wrong_too_big_file(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6349): File '/path/to/file' is too big for configured maximum size to perform diff operation.");
 #endif
     expect_path_unlock();
-    expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
-    will_return(__wrap_rmdir_ex, 0);
+    expect_tmp_folder_removal();
 
     char *diff_str = fim_file_diff(filename, &configuration);
 
@@ -1785,8 +1782,7 @@ void test_fim_file_diff_wrong_quota_reached(void **state) {
 #endif
 
     expect_path_unlock();
-    expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
-    will_return(__wrap_rmdir_ex, 0);
+    expect_tmp_folder_removal();
 
     char *diff_str = fim_file_diff(filename, &configuration);
 
@@ -1816,8 +1812,7 @@ void test_fim_file_diff_uncompress_fail(void **state) {
     expect_save_compress_file(COMPRESS_TMP_FILE, COMPRESS_FILE, 0);
 
     expect_path_unlock();
-    expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
-    will_return(__wrap_rmdir_ex, 0);
+    expect_tmp_folder_removal();
 
     char *diff_str = fim_file_diff(filename, &configuration);
 
@@ -1853,8 +1848,7 @@ void test_fim_file_diff_create_compress_fail(void **state) {
 #endif
 
     expect_path_unlock();
-    expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
-    will_return(__wrap_rmdir_ex, 0);
+    expect_tmp_folder_removal();
 
     char *diff_str = fim_file_diff(filename, &configuration);
 
@@ -1884,8 +1878,7 @@ void test_fim_file_diff_create_compress_rejected(void **state) {
     expect_fim_diff_delete_compress_folder(COMPRESS_FOLDER, 0, 0, 0);
 
     expect_path_unlock();
-    expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
-    will_return(__wrap_rmdir_ex, 0);
+    expect_tmp_folder_removal();
 
     char *diff_str = fim_file_diff(filename, &configuration);
 
@@ -1915,8 +1908,7 @@ void test_fim_file_diff_uncompress_new_entry_fail(void **state) {
     expect_w_uncompress_gzfile(COMPRESS_TMP_FILE, NEW_FILE, (FILE *)1234);
 
     expect_path_unlock();
-    expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
-    will_return(__wrap_rmdir_ex, 0);
+    expect_tmp_folder_removal();
 
     char *diff_str = fim_file_diff(filename, &configuration);
 
@@ -1954,8 +1946,7 @@ void test_fim_file_diff_nodiff_resolved_path(void **state) {
     expect_nodiff_realpath(GENERIC_PATH, "/path/to/ignore");
 
     expect_path_unlock();
-    expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
-    will_return(__wrap_rmdir_ex, 0);
+    expect_tmp_folder_removal();
 
     char *diff_str = fim_file_diff(filename, &configuration);
 
@@ -1995,8 +1986,7 @@ void test_fim_file_diff_compare_fail(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6351): The files are identical, don't compute differences");
 
     expect_path_unlock();
-    expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
-    will_return(__wrap_rmdir_ex, 0);
+    expect_tmp_folder_removal();
 
     char *diff_str = fim_file_diff(filename, &configuration);
 
@@ -2034,8 +2024,7 @@ void test_fim_file_diff_nodiff(void **state) {
     expect_fim_diff_compare(UNCOMPRESS_FILE, NEW_FILE, md5sum_old, md5sum_new, 0);
 
     expect_path_unlock();
-    expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
-    will_return(__wrap_rmdir_ex, 0);
+    expect_tmp_folder_removal();
 
     char *diff_str = fim_file_diff(filename, &configuration);
 
@@ -2074,8 +2063,7 @@ void test_fim_file_diff_nodiff(void **state) {
     expect_nodiff_realpath("/path/to/ignore", NULL);
 
     expect_path_unlock();
-    expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
-    will_return(__wrap_rmdir_ex, 0);
+    expect_tmp_folder_removal();
 
     char *diff_str = fim_file_diff(filename, &configuration);
 
@@ -2138,8 +2126,7 @@ void test_fim_file_diff_generate_fail(void **state) {
 #endif
 
     expect_path_unlock();
-    expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
-    will_return(__wrap_rmdir_ex, 0);
+    expect_tmp_folder_removal();
 
     char *diff_str = fim_file_diff(GENERIC_PATH, &configuration);
 
@@ -2194,8 +2181,7 @@ void test_fim_file_diff_generate_diff_str(void **state) {
     expect_save_compress_file(COMPRESS_TMP_FILE, COMPRESS_FILE, 0);
 
     expect_path_unlock();
-    expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
-    will_return(__wrap_rmdir_ex, 0);
+    expect_tmp_folder_removal();
 
     char *diff_str = fim_file_diff(GENERIC_PATH, &configuration);
 
@@ -2277,8 +2263,7 @@ void test_fim_file_diff_generate_diff_str_too_long(void **state) {
     expect_save_compress_file(COMPRESS_TMP_FILE, COMPRESS_FILE, 0);
 
     expect_path_unlock();
-    expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
-    will_return(__wrap_rmdir_ex, 0);
+    expect_tmp_folder_removal();
     char *diff_str = fim_file_diff(GENERIC_PATH, &configuration);
 
     assert_string_equal(diff_str, gen_diff_data_container->strarray[1]);
@@ -2390,6 +2375,36 @@ void test_fim_file_diff_tmp_folder_fail(void **state) {
     char *diff_str = fim_file_diff(filename, &configuration);
 
     assert_null(diff_str);
+}
+
+void test_fim_diff_remove_tmp_folder_retry(void **state) {
+    // The removal fails, so the folder is kept
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp/2345-1");
+    will_return(__wrap_rmdir_ex, -1);
+    expect_any(__wrap__mdebug2, formatted_msg);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    errno = EBUSY;
+    fim_diff_remove_tmp_folder("queue/diff/tmp/2345-1");
+
+    // The next call retries it before removing its own folder
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp/2345-1");
+    will_return(__wrap_rmdir_ex, 0);
+    expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp/2345-2");
+    will_return(__wrap_rmdir_ex, 0);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    fim_diff_remove_tmp_folder("queue/diff/tmp/2345-2");
+
+    // Nothing is pending any more
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp/2345-3");
+    will_return(__wrap_rmdir_ex, 0);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    fim_diff_remove_tmp_folder("queue/diff/tmp/2345-3");
 }
 
 void test_fim_diff_lock_slot(void **state) {
@@ -2630,6 +2645,7 @@ int main(void) {
         cmocka_unit_test(test_fim_diff_create_tmp_folder_attempts_exhausted),
         cmocka_unit_test(test_fim_file_diff_tmp_folder_fail),
         cmocka_unit_test(test_fim_diff_lock_slot),
+        cmocka_unit_test(test_fim_diff_remove_tmp_folder_retry),
 
         cmocka_unit_test(test_fim_diff_process_delete_file_ok),
         cmocka_unit_test(test_fim_diff_process_delete_file_delete_error),

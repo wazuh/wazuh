@@ -42,6 +42,10 @@ static pthread_mutex_t fim_diff_path_locks[FIM_DIFF_LOCK_SLOTS];
 static pthread_mutex_t fim_diff_quota_mutex = PTHREAD_MUTEX_INITIALIZER;
 // Gives each diff its own scratch folder.
 static atomic_int_t fim_diff_tmp_counter = ATOMIC_INT_INITIALIZER(0);
+// Scratch folders that could not be removed yet, retried by later diffs
+#define FIM_DIFF_PENDING_MAX    64
+static char *fim_diff_pending_folders[FIM_DIFF_PENDING_MAX];
+static pthread_mutex_t fim_diff_pending_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /**
  * @brief Maps the SHA1 of a path to its lock slot
@@ -67,6 +71,15 @@ static char *fim_diff_create_tmp_folder(const char *diff_dir);
  * @param size Size in KB
  */
 static void fim_diff_quota_add(float size);
+
+/**
+ * @brief Removes a scratch folder; if it fails, keeps it to retry on the next call
+ *
+ * On Windows another process can briefly hold a file of the folder open.
+ *
+ * @param folder Scratch folder to remove
+ */
+static void fim_diff_remove_tmp_folder(const char *folder);
 
 #ifdef WIN32
 
@@ -324,9 +337,7 @@ char *fim_registry_value_diff(const char *key_name,
 
 cleanup:
 
-    if (rmdir_ex(diff->tmp_folder) < 0) {
-        mdebug2(RMDIR_ERROR, diff->tmp_folder, errno, strerror(errno));
-    }
+    fim_diff_remove_tmp_folder(diff->tmp_folder);
 
     free_diff_data(diff);
 
@@ -533,9 +544,7 @@ cleanup:
 
     w_mutex_unlock(&fim_diff_path_locks[diff->lock_slot]);
 
-    if (rmdir_ex(diff->tmp_folder) < 0) {
-        mdebug2(RMDIR_ERROR, diff->tmp_folder, errno, strerror(errno));
-    }
+    fim_diff_remove_tmp_folder(diff->tmp_folder);
 
     free_diff_data(diff);
 
@@ -942,6 +951,32 @@ static char *fim_diff_create_tmp_folder(const char *diff_dir) {
 
     merror(MKDIR_ERROR, path, errno, strerror(errno));
     return NULL;
+}
+
+static void fim_diff_remove_tmp_folder(const char *folder) {
+    int i;
+
+    w_mutex_lock(&fim_diff_pending_mutex);
+
+    for (i = 0; i < FIM_DIFF_PENDING_MAX; i++) {
+        if (fim_diff_pending_folders[i] != NULL &&
+            (rmdir_ex(fim_diff_pending_folders[i]) == 0 || errno == ENOENT)) {
+            os_free(fim_diff_pending_folders[i]);
+        }
+    }
+
+    if (rmdir_ex(folder) < 0 && errno != ENOENT) {
+        mdebug2(RMDIR_ERROR, folder, errno, strerror(errno));
+
+        for (i = 0; i < FIM_DIFF_PENDING_MAX; i++) {
+            if (fim_diff_pending_folders[i] == NULL) {
+                os_strdup(folder, fim_diff_pending_folders[i]);
+                break;
+            }
+        }
+    }
+
+    w_mutex_unlock(&fim_diff_pending_mutex);
 }
 
 static void fim_diff_quota_add(float size) {
