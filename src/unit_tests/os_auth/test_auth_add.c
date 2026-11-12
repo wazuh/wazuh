@@ -134,10 +134,35 @@ static void test_w_auth_add_agent_limit_reached(void **state) {
     assert_null(new_key);
 }
 
+/* The counter at INT_MAX with no max_agents set: the agent is told the id space is exhausted, not
+ * "Agent limit (0) reached". */
+static void test_w_auth_add_agent_id_space_exhausted(void **state) {
+    char response[2048] = {0};
+    w_err_t err;
+    int id_counter = keys.id_counter;
+
+    config.max_agents = 0;
+    keys.id_counter = INT_MAX;
+    new_id = NULL;
+    new_key = NULL;
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Unable to add agent: agent1. The agent id counter is exhausted (2147483647).");
+
+    err = w_auth_add_agent(response, "192.0.0.0", "agent1", &new_id, &new_key);
+    assert_int_equal(err, OS_INVALID);
+    assert_string_equal(response, "ERROR: Agent ID space exhausted");
+    assert_null(new_id);
+    assert_null(new_key);
+
+    keys.id_counter = id_counter;
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_teardown(test_w_auth_add_agent, teardown_add_agent),
         cmocka_unit_test_teardown(test_w_auth_add_agent_limit_reached, teardown_add_agent),
+        cmocka_unit_test_teardown(test_w_auth_add_agent_id_space_exhausted, teardown_add_agent),
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

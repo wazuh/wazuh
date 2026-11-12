@@ -416,9 +416,9 @@ namespace remoted::enrollment
                            // authentication failure -- it is the same "that state is taken" 409 the
                            // duplicate name and ip get, and the agent may retry once it lands.
                     return 409;
-                case 9013: // max_agents reached -- also authd's id-assignment counter exhaustion,
-                           // which shares this sentinel; reachable from ordinary self-enrollment
-                           // since it never sends an id of its own.
+                case 9013: // max_agents reached
+                case 9032: // authd's id counter is exhausted; reachable from ordinary self-enrollment
+                           // since it never sends an id of its own. The body carries authd's message.
                 case 9015: // worker rejection (remove/get, post cluster-forwarding fix)
                 case 9016: // clustered forward to master failed
                 case 9031: // authd could not journal the credential it was about to hand out
