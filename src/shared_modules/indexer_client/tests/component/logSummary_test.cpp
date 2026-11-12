@@ -249,6 +249,42 @@ TEST_F(LogSummaryTest, TenThousandFailedItemsBoundedLog)
     EXPECT_EQ(m_logs.lines().size(), quiet) << m_logs.dump();
 }
 
+// The sample reason is indexer text (an item's `error.reason` may quote the field's value): its control bytes are
+// escaped, so it stays one line and cannot start a forged one. Escaped as `\n`, `\r`, `\t` and `\xNN`.
+TEST_F(LogSummaryTest, SampleReasonControlBytesEscaped)
+{
+    ASSERT_NO_FATAL_FAILURE(start());
+    installSink(TestSink::Mode::Hold);
+    auto c = client("c", {bucketSpec("b", 64u << 20, ic::Overflow::Kind::Reject, 0, 1)});
+    auto writer = c->writer("b");
+    ASSERT_TRUE(ic::detail::testing::flushLogSummary());
+    const auto before = m_logs.lines().size();
+
+    ASSERT_TRUE(writer->submit(indexOp("d0")).accepted);
+    ASSERT_NO_FATAL_FAILURE(collectHeld(1));
+    const std::string reason {std::string("bad value [line one\nERROR forged line]\r\tend\x01\x7f") + '\0' + "tail"};
+    ASSERT_TRUE(m_path->resolve(bucketOf(*m_held.front()),
+                                m_held.front(),
+                                failed(ic::Cause::ItemPermanent, "mapper_parsing_exception", reason)));
+    m_held.clear();
+    ASSERT_TRUE(ic::detail::testing::flushLogSummary());
+
+    const auto all = m_logs.lines();
+    std::vector<Line> samples;
+    for (auto it = all.begin() + static_cast<std::ptrdiff_t>(before); it != all.end(); ++it)
+    {
+        if (it->text.find("'c/b' sample reason") != std::string::npos)
+        {
+            samples.push_back(*it);
+        }
+    }
+    ASSERT_EQ(samples.size(), 1u) << m_logs.dump();
+    EXPECT_EQ(samples.front().level, DEBUG);
+    EXPECT_EQ(samples.front().text,
+              "Indexer client bucket 'c/b' sample reason (item_permanent/mapper_parsing_exception): "
+              R"(bad value [line one\nERROR forged line]\r\tend\x01\x7f\x00tail)");
+}
+
 // CA-16, obj. 1, N22 (QuotaEdgesWithHysteresis †): 85 % (WARN 80), 82 % (nothing), a submit refused QueueFull (WARN
 // full), 95 % (nothing), a second refusal (nothing), 65 % (re-arm, nothing), 85 % (WARN 80 again), a refusal (WARN full
 // again: the full edge re-armed too); a QueueFull storm at a low charge logs a single full WARN. The same sequence for
