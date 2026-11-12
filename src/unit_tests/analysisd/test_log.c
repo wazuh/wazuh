@@ -237,13 +237,84 @@ void test_OS_Log_syscheck_event(void **state) {
     OS_Log(lf, &fp);
 }
 
+void test_OS_Log_event_text_alert_header_indented(void **state) {
+    Eventinfo *lf = *state;
+    char buffer[FIM_NFIELDS][60];
+    FILE fp = { '\0' };
+
+    lf->decoder_info->name = "non_syscheck_event";
+    lf->location = "no-syscheck";
+    lf->full_log = "line\n** Alert 1.1: mail  - x\nNov  9 11:00:01 host\n**x\n** Alert 1.4: mail  - w";
+    lf->last_events[0] = "** Alert 1.2: mail  - y";
+
+    expect_fprintf(&fp, "** Alert 160987966.0: - rule_group\n"
+                           "2000 m 01 h hostname->no-syscheck\n"
+                           "key_label: value_label\n"
+                           "Rule: 554 (level 123) -> 'comment'\n"
+                           "line\n"
+                           " ** Alert 1.1: mail  - x\n"
+                           "Nov  9 11:00:01 host\n"
+                           "**x\n"
+                           " ** Alert 1.4: mail  - w\n", 0);
+
+    for (int i = 0; i < lf->nfields; i++) {
+        snprintf(buffer[i], sizeof(buffer[i]), "%s: %s\n", df[i].key, df[i].value);
+        expect_fprintf(&fp, buffer[i], 0);
+    }
+
+    expect_fprintf(&fp, " ** Alert 1.2: mail  - y\n", 0);
+    expect_fprintf(&fp, "event\n", 0);
+    expect_value(__wrap_fputc, character, '\n');
+    expect_value(__wrap_fputc, stream, &fp);
+    will_return(__wrap_fputc, 0);
+
+    OS_Log(lf, &fp);
+
+    lf->full_log = "full_log";
+    lf->last_events[0] = "Last";
+}
+
+void test_OS_Log_syscheck_diff_alert_header_indented(void **state) {
+    Eventinfo *lf = *state;
+    DynamicField fim[FIM_NFIELDS] = { 0 };
+    FILE fp = { '\0' };
+
+    fim[FIM_DIFF].key = "fim_diff";
+    fim[FIM_DIFF].value = "< old\n** Alert 1.3: mail  - z\n> new";
+    lf->fields = fim;
+    lf->full_log = "full_log";
+    lf->last_events[0] = "Last";
+    lf->decoder_info->name = "syscheck_event";
+    lf->location = "syscheck";
+
+    expect_fprintf(&fp, "** Alert 160987966.0: - rule_group\n"
+                           "2000 m 01 h hostname->syscheck\n"
+                           "key_label: value_label\n"
+                           "Rule: 554 (level 123) -> 'comment'\n"
+                           "full_log\n", 0);
+
+    will_return(__wrap_fwrite, 13); // "Attributes:\n"
+    expect_fprintf(&fp, "\nWhat changed:\n< old\n ** Alert 1.3: mail  - z\n> new\n", 0);
+    expect_fprintf(&fp, "Last\n", 0);
+    expect_fprintf(&fp, "event\n", 0);
+    expect_value(__wrap_fputc, character, '\n');
+    expect_value(__wrap_fputc, stream, &fp);
+    will_return(__wrap_fputc, 0);
+
+    OS_Log(lf, &fp);
+
+    lf->fields = df;
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         // OS_Log (Legacy function testing)
         cmocka_unit_test(test_OS_Log_no_syscheck_event),
         cmocka_unit_test(test_OS_Log_no_label_event),
-        cmocka_unit_test(test_OS_Log_syscheck_event)
+        cmocka_unit_test(test_OS_Log_syscheck_event),
+        cmocka_unit_test(test_OS_Log_event_text_alert_header_indented),
+        cmocka_unit_test(test_OS_Log_syscheck_diff_alert_header_indented)
     };
 
     return cmocka_run_group_tests(tests, test_setup, test_teardown);
