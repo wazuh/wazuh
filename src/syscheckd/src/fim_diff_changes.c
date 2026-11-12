@@ -45,6 +45,7 @@ static atomic_int_t fim_diff_tmp_counter = ATOMIC_INT_INITIALIZER(0);
 // Scratch folders that could not be removed yet, retried by later diffs
 #define FIM_DIFF_PENDING_MAX    64
 static char *fim_diff_pending_folders[FIM_DIFF_PENDING_MAX];
+static bool fim_diff_pending_full = false;
 static pthread_mutex_t fim_diff_pending_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /**
@@ -962,6 +963,7 @@ static void fim_diff_remove_tmp_folder(const char *folder) {
         if (fim_diff_pending_folders[i] != NULL &&
             (rmdir_ex(fim_diff_pending_folders[i]) == 0 || errno == ENOENT)) {
             os_free(fim_diff_pending_folders[i]);
+            fim_diff_pending_full = false;
         }
     }
 
@@ -973,6 +975,12 @@ static void fim_diff_remove_tmp_folder(const char *folder) {
                 os_strdup(folder, fim_diff_pending_folders[i]);
                 break;
             }
+        }
+
+        // Logged once each time the list fills up
+        if (i == FIM_DIFF_PENDING_MAX && !fim_diff_pending_full) {
+            fim_diff_pending_full = true;
+            mwarn(FIM_WARN_DIFF_PENDING_FULL, folder);
         }
     }
 

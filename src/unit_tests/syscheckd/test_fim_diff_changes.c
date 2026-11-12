@@ -117,6 +117,8 @@ char *fim_diff_create_tmp_folder(const char *diff_dir);
 unsigned int fim_diff_lock_slot(const char *encoded_path);
 void fim_diff_remove_tmp_folder(const char *folder);
 extern atomic_int_t fim_diff_tmp_counter;
+extern char *fim_diff_pending_folders[];
+#define FIM_DIFF_PENDING_MAX 64
 
 static void expect_tmp_mkdir(const char *path, int ret) {
 #ifdef TEST_WINAGENT
@@ -2407,6 +2409,54 @@ void test_fim_diff_remove_tmp_folder_retry(void **state) {
     fim_diff_remove_tmp_folder("queue/diff/tmp/2345-3");
 }
 
+void test_fim_diff_remove_tmp_folder_list_full(void **state) {
+    // expect_string() keeps the pointer, so the paths must outlive the loops
+    static char paths[67][OS_SIZE_64];
+    int i, j;
+
+    for (i = 0; i < 67; i++) {
+        snprintf(paths[i], sizeof(paths[i]), "queue/diff/tmp/2345-%d", i + 1);
+    }
+
+    // 66 folders fail to be removed; every call first retries the pending ones, which still fail
+    for (i = 0; i < 66; i++) {
+        int pending = i < 64 ? i : 64;
+
+        expect_function_call(__wrap_pthread_mutex_lock);
+        for (j = 0; j < pending; j++) {
+            expect_string(__wrap_rmdir_ex, name, paths[j]);
+            will_return(__wrap_rmdir_ex, -1);
+        }
+        expect_string(__wrap_rmdir_ex, name, paths[i]);
+        will_return(__wrap_rmdir_ex, -1);
+        expect_any(__wrap__mdebug2, formatted_msg);
+
+        // Only the first folder that does not fit is reported
+        if (i == 64) {
+            expect_string(__wrap__mwarn, formatted_msg, "(6985): Too many report_changes scratch folders could not be removed. 'queue/diff/tmp/2345-65' will be removed at the next restart.");
+        }
+        expect_function_call(__wrap_pthread_mutex_unlock);
+
+        fim_diff_remove_tmp_folder(paths[i]);
+    }
+
+    // Once they can be removed, the list empties
+    expect_function_call(__wrap_pthread_mutex_lock);
+    for (j = 0; j < 64; j++) {
+        expect_string(__wrap_rmdir_ex, name, paths[j]);
+        will_return(__wrap_rmdir_ex, 0);
+    }
+    expect_string(__wrap_rmdir_ex, name, paths[66]);
+    will_return(__wrap_rmdir_ex, 0);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    fim_diff_remove_tmp_folder(paths[66]);
+
+    for (j = 0; j < FIM_DIFF_PENDING_MAX; j++) {
+        assert_null(fim_diff_pending_folders[j]);
+    }
+}
+
 void test_fim_diff_lock_slot(void **state) {
     assert_int_equal(fim_diff_lock_slot("00a1"), 0);
     assert_int_equal(fim_diff_lock_slot("3f17"), 63);
@@ -2646,6 +2696,7 @@ int main(void) {
         cmocka_unit_test(test_fim_file_diff_tmp_folder_fail),
         cmocka_unit_test(test_fim_diff_lock_slot),
         cmocka_unit_test(test_fim_diff_remove_tmp_folder_retry),
+        cmocka_unit_test(test_fim_diff_remove_tmp_folder_list_full),
 
         cmocka_unit_test(test_fim_diff_process_delete_file_ok),
         cmocka_unit_test(test_fim_diff_process_delete_file_delete_error),
