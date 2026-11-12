@@ -232,8 +232,8 @@ namespace indexer_client::detail
         std::shared_ptr<PitState> pit;
         CursorQuery query;
         std::optional<Slice> slice;
-        std::string invalid;        ///< Non-empty: the first next() returns InvalidArgument with this reason.
-        std::mutex mutex;           ///< Serializes next() on this cursor; guards the members below.
+        std::string invalid; ///< Non-empty: the first next() returns InvalidArgument with this reason.
+        std::mutex mutex;    ///< Held by the one next() in progress (an overlapping one is refused); guards below.
         nlohmann::json searchAfter; ///< The last hit's sort; null before the first page.
         bool firstPage {true};
         std::atomic<bool> exhausted {false};

@@ -40,7 +40,10 @@
 // STATE. PitState {id (renewable, under its mutex), keepAlive, generation (process-wide counter), expired (atomic),
 // lastUse, the QueryOptions of pit(), indices, client (shared_ptr: the consumer name stays reserved while a handle
 // lives), registry (weak)}. Pit and every PitSession share it; Pit is copyable; cursor(), next() and search() are safe
-// from different threads (E9 pages up to 32 slices at once).
+// from different threads (E9 pages up to 32 slices at once, one cursor each). One next() at a time per cursor: a
+// cursor (and its copies) is one sequence of pages, each continuing from the previous one's search_after, so a next()
+// called while another is in progress on the same cursor ⇒ InvalidState "another next() is in progress on this
+// cursor", at once and without a request. Different cursors, even of the same Pit and slice, never wait on each other.
 //
 // SEARCH (PitSession::next, Pit::search). POST /_search?allow_partial_search_results=false with
 // pit {id, keep_alive: <ms>ms} on every request (it renews the PIT), and:

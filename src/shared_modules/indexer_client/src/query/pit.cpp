@@ -446,7 +446,14 @@ namespace indexer_client::detail::query
             return Outcome<PitPage>::failure(Cause::InvalidState, "cursor of an empty Pit");
         }
 
-        std::lock_guard<std::mutex> lock(cursor->mutex); // One page at a time per cursor.
+        // One next() at a time per cursor: each page continues from the previous page's search_after, so overlapping
+        // calls would only split the pages in an arbitrary order, and a call waiting on the mutex would wait for the
+        // other one's whole page (retries included) past its own Deadline. Refused at once, without a request.
+        std::unique_lock<std::mutex> lock(cursor->mutex, std::try_to_lock);
+        if (!lock.owns_lock())
+        {
+            return Outcome<PitPage>::failure(Cause::InvalidState, "another next() is in progress on this cursor");
+        }
         PitPage page;
         page.generation = pit->generation;
         if (cursor->exhausted.load())

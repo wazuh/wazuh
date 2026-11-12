@@ -121,6 +121,8 @@ namespace indexer_client
     public:
         PitSession() = default;
         explicit PitSession(std::shared_ptr<detail::CursorState> state);
+        /// One call at a time per cursor (copies included): an overlapping call fails at once with InvalidState and
+        /// sends nothing. Different cursors may run on different threads.
         Outcome<PitPage> next(Deadline deadline);
         bool exhausted() const;
 
