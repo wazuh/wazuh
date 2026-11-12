@@ -114,6 +114,14 @@ case "$1" in
       fi
       ${DIR}/bin/wazuh-control stop > /dev/null 2>&1
 
+      # The enable links are not owned by the package, so they would outlive it
+      if command -v systemctl > /dev/null 2>&1; then
+          systemctl --no-reload disable wazuh-agent.service > /dev/null 2>&1 || true
+      fi
+      if command -v update-rc.d > /dev/null 2>&1; then
+          update-rc.d -f wazuh-agent remove > /dev/null 2>&1 || true
+      fi
+
       # Save the conffiles
       mkdir -p ${DIR}/tmp/conffiles
       # Save the client.keys
