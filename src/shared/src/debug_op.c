@@ -107,6 +107,23 @@ static FILE * open_log_file(const char * path) {
         }
     }
 
+#ifdef CLIENT
+    // The agent's service account rotates the log by rename, which the sticky logs/ allows only to its owner.
+    struct stat log_stat;
+
+    if (getuid() == 0 && fstat(fd, &log_stat) == 0 && log_stat.st_uid == 0) {
+        static uid_t owner = (uid_t)-1;
+
+        if (owner == (uid_t)-1) {
+            owner = Privsep_GetUser(USER);
+        }
+
+        if (fchown(fd, owner, (gid_t)-1)) {
+            // Don't log anything
+        }
+    }
+#endif
+
     if (fp = fdopen(fd, "a"), !fp) {
         close(fd);
     }

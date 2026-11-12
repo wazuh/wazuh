@@ -96,6 +96,8 @@ chown -R root:wheel ${DIR}/lib
 # The ossec queue (default for agentd to read). queue/sockets is group-writable, so a hard link the
 # wazuh account plants inside it must be skipped, not chowned/chmodded through.
 harden_tree 770 ${USER}:${GROUP} ${DIR}/queue/sockets
+chown root:${GROUP} ${DIR}/queue/sockets
+chmod 1770 ${DIR}/queue/sockets
 harden_tree 750 ${USER}:${GROUP} ${DIR}/queue/diff
 harden_tree 750 ${USER}:${GROUP} ${DIR}/queue/rids
 
@@ -106,26 +108,28 @@ chmod 770 ${DIR}/logs
 find ${DIR}/logs ! -type l \( -type d -o -links 1 \) -exec chown ${USER}:${GROUP} {} +
 find ${DIR}/logs/ -type d -exec chmod 750 {} +
 find ${DIR}/logs/ -type f -links 1 -exec chmod 660 {} +
+chown root:${GROUP} ${DIR}/logs
+chmod 1770 ${DIR}/logs
 
 # tmp is 1750 (not group-writable), so nothing can be planted in it; keep the chown off any hard
 # link anyway, for consistency with the walks above.
 find ${DIR}/tmp ! -type l \( -type d -o -links 1 \) -exec chown root:${GROUP} {} +
 chmod 1750 ${DIR}/tmp
 
-chmod 770 ${DIR}/etc
-chown ${USER}:${GROUP} ${DIR}/etc
-# etc/ is owned by the wazuh account, so a file in it may be a link that account planted. Set the
+chmod 1770 ${DIR}/etc
+chown root:${GROUP} ${DIR}/etc
+# etc/ is writable by the wazuh account, so a file in it may be a link that account planted. Set the
 # mode and owner only on a regular file with a single hard link that is not a symlink, so a planted
 # symlink or hard link (macOS has no protected_hardlinks) leaves its target untouched.
 harden_etc_file() {
     if [ -f "$2" ] && [ ! -L "$2" ] && [ -n "$(find "$2" -prune -links 1 2>/dev/null)" ]; then
         chmod "$1" "$2"
-        [ "${3:-}" = nochown ] || chown root:${GROUP} "$2"
+        [ "${3:-}" = nochown ] || chown ${3:-root}:${GROUP} "$2"
     fi
 }
 harden_etc_file 640 ${DIR}/etc/internal_options.conf
 harden_etc_file 640 ${DIR}/etc/local_internal_options.conf
-harden_etc_file 640 ${DIR}/etc/client.keys
+harden_etc_file 640 ${DIR}/etc/client.keys ${USER}
 harden_etc_file 640 ${DIR}/etc/localtime nochown
 # etc/shared only when it is a real directory (a trailing-slash find would follow a symlinked
 # shared into its target); inside it skip a symlink and a hard-linked file, so chown/chmod cannot
@@ -140,6 +144,7 @@ harden_etc_file 640 ${DIR}/etc/wpk_root.pem
 
 # For the /var/run. var/incoming is group-writable, so use the hard-link-safe walk.
 harden_tree 770 root:${GROUP} ${DIR}/var
+chmod 1770 ${DIR}/var/run
 # Only root writes the WPK files root then installs, so the group cannot swap one after the
 # signature check.
 chmod 750 ${DIR}/var/upgrade

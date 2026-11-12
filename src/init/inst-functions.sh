@@ -933,7 +933,17 @@ InstallCommon()
   # Install VERSION.json and append commit id if any
   ${INSTALL} -m 440 -o root -g ${WAZUH_GROUP} ../VERSION.json ${INSTALLDIR}/VERSION.json
 
-  ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs
+  # On the agent, root owns the directories the service account writes, with the sticky bit set, so
+  # that account cannot rename or unlink the root-owned entries in them.
+  if [ "X${INSTYPE}" = "Xagent" ]; then
+      RW_DIR_MODE=1770
+      RW_DIR_OWNER=root
+  else
+      RW_DIR_MODE=0770
+      RW_DIR_OWNER=${WAZUH_USER}
+  fi
+
+  ${INSTALL} -d -m ${RW_DIR_MODE} -o ${RW_DIR_OWNER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/wazuh
   # Create the log files only when absent: an update must not truncate the
   # running history (installing /dev/null over them would empty them).
@@ -1235,8 +1245,8 @@ InstallCommon()
     ${INSTALL} -m 0750 -o root -g 0 ${WAZUH_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-control
   fi
 
-  ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue
-  ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/sockets
+  ${INSTALL} -d -m ${RW_DIR_MODE} -o ${RW_DIR_OWNER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue
+  ${INSTALL} -d -m ${RW_DIR_MODE} -o ${RW_DIR_OWNER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/sockets
   if [ "X${INSTYPE}" = "Xagent" ]; then
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/diff
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/agent_info
@@ -1257,7 +1267,7 @@ InstallCommon()
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/wodles
   fi
 
-  ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${ETC_DIR}
+  ${INSTALL} -d -m ${RW_DIR_MODE} -o root -g ${WAZUH_GROUP} ${ETC_DIR}
 
   # The manager reads the system's time zone directly; only the agent keeps its copy.
   if [ "X${INSTYPE}" = "Xagent" ]; then
@@ -1294,7 +1304,7 @@ InstallCommon()
 
     if [ ! -f ${ETC_DIR}/client.keys ]; then
         if [ "X${INSTYPE}" = "Xagent" ]; then
-            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /dev/null ${ETC_DIR}/client.keys
+            ${INSTALL} -m 0640 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${ETC_DIR}/client.keys
         else
             ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${ETC_DIR}/client.keys
         fi
@@ -1341,7 +1351,7 @@ InstallCommon()
   fi
 
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var
-  ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/run
+  ${INSTALL} -d -m ${RW_DIR_MODE} -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/run
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/audit
 
   if [ "X${INSTYPE}" = "Xagent" ]; then

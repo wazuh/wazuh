@@ -822,8 +822,8 @@ rm -fr %{buildroot}
 %dir %attr(750, root, root) %{_localstatedir}/bin
 %attr(750, root, root) %{_localstatedir}/bin/*
 %dir %attr(750, root, wazuh) %{_localstatedir}/backup
-%dir %attr(770, wazuh, wazuh) %{_localstatedir}/etc
-%attr(640, root, wazuh) %config(noreplace) %{_localstatedir}/etc/client.keys
+%dir %attr(1770, root, wazuh) %{_localstatedir}/etc
+%attr(640, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/client.keys
 %attr(640, root, wazuh) %{_localstatedir}/etc/internal_options*
 %attr(640, root, wazuh) %{_localstatedir}/etc/localtime
 %attr(640, root, wazuh) %config(noreplace) %{_localstatedir}/etc/local_internal_options.conf
@@ -832,10 +832,10 @@ rm -fr %{buildroot}
 %dir %attr(770, root, wazuh) %{_localstatedir}/etc/shared
 %dir %attr(750, root, wazuh) %{_localstatedir}/lib
 %attr(750, root, wazuh) %{_localstatedir}/lib/*
-%dir %attr(770, wazuh, wazuh) %{_localstatedir}/logs
+%dir %attr(1770, root, wazuh) %{_localstatedir}/logs
 %attr(660, wazuh, wazuh) %ghost %{_localstatedir}/logs/active-responses.log
-%attr(660, root, wazuh) %ghost %{_localstatedir}/logs/ossec.log
-%attr(660, root, wazuh) %ghost %{_localstatedir}/logs/ossec.json
+%attr(660, wazuh, wazuh) %ghost %{_localstatedir}/logs/ossec.log
+%attr(660, wazuh, wazuh) %ghost %{_localstatedir}/logs/ossec.json
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/wazuh
 %dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files
 %dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts
@@ -855,7 +855,7 @@ rm -fr %{buildroot}
 # post-install script deleted, so an upgrade would not find it.
 %attr(750, root, root) %{_localstatedir}/packages_files/agent_installation_scripts/src/init/register_configure_agent.sh
 %dir %attr(750, root, wazuh) %{_localstatedir}/queue
-%dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/sockets
+%dir %attr(1770, root, wazuh) %{_localstatedir}/queue/sockets
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/diff
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/fim
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/fim/db
@@ -931,7 +931,7 @@ rm -fr %{buildroot}
 %dir %attr(750, root, wazuh) %{_localstatedir}/var
 %dir %attr(750, root, wazuh) %{_localstatedir}/var/audit
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/incoming
-%dir %attr(770, root, wazuh) %{_localstatedir}/var/run
+%dir %attr(1770, root, wazuh) %{_localstatedir}/var/run
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/selinux
 %attr(640, root, wazuh) %{_localstatedir}/var/selinux/*
 %dir %attr(750, root, wazuh) %{_localstatedir}/var/upgrade
