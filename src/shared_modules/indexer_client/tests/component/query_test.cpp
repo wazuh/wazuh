@@ -508,6 +508,68 @@ TEST_F(QueryTest, QueryRetriesAndExhausts)
     EXPECT_NE(out.reason.find("rrrr"), std::string::npos) << out.reason;
 }
 
+// retry.maxDuration bounds the series before the sleep, not only after it: a 503 every time with a 500 ms backoff and a
+// 200 ms budget ⇒ RetryExhausted after the first request and without sleeping, also for a 429 (Throttled) and a 2xx
+// `timed_out` (Retry). Mutant: the budget checked only before the next backoff (a second request after 500 ms).
+TEST_F(QueryTest, RetryNeverSendsAfterMaxDuration)
+{
+    const auto node =
+        fake({rule("POST", "/busy/_search", 503, errorBody("unavailable", "busy", 503)),
+              rule("POST", "/throttled/_search", 429, errorBody("rejected_execution_exception", "too many", 429)),
+              rule("POST",
+                   "/slow/_update_by_query",
+                   200,
+                   R"({"timed_out":true,"total":0,"updated":0,"version_conflicts":0,"failures":[]})")});
+    ASSERT_NO_FATAL_FAILURE(start({node->baseUrl()}));
+    auto owner = client();
+    auto query = owner->query();
+    auto options = fastOptions();
+    options.retry.base = ic::Duration {500};
+    options.retry.cap = ic::Duration {500};
+    options.retry.maxAttempts.reset();
+    options.retry.maxDuration = ic::Duration {200};
+
+    const auto check = [&](const char* what, const auto& run)
+    {
+        node->clearRequests();
+        const auto started = now();
+        const auto out = run();
+        const auto took = since(started);
+        EXPECT_EQ(out.cause, ic::Cause::RetryExhausted) << what << ": " << out.reason;
+        EXPECT_EQ(queries(*node).size(), 1u) << what << ": a request was sent past maxDuration";
+        EXPECT_LT(took, scaled(400ms)) << what << ": slept a backoff that ends past maxDuration";
+    };
+    check("503", [&] { return query->search("busy", MATCH_ALL, options, in(10s)); });
+    check("429", [&] { return query->search("throttled", MATCH_ALL, options, in(10s)); });
+    check("timed_out", [&] { return query->updateByQuery({"slow"}, MATCH_ALL, options, in(10s)); });
+}
+
+// retry.maxDuration also bounds the wait for a usable node once the page has made its first attempt: the only node
+// cuts the answer (Down, probe every hour), so the failover finds no node and the call ends RetryExhausted at about
+// maxDuration, not Unavailable at the page deadline. Mutant: the no-node wait bounded only by the page.
+TEST_F(QueryTest, NoNodeWaitEndsAtMaxDuration)
+{
+    auto cut = rule("POST", "/idx/_search", 200, std::string(64, ' '));
+    cut.cutAfter = 3;
+    const auto node = fake({cut});
+    ASSERT_NO_FATAL_FAILURE(start({node->baseUrl()}));
+    auto owner = client();
+    auto query = owner->query();
+    auto options = fastOptions();
+    options.retry.maxAttempts.reset();
+    options.retry.maxDuration = ic::Duration {300};
+    options.pageDeadline = ic::Duration {5000};
+
+    const auto started = now();
+    const auto out = query->search("idx", MATCH_ALL, options, in(10s));
+    const auto took = since(started);
+    EXPECT_EQ(out.cause, ic::Cause::RetryExhausted) << out.reason;
+    EXPECT_GE(took, 250ms);
+    EXPECT_LT(took, scaled(1500ms)) << "the no-node wait outlived maxDuration";
+    EXPECT_EQ(queries(*node).size(), 1u);
+    EXPECT_EQ(nodeState(0), NodeState::Down);
+}
+
 // I83: indexExists is a HEAD: 200 ⇒ true, 404 ⇒ false, 503 then 200 ⇒ true; also over the fake's TLS. Mutant: a 404
 // treated as an error.
 TEST_F(QueryTest, IndexExistsUsesHead)
