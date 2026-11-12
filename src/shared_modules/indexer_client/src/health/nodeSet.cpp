@@ -31,6 +31,17 @@ namespace indexer_client::detail
     {
         constexpr const char* TAG = "indexer-client";
 
+        /**
+         * Consecutive probe rounds whose own answer is a PERMANENT circuit breaker before the heap-sizing WARN.
+         *
+         * OpenSearch labels a parent-breaker trip PERMANENT whenever its permanent children (fielddata) outweigh its
+         * transient ones, whatever the rest of the heap holds; with the real-memory breaker on G1 it forces a GC before
+         * tripping, but at most once every 5 s, so one probe can trip on garbage the next collection frees (seen during
+         * a rolling restart). Only a breaker that survives several probes, and so several forced collections, says the
+         * live heap is too small. A passive 429 of a bulk or a query never counts: only the probe's own answers do.
+         */
+        constexpr std::uint32_t PERMANENT_BREAKER_WARNING_PROBES = 3;
+
         /// The WARN of a node that goes Down, queued until the mutex is released.
         struct DownLine final
         {
@@ -172,7 +183,7 @@ namespace indexer_client::detail
         return m_nodes.at(index).host;
     }
 
-    void NodeSet::transition(std::size_t index, State to, std::string reason, bool permanent, Pending& pending)
+    void NodeSet::transition(std::size_t index, State to, std::string reason, Pending& pending)
     {
         auto& node = m_nodes[index];
         const auto from = node.state;
@@ -195,7 +206,6 @@ namespace indexer_client::detail
 
         const auto logged = to == State::Available ? LogState::Available
                                                    : (to == State::Throttled ? LogState::Throttled : LogState::Down);
-        const bool wasPermanent = node.logged == LogState::Throttled && node.permanent;
         if (logged != node.logged)
         {
             if (logged == LogState::Available)
@@ -214,16 +224,26 @@ namespace indexer_client::detail
             }
             node.logged = logged;
         }
-        node.permanent = to == State::Throttled && permanent;
-        if (node.permanent && !wasPermanent)
+    }
+
+    void NodeSet::countPermanentBreaker(std::size_t index, bool permanent, Pending& pending)
+    {
+        auto& node = m_nodes[index];
+        // Any other answer (green, a TRANSIENT trip, an error, red) ends the streak. The WARN fires once, on the round
+        // that reaches the threshold; a single trip stays at the INFO line of the Throttled transition.
+        // Saturates one past the threshold: a breaker that never clears warns once, never again on a wrap-around.
+        node.permanentStreak =
+            permanent ? std::min(node.permanentStreak + 1, PERMANENT_BREAKER_WARNING_PROBES + 1) : std::uint32_t {0};
+        if (node.permanentStreak == PERMANENT_BREAKER_WARNING_PROBES)
         {
             pending.lines.emplace_back(
                 [host = node.host]()
                 {
                     logWarn(TAG,
-                            "Indexer node '%s' is throttled with durability PERMANENT: it will not recover without "
-                            "operator action.",
-                            host.c_str());
+                            "Indexer node '%s' has reported a PERMANENT circuit breaker on %u consecutive health "
+                            "checks: heap usage stays above the breaker limit; check the indexer heap sizing.",
+                            host.c_str(),
+                            static_cast<unsigned>(PERMANENT_BREAKER_WARNING_PROBES));
                 });
         }
     }
@@ -339,23 +359,24 @@ namespace indexer_client::detail
                 m_nodes[i].lastCause = round[i].cause;
                 m_nodes[i].lastCurlCode = round[i].curlCode;
                 park(i, round[i], now); // I109b: the probe's own 429 Retry-After parks the node too.
+                // The node's own answer, also in a red round: the breaker is the node's, whatever the cluster says.
+                countPermanentBreaker(i, verdicts[i].state == State::Throttled && verdicts[i].permanent, pending);
                 if (red && verdicts[i].state == State::Down && !verdicts[i].red)
                 {
                     // Down by its own result: keep that reason, it is still the node's problem once red clears.
-                    transition(i, State::Down, std::move(verdicts[i].reason), false, pending);
+                    transition(i, State::Down, std::move(verdicts[i].reason), pending);
                 }
                 else if (red)
                 {
                     transition(i,
                                State::Down,
                                "cluster health is red (reported by '" + m_nodes[*redReporter].host + "')",
-                               false,
                                pending);
                 }
                 else
                 {
                     auto& verdict = verdicts[i];
-                    transition(i, verdict.state, std::move(verdict.reason), verdict.permanent, pending);
+                    transition(i, verdict.state, std::move(verdict.reason), pending);
                 }
             }
             updateTlsEpisode(pending);
@@ -389,14 +410,15 @@ namespace indexer_client::detail
             {
                 node.lastCause = result.cause;
                 node.lastCurlCode = result.curlCode;
-                transition(index, State::Down, causeReason(result), false, pending);
+                transition(index, State::Down, causeReason(result), pending);
                 updateTlsEpisode(pending);
             }
             else if (node.state == State::Available)
             {
                 node.lastCause = result.cause;
                 node.lastCurlCode = result.curlCode;
-                transition(index, State::Throttled, {}, permanent429(result.body), pending);
+                // A passive 429 never counts towards the PERMANENT breaker WARN: only the probe's rounds do.
+                transition(index, State::Throttled, {}, pending);
                 updateTlsEpisode(pending);
             }
             else

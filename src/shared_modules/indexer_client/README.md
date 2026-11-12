@@ -437,7 +437,7 @@ probe instead of answering from its stale copy of the cluster state. It works in
 | 2xx, body JSON with string `status` `green` or `yellow` | Available | |
 | 2xx, `status` `red` (some manager index lost a primary) | Down, **every** node | The round is red: `clusterRed` is set, every node's reason is `cluster health is red (reported by '<host>')` (a node already Down by its own result keeps its own reason) and no node returns to Available while a round holds `red` |
 | 2xx, `status` missing, not a string, any other value, or body not JSON | Down | `invalid _cluster/health body` |
-| 429 | Throttled | `error.durability` or `error.root_cause[0].durability` equal to `PERMANENT` marks the throttle as permanent; anything else, or an unreadable body, is transient |
+| 429 | Throttled | `error.durability` or `error.root_cause[0].durability` equal to `PERMANENT` marks the answer as a permanent breaker; anything else, or an unreadable body, is transient. A node whose own probe answers a permanent breaker on **3 consecutive rounds** gets one WARN (see [Logging](#logging)); any other answer ends the streak, and a passive 429 (a bulk or a query) never counts. One trip is not enough: OpenSearch labels a parent-breaker trip `PERMANENT` whenever fielddata outweighs the transient children, and the forced GC that could free the garbage runs at most once every 5 s |
 | 401, 403 | Down | `HTTP <status>: check indexer credentials / permissions` |
 | any other HTTP status | Down | `HTTP <status>` |
 | transport cause with `nodeAttributable` (`Timeout`, `Connect`, `SendError`, `RecvError`, `PartialResponse`, `Tls`) | Down | `<cause> (curl <code>)` |
@@ -1609,7 +1609,7 @@ unknown, so its first state is reported. Lines emitted by `src/health/nodeSet.cp
 | INFO | `Indexer node '<host>' is available.` | The node's logged state becomes Available |
 | INFO | `Indexer node '<host>' is throttled (HTTP 429).` | The logged state becomes Throttled |
 | WARN | `Indexer node '<host>' is no longer available. Reason: <reason>` | The logged state becomes Down, or a Down node's reason changes (once per distinct reason, e.g. connect refused, then 401) |
-| WARN | `Indexer node '<host>' is throttled with durability PERMANENT: it will not recover without operator action.` | A permanent throttle starts, also from a transient one |
+| WARN | `Indexer node '<host>' has reported a PERMANENT circuit breaker on 3 consecutive health checks: heap usage stays above the breaker limit; check the indexer heap sizing.` | The node's own probe answered a `PERMANENT` breaker on 3 consecutive rounds; once per streak (any other probe answer ends it; a passive 429 never counts) |
 | ERROR | `Indexer cluster health is red: every node is marked down.` | A round turns red |
 | INFO | `Indexer cluster is no longer red.` | The first round that is not red |
 | ERROR | `Indexer client local fault: <reason>` | `localFault` appears |
