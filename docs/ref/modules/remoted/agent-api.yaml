@@ -1014,6 +1014,13 @@ paths:
         A `200` is a promise the scan will run: VD answers it once the scan is recorded as a durable
         `vd_scan` task in the Task Manager (a repeated request for the same agent coalesces into the
         pending one), never invented here.
+
+        The agent also asks for a scan a node without a running scanner left undone: that node
+        indexes a VD session's inventory without scanning it and marks its `/stateful` answer
+        `"vd_scan":"skipped"`. The agent requests the owed scan from the next node that advertises a
+        feed offset, at that offset even when it is the one the agent already holds, with
+        `first_scan: true` when the skipped session was the agent's first: VD then indexes the
+        findings without sending alerts, as a first scan does.
       requestBody:
         required: true
         content:
@@ -1022,6 +1029,9 @@ paths:
             examples:
               feedUpdate:
                 value: { type: feed_update, feed_offset: 12345678 }
+              firstScan:
+                summary: The agent's first scan, owed by a node that skipped it
+                value: { type: feed_update, feed_offset: 12345678, first_scan: true }
       responses:
         "200":
           description: |
@@ -1059,6 +1069,9 @@ paths:
                   value: { error: "invalid_type" }
                 missingFeedOffset:
                   value: { error: "missing_feed_offset" }
+                invalidFirstScan:
+                  summary: "`first_scan` present but not a boolean"
+                  value: { error: "invalid_first_scan" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "409":
           description: |
@@ -1691,6 +1704,13 @@ components:
             The offset the agent is asking to be scanned against, normally the value it most recently
             received from `/control`.
           example: 12345678
+        first_scan:
+          type: boolean
+          default: false
+          description: |
+            The agent's first scan: its first inventory sync reached a node without a running scanner,
+            which indexed it unscanned. VD indexes the findings without sending alerts, as for a
+            `VDFirst` session. Optional; anything but a boolean is `400 invalid_first_scan`.
 
     ScanVdConflict:
       type: object

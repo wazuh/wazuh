@@ -49,10 +49,12 @@ class VdOffsetStoreAdapter final : public IVdOffsetStore
             int changed = 0;
             int pending = 0;
             uint64_t pendingOffset = 0;
-            m_observeCallback(offset, &changed, &pending, &pendingOffset, m_userData);
+            int pendingFirst = 0;
+            m_observeCallback(offset, &changed, &pending, &pendingOffset, &pendingFirst, m_userData);
             observation.changed = (changed != 0);
             observation.pending = (pending != 0);
             observation.pendingOffset = pendingOffset;
+            observation.pendingFirst = (pendingFirst != 0);
             return observation;
         }
 

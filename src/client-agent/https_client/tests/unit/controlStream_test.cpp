@@ -1812,6 +1812,60 @@ TEST_F(ControlStreamTest, PendingRescanTriggersScanVdRequestAndClearsOnSuccess)
     EXPECT_THAT(m_vdOffsetStore.clearPendingCalls(), ::testing::ElementsAre(100u));
 }
 
+// A node without a running scanner indexed this agent's VD session and said so.
+// The agent comes back to a scanning node that advertises the SAME offset it already holds, so the
+// offset alone would never trigger a rescan: the owed scan is requested anyway, and a first scan
+// says so, for the manager to run it without alerting.
+static void requestsTheOwedScanAtAnUnchangedOffset(ControlStream& stream,
+                                                   FakeVdOffsetStore& store,
+                                                   MockHttpPerformer& performer,
+                                                   FakeWaiter& waiter,
+                                                   bool firstScan)
+{
+    store.setVDFirstDone(false); // nothing pending from the offset itself
+
+    const std::string notify = R"({"status":"ok","vd_feed_offset":100})";
+    std::vector<std::string> scanVdBodies;
+    EXPECT_CALL(performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}"))) // Startup.
+    .WillRepeatedly(Invoke(
+                        [&](const HttpRequestSpec & spec)
+    {
+        if (spec.target == "/control")
+        {
+            return response(TransportStatus::Ok, 200, notify);
+        }
+
+        scanVdBodies.emplace_back(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+        return response(TransportStatus::Ok, 200, "{}");
+    }));
+
+    stream.step(waiter); // Startup.
+    stream.step(waiter); // Notify(100): the offset is recorded, nothing owed yet.
+    ASSERT_TRUE(scanVdBodies.empty());
+
+    store.oweScan(firstScan);
+    stream.step(waiter); // Notify(100) again: the owed scan is taken over and requested.
+
+    ASSERT_EQ(1u, scanVdBodies.size());
+    const auto body = nlohmann::json::parse(scanVdBodies[0]);
+    EXPECT_EQ(100u, body.value("feed_offset", 0u));
+    EXPECT_EQ(firstScan, body.contains("first_scan")) << "a plain rescan keeps its old body";
+    EXPECT_EQ(firstScan, body.value("first_scan", false));
+    EXPECT_FALSE(store.pending()) << "cleared by the 200";
+    EXPECT_FALSE(store.pendingFirst());
+}
+
+TEST_F(ControlStreamTest, AnOwedFirstScanIsRequestedAsOneAtAnUnchangedOffset)
+{
+    requestsTheOwedScanAtAnUnchangedOffset(m_stream, m_vdOffsetStore, m_performer, m_waiter, true);
+}
+
+TEST_F(ControlStreamTest, AnOwedScanIsRequestedAtAnUnchangedOffset)
+{
+    requestsTheOwedScanAtAnUnchangedOffset(m_stream, m_vdOffsetStore, m_performer, m_waiter, false);
+}
+
 // D5/Case 6: a 409 on /scan/vd reporting a newer current_version must re-observe (which
 // advances the store and re-runs the VDFirst-done gate for the new offset) and retry with
 // it -- all within the same RescanRequester::requestRescan() call, bounded to a few rounds.
@@ -1850,6 +1904,48 @@ TEST_F(ControlStreamTest, PendingRescanAdvancesOffsetAndRetriesOn409WithNewerVer
     EXPECT_THAT(m_vdOffsetStore.observeCalls(), ::testing::ElementsAre(100u, 150u));
     EXPECT_THAT(m_vdOffsetStore.clearPendingCalls(), ::testing::ElementsAre(150u));
     EXPECT_FALSE(m_vdOffsetStore.pending());
+}
+
+// The re-observe of a 409 can take over an owed FIRST scan that was not part of the request that
+// got the 409. The retry must then ask for a first scan: its 200 clears the first-scan flag with
+// the pending one, so a plain retry would run that scan with alerts and never ask again.
+TEST_F(ControlStreamTest, AFirstScanTakenOverWhileReObservingA409IsRequestedAsOne)
+{
+    const std::string notify = R"({"status":"ok","vd_feed_offset":100})";
+    std::vector<std::string> scanVdBodies;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}"))) // Startup.
+    .WillRepeatedly(Invoke(
+                        [&](const HttpRequestSpec & spec)
+    {
+        if (spec.target == "/control")
+        {
+            return response(TransportStatus::Ok, 200, notify);
+        }
+
+        const std::string body {reinterpret_cast<const char*>(spec.body), spec.bodyLength};
+        scanVdBodies.push_back(body);
+
+        if (body.find("\"feed_offset\":100") != std::string::npos)
+        {
+            // Recorded by syscollector between the notify's observe and this answer.
+            m_vdOffsetStore.oweScan(true);
+            return response(TransportStatus::Ok, 409, R"({"error":"version_mismatch","current_version":150})");
+        }
+
+        return response(TransportStatus::Ok, 200, "{}");
+    }));
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify -> plain /scan/vd(100) 409 -> first-scan /scan/vd(150) 200.
+
+    ASSERT_EQ(2u, scanVdBodies.size());
+    EXPECT_FALSE(nlohmann::json::parse(scanVdBodies[0]).contains("first_scan"));
+    const auto retry = nlohmann::json::parse(scanVdBodies[1]);
+    EXPECT_EQ(150u, retry.value("feed_offset", 0u));
+    EXPECT_TRUE(retry.value("first_scan", false));
+    EXPECT_FALSE(m_vdOffsetStore.pending());
+    EXPECT_FALSE(m_vdOffsetStore.pendingFirst());
 }
 
 // The invariant the manager side leans on for every /scan/vd 503 (scan_queue_full,

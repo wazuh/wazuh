@@ -577,18 +577,19 @@ static int bridge_check_and_record_task(const char *task_id, void *user_data)
  * that carries a vd_feed_offset field. Same bounded-IPC-hop rationale as
  * bridge_check_and_record_task above. */
 static void bridge_vd_offset_observe(uint64_t offset, int *out_changed, int *out_pending,
-                                     uint64_t *out_pending_offset, void *user_data)
+                                     uint64_t *out_pending_offset, int *out_pending_first, void *user_data)
 {
     (void)user_data;
 
     bool changed = false;
     bool pending = false;
     uint64_t pending_offset = 0;
+    bool pending_first = false;
 
     /* vd_offset_client_observe() already zero-initializes these on any error
      * path, so a failed round trip safely reports "no change, nothing
      * pending" rather than inventing a re-scan request. */
-    vd_offset_client_observe(offset, &changed, &pending, &pending_offset);
+    vd_offset_client_observe(offset, &changed, &pending, &pending_offset, &pending_first);
 
     if (out_changed) {
         *out_changed = changed ? 1 : 0;
@@ -598,6 +599,9 @@ static void bridge_vd_offset_observe(uint64_t offset, int *out_changed, int *out
     }
     if (out_pending_offset) {
         *out_pending_offset = pending_offset;
+    }
+    if (out_pending_first) {
+        *out_pending_first = pending_first ? 1 : 0;
     }
 }
 

@@ -45,7 +45,7 @@ namespace
     ScanVdResponse callSync(ScanVdHandlerImpl& handler, uint32_t agentId, uint64_t offset)
     {
         ScanVdResponse result {};
-        handler.handleVdScan(agentId, offset, [&result](const ScanVdResponse& r) { result = r; });
+        handler.handleVdScan(agentId, offset, false, [&result](const ScanVdResponse& r) { result = r; });
         return result;
     }
 
@@ -213,7 +213,7 @@ TEST(ScanVdHandlerTest, AnUnreachableVdIsAnHonest503NotASilentDrop)
     server.reset(); // VD goes away
 
     ScanVdResponse response {};
-    handler.handleVdScan(7, 100, [&response](const ScanVdResponse& r) { response = r; });
+    handler.handleVdScan(7, 100, false, [&response](const ScanVdResponse& r) { response = r; });
     EXPECT_EQ(response.outcome, ScanVdOutcome::VdRejected);
     EXPECT_EQ(response.errorCode, "vd_unreachable");
     EXPECT_EQ(metrics.vdError->get(), 1u);
@@ -250,4 +250,25 @@ TEST(ScanVdHandlerTest, TheScanPostCarriesTheAgentIdAsAString)
     const auto json = nlohmann::json::parse(capturedBody);
     EXPECT_EQ(json.value("agent_id", std::string {}), "42")
         << "VD's route expects the id as a JSON string -- the wire shape is part of the contract";
+}
+
+TEST(ScanVdHandlerTest, AFirstScanIsForwardedToVdAndAPlainOneIsNot)
+{
+    Rig rig {"first"};
+    std::string capturedBody;
+    rig.server.setScanHandler(
+        [&capturedBody](const httplib::Request& req, httplib::Response& res)
+        {
+            capturedBody = req.body;
+            res.set_content("{}", "application/json");
+        });
+
+    ASSERT_EQ(callSync(rig.handler, 42, 100).outcome, ScanVdOutcome::Accepted);
+    EXPECT_FALSE(nlohmann::json::parse(capturedBody).contains("first_scan"));
+
+    ScanVdResponse result {};
+    rig.handler.handleVdScan(42, 100, true, [&result](const ScanVdResponse& r) { result = r; });
+    ASSERT_EQ(result.outcome, ScanVdOutcome::Accepted);
+    EXPECT_EQ(nlohmann::json::parse(capturedBody).value("first_scan", false), true)
+        << "VD indexes the agent's first scan without alerting only if it is told so";
 }

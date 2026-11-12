@@ -166,6 +166,40 @@ TEST(VdScanEndpoint, TheScanRunsForTheAgentNamedInTheBody)
     EXPECT_EQ("007", std::get<1>(ops[0]));
 }
 
+TEST(VdScanEndpoint, AFirstScanReachesTheScannerAsOne)
+{
+    EndpointUnderTest fixture;
+
+    auto responder = std::make_shared<FutureResponder>();
+    fixture.handler(scanRequest(R"({"agent_id":"7","first_scan":true})"), responder);
+
+    ASSERT_EQ(200, responder->get().status);
+    EXPECT_TRUE(fixture.events->m_lastScanAgentFirstScan.load()) << "the first scan indexes silently";
+}
+
+TEST(VdScanEndpoint, AScanIsNotAFirstScanUnlessTheBodySaysSo)
+{
+    EndpointUnderTest fixture;
+    fixture.events->m_lastScanAgentFirstScan.store(true);
+
+    auto responder = std::make_shared<FutureResponder>();
+    fixture.handler(scanRequest(R"({"agent_id":"7"})"), responder);
+
+    ASSERT_EQ(200, responder->get().status);
+    EXPECT_FALSE(fixture.events->m_lastScanAgentFirstScan.load());
+}
+
+TEST(VdScanEndpoint, AFirstScanFlagThatIsNotABooleanIsRefused)
+{
+    EndpointUnderTest fixture;
+
+    auto responder = std::make_shared<FutureResponder>();
+    fixture.handler(scanRequest(R"({"agent_id":"7","first_scan":"yes"})"), responder);
+
+    EXPECT_EQ(400, responder->get().status);
+    EXPECT_TRUE(fixture.events->syncOps().empty()) << "read as true it would hide every alert of the scan";
+}
+
 TEST(VdScanEndpoint, TheNumberSpellingOfAnAgentIdIsAccepted)
 {
     EndpointUnderTest fixture;

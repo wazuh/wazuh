@@ -151,7 +151,7 @@ module's work — its duration and verdicts are diagnostic **from this module's 
 | `vd.scan.duration` | histogram | microseconds | Time inside the vulnerability scanner, session and on-demand scans alike (success and failure both sampled) | diagnostic — owned by the vulnerability-scanner module |
 | `vd.scans.ok` | counter | count | Scans completed | diagnostic |
 | `vd.scans.failed` | counter | count | Scans failed; a session is answered 500 with nothing indexed, an on-demand scan 500 | diagnostic |
-| `vd.scans.skipped` | counter | count | Scans skipped because this node runs no scanner; a session's inventory is indexed anyway, an on-demand scan is answered 503 | diagnostic |
+| `vd.scans.skipped` | counter | count | Scans skipped because this node runs no scanner, or because the running scanner found nothing to scan in the session (a `VDFirst` with no packages); a session's inventory is indexed anyway, an on-demand scan is answered 503 | diagnostic |
 
 ### Transport — `server.*`
 

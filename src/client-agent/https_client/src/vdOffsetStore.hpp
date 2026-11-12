@@ -19,6 +19,9 @@ struct VdOffsetObservation
     bool changed {false};       ///< True if the offset advanced (was newer than the stored value).
     bool pending {false};       ///< True if a /scan/vd request is now outstanding for pendingOffset.
     uint64_t pendingOffset {0}; ///< Valid when pending is true.
+    /// Valid when pending is true: the request is the agent's FIRST scan, which the manager runs
+    /// without alerting -- its first inventory sync reached a node with no running scanner.
+    bool pendingFirst {false};
 };
 
 /**

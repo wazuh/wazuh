@@ -130,12 +130,19 @@ namespace invsync::vd
 
             const auto items = buildItems(session);
 
-            const bool executed = scanner.runScannerFromViews(info, items);
+            if (scanner.runScannerFromViews(info, items))
+            {
+                return ScanVerdict::Ok;
+            }
 
-            return executed ? ScanVerdict::Ok : ScanVerdict::Skipped;
+            // Not executed, for one of two reasons the agent must be able to tell apart. The
+            // scanner is still up: it declined a session with nothing to scan, and no scan is owed.
+            // Or stop() took the orchestrator away under this call: then nothing scanned an
+            // inventory that is about to be indexed, exactly as on a node without a scanner.
+            return scanner.isInitialized() ? ScanVerdict::NothingToScan : ScanVerdict::Skipped;
         }
 
-        AgentScanOutcome scanAgent(const std::string& agentId) override
+        AgentScanOutcome scanAgent(const std::string& agentId, bool firstScan) override
         {
             auto& scanner = VulnerabilityScannerFacade::instance();
 
@@ -156,7 +163,7 @@ namespace invsync::vd
             // triggerAgentScan() re-runs its own readiness guards, so this translation is the only
             // thing here: the scanner's vocabulary is richer than the seam's, and each of its
             // values has exactly one right answer for a caller deciding whether to retry.
-            switch (scanner.triggerAgentScan(agentId))
+            switch (scanner.triggerAgentScan(agentId, firstScan))
             {
                 case VulnerabilityScannerFacade::ScanTriggerResult::Success: return AgentScanOutcome::Ok;
 

@@ -400,6 +400,11 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             /// mismatch apart from a checksum mismatch instead of guessing from isFeedBased alone.
             std::string lastSyncFailureBody;
 
+            /// @brief True once any session of the current cycle got a 2xx marked
+            /// `"vd_scan":"skipped"`: indexed, not scanned. Accumulated across the cycle's blocks
+            /// (runSession() does not reset it); see @ref SyncModuleResult::vdScanSkipped.
+            bool lastVdScanSkipped = false;
+
             /// @brief Numeric session ID of the current in-flight session.
             ///
             /// Set by runSession() before the first send attempt and cleared on reset().
@@ -430,6 +435,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                 lastSyncManagerNotReady = false;
                 lastSyncAwaitingPrerequisite = false;
                 lastSyncFailureBody.clear();
+                lastVdScanSkipped = false;
                 currentSession = 0;
             }
         };

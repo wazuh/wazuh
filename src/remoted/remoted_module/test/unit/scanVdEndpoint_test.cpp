@@ -87,11 +87,12 @@ namespace
     class FakeScanVdHandler final : public ScanVdHandler
     {
     public:
-        void handleVdScan(uint32_t agentId, uint64_t requestedOffset, ScanVdCallback callback) override
+        void handleVdScan(uint32_t agentId, uint64_t requestedOffset, bool firstScan, ScanVdCallback callback) override
         {
             calls++;
             lastAgentId = agentId;
             lastRequestedOffset = requestedOffset;
+            lastFirstScan = firstScan;
             callback(m_response);
         }
 
@@ -103,6 +104,7 @@ namespace
         int calls {0};
         uint32_t lastAgentId {0};
         uint64_t lastRequestedOffset {0};
+        bool lastFirstScan {false};
 
     private:
         ScanVdResponse m_response {ScanVdOutcome::Accepted, 0};
@@ -269,6 +271,25 @@ TEST_F(ScanVdEndpointTest, ValidRequestParsesAgentIdAndOffsetForHandler)
     EXPECT_EQ(handler.calls, 1);
     EXPECT_EQ(handler.lastAgentId, 42u);
     EXPECT_EQ(handler.lastRequestedOffset, 123456789u);
+    EXPECT_FALSE(handler.lastFirstScan) << "a scan is not a first scan unless the agent says so";
+}
+
+TEST_F(ScanVdEndpointTest, AFirstScanReachesTheHandler)
+{
+    dispatch("42", nlohmann::json {{"type", "feed_update"}, {"feed_offset", 7}, {"first_scan", true}}.dump());
+
+    EXPECT_EQ(handler.calls, 1);
+    EXPECT_TRUE(handler.lastFirstScan) << "the agent's first scan must index without alerting";
+}
+
+TEST_F(ScanVdEndpointTest, AFirstScanFlagThatIsNotABooleanReturns400)
+{
+    dispatch("42", nlohmann::json {{"type", "feed_update"}, {"feed_offset", 7}, {"first_scan", "yes"}}.dump());
+
+    ASSERT_TRUE(responder.done());
+    EXPECT_EQ(responder.captured().status, 400);
+    EXPECT_EQ(responder.captured().body, R"({"error":"invalid_first_scan"})");
+    EXPECT_EQ(handler.calls, 0);
 }
 
 // -----------------------------------------------------------------------------

@@ -177,7 +177,26 @@ class EXPORTED Syscollector final
         /// @note The caller must already hold m_resourcesMutex. Exists so callers that
         /// already hold it shared do not acquire it a second time on the same thread.
         void deleteDatabaseUnlocked();
-        void persistVDFirstSyncIfNeeded(const bool vdResult, const bool firstSyncDone);
+        /// @param delivered The manager's own answer proves the session landed (it said "indexed,
+        /// not scanned"): the marker is then written even while the module stops.
+        void persistVDFirstSyncIfNeeded(const bool vdResult, const bool firstSyncDone, const bool delivered = false);
+
+        /// @brief Records that the manager owes this agent a vulnerability scan: a VD session was
+        /// indexed by a node without a running scanner. A value that could not be written is kept
+        /// in memory (m_vdScanOwedUnrecorded) and written by the next call.
+        /// @param level What the skipped session owes: VD_SCAN_OWED_SCAN, or
+        /// VD_SCAN_OWED_FIRST_SCAN when it was VDFirst (the agent's first scan, which must index
+        /// without alerting). VD_SCAN_OWED_NONE only retries a value still held in memory.
+        void recordVDScanOwed(const int64_t level);
+
+        /// @brief Forgets an owed vulnerability scan: the whole VD lane is about to be resent as
+        /// one VDFirst session, whose own scan covers it. A skip of that session records it again.
+        /// Recorded as a reset, which agent-info reads to drop the request it already took over.
+        void resetVDScanOwed();
+
+        /// @brief What is owed, from the stored value and the one still held in memory. Caller
+        /// holds m_vdScanOwedMutex.
+        int64_t effectiveVDScanOwed(const int64_t stored) const;
 
         /**
          * @brief Synchronizes the VD tables (system, packages and hotfixes) and persists the
@@ -606,6 +625,26 @@ class EXPORTED Syscollector final
 
         // Mutex for thread-safe access to limits and counts
         std::mutex                                                               m_limitsMutex;
+
+        /// @brief Serializes updateMetadataValue(): it rewrites the whole table_metadata from a
+        /// read, so two writers from different threads (the sync thread recording a marker,
+        /// agent-info's query clearing vd_scan_owed) would otherwise lose one of the updates.
+        std::mutex                                                               m_metadataWriteMutex;
+
+        /// @brief Makes each read-then-write of vd_scan_owed (raise on the sync thread, clear from
+        /// agent-info's query) atomic. Always taken before m_metadataWriteMutex, never after.
+        std::mutex                                                               m_vdScanOwedMutex;
+
+        /// @brief An owed vulnerability scan (same values as vd_scan_owed) whose write to
+        /// table_metadata failed. The session it belongs to is already delivered and cleared, so
+        /// this is all that is left of it: get_vd_scan_owed reports it and every VD sync retries
+        /// the write. Guarded by m_vdScanOwedMutex.
+        int64_t                                                                  m_vdScanOwedUnrecorded{0};
+
+        /// @brief Counts the skips (and resets) recorded by this process. agent-info reads it with
+        /// the record and clears against it, which tells a skip recorded since apart from the one
+        /// it took over when both left the same value. Guarded by m_vdScanOwedMutex.
+        uint64_t                                                                 m_vdScanOwedSkips{0};
 
         /// @brief Serializes releaseResources() against the entry points that other threads
         /// keep driving while the module tears down: wcom's dispatcher is detached and never

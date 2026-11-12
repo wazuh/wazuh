@@ -167,7 +167,7 @@ TEST_F(InstallPathsTest, ScanVdHandlerDefaultReachesRelativeSocket)
     ScanVdHandlerImpl handler {std::make_shared<VdClient>(), metrics};
 
     ScanVdResponse response {};
-    handler.handleVdScan(7, 100, [&response](const ScanVdResponse& r) { response = r; });
+    handler.handleVdScan(7, 100, false, [&response](const ScanVdResponse& r) { response = r; });
 
     EXPECT_EQ(response.outcome, ScanVdOutcome::Accepted);
     EXPECT_EQ(server.scanRequestCount(), 1u) << "the default scan socket must be the relative kVdSocket under the cwd";

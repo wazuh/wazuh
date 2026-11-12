@@ -538,7 +538,7 @@ void ControlStream::maybeRequestVdRescan(uint64_t offset, Waiter& waiter)
 
     if (observation.pending)
     {
-        m_rescanRequester.requestRescan(observation.pendingOffset, waiter);
+        m_rescanRequester.requestRescan(observation.pendingOffset, observation.pendingFirst, waiter);
     }
 }
 

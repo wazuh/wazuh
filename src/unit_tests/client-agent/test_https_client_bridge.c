@@ -382,8 +382,12 @@ task_registry_result_t __wrap_task_registry_check_and_record(const char *task_id
  * does not need a will_return for its own return value; only the three out
  * params are test-controlled. bridge_vd_offset_clear_pending()'s return DOES
  * matter (it becomes the callback's own return value), so that wrap needs one. */
+/* What __wrap_vd_offset_client_observe reports in *out_pending_first. Not a will_return, so
+ * the tests written before the field keep their queues; reset by the test that sets it. */
+static bool g_vd_offset_pending_first = false;
+
 bool __wrap_vd_offset_client_observe(uint64_t offset, bool *out_changed, bool *out_pending,
-                                     uint64_t *out_pending_offset)
+                                     uint64_t *out_pending_offset, bool *out_pending_first)
 {
     check_expected(offset);
 
@@ -395,6 +399,10 @@ bool __wrap_vd_offset_client_observe(uint64_t offset, bool *out_changed, bool *o
     }
     if (out_pending_offset) {
         *out_pending_offset = (uint64_t)mock();
+    }
+    /* The bridge always passes it; a test that does not queue a value reads false. */
+    if (out_pending_first) {
+        *out_pending_first = g_vd_offset_pending_first;
     }
 
     return true;
@@ -2669,12 +2677,39 @@ static void test_vd_offset_observe_forwards_changed_pending_and_offset(void **st
     int changed = -1;
     int pending = -1;
     uint64_t pending_offset = 0;
-    g_captured_callbacks.vd_offset_observe(100, &changed, &pending, &pending_offset,
+    g_captured_callbacks.vd_offset_observe(100, &changed, &pending, &pending_offset, NULL,
                                            g_captured_callbacks.user_data);
 
     assert_int_equal(changed, 1);
     assert_int_equal(pending, 1);
     assert_int_equal(pending_offset, 100);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+/* A pending request that is the agent's first scan reaches the HTTPS client as one. */
+static void test_vd_offset_observe_forwards_a_pending_first_scan(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    expect_value(__wrap_vd_offset_client_observe, offset, 100);
+    will_return(__wrap_vd_offset_client_observe, false); /* *out_changed */
+    will_return(__wrap_vd_offset_client_observe, true);  /* *out_pending */
+    will_return(__wrap_vd_offset_client_observe, 100);   /* *out_pending_offset */
+    g_vd_offset_pending_first = true;
+
+    int changed = -1;
+    int pending = -1;
+    uint64_t pending_offset = 0;
+    int pending_first = -1;
+    g_captured_callbacks.vd_offset_observe(100, &changed, &pending, &pending_offset, &pending_first,
+                                           g_captured_callbacks.user_data);
+    g_vd_offset_pending_first = false;
+
+    assert_int_equal(pending, 1);
+    assert_int_equal(pending_first, 1);
 
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
     w_https_client_stop();
@@ -2693,7 +2728,7 @@ static void test_vd_offset_observe_reports_no_change_when_not_newer(void **state
     int changed = -1;
     int pending = -1;
     uint64_t pending_offset = 0;
-    g_captured_callbacks.vd_offset_observe(50, &changed, &pending, &pending_offset,
+    g_captured_callbacks.vd_offset_observe(50, &changed, &pending, &pending_offset, NULL,
                                            g_captured_callbacks.user_data);
 
     assert_int_equal(changed, 0);
@@ -2715,7 +2750,8 @@ static void test_vd_offset_observe_tolerates_null_out_params(void **state)
     will_return(__wrap_vd_offset_client_observe, 100);
 
     /* Must not crash when the caller doesn't care about some outputs. */
-    g_captured_callbacks.vd_offset_observe(100, NULL, NULL, NULL, g_captured_callbacks.user_data);
+    g_captured_callbacks.vd_offset_observe(100, NULL, NULL, NULL, NULL,
+                                           g_captured_callbacks.user_data);
 
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
     w_https_client_stop();
@@ -3607,6 +3643,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_check_and_record_task_null_id_returns_minus_one, setup_test, teardown_test),
 
         cmocka_unit_test_setup_teardown(test_vd_offset_observe_forwards_changed_pending_and_offset, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_vd_offset_observe_forwards_a_pending_first_scan, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_vd_offset_observe_reports_no_change_when_not_newer, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_vd_offset_observe_tolerates_null_out_params, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_vd_offset_clear_pending_forwards_true, setup_test, teardown_test),

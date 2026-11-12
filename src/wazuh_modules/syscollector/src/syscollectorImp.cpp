@@ -94,6 +94,17 @@ constexpr auto QUEUE_SIZE
 constexpr auto SYSCOLLECTOR_FIRST_SYNC_COMPLETED_METADATA_KEY {"first_sync_completed"};
 constexpr auto SYSCOLLECTOR_FIRST_SCAN_COMPLETED_METADATA_KEY {"first_scan_completed"};
 constexpr auto SYSCOLLECTOR_VD_FIRST_SYNC_COMPLETED_METADATA_KEY {"vd_first_sync_completed"};
+// A vulnerability scan the manager owes this agent: a VD session was indexed by a
+// node with no running scanner, which said so. 0 none, 1 a scan, 2 the agent's FIRST scan (the
+// skipped session was VDFirst), which must index without alerting. Only ever raised here; agent-info
+// reads it, turns it into its durable rescan request, and clears it (get/clear_vd_scan_owed).
+// -1 is not a scan: the whole VD lane is being resent as one VDFirst session, so whatever was owed
+// before is void, including what agent-info already took over. It reads it and drops its request.
+constexpr auto SYSCOLLECTOR_VD_SCAN_OWED_METADATA_KEY {"vd_scan_owed"};
+constexpr int64_t VD_SCAN_OWED_RESET {-1};
+constexpr int64_t VD_SCAN_OWED_NONE {0};
+constexpr int64_t VD_SCAN_OWED_SCAN {1};
+constexpr int64_t VD_SCAN_OWED_FIRST_SCAN {2};
 // The agent id whose manager-side copy of this inventory is the one first_sync_completed refers
 // to. Absence means "never recorded" and is adopted without resyncing -- which is what keeps an
 // in-place upgrade of an existing fleet from making every agent resync at once. Stored as a
@@ -3052,19 +3063,121 @@ SyncModuleResult Syscollector::synchronizeVDTables(const Mode mode)
     // without a scan when its scanner is not running at all.
     const SyncModuleResult vdResult = m_spSyncProtocolVD->synchronizeModule(mode, vdOption);
 
+    // The owed scan is recorded BEFORE the first-sync marker below. The two are separate writes,
+    // and a process killed between them must not be left with the marker and nothing owed:
+    // agent-info would then see a first sync that is done, request a plain rescan, and the agent's
+    // first real scan would alert on every vulnerability it finds. The other way round costs one
+    // more silent scan.
+    //
+    // NOT gated on m_stopping, unlike the first-sync marker: the skipped session is already
+    // delivered and its rows are gone from the persistent queue, so a skip dropped here is a scan
+    // nobody asks for again. The write is safe while stopping -- this worker is joined before
+    // releaseResources() resets DBSync. A plain call (nothing skipped) only retries a value an
+    // earlier write failed to record.
+    int64_t owedLevel = VD_SCAN_OWED_NONE;
+
+    if (vdResult.vdScanSkipped)
+    {
+        owedLevel = vdOption == Option::VDFIRST ? VD_SCAN_OWED_FIRST_SCAN : VD_SCAN_OWED_SCAN;
+    }
+
+    recordVDScanOwed(owedLevel);
+
     // Not for a call that ran no session at all: a flush landing on top of the periodic cycle
     // is reported as a success, and recording a VD first sync for it would tell agent-info a
     // full scan has covered this agent when nothing was sent. #38899: an empty queue takes the
     // same early-success path (sentAnything false), so it must be excluded here too -- success
     // alone does not prove the manager received this agent's first snapshot.
-    persistVDFirstSyncIfNeeded(vdResult.success && vdResult.sentAnything && !vdResult.sessionSkipped, firstSyncDone);
+    //
+    // A session the manager answered "indexed, not scanned" is proof enough on its own that the
+    // snapshot landed, so its marker is written even while the module stops: the owed scan above is
+    // recorded then too, and an owed first scan without the marker would let the next package
+    // change go out as a VDFirst carrying only that change.
+    persistVDFirstSyncIfNeeded(vdResult.success && vdResult.sentAnything && !vdResult.sessionSkipped,
+                               firstSyncDone,
+                               vdResult.vdScanSkipped);
 
     return vdResult;
 }
 
-void Syscollector::persistVDFirstSyncIfNeeded(const bool vdResult, const bool firstSyncDone)
+void Syscollector::recordVDScanOwed(const int64_t level)
 {
-    if (vdResult && !firstSyncDone && !m_stopping.load())
+    // The first-sync marker is still written for a skipped VDFirst: leaving it unset would
+    // make the next package change go out as a VDFirst carrying only that change, and a VDFirst
+    // session deletes the agent's findings before it scans. The owed FIRST scan is asked for on
+    // demand instead, from the inventory the skipping node did index.
+    std::lock_guard<std::mutex> owedLock(m_vdScanOwedMutex);
+
+    if (level == VD_SCAN_OWED_NONE && m_vdScanOwedUnrecorded == VD_SCAN_OWED_NONE)
+    {
+        return; // the common case: nothing skipped, nothing left to retry
+    }
+
+    if (level != VD_SCAN_OWED_NONE)
+    {
+        // Counted even when the stored value does not change: agent-info clears against this
+        // count, so a skip recorded after it read the record is never cleared along with it.
+        ++m_vdScanOwedSkips;
+    }
+
+    int64_t owed = VD_SCAN_OWED_NONE;
+    getMetadataValue(SYSCOLLECTOR_VD_SCAN_OWED_METADATA_KEY, owed);
+
+    // Never downgraded: a first scan still owed stays a first scan when a later delta is skipped too.
+    const int64_t wanted = std::max({owed, level, m_vdScanOwedUnrecorded});
+
+    if (wanted == owed)
+    {
+        m_vdScanOwedUnrecorded = VD_SCAN_OWED_NONE;
+        return;
+    }
+
+    if (updateMetadataValue(SYSCOLLECTOR_VD_SCAN_OWED_METADATA_KEY, wanted))
+    {
+        m_vdScanOwedUnrecorded = VD_SCAN_OWED_NONE;
+        m_logFunction(LOG_INFO,
+                      std::string("The manager indexed the vulnerability inventory without scanning it (vulnerability "
+                                  "detection is not running on the node that answered). The ") +
+                      (wanted >= VD_SCAN_OWED_FIRST_SCAN ? "first scan" : "scan") +
+                      " will be requested from the next node that runs it.");
+    }
+    else
+    {
+        // Kept in memory: get_vd_scan_owed still reports it and the next VD sync retries the write.
+        // Only a restart before either happens loses it.
+        m_vdScanOwedUnrecorded = wanted;
+        m_logFunction(LOG_ERROR,
+                      "Failed to record the vulnerability scan the manager owes this agent; it is kept in memory "
+                      "and the write is retried on the next synchronization.");
+    }
+}
+
+int64_t Syscollector::effectiveVDScanOwed(const int64_t stored) const
+{
+    // A value held in memory is a skip recorded after whatever is stored, a reset included.
+    return m_vdScanOwedUnrecorded != VD_SCAN_OWED_NONE ? std::max(stored, m_vdScanOwedUnrecorded) : stored;
+}
+
+void Syscollector::resetVDScanOwed()
+{
+    std::lock_guard<std::mutex> owedLock(m_vdScanOwedMutex);
+    m_vdScanOwedUnrecorded = VD_SCAN_OWED_NONE;
+
+    ++m_vdScanOwedSkips; // a clear agent-info sends for what it read before must not undo this
+
+    // Written as a reset rather than as nothing owed: agent-info may already hold the request for
+    // what was owed (its own pending first scan), and only this tells it to drop that too. A skip
+    // of the resend itself raises the record over it. agent-info clears it once it has read it.
+    if (!updateMetadataValue(SYSCOLLECTOR_VD_SCAN_OWED_METADATA_KEY, VD_SCAN_OWED_RESET))
+    {
+        // Harmless beyond one extra on-demand scan of the inventory the resend delivers.
+        m_logFunction(LOG_DEBUG, "Could not reset the owed vulnerability scan before resending the VD inventory.");
+    }
+}
+
+void Syscollector::persistVDFirstSyncIfNeeded(const bool vdResult, const bool firstSyncDone, const bool delivered)
+{
+    if (vdResult && !firstSyncDone && (delivered || !m_stopping.load()))
     {
         if (updateMetadataValue(SYSCOLLECTOR_VD_FIRST_SYNC_COMPLETED_METADATA_KEY, Utils::getSecondsFromEpoch()))
         {
@@ -3078,7 +3191,7 @@ void Syscollector::persistVDFirstSyncIfNeeded(const bool vdResult, const bool fi
             m_logFunction(LOG_ERROR, "Failed to persist VD first sync metadata marker.");
         }
     }
-    else if (m_stopping.load() && vdResult && !firstSyncDone)
+    else if (vdResult && !firstSyncDone)
     {
         m_logFunction(LOG_DEBUG, "VD first sync successful but module is stopping, metadata marker not persisted.");
     }
@@ -3855,6 +3968,86 @@ std::string Syscollector::query(const std::string& jsonQuery)
             {
                 response["error"] = MQ_ERR_INTERNAL;
                 response["message"] = "Failed to retrieve Syscollector VD first sync completion";
+            }
+        }
+        else if (command == "get_vd_scan_owed")
+        {
+            // Polled by agent-info when a node advertises a feed offset, which only a
+            // node with a running scanner does. 0 none, 1 a scan, 2 the agent's first scan.
+            // A value whose write failed is still owed: it is reported from memory, also when the
+            // read fails for the same reason the write did.
+            std::lock_guard<std::mutex> owedLock(m_vdScanOwedMutex);
+            int64_t owed = VD_SCAN_OWED_NONE;
+
+            if (getMetadataValue(SYSCOLLECTOR_VD_SCAN_OWED_METADATA_KEY, owed) ||
+                    m_vdScanOwedUnrecorded != VD_SCAN_OWED_NONE)
+            {
+                response["error"] = MQ_SUCCESS;
+                response["message"] = "Syscollector owed VD scan retrieved";
+                response["data"]["vd_scan_owed"] = effectiveVDScanOwed(owed);
+                response["data"]["skips"] = m_vdScanOwedSkips;
+            }
+            else
+            {
+                response["error"] = MQ_ERR_INTERNAL;
+                response["message"] = "Failed to retrieve Syscollector owed VD scan";
+            }
+        }
+        else if (command == "clear_vd_scan_owed")
+        {
+            // Compare-and-clear: agent-info clears exactly what it took over. A skip recorded since
+            // then is left for the next poll: it raised the value above `value`, or, at the same
+            // value, moved the count past the `skips` agent-info read with it (optional). A reset
+            // is cleared only by its own value, so a clear sent for a scan never swallows it.
+            int64_t taken = 0;
+            std::optional<uint64_t> takenSkips;
+
+            if (parameters.is_object() && parameters.contains("skips") && parameters["skips"].is_number_unsigned())
+            {
+                takenSkips = parameters["skips"].get<uint64_t>();
+            }
+
+            if (parameters.is_object() && parameters.contains("value") && parameters["value"].is_number_integer())
+            {
+                taken = parameters["value"].get<int64_t>();
+            }
+            else
+            {
+                response["error"] = MQ_ERR_INVALID_PARAMS;
+                response["message"] = "Invalid or missing value parameter";
+                return response.dump();
+            }
+
+            std::lock_guard<std::mutex> owedLock(m_vdScanOwedMutex);
+            int64_t owed = VD_SCAN_OWED_NONE;
+
+            if (!getMetadataValue(SYSCOLLECTOR_VD_SCAN_OWED_METADATA_KEY, owed))
+            {
+                response["error"] = MQ_ERR_INTERNAL;
+                response["message"] = "Failed to retrieve Syscollector owed VD scan";
+            }
+            else if (const int64_t effective = effectiveVDScanOwed(owed);
+                     effective > taken || (effective == VD_SCAN_OWED_RESET && taken != VD_SCAN_OWED_RESET) ||
+                     (effective != VD_SCAN_OWED_NONE && takenSkips && *takenSkips != m_vdScanOwedSkips))
+            {
+                response["error"] = MQ_SUCCESS;
+                response["message"] = "Syscollector owed VD scan changed since; left in place";
+                response["data"]["vd_scan_owed"] = effective;
+                response["data"]["skips"] = m_vdScanOwedSkips;
+            }
+            else if (owed == VD_SCAN_OWED_NONE || updateMetadataValue(SYSCOLLECTOR_VD_SCAN_OWED_METADATA_KEY, VD_SCAN_OWED_NONE))
+            {
+                // What was held in memory is part of what agent-info took over.
+                m_vdScanOwedUnrecorded = VD_SCAN_OWED_NONE;
+                response["error"] = MQ_SUCCESS;
+                response["message"] = "Syscollector owed VD scan cleared";
+                response["data"]["vd_scan_owed"] = VD_SCAN_OWED_NONE;
+                response["data"]["skips"] = m_vdScanOwedSkips;
+            }
+            else
+            {
+                response["error"] = MQ_ERR_INTERNAL;
+                response["message"] = "Failed to clear Syscollector owed VD scan";
             }
         }
         else if (command == "set_version")
@@ -5035,6 +5228,7 @@ bool Syscollector::getMetadataValue(const std::string& key, int64_t& value)
 bool Syscollector::updateMetadataValue(const std::string& key, int64_t value)
 {
     auto emptyCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
+    std::lock_guard<std::mutex> metadataWriteLock(m_metadataWriteMutex);
 
     try
     {
@@ -5604,6 +5798,11 @@ void Syscollector::checkAgentIdentity()
                           "Could not reset the VD first-sync marker; the vulnerability inventory "
                           "will be resent as an ordinary synchronization.");
         }
+
+        // A scan owed for what the manager held before is covered by the scan of this resend: left
+        // in place it would be requested on top of it, as one more silent first scan for an
+        // inventory (and, after a re-enrollment, an identity) it was never recorded for.
+        resetVDScanOwed();
 
         if (syncModule(Mode::DELTA).success && !vdLaneFailed)
         {

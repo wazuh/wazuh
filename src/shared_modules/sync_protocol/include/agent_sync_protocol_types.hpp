@@ -125,6 +125,15 @@ struct SyncModuleResult
     /// block allowed still sets it. The VD options fetch with no byte budget, so their first
     /// block carries the whole queue and never reaches the limit.
     bool reachedBlockLimit{false};
+
+    /// @brief True when the manager indexed a vulnerability-detection session of this cycle
+    /// WITHOUT scanning it: the node that answered has no running scanner, and said so with
+    /// `"vd_scan":"skipped"` in its 2xx.
+    ///
+    /// The session still succeeded -- its items are delivered and cleared -- so @ref success stays
+    /// true. What the caller owes is the scan: it records that one is due and asks for it from the
+    /// next node that advertises a feed offset. Only a VD session can set it.
+    bool vdScanSkipped{false};
 };
 
 /// @brief Outcome of a module integrity check (IAgentSyncProtocol::requiresFullSync()).

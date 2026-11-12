@@ -22,14 +22,17 @@ namespace invsync::vd
      * @brief What the scan lane learned from asking the scanner to run one session's scan.
      *
      * A scan FAILURE is not a value here on purpose: it is an exception out of scan(), because it
-     * poisons the whole session (500, nothing indexed) while these two outcomes both continue into
+     * poisons the whole session (500, nothing indexed) while these outcomes all continue into
      * indexing (D22 skip semantics).
      */
     enum class ScanVerdict
     {
-        Ok,      ///< The scan ran and its findings were delivered by VD itself.
-        Skipped, ///< Legitimate skip: the scanner is disabled. The inventory MUST still be
-                 ///< indexed.
+        Ok,            ///< The scan ran and its findings were delivered by VD itself.
+        Skipped,       ///< Legitimate skip: no scanner is running on this node. The inventory MUST still
+                       ///< be indexed, and the agent is told its scan is owed (`"vd_scan":"skipped"`).
+        NothingToScan, ///< The running scanner declined the session: it held nothing to scan (a
+                       ///< VDFirst with no packages). Indexed like a skip, but no scan is owed:
+                       ///< asking another node would scan the same nothing.
     };
 
     /**
@@ -104,8 +107,12 @@ namespace invsync::vd
          * Reports failure by RETURN VALUE rather than by exception, unlike scan(): there is no
          * session to poison, and every failure here is something the caller has to tell apart to
          * decide whether to come back.
+         *
+         * @param firstScan True for the agent's FIRST scan: its findings are indexed without an
+         *        alert, as a VDFirst session's are. The agent asks for it when its first inventory
+         *        sync reached a node whose scanner was not running.
          */
-        virtual AgentScanOutcome scanAgent(const std::string& agentId) = 0;
+        virtual AgentScanOutcome scanAgent(const std::string& agentId, bool firstScan) = 0;
     };
 
 } // namespace invsync::vd

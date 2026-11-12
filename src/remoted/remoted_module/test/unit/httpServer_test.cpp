@@ -3345,6 +3345,16 @@ TEST(NormalizeGlobalPrefixTest, InvalidCharactersThrow)
 
 namespace
 {
+    // A port the OS reports free right now. A port derived from the pid is reused by every test of
+    // the fixture below, and binding it again right after the previous server closed it fails with
+    // "Address already in use" whenever one of that server's connections is still winding down.
+    std::uint16_t freeTcpPort()
+    {
+        asio::io_context io;
+        asio::ip::tcp::acceptor acceptor {io, asio::ip::tcp::endpoint {asio::ip::tcp::v4(), 0}};
+        return acceptor.local_endpoint().port();
+    }
+
     // Real TLS server with a RAW ("/wazuh-manager/", trailing slash on purpose: start() must
     // normalize) global prefix and UNPREFIXED route registrations -- the transport applies the
     // prefix. No auth: routing is what this suite measures; the signed path is
@@ -3370,7 +3380,7 @@ namespace
         // Starts a fresh server with the given raw prefix and the two canonical routes.
         void startServer(const std::string& rawPrefix)
         {
-            m_port = static_cast<std::uint16_t>(29000 + (::getpid() % 4000) + m_portOffset++);
+            m_port = freeTcpPort();
             m_server = makeHttpServer();
             m_server->addRoute(
                 Method::Get,
@@ -3421,7 +3431,6 @@ namespace
         }
 
         std::uint16_t m_port {0};
-        int m_portOffset {0};
         std::shared_ptr<IHttpServer> m_server;
         std::optional<remoted::test::TestCertificate> m_cert;
         std::unique_ptr<remoted::test::ScratchFileCleanup> m_cleanup;
@@ -3511,7 +3520,7 @@ TEST_F(GlobalPrefixTransportTest, IdentityPrefixBehavesAsToday)
 
 TEST_F(GlobalPrefixTransportTest, StartWithInvalidPrefixThrowsAndStaysStopped)
 {
-    m_port = static_cast<std::uint16_t>(29000 + (::getpid() % 4000) + 500);
+    m_port = freeTcpPort();
     m_server = makeHttpServer();
     m_server->addRoute(Method::Get,
                        "/",

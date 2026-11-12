@@ -12,12 +12,14 @@
 #include <json.hpp>
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <cstdint>
 #include <functional>
 #include <map>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -55,6 +57,9 @@ class AgentInfoImpl
             uint64_t offset{0};
             bool pending{false};
             uint64_t pendingOffset{0};
+            /// The pending request is the agent's FIRST scan, which the manager runs without
+            /// alerting: its first inventory sync reached a node with no running scanner.
+            bool pendingFirst{false};
         };
 
         /// @brief Result of observeVdFeedOffset().
@@ -63,6 +68,7 @@ class AgentInfoImpl
             bool changed{false};       ///< True if offset advanced (was newer than the stored value)
             bool pending{false};       ///< True if a /scan/vd request is now outstanding for pendingOffset
             uint64_t pendingOffset{0}; ///< Valid when pending is true
+            bool pendingFirst{false};  ///< Valid when pending is true: request the agent's first scan
         };
 
         /// @brief Constructor
@@ -182,6 +188,22 @@ class AgentInfoImpl
         /// @return changed=true if the offset advanced; pending/pendingOffset reflect the
         ///         resulting state regardless of whether this call itself changed anything.
         VdOffsetObserveResult observeVdFeedOffset(uint64_t offset);
+
+        /// @brief Sets how often an unchanged offset asks syscollector for an owed scan (see
+        /// takeOverOwedVdScan()). For tests, which cannot wait out the default.
+        void setOwedVdScanProbeInterval(std::chrono::seconds interval)
+        {
+            std::lock_guard<std::mutex> lock(m_owedVdScanMutex);
+            m_owedVdScanProbeInterval = interval;
+        }
+
+        /// @brief Sets how long a plain rescan request is held back while syscollector does not say
+        /// whether a first scan is owed (see observeVdFeedOffset()). For tests.
+        void setOwedVdScanUnknownGrace(std::chrono::seconds grace)
+        {
+            std::lock_guard<std::mutex> lock(m_owedVdScanMutex);
+            m_owedVdScanUnknownGrace = grace;
+        }
 
         /// @brief Clear the pending re-scan flag, but only if it is still pending for exactly
         /// this offset. A stale confirmation (nothing pending, or a newer offset has since
@@ -337,6 +359,27 @@ class AgentInfoImpl
         /// @return false only when syscollector explicitly reports VDFirst not yet completed.
         bool isVDFirstSyncDone();
 
+        /// @brief Takes over a vulnerability scan syscollector recorded as owed:
+        /// a VD session was indexed by a node without a running scanner. Called by
+        /// observeVdFeedOffset(), i.e. only when a node advertises a feed offset, which only a node
+        /// with a running scanner does. Marks the durable rescan request pending (as a first scan
+        /// when that is what is owed), then clears syscollector's record.
+        ///
+        /// Syscollector is asked at most once per m_owedVdScanProbeInterval unless the offset
+        /// changed, whether or not it answers: this runs on agentd's notify path, which waits on
+        /// it, and a scan is almost never owed. One query per step, never retried, for the same
+        /// reason.
+        ///
+        /// A reset read from syscollector (the VD inventory is being resent as a VDFirst session)
+        /// drops a pending first scan request instead: that session's own scan covers it.
+        /// @param offset The offset the answering node advertises.
+        /// @param offsetChanged True when this observation advanced the stored offset.
+        /// @param owedUnknown Set when syscollector has not said what is owed and the grace
+        /// period (m_owedVdScanUnknownGrace) is still running: a plain request must wait, since
+        /// the scan owed may be the agent's first.
+        /// @return The state after a takeover or a drop, or std::nullopt when nothing changed.
+        std::optional<VdFeedState> takeOverOwedVdScan(uint64_t offset, bool offsetChanged, bool& owedUnknown);
+
         /// @brief Read the single-row `vd_feed_state` table. Caller must hold m_dbSyncMutex and
         /// have already verified m_dBSync is non-null. Returns a default-constructed (all-unset)
         /// state if the row does not exist yet (fresh database).
@@ -490,6 +533,34 @@ class AgentInfoImpl
 
         /// @brief Mutex for synchronizing access to m_dBSync (prevents race conditions during cleanup/transactions)
         std::mutex m_dbSyncMutex;
+
+        /// @brief Guards the owed-VD-scan probe state below.
+        std::mutex m_owedVdScanMutex;
+
+        /// @brief How often an unchanged offset asks syscollector for an owed scan. A skip is
+        /// recorded at most once per sync cycle, so a scan owed is requested this much later at
+        /// worst, against one cross-module query saved on every other keepalive.
+        std::chrono::seconds m_owedVdScanProbeInterval{60};
+
+        /// @brief When syscollector was last asked for an owed scan, answered or not: a
+        /// syscollector that is disabled or failing is not asked on every keepalive either.
+        std::optional<std::chrono::steady_clock::time_point> m_lastOwedVdScanProbe;
+
+        /// @brief Since when the owed-scan probe has gone unanswered; unset once it is answered.
+        std::optional<std::chrono::steady_clock::time_point> m_owedVdScanUnknownSince;
+
+        /// @brief How long a plain rescan request waits for an unanswered owed-scan probe, counted
+        /// from the first one. Long enough for a syscollector that is still starting to answer,
+        /// and bounded so an agent without one still gets its rescans, this much later once.
+        std::chrono::seconds m_owedVdScanUnknownGrace{120};
+
+        /// @brief The owed value already taken over whose clear in syscollector failed (0: none).
+        /// While set, a notify only retries the clear: taking the same record over again on every
+        /// keepalive would request a scan each time for as long as the clear keeps failing.
+        int64_t m_owedVdScanUnclear{0};
+
+        /// @brief The skip count read with m_owedVdScanUnclear, sent back with the retried clear.
+        std::optional<uint64_t> m_owedVdScanUnclearSkips;
 
         /// @brief Serializes destruction of m_spSyncProtocol in releaseResources()
         /// against the readers that run on other threads (parseResponseBuffer()).

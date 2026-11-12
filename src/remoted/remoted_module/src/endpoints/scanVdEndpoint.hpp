@@ -45,7 +45,10 @@ namespace remoted::endpoints::scanvd
     {
     public:
         virtual ~ScanVdHandler() = default;
-        virtual void handleVdScan(uint32_t agentId, uint64_t requestedOffset, ScanVdCallback callback) = 0;
+        /// @param firstScan The agent's FIRST scan, which indexes without alerting: its first
+        ///        inventory sync reached a node whose scanner was not running.
+        virtual void
+        handleVdScan(uint32_t agentId, uint64_t requestedOffset, bool firstScan, ScanVdCallback callback) = 0;
     };
 
     remoted::endpoints::AuthenticatedHandler makeHandler(ScanVdHandler& handler);

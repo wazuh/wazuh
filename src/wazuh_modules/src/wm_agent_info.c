@@ -555,7 +555,9 @@ size_t wm_agent_info_query(__attribute__((unused)) void* data, char* args, char*
         int out_changed = 0;
         int out_pending = 0;
         uint64_t out_pending_offset = 0;
-        int result = agent_info_vd_offset_observe_ptr(offset, &out_changed, &out_pending, &out_pending_offset);
+        int out_pending_first = 0;
+        int result = agent_info_vd_offset_observe_ptr(offset, &out_changed, &out_pending, &out_pending_offset,
+                                                      &out_pending_first);
         cJSON_Delete(request);
 
         if (result < 0)
@@ -570,6 +572,7 @@ size_t wm_agent_info_query(__attribute__((unused)) void* data, char* args, char*
         cJSON_AddBoolToObject(response_data, "changed", out_changed != 0);
         cJSON_AddBoolToObject(response_data, "pending", out_pending != 0);
         cJSON_AddNumberToObject(response_data, "pending_offset", (double)out_pending_offset);
+        cJSON_AddBoolToObject(response_data, "pending_first", out_pending_first != 0);
         cJSON_AddItemToObject(response, "data", response_data);
         *output = cJSON_PrintUnformatted(response);
         cJSON_Delete(response);

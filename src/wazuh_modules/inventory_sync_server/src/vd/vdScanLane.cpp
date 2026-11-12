@@ -12,6 +12,7 @@
 
 #include "json.hpp"
 #include "loggerHelper.h"
+#include <uds_http_server/logThrottle.hpp>
 
 #include <wazuh_metrics/manager.hpp>
 
@@ -40,6 +41,24 @@ namespace
      * STATUS first and reads `error` only for the log line, so the statuses carry the meaning:
      * 5xx is retryable, 4xx is terminal for this task type, 200 is done. */
     constexpr auto SCAN_OK_BODY {R"({"status":"ok"})"};
+    /// The member a VD session's 2xx carries when this node indexed the inventory WITHOUT scanning it.
+    /// The agent reads it to remember that a scan is owed and asks for it from the
+    /// next node that advertises a feed offset, which only a node with a running scanner does.
+    constexpr auto VD_SCAN_SKIPPED_MEMBER {"vd_scan"};
+    constexpr auto VD_SCAN_SKIPPED_VALUE {"skipped"};
+
+    /// The session's own answer, with the skip marked on it. A body that is not a JSON object is
+    /// returned unchanged: the marker is an addition, never a reason to alter what the agent reads.
+    std::string markScanSkipped(const std::string& body)
+    {
+        auto document = nlohmann::json::parse(body, nullptr, /*allow_exceptions=*/false);
+        if (!document.is_object())
+        {
+            return body;
+        }
+        document[VD_SCAN_SKIPPED_MEMBER] = VD_SCAN_SKIPPED_VALUE;
+        return document.dump();
+    }
     /* 503, NOT a 200: no scan happened, and the dispatcher records a 200 as `completed`, which in
      * MANAGER_TASKS means the work was performed. That distinction is the reason the table exists
      * apart from TASKS, where `delivered` only ever meant "handed over".
@@ -361,7 +380,7 @@ namespace invsync::vd
             if (item.kind == Item::Kind::VdScanRequest)
             {
                 const auto scanStart = std::chrono::steady_clock::now();
-                const auto outcome = m_scanner->scanAgent(item.session.agentId);
+                const auto outcome = m_scanner->scanAgent(item.session.agentId, item.firstScan);
 
                 m_scanDuration->observe(static_cast<uint64_t>(
                     std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - scanStart)
@@ -479,12 +498,40 @@ namespace invsync::vd
                 continue;
             }
 
-            if (verdict == ScanVerdict::Skipped)
+            if (verdict == ScanVerdict::NothingToScan)
+            {
+                // The scanner runs here and found nothing to scan in this session. Counted with the
+                // skips, as it always was, but it is neither a node without a scanner nor a scan
+                // owed: no marker on the answer, and none of the operator guidance below.
+                m_scansSkipped->add();
+                LOGFN_DEBUG1(logFn(),
+                             "The scanner found nothing to scan in the session of agent %s; indexing its "
+                             "inventory anyway.",
+                             item.session.agentId.c_str());
+            }
+            else if (verdict == ScanVerdict::Skipped)
             {
                 m_scansSkipped->add();
                 LOGFN_DEBUG1(logFn(),
                              "Vulnerability scan for agent %s skipped legitimately; indexing its inventory anyway.",
                              item.session.agentId.c_str());
+
+                // Once an hour with the count, at INFO: the agents request the scan from a
+                // node that runs it, so nothing is lost and a node where vulnerability detection is
+                // off on purpose must not warn every sync cycle. A scanner that failed to start
+                // reports that itself. What this line adds is the fact an operator otherwise cannot
+                // see: in a cluster where the nodes disagree, findings wait for another node.
+                static wazuh::uds_http::LogThrottle skippedThrottle {std::chrono::hours {1}};
+                if (const auto decision = skippedThrottle.record())
+                {
+                    LOGFN_INFO(logFn(),
+                               "Indexed %llu vulnerability-detection inventory session(s) %s without scanning "
+                               "them: vulnerability detection is not running on this node. If other cluster "
+                               "nodes run it, the agents request the scan from the next one they reach, and "
+                               "the setting should be the same on every node.",
+                               static_cast<unsigned long long>(decision.total),
+                               decision.period().c_str());
+                }
             }
             else
             {
@@ -496,10 +543,17 @@ namespace invsync::vd
             try
             {
                 auto outcome = m_processor.stageBulk(item.session, connector);
+                // Nothing staged is the no-op answer: nothing was indexed, so no scan is owed for
+                // it and the agent must not be told to ask for one.
+                const bool indexed = outcome.staged;
                 if (outcome.staged)
                 {
                     connector.flush();
                     outcome.staged = false;
+                }
+                if (verdict == ScanVerdict::Skipped && indexed && outcome.status >= 200 && outcome.status < 300)
+                {
+                    outcome.body = markScanSkipped(outcome.body);
                 }
                 finish(outcome.status, outcome.body);
             }

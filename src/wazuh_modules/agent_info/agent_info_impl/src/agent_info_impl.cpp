@@ -136,7 +136,14 @@ const char* VD_FEED_STATE_SQL_STATEMENT = "CREATE TABLE IF NOT EXISTS vd_feed_st
                                           "has_offset      INTEGER NOT NULL DEFAULT 0,"
                                           "last_offset     INTEGER NOT NULL DEFAULT 0,"
                                           "pending         INTEGER NOT NULL DEFAULT 0,"
-                                          "pending_offset  INTEGER NOT NULL DEFAULT 0);";
+                                          "pending_offset  INTEGER NOT NULL DEFAULT 0,"
+                                          "pending_first   INTEGER NOT NULL DEFAULT 0);";
+
+// What syscollector records as owed (get_vd_scan_owed): 0 none, 1 a scan, 2 the agent's first scan.
+// -1 is a reset: the VD inventory is being resent as a VDFirst session, whose own scan covers
+// whatever was owed, so a first scan request already taken over here is dropped.
+constexpr int64_t VD_SCAN_OWED_NONE = 0;
+constexpr int64_t VD_SCAN_OWED_FIRST_SCAN = 2;
 
 AgentInfoImpl::AgentInfoImpl(std::string dbPath,
                              std::function<void(const std::string&)> reportDiffFunction,
@@ -2447,6 +2454,11 @@ AgentInfoImpl::VdFeedState AgentInfoImpl::readVdFeedStateLocked() const
             {
                 state.pendingOffset = static_cast<uint64_t>(data["pending_offset"].get<int64_t>());
             }
+
+            if (data.contains("pending_first") && data["pending_first"].is_number())
+            {
+                state.pendingFirst = (data["pending_first"].get<int>() != 0);
+            }
         };
 
         nlohmann::json input;
@@ -2487,6 +2499,7 @@ void AgentInfoImpl::writeVdFeedStateLocked(const VdFeedState& state)
         rowData["last_offset"] = static_cast<int64_t>(state.offset);
         rowData["pending"] = state.pending ? 1 : 0;
         rowData["pending_offset"] = static_cast<int64_t>(state.pendingOffset);
+        rowData["pending_first"] = state.pendingFirst ? 1 : 0;
 
         nlohmann::json input;
         input["table"] = VD_FEED_STATE_TABLE;
@@ -2505,6 +2518,7 @@ AgentInfoImpl::VdOffsetObserveResult AgentInfoImpl::observeVdFeedOffset(uint64_t
 {
     VdOffsetObserveResult result;
     VdFeedState state;
+    bool notNewer = false;
 
     {
         std::lock_guard<std::mutex> lock(m_dbSyncMutex);
@@ -2525,7 +2539,7 @@ AgentInfoImpl::VdOffsetObserveResult AgentInfoImpl::observeVdFeedOffset(uint64_t
             // starts back at an unset offset, while this on-disk table keeps its last known
             // value across that same restart). Without republishing here, a restart right after
             // this exact offset was already durably known would leave the live copy stuck at its
-            // post-restart default forever: this early return is the only path a repeated,
+            // post-restart default forever: this branch is the only path a repeated,
             // unchanged offset ever takes, so it is also the only chance to notice the live copy
             // needs it again. The call is cheap and idempotent -- metadata_provider itself decides
             // whether it can accept it yet -- so repeating it on every unchanged observation costs
@@ -2535,69 +2549,367 @@ AgentInfoImpl::VdOffsetObserveResult AgentInfoImpl::observeVdFeedOffset(uint64_t
             // guards against, and the live copy must never regress to a value older than what is
             // already trusted here.
             metadata_provider_update_vd_feed_offset(state.offset);
-            result.pending = state.pending;
-            result.pendingOffset = state.pendingOffset;
-            return result;
+            notNewer = true;
         }
-
-        // Publish to metadata_provider right here, on this IPC/query thread, BEFORE the durable
-        // DBSync write below -- not just to agent-info's own durable vd_feed_state table.
-        // Waiting for the next populateAgentMetadata() cycle (main loop, its own cadence) is what
-        // let a fresh agent's first VD sync race an empty/stale offset in metadata_provider
-        // (#39543): local metadata gathering (hostname/os info, fast, no network) usually
-        // finishes well before this observe() call (which needs a round trip to the manager)
-        // ever fires, so has_metadata is normally already true here and this actually takes
-        // effect. When it is not yet true (no full snapshot exists at all so far), this is a
-        // no-op and the value is simply left for that first full populate to pick up, same as
-        // before this call existed. Ordered ahead of writeVdFeedStateLocked() (a DBSync
-        // transaction) specifically because that write is not free -- publishing first shaves
-        // that extra latency off the window a racing first VD sync could still land in.
-        if (metadata_provider_update_vd_feed_offset(offset) == 0)
+        else
         {
-            m_logFunction(LOG_DEBUG, "Published a fresh VD feed offset directly to metadata_provider.");
-        }
-
-        state.hasOffset = true;
-        state.offset = offset;
-        writeVdFeedStateLocked(state);
-    }
-
-    result.changed = true;
-
-    // Deliberately outside the lock above: queryModuleWithRetry can block for several
-    // seconds retrying syscollector, and holding m_dbSyncMutex across that would stall
-    // unrelated agent_info.db access (task dedup checks, metadata population) for the
-    // whole window.
-    if (isVDFirstSyncDone())
-    {
-        std::lock_guard<std::mutex> lock(m_dbSyncMutex);
-
-        if (m_dBSync)
-        {
-            VdFeedState current = readVdFeedStateLocked();
-
-            // Only mark pending if no newer offset raced in while waiting on syscollector's
-            // answer -- a newer observeVdFeedOffset() call runs this same check for its own
-            // (newer) offset instead, and marking pending here for a stale offset would send
-            // a /scan/vd request for a feed version the agent has already moved past.
-            if (current.hasOffset && current.offset == offset)
+            // Publish to metadata_provider right here, on this IPC/query thread, BEFORE the durable
+            // DBSync write below -- not just to agent-info's own durable vd_feed_state table.
+            // Waiting for the next populateAgentMetadata() cycle (main loop, its own cadence) is what
+            // let a fresh agent's first VD sync race an empty/stale offset in metadata_provider
+            // (#39543): local metadata gathering (hostname/os info, fast, no network) usually
+            // finishes well before this observe() call (which needs a round trip to the manager)
+            // ever fires, so has_metadata is normally already true here and this actually takes
+            // effect. When it is not yet true (no full snapshot exists at all so far), this is a
+            // no-op and the value is simply left for that first full populate to pick up, same as
+            // before this call existed. Ordered ahead of writeVdFeedStateLocked() (a DBSync
+            // transaction) specifically because that write is not free -- publishing first shaves
+            // that extra latency off the window a racing first VD sync could still land in.
+            if (metadata_provider_update_vd_feed_offset(offset) == 0)
             {
-                current.pending = true;
-                current.pendingOffset = offset;
-                writeVdFeedStateLocked(current);
+                m_logFunction(LOG_DEBUG, "Published a fresh VD feed offset directly to metadata_provider.");
             }
 
-            state = current;
+            state.hasOffset = true;
+            state.offset = offset;
+            writeVdFeedStateLocked(state);
         }
     }
 
-    // else: VDFirst has not completed yet. Its own full scan will cover this offset via
-    // Start.feed_offset (D9/Q5), so no re-scan request is needed here -- the offset itself
-    // is already persisted above, so it is not lost.
+    if (!notNewer)
+    {
+        result.changed = true;
+
+        // Deliberately outside the lock above: queryModuleWithRetry can block for several
+        // seconds retrying syscollector, and holding m_dbSyncMutex across that would stall
+        // unrelated agent_info.db access (task dedup checks, metadata population) for the
+        // whole window.
+        if (isVDFirstSyncDone())
+        {
+            std::lock_guard<std::mutex> lock(m_dbSyncMutex);
+
+            if (m_dBSync)
+            {
+                VdFeedState current = readVdFeedStateLocked();
+
+                // Only mark pending if no newer offset raced in while waiting on syscollector's
+                // answer -- a newer observeVdFeedOffset() call runs this same check for its own
+                // (newer) offset instead, and marking pending here for a stale offset would send
+                // a /scan/vd request for a feed version the agent has already moved past.
+                if (current.hasOffset && current.offset == offset)
+                {
+                    current.pending = true;
+                    current.pendingOffset = offset;
+                    writeVdFeedStateLocked(current);
+                }
+
+                state = current;
+            }
+        }
+
+        // else: VDFirst has not completed yet. Its own full scan will cover this offset via
+        // Start.feed_offset (D9/Q5), so no re-scan request is needed here -- the offset itself
+        // is already persisted above, so it is not lost.
+    }
+
+    // A scan the manager owes this agent is taken over on BOTH paths: an agent
+    // whose delta a node without a scanner indexed usually comes back to a scanning node that
+    // advertises the very offset it already holds.
+    bool owedUnknown = false;
+
+    if (const auto taken = takeOverOwedVdScan(offset, !notNewer, owedUnknown))
+    {
+        state = *taken;
+    }
 
     result.pending = state.pending;
     result.pendingOffset = state.pendingOffset;
+    result.pendingFirst = state.pendingFirst;
+
+    if (result.pending && !result.pendingFirst && owedUnknown)
+    {
+        // Syscollector did not say whether this agent is still owed its FIRST scan, and a plain
+        // request sent in its place makes the manager alert on every vulnerability it finds. The
+        // request stays recorded and is held back until syscollector answers, for a bounded time:
+        // an agent whose syscollector never answers still gets its rescan.
+        result.pending = false;
+        m_logFunction(LOG_DEBUG,
+                      "Holding the vulnerability rescan request back: syscollector has not reported whether a "
+                      "first scan is owed.");
+    }
+
     return result;
+}
+
+std::optional<AgentInfoImpl::VdFeedState> AgentInfoImpl::takeOverOwedVdScan(uint64_t offset,
+                                                                            bool offsetChanged,
+                                                                            bool& owedUnknown)
+{
+    owedUnknown = false;
+
+    if (!m_queryModuleFunction)
+    {
+        return std::nullopt;
+    }
+
+    // One attempt, never queryModuleWithRetry(): this runs on agentd's notify path, which waits on
+    // it with a short deadline, and a syscollector that is disabled or still starting would make
+    // every notify wait out the retries. Whatever is owed stays recorded until a later notify.
+    const auto querySyscollector = [this](const std::string & message) -> std::optional<nlohmann::json>
+    {
+        char* rawResponse = nullptr;
+        const int result = m_queryModuleFunction(SYSCOLLECTOR_WM_NAME, message, &rawResponse);
+        UniqueCString response(rawResponse);
+
+        if (result != 0 || !response)
+        {
+            return std::nullopt;
+        }
+
+        const auto parsed = nlohmann::json::parse(response.get(), nullptr, /*allow_exceptions=*/false);
+
+        if (!parsed.is_object() || parsed.value("error", -1) != MQ_SUCCESS || !parsed.contains("data") ||
+                !parsed["data"].is_object())
+        {
+            return std::nullopt;
+        }
+
+        return parsed["data"];
+    };
+
+    // The skip count syscollector reports with its record. Sent back with the clear, it keeps a
+    // skip recorded since the read from being cleared along with the one taken over.
+    const auto readSkips = [](const nlohmann::json & data) -> std::optional<uint64_t>
+    {
+        if (data.contains("skips") && data["skips"].is_number_unsigned())
+        {
+            return data["skips"].get<uint64_t>();
+        }
+
+        return std::nullopt;
+    };
+
+    const auto clearCommand = [this](int64_t value, const std::optional<uint64_t>& skips)
+    {
+        std::map<std::string, nlohmann::json> params {{"value", value}};
+
+        if (skips)
+        {
+            params.emplace("skips", *skips);
+        }
+
+        return createJsonCommand("clear_vd_scan_owed", params);
+    };
+
+    // Serializes whole takeovers: the probe state below is read and written across the queries.
+    std::lock_guard<std::mutex> owedLock(m_owedVdScanMutex);
+
+    const auto now = std::chrono::steady_clock::now();
+    const auto unknownWithinGrace = [this, now]
+    {
+        return m_owedVdScanUnknownSince.has_value() &&
+        now - m_owedVdScanUnknownSince.value() < m_owedVdScanUnknownGrace;
+    };
+
+    int64_t owed = VD_SCAN_OWED_NONE;
+    std::optional<uint64_t> skips;
+
+    if (m_owedVdScanUnclear != VD_SCAN_OWED_NONE)
+    {
+        // The record was taken over already and only its clear is outstanding. Retry that alone.
+        const auto cleared = querySyscollector(clearCommand(m_owedVdScanUnclear, m_owedVdScanUnclearSkips));
+
+        if (!cleared)
+        {
+            return std::nullopt;
+        }
+
+        m_owedVdScanUnclear = VD_SCAN_OWED_NONE;
+        m_owedVdScanUnclearSkips.reset();
+
+        if (cleared->contains("vd_scan_owed") && (*cleared)["vd_scan_owed"].is_number_integer())
+        {
+            owed = (*cleared)["vd_scan_owed"].get<int64_t>();
+        }
+
+        if (owed == VD_SCAN_OWED_NONE)
+        {
+            // Cleared at last, and nothing was recorded while it was stuck: the request that went
+            // out for it stands, and asking again would run a second full scan for nothing.
+            return std::nullopt;
+        }
+
+        // Not cleared: a skip (or a reset) recorded meanwhile left the record in place. It is taken
+        // over like a fresh one, so the request goes out as what is owed now.
+        skips = readSkips(*cleared);
+    }
+    else
+    {
+        // A changed offset already pays for syscollector queries (the VDFirst gate), and is when
+        // an agent that moved to a scanning node is most likely to be owed a scan.
+        if (!offsetChanged && m_lastOwedVdScanProbe && now - *m_lastOwedVdScanProbe < m_owedVdScanProbeInterval)
+        {
+            owedUnknown = unknownWithinGrace();
+            return std::nullopt;
+        }
+
+        // Stamped before the answer: a syscollector that is disabled or failing must not be asked
+        // again on every keepalive either.
+        m_lastOwedVdScanProbe = now;
+
+        const auto owedData = querySyscollector(createJsonCommand("get_vd_scan_owed"));
+
+        if (!owedData || !owedData->contains("vd_scan_owed") || !(*owedData)["vd_scan_owed"].is_number_integer())
+        {
+            if (!m_owedVdScanUnknownSince)
+            {
+                m_owedVdScanUnknownSince = now;
+            }
+
+            owedUnknown = unknownWithinGrace();
+            return std::nullopt;
+        }
+
+        m_owedVdScanUnknownSince.reset();
+        owed = (*owedData)["vd_scan_owed"].get<int64_t>();
+        skips = readSkips(*owedData);
+
+        if (owed == VD_SCAN_OWED_NONE)
+        {
+            return std::nullopt;
+        }
+    }
+
+    if (owed < VD_SCAN_OWED_NONE)
+    {
+        // A reset: syscollector is resending the whole VD inventory as a VDFirst session, and that
+        // session's own scan is the first scan. One requested on top of it would be a second,
+        // silent, full scan -- after a re-enrollment, for an identity it was never recorded for.
+        std::optional<VdFeedState> dropped;
+        {
+            std::lock_guard<std::mutex> lock(m_dbSyncMutex);
+
+            if (!m_dBSync)
+            {
+                logDbSyncUnavailable("Cannot drop a void VD first scan request: DBSync not available");
+                return std::nullopt;
+            }
+
+            VdFeedState state = readVdFeedStateLocked();
+
+            if (state.pending && state.pendingFirst)
+            {
+                state.pending = false;
+                state.pendingFirst = false;
+                writeVdFeedStateLocked(state);
+                dropped = state;
+            }
+        }
+
+        // Read again on a later notify when this fails; dropping twice is harmless, because a
+        // first scan taken over after the reset replaces it in syscollector's record.
+        querySyscollector(clearCommand(owed, skips));
+
+        if (dropped)
+        {
+            m_logFunction(LOG_INFO,
+                          "Dropped the pending vulnerability first scan request: the vulnerability inventory is "
+                          "being resent, and the scan of that session covers it.");
+        }
+
+        return dropped;
+    }
+
+    VdFeedState state;
+    {
+        std::lock_guard<std::mutex> lock(m_dbSyncMutex);
+
+        if (!m_dBSync)
+        {
+            logDbSyncUnavailable("Cannot take over an owed VD scan: DBSync not available");
+            return std::nullopt;
+        }
+
+        state = readVdFeedStateLocked();
+
+        // The offset this node advertises is the one its /scan/vd checks the request against --
+        // unless a rescan for a NEWER feed is already pending: that one is kept, never lowered.
+        // The 200 for the lower offset would clear the pending flag and drop the newer rescan,
+        // while the scan of the newer feed, from the next node that holds it, covers what is owed
+        // here just as well.
+        if (!state.pending || state.pendingOffset < offset)
+        {
+            state.pendingOffset = offset;
+        }
+
+        // Nor below the offset this agent already holds, when a lagging node (or one with no
+        // feed offset to advertise yet) is the one that answered. Nothing raises a pending offset
+        // again until the feed advances, so a request recorded for an older feed would be
+        // refused by every node that holds the current one. It waits for one of those instead.
+        if (state.hasOffset && state.pendingOffset < state.offset)
+        {
+            state.pendingOffset = state.offset;
+        }
+
+        state.pending = true;
+        // Never downgraded: a first scan already pending stays one.
+        state.pendingFirst = state.pendingFirst || owed >= VD_SCAN_OWED_FIRST_SCAN;
+        writeVdFeedStateLocked(state);
+    }
+
+    // Cleared only once the request is durable here. Compare-and-clear: a skip syscollector
+    // recorded since the read above is left in place and taken over on a later notify.
+    const auto cleared = querySyscollector(clearCommand(owed, skips));
+
+    if (!cleared)
+    {
+        m_owedVdScanUnclear = owed;
+        m_owedVdScanUnclearSkips = skips;
+        m_logFunction(LOG_DEBUG,
+                      "Could not clear the VD scan owed in syscollector; the clear is retried on the next notify.");
+    }
+    else if (!state.pendingFirst && cleared->contains("vd_scan_owed") &&
+             (*cleared)["vd_scan_owed"].is_number_integer() &&
+             (*cleared)["vd_scan_owed"].get<int64_t>() >= VD_SCAN_OWED_FIRST_SCAN)
+    {
+        // Left in place: a skipped VDFirst raised the record to a first scan between the read and
+        // the clear. The request recorded above is about to go out as a plain scan, which alerts
+        // on every vulnerability, and its 200 would clear the pending flag before a later probe
+        // could correct it. It is raised here, before this observation is reported.
+        const int64_t raised = (*cleared)["vd_scan_owed"].get<int64_t>();
+        const auto raisedSkips = readSkips(*cleared);
+        bool upgraded = false;
+        {
+            std::lock_guard<std::mutex> lock(m_dbSyncMutex);
+
+            if (m_dBSync)
+            {
+                // Read again: a newer offset may have been recorded since the write above.
+                VdFeedState current = readVdFeedStateLocked();
+
+                if (current.pending)
+                {
+                    current.pendingFirst = true;
+                    writeVdFeedStateLocked(current);
+                    state = current;
+                    upgraded = true;
+                }
+            }
+        }
+
+        // Left for the next probe when the request could not be raised.
+        if (upgraded && !querySyscollector(clearCommand(raised, raisedSkips)))
+        {
+            m_owedVdScanUnclear = raised;
+            m_owedVdScanUnclearSkips = raisedSkips;
+        }
+    }
+
+    m_logFunction(LOG_INFO,
+                  std::string("Requesting the vulnerability ") + (state.pendingFirst ? "first scan" : "scan") +
+                  " a node without a running scanner left undone, at feed offset " +
+                  std::to_string(state.pendingOffset) + ".");
+    return state;
 }
 
 bool AgentInfoImpl::clearVdRescanPending(uint64_t offset)
@@ -2622,6 +2934,7 @@ bool AgentInfoImpl::clearVdRescanPending(uint64_t offset)
     }
 
     state.pending = false;
+    state.pendingFirst = false;
     writeVdFeedStateLocked(state);
     return true;
 }

@@ -118,7 +118,8 @@ CREATE TABLE IF NOT EXISTS vd_feed_state (
     has_offset      INTEGER NOT NULL DEFAULT 0,
     last_offset     INTEGER NOT NULL DEFAULT 0,
     pending         INTEGER NOT NULL DEFAULT 0,
-    pending_offset  INTEGER NOT NULL DEFAULT 0
+    pending_offset  INTEGER NOT NULL DEFAULT 0,
+    pending_first   INTEGER NOT NULL DEFAULT 0
 );
 ```
 
@@ -129,3 +130,4 @@ CREATE TABLE IF NOT EXISTS vd_feed_state (
 | `last_offset`    | INTEGER   | The last VD feed offset observed.                                                                                    |
 | `pending`        | INTEGER   | A boolean flag (`0` or `1`) indicating whether a rescan is pending.                                                  |
 | `pending_offset` | INTEGER   | The VD feed offset associated with the pending rescan.                                                               |
+| `pending_first`  | INTEGER   | A boolean flag (`0` or `1`): the pending rescan is the agent's first scan, which the manager indexes without alerts. Set when syscollector's first VD sync was indexed by a node without a running scanner (the scan is then owed and requested from the next node that advertises an offset). |

@@ -117,7 +117,12 @@ namespace
         }
     }
 
-    void vdOffsetObserve(uint64_t offset, int* outChanged, int* outPending, uint64_t* outPendingOffset, void* userData)
+    void vdOffsetObserve(uint64_t offset,
+                         int* outChanged,
+                         int* outPending,
+                         uint64_t* outPendingOffset,
+                         int* /*outPendingFirst: left at 0, a plain rescan*/,
+                         void* userData)
     {
         auto* recorder = static_cast<VdRescanRecorder*>(userData);
         std::lock_guard<std::mutex> lock(recorder->mutex);

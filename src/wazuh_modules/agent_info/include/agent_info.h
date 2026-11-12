@@ -186,13 +186,17 @@ EXPORTED int agent_info_task_check_and_record(const char* task_id);
  * @param out_pending Set to 1 if a /scan/vd request is now outstanding, 0 otherwise. May be NULL.
  * @param out_pending_offset Set to the offset a pending request refers to (valid only when
  *        *out_pending is 1). May be NULL.
+ * @param out_pending_first Set to 1 if the pending request is the agent's FIRST scan, which
+ *        the manager runs without alerting; 0 otherwise. Valid only when *out_pending
+ *        is 1. May be NULL.
  * @return 0 on success, -1 on error (agent_info.db not yet available, or a NULL required
  *         output isn't the issue -- out_* pointers are all optional).
  */
 EXPORTED int agent_info_vd_offset_observe(uint64_t offset,
                                           int* out_changed,
                                           int* out_pending,
-                                          uint64_t* out_pending_offset);
+                                          uint64_t* out_pending_offset,
+                                          int* out_pending_first);
 
 /**
  * @brief Clear the pending VD re-scan flag, but only if it is still pending for exactly this
@@ -263,7 +267,8 @@ typedef int (*agent_info_task_check_and_record_func)(const char* task_id);
 typedef int (*agent_info_vd_offset_observe_func)(uint64_t offset,
                                                  int* out_changed,
                                                  int* out_pending,
-                                                 uint64_t* out_pending_offset);
+                                                 uint64_t* out_pending_offset,
+                                                 int* out_pending_first);
 typedef int (*agent_info_vd_offset_clear_pending_func)(uint64_t offset);
 typedef int (*agent_info_vd_offset_get_state_func)(int* out_has_offset,
                                                    uint64_t* out_offset,

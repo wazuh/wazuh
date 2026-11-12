@@ -27,7 +27,9 @@ A Wazuh server cluster can have only one master node. During synchronization, da
 > on the master node are **not synchronized** to worker nodes (the file is on the cluster's
 > exclusion list). Apply them on each node — by hand, or through the Server API on the master with
 > `PUT /cluster/{node_id}/configuration`, which replaces the named node's file — and restart that
-> node for them to take effect.
+> node for them to take effect. Some settings must match on every node because the load balancer
+> can send an agent to any of them: `<vulnerability-detection><enabled>` is one (see
+> [Enabling or disabling it in a cluster](../vulnerability-scanner/configuration.md#enabling-or-disabling-it-in-a-cluster)).
 
 ---
 

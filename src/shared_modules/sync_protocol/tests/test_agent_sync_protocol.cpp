@@ -4706,3 +4706,52 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleConcurrentCallIsSkippedAndDoesNot
     // A fresh call with an empty queue must run to completion (not be skipped).
     EXPECT_TRUE(protocol->synchronizeModule(Mode::DELTA).success) << "Post-sync call was skipped — m_syncInProgress was not reset after completion";
 }
+
+// A node without a running scanner indexes a vulnerability-detection session and says it did not
+// scan it. The session succeeded -- its items are cleared -- and the cycle reports
+// the skip so the module can ask for the scan later. A plain 2xx reports nothing of the kind.
+TEST_F(AgentSyncProtocolTest, ASkippedVdScanIsReportedOnASuccessfulCycle)
+{
+    for (const auto& [body, skipped] : std::vector<std::pair<std::string, bool>>
+            {
+                {R"({"status":"ok","vd_scan":"skipped"})", true},
+                {R"({"status":"ok"})", false},
+                {R"({"status":"ok","vd_scan":"done"})", false},
+                {"not json, vd_scan", false},
+            })
+    {
+        mockQueue = std::make_shared<MockPersistentQueue>();
+        mockSyncTransport = std::make_shared<MockSyncTransport>();
+        LoggerFunc testLogger = [](modules_log_level_t, const std::string&)
+        {
+        };
+        protocol = std::make_unique<AgentSyncProtocol>("test_module_vd", ":memory:", testLogger, mockQueue,
+                                                       mockSyncTransport, /*isFeedBased=*/true);
+
+        const std::vector<PersistedData> testData =
+        {
+            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+        };
+        EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
+        .WillOnce(Return(testData))
+        .WillRepeatedly(Return(std::vector<PersistedData> {}));
+        EXPECT_CALL(*mockQueue, clearSyncedItems()).Times(1);
+
+        auto syncFuture = std::async(std::launch::async, [this]()
+        {
+            return protocol->synchronizeModule(Mode::DELTA);
+        });
+
+        while (mockSyncTransport->sendCount() == 0)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+
+        EXPECT_TRUE(feedHttpResult(200, body));
+
+        const SyncModuleResult result = syncFuture.get();
+        EXPECT_TRUE(result.success) << body;
+        EXPECT_TRUE(result.sentAnything) << body;
+        EXPECT_EQ(result.vdScanSkipped, skipped) << body;
+    }
+}

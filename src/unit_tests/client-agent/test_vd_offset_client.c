@@ -134,7 +134,7 @@ static void observe_fails(void) {
     bool pending = true;
     uint64_t pending_offset = 7;
 
-    assert_false(vd_offset_client_observe(42, &changed, &pending, &pending_offset));
+    assert_false(vd_offset_client_observe(42, &changed, &pending, &pending_offset, NULL));
     assert_false(changed);
     assert_false(pending);
     assert_int_equal(pending_offset, 0);
@@ -144,7 +144,7 @@ static void observe_answers(void) {
     bool changed = false;
 
     expect_answer(OK_RESPONSE);
-    assert_true(vd_offset_client_observe(42, &changed, NULL, NULL));
+    assert_true(vd_offset_client_observe(42, &changed, NULL, NULL, NULL));
     assert_true(changed);
 }
 

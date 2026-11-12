@@ -38,11 +38,17 @@ namespace
         return spec;
     }
 
-    std::string requestBody(uint64_t offset)
+    std::string requestBody(uint64_t offset, bool firstScan)
     {
         nlohmann::json request;
         request["type"] = "feed_update";
         request["feed_offset"] = offset;
+
+        if (firstScan)
+        {
+            request["first_scan"] = true;
+        }
+
         return request.dump();
     }
 
@@ -88,13 +94,13 @@ RescanRequester::RescanRequester(const ModuleConfig& config, IHttpPerformer& per
 {
 }
 
-bool RescanRequester::requestRescan(uint64_t offset, Waiter& waiter)
+bool RescanRequester::requestRescan(uint64_t offset, bool firstScan, Waiter& waiter)
 {
     uint64_t attemptOffset = offset;
 
     for (uint32_t round = 0; round < MAX_ROUNDS; ++round)
     {
-        const std::string body = requestBody(attemptOffset);
+        const std::string body = requestBody(attemptOffset, firstScan);
 
         LOGFN_DEBUG2(m_logFn, "Sending /scan/vd (feed_offset=%llu).",
                      static_cast<unsigned long long>(attemptOffset));
@@ -142,6 +148,11 @@ bool RescanRequester::requestRescan(uint64_t offset, Waiter& waiter)
             }
 
             attemptOffset = observation.pendingOffset;
+            // Re-read with the offset, never kept from the first round: this observe() may have
+            // taken over an owed FIRST scan, and the 200 below clears the first-scan flag together
+            // with the pending one -- resending as a plain scan would run it with alerts and
+            // leave nothing behind to ask again.
+            firstScan = observation.pendingFirst;
             continue;
         }
 

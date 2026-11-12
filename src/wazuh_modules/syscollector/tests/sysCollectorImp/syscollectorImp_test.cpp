@@ -6442,6 +6442,145 @@ TEST_F(SyscollectorImpTest, queryCommandGetVDFirstSyncCompletedIgnoresZeroTimest
     Syscollector::instance().destroy();
 }
 
+// The scan a node without a running scanner left undone, as agent-info reads and
+// clears it. Compare-and-clear: a value raised after agent-info read it is left for the next poll.
+TEST_F(SyscollectorImpTest, queryCommandsReadAndCompareAndClearTheOwedVDScan)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    auto query = [](const std::string & command)
+    {
+        return nlohmann::json::parse(Syscollector::instance().query(command));
+    };
+
+    auto nothingOwed = query(R"({"command":"get_vd_scan_owed"})");
+    EXPECT_EQ(nothingOwed["error"], MQ_SUCCESS);
+    EXPECT_EQ(nothingOwed["data"]["vd_scan_owed"], 0);
+
+    Syscollector::instance().destroy();
+
+    {
+        sqlite3* rawDb = nullptr;
+        ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &rawDb, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+        std::unique_ptr<sqlite3, decltype(&sqlite3_close)> db {rawDb, &sqlite3_close};
+
+        char* rawErrMsg = nullptr;
+        const int execResult = sqlite3_exec(db.get(),
+                                            "INSERT OR REPLACE INTO table_metadata (table_name, last_sync_time) VALUES ('vd_scan_owed', 2);",
+                                            nullptr,
+                                            nullptr,
+                                            &rawErrMsg);
+        std::unique_ptr<char, decltype(&sqlite3_free)> errMsg {rawErrMsg, &sqlite3_free};
+        ASSERT_EQ(execResult, SQLITE_OK) << (errMsg ? errMsg.get() : "");
+    }
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    EXPECT_EQ(query(R"({"command":"get_vd_scan_owed"})")["data"]["vd_scan_owed"], 2);
+
+    // agent-info took over a plain scan; a first scan recorded since is left in place.
+    const auto raised = query(R"({"command":"clear_vd_scan_owed","parameters":{"value":1}})");
+    EXPECT_EQ(raised["error"], MQ_SUCCESS);
+    EXPECT_EQ(query(R"({"command":"get_vd_scan_owed"})")["data"]["vd_scan_owed"], 2);
+
+    // Same value, but a skip count other than the current one: a skip was recorded since
+    // agent-info read the record, and it is left in place too.
+    const auto skips = query(R"({"command":"get_vd_scan_owed"})")["data"]["skips"].get<uint64_t>();
+    nlohmann::json staleClear = {{"command", "clear_vd_scan_owed"}, {"parameters", {{"value", 2}, {"skips", skips + 1}}}};
+    const auto skippedSince = query(staleClear.dump());
+    EXPECT_EQ(skippedSince["error"], MQ_SUCCESS);
+    EXPECT_EQ(skippedSince["data"]["vd_scan_owed"], 2);
+    EXPECT_EQ(skippedSince["data"]["skips"], skips);
+
+    nlohmann::json exactClear = {{"command", "clear_vd_scan_owed"}, {"parameters", {{"value", 2}, {"skips", skips}}}};
+    const auto cleared = query(exactClear.dump());
+    EXPECT_EQ(cleared["error"], MQ_SUCCESS);
+    EXPECT_EQ(cleared["data"]["vd_scan_owed"], 0);
+    EXPECT_EQ(query(R"({"command":"get_vd_scan_owed"})")["data"]["vd_scan_owed"], 0);
+
+    EXPECT_EQ(query(R"({"command":"clear_vd_scan_owed"})")["error"], MQ_ERR_INVALID_PARAMS);
+
+    Syscollector::instance().destroy();
+}
+
+// A skipped session is already delivered and cleared from the persistent queue when its answer is
+// read, so the scan it owes is recorded even while the module stops: nothing else remembers it.
+// The same answer proves the session landed, so its VDFirst marker is written while stopping too.
+// A whole-lane VDFirst resend then forgets the owed scan, because that session's own scan covers
+// it: recorded as a reset, which only its own value clears, so agent-info reads it and drops the
+// request it may already hold.
+TEST_F(SyscollectorImpTest, AVDScanSkippedWhileStoppingIsStillOwedAndAResendForgetsIt)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+    Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400);
+
+    auto mockSyncProtocolVD = std::make_unique<MockAgentSyncProtocol>();
+    EXPECT_CALL(*mockSyncProtocolVD, synchronizeModule(testing::_, testing::_))
+    .WillOnce(testing::Return(SyncModuleResult{.success = true, .sentAnything = true, .vdScanSkipped = true}))
+    .WillOnce(testing::Return(SyncModuleResult{true}));
+    Syscollector::instance().m_spSyncProtocolVD = std::move(mockSyncProtocolVD);
+
+    auto owed = []
+    {
+        return nlohmann::json::parse(Syscollector::instance().query(R"({"command":"get_vd_scan_owed"})"))["data"]["vd_scan_owed"];
+    };
+
+    Syscollector::instance().m_stopping = true;
+    Syscollector::instance().synchronizeVDTables(Mode::DELTA);
+    Syscollector::instance().m_stopping = false;
+
+    EXPECT_EQ(owed(), 1);
+    EXPECT_EQ(nlohmann::json::parse(Syscollector::instance().query(R"({"command":"get_vd_first_sync_completed"})"))
+              ["data"]["vd_first_sync_completed"],
+              1)
+            << "a skipped session is delivered: its marker must not wait for the next run";
+
+    // A later session that was scanned leaves the record alone: only agent-info clears it.
+    Syscollector::instance().synchronizeVDTables(Mode::DELTA);
+    EXPECT_EQ(owed(), 1);
+
+    Syscollector::instance().resetVDScanOwed();
+    EXPECT_EQ(owed(), -1);
+
+    // A clear sent for the scan agent-info had taken over does not swallow the reset.
+    Syscollector::instance().query(R"({"command":"clear_vd_scan_owed","parameters":{"value":1}})");
+    EXPECT_EQ(owed(), -1);
+
+    Syscollector::instance().query(R"({"command":"clear_vd_scan_owed","parameters":{"value":-1}})");
+    EXPECT_EQ(owed(), 0);
+
+    Syscollector::instance().destroy();
+}
+
 // --- Local-transport-unavailable log-level decision (issue #38621) ------------------------------
 // These inject a MockAgentSyncProtocol via m_spSyncProtocol/m_spSyncProtocolVD (through the
 // FRIEND_TEST grants in syscollector_defs.hpp) so the classification logic in syncModule() is

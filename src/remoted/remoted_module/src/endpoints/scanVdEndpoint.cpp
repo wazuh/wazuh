@@ -156,9 +156,23 @@ namespace remoted::endpoints::scanvd
 
             const uint64_t requestedOffset = json["feed_offset"].get<uint64_t>();
 
+            // Optional, false when absent. Anything but a boolean is refused rather than read as
+            // true, which would hide every alert of the scan.
+            bool firstScan = false;
+            if (const auto firstScanIt = json.find("first_scan"); firstScanIt != json.end())
+            {
+                if (!firstScanIt->is_boolean())
+                {
+                    responder->send(errorJson(400, "invalid_first_scan"));
+                    return;
+                }
+                firstScan = firstScanIt->get<bool>();
+            }
+
             handler.handleVdScan(
                 agentId,
                 requestedOffset,
+                firstScan,
                 [responder](const ScanVdResponse& response)
                 {
                     switch (response.outcome)

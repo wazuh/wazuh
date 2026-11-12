@@ -262,8 +262,12 @@ typedef int (*hc_check_and_record_task_fn)(const char* task_id, void* user_data)
 /// @param out_pending Set to 1 if a /scan/vd request is now outstanding, 0 otherwise.
 /// @param out_pending_offset Set to the offset a pending request refers to
 ///        (valid only when *out_pending is 1).
+/// @param out_pending_first Set to 1 if the pending request is the agent's FIRST
+///        scan, which the manager runs without alerting; valid only when
+///        *out_pending is 1.
 typedef void (*hc_vd_offset_observe_fn)(uint64_t offset, int* out_changed, int* out_pending,
-                                        uint64_t* out_pending_offset, void* user_data);
+                                        uint64_t* out_pending_offset, int* out_pending_first,
+                                        void* user_data);
 
 /// Clear the pending VD re-scan flag, but only if it is still pending for
 /// exactly this offset (a stale confirmation is a no-op). Call only after a

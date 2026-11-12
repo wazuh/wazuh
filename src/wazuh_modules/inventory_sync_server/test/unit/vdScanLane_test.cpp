@@ -208,6 +208,77 @@ TEST(VdScanLaneTest, ALegitimateSkipStillIndexesAndAnswers200)
     EXPECT_EQ("bulkIndex", std::get<0>(ops[1]));
 }
 
+TEST(VdScanLaneTest, ALegitimateSkipTellsTheAgentItsPackagesWereNotScanned)
+{
+    LaneUnderTest fixture;
+    fixture.events->m_vdScanSkip.store(true);
+    auto responder = std::make_shared<FutureResponder>();
+
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeItem(vdDeltaBody(), responder)));
+
+    const auto response = responder->get();
+    ASSERT_EQ(200, response.status);
+    // Without the marker the agent takes the indexed delta for a scanned one and
+    // never asks for its scan.
+    const auto body = nlohmann::json::parse(response.body);
+    EXPECT_EQ("skipped", body.value("vd_scan", ""));
+    EXPECT_EQ("ok", body.value("status", "")) << "the marker is added to the session's own answer";
+}
+
+// A running scanner that found nothing to scan (a VDFirst with no packages) is not a node without
+// a scanner: the marker would make the agent record a scan as owed and request it on demand.
+TEST(VdScanLaneTest, ASessionWithNothingToScanIsIndexedWithoutTheSkipMarker)
+{
+    LaneUnderTest fixture;
+    fixture.events->m_vdScanNothingToScan.store(true);
+    auto responder = std::make_shared<FutureResponder>();
+
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeItem(vdDeltaBody(), responder)));
+
+    const auto response = responder->get();
+    ASSERT_EQ(200, response.status);
+    EXPECT_EQ(std::string::npos, response.body.find("vd_scan"));
+
+    const auto ops = fixture.events->syncOps();
+    ASSERT_EQ(2u, ops.size());
+    EXPECT_EQ("bulkIndex", std::get<0>(ops[1])) << "the inventory is still indexed";
+}
+
+TEST(VdScanLaneTest, AScannedSessionCarriesNoSkipMarker)
+{
+    LaneUnderTest fixture;
+    auto responder = std::make_shared<FutureResponder>();
+
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeItem(vdDeltaBody(), responder)));
+
+    const auto response = responder->get();
+    ASSERT_EQ(200, response.status);
+    EXPECT_EQ(std::string::npos, response.body.find("vd_scan"));
+}
+
+// A skipped session that indexed nothing owes no scan: marking its no-op answer would make the
+// agent request a full on-demand scan of an inventory that did not change.
+TEST(VdScanLaneTest, ASkippedSessionThatIndexedNothingCarriesNoSkipMarker)
+{
+    LaneUnderTest fixture;
+    fixture.events->m_vdScanSkip.store(true);
+    auto responder = std::make_shared<FutureResponder>();
+
+    SessionSpec spec;
+    spec.option = invsync::test::fb::Option_VDFirst;
+    spec.agentId = "001";
+    ValueSpec filtered;
+    filtered.index = "alerts"; // not an inventory index: the document is skipped
+    const auto body = invsync::test::buildSyncDataSession(spec, {filtered});
+
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeItem(body, responder)));
+
+    const auto response = responder->get();
+    ASSERT_EQ(200, response.status);
+    EXPECT_NE(std::string::npos, response.body.find("noop"));
+    EXPECT_EQ(std::string::npos, response.body.find("vd_scan"));
+}
+
 TEST(VdScanLaneTest, AFullQueueRefusesAtAdmission)
 {
     VdScanLaneConfig config;

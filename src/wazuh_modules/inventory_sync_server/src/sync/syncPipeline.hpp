@@ -102,6 +102,9 @@ namespace invsync::sync
             /// Stamped by the endpoint at enqueue; respond() observes the elapsed time into the
             /// session-duration histograms (D18). Epoch (default) means "not stamped": no sample.
             std::chrono::steady_clock::time_point enqueuedAt {};
+            /// VdScanRequest only: the agent's FIRST scan, which indexes without alerting. Last on
+            /// purpose: the session endpoints initialise the members above positionally.
+            bool firstScan {false};
         };
 
         /**

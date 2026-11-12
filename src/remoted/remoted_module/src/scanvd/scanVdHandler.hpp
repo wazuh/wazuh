@@ -75,6 +75,7 @@ namespace remoted::scanvd
 
         void handleVdScan(uint32_t agentId,
                           uint64_t requestedOffset,
+                          bool firstScan,
                           remoted::endpoints::scanvd::ScanVdCallback callback) override;
 
     private:

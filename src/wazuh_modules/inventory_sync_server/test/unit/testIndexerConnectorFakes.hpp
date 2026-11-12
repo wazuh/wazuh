@@ -101,6 +101,8 @@ namespace invsync::test
         std::atomic<bool> m_vdFeedReady {true};
         /// When true, the scanner fake's scan() reports a legitimate skip instead of running.
         std::atomic<bool> m_vdScanSkip {false};
+        /// The running scanner declines the session: nothing in it to scan.
+        std::atomic<bool> m_vdScanNothingToScan {false};
         /// What the VD scanner fake reports from currentFeedOffset(). Defaults to 0 so tests that
         /// don't set a session's feed_offset (also defaulting to 0) see a match and aren't gated.
         std::atomic<std::uint64_t> m_vdCurrentOffset {0};
@@ -113,6 +115,8 @@ namespace invsync::test
         /// Run by the scanner fake's scanAgent() on the lane worker, after the gate -- where the
         /// real scanner fences the agent through the coordinator. Set before enqueueing.
         std::function<void(const std::string& agentId)> m_scanAgentHook;
+        /// The firstScan the scanner fake's last scanAgent() was called with.
+        std::atomic<bool> m_lastScanAgentFirstScan {false};
         /// While true, scan() BLOCKS until openScanGate() -- for cross-lane ordering tests.
         bool m_scanGateClosed {false};
         std::condition_variable m_scanGateCv;
@@ -491,11 +495,16 @@ namespace invsync::test
             m_events->waitAtScanGate();
             m_events->throwIfInjected("scan");
             m_events->recordSyncOp("scan", session.agentId, {}, {}, {});
+            if (m_events->m_vdScanNothingToScan.load())
+            {
+                return invsync::vd::ScanVerdict::NothingToScan;
+            }
             return m_events->m_vdScanSkip.load() ? invsync::vd::ScanVerdict::Skipped : invsync::vd::ScanVerdict::Ok;
         }
 
-        invsync::vd::AgentScanOutcome scanAgent(const std::string& agentId) override
+        invsync::vd::AgentScanOutcome scanAgent(const std::string& agentId, bool firstScan) override
         {
+            m_events->m_lastScanAgentFirstScan.store(firstScan);
             // Through the SAME gate and the same op log as scan(): a test that parks a session
             // mid-scan has to be able to park an on-demand scan the same way, and the ordering
             // tests read both from one timeline.

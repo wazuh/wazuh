@@ -53,8 +53,10 @@ namespace remoted::scanvd
             return ScanVdHandlerImpl::budgetMsFor(m_readTimeoutSeconds, m_writeTimeoutSeconds);
         }
 
-        void
-        handleVdScan(uint32_t agentId, uint64_t requestedOffset, remoted::endpoints::scanvd::ScanVdCallback callback)
+        void handleVdScan(uint32_t agentId,
+                          uint64_t requestedOffset,
+                          bool firstScan,
+                          remoted::endpoints::scanvd::ScanVdCallback callback)
         {
             using remoted::endpoints::scanvd::ScanVdOutcome;
             using remoted::endpoints::scanvd::ScanVdResponse;
@@ -89,7 +91,7 @@ namespace remoted::scanvd
             // here would only duplicate that loop with a worse deadline. Blocking is fine: this
             // runs on the transport's request pool (group B), which exists for handlers that do
             // synchronous downstream round trips.
-            const auto vdAnswer = postScan(agentId);
+            const auto vdAnswer = postScan(agentId, firstScan);
 
             if (vdAnswer.first == 200)
             {
@@ -144,7 +146,7 @@ namespace remoted::scanvd
         /// @return {status, errorCode}: {200, ""} when VD queued the scan; otherwise the error
         /// code out of VD's body ("scan_queue_full", "feed_not_ready", ...), "vd_unreachable"
         /// when the round trip itself failed, or "vd_error" for anything unrecognisable.
-        std::pair<int, std::string> postScan(uint32_t agentId)
+        std::pair<int, std::string> postScan(uint32_t agentId, bool firstScan)
         {
             try
             {
@@ -158,6 +160,11 @@ namespace remoted::scanvd
 
                 nlohmann::json requestBody;
                 requestBody["agent_id"] = std::to_string(agentId);
+                if (firstScan)
+                {
+                    // The agent's first scan: VD indexes it without alerting.
+                    requestBody["first_scan"] = true;
+                }
 
                 const auto res = client.Post("/vulnerability-detector/scan", requestBody.dump(), "application/json");
                 if (!res)
@@ -222,9 +229,10 @@ namespace remoted::scanvd
 
     void ScanVdHandlerImpl::handleVdScan(uint32_t agentId,
                                          uint64_t requestedOffset,
+                                         bool firstScan,
                                          remoted::endpoints::scanvd::ScanVdCallback callback)
     {
-        m_impl->handleVdScan(agentId, requestedOffset, std::move(callback));
+        m_impl->handleVdScan(agentId, requestedOffset, firstScan, std::move(callback));
     }
 
 } // namespace remoted::scanvd

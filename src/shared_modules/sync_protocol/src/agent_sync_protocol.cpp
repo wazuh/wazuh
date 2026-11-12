@@ -56,6 +56,27 @@ namespace
         return std::nullopt;
     }
 
+    // A VD session's 2xx carries "vd_scan":"skipped" when the node indexed its inventory without
+    // scanning it (no running scanner there). Never throws, like the readers above:
+    // an unexpected body reads as scanned.
+    bool jsonVdScanSkipped(std::string_view body)
+    {
+        if (body.find("vd_scan") == std::string_view::npos)
+        {
+            return false; // the common case, settled without a parse
+        }
+
+        const auto json = nlohmann::json::parse(body.begin(), body.end(), nullptr, /*allow_exceptions=*/false);
+
+        if (!json.is_object())
+        {
+            return false;
+        }
+
+        const auto it = json.find("vd_scan");
+        return it != json.end() && it->is_string() && it->get<std::string>() == "skipped";
+    }
+
     // "current_version" is only meaningful on the version_mismatch shape; absent otherwise.
     std::optional<uint64_t> jsonCurrentVersion(const std::string& body)
     {
@@ -522,6 +543,7 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
     bool managerNotReady = false;
     bool awaitingPrerequisite = false;
     bool feedNotReady = false;
+    bool vdScanSkipped = false;
     {
         // These fields are also written by applyHttpResult() on the response
         // thread while phase stays WaitingResponse (cleared only by
@@ -533,6 +555,7 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
         managerNotReady = m_syncState.lastSyncManagerNotReady;
         awaitingPrerequisite = m_syncState.lastSyncAwaitingPrerequisite;
         feedNotReady = m_syncState.lastSyncResult == SyncResult::FEED_NOT_READY;
+        vdScanSkipped = m_syncState.lastVdScanSkipped;
     }
     const bool stopped = shouldStop();
     const unsigned int consecutiveFailures = trackSyncOutcome(success, stopped || feedNotReady);
@@ -551,7 +574,8 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
             .feedNotReady = feedNotReady,
             // A VD sync fetches the whole queue in its first block, so reaching the limit
             // leaves nothing behind.
-            .reachedBlockLimit = !uncapped && success && blocksSent >= m_maxBlocksPerSync};
+            .reachedBlockLimit = !uncapped && success && blocksSent >= m_maxBlocksPerSync,
+            .vdScanSkipped = vdScanSkipped};
 }
 
 unsigned int AgentSyncProtocol::trackSyncOutcome(bool success, bool expectedFailure)
@@ -1553,6 +1577,12 @@ bool AgentSyncProtocol::applyHttpResult(int httpCode, std::string_view body, uin
     {
         m_syncState.lastSyncResult = SyncResult::SUCCESS;
         m_syncState.responseReceived = true;
+
+        if (jsonVdScanSkipped(body))
+        {
+            m_syncState.lastVdScanSkipped = true;
+        }
+
         m_syncState.cv.notifyAll();
         m_logger(LOG_DEBUG, "Sync response received with success status: " + std::string(body));
         return true;

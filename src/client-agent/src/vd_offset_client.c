@@ -314,7 +314,7 @@ static cJSON *vd_offset_parse_answer(const char *response) {
 }
 
 bool vd_offset_client_observe(uint64_t offset, bool *out_changed, bool *out_pending,
-                              uint64_t *out_pending_offset) {
+                              uint64_t *out_pending_offset, bool *out_pending_first) {
     char query[OS_MAXSTR];
     char response[OS_MAXSTR + 1] = {0};
     bool ok = false;
@@ -327,6 +327,9 @@ bool vd_offset_client_observe(uint64_t offset, bool *out_changed, bool *out_pend
     }
     if (out_pending_offset) {
         *out_pending_offset = 0;
+    }
+    if (out_pending_first) {
+        *out_pending_first = false;
     }
 
 #ifndef WIN32
@@ -363,6 +366,12 @@ bool vd_offset_client_observe(uint64_t offset, bool *out_changed, bool *out_pend
         const cJSON *pending_offset_item = cJSON_GetObjectItem(data, "pending_offset");
         if (out_pending_offset && pending_offset_item && cJSON_IsNumber(pending_offset_item)) {
             *out_pending_offset = (uint64_t)pending_offset_item->valuedouble;
+        }
+
+        /* Absent means a plain scan. */
+        const cJSON *pending_first_item = cJSON_GetObjectItem(data, "pending_first");
+        if (out_pending_first && pending_first_item && cJSON_IsBool(pending_first_item)) {
+            *out_pending_first = cJSON_IsTrue(pending_first_item);
         }
     }
 

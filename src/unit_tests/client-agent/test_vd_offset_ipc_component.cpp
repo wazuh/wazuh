@@ -129,7 +129,9 @@ namespace
 
     /// Stands in for agent-info's cross-module query seam. Answers
     /// get_vd_first_sync_completed for "syscollector" with a test-controlled
-    /// flag (see setVdFirstSyncDone()); anything else fails, matching the task
+    /// flag (see setVdFirstSyncDone()) and get_vd_scan_owed with "nothing owed"
+    /// (left unanswered, agent-info holds a plain rescan request back: the scan
+    /// owed could be the agent's first); anything else fails, matching the task
     /// registry component test's own unconditional -1 for this same seam.
     std::atomic<bool> g_vdFirstSyncDone {true};
 
@@ -157,9 +159,11 @@ namespace
         cJSON* commandItem = cJSON_GetObjectItem(request, "command");
         const bool isVdFirstQuery = commandItem && cJSON_IsString(commandItem) &&
                                     strcmp(commandItem->valuestring, "get_vd_first_sync_completed") == 0;
+        const bool isOwedQuery = commandItem && cJSON_IsString(commandItem) &&
+                                 strcmp(commandItem->valuestring, "get_vd_scan_owed") == 0;
         cJSON_Delete(request);
 
-        if (!isVdFirstQuery)
+        if (!isVdFirstQuery && !isOwedQuery)
         {
             return -1;
         }
@@ -167,7 +171,16 @@ namespace
         cJSON* responseJson = cJSON_CreateObject();
         cJSON_AddNumberToObject(responseJson, "error", 0);
         cJSON* data = cJSON_CreateObject();
-        cJSON_AddNumberToObject(data, "vd_first_sync_completed", g_vdFirstSyncDone.load() ? 1 : 0);
+
+        if (isOwedQuery)
+        {
+            cJSON_AddNumberToObject(data, "vd_scan_owed", 0);
+        }
+        else
+        {
+            cJSON_AddNumberToObject(data, "vd_first_sync_completed", g_vdFirstSyncDone.load() ? 1 : 0);
+        }
+
         cJSON_AddItemToObject(responseJson, "data", data);
         char* dumped = cJSON_PrintUnformatted(responseJson);
         *response = strdup(dumped);
@@ -250,7 +263,7 @@ TEST_F(VdOffsetIpcComponentTest, ObserveOverRealIpcPersistsOffsetAndMarksPending
     bool changed = false;
     bool pending = false;
     uint64_t pendingOffset = 0;
-    ASSERT_TRUE(vd_offset_client_observe(100, &changed, &pending, &pendingOffset));
+    ASSERT_TRUE(vd_offset_client_observe(100, &changed, &pending, &pendingOffset, nullptr));
     server.join();
 
     EXPECT_TRUE(changed);
@@ -282,7 +295,7 @@ TEST_F(VdOffsetIpcComponentTest, ObserveOverRealIpcRetriesUntilModuleSocketOpens
     bool pending = false;
     uint64_t pendingOffset = 0;
     const auto start = std::chrono::steady_clock::now();
-    ASSERT_TRUE(vd_offset_client_observe(100, &changed, &pending, &pendingOffset));
+    ASSERT_TRUE(vd_offset_client_observe(100, &changed, &pending, &pendingOffset, nullptr));
     const auto elapsed = std::chrono::steady_clock::now() - start;
     lateBinder.join();
 
@@ -305,7 +318,7 @@ TEST_F(VdOffsetIpcComponentTest, ObserveOverRealIpcDoesNotMarkPendingWhenVDFirst
     bool changed = false;
     bool pending = true; // Deliberately wrong initial value: must be set to false.
     uint64_t pendingOffset = 999;
-    ASSERT_TRUE(vd_offset_client_observe(50, &changed, &pending, &pendingOffset));
+    ASSERT_TRUE(vd_offset_client_observe(50, &changed, &pending, &pendingOffset, nullptr));
     server.join();
 
     EXPECT_TRUE(changed);
@@ -319,7 +332,7 @@ TEST_F(VdOffsetIpcComponentTest, MonotonicOffsetOverRealIpc)
         ASSERT_GE(serverSock, 0);
         std::thread server(runModuleSideDispatchLoop, serverSock, /*requestCount=*/1);
         bool changed = false;
-        ASSERT_TRUE(vd_offset_client_observe(100, &changed, nullptr, nullptr));
+        ASSERT_TRUE(vd_offset_client_observe(100, &changed, nullptr, nullptr, nullptr));
         server.join();
         ASSERT_TRUE(changed);
     }
@@ -331,7 +344,7 @@ TEST_F(VdOffsetIpcComponentTest, MonotonicOffsetOverRealIpc)
         ASSERT_GE(serverSock, 0);
         std::thread server(runModuleSideDispatchLoop, serverSock, /*requestCount=*/1);
         bool changed = true; // Deliberately wrong initial value: must become false.
-        ASSERT_TRUE(vd_offset_client_observe(50, &changed, nullptr, nullptr));
+        ASSERT_TRUE(vd_offset_client_observe(50, &changed, nullptr, nullptr, nullptr));
         server.join();
         EXPECT_FALSE(changed);
     }
@@ -346,7 +359,7 @@ TEST_F(VdOffsetIpcComponentTest, PendingRescanSurvivesARealRestartOfTheRegistry)
         ASSERT_GE(serverSock, 0);
         std::thread server(runModuleSideDispatchLoop, serverSock, /*requestCount=*/1);
         bool pending = false;
-        ASSERT_TRUE(vd_offset_client_observe(100, nullptr, &pending, nullptr));
+        ASSERT_TRUE(vd_offset_client_observe(100, nullptr, &pending, nullptr, nullptr));
         server.join();
         ASSERT_TRUE(pending);
     }
@@ -366,7 +379,7 @@ TEST_F(VdOffsetIpcComponentTest, PendingRescanSurvivesARealRestartOfTheRegistry)
         bool changed = true; // Deliberately wrong: must become false (no-op).
         bool pending = false;
         uint64_t pendingOffset = 0;
-        ASSERT_TRUE(vd_offset_client_observe(100, &changed, &pending, &pendingOffset));
+        ASSERT_TRUE(vd_offset_client_observe(100, &changed, &pending, &pendingOffset, nullptr));
         server.join();
 
         EXPECT_FALSE(changed);
@@ -382,7 +395,7 @@ TEST_F(VdOffsetIpcComponentTest, ClearPendingOverRealIpcClearsOnlyMatchingOffset
         ASSERT_GE(serverSock, 0);
         std::thread server(runModuleSideDispatchLoop, serverSock, /*requestCount=*/1);
         bool pending = false;
-        ASSERT_TRUE(vd_offset_client_observe(100, nullptr, &pending, nullptr));
+        ASSERT_TRUE(vd_offset_client_observe(100, nullptr, &pending, nullptr, nullptr));
         server.join();
         ASSERT_TRUE(pending);
     }
@@ -409,7 +422,7 @@ TEST_F(VdOffsetIpcComponentTest, ClearPendingOverRealIpcClearsOnlyMatchingOffset
         ASSERT_GE(serverSock, 0);
         std::thread server(runModuleSideDispatchLoop, serverSock, /*requestCount=*/1);
         bool pending = true; // Deliberately wrong: must become false.
-        ASSERT_TRUE(vd_offset_client_observe(100, nullptr, &pending, nullptr));
+        ASSERT_TRUE(vd_offset_client_observe(100, nullptr, &pending, nullptr, nullptr));
         server.join();
         EXPECT_FALSE(pending);
     }

@@ -30,25 +30,33 @@ class FakeVdOffsetStore final : public IVdOffsetStore
 
             VdOffsetObservation result;
 
-            if (m_hasOffset && offset <= m_offset)
+            if (!(m_hasOffset && offset <= m_offset))
             {
-                result.pending = m_pending;
-                result.pendingOffset = m_pendingOffset;
-                return result;
+                m_hasOffset = true;
+                m_offset = offset;
+                result.changed = true;
+
+                if (m_vdFirstDone)
+                {
+                    m_pending = true;
+                    m_pendingOffset = offset;
+                }
             }
 
-            m_hasOffset = true;
-            m_offset = offset;
-            result.changed = true;
-
-            if (m_vdFirstDone)
+            // Like agent-info's takeover: a scan the manager owes is requested at the offset the
+            // node advertises, on both paths.
+            if (m_owed)
             {
                 m_pending = true;
                 m_pendingOffset = offset;
+                m_pendingFirst = m_pendingFirst || m_owedFirst;
+                m_owed = false;
+                m_owedFirst = false;
             }
 
             result.pending = m_pending;
             result.pendingOffset = m_pendingOffset;
+            result.pendingFirst = m_pendingFirst;
             return result;
         }
 
@@ -62,6 +70,7 @@ class FakeVdOffsetStore final : public IVdOffsetStore
             }
 
             m_pending = false;
+            m_pendingFirst = false;
             return true;
         }
 
@@ -70,6 +79,19 @@ class FakeVdOffsetStore final : public IVdOffsetStore
         void setVDFirstDone(bool done)
         {
             m_vdFirstDone = done;
+        }
+
+        /// What syscollector records when a node without a running scanner indexed a VD
+        /// session: the next observe() takes it over as a pending request.
+        void oweScan(bool firstScan)
+        {
+            m_owed = true;
+            m_owedFirst = m_owedFirst || firstScan;
+        }
+
+        bool pendingFirst() const
+        {
+            return m_pendingFirst;
         }
 
         bool pending() const
@@ -103,6 +125,9 @@ class FakeVdOffsetStore final : public IVdOffsetStore
         bool m_vdFirstDone {true};
         bool m_pending {false};
         uint64_t m_pendingOffset {0};
+        bool m_pendingFirst {false};
+        bool m_owed {false};
+        bool m_owedFirst {false};
         std::vector<uint64_t> m_observeCalls;
         std::vector<uint64_t> m_clearPendingCalls;
 };

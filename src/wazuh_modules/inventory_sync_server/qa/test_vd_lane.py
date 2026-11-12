@@ -26,7 +26,8 @@ def test_vdsync_session_skips_the_scan_and_indexes(client, cluster, indexer, age
     session = build_session(default_start(agent_id, cluster, option="vdsync"), payload)
     response = client.post_stateful(session, agent_id=agent_id)
     assert response.status == 200, response.body
-    assert json.loads(response.body) == {"status": "ok"}
+    # No scanner runs on this node: the answer says so, and the agent requests the scan elsewhere.
+    assert json.loads(response.body) == {"status": "ok", "vd_scan": "skipped"}
 
     docs = indexer.wait_for_docs(agent_id, 1)
     assert docs[0]["_index"] == PACKAGES

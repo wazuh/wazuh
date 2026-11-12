@@ -59,7 +59,9 @@ class RescanRequester final
         /// (and the pending flag was cleared); false if it is still pending
         /// after this call -- the next Notify (via observe()'s no-op path)
         /// will retry.
-        bool requestRescan(uint64_t offset, Waiter& waiter);
+        /// `firstScan` asks for the agent's first scan, which the manager runs without
+        /// alerting.
+        bool requestRescan(uint64_t offset, bool firstScan, Waiter& waiter);
 
     private:
         const ModuleConfig& m_config;

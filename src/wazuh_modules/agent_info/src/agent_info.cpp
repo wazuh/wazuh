@@ -474,7 +474,8 @@ int agent_info_task_check_and_record(const char* task_id)
     return g_agent_info_impl->checkAndRecordTask(task_id) ? 1 : 0;
 }
 
-int agent_info_vd_offset_observe(uint64_t offset, int* out_changed, int* out_pending, uint64_t* out_pending_offset)
+int agent_info_vd_offset_observe(
+    uint64_t offset, int* out_changed, int* out_pending, uint64_t* out_pending_offset, int* out_pending_first)
 {
     const bool initAttempted = g_database_init_attempted;
 
@@ -500,6 +501,11 @@ int agent_info_vd_offset_observe(uint64_t offset, int* out_changed, int* out_pen
     if (out_pending_offset)
     {
         *out_pending_offset = result.pendingOffset;
+    }
+
+    if (out_pending_first)
+    {
+        *out_pending_first = result.pendingFirst ? 1 : 0;
     }
 
     return 0;

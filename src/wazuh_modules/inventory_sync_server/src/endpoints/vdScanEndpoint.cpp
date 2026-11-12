@@ -42,22 +42,29 @@ namespace
     /// the wire for anything else that ever reads a capture of it.
     constexpr auto SCAN_IN_PROGRESS_BODY {R"({"error":"scan_in_progress","code":409,"retryable":true})"};
 
+    /// What the request body asks for.
+    struct ScanRequest
+    {
+        std::string agentId;    ///< Canonical spelling ("7" and "0007" -> "007").
+        bool firstScan {false}; ///< The agent's first scan, which indexes without alerting.
+    };
+
     /**
-     * @brief Read the target agent id out of the request body.
+     * @brief Read the request body: the target agent id and the optional `first_scan` flag.
      *
      * The body, and only the body: the dispatcher POSTs a task row's PAYLOAD verbatim and adds no
-     * headers of its own. Identical contract to the deletion route's, deliberately -- both are
-     * driven by the same caller, and one shape for "which agent" is one fewer thing for a producer
-     * to get wrong.
+     * headers of its own. Identical contract to the deletion route's for "which agent",
+     * deliberately -- both are driven by the same caller, and one shape is one fewer thing for a
+     * producer to get wrong. Parsed ONCE, for both members: this runs inline on an I/O thread.
      *
      * Not authenticated remote input: this route is UDS-local (D15) and its caller is another
      * manager daemon, so this guards against a caller bug, not against spoofing.
      *
      * @param[out] reason Caller-facing 400 message, set only on failure.
-     * @return The id in its canonical spelling ("7" and "0007" -> "007"), or nullopt when it is
-     *         absent or not an agent id (not digits, or out of the 32-bit range).
+     * @return The request, or nullopt when `agent_id` is absent or not an agent id (not digits, or
+     *         out of the 32-bit range), or `first_scan` is present and not a JSON boolean.
      */
-    std::optional<std::string> resolveAgentId(const wazuh::uds_http::HttpRequest& request, const char*& reason)
+    std::optional<ScanRequest> parseScanRequest(const wazuh::uds_http::HttpRequest& request, const char*& reason)
     {
         // Non-throwing parse, like every other body-reading route here: a malformed body is
         // ordinary input, and letting nlohmann throw would cost an exception per bad request. A
@@ -96,7 +103,22 @@ namespace
             return std::nullopt;
         }
 
-        return canonical;
+        ScanRequest parsed;
+        parsed.agentId = std::move(*canonical);
+
+        // Absent is false. Any value but a JSON boolean is refused rather than read as one, since
+        // mistaking it for true would hide every alert of that scan.
+        if (const auto firstScanIt = document.find("first_scan"); firstScanIt != document.end())
+        {
+            if (!firstScanIt->is_boolean())
+            {
+                reason = R"("first_scan" must be a boolean)";
+                return std::nullopt;
+            }
+            parsed.firstScan = firstScanIt->get<bool>();
+        }
+
+        return parsed;
     }
 } // namespace
 
@@ -118,8 +140,8 @@ namespace invsync::endpoints::vd_scan
             }
 
             const char* rejectionReason = nullptr;
-            const auto callerAgentId = resolveAgentId(*request, rejectionReason);
-            if (!callerAgentId)
+            const auto scanRequest = parseScanRequest(*request, rejectionReason);
+            if (!scanRequest)
             {
                 deps.requestCounters.count(400);
                 responder->send(errorResponse(400, rejectionReason));
@@ -142,11 +164,12 @@ namespace invsync::endpoints::vd_scan
             // mean scanned rather than "accepted".
             item.responder = responder;
             item.kind = invsync::sync::SyncPipeline::Item::Kind::VdScanRequest;
+            item.firstScan = scanRequest->firstScan;
             // Canonical like every document `_id`, query and registry key. That one spelling is what
             // makes the per-agent exclusion work ACROSS the two lanes: the pipeline registers an
             // agent's sessions under this form, so a scan keyed on the raw id would be invisible to
             // it and could run while that agent's session is mid-apply.
-            const auto& agentId = *callerAgentId;
+            const auto& agentId = scanRequest->agentId;
             item.session.agentId = agentId;
 
             switch (lane->tryEnqueue(std::move(item)))

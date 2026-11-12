@@ -33,12 +33,15 @@
  * @param out_pending Set to true if a /scan/vd request is now outstanding.
  * @param out_pending_offset Set to the offset a pending request refers to
  *        (valid only when *out_pending is true).
+ * @param out_pending_first Set to true if the pending request is the agent's
+ *        FIRST scan, which the manager runs without alerting. Valid
+ *        only when *out_pending is true. May be NULL.
  * @return true if the registry was reached and answered (regardless of
  *         changed/pending values); false on any error (unreachable,
  *         malformed/missing response, timeout).
  */
 bool vd_offset_client_observe(uint64_t offset, bool *out_changed, bool *out_pending,
-                              uint64_t *out_pending_offset);
+                              uint64_t *out_pending_offset, bool *out_pending_first);
 
 /**
  * @brief Clear the pending VD re-scan flag, but only if it is still pending
