@@ -2227,6 +2227,8 @@ static bool bridge_build_config(hc_config_t *config)
     config->backoff_cap_ms = (uint32_t)getDefine_Int_default("agent", "https_backoff_cap", 1000, 3600000, 60000);
     config->rejected_retry_interval_s =
         (uint32_t)getDefine_Int_default("agent", "https_rejected_retry_interval", 1, 86400, 60);
+    config->unknown_agent_retry_ms =
+        (uint32_t)getDefine_Int_default("agent", "https_unknown_agent_retry", 1000, 600000, 30000);
     config->wpk_max_download_bytes =
         (uint64_t)getDefine_Int_default("agent", "https_wpk_max_download_bytes", 1048576, 2147483647, 209715200);
 

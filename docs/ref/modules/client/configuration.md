@@ -617,6 +617,11 @@ agent.https_backoff_cap=60000
 # in seconds (default: 60, range 1-86400)
 agent.https_rejected_retry_interval=60
 
+# How long a 401 unknown_agent (a manager node that has not synced this
+# agent's key yet) is retried with the current credential before
+# re-enrolling, in milliseconds (default: 30000, range 1000-600000)
+agent.https_unknown_agent_retry=30000
+
 # Compress request bodies with zstd (default: 1, range 0-1). On a 415 the
 # agent retries once uncompressed and disables compression for that stream;
 # see the remoted timing-tuning page for the manager-side switch.
