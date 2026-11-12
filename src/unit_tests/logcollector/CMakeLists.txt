@@ -69,7 +69,7 @@ else()
     list(APPEND logcollector_names "test_state")
     list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets \
                                     -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fseek -Wl,--wrap=fgetc \
-                                    -Wl,--wrap,fgetpos -Wl,--wrap,time -Wl,--wrap,wfopen \
+                                    -Wl,--wrap,fgetpos -Wl,--wrap,time -Wl,--wrap,wfopen -Wl,--wrap,w_fopen_nofollow \
                                     -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_CreateArray \
                                     -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_AddNumberToObject \
                                     -Wl,--wrap,cJSON_AddItemToArray -Wl,--wrap,cJSON_AddItemToObject \

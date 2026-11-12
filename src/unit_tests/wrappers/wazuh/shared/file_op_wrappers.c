@@ -122,14 +122,24 @@ FILE *__wrap_w_fopen_nofollow(const char * basedir, const char * filename, const
     check_expected(basedir);
     check_expected(filename);
     check_expected(mode);
-    return mock_type(FILE *);
+    FILE *ret = mock_type(FILE *);
+    const int error = mock_type(int);
+    if (ret == NULL && error != 0) {
+        errno = error;
+    }
+    return ret;
 }
 
 void expect_w_fopen_nofollow(const char * basedir, const char * filename, const char * mode, FILE *ret) {
+    expect_w_fopen_nofollow_errno(basedir, filename, mode, ret, 0);
+}
+
+void expect_w_fopen_nofollow_errno(const char * basedir, const char * filename, const char * mode, FILE *ret, int error) {
     expect_string(__wrap_w_fopen_nofollow, basedir, basedir);
     expect_string(__wrap_w_fopen_nofollow, filename, filename);
     expect_string(__wrap_w_fopen_nofollow, mode, mode);
     will_return(__wrap_w_fopen_nofollow, ret);
+    will_return(__wrap_w_fopen_nofollow, error);
 }
 
 // No __real_ fallback, for the same reason as w_fopen_nofollow above.
