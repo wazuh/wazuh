@@ -440,8 +440,8 @@ def test_aws_cloudwatchlogs_get_log_streams(mock_debug, mock_sts_client,
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-@patch('cloudwatchlogs.aws_tools.debug')
-def test_aws_cloudwatchlogs_get_log_streams_handles_exceptions(mock_debug, mock_sts_client):
+@patch('cloudwatchlogs.aws_tools.error')
+def test_aws_cloudwatchlogs_get_log_streams_handles_exceptions(mock_error, mock_sts_client):
     """Test 'get_log_streams' method handles exceptions raised when trying to fetch the log streams
     from the specified log group.
     This could be due to a botocore Error or another type of Exception.
@@ -451,11 +451,11 @@ def test_aws_cloudwatchlogs_get_log_streams_handles_exceptions(mock_debug, mock_
     instance.client = MagicMock()
     mock_describe_log_streams = instance.client.describe_log_streams
 
-    mock_describe_log_streams.side_effect = Exception
-    instance.get_log_streams(TEST_LOG_GROUP)
-    mock_debug.assert_any_call(
-        '++++ The specified "{}" log group does not exist or insufficient privileges to access it.'.format(
-            TEST_LOG_GROUP), 0)
+    mock_describe_log_streams.side_effect = Exception('Failed listing')
+    with pytest.raises(SystemExit) as e:
+        instance.get_log_streams(TEST_LOG_GROUP)
+    assert e.value.code == utils.THROTTLING_ERROR_CODE
+    mock_error.assert_called_once_with(f'Unable to list all log streams in "{TEST_LOG_GROUP}": Failed listing')
 
     mock_describe_log_streams.side_effect = botocore.exceptions.ClientError(
         {'Error': {'Code': utils.THROTTLING_ERROR_CODE}}, "name")

@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 import pytest
 import boto3
+from botocore.exceptions import ClientError, EndpointConnectionError, ReadTimeoutError
 from botocore.stub import Stubber
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
@@ -238,3 +239,58 @@ def test_cloudwatch_upgrade_uses_configured_collection_start(service_factory, on
     fetch.assert_called_once_with(log_group='test_log_group', log_stream='test_stream', token=None,
                                   start_time=instance.only_logs_after_millis or instance.default_date_millis,
                                   end_time=None)
+
+
+@pytest.mark.parametrize('after_first_page', [False, True])
+@pytest.mark.parametrize('failure', [
+    EndpointConnectionError(endpoint_url='https://logs.example.invalid'),
+    ReadTimeoutError(endpoint_url='https://logs.example.invalid'),
+    ClientError({'Error': {'Code': 'AccessDeniedException', 'Message': 'Denied'}}, 'DescribeLogStreams'),
+    {'unexpected': 'response'},
+], ids=['connection', 'timeout', 'access-denied', 'malformed-response'])
+def test_cloudwatch_failed_listing_preserves_checkpoints(service_factory, failure, after_first_page):
+    """An unavailable/incomplete inventory must never be treated as deleted streams."""
+    instance = service_factory(ACCOUNT_A)
+    instance.save_data_db(GROUP, 'keep', VALUES_A)
+    instance.db_connector.commit()
+    responses = [{'logStreams': [{'logStreamName': 'other'}], 'nextToken': 'next'}] if after_first_page else []
+    instance.client.describe_log_streams.side_effect = responses + [failure]
+    with pytest.raises(SystemExit) as error:
+        instance.purge_db(GROUP)
+    assert error.value.code == utils.THROTTLING_ERROR_CODE
+    assert instance.get_data_from_db(GROUP, 'keep') == VALUES_A
+    instance.close_db()
+    restarted = service_factory(ACCOUNT_A)
+    assert restarted.get_data_from_db(GROUP, 'keep') == VALUES_A
+
+
+def test_cloudwatch_upgrade_keeps_original_error_after_sqlite_rollback(service_factory):
+    """SQLite can roll back the transaction itself (e.g. SQLITE_FULL or a ROLLBACK trigger)."""
+    instance = service_factory(ACCOUNT_A, initialize=False)
+    utils.database_execute_script(instance.db_connector, 'schema_cloudwatchlogs_legacy_test.sql')
+    before = instance.db_cursor.execute('SELECT * FROM cloudwatch_logs').fetchall()
+    instance.db_cursor.executescript('''
+        CREATE TABLE migration_failure (value TEXT);
+        CREATE TRIGGER abort_migration BEFORE INSERT ON migration_failure
+        BEGIN SELECT RAISE(ROLLBACK, 'simulated SQLite transaction rollback'); END;
+    ''')
+    with pytest.raises(sqlite3.IntegrityError, match='simulated SQLite transaction rollback'):
+        instance.init_db("INSERT INTO migration_failure VALUES ('fail')")
+    assert not instance.db_connector.in_transaction
+    assert instance.db_cursor.execute('SELECT * FROM cloudwatch_logs').fetchall() == before
+    assert instance.db_cursor.execute(
+        "SELECT name FROM sqlite_master WHERE name='cloudwatch_logs_legacy'").fetchone() is None
+
+
+def test_cloudwatch_collection_closes_database_after_upgrade_failure(service_factory):
+    instance = service_factory(ACCOUNT_A, initialize=False)
+    utils.database_execute_script(instance.db_connector, 'schema_cloudwatchlogs_legacy_test.sql')
+    instance.db_cursor.execute('CREATE TABLE cloudwatch_logs_legacy (checkpoint TEXT)')
+    instance.db_connector.commit()
+    with pytest.raises(sqlite3.OperationalError, match='already another table'):
+        instance.get_alerts()
+    with pytest.raises(sqlite3.ProgrammingError, match='closed database'):
+        instance.db_connector.execute('SELECT 1')
+    # Failed migration must not leave a renamed/empty replacement table committed.
+    restarted = service_factory(ACCOUNT_A, initialize=False)
+    assert restarted.db_cursor.execute('SELECT COUNT(*) FROM cloudwatch_logs').fetchone() == (1,)

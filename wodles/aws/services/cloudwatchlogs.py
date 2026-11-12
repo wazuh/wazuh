@@ -180,8 +180,11 @@ class AWSCloudWatchLogs(aws_service.AWSService):
                 migrated = True
             self.db_cursor.execute('RELEASE SAVEPOINT cloudwatch_account_migration')
         except BaseException:
-            self.db_cursor.execute('ROLLBACK TO SAVEPOINT cloudwatch_account_migration')
-            self.db_cursor.execute('RELEASE SAVEPOINT cloudwatch_account_migration')
+            # SQLite can already have aborted the whole transaction (e.g. SQLITE_FULL).
+            # In that case the savepoint is gone: retain the original failure.
+            if self.db_connector.in_transaction:
+                self.db_cursor.execute('ROLLBACK TO SAVEPOINT cloudwatch_account_migration')
+                self.db_cursor.execute('RELEASE SAVEPOINT cloudwatch_account_migration')
             raise
         if migrated:
             aws_tools.debug(
@@ -201,12 +204,12 @@ class AWSCloudWatchLogs(aws_service.AWSService):
 
         The database will be purged to remove unnecessary records at the end of each log group iteration.
         """
-        self.init_db(self.sql_cloudwatch_create_table.format(table_name=self.db_table_name))
-
-        if self.reparse:
-            aws_tools.debug('Reparse mode ON', 1)
-
         try:
+            self.init_db(self.sql_cloudwatch_create_table.format(table_name=self.db_table_name))
+
+            if self.reparse:
+                aws_tools.debug('Reparse mode ON', 1)
+
             for log_group in self.log_group_list:
                 for log_stream in self.get_log_streams(log_group=log_group):
                     aws_tools.debug(
@@ -537,13 +540,15 @@ class AWSCloudWatchLogs(aws_service.AWSService):
 
         except botocore.exceptions.EndpointConnectionError as e:
             aws_tools.error(f'{str(e)}')
+            sys.exit(16)
         except botocore.exceptions.ClientError as err:
             aws_tools.error(f'The "get_log_streams" request failed: {err}')
             sys.exit(16)
-        except Exception:
-            aws_tools.debug(
-                '++++ The specified "{}" log group does not exist or insufficient privileges to access it.'.format(
-                    log_group), 0)
+        except Exception as err:
+            # A failed or incomplete listing is not an empty group. Returning it
+            # would let purge_db delete valid checkpoints and replay their events.
+            aws_tools.error(f'Unable to list all log streams in "{log_group}": {err}')
+            sys.exit(16)
 
         return result_list
 

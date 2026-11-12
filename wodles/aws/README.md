@@ -10,6 +10,11 @@ successfully assumed role ARN; otherwise it is the account returned by STS
 for the configured credentials/profile. Different roles in the same account
 share progress for the same region, group and stream.
 
+Cleanup requires a successful listing of every page of CloudWatch streams.
+Connection errors, timeouts, AWS errors or malformed responses stop collection
+with an error instead of treating the group as empty and deleting checkpoints.
+A successfully listed empty group still allows its stale checkpoints to be removed.
+
 ### Upgrading an existing database
 
 Older versions keyed checkpoints only by region, group and stream. Those rows
@@ -22,7 +27,8 @@ the old table to `cloudwatch_logs_legacy` and creates an empty, account-scoped
 recovery. Other services' tables are not modified. Subsequent runs detect
 the account column and do not repeat the migration. A conflicting legacy
 backup table or an SQL error aborts the migration without replacing the
-original table.
+original table. If SQLite has already rolled back the transaction, the original
+error is preserved. Collection closes the database even when initialization fails.
 
 Each account then collects from `only_logs_after`, or from the current UTC
 day when that option is absent. Previously collected events in that range
@@ -43,5 +49,6 @@ planned database restore and can replay events processed since the backup.
 `tests/test_cloudwatchlogs_accounts.py` uses temporary SQLite databases and
 mocked AWS clients, including botocore response validation. It covers account
 isolation, cleanup, assumed roles, repeated collection, restart, fresh installs,
-legacy preservation, transaction rollback and collection bounds after upgrade.
+legacy preservation, transaction rollback, failed/partial stream listings and
+collection bounds after upgrade.
 It does not contact AWS or modify an installed Wazuh service.
