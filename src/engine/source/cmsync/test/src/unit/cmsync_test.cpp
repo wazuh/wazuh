@@ -554,9 +554,11 @@ TEST_F(CMSyncSynchronizeTest, ContinuesWhenGetEntryFails)
     logging::setLevel(logging::Level::Info);
     const auto logs = captureLogs([&]() { EXPECT_NO_THROW(sync->synchronize()); });
     logging::setLevel(logging::Level::Warn);
-    EXPECT_NE(logs.warn.find("Failed to synchronize namespace for space 'standard': Failed to get route entry for "
-                             "'cmsync_standard': route error"),
-              std::string::npos)
+    EXPECT_EQ(countAtLevel(logs.warn,
+                           "warning",
+                           "Failed to synchronize namespace for space 'standard': Failed to get route entry for "
+                           "'cmsync_standard': route error"),
+              1)
         << logs.warn;
     EXPECT_EQ(logs.info.find("by the shutdown"), std::string::npos) << logs.info;
     EXPECT_EQ(sync->getSpacesStatus()[0].status, base::SyncStatus::FAILED);
@@ -582,9 +584,11 @@ TEST_F(CMSyncSynchronizeTest, ReportsRouteLookupAbortedByShutdownAsInfo)
     logging::setLevel(logging::Level::Info);
     const auto logs = captureLogs([&]() { EXPECT_NO_THROW(sync->synchronize()); });
     logging::setLevel(logging::Level::Warn);
-    EXPECT_NE(logs.info.find("Synchronization aborted for space 'standard' by the shutdown: Failed to get route "
-                             "entry for 'cmsync_standard': Orchestrator has been shutdown"),
-              std::string::npos)
+    EXPECT_EQ(countAtLevel(logs.info,
+                           "info",
+                           "Synchronization aborted for space 'standard' by the shutdown: Failed to get route entry "
+                           "for 'cmsync_standard': Orchestrator has been shutdown"),
+              1)
         << logs.info;
     EXPECT_EQ(logs.warn.find("Failed to synchronize namespace"), std::string::npos) << logs.warn;
     EXPECT_EQ(sync->getSpacesStatus()[0].status, base::SyncStatus::FAILED);
@@ -628,7 +632,7 @@ TEST_F(CMSyncSynchronizeTest, RollsBackWhenHotSwapFails)
     logging::setLevel(logging::Level::Info);
     const auto logs = captureLogs([&]() { EXPECT_NO_THROW(sync->synchronize()); });
     logging::setLevel(logging::Level::Warn);
-    EXPECT_NE(logs.warn.find("Failed to sync namespace in route for space 'standard': "), std::string::npos)
+    EXPECT_EQ(countAtLevel(logs.warn, "error", "Failed to sync namespace in route for space 'standard': "), 1)
         << logs.warn;
     EXPECT_EQ(logs.info.find("by the shutdown"), std::string::npos) << logs.info;
     EXPECT_EQ(sync->getSpacesStatus()[0].status, base::SyncStatus::FAILED);
@@ -669,9 +673,9 @@ TEST_F(CMSyncSynchronizeTest, ReportsRouteSyncAbortedByShutdownAsInfo)
     logging::setLevel(logging::Level::Info);
     const auto logs = captureLogs([&]() { EXPECT_NO_THROW(sync->synchronize()); });
     logging::setLevel(logging::Level::Warn);
-    EXPECT_NE(logs.info.find("Synchronization aborted for space 'standard' by the shutdown: "), std::string::npos)
+    EXPECT_EQ(countAtLevel(logs.info, "info", "Synchronization aborted for space 'standard' by the shutdown: "), 1)
         << logs.info;
-    EXPECT_NE(logs.info.find("Hot swap aborted: orchestrator shutting down"), std::string::npos) << logs.info;
+    EXPECT_EQ(countAtLevel(logs.info, "info", "Hot swap aborted: orchestrator shutting down"), 1) << logs.info;
     EXPECT_EQ(logs.warn.find("Failed to sync namespace in route"), std::string::npos) << logs.warn;
     EXPECT_EQ(sync->getSpacesStatus()[0].status, base::SyncStatus::FAILED);
 }

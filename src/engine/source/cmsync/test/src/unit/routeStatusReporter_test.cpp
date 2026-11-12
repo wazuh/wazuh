@@ -21,6 +21,7 @@ const std::string NO_ROUTES_MSG {"[CMSync] No active routes available. Incoming 
                                  "content synchronization completes"};
 const std::string ACTIVE_MSG {"[CMSync] Event processing is now active"};
 
+// Occurrences of `needle` at any level: used to assert that nothing was logged
 std::size_t countOf(const std::string& text, const std::string& needle)
 {
     std::size_t count {0};
@@ -60,7 +61,7 @@ TEST_F(RouteStatusReporterTest, NoRoutesOnRestartLogsWarning)
 
     const auto logs = captureLogs([&]() { reporter.report(); });
 
-    EXPECT_EQ(countOf(logs.warn, NO_ROUTES_MSG), 1);
+    EXPECT_EQ(countAtLevel(logs.warn, "warning", NO_ROUTES_MSG), 1);
     EXPECT_EQ(countOf(logs.info, NO_ROUTES_MSG), 0);
 }
 
@@ -70,7 +71,7 @@ TEST_F(RouteStatusReporterTest, NoRoutesOnFirstStartLogsInfo)
 
     const auto logs = captureLogs([&]() { reporter.report(); });
 
-    EXPECT_EQ(countOf(logs.info, NO_ROUTES_MSG), 1);
+    EXPECT_EQ(countAtLevel(logs.info, "info", NO_ROUTES_MSG), 1);
     EXPECT_TRUE(logs.warn.empty()) << logs.warn;
 }
 
@@ -80,7 +81,7 @@ TEST_F(RouteStatusReporterTest, RoutesOnFirstReportLogsActive)
 
     const auto logs = captureLogs([&]() { reporter.report(); });
 
-    EXPECT_EQ(countOf(logs.info, ACTIVE_MSG), 1);
+    EXPECT_EQ(countAtLevel(logs.info, "info", ACTIVE_MSG), 1);
     EXPECT_TRUE(logs.warn.empty()) << logs.warn;
 }
 
@@ -97,8 +98,8 @@ TEST_F(RouteStatusReporterTest, LogsOnlyOnTransitions)
             }
         });
 
-    EXPECT_EQ(countOf(logs.warn, NO_ROUTES_MSG), 2);
-    EXPECT_EQ(countOf(logs.info, ACTIVE_MSG), 1);
+    EXPECT_EQ(countAtLevel(logs.warn, "warning", NO_ROUTES_MSG), 2);
+    EXPECT_EQ(countAtLevel(logs.info, "info", ACTIVE_MSG), 1);
     EXPECT_EQ(countOf(logs.info, NO_ROUTES_MSG), 0);
 }
 
@@ -108,7 +109,7 @@ TEST_F(RouteStatusReporterTest, NoRouteStatusAfterShutdown)
 {
     RouteStatusReporter reporter(routeStates({true, false, false}), false);
     auto logs = captureLogs([&]() { reporter.report(); });
-    ASSERT_EQ(countOf(logs.info, ACTIVE_MSG), 1);
+    ASSERT_EQ(countAtLevel(logs.info, "info", ACTIVE_MSG), 1);
 
     reporter.requestShutdown();
     logs = captureLogs(
@@ -126,7 +127,7 @@ TEST_F(RouteStatusReporterTest, NoRecoveryAfterShutdown)
 {
     RouteStatusReporter reporter(routeStates({false, true}), false);
     auto logs = captureLogs([&]() { reporter.report(); });
-    ASSERT_EQ(countOf(logs.warn, NO_ROUTES_MSG), 1);
+    ASSERT_EQ(countAtLevel(logs.warn, "warning", NO_ROUTES_MSG), 1);
 
     reporter.requestShutdown();
     logs = captureLogs([&]() { reporter.report(); });
@@ -174,7 +175,7 @@ TEST_F(RouteStatusReporterTest, InFlightReportAtShutdownEmitsNothing)
         },
         false);
     auto logs = captureLogs([&]() { reporter.report(); });
-    ASSERT_EQ(countOf(logs.info, ACTIVE_MSG), 1);
+    ASSERT_EQ(countAtLevel(logs.info, "info", ACTIVE_MSG), 1);
 
     parkNextQuery = true;
     logs = captureLogs(
@@ -211,5 +212,5 @@ TEST_F(RouteStatusReporterTest, PredicateExceptionLeavesStateUntouched)
 
     // Still the first report: it logs
     logs = captureLogs([&]() { reporter.report(); });
-    EXPECT_EQ(countOf(logs.warn, NO_ROUTES_MSG), 1);
+    EXPECT_EQ(countAtLevel(logs.warn, "warning", NO_ROUTES_MSG), 1);
 }
