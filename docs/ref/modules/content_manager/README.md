@@ -5,8 +5,7 @@ feed from the Wazuh Indexer and hands it, page by page, to the Vulnerability Sca
 local CVE database from it. It runs inside `wazuh-manager-modulesd`: the `content_manager` module
 (`src/wazuh_modules/src/wm_content_manager.c`), which has no configuration section and is always
 loaded on a manager, loads the library at start, and the Vulnerability Scanner, which links the same
-library, registers its feed topic, `vulnerability_feed_manager`, with it. With
-`<vulnerability-detection>` disabled no topic is registered, so nothing is downloaded.
+library, registers its feed topic, `vulnerability_feed_manager`, with it.
 
 Source: `src/shared_modules/content_manager/`. Implementation details (the pipeline stages, the
 callback contract, the internal configuration object) are in the developer README,

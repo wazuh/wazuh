@@ -74,7 +74,6 @@ ENGINE_STATUS_READY = {
 VD_STATUS_READY = {
     'available': True,
     'status': 'ready',
-    'enabled': True,
     'offset': 42,
     'last_successful_update': 1719878400,
 }
@@ -317,35 +316,13 @@ def test_get_status_modulesd_stopped(mock_status, mock_engine_cls, mock_modulesd
 @patch('wazuh.manager.VdHTTPClient')
 @patch('wazuh.manager.EngineHTTPClient')
 @patch('wazuh.manager.status', return_value=manager_status)
-def test_get_status_modulesd_vd_disabled(mock_status, mock_engine_cls, mock_modulesd_cls, mock_remoted_cls, mock_wdb_cls):
-    """VD disabled → modulesd ready (disabled VD is not a readiness blocker)."""
-    mock_wdb_cls.return_value = MagicMock(**{'get_status.return_value': WDB_STATUS_READY})
-    mock_engine_cls.return_value = MagicMock(**{'get_status.return_value': ENGINE_STATUS_READY})
-    mock_modulesd_cls.return_value = MagicMock(**{
-        'get_status.return_value': {
-            'available': False, 'status': 'updating', 'enabled': False, 'offset': 0,
-            'last_successful_update': 0,
-        },
-    })
-    mock_remoted_cls.return_value = MagicMock(**{'get_status.return_value': REMOTED_STATUS_READY})
-
-    data = get_status().affected_items[0]
-    assert data['wazuh-manager-modulesd']['ready'] is True
-    assert data['ready'] is True
-
-
-@patch('wazuh.manager.WazuhDBStatusHTTPClient')
-@patch('wazuh.manager.RemotedHTTPClient')
-@patch('wazuh.manager.VdHTTPClient')
-@patch('wazuh.manager.EngineHTTPClient')
-@patch('wazuh.manager.status', return_value=manager_status)
 def test_get_status_modulesd_vd_failed(mock_status, mock_engine_cls, mock_modulesd_cls, mock_remoted_cls, mock_wdb_cls):
     """VD feed error → modulesd not ready."""
     mock_wdb_cls.return_value = MagicMock(**{'get_status.return_value': WDB_STATUS_READY})
     mock_engine_cls.return_value = MagicMock(**{'get_status.return_value': ENGINE_STATUS_READY})
     mock_modulesd_cls.return_value = MagicMock(**{
         'get_status.return_value': {
-            'available': True, 'status': 'failed', 'enabled': True, 'offset': 0,
+            'available': True, 'status': 'failed', 'offset': 0,
             'last_successful_update': 0,
         },
     })

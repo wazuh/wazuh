@@ -85,6 +85,7 @@
 | [#38589](https://github.com/wazuh/wazuh/issues/38589) | Removed the `<global><agents_disconnection_alert_time>` option. A configuration that still includes it fails to start. |
 | [#38992](https://github.com/wazuh/wazuh/issues/38992) | Removed the certificate-generation mode (`-C`, `-B`, `-K`, `-X`, `-S`) of `wazuh-manager-remoted` and `wazuh-manager-authd`, and the `USER_CREATE_SSL_CERT` and `USER_GENERATE_AUTHD_CERT` installation variables. |
 | [#39554](https://github.com/wazuh/wazuh/issues/39554) | Removed the built-in `wazuh-manager`/`wazuh-manager` indexer credential: the indexer connector no longer falls back to it when the keystore is empty, and `queue/sockets/keystore.sock` no longer answers the literal `wazuh-manager` for a key nobody set. Both made "not set" indistinguishable from "set to a password everyone knows"; an absent credential is now an error the resolver reports by name before any daemon starts. |
+| [#41327](https://github.com/wazuh/wazuh/issues/41327) | Removed the `<vulnerability-detection><enabled>` option: vulnerability detection runs on every manager node. |
 
 #### Fixed
 

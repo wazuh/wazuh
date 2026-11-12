@@ -130,7 +130,6 @@ variables:
       </remote>
 
       <vulnerability-detection>
-        <enabled>no</enabled>
         <feed-update-interval>60m</feed-update-interval>
       </vulnerability-detection>
 
@@ -182,7 +181,6 @@ variables:
       </remote>
 
       <vulnerability-detection>
-        <enabled>no</enabled>
         <feed-update-interval>60m</feed-update-interval>
       </vulnerability-detection>
 
@@ -234,7 +232,6 @@ variables:
       </remote>
 
       <vulnerability-detection>
-        <enabled>no</enabled>
         <feed-update-interval>60m</feed-update-interval>
       </vulnerability-detection>
 
@@ -287,7 +284,6 @@ variables:
       </remote>
 
       <vulnerability-detection>
-        <enabled>no</enabled>
         <feed-update-interval>60m</feed-update-interval>
       </vulnerability-detection>
 

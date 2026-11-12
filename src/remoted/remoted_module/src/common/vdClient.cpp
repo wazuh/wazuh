@@ -43,7 +43,6 @@ namespace remoted::common
                        std::chrono::milliseconds failureRetryInterval)
         : m_socketPath(std::move(socketPath))
         , m_cachedOffset(0)
-        , m_cachedEnabled(true)
         , m_hasValue(false)
         , m_hasAttempted(false)
         , m_lastAttemptFailed(false)
@@ -54,7 +53,7 @@ namespace remoted::common
     {
     }
 
-    VdClient::FeedState VdClient::getFeedState()
+    uint64_t VdClient::getOffset()
     {
         {
             std::lock_guard<std::mutex> lock(m_mutex);
@@ -78,7 +77,7 @@ namespace remoted::common
             if (m_hasAttempted && elapsed < ttl)
             {
                 LOGFN_DEBUG2(logFn(), "Returning cached VD offset: %llu", m_cachedOffset);
-                return cachedState();
+                return cachedOffset();
             }
 
             // The cache needs a refresh. If another thread is already querying VD, don't queue
@@ -87,7 +86,7 @@ namespace remoted::common
             if (m_refreshInProgress)
             {
                 LOGFN_DEBUG2(logFn(), "VD offset refresh already in progress, returning last known value");
-                return cachedState();
+                return cachedOffset();
             }
             m_refreshInProgress = true;
         }
@@ -104,13 +103,11 @@ namespace remoted::common
         if (result.success)
         {
             m_cachedOffset = result.offset;
-            m_cachedEnabled = result.enabled;
             m_hasValue = true;
             m_lastAttemptFailed = false;
             m_cacheTime = std::chrono::steady_clock::now();
-            LOGFN_DEBUG2(
-                logFn(), "Queried VD module, offset: %llu, enabled: %d", result.offset, result.enabled ? 1 : 0);
-            return {result.offset, result.enabled};
+            LOGFN_DEBUG2(logFn(), "Queried VD module, offset: %llu", result.offset);
+            return result.offset;
         }
 
         // Keep serving the last known-good offset — a transient failure shouldn't make this node
@@ -126,14 +123,14 @@ namespace remoted::common
                        throttle.total,
                        throttle.period().c_str());
         }
-        return cachedState();
+        return cachedOffset();
     }
 
-    VdClient::FeedState VdClient::cachedState() const
+    uint64_t VdClient::cachedOffset() const
     {
-        // Caller holds m_mutex. No value ever obtained -> {0, enabled}: an unreachable VD is not
-        // a disabled one, and the agent treats an advertised 0 as "no feed yet".
-        return m_hasValue ? FeedState {m_cachedOffset, m_cachedEnabled} : FeedState {0, true};
+        // Caller holds m_mutex. No value ever obtained -> 0, which the agent treats as "no feed
+        // yet".
+        return m_hasValue ? m_cachedOffset : 0;
     }
 
     VdClient::QueryResult VdClient::queryVdModule() const
@@ -161,18 +158,14 @@ namespace remoted::common
                                throttle.total,
                                throttle.period().c_str());
                 }
-                return {false, 0, true};
+                return {false, 0};
             }
 
             try
             {
                 const auto json = nlohmann::json::parse(res->body);
                 const uint64_t offset = json.value<uint64_t>("offset", 0);
-                // Absent (or not a boolean) -> enabled: only an explicit `false` withdraws the
-                // offset from agents.
-                const auto enabledIt = json.find("enabled");
-                const bool enabled = enabledIt == json.end() || !enabledIt->is_boolean() || enabledIt->get<bool>();
-                return {true, offset, enabled};
+                return {true, offset};
             }
             catch (const std::exception& e)
             {
@@ -184,7 +177,7 @@ namespace remoted::common
                                throttle.total,
                                throttle.period().c_str());
                 }
-                return {false, 0, true};
+                return {false, 0};
             }
         }
         catch (const std::exception& e)
@@ -197,7 +190,7 @@ namespace remoted::common
                            throttle.total,
                            throttle.period().c_str());
             }
-            return {false, 0, true};
+            return {false, 0};
         }
     }
 

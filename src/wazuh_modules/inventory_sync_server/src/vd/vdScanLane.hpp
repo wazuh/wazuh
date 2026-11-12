@@ -49,7 +49,7 @@ namespace invsync::vd
     /**
      * @brief The dedicated lane for vulnerability-detection sessions (D22).
      *
-     * scan -> (ok or legitimate skip) -> index inventory + flush -> 200. A failed scan answers 500
+     * scan -> (ok or nothing to scan) -> index inventory + flush -> 200. A failed scan answers 500
      * with ZERO inventory documents indexed; the re-POST redoes scan and ingest together (the
      * whole point of the gating: the legacy module indexed even when the scan failed).
      *

@@ -296,8 +296,8 @@ wazuh_modules.inventory_sync_server_sync_queue_bytes=67108864
 
 ### wazuh_modules.inventory_sync_server_vd_feed_retry_after_seconds
 
-`Retry-After` value, in seconds, answered with `503` while the vulnerability feed is not ready (or the
-scanner is enabled here but still starting up).
+`Retry-After` value, in seconds, answered with `503` while the vulnerability scanner is not ready
+(still starting up, still downloading its feed, or failed to start).
 
 ```ini
 wazuh_modules.inventory_sync_server_vd_feed_retry_after_seconds=10
