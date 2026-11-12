@@ -277,9 +277,10 @@ workers' next `client.keys` synchronization; up to about 13 s was measured), any
 worker is answered `401 unknown_agent`, and because a 5.x agent opens a new connection per request, a `mode tcp`
 front end routes its requests to the workers in that window as readily as an HTTP one does (see
 [§5](#5-tls-choose-a-model-before-issuing-certificates)). The agent recovers on its own once the key has
-arrived: by retrying, or, where it takes the `unknown_agent` answer for the loss of its identity, by enrolling
-again (see [Error responses](../remoted/https-events-api.md#error-responses)); an agent behind the balancer may
-therefore enroll twice. Nothing has to be configured for it. Source-address stickiness on the balancer (HAProxy `balance source`, NGINX
+arrived: it keeps retrying the credential it holds, for up to `agent.https_unknown_agent_retry` (30 s by
+default, see the client's [HTTPS connection timing](../client/configuration.md#https-connection-timing)), and
+re-enrolls only if the manager still answers `unknown_agent` after that (see
+[Error responses](../remoted/https-events-api.md#error-responses)). Nothing has to be configured for it. Source-address stickiness on the balancer (HAProxy `balance source`, NGINX
 `hash $remote_addr consistent`) is an optional mitigation: an agent pinned to one node stops alternating between
 nodes, which removes the [§7.2](#72-node-local-state-403-on-configuration-download) window after its first
 `/control`, but an agent pinned to a worker still waits out this one, since the identity is created on the master.

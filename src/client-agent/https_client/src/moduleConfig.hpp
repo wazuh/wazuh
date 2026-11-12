@@ -87,7 +87,9 @@ struct ModuleConfig
 
         /// How long the held credential is retried on a `401 unknown_agent` before the AuthGate
         /// latches and re-enrollment starts. A worker learns a new key through the cluster sync
-        /// 8.4-13.0 s after /enroll answers, so the window outlasts that. Zero: no retry.
+        /// 8.4-13.0 s after /enroll answers, so the window outlasts that. An attempt started just
+        /// before the deadline still runs to its request timeout. hc_config maps 0 to the default,
+        /// so only a typed config (tests) can set zero, which latches at once.
         std::chrono::milliseconds unknownAgentRetryBound {30000};
 
         /// Whether a published CA bundle may replace the trust store this agent verifies

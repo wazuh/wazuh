@@ -200,13 +200,14 @@ RetrySender::Result RetrySender::retryUnknownAgent(const HttpRequestSpec& base,
     {
         const auto next = std::min(m_clock.steadyNow() + unknownAgentStep(step), window.deadline);
 
-        if (!waitUntil(waiter, next))
+        if (!waitUntil(waiter, next, window.generation))
         {
             result.outcome = OutcomeClass::Interrupted; // Shutdown during the wait.
             return result;
         }
 
-        if (m_authGate->paused())
+        // Latched, or the window was closed or replaced meanwhile: this stream no longer owns it.
+        if (m_authGate->paused() || !m_authGate->unknownAgentWindowCurrent(window.generation))
         {
             return result;
         }
@@ -220,30 +221,47 @@ RetrySender::Result RetrySender::retryUnknownAgent(const HttpRequestSpec& base,
             result = attemptOnce(base);
         }
 
-        if (result.outcome == OutcomeClass::AuthFail && !isUnknownAgent(result))
+        if (isUnknownAgent(result))
         {
+            m_authGate->noteUnknownAgent(m_clock.steadyNow());
+            continue;
+        }
+
+        if (result.outcome == OutcomeClass::AuthFail)
+        {
+            const auto authClass = parseAuthFailClass(result.response.body);
+
+            // A 401 without a recognised class (a proxy's, say) says nothing about the key.
+            if (authClass == AuthFailClass::Unclassified)
+            {
+                continue;
+            }
+
             // The manager knows this agent again and names another problem: the window is over.
-            if (m_authGate->closeUnknownAgentWindow())
+            if (m_authGate->closeUnknownAgentWindow(window.generation))
             {
                 LOGFN_INFO(m_logFn,
                            "https_client: the manager knows this agent again (401, %s); no re-enrollment needed.",
-                           authFailClassName(parseAuthFailClass(result.response.body)));
+                           authFailClassName(authClass));
             }
 
             return result;
         }
 
-        if (!isUnknownAgent(result))
-        {
-            // Ok closes the window in send(). A transport error or a 5xx says nothing about the
-            // key, so the window stays open and the next 401 on any stream rejoins it.
-            return result;
-        }
+        // Ok closes the window in send(). A transport error or a 5xx says nothing about the key,
+        // so the window stays open and the next 401 on any stream rejoins it.
+        return result;
     }
 
-    // Only the closer escalates, and only if no re-enrollment completed since the join; a window
-    // another stream closed first was either latched or saw the credential accepted.
-    if (m_authGate->closeUnknownAgentWindow() && m_authGate->incidents() == incidentsAtJoin)
+    // Ran out on an unclassified 401: like a transport error, it leaves the window to the next 401.
+    if (!isUnknownAgent(result))
+    {
+        return result;
+    }
+
+    // Only the closer of this window escalates, and only if no re-enrollment completed since the
+    // join; a window another stream closed first was either latched or saw the credential accepted.
+    if (m_authGate->closeUnknownAgentWindow(window.generation) && m_authGate->incidents() == incidentsAtJoin)
     {
         LOGFN_INFO(m_logFn, "https_client: the manager still answers unknown_agent after retrying the current "
                    "credential; re-enrolling.");
@@ -253,7 +271,7 @@ RetrySender::Result RetrySender::retryUnknownAgent(const HttpRequestSpec& base,
     return result;
 }
 
-bool RetrySender::waitUntil(Waiter& waiter, std::chrono::steady_clock::time_point deadline)
+bool RetrySender::waitUntil(Waiter& waiter, std::chrono::steady_clock::time_point deadline, uint64_t generation)
 {
     for (auto now = m_clock.steadyNow(); now < deadline; now = m_clock.steadyNow())
     {
@@ -261,6 +279,13 @@ bool RetrySender::waitUntil(Waiter& waiter, std::chrono::steady_clock::time_poin
         if (!waiter.waitFor(std::chrono::ceil<std::chrono::milliseconds>(deadline - now)))
         {
             return false;
+        }
+
+        // Re-checked on each wake-up (a latch or release wakes the control stream); a window closed
+        // by an accepted request wakes no one and is noticed when the step ends.
+        if (m_authGate->paused() || !m_authGate->unknownAgentWindowCurrent(generation))
+        {
+            return true;
         }
     }
 

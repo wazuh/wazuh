@@ -625,6 +625,98 @@ TEST_F(RetrySenderUnknownAgentTest, RejoiningAWindowThatAlreadyRanOutEscalatesAt
     EXPECT_EQ(1, m_reenrollRequested);
 }
 
+TEST_F(RetrySenderUnknownAgentTest, AnUnknownAgentAfterABoundWithoutOneGetsAWholeWindow)
+{
+    m_waiter.script({false}); // Leaves the window open, as a shutdown or a 5xx would.
+    EXPECT_CALL(m_performer, perform(_)).WillRepeatedly(Return(authFail("unknown_agent")));
+    m_guarded.send(makeSpec(), m_waiter, 2);
+    m_clock.advance(2 * bound()); // The worker was unreachable for longer than the window.
+
+    m_waiter.script({true, true, true, true});
+    m_guarded.send(makeSpec(), m_waiter, 2);
+
+    // The first wait is the interrupted one; then a new incident retries a whole window again.
+    EXPECT_EQ((Delays {1000ms, 1000ms, 2000ms, 4000ms}), m_waiter.requestedDelays());
+    EXPECT_TRUE(m_gate.paused());
+    EXPECT_EQ(1, m_reenrollRequested);
+}
+
+TEST_F(RetrySenderUnknownAgentTest, StepsGrowToTheCapAndTheLastOneEndsAtTheDeadline)
+{
+    RetrySender longWindow {m_performer, m_signer, m_clock, m_backoff, false, nullptr, &m_gate, {}, 40000ms};
+    m_waiter.script({true, true, true, true, true, true, true, true});
+    EXPECT_CALL(m_performer, perform(_)).WillRepeatedly(Return(authFail("unknown_agent")));
+
+    longWindow.send(makeSpec(), m_waiter, 2);
+
+    EXPECT_EQ((Delays {1000ms, 2000ms, 4000ms, 8000ms, 15000ms, 10000ms}), m_waiter.requestedDelays());
+    EXPECT_TRUE(m_gate.paused());
+}
+
+TEST_F(RetrySenderUnknownAgentTest, AnUnclassified401InsideTheWindowKeepsRetrying)
+{
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(authFail("unknown_agent")))
+    .WillOnce(Return(authFail("unknown_agent")))
+    .WillOnce(Return(authFail("a_class_from_the_future"))) // A proxy's 401, say.
+    .WillOnce(Return(response(TransportStatus::Ok, 200)));
+
+    const auto result = m_guarded.send(makeSpec(), m_waiter, 2);
+
+    EXPECT_EQ(OutcomeClass::Ok, result.outcome);
+    EXPECT_FALSE(m_gate.paused());
+    EXPECT_EQ((Delays {1000ms, 2000ms}), m_waiter.requestedDelays());
+}
+
+/// Wakes once and runs `onWake` first, as another stream would while this one waits.
+class WakingWaiter final : public Waiter
+{
+    public:
+        WakingWaiter(FakeClock& clock, std::function<void()> onWake)
+            : m_clock(clock)
+            , m_onWake(std::move(onWake))
+        {
+        }
+
+        bool waitFor(std::chrono::milliseconds timeout) override
+        {
+            m_waits++;
+            m_onWake();
+            m_clock.advance(std::min(timeout, std::chrono::milliseconds {100}));
+            return true;
+        }
+
+        int m_waits {0};
+
+    private:
+        FakeClock& m_clock;
+        std::function<void()> m_onWake;
+};
+
+TEST_F(RetrySenderUnknownAgentTest, AWindowClosedElsewhereEndsTheWaitWithoutAnotherRequest)
+{
+    WakingWaiter waiter {m_clock, [this] { m_gate.closeUnknownAgentWindow(); }};
+    EXPECT_CALL(m_performer, perform(_)).Times(2).WillRepeatedly(Return(authFail("unknown_agent")));
+
+    const auto result = m_guarded.send(makeSpec(), waiter, 2);
+
+    EXPECT_EQ(OutcomeClass::AuthFail, result.outcome);
+    EXPECT_EQ(1, waiter.m_waits);
+    EXPECT_FALSE(m_gate.paused());
+    EXPECT_EQ(0, m_reenrollRequested);
+}
+
+TEST_F(RetrySenderUnknownAgentTest, ALatchElsewhereEndsTheWaitAtTheNextWakeUp)
+{
+    WakingWaiter waiter {m_clock, [this] { m_gate.reportAuthFailure(); }};
+    EXPECT_CALL(m_performer, perform(_)).Times(2).WillRepeatedly(Return(authFail("unknown_agent")));
+
+    m_guarded.send(makeSpec(), waiter, 2);
+
+    EXPECT_EQ(1, waiter.m_waits);
+    EXPECT_EQ(1, m_reenrollRequested); // Fired once, by the other stream.
+}
+
 TEST_F(RetrySenderUnknownAgentTest, AnAcceptedRequestOnAnotherSenderClosesTheWindow)
 {
     RetrySender sibling {m_performer, m_signer, m_clock, m_backoff, false, nullptr, &m_gate, {}, bound()};

@@ -98,8 +98,9 @@ class RetrySender final
         Result retryUnknownAgent(const HttpRequestSpec& base, Waiter& waiter, Result result, bool& escalate);
 
         /// Waits until the steady clock reaches deadline. A notify() wakes Waiter::waitFor()
-        /// early, so the remaining time is waited again; false on a stop request.
-        bool waitUntil(Waiter& waiter, std::chrono::steady_clock::time_point deadline);
+        /// early, so the remaining time is waited again, unless by then the gate has latched or
+        /// `generation` is no longer the open window; false on a stop request.
+        bool waitUntil(Waiter& waiter, std::chrono::steady_clock::time_point deadline, uint64_t generation);
 
         /// The k-th wait of one retry loop (a rejoin restarts at k = 0): 1, 2, 4, 8 s, then 15 s,
         /// each with equal jitter.
