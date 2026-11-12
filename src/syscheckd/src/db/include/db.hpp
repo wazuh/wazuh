@@ -147,8 +147,8 @@ class EXPORTED DB final
         /**
          * @brief searchFiles Search files in the database.
          *
-         * @param searchData parameter to search information. A path search takes a literal path prefix followed by '%',
-         * matched byte for byte; any other value matches nothing.
+         * @param searchData parameter to search information. A path search takes a literal path prefix ending in '/' or '\\',
+         * followed by '%', matched byte for byte; any other value matches nothing.
          * @param callback Callback return the file data.
          */
         void searchFile(const SearchData& data, std::function<void(const std::string&)> callback);

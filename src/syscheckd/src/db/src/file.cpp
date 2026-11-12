@@ -123,8 +123,12 @@ void DB::searchFile(const SearchData& data, std::function<void(const std::string
         FIMDBCreator<OS_TYPE>::encodeString(encodedPath);
 
         // Callers pass "<path><separator>%": select every path that starts with "<path><separator>".
-        if (encodedPath.size() < 2 || '%' != encodedPath.back())
+        // The separator check keeps the range inside one directory and the incremented byte below 0xFF.
+        const auto size {encodedPath.size()};
+
+        if (size < 3 || '%' != encodedPath[size - 1] || ('/' != encodedPath[size - 2] && '\\' != encodedPath[size - 2]))
         {
+            FIMDB::instance().logFunction(LOG_DEBUG, "Path search ignored, the value does not end in a separator and '%': " + std::get<SEARCH_FIELD_PATH>(data));
             return;
         }
 
