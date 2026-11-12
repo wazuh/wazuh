@@ -121,7 +121,7 @@ namespace
                 config.verify_mode = HC_VERIFY_NONE;
                 auto typed = ModuleConfig::fromC(config);
                 // Disable the unknown_agent retries so the latch is hit directly.
-                typed.unknownAgentRetryDelays.clear();
+                typed.unknownAgentRetryBound = std::chrono::milliseconds {0};
                 return typed;
             }
 

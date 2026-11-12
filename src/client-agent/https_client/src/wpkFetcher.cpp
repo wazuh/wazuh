@@ -36,7 +36,7 @@ WpkFetcher::WpkFetcher(const ModuleConfig& config, IHttpPerformer& performer,
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
     , m_sender(performer, signer, clock, m_backoff, config.httpsCompressionEnabled, &compressionGate, &authGate,
                config.serverEndpoint,
-               config.unknownAgentRetryDelays)
+               config.unknownAgentRetryBound)
     , m_spoolFactory(spoolFactory)
 {
 }

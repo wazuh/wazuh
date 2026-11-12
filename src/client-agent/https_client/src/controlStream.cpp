@@ -162,7 +162,7 @@ ControlStream::ControlStream(const ModuleConfig& config, IHttpPerformer& perform
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
     , m_sender(performer, signer, clock, m_backoff, config.httpsCompressionEnabled, &compressionGate, &authGate,
                config.serverEndpoint,
-               config.unknownAgentRetryDelays)
+               config.unknownAgentRetryBound)
     , m_clock(clock)
     , m_sink(sink)
     , m_fetcher(config, performer, signer, clock, random, spoolFactory, authGate, compressionGate)
@@ -251,7 +251,7 @@ void ControlStream::sendShutdown(Waiter& waiter)
     // NOT the normal 4x retry/backoff, so an unreachable manager cannot stall
     // shutdown for minutes. The manager marks the agent disconnected on the next
     // keepalive timeout regardless.
-    const auto result = m_sender.send(controlSpec(body, m_config.drainTimeoutMs), waiter, 1);
+    const auto result = m_sender.send(controlSpec(body, m_config.drainTimeoutMs), waiter, 1, RetrySender::Mode::Drain);
 
     if (result.outcome != OutcomeClass::Ok)
     {

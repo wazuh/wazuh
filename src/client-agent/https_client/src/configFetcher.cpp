@@ -40,7 +40,7 @@ ConfigFetcher::ConfigFetcher(const ModuleConfig& config, IHttpPerformer& perform
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
     , m_sender(performer, signer, clock, m_backoff, config.httpsCompressionEnabled, &compressionGate, &authGate,
                config.serverEndpoint,
-               config.unknownAgentRetryDelays)
+               config.unknownAgentRetryBound)
     , m_spoolFactory(spoolFactory)
 {
 }

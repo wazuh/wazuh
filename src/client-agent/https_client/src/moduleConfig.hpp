@@ -19,7 +19,6 @@
 #include <chrono>
 #include <cstdint>
 #include <string>
-#include <vector>
 
 /**
  * @brief Typed, deep-copied configuration with the module defaults applied.
@@ -86,17 +85,10 @@ struct ModuleConfig
         uint32_t backoffBaseMs {1000};
         uint32_t backoffCapMs {60000};
 
-        /// Waits between retries of the held credential on a `401 unknown_agent`, before the
-        /// AuthGate latches and re-enrollment starts. A worker learns a new key through the
-        /// cluster sync 8.4-13.0 s after /enroll answers, so the schedule outlasts that (~30 s).
-        std::vector<std::chrono::milliseconds> unknownAgentRetryDelays
-        {
-            std::chrono::milliseconds {1000},
-            std::chrono::milliseconds {2000},
-            std::chrono::milliseconds {4000},
-            std::chrono::milliseconds {8000},
-            std::chrono::milliseconds {15000}
-        };
+        /// How long the held credential is retried on a `401 unknown_agent` before the AuthGate
+        /// latches and re-enrollment starts. A worker learns a new key through the cluster sync
+        /// 8.4-13.0 s after /enroll answers, so the window outlasts that. Zero: no retry.
+        std::chrono::milliseconds unknownAgentRetryBound {30000};
 
         /// Whether a published CA bundle may replace the trust store this agent verifies
         /// against. False when <certificate_authorities> names a file the agent did not install

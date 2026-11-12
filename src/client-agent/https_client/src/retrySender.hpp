@@ -23,7 +23,6 @@
 
 #include <chrono>
 #include <cstdint>
-#include <vector>
 
 /**
  * @brief Whole-request retry loop (D9).
@@ -54,7 +53,7 @@ class RetrySender final
         /// send paths for the rest of this run; send() retries once,
         /// uncompressed, on the same 415.
         /// authGate (optional): a 401 naming `unknown_agent` reports here once
-        /// unknownAgentRetryDelays is exhausted, pausing all traffic and
+        /// the gate's unknown_agent window has run out, pausing all traffic and
         /// surfacing re-enrollment once (#37828). Since #39064 the other seven
         /// classes -- and a 401 carrying no readable class -- are logged and
         /// returned unescalated instead: only a manager that says the identity
@@ -64,9 +63,9 @@ class RetrySender final
         /// non-empty, attemptOnce() folds it into HttpRequestSpec::target
         /// (via prefixedTarget()) -- a routing matter only; the bearer token
         /// does not bind the target.
-        /// unknownAgentRetryDelays: the waits between retries of the held credential on an
-        /// `unknown_agent` 401, before it reaches authGate. Empty (the default): no retry, the
-        /// first surviving `unknown_agent` 401 escalates.
+        /// unknownAgentRetryBound: how long the held credential is retried on an `unknown_agent`
+        /// 401 before it reaches authGate. The window is the gate's, shared by every sender on
+        /// this agent; zero (the default), or no authGate: no retry, the 401 escalates at once.
         RetrySender(IHttpPerformer& performer,
                     const ISigner& signer,
                     IClock& clock,
@@ -75,13 +74,16 @@ class RetrySender final
                     CompressionGate* compressionGate = nullptr,
                     AuthGate* authGate = nullptr,
                     std::string serverEndpoint = {},
-                    std::vector<std::chrono::milliseconds> unknownAgentRetryDelays = {});
+                    std::chrono::milliseconds unknownAgentRetryBound = std::chrono::milliseconds {0});
+
+        /// Drain: the best-effort single send on the stop path, which must never wait.
+        enum class Mode : uint8_t { Normal, Drain };
 
         /// spec.headers carry the non-auth headers; the auth pair is appended per
         /// attempt. AuthFail/Permanent/VersionRejected/Interrupted return
-        /// immediately; the backoff resets on success. A single-attempt send (maxAttempts == 1,
-        /// the best-effort drain) never waits, so it skips the unknownAgentRetryDelays too.
-        Result send(const HttpRequestSpec& spec, Waiter& waiter, uint32_t maxAttempts);
+        /// immediately; the backoff resets on success. A Drain send never waits, so it does not
+        /// retry an `unknown_agent` 401 either.
+        Result send(const HttpRequestSpec& spec, Waiter& waiter, uint32_t maxAttempts, Mode mode = Mode::Normal);
 
     private:
         Result attemptOnce(const HttpRequestSpec& base);
@@ -89,11 +91,19 @@ class RetrySender final
         static bool isRetryable(OutcomeClass outcome);
         static bool isUnknownAgent(const Result& result);
 
-        /// Retries the held credential on m_unknownAgentRetryDelays, waiting on the calling
-        /// stream's own waiter so a shutdown interrupts it and no other stream is held up.
-        /// Returns the first result that is no longer an `unknown_agent` 401, or the last one when
-        /// the schedule runs out.
-        Result retryUnknownAgent(const HttpRequestSpec& base, Waiter& waiter, Result result);
+        /// Retries the held credential until the gate's unknown_agent window closes, waiting on
+        /// the calling stream's own waiter so a shutdown interrupts it and no other stream is
+        /// held up. Sets escalate only when the window ran out on this call; a transport error
+        /// returns early and leaves the window open for the next 401 to rejoin.
+        Result retryUnknownAgent(const HttpRequestSpec& base, Waiter& waiter, Result result, bool& escalate);
+
+        /// Waits until the steady clock reaches deadline. A notify() wakes Waiter::waitFor()
+        /// early, so the remaining time is waited again; false on a stop request.
+        bool waitUntil(Waiter& waiter, std::chrono::steady_clock::time_point deadline);
+
+        /// The k-th wait of one retry loop (a rejoin restarts at k = 0): 1, 2, 4, 8 s, then 15 s,
+        /// each with equal jitter.
+        std::chrono::milliseconds unknownAgentStep(uint32_t k);
 
         /// Measures skew from the failed attempt's response against this
         /// clock's current wallSeconds() and, if it exceeds a noise floor,
@@ -111,7 +121,7 @@ class RetrySender final
         CompressionGate* m_compressionGate;
         AuthGate* m_authGate;
         std::string m_serverEndpoint;
-        std::vector<std::chrono::milliseconds> m_unknownAgentRetryDelays;
+        std::chrono::milliseconds m_unknownAgentRetryBound;
         const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
 };
 

@@ -62,7 +62,7 @@ ReporterStream::ReporterStream(const ModuleConfig& config,
                &compressionGate,
                &authGate,
                config.serverEndpoint,
-               config.unknownAgentRetryDelays)
+               config.unknownAgentRetryBound)
     , m_clock(clock)
     , m_authGate(authGate)
     , m_cluster(cluster)

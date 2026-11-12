@@ -14,8 +14,10 @@
 #include "callbackSink.hpp"
 
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <functional>
+#include <mutex>
 
 /**
  * @brief The 401 -> re-enrollment latch (#37828). Any endpoint that gets a
@@ -77,6 +79,49 @@ class AuthGate final
             return m_incidents.load(std::memory_order_acquire);
         }
 
+        /// The window in which every stream keeps retrying the held credential on a
+        /// `401 unknown_agent` before the gate latches. One per agent, so all streams share one
+        /// deadline and one start/close log, and a stream that leaves it on a transport error
+        /// rejoins the same window on its next 401 instead of starting a new one.
+        struct UnknownAgentWindow
+        {
+            std::chrono::steady_clock::time_point deadline;
+            bool opened {false}; ///< This call opened the window.
+        };
+
+        UnknownAgentWindow joinUnknownAgentWindow(std::chrono::steady_clock::time_point now,
+                                                  std::chrono::milliseconds bound)
+        {
+            std::lock_guard<std::mutex> lock(m_windowMutex);
+
+            if (m_windowOpen.load(std::memory_order_acquire))
+            {
+                return {m_windowDeadline, false};
+            }
+
+            m_windowDeadline = now + bound;
+            m_windowOpen.store(true, std::memory_order_release);
+            return {m_windowDeadline, true};
+        }
+
+        /// Closes the window; true only for the caller that closed it, so the close is logged once.
+        bool closeUnknownAgentWindow()
+        {
+            // Every accepted request calls this; skip the lock when no window is open.
+            if (!m_windowOpen.load(std::memory_order_acquire))
+            {
+                return false;
+            }
+
+            std::lock_guard<std::mutex> lock(m_windowMutex);
+            return m_windowOpen.exchange(false, std::memory_order_acq_rel);
+        }
+
+        bool unknownAgentWindowOpen() const
+        {
+            return m_windowOpen.load(std::memory_order_acquire);
+        }
+
     private:
         enum class State : uint8_t { Running, Paused };
 
@@ -84,6 +129,10 @@ class AuthGate final
         std::function<void()> m_wake;
         std::atomic<State> m_state {State::Running};
         std::atomic<uint64_t> m_incidents {0};
+
+        std::mutex m_windowMutex;
+        std::atomic<bool> m_windowOpen {false};
+        std::chrono::steady_clock::time_point m_windowDeadline {};
 };
 
 #endif // _HC_AUTH_GATE_HPP

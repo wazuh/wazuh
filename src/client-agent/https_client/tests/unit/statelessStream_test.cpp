@@ -821,12 +821,13 @@ TEST_F(StatelessStreamTest, SuccessAfterUnescalatedAuthFailuresResetsTheBackoff)
 
 TEST_F(StatelessStreamTest, UnknownAgentIsRetriedWithTheBatchKeptBeforeTheGateLatches)
 {
-    // The batch stays put through the scheduled retries and goes out once the credential is
-    // accepted again, with no pause.
+    // The batch stays put through the retries and goes out once the credential is accepted
+    // again, with no pause.
     const std::string unknownAgent = R"({"error":"Invalid client authentication","code":"unknown_agent"})";
     auto refused = response(TransportStatus::Ok, 401);
     refused.body = unknownAgent;
     m_waiter.script({true, true});
+    m_waiter.bindClock(m_clock);
     m_stream.submit(reinterpret_cast<const uint8_t*>("event-aaaa"), 10);
 
     EXPECT_CALL(m_performer, perform(_))
