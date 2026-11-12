@@ -65,7 +65,11 @@ class AuthGate final
         /// and the new key's first `unknown_agent` must get a whole window of its own.
         void release()
         {
-            closeUnknownAgentWindow();
+            {
+                std::lock_guard<std::mutex> lock(m_windowMutex);
+                m_windowOpen.store(false, std::memory_order_release);
+            }
+
             m_state.store(State::Running, std::memory_order_release);
             m_wake();
         }
