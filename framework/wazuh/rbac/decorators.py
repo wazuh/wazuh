@@ -627,9 +627,9 @@ def require_role_action(action: str, role_ids) -> None:
     """Refuse the request unless the caller holds `action` over every one of the given roles.
 
     The general form of `require_role_update`, for an operation that changes what a role grants without
-    naming the role: it asks for what the matching role-scoped endpoint asks for. Deleting a policy, for
-    instance, unlinks it from every role it is on, which `remove_role_policy` guards with
-    'security:delete' over the role.
+    naming the role: it asks for what the matching role-scoped endpoint asks for. Deleting a policy or a
+    rule, for instance, unlinks it from every role it is on, which `remove_role_policy` and
+    `remove_role_rule` guard with 'security:delete' over the role.
 
     Resolved with the same matcher `expose_resources` uses, so the RBAC mode and denies are respected.
     All or nothing: unlike a decorated list, the result is never narrowed to the allowed roles.

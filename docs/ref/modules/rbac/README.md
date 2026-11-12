@@ -149,11 +149,13 @@ Changing what a role grants needs a permission over that role, whichever endpoin
 | `PUT /security/policies/{policy_id}` with a new `policy` body | `security:update` | `403`, error 4000, naming the missing `role:id` resources; nothing is changed |
 | `PUT /security/rules/{rule_id}` with a new `rule` body | `security:update` | `403`, error 4000, naming the missing `role:id` resources; nothing is changed |
 | `DELETE /security/policies` | `security:delete` | that policy fails with error 4000 and is kept; the others in the request are still deleted |
+| `DELETE /security/rules` | `security:delete` | that rule fails with error 4000 and stays linked; the others in the request are still deleted |
 
 These are the permissions `POST /security/roles/{role_id}/policies` (or `/rules`) and
-`DELETE /security/roles/{role_id}/policies` ask for to link or unlink the same policy or rule. Without them,
-`security:update` over a policy linked to one's own role would be enough to grant oneself anything, `administrator`
-included. Renaming a policy or rule, and deleting one linked to no role, need nothing over roles.
+`DELETE /security/roles/{role_id}/policies` (or `/rules`) ask for to link or unlink the same policy or rule. Without
+them, `security:update` over a policy linked to one's own role would be enough to grant oneself anything,
+`administrator` included, and `security:delete` over a rule would be enough to take a deny role off every user the
+rule maps to it. Renaming a policy or rule, and deleting one linked to no role, need nothing over roles.
 
 ### MITRE
 

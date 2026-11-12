@@ -636,3 +636,70 @@ def test_remove_policies_unlinked_needs_no_role(db_setup, rbac_context):
     result = security.remove_policies(policy_ids=[str(policy_id)]).to_dict()
 
     assert [item['id'] for item in result['affected_items']] == [policy_id]
+
+
+# Rule 103 is linked to role 103 only, and rule 104 to role 104 only (schema_security_test.sql).
+@pytest.mark.parametrize('context', [
+    _white_role_delete(set()),
+    {'rbac_mode': 'black', 'security:delete': {'role:id:103': 'deny'}},
+])
+def test_remove_rules_requires_deleting_from_the_linked_roles(db_setup, rbac_context, context):
+    """Deleting a rule unlinks it from every role it is on, and dropping a deny role widens its users.
+
+    It therefore asks for what `remove_role_rule` asks: 'security:delete' over each linked role. A refused
+    rule fails on its own, is kept and stays linked.
+    """
+    security, _, _ = db_setup
+    rbac_context(context)
+
+    result = security.remove_rules(rule_ids=['103']).to_dict()
+
+    assert result['affected_items'] == []
+    assert list(result['failed_items'].keys())[0].code == 4000
+    with security.RulesManager() as rum:
+        assert rum.get_rule(103)['roles'] == [103]
+
+
+def test_remove_rules_refuses_only_the_rules_of_uncovered_roles(db_setup, rbac_context):
+    """In one request, the rule whose role is covered is deleted and the other is kept."""
+    security, _, _ = db_setup
+    rbac_context(_white_role_delete({104}))
+
+    result = security.remove_rules(rule_ids=['103', '104']).to_dict()
+
+    assert [item['id'] for item in result['affected_items']] == [104]
+    assert list(result['failed_items'].keys())[0].code == 4000
+    with security.RulesManager() as rum:
+        assert rum.get_rule(103)['roles'] == [103]
+
+
+def test_remove_rules_with_the_linked_roles(db_setup, rbac_context):
+    """A caller that could unlink the rule from its roles may delete it."""
+    security, _, _ = db_setup
+    rbac_context(_white_role_delete({103}))
+
+    result = security.remove_rules(rule_ids=['103']).to_dict()
+
+    assert [item['id'] for item in result['affected_items']] == [103]
+
+
+def test_remove_rules_reserved_is_still_refused_as_reserved(db_setup, rbac_context):
+    """A reserved rule keeps its own refusal (4008), not a role one."""
+    security, _, _ = db_setup
+    rbac_context(_white_role_delete(set()))
+
+    result = security.remove_rules(rule_ids=['1']).to_dict()
+
+    assert list(result['failed_items'].keys())[0].code == 4008
+
+
+def test_remove_rules_unlinked_needs_no_role(db_setup, rbac_context):
+    """A rule on no role maps nobody to anything, so deleting it asks for no role."""
+    security, _, _ = db_setup
+    added = security.add_rule(name='unlinked', rule={'MATCH': {'definition': 'unlinkedRule'}}).to_dict()
+    rule_id = added['affected_items'][0]['id']
+    rbac_context(_white_role_delete(set()))
+
+    result = security.remove_rules(rule_ids=[str(rule_id)]).to_dict()
+
+    assert [item['id'] for item in result['affected_items']] == [rule_id]
