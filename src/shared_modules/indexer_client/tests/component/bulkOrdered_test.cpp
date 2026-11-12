@@ -315,6 +315,57 @@ TEST_F(BulkTest, OrderedItemRetryBlocksOnlyItsKey)
     expectInvariants(stats("b"));
 }
 
+// More blocked operations than bulk.maxDocs ahead of another key must not stall it: index(X) gets a 429 item and waits
+// a 1.5 s backoff in the retry lane, five more operations of X (maxDocs = 3) and then W are queued behind it. W leaves
+// at once, alone, long before the retry of X; the successors of X still leave one per bulk after it, in order.
+// Mutant: the scan bounded by the entries visited (bulk.maxDocs) instead of by the operations taken.
+TEST_F(BulkTest, OrderedBlockedPrefixBeyondMaxDocsDoesNotStallOtherKeys)
+{
+    constexpr auto BACKOFF = 1500ms;
+    constexpr std::uint64_t MAX_DOCS = 3;
+    constexpr std::uint64_t BLOCKED = 5; // > MAX_DOCS successors of X behind it.
+    const auto a = startNode();
+    a.bulk->push(BulkScript::all(BulkItem::rejected()).held());
+    ASSERT_NO_FATAL_FAILURE(startOn({a.url()}));
+    auto c = client("c", {bucket("b", MAX_DOCS, true, BACKOFF.count())});
+    auto writer = c->writer("b");
+    auto results = Results::create();
+    Stamps stamps;
+    constexpr std::uint64_t X = 0, W = 1 + BLOCKED;
+    ASSERT_TRUE(writer->submit(indexOp(id(1)), stamps.wrap(X, results->callback(X))).accepted);
+    ASSERT_TRUE(a.fake->waitHeld(1, 3s)) << "index(X) left by age";
+    for (std::uint64_t i = 1; i <= BLOCKED; ++i)
+    {
+        ASSERT_TRUE(writer->submit(indexOp(id(1)), stamps.wrap(i, results->callback(i))).accepted) << i;
+    }
+    ASSERT_TRUE(writer->submit(indexOp(id(2)), stamps.wrap(W, results->callback(W))).accepted);
+    const auto released = Clock::now();
+    a.fake->releaseHeld();
+
+    ASSERT_TRUE(results->waitTotal(W + 1, 10s)) << results->total();
+    EXPECT_EQ(results->countWith(ic::Status::Ok, ic::Cause::None), W + 1);
+    const auto received = a.bulk->received();
+    const auto arrivals = bulkArrivals(a);
+    ASSERT_GE(received.size(), 3u) << describe(received);
+    ASSERT_EQ(arrivals.size(), received.size());
+    EXPECT_EQ(ids(received[1]), (std::vector<std::string> {id(2)})) << "W first, while X waits: " << describe(received);
+    EXPECT_LT(arrivals[1] - released, BACKOFF / 2) << "W waited for the retry of X";
+    EXPECT_GE(arrivals[2] - released, BACKOFF - 100ms) << "the retry of X left before its backoff";
+    ASSERT_EQ(received.size(), 2 + BLOCKED + 1) << describe(received);
+    for (std::size_t i = 2; i < received.size(); ++i)
+    {
+        EXPECT_EQ(ids(received[i]), (std::vector<std::string> {id(1)})) << "one X per bulk: " << describe(received);
+    }
+    for (std::uint64_t i = 1; i <= BLOCKED; ++i)
+    {
+        const auto previous = stamps.at(i - 1);
+        const auto current = stamps.at(i);
+        ASSERT_TRUE(previous.has_value() && current.has_value()) << i;
+        EXPECT_LE(*previous, *current) << "X's successors out of order at " << i;
+    }
+    expectInvariants(stats("b"));
+}
+
 // CA-25 a: two nodes; A records (applies) the bulk of X, Y, Z and never answers (timeout after sending), so the batch
 // is pinned to A and A is reported Down; delete(X) waits behind it. A probe brings A back: the retry reaches A well
 // before window/2 from the probe, B never sees the ambiguous batch (no `_bulk` before the probe, no index op ever),

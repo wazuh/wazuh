@@ -30,9 +30,15 @@
 //     blocked. eligible() needs some takeable op (thresholds and maxAge measured as for any bucket); with nothing
 //     takeable nextDue is the lane head's notBefore; the committed-group TimePoint::min() applies only when that head
 //     is takeable. headBytes() = the first takeable op.
-//   - slice(): the due lane first; then the pending queue in order, scanning at most bulk.maxDocs ops: blocked ones are
-//     skipped (they keep their place), and the scan STOPS at the first takeable op that does not fit (maxBytes,
-//     maxDocs, batchCap, the sink's cap; the first takeable op always goes, I118).
+//   - slice(): the due lane first; then the pending queue in order, bounded by the ops TAKEN, not by the ops visited:
+//     blocked ones are skipped (they keep their place), and the scan STOPS once the batch holds bulk.maxDocs ops, at
+//     the first takeable op that does not fit (maxBytes, batchCap, the sink's cap; the first takeable op always goes,
+//     I118), or at the end of the queue. So any number of blocked ops never hides a takeable op behind them.
+//   - Scan cost: m_blockedPrefix remembers how many pending ops at the head were found blocked by a lane key; the
+//     eligibility checks and slice() resume after it, so a scheduler pass that changes nothing costs O(1). Adding a
+//     lane key keeps it valid (it only blocks more); a lane key leaving and any change inside that prefix (eviction,
+//     cancel, close, an unordered slice) reset it to 0. A full rescan is O(pending ops), bounded by the bucket's quota,
+//     and happens at most once per such event (in practice once per bulk round trip).
 //   - Ambiguous pin: requeue with RequeueSpec::Pin::Set gives every op of the batch the same {node, until} (a batch
 //     whose ops are already pinned keeps their `until`, even an expired one: the sender clears an expired pin at
 //     dispatch) and counts orderedAmbiguous per op; Pin::Keep leaves it; Pin::Clear removes it. So the window bounds
@@ -723,7 +729,8 @@ namespace indexer_client::detail::write
             std::uint64_t head {0}; ///< Wire size of the first due pinned op (lane order).
         };
         PinScan pinScanLocked(TimePoint now) const;
-        /// Index of the first takeable pending op (key not in the lane) among the first bulk.maxDocs ones.
+        /// Index of the first takeable pending op (key not in the lane), anywhere in the queue; resumes after
+        /// m_blockedPrefix and updates it.
         std::optional<std::size_t> firstTakeablePendingLocked() const;
         bool orderedEligibleLocked(TimePoint now) const;
         std::uint64_t orderedHeadBytesLocked(TimePoint now) const;
@@ -754,6 +761,11 @@ namespace indexer_client::detail::write
         /// Ordered buckets (I79): multiset of the lane ops' keys (hash -> count; ops without a key are not in it).
         std::unordered_map<std::uint64_t, std::uint32_t> m_laneKeys;
         std::size_t m_lanePinned {0}; ///< Ordered buckets: lane ops with pinNode set (expired pins included).
+        /// Ordered buckets: the first m_blockedPrefix pending ops were found blocked by a lane key, so the first
+        /// takeable op is at that index or later. Reset to 0 by a lane key leaving and by any change inside that
+        /// prefix; clamped to m_pending.size() when the queue's tail shrinks. Saves rescanning a blocked prefix on
+        /// every scheduler pass.
+        mutable std::size_t m_blockedPrefix {0};
         /// I80: one per cancel(tag) that found delivered ops of its tag. It counts the ops of `tag` that were delivered
         /// at registration (all with seq < seqLimit, all marked); releasePayload decrements it for a marked op of
         /// `tag` with seq < seqLimit (ops of the tag enqueued after the cancel have a later seq and never count).
