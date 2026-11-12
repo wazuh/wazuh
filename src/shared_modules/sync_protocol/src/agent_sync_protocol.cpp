@@ -122,7 +122,7 @@ static std::string determineSyncFailureReasonBasedOnSyncResult(SyncResult result
             break;
 
         case SyncResult::PAYLOAD_TOO_LARGE:
-            failureReason = "Manager rejected the session as too large (413); it must be split and resent.";
+            failureReason = "Manager rejected the session as too large (413); it is retried on the next cycle. If this repeats, the session exceeds the manager's budget.";
             break;
 
         case SyncResult::FEED_NOT_READY:
@@ -869,11 +869,10 @@ SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
 
     clearSyncState();
 
-    // For metadata and group modes, we don't send any data items
-    // We only send Start (with Size=0 and the indices array) and End messages
+    // Metadata and group modes carry no data items: one message with only the Start
+    // (Size=0 and the indices array).
     bool success = false;
 
-    // Metadata and group modes carry no items: just Start and End in one message.
     SessionContent content;
     content.mode = mode;
     content.indices = indices;
@@ -1568,7 +1567,8 @@ bool AgentSyncProtocol::applyHttpResult(int httpCode, std::string_view body, uin
             m_logger(LOG_DEBUG, "Checksum mismatch detected by manager (409): " + std::string(body));
             break;
 
-        case 413: // Session larger than the manager's total in-flight budget; must be split.
+        case 413: // Session larger than the manager's total in-flight budget. Not split: it is
+            // retried on the next cycle and keeps failing while it stays over the budget.
             m_syncState.lastSyncResult = SyncResult::PAYLOAD_TOO_LARGE;
             m_logger(LOG_WARNING, "Session rejected as too large by the manager (413): " + std::string(body));
             break;

@@ -407,7 +407,7 @@ bool SCAEventHandler::ValidateAndHandleStatefulMessage(
 {
     if (statefulEvent.empty())
     {
-        return true;
+        return false;
     }
 
     auto& validatorFactory = SchemaValidator::SchemaValidatorFactory::getInstance();
@@ -673,8 +673,8 @@ TEST_F(SchemaValidatorTest, InvalidMessage)
 class MockSchemaValidator : public SchemaValidator::ISchemaValidatorEngine
 {
 public:
-    MOCK_METHOD(ValidationResult, validate, (const std::string&), (override));
-    MOCK_METHOD(ValidationResult, validate, (const nlohmann::json&), (override));
+    MOCK_METHOD(SchemaValidator::ValidationResult, validate, (const std::string&), (override));
+    MOCK_METHOD(SchemaValidator::ValidationResult, validate, (const nlohmann::json&), (override));
     MOCK_METHOD(std::string, getSchemaName, (), (const, override));
 };
 
@@ -682,8 +682,13 @@ TEST_F(YourModuleTest, ValidationFailureHandling)
 {
     // Create mock validator that always fails
     auto mockValidator = std::make_shared<MockSchemaValidator>();
-    ON_CALL(*mockValidator, validate(testing::_))
-        .WillByDefault(testing::Return(ValidationResult{false, {"Test error"}}));
+    SchemaValidator::ValidationResult failure;
+    failure.isValid = false;
+    failure.errors = {"Test error"};
+
+    // validate() is overloaded, so the argument matcher must name the overload
+    ON_CALL(*mockValidator, validate(testing::An<const std::string&>()))
+        .WillByDefault(testing::Return(failure));
 
     // Inject mock
     std::map<std::string, std::shared_ptr<SchemaValidator::ISchemaValidatorEngine>> mocks;
@@ -696,6 +701,15 @@ TEST_F(YourModuleTest, ValidationFailureHandling)
     // Test your module's handling of validation failure
     bool result = yourModule->processData(testData, "test-index");
     EXPECT_FALSE(result); // Should handle validation failure correctly
+}
+```
+
+The factory is a process-wide singleton, and `initialize()` does nothing once it is set up, so a test that injects mocks must reset it afterwards. Otherwise later tests in the same binary keep seeing only the mock:
+
+```cpp
+void YourModuleTest::TearDown()
+{
+    SchemaValidator::SchemaValidatorFactory::getInstance().reset();
 }
 ```
 

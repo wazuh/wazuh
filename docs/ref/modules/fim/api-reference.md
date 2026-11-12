@@ -57,7 +57,7 @@ void asp_persist_diff(AgentSyncProtocolHandle* handle,
 
 **Parameters:**
 - `handle`: Sync protocol handle from `asp_create()`
-- `id`: Unique identifier (SHA1 hash of file path)
+- `id`: Unique identifier (SHA1 of the file path; for registry rows, SHA1 of `arch:path` for keys and `path:arch:value` for values, with `arch` as a number: `0` for the 32-bit view, `1` for the 64-bit view)
 - `operation`: Operation type (`OPERATION_CREATE`, `OPERATION_MODIFY`, `OPERATION_DELETE`)
 - `index`: Sync index name
 - `data`: JSON string containing file/registry data
@@ -158,14 +158,15 @@ bool asp_notify_data_clean(AgentSyncProtocolHandle* handle,
 
 **Usage Example:**
 ```c
-// Notify data clean for disabled FIM components
+// Notify data clean for the indices that still hold entries (up to 3 on Windows, 1 on Linux/Unix).
+// Recovery calls it with the single index of the table being resent.
 const char* indices_to_clean[] = {
     FIM_FILES_SYNC_INDEX,
     FIM_REGISTRY_KEYS_SYNC_INDEX,
     FIM_REGISTRY_VALUES_SYNC_INDEX
 };
 
-bool notify_success = asp_notify_data_clean(syscheck.sync_handle, indices_to_clean, 3);
+bool notify_success = asp_notify_data_clean(syscheck.sync_handle, indices_to_clean, indices_count);
 ```
 
 #### `asp_delete_database()`
@@ -308,7 +309,7 @@ int fim_execute_pause(void);
 
 **Returns:**
 - `0` if pause request was accepted or FIM is already paused
-- `-1` on error
+- `-1` if FIM is stopping
 
 **Description:**
 
@@ -343,7 +344,7 @@ int fim_execute_is_pause_completed(void);
 **Returns:**
 - `0` if FIM is paused: this call acquired the scan mutexes, or an earlier call already did
 - `0` also when no pause request is active (nothing to wait for; no mutex is taken)
-- `1` if a scan mutex is busy (a scan is running); call it again later
+- `1` if a scan mutex is busy; call it again later. The holder can be a scheduled scan, realtime processing, or FIM's own sync thread (`fim_run_integrity()`), which keeps the scan and realtime mutexes during the agent-ID resync and the integrity checks, including their DataClean and checksum round trips to the manager. A long recovery can therefore outlast `agent_info`'s pause polling (30 attempts, 1 second apart)
 - `-1` if FIM is stopping; any pause in progress is cancelled and its mutexes released
 
 **Description:**
@@ -395,16 +396,15 @@ int fim_execute_resume(void);
 ```
 
 **Returns:**
-- `0` on success
-- `-1` on error
+- `0` always (also when no pause was requested)
 
 **Description:**
 
-This function clears the pause request flag and releases all scan mutexes, allowing FIM threads to resume their operations. The function completes synchronously.
+This function clears the pause request flag and, if the pause had been acknowledged, releases the scan mutexes, allowing FIM threads to resume their operations. The function completes synchronously.
 
 **Behavior:**
-- Checks if FIM is actually paused
-- Releases all scan mutexes:
+- Returns `0` without doing anything if no pause was requested
+- If the pause was acknowledged (`fim_pausing_is_allowed` set), releases the scan mutexes:
   - `fim_realtime_mutex`
   - `fim_scan_mutex`
   - `fim_registry_scan_mutex` (Windows only)
@@ -436,14 +436,15 @@ int fim_execute_flush(void);
 ```
 
 **Returns:**
-- `0` if flush request was accepted or synchronization is disabled
-- `-1` on error
+- `0` if flush request was accepted, a flush is already in progress, or synchronization is disabled
+- `-1` if FIM is stopping
 
 **Description:**
 
 This function sets atomic flags to trigger an immediate synchronization of all pending FIM changes, bypassing the normal sync interval. The function returns immediately without waiting for synchronization to complete. Use `fim_execute_is_flush_completed()` to poll the flush status.
 
 **Behavior:**
+- Returns `-1` if FIM is stopping
 - Checks if synchronization is enabled
 - Checks if a flush is already in progress (idempotent)
 - Sets atomic flags:

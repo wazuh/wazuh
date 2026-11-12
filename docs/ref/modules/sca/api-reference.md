@@ -21,7 +21,7 @@ void* wm_sca_main(wm_sca_t *data);
 
 **Description:**
 
-Initializes the SCA module, loads the SCA dynamic library, sets up callback functions, and starts the module.
+Initializes the SCA module, loads the SCA dynamic library, sets up callback functions and the synchronization parameters, creates the SCA instance with `sca_init()`, waits until wazuh-agentd answers the `getdoclimits sca` query to set the sync limit with `sca_set_sync_limit()`, and starts the module. When the module is disabled, it only runs the data clean notification (see [SCA Disabled Cleanup Flow](architecture.md#sca-disabled-cleanup-flow)).
 
 ---
 
@@ -34,11 +34,24 @@ static int wm_sca_start(wm_sca_t *sca);
 
 **Description:**
 
-Initializes message queues, sets synchronization parameters, launches the SCA synchronization thread if enabled, finally it starts the SCA module through a pointer to the C++ implementation.
+Opens the message queue, launches the SCA synchronization thread if synchronization is enabled, and runs the SCA module through a pointer to the C++ implementation. When the module returns, it joins the synchronization thread and releases the module resources with `sca_release_resources()`.
 
 ---
 
 ## SCA C/C++ Library Interface
+
+#### `sca_init()`
+Creates the SCA instance and its sync protocol.
+
+```c
+EXPORTED void sca_init();
+```
+
+**Description:**
+
+Opens the SCA database (`queue/sca/db/sca.db`) and creates the sync protocol with the parameters set by `sca_set_sync_parameters()`, whether or not synchronization is enabled. It does nothing if the instance already exists. Errors are logged.
+
+---
 
 #### `sca_start()`
 Starts the SCA assessment process.
@@ -49,7 +62,7 @@ EXPORTED void sca_start(const struct wm_sca_t* sca_config);
 
 **Description:**
 
-Serves as a bridge between the C and C++ code. Initializes and runs the Security Configuration Assessment with the provided configuration.
+Serves as a bridge between the C and C++ code. Calls `init()`, `setup()` with the provided configuration and `run()` on the SCA instance. It blocks until the module stops.
 
 ---
 
@@ -63,7 +76,21 @@ EXPORTED void sca_stop();
 
 **Description:**
 
-Serves as a bridge between the C and C++ code. Gracefully stops the running SCA assessment and cleans up resources.
+Serves as a bridge between the C and C++ code. Signals the running SCA assessment to stop, stops the sync protocol and any running flush, and returns. It does not release the databases: that is done by `sca_release_resources()`.
+
+---
+
+#### `sca_release_resources()`
+
+Releases the SCA resources.
+
+```c
+EXPORTED void sca_release_resources();
+```
+
+**Description:**
+
+Closes the SCA database and the sync protocol connection. It must be called only after the synchronization thread and the SCA run loop have exited; `wm_sca_main()` calls it on the module thread before returning.
 
 ---
 
@@ -130,6 +157,18 @@ EXPORTED void sca_set_sync_parameters(const char* module_name, const char* sync_
 
 ---
 
+#### `sca_set_sync_limit()`
+
+Sets the maximum number of checks synchronized with the manager.
+
+```c
+EXPORTED void sca_set_sync_limit(uint64_t syncLimit);
+```
+
+`0` means unlimited. `wm_sca_main()` obtains the value from wazuh-agentd (`getdoclimits sca`).
+
+---
+
 #### `sca_sync_module()`
 
 Triggers synchronization with the manager.
@@ -137,6 +176,12 @@ Triggers synchronization with the manager.
 ```c
 EXPORTED bool sca_sync_module(Mode_t mode);
 ```
+
+**Description:**
+
+The `mode` argument is ignored: the call always synchronizes with `Mode::DELTA`. The synchronization only runs while the module is paused (between the `pause` and `resume` commands, as the synchronization thread does); otherwise it is skipped and returns `false`. It also returns `false` while another synchronization, a flush or a recovery is in progress. The first synchronization of an installation, and the first one after the agent ID changes, sends the whole local state (DataClean followed by the checks) instead of a delta.
+
+**Returns:** `true` if the synchronization succeeded (including when there was nothing to send), `false` otherwise.
 
 ---
 
@@ -200,13 +245,29 @@ EXPORTED void sca_delete_database();
 
 **Description:**
 
-Removes the SCA synchronization database file from disk. This function is called when the SCA module is disabled or when a complete cleanup is required. Should typically be called after successfully notifying the manager with `sca_notify_data_clean()`.
+Removes both the sync protocol database (`queue/sca/db/sca_sync.db`) and the SCA database (`queue/sca/db/sca.db`) from disk. This function is called when the SCA module is disabled or when a complete cleanup is required. Should typically be called after successfully notifying the manager with `sca_notify_data_clean()`.
 
 **Usage Example:**
 ```c
 // Delete SCA sync database when module is disabled
 sca_delete_database();
 ```
+
+---
+
+## Query Function
+
+#### `sca_query()`
+
+Handles a JSON coordination command.
+
+```c
+EXPORTED size_t sca_query(const char* query, char** output);
+```
+
+**Description:**
+
+Parses `query`, executes the command (see [Coordination Commands](#coordination-commands)) and stores the JSON response in `*output`, allocated with `strdup()` (the caller frees it). Returns the length of the response, or `0` if `query` or `output` is `NULL`. If the instance does not exist, the response is a `MQ_ERR_MODULE_NOT_RUNNING` error.
 
 ---
 
@@ -288,7 +349,7 @@ void Run();
 
 #### `Stop()`
 
-Gracefully stops the SCA scanning process.
+Stops the SCA scanning process: it runs `quiesce()` (signals the scanning loop, the sync protocol and the policies to stop, and waits for a running flush) and then `releaseResources()` (closes the databases and the sync protocol). `sca_stop()` only runs `quiesce()`.
 
 ```cpp
 void Stop();
@@ -505,3 +566,22 @@ if (result == 0) {
 ```
 
 ---
+
+### Query Commands
+
+SCA answers JSON queries of the form `{"command": "<name>", "parameters": {...}}` through `sca_query()`. Every response has `error` (`0` on success) and `message`; `data` carries `module: "sca"` and `action` (the command name) unless noted.
+
+| Command | Parameters | Response `data` and errors |
+|---------|------------|----------------------------|
+| `pause` | none | Blocks until idle (see `pause()`). |
+| `resume` | none | Returns at once. |
+| `flush` | none | Starts the asynchronous flush. `error` is `1` if the request was rejected. |
+| `is_flush_completed` | none | `status` (`in_progress` or `completed`) and, when completed, `result`. `data` has `module` but no `action`. |
+| `get_version` | none | `version`. `error` is `3` if it cannot be read. |
+| `set_version` | `version` (number, `>= 0`) | `version`. `error` is `3` for a missing or negative `version`, `2` if the update fails. |
+| `get_first_sync_completed` | none | `first_sync_completed` (`1` or `0`). `error` is `2` if it cannot be read. When synchronization is disabled, `wm_sca_query_handler` answers `1`. |
+| `get_identity_changed` | none | `identity_changed` (`1` if the agent ID differs from the one last synchronized, `0` if not or if none was recorded, `-1` if it cannot be told) and `resync_attempts` (full resends started since the module came up). |
+| `get_scan_completed` | none | `scan_completed` (`1` once a full scan iteration has completed since startup; only maintained until the first synchronization completes). |
+| `check_integrity` | none | `recovery_performed` and, when a recovery ran, `recovery_success`. Does nothing until `integrity_interval` has elapsed; it is deferred while a flush or DataClean is running. `error` is `1` if the checksum could not be computed or checked, or the recovery failed. |
+
+An unknown command returns `error` `1` with `data.command` set to the received command. A request without a string `command` returns `error` `3`; JSON that cannot be parsed, or an exception while running the command, returns `error` `98`; an exception outside the command handler returns `error` `99`.

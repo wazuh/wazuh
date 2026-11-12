@@ -93,21 +93,20 @@ void Syscollector::persistDifference(const std::string& id,
 - `version`: Version of the data
 - `isDataContext`: `true` to queue the item as DataContext instead of DataValue
 
-**Usage Example:**
-```cpp
-void Syscollector::processEvent(ReturnTypeCallback result,
-                                const nlohmann::json& data,
-                                const std::string& table) {
-    if (m_persistDiffFunction) {
-        std::string id = calculateHashId(data, table);
-        Operation operation = getOperationFromResult(result);
-        std::string index = getIndexForTable(table);
-        auto [newData, version] = ecsData(data, table);
+**Routing:**
 
-        // Persist the difference for synchronization
-        persistDifference(id, operation, index, newData.dump(), version);
-    }
-}
+The item is queued on the VD sync protocol when `index` is the system, packages or hotfixes index (`protocolForIndex()`), and on the regular sync protocol otherwise. When the VD sync protocol does not exist, VD items fall back to the regular one; the item is dropped only when the regular protocol does not exist either.
+
+**Usage Example:**
+
+During a scan, `processEvent()` validates the stateful document against the index schema, checks the document limit, and then calls the persist callback registered in `init()` (`m_persistDiffFunction`, which reaches `persistDifference()` through `syscollector_persist_diff()`):
+
+```cpp
+m_persistDiffFunction(calculateHashId(aux, table),
+                      OPERATION_STATES_MAP.at(result),   // INSERTED, MODIFIED, DELETED
+                      indexIt->second,                   // sync index of the table
+                      dataToQueue,                       // ECS stateful document
+                      version);
 ```
 
 #### `parseResponseBuffer()`
@@ -125,11 +124,17 @@ bool Syscollector::parseResponseBuffer(const uint8_t* data, size_t length);
 
 **Returns:**
 - `true` if parsing succeeded
-- `false` if parsing failed
+- `false` if parsing failed, or if the regular sync protocol does not exist
+
+The message is handed to the regular sync protocol only. Responses that belong to the VD sync protocol go through `parseResponseBufferVD()`, which has the same signature and is handed to the VD sync protocol only:
+
+```cpp
+bool Syscollector::parseResponseBufferVD(const uint8_t* data, size_t length);
+```
 
 **Usage Example:**
 ```cpp
-// Process FlatBuffer responses from manager via syscom
+// Process FlatBuffer responses of the regular sync protocol (see Sync Message Routing)
 bool success = Syscollector::instance().parseResponseBuffer(response_data,
                                                             response_length);
 ```
@@ -148,7 +153,9 @@ bool Syscollector::notifyDataClean(const std::vector<std::string>& indices);
 
 **Returns:**
 - `true` if notification succeeded
-- `false` if notification failed
+- `false` if notification failed, or if the regular sync protocol does not exist
+
+The request is sent through the regular sync protocol, including for the vulnerability-detection indices.
 
 **Usage Example:**
 ```cpp
@@ -164,7 +171,7 @@ bool notify_success = Syscollector::instance().notifyDataClean(indices_to_clean)
 
 #### `deleteDatabase()`
 
-Deletes both the sync protocol database and the Syscollector DBSync database.
+Deletes the sync protocol databases (regular and VD) and the Syscollector DBSync database.
 
 **Signature:**
 ```cpp
@@ -173,11 +180,12 @@ void Syscollector::deleteDatabase();
 
 **Description:**
 
-Removes both the Agent Sync Protocol database and the Syscollector inventory database from disk. This method should be called when the Syscollector module is disabled or when a complete cleanup is required. Typically called after successfully notifying the manager with `notifyDataClean()`.
+Removes the Agent Sync Protocol databases (regular and VD) and the Syscollector inventory database from disk. This method should be called when the Syscollector module is disabled or when a complete cleanup is required. Typically called after successfully notifying the manager with `notifyDataClean()`.
 
 **Databases Deleted:**
-- Sync protocol database: Persistent queue and sync state
-- DBSync database: Local inventory data (packages, processes, ports, etc.)
+- Regular sync protocol database (`syscollector_sync.db`): Persistent queue and sync state
+- VD sync protocol database (`syscollector_vd_sync.db`): Persistent queue and sync state of the vulnerability-detection tables
+- DBSync database (`local.db`): Local inventory data (packages, processes, ports, etc.)
 
 **Usage Example:**
 ```cpp
@@ -360,7 +368,7 @@ int Syscollector::setVersion(int version);
 - `version`: The version number to set for all inventory items
 
 **Returns:**
-- Total number of rows updated across all tables (≥ 0)
+- `0` if the version was set (the number of updated rows is only logged)
 - `-1` if an error occurred (e.g., DBSync not initialized)
 
 **Description:**
@@ -371,18 +379,40 @@ Updates the version field for every row in all Syscollector tables. This is used
 - Reads all existing rows from each table
 - Updates each row with the new version number
 - Uses database transactions for consistency
-- Returns total count of updated rows
+- Logs the total count of updated rows at debug level
 
 **Usage Example:**
 ```cpp
 // Set version 42 for all inventory items
-int rowsUpdated = Syscollector::instance().setVersion(42);
-if (rowsUpdated >= 0) {
-    // Version set successfully for rowsUpdated items
+int result = Syscollector::instance().setVersion(42);
+if (result == 0) {
+    // Version set successfully
 } else {
     // Error setting version
 }
 ```
+
+---
+
+### Query Commands
+
+`Syscollector::query()` (reached through `syscollector_query()` and the wodle's query handler) accepts a JSON object `{"command": "<name>", "parameters": {...}}` and answers with a JSON object that always has `error` (`0` on success) and `message`.
+
+| Command | Parameters | Response `data` |
+|---------|------------|-----------------|
+| `pause` | none | `module`, `action` (`error` is an internal error with a shutdown message if `pause()` returned `false`) |
+| `resume` | none | `module`, `action` |
+| `flush` | none | `module`, `action` (`error` is an internal error if `flush()` returned non-zero) |
+| `is_flush_completed` | none | `module`, `status`, `result` (see above) |
+| `get_version` | none | `version`: result of `getMaxVersion()` (`-1` with an internal error on failure) |
+| `set_version` | `version` (number, required) | `version`; invalid-parameters error when `version` is missing or not a number |
+| `get_first_sync_completed` | none | `first_sync_completed`: `1` once a first synchronization succeeded, `0` otherwise |
+| `get_first_scan_completed` | none | `first_scan_completed`: `1` once a first scan finished, `0` otherwise |
+| `get_vd_first_sync_completed` | none | `vd_first_sync_completed`: `1` once the first VD synchronization landed, `0` otherwise |
+| `get_synced_agent_id` | none | `synced_agent_id`: agent ID the manager's copy of this inventory belongs to (`0` if none recorded) |
+| `get_identity_changed` | none | `identity_changed` (`1` changed, `0` unchanged or unrecorded, `-1` unknown), `resync_attempts` (resends started since the module came up) |
+
+Any other command returns an unknown-command error. When synchronization is disabled, the wodle answers `get_first_sync_completed` itself with `first_sync_completed: 1`, because no first synchronization will ever happen.
 
 ---
 
@@ -413,7 +443,9 @@ std::unique_ptr<DBSync> dbSync = std::make_unique<DBSync>(
     HostType::AGENT,
     DbEngineType::SQLITE3,
     dbPath,
-    getCreateStatement()
+    getCreateStatement(),
+    DbManagement::PERSISTENT,
+    UPGRADE_SQL_STATEMENTS
 );
 
 m_spDBSync = std::move(dbSync);
@@ -424,39 +456,36 @@ m_spDBSync = std::move(dbSync);
 Syscollector uses database transactions for state comparison:
 
 ```cpp
-// Update changes in database and process events
+// Update changes in database and report them through notifyChange()
 void Syscollector::updateChanges(const std::string& table,
-                                const nlohmann::json& values) {
-    if (m_spDBSync) {
-        // Define callback for database transaction results
-        auto callback = [this, table](ReturnTypeCallback result,
-                                     const nlohmann::json& data) {
-            processEvent(result, data, table);
-        };
-
-        // Synchronize data with database
-        m_spDBSync->syncRowData(table, values, callback);
-    }
-}
+                                 const nlohmann::json& values);
 ```
+
+`updateChanges()` opens a `DBSyncTxn` on the table and feeds it the scanned rows with `syncTxnRow()` (option `return_old_data`), then calls `getDeletedRows()` to report the rows that disappeared. Its callback calls `notifyChange()` for `INSERTED`, `MODIFIED` and `DELETED` results, which calls `processEvent()` for each affected row.
 
 ---
 
-## Syscom Integration
+## Sync Message Routing
 
-Syscollector handles manager responses through the syscom interface:
+Sync responses from the manager reach the module through the wodle's `.sync` callback, `wm_sync_message()` (wmcom `modulesSync()`). Each message starts with a sync header, defined in `rc.h` (`SYNC_HEADER` is `"_sync "`, with a trailing space):
 
-```cpp
-// Process sync protocol messages from manager
-if (message.find("syscollector_sync:") == 0) {
-    const uint8_t *data = reinterpret_cast<const uint8_t *>(
-        message.c_str() + strlen("syscollector_sync:")
-    );
-    size_t data_len = message.length() - strlen("syscollector_sync:");
+| Header | Constant | Handler |
+|--------|----------|---------|
+| `syscollector_sync ` | `SYSCOLECTOR_SYNC_HEADER` | `parseResponseBuffer()` (regular sync protocol) |
+| `syscollector_vd_sync ` | `SYSCOLECTOR_VD_SYNC_HEADER` | `parseResponseBufferVD()` (VD sync protocol) |
 
-    bool ret = Syscollector::instance().parseResponseBuffer(data, data_len);
-    if (!ret) {
-        // Handle parsing error
-    }
+Only the leading header is meant to choose the parser. The current implementation, however, selects the VD parser when `"_vd"` appears anywhere in the message, the response body included, then skips the header (`strlen` of the matching constant) and passes the rest to the C entry points `syscollector_parse_response_vd()` or `syscollector_parse_response()`:
+
+```c
+if (strstr(command, "_vd") != NULL) {
+    header_len = strlen(SYSCOLECTOR_VD_SYNC_HEADER);
+    ret = syscollector_parse_response_vd_ptr(command + header_len, command_len - header_len);
+} else {
+    header_len = strlen(SYSCOLECTOR_SYNC_HEADER);
+    ret = syscollector_parse_response_ptr(command + header_len, command_len - header_len);
 }
 ```
+
+Because of that substring match, a regular Syscollector response whose body contains `_vd` would be handed to the VD parser, and the regular session would wait for its result until the sync protocol's response timeout. The module dispatcher in `wmodules.c` already matches only the header; the Syscollector routing does not yet.
+
+`wm_sync_message()` returns `0` on success and `-1` when the parser fails, the parser entry point is unavailable, or synchronization is disabled. Messages that arrive during shutdown are ignored (returns `0`).

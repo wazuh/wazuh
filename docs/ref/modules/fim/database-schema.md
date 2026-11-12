@@ -220,7 +220,7 @@ CREATE TABLE IF NOT EXISTS persistent_queue (
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `id` | TEXT | - | Unique identifier for FIM entry (SHA1 hash of file path) |
+| `id` | TEXT | - | Unique identifier for FIM entry (SHA1 of the file path; for registry rows, SHA1 of `arch:path` for keys and `path:arch:value` for values, with `arch` as a number: `0` for the 32-bit view, `1` for the 64-bit view) |
 | `idx` | TEXT | - | Index identifier for grouping related entries |
 | `data` | TEXT | - | JSON serialized FIM data |
 | `operation` | INTEGER | - | Type of operation (0=CREATE, 1=UPDATE, 2=DELETE) |
@@ -251,6 +251,18 @@ enum class CreateStatus : int {
 ```
 
 A `DELETE` of a `NEW` message that is still pending removes both, since the manager never saw the creation. Once a message has been part of a session it is `EXISTING`, whether the session succeeded or failed, because a failed session may still have been applied by the manager; its later `DELETE` is always sent.
+
+### Integrity Progress Table
+
+The same database also holds a table used by the sync protocol's integrity checks:
+
+```sql
+CREATE TABLE IF NOT EXISTS integrity_progress (
+    idx TEXT PRIMARY KEY NOT NULL,
+    mismatches INTEGER NOT NULL,
+    last_mismatch_ms INTEGER NOT NULL
+);
+```
 
 ---
 

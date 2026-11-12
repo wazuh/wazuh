@@ -97,6 +97,8 @@ checks:
 | description | Yes       | String           | Any string                   | Brief description   |
 | references  | No        | Array of strings | Any string                   | Reference links     |
 
+The agent only reads `policy.id` when it loads the file; a policy file needs a `policy` object and a `checks` list to be loaded. The other fields are part of the policy data, which is checked against the `wazuh-states-sca` schema before it is synchronized.
+
 ---
 
 ## Requirements section
@@ -105,7 +107,7 @@ checks:
 |------------|-----------|------------------|----------------|
 | name       | Yes       | String           | Any string     |
 | description| Yes       | String           | Any string     |
-| condition  | Yes       | String           | all, any, none |
+| condition  | Yes if `rules` is not empty | String | all, any, none |
 | rules      | Yes       | Array of strings | Any string     |
 
 ---
@@ -114,7 +116,9 @@ checks:
 
 | Field         | Mandatory | Type             | Allowed values |
 |--------------|-----------|------------------|----------------|
-| variable_name| Yes       | Array of strings | Any string     |
+| variable_name| Yes       | String           | Any string     |
+
+A variable whose value is not a string is ignored. To use a list, write the values in one string separated by commas, as in `$pam_d_files` in the example.
 
 > **Note**  
 > The `id` field under `policy` and `checks` must be unique across policy files.
@@ -227,6 +231,8 @@ Conditions define how rule results are aggregated:
 | none     | no     | yes    | no             | Passed           |
 
 `*` does not affect the final result.
+
+When no rule settles the check and a rule could not be run (for example a command that timed out), the result is `Not run` instead of `Not applicable`.
 
 ---
 
