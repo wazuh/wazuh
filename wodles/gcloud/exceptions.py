@@ -77,7 +77,7 @@ class GCloudError(WazuhIntegrationException):
             'message': 'Unsupported gcloud integration type: "{integration_type}".' f'The supported types are {*tools.valid_types,}'},
         1003: {
             'key': 'GCloudImportError',
-            'message': "The '{package}' module is required"},
+            'message': 'Error importing the Google Cloud modules: {error}'},
 
         # 1100-1199 -> GCP Bucket errors
         1100: {
@@ -119,6 +119,5 @@ class GCloudError(WazuhIntegrationException):
             'key': 'GCloudPubSubForbidden',
             'message': "The client does not have the {permissions} required permissions"}
     }
-
 
 
