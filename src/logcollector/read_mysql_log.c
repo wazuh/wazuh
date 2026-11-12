@@ -17,6 +17,39 @@
 /* Starting last time */
 static char __mysql_last_time[36] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
+/* General log entry that shares its second with the previous one: two tabs, the thread id
+ * right-aligned to the width of each server (MySQL 5.0 7, MySQL 5.1 to 5.6 5, MariaDB 6),
+ * a space, the command and a tab. The tab tells it apart from a line of a multi-line query. */
+static bool is_same_second_entry(const char *str) {
+    const char *p;
+
+    if (str[0] != '\t' || str[1] != '\t') {
+        return false;
+    }
+
+    p = str + 2;
+    while (*p == ' ') {
+        p++;
+    }
+
+    if (!isdigit((int)*p)) {
+        return false;
+    }
+
+    while (isdigit((int)*p)) {
+        p++;
+    }
+
+    if (*p++ != ' ' || !isalpha((int)*p)) {
+        return false;
+    }
+
+    while (isalpha((int)*p) || *p == ' ' || *p == '_') {
+        p++;
+    }
+
+    return *p == '\t';
+}
 
 void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
     size_t str_len = 0;
@@ -77,6 +110,7 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
 
         /* MySQL messages have the following format:
          * 070823 21:01:30 xx
+         * The hour is padded with a space before 10:00: 070823  9:01:30 xx
          */
         if ((str_len > 18) &&
                 (str[6] == ' ') &&
@@ -88,7 +122,7 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
                 isdigit((int)str[3]) &&
                 isdigit((int)str[4]) &&
                 isdigit((int)str[5]) &&
-                isdigit((int)str[7]) &&
+                (isdigit((int)str[7]) || str[7] == ' ') &&
                 isdigit((int)str[8])) {
             /* Save last time */
             strncpy(__mysql_last_time, str, 16);
@@ -108,6 +142,7 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
 
        /* MySQL 5.7 messages have the following format(in case of NOT utc):
         * YYYY-MM-DDThh:mm:ss.uuuuuu±hh:mm XX
+        * The error log has a space after the timestamp and the general log a tab.
         * ref: https://dev.mysql.com/doc/refman/5.7/en/server-system-variables.html#sysvar_log_timestamps
         */
        else if ((str_len > 35) &&
@@ -119,7 +154,7 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
                (str[19] == '.') &&
                ((str[26] == '-') || (str[26] == '+')) &&
                (str[29] == ':') &&
-               (str[32] == ' ') &&
+               ((str[32] == ' ') || (str[32] == '\t')) &&
                isdigit((int)str[0]) &&
                isdigit((int)str[1]) &&
                isdigit((int)str[2]) &&
@@ -161,6 +196,7 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
 
       /* MySQL 5.7 messages have the following format(in case of utc):
        * YYYY-MM-DDThh:mm:ss.uuuuuuZ XX
+       * The error log has a space after the timestamp and the general log a tab.
        * ref: https://dev.mysql.com/doc/refman/5.7/en/server-system-variables.html#sysvar_log_timestamps
        */
       else if ((str_len > 30) &&
@@ -171,7 +207,7 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
               (str[16] == ':') &&
               (str[19] == '.') &&
               (str[26] == 'Z') &&
-              (str[27] == ' ') &&
+              ((str[27] == ' ') || (str[27] == '\t')) &&
               isdigit((int)str[0]) &&
               isdigit((int)str[1]) &&
               isdigit((int)str[2]) &&
@@ -207,18 +243,50 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
                    __mysql_last_time, p);
       }
 
+        /* MariaDB error log messages have the following format:
+         * YYYY-MM-DD hh:mm:ss XX
+         * The hour is padded with a space before 10:00: YYYY-MM-DD  h:mm:ss XX
+         */
+        else if ((str_len > 20) &&
+                 (str[4] == '-') &&
+                 (str[7] == '-') &&
+                 (str[10] == ' ') &&
+                 (str[13] == ':') &&
+                 (str[16] == ':') &&
+                 (str[19] == ' ') &&
+                 isdigit((int)str[0]) &&
+                 isdigit((int)str[1]) &&
+                 isdigit((int)str[2]) &&
+                 isdigit((int)str[3]) &&
+                 isdigit((int)str[5]) &&
+                 isdigit((int)str[6]) &&
+                 isdigit((int)str[8]) &&
+                 isdigit((int)str[9]) &&
+                 (isdigit((int)str[11]) || str[11] == ' ') &&
+                 isdigit((int)str[12]) &&
+                 isdigit((int)str[14]) &&
+                 isdigit((int)str[15]) &&
+                 isdigit((int)str[17]) &&
+                 isdigit((int)str[18])) {
+            /* Save last time */
+            strncpy(__mysql_last_time, str, 20);
+            __mysql_last_time[19] = '\0';
+
+            /* Remove spaces and tabs */
+            p = str + 19;
+            while (*p == ' ' || *p == '\t') {
+                p++;
+            }
+
+            /* Valid MySQL message */
+            bytes_written = snprintf(buffer, sizeof(buffer), "MySQL log: %s %s",
+                     __mysql_last_time, p);
+        }
+
         /* Multiple events at the same second share the same timestamp:
          * 0909 2020 2020 2020 20
          */
-        else if ((str_len > 10) && (__mysql_last_time[0] != '\0') &&
-                 (str[0] == 0x09) &&
-                 (str[1] == 0x09) &&
-                 (str[2] == 0x20) &&
-                 (str[3] == 0x20) &&
-                 (str[4] == 0x20) &&
-                 (str[5] == 0x20) &&
-                 (str[6] == 0x20) &&
-                 (str[7] == 0x20)) {
+        else if ((str_len > 10) && (__mysql_last_time[0] != '\0') && is_same_second_entry(str)) {
             p = str + 2;
 
             /* Remove extra spaces and tabs */
@@ -230,6 +298,7 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
             bytes_written = snprintf(buffer, sizeof(buffer), "MySQL log: %s %s",
                      __mysql_last_time, p);
         } else {
+            mdebug2("Discarding line from '%s', it does not match any MySQL log format: '%s'", lf->file, str);
             continue;
         }
 
