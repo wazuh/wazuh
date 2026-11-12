@@ -364,9 +364,15 @@ def format_numbers_or_all(value):
     return check_exp(value, _numbers_or_all)
 
 
+# An inserted id above the id counter raises it, the counter never goes down, and the ids that follow must fit the 8
+# digits agents accept. Mirrors AGENT_INSERT_ID_MAX in src/shared/include/agent_validate_op.h and in
+# tools/migration/wazuh-migrate-identity.py.
+_AGENT_INSERT_ID_MAX = 9999999
+
+
 @Draft4Validator.FORMAT_CHECKER.checks("agent_id")
 def format_agent_id(value):
-    return isinstance(value, str) and check_exp(value, _numbers) and 0 < int(value) <= 2147483647
+    return isinstance(value, str) and check_exp(value, _numbers) and 0 < int(value) <= _AGENT_INSERT_ID_MAX
 
 
 @Draft4Validator.FORMAT_CHECKER.checks("path")

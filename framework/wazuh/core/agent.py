@@ -1090,7 +1090,7 @@ class Agent:
         WazuhError(1763)
             If the ID's previous owner still has documents pending deletion in the indexer.
         WazuhError(1765)
-            If the ID is not a positive integer no greater than 2147483647, or is 0.
+            If the ID is not a positive integer no greater than 9999999, or is 0.
         WazuhError(1766)
             If too many agent deletions are still pending in the indexer.
         WazuhInternalError(1772)
