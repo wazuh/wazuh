@@ -71,11 +71,8 @@ typedef struct {
     const char *expected;   // Message sent to the manager, or NULL if the line is discarded
 } mysql_line_t;
 
-/* Reads the lines and expects each one to be sent with its message or discarded with a debug message */
-static void run_reader(const mysql_line_t *lines, size_t count) {
-    logreader lf = {0};
-    lf.file = "test.log";
-    lf.fp = (FILE *) 1;
+/* Reads the lines from lf and expects each one to be sent with its message or discarded with a debug message */
+static void read_lines(logreader *lf, const mysql_line_t *lines, size_t count) {
     int rc;
     char (*debug_msgs)[OS_SIZE_2048] = calloc(count + 1, sizeof(*debug_msgs));
     assert_non_null(debug_msgs);
@@ -98,7 +95,7 @@ static void run_reader(const mysql_line_t *lines, size_t count) {
             will_return(__wrap_w_msg_hash_queues_push, 0);
         } else {
             snprintf(debug_msgs[i], OS_SIZE_2048,
-                     "Discarding line from 'test.log', it does not match any MySQL log format: '%.*s'",
+                     "Discarding line from '%s', it does not match any MySQL log format: '%.*s'", lf->file,
                      (int) strcspn(lines[i].line, "\n"), lines[i].line);
             expect_string(__wrap__mdebug2, formatted_msg, debug_msgs[i]);
         }
@@ -111,13 +108,22 @@ static void run_reader(const mysql_line_t *lines, size_t count) {
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, (int64_t) 0);
 
-    snprintf(debug_msgs[count], OS_SIZE_2048, "Read %zu lines from test.log", count);
+    snprintf(debug_msgs[count], OS_SIZE_2048, "Read %zu lines from %s", count, lf->file);
     expect_string(__wrap__mdebug2, formatted_msg, debug_msgs[count]);
 
-    read_mysql_log(&lf, &rc, 0);
+    read_mysql_log(lf, &rc, 0);
 
     assert_int_equal(rc, 0);
     free(debug_msgs);
+}
+
+/* Reads the lines from a new file */
+static void run_reader(const mysql_line_t *lines, size_t count) {
+    logreader lf = {0};
+    lf.file = "test.log";
+    lf.fp = (FILE *) 1;
+
+    read_lines(&lf, lines, count);
 }
 
 /* Tests */
@@ -176,10 +182,26 @@ void test_read_mysql_log_general_log_same_second(void **state) {
          "MySQL log: 261110 12:00:13 4 Connect\troot@localhost on  using SSL/TLS"},
         {"\t\t     4 Query\tSELECT 'mariadb'\n", "MySQL log: 261110 12:00:13 4 Query\tSELECT 'mariadb'"},
         {"\t\t    3 Query\tSELECT 'mysql-5.5'\n", "MySQL log: 261110 12:00:13 3 Query\tSELECT 'mysql-5.5'"},
-        {"\t\t      3 Query\tSELECT 'mysql-5.0'\n", "MySQL log: 261110 12:00:13 3 Query\tSELECT 'mysql-5.0'"},
-        {"\t\t     12 Query\tSELECT 'mysql-5.0-id-12'\n", "MySQL log: 261110 12:00:13 12 Query\tSELECT 'mysql-5.0-id-12'"},
+        {"\t\t    12 Query\tSELECT 'mariadb-id-12'\n", "MySQL log: 261110 12:00:13 12 Query\tSELECT 'mariadb-id-12'"},
         {"\t\t1234567 Query\tSELECT 'mariadb-wide-id'\n", "MySQL log: 261110 12:00:13 1234567 Query\tSELECT 'mariadb-wide-id'"},
         {"\t\t     4 Init DB\tmysql\n", "MySQL log: 261110 12:00:13 4 Init DB\tmysql"},
+    };
+
+    run_reader(lines, sizeof(lines) / sizeof(lines[0]));
+}
+
+void test_read_mysql_log_mysql50_general_log(void **state) {
+    // MySQL 5.0 right-aligns the thread id to 7 columns and pads the command with spaces to 11, with no tab
+    mysql_line_t lines[] = {
+        {"070823 21:23:08\t      2 Connect     root@localhost on test\n",
+         "MySQL log: 070823 21:23:08 2 Connect     root@localhost on test"},
+        {"\t\t      2 Query       INSERT INTO t VALUES (1)\n",
+         "MySQL log: 070823 21:23:08 2 Query       INSERT INTO t VALUES (1)"},
+        {"\t\t     12 Init DB     test\n", "MySQL log: 070823 21:23:08 12 Init DB     test"},
+        {"\t\t1234567 Delayed ins t\n", "MySQL log: 070823 21:23:08 1234567 Delayed ins t"},
+        {"\t\t      2 Quit       \n", "MySQL log: 070823 21:23:08 2 Quit       "},
+        {"070824  9:33:51\t      6 Connect     Access denied for user 'roota'@'localhost' (using password: YES)\n",
+         "MySQL log: 070824  9:33:51 6 Connect     Access denied for user 'roota'@'localhost' (using password: YES)"},
     };
 
     run_reader(lines, sizeof(lines) / sizeof(lines[0]));
@@ -203,6 +225,40 @@ void test_read_mysql_log_mariadb_error_log(void **state) {
     run_reader(lines, sizeof(lines) / sizeof(lines[0]));
 }
 
+void test_read_mysql_log_keeps_timestamp_per_file(void **state) {
+    // A line in the same second takes the timestamp of its own file, never the one read last from another file
+    logreader maria = {0};
+    maria.file = "maria.log";
+    maria.fp = (FILE *) 1;
+    logreader mysql8 = {0};
+    mysql8.file = "mysql8.log";
+    mysql8.fp = (FILE *) 1;
+    logreader fresh = {0};
+    fresh.file = "fresh.log";
+    fresh.fp = (FILE *) 1;
+
+    mysql_line_t maria_entry[] = {
+        {"261110 12:00:13\t     4 Connect\troot@localhost on  using SSL/TLS\n",
+         "MySQL log: 261110 12:00:13 4 Connect\troot@localhost on  using SSL/TLS"},
+    };
+    mysql_line_t mysql8_entry[] = {
+        {"2026-11-10T11:02:02.088408Z\t    9 Query\tSELECT 'rv3-my8-q1'\n",
+         "MySQL log: 2026-11-10T11:02:02.088408Z 9 Query\tSELECT 'rv3-my8-q1'"},
+    };
+    mysql_line_t maria_same_second[] = {
+        {"\t\t     4 Query\tSELECT 'mariadb'\n", "MySQL log: 261110 12:00:13 4 Query\tSELECT 'mariadb'"},
+    };
+    // No entry read from this file yet, so there is no timestamp to take
+    mysql_line_t fresh_same_second[] = {
+        {"\t\t     7 Query\tSELECT 'fresh'\n", NULL},
+    };
+
+    read_lines(&maria, maria_entry, 1);
+    read_lines(&mysql8, mysql8_entry, 1);
+    read_lines(&maria, maria_same_second, 1);
+    read_lines(&fresh, fresh_same_second, 1);
+}
+
 void test_read_mysql_log_discards_unknown_lines(void **state) {
     // Header lines and the lines of a multi-line query match no format
     mysql_line_t lines[] = {
@@ -210,6 +266,9 @@ void test_read_mysql_log_discards_unknown_lines(void **state) {
         {"Time                 Id Command    Argument\n", NULL},
         {"261110 12:00:13\t     4 Query\tSELECT 1,\n", "MySQL log: 261110 12:00:13 4 Query\tSELECT 1,"},
         {"\t\t2 AS y;\n", NULL},
+        {"\t\t      1 AS y;\n", NULL},
+        {"\t\t      1 FROM tablename\n", NULL},
+        {"\t\t2 FROM tables x\n", NULL},
     };
 
     run_reader(lines, sizeof(lines) / sizeof(lines[0]));
@@ -222,8 +281,10 @@ int main(void) {
         cmocka_unit_test(test_read_mysql_log_mysql8_error_log),
         cmocka_unit_test(test_read_mysql_log_general_log_early_hour),
         cmocka_unit_test(test_read_mysql_log_general_log_same_second),
+        cmocka_unit_test(test_read_mysql_log_mysql50_general_log),
         cmocka_unit_test(test_read_mysql_log_mysql55_error_log),
         cmocka_unit_test(test_read_mysql_log_mariadb_error_log),
+        cmocka_unit_test(test_read_mysql_log_keeps_timestamp_per_file),
         cmocka_unit_test(test_read_mysql_log_discards_unknown_lines),
     };
 

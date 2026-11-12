@@ -14,20 +14,21 @@
 #include "logcollector.h"
 #include "os_crypto/sha1/sha1_op.h"
 
-/* Starting last time */
-static char __mysql_last_time[36] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-
 /* General log entry that shares its second with the previous one: two tabs, the thread id
  * right-aligned to the width of each server (MySQL 5.0 7, MySQL 5.1 to 5.6 5, MariaDB 6),
- * a space, the command and a tab. The tab tells it apart from a line of a multi-line query. */
+ * a space and the command. MySQL 5.0 pads the command with spaces to 11 columns and writes
+ * a space before the text, if any; later servers end the command with a tab. That layout
+ * tells the entry apart from a line of a multi-line query. */
 static bool is_same_second_entry(const char *str) {
+    const char *id;
     const char *p;
+    size_t i;
 
     if (str[0] != '\t' || str[1] != '\t') {
         return false;
     }
 
-    p = str + 2;
+    id = p = str + 2;
     while (*p == ' ') {
         p++;
     }
@@ -42,6 +43,18 @@ static bool is_same_second_entry(const char *str) {
 
     if (*p++ != ' ' || !isalpha((int)*p)) {
         return false;
+    }
+
+    /* MySQL 5.0: the id takes 7 columns or more */
+    if (p - id > 7) {
+        i = 1;
+        while (i < 11 && (isalpha((int)p[i]) || p[i] == ' ')) {
+            i++;
+        }
+
+        if (i == 11 && (p[11] == '\0' || p[11] == ' ')) {
+            return true;
+        }
     }
 
     while (isalpha((int)*p) || *p == ' ' || *p == '_') {
@@ -125,8 +138,8 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
                 (isdigit((int)str[7]) || str[7] == ' ') &&
                 isdigit((int)str[8])) {
             /* Save last time */
-            strncpy(__mysql_last_time, str, 16);
-            __mysql_last_time[15] = '\0';
+            strncpy(lf->mysql_last_time, str, 16);
+            lf->mysql_last_time[15] = '\0';
 
 
             /* Remove spaces and tabs */
@@ -137,7 +150,7 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
 
             /* Valid MySQL message */
             bytes_written = snprintf(buffer, sizeof(buffer), "MySQL log: %s %s",
-                     __mysql_last_time, p);
+                     lf->mysql_last_time, p);
         }
 
        /* MySQL 5.7 messages have the following format(in case of NOT utc):
@@ -180,8 +193,8 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
                isdigit((int)str[30]) &&
                isdigit((int)str[31])) {
            /* Save last time */
-           strncpy(__mysql_last_time, str, 33);
-           __mysql_last_time[32] = '\0';
+           strncpy(lf->mysql_last_time, str, 33);
+           lf->mysql_last_time[32] = '\0';
 
            /* Remove spaces and tabs */
            p = str + 32;
@@ -191,7 +204,7 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
 
            /* Valid MySQL message */
            bytes_written = snprintf(buffer, sizeof(buffer), "MySQL log: %s %s",
-                    __mysql_last_time, p);
+                    lf->mysql_last_time, p);
        }
 
       /* MySQL 5.7 messages have the following format(in case of utc):
@@ -229,8 +242,8 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
               isdigit((int)str[24]) &&
               isdigit((int)str[25])) {
           /* Save last time */
-          strncpy(__mysql_last_time, str, 28);
-          __mysql_last_time[27] = '\0';
+          strncpy(lf->mysql_last_time, str, 28);
+          lf->mysql_last_time[27] = '\0';
 
           /* Remove spaces and tabs */
           p = str + 27;
@@ -240,7 +253,7 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
 
           /* Valid MySQL message */
           bytes_written = snprintf(buffer, sizeof(buffer), "MySQL log: %s %s",
-                   __mysql_last_time, p);
+                   lf->mysql_last_time, p);
       }
 
         /* MariaDB error log messages have the following format:
@@ -269,8 +282,8 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
                  isdigit((int)str[17]) &&
                  isdigit((int)str[18])) {
             /* Save last time */
-            strncpy(__mysql_last_time, str, 20);
-            __mysql_last_time[19] = '\0';
+            strncpy(lf->mysql_last_time, str, 20);
+            lf->mysql_last_time[19] = '\0';
 
             /* Remove spaces and tabs */
             p = str + 19;
@@ -280,13 +293,13 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
 
             /* Valid MySQL message */
             bytes_written = snprintf(buffer, sizeof(buffer), "MySQL log: %s %s",
-                     __mysql_last_time, p);
+                     lf->mysql_last_time, p);
         }
 
         /* Multiple events at the same second share the same timestamp:
          * 0909 2020 2020 2020 20
          */
-        else if ((str_len > 10) && (__mysql_last_time[0] != '\0') && is_same_second_entry(str)) {
+        else if ((str_len > 10) && (lf->mysql_last_time[0] != '\0') && is_same_second_entry(str)) {
             p = str + 2;
 
             /* Remove extra spaces and tabs */
@@ -296,7 +309,7 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
 
             /* Valid MySQL message */
             bytes_written = snprintf(buffer, sizeof(buffer), "MySQL log: %s %s",
-                     __mysql_last_time, p);
+                     lf->mysql_last_time, p);
         } else {
             mdebug2("Discarding line from '%s', it does not match any MySQL log format: '%s'", lf->file, str);
             continue;
