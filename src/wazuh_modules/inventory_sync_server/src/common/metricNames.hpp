@@ -53,11 +53,13 @@ namespace invsync::metrics
     constexpr auto BULK_FLUSH_FAILURES_PREFIX {"sync.bulk.flush.failures."};
     constexpr auto BULK_SESSIONS_FAILED {"sync.bulk.sessions.failed"};
     /// The post-deletion sweep (I146, I146b, I146c): passes run, failed DBQ chunks, documents it found and deleted
-    /// (the residual a late write left behind), ids abandoned (stop() or a chunk that failed twice).
+    /// (the residual a late write left behind), ids abandoned (stop() or a chunk that failed twice), ids withdrawn
+    /// because a /config or /stats write for them was accepted (forget()).
     constexpr auto AGENT_DELETE_SWEEP_RUNS {"sync.agent_delete.sweep.runs"};
     constexpr auto AGENT_DELETE_SWEEP_FAILURES {"sync.agent_delete.sweep.failures"};
     constexpr auto AGENT_DELETE_SWEEP_RESIDUAL {"sync.agent_delete.sweep.residual"};
     constexpr auto AGENT_DELETE_SWEEP_DROPPED {"sync.agent_delete.sweep.dropped"};
+    constexpr auto AGENT_DELETE_SWEEP_FORGOTTEN {"sync.agent_delete.sweep.forgotten"};
 
     // -- session application ----------------------------------------------------------------
     constexpr auto DOCS_INDEXED {"sync.docs.indexed"};

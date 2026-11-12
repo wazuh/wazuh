@@ -177,6 +177,7 @@ removes from `wazuh-agent-config` and `wazuh-agent-stats` what a late write may 
 | `sync.agent_delete.sweep.failures` | counter | count | Delete-by-query chunks of a pass that failed (the agents of a failed chunk are retried once on the next pass) | diagnostic — check the indexer and the logs |
 | `sync.agent_delete.sweep.residual` | counter | documents | Documents the sweeps found and deleted: the late write the deletion could not order behind. Non-zero is the sweep doing its job | diagnostic |
 | `sync.agent_delete.sweep.dropped` | counter | count | Agents abandoned without being swept: pending when the module stopped, or in a chunk that failed twice | diagnostic — the sweep is best effort and does not guarantee zero residue |
+| `sync.agent_delete.sweep.forgotten` | counter | count | Agents withdrawn from the sweep because the module accepted a `/stats` or `/config` write for their id while the sweep was pending: the id was enrolled again, and the sweep would have deleted the new agent's documents | diagnostic — non-zero means agent ids are reused shortly after their deletion |
 
 ### Documents — `sync.docs.*`, `sync.bytes.ingested`
 

@@ -419,3 +419,77 @@ TEST_F(AgentDeleteSweeperTest, ClosingCutsPass)
     EXPECT_EQ(0U, sweeper->stats().failures);
     EXPECT_FALSE(invsync::test::LogRecorder::sawMessageContaining("retried once"));
 }
+
+/// An agent enrolled again with a deleted id reports within the window: forget() withdraws that id before its pass,
+/// so neither index is swept for it, while the other ids of the pass still are. Without forget() the pass would carry
+/// it and delete the new agent's documents.
+TEST_F(AgentDeleteSweeperTest, ForgetWithdrawsPendingId)
+{
+    start();
+    settle();
+    sweeper->note("000007");
+    sweeper->note("000008");
+    sweeper->note("000007"); // A second deletion of the same id: both notes go.
+    sweeper->forget("000007");
+
+    ASSERT_TRUE(
+        waitUntil([&] { return sweeper->stats().runs == 1 && real.dbqRequests(STATS_INDEX).size() == 1; }, 4000ms));
+    for (const auto* index : {CONFIG_INDEX, STATS_INDEX})
+    {
+        const auto requests = idsPerRequest(index);
+        ASSERT_EQ(1U, requests.size()) << index;
+        EXPECT_EQ(std::vector<std::string> {"000008"}, requests.front()) << index;
+    }
+    EXPECT_EQ(1U, sweeper->stats().forgotten);
+
+    // Nothing left for a later pass, and nothing to drop at stop().
+    std::this_thread::sleep_for(WINDOW * 5 / 2);
+    EXPECT_EQ(1U, real.dbqRequests(STATS_INDEX).size());
+    sweeper->stop();
+    EXPECT_EQ(0U, sweeper->stats().dropped);
+}
+
+/// forget() of an id that is not pending changes nothing: no count, and the pass carries every noted id.
+TEST_F(AgentDeleteSweeperTest, ForgetOfUnknownIdIsNoop)
+{
+    start();
+    sweeper->forget("000001"); // Nothing pending at all: the lock-free path.
+    settle();
+    sweeper->note("000007");
+    sweeper->forget("000099");
+
+    ASSERT_TRUE(
+        waitUntil([&] { return sweeper->stats().runs == 1 && real.dbqRequests(STATS_INDEX).size() == 1; }, 4000ms));
+    EXPECT_EQ(std::vector<std::string> {"000007"}, idsPerRequest(STATS_INDEX).front());
+    EXPECT_EQ(0U, sweeper->stats().forgotten);
+}
+
+/// forget() while the pass holding the id is in flight: the delete-by-query already sent cannot be recalled, but the
+/// chunk not sent yet (the second index) leaves the id out -- here it was alone, so that request is not sent at all --
+/// and a failure of the first chunk does not bring the id back on the next pass.
+TEST_F(AgentDeleteSweeperTest, ForgetDuringPassSparesUnsentChunksAndRetry)
+{
+    auto held = dbqRuleFor(
+        CONFIG_INDEX,
+        400,
+        R"({"error":{"root_cause":[{"type":"parse_exception","reason":"boom"}],"type":"parse_exception","reason":"boom"},"status":400})");
+    held.hold = true;
+    real.fake->addRule(std::move(held));
+    start();
+    settle();
+    sweeper->note("000007");
+
+    ASSERT_TRUE(waitUntil([&] { return real.dbqRequests(CONFIG_INDEX).size() == 1; }, 4000ms));
+    sweeper->forget("000007");
+    real.fake->releaseHeld(); // The in-flight request answers its failure; the pass goes on to the other index.
+
+    ASSERT_TRUE(waitUntil([&] { return sweeper->stats().failures == 1; }));
+    EXPECT_EQ(1U, sweeper->stats().forgotten);
+
+    std::this_thread::sleep_for(WINDOW * 5 / 2); // Past the pass a retry would have run in.
+    EXPECT_EQ(0U, real.dbqRequests(STATS_INDEX).size()) << "the withdrawn id is not sent to the second index";
+    EXPECT_EQ(1U, real.dbqRequests(CONFIG_INDEX).size()) << "nor retried after the first index failed";
+    EXPECT_EQ(1U, sweeper->stats().runs);
+    sweeper->stop();
+    EXPECT_EQ(0U, sweeper->stats().dropped) << "a withdrawn id is not pending, so stop() has nothing to drop";
+}

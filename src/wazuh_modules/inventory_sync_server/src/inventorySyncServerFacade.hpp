@@ -532,17 +532,19 @@ namespace invsync
             // that must charge the byte budget exactly like /stateful, not control-plane reads. Both
             // post() into the `agent-state` bucket through the writer taken once in phase B, and gate
             // on the Client's health (I151).
-            m_httpServer->addRoute(
-                invsync::endpoints::stats::method(),
-                invsync::endpoints::stats::path(),
-                invsync::endpoints::stats::makeHandler(m_indexerClient, m_agentStateWriter, clusterIdentity),
-                wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Data});
+            // Both withdraw an admitted agent from the post-deletion sweep (forget()): a report of an agent
+            // enrolled again with a just-deleted id is the new agent's.
+            m_httpServer->addRoute(invsync::endpoints::stats::method(),
+                                   invsync::endpoints::stats::path(),
+                                   invsync::endpoints::stats::makeHandler(
+                                       m_indexerClient, m_agentStateWriter, clusterIdentity, m_agentDeleteSweeper),
+                                   wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Data});
 
-            m_httpServer->addRoute(
-                invsync::endpoints::config::method(),
-                invsync::endpoints::config::path(),
-                invsync::endpoints::config::makeHandler(m_indexerClient, m_agentStateWriter, clusterIdentity),
-                wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Data});
+            m_httpServer->addRoute(invsync::endpoints::config::method(),
+                                   invsync::endpoints::config::path(),
+                                   invsync::endpoints::config::makeHandler(
+                                       m_indexerClient, m_agentStateWriter, clusterIdentity, m_agentDeleteSweeper),
+                                   wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Data});
 
             // Whole-agent deletion (design doc 04): UDS-local, manager-internal, deferred to the
             // agent's pipeline shard and ANSWERED AT COMPLETION -- the item carries its responder,
@@ -732,7 +734,7 @@ namespace invsync
          * never a shared_ptr<IClient>, which would keep a stopped Client alive inside the registry. Every start
          * repoints the slot; with no live Client every bucket value reads 0, and a rebuilt Client starts its bucket
          * counters again from 0. One scrape costs one Client::metrics() call: the snapshot is cached for
-         * INDEXER_METRICS_MAX_AGE and every getter reads from it. The sweep's four counters read the sweeper through
+         * INDEXER_METRICS_MAX_AGE and every getter reads from it. The sweep's five counters read the sweeper through
          * its own weak slot (0 without a live sweeper; a rebuilt sweeper starts again from 0). The process's runtime
          * metrics go through the same slot: registerIndexerRuntimeMetrics().
          *
@@ -842,6 +844,12 @@ namespace invsync
                 invsync::metrics::AGENT_DELETE_SWEEP_DROPPED,
                 [sweeper] { return sweeper->read().dropped; },
                 "Agents the sweep abandoned: pending at stop, or in a chunk that failed twice",
+                "count");
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::AGENT_DELETE_SWEEP_FORGOTTEN,
+                [sweeper] { return sweeper->read().forgotten; },
+                "Agents withdrawn from the sweep because a /config or /stats write for their id was accepted "
+                "(the id was enrolled again)",
                 "count");
         }
 

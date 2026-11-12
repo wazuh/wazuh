@@ -351,8 +351,16 @@ best effort: it makes a leftover very unlikely, not impossible. Counters:
 
 The sweep deletes by `_id` without looking at the document. Pass starts are always at least one window
 apart (a pass that outlasts the window is followed by the next one as soon as it ends), and a pass cut by the module's stop counts its agents as dropped, not as
-failures. One side effect: an agent id enrolled again between one and two windows after its deletion can
-lose its first `/stats` or `/config` document to the sweep; the agent's next report writes it again.
+failures.
+
+An agent id can be enrolled again (for example `POST /agents/insert` with an explicit `id`) as soon as its deletion
+has answered, which is when its sweep is noted. When the module accepts a `/stats` or `/config` write for an id that
+is still waiting for its sweep, it withdraws that id: the pending note is removed, and a pass already running leaves the
+id out of the requests it has not sent yet and does not retry it. The old agent's key is revoked at that point, so the
+write comes from the new agent, and it replaces any late document of the old one (the document id is the agent id).
+Withdrawals are counted in `sync.agent_delete.sweep.forgotten`. Two narrow cases remain: a sweep request already in
+flight with that id can still delete the new agent's first document, and a late write of the old agent applied after
+the new agent's first report stays until the new agent's next report replaces it.
 
 ### Effects to know
 
@@ -478,7 +486,7 @@ by stage:
 | Group commit | `sync.bulk.flushes`, `sync.bulk.bytes.total`, `sync.bulk.sessions.total`, `sync.bulk.sessions.failed`, `sync.bulk.flush.failures.{documents,exhausted,other}` |
 | Indexer requests | `sync.indexer.bulk.requests`, `sync.indexer.bulk.bytes.total`, `sync.indexer.conflict.retries`, `sync.indexer.conflict.exhausted` |
 | Indexer client buckets | `indexer_client.bucket.inventory_sync_server.inventory.*` and `….agent_state.*` — the library's 51 metrics per bucket, by pull |
-| Deletion sweep | `sync.agent_delete.sweep.{runs,failures,residual,dropped}` — the [post-deletion sweep](#the-post-deletion-sweep) |
+| Deletion sweep | `sync.agent_delete.sweep.{runs,failures,residual,dropped,forgotten}` — the [post-deletion sweep](#the-post-deletion-sweep) |
 | Documents | `sync.docs.indexed`, `sync.docs.skipped`, `sync.bytes.ingested` |
 | VD lane | `vd.lane.depth` (gauge), `vd.lane.time` (enqueue-to-response histogram, all outcomes), `vd.capacity.503.total`, `vd.retry_after.total`, `vd.offset_mismatch.total`, `vd.scan.duration` (histogram), `vd.scans.ok`/`.failed`/`.skipped` |
 | Transport | `server.budget.{available.bytes, inflight.bytes, inflight.requests}`, `server.sessions.{live, data, control, liveness}` and `server.rejected.{budget, session_cap, shutdown, no_response}` — pull metrics over the shared transport's diagnostics, the only visibility into the transport-side 503 gates |

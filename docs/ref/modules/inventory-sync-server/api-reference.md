@@ -240,7 +240,9 @@ Two windows can still leave a document behind, and neither turns the `200` into 
   delete reached another. A sweep one window later (the indexer client's request timeout plus 5 s)
   deletes such documents by id, without a refresh, and counts them in `sync.agent_delete.sweep.residual`
   (see the module's [metrics](metrics.md)). It is best effort: a sweep that fails twice gives up and
-  counts the ids in `sync.agent_delete.sweep.dropped`.
+  counts the ids in `sync.agent_delete.sweep.dropped`. A `/stats` or `/config` write accepted for the
+  agent id before its sweep ran withdraws the id from it (`sync.agent_delete.sweep.forgotten`): the id was
+  enrolled again, and the documents are the new agent's.
 
 ## On-demand vulnerability scans
 

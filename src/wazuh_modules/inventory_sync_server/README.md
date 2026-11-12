@@ -695,8 +695,21 @@ index** (a missing index does not void the other) with `terms` on `_id`, `procee
 most 10 000, **without `refresh`** (P21: the role may lack `indices:admin/refresh`), each with `deadline` =
 `deleteBudget`. `residual` = the documents deleted. A failed chunk's ids return once to the next pass, then are
 dropped (`dropped`); nothing is sent without due ids (at most `2 * ceil(n / 10 000)` DBQs per pass). `stop()` wakes,
-joins and drops what is pending (counted). Counters: `sync.agent_delete.sweep.{runs,failures,residual,dropped}`
+joins and drops what is pending (counted). Counters: `sync.agent_delete.sweep.{runs,failures,residual,dropped,forgotten}`
 (`common/metricNames.hpp`). Best effort (I36): zero residue is not guaranteed.
+
+**An id enrolled again.** authd lets an operator reuse an explicit agent id (`POST /agents/insert` with `id`) as soon
+as the deletion task is terminal, which is the moment the worker `note()`s the id. Without more, a new agent with that
+id that reports inside the window would lose its `wazuh-agent-config`/`wazuh-agent-stats` documents to the old agent's
+sweep. So the `/config` and `/stats` handlers call `forget(agentId)` once `post()` admitted their write (they hold the
+sweeper weakly, wired by the facade like the writer). `forget()` removes every pending note of the id and, if the pass
+in progress holds it, marks it so the chunks not sent yet leave it out and it is never requeued (counted once in
+`forgotten`). With nothing pending it is one atomic load, no lock: every report calls it. The hook is the write, not a
+new sync session: the swept indices are exactly the documents those two routes write, a session writes neither, and an
+agent may report `/stats` before any session. The old agent's key is revoked by then, so the write is the new agent's,
+and its `index` replaces any late document of the old one (same `_id`). Two residues remain: a delete-by-query already
+in flight with the id cannot be recalled, and a late write of the old agent landing after the new agent's first
+report survives until the new agent's next report replaces it.
 
 **Effects** (G-plan E7c obj. 11–12): a pin freezes the `agent-state` bucket for at most
 `ambiguous_retry_window_ms`; with a full quota the deletes compete with `/stats` and `/config` (a refused deletion
