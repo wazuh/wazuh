@@ -183,13 +183,27 @@ void TesterWorker::start()
                 {
                     auto& [event, opt, callback] = *testEvent;
 
-                    const auto timestamp =
-                        base::utils::time::epochNanosToISO8601(base::utils::time::receptionClock().next());
-                    const auto eventId = base::utils::generators::generateUUIDv4();
-                    event->setString(timestamp, "/@timestamp");
-                    event->setString(eventId, "/wazuh/event/id");
+                    // Preparation and test: a failure in either (e.g. the random source behind the event id, or
+                    // the tester itself) becomes the result of this request instead of escaping the thread.
+                    base::RespOrError<test::Output> output = base::Error {};
+                    const char* stage = "preparing";
+                    try
+                    {
+                        const auto timestamp =
+                            base::utils::time::epochNanosToISO8601(base::utils::time::receptionClock().next());
+                        const auto eventId = base::utils::generators::generateUUIDv4();
+                        event->setString(timestamp, "/@timestamp");
+                        event->setString(eventId, "/wazuh/event/id");
 
-                    auto output = m_tester->ingestTest(std::move(event), opt);
+                        stage = "testing";
+                        output = m_tester->ingestTest(std::move(event), opt);
+                    }
+                    catch (const std::exception& e)
+                    {
+                        output = base::Error {std::string("Failed while ") + stage + " the test event: " + e.what()};
+                    }
+
+                    // Delivery: exactly once, success or error.
                     try
                     {
                         callback(std::move(output));
