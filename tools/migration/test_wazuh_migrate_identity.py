@@ -590,10 +590,9 @@ class MigrationToolTest(unittest.TestCase):
         self.assertNotIn("above the insert cap", text)
 
     def import_with_capped_agent(self, groups):
-        """Imports a bundle holding an agent above the cap, which the manager refuses."""
+        """Imports a bundle holding an agent above the cap, which import skips."""
         add_agent_above_cap(self.source, "capped-host", groups)
         self.assertEqual(0, self.export())
-        FakeManager.reject_agents = {10000000}
         writes_at_warning = []
         real_warn = tool.warn
 
@@ -605,8 +604,12 @@ class MigrationToolTest(unittest.TestCase):
             real_warn(message)
 
         with mock.patch.object(tool, "warn", noting_warn), redirect_stderr(io.StringIO()):
-            self.assertEqual(1, self.do_import())
+            self.assertEqual(0, self.do_import())
         self.assertEqual([0], writes_at_warning, "the warning comes before any write")
+        self.assertEqual([], [c for c in FakeManager.calls
+                              if (c[0] == "POST" and c[1] == "/agents/insert" and c[2]["id"] == "10000000")
+                              or (c[0] == "PUT" and c[1].startswith("/agents/10000000/"))],
+                         "the agent and its memberships are skipped")
 
     def test_check_reports_an_agent_above_the_insert_cap_until_it_re_enrolls(self):
         self.import_with_capped_agent(["linux-servers"])

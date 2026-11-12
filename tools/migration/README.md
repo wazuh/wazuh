@@ -91,7 +91,7 @@ or keep the 4.x passwords and give `check` the 4.x one explicitly.
 
 | Data | How |
 |---|---|
-| Agents: id, name, address and key | `POST /agents/insert` per agent, for ids from 1 to 9999999. `export` and `import` warn about agents above that, before writing anything. The manager writes `client.keys` and the registry row itself |
+| Agents: id, name, address and key | `POST /agents/insert` per agent, for ids from 1 to 9999999. `export` and `import` warn about agents above that, before writing anything, and `import` skips them. The manager writes `client.keys` and the registry row itself |
 | Groups | `POST /groups` per custom group. `default` is the target's own and is never recreated |
 | Each group's `agent.conf` | `PUT /groups/{group}/configuration` |
 | Group membership | `PUT /agents/{id}/group/{group}` in the 4.x priority order |
@@ -99,7 +99,7 @@ or keep the 4.x passwords and give `check` the 4.x one explicitly.
 | API users, roles and policies | file copy, `--with-rbac` at both ends |
 
 **What it does not carry.** Agents with an id above `9999999`: a 5.0.1 or later manager refuses to
-insert them (`400`), so you [re-enroll
+insert them (`400`), so `import` skips them and you [re-enroll
 them](../../docs/guide/migration/manager-4x-to-5x.md#if-you-re-enroll-instead) and they get a new
 id. `check` counts them as missing until they re-enroll under the same name, and then only checks
 that they are in the groups the bundle lists for them. The registration date: `POST /agents/insert` does not
@@ -144,7 +144,7 @@ earlier one: a second import writes `.pre-migration.<timestamp>` instead of skip
 | Code | Meaning |
 |---|---|
 | `0` | Done, or `check` found no problems |
-| `1` | Something was refused by the manager, or `check` found problems. Against a 5.0.1 or later manager, a bundle with agents above `9999999` ends `import` with `1` |
+| `1` | Something was refused by the manager, or `check` found problems. `import` skips agents above `9999999` without counting them as refused; `check` reports them until they re-enroll |
 | `2` | Refused before doing anything, with the reason on standard error |
 
 ## Tests

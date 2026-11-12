@@ -394,8 +394,8 @@ def warn_above_insert_cap(agents):
     capped = [a for a in agents if a["id"] > AGENT_INSERT_ID_MAX]
     if capped:
         warn("agent(s) %s have ids above the insert cap of %d: a 5.0.1 or later manager refuses"
-             " them on POST /agents/insert. Re-enroll those agents after the migration; they get"
-             " new ids. See %s"
+             " them on POST /agents/insert, so import skips them. Re-enroll those agents after the"
+             " migration; they get new ids. See %s"
              % (", ".join("%d %s" % (a["id"], a["name"]) for a in capped),
                 AGENT_INSERT_ID_MAX, REENROLL_GUIDE))
 
@@ -629,6 +629,11 @@ def import_agents(api, manifest, dry_run):
     """Returns (ids the manager now holds, failures). Membership follows only for the former."""
     inserted, failed = set(), []
     for agent in manifest["agents"]:
+        if agent["id"] > AGENT_INSERT_ID_MAX:
+            # Refused by 5.0.1 and later; a 5.0.0 target would accept it and raise its id counter.
+            log("  agent    %-20s id %03d skipped: above the insert cap, re-enroll it"
+                % (agent["name"], agent["id"]))
+            continue
         body = {"id": "%03d" % agent["id"], "name": agent["name"], "key": agent["key"]}
         if agent.get("ip"):
             body["ip"] = agent["ip"]
