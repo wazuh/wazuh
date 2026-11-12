@@ -821,7 +821,7 @@ void LogCollectorStart()
                         continue;
                     }
 #ifdef WIN32
-                    else if ((DWORD)current->size > (lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow))
+                    else if (current->size > w_get_file_size_from_info(&lpFileInformation))
 #else
                     else if (current->size > tmp_stat.st_size || w_ftell(current->fp) > tmp_stat.st_size)
 #endif
@@ -856,7 +856,7 @@ void LogCollectorStart()
                         CloseHandle(h1);
 
                         /* Update file size */
-                        current->size = lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow;
+                        current->size = w_get_file_size_from_info(&lpFileInformation);
 #else
                         current->exists = 1;
                         current->size = tmp_stat.st_size;
@@ -1171,7 +1171,7 @@ int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
     }
 
     lf->fd = (lpFileInformation.nFileIndexLow + lpFileInformation.nFileIndexHigh);
-    lf->size = (lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow);
+    lf->size = w_get_file_size_from_info(&lpFileInformation);
 
 #endif
 

@@ -199,7 +199,7 @@ typedef struct w_journal_log_config_t
 
 /* Logreader config */
 typedef struct _logreader {
-    off_t size;
+    int64_t size;
     int ign;
     dev_t dev;
 
