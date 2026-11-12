@@ -12,6 +12,8 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include <stdio.h>
+#include <errno.h>
+#include <pthread.h>
 #include <stdlib.h>
 
 #include "../../analysisd/analysisd.h"
@@ -33,6 +35,25 @@ typedef struct test_struct {
 extern analysisd_state_t analysisd_state;
 extern queue_status_t queue_status;
 extern OSHash *analysisd_agents_state;
+
+extern pthread_mutex_t agents_state_mutex;
+
+/* cmocka parameter check: the table argument is the expected one and agents_state_mutex is held */
+static int check_table_and_agents_state_locked(const LargestIntegralType value, const LargestIntegralType check_value_data) {
+    if (value != check_value_data) {
+        return 0;
+    }
+
+    int error = pthread_mutex_trylock(&agents_state_mutex);
+
+    if (error == 0) {
+        pthread_mutex_unlock(&agents_state_mutex);
+        print_error("agents_state_mutex is not held\n");
+        return 0;
+    }
+
+    return error == EBUSY;
+}
 
 analysisd_agent_state_t * get_node(const char *agent_id);
 void w_analysisd_clean_agents_state(int *sock);
@@ -745,13 +766,13 @@ void test_w_analysisd_clean_agents_state_completed(void ** state) {
     expect_value(__wrap_wdb_get_agents_ids_of_current_node, limit, -1);
     will_return(__wrap_wdb_get_agents_ids_of_current_node, connected_agents);
 
-    expect_value(__wrap_OSHash_Begin, self, analysisd_agents_state);
+    expect_check(__wrap_OSHash_Begin, self, check_table_and_agents_state_locked, cast_to_largest_integral_type(analysisd_agents_state));
     will_return(__wrap_OSHash_Begin, test_data->hash_node);
 
-    expect_value(__wrap_OSHash_Next, self, analysisd_agents_state);
+    expect_check(__wrap_OSHash_Next, self, check_table_and_agents_state_locked, cast_to_largest_integral_type(analysisd_agents_state));
     will_return(__wrap_OSHash_Next, NULL);
 
-    expect_value(__wrap_OSHash_Delete_ex, self, analysisd_agents_state);
+    expect_check(__wrap_OSHash_Delete_ex, self, check_table_and_agents_state_locked, cast_to_largest_integral_type(analysisd_agents_state));
     expect_value(__wrap_OSHash_Delete_ex, key, "001");
     will_return(__wrap_OSHash_Delete_ex, test_data->agent_state);
 

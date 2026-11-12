@@ -29,7 +29,7 @@ analysisd_state_t analysisd_state = {0};
 queue_status_t queue_status;
 static pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t agents_state_mutex = PTHREAD_MUTEX_INITIALIZER;
+STATIC pthread_mutex_t agents_state_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int w_analysisd_write_state();
 static int interval;
 
