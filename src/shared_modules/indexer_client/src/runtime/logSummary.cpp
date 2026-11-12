@@ -59,6 +59,38 @@ namespace indexer_client::detail::logging
             return out;
         }
 
+        /// @p text with every control byte escaped (`\n`, `\r`, `\t`, else `\xNN`): text the indexer supplies (an
+        /// item's `error.reason` may quote the field's value, newlines included) can neither break the log line nor
+        /// start a forged one. Each byte becomes at most 4.
+        std::string escapedForLog(std::string_view text)
+        {
+            static constexpr char HEX[] = "0123456789abcdef";
+            std::string out;
+            out.reserve(text.size());
+            for (const char c : text)
+            {
+                const auto byte = static_cast<unsigned char>(c);
+                switch (byte)
+                {
+                    case '\n': out += "\\n"; break;
+                    case '\r': out += "\\r"; break;
+                    case '\t': out += "\\t"; break;
+                    default:
+                        if (byte < 0x20U || byte == 0x7FU)
+                        {
+                            out += "\\x";
+                            out += HEX[byte >> 4U];
+                            out += HEX[byte & 0x0FU];
+                        }
+                        else
+                        {
+                            out += c;
+                        }
+                }
+            }
+            return out;
+        }
+
         std::string keyName(Cause cause, std::string_view itemErrorType)
         {
             std::string name = toString(cause);
@@ -130,7 +162,7 @@ namespace indexer_client::detail::logging
                     [consumer,
                      bucket,
                      key = keyName(interval.sampleCause, interval.sampleItemErrorType),
-                     reason = interval.sampleReason]()
+                     reason = escapedForLog(interval.sampleReason)]()
                     {
                         logDebug1(TAG,
                                   "Indexer client bucket '%s/%s' sample reason (%s): %s",
