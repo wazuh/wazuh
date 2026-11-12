@@ -254,7 +254,7 @@ Agent configuration profile (used with centralized configuration via `agent.conf
 Interval between agent keep-alive notifications to the manager.
 
 - **Default value:** `10`
-- **Allowed values:** Positive integer (seconds).
+- **Allowed values:** Non-negative integer (seconds, digits only). `0` means the default (`10`).
 - **Note:** This is not what decides when the agent is marked `disconnected`. The manager uses
   `<global><agents_disconnection_time>` (default `15m`) against the last keepalive it recorded, so
   `notify_time` only has to be comfortably below that figure — see

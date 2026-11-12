@@ -53,7 +53,7 @@ Time interval between security configuration assessment scans.
 Maximum events per second that the SCA module can generate.
 
 - **Default value:** `50`
-- **Allowed values:** Positive integer
+- **Allowed values:** Integer from `0` to `1000000`. `0` means the default (`50`). Any other value (negative, above `1000000`, or not a plain integer) is ignored with a warning and the previous value is kept
 - **Note:** Controls rate limiting for SCA events to prevent overwhelming the manager
 
 ### policies

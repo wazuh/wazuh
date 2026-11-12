@@ -80,9 +80,13 @@ Defines the key used to encrypt the communication between the nodes. This key mu
 > `<key>` is **required**: the schema rejects a `<cluster>` block without an
 > explicit key (`(1244): Invalid configuration at '/cluster': missing
 > mandatory option (does not satisfy 'required'): key [schema /properties/cluster].`), so the manager does not
-> start with one. There is no
-> hardcoded fallback key anymore. The installer always generates a random key;
-> when writing the block by hand, generate your own 32-character random value.
+> start with one. No daemon has a built-in default key: the packages and `install.sh` always
+> generate the configuration with a random key, and `install.sh` stops with an error rather than
+> install a configuration it could not generate. The `etc/wazuh-manager.conf` in the source tree is
+> never installed, but it carries the publicly known placeholder key `0123456789abcdef0123456789abcdef`,
+> and the Python framework reads it when run from a source checkout; replace that key before running
+> a cluster node from the checkout. When writing the block by hand, generate your own 32-character
+> random value.
 
 **Key generation:**
 ```bash
