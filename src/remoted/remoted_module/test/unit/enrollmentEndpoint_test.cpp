@@ -801,6 +801,7 @@ INSTANTIATE_TEST_SUITE_P(AuthdCodes,
                                            AuthdErrorCase {9008, 409},
                                            AuthdErrorCase {9012, 409},
                                            AuthdErrorCase {9013, 503},
+                                           AuthdErrorCase {9032, 503}, // id counter exhausted
                                            AuthdErrorCase {9015, 503},
                                            AuthdErrorCase {9016, 503},
                                            // The credential could not be journaled, so none was

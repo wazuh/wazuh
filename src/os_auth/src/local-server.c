@@ -63,7 +63,8 @@ typedef enum auth_local_err {
     EREENROLLSTALE,
     ETOKENSTOREFAILED,
     EREENROLLINPROGRESS,
-    EIDENTITYUNRECORDED
+    EIDENTITYUNRECORDED,
+    EIDEXHAUSTED
 } auth_local_err;
 
 
@@ -135,7 +136,10 @@ static const struct {
     // is not wrong and the caller is not at fault: this manager cannot record it right now --
     // no room in queue/authd, or the file is unwritable -- so remoted answers 503 and the agent
     // retries. Performing it anyway is what left agents holding credentials nothing else knew.
-    { 9031, "Identity transition could not be recorded" }
+    { 9031, "Identity transition could not be recorded" },
+    // The id counter is at INT_MAX, so no id is left to assign. Distinct from 9013, which is the
+    // operator's max_agents: ids are never reused, so this one does not clear by removing agents.
+    { 9032, "Agent ID space exhausted" }
 };
 
 // Dispatch local request. STATIC: the unit tests drive the token verbs and `add` through it.
@@ -171,6 +175,7 @@ static void local_log_refusal(auth_local_err ierror) {
         merror("Local request failed with error %d: %s.", code, message);
         break;
     case EAGLIM:
+    case EIDEXHAUSTED:
     case EDELETEBACKLOG:
         mwarn("Local request refused with error %d: %s.", code, message);
         break;
@@ -1086,6 +1091,11 @@ STATIC cJSON* local_add_ex(const char *id,
     if (index == OS_ADDAGENT_LIMIT_REACHED) {
         merror("Unable to add agent: %s. Agent limit (%u) reached.", name, config.max_agents);
         ierror = EAGLIM;
+        goto fail;
+    }
+    if (index == OS_ADDAGENT_ID_EXHAUSTED) {
+        merror("Unable to add agent: %s. The agent id counter is exhausted (%d).", name, keys.id_counter);
+        ierror = EIDEXHAUSTED;
         goto fail;
     }
     if (index < 0) {

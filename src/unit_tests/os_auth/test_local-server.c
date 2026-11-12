@@ -1483,6 +1483,27 @@ static void test_local_add_accepts_the_highest_insertable_id(void **state) {
     keys.id_counter = id_counter;
 }
 
+/* An exhausted id counter is not the operator's max_agents: it answers 9032, not 9013, and the log
+ * names the counter instead of "Agent limit (0)". */
+static void test_local_add_reports_an_exhausted_id_counter_as_9032(void **state) {
+    (void)state;
+    unsigned int keysize = keys.keysize;
+    int id_counter = keys.id_counter;
+    keys.id_counter = INT_MAX;
+    EXPECT_LOG_DEBUG2();
+    expect_string(__wrap__merror, formatted_msg,
+                  "Unable to add agent: full-agent. The agent id counter is exhausted (2147483647).");
+
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"full-agent\",\"ip\":\"any\"}}");
+    assert_int_equal(response_error(response), 9032);
+    assert_string_equal(cJSON_GetObjectItem(response, "message")->valuestring, "Agent ID space exhausted");
+    cJSON_Delete(response);
+    assert_int_equal(keys.keysize, keysize);
+    assert_int_equal(keys.id_counter, INT_MAX);
+
+    keys.id_counter = id_counter;
+}
+
 static void test_local_add_returns_and_queues_a_reenroll_secret(void **state) {
     (void)state;
     EXPECT_LOG_INFO();
@@ -2421,6 +2442,7 @@ int main(void) {
         cmocka_unit_test(test_reenroll_on_worker_forwards_kid_and_bearer),
         cmocka_unit_test(test_local_dispatch_unknown_function_is_9003),
         cmocka_unit_test(test_local_add_accepts_the_highest_insertable_id),
+        cmocka_unit_test(test_local_add_reports_an_exhausted_id_counter_as_9032),
     };
     int failed = cmocka_run_group_tests(tests, NULL, NULL);
     failed += cmocka_run_group_tests(token_tests, setup_token_env, teardown_token_env);
