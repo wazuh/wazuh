@@ -148,6 +148,17 @@ static void test_cef_header_does_not_fit(void **state) {
     comment[sizeof(comment) - 1] = '\0';
 
     send_alert(CEF_CSYSLOG, make_alert(comment, LOCATION, "9.9.9.9", 5555, "admin", "log"),
+               CEF_HEADER "|5|dvc=indexer2 cs1=" LOCATION " cs1Label=Location cat=" GROUP
+               " src=9.9.9.9 spt=5555 shost=9.9.9.9 suser=admin suser=admin msg=log");
+}
+
+static void test_cef_header_location_does_not_fit(void **state) {
+    char location[2001];
+
+    memset(location, 'a', sizeof(location) - 1);
+    location[sizeof(location) - 1] = '\0';
+
+    send_alert(CEF_CSYSLOG, make_alert(COMMENT, location, "9.9.9.9", 5555, "admin", "log"),
                CEF_HEADER "|5|dvc=indexer2 cat=" GROUP
                " src=9.9.9.9 spt=5555 shost=9.9.9.9 suser=admin suser=admin msg=log");
 }
@@ -170,6 +181,7 @@ int main() {
         cmocka_unit_test(test_cef_user),
         cmocka_unit_test(test_cef_header),
         cmocka_unit_test(test_cef_header_does_not_fit),
+        cmocka_unit_test(test_cef_header_location_does_not_fit),
         cmocka_unit_test(test_default_unescaped),
     };
 

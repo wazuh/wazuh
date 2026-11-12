@@ -159,7 +159,17 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config) {
                  al_data->rule,
                  comment,
                  (al_data->level > 10) ? 10 : al_data->level,
-                 hostname, location) >= OS_SIZE_2048) {
+                 hostname, location) >= OS_SIZE_2048 &&
+            snprintf(syslog_msg, OS_SIZE_2048,
+                     "<%u>%s CEF:0|%s|%s|%s|%u||%u|dvc=%s cs1=%s cs1Label=Location",
+                     syslog_config->priority,
+                     tstamp,
+                     __author,
+                     __ossec_name,
+                     __ossec_version,
+                     al_data->rule,
+                     (al_data->level > 10) ? 10 : al_data->level,
+                     hostname, location) >= OS_SIZE_2048) {
             /* Leave the values out rather than cut the header inside a field */
             snprintf(syslog_msg, OS_SIZE_2048,
                      "<%u>%s CEF:0|%s|%s|%s|%u||%u|dvc=%s",
