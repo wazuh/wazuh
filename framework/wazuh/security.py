@@ -9,13 +9,14 @@ from functools import lru_cache
 from api.authentication import get_security_conf
 from wazuh.core import common
 from wazuh.core.decorators import dapi_allower
-from wazuh.core.exception import WazuhError, WazuhResourceNotFound
+from wazuh.core.exception import WazuhError, WazuhPermissionError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.security import invalid_users_tokens, invalid_roles_tokens, invalid_run_as_tokens, revoke_tokens, \
     invalid_run_as_context_tokens, is_valid_rbac_policy, is_valid_security_rule, load_spec, sanitize_rbac_policy, \
     update_security_conf, REQUIRED_FIELDS, SORT_FIELDS, SORT_FIELDS_GET_USERS
 from wazuh.core.utils import process_array
-from wazuh.rbac.decorators import expose_resources, require_every_role_update, require_role_update
+from wazuh.rbac.decorators import expose_resources, require_every_role_update, require_role_action, \
+    require_role_update
 from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager
 from wazuh.rbac.orm import SecurityError, MAX_ID_RESERVED
 from wazuh.rbac.orm import UserRolesManager, RolesRulesManager, RulesManager
@@ -218,7 +219,7 @@ def _check_reserved_target(user_id: int, current_user: str = None, run_as: bool 
 
 
 def _check_role_escalation(user_id: int, current_user: str = None, run_as_roles: bool = False,
-                           static_roles: bool = False):
+                           static_roles: bool = False, run_as: bool = False):
     """Refuse an operation over a user that would put roles the caller cannot assign within its reach.
 
     Linking a role to a user needs 'security:update' over the role (`set_user_role`). Enabling the
@@ -242,6 +243,12 @@ def _check_role_escalation(user_id: int, current_user: str = None, run_as_roles:
     static_roles : bool
         Count the roles linked to the target, and every role when its run_as flag is already on. A
         caller modifying its own account is exempt: it already holds all of them.
+    run_as : bool
+        Whether the request was made with a run_as token. Such a caller is never exempt as the target's
+        own account: the token's `sub` is the shared run_as account it logged in through, not the end user,
+        whose roles are only those the authorization context resolved to. Exempting it would let anyone
+        mapped to a role with 'security:update' over that account reset its password and take it over,
+        with every role it reaches.
 
     Raises
     ------
@@ -254,7 +261,7 @@ def _check_role_escalation(user_id: int, current_user: str = None, run_as_roles:
         with AuthenticationManager() as auth_manager:
             target = auth_manager.get_user_id(user_id)
             caller = auth_manager.get_user(current_user) if current_user is not None else None
-        if not target or (caller and caller['id'] == user_id):
+        if not target or (caller and caller['id'] == user_id and not run_as):
             return
         roles.update(target['roles'])
         run_as_roles = run_as_roles or target['allow_run_as']
@@ -378,8 +385,9 @@ def update_user(user_id: str = None, password: str = None, current_user: str = N
     WazuhError(5011)
         If the target is a reserved user and the caller is not a reserved user logged in without run_as.
     WazuhPermissionError(4000)
-        If the target is not the caller and the caller lacks 'security:update' over one of the target's
-        roles, or, when its run_as flag is on, over every role, those not created yet included.
+        If the target is not the caller, or the request was made with a run_as token, and the caller lacks
+        'security:update' over one of the target's roles, or, when its run_as flag is on, over every role,
+        those not created yet included.
 
     Returns
     -------
@@ -391,7 +399,7 @@ def update_user(user_id: str = None, password: str = None, current_user: str = N
     if password is not None:
         validate_password(password)
         _check_reserved_target(int(user_id[0]), current_user, run_as)
-        _check_role_escalation(int(user_id[0]), current_user, static_roles=True)
+        _check_role_escalation(int(user_id[0]), current_user, static_roles=True, run_as=run_as)
 
     result = AffectedItemsWazuhResult(all_msg='User was successfully updated',
                                       none_msg='User could not be updated')
@@ -695,7 +703,7 @@ def remove_policies(policy_ids: list = None) -> AffectedItemsWazuhResult:
     Returns
     -------
     AffectedItemsWazuhResult
-        Result of operation.
+        Result of operation. A policy linked to a role the caller lacks 'security:delete' over fails with 4000.
     """
     result = AffectedItemsWazuhResult(none_msg='No policy was deleted',
                                       some_msg='Some policies were not deleted',
@@ -703,6 +711,15 @@ def remove_policies(policy_ids: list = None) -> AffectedItemsWazuhResult:
     with PoliciesManager() as pm:
         for p_id in policy_ids:
             policy = pm.get_policy_id(int(p_id))
+            # Deleting a policy unlinks it from every role it is on, and removing a deny widens what those
+            # roles grant. So it asks for what `remove_role_policy` asks to unlink it: 'security:delete'
+            # over each of those roles. Reserved policies are refused below (4008) whatever the caller holds.
+            if int(p_id) > MAX_ID_RESERVED and isinstance(policy, dict):
+                try:
+                    require_role_action('security:delete', policy['roles'])
+                except WazuhPermissionError as e:
+                    result.add_failed_item(id_=int(p_id), error=e)
+                    continue
             policy_delete = pm.delete_policy(int(p_id))
             if policy_delete == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=int(p_id), error=WazuhError(4008))
@@ -773,6 +790,8 @@ def update_policy(policy_id: str = None, name: str = None, policy: dict = None) 
     ------
     WazuhError(4001)
         If no name nor policy are provided.
+    WazuhPermissionError(4000)
+        If a new policy body is given and the caller lacks 'security:update' over any role the policy is linked to.
 
     Returns
     -------
@@ -789,6 +808,12 @@ def update_policy(policy_id: str = None, name: str = None, policy: dict = None) 
             result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4006))
             return result
     with PoliciesManager() as pm:
+        # A new body changes what every linked role grants, so it asks for what `set_role_policy` asks to
+        # link a policy to a role: 'security:update' over each of those roles. Otherwise update over a
+        # policy linked to one's own role is enough to grant oneself anything, administrator included.
+        current = pm.get_policy_id(int(policy_id[0]))
+        if policy is not None and isinstance(current, dict):
+            require_role_update(current['roles'])
         status = pm.update_policy(policy_id=policy_id[0], name=name, policy=policy)
         if status == SecurityError.ALREADY_EXIST:
             result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4013))

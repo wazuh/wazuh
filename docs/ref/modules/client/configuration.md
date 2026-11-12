@@ -545,11 +545,17 @@ and ignored, with a warning.
 
 ## Anti-Tampering Configuration (`<anti_tampering>`)
 
-Protects against unauthorized agent modifications and uninstallation.
+Protects the agent package against uninstallation.
 
-**Platform:** Linux/Unix only (not available on Windows or macOS)
+**Platform:** Linux agents installed from a DEB or RPM package: their uninstaller enforces it. Windows
+agents do not know the section, and a configuration holding it is invalid there.
 
-**Note:** To disable anti-tampering, remove or comment out the entire `<anti_tampering>` block. There is no disable option within the block.
+**Where to set it:** the agent's local `ossec.conf`, or the group's `agent.conf` inside an
+`<agent_config os="Linux">` block (see [Centralized configuration](../agent-management/centralized-configuration.md)).
+A value in the group's `agent.conf` wins over the local one. A commented-out block counts as absent.
+
+**To turn it off:** set `package_uninstallation` to `no`, or remove the block. The section has no other
+option: any other child, `<disabled>` included, makes the configuration invalid.
 
 ### package_uninstallation
 
@@ -557,7 +563,9 @@ Prevent agent package uninstallation.
 
 - **Default value:** `no`
 - **Allowed values:** `yes`, `no`
-- **Behavior:** When enabled, prevents `apt remove`, `yum remove`, etc.
+- **Behavior:** When `yes`, removing the package (`apt remove`, `yum remove`, ...) is refused unless it is
+  validated against the Server API with the `VALIDATION_HOST` and `VALIDATION_TOKEN` (or
+  `VALIDATION_LOGIN`) variables, from the environment or a root-owned `etc/uninstall_validation.env`.
 
 ---
 

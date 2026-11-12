@@ -13,6 +13,40 @@ from wazuh.rbac.utils import canonical_resource
 from wazuh.core.decorators import dapi_allower
 
 
+# What a policy resource may be when a token is built from it: `*`, a `type:attribute:value` resource, or a
+# combination of two joined by `&`. ASCII only: `\w` would also take non-ASCII letters and digits.
+RESOURCE_REGEX = \
+    r'^(\*)|' \
+    r'(([a-zA-Z0-9_.]+:[a-zA-Z0-9_.]+:[a-zA-Z0-9_.*/-]+\&)+' \
+    r'([a-zA-Z0-9_.]+:[a-zA-Z0-9_.]+:[a-zA-Z0-9_.*/-]+))|' \
+    r'([a-zA-Z0-9_.]+:[a-zA-Z0-9_.]+:[a-zA-Z0-9_.*/-]+)$'
+MAX_COMBINATION_LENGTH = 2
+
+
+def check_policy_resource(resource: str):
+    """Refuse a policy resource that a token could not be built from.
+
+    The one check of what a stored policy may hold: `process_policy` runs it on every policy of a role
+    when one of its holders presents a token, and the policy writes (`is_valid_rbac_policy`) run it
+    before storing a body. A body that passed the write and failed here would make every holder of the
+    linked roles fail authorization with 4500.
+
+    Parameters
+    ----------
+    resource : str
+        Resource of a policy, e.g. "agent:id:001" or "agent:group:default&agent:id:*".
+
+    Raises
+    ------
+    WazuhError(4500)
+        The resource does not match the resource syntax, or combines more than two resources.
+    """
+    if not isinstance(resource, str) or not re.match(RESOURCE_REGEX, resource):
+        raise WazuhError(4500)
+    if len(resource.split('&')) > MAX_COMBINATION_LENGTH:
+        raise WazuhError(4500, extra_remediation="The maximum length for permission combinations is two")
+
+
 class PreProcessor:
     def __init__(self):
         self.odict = dict()
@@ -80,20 +114,12 @@ class PreProcessor:
         WazuhError(4500)
             The specified resources are invalid.
         """
-        resource_regex = \
-            r'^(\*)|' \
-            r'(([a-zA-Z0-9_.]+:[a-zA-Z0-9_.]+:[a-zA-Z0-9_.*/-]+\&)+' \
-            r'([a-zA-Z0-9_.]+:[a-zA-Z0-9_.]+:[a-zA-Z0-9_.*/-]+))|' \
-            r'([a-zA-Z0-9_.]+:[a-zA-Z0-9_.]+:[a-zA-Z0-9_.*/-]+)$'
         for action in policy['actions']:
             if action not in self.odict.keys():
                 self.odict[action] = dict()
             for resource in policy['resources']:
-                if not re.match(resource_regex, resource):
-                    raise WazuhError(4500)
+                check_policy_resource(resource)
                 resource_type = PreProcessor.is_combination(resource)
-                if len(resource_type[1]) > 2:
-                    raise WazuhError(4500, extra_remediation="The maximum length for permission combinations is two")
                 # Canonical ids, as the decorator compares them: a policy on `agent:id:5` or `role:id:01`
                 # must reach agent 005 and role 1, and override a previous policy spelled differently
                 resource = [canonical_resource(r) for r in resource_type[1]] if resource != '*' else ['*:*:*']

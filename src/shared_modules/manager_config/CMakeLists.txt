@@ -40,6 +40,7 @@ target_include_directories(manager_config
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
           ${CMAKE_CURRENT_BINARY_DIR}/generated
+          ${SRC_FOLDER}/shared_modules/utils # managerConfDir.hpp
           ${SRC_FOLDER}/external/pugixml/src)
 
 # pugixml: imported target from src/external (server only, like this module); rapidjson: header-only INTERFACE target.
