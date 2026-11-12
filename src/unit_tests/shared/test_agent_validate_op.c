@@ -177,8 +177,10 @@ static void test_the_id_after_an_inserted_cap_is_one_agents_accept(void **state)
     (void) state;
     const char *key = "0030557a9fc4e90e33587da2c7ec11365b80a5caef14395e83a8cdf2173c61ff";
     char cap[12];
+    char expected[12];
 
     snprintf(cap, sizeof(cap), "%d", AGENT_INSERT_ID_MAX);
+    snprintf(expected, sizeof(expected), "%d", AGENT_INSERT_ID_MAX + 1);
     assert_true(OS_IsValidAgentInsertID(cap));
 
     expect_add_key_ip_check();
@@ -187,8 +189,8 @@ static void test_the_id_after_an_inserted_cap_is_one_agents_accept(void **state)
     will_return(__wrap_RAND_bytes, 1);
     int next = OS_AddNewAgent(&keys, NULL, "next", "any", NULL, 0);
     assert_true(capped >= 0 && next >= 0);
+    assert_string_equal(keys.keyentries[next]->id, expected);
     assert_true(OS_IsValidID(keys.keyentries[next]->id));
-    assert_true(99999999 - AGENT_INSERT_ID_MAX >= 90000000);
 }
 
 /* --- OS_CanonicalAgentInsertID ------------------------------------------------------------------ */
