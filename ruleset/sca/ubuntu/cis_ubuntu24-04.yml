@@ -8568,9 +8568,10 @@ checks:
         name:
           - "Exfiltration Over Unencrypted Non-C2 Protocol"
           - "Credentials In Files"
-    condition: none
+    condition: all
     rules:
-      - "c:sshd -T -> r:^Ciphers && r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc"
+      - 'c:sh -c "sshd -T 2>/dev/null || sshd -G" -> r:^Ciphers'
+      - 'not c:sh -c "sshd -T 2>/dev/null || sshd -G" -> r:^Ciphers && r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc'
 
   # 5.1.7 Ensure sshd ClientAliveInterval and ClientAliveCountMax are configured. (Automated)
   - id: 35646
@@ -8897,9 +8898,10 @@ checks:
         name:
           - "Exfiltration Over Unencrypted Non-C2 Protocol"
           - "Credentials In Files"
-    condition: none
+    condition: all
     rules:
-      - "c:sshd -T -> r:^kexalgorithms && r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1"
+      - 'c:sh -c "sshd -T 2>/dev/null || sshd -G" -> r:^kexalgorithms'
+      - 'not c:sh -c "sshd -T 2>/dev/null || sshd -G" -> r:^kexalgorithms && r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1'
 
   # 5.1.13 Ensure sshd LoginGraceTime is configured. (Automated)
   - id: 35652
@@ -9087,9 +9089,10 @@ checks:
         name:
           - "Exfiltration Over Unencrypted Non-C2 Protocol"
           - "Credentials In Files"
-    condition: none
+    condition: all
     rules:
-      - "c:sshd -T -> r:^MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1-96|umac-64@openssh\\.com|hmac-md5-etm@openssh\\.com|hmac-md5-96-etm@openssh\\.com|hmac-ripemd160-etm@openssh\\.com|hmac-sha1-96-etm@openssh\\.com|umac-64-etm@openssh\\.com|umac-128-etm@openssh\\.com"
+      - 'c:sh -c "sshd -T 2>/dev/null || sshd -G" -> r:^MACs'
+      - 'not c:sh -c "sshd -T 2>/dev/null || sshd -G" -> r:^MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1-96|umac-64@openssh\.com|hmac-md5-etm@openssh\.com|hmac-md5-96-etm@openssh\.com|hmac-ripemd160-etm@openssh\.com|hmac-sha1-96-etm@openssh\.com|umac-64-etm@openssh\.com|umac-128-etm@openssh\.com'
 
   # 5.1.16 Ensure sshd MaxAuthTries is configured. (Automated)
   - id: 35655
