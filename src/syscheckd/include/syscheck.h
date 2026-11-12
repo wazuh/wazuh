@@ -141,6 +141,7 @@ typedef struct diff_data
 {
     int file_size;
     int size_limit;
+    unsigned int lock_slot;
 
     char* compress_folder;
     char* compress_file;
@@ -736,7 +737,37 @@ char* fim_registry_value_diff(const char* key_name,
                               const char* value_data,
                               DWORD data_type,
                               const registry_t* configuration);
+#endif
 
+/**
+ * @brief Initializes the locks used by report_changes
+ */
+void fim_diff_init(void);
+
+/**
+ * @brief Result of running the diff/fc command
+ */
+typedef enum fim_diff_exec_rc {
+    FIM_DIFF_EXEC_SAME,     ///< The files are the same
+    FIM_DIFF_EXEC_DIFF,     ///< The output file holds the differences, possibly cut at the output limit
+    FIM_DIFF_EXEC_TIMEOUT,  ///< The command exceeded its time limit and was killed
+    FIM_DIFF_EXEC_MEMORY,   ///< The command exceeded its memory limit
+    FIM_DIFF_EXEC_FAILED,   ///< The command ran and failed
+    FIM_DIFF_EXEC_ERROR     ///< The command could not be run
+} fim_diff_exec_rc;
+
+/**
+ * @brief Compares two files with diff (fc on Windows) with bounded time, memory and output, without a shell
+ *
+ * @param old_file Previous content
+ * @param new_file Current content
+ * @param out_file File to create with the differences; it must not exist
+ *
+ * @return Result of the comparison
+ */
+fim_diff_exec_rc fim_diff_exec(const char *old_file, const char *new_file, const char *out_file);
+
+#ifdef WIN32
 /**
  * @brief Deletes the value diff folder and modifies diff_folder_size if disk_quota enabled
  *

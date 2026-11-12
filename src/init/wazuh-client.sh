@@ -617,8 +617,12 @@ stop_service()
 
             if ! wait_pid $pid
             then
-                echo "Process ${i} couldn't be terminated. It will be killed.";
-                kill -9 $pid
+                # Check the process again, not its file: a PID taken over by another program
+                # while waiting must not be killed.
+                if pid_runs_daemon $pid $i; then
+                    echo "Process ${i} couldn't be terminated. It will be killed.";
+                    kill -9 $pid
+                fi
             fi
         fi
 

@@ -1747,6 +1747,31 @@ static void test_fim_checker_not_scheduled_configuration_directory_error(void **
     fim_checker(path, &evt_data, NULL, NULL, NULL);
 }
 
+#ifdef TEST_WINAGENT
+static void test_fim_checker_recycle_bin(void **state) {
+    event_data_t scheduled_evt = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true };
+    event_data_t realtime_evt = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
+
+    // Discarded before the configuration lookup, so no lock or log call is expected.
+    fim_checker("c:\\$recycle.bin\\s-1-5-21\\$r123456.txt", &scheduled_evt, NULL, NULL, NULL);
+    fim_checker("c:\\$recycle.bin\\s-1-5-21\\$r123456.txt", &realtime_evt, NULL, NULL, NULL);
+}
+
+static void test_fim_checker_recycle_bin_prefix_folder(void **state) {
+    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true };
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'c:\\$recycle.bin2\\test.file'");
+
+    fim_checker("c:\\$recycle.bin2\\test.file", &evt_data, NULL, NULL, NULL);
+}
+#endif
+
 #ifndef TEST_WINAGENT
 static void test_fim_checker_over_max_recursion_level(void **state) {
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
@@ -4899,6 +4924,10 @@ int main(void) {
         /* fim_checker */
         cmocka_unit_test(test_fim_checker_scheduled_configuration_directory_error),
         cmocka_unit_test(test_fim_checker_not_scheduled_configuration_directory_error),
+#ifdef TEST_WINAGENT
+        cmocka_unit_test(test_fim_checker_recycle_bin),
+        cmocka_unit_test(test_fim_checker_recycle_bin_prefix_folder),
+#endif
         cmocka_unit_test(test_fim_checker_over_max_recursion_level),
         cmocka_unit_test(test_fim_checker_deleted_file),
         cmocka_unit_test_setup_teardown(test_fim_checker_deleted_file_enoent, setup_fim_entry, teardown_fim_entry),

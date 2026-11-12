@@ -815,6 +815,7 @@ void start_daemon()
     char diff_file_dir[PATH_MAX];
     char diff_registry_dir[PATH_MAX];
     char diff_local_dir[PATH_MAX];
+    char diff_tmp_dir[PATH_MAX];
 
 
     // The contents of the report_changes diff directory must be deleted whenever the agent is started.
@@ -832,6 +833,11 @@ void start_daemon()
     snprintf(diff_local_dir, PATH_MAX, "%s/local/", DIFF_DIR);
     if (cldir_ex(diff_local_dir) == -1 && errno != ENOENT) {
         merror("Unable to clear directory '%s': %s (%d)", diff_local_dir, strerror(errno), errno);
+    }
+    // Scratch folders left behind by an interrupted diff
+    snprintf(diff_tmp_dir, PATH_MAX, "%s/tmp/", DIFF_DIR);
+    if (cldir_ex(diff_tmp_dir) == -1 && errno != ENOENT) {
+        merror("Unable to clear directory '%s': %s (%d)", diff_tmp_dir, strerror(errno), errno);
     }
 
     if (syscheck.disabled) {

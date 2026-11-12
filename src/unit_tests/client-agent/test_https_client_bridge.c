@@ -3219,6 +3219,7 @@ static void test_on_remote_upgrade_ready_stage_dest_open_failure_counts_failed(v
     expect_string(__wrap_w_fopen_nofollow, filename, "agent.wpk");
     expect_string(__wrap_w_fopen_nofollow, mode, "wb");
     will_return(__wrap_w_fopen_nofollow, NULL);
+    will_return(__wrap_w_fopen_nofollow, 0);
     errno = EACCES; /* Not a symlink: the generic message applies. */
     expect_fclose(fsrc, 0);
     expect_string(__wrap__merror, formatted_msg,
@@ -3256,6 +3257,7 @@ static void test_on_remote_upgrade_ready_stage_symlink_rejected_counts_failed(vo
     expect_string(__wrap_w_fopen_nofollow, filename, "agent.wpk");
     expect_string(__wrap_w_fopen_nofollow, mode, "wb");
     will_return(__wrap_w_fopen_nofollow, NULL);
+    will_return(__wrap_w_fopen_nofollow, 0);
     errno = ELOOP;
     expect_fclose(fsrc, 0);
     expect_string(__wrap__merror, formatted_msg,
@@ -3291,6 +3293,7 @@ static void test_on_remote_upgrade_ready_stage_write_failure_counts_failed(void 
     expect_string(__wrap_w_fopen_nofollow, filename, "agent.wpk");
     expect_string(__wrap_w_fopen_nofollow, mode, "wb");
     will_return(__wrap_w_fopen_nofollow, fdst);
+    will_return(__wrap_w_fopen_nofollow, 0);
     expect_fread("some-wpk-bytes", 14);
     will_return(__wrap_fwrite, 0); /* Disk full / write error: short write. */
     expect_ferror(fsrc, 0);
@@ -3334,6 +3337,7 @@ static void test_on_remote_upgrade_ready_stage_close_failure_counts_failed(void 
     expect_string(__wrap_w_fopen_nofollow, filename, "agent.wpk");
     expect_string(__wrap_w_fopen_nofollow, mode, "wb");
     will_return(__wrap_w_fopen_nofollow, fdst);
+    will_return(__wrap_w_fopen_nofollow, 0);
     expect_fread("", 0); /* EOF immediately: the copy loop itself sees nothing wrong. */
     expect_ferror(fsrc, 0);
     expect_fclose(fsrc, 0);
