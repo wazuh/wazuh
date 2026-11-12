@@ -5918,7 +5918,11 @@ end:
 }
 
 #ifdef WIN32
-DWORD FileSizeWin(const char * file) {
+int64_t w_get_file_size_from_info(const BY_HANDLE_FILE_INFORMATION * info) {
+    return (int64_t)(((uint64_t)info->nFileSizeHigh << 32) | info->nFileSizeLow);
+}
+
+int64_t FileSizeWin(const char * file) {
     HANDLE h1;
     BY_HANDLE_FILE_INFORMATION lpFileInfo;
 
@@ -5932,7 +5936,7 @@ DWORD FileSizeWin(const char * file) {
         mdebug2(FILE_ERROR, file);
     } else {
         CloseHandle(h1);
-        return lpFileInfo.nFileSizeHigh + lpFileInfo.nFileSizeLow;
+        return w_get_file_size_from_info(&lpFileInfo);
     }
 
     return -1;
@@ -5942,7 +5946,7 @@ float DirSize(const char *path) {
     WIN32_FIND_DATAW fdFile;
     HANDLE hFind = NULL;
     float folder_size = 0.0;
-    float file_size = 0.0;
+    int64_t file_size = 0;
 
     wchar_t *wPathInput = auto_to_wide(path);
     if (!wPathInput) {

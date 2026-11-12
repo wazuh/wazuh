@@ -813,7 +813,15 @@ void w_ch_exec_dir();
  * @param file Path of the file.
  * @return File size or -1 on error.
  */
-DWORD FileSizeWin(const char * file);
+int64_t FileSizeWin(const char * file);
+
+/**
+ * @brief Get the size of a file from its handle information. (Windows)
+ *
+ * @param info File information returned by GetFileInformationByHandle.
+ * @return File size, combining the high and low parts.
+ */
+int64_t w_get_file_size_from_info(const BY_HANDLE_FILE_INFORMATION * info);
 
 /**
  * @brief Open a file
