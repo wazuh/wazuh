@@ -1475,7 +1475,11 @@ acquires again.
 
 `Pit` is copyable and `Pit`, its copies and every `PitSession` share one internal state: the current `pit_id`, `keepAlive`, the
 `generation` (a process-wide counter, `Pit::generation()`), the expired flag, the time of the last request, the `QueryOptions` of `pit()` and
-the indices. `cursor()`, `next()` and `search()` are safe from different threads (E9 pages up to 32 slices at once). The state holds the
+the indices. `cursor()`, `next()` and `search()` are safe from different threads (E9 pages up to 32 slices at once, one cursor each).
+**One `next()` at a time per cursor**: a `PitSession` and its copies are one sequence of pages, each continuing from the previous page's
+`search_after`, so a `next()` called while another one is in progress on the same cursor fails at once with `InvalidState` (`another
+next() is in progress on this cursor`) and sends nothing; it does not wait for the other page, which could outlast its `Deadline`.
+Different cursors never wait on each other. The state holds the
 `Client`, so **the consumer name stays reserved while any `Pit` or `PitSession` is alive**: a new `RuntimeRef::client` with that name is
 `InvalidArgument` (`already has a live client`). A default-constructed `Pit` or `PitSession` answers `InvalidState` on `cursor()`/`next()`/`search()`, never a crash.
 
@@ -1587,7 +1591,7 @@ They are for the tests; E5 publishes `pit.open`, `pit.delete.pending`, `pit.dele
 |---|---|
 | Called from a runtime thread | `Reentrancy` |
 | Invalid index, `keepAlive == 0`, invalid `retry`/`pageDeadline`, invalid cursor or `slice` | `InvalidArgument` |
-| A default-constructed `Pit` or `PitSession` | `InvalidState` |
+| A default-constructed `Pit` or `PitSession`; a `next()` while another is in progress on the same cursor | `InvalidState` |
 | No free slot (`max_open_pits`, reservations included) | `QueueFull` |
 | Missing index on creation (`index_not_found_exception`) | `NotFound` |
 | 2xx without a string `pit_id`; unparsable 2xx; response over the cap | `ItemPermanent` |

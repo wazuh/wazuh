@@ -116,6 +116,56 @@ TEST_F(PitTest, Pit429RetriesSamePage)
     EXPECT_EQ(parsed(deletes[0]), (nlohmann::json {{"pit_id", "pit-1"}}));
 }
 
+// One next() at a time per cursor: while a page of a cursor is held by the fake, a next() on a copy of that cursor
+// fails at once with InvalidState and sends nothing, while another cursor of the same Pit is served; the held page then
+// ends Ok and the cursor goes on. Mutant: the overlapping call waits for the mutex (it blocks until the held page
+// ends).
+TEST_F(PitTest, OverlappingNextOnOneCursorRefused)
+{
+    auto pits = std::make_shared<PitResponder>(4);
+    pits->intercept(
+        [](const PitRequestView& request, Rule& reply)
+        {
+            if (request.call == PitCall::Search && request.ordinal == 1)
+            {
+                reply.hold = true;
+            }
+            return false;
+        });
+    const auto node = pitFake(pits);
+    ASSERT_NO_FATAL_FAILURE(start({node->baseUrl()}));
+    auto owner = client();
+    auto created = owner->query()->pit({"idx"}, keepAlive(60s), fastOptions(), in(5s));
+    ASSERT_TRUE(created.ok()) << ic::toString(created.cause) << ": " << created.reason;
+    auto cursor = created.value.cursor(cursorQuery(2));
+    auto copy = cursor; // The same cursor.
+
+    auto first = std::make_shared<ic::Outcome<ic::PitPage>>();
+    {
+        component::AsyncCall call([cursor, first]() mutable { *first = cursor.next(in(10s)); });
+        ASSERT_TRUE(node->waitHeld(1, scaled(5000ms)));
+
+        const auto called = now();
+        auto overlapping = copy.next(in(10s));
+        EXPECT_LT(since(called), scaled(1000ms)) << "the overlapping next() waited for the other page";
+        EXPECT_EQ(overlapping.cause, ic::Cause::InvalidState) << overlapping.reason;
+        EXPECT_EQ(overlapping.reason, "another next() is in progress on this cursor");
+        EXPECT_EQ(pitSearches(*node).size(), 1u) << "the refused next() sent a request";
+
+        auto other = created.value.cursor(cursorQuery(2));
+        auto otherPage = other.next(in(5s));
+        EXPECT_TRUE(otherPage.ok()) << "another cursor waited: " << otherPage.reason;
+
+        node->releaseHeld();
+        ASSERT_TRUE(call.wait(scaled(5000ms)));
+    }
+    ASSERT_TRUE(first->ok()) << ic::toString(first->cause) << ": " << first->reason;
+    EXPECT_EQ(numbers(first->value), (std::vector<std::int64_t> {1, 2}));
+    auto second = copy.next(in(5s));
+    ASSERT_TRUE(second.ok()) << second.reason;
+    EXPECT_EQ(numbers(second.value), (std::vector<std::int64_t> {3, 4})) << "the cursor did not go on";
+}
+
 // T7b: two cursors (slice 0/2 and 1/2) on different threads, opened and closed at different times: every request
 // carries the same id, the union of their hits is the index without duplicates, one creation, and the one delete
 // comes only after the last handle (the second cursor) goes. Mutant: delete when a cursor is destroyed.
