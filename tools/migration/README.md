@@ -101,7 +101,7 @@ or keep the 4.x passwords and give `check` the 4.x one explicitly.
 
 | Data | How |
 |---|---|
-| Agents: id, name, address and key | `POST /agents/insert` per agent. The manager writes `client.keys` and the registry row itself |
+| Agents: id, name, address and key | `POST /agents/insert` per agent, for ids from 1 to 9999999. `export` and `import` warn about agents above that, before writing anything. The manager writes `client.keys` and the registry row itself |
 | Groups | `POST /groups` per custom group. `default` is the target's own and is never recreated |
 | Each group's `agent.conf` | `PUT /groups/{group}/configuration` |
 | The `default` group's `agent.conf`, when the 4.x one sets anything | Appended after the 5.0 one with `PUT /groups/default/configuration`, so both apply. A second import finds it there and leaves the file alone |
@@ -110,11 +110,15 @@ or keep the 4.x passwords and give `check` the 4.x one explicitly.
 | Enrollment password | file copy, `--with-password` at both ends |
 | API users, roles and policies | file copy, `--with-rbac` at both ends |
 
-**What it does not carry.** The registration date: `POST /agents/insert` does not accept one, so a
-migrated agent's `dateAdd` is the moment it was inserted. The agent's recorded version and operating
-system are not carried either, but those the manager refreshes from the agent's first keepalive.
-Agent labels and the 4.x `info` table were removed in 5.0. Rules, decoders and CDB lists are their
-own migration; see the guides for each.
+**What it does not carry.** Agents with an id above `9999999`: a 5.0.1 or later manager refuses to
+insert them (`400`), so you [re-enroll
+them](../../docs/guide/migration/manager-4x-to-5x.md#if-you-re-enroll-instead) and they get a new
+id. `check` does not count them as missing, nor their re-enrollment under the same name when it is
+in the groups the bundle lists for them. The registration date: `POST /agents/insert` does not
+accept one, so a migrated agent's `dateAdd` is the moment it was inserted. The agent's recorded
+version and operating system are not carried either, but those the manager refreshes from the
+agent's first keepalive. Agent labels and the 4.x `info` table were removed in 5.0. Rules, decoders
+and CDB lists are their own migration; see the guides for each.
 
 **SCA policy files** are carried when the group's `agent.conf` loads them: a `<policy>` under
 `<sca>` whose path is the agent's shared directory and the file name (`etc/shared/<file>` on Linux
@@ -174,7 +178,7 @@ group holds the 4.x settings the bundle carried; every carried SCA policy is in 
 | Code | Meaning |
 |---|---|
 | `0` | Done, or `check` found no problems |
-| `1` | Something was refused by the manager, or `check` found problems |
+| `1` | Something was refused by the manager, or `check` found problems. Against a 5.0.1 or later manager, a bundle with agents above `9999999` ends `import` with `1` |
 | `2` | Refused before doing anything, with the reason on standard error |
 
 ## Tests
