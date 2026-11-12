@@ -12,6 +12,7 @@
 #define _INVSYNC_ENDPOINTS_CONFIG_ENDPOINT_HPP
 
 #include "common/clusterIdentity.hpp"
+#include "indexer/agentDeleteSweeper.hpp"
 #include "indexer_client/client.hpp"
 #include <uds_http_server/IUdsHttpServer.hpp>
 
@@ -128,10 +129,15 @@ namespace invsync::endpoints::config
      *                registration) rather than by weak_ptr: unlike the client, there is no
      *                background object with a teardown ordering to protect -- just a string whose
      *                lifetime the closure can own outright.
+     * @param sweeper The post-deletion sweeper, held WEAKLY like the client. Once a write is admitted the
+     *                handler calls its forget() for the agent: an agent enrolled again with the id of one
+     *                just deleted must not lose this document to that deletion's sweep. An expired
+     *                pointer skips the call.
      */
     wazuh::uds_http::RouteHandler makeHandler(std::weak_ptr<indexer_client::IClient> client,
                                               std::weak_ptr<indexer_client::IWriter> writer,
-                                              invsync::common::ClusterIdentity cluster);
+                                              invsync::common::ClusterIdentity cluster,
+                                              std::weak_ptr<invsync::indexer::AgentDeleteSweeper> sweeper);
 
 } // namespace invsync::endpoints::config
 

@@ -15,6 +15,8 @@
 
 #include <gtest/gtest.h>
 
+#include <chrono>
+
 #include <algorithm>
 #include <cstddef>
 #include <json.hpp>
@@ -75,6 +77,11 @@ namespace
         std::shared_ptr<invsync::test::FakeIndexerClient> client {
             std::make_shared<invsync::test::FakeIndexerClient>(events)};
         std::shared_ptr<invsync::test::FakeWriter> writer {events->m_agentStateWriter};
+        /// A post-deletion sweeper that never runs a pass (no query, a one-hour window): what the handler withdraws
+        /// from it shows in its counters once stop() drops the rest.
+        std::shared_ptr<invsync::indexer::AgentDeleteSweeper> sweeper {
+            std::make_shared<invsync::indexer::AgentDeleteSweeper>(
+                nullptr, std::chrono::hours {1}, std::chrono::seconds {1}, nullptr)};
 
         explicit Rig(bool usable = true)
         {
@@ -101,7 +108,8 @@ namespace
                      const std::shared_ptr<Rig>& rig,
                      invsync::common::ClusterIdentity cluster)
     {
-        auto handler = invsync::endpoints::config::makeHandler(rig->client, rig->writer, std::move(cluster));
+        auto handler =
+            invsync::endpoints::config::makeHandler(rig->client, rig->writer, std::move(cluster), rig->sweeper);
         auto responder = std::make_shared<CapturingResponder>();
         handler(request, responder);
         EXPECT_EQ(1, responder->sendCount) << "the transport's exactly-once contract requires one send";
@@ -425,7 +433,8 @@ TEST(ConfigEndpointTest, ANonCanonicalAgentIdHeaderIsRejected)
 TEST(ConfigEndpointTest, NullRequestIsToleratedAndStillAnswered)
 {
     auto rig = std::make_shared<Rig>();
-    auto handler = invsync::endpoints::config::makeHandler(rig->client, rig->writer, testClusterIdentity());
+    auto handler =
+        invsync::endpoints::config::makeHandler(rig->client, rig->writer, testClusterIdentity(), rig->sweeper);
     auto responder = std::make_shared<CapturingResponder>();
 
     handler(nullptr, responder);
@@ -439,7 +448,8 @@ TEST(ConfigEndpointTest, NullRequestIsToleratedAndStillAnswered)
 TEST(ConfigEndpointTest, HandlerDoesNotRetainTheRequest)
 {
     auto rig = std::make_shared<Rig>();
-    auto handler = invsync::endpoints::config::makeHandler(rig->client, rig->writer, testClusterIdentity());
+    auto handler =
+        invsync::endpoints::config::makeHandler(rig->client, rig->writer, testClusterIdentity(), rig->sweeper);
     auto responder = std::make_shared<CapturingResponder>();
 
     auto request = makeRequest(R"({"modules":{"fim":{}}})", "001");
@@ -510,7 +520,7 @@ TEST(ConfigEndpointTest, ClientGoneIs503)
     {
         auto rig = std::make_shared<Rig>();
         auto handler = invsync::endpoints::config::makeHandler(
-            rig->client, std::shared_ptr<indexer_client::IWriter> {}, testClusterIdentity());
+            rig->client, std::shared_ptr<indexer_client::IWriter> {}, testClusterIdentity(), rig->sweeper);
         auto responder = std::make_shared<CapturingResponder>();
         handler(makeRequest(R"({"modules":{"fim":{}}})", "001"), responder);
         ASSERT_TRUE(responder->captured.has_value());
@@ -520,7 +530,8 @@ TEST(ConfigEndpointTest, ClientGoneIs503)
 
     {
         auto rig = std::make_shared<Rig>();
-        auto handler = invsync::endpoints::config::makeHandler(rig->client, rig->writer, testClusterIdentity());
+        auto handler =
+            invsync::endpoints::config::makeHandler(rig->client, rig->writer, testClusterIdentity(), rig->sweeper);
         auto responder = std::make_shared<CapturingResponder>();
         rig->client.reset(); // the facade's phase-2 teardown, from the handler's point of view
         handler(makeRequest(R"({"modules":{"fim":{}}})", "001"), responder);
@@ -564,7 +575,8 @@ TEST(ConfigEndpointTest, HandlerDoesNotHoldTheClientOrTheWriterAliveAfterReturni
     std::weak_ptr<invsync::test::FakeIndexerClient> clientObserver {rig->client};
     std::weak_ptr<invsync::test::FakeWriter> writerObserver {rig->writer};
 
-    auto handler = invsync::endpoints::config::makeHandler(rig->client, rig->writer, testClusterIdentity());
+    auto handler =
+        invsync::endpoints::config::makeHandler(rig->client, rig->writer, testClusterIdentity(), rig->sweeper);
     auto responder = std::make_shared<CapturingResponder>();
     handler(makeRequest(R"({"modules":{"fim":{}}})", "001"), responder);
     ASSERT_EQ(200, responder->captured->status) << "the handler must have used the client and the writer";
@@ -660,4 +672,49 @@ TEST(ConfigEndpointTest, AnEmptyClusterIdentityIsStampedAsEmptyStringNotOmitted)
     const auto document = soleIndexedDocument(*rig);
     ASSERT_TRUE(document.contains("wazuh"));
     EXPECT_EQ("", document["/wazuh/cluster/name"_json_pointer].get<std::string>());
+}
+
+/**
+ * An agent enrolled again with the id of one just deleted: its first accepted report withdraws that id from the
+ * deletion's pending sweep, which would otherwise delete the new agent's document by `_id` a window or two later. Only
+ * that id: another agent's pending sweep stays.
+ */
+TEST(ConfigEndpointTest, AcceptedWriteWithdrawsTheAgentFromThePendingSweep)
+{
+    auto rig = std::make_shared<Rig>();
+    rig->sweeper->note("001");
+    rig->sweeper->note("002");
+
+    const auto response = run(makeRequest(R"({"modules":{"fim":{}}})", "001"), rig);
+    ASSERT_EQ(200, response.status);
+
+    rig->sweeper->stop();
+    const auto stats = rig->sweeper->stats();
+    EXPECT_EQ(1U, stats.forgotten) << "the reporting agent's sweep is withdrawn";
+    EXPECT_EQ(1U, stats.dropped) << "the other agent's sweep was still pending at stop()";
+}
+
+/// A refused write stores nothing, so the pending sweep stays: the agent retries and the accepted retry withdraws it.
+TEST(ConfigEndpointTest, RefusedWriteKeepsThePendingSweep)
+{
+    auto rig = std::make_shared<Rig>();
+    rig->writer->refuseWith(indexer_client::Cause::QueueFull);
+    rig->sweeper->note("001");
+
+    const auto response = run(makeRequest(R"({"modules":{"fim":{}}})", "001"), rig);
+    ASSERT_EQ(503, response.status);
+
+    rig->sweeper->stop();
+    EXPECT_EQ(0U, rig->sweeper->stats().forgotten);
+    EXPECT_EQ(1U, rig->sweeper->stats().dropped);
+}
+
+/// Without a sweeper (the facade's slot already reset) the write is still accepted.
+TEST(ConfigEndpointTest, ExpiredSweeperDoesNotFailTheWrite)
+{
+    auto rig = std::make_shared<Rig>();
+    rig->sweeper.reset();
+
+    EXPECT_EQ(200, run(makeRequest(R"({"modules":{"fim":{}}})", "001"), rig).status);
+    EXPECT_EQ(1U, rig->indexed().size());
 }

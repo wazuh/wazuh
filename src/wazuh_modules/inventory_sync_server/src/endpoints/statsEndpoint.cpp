@@ -99,11 +99,14 @@ namespace invsync::endpoints::stats
 
     wazuh::uds_http::RouteHandler makeHandler(std::weak_ptr<indexer_client::IClient> client,
                                               std::weak_ptr<indexer_client::IWriter> writer,
-                                              invsync::common::ClusterIdentity cluster)
+                                              invsync::common::ClusterIdentity cluster,
+                                              std::weak_ptr<invsync::indexer::AgentDeleteSweeper> sweeper)
     {
-        return [client = std::move(client), writer = std::move(writer), cluster = std::move(cluster)](
-                   std::shared_ptr<const wazuh::uds_http::HttpRequest> request,
-                   std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
+        return [client = std::move(client),
+                writer = std::move(writer),
+                cluster = std::move(cluster),
+                sweeper = std::move(sweeper)](std::shared_ptr<const wazuh::uds_http::HttpRequest> request,
+                                              std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
         {
             // Throttled and function-local: how often these fire is driven by how often agents report,
             // so one line per request would be a log-amplification vector against wazuh-manager.log.
@@ -272,6 +275,14 @@ namespace invsync::endpoints::stats
                 }
                 responder->send(serviceUnavailable());
                 return;
+            }
+
+            // The id may belong to an agent deleted moments ago and enrolled again (an explicit id is reusable as
+            // soon as the deletion answered). This write is the new agent's -- the old key is revoked -- so the
+            // deletion's pending sweep must not delete the document it is about to replace.
+            if (const auto pendingSweep = sweeper.lock())
+            {
+                pendingSweep->forget(agentIdIt->second);
             }
 
             if (const auto decision = indexedThrottle.record())

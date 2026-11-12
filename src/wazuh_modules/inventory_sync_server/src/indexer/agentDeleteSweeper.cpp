@@ -63,6 +63,39 @@ namespace invsync::indexer
             return;
         }
         m_pending.push_back(Pending {agentId, Clock::now(), false});
+        updateTrackedLocked();
+    }
+
+    void AgentDeleteSweeper::forget(const std::string& agentId)
+    {
+        // Every /config and /stats write calls this: nothing pending (the usual case) costs no lock.
+        if (m_tracked.load(std::memory_order_acquire) == 0)
+        {
+            return;
+        }
+
+        std::lock_guard lock {m_mutex};
+        const auto before = m_pending.size();
+        m_pending.erase(std::remove_if(m_pending.begin(),
+                                       m_pending.end(),
+                                       [&agentId](const Pending& pending) { return pending.agentId == agentId; }),
+                        m_pending.end());
+        bool withdrew {m_pending.size() != before};
+        // The pass in progress reads this before each chunk it has not sent yet, and does not requeue the id.
+        if (m_inPass.count(agentId) != 0 && m_forgottenInPass.insert(agentId).second)
+        {
+            withdrew = true;
+        }
+        if (withdrew)
+        {
+            ++m_stats.forgotten;
+            updateTrackedLocked();
+        }
+    }
+
+    void AgentDeleteSweeper::updateTrackedLocked()
+    {
+        m_tracked.store(m_pending.size() + m_inPass.size(), std::memory_order_release);
     }
 
     void AgentDeleteSweeper::stop()
@@ -81,6 +114,7 @@ namespace invsync::indexer
         std::lock_guard lock {m_mutex};
         m_stats.dropped += m_pending.size();
         m_pending.clear();
+        updateTrackedLocked();
     }
 
     AgentDeleteSweeper::Stats AgentDeleteSweeper::stats() const
@@ -128,6 +162,11 @@ namespace invsync::indexer
                 continue; // Nothing due: no delete-by-query, not a run.
             }
             ++m_stats.runs;
+            for (const auto& pending : due)
+            {
+                m_inPass.insert(pending.agentId);
+            }
+            updateTrackedLocked();
 
             // The I/O runs without the lock, so note() never waits on the indexer.
             lock.unlock();
@@ -135,6 +174,7 @@ namespace invsync::indexer
             std::uint64_t residual {0};
             std::uint64_t failures {0};
             std::unordered_set<std::size_t> failed; // Positions in `due` of the ids of a failed chunk, any index.
+            std::vector<bool> withdrawn(due.size(), false); // forget() reached it before one of its chunks was sent.
             bool interrupted {false};
 
             for (const auto& index : invsync::sync::AGENT_DELETION_SCOPE_BY_ID)
@@ -151,9 +191,26 @@ namespace invsync::indexer
 
                     const auto last = std::min(due.size(), first + MAX_IDS_PER_QUERY);
                     auto ids = nlohmann::json::array();
-                    for (auto i = first; i < last; ++i)
                     {
-                        ids.push_back(due[i].agentId);
+                        // An id forget() withdrew belongs to an agent that reported again: its documents are the
+                        // new agent's. Checked before EACH chunk, so a withdrawal between the two indices still
+                        // spares the second one.
+                        std::lock_guard withdrawals {m_mutex};
+                        for (auto i = first; i < last; ++i)
+                        {
+                            if (!withdrawn[i] && m_forgottenInPass.count(due[i].agentId) != 0)
+                            {
+                                withdrawn[i] = true;
+                            }
+                            if (!withdrawn[i])
+                            {
+                                ids.push_back(due[i].agentId);
+                            }
+                        }
+                    }
+                    if (ids.empty())
+                    {
+                        continue; // Every id of the chunk was withdrawn: nothing to send.
                     }
                     nlohmann::json body;
                     body["query"]["terms"]["_id"] = std::move(ids);
@@ -232,6 +289,11 @@ namespace invsync::indexer
             m_stats.failures += failures;
             for (std::size_t i = 0; i < due.size(); ++i)
             {
+                if (withdrawn[i] || m_forgottenInPass.count(due[i].agentId) != 0)
+                {
+                    // Withdrawn during the pass (before a chunk or after the last one): never retried.
+                    continue;
+                }
                 if (failed.count(i) != 0)
                 {
                     // An id counts once even if its chunks failed in both indices.
@@ -251,6 +313,9 @@ namespace invsync::indexer
                     m_pending.push_back(std::move(due[i]));
                 }
             }
+            m_inPass.clear();
+            m_forgottenInPass.clear();
+            updateTrackedLocked();
         }
     }
 

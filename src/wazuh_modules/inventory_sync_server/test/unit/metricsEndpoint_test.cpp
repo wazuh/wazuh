@@ -348,7 +348,7 @@ TEST(MetricsEndpointTest, PublishesBothBuckets)
 }
 
 /**
- * The post-deletion sweeper's four counters are published by pull under their frozen names, once each, after a
+ * The post-deletion sweeper's five counters are published by pull under their frozen names, once each, after a
  * deletion and across a stop + start (the sweeper is rebuilt; the registrations are not).
  */
 TEST(MetricsEndpointTest, PublishesSweep)
@@ -375,11 +375,13 @@ TEST(MetricsEndpointTest, PublishesSweep)
     const std::vector<std::string> names {invsync::metrics::AGENT_DELETE_SWEEP_RUNS,
                                           invsync::metrics::AGENT_DELETE_SWEEP_FAILURES,
                                           invsync::metrics::AGENT_DELETE_SWEEP_RESIDUAL,
-                                          invsync::metrics::AGENT_DELETE_SWEEP_DROPPED};
+                                          invsync::metrics::AGENT_DELETE_SWEEP_DROPPED,
+                                          invsync::metrics::AGENT_DELETE_SWEEP_FORGOTTEN};
     EXPECT_EQ(std::vector<std::string>({"sync.agent_delete.sweep.runs",
                                         "sync.agent_delete.sweep.failures",
                                         "sync.agent_delete.sweep.residual",
-                                        "sync.agent_delete.sweep.dropped"}),
+                                        "sync.agent_delete.sweep.dropped",
+                                        "sync.agent_delete.sweep.forgotten"}),
               names)
         << "the names are frozen";
 
@@ -406,6 +408,48 @@ TEST(MetricsEndpointTest, PublishesSweep)
     {
         EXPECT_EQ(1U, reading(fresh, name).entries) << name << " must be registered once across a restart";
     }
+}
+
+/**
+ * The /stats route is wired to the sweeper: a report accepted for an agent whose deletion just completed withdraws it
+ * from the pending sweep, and the withdrawal shows in `sync.agent_delete.sweep.forgotten`. A report of an agent with no
+ * pending sweep withdraws nothing.
+ */
+TEST(MetricsEndpointTest, ReportOfDeletedIdWithdrawsItsSweep)
+{
+    invsync::test::RealIndexer real;
+    real.startRuntime();
+    ASSERT_TRUE(real.runtimeStarted) << real.startError;
+    const indexer_client::RuntimeRef ref = real.ref;
+
+    struct Cleanup
+    {
+        ~Cleanup()
+        {
+            inventory_sync_server_stop();
+            invsync::test::resetIndexerConnectorFactoriesToProduction();
+        }
+    } cleanup;
+
+    LogRecorder::clear();
+    invsync::test::installFakeIndexersOverRealClient();
+    const auto socketPath = wazuh::uds_http::test::uniqueSocketPath("sweepforget");
+    const auto config = moduleConfig(socketPath, &ref);
+
+    inventory_sync_server_start(invsync::test::testLogCallback, &config);
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
+    ASSERT_TRUE(postASession(socketPath));
+
+    EXPECT_EQ(200, postStats(socketPath)); // Agent 001, nothing pending yet.
+    EXPECT_EQ(0, reading(scrape(socketPath), invsync::metrics::AGENT_DELETE_SWEEP_FORGOTTEN).value);
+
+    ASSERT_EQ(200, deleteAgent(socketPath, "1")); // Noted as "001", swept no sooner than a window later.
+    EXPECT_EQ(200, postStats(socketPath));        // The same id reports again: the new agent's document.
+
+    const auto document = scrape(socketPath);
+    ASSERT_TRUE(document.is_object());
+    EXPECT_EQ(1, reading(document, invsync::metrics::AGENT_DELETE_SWEEP_FORGOTTEN).value);
+    EXPECT_EQ(0, reading(document, invsync::metrics::AGENT_DELETE_SWEEP_RUNS).value);
 }
 
 namespace
