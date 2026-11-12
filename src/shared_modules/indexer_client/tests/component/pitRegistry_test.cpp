@@ -90,6 +90,63 @@ TEST_F(PitTest, LostCreateReserves)
     EXPECT_EQ(q::pitStats().open, 2u);
 }
 
+// maxOpenPits = 1. A creation answered 2xx that the library refuses without a usable pit_id means the indexer created a
+// PIT nobody can address: (1) a body over the response cap (max_response_bytes / 8), (2) an unparsable body. Each fails
+// the call ItemPermanent and keeps its slot reserved until its keepAlive, so the next pit() is QueueFull without a
+// request; once it lapsed a pit() gets in. Mutant: the refused 2xx releases its slot (an orphan outside the cap).
+TEST_F(PitTest, RefusedCreate2xxReserves)
+{
+    constexpr std::size_t MAX_RESPONSE = 8000; // A query's 2xx may hold 1000 bytes.
+    auto pits = std::make_shared<PitResponder>(10);
+    pits->intercept(
+        [](const PitRequestView& request, Rule& reply)
+        {
+            if (request.call != PitCall::Create || (request.ordinal != 1 && request.ordinal != 3))
+            {
+                return false;
+            }
+            reply.status = 200;
+            reply.body = request.ordinal == 1
+                             ? nlohmann::json {{"pit_id", "pit-big"},
+                                               {"_shards", {{"total", 1}, {"successful", 1}, {"failed", 0}}},
+                                               {"pad", std::string(2000, 'x')}}
+                                   .dump()
+                             : std::string(R"({"pit_id":"pit-cut)");
+            return true;
+        });
+    const auto node = pitFake(pits);
+    ASSERT_NO_FATAL_FAILURE(
+        start({node->baseUrl()}, {{"max_open_pits", "1"}, {"max_response_bytes", std::to_string(MAX_RESPONSE)}}));
+    auto owner = client();
+    auto query = owner->query();
+    const auto span = scaled(1500ms);
+
+    for (const auto* what : {"over the response cap", "unparsable"})
+    {
+        ASSERT_TRUE(
+            whenStats([](const q::PitStats& s) { return s.open == 0 && s.deletesPending == 0; }, scaled(5000ms)))
+            << what << ": the previous PIT was not deleted";
+        const auto creates = pits->requests(PitCall::Create);
+        const auto called = now();
+        auto refused = query->pit({"idx"}, keepAlive(span), fastOptions(), in(5s));
+        ASSERT_FALSE(refused.ok()) << what;
+        EXPECT_EQ(refused.cause, ic::Cause::ItemPermanent) << what << ": " << refused.reason;
+        EXPECT_EQ(q::pitStats().reserved, 1u) << what << ": the refused 2xx released its slot";
+        EXPECT_EQ(q::pitStats().open, 0u) << what;
+
+        auto full = query->pit({"idx"}, keepAlive(span), fastOptions(), in(5s));
+        EXPECT_EQ(full.cause, ic::Cause::QueueFull) << what << ": " << full.reason;
+        EXPECT_EQ(pits->requests(PitCall::Create), creates + 1) << what << ": a refusal sends nothing";
+
+        ASSERT_TRUE(whenStats([](const q::PitStats& s) { return s.reserved == 0; }, span + scaled(2000ms)))
+            << what << ": the reservation never lapsed";
+        EXPECT_GE(since(called), span) << what << ": the reservation lapsed before its keep_alive";
+        auto again = query->pit({"idx"}, keepAlive(span), fastOptions(), in(5s));
+        ASSERT_TRUE(again.ok()) << what << ": " << ic::toString(again.cause) << ": " << again.reason;
+        EXPECT_EQ(q::pitStats().open, 1u);
+    }
+}
+
 // I91: a creation held by the fake and abandoned, (1) by its Deadline ⇒ Unavailable, (2) by requestClose() ⇒
 // ClientClosed: each leaves one reservation until its keepAlive, then none. Mutant: a cancelled attempt frees its slot.
 TEST_F(PitTest, CancelledCreateReserves)

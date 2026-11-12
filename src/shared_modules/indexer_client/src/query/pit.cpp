@@ -159,6 +159,9 @@ namespace indexer_client::detail::query
             /// The pit_id of the last 2xx the classifier refused although it names a PIT (a partial one): the observer
             /// hands it to the registry to be deleted, and clears it.
             std::string refusedId;
+            /// The last 2xx the classifier refused without a usable pit_id (over the response cap, unparsable, no
+            /// pit_id): a PIT may exist that nobody can address, so the observer reserves the slot, and clears it.
+            bool refused2xx {false};
         };
 
         /// One search request on the PIT (next() page or search()): POST /_search?allow_partial_search_results=false
@@ -340,6 +343,11 @@ namespace indexer_client::detail::query
                         // A PIT the creation refused (partial): it exists, so its slot stays taken until its DELETE.
                         owner->discard({std::exchange(slots->refusedId, {}), keepAlive, now()});
                     }
+                    else if (std::exchange(slots->refused2xx, false))
+                    {
+                        // The indexer created a PIT the library cannot address: an orphan until its keep_alive.
+                        owner->reserve(addSaturated(now(), keepAlive));
+                    }
                     else if (!slots->accepted)
                     {
                         owner->releaseSlot();
@@ -365,6 +373,7 @@ namespace indexer_client::detail::query
             auto response = classifyPitCreate(result, cap);
             slots->accepted = response.verdict == QueryVerdict::Ok;
             slots->refusedId.clear();
+            slots->refused2xx = false;
             if (!slots->accepted && response.body.is_object())
             {
                 const auto id = response.body.find("pit_id");
@@ -373,6 +382,8 @@ namespace indexer_client::detail::query
                     slots->refusedId = id->get<std::string>();
                 }
             }
+            slots->refused2xx =
+                !slots->accepted && slots->refusedId.empty() && result.status >= 200 && result.status < 300;
             return response;
         };
 
