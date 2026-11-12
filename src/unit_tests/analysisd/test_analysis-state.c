@@ -805,6 +805,10 @@ void test_w_analysisd_clean_agents_state_query_fail(void ** state) {
 
 void test_w_analysisd_clean_agents_state_unsorted_active_agents(void ** state) {
     test_struct_t *test_data  = (test_struct_t *)*state;
+    // The table entry must hold an id that bsearch() only finds once the list is sorted.
+    // With {5, 1, 3} unsorted, bsearch() probes the middle element (1) first, so the
+    // default "001" key is found even without the qsort().
+    test_data->hash_node->key = "005";
 
     int *connected_agents = NULL;
     os_calloc(4, sizeof(int), connected_agents);
