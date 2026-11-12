@@ -56,7 +56,7 @@ The retry delay is exponential from 1 s to 15 s with jitter. The library README 
 
 Each configured host is in one of three states: `Available`, `Throttled` (it answered `429`) or `Down`. Every host starts `Down` until the first probe round.
 
-- Every `probe_interval_ms` (10 s) the runtime sends `GET /_cluster/health?local=true` to each host, with a `probe_timeout_ms` (5 s) timeout. `green` or `yellow` is available. `red` marks **every** node down (`Indexer cluster health is red: every node is marked down.`). `429` is throttled, `401` and `403` are down (`HTTP <status>: check indexer credentials / permissions`), any other answer or failure is down.
+- Every `probe_interval_ms` (10 s) the runtime sends `GET /_cluster/health/wazuh-*,.wazuh-*` to each host, with a `probe_timeout_ms` (5 s) timeout: the health of the manager's own indices, so a red index the manager does not use does not stop it. `green` or `yellow` is available. `red` marks **every** node down (`Indexer cluster health is red: every node is marked down.`). `429` is throttled, `401` and `403` are down (`HTTP <status>: check indexer credentials / permissions`), any other answer or failure is down.
 - The data path also reports: a failed request degrades its node at once, and only a probe brings a node back to `Available`.
 - Requests go round-robin to the available nodes; a throttled node is used only when none is available, and a parked node (a `Retry-After`) is skipped.
 - Gates: the Inventory Sync Server answers `503` when **no** host is usable (not down); the Vulnerability Scanner admits work only while some host is **available** (the stricter rule).

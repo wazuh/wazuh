@@ -54,7 +54,10 @@ namespace indexer_client::detail
                     {
                         host.pop_back();
                     }
-                    urls.push_back(host + "/_cluster/health?local=true");
+                    // No `local=true`: the answer comes from the elected cluster manager, so a node cut off from the
+                    // cluster fails its probe instead of answering from its own stale copy of the cluster state. No
+                    // `wait_for_*` either: that would turn the poll into a blocking wait of up to its own timeout.
+                    urls.push_back(host + "/_cluster/health/" + MANAGER_INDEX_PATTERN);
                 }
             }
 

@@ -249,7 +249,7 @@ namespace bench
                        answer += "]}";
                        res.set_content(answer, "application/json");
                    });
-            s.Get("/_cluster/health",
+            s.Get(R"(/_cluster/health(/.*)?)",
                   [this](const httplib::Request& req, httplib::Response& res)
                   {
                       notePeer(req, false);

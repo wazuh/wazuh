@@ -310,6 +310,22 @@ TEST_F(HealthTest, ProbeGreenYellowAvailable)
     EXPECT_EQ(m_logs->total(), 2u) << m_logs->dump();
 }
 
+// The probe asks for the health of the manager's indices only, with no query string: the complete target is pinned
+// (not a substring), so neither a prefix, a suffix nor a parameter can change unnoticed. A cluster-wide probe would
+// mark every node Down for a red index the manager never uses.
+TEST_F(HealthTest, TheProbeRequestsTheHealthUrl)
+{
+    auto fake = startFake({healthRule("green")});
+    ASSERT_TRUE(startRuntime({fake->baseUrl()}, 3600000ms));
+    ASSERT_TRUE(waitApplied(1));
+
+    const auto requests = fake->requests();
+    ASSERT_EQ(requests.size(), 1u);
+    EXPECT_EQ(requests[0].method, "GET");
+    EXPECT_EQ(requests[0].target, "/_cluster/health/wazuh-*,.wazuh-*");
+    EXPECT_EQ(stateOf(0), State::Available);
+}
+
 // RF-16, I57: a node Down from the start still logs the first round (its previous state is Unknown, not Down); the
 // rounds that repeat it log nothing.
 TEST_F(HealthTest, FirstRoundLogsEvenIfDown)

@@ -13,9 +13,9 @@
 #ifndef _INDEXER_CLIENT_PROBER_HPP
 #define _INDEXER_CLIENT_PROBER_HPP
 
-// The health probe (stage E2b, plan 18 I57): one `GET {host}/_cluster/health?local=true` per node and round, through
-// the transport, armed by a timer that lives on network loop 0 and is touched only from that loop. A round is applied
-// to the NodeSet only once its K results are in; rounds never overlap. No asio type appears in this header.
+// The health probe (stage E2b, plan 18 I57): one `GET {host}/_cluster/health/wazuh-*,.wazuh-*` per node and round,
+// through the transport, armed by a timer that lives on network loop 0 and is touched only from that loop. A round is
+// applied to the NodeSet only once its K results are in; rounds never overlap. No asio type appears in this header.
 
 #include <cstdint>
 #include <memory>
@@ -31,6 +31,20 @@ namespace asio
 
 namespace indexer_client::detail
 {
+    /**
+     * @brief The indices the probe asks about: everything the manager reads or writes.
+     *
+     * A cluster-wide `_cluster/health` turns red for one unassigned primary in ANY index (an alerting index, a user's
+     * own), and red marks every node Down, so an index the manager never touches would stop all of its indexer
+     * traffic. `wazuh-*` covers what it writes (the events and findings data streams, `wazuh-states-*`, metrics,
+     * agent config and stats) and `.wazuh-*` what it reads (`.wazuh-cti-consumers`, `.wazuh-settings`,
+     * `.wazuh-threatintel-*`); a wildcard resolves a data stream to its backing indices.
+     *
+     * Deliberately not configurable: a pattern that matches nothing makes `_cluster/health` answer `green` for an empty
+     * index list, so the nodes would look healthy forever. A component test pins the exact URL.
+     */
+    inline constexpr const char* MANAGER_INDEX_PATTERN {"wazuh-*,.wazuh-*"};
+
     struct ProberStats final
     {
         std::uint64_t rounds {0};          ///< Rounds armed (every probe of the round submitted or refused).
