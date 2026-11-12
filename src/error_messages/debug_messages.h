@@ -190,6 +190,9 @@
 #define FIM_REG_VAL_INVALID_TYPE            "(6375): Invalid registry value type for report_changes. Registry key: '%s'. Registry value: '%s'."
 #define FIM_EBPF_LIB_LOADED                 "(6376): All functions loaded successfully from libbpf.so."
 #define FIM_WILDCARDS_REMOVE_REGISTER       "(6377): Removing registry entry '%s' %s, it no longer matches its wildcard."
+#define FIM_DIFF_TIMEOUT_REACHED            "(6378): The diff of '%s' exceeded its time limit and was discarded."
+#define FIM_DIFF_MEMORY_REACHED             "(6379): The diff of '%s' exceeded its memory limit and was discarded."
+#define FIM_DIFF_NO_JOB                     "(6380): Could not limit the memory of the diff process. Error code: %d"
 
 /* Modules messages */
 #define WM_UPGRADE_RESULT_AGENT_INFO         "(8151): Agent Information obtained: '%s'"

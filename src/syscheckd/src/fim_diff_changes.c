@@ -778,24 +778,21 @@ int fim_diff_compare(const diff_data *diff) {
 }
 
 char *fim_diff_generate(const diff_data *diff, bool is_file) {
-    char diff_cmd[PATH_MAX * 3 + OS_SIZE_1024];
     char *diff_str = NULL;
+    fim_diff_exec_rc rc;
+
+#ifdef WIN32
     char *uncompress_file_filtered = NULL;
     char *file_origin_filtered = NULL;
     char *diff_file_filtered = NULL;
-    int status = -1;
 
     uncompress_file_filtered = filter(diff->uncompress_file);
-#ifdef WIN32
     if (is_file) {
         file_origin_filtered = utf8_GetShortPathName(diff->new_file);
     }
     if (file_origin_filtered == NULL) {
         file_origin_filtered = filter(diff->new_file);
     }
-#else
-    file_origin_filtered = filter(diff->new_file);
-#endif
     diff_file_filtered = filter(diff->diff_file);
 
     if (!(uncompress_file_filtered && file_origin_filtered && diff_file_filtered)) {
@@ -806,33 +803,38 @@ char *fim_diff_generate(const diff_data *diff, bool is_file) {
         return NULL;
     }
 
-    snprintf(
-        diff_cmd,
-        sizeof(diff_cmd),
-#ifndef WIN32
-        "diff \"%s\" \"%s\" > \"%s\" 2> /dev/null",
-#else
-        "fc /n \"%s\" \"%s\" > \"%s\" 2> nul",
-#endif
-        uncompress_file_filtered,
-        file_origin_filtered,
-        diff_file_filtered
-    );
+    rc = fim_diff_exec(uncompress_file_filtered, file_origin_filtered, diff_file_filtered);
+
     os_free(uncompress_file_filtered);
     os_free(file_origin_filtered);
     os_free(diff_file_filtered);
-
-    status = system(diff_cmd);
-
-#ifndef WIN32
-    if (status == 256){
 #else
-    if (status == 0){
-        mdebug2(FIM_DIFF_COMMAND_OUTPUT_EQUAL);
-    } else if (status == 1){
+    // No shell is involved, so the paths are passed as they are
+    (void)is_file;
+    rc = fim_diff_exec(diff->uncompress_file, diff->new_file, diff->diff_file);
 #endif
+
+    switch (rc) {
+    case FIM_DIFF_EXEC_DIFF:
         diff_str = gen_diff_str(diff);
-    } else {
+        break;
+
+    case FIM_DIFF_EXEC_SAME:
+        mdebug2(FIM_DIFF_COMMAND_OUTPUT_EQUAL);
+        break;
+
+    // The new snapshot is still saved, so the same pair of files is not diffed again on every scan
+    case FIM_DIFF_EXEC_TIMEOUT:
+        mdebug1(FIM_DIFF_TIMEOUT_REACHED, diff->file_origin);
+        os_strdup("Unable to calculate diff due to the diff process exceeding its time limit.", diff_str);
+        break;
+
+    case FIM_DIFF_EXEC_MEMORY:
+        mdebug1(FIM_DIFF_MEMORY_REACHED, diff->file_origin);
+        os_strdup("Unable to calculate diff due to the diff process exceeding its memory limit.", diff_str);
+        break;
+
+    default:
         merror(FIM_DIFF_COMMAND_OUTPUT_ERROR);
     }
 

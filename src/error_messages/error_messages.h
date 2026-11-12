@@ -479,6 +479,8 @@
 #endif
 #define FIM_ERROR_TRANSACTION                       "(6719): Could not start DBSync transaction (%s)"
 #define FIM_ERROR_PATH_TOO_LONG                     "(6720): The path '%s%s' is too long. The maximum length is %d characters."
+#define FIM_DIFF_CMD_NOT_FOUND                      "(6721): Could not find the command to compute report_changes diffs."
+#define FIM_DIFF_CMD_START_ERROR                    "(6722): Could not start the command to compute report_changes diffs. Error code: %d (%s)"
 
 #define FIM_AUDITPOL_ATTEMPT_FAIL                   "(6955): Auditpol command failed, attempt number: %d"
 #define FIM_AUDITPOL_FINAL_FAIL                     "(6956): After %d attempts the Auditpol command could not be executed successfully."
