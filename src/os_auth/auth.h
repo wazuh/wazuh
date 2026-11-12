@@ -43,7 +43,8 @@
 extern BIO *bio_err;
 #define KEYFILE  "etc/sslmanager.key"
 #define CERTFILE "etc/sslmanager.cert"
-#define DEFAULT_CIPHERS "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
+/* Excludes static-RSA (no forward secrecy) key exchange; also the enrollment client default (shared/enrollment_op.c) */
+#define DEFAULT_CIPHERS "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:!kRSA:@STRENGTH"
 #define DEFAULT_PORT 1515
 #define DEFAULT_CENTRALIZED_GROUP "default"
 #define DEPRECATED_OPTION_WARN "Option '%s' is deprecated. Configure it in the file '%s'."

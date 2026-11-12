@@ -87,10 +87,12 @@ int OSList_SetFreeDataPointer(OSList *list, void (free_data_function)(void *))
  */
 OSListNode *OSList_GetFirstNode(OSList *list)
 {
+    OSListNode *node;
     w_rwlock_wrlock((pthread_rwlock_t *)&list->wr_mutex);
     list->cur_node = list->first_node;
+    node = list->first_node;
     w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
-    return (list->first_node);
+    return node;
 }
 
 /* Get last node from list
@@ -98,10 +100,12 @@ OSListNode *OSList_GetFirstNode(OSList *list)
  */
 OSListNode *OSList_GetLastNode(OSList *list)
 {
+    OSListNode *node;
     w_rwlock_wrlock((pthread_rwlock_t *)&list->wr_mutex);
     list->cur_node = list->last_node;
+    node = list->last_node;
     w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
-    return (list->last_node);
+    return node;
 }
 
 /* Get last node from list
@@ -109,10 +113,12 @@ OSListNode *OSList_GetLastNode(OSList *list)
  */
 OSListNode *OSList_GetLastNode_group(OSList *list)
 {
+    OSListNode *node;
     w_rwlock_wrlock((pthread_rwlock_t *)&list->wr_mutex);
     list->cur_node = list->last_node;
+    node = list->last_node;
     w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
-    return (list->last_node);
+    return node;
 }
 
 /* Get next node from list
@@ -120,6 +126,7 @@ OSListNode *OSList_GetLastNode_group(OSList *list)
  */
 OSListNode *OSList_GetNextNode(OSList *list)
 {
+    OSListNode *node;
     w_rwlock_wrlock((pthread_rwlock_t *)&list->wr_mutex);
     if (list->cur_node == NULL) {
         w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
@@ -127,9 +134,9 @@ OSListNode *OSList_GetNextNode(OSList *list)
     }
 
     list->cur_node = list->cur_node->next;
-
+    node = list->cur_node;
     w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
-    return (list->cur_node);
+    return node;
 }
 
 /* Get the prev node from the list
@@ -137,6 +144,7 @@ OSListNode *OSList_GetNextNode(OSList *list)
  */
 OSListNode *OSList_GetPrevNode(OSList *list)
 {
+    OSListNode *node;
     w_rwlock_wrlock((pthread_rwlock_t *)&list->wr_mutex);
     if (list->cur_node == NULL) {
         w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
@@ -144,8 +152,9 @@ OSListNode *OSList_GetPrevNode(OSList *list)
     }
 
     list->cur_node = list->cur_node->prev;
+    node = list->cur_node;
     w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
-    return (list->cur_node);
+    return node;
 }
 
 /* Get the currently node
@@ -153,7 +162,11 @@ OSListNode *OSList_GetPrevNode(OSList *list)
  */
 OSListNode *OSList_GetCurrentlyNode(OSList *list)
 {
-    return (list->cur_node);
+    OSListNode *node;
+    w_rwlock_rdlock((pthread_rwlock_t *)&list->wr_mutex);
+    node = list->cur_node;
+    w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
+    return node;
 }
 
 /* Delete first node from list */

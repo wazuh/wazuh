@@ -1,20 +1,20 @@
 - name: SSL - Default
   description: Default ssl configuration
   configuration_parameters:
-    CIPHERS: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
+    CIPHERS: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:!kRSA:@STRENGTH"
     SSL_AUTO_NEGOTIATE: 'no'
   metadata:
     expect: output
     input: "OSSEC A:'user1'\n"
     output: OSSEC K:'
-    ciphers: HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH
+    ciphers: HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:!kRSA:@STRENGTH
     protocol: ssl_tlsv1_2
     error:
 
 - name: SSL - Wrong ciphers
   description: Send a message with low encryption cypher suites
   configuration_parameters:
-    CIPHERS: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
+    CIPHERS: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:!kRSA:@STRENGTH"
     SSL_AUTO_NEGOTIATE: 'no'
   metadata:
     expect: open_error
@@ -27,7 +27,7 @@
 - name: SSL - Incompatible ciphers from Agent
   description: Send a message with low encryption cypher suites
   configuration_parameters:
-    CIPHERS: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
+    CIPHERS: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:!kRSA:@STRENGTH"
     SSL_AUTO_NEGOTIATE: 'no'
   metadata:
     expect: open_error
@@ -46,14 +46,14 @@
     expect: open_error
     input:
     output:
-    ciphers: HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH
+    ciphers: HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:!kRSA:@STRENGTH
     protocol: ssl_tlsv1_2
     error: handshake failure
 
 - name: SSL - Compatible ciphers from Agent
   description: Send a message with a compatible yet not default cypher
   configuration_parameters:
-    CIPHERS: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
+    CIPHERS: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:!kRSA:@STRENGTH"
     SSL_AUTO_NEGOTIATE: 'no'
   metadata:
     expect: output
@@ -66,26 +66,26 @@
 - name: SSL - Wrong TLS version (TLSV1_1)
   description: Send a message with a different TLS version with Auto negotiate disabled
   configuration_parameters:
-    CIPHERS: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
+    CIPHERS: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:!kRSA:@STRENGTH"
     SSL_AUTO_NEGOTIATE: 'no'
   metadata:
     expect: open_error
     input:
     output:
-    ciphers: HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH
+    ciphers: HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:!kRSA:@STRENGTH
     protocol: ssl_tlsv1_1
     error: alert protocol version
 
 - name: SSL - Auto Negotiate TLS version (TLSV1_1)
   description: Send a message with a different TLS version with Auto negotiate enabled
   configuration_parameters:
-    CIPHERS: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
+    CIPHERS: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:!kRSA:@STRENGTH"
     SSL_AUTO_NEGOTIATE: 'yes'
   metadata:
     expect: output
     input: "OSSEC A:'user1'\n"
     output: OSSEC K:'
-    ciphers: HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH
+    ciphers: HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:!kRSA:@STRENGTH
     protocol: ssl_tlsv1_1
     error:
 
@@ -98,19 +98,32 @@
     expect: output
     input: "OSSEC A:'user1'\n"
     output: OSSEC K:'
-    ciphers: HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH
+    ciphers: HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:!kRSA:@STRENGTH
     protocol: ssl_tlsv1_2
     error:
 
 - name: Valid Certificates - Manager verification without host
   description: Enables CA Certificate and validates that conneciton is acepted when valid certs are provided
   configuration_parameters:
-    CIPHERS: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
+    CIPHERS: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:!kRSA:@STRENGTH"
     SSL_AUTO_NEGOTIATE: 'no'
   metadata:
     expect: output
     input: "OSSEC A:'user1'\n"
     output: OSSEC K:'
-    ciphers: HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH
+    ciphers: HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:!kRSA:@STRENGTH
     protocol: ssl_tlsv1_2
     error:
+
+- name: SSL - Static RSA key exchange rejected
+  description: A TLS 1.2 client that offers only static-RSA suites gets no shared cipher
+  configuration_parameters:
+    CIPHERS: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:!kRSA:@STRENGTH"
+    SSL_AUTO_NEGOTIATE: 'no'
+  metadata:
+    expect: open_error
+    input:
+    output:
+    ciphers: kRSA
+    protocol: ssl_tlsv1_2
+    error: handshake failure

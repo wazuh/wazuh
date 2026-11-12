@@ -64,6 +64,7 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,fgetpos -Wl,--wrap,fgets -Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,fread \
                             -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,getpid -Wl,--wrap,key_lock_read \
                             -Wl,--wrap,key_lock_write -Wl,--wrap,key_unlock -Wl,--wrap,nb_close_socket \
+                            -Wl,--wrap,nb_claim_close \
                             -Wl,--wrap,nb_open -Wl,--wrap,nb_recv -Wl,--wrap,nb_send -Wl,--wrap,OS_AddSocket \
                             -Wl,--wrap,OS_DeleteSocket -Wl,--wrap,OS_IsAllowedDynamicID -Wl,--wrap,OS_IsAllowedIP \
                             -Wl,--wrap,ReadSecMSG -Wl,--wrap,recvfrom -Wl,--wrap,rem_add_recv \

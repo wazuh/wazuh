@@ -118,6 +118,30 @@ static void test_w_authd_parse_agents_invalid_element(void **state) {
     os_free(node);
 }
 
+// Test Read_Authd defaults
+
+// The parser's own default literal must match DEFAULT_CIPHERS (auth.h), so both copies move together.
+static void test_read_authd_default_ciphers(void **state) {
+    authd_config_t cfg = {0};
+    XML_NODE node;
+
+    os_calloc(1, sizeof(xml_node *), node);
+    node[0] = NULL;
+
+    // Default <force> values are reported on the debug log when the block is absent.
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    assert_int_equal(Read_Authd(NULL, node, &cfg, NULL), 0);
+    assert_non_null(cfg.ciphers);
+    assert_string_equal(cfg.ciphers, DEFAULT_CIPHERS);
+
+    os_free(cfg.ciphers);
+    os_free(cfg.manager_cert);
+    os_free(cfg.manager_key);
+    os_free(node);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -126,6 +150,7 @@ int main(void)
         cmocka_unit_test(test_w_authd_parse_agents_yes),
         cmocka_unit_test(test_w_authd_parse_agents_invalid_value),
         cmocka_unit_test(test_w_authd_parse_agents_invalid_element),
+        cmocka_unit_test(test_read_authd_default_ciphers),
 
     };
 

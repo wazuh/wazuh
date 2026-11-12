@@ -107,42 +107,22 @@ int main (int argc, char **argv) {
             char *exec_cmd2[11] = { ipfw_path, "-q", TABLE_ID, "add", "deny", "ip", "from", table_name, "to", "any", NULL };
             char *exec_cmd3[11] = { ipfw_path, "-q", TABLE_ID, "add", "deny", "ip", "from", "any", "to", table_name, NULL };
 
-            wfd = wpopenv(ipfw_path, exec_cmd2, W_BIND_STDERR);
-            if (!wfd) {
-                memset(log_msg, '\0', OS_MAXSTR);
-                snprintf(log_msg, OS_MAXSTR -1, "Error executing '%s': %s", ipfw_path, strerror(errno));
-                write_debug_file(argv[0], log_msg);
+            if (execute_command_with_retry(argv[0], ipfw_path, exec_cmd2) != OS_SUCCESS ||
+                execute_command_with_retry(argv[0], ipfw_path, exec_cmd3) != OS_SUCCESS) {
                 cJSON_Delete(input_json);
                 os_free(ipfw_path);
                 return OS_INVALID;
             }
-            wpclose(wfd);
-
-            wfd = wpopenv(ipfw_path, exec_cmd3, W_BIND_STDERR);
-            if (!wfd) {
-                memset(log_msg, '\0', OS_MAXSTR);
-                snprintf(log_msg, OS_MAXSTR -1, "Error executing '%s': %s", ipfw_path, strerror(errno));
-                write_debug_file(argv[0], log_msg);
-                cJSON_Delete(input_json);
-                os_free(ipfw_path);
-                return OS_INVALID;
-            }
-            wpclose(wfd);
         }
 
         char *exec_cmd4[7] = { ipfw_path, "-q", "table", TABLE_ID, (action == ADD_COMMAND) ? "add" : "delete", (char *)srcip, NULL };
 
         // Executing it
-        wfd = wpopenv(ipfw_path, exec_cmd4, W_BIND_STDERR);
-        if (!wfd) {
-            memset(log_msg, '\0', OS_MAXSTR);
-            snprintf(log_msg, OS_MAXSTR -1, "Error executing '%s': %s", ipfw_path, strerror(errno));
-            write_debug_file(argv[0], log_msg);
+        if (execute_command_with_retry(argv[0], ipfw_path, exec_cmd4) != OS_SUCCESS) {
             cJSON_Delete(input_json);
             os_free(ipfw_path);
             return OS_INVALID;
         }
-        wpclose(wfd);
         os_free(ipfw_path);
 
     } else {

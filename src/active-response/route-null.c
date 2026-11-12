@@ -132,7 +132,6 @@ int main (int argc, char **argv) {
 
 #ifndef WIN32
     struct utsname uname_buffer;
-    wfd_t *wfd = NULL;
     char *route_path = NULL;
     char log_msg[OS_MAXSTR];
 
@@ -153,41 +152,21 @@ int main (int argc, char **argv) {
         if (action == ADD_COMMAND) {
             char *exec_cmd1[5] = { route_path, "add", (char *)srcip, "reject", NULL };
 
-            wfd = wpopenv(route_path, exec_cmd1, W_BIND_STDERR);
-            if (!wfd) {
-                write_debug_file(argv[0], "Unable to run route");
-            } else {
-                wpclose(wfd);
-            }
+            execute_command_with_retry(argv[0], route_path, exec_cmd1);
         } else {
             char *exec_cmd1[5] = { route_path, "del", (char *)srcip, "reject", NULL };
 
-            wfd = wpopenv(route_path, exec_cmd1, W_BIND_STDERR);
-            if (!wfd) {
-                write_debug_file(argv[0], "Unable to run route");
-            } else {
-                wpclose(wfd);
-            }
+            execute_command_with_retry(argv[0], route_path, exec_cmd1);
         }
     } else if (!strcmp("FreeBSD", uname_buffer.sysname)) {
         if (action == ADD_COMMAND) {
             char *exec_cmd1[7] = { route_path, "-q", "add", (char *)srcip, "127.0.0.1", "-blackhole", NULL };
 
-            wfd = wpopenv(route_path, exec_cmd1, W_BIND_STDERR);
-            if (!wfd) {
-                write_debug_file(argv[0], "Unable to run route");
-            } else {
-                wpclose(wfd);
-            }
+            execute_command_with_retry(argv[0], route_path, exec_cmd1);
         } else {
             char *exec_cmd1[7] = { route_path, "-q", "delete", (char *)srcip, "127.0.0.1", "-blackhole", NULL };
 
-            wfd = wpopenv(route_path, exec_cmd1, W_BIND_STDERR);
-            if (!wfd) {
-                write_debug_file(argv[0], "Unable to run route");
-            } else {
-                wpclose(wfd);
-            }
+            execute_command_with_retry(argv[0], route_path, exec_cmd1);
         }
     } else {
         write_debug_file(argv[0], "Invalid system");
@@ -240,7 +219,8 @@ int main (int argc, char **argv) {
             }
         }
     } else {
-        char *exec_args_delete[4] = { route_path, "DELETE", (char *)srcip, NULL };
+        // Without the mask, route deletes every route to this destination (e.g. the default one for 0.0.0.0).
+        char *exec_args_delete[6] = { route_path, "DELETE", (char *)srcip, "MASK", "255.255.255.255", NULL };
 
         wfd_t *wfd = wpopenv(route_path, exec_args_delete, W_BIND_STDERR);
         if (!wfd) {

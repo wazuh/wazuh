@@ -131,9 +131,9 @@ endif()
 # fim_diff_changes.c tests
 set(FIM_DIFF_CHANGES_BASE_FLAGS "-Wl,--wrap,lstat -Wl,--wrap,stat \
                                  -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fclose -Wl,--wrap,fwrite -Wl,--wrap,wfopen \
-                                 -Wl,--wrap,w_compress_gzfile -Wl,--wrap,IsDir -Wl,--wrap,mkdir_ex -Wl,--wrap,fflush \
+                                 -Wl,--wrap,w_compress_gzfile -Wl,--wrap,IsDir -Wl,--wrap,mkdir_ex -Wl,--wrap,mkdir -Wl,--wrap,fflush \
                                  -Wl,--wrap,w_uncompress_gzfile -Wl,--wrap,OS_MD5_File -Wl,--wrap,File_DateofChange \
-                                 -Wl,--wrap,rename -Wl,--wrap,system -Wl,--wrap,fseek -Wl,--wrap,remove,--wrap=fprintf \
+                                 -Wl,--wrap,rename -Wl,--wrap=fim_diff_exec -Wl,--wrap,fseek -Wl,--wrap,remove,--wrap=fprintf \
                                  -Wl,--wrap=fgets -Wl,--wrap,atexit -Wl,--wrap,getpid,--wrap=_mdebug2,--wrap=rmdir_ex,--wrap=rename_ex \
                                  -Wl,--wrap=DirSize,--wrap=remove_empty_folders,--wrap=abspath,--wrap=getpid \
                                  -Wl,--wrap,fgetpos -Wl,--wrap=fgetc -Wl,--wrap=pthread_rwlock_wrlock -Wl,--wrap=pthread_mutex_lock \
@@ -152,6 +152,12 @@ if(${TARGET} STREQUAL "winagent")
                                      -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown -Wl,--wrap=utf8_GetShortPathName")
 else()
   list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=unlink -Wl,--wrap=FileSize -Wl,--wrap=realpath")
+endif()
+
+# fim_diff_exec.c tests (they run real child processes; Windows relies on fc.exe, which wine does not implement)
+if(NOT ${TARGET} STREQUAL "winagent")
+  list(APPEND syscheckd_tests_names "fim_diff_exec")
+  list(APPEND syscheckd_tests_flags "${DEBUG_OP_WRAPPERS}")
 endif()
 
 # run_realtime.c tests
