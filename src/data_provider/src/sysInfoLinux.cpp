@@ -13,6 +13,7 @@
 #include <iostream>
 #include <regex>
 #include <sys/utsname.h>
+#include <unordered_set>
 #include "packages/modernPackageDataRetriever.hpp"
 #include "sharedDefs.h"
 #include "stringHelper.h"
@@ -446,7 +447,7 @@ nlohmann::json SysInfo::getNetworks() const
 }
 
 
-ProcessInfo portProcessInfo(const std::string& procPath, const std::deque<int64_t>& inodes)
+ProcessInfo portProcessInfo(const std::string& procPath, const std::unordered_set<int64_t>& inodes)
 {
     ProcessInfo ret;
     auto getProcessName = [](const std::string & filePath) -> std::string
@@ -516,10 +517,7 @@ ProcessInfo portProcessInfo(const std::string& procPath, const std::deque<int64_
                             {
                                 int64_t inode {findInode(fdFilePath)};
 
-                                if (std::any_of(inodes.cbegin(), inodes.cend(), [&](const auto it)
-                            {
-                                return it == inode;
-                            }))
+                                if (inodes.count(inode) != 0)
                                 {
                                     std::string statPath {procFilePath + "/" + "stat"};
                                     std::string processName = getProcessName(statPath);
@@ -545,7 +543,7 @@ ProcessInfo portProcessInfo(const std::string& procPath, const std::deque<int64_
 nlohmann::json SysInfo::getPorts() const
 {
     nlohmann::json ports;
-    std::deque<int64_t> inodes;
+    std::unordered_set<int64_t> inodes;
 
     for (const auto& portType : PORTS_TYPE)
     {
@@ -566,7 +564,7 @@ nlohmann::json SysInfo::getPorts() const
                     row = Utils::trimRepeated(row, ' ');
                     const LinuxPortWrapper wrapper(portType.first, row);
                     PortImpl(wrapper).buildPortData(port);
-                    inodes.push_back(port.at("inode"));
+                    inodes.insert(port.at("inode").get<int64_t>());
                     ports.push_back(std::move(port));
                 }
 
