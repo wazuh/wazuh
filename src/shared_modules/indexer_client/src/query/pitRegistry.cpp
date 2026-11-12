@@ -54,6 +54,50 @@ namespace indexer_client::detail::query
             return backoffDelay(policy, std::max<std::uint32_t>(attempts, 1), jitterDraw());
         }
 
+        /// A 2xx DELETE answer that reports `id` not deleted: an entry of `pits` for `id` (or, when no entry names it,
+        /// any entry) with `successful: false`. OpenSearch treats a partial failure as a failure, and the context may
+        /// still be open. A body without a readable `pits` array keeps the old reading (confirmed): a change of shape
+        /// must not turn every delete into retries until the PIT's expiry.
+        bool deleteUnsuccessful(const std::string& body, const std::string& id)
+        {
+            const auto json = nlohmann::json::parse(body, nullptr, false);
+            if (json.is_discarded() || !json.is_object())
+            {
+                return false;
+            }
+            const auto pits = json.find("pits");
+            if (pits == json.end() || !pits->is_array())
+            {
+                return false;
+            }
+            const auto unsuccessful = [](const nlohmann::json& entry)
+            {
+                if (!entry.is_object())
+                {
+                    return false;
+                }
+                const auto successful = entry.find("successful");
+                return successful != entry.end() && successful->is_boolean() && !successful->get<bool>();
+            };
+            bool named = false;
+            bool any = false;
+            for (const auto& entry : *pits)
+            {
+                const bool ours = entry.is_object() && entry.contains("pit_id") && entry.at("pit_id").is_string() &&
+                                  entry.at("pit_id").get_ref<const std::string&>() == id;
+                if (ours)
+                {
+                    if (unsuccessful(entry))
+                    {
+                        return true;
+                    }
+                    named = true;
+                }
+                any = any || unsuccessful(entry);
+            }
+            return !named && any;
+        }
+
         std::string deleteUrl(std::string host)
         {
             while (!host.empty() && host.back() == '/')
@@ -554,6 +598,13 @@ namespace indexer_client::detail::query
             /// CPU pool: one DELETE's result.
             void onResult(const std::string& id, std::uint64_t token, const HttpResult& result)
             {
+                if (result.cause == TransportCause::None && result.status >= 200 && result.status < 300 &&
+                    deleteUnsuccessful(result.body, id))
+                {
+                    // Not a confirmed delete: retried with the delete backoff, never past lastUse + keepAlive.
+                    settle(id, token, Settle::Retry, std::nullopt);
+                    return;
+                }
                 if (result.cause == TransportCause::None &&
                     ((result.status >= 200 && result.status < 300) || result.status == 404))
                 {

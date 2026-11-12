@@ -1544,12 +1544,17 @@ so it is an upper bound of the real last use. Classification is `classifyRequest
 
 | Result | Action |
 |---|---|
-| 2xx or 404 | Confirmed (`deletesConfirmed`); the slot is freed |
+| 2xx whose `pits` entry for the id (or, when no entry names it, any entry) has `successful: false` | **Not** confirmed: OpenSearch reports a failed delete that way (partial failures are failures) and the context may still be open. Retries after `backoffDelay` like a failover (`deleteRetries`), until `lastUse + keepAlive` at most |
+| Any other 2xx (a body without a readable `pits` array included, so a change of shape never turns deletes into retries), or 404 | Confirmed (`deletesConfirmed`); the slot is freed |
 | 429 | Waits `max(Retry-After, backoff)` and retries |
 | Failover or retry verdict | Retries after `backoffDelay` (1 s base, 15 s cap, `deleteRetries`) |
 | No usable node | Waits `min(backoff, probe_interval_ms)`, without counting a retry; shortened to the first parked node's `notBefore` when every not-`Down` node is parked |
 | Any other final answer (another 4xx, a response too large) | Gives up at once: the `keep_alive` frees the PIT (`deletesExpired`); the slot is freed |
 | `lastUse + keepAlive` passed | Gives up: the indexer frees the PIT by itself (`deletesExpired`); the slot is freed |
+
+What OpenSearch answers to the `DELETE` of a PIT that is already gone (expired or deleted: a 404, or a 2xx with `successful: false`)
+has **not** been measured against a real node. If it is a 2xx with `successful: false`, such a delete is retried until
+`lastUse + keepAlive` and then counted expired: bounded, and never a delete wrongly counted as confirmed.
 
 Each `DELETE` is sent with timeout `min(request_timeout_ms, lastUse + keepAlive − now)` (the sum saturates: `keepAlive` has no upper
 bound), so a hung one never holds the slot past the PIT's own expiry.

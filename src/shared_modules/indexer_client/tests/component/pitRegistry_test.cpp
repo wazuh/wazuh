@@ -291,6 +291,82 @@ TEST_F(PitTest, DeleteRetriesUntilConfirmed)
     EXPECT_GE(gap(deletes[1], deletes[2]), 950ms);
 }
 
+// A 2xx DELETE whose `pits` entry for the id says `successful: false` is not a confirmed delete: answered so twice
+// (the PIT left alive) and then normally, it is retried with the delete backoff and confirmed by the third DELETE.
+// Mutant: any 2xx confirms (one DELETE, the PIT left open on the indexer).
+TEST_F(PitTest, DeleteUnsuccessfulRetries)
+{
+    auto pits = std::make_shared<PitResponder>(10);
+    pits->intercept(
+        [](const PitRequestView& request, Rule& reply)
+        {
+            if (request.call == PitCall::Delete && request.ordinal <= 2)
+            {
+                reply.status = 200;
+                reply.body = nlohmann::json {{"pits", {{{"successful", false}, {"pit_id", "pit-1"}}}}}.dump();
+                return true;
+            }
+            return false;
+        });
+    const auto node = pitFake(pits);
+    ASSERT_NO_FATAL_FAILURE(start({node->baseUrl()}));
+    auto owner = client();
+    const auto before = q::pitStats();
+    {
+        auto created = owner->query()->pit({"idx"}, keepAlive(60s), fastOptions(), in(5s));
+        ASSERT_TRUE(created.ok()) << created.reason;
+    }
+    ASSERT_TRUE(whenStats([](const q::PitStats& s) { return s.deletesPending == 0 && s.open == 0; }, scaled(10000ms)))
+        << "the delete never settled";
+    const auto d = pitDelta(before, q::pitStats());
+    EXPECT_EQ(d.deletesConfirmed, 1u);
+    EXPECT_EQ(d.deletesExpired, 0u);
+    EXPECT_EQ(d.deleteRetries, 2u);
+    EXPECT_EQ(pits->deleted(), 1u) << "the PIT was left open";
+    EXPECT_EQ(pitDeletes(*node).size(), 3u);
+}
+
+// Always `successful: false` (and an entry of another id that succeeded does not count for this one): the delete is
+// retried until lastUse + keepAlive, never past it, then counted expired and the slot freed.
+TEST_F(PitTest, DeleteUnsuccessfulUntilExpiry)
+{
+    auto pits = std::make_shared<PitResponder>(10);
+    pits->intercept(
+        [](const PitRequestView& request, Rule& reply)
+        {
+            if (request.call == PitCall::Delete)
+            {
+                reply.status = 200;
+                reply.body = nlohmann::json {{"pits",
+                                              {{{"successful", true}, {"pit_id", "another"}},
+                                               {{"successful", false}, {"pit_id", "pit-1"}}}}}
+                                 .dump();
+                return true;
+            }
+            return false;
+        });
+    const auto node = pitFake(pits);
+    ASSERT_NO_FATAL_FAILURE(start({node->baseUrl()}));
+    auto owner = client();
+    const auto span = scaled(2500ms);
+    const auto before = q::pitStats();
+    ic::TimePoint released;
+    {
+        auto created = owner->query()->pit({"idx"}, keepAlive(span), fastOptions(), in(5s));
+        ASSERT_TRUE(created.ok()) << created.reason;
+        released = now();
+    }
+    ASSERT_TRUE(component::eventually([&] { return pitDelta(before, q::pitStats()).deletesExpired == 1; },
+                                      span + scaled(3000ms)))
+        << "the delete never expired";
+    EXPECT_LE(now(), released + span + scaled(500ms)) << "kept retrying past lastUse + keepAlive";
+    const auto stats = q::pitStats();
+    EXPECT_EQ(stats.deletesPending, 0u);
+    EXPECT_EQ(stats.open, 0u);
+    EXPECT_EQ(pitDelta(before, stats).deletesConfirmed, 0u);
+    EXPECT_GE(pitDeletes(*node).size(), 2u) << "never retried";
+}
+
 // I90: the node fails every DELETE (connection cut; the probe brings it back every 300 ms): the DELETE is retried until
 // lastUse + keepAlive (never past it, never expired before it), then deletesExpired + 1, the slot free, and no request
 // afterwards; deleteRetries counts the requests sent after the first, never a wait without a usable node.
